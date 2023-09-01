@@ -233,6 +233,8 @@ somewhere in the PATH, then you can log into the container with:
 
    docker exec -ti container-id kitten run-shell --shell=/path/to/your/shell/in/the/container
 
+The kitten will even take care of making the kitty terminfo database available
+in the container automatically.
 
 .. _clone_shell:
 

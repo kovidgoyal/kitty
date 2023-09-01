@@ -5,6 +5,7 @@ package shell_integration
 import (
 	"bytes"
 	"fmt"
+	"kitty"
 	"os"
 	"path/filepath"
 	"testing"
@@ -43,7 +44,7 @@ func TestExtractShellIntegration(t *testing.T) {
 	if err = extract_terminfo(tdir); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(tdir, "terminfo", "78", "xterm-kitty")); err != nil {
+	if _, err := os.Stat(filepath.Join(tdir, "terminfo", "78", kitty.DefaultTermName)); err != nil {
 		t.Fatal(err)
 	}
 }

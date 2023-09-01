@@ -351,7 +351,7 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 	}
 	err = add_entries(path.Join("home", ".terminfo"), shell_integration.Data()["terminfo/kitty.terminfo"])
 	if err == nil {
-		err = add_entries(path.Join("home", ".terminfo", "x"), shell_integration.Data()["terminfo/x/xterm-kitty"])
+		err = add_entries(path.Join("home", ".terminfo", "x"), shell_integration.Data()["terminfo/x/"+kitty.DefaultTermName])
 	}
 	if err == nil {
 		err = tw.Close()

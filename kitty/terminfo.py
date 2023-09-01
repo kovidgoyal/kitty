@@ -3,10 +3,9 @@
 
 import re
 from binascii import hexlify, unhexlify
-from typing import TYPE_CHECKING, Dict, Generator, Optional, cast
+from typing import Dict, Generator, Optional, cast
 
-if TYPE_CHECKING:
-    from .options.types import Options
+from kitty.options.types import Options
 
 
 def modify_key_bytes(keybytes: bytes, amt: int) -> bytes:
@@ -25,7 +24,7 @@ def encode_keystring(keybytes: bytes) -> str:
     return keybytes.decode('ascii').replace('\033', r'\E')
 
 
-names = 'xterm-kitty', 'KovIdTTY'
+names = Options.term, 'KovIdTTY'
 
 termcap_aliases = {
     'TN': 'name'

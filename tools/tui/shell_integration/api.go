@@ -6,6 +6,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
+	"kitty"
 	"kitty/tools/utils"
 	"os"
 	"os/exec"
@@ -55,11 +56,87 @@ func extract_shell_integration_for(shell_name string, dest_dir string) (err erro
 }
 
 func extract_terminfo(dest_dir string) (err error) {
+	var s os.FileInfo
+	if s, err = os.Stat(filepath.Join(dest_dir, "terminfo", "x", kitty.DefaultTermName)); err == nil && s.Mode().IsRegular() {
+		if s, err = os.Stat(filepath.Join(dest_dir, "terminfo", "78", kitty.DefaultTermName)); err == nil && s.Mode().IsRegular() {
+			return
+		}
+	}
 	if err = extract_files("terminfo/", dest_dir); err == nil {
 		dest := filepath.Join(dest_dir, "terminfo", "78")
 		err = os.Symlink("x", dest)
 	}
 	return
+}
+
+func PathToTerminfoDb(term string) (ans string) {
+	// see man terminfo for the algorithm ncurses uses for this
+
+	seen := utils.NewSet[string]()
+	check_dir := func(path string) string {
+		if seen.Has(path) {
+			return ``
+		}
+		seen.Add(path)
+		q := filepath.Join(path, term[:1], term)
+		if s, err := os.Stat(q); err == nil && s.Mode().IsRegular() {
+			return q
+		}
+		if entries, err := os.ReadDir(filepath.Join(path)); err == nil {
+			for _, x := range entries {
+				q := filepath.Join(path, x.Name(), term)
+				if s, err := os.Stat(q); err == nil && s.Mode().IsRegular() {
+					return q
+				}
+			}
+		}
+		return ``
+	}
+
+	if td := os.Getenv("TERMINFO"); td != "" {
+		if ans = check_dir(td); ans != "" {
+			return ans
+		}
+	}
+
+	if ans = check_dir(utils.Expanduser("~/.terminfo")); ans != "" {
+		return ans
+	}
+	if td := os.Getenv("TERMINFO_DIRS"); td != "" {
+		for _, q := range strings.Split(td, string(os.PathListSeparator)) {
+			if q == "" {
+				q = "/usr/share/terminfo"
+			}
+			if ans = check_dir(q); ans != "" {
+				return ans
+			}
+		}
+	}
+	for _, q := range []string{"/usr/share/terminfo", "/usr/lib/terminfo", "/usr/share/lib/terminfo"} {
+		if ans = check_dir(q); ans != "" {
+			return ans
+		}
+	}
+	return
+}
+
+func EnsureTerminfoFiles() (terminfo_dir string, err error) {
+	if kid := os.Getenv("KITTY_INSTALLATION_DIR"); kid != "" {
+		if s, e := os.Stat(kid); e == nil && s.IsDir() {
+			q := filepath.Join(kid, "terminfo")
+			if s, e := os.Stat(q); e == nil && s.IsDir() {
+				return q, nil
+			}
+		}
+	}
+	base := filepath.Join(utils.CacheDir(), "extracted-kti")
+	if err = os.MkdirAll(base, 0o755); err != nil {
+		return "", err
+	}
+	if err = extract_terminfo(base); err != nil {
+		return "", fmt.Errorf("Failed to extract terminfo files with error: %w", err)
+	}
+	return filepath.Join(base, "terminfo"), nil
 }
 
 func EnsureShellIntegrationFilesFor(shell_name string) (shell_integration_dir_for_shell string, err error) {

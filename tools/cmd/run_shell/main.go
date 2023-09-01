@@ -4,11 +4,13 @@ package run_shell
 
 import (
 	"fmt"
+	"kitty"
 	"os"
 	"strings"
 
 	"kitty/tools/cli"
 	"kitty/tools/tui"
+	"kitty/tools/tui/shell_integration"
 )
 
 var _ = fmt.Print
@@ -37,6 +39,19 @@ func main(args []string, opts *Options) (rc int, err error) {
 			}
 		}
 		changed = true
+	}
+	if os.Getenv("TERM") == "" {
+		os.Setenv("TERM", kitty.DefaultTermName)
+	}
+	if term := os.Getenv("TERM"); term == kitty.DefaultTermName && shell_integration.PathToTerminfoDb(term) == "" {
+		if terminfo_dir, err := shell_integration.EnsureTerminfoFiles(); err == nil {
+			os.Unsetenv("TERMINFO")
+			existing := os.Getenv("TERMINFO_DIRS")
+			if existing != "" {
+				existing = string(os.PathListSeparator) + existing
+			}
+			os.Setenv("TERMINFO_DIRS", terminfo_dir+existing)
+		}
 	}
 	err = tui.RunShell(tui.ResolveShell(opts.Shell), tui.ResolveShellIntegration(opts.ShellIntegration))
 	if changed {

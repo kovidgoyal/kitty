@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"kitty"
 	"kitty/tools/utils/shm"
 	"os"
 	"os/exec"
@@ -133,7 +134,7 @@ func TestSSHTarfile(t *testing.T) {
 	if !seen["data.sh"] {
 		t.Fatalf("data.sh missing")
 	}
-	for _, x := range []string{".terminfo/kitty.terminfo", ".terminfo/x/xterm-kitty"} {
+	for _, x := range []string{".terminfo/kitty.terminfo", ".terminfo/x/" + kitty.DefaultTermName} {
 		if !seen["home/"+x] {
 			t.Fatalf("%s missing", x)
 		}

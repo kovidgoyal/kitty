@@ -562,7 +562,6 @@ def load_ref_map() -> Dict[str, Dict[str, str]]:
 def generate_constants() -> str:
     from kittens.hints.main import DEFAULT_REGEX
     from kitty.fast_data_types import FILE_TRANSFER_CODE
-    from kitty.options.types import Options
     from kitty.options.utils import allowed_shell_integration_values
     del sys.modules['kittens.hints.main']
     ref_map = load_ref_map()
@@ -589,6 +588,7 @@ const IsFrozenBuild bool = false
 const IsStandaloneBuild bool = false
 const HandleTermiosSignals = {Mode.HANDLE_TERMIOS_SIGNALS.value[0]}
 const HintsDefaultRegex = `{DEFAULT_REGEX}`
+const DefaultTermName = `{Options.term}`
 var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.version.minor}, Patch: {kc.version.patch},}}
 var DefaultPager []string = []string{{ {dp} }}
 var FunctionalKeyNameAliases = map[string]string{serialize_go_dict(functional_key_name_aliases)}
@@ -811,7 +811,7 @@ def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
 
 def generate_ssh_kitten_data() -> None:
     files = {
-        'terminfo/kitty.terminfo', 'terminfo/x/xterm-kitty',
+        'terminfo/kitty.terminfo', 'terminfo/x/' + Options.term,
     }
     for dirpath, dirnames, filenames in os.walk('shell-integration'):
         for f in filenames:
