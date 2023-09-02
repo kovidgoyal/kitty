@@ -516,12 +516,29 @@ class TestGraphics(BaseTest):
         rect_eq(l2[0]['dest_rect'], left, top, -1 + (1 + s.columns) * dx, top - dy * 5 / ch)
         rect_eq(l2[1]['src_rect'], 0, 0, 1, 1)
         rect_eq(l2[1]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
-        self.ae(l2[0]['group_count'], 1), self.ae(l2[1]['group_count'], 1)
+        self.ae(l2[0]['group_count'], 2)
+        self.ae(l2[1]['group_count'], 1)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         self.ae(put_image(s, 10, 20, cursor_movement=1)[1], 'OK')
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         s.reset()
         self.assertEqual(s.grman.disk_cache.total_size, 0)
+
+    def test_image_layer_grouping(self):
+        cw, ch = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+
+        def group_counts():
+            return tuple(x['group_count'] for x in layers(s))
+
+        self.ae(put_image(s, 10, 20, id=1)[1], 'OK')
+        self.ae(group_counts(), (1,))
+        put_ref(s, id=1, num_cols=2, num_lines=1, placement_id=2)
+        put_ref(s, id=1, num_cols=2, num_lines=1, placement_id=3, z=-2)
+        put_ref(s, id=1, num_cols=2, num_lines=1, placement_id=4, z=-2)
+        self.ae(group_counts(), (4, 3, 2, 1))
+        self.ae(put_image(s, 8, 16, id=2, z=-1)[1], 'OK')
+        self.ae(group_counts(), (2, 1, 1, 2, 1))
 
     def test_unicode_placeholders(self):
         # This test tests basic image placement using using unicode placeholders

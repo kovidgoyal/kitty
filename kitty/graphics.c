@@ -983,12 +983,14 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     // Calculate the group counts
     i = 0;
     while (i < self->count) {
-        id_type image_id = self->render_data[i].image_id, start = i;
-        if (start == self->count - 1) i = self->count;
-        else {
-            while (i < self->count - 1 && self->render_data[++i].image_id == image_id) {}
+        id_type num_identical = 1, image_id = self->render_data[i].image_id, start = i;
+        while (++i < self->count) {
+            if (self->render_data[i].image_id != image_id) break;
+            num_identical++;
         }
-        self->render_data[start].group_count = i - start;
+        while (num_identical > 0) {
+            self->render_data[start++].group_count = num_identical--;
+        }
     }
     return true;
 }
