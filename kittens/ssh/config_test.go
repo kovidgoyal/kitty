@@ -47,6 +47,24 @@ func TestSSHConfigParsing(t *testing.T) {
 	rt()
 	conf = "env a=b"
 	rt(`export 'a'="b"`)
+
+	conf = "env a=\\"
+	rt(`export 'a'="\\"`)
+	conf = `env
+		\ a=
+		\\`
+	conf = "env\n \t \\ a=\n\\\\"
+	rt(`export 'a'="\\"`)
+	conf = `
+		e
+		\n
+		\v
+		\ a
+		\=
+		\\
+		\`
+	rt(`export 'a'="\\"`)
+
 	conf = "env a=b\nhostname 2\nenv a=c\nenv b=b"
 	rt(`export 'a'="b"`)
 	hostname = "2"
