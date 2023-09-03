@@ -74,6 +74,8 @@ Detailed list of changes
 
 - When multiple confirmable close requests are made focus the existing close confirmation window instead of opening a new one for each request (:iss:`6601`)
 
+- Config file format: allow splitting lines by starting subsequent lines with a backslash (:pull:`6603`)
+
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

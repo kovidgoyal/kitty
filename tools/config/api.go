@@ -74,41 +74,41 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 	}
 
 	lnum := 0
-	nextLineNum := 0
-	nextLine := ""
-    var line string
+	next_line_num := 0
+	next_line := ""
+	var line string
 
 	for {
-        if nextLine != "" {
-            line = nextLine
-        } else {
+		if next_line != "" {
+			line = next_line
+		} else {
 			if scanner.Scan() {
 				line = strings.TrimLeft(scanner.Text(), " \t")
+				next_line_num++
 			} else {
 				break
 			}
-			nextLineNum++
 			if line == "" {
 				continue
 			}
-        }
-        lnum = nextLineNum
-        if scanner.Scan() {
-			nextLine = strings.TrimLeft(scanner.Text(), " \t")
-            nextLineNum++
+		}
+		lnum = next_line_num
+		if scanner.Scan() {
+			next_line = strings.TrimLeft(scanner.Text(), " \t")
+			next_line_num++
 
-            for nextLine != "" && nextLine[0] == '\\' {
-				line += nextLine[1:]
-                if scanner.Scan() {
-					nextLine = strings.TrimLeft(scanner.Text(), " \t")
-					nextLineNum++
+			for strings.HasPrefix(next_line, `\`) {
+				line += next_line[1:]
+				if scanner.Scan() {
+					next_line = strings.TrimLeft(scanner.Text(), " \t")
+					next_line_num++
 				} else {
-					nextLine = ""
-                }
-            }
-        } else {
-            nextLine = ""
-        }
+					next_line = ""
+				}
+			}
+		} else {
+			next_line = ""
+		}
 
 		if line[0] == '#' {
 			if self.CommentsHandler != nil {

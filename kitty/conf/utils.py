@@ -264,44 +264,40 @@ def _parse(
         base_path_for_includes = config_dir
 
     it = iter(lines)
-    line: str
-    nextLine: str = ""
-    nextLineNum = 0
+    line = ''
+    next_line: str = ''
+    next_line_num = 0
 
     while True:
         try:
-            if nextLine != "":
-                line = nextLine
+            if next_line:
+                line = next_line
             else:
                 line = next(it).lstrip()
-                nextLineNum += 1
-            lineNum = nextLineNum
+                next_line_num += 1
+            line_num = next_line_num
 
             try:
-                nextLine = next(it).lstrip()
-                nextLineNum += 1
+                next_line = next(it).lstrip()
+                next_line_num += 1
 
-                while nextLine.startswith('\\'):
-                    if line.endswith("\n"):
-                        line = line[:-1]
-                    line += nextLine[1:]
+                while next_line.startswith('\\'):
+                    line = line.rstrip('\n') + next_line[1:]
                     try:
-                        nextLine = next(it).lstrip()
-                        nextLineNum += 1
+                        next_line = next(it).lstrip()
+                        next_line_num += 1
                     except StopIteration:
-                        nextLine = ""
+                        next_line = ''
                         break
             except StopIteration:
-                nextLine = ""
-                pass
-
+                next_line = ''
             try:
-                with currently_parsing.set_line(line, lineNum):
+                with currently_parsing.set_line(line, line_num):
                     parse_line(line, parse_conf_item, ans, base_path_for_includes, accumulate_bad_lines)
             except Exception as e:
                 if accumulate_bad_lines is None:
                     raise
-                accumulate_bad_lines.append(BadLine(lineNum, line.rstrip(), e, currently_parsing.file))
+                accumulate_bad_lines.append(BadLine(line_num, line.rstrip(), e, currently_parsing.file))
         except StopIteration:
             break
 
