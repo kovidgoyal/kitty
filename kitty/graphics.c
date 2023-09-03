@@ -1690,6 +1690,12 @@ grman_remove_all_cell_images(GraphicsManager *self) {
 
 static bool
 clear_filter_func(const ImageRef *ref, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref) return false;
+    return ref->start_row + (int32_t)ref->effective_num_rows > 0;
+}
+
+static bool
+clear_filter_func_noncell(const ImageRef *ref, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
     if (ref->is_virtual_ref || ref->is_cell_image) return false;
     return ref->start_row + (int32_t)ref->effective_num_rows > 0;
 }
@@ -1764,7 +1770,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 #define D(l, u, data, func) case l: case u: I(u, data, func)
 #define G(l, u, func) D(l, u, g, func)
         case 0:
-        D('a', 'A', NULL, clear_filter_func);
+        D('a', 'A', NULL, clear_filter_func_noncell);
         G('i', 'I', id_filter_func);
         G('p', 'P', point_filter_func);
         G('q', 'Q', point3d_filter_func);
