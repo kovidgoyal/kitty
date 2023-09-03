@@ -63,7 +63,6 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 		return self.parse(escanner, nname, base_path_for_includes, depth+1)
 	}
 
-	lnum := 0
 	make_absolute := func(path string) (string, error) {
 		if path == "" {
 			return "", fmt.Errorf("Empty include paths not allowed")
@@ -73,12 +72,44 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 		}
 		return path, nil
 	}
-	for scanner.Scan() {
-		line := strings.TrimLeft(scanner.Text(), " ")
-		lnum++
-		if line == "" {
-			continue
-		}
+
+	lnum := 0
+	nextLineNum := 0
+	nextLine := ""
+    var line string
+
+	for {
+        if nextLine != "" {
+            line = nextLine
+        } else {
+			if scanner.Scan() {
+				line = strings.TrimLeft(scanner.Text(), " \t")
+			} else {
+				break
+			}
+			nextLineNum++
+			if line == "" {
+				continue
+			}
+        }
+        lnum = nextLineNum
+        if scanner.Scan() {
+			nextLine = strings.TrimLeft(scanner.Text(), " \t")
+            nextLineNum++
+
+            for nextLine != "" && nextLine[0] == '\\' {
+				line += nextLine[1:]
+                if scanner.Scan() {
+					nextLine = strings.TrimLeft(scanner.Text(), " \t")
+					nextLineNum++
+				} else {
+					nextLine = ""
+                }
+            }
+        } else {
+            nextLine = ""
+        }
+
 		if line[0] == '#' {
 			if self.CommentsHandler != nil {
 				err := self.CommentsHandler(line)

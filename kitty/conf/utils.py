@@ -262,14 +262,48 @@ def _parse(
     else:
         from ..constants import config_dir
         base_path_for_includes = config_dir
-    for i, line in enumerate(lines):
+
+    it = iter(lines)
+    line: str
+    nextLine: str = ""
+    nextLineNum = 0
+
+    while True:
         try:
-            with currently_parsing.set_line(line, i + 1):
-                parse_line(line, parse_conf_item, ans, base_path_for_includes, accumulate_bad_lines)
-        except Exception as e:
-            if accumulate_bad_lines is None:
-                raise
-            accumulate_bad_lines.append(BadLine(i + 1, line.rstrip(), e, currently_parsing.file))
+            if nextLine != "":
+                line = nextLine
+            else:
+                line = next(it).lstrip()
+                nextLineNum += 1
+            lineNum = nextLineNum
+
+            try:
+                nextLine = next(it).lstrip()
+                nextLineNum += 1
+
+                while nextLine.startswith('\\'):
+                    if line.endswith("\n"):
+                        line = line[:-1]
+                    line += nextLine[1:]
+                    try:
+                        nextLine = next(it).lstrip()
+                        nextLineNum += 1
+                    except StopIteration:
+                        nextLine = ""
+                        break
+            except StopIteration:
+                nextLine = ""
+                pass
+
+            try:
+                with currently_parsing.set_line(line, lineNum):
+                    parse_line(line, parse_conf_item, ans, base_path_for_includes, accumulate_bad_lines)
+            except Exception as e:
+                if accumulate_bad_lines is None:
+                    raise
+                accumulate_bad_lines.append(BadLine(lineNum, line.rstrip(), e, currently_parsing.file))
+        except StopIteration:
+            break
 
 
 def parse_config_base(

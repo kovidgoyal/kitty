@@ -124,3 +124,16 @@ class TestConfParsing(BaseTest):
         opts = p('macos_hide_titlebar y' if is_macos else 'x11_hide_window_decorations y')
         self.assertTrue(opts.hide_window_decorations)
         self.ae(len(self.error_messages), 1)
+
+        # line breaks
+        opts = p("    font",
+                 " \t  \t    \\_size",
+                 "    \\ 12",
+                 "\\.35",
+                 "col",
+                 "\\o",
+                 "\t \t\\r",
+                 "\\25",
+                 " \\ blue")
+        self.ae(opts.font_size, 12.35)
+        self.ae(opts.color25, Color(0, 0, 255))

@@ -19,13 +19,18 @@ func TestConfigParsing(t *testing.T) {
 	os.Mkdir(filepath.Join(tdir, "sub"), 0o700)
 	os.WriteFile(conf_file, []byte(
 		`error main
-# ignore me
+# igno
+     \re me
 a one
 #: other
-include sub/b.conf
+include
+\ sub/b.conf
 b
-include non-existent
-globinclude sub/c?.conf
+include non-exis
+\tent
+globin
+\clude sub/c?.c
+   \onf
 `), 0o600)
 	os.WriteFile(filepath.Join(tdir, "sub/b.conf"), []byte("incb cool\ninclude a.conf"), 0o600)
 	os.WriteFile(filepath.Join(tdir, "sub/c1.conf"), []byte("inc1 cool"), 0o600)
