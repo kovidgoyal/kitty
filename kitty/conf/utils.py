@@ -264,9 +264,9 @@ def _parse(
         base_path_for_includes = config_dir
 
     it = iter(lines)
-    line: str;
+    line: str
     nextLine: str = ""
-    nextLineNum = 0;
+    nextLineNum = 0
 
     while True:
         try:
@@ -294,8 +294,6 @@ def _parse(
             except StopIteration:
                 nextLine = ""
                 pass
-
-            # code
 
             try:
                 with currently_parsing.set_line(line, lineNum):
