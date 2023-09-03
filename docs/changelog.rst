@@ -72,6 +72,8 @@ Detailed list of changes
 
 - When running a shell for ``--hold`` set the env variable ``KITTY_HOLD=1`` to allow users to customize what happens (:disc:`6587`)
 
+- When multiple confirmable close requests are made focus the existing close confirmation window instead of opening a new one for each request (:iss:`6601`)
+
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

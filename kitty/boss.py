@@ -942,7 +942,7 @@ class Boss:
         window: Optional[Window] = None,  # the window associated with the confirmation
         confirm_on_cancel: bool = False,  # on closing window
         confirm_on_accept: bool = True,  # on pressing enter
-    ) -> None:
+    ) -> Window:
         result: bool = False
 
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
@@ -952,10 +952,12 @@ class Boss:
         def on_popup_overlay_removal(wid: int, boss: Boss) -> None:
             callback(result, *args)
 
-        self.run_kitten_with_metadata(
+        w = self.run_kitten_with_metadata(
             'ask', ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n'],
             window=window, custom_callback=callback_, action_on_removal=on_popup_overlay_removal,
             default_data={'response': 'y' if confirm_on_cancel else 'n'})
+        assert isinstance(w, Window)
+        return w
 
     def choose(
         self, msg: str,  # can contain newlines and ANSI formatting
@@ -1029,19 +1031,26 @@ class Boss:
             tm = tab.tab_manager_ref()
             if tm is not None:
                 tm.set_active_tab(tab)
-        self.confirm(ngettext('Are you sure you want to close this tab, it has one window running?',
+        if tab.confirm_close_window_id and tab.confirm_close_window_id in self.window_id_map:
+            w = self.window_id_map[tab.confirm_close_window_id]
+            if w in tab:
+                tab.set_active_window(w)
+                return
+        w = self.confirm(ngettext('Are you sure you want to close this tab, it has one window running?',
                               'Are you sure you want to close this tab, it has {} windows running?', num).format(num),
             self.handle_close_tab_confirmation, tab.id,
             window=tab.active_window,
         )
+        tab.confirm_close_window_id = w.id
 
     def handle_close_tab_confirmation(self, confirmed: bool, tab_id: int) -> None:
-        if not confirmed:
-            return
         for tab in self.all_tabs:
             if tab.id == tab_id:
+                tab.confirm_close_window_id = 0
                 break
         else:
+            return
+        if not confirmed:
             return
         self.close_tab_no_confirm(tab)
 
@@ -1619,15 +1628,25 @@ class Boss:
             self.mark_os_window_for_close(os_window_id)
             return
         if tm is not None:
-            w = tm.active_window
-            self.confirm(
+            if tm.confirm_close_window_id and tm.confirm_close_window_id in self.window_id_map:
+                cw = self.window_id_map[tm.confirm_close_window_id]
+                ctab = cw.tabref()
+                if ctab is not None and ctab in tm and cw in ctab:
+                    tm.set_active_tab(ctab)
+                    ctab.set_active_window(cw)
+                    return
+            w = self.confirm(
                 ngettext('Are you sure you want to close this OS window, it has one window running?',
                          'Are you sure you want to close this OS window, it has {} windows running', num).format(num),
                 self.handle_close_os_window_confirmation, os_window_id,
-                window=w,
+                window=tm.active_window,
             )
+            tm.confirm_close_window_id = w.id
 
     def handle_close_os_window_confirmation(self, confirmed: bool, os_window_id: int) -> None:
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            tm.confirm_close_window_id = 0
         if confirmed:
             self.mark_os_window_for_close(os_window_id)
         else:
@@ -1646,6 +1665,8 @@ class Boss:
         if action is not None:
             action()
 
+    quit_confirmation_window_id: int = 0
+
     @ac('win', 'Quit, closing all windows')
     def quit(self, *args: Any) -> None:
         tm = self.active_tab
@@ -1658,17 +1679,29 @@ class Boss:
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
+            if self.quit_confirmation_window_id and self.quit_confirmation_window_id in self.window_id_map:
+                w = self.window_id_map[self.quit_confirmation_window_id]
+                tab = w.tabref()
+                if tab is not None:
+                    ctm = tab.tab_manager_ref()
+                    if ctm is not None and tab in ctm and w in tab:
+                        focus_os_window(ctm.os_window_id)
+                        ctm.set_active_tab(tab)
+                        tab.set_active_window(w)
+                        return
             return
         assert tm is not None
-        self.confirm(
+        w = self.confirm(
             ngettext('Are you sure you want to quit kitty, it has one window running?',
                      'Are you sure you want to quit kitty, it has {} windows running?', num).format(num),
             self.handle_quit_confirmation,
             window=tm.active_window,
         )
+        self.quit_confirmation_window_id = w.id
         set_application_quit_request(CLOSE_BEING_CONFIRMED)
 
     def handle_quit_confirmation(self, confirmed: bool) -> None:
+        self.quit_confirmation_window_id = 0
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
 
     def notify_on_os_window_death(self, address: str) -> None:

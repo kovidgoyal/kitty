@@ -124,6 +124,7 @@ class Tab:  # {{{
     active_bg: Optional[int] = None
     inactive_fg: Optional[int] = None
     inactive_bg: Optional[int] = None
+    confirm_close_window_id: int = 0
 
     def __init__(
         self,
@@ -847,6 +848,8 @@ class Tab:  # {{{
 
 
 class TabManager:  # {{{
+
+    confirm_close_window_id: int = 0
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: Optional[SessionType] = None):
         self.os_window_id = os_window_id

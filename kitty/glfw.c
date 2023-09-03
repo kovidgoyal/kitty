@@ -266,11 +266,9 @@ window_pos_callback(GLFWwindow* window, int x UNUSED, int y UNUSED) {
 static void
 window_close_callback(GLFWwindow* window) {
     if (!set_callback_window(window)) return;
-    if (global_state.callback_os_window->close_request == NO_CLOSE_REQUESTED) {
-        global_state.callback_os_window->close_request = CONFIRMABLE_CLOSE_REQUESTED;
-        global_state.has_pending_closes = true;
-        request_tick_callback();
-    }
+    global_state.callback_os_window->close_request = CONFIRMABLE_CLOSE_REQUESTED;
+    global_state.has_pending_closes = true;
+    request_tick_callback();
     glfwSetWindowShouldClose(window, false);
     global_state.callback_os_window = NULL;
 }
