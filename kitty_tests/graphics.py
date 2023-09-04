@@ -607,6 +607,10 @@ class TestGraphics(BaseTest):
         self.ae(len(refs), 2)
         self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
         self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
+        # Now reset the screen, the images should be erased.
+        s.reset()
+        refs = layers(s)
+        self.ae(len(refs), 0)
 
     def test_unicode_placeholders_3rd_combining_char(self):
         # This test tests that we can use the 3rd diacritic for the most
