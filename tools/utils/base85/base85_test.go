@@ -23,7 +23,7 @@ func TestBase85(t *testing.T) {
 			t.Fatalf("Encoded len for %#v wrong: %d != %d", x, el, EncodedLen(len(a)))
 		}
 		encoded := dst[:el]
-		dl, bad_idx := decodeChunk(&decode, dst2[:], encoded)
+		dl, bad_idx := decodeChunk(decode, dst2[:], encoded)
 		if bad_idx != 0 {
 			t.Fatalf("Decode for %#v returned bad data at: %d (%#v)", x, bad_idx, encoded)
 		}

@@ -26,7 +26,7 @@ var encode = [85]byte{
 	0x60, 0x7B, 0x7C, 0x7D, 0x7E,
 }
 
-var decoder_array = sync.OnceValue(func() [256]byte {
+var decoder_array = sync.OnceValue(func() *[256]byte {
 	var decode = [256]byte{
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -48,7 +48,7 @@ var decoder_array = sync.OnceValue(func() [256]byte {
 	for i := 0; i < len(encode); i++ {
 		decode[encode[i]] = byte(i)
 	}
-	return decode
+	return &decode
 
 })
 
@@ -169,14 +169,14 @@ func Decode(dst, src []byte) (int, error) {
 	decode := decoder_array()
 	for len(src) > 0 {
 		if len(src) < 5 {
-			w, err := decodeChunk(&decode, dst, src)
+			w, err := decodeChunk(decode, dst, src)
 			if err > 0 {
 				return t, CorruptInputError(f + err)
 			}
 			return t + w, nil
 		}
 
-		_, err := decodeChunk(&decode, dst[:4], src[:5])
+		_, err := decodeChunk(decode, dst[:4], src[:5])
 		if err > 0 {
 			return t, CorruptInputError(f + err)
 		} else {
