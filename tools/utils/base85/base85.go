@@ -189,7 +189,7 @@ func Decode(dst, src []byte) (int, error) {
 	return t, nil
 }
 
-// EncodedLen returns the length in bytes of the base64 encoding of an input
+// EncodedLen returns the length in bytes of the base85 encoding of an input
 // buffer of length n.
 func EncodedLen(n int) int {
 	s := n / 4
