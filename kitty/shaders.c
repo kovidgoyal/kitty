@@ -481,6 +481,7 @@ draw_graphics(int program, ssize_t vao_idx, ImageRenderData *data, GLuint start,
     for (GLuint i=0; i < count;) {
         ImageRenderData *group = data + start + i;
         glBindTexture(GL_TEXTURE_2D, group->texture_id);
+        if (group->group_count == 0) { i++; continue; }
         for (GLuint k=0; k < group->group_count; k++, i++) {
             ImageRenderData *rd = data + start + i;
             glUniform4f(u->src_rect, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
