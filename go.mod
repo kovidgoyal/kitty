@@ -10,7 +10,6 @@ require (
 	github.com/dlclark/regexp2 v1.10.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
-	github.com/jamesruan/go-rfc1924 v0.0.0-20170108144916-2767ca7c638f
 	github.com/seancfoley/ipaddress-go v1.5.4
 	github.com/shirou/gopsutil/v3 v3.23.7
 	github.com/zeebo/xxh3 v1.0.2

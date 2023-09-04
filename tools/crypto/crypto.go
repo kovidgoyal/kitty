@@ -10,12 +10,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"kitty/tools/utils"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/jamesruan/go-rfc1924/base85"
+	"kitty/tools/utils"
+	"kitty/tools/utils/base85"
 )
 
 func curve25519_key_pair() (private_key []byte, public_key []byte, err error) {

@@ -10,8 +10,7 @@ import (
 
 	"kitty/tools/cli"
 	"kitty/tools/utils"
-
-	"github.com/jamesruan/go-rfc1924/base85"
+	"kitty/tools/utils/base85"
 )
 
 var _ = fmt.Print

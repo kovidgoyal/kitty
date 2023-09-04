@@ -24,9 +24,8 @@ import (
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/base85"
 	"kitty/tools/utils/shlex"
-
-	"github.com/jamesruan/go-rfc1924/base85"
 )
 
 const lowerhex = "0123456789abcdef"
