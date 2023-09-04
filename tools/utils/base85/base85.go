@@ -11,6 +11,8 @@ import (
 	"io"
 	"strconv"
 	"sync"
+
+	"kitty/tools/utils"
 )
 
 // 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{|}~
@@ -148,13 +150,13 @@ func Encode(dst, src []byte) int {
 func EncodeToString(src []byte) string {
 	buf := make([]byte, EncodedLen(len(src)))
 	Encode(buf, src)
-	return string(buf)
+	return utils.UnsafeBytesToString(buf)
 }
 
 // DecodeString returns the bytes represented by the base85 string s.
 func DecodeString(src string) ([]byte, error) {
 	buf := make([]byte, DecodedLen(len(src)))
-	_, err := Decode(buf, []byte(src))
+	_, err := Decode(buf, utils.UnsafeStringToBytes(src))
 	return buf, err
 }
 
