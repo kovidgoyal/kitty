@@ -49,19 +49,23 @@ func get_destination(hostname string) (username, hostname_for_match string) {
 		username = u.Username
 	}
 	hostname_for_match = hostname
+	parsed := false
 	if strings.HasPrefix(hostname, "ssh://") {
 		p, err := url.Parse(hostname)
 		if err == nil {
 			hostname_for_match = p.Hostname()
+			parsed = true
 			if p.User.Username() != "" {
 				username = p.User.Username()
 			}
 		}
 	} else if strings.Contains(hostname, "@") && hostname[0] != '@' {
 		username, hostname_for_match, _ = strings.Cut(hostname, "@")
+		parsed = true
 	}
-	if strings.Contains(hostname, "@") && hostname[0] != '@' {
-		_, hostname_for_match, _ = strings.Cut(hostname_for_match, "@")
+	if !parsed && strings.Contains(hostname, "@") && hostname[0] != '@' {
+		_, hostname_for_match, _ = strings.Cut(hostname, "@")
+		parsed = true
 	}
 	hostname_for_match, _, _ = strings.Cut(hostname_for_match, ":")
 	return

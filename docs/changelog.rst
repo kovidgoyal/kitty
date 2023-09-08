@@ -76,6 +76,8 @@ Detailed list of changes
 
 - Config file format: allow splitting lines by starting subsequent lines with a backslash (:pull:`6603`)
 
+- ssh kitten: Fix a regression causing hostname directives in :file:`ssh.conf` not matching when username is specified (:disc:`6609`)
+
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
