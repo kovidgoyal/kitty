@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kitty/tools/utils"
 	"os"
+	"os/user"
 	"path/filepath"
 	"testing"
 
@@ -13,6 +14,10 @@ import (
 )
 
 var _ = fmt.Print
+
+type Pair struct {
+	Input, Uname, Host string
+}
 
 func TestSSHConfigParsing(t *testing.T) {
 	tdir := t.TempDir()
@@ -126,6 +131,22 @@ func TestSSHConfigParsing(t *testing.T) {
 	}
 	if len(ci) != 1 {
 		t.Fatal(ci)
+	}
+
+	u, _ := user.Current()
+	un := u.Username
+	for _, x := range []Pair{
+		{"localhost:12", un, "localhost"},
+		{"@localhost", un, "@localhost"},
+		{"ssh://@localhost:33", un, "localhost"},
+		{"me@localhost", "me", "localhost"},
+		{"ssh://me@localhost:12/something?else=1", "me", "localhost"},
+	} {
+		ue, uh := get_destination(x.Input)
+		q := Pair{x.Input, ue, uh}
+		if diff := cmp.Diff(x, q); diff != "" {
+			t.Fatalf("Failed: %s", diff)
+		}
 	}
 
 }
