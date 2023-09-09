@@ -312,6 +312,16 @@ func (self *Collection) collect_files(left, right string) error {
 		if ld != rd {
 			changed_names.Add(n)
 			self.add_change(left_path_map[n], right_path_map[n])
+		} else {
+			if lstat, err := os.Stat(left_path_map[n]); err == nil {
+				if rstat, err := os.Stat(right_path_map[n]); err == nil {
+					if lstat.Mode() != rstat.Mode() {
+						// identical files with only a mode change
+						changed_names.Add(n)
+						self.add_change(left_path_map[n], right_path_map[n])
+					}
+				}
+			}
 		}
 	}
 	removed := left_names.Subtract(common_names)

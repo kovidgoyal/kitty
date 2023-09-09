@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 
@@ -571,7 +572,15 @@ func lines_for_diff(left_path string, right_path string, patch *Patch, columns, 
 		is_full_width: true,
 	}
 	if patch.Len() == 0 {
-		for _, line := range splitlines("The files are identical", columns-margin_size) {
+		txt := "The files are identical"
+		if lstat, err := os.Stat(left_path); err == nil {
+			if rstat, err := os.Stat(right_path); err == nil {
+				if lstat.Mode() != rstat.Mode() {
+					txt = fmt.Sprintf("Mode changed: %s to %s", lstat.Mode(), rstat.Mode())
+				}
+			}
+		}
+		for _, line := range splitlines(txt, columns-margin_size) {
 			sl := ScreenLine{}
 			sl.left.marked_up_text = line
 			ht.screen_lines = append(ht.screen_lines, &sl)

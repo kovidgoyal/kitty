@@ -78,6 +78,8 @@ Detailed list of changes
 
 - ssh kitten: Fix a regression causing hostname directives in :file:`ssh.conf` not matching when username is specified (:disc:`6609`)
 
+- diff kitten: Add support for files that are identical apart from mode changes (:iss:`6611`)
+
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
