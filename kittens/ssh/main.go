@@ -67,7 +67,6 @@ func get_destination(hostname string) (username, hostname_for_match string) {
 		_, hostname_for_match, _ = strings.Cut(hostname, "@")
 		parsed = true
 	}
-	hostname_for_match, _, _ = strings.Cut(hostname_for_match, ":")
 	return
 }
 

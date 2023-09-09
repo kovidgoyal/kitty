@@ -136,7 +136,7 @@ func TestSSHConfigParsing(t *testing.T) {
 	u, _ := user.Current()
 	un := u.Username
 	for _, x := range []Pair{
-		{"localhost:12", un, "localhost"},
+		{"localhost:12", un, "localhost:12"},
 		{"@localhost", un, "@localhost"},
 		{"ssh://@localhost:33", un, "localhost"},
 		{"me@localhost", "me", "localhost"},
