@@ -752,7 +752,7 @@ func render(collection *Collection, diff_map map[string]*Patch, screen_size scre
 		}
 		return nil
 	})
-	return &LogicalLines{lines: ans[:len(ans)-1], margin_size: margin_size, columns: columns}, err
+	return &LogicalLines{lines: utils.IfElse(len(ans) > 0, ans[:len(ans)-1], []*LogicalLine{}), margin_size: margin_size, columns: columns}, err
 }
 
 func (self *LogicalLines) num_of_screen_lines() (ans int) {
