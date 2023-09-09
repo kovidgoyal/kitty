@@ -752,7 +752,14 @@ func render(collection *Collection, diff_map map[string]*Patch, screen_size scre
 		}
 		return nil
 	})
-	return &LogicalLines{lines: utils.IfElse(len(ans) > 0, ans[:len(ans)-1], []*LogicalLine{}), margin_size: margin_size, columns: columns}, err
+	var ll []*LogicalLine
+	if len(ans) > 1 {
+		ll = ans[:len(ans)-1]
+	} else {
+		// Having am empty list of lines causes panics later on
+		ll = []*LogicalLine{{line_type: EMPTY_LINE, screen_lines: []*ScreenLine{{}}}}
+	}
+	return &LogicalLines{lines: ll, margin_size: margin_size, columns: columns}, err
 }
 
 func (self *LogicalLines) num_of_screen_lines() (ans int) {
