@@ -948,7 +948,7 @@ def parse_go_version(x: str) -> Tuple[int, int, int]:
     def safe_int(x: str) -> int:
         with suppress(ValueError):
             return int(x)
-        return int(re.split(r'[a-zA-Z]', x)[0])
+        return int(re.split(r'[-a-zA-Z]', x)[0])
     ans = list(map(safe_int, x.split('.')))
     while len(ans) < 3:
         ans.append(0)
