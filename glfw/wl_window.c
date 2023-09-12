@@ -410,24 +410,6 @@ static const struct wl_surface_listener surfaceListener = {
     surfaceHandleLeave
 };
 
-static void setIdleInhibitor(_GLFWwindow* window, bool enable)
-{
-    if (enable && !window->wl.idleInhibitor && _glfw.wl.idleInhibitManager)
-    {
-        window->wl.idleInhibitor =
-            zwp_idle_inhibit_manager_v1_create_inhibitor(
-                _glfw.wl.idleInhibitManager, window->wl.surface);
-        if (!window->wl.idleInhibitor)
-            _glfwInputError(GLFW_PLATFORM_ERROR,
-                            "Wayland: Idle inhibitor creation failed");
-    }
-    else if (!enable && window->wl.idleInhibitor)
-    {
-        zwp_idle_inhibitor_v1_destroy(window->wl.idleInhibitor);
-        window->wl.idleInhibitor = NULL;
-    }
-}
-
 static bool createSurface(_GLFWwindow* window,
                               const _GLFWwndconfig* wndconfig)
 {
@@ -488,7 +470,6 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
             ensure_csd_resources(window);
         }
     }
-    setIdleInhibitor(window, on);
 }
 
 
@@ -712,18 +693,15 @@ createXdgSurface(_GLFWwindow* window)
     {
         xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel,
                                     window->monitor->wl.output);
-        setIdleInhibitor(window, true);
     }
     else if (window->wl.maximize_on_first_show)
     {
         window->wl.maximize_on_first_show = false;
         xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
-        setIdleInhibitor(window, false);
         setXdgDecorations(window);
     }
     else
     {
-        setIdleInhibitor(window, false);
         setXdgDecorations(window);
     }
     if (strlen(window->wl.appId))
@@ -951,9 +929,6 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->id == _glfw.wl.keyRepeatInfo.keyboardFocusId) {
         _glfw.wl.keyRepeatInfo.keyboardFocusId = 0;
     }
-
-    if (window->wl.idleInhibitor)
-        zwp_idle_inhibitor_v1_destroy(window->wl.idleInhibitor);
 
     if (window->context.destroy)
         window->context.destroy(window);

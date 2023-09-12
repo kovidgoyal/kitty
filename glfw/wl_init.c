@@ -692,13 +692,6 @@ static void registryHandleGlobal(void* data UNUSED,
         _glfwWaylandBindTextInput(registry, name);
         _glfwWaylandInitTextInput();
     }
-    else if (strcmp(interface, "zwp_idle_inhibit_manager_v1") == 0)
-    {
-        _glfw.wl.idleInhibitManager =
-            wl_registry_bind(registry, name,
-                             &zwp_idle_inhibit_manager_v1_interface,
-                             1);
-    }
     else if (strcmp(interface, "wl_data_device_manager") == 0)
     {
         _glfw.wl.dataDeviceManager =
@@ -937,8 +930,6 @@ void _glfwPlatformTerminate(void)
     if (_glfw.wl.pointerConstraints)
         zwp_pointer_constraints_v1_destroy(_glfw.wl.pointerConstraints);
     _glfwWaylandDestroyTextInput();
-    if (_glfw.wl.idleInhibitManager)
-        zwp_idle_inhibit_manager_v1_destroy(_glfw.wl.idleInhibitManager);
     if (_glfw.wl.dataSourceForClipboard)
         wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
     if (_glfw.wl.dataSourceForPrimarySelection)

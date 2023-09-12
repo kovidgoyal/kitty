@@ -56,7 +56,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-xdg-decoration-unstable-v1-client-protocol.h"
 #include "wayland-relative-pointer-unstable-v1-client-protocol.h"
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
-#include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
 #include "wayland-primary-selection-unstable-v1-client-protocol.h"
 #include "wayland-primary-selection-unstable-v1-client-protocol.h"
 #include "wl_text_input.h"
@@ -182,8 +181,6 @@ typedef struct _GLFWwindowWayland
         struct zwp_locked_pointer_v1*      lockedPointer;
     } pointerLock;
 
-    struct zwp_idle_inhibitor_v1*          idleInhibitor;
-
     struct {
         bool serverSide, buffer_destroyed;
         _GLFWdecorationSideWayland focus;
@@ -284,7 +281,6 @@ typedef struct _GLFWlibraryWayland
     struct zxdg_decoration_manager_v1*      decorationManager;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
-    struct zwp_idle_inhibit_manager_v1*     idleInhibitManager;
     struct wl_data_source*                  dataSourceForClipboard;
     struct zwp_primary_selection_device_manager_v1* primarySelectionDeviceManager;
     struct zwp_primary_selection_device_v1*    primarySelectionDevice;

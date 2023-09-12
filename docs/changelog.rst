@@ -80,6 +80,8 @@ Detailed list of changes
 
 - diff kitten: Add support for files that are identical apart from mode changes (:iss:`6611`)
 
+- Wayland: Do not request idle inhibition for full screen windows (:iss:`6613`)
+
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
