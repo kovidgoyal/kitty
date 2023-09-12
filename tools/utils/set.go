@@ -60,6 +60,9 @@ func (self *Set[T]) AsSlice() []T {
 }
 
 func (self *Set[T]) Intersect(other *Set[T]) (ans *Set[T]) {
+	if other == nil {
+		return NewSet[T]()
+	}
 	if self.Len() < other.Len() {
 		ans = NewSet[T](self.Len())
 		for x := range self.items {
