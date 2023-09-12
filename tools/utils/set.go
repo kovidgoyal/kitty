@@ -84,7 +84,7 @@ func (self *Set[T]) Intersect(other *Set[T]) (ans *Set[T]) {
 func (self *Set[T]) Subtract(other *Set[T]) (ans *Set[T]) {
 	ans = NewSet[T](self.Len())
 	for x := range self.items {
-		if !other.Has(x) {
+		if other == nil || !other.Has(x) {
 			ans.items[x] = struct{}{}
 		}
 	}
@@ -92,6 +92,9 @@ func (self *Set[T]) Subtract(other *Set[T]) (ans *Set[T]) {
 }
 
 func (self *Set[T]) IsSubsetOf(other *Set[T]) bool {
+	if other == nil {
+		return self.Len() == 0
+	}
 	for x := range self.items {
 		if !other.Has(x) {
 			return false
