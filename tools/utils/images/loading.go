@@ -401,7 +401,7 @@ func IdentifyWithMagick(path string) (ans []IdentifyRecord, err error) {
 	cmd = append(cmd, "-format", q, "--", path)
 	output, err := RunMagick(path, cmd)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to identify image at path: %s with error: %w", path, err)
 	}
 	output = bytes.TrimRight(bytes.TrimSpace(output), ",")
 	raw_json := make([]byte, 0, len(output)+2)
@@ -411,7 +411,7 @@ func IdentifyWithMagick(path string) (ans []IdentifyRecord, err error) {
 	var records []IdentifyOutput
 	err = json.Unmarshal(raw_json, &records)
 	if err != nil {
-		return nil, fmt.Errorf("The ImageMagick identify program returned malformed output, with error: %w", err)
+		return nil, fmt.Errorf("The ImageMagick identify program returned malformed output for the image at path: %s, with error: %w", path, err)
 	}
 	ans = make([]IdentifyRecord, len(records))
 	for i, rec := range records {
