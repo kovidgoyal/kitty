@@ -172,7 +172,7 @@ func ParseColorOrNone(color string) (NullableColor, error) {
 		return NullableColor{}, nil
 	}
 	c, err := ParseColor(raw)
-	return NullableColor{Color: c}, err
+	return NullableColor{Color: c, IsSet: err == nil}, err
 }
 
 var named_colors = map[string]uint8{

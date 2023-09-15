@@ -169,6 +169,7 @@ func create_formatters() {
 		return ans
 	}
 	format_as_sgr.filler = only_open("bg=" + conf.Filler_bg.AsRGBSharp())
+	debugprintln(11111, conf.Margin_filler_bg.IsSet)
 	if conf.Margin_filler_bg.IsSet {
 		format_as_sgr.margin_filler = only_open("bg=" + conf.Margin_filler_bg.Color.AsRGBSharp())
 	} else {
