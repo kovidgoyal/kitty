@@ -160,8 +160,8 @@ float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, flo
     // background_opacity non-linear
     // See https://github.com/kovidgoyal/kitty/issues/6209 for discussion.
     const float threshold = 0.000001;
-    // linear2srgb(final_alpha) if text_fg_alpha >= threshold else final_alpha
-    return mix(final_alpha, linear2srgb(final_alpha), step(threshold, text_fg_alpha));
+    // ans = text_fg_alpha * linear2srgb(final_alpha) + (1 - text_fg_alpha) * final_alpha
+    return mix(final_alpha, linear2srgb(final_alpha), text_fg_alpha);
 }
 
 void main() {

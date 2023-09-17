@@ -82,6 +82,10 @@ Detailed list of changes
 
 - Wayland: Do not request idle inhibition for full screen windows (:iss:`6613`)
 
+- Adjust the workaround for non-linear blending of transparent pixels in
+  compositors to hopefully further reduce fringing around text with certain
+  color issues (:iss:`6534`)
+
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
