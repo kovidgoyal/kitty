@@ -2832,7 +2832,7 @@ Glob patterns can be used too, for example::
 
 To get a list of available actions, run::
 
-    kitty @ --help
+    kitten @ --help
 
 A set of actions to be allowed when no password is sent can be specified by
 using an empty password. For example::
