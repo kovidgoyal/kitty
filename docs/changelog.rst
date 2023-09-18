@@ -9,6 +9,25 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+File transfer over the tty device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Transfer files to and from remote computers over the ``TTY`` device itself.
+This means that file transfer works over nested SSH sessions, serial links,
+etc. Anywhere you have a terminal device, you can transfer files.
+
+Simply ssh into a remote computer using the :doc:`ssh kitten </kittens/ssh>`
+and run the :doc:`transfer kitten </kittens/transfer>` (which the ssh kitten
+makes available for you on the remote computer automatically). For example, to
+copy a file from a remote computer::
+
+    <local computer>  $ kitten ssh my-remote-computer
+    <remote computer> $ kitten transfer some-file /path/on/local/computer
+
+The kitten can transfer files too and from the remote computer. It supports
+recursive transfer of directories, symlinks and hardlinks. It can even use the
+rsync algorithm to speed up repeated transfers of large files.
+
 Truly convenient SSH
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -18,17 +37,6 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 * Easily :ref:`clone local shell/editor config <real_world_ssh_kitten_config>` on remote machines
 * Easily :ref:`edit files in your local editor <edit_file>` on remote machines
 * Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
-
-
-Shell integration
-~~~~~~~~~~~~~~~~~~~~~
-
-kitty automatically integrates with common shells to allow browsing the
-output of the previous command in a pager by pressing
-:sc:`show_last_command_output`, jumping to previous prompt locations in the
-scrollback by pressing :sc:`scroll_to_previous_prompt` and clicking with the
-mouse anywhere in the current command to move the cursor there. See
-:doc:`shell-integration` for details.
 
 .. }}}
 
