@@ -10,7 +10,6 @@ in float bg_alpha;
 uniform sampler2DArray sprites;
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
-uniform float text_fg_override_threshold;
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
@@ -159,7 +158,6 @@ float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, flo
     // We apply the correction only if there was actual text at this pixel, so as to not make
     // background_opacity non-linear
     // See https://github.com/kovidgoyal/kitty/issues/6209 for discussion.
-    const float threshold = 0.000001;
     // ans = text_fg_alpha * linear2srgb(final_alpha) + (1 - text_fg_alpha) * final_alpha
     return mix(final_alpha, linear2srgb(final_alpha), text_fg_alpha);
 }
