@@ -1383,6 +1383,7 @@ def macos_info_plist() -> bytes:
         # Security
         NSAppleEventsUsageDescription=access('AppleScript.'),
         NSSystemAdministrationUsageDescription=access('elevated privileges.', 'requires'),
+        NSBluetoothAlwaysUsageDescription=access('Bluetooth.'),
         # Speech
         NSSpeechRecognitionUsageDescription=access('speech recognition.'),
     )
