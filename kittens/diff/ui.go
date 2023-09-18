@@ -627,11 +627,9 @@ func (self *Handler) dispatch_action(name, args string) error {
 			}
 			done = self.scroll_lines(amt) != 0
 		default:
-			npos := self.scroll_pos
+			npos := ScrollPos{}
 			if strings.Contains(args, `end`) {
 				npos = self.max_scroll_pos
-			} else {
-				npos = ScrollPos{}
 			}
 			done = npos != self.scroll_pos
 			self.scroll_pos = npos

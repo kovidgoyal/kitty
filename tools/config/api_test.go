@@ -51,7 +51,9 @@ globin
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = p.ParseOverrides("over one", "over two")
+	if err = p.ParseOverrides("over one", "over two"); err != nil {
+		t.Fatal(err)
+	}
 	diff := cmp.Diff([]string{"a one", "incb cool", "b ", "inc1 cool", "inc2 cool", "env cool", "inc notcool", "over one", "over two"}, parsed_lines)
 	if diff != "" {
 		t.Fatalf("Unexpected parsed config values:\n%s", diff)

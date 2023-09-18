@@ -293,12 +293,8 @@ func (r *rsync) ApplyDelta(output io.Writer, target io.ReadSeeker, op Operation)
 		if _, err = target.Seek(int64(r.BlockSize*int(op.BlockIndex)), io.SeekStart); err != nil {
 			return err
 		}
-		n, err = io.ReadAtLeast(target, buffer, r.BlockSize)
-		if err != nil {
-			if err != io.ErrUnexpectedEOF {
-				return err
-			}
-			err = nil
+		if n, err = io.ReadAtLeast(target, buffer, r.BlockSize); err != nil && err != io.ErrUnexpectedEOF {
+			return err
 		}
 		block = buffer[:n]
 		return write(block)

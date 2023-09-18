@@ -286,6 +286,9 @@ func (self *stdout_filter) Write(p []byte) (n int, err error) {
 
 func main(_ *cli.Command, _ *Options, args []string) (rc int, err error) {
 	delegate_to_rg, sanitized_args, kitten_opts, err := parse_args(args...)
+	if err != nil {
+		return 1, err
+	}
 	if delegate_to_rg {
 		sanitized_args = append([]string{"rg"}, sanitized_args...)
 		err = unix.Exec(RgExe(), sanitized_args, os.Environ())

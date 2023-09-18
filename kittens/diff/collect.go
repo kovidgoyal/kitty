@@ -297,7 +297,9 @@ func (self *Collection) collect_files(left, right string) error {
 	if err != nil {
 		return err
 	}
-	err = walk(right, conf.Ignore_name, right_names, right_path_map, path_name_map)
+	if err = walk(right, conf.Ignore_name, right_names, right_path_map, path_name_map); err != nil {
+		return err
+	}
 	common_names := left_names.Intersect(right_names)
 	changed_names := utils.NewSet[string](common_names.Len())
 	for n := range common_names.Iterable() {

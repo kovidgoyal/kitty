@@ -239,7 +239,7 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 		return
 	}
 	field_map := ftc_field_map()
-	key_length, key_start, val_start, val_length := 0, 0, 0, 0
+	key_length, key_start, val_start := 0, 0, 0
 
 	handle_value := func(key, serialized_val string) error {
 		key = strings.TrimLeft(key, `;;`)
@@ -305,7 +305,7 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 			}
 		} else {
 			if ch == ';' {
-				val_length = i - val_start
+				val_length := i - val_start
 				if key_length > 0 && val_start > 0 {
 					err = handle_value(serialized[key_start:key_start+key_length], serialized[val_start:val_start+val_length])
 					if err != nil {
@@ -315,7 +315,6 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 				key_length = 0
 				key_start = i + 1
 				val_start = 0
-				val_length = 0
 			}
 		}
 	}

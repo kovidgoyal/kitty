@@ -65,7 +65,6 @@ func get_destination(hostname string) (username, hostname_for_match string) {
 	}
 	if !parsed && strings.Contains(hostname, "@") && hostname[0] != '@' {
 		_, hostname_for_match, _ = strings.Cut(hostname, "@")
-		parsed = true
 	}
 	return
 }
