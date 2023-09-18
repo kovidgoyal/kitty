@@ -302,9 +302,9 @@ static inline void parse_graphics_code(Screen *screen,
       g.payload_sz = sizeof(payload);
       if (!base64_decode32(screen->parser_buf + pos, sz, payload,
                            &g.payload_sz)) {
-        REPORT_ERROR(
-            "Failed to parse GraphicsCommand command payload with error: %s",
-            "output buffer for base64_decode too small");
+        REPORT_ERROR("Failed to parse GraphicsCommand command payload with "
+                     "error: payload size (%zu) too large",
+                     sz);
         return;
       }
       pos = screen->parser_buf_pos;
