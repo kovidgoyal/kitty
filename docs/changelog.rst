@@ -48,7 +48,7 @@ Detailed list of changes
 
 - A new :doc:`transfer kitten </kittens/transfer>` that can be used to transfer files efficiently over the TTY device
 
-- ssh kitten: A new configuration directive `to automatically forward the kitty remote control socket <kitten-ssh.forward_remote_control>`_
+- ssh kitten: A new configuration directive :opt:`to automatically forward the kitty remote control socket <kitten-ssh.forward_remote_control>`
 
 - Allow :doc:`easily building kitty from source </build>` needing the installation of only C and Go compilers.
   All other dependencies are automatically vendored
