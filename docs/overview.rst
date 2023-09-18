@@ -266,7 +266,9 @@ Would open the scrollback buffer in a new :term:`window` when you press the
 :kbd:`F1` key. See :sc:`show_scrollback <show_scrollback>` for details.
 
 If you want to use it with an editor such as :program:`vim` to get more powerful
-features, you can see tips for doing so, in :iss:`this thread <719>`.
+features, see for example, `kitty-scrollback.nvim
+<https://github.com/mikesmithgh/kitty-scrollback.nvim>`__ or `kitty-grab <https://github.com/yurikhan/kitty_grab>`__
+or see more tips for using various editor programs, in :iss:`this thread <719>`.
 
 If you wish to store very large amounts of scrollback to view using the piping
 or :sc:`show_scrollback <show_scrollback>` features, you can use the
