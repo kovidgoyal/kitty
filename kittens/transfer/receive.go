@@ -19,7 +19,6 @@ import (
 	"kitty/kittens/unicode_input"
 	"kitty/tools/cli/markup"
 	"kitty/tools/rsync"
-	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -145,7 +144,6 @@ type remote_file struct {
 	compression_type             Compression
 	remote_symlink_value         string
 	actual_file                  output_file
-	patch_file                   patch_file
 }
 
 func (self *remote_file) close() (err error) {
@@ -176,7 +174,9 @@ func (self *remote_file) Write(data []byte) (n int, err error) {
 		if self.actual_file == nil {
 			parent := filepath.Dir(self.expanded_local_path)
 			if parent != "" {
-				os.MkdirAll(parent, 0o755)
+				if err = os.MkdirAll(parent, 0o755); err != nil {
+					return 0, err
+				}
 			}
 			if self.expect_diff {
 				if pf, err := new_patch_file(self.expanded_local_path, self.patcher); err != nil {
@@ -263,7 +263,7 @@ func (self *remote_file) apply_metadata() {
 			}
 		}
 	} else {
-		os.Chmod(self.expanded_local_path, self.permissions)
+		_ = os.Chmod(self.expanded_local_path, self.permissions)
 	}
 }
 
@@ -455,8 +455,6 @@ type handler struct {
 	last_data_write_id    loop.IdType
 }
 
-var debugprintln = tty.DebugPrintln
-
 func (self *manager) send(c FileTransmissionCommand, send func(string) loop.IdType) loop.IdType {
 	send(self.prefix)
 	send(c.Serialize(false))
@@ -486,7 +484,7 @@ func (self *handler) abort_with_error(err error, delay ...time.Duration) {
 	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in no more than`, d)
 	self.manager.send(FileTransmissionCommand{Action: Action_cancel}, self.lp.QueueWriteString)
 	self.manager.state = state_canceled
-	self.lp.AddTimer(d, false, self.do_error_quit)
+	_, _ = self.lp.AddTimer(d, false, self.do_error_quit)
 }
 
 func (self *handler) do_error_quit(loop.IdType) error {
@@ -713,10 +711,12 @@ func files_for_receive(opts *Options, dest string, files []*remote_file, remote_
 		for spec_id, files_for_spec := range spec_map {
 			spec := spec_paths[spec_id]
 			tree := make_tree(files_for_spec, filepath.Dir(expand_home(spec)))
-			walk_tree(tree, func(x *tree_node) error {
+			if err = walk_tree(tree, func(x *tree_node) error {
 				ans = append(ans, x.entry)
 				return nil
-			})
+			}); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		number_of_source_files := 0
@@ -728,10 +728,12 @@ func files_for_receive(opts *Options, dest string, files []*remote_file, remote_
 			if dest_is_dir {
 				dest_path := filepath.Join(dest, filepath.Base(files_for_spec[0].remote_path))
 				tree := make_tree(files_for_spec, filepath.Dir(expand_home(dest_path)))
-				walk_tree(tree, func(x *tree_node) error {
+				if err = walk_tree(tree, func(x *tree_node) error {
 					ans = append(ans, x.entry)
 					return nil
-				})
+				}); err != nil {
+					return nil, err
+				}
 			} else {
 				f := files_for_spec[0]
 				f.expanded_local_path = expand_home(dest)
@@ -884,9 +886,13 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 	if self.manager.transfer_done {
 		self.manager.send(FileTransmissionCommand{Action: Action_finish}, self.lp.QueueWriteString)
 		self.quit_after_write_code = 0
-		self.refresh_progress(0)
+		if err = self.refresh_progress(0); err != nil {
+			return err
+		}
 	} else if self.transmit_started {
-		self.refresh_progress(0)
+		if err = self.refresh_progress(0); err != nil {
+			return err
+		}
 	}
 	return
 }
@@ -984,7 +990,7 @@ func (self *handler) draw_files() {
 	if p.total_transferred > 0 {
 		self.render_progress(`Total`, Progress{
 			spinner_char: sc, bytes_so_far: p.total_transferred, total_bytes: p.total_bytes_to_transfer,
-			secs_so_far: time.Now().Sub(p.started_at).Seconds(), is_complete: is_complete,
+			secs_so_far: time.Since(p.started_at).Seconds(), is_complete: is_complete,
 			bytes_per_sec: safe_divide(p.transfered_stats_amt, p.transfered_stats_interval.Abs().Seconds()),
 		})
 		self.lp.Println()
@@ -1049,11 +1055,15 @@ func (self *handler) on_key_event(ev *loop.KeyEvent) error {
 		if self.check_paths_printed && !self.transmit_started {
 			self.abort_with_error(fmt.Errorf(`Canceled by user`))
 		} else {
-			self.on_interrupt()
+			if _, err := self.on_interrupt(); err != nil {
+				return err
+			}
 		}
 	} else if ev.MatchesPressOrRepeat("ctrl+c") {
 		ev.Handled = true
-		self.on_interrupt()
+		if _, err := self.on_interrupt(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1102,7 +1112,7 @@ func receive_loop(opts *Options, spec []string, dest string) (err error, rc int)
 	lp.OnKeyEvent = handler.on_key_event
 	lp.OnResize = func(old_sz, new_sz loop.ScreenSize) error {
 		if handler.progress_drawn {
-			handler.refresh_progress(0)
+			return handler.refresh_progress(0)
 		}
 		return nil
 	}

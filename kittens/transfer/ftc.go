@@ -137,10 +137,6 @@ type FileTransmissionCommand struct {
 	Data []byte `json:"d,omitempty"`
 }
 
-func escape_semicolons(x string) string {
-	return strings.ReplaceAll(x, ";", ";;")
-}
-
 var ftc_field_map = sync.OnceValue(func() map[string]reflect.StructField {
 	ans := make(map[string]reflect.StructField)
 	self := FileTransmissionCommand{}
@@ -242,7 +238,7 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 	key_length, key_start, val_start := 0, 0, 0
 
 	handle_value := func(key, serialized_val string) error {
-		key = strings.TrimLeft(key, `;;`)
+		key = strings.TrimLeft(key, `;`)
 		if field, ok := field_map[key]; ok {
 			val := v.FieldByIndex(field.Index)
 			switch val.Kind() {

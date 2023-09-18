@@ -348,7 +348,7 @@ type SendManager struct {
 	bypass                                                     string
 	use_rsync                                                  bool
 	file_progress                                              func(*File, int)
-	file_done                                                  func(*File)
+	file_done                                                  func(*File) error
 	fid_map                                                    map[string]*File
 	all_acknowledged, all_started, has_transmitting, has_rsync bool
 	active_idx                                                 int
@@ -583,7 +583,7 @@ func (self *SendHandler) draw_progress_for_current_file(af *File, spinner_char s
 	var secs_so_far time.Duration
 	empty := File{}
 	if af.done_at == empty.done_at {
-		secs_so_far = time.Now().Sub(af.transmit_started_at)
+		secs_so_far = time.Since(af.transmit_started_at)
 	} else {
 		secs_so_far = af.done_at.Sub(af.transmit_started_at)
 	}
@@ -611,7 +611,9 @@ func (self *SendHandler) refresh_progress(timer_id loop.IdType) (err error) {
 		self.progress_update_timer = 0
 	}
 	if self.manager.active_file() == nil && !self.manager.all_acknowledged && self.done_file_ids.Len() != 0 && self.done_file_ids.Len() < len(self.manager.files) {
-		self.transmit_next_chunk()
+		if err = self.transmit_next_chunk(); err != nil {
+			return err
+		}
 	}
 	self.lp.StartAtomicUpdate()
 	defer self.lp.EndAtomicUpdate()
@@ -633,12 +635,12 @@ func (self *SendHandler) on_file_progress(f *File, change int) {
 	self.schedule_progress_update(100 * time.Millisecond)
 }
 
-func (self *SendHandler) on_file_done(f *File) {
+func (self *SendHandler) on_file_done(f *File) error {
 	self.done_files = append(self.done_files, f)
 	if f.err_msg != "" {
 		self.failed_files = append(self.failed_files, f)
 	}
-	self.refresh_progress(0)
+	return self.refresh_progress(0)
 }
 
 func (self *SendHandler) send_payload(payload string) loop.IdType {
@@ -743,7 +745,9 @@ func (self *SendManager) on_file_status_update(ftc *FileTransmissionCommand) err
 			file.err_msg = ftc.Status
 		}
 		self.progress_tracker.on_file_done(file)
-		self.file_done(file)
+		if err := self.file_done(file); err != nil {
+			return err
+		}
 		if self.active_idx > -1 && file == self.files[self.active_idx] {
 			self.active_idx = -1
 		}
@@ -857,8 +861,7 @@ func (self *SendHandler) check_for_transmit_ok() (err error) {
 		return
 	}
 	self.transmit_ok_checked = true
-	self.start_transfer()
-	return
+	return self.start_transfer()
 }
 
 func (self *SendHandler) print_check_paths() {
@@ -1083,7 +1086,9 @@ func (self *SendHandler) on_text(text string, from_key_event, in_bracketed_paste
 				return err
 			}
 			if self.manager.all_acknowledged {
-				self.refresh_progress(0)
+				if err = self.refresh_progress(0); err != nil {
+					return err
+				}
 				self.transfer_finished()
 			}
 			return nil
@@ -1110,7 +1115,7 @@ func (self *SendHandler) abort_transfer(delay ...time.Duration) {
 	}
 	self.send_payload(FileTransmissionCommand{Action: Action_cancel}.Serialize())
 	self.manager.state = SEND_CANCELED
-	self.lp.AddTimer(d, false, func(loop.IdType) error {
+	_, _ = self.lp.AddTimer(d, false, func(loop.IdType) error {
 		self.lp.Quit(1)
 		return nil
 	})
@@ -1118,7 +1123,7 @@ func (self *SendHandler) abort_transfer(delay ...time.Duration) {
 
 func (self *SendHandler) on_resize(old_size, new_size loop.ScreenSize) error {
 	if self.progress_drawn {
-		self.refresh_progress(0)
+		return self.refresh_progress(0)
 	}
 	return nil
 }
@@ -1158,7 +1163,9 @@ func (self *SendHandler) on_writing_finished(msg_id loop.IdType, has_pending_wri
 		} else {
 			self.quit_after_write_code = 0
 		}
-		self.refresh_progress(0)
+		if err = self.refresh_progress(0); err != nil {
+			return err
+		}
 	}
 	if self.quit_after_write_code > -1 && !has_pending_writes {
 		self.lp.Quit(self.quit_after_write_code)
@@ -1168,7 +1175,9 @@ func (self *SendHandler) on_writing_finished(msg_id loop.IdType, has_pending_wri
 		return self.check_for_transmit_ok()
 	}
 	if chunk_transmitted {
-		self.refresh_progress(0)
+		if err = self.refresh_progress(0); err != nil {
+			return err
+		}
 		return self.transmit_next_chunk()
 	}
 	return
