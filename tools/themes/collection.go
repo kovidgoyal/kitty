@@ -666,7 +666,10 @@ func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (e
 	if err != nil {
 		return err
 	}
-	confpath := filepath.Join(config_dir, config_file_name)
+	confpath := config_file_name
+	if !filepath.IsAbs(config_file_name) {
+		confpath = filepath.Join(config_dir, config_file_name)
+	}
 	if q, err := filepath.EvalSymlinks(confpath); err == nil {
 		confpath = q
 	}
