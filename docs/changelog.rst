@@ -43,12 +43,12 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
-0.30.0 [future]
+0.30.0 [2023-09-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :doc:`transfer kitten </kittens/transfer>` that can be used to transfer files efficiently over the TTY device
 
-- ssh kitten: A new configuration directive `to automatically forward the kitty remote control socket <kitten-ssh.forward_remote_control>`
+- ssh kitten: A new configuration directive `to automatically forward the kitty remote control socket <kitten-ssh.forward_remote_control>`_
 
 - Allow :doc:`easily building kitty from source </build>` needing the installation of only C and Go compilers.
   All other dependencies are automatically vendored
