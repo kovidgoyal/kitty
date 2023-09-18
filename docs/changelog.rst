@@ -24,7 +24,7 @@ copy a file from a remote computer::
     <local computer>  $ kitten ssh my-remote-computer
     <remote computer> $ kitten transfer some-file /path/on/local/computer
 
-The kitten can transfer files too and from the remote computer. It supports
+The kitten can transfer files to and from the remote computer. It supports
 recursive transfer of directories, symlinks and hardlinks. It can even use the
 rsync algorithm to speed up repeated transfers of large files.
 
