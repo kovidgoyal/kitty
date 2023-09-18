@@ -336,7 +336,9 @@ func set_comment_in_zip_file(path string, comment string) error {
 	defer src.Close()
 	buf := bytes.Buffer{}
 	dest := zip.NewWriter(&buf)
-	dest.SetComment(comment)
+	if err = dest.SetComment(comment); err != nil {
+		return err
+	}
 	for _, sf := range src.File {
 		err = dest.Copy(sf)
 		if err != nil {
@@ -344,8 +346,7 @@ func set_comment_in_zip_file(path string, comment string) error {
 		}
 	}
 	dest.Close()
-	utils.AtomicUpdateFile(path, buf.Bytes(), 0o644)
-	return nil
+	return utils.AtomicUpdateFile(path, buf.Bytes(), 0o644)
 }
 
 func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (string, error) {
@@ -358,14 +359,15 @@ func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (st
 	var jm JSONMetadata
 	if err == nil {
 		defer zf.Close()
-		err = json.Unmarshal(utils.UnsafeStringToBytes(zf.Comment), &jm)
-		if max_cache_age < 0 {
-			return cache_path, nil
-		}
-		cache_age, err := utils.ISO8601Parse(jm.Timestamp)
-		if err == nil {
-			if time.Now().Before(cache_age.Add(max_cache_age)) {
+		if err = json.Unmarshal(utils.UnsafeStringToBytes(zf.Comment), &jm); err == nil {
+			if max_cache_age < 0 {
 				return cache_path, nil
+			}
+			cache_age, err := utils.ISO8601Parse(jm.Timestamp)
+			if err == nil {
+				if time.Now().Before(cache_age.Add(max_cache_age)) {
+					return cache_path, nil
+				}
 			}
 		}
 	}
@@ -429,7 +431,9 @@ func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (st
 	jm.Etag = resp.Header.Get("ETag")
 	jm.Timestamp = utils.ISO8601Format(time.Now())
 	comment, _ := json.Marshal(jm)
-	w.SetComment(utils.UnsafeBytesToString(comment))
+	if err = w.SetComment(utils.UnsafeBytesToString(comment)); err != nil {
+		return "", err
+	}
 	for _, file := range r.File {
 		err = w.Copy(file)
 		if err != nil {
@@ -620,7 +624,7 @@ type ReloadDestination string
 
 const (
 	RELOAD_IN_PARENT ReloadDestination = "parent"
-	RELOAD_IN_ALL                      = "all"
+	RELOAD_IN_ALL    ReloadDestination = "all"
 )
 
 func reload_config(reload_in ReloadDestination) bool {
@@ -637,7 +641,7 @@ func reload_config(reload_in ReloadDestination) bool {
 		if all, err := process.Processes(); err == nil {
 			for _, p := range all {
 				if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(c...) {
-					p.SendSignal(unix.SIGUSR1)
+					_ = p.SendSignal(unix.SIGUSR1)
 				}
 			}
 			return true
@@ -656,7 +660,7 @@ func (self *Theme) SaveInDir(dirpath string) (err error) {
 }
 
 func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (err error) {
-	os.MkdirAll(config_dir, 0o755)
+	_ = os.MkdirAll(config_dir, 0o755)
 	path := filepath.Join(config_dir, `current-theme.conf`)
 	code, err := self.Code()
 	if err != nil {
@@ -679,7 +683,7 @@ func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (e
 	}
 	nraw := patch_conf(utils.UnsafeBytesToString(raw), self.metadata.Name)
 	if len(raw) > 0 {
-		os.WriteFile(confpath+".bak", raw, 0o600)
+		_ = os.WriteFile(confpath+".bak", raw, 0o600)
 	}
 	err = utils.AtomicUpdateFile(confpath, utils.UnsafeStringToBytes(nraw), 0o600)
 	if err != nil {
