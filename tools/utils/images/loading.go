@@ -324,8 +324,9 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 					if found {
 						ans.Canvas.Left, err = strconv.Atoi(x)
 						if err == nil {
-							ans.Canvas.Top, err = strconv.Atoi(y)
-							ok = true
+							if ans.Canvas.Top, err = strconv.Atoi(y); err == nil {
+								ok = true
+							}
 						}
 					}
 				}
@@ -340,8 +341,9 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 	if found {
 		ans.Width, err = strconv.Atoi(w)
 		if err == nil {
-			ans.Height, err = strconv.Atoi(h)
-			ok = true
+			if ans.Height, err = strconv.Atoi(h); err == nil {
+				ok = true
+			}
 		}
 	}
 	if !ok {
@@ -352,8 +354,9 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 	if found {
 		ans.Dpi.X, err = strconv.ParseFloat(x, 64)
 		if err == nil {
-			ans.Dpi.Y, err = strconv.ParseFloat(y, 64)
-			ok = true
+			if ans.Dpi.Y, err = strconv.ParseFloat(y, 64); err == nil {
+				ok = true
+			}
 		}
 	}
 	if !ok {

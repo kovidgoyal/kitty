@@ -128,7 +128,9 @@ func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
 	if len(parts[2]) < 1 {
 		return nil
 	}
-	ans.Pixel.Y, err = strconv.Atoi(parts[2])
+	if ans.Pixel.Y, err = strconv.Atoi(parts[2]); err != nil {
+		return nil
+	}
 	if last_letter == 'm' {
 		ans.Event_type = MOUSE_RELEASE
 	} else if cb&MOTION_INDICATOR != 0 {
