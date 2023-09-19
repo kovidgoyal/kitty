@@ -93,7 +93,7 @@ func process_dirs(args ...string) (results []input_arg, err error) {
 					return nil, &fs.PathError{Op: "Stat", Path: arg, Err: err}
 				}
 				if s.IsDir() {
-					filepath.WalkDir(arg, func(path string, d fs.DirEntry, walk_err error) error {
+					if err = filepath.WalkDir(arg, func(path string, d fs.DirEntry, walk_err error) error {
 						if walk_err != nil {
 							if d == nil {
 								err = &fs.PathError{Op: "Stat", Path: arg, Err: walk_err}
@@ -107,7 +107,9 @@ func process_dirs(args ...string) (results []input_arg, err error) {
 							}
 						}
 						return nil
-					})
+					}); err != nil {
+						return nil, err
+					}
 				} else {
 					results = append(results, input_arg{arg: arg, value: arg})
 				}
@@ -124,7 +126,7 @@ type opened_input struct {
 
 func (self *opened_input) Rewind() {
 	if self.file != nil {
-		self.file.Seek(0, io.SeekStart)
+		_, _ = self.file.Seek(0, io.SeekStart)
 	}
 }
 

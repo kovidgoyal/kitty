@@ -42,7 +42,7 @@ const (
 	supported
 )
 
-var transfer_by_file, transfer_by_memory, transfer_by_stream transfer_mode
+var transfer_by_file, transfer_by_memory transfer_mode
 
 var files_channel chan input_arg
 var output_channel chan *image_data
@@ -162,7 +162,9 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	if opts.Clear {
 		cc := &graphics.GraphicsCommand{}
 		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
-		cc.WriteWithPayloadTo(os.Stdout, nil)
+		if err = cc.WriteWithPayloadTo(os.Stdout, nil); err != nil {
+			return 1, err
+		}
 	}
 	if screen_size.Xpixel == 0 || screen_size.Ypixel == 0 {
 		return 1, fmt.Errorf("Terminal does not support reporting screen sizes in pixels, use a terminal such as kitty, WezTerm, Konsole, etc. that does.")
@@ -224,7 +226,6 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		// tmux doesn't allow responses from the terminal so we can't detect if memory or file based transferring is supported
 		transfer_by_memory = unsupported
 		transfer_by_file = unsupported
-		transfer_by_stream = supported
 	}
 	if opts.DetectSupport {
 		if transfer_by_memory == supported {

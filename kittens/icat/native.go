@@ -123,6 +123,7 @@ func load_one_frame_image(ctx *images.Context, imgd *image_data, src *opened_inp
 }
 
 var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 func (frame *image_frame) set_disposal(anchor_frame int, disposal byte) int {
 	anchor_frame, frame.compose_onto = images.SetGIFFrameDisposal(frame.number, anchor_frame, disposal)

@@ -38,14 +38,14 @@ func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error
 		}
 		if len(shm_files_to_delete) > 0 && transfer_by_memory != supported {
 			for _, name := range shm_files_to_delete {
-				name.Unlink()
+				_ = name.Unlink()
 			}
 		}
 	}()
 
 	lp.OnInitialize = func() (string, error) {
 		var iid uint32
-		lp.AddTimer(timeout, false, func(loop.IdType) error {
+		_, _ = lp.AddTimer(timeout, false, func(loop.IdType) error {
 			return fmt.Errorf("Timed out waiting for a response form the terminal: %w", os.ErrDeadlineExceeded)
 		})
 
@@ -54,7 +54,7 @@ func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error
 			g1 := &graphics.GraphicsCommand{}
 			g1.SetTransmission(t).SetAction(graphics.GRT_action_query).SetImageId(iid).SetDataWidth(1).SetDataHeight(1).SetFormat(
 				graphics.GRT_format_rgb).SetDataSize(uint64(len(payload)))
-			g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
+			_ = g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
 			return iid
 		}
 
@@ -63,7 +63,9 @@ func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error
 		if err == nil {
 			file_query_id = g(graphics.GRT_transmission_tempfile, tf.Name())
 			temp_files_to_delete = append(temp_files_to_delete, tf.Name())
-			tf.Write([]byte{1, 2, 3})
+			if _, err = tf.Write([]byte{1, 2, 3}); err != nil {
+				print_error("Failed to write to temporary file for data transfer, file based transfer is disabled. Error: %v", err)
+			}
 			tf.Close()
 		} else {
 			print_error("Failed to create temporary file for data transfer, file based transfer is disabled. Error: %v", err)
