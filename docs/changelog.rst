@@ -50,6 +50,8 @@ Detailed list of changes
   override :file:`ssh.conf` not inheriting settings from :file:`ssh.conf`
   (:iss:`6639`)
 
+- themes kitten: Allow absolute paths for ``--config-file-name`` (:iss:`6638`)
+
 
 0.30.0 [2023-09-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
