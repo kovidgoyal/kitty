@@ -24,11 +24,14 @@ func TestSSHConfigParsing(t *testing.T) {
 	hostname := "unmatched"
 	username := ""
 	conf := ""
+	overrides := []string{}
 	for_python := false
 	cf := filepath.Join(tdir, "ssh.conf")
 	rt := func(expected_env ...string) {
-		os.WriteFile(cf, []byte(conf), 0o600)
-		c, bad_lines, err := load_config(hostname, username, nil, cf)
+		if err := os.WriteFile(cf, []byte(conf), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		c, bad_lines, err := load_config(hostname, username, overrides, cf)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,6 +55,10 @@ func TestSSHConfigParsing(t *testing.T) {
 	rt()
 	conf = "env a=b"
 	rt(`export 'a'="b"`)
+	conf = "env a=b"
+	overrides = []string{"env=c=d"}
+	rt(`export 'a'="b"`, `export 'c'="d"`)
+	overrides = nil
 
 	conf = "env a=\\"
 	rt(`export 'a'="\\"`)

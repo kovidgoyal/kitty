@@ -391,9 +391,20 @@ func (self *ConfigSet) line_handler(key, val string) error {
 func load_config(hostname_to_match string, username_to_match string, overrides []string, paths ...string) (*Config, []config.ConfigLine, error) {
 	ans := &ConfigSet{all_configs: []*Config{NewConfig()}}
 	p := config.ConfigParser{LineHandler: ans.line_handler}
-	err := p.LoadConfig("ssh.conf", paths, overrides)
+	err := p.LoadConfig("ssh.conf", paths, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	return config_for_hostname(hostname_to_match, username_to_match, ans), p.BadLines(), nil
+	final_conf := config_for_hostname(hostname_to_match, username_to_match, ans)
+	bad_lines := p.BadLines()
+	if len(overrides) > 0 {
+		h := final_conf.Hostname
+		override_parser := config.ConfigParser{LineHandler: final_conf.Parse}
+		if err = override_parser.ParseOverrides(overrides...); err != nil {
+			return nil, nil, err
+		}
+		bad_lines = append(bad_lines, override_parser.BadLines()...)
+		final_conf.Hostname = h
+	}
+	return final_conf, bad_lines, nil
 }

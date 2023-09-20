@@ -82,10 +82,10 @@ Additionally, you can pass config options on the command line:
    kitty +kitten ssh --kitten interpreter=python servername
 
 The :code:`--kitten` argument can be specified multiple times, with directives
-from :file:`ssh.conf`. These are merged with :file:`ssh.conf` as if they were
-appended to the end of that file. They apply only to the host being SSHed to by
-this invocation, so any :opt:`hostname <kitten-ssh.hostname>` directives are
-ignored.
+from :file:`ssh.conf`. These override the final options used for the matched host, as if they
+had been appended to the end of the matching section for that host in
+:file:`ssh.conf`. They apply only to the host being SSHed to by this invocation,
+so any :opt:`hostname <kitten-ssh.hostname>` directives are ignored.
 
 .. warning::
 

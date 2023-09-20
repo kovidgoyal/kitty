@@ -43,6 +43,14 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
+0.30.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ssh kitten: Fix a regression in 0.28.0 that caused using ``--kitten`` to
+  override :file:`ssh.conf` not inheriting settings from :file:`ssh.conf`
+  (:iss:`6639`)
+
+
 0.30.0 [2023-09-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

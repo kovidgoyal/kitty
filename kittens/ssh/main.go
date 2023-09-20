@@ -115,9 +115,6 @@ func parse_kitten_args(found_extra_args []string, username, hostname_for_match s
 			}
 		}
 	}
-	if len(overrides) > 0 {
-		overrides = append([]string{"hostname " + username + "@" + hostname_for_match}, overrides...)
-	}
 	return
 }
 
