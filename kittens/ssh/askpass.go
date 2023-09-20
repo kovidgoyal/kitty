@@ -57,12 +57,13 @@ func RunSSHAskpass() {
 		fatal(fmt.Errorf("Failed to create SHM file with error: %w", err))
 	}
 	defer data_shm.Close()
-	defer data_shm.Unlink()
+	defer func() { _ = data_shm.Unlink() }()
 
 	data_shm.Slice()[0] = 0
-	shm.WriteWithSize(data_shm, data, 1)
-	err = data_shm.Flush()
-	if err != nil {
+	if err = shm.WriteWithSize(data_shm, data, 1); err != nil {
+		fatal(fmt.Errorf("Failed to write to SHM file with error: %w", err))
+	}
+	if err = data_shm.Flush(); err != nil {
 		fatal(fmt.Errorf("Failed to flush SHM file with error: %w", err))
 	}
 	trigger_ask(data_shm.Name())

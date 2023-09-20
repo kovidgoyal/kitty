@@ -154,7 +154,7 @@ func set_askpass() (need_to_request_data bool) {
 	sentinel_exists := err == nil
 	if sentinel_exists || GetSSHVersion().SupportsAskpassRequire() {
 		if !sentinel_exists {
-			os.WriteFile(sentinel, []byte{0}, 0o644)
+			_ = os.WriteFile(sentinel, []byte{0}, 0o644)
 		}
 		need_to_request_data = false
 	}
@@ -321,9 +321,13 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 		return nil
 
 	}
-	add_data(fe{"data.sh", utils.UnsafeStringToBytes(env_script)})
+	if err = add_data(fe{"data.sh", utils.UnsafeStringToBytes(env_script)}); err != nil {
+		return nil, err
+	}
 	if cd.script_type == "sh" {
-		add_data(fe{"bootstrap-utils.sh", shell_integration.Data()[path.Join("shell-integration/ssh/bootstrap-utils.sh")].Data})
+		if err = add_data(fe{"bootstrap-utils.sh", shell_integration.Data()[path.Join("shell-integration/ssh/bootstrap-utils.sh")].Data}); err != nil {
+			return nil, err
+		}
 	}
 	if ksi != "" {
 		for _, fname := range shell_integration.Data().FilesMatching(
@@ -546,7 +550,7 @@ func drain_potential_tty_garbage(term *tty.Term) {
 	buf := make([]byte, 0, 8192)
 	for !bytes.Contains(data, q) {
 		buf = buf[:cap(buf)]
-		timeout := give_up_at.Sub(time.Now())
+		timeout := time.Until(give_up_at)
 		if timeout < 0 {
 			break
 		}
@@ -596,7 +600,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	defer func() {
 		if data_shm != nil {
 			data_shm.Close()
-			data_shm.Unlink()
+			_ = data_shm.Unlink()
 		}
 	}()
 	cmd := append([]string{SSHExe()}, ssh_args...)
@@ -702,9 +706,9 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		c.Stdout = &b
 		c.Stderr = os.Stderr
 		if err := c.Run(); err != nil {
-			return 1, fmt.Errorf("%s\nSetup of port forward in SSH ControlMaster failed with error: %w", string(b.Bytes()), err)
+			return 1, fmt.Errorf("%s\nSetup of port forward in SSH ControlMaster failed with error: %w", b.String(), err)
 		}
-		port, err := strconv.Atoi(strings.TrimSpace(string(b.Bytes())))
+		port, err := strconv.Atoi(strings.TrimSpace(b.String()))
 		if err != nil {
 			os.Stderr.Write(b.Bytes())
 			return 1, fmt.Errorf("Setup of port forward in SSH ControlMaster failed with error: invalid resolved port returned: %s", b.String())
@@ -731,7 +735,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		restore_escape_codes += "\x1b[#Q"
 	}
 	defer func() {
-		term.WriteAllString(restore_escape_codes)
+		_ = term.WriteAllString(restore_escape_codes)
 		term.RestoreAndClose()
 	}()
 	err = get_remote_command(&cd)
@@ -759,13 +763,13 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 			}
 		}
 		if err != nil {
-			c.Process.Kill()
-			c.Wait()
+			_ = c.Process.Kill()
+			_ = c.Wait()
 			return 1, err
 		}
 	}
 	go func() {
-		_ = <-sigs
+		<-sigs
 		// ignore any interrupt and terminate signals as they will usually be sent to the ssh child process as well
 		// and we are waiting on that.
 	}()
@@ -776,7 +780,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		var exit_err *exec.ExitError
 		if errors.As(err, &exit_err) {
 			if state := exit_err.ProcessState.String(); state == "signal: interrupt" {
-				unix.Kill(os.Getpid(), unix.SIGINT)
+				_ = unix.Kill(os.Getpid(), unix.SIGINT)
 				// Give the signal time to be delivered
 				time.Sleep(20 * time.Millisecond)
 			}
