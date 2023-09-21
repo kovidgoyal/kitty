@@ -214,7 +214,7 @@ Shell integration over SSH
 The easiest way to have shell integration work when SSHing into remote systems
 is to use the :doc:`ssh kitten <kittens/ssh>`. Simply run::
 
-    kitty +kitten ssh hostname
+    kitten ssh hostname
 
 And, by magic, you will be logged into the remote system with fully functional
 shell integration. Alternately, you can :ref:`setup shell integration manually

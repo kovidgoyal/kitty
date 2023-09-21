@@ -134,7 +134,7 @@ window, :code:`window` a new kitty window, :code:`tab` a new tab,
 :code:`os_window` a new OS window and :code:`background` run in the background.
 The actual action is whatever arguments are provided to the kitten, for
 example:
-:code:`kitty +kitten hints --type=linenum --linenum-action=tab vim +{line} {path}`
+:code:`kitten hints --type=linenum --linenum-action=tab vim +{line} {path}`
 will open the matched path at the matched line number in vim in
 a new kitty tab. Note that in order to use :option:`--program` to copy or paste
 the provided arguments, you need to use the special value :code:`self`.

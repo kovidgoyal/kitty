@@ -15,7 +15,7 @@ clicked. Let us illustrate with some examples, first. Create the file
     # Open any image in the full kitty window by clicking on it
     protocol file
     mime image/*
-    action launch --type=overlay kitty +kitten icat --hold ${FILE_PATH}
+    action launch --type=overlay kitten icat --hold ${FILE_PATH}
 
 Now, run ``ls --hyperlink=auto`` in kitty and click on the filename of an
 image, holding down :kbd:`ctrl+shift`. It will be opened over the current

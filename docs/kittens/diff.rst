@@ -39,7 +39,7 @@ Usage
 
 In the kitty terminal, run::
 
-    kitty +kitten diff file1 file2
+    kitten diff file1 file2
 
 to see the diff between :file:`file1` and :file:`file2`.
 
@@ -48,7 +48,7 @@ example:
 
 .. code-block:: sh
 
-    alias d="kitty +kitten diff"
+    alias d="kitten diff"
 
 Now all you need to do to diff two files is::
 
@@ -103,9 +103,9 @@ Add the following to :file:`~/.gitconfig`:
         prompt = false
         trustExitCode = true
     [difftool "kitty"]
-        cmd = kitty +kitten diff $LOCAL $REMOTE
+        cmd = kitten diff $LOCAL $REMOTE
     [difftool "kitty.gui"]
-        cmd = kitty kitty +kitten diff $LOCAL $REMOTE
+        cmd = kitten diff $LOCAL $REMOTE
 
 Now to use kitty-diff to view git diffs, you can simply do::
 

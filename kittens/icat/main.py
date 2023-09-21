@@ -75,7 +75,7 @@ detecting image display support.
 --print-window-size
 type=bool-set
 Print out the window size as <:italic:`width`>x<:italic:`height`> (in pixels) and quit. This is a
-convenience method to query the window size if using :code:`kitty +kitten icat`
+convenience method to query the window size if using :code:`kitten icat`
 from a scripting language that cannot make termios calls.
 
 

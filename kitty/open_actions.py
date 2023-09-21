@@ -267,7 +267,7 @@ action launch --type=os-window $EDITOR $FILE_PATH
 # Open image files with icat
 protocol file
 mime image/*
-action launch --type=os-window kitty +kitten icat --hold $FILE_PATH
+action launch --type=os-window kitten icat --hold $FILE_PATH
 
 # Open ssh URLs with ssh command
 protocol ssh

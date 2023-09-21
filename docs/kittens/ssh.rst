@@ -33,14 +33,14 @@ To try it out, simply run:
 
 .. code-block:: sh
 
-    kitty +kitten ssh some-hostname-to-connect-to
+    kitten ssh some-hostname-to-connect-to
 
 You should end up at a shell prompt on the remote host, with shell integration
 enabled. If you like it you can add an alias to it in your shell's rc files:
 
 .. code-block:: sh
 
-    alias s="kitty +kitten ssh"
+    alias s="kitten ssh"
 
 So now you can just type ``s hostname`` to connect.
 
@@ -79,7 +79,7 @@ Additionally, you can pass config options on the command line:
 
 .. code-block:: sh
 
-   kitty +kitten ssh --kitten interpreter=python servername
+   kitten ssh --kitten interpreter=python servername
 
 The :code:`--kitten` argument can be specified multiple times, with directives
 from :file:`ssh.conf`. These override the final options used for the matched host, as if they

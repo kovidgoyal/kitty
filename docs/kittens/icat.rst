@@ -6,7 +6,7 @@ icat
 The ``icat`` kitten can be used to display arbitrary images in the |kitty|
 terminal. Using it is as simple as::
 
-    kitty +kitten icat image.jpeg
+    kitten icat image.jpeg
     kitten icat image.jpeg
 
 It supports all image types supported by `ImageMagick
@@ -15,7 +15,7 @@ It supports all image types supported by `ImageMagick
 
 You might want to create an alias in your shell's configuration files::
 
-   alias icat="kitty +kitten icat"
+   alias icat="kitten icat"
 
 Then you can simply use ``icat image.png`` to view images.
 

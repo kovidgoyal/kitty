@@ -58,15 +58,15 @@ Timestamps for the above video:
 14:15
     Interactive Kitty Shell: :kbd:`Ctrl+Shift+Esc`
 14:36
-    Broadcast text: ``launch --allow-remote-control kitty +kitten broadcast``
+    Broadcast text: ``launch --allow-remote-control kitten broadcast``
 15:18
     Kitty Remote Control Protocol
 15:52
     Interactive Kitty Shell: Help
 16:34
-    Choose theme interactively: ``kitty +kitten themes -h``
+    Choose theme interactively: ``kitten themes -h``
 17:23
-    Choose theme by name: ``kitty +kitten themes [options] [theme_name]``
+    Choose theme by name: ``kitten themes [options] [theme_name]``
 
 .. raw:: html
 

@@ -99,7 +99,7 @@ These issues all have the same root cause: the kitty terminfo files not being
 available. The most common way this happens is SSHing into a computer that does
 not have the kitty terminfo files. The simplest fix for that is running::
 
-    kitty +kitten ssh myserver
+    kitten ssh myserver
 
 It will automatically copy over the terminfo files and also magically enable
 :doc:`shell integration </shell-integration>` on the remote machine.
@@ -108,7 +108,7 @@ This :doc:`ssh kitten <kittens/ssh>` takes all the same command line arguments
 as :program:`ssh`, you can alias it to something small in your shell's rc files
 to avoid having to type it each time::
 
-    alias s="kitty +kitten ssh"
+    alias s="kitten ssh"
 
 If this does not work, see :ref:`manual_terminfo_copy` for alternative ways to
 get the kitty terminfo files onto a remote computer.
@@ -148,7 +148,7 @@ I cannot use the key combination X in program Y?
 
 First, run::
 
-    kitty +kitten show_key -m kitty
+    kitten show_key -m kitty
 
 Press the key combination X. If the kitten reports the key press
 that means kitty is correctly sending the key press to terminal programs.
@@ -172,7 +172,7 @@ How do I change the colors in a running kitty instance?
 The easiest way to do it is to use the :doc:`themes kitten </kittens/themes>`,
 to choose a new color theme. Simply run::
 
-    kitty +kitten themes
+    kitten themes
 
 And choose your theme from the list.
 
@@ -391,7 +391,7 @@ For example::
 This maps :kbd:`alt+s` to :kbd:`ctrl+s`. To figure out what bytes to use for
 the :sc:`send_text <send_text>` you can use the ``show_key`` kitten. Run::
 
-    kitty +kitten show_key
+    kitten show_key
 
 Then press the key you want to emulate. Note that this kitten will only show
 keys that actually reach the terminal program, in particular, keys mapped to
@@ -399,7 +399,7 @@ actions in kitty will not be shown. To check those first map them to
 :ac:`no_op`. You can also start a kitty instance without any shortcuts to
 interfere::
 
-    kitty -o clear_all_shortcuts=yes kitty +kitten show_key
+    kitty -o clear_all_shortcuts=yes kitten show_key
 
 
 How do I open a new window or tab with the same working directory as the current window?
