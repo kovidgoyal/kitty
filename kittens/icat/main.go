@@ -146,11 +146,15 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	t, err := tty.OpenControllingTerm()
-	if err != nil {
-		return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
+	if tty.IsTerminal(os.Stdout.Fd()) {
+		screen_size, err = tty.GetSize(int(os.Stdout.Fd()))
+	} else {
+		t, oerr := tty.OpenControllingTerm()
+		if oerr != nil {
+			return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
+		}
+		screen_size, err = t.GetSize()
 	}
-	screen_size, err = t.GetSize()
 	if err != nil {
 		return 1, fmt.Errorf("Failed to query terminal using TIOCGWINSZ with error: %w", err)
 	}

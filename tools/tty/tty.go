@@ -334,13 +334,17 @@ func (self *Term) DebugPrintln(a ...any) {
 	}
 }
 
-func (self *Term) GetSize() (*unix.Winsize, error) {
+func GetSize(fd int) (*unix.Winsize, error) {
 	for {
-		sz, err := unix.IoctlGetWinsize(self.Fd(), unix.TIOCGWINSZ)
+		sz, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
 		if err != unix.EINTR {
 			return sz, err
 		}
 	}
+}
+
+func (self *Term) GetSize() (*unix.Winsize, error) {
+	return GetSize(self.Fd())
 }
 
 // go doesn't have a wrapper for ctermid()
