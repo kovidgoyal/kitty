@@ -365,27 +365,3 @@ func DebugPrintln(a ...any) {
 		term.DebugPrintln(a...)
 	}
 }
-
-func DrainControllingTTY(wait_for time.Duration) {
-	tty, err := OpenControllingTerm(SetRaw, SetNoEcho)
-	if err != nil {
-		return
-	}
-	sel := utils.CreateSelect(1)
-	sel.RegisterRead(tty.Fd())
-	for {
-		n, err := sel.Wait(wait_for)
-		if err == unix.EINTR {
-			continue
-		}
-		if err != nil {
-			return
-		}
-		if n > 0 && sel.IsReadyToRead(tty.Fd()) {
-			if _, err = tty.Read(make([]byte, 256)); err != nil {
-				break
-			}
-		}
-		break
-	}
-}
