@@ -52,7 +52,7 @@ type EscapeCodeParser struct {
 
 	// Callbacks
 	HandleRune                func(rune) error
-	HandleEndOfBracketedPaste func()
+	HandleEndOfBracketedPaste func() error
 	HandleCSI                 func([]byte) error
 	HandleOSC                 func([]byte) error
 	HandleDCS                 func([]byte) error
@@ -199,7 +199,9 @@ func (self *EscapeCodeParser) dispatch_char(ch utils.UTF8State) error {
 				if self.bracketed_paste_buffer[len(self.bracketed_paste_buffer)-1] == '~' {
 					self.reset_state()
 					if self.HandleEndOfBracketedPaste != nil {
-						self.HandleEndOfBracketedPaste()
+						if err := self.HandleEndOfBracketedPaste(); err != nil {
+							return err
+						}
 					}
 				}
 				return nil

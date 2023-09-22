@@ -273,7 +273,7 @@ func (self *Loop) Run() (err error) {
 					defer term.RestoreAndClose()
 					fmt.Println("Press any key to exit.\r")
 					buf := make([]byte, 16)
-					term.Read(buf)
+					_, _ = term.Read(buf)
 				}
 			}
 		}

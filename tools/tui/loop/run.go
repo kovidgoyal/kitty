@@ -42,7 +42,7 @@ func is_temporary_error(err error) bool {
 }
 
 func kill_self(sig unix.Signal) {
-	unix.Kill(os.Getpid(), sig)
+	_ = unix.Kill(os.Getpid(), sig)
 	// Give the signal time to be delivered
 	time.Sleep(20 * time.Millisecond)
 }
@@ -189,10 +189,11 @@ func (self *Loop) handle_rune(raw rune) error {
 	return nil
 }
 
-func (self *Loop) handle_end_of_bracketed_paste() {
+func (self *Loop) handle_end_of_bracketed_paste() error {
 	if self.OnText != nil {
-		self.OnText("", false, false)
+		return self.OnText("", false, false)
 	}
+	return nil
 }
 
 func (self *Loop) on_signal(s unix.Signal) error {
@@ -397,7 +398,7 @@ func (self *Loop) run() (err error) {
 			return err
 		}
 		err = controlling_term.SuspendAndRun(func() error {
-			unix.Kill(os.Getpid(), unix.SIGSTOP)
+			_ = unix.Kill(os.Getpid(), unix.SIGSTOP)
 			time.Sleep(20 * time.Millisecond)
 			return nil
 		})
