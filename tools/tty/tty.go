@@ -179,6 +179,9 @@ func (self *Term) set_termios_attrs(when uintptr, modify func(*unix.Termios)) (e
 }
 
 func (self *Term) ApplyOperations(when uintptr, operations ...TermiosOperation) (err error) {
+	if len(operations) == 0 {
+		return
+	}
 	return self.set_termios_attrs(when, func(t *unix.Termios) {
 		for _, op := range operations {
 			op(t)
