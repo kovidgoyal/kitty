@@ -151,7 +151,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	} else {
 		t, oerr := tty.OpenControllingTerm()
 		if oerr != nil {
-			return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
+			return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", oerr)
 		}
 		screen_size, err = t.GetSize()
 	}
