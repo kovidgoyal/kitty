@@ -265,7 +265,7 @@ func (self *Loop) run() (err error) {
 	signal.Notify(signal_channel, handled_signals...)
 	defer signal.Reset(handled_signals...)
 
-	controlling_term, err := tty.OpenControllingTerm()
+	controlling_term, err := tty.OpenControllingTerm(tty.SetRaw)
 	if err != nil {
 		return err
 	}
@@ -274,10 +274,6 @@ func (self *Loop) run() (err error) {
 		controlling_term.RestoreAndClose()
 		self.controlling_term = nil
 	}()
-	err = controlling_term.ApplyOperations(tty.TCSANOW, tty.SetRaw)
-	if err != nil {
-		return nil
-	}
 
 	self.keep_going = true
 	self.pending_mouse_events = utils.NewRingBuffer[MouseEvent](4)
