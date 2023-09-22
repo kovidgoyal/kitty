@@ -214,7 +214,7 @@ func (self *Term) Restore() error {
 }
 
 func (self *Term) RestoreAndClose() error {
-	self.Restore()
+	_ = self.Restore()
 	return self.Close()
 }
 
@@ -240,7 +240,9 @@ func (self *Term) SuspendAndRun(callback func() error) error {
 		return err
 	}
 	err = callback()
-	resume()
+	if rerr := resume(); rerr != nil {
+		err = rerr
+	}
 	return err
 }
 
@@ -323,9 +325,9 @@ func (self *Term) DebugPrintln(a ...any) {
 		chunk := msg[i:end]
 		encoded = encoded[:cap(encoded)]
 		base64.StdEncoding.Encode(encoded, chunk)
-		self.WriteString("\x1bP@kitty-print|")
-		self.Write(encoded)
-		self.WriteString("\x1b\\")
+		_, _ = self.WriteString("\x1bP@kitty-print|")
+		_, _ = self.Write(encoded)
+		_, _ = self.WriteString("\x1b\\")
 	}
 }
 
@@ -380,7 +382,9 @@ func DrainControllingTTY(wait_for time.Duration) {
 			return
 		}
 		if n > 0 && sel.IsReadyToRead(tty.Fd()) {
-			tty.Read(make([]byte, 256))
+			if _, err = tty.Read(make([]byte, 256)); err != nil {
+				break
+			}
 		}
 		break
 	}
