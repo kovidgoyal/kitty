@@ -1,6 +1,6 @@
 // License: GPLv3 Copyright: 2023, Kovid Goyal, <kovid at kovidgoyal.net>
 
-//go:build !darwin && !linux
+//go:build !linux
 
 package shm
 

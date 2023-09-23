@@ -16,7 +16,7 @@ import (
 var _ = fmt.Print
 
 func TestSHM(t *testing.T) {
-	force_use_of_fallocate = runtime.GOOS == "darwin" || runtime.GOOS == "linux"
+	force_use_of_fallocate = runtime.GOOS == "linux"
 	defer func() { force_use_of_fallocate = false }()
 	data := make([]byte, 13347)
 	_, _ = rand.Read(data)
