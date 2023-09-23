@@ -32,8 +32,8 @@ Comments can be added to the config file as lines starting with the ``#``
 character. This works only if the ``#`` character is the first character in the
 line.
 
-Lines can be split by starting the next line with the ``\\`` character.
-All leading whitespace and the ``\\`` character are removed.
+Lines can be split by starting the next line with the ``\`` character.
+All leading whitespace and the ``\`` character are removed.
 
 .. _include:
 
