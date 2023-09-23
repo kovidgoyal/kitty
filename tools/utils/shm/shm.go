@@ -100,8 +100,7 @@ func truncate_or_unlink(ans *os.File, size uint64) (err error) {
 			return fmt.Errorf("fallocate() failed on fd from shm_open(%s) with size: %d with error: %w", ans.Name(), size, err)
 		}
 		for {
-			err = unix.Ftruncate(fd, sz)
-			if !errors.Is(err, unix.EINTR) {
+			if err = unix.Ftruncate(fd, sz); !errors.Is(err, unix.EINTR) {
 				break
 			}
 		}
