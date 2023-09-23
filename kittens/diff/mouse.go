@@ -40,7 +40,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 		return nil
 	}
 	cp := config.ConfigParser{LineHandler: handle_line}
-	cp.ParseFiles(path)
+	_ = cp.ParseFiles(path)
 	return ans
 }
 
@@ -53,7 +53,7 @@ func (self *Handler) handle_wheel_event(up bool) {
 	if up {
 		amt *= -1
 	}
-	self.dispatch_action(`scroll_by`, strconv.Itoa(amt))
+	_ = self.dispatch_action(`scroll_by`, strconv.Itoa(amt))
 }
 
 type line_pos struct {
@@ -113,6 +113,7 @@ func (self *Handler) drag_scroll_tick(timer_id loop.IdType) error {
 }
 
 var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 func (self *Handler) update_mouse_selection(ev *loop.MouseEvent) {
 	if !self.mouse_selection.IsActive() {

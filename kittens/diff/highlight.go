@@ -81,23 +81,37 @@ func clear_background(style *chroma.Style) *chroma.Style {
 	return style
 }
 
-func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) error {
+func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) (err error) {
 	const SGR_PREFIX = "\033["
 	const SGR_SUFFIX = "m"
 	style = clear_background(style)
 	before, after := make([]byte, 0, 64), make([]byte, 0, 64)
 	nl := []byte{'\n'}
-	write_sgr := func(which []byte) {
+	write_sgr := func(which []byte) (err error) {
 		if len(which) > 1 {
-			w.Write(utils.UnsafeStringToBytes(SGR_PREFIX))
-			w.Write(which[:len(which)-1])
-			w.Write(utils.UnsafeStringToBytes(SGR_SUFFIX))
+			if _, err = w.Write(utils.UnsafeStringToBytes(SGR_PREFIX)); err != nil {
+				return err
+			}
+			if _, err = w.Write(which[:len(which)-1]); err != nil {
+				return err
+			}
+			if _, err = w.Write(utils.UnsafeStringToBytes(SGR_SUFFIX)); err != nil {
+				return err
+			}
 		}
+		return
 	}
-	write := func(text string) {
-		write_sgr(before)
-		w.Write(utils.UnsafeStringToBytes(text))
-		write_sgr(after)
+	write := func(text string) (err error) {
+		if err = write_sgr(before); err != nil {
+			return err
+		}
+		if _, err = w.Write(utils.UnsafeStringToBytes(text)); err != nil {
+			return err
+		}
+		if err = write_sgr(after); err != nil {
+			return err
+		}
+		return
 	}
 
 	for token := it(); token != chroma.EOF; token = it() {
@@ -127,11 +141,17 @@ func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) error 
 		for text != "" {
 			idx := strings.IndexByte(text, '\n')
 			if idx < 0 {
-				write(text)
+				if err = write(text); err != nil {
+					return err
+				}
 				break
 			}
-			write(text[:idx])
-			w.Write(nl)
+			if err = write(text[:idx]); err != nil {
+				return err
+			}
+			if _, err = w.Write(nl); err != nil {
+				return err
+			}
 			text = text[idx+1:]
 		}
 	}

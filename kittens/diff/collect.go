@@ -263,6 +263,9 @@ func walk(base string, patterns []string, names *utils.Set[string], pmap, path_n
 		return err
 	}
 	return filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		is_allowed := allowed(path, patterns...)
 		if !is_allowed {
 			if d.IsDir() {

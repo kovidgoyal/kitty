@@ -76,13 +76,15 @@ func get_ssh_file(hostname, rpath string) (string, error) {
 	}
 	ans := filepath.Join(tdir, rpath)
 	if count == 1 {
-		filepath.WalkDir(tdir, func(path string, d fs.DirEntry, err error) error {
+		if err = filepath.WalkDir(tdir, func(path string, d fs.DirEntry, err error) error {
 			if !d.IsDir() {
 				ans = path
 				return fs.SkipAll
 			}
 			return nil
-		})
+		}); err != nil {
+			return "", err
+		}
 	}
 	return ans, nil
 }

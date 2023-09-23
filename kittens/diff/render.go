@@ -159,7 +159,7 @@ var format_as_sgr struct {
 	title, margin, added, removed, added_margin, removed_margin, filler, margin_filler, hunk_margin, hunk, selection, search string
 }
 
-var statusline_format, added_count_format, removed_count_format, message_format, selection_format func(...any) string
+var statusline_format, added_count_format, removed_count_format, message_format func(...any) string
 
 func create_formatters() {
 	ctx := style.Context{AllowEscapeCodes: true}
@@ -169,7 +169,6 @@ func create_formatters() {
 		return ans
 	}
 	format_as_sgr.filler = only_open("bg=" + conf.Filler_bg.AsRGBSharp())
-	debugprintln(11111, conf.Margin_filler_bg.IsSet)
 	if conf.Margin_filler_bg.IsSet {
 		format_as_sgr.margin_filler = only_open("bg=" + conf.Margin_filler_bg.Color.AsRGBSharp())
 	} else {
@@ -391,8 +390,6 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 	ll.line_type = IMAGE_LINE
 	return append(ans, ll), nil
 }
-
-type formatter = func(...any) string
 
 func first_binary_line(left_path, right_path string, columns, margin_size int, renderer func(path string) (string, error)) (*LogicalLine, error) {
 	available_cols := columns/2 - margin_size
@@ -770,11 +767,4 @@ func render(collection *Collection, diff_map map[string]*Patch, screen_size scre
 		ll = []*LogicalLine{{line_type: EMPTY_LINE, screen_lines: []*ScreenLine{{}}}}
 	}
 	return &LogicalLines{lines: ll, margin_size: margin_size, columns: columns}, err
-}
-
-func (self *LogicalLines) num_of_screen_lines() (ans int) {
-	for _, l := range self.lines {
-		ans += len(l.screen_lines)
-	}
-	return
 }
