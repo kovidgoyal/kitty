@@ -82,7 +82,7 @@ class SharedMemory:
         self._name = name
         try:
             if flags & os.O_CREAT and size:
-                os.ftruncate(self._fd, size)
+                os.posix_fallocate(self._fd, 0, size)
             self.stats = os.fstat(self._fd)
             size = self.stats.st_size
             self._mmap = mmap.mmap(self._fd, size, access=mmap.ACCESS_READ if readonly else mmap.ACCESS_WRITE)
