@@ -5,12 +5,12 @@
 package shm
 
 import (
+	"errors"
 	"fmt"
-	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
 
 func Fallocate_simple(fd int, size int64) (err error) {
-	return unix.ENOSYS
+	return errors.ErrUnsupported
 }

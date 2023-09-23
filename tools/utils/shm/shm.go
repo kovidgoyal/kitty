@@ -92,16 +92,15 @@ func CreateTemp(pattern string, size uint64) (MMap, error) {
 	return create_temp(pattern, size)
 }
 
-var force_use_of_fallocate bool = false
-
 func truncate_or_unlink(ans *os.File, size uint64) (err error) {
 	fd := int(ans.Fd())
-	if err = Fallocate_simple(fd, int64(size)); err != nil {
-		if force_use_of_fallocate {
+	sz := int64(size)
+	if err = Fallocate_simple(fd, sz); err != nil {
+		if !errors.Is(err, errors.ErrUnsupported) {
 			return err
 		}
 		for {
-			err = unix.Ftruncate(fd, int64(size))
+			err = unix.Ftruncate(fd, sz)
 			if !errors.Is(err, unix.EINTR) {
 				break
 			}
