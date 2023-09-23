@@ -92,7 +92,7 @@ func CreateTemp(pattern string, size uint64) (MMap, error) {
 	return create_temp(pattern, size)
 }
 
-func truncate_or_unlink(ans *os.File, size uint64) (err error) {
+func truncate_or_unlink(ans *os.File, size uint64, unlink func(string) error) (err error) {
 	fd := int(ans.Fd())
 	sz := int64(size)
 	if err = Fallocate_simple(fd, sz); err != nil {
@@ -106,8 +106,8 @@ func truncate_or_unlink(ans *os.File, size uint64) (err error) {
 		}
 	}
 	if err != nil {
-		ans.Close()
-		os.Remove(ans.Name())
+		_ = ans.Close()
+		_ = unlink(ans.Name())
 		return fmt.Errorf("Failed to ftruncate() SHM file %s to size: %d with error: %w", ans.Name(), size, err)
 	}
 	return

@@ -30,7 +30,7 @@ type file_based_mmap struct {
 
 func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool, special_name string) (MMap, error) {
 	if truncate {
-		err := truncate_or_unlink(f, size)
+		err := truncate_or_unlink(f, size, os.Remove)
 		if err != nil {
 			return nil, err
 		}

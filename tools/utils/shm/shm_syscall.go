@@ -73,15 +73,15 @@ type syscall_based_mmap struct {
 
 func syscall_mmap(f *os.File, size uint64, access AccessFlags, truncate bool) (MMap, error) {
 	if truncate {
-		err := truncate_or_unlink(f, size)
+		err := truncate_or_unlink(f, size, shm_unlink)
 		if err != nil {
 			return nil, fmt.Errorf("truncate failed with error: %w", err)
 		}
 	}
 	region, err := mmap(int(size), access, int(f.Fd()), 0)
 	if err != nil {
-		f.Close()
-		os.Remove(f.Name())
+		_ = f.Close()
+		_ = shm_unlink(f.Name())
 		return nil, fmt.Errorf("mmap failed with error: %w", err)
 	}
 	return &syscall_based_mmap{f: f, region: region}, nil
