@@ -79,7 +79,7 @@ func (self *Loop) wait_for_write_to_complete(sentinel IdType, tty_write_channel 
 
 	end_time := time.Now().Add(timeout)
 	for num_sent < len(self.pending_writes) {
-		timeout = end_time.Sub(time.Now())
+		timeout = time.Until(end_time)
 		if timeout <= 0 {
 			return os.ErrDeadlineExceeded
 		}
@@ -104,7 +104,7 @@ func (self *Loop) wait_for_write_to_complete(sentinel IdType, tty_write_channel 
 		}
 	}
 	for {
-		timeout = end_time.Sub(time.Now())
+		timeout = time.Until(end_time)
 		if timeout <= 0 {
 			return os.ErrDeadlineExceeded
 		}

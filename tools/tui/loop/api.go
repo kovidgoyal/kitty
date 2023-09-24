@@ -426,10 +426,10 @@ type DefaultColor int
 
 const (
 	BACKGROUND   DefaultColor = 11
-	FOREGROUND                = 10
-	CURSOR                    = 12
-	SELECTION_BG              = 17
-	SELECTION_FG              = 19
+	FOREGROUND   DefaultColor = 10
+	CURSOR       DefaultColor = 12
+	SELECTION_BG DefaultColor = 17
+	SELECTION_FG DefaultColor = 19
 )
 
 func (self *Loop) SetDefaultColor(which DefaultColor, val style.RGBA) {

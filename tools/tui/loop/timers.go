@@ -13,6 +13,7 @@ import (
 )
 
 var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 type timer struct {
 	interval time.Duration
@@ -27,7 +28,7 @@ func (self *timer) update_deadline(now time.Time) {
 }
 
 func (self timer) String() string {
-	return fmt.Sprintf("Timer(id=%d, callback=%s, deadline=%s, repeats=%v)", self.id, utils.FunctionName(self.callback), self.deadline.Sub(time.Now()), self.repeats)
+	return fmt.Sprintf("Timer(id=%d, callback=%s, deadline=%s, repeats=%v)", self.id, utils.FunctionName(self.callback), time.Until(self.deadline), self.repeats)
 }
 
 func (self *Loop) add_timer(interval time.Duration, repeats bool, callback TimerCallback) (IdType, error) {
