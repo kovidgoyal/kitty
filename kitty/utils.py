@@ -783,7 +783,7 @@ def resolved_shell(opts: Optional[Options] = None) -> List[str]:
             env['USER'] = pwd.getpwuid(os.geteuid()).pw_name
         def expand(x: str) -> str:
             return expandvars(x, env)
-        list(map(expand, shlex.split(q)))
+        ans = list(map(expand, shlex.split(q)))
     return ans
 
 
