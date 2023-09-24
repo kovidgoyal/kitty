@@ -246,7 +246,7 @@ func compress_with_zlib(data []byte) []byte {
 	var b bytes.Buffer
 	b.Grow(len(data) + 128)
 	w := zlib.NewWriter(&b)
-	w.Write(data)
+	_, _ = w.Write(data)
 	w.Close()
 	return b.Bytes()
 }
@@ -254,7 +254,7 @@ func compress_with_zlib(data []byte) []byte {
 func (self *GraphicsCommand) AsAPC(payload []byte) string {
 	buf := strings.Builder{}
 	buf.Grow(1024)
-	self.WriteWithPayloadTo(&buf, payload)
+	_ = self.WriteWithPayloadTo(&buf, payload)
 	return buf.String()
 }
 
@@ -417,7 +417,7 @@ func GraphicsCommandFromAPCPayload(raw []byte) *GraphicsCommand {
 	var gc GraphicsCommand
 
 	add_key := func(pos int) {
-		gc.SetString(current_key, utils.UnsafeBytesToString(raw[value_start_at:pos]))
+		_ = gc.SetString(current_key, utils.UnsafeBytesToString(raw[value_start_at:pos]))
 	}
 
 	for pos, ch := range raw {

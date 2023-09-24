@@ -41,7 +41,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 		return nil
 	}
 	cp := config.ConfigParser{LineHandler: handle_line}
-	cp.ParseFiles(path)
+	_ = cp.ParseFiles(path)
 	if ans.Shell == "" {
 		ans.Shell = kitty.KittyConfigDefaults.Shell
 	}
@@ -131,10 +131,7 @@ func get_shell_name(argv0 string) (ans string) {
 	if strings.HasSuffix(strings.ToLower(ans), ".exe") {
 		ans = ans[:len(ans)-4]
 	}
-	if strings.HasPrefix(ans, "-") {
-		ans = ans[1:]
-	}
-	return
+	return strings.TrimPrefix(ans, "-")
 }
 
 func rc_modification_allowed(ksi string) bool {
@@ -194,16 +191,19 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 	if err == nil {
 		var state_before unix.Termios
 		if term.Tcgetattr(&state_before) == nil {
-			term.WriteString(loop.SAVE_PRIVATE_MODE_VALUES)
+			if _, err = term.WriteString(loop.SAVE_PRIVATE_MODE_VALUES); err != nil {
+				fmt.Fprintln(os.Stderr, "failed to write to controlling terminal with error:", err)
+				return
+			}
 			defer func() {
-				term.WriteString(strings.Join([]string{
+				_, _ = term.WriteString(strings.Join([]string{
 					loop.RESTORE_PRIVATE_MODE_VALUES,
 					"\x1b[=u",                      // reset kitty keyboard protocol to legacy
 					"\x1b[1 q",                     // blinking block cursor
 					loop.DECTCEM.EscapeCodeToSet(), // cursor visible
 					"\x1b]112\a",                   // reset cursor color
 				}, ""))
-				term.Tcsetattr(tty.TCSANOW, &state_before)
+				_ = term.Tcsetattr(tty.TCSANOW, &state_before)
 				term.Close()
 			}()
 		} else {

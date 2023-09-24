@@ -71,7 +71,9 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 			b.Write(decoded)
 			r, _ := zlib.NewReader(&b)
 			o := bytes.Buffer{}
-			io.Copy(&o, r)
+			if _, err = io.Copy(&o, r); err != nil {
+				t.Fatal(err)
+			}
 			r.Close()
 			decoded = o.Bytes()
 		}
@@ -93,7 +95,7 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 
 	test_chunked_payload([]byte("abcd"))
 	data := make([]byte, 8111)
-	rand.Read(data)
+	_, _ = rand.Read(data)
 	test_chunked_payload(data)
 	test_chunked_payload([]byte(strings.Repeat("a", 8007)))
 

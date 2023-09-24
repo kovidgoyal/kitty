@@ -39,7 +39,7 @@ func (self *temp_resource) remove() {
 		self.path = ""
 	}
 	if self.mmap != nil {
-		self.mmap.Unlink()
+		_ = self.mmap.Unlink()
 		self.mmap = nil
 	}
 }
@@ -151,7 +151,7 @@ func (self *ImageCollection) ResizeForPageSize(width, height int) {
 func (self *ImageCollection) DeleteAllVisiblePlacements(lp *loop.Loop) {
 	g := self.new_graphics_command()
 	g.SetAction(GRT_action_delete).SetDelete(GRT_delete_visible)
-	g.WriteWithPayloadToLoop(lp, nil)
+	_ = g.WriteWithPayloadToLoop(lp, nil)
 }
 
 func (self *ImageCollection) PlaceImageSubRect(lp *loop.Loop, key string, page_size Size, left, top, width, height int) {
@@ -179,7 +179,7 @@ func (self *ImageCollection) PlaceImageSubRect(lp *loop.Loop, key string, page_s
 	gc := self.new_graphics_command()
 	gc.SetAction(GRT_action_display).SetLeftEdge(uint64(left)).SetTopEdge(uint64(top)).SetWidth(uint64(width)).SetHeight(uint64(height))
 	gc.SetImageId(r.image_id).SetPlacementId(1).SetCursorMovement(GRT_cursor_static)
-	gc.WriteWithPayloadToLoop(lp, nil)
+	_ = gc.WriteWithPayloadToLoop(lp, nil)
 }
 
 func (self *ImageCollection) Initialize(lp *loop.Loop) {
@@ -193,15 +193,16 @@ func (self *ImageCollection) Initialize(lp *loop.Loop) {
 			g1 := self.new_graphics_command()
 			g1.SetTransmission(t).SetAction(GRT_action_query).SetImageId(self.image_id_counter).SetDataWidth(1).SetDataHeight(1).SetFormat(
 				GRT_format_rgb).SetDataSize(uint64(len(payload)))
-			g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
+			_ = g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
 			return self.image_id_counter
 		}
 		tf, err := images.CreateTempInRAM()
 		if err == nil {
-			tf.Write([]byte{1, 2, 3})
+			if _, err = tf.Write([]byte{1, 2, 3}); err == nil {
+				self.detection_file_id = g(GRT_transmission_tempfile, tf.Name())
+				self.temp_file_map[self.detection_file_id] = &temp_resource{path: tf.Name()}
+			}
 			tf.Close()
-			self.detection_file_id = g(GRT_transmission_tempfile, tf.Name())
-			self.temp_file_map[self.detection_file_id] = &temp_resource{path: tf.Name()}
 		}
 		sf, err := shm.CreateTemp("icat-", 3)
 		if err == nil {
@@ -222,7 +223,7 @@ func (self *ImageCollection) Finalize(lp *loop.Loop) {
 			if r.image_id > 0 {
 				g := self.new_graphics_command()
 				g.SetAction(GRT_action_delete).SetDelete(GRT_free_by_id).SetImageId(r.image_id)
-				g.WriteWithPayloadToLoop(lp, nil)
+				_ = g.WriteWithPayloadToLoop(lp, nil)
 			}
 		}
 		img.renderings = nil
@@ -333,7 +334,7 @@ func transmit_by_escape_code(lp *loop.Loop, image_id uint32, temp_file_map map[u
 	atomic := lp.IsAtomicUpdateActive()
 	lp.EndAtomicUpdate()
 	gc.SetTransmission(GRT_transmission_direct)
-	gc.WriteWithPayloadToLoop(lp, frame.Data())
+	_ = gc.WriteWithPayloadToLoop(lp, frame.Data())
 	if atomic {
 		lp.StartAtomicUpdate()
 	}
@@ -348,7 +349,7 @@ func transmit_by_shm(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*t
 	mmap.Close()
 	temp_file_map[image_id] = &temp_resource{mmap: mmap}
 	gc.SetTransmission(GRT_transmission_sharedmem)
-	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(mmap.Name()))
+	_ = gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(mmap.Name()))
 }
 
 func transmit_by_file(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*temp_resource, frame *images.ImageFrame, gc *GraphicsCommand) {
@@ -365,7 +366,7 @@ func transmit_by_file(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*
 		return
 	}
 	gc.SetTransmission(GRT_transmission_tempfile)
-	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(f.Name()))
+	_ = gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(f.Name()))
 }
 
 func (self *ImageCollection) transmit_rendering(lp *loop.Loop, r *rendering) {
@@ -411,17 +412,17 @@ func (self *ImageCollection) transmit_rendering(lp *loop.Loop, r *rendering) {
 				c.SetTargetFrame(uint64(frame.Number))
 				c.SetGap(int32(frame.Delay_ms))
 				c.SetNumberOfLoops(1)
-				c.WriteWithPayloadToLoop(lp, nil)
+				_ = c.WriteWithPayloadToLoop(lp, nil)
 			case 1:
 				c := frame_control_cmd
 				c.SetAnimationControl(2) // set animation to loading mode
-				c.WriteWithPayloadToLoop(lp, nil)
+				_ = c.WriteWithPayloadToLoop(lp, nil)
 			}
 		}
 	}
 	if is_animated {
 		c := frame_control_cmd
 		c.SetAnimationControl(3) // set animation to normal mode
-		c.WriteWithPayloadToLoop(lp, nil)
+		_ = c.WriteWithPayloadToLoop(lp, nil)
 	}
 }

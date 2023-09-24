@@ -183,7 +183,9 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		return lp.OnWakeup()
 	}
 
-	lp.AddTimer(rd.spinner.interval, true, on_timer_tick)
+	if _, err = lp.AddTimer(rd.spinner.interval, true, on_timer_tick); err != nil {
+		return
+	}
 	err = lp.Run()
 	dl_data.mutex.Lock()
 	if dl_data.temp_file_path != "" && !dl_data.download_finished {
