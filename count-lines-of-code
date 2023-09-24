@@ -2,20 +2,16 @@
 
 import subprocess
 
-ignored = []
-for line in subprocess.check_output(['git', 'status', '--ignored', '--porcelain']).decode().splitlines():
-    if line.startswith('!! '):
-        ignored.append(line[3:])
-files_to_exclude = '\n'.join(ignored)
-
+ls_files = subprocess.check_output([ 'git', 'ls-files']).decode('utf-8')
+all_files = set(ls_files.splitlines())
+all_files.discard('')
 cp = subprocess.run(['git', 'check-attr', 'linguist-generated', '--stdin'],
-                    check=True, stdout=subprocess.PIPE, input=subprocess.check_output([ 'git', 'ls-files']))
+                    check=True, stdout=subprocess.PIPE, input='\n'.join(all_files).encode('utf-8'))
 for line in cp.stdout.decode().splitlines():
     if line.endswith(' true'):
-        files_to_exclude += '\n' + line.split(':')[0]
+        fname = line.split(':', 1)[0]
+        all_files.discard(fname)
 
-p = subprocess.Popen([
-    'cloc', '--exclude-list-file', '/dev/stdin', 'kitty', 'kittens', 'tools', 'kitty_tests', 'docs',
-], stdin=subprocess.PIPE)
-p.communicate(files_to_exclude.encode('utf-8'))
-raise SystemExit(p.wait())
+all_files -= {'nerd-fonts-glyphs.txt', 'rowcolumn-diacritics.txt'}
+cp = subprocess.run(['cloc', '--list-file', '-'], input='\n'.join(all_files).encode())
+raise SystemExit(cp.returncode)
