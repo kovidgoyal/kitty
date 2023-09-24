@@ -130,12 +130,15 @@ by running ``sudo visudo`` and adding the following line::
 
     Defaults env_keep += "TERM TERMINFO"
 
-If none of these are suitable for you, you can run sudo as follows::
+If none of these are suitable for you, you can run sudo as ::
 
-    sudo TERMINFO="$TERMINFO" -s -H
+    sudo TERMINFO="$TERMINFO"
 
-This will start a new root shell with the correct :envvar:`TERMINFO` value from your
-current environment copied over.
+This will make :envvar:`TERMINFO` available
+in the sudo environment. Create an alias in your shell rc files to make this
+convenient::
+
+    alias sudo="sudo TERMINFO=\"$TERMINFO\""
 
 If you have double width characters in your prompt, you may also need to
 explicitly set a UTF-8 locale, like::
