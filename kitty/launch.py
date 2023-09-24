@@ -900,17 +900,20 @@ def clone_and_launch(msg: str, window: Window) -> None:
                 patch_cmdline('env', entry, cmdline)
             c.opts.env = []
     else:
-        if window.child.is_default_shell:
-            cmdline = resolved_shell(get_options())
-        else:
-            try:
-                cmdline = window.child.cmdline_of_pid(c.pid)
-            except Exception:
-                cmdline = []
-            if not cmdline:
-                cmdline = list(window.child.argv)
-            if cmdline and cmdline[0] == window.child.final_argv0:
-                cmdline[0] = window.child.final_exe
-            if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
+        try:
+            cmdline = window.child.cmdline_of_pid(c.pid)
+        except Exception:
+            cmdline = []
+        if not cmdline:
+            cmdline = list(window.child.argv)
+        if cmdline and cmdline[0].startswith('-'):  # on macOS, run via run-shell kitten
+            if window.child.is_default_shell:
                 cmdline = window.child.unmodified_argv
+            else:
+                cmdline[0] = cmdline[0][1:]
+                cmdline[0] = which(cmdline[0]) or cmdline[0]
+        if cmdline and cmdline[0] == window.child.final_argv0:
+            cmdline[0] = window.child.final_exe
+        if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
+            cmdline = window.child.unmodified_argv
     launch(get_boss(), c.opts, cmdline, active=window, is_clone_launch=is_clone_launch)
