@@ -46,6 +46,8 @@ Detailed list of changes
 0.30.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Shell integration: Automatically alias sudo to make the kitty terminfo files available in the sudo environment. Can be turned off via :opt:`shell_integration`
+
 - ssh kitten: Fix a regression in 0.28.0 that caused using ``--kitten`` to
   override :file:`ssh.conf` not inheriting settings from :file:`ssh.conf`
   (:iss:`6639`)

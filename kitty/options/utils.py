@@ -863,7 +863,7 @@ def store_multiple(val: str, current_val: Container[str]) -> Iterable[Tuple[str,
         yield val, val
 
 
-allowed_shell_integration_values = frozenset({'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete', 'no-cwd'})
+allowed_shell_integration_values = frozenset({'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete', 'no-cwd', 'no-sudo'})
 
 
 def shell_integration(x: str) -> FrozenSet[str]:

@@ -3028,7 +3028,7 @@ jumping to previous prompts, browsing the output of the previous command in a
 pager, etc. on supported shells. Set to :code:`disabled` to turn off shell
 integration, completely. It is also possible to disable individual features, set
 to a space separated list of these values: :code:`no-rc`, :code:`no-cursor`,
-:code:`no-title`, :code:`no-cwd`, :code:`no-prompt-mark`, :code:`no-complete`.
+:code:`no-title`, :code:`no-cwd`, :code:`no-prompt-mark`, :code:`no-complete`, :code:`no-sudo`.
 See :ref:`Shell integration <shell_integration>` for details.
 '''
     )

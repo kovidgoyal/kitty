@@ -91,6 +91,10 @@ no-complete
     Note that for the fish shell this does not take effect, since fish already
     comes with a kitty completion script.
 
+no-sudo
+    Do not alias :program:`sudo` to ensure the kitty terminfo files are
+    available in the sudo environment
+
 
 More ways to browse command output
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

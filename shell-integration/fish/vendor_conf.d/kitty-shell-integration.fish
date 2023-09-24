@@ -108,6 +108,13 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         __update_cwd_osc
     end
 
+    if not contains "no-sudo" $_ksi
+        # Ensure terminfo is available in sudo
+        if test -n "$TERMINFO"
+            alias sudo="sudo TERMINFO=\"$TERMINFO\""
+        end
+    end
+
     # Handle clone launches
     if test -n "$KITTY_IS_CLONE_LAUNCH"
         set --local orig_conda_env "$CONDA_DEFAULT_ENV"

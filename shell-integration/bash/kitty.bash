@@ -75,7 +75,7 @@ fi
 # which is not available on older bash
 builtin declare -A _ksi_prompt
 _ksi_prompt=(
-    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [cwd]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
+    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [cwd]='y' [sudo]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
     [hostname_prefix]='' [sourced]='y' [last_reported_cwd]=''
 )
 
@@ -89,6 +89,7 @@ _ksi_main() {
             "no-prompt-mark") _ksi_prompt[mark]='n';;
             "no-complete") _ksi_prompt[complete]='n';;
             "no-cwd") _ksi_prompt[cwd]='n';;
+            "no-sudo") _ksi_prompt[sudo]='n';;
         esac
     done
     IFS="$ifs"
@@ -210,6 +211,11 @@ _ksi_main() {
     fi
 
     builtin alias edit-in-kitty="kitten edit-in-kitty"
+
+    if [[ "${_ksi_prompt[sudo]}" == "y" ]]; then
+        # Ensure terminfo is available in sudo
+        [[ -n "$TERMINFO" ]] && builtin alias sudo="sudo TERMINFO=\"$TERMINFO\""
+    fi
 
     if [[ "${_ksi_prompt[complete]}" == "y" ]]; then
         _ksi_completions() {
