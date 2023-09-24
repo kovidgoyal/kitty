@@ -214,6 +214,8 @@ class Child:
         self.cwd = os.path.abspath(cwd)
         self.stdin = stdin
         self.env = env or {}
+        self.is_default_shell = bool(self.argv and self.argv[0] == shell_path)
+        self.should_run_via_run_shell_kitten = is_macos and self.is_default_shell
 
     def final_env(self) -> Dict[str, str]:
         from kitty.options.utils import DELETE_ENV_VAR
@@ -244,7 +246,7 @@ class Child:
         if opts.forward_stdio:
             env['KITTY_STDIO_FORWARDED'] = '3'
         self.unmodified_argv = list(self.argv)
-        if 'disabled' not in opts.shell_integration:
+        if not self.should_run_via_run_shell_kitten and 'disabled' not in opts.shell_integration:
             from .shell_integration import modify_shell_environ
             modify_shell_environ(opts, env, self.argv)
         env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
@@ -271,10 +273,10 @@ class Child:
             os.set_inheritable(stdin_read_fd, True)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        env = tuple(f'{k}={v}' for k, v in self.final_env().items())
+        final_env = self.final_env()
+        env = tuple(f'{k}={v}' for k, v in final_env.items())
         argv = list(self.argv)
-        exe = argv[0]
-        if is_macos and exe == shell_path:
+        if self.should_run_via_run_shell_kitten:
             # bash will only source ~/.bash_profile if it detects it is a login
             # shell (see the invocation section of the bash man page), which it
             # does if argv[0] is prefixed by a hyphen see
@@ -289,8 +291,19 @@ class Child:
             # https://github.com/kovidgoyal/kitty/issues/1870
             # xterm, urxvt, konsole and gnome-terminal do not do it in my
             # testing.
-            argv[0] = (f'-{exe.split("/")[-1]}')
-        self.final_exe = which(exe) or exe
+            import shlex
+            ksi = ' '.join(opts.shell_integration)
+            if ksi == 'invalid':
+                ksi = 'enabled'
+            argv = [kitten_exe(), 'run-shell', '--shell', shlex.join(argv), '--shell-integration', ksi]
+            if is_macos:
+                # In addition for getlogin() to work we need to run the shell
+                # via the /usr/bin/login wrapper, sigh.
+                # https://github.com/kovidgoyal/kitty/issues/6511
+                import pwd
+                user = pwd.getpwuid(os.geteuid()).pw_name
+                argv = ['/usr/bin/login', '-f', '-l', '-p', user] + argv
+        self.final_exe = which(argv[0]) or argv[0]
         self.final_argv0 = argv[0]
         pid = fast_data_types.spawn(
             self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,

@@ -54,6 +54,8 @@ Detailed list of changes
 
 - Expand environment variables in the :opt:`shell` option (:iss:`6511`)
 
+- macOS: When running the default shell, run it via the login program so that calls to ``getlogin()`` work (:iss:`6511`)
+
 
 0.30.0 [2023-09-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
