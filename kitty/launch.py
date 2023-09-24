@@ -12,12 +12,11 @@ from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .clipboard import set_clipboard_string, set_primary_selection
-from .constants import shell_path
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
-from .utils import cmdline_for_hold, get_editor, log_error, resolve_custom_file, which
+from .utils import cmdline_for_hold, get_editor, log_error, resolve_custom_file, resolved_shell, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
 try:
@@ -591,7 +590,7 @@ def _launch(
                 set_primary_selection(stdin)
     else:
         if opts.hold:
-            cmd = kw['cmd'] or [shell_path]
+            cmd = kw['cmd'] or resolved_shell()
             if not os.path.isabs(cmd[0]):
                 cmd[0] = which(cmd[0]) or cmd[0]
             kw['cmd'] = cmdline_for_hold(cmd)
