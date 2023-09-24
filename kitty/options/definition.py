@@ -2782,7 +2782,7 @@ The shell program to execute. The default value of :code:`.` means to use
 whatever shell is set as the default shell for the current user. Note that on
 macOS if you change this, you might need to add :code:`--login` and
 :code:`--interactive` to ensure that the shell starts in interactive mode and
-reads its startup rc files.
+reads its startup rc files. Environment variables are expanded in this setting.
 '''
     )
 

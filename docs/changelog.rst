@@ -52,6 +52,8 @@ Detailed list of changes
 
 - themes kitten: Allow absolute paths for ``--config-file-name`` (:iss:`6638`)
 
+- Expand environment variables in the :opt:`shell` option (:iss:`6511`)
+
 
 0.30.0 [2023-09-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

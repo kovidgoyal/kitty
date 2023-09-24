@@ -771,7 +771,19 @@ def resolved_shell(opts: Optional[Options] = None) -> List[str]:
         ans = [shell_path]
     else:
         import shlex
-        ans = shlex.split(q)
+        env = {}
+        if opts is not None:
+            env['TERM'] = opts.term
+        if 'SHELL' not in os.environ:
+            env['SHELL'] = shell_path
+        if 'HOME' not in os.environ:
+            env['HOME'] = os.path.expanduser('~')
+        if 'USER' not in os.environ:
+            import pwd
+            env['USER'] = pwd.getpwuid(os.geteuid()).pw_name
+        def expand(x: str) -> str:
+            return expandvars(x, env)
+        list(map(expand, shlex.split(q)))
     return ans
 
 
