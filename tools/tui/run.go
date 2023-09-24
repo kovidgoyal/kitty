@@ -144,7 +144,7 @@ func rc_modification_allowed(ksi string) bool {
 	return ksi != ""
 }
 
-func RunShell(shell_cmd []string, shell_integration_env_var_val string) (err error) {
+func RunShell(shell_cmd []string, shell_integration_env_var_val, cwd string) (err error) {
 	shell_name := get_shell_name(shell_cmd[0])
 	var shell_env map[string]string
 	if rc_modification_allowed(shell_integration_env_var_val) && shell_integration.IsSupportedShell(shell_name) {
@@ -178,6 +178,9 @@ func RunShell(shell_cmd []string, shell_integration_env_var_val string) (err err
 		env = os.Environ()
 	}
 	// fmt.Println(fmt.Sprintf("%s %v\n%#v", utils.FindExe(exe), shell_cmd, env))
+	if cwd != "" {
+		_ = os.Chdir(cwd)
+	}
 	return unix.Exec(utils.FindExe(exe), shell_cmd, env)
 }
 

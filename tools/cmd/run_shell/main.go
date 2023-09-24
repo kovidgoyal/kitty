@@ -19,6 +19,7 @@ type Options struct {
 	Shell            string
 	ShellIntegration string
 	Env              []string
+	Cwd              string
 }
 
 func main(args []string, opts *Options) (rc int, err error) {
@@ -53,7 +54,7 @@ func main(args []string, opts *Options) (rc int, err error) {
 			os.Setenv("TERMINFO_DIRS", terminfo_dir+existing)
 		}
 	}
-	err = tui.RunShell(tui.ResolveShell(opts.Shell), tui.ResolveShellIntegration(opts.ShellIntegration))
+	err = tui.RunShell(tui.ResolveShell(opts.Shell), tui.ResolveShellIntegration(opts.ShellIntegration), opts.Cwd)
 	if changed {
 		os.Clearenv()
 		for _, entry := range env_before {
@@ -96,5 +97,10 @@ func EntryPoint(root *cli.Command) *cli.Command {
 		Help: "Specify an env var to set before running the shell. Of the form KEY=VAL. Can be specified multiple times. If no = is present KEY is unset.",
 		Type: "list",
 	})
+	sc.Add(cli.OptionSpec{
+		Name: "--cwd",
+		Help: "The working directory to use when executing the shell.",
+	})
+
 	return sc
 }
