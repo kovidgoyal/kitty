@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 import time
-from functools import partial
+from functools import partial, lru_cache
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 from docutils import nodes
@@ -546,9 +546,41 @@ def add_html_context(app: Any, pagename: str, templatename: str, context: Any, d
         context['toctree'] = include_sub_headings
 
 
+@lru_cache
+def monkeypatch_man_writer() -> None:
+    '''
+    Monkeypatch the docutils man translator to output better tables
+    '''
+    from docutils.writers.manpage import Table, Translator
+
+    class PatchedTable(Table):
+        _options: list[str]
+        def __init__(self) -> None:
+            super().__init__()
+            self.needs_border_removal = self._options == ['center']
+            if self.needs_border_removal:
+                self._options = ['box', 'center']
+
+        def as_list(self) -> list[str]:
+            ans = super().as_list()
+            if self.needs_border_removal:
+                # remove side and top borders as we use box in self._options
+                ans[2] = ans[2][1:]
+                a, b = ans[2].rpartition('|')[::2]
+                ans[2] = a + b
+                if ans[3] == '_\n':
+                    del ans[3]  # top border
+                del ans[-2] # bottom border
+            return ans
+    def visit_table(self: Translator, node: object) -> None:
+        self._active_table = PatchedTable()  # type: ignore
+    Translator.visit_table = visit_table  # type: ignore
+
+
 def setup(app: Any) -> None:
     os.makedirs('generated/conf', exist_ok=True)
     from kittens.runner import all_kitten_names
+    monkeypatch_man_writer()
     kn = all_kitten_names()
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
