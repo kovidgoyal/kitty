@@ -553,7 +553,7 @@ def monkeypatch_man_writer() -> None:
     '''
     from docutils.writers.manpage import Table, Translator
 
-    class PatchedTable(Table):
+    class PatchedTable(Table):  # type: ignore
         _options: list[str]
         def __init__(self) -> None:
             super().__init__()
@@ -562,7 +562,7 @@ def monkeypatch_man_writer() -> None:
                 self._options = ['box', 'center']
 
         def as_list(self) -> list[str]:
-            ans = super().as_list()
+            ans: list[str] = super().as_list()
             if self.needs_border_removal:
                 # remove side and top borders as we use box in self._options
                 ans[2] = ans[2][1:]
@@ -573,8 +573,8 @@ def monkeypatch_man_writer() -> None:
                 del ans[-2] # bottom border
             return ans
     def visit_table(self: Translator, node: object) -> None:
-        self._active_table = PatchedTable()  # type: ignore
-    Translator.visit_table = visit_table  # type: ignore
+        setattr(self, '_active_table', PatchedTable())
+    setattr(Translator, 'visit_table', visit_table)
 
 
 def setup(app: Any) -> None:
