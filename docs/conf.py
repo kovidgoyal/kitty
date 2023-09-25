@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 import time
-from functools import partial, lru_cache
+from functools import lru_cache, partial
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 from docutils import nodes
