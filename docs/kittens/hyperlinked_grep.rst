@@ -4,10 +4,10 @@ Hyperlinked grep
 .. note::
 
    As of ripgrep versions newer that 13.0 it supports hyperlinks
-   natively so you can just add the following alias in your shells rc files:
-   ``rg=alias rg --hyperlink-format=kitty`` no need to use this kitten.
+   natively so you can just add the following alias in your shell rc file:
+   ``alias rg="rg --hyperlink-format=kitty"`` no need to use this kitten.
    But, see below for instructions on how to customize kitty to have it open
-   the hyperlinks from ripgrep in your editor.
+   the hyperlinks from ripgrep in your favorite editor.
 
 This kitten allows you to search your files using `ripgrep
 <https://github.com/BurntSushi/ripgrep>`__ and open the results directly in your
