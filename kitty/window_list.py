@@ -91,6 +91,12 @@ class WindowGroup:
             'windows': [w.serialize_state() for w in self.windows]
         }
 
+    def as_simple_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'windows': [w.id for w in self.windows],
+        }
+
     def decoration(self, which: EdgeLiteral, border_mult: int = 1, is_single_window: bool = False) -> int:
         if not self.windows:
             return 0

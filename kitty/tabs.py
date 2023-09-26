@@ -81,6 +81,7 @@ class TabDict(TypedDict):
     layout_opts: Dict[str, Any]
     enabled_layouts: List[str]
     windows: List[WindowDict]
+    groups: List[Dict[str, Any]]
     active_window_history: List[int]
 
 
@@ -781,6 +782,9 @@ class Tab:  # {{{
                     is_focused=w.os_window_id == current_focused_os_window_id() and w is active_window,
                     is_self=w is self_window)
 
+    def list_groups(self) -> List[Dict[str, Any]]:
+        return [g.as_simple_dict() for g in self.windows.groups]
+
     def matches_query(self, field: str, query: str, active_tab_manager: Optional['TabManager'] = None) -> bool:
         if field == 'title':
             return re.search(query, self.effective_title) is not None
@@ -1036,6 +1040,7 @@ class TabManager:  # {{{
                         'layout_opts': tab.current_layout.layout_opts.serialized(),
                         'enabled_layouts': tab.enabled_layouts,
                         'windows': windows,
+                        'groups': tab.list_groups(),
                         'active_window_history': list(tab.windows.active_window_history),
                     }
 
