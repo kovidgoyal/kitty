@@ -5,7 +5,7 @@ Hyperlinked grep
 
    As of ripgrep versions newer that 13.0 it supports hyperlinks
    natively so you can just add the following alias in your shells rc files:
-   ``rg=alias rg --hyperlink-format=kitty` no need to use this kitten.
+   ``rg=alias rg --hyperlink-format=kitty`` no need to use this kitten.
    But, see below for instructions on how to customize kitty to have it open
    the hyperlinks from ripgrep in your editor.
 
