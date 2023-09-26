@@ -3890,7 +3890,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
     if (upd.set_as_nearest_extend || self->selections.extension_in_progress) {
         self->selections.extension_in_progress = true;
         bool start_is_nearer = false;
-        if (self->selections.extend_mode == EXTEND_LINE || self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
+        if (self->selections.extend_mode == EXTEND_LINE || self->selections.extend_mode == EXTEND_LINE_FROM_POINT || self->selections.extend_mode == EXTEND_WORD_AND_LINE_FROM_POINT) {
             if (abs_start.y == abs_end.y) {
                 if (abs_current_input.y == abs_start.y) start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.x <= abs_start.x) : (abs_current_input.x <= abs_end.x);
                 else start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.y > abs_start.y) : (abs_current_input.y < abs_end.y);
@@ -3956,6 +3956,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             break;
         }
         case EXTEND_LINE_FROM_POINT:
+        case EXTEND_WORD_AND_LINE_FROM_POINT:
         case EXTEND_LINE: {
             bool adjust_both_ends = is_selection_empty(s);
             if (s->adjusting_start || adjust_both_ends) s->start_scrolled_by = self->scrolled_by;
@@ -3975,6 +3976,14 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
                     if (self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
                         if (x <= up_end.x) {
                             S; s->start.x = MAX(x, up_start.x);
+                        }
+                    } else if (self->selections.extend_mode == EXTEND_WORD_AND_LINE_FROM_POINT) {
+                        if (x <= up_end.x) {
+                            S; s->start.x = MAX(x, up_start.x);
+                        }
+                        const bool word_found_at_cursor = screen_selection_range_for_word(self, s->input_current.x, s->input_current.y, &start.y, &end.y, &start.x, &end.x, true);
+                        if (word_found_at_cursor) {
+                            *a = start; a->in_left_half_of_cell = true;
                         }
                     } else {
                         top_line = continue_line_upwards(self, top_line, &up_start, &up_end);
