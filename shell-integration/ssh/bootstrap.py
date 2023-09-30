@@ -162,9 +162,10 @@ def compile_terminfo(base):
         [tic, '-x', '-o', os.path.join(base, tname), os.path.join(base, '.terminfo', 'kitty.terminfo')],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
+    output = p.stdout.read()
     rc = p.wait()
     if rc != 0:
-        getattr(sys.stderr, 'buffer', sys.stderr).write(p.stdout)
+        getattr(sys.stderr, 'buffer', sys.stderr).write(output)
         raise SystemExit('Failed to compile the terminfo database')
 
 
