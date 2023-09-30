@@ -154,15 +154,6 @@
     },
 
     {
-        "name": "setuptools",
-        "unix": {
-            "filename": "setuptools-53.0.0.tar.gz",
-            "hash": "sha256:1b18ef17d74ba97ac9c0e4b4265f123f07a8ae85d9cd093949fa056d3eeeead5",
-            "urls": ["pypi"]
-        }
-    },
-
-    {
         "name": "libpng",
         "unix": {
             "filename": "libpng-1.6.37.tar.xz",
