@@ -524,8 +524,8 @@ Unicode placeholders
 
 You can also use a special Unicode character ``U+10EEEE`` as a placeholder for
 an image. This approach is less flexible, but it allows using images inside
-any host application that supports Unicode and foreground colors (tmux, vim, weechat, etc.)
-and as a way to pass escape codes through to the underlying terminal.
+any host application that supports Unicode, foreground colors (tmux, vim, weechat, etc.),
+and a way to pass escape codes through to the underlying terminal.
 
 The central idea is that we use a single *Private Use* Unicode character as a
 *placeholder* to indicate to the terminal that an image is supposed to be
