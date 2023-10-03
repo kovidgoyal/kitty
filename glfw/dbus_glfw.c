@@ -38,7 +38,7 @@ report_error(DBusError *err, const char *fmt, ...) {
     va_start(args, fmt);
     int n = vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
-    if ((size_t)n < (sizeof(buf) - 256)) snprintf(buf + n, sizeof(buf) - n, ". DBUS error: %s", err->message ? err->message : "(null)");
+    if (n >= 0 && (size_t)n < (sizeof(buf) - 256)) snprintf(buf + n, sizeof(buf) - n, ". DBUS error: %s", err->message ? err->message : "(null)");
     _glfwInputError(GLFW_PLATFORM_ERROR, "%s", buf);
     dbus_error_free(err);
 }
