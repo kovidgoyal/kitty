@@ -6,7 +6,7 @@
 { \unalias command; \unset -f command; } >/dev/null 2>&1
 
 
-die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; exit 1; }
+die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/fd/2; exit 1; }
 
 exec_kitty() {
     [ -n "$kitty_exe" ] && exec "$kitty_exe" "$@"
