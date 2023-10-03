@@ -206,6 +206,7 @@ class WindowDict(TypedDict):
     lines: int
     columns: int
     user_vars: Dict[str, str]
+    at_prompt: bool
 
 
 class PipeData(TypedDict):
@@ -648,6 +649,7 @@ class Window:
             'env': self.child.environ,
             'foreground_processes': self.child.foreground_processes,
             'is_self': is_self,
+            'at_prompt': self.at_prompt,
             'lines': self.screen.lines,
             'columns': self.screen.columns,
             'user_vars': self.user_vars,
