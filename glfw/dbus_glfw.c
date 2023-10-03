@@ -33,12 +33,12 @@
 
 static void
 report_error(DBusError *err, const char *fmt, ...) {
-    static char buf[1024];
+    static char buf[4096];
     va_list args;
     va_start(args, fmt);
     int n = vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
-    snprintf(buf + n, sizeof(buf), ". DBUS error: %s", err->message);
+    if ((size_t)n < (sizeof(buf) - 256)) snprintf(buf + n, sizeof(buf) - n, ". DBUS error: %s", err->message ? err->message : "(null)");
     _glfwInputError(GLFW_PLATFORM_ERROR, "%s", buf);
     dbus_error_free(err);
 }
