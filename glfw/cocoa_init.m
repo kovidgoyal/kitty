@@ -308,6 +308,10 @@ static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
     return NSTerminateCancel;
 }
 
+- (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app {
+    return YES;
+}
+
 static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)flag
