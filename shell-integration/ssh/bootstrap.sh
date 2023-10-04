@@ -14,7 +14,17 @@ cleanup_on_bootstrap_exit() {
     tdir=""
 }
 
-die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
+die() {
+    if [ -e /dev/stderr ]; then
+        printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr;
+    elif [ -e /dev/fd/2 ]; then
+        printf "\033[31m%s\033[m\n\r" "$*" > /dev/fd/2;
+    else
+        printf "\033[31m%s\033[m\n\r" "$*";
+    fi
+    cleanup_on_bootstrap_exit;
+    exit 1;
+}
 
 python_detected="0"
 detect_python() {

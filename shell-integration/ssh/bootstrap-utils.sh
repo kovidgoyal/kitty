@@ -240,6 +240,12 @@ exec_login_shell() {
     execute_with_perl
     execute_sh_with_posix_env
     exec "$login_shell" "-l"
-    printf "%s\n" "Could not execute the shell $login_shell as a login shell" > /dev/stderr
+    if [ -e /dev/stderr ]; then
+        printf "%s\n" "Could not execute the shell $login_shell as a login shell" > /dev/stderr
+    elif [ -e /dev/fd/2 ]; then
+        printf "%s\n" "Could not execute the shell $login_shell as a login shell" > /dev/fd/2
+    else
+        printf "%s\n" "Could not execute the shell $login_shell as a login shell"
+    fi
     exec "$login_shell"
 }
