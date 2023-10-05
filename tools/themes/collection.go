@@ -470,8 +470,9 @@ type ThemeMetadata struct {
 
 func ParseThemeMetadata(path string) (*ThemeMetadata, map[string]string, error) {
 	var in_metadata, in_blurb, finished_metadata bool
-	ans := ThemeMetadata{}
+	ans := ThemeMetadata{Is_dark: true} // the default background in kitty is dark
 	settings := map[string]string{}
+
 	read_is_dark := func(key, val string) (err error) {
 		settings[key] = val
 		if key == "background" {
@@ -479,7 +480,7 @@ func ParseThemeMetadata(path string) (*ThemeMetadata, map[string]string, error) 
 			if val != "" {
 				bg, err := style.ParseColor(val)
 				if err == nil {
-					ans.Is_dark = utils.Max(bg.Red, bg.Green, bg.Green) < 115
+					ans.Is_dark = utils.Max(bg.Red, bg.Green, bg.Blue) < 115
 				}
 			}
 		}
