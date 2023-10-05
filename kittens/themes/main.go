@@ -111,11 +111,11 @@ func parse_theme_metadata() error {
 	for _, path := range paths {
 		if path != "" {
 			metadata, _, err := themes.ParseThemeMetadata(path)
-			if metadata.Name == "" {
-				metadata.Name = themes.ThemeNameFromFileName(filepath.Base(path))
-			}
 			if err != nil {
 				return err
+			}
+			if metadata.Name == "" {
+				metadata.Name = themes.ThemeNameFromFileName(filepath.Base(path))
 			}
 			ans = append(ans, metadata)
 		}
