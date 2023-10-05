@@ -35,7 +35,9 @@ func TestThemeCollections(t *testing.T) {
 	tdir := t.TempDir()
 
 	pt := func(expected ThemeMetadata, lines ...string) {
-		os.WriteFile(filepath.Join(tdir, "temp.conf"), []byte(strings.Join(lines, "\n")), 0o600)
+		if err := os.WriteFile(filepath.Join(tdir, "temp.conf"), []byte(strings.Join(lines, "\n")), 0o600); err != nil {
+			t.Fatal(err)
+		}
 		actual, _, err := ParseThemeMetadata(filepath.Join(tdir, "temp.conf"))
 		if err != nil {
 			t.Fatal(err)
@@ -46,14 +48,16 @@ func TestThemeCollections(t *testing.T) {
 	}
 	pt(ThemeMetadata{Name: "XYZ", Blurb: "a b", Author: "A", Is_dark: true, Num_settings: 2},
 		"# some crap", " ", "## ", "## author: A", "## name: XYZ", "## blurb: a", "## b", "", "color red", "background black", "include inc.conf")
-	os.WriteFile(filepath.Join(tdir, "inc.conf"), []byte("background white"), 0o600)
+	if err := os.WriteFile(filepath.Join(tdir, "inc.conf"), []byte("background white"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	pt(ThemeMetadata{Name: "XYZ", Blurb: "a b", Author: "A", Num_settings: 2},
 		"# some crap", " ", "## ", "## author: A", "## name: XYZ", "## blurb: a", "## b", "", "color red", "background black", "include inc.conf")
 
 	buf := bytes.Buffer{}
 	zw := zip.NewWriter(&buf)
 	fw, _ := zw.Create("x/themes.json")
-	fw.Write([]byte(`[
+	if _, err := fw.Write([]byte(`[
     {
         "author": "X Y",
         "blurb": "A dark color scheme for the kitty terminal.",
@@ -67,11 +71,17 @@ func TestThemeCollections(t *testing.T) {
 	{
 		"name": "Empty", "file": "empty.conf"
 	}
-	]`))
+	]`)); err != nil {
+		t.Fatal(err)
+	}
 	fw, _ = zw.Create("x/empty.conf")
-	fw.Write([]byte("empty"))
+	if _, err := fw.Write([]byte("empty")); err != nil {
+		t.Fatal(err)
+	}
 	fw, _ = zw.Create("x/themes/Alabaster_Dark.conf")
-	fw.Write([]byte("alabaster"))
+	if _, err := fw.Write([]byte("alabaster")); err != nil {
+		t.Fatal(err)
+	}
 	zw.Close()
 
 	received_etag := ""
@@ -91,8 +101,7 @@ func TestThemeCollections(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	_, err := fetch_cached("test", ts.URL, tdir, 0)
-	if err != nil {
+	if _, err := fetch_cached("test", ts.URL, tdir, 0); err != nil {
 		t.Fatal(err)
 	}
 	r, err := zip.OpenReader(filepath.Join(tdir, "test.zip"))
