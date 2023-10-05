@@ -43,7 +43,7 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
-0.30.1 [future]
+0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Shell integration: Automatically alias sudo to make the kitty terminfo files available in the sudo environment. Can be turned off via :opt:`shell_integration`
@@ -58,7 +58,7 @@ Detailed list of changes
 
 - macOS: When running the default shell, run it via the login program so that calls to ``getlogin()`` work (:iss:`6511`)
 
-- X11: Fix a crash on startup when the iBUS service returns errors and the GLFW_IM_MODULE env var is set to ibus (:iss:`6650`)
+- X11: Fix a crash on startup when the ibus service returns errors and the GLFW_IM_MODULE env var is set to ibus (:iss:`6650`)
 
 
 0.30.0 [2023-09-18]
