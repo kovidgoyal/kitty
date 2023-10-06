@@ -722,6 +722,11 @@ mma('Select line from point',
     long_text='Select from the clicked point to the end of the line.'
     )
 
+mma('Select a word at the point, together with the rest of the line',
+    'select_word_and_line_from_point ctrl+alt+left triplepress ungrabbed mouse_selection word_and_line_from_point',
+    long_text='Select the word under the clicked point, as well as through the end of the line.'
+    )
+
 mma('Extend the current selection',
     'extend_selection right press ungrabbed mouse_selection extend',
     long_text='''
@@ -757,6 +762,11 @@ mma('Select a line even when grabbed',
 mma('Select line from point even when grabbed',
     'select_line_from_point_grabbed ctrl+shift+alt+left triplepress ungrabbed,grabbed mouse_selection line_from_point',
     long_text='Select from the clicked point to the end of the line even when grabbed.'
+    )
+
+mma('Select line from point even when grabbed',
+    'select_word_and_line_from_point_grabbed ctrl+shift+alt+left triplepress ungrabbed,grabbed mouse_selection word_and_line_from_point',
+    long_text='Select the click word and to end of line, even when grabbed.'
     )
 
 mma('Extend the current selection even when grabbed',

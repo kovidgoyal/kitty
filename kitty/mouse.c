@@ -689,6 +689,7 @@ typedef enum MouseSelectionType {
     MOUSE_SELECTION_WORD,
     MOUSE_SELECTION_LINE,
     MOUSE_SELECTION_LINE_FROM_POINT,
+    MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
     MOUSE_SELECTION_MOVE_END,
 } MouseSelectionType;
 
@@ -719,6 +720,9 @@ mouse_selection(Window *w, int code, int button) {
             break;
         case MOUSE_SELECTION_LINE_FROM_POINT:
             if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end) && end > w->mouse_pos.cell_x) S(EXTEND_LINE_FROM_POINT);
+            break;
+        case MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT:
+            if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end) && end > w->mouse_pos.cell_x) S(EXTEND_WORD_AND_LINE_FROM_POINT);
             break;
         case MOUSE_SELECTION_EXTEND:
             extend_selection(w, false, true);
@@ -1050,6 +1054,7 @@ init_mouse(PyObject *module) {
     PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE_FROM_POINT);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_MOVE_END);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
