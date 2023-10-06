@@ -43,6 +43,11 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
+0.30.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- A new mouse action ``mouse_selection word_and_line_from_point`` to select the current word under the mouse cursor and extend to end of line (:pull:`6663`)
+
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
