@@ -843,7 +843,7 @@ def build_ref_map(skip_generation: bool = False) -> str:
     dest = 'kitty/docs_ref_map_generated.h'
     if not skip_generation:
         d = extract_rst_targets()
-        h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};\n'
+        h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d, sort_keys=True).encode('utf-8'))))) + '\n};\n'
         q = ''
         with suppress(FileNotFoundError), open(dest) as f:
             q = f.read()
@@ -868,7 +868,7 @@ def build_uniforms_header(skip_generation: bool = False) -> str:
             for x in m.group(1).split(','):
                 yield x.strip().partition('[')[0]
 
-    for x in glob.glob('kitty/*.glsl'):
+    for x in sorted(glob.glob('kitty/*.glsl')):
         name = os.path.basename(x).partition('.')[0]
         name, sep, shader_type = name.partition('_')
         if not sep or shader_type not in ('fragment', 'vertex'):
