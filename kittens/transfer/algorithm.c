@@ -110,9 +110,9 @@ init_rsync(Rsync *ans, size_t block_size, int strong_hash_type, int checksum_typ
     ans->hasher = ans->hasher_constructor();
     ans->checksummer = ans->checksummer_constructor();
     ans->hasher.state = ans->hasher.new();
-    if (ans->hasher.state == NULL) { free(ans); return "Out of memory"; }
+    if (ans->hasher.state == NULL) { free_rsync(ans); return "Out of memory"; }
     ans->checksummer.state = ans->checksummer.new();
-    if (ans->checksummer.state == NULL) { free(ans); return "Out of memory"; }
+    if (ans->checksummer.state == NULL) { free_rsync(ans); return "Out of memory"; }
     return NULL;
 }
 
