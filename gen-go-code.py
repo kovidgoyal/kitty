@@ -822,6 +822,7 @@ def generate_ssh_kitten_data() -> None:
     def normalize(t: tarfile.TarInfo) -> tarfile.TarInfo:
         t.uid = t.gid = 0
         t.uname = t.gname = ''
+        t.mtime = 0
         return t
 
     if newer(dest, *files):
