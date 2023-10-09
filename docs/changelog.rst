@@ -52,6 +52,8 @@ Detailed list of changes
 
 - macOS: When running the default shell with the login program fix :file:`~/.hushlogin` not being respected when opening windows not in the home directory (:iss:`6689`)
 
+- ``kitten @ set-background-opacity`` - add a new ``--toggle`` flag to easily switch opacity between the specified value and the default (:iss:`6691`)
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
