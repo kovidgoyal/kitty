@@ -276,6 +276,7 @@ class Child:
         final_env = self.final_env()
         env = tuple(f'{k}={v}' for k, v in final_env.items())
         argv = list(self.argv)
+        cwd = self.cwd
         if self.should_run_via_run_shell_kitten:
             # bash will only source ~/.bash_profile if it detects it is a login
             # shell (see the invocation section of the bash man page), which it
@@ -299,14 +300,19 @@ class Child:
             if is_macos:
                 # In addition for getlogin() to work we need to run the shell
                 # via the /usr/bin/login wrapper, sigh.
+                # And login on macOS looks for .hushlogin in CWD instead of
+                # HOME, bloody idiotic so we cant cwd when running it.
                 # https://github.com/kovidgoyal/kitty/issues/6511
                 import pwd
                 user = pwd.getpwuid(os.geteuid()).pw_name
-                argv = ['/usr/bin/login', '-q', '-f', '-l', '-p', user] + argv
+                if cwd:
+                    argv.append('--cwd=' + cwd)
+                    cwd = os.path.expanduser('~')
+                argv = ['/usr/bin/login', '-f', '-l', '-p', user] + argv
         self.final_exe = which(argv[0]) or argv[0]
         self.final_argv0 = argv[0]
         pid = fast_data_types.spawn(
-            self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
+            self.final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
             ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio)
         os.close(slave)
         self.pid = pid
