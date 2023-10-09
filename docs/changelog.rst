@@ -48,6 +48,8 @@ Detailed list of changes
 
 - A new mouse action ``mouse_selection word_and_line_from_point`` to select the current word under the mouse cursor and extend to end of line (:pull:`6663`)
 
+- macOS: When running the default shell with the login program pass ``-q`` to login so that it doesn't print the MOTD (:iss:`6689`)
+
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

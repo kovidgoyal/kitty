@@ -302,7 +302,7 @@ class Child:
                 # https://github.com/kovidgoyal/kitty/issues/6511
                 import pwd
                 user = pwd.getpwuid(os.geteuid()).pw_name
-                argv = ['/usr/bin/login', '-f', '-l', '-p', user] + argv
+                argv = ['/usr/bin/login', '-q', '-f', '-l', '-p', user] + argv
         self.final_exe = which(argv[0]) or argv[0]
         self.final_argv0 = argv[0]
         pid = fast_data_types.spawn(
