@@ -12,13 +12,13 @@ from kitty.options.utils import (
     config_or_absolute_path, copy_on_select, cursor_text_color, deprecated_adjust_line_height,
     deprecated_hide_window_decorations_aliases, deprecated_macos_show_window_title_in_menubar_alias,
     deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
-    macos_option_as_alt, macos_titlebar_color, modify_font, narrow_symbols, optional_edge_width,
-    parse_map, parse_mouse_map, paste_actions, remote_control_password, resize_debounce_time,
-    scrollback_lines, scrollback_pager_history_size, shell_integration, store_multiple, symbol_map,
-    tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
-    tab_font_style, tab_separator, tab_title_template, titlebar_color, to_cursor_shape, to_font_size,
-    to_layout_names, to_modifiers, url_prefixes, url_style, visual_window_select_characters,
-    window_border_width, window_size
+    macos_option_as_alt, macos_titlebar_color, menu_map, modify_font, narrow_symbols,
+    optional_edge_width, parse_map, parse_mouse_map, paste_actions, remote_control_password,
+    resize_debounce_time, scrollback_lines, scrollback_pager_history_size, shell_integration,
+    store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
+    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, titlebar_color,
+    to_cursor_shape, to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
+    visual_window_select_characters, window_border_width, window_size
 )
 
 
@@ -1105,6 +1105,10 @@ class Parser:
     def mark3_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['mark3_foreground'] = to_color(val)
 
+    def menu_map(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        for k, v in menu_map(val, ans["menu_map"]):
+            ans["menu_map"][k] = v
+
     def modify_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in modify_font(val):
             ans["modify_font"][k] = v
@@ -1407,6 +1411,7 @@ def create_result_dict() -> typing.Dict[str, typing.Any]:
         'exe_search_path': {},
         'font_features': {},
         'kitten_alias': {},
+        'menu_map': {},
         'modify_font': {},
         'narrow_symbols': {},
         'remote_control_password': {},

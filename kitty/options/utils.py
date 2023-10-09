@@ -871,6 +871,26 @@ def store_multiple(val: str, current_val: Container[str]) -> Iterable[Tuple[str,
         yield val, val
 
 
+def menu_map(val: str, current_val: Container[str]) -> Iterable[Tuple[Tuple[str, ...], str]]:
+    parts = val.split(maxsplit=1)
+    if len(parts) != 2:
+        raise ValueError(f'Ignoring invalid menu action: {val}')
+    if parts[0] != 'global':
+        raise ValueError(f'Unknown menu type: {parts[0]}. Known types: global')
+    start = 0
+    if parts[1].startswith('"'):
+        start = 1
+        idx = parts[1].find('"', 1)
+        if idx == -1:
+            raise ValueError(f'The menu entry name in {val} must end with a double quote')
+    else:
+        idx = parts[1].find(' ')
+        if idx == -1:
+            raise ValueError(f'The menu entry {val} must have an action')
+    location = ('global',) + tuple(parts[1][start:idx].split('::'))
+    yield location, parts[1][idx+1:].lstrip()
+
+
 allowed_shell_integration_values = frozenset({'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete', 'no-cwd', 'no-sudo'})
 
 

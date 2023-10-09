@@ -179,6 +179,49 @@ url_prefixes(PyObject *up, Options *opts) {
     }
 }
 
+static inline void
+free_menu_map(Options *opts) {
+    if (opts->global_menu.entries) {
+        for (size_t i=0; i < opts->global_menu.count; i++) {
+            struct MenuItem *e = opts->global_menu.entries + i;
+            if (e->definition) { free((void*)e->definition); }
+            if (e->location) {
+                for (size_t l=0; l < e->location_count; l++) { free((void*)e->location[l]); }
+                free(e->location);
+            }
+        }
+        free(opts->global_menu.entries); opts->global_menu.entries = NULL;
+    }
+}
+
+static void
+menu_map(PyObject *entry_dict, Options *opts) {
+    if (!PyDict_Check(entry_dict)) { PyErr_SetString(PyExc_TypeError, "menu_map entries must be a dict"); return; }
+    free_menu_map(opts);
+    size_t maxnum = PyDict_Size(entry_dict);
+    opts->global_menu.count = 0;
+    opts->global_menu.entries = calloc(maxnum, sizeof(opts->global_menu.entries[0]));
+    if (!opts->global_menu.entries) { PyErr_NoMemory(); return; }
+
+    PyObject *key, *value;
+    Py_ssize_t pos = 0;
+
+    while (PyDict_Next(entry_dict, &pos, &key, &value)) {
+        if (PyTuple_Check(key) && PyTuple_GET_SIZE(key) > 1 && PyUnicode_Check(value) && PyUnicode_CompareWithASCIIString(PyTuple_GET_ITEM(key, 0), "global") == 0) {
+            struct MenuItem *e = opts->global_menu.entries + opts->global_menu.count++;
+            e->location_count = PyTuple_GET_SIZE(key) - 1;
+            e->location = calloc(e->location_count, sizeof(e->location[0]));
+            if (!e->location) { PyErr_NoMemory(); return; }
+            e->definition = strdup(PyUnicode_AsUTF8(value));
+            if (!e->definition) { PyErr_NoMemory(); return; }
+            for (size_t i = 0; i < e->location_count; i++) {
+                e->location[i] = strdup(PyUnicode_AsUTF8(PyTuple_GET_ITEM(key, i+1)));
+                if (!e->location[i]) { PyErr_NoMemory(); return; }
+            }
+        }
+    }
+}
+
 static void
 text_composition_strategy(PyObject *val, Options *opts) {
     if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "text_rendering_strategy must be a string"); return; }

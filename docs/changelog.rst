@@ -46,6 +46,8 @@ Detailed list of changes
 0.30.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new option :opt:`menu_map` that allows adding entries to the global menubar on macOS (:disc:`6680`)
+
 - A new mouse action ``mouse_selection word_and_line_from_point`` to select the current word under the mouse cursor and extend to end of line (:pull:`6663`)
 
 - macOS: When running the default shell with the login program fix :file:`~/.hushlogin` not being respected when opening windows not in the home directory (:iss:`6689`)

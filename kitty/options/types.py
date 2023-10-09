@@ -399,6 +399,7 @@ option_names = (  # {{{
  'mark2_foreground',
  'mark3_background',
  'mark3_foreground',
+ 'menu_map',
  'modify_font',
  'mouse_hide_wait',
  'mouse_map',
@@ -629,6 +630,7 @@ class Options:
     exe_search_path: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, str] = {}
+    menu_map: typing.Dict[typing.Tuple[str, ...], str] = {}
     modify_font: typing.Dict[str, kitty.fonts.FontModification] = {}
     narrow_symbols: typing.Dict[typing.Tuple[int, int], int] = {}
     remote_control_password: typing.Dict[str, typing.Sequence[str]] = {}
@@ -750,6 +752,7 @@ defaults.env = {}
 defaults.exe_search_path = {}
 defaults.font_features = {}
 defaults.kitten_alias = {}
+defaults.menu_map = {}
 defaults.modify_font = {}
 defaults.narrow_symbols = {}
 defaults.remote_control_password = {}

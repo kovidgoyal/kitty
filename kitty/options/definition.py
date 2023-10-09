@@ -3096,6 +3096,20 @@ STDOUT. When enabled, this also sets the :code:`KITTY_STDIO_FORWARDED=3`
 environment variable so child processes know about the forwarding.
 ''')
 
+opt('+menu_map', '',
+    option_type='menu_map', add_to_default=False, ctype='!menu_map',
+    long_text='''
+Specify entries for various menus in kitty. Currently only the global menubar on macOS
+is supported. For example::
+
+   menu_map global "Actions::Launch something special" launch --hold --type=os-window sh -c "echo hello world"
+
+This will create a menu entry named "Launch something special" in an "Actions" menu in the macOS global menubar.
+Sub-menus can be created by adding more levels separated by ::.
+'''
+    )
+
+
 egr()  # }}}
 
 

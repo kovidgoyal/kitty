@@ -1148,6 +1148,7 @@ process_cocoa_pending_actions(void) {
     if (cocoa_pending_actions_data.wd) {
         if (cocoa_pending_actions[NEW_OS_WINDOW_WITH_WD]) { call_boss(new_os_window_with_wd, "sO", cocoa_pending_actions_data.wd, Py_True); }
         if (cocoa_pending_actions[NEW_TAB_WITH_WD]) { call_boss(new_tab_with_wd, "sO", cocoa_pending_actions_data.wd, Py_True); }
+        if (cocoa_pending_actions[USER_MENU_ACTION]) { call_boss(user_menu_action, "s", cocoa_pending_actions_data.wd); }
         free(cocoa_pending_actions_data.wd);
         cocoa_pending_actions_data.wd = NULL;
     }

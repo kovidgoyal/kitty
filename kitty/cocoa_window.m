@@ -212,6 +212,16 @@ find_app_name(void) {
 @end
 // }}}
 
+@interface UserMenuItem : NSMenuItem
+@property (nonatomic) size_t action_index;
+@end
+
+@implementation UserMenuItem {
+}
+@end
+
+
+
 @interface GlobalMenuTarget : NSObject
 + (GlobalMenuTarget *) shared_instance;
 @end
@@ -219,6 +229,13 @@ find_app_name(void) {
 #define PENDING(selector, which) - (void)selector:(id)sender { (void)sender; set_cocoa_pending_action(which, NULL); }
 
 @implementation GlobalMenuTarget
+
+- (void)user_menu_action:(id)sender {
+    UserMenuItem *m = sender;
+    if (m.action_index < OPT(global_menu).count && OPT(global_menu.entries)) {
+        set_cocoa_pending_action(USER_MENU_ACTION, OPT(global_menu).entries[m.action_index].definition);
+    }
+}
 
 PENDING(edit_config_file, PREFERENCES_WINDOW)
 PENDING(new_os_window, NEW_OS_WINDOW)
@@ -559,6 +576,35 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 
 // global menu {{{
 
+static void
+add_user_global_menu_entry(struct MenuItem *e, NSMenu *bar, size_t action_index) {
+    NSMenu *parent = bar;
+    UserMenuItem *final_item = nil;
+    GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
+    for (size_t i = 0; i < e->location_count; i++) {
+        NSMenuItem *item = [parent itemWithTitle:@(e->location[i])];
+        if (!item) {
+            final_item = [[UserMenuItem alloc] initWithTitle:@(e->location[i]) action:@selector(user_menu_action:) keyEquivalent:@""];
+            final_item.target = global_menu_target;
+            [parent addItem:final_item];
+            item = final_item;
+            [final_item release];
+        }
+        if (i + 1 < e->location_count) {
+            if (![item hasSubmenu]) {
+                NSMenu* sub_menu = [[NSMenu alloc] initWithTitle:item.title];
+                [item setSubmenu:sub_menu];
+                [sub_menu release];
+            }
+            parent = [item submenu];
+            if (!parent) return;
+        }
+    }
+    if (final_item != nil) {
+        final_item.action_index = action_index;
+    }
+}
+
 void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
@@ -665,7 +711,16 @@ cocoa_create_global_menu(void) {
     [NSApp setHelpMenu:helpMenu];
     [helpMenu release];
 
+    if (OPT(global_menu.entries)) {
+        for (size_t i = 0; i < OPT(global_menu.count); i++) {
+            struct MenuItem *e = OPT(global_menu.entries) + i;
+            if (e->definition && e->location && e->location_count > 1) {
+                add_user_global_menu_entry(e, bar, i);
+            }
+        }
+    }
     [bar release];
+
 
     class_addMethod(
         object_getClass([NSApp delegate]),
@@ -675,6 +730,7 @@ cocoa_create_global_menu(void) {
 
 
     [NSApp setServicesProvider:[[[ServiceProvider alloc] init] autorelease]];
+
 #undef MENU_ITEM
 }
 

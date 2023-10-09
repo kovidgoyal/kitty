@@ -1536,6 +1536,10 @@ class Boss:
                     return True
         return False
 
+    def user_menu_action(self, defn: str) -> None:
+        ' Callback from user actions in the macOS global menu bar or other menus '
+        self.combine(defn)
+
     @ac('misc', '''
         Combine multiple actions and map to a single keypress
 
