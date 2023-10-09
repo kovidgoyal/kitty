@@ -13,7 +13,7 @@ from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
 from .fast_data_types import get_options
 from .guess_mime_type import guess_type
-from .options.utils import ActionAlias, resolve_aliases_and_parse_actions
+from .options.utils import ActionAlias, MapType, resolve_aliases_and_parse_actions
 from .types import run_once
 from .typing import MatchType
 from .utils import expandvars, get_editor, log_error, resolved_shell
@@ -79,7 +79,7 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         for (mc, action_defns) in entries:
             actions: List[KeyAction] = []
             for defn in action_defns:
-                actions.extend(resolve_aliases_and_parse_actions(defn, alias_map, 'open_action'))
+                actions.extend(resolve_aliases_and_parse_actions(defn, alias_map, MapType.OPEN_ACTION))
             yield OpenAction(mc, tuple(actions))
 
 

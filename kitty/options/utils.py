@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import enum
 import re
 import sys
 from functools import lru_cache
@@ -48,6 +49,12 @@ mouse_trigger_count_map = {'doubleclick': -3, 'click': -2, 'release': -1, 'press
 FuncArgsType = Tuple[str, Sequence[Any]]
 func_with_args = KeyFuncWrapper[FuncArgsType]()
 DELETE_ENV_VAR = '_delete_this_env_var_'
+
+
+class MapType(enum.Enum):
+    MAP = 'map'
+    MOUSE_MAP = 'mouse_map'
+    OPEN_ACTION = 'open_action'
 
 
 class InvalidMods(ValueError):
@@ -930,7 +937,7 @@ def narrow_symbols(val: str) -> Iterable[Tuple[Tuple[int, int], int]]:
         yield x, int(y or 1)
 
 
-def parse_key_action(action: str, action_type: str = 'map') -> KeyAction:
+def parse_key_action(action: str, action_type: MapType = MapType.MAP) -> KeyAction:
     parts = action.strip().split(maxsplit=1)
     func = parts[0]
     if len(parts) == 1:
@@ -961,7 +968,7 @@ class AliasMap:
         self.aliases.update(aa.aliases)
 
     @lru_cache(maxsize=256)
-    def resolve_aliases(self, definition: str, map_type: str = 'map') -> Tuple[KeyAction, ...]:
+    def resolve_aliases(self, definition: str, map_type: MapType = MapType.MAP) -> Tuple[KeyAction, ...]:
         return tuple(resolve_aliases_and_parse_actions(definition, self.aliases, map_type))
 
 
@@ -977,7 +984,7 @@ def build_action_aliases(raw: Dict[str, str], first_arg_replacement: str = '') -
 
 
 def resolve_aliases_and_parse_actions(
-    defn: str, aliases: Dict[str, List[ActionAlias]], map_type: str
+    defn: str, aliases: Dict[str, List[ActionAlias]], map_type: MapType
 ) -> Iterator[KeyAction]:
     parts = defn.split(maxsplit=1)
     if len(parts) == 1:
@@ -1017,7 +1024,7 @@ def resolve_aliases_and_parse_actions(
 
 class BaseDefinition:
     no_op_actions = frozenset(('noop', 'no-op', 'no_op'))
-    map_type: str = 'map'
+    map_type: MapType = MapType.MAP
     definition_location: CurrentlyParsing
 
     def __init__(self, definition: str = '') -> None:
@@ -1045,7 +1052,7 @@ def resolve_key_mods(kitty_mod: int, mods: int) -> int:
 
 
 class MouseMapping(BaseDefinition):
-    map_type: str = 'mouse_map'
+    map_type: MapType = MapType.MOUSE_MAP
 
     def __init__(
         self, button: int = 0, mods: int = 0, repeat_count: int = 1, grabbed: bool = False,
