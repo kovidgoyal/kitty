@@ -669,6 +669,7 @@ class Window:
             'env': self.child.environ,
             'cmdline': self.child.cmdline,
             'margin': self.margin.serialize(),
+            'user_vars': self.user_vars,
             'padding': self.padding.serialize(),
         }
         if self.window_custom_type:
