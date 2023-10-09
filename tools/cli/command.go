@@ -571,6 +571,7 @@ func (self *Command) GetCompletions(argv []string, init_completions func(*Comple
 	}
 	if len(argv) > 0 {
 		exe := argv[0]
+		exe = filepath.Base(exe) // zsh completion script passes full path to exe when using aliases
 		cmd := self.FindSubCommand(exe)
 		if cmd != nil {
 			if cmd.ParseArgsForCompletion != nil {
