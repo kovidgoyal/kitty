@@ -167,6 +167,7 @@ class OSWindowDict(TypedDict):
     tabs: List[TabDict]
     wm_class: str
     wm_name: str
+    background_opacity: float
 
 
 def listen_on(spec: str) -> Tuple[int, str]:
@@ -447,6 +448,9 @@ class Boss:
             for os_window_id, tm in self.os_window_map.items():
                 tabs = list(tm.list_tabs(self_window, tab_filter, window_filter))
                 if tabs:
+                    bo = background_opacity_of(os_window_id)
+                    if bo is None:
+                        bo = 1
                     yield {
                         'id': os_window_id,
                         'platform_window_id': platform_window_id(os_window_id),
@@ -455,7 +459,8 @@ class Boss:
                         'last_focused': os_window_id == last_focused_os_window_id(),
                         'tabs': tabs,
                         'wm_class': tm.wm_class,
-                        'wm_name': tm.wm_name
+                        'wm_name': tm.wm_name,
+                        'background_opacity': bo,
                     }
 
     @property
