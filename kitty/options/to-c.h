@@ -94,7 +94,7 @@ bganchor(PyObject *anchor_name) {
     if (src == Py_None || !PyUnicode_Check(src)) return; \
     Py_ssize_t sz; \
     const char *s = PyUnicode_AsUTF8AndSize(src, &sz); \
-    opts->name = calloc(sz + 1, 1); \
+    opts->name = calloc(sz + 1, sizeof(s[0])); \
     if (opts->name) memcpy(opts->name, s, sz); \
 }
 
