@@ -252,6 +252,7 @@ _ksi_main() {
         _ksi_prompt[ps2]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps2]}${_ksi_prompt[end_mark]}"
     fi
     # BASH aborts the entire script when doing unset with failglob set, somebody should report this upstream
+    builtin local oldval
     oldval=$(builtin shopt -p failglob)
     builtin shopt -u failglob
     builtin unset _ksi_prompt[start_mark] _ksi_prompt[end_mark] _ksi_prompt[start_suffix_mark] _ksi_prompt[end_suffix_mark] _ksi_prompt[start_secondary_mark] _ksi_prompt[end_secondary_mark]
