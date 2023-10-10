@@ -104,7 +104,7 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 				group.Title = "Sub-commands"
 			}
 			for _, sc := range cg.SubCommands {
-				if strings.HasPrefix(sc.Name, word) {
+				if !sc.Hidden && strings.HasPrefix(sc.Name, word) {
 					t := sc.ShortDescription
 					if t == "" {
 						t = sc.HelpText

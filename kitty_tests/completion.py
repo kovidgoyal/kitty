@@ -92,9 +92,8 @@ def completion(self: TestCompletion, tdir: str):
         self.assertEqual(cp.returncode, 0, f'kitten __complete__ failed with exit code: {cp.returncode}')
         return json.loads(cp.stdout)
 
-    add('kitty ', has_words('@', '@ls', '+', '+open'))
+    add('kitty ', has_words('@', '+', '+open'))
     add('kitty @ l', has_words('ls', 'last-used-layout', 'launch'))
-    add('kitty @l', has_words('@ls', '@last-used-layout', '@launch'))
 
     def make_file(path, mode=None):
         with open(os.path.join(tdir, path), mode='x') as f:
