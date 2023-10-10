@@ -107,7 +107,6 @@ bell_path(PyObject *src, Options *opts) { STR_SETTER(bell_path); }
 static void
 bell_theme(PyObject *src, Options *opts) { STR_SETTER(bell_theme); }
 
-
 static void
 window_logo_path(PyObject *src, Options *opts) { STR_SETTER(default_window_logo); }
 
@@ -151,19 +150,19 @@ macos_colorspace(PyObject *csname) {
 }
 
 static inline void
-free_url_prefixes(void) {
-    OPT(url_prefixes).num = 0;
-    OPT(url_prefixes).max_prefix_len = 0;
-    if (OPT(url_prefixes).values) {
-        free(OPT(url_prefixes.values));
-        OPT(url_prefixes).values = NULL;
+free_url_prefixes(Options *opts) {
+    opts->url_prefixes.num = 0;
+    opts->url_prefixes.max_prefix_len = 0;
+    if (opts->url_prefixes.values) {
+        free(opts->url_prefixes.values);
+        opts->url_prefixes.values = NULL;
     }
 }
 
 static void
 url_prefixes(PyObject *up, Options *opts) {
     if (!PyTuple_Check(up)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be a tuple"); return; }
-    free_url_prefixes();
+    free_url_prefixes(opts);
     opts->url_prefixes.values = calloc(PyTuple_GET_SIZE(up), sizeof(UrlPrefix));
     if (!opts->url_prefixes.values) { PyErr_NoMemory(); return; }
     opts->url_prefixes.num = PyTuple_GET_SIZE(up);
@@ -192,6 +191,7 @@ free_menu_map(Options *opts) {
         }
         free(opts->global_menu.entries); opts->global_menu.entries = NULL;
     }
+    opts->global_menu.count = 0;
 }
 
 static void
@@ -303,4 +303,14 @@ static void
 resize_debounce_time(PyObject *src, Options *opts) {
     opts->resize_debounce_time.on_end = s_double_to_monotonic_t(PyFloat_AsDouble(PyTuple_GET_ITEM(src, 0)));
     opts->resize_debounce_time.on_pause = s_double_to_monotonic_t(PyFloat_AsDouble(PyTuple_GET_ITEM(src, 1)));
+}
+
+static void
+free_allocs_in_options(Options *opts) {
+    free_menu_map(opts);
+    free_url_prefixes(opts);
+#define F(x) free(opts->x); opts->x = NULL;
+    F(select_by_word_characters); F(url_excluded_characters); F(select_by_word_characters_forward);
+    F(background_image); F(bell_path); F(bell_theme); F(default_window_logo);
+#undef F
 }

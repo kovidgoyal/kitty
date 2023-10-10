@@ -1406,9 +1406,8 @@ finalize(void) {
     free_bgimage(&global_state.bgimage, false);
     free_window_logo_table(&global_state.all_window_logos);
     global_state.bgimage = NULL;
-    free_url_prefixes();
-    free(OPT(select_by_word_characters)); OPT(select_by_word_characters) = NULL;
-    free(OPT(url_excluded_characters)); OPT(url_excluded_characters) = NULL;
+
+    free_allocs_in_options(&global_state.opts);
 }
 
 bool
