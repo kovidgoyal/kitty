@@ -162,9 +162,9 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 	}
 	sb.WriteString(RESTORE_PRIVATE_MODE_VALUES)
 	if self.restore_colors {
-		sb.WriteString(RESTORE_CURSOR)
+		sb.WriteString(RESTORE_COLORS)
 	}
-	sb.WriteString(RESTORE_COLORS)
+	sb.WriteString(RESTORE_CURSOR)
 	return sb.String()
 }
 

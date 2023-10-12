@@ -54,6 +54,8 @@ Detailed list of changes
 
 - ``kitten @ set-background-opacity`` - add a new ``--toggle`` flag to easily switch opacity between the specified value and the default (:iss:`6691`)
 
+- Fix a regression caused by rewrite of kittens to Go that made various kittens reset colors in a terminal when the colors were changed by escape code (:iss:`6708`)
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
