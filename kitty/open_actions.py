@@ -18,9 +18,6 @@ from .types import run_once
 from .typing import MatchType
 from .utils import expandvars, get_editor, log_error, resolved_shell
 
-if not hasattr(shlex, 'join'):
-    shlex.join = lambda a: ' '.join(map(shlex.quote, a))
-
 
 class MatchCriteria(NamedTuple):
     type: MatchType
