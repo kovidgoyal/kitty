@@ -2833,6 +2833,7 @@ static void
 extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel, bool newlines_allowed) {
     unsigned int count = 0;
     bool has_newline = false;
+    index_type orig_y = *y;
     while(count++ < 10) {
         has_newline = !line->gpu_cells[line->xnum-1].attrs.next_char_was_wrapped;
         if (*x != line->xnum - 1 || (!newlines_allowed && has_newline)) break;
@@ -2842,12 +2843,19 @@ extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type s
             next_line_starts_with_url_chars = line_startswith_url_chars(line);
             has_newline = !line->attrs.is_continued;
             if (next_line_starts_with_url_chars && has_newline && !newlines_allowed) next_line_starts_with_url_chars = false;
+            if (sentinel && next_line_starts_with_url_chars && line->cpu_cells[0].ch == sentinel) next_line_starts_with_url_chars = false;
         }
         line = screen_visual_line(screen, *y + 1);
         if (!line) break;
         index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars);
         if (!new_x && !line_startswith_url_chars(line)) break;
         *y += 1; *x = new_x;
+    }
+    if (sentinel && *x == 0 && *y > orig_y) {
+        line = screen_visual_line(screen, *y);
+        if (line && line->cpu_cells[0].ch == sentinel) {
+            *y -= 1; *x = line->xnum - 1;
+        }
     }
 }
 

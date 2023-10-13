@@ -1007,6 +1007,7 @@ class TestScreen(BaseTest):
             s.draw(before + url + after)
             ae(url, x=x + 1 + len(before), y=y)
 
+
         t('http://moo.com')
         t('http://moo.com/something?else=+&what-')
         for (st, e) in '() {} [] <>'.split():
@@ -1016,6 +1017,7 @@ class TestScreen(BaseTest):
         for trailer in '{([':
             t('http://moo.com', after=trailer)
         t('http://moo.com', x=s.columns - 9)
+        t('https://wraps-by-one-char.com', before='[', after=']')
 
     def test_prompt_marking(self):
         s = self.create_screen()
