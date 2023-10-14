@@ -3,6 +3,7 @@
 
 import os
 import subprocess
+import sys
 from collections import defaultdict
 from typing import Any, DefaultDict, Dict, FrozenSet, List, Tuple, Union
 
@@ -281,4 +282,11 @@ def graphics_parser() -> None:
     write_header(text, 'kitty/parse-graphics-command.h')
 
 
-graphics_parser()
+def main(args: list[str]=sys.argv) -> None:
+    graphics_parser()
+
+
+if __name__ == '__main__':
+    import runpy
+    m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
+    m['main']([sys.executable, 'apc-parsers'])

@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 
 import os
+import sys
 from functools import lru_cache
 from typing import List
 
@@ -41,11 +42,13 @@ def generate_srgb_gamma(declaration: str = 'static const GLfloat srgb_lut[256] =
     return "\n".join(lines)
 
 
-def main() -> None:
+def main(args: list[str]=sys.argv) -> None:
     c = generate_srgb_gamma()
     with open(os.path.join('kitty', 'srgb_gamma.h'), 'w') as f:
         f.write(f'{c}\n')
 
 
 if __name__ == '__main__':
-    main()
+    import runpy
+    m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
+    m['main']([sys.executable, 'srgb-lut'])

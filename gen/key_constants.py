@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import string
+import sys
 from pprint import pformat
 from typing import Any, Dict, List, Union
 
@@ -417,7 +419,7 @@ def generate_macos_mapping() -> None:
     patch_file('glfw/cocoa_window.m', 'functional to macu', '\n'.join(lines))
 
 
-def main() -> None:
+def main(args: list[str]=sys.argv) -> None:
     generate_glfw_header()
     generate_xkb_mapping()
     generate_functional_table()
@@ -427,4 +429,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    import runpy
+    m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
+    m['main']([sys.executable, 'key-constants'])

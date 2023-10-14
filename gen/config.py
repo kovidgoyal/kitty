@@ -2,8 +2,10 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import os
 import re
 import subprocess
+import sys
 from typing import List
 
 from kitty.conf.generate import write_output
@@ -33,7 +35,7 @@ def patch_color_list(path: str, colors: List[str], name: str, spc: str = '    ')
                 subprocess.check_call(['gofmt', '-w', path])
 
 
-def main() -> None:
+def main(args: list[str]=sys.argv) -> None:
     from kitty.options.definition import definition
     write_output('kitty', definition)
     nullable_colors = []
@@ -51,4 +53,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    import runpy
+    m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
+    m['main']([sys.executable, 'config'])

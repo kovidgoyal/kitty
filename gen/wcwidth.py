@@ -26,8 +26,6 @@ from typing import (
 )
 from urllib.request import urlopen
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
 non_characters = frozenset(range(0xfffe, 0x10ffff, 0x10000))
 non_characters |= frozenset(range(0xffff, 0x10ffff + 1, 0x10000))
 non_characters |= frozenset(range(0xfdd0, 0xfdf0))
@@ -584,12 +582,19 @@ def gen_rowcolumn_diacritics() -> None:
     subprocess.check_call(['gofmt', '-w', '-s', go_file])
 
 
-parse_ucd()
-parse_prop_list()
-parse_emoji()
-parse_eaw()
-gen_ucd()
-gen_wcwidth()
-gen_emoji()
-gen_names()
-gen_rowcolumn_diacritics()
+def main(args: list[str]=sys.argv) -> None:
+    parse_ucd()
+    parse_prop_list()
+    parse_emoji()
+    parse_eaw()
+    gen_ucd()
+    gen_wcwidth()
+    gen_emoji()
+    gen_names()
+    gen_rowcolumn_diacritics()
+
+
+if __name__ == '__main__':
+    import runpy
+    m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
+    m['main']([sys.executable, 'wcwidth'])
