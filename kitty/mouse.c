@@ -322,7 +322,11 @@ extend_selection(Window *w, bool ended, bool extend_nearest) {
 
 static void
 set_mouse_cursor_for_screen(Screen *screen) {
-    mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? OPT(default_pointer_shape): OPT(pointer_shape_when_grabbed);
+    if (screen->modes.mouse_tracking_mode == NO_TRACKING) {
+        mouse_cursor_shape = OPT(default_pointer_shape);
+    } else {
+        mouse_cursor_shape = OPT(pointer_shape_when_grabbed);
+    }
 }
 
 static void
