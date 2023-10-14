@@ -582,7 +582,7 @@ def gen_rowcolumn_diacritics() -> None:
     subprocess.check_call(['gofmt', '-w', '-s', go_file])
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: List[str]=sys.argv) -> None:
     parse_ucd()
     parse_prop_list()
     parse_emoji()

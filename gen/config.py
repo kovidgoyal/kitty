@@ -35,7 +35,7 @@ def patch_color_list(path: str, colors: List[str], name: str, spc: str = '    ')
                 subprocess.check_call(['gofmt', '-w', path])
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: List[str]=sys.argv) -> None:
     from kitty.options.definition import definition
     write_output('kitty', definition)
     nullable_colors = []

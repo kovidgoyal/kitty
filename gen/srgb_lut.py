@@ -42,7 +42,7 @@ def generate_srgb_gamma(declaration: str = 'static const GLfloat srgb_lut[256] =
     return "\n".join(lines)
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: List[str]=sys.argv) -> None:
     c = generate_srgb_gamma()
     with open(os.path.join('kitty', 'srgb_gamma.h'), 'w') as f:
         f.write(f'{c}\n')

@@ -419,7 +419,7 @@ def generate_macos_mapping() -> None:
     patch_file('glfw/cocoa_window.m', 'functional to macu', '\n'.join(lines))
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: List[str]=sys.argv) -> None:
     generate_glfw_header()
     generate_xkb_mapping()
     generate_functional_table()

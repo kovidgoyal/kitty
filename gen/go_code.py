@@ -834,7 +834,7 @@ def generate_ssh_kitten_data() -> None:
             write_compressed_data(buf.getvalue(), d)
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: List[str]=sys.argv) -> None:
     with replace_if_needed('constants_generated.go') as f:
         f.write(generate_constants())
     with replace_if_needed('tools/utils/style/color-names_generated.go') as f:

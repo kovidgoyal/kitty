@@ -282,7 +282,7 @@ def graphics_parser() -> None:
     write_header(text, 'kitty/parse-graphics-command.h')
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: List[str]=sys.argv) -> None:
     graphics_parser()
 
 
