@@ -46,7 +46,7 @@ func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error
 	lp.OnInitialize = func() (string, error) {
 		var iid uint32
 		_, _ = lp.AddTimer(timeout, false, func(loop.IdType) error {
-			return fmt.Errorf("Timed out waiting for a response form the terminal: %w", os.ErrDeadlineExceeded)
+			return fmt.Errorf("Timed out waiting for a response from the terminal: %w", os.ErrDeadlineExceeded)
 		})
 
 		g := func(t graphics.GRT_t, payload string) uint32 {

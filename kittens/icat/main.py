@@ -68,7 +68,7 @@ option.
 --detection-timeout
 type=float
 default=10
-The amount of time (in seconds) to wait for a response form the terminal, when
+The amount of time (in seconds) to wait for a response from the terminal, when
 detecting image display support.
 
 
