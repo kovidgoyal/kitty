@@ -555,7 +555,7 @@ The image will eventually be fit to the specified rectangle, its aspect ratio
 preserved. Finally, the image can be actually displayed by using the
 placeholder character, encoding the image ID in its foreground color. The row
 and column values are specified with diacritics listed in
-:download:`rowcolumn-diacritics.txt <../rowcolumn-diacritics.txt>`.  For
+:download:`rowcolumn-diacritics.txt <../gen/rowcolumn-diacritics.txt>`.  For
 example, here is how you can print a ``2x2`` placeholder for image ID ``42``:
 
 .. code-block:: sh

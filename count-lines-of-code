@@ -12,6 +12,6 @@ for line in cp.stdout.decode().splitlines():
         fname = line.split(':', 1)[0]
         all_files.discard(fname)
 
-all_files -= {'nerd-fonts-glyphs.txt', 'rowcolumn-diacritics.txt'}
+all_files -= {'gen/nerd-fonts-glyphs.txt', 'gen/rowcolumn-diacritics.txt'}
 cp = subprocess.run(['cloc', '--list-file', '-'], input='\n'.join(all_files).encode())
 raise SystemExit(cp.returncode)

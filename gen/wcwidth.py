@@ -134,7 +134,7 @@ def parse_ucd() -> None:
                 # the future.
                 marks.add(codepoint)
 
-    with open('nerd-fonts-glyphs.txt') as f:
+    with open('gen/nerd-fonts-glyphs.txt') as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith('#'):
@@ -538,7 +538,7 @@ def gen_wcwidth() -> None:
 def gen_rowcolumn_diacritics() -> None:
     # codes of all row/column diacritics
     codes = []
-    with open("./rowcolumn-diacritics.txt") as file:
+    with open("gen/rowcolumn-diacritics.txt") as file:
         for line in file.readlines():
             if line.startswith('#'):
                 continue
