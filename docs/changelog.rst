@@ -50,6 +50,8 @@ Detailed list of changes
 
 - A new mouse action ``mouse_selection word_and_line_from_point`` to select the current word under the mouse cursor and extend to end of line (:pull:`6663`)
 
+- Allow using the full range of standard mouse cursor shapes when customizing the mouse cursor
+
 - macOS: When running the default shell with the login program fix :file:`~/.hushlogin` not being respected when opening windows not in the home directory (:iss:`6689`)
 
 - ``kitten @ set-background-opacity`` - add a new ``--toggle`` flag to easily switch opacity between the specified value and the default (:iss:`6691`)

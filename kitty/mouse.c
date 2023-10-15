@@ -17,7 +17,7 @@
 
 extern PyTypeObject Screen_Type;
 
-static MouseShape mouse_cursor_shape = BEAM;
+static MouseShape mouse_cursor_shape = TEXT_POINTER;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define debug(...) if (OPT(debug_keyboard)) printf(__VA_ARGS__);
 
@@ -288,8 +288,8 @@ do_drag_scroll(Window *w, bool upwards) {
     if (screen->linebuf == screen->main_linebuf) {
         screen_history_scroll(screen, SCROLL_LINE, upwards);
         update_drag(w);
-        if (mouse_cursor_shape != ARROW) {
-            mouse_cursor_shape = ARROW;
+        if (mouse_cursor_shape != DEFAULT_POINTER) {
+            mouse_cursor_shape = DEFAULT_POINTER;
             set_mouse_cursor(mouse_cursor_shape);
         }
         return true;
@@ -347,7 +347,7 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
     int hid = screen_detect_url(screen, x, y);
     screen->current_hyperlink_under_mouse.id = 0;
     if (hid != 0) {
-        mouse_cursor_shape = HAND;
+        mouse_cursor_shape = POINTER_POINTER;
         if (hid > 0) {
             screen->current_hyperlink_under_mouse.id = (hyperlink_id_type)hid;
             screen->current_hyperlink_under_mouse.x = x;
@@ -655,7 +655,7 @@ focus_in_event(void) {
     // Ensure that no URL is highlighted and the mouse cursor is in default shape
     bool in_tab_bar;
     unsigned int window_idx = 0;
-    mouse_cursor_shape = BEAM;
+    mouse_cursor_shape = TEXT_POINTER;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
     if (w && w->render_data.screen) {
         screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
@@ -817,7 +817,7 @@ mouse_event(const int button, int modifiers, int action) {
     }
     w = window_for_event(&window_idx, &in_tab_bar);
     if (in_tab_bar) {
-        mouse_cursor_shape = HAND;
+        mouse_cursor_shape = POINTER_POINTER;
         handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");
     } else if (w) {

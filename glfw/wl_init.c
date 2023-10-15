@@ -177,7 +177,7 @@ static void pointerHandleMotion(void* data UNUSED,
                                 wl_fixed_t sy)
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-    GLFWCursorShape cursorShape = GLFW_ARROW_CURSOR;
+    GLFWCursorShape cursorShape = GLFW_DEFAULT_CURSOR;
 
     if (!window)
         return;
@@ -197,21 +197,21 @@ static void pointerHandleMotion(void* data UNUSED,
             return;
         case TOP_DECORATION:
             if (y < window->wl.decorations.metrics.width)
-                cursorShape = GLFW_VRESIZE_CURSOR;
+                cursorShape = GLFW_N_RESIZE_CURSOR;
             else
-                cursorShape = GLFW_ARROW_CURSOR;
+                cursorShape = GLFW_DEFAULT_CURSOR;
             break;
         case LEFT_DECORATION:
             if (y < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_NW_RESIZE_CURSOR;
             else
-                cursorShape = GLFW_HRESIZE_CURSOR;
+                cursorShape = GLFW_W_RESIZE_CURSOR;
             break;
         case RIGHT_DECORATION:
             if (y < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_NE_RESIZE_CURSOR;
             else
-                cursorShape = GLFW_HRESIZE_CURSOR;
+                cursorShape = GLFW_E_RESIZE_CURSOR;
             break;
         case BOTTOM_DECORATION:
             if (x < window->wl.decorations.metrics.width)
@@ -219,7 +219,7 @@ static void pointerHandleMotion(void* data UNUSED,
             else if (x > window->wl.width + window->wl.decorations.metrics.width)
                 cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
-                cursorShape = GLFW_VRESIZE_CURSOR;
+                cursorShape = GLFW_S_RESIZE_CURSOR;
             break;
         default:
             assert(0);

@@ -32,6 +32,9 @@ def main(args: List[str]=sys.argv) -> None:
     elif which == 'wcwidth':
         from gen.wcwidth import main
         main(args)
+    elif which == 'cursors':
+        from gen.cursors import main
+        main(args)
     else:
         raise SystemExit(f'Unknown which: {which}')
 

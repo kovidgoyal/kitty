@@ -30,7 +30,6 @@ from .constants import (
     website_url,
 )
 from .fast_data_types import (
-    GLFW_IBEAM_CURSOR,
     GLFW_MOD_ALT,
     GLFW_MOD_SHIFT,
     SingleKey,
@@ -76,7 +75,7 @@ def set_custom_ibeam_cursor() -> None:
     rgba_data2, width2, height2 = load_png_data(data)
     images = (rgba_data, width, height), (rgba_data2, width2, height2)
     try:
-        set_custom_cursor(GLFW_IBEAM_CURSOR, images, 4, 8)
+        set_custom_cursor("beam", images, 4, 8)
     except Exception as e:
         log_error(f'Failed to set custom beam cursor with error: {e}')
 
