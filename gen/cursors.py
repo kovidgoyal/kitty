@@ -134,6 +134,11 @@ def main(args: List[str]=sys.argv) -> None:
     patch_file('glfw/cocoa_window.m', 'glfw to cocoa', '\n'.join(f'        {x}' for x in glfw_cocoa_map.values()))
     patch_file('docs/pointer-shapes.rst', 'list of shape css names', '\n'.join(
         f'#. {x}' if x else '' for x in [''] + sorted(css_names) + ['']), start_marker='.. ', end_marker='')
+    patch_file('tools/tui/loop/mouse.go', 'pointer shape enum', '\n'.join(
+        f'\t{x} PointerShape = {i}' for i, x in enumerate(enum_to_glfw_map)), start_marker='// ', end_marker='')
+    patch_file('tools/tui/loop/mouse.go', 'pointer shape tostring', '\n'.join(
+        f'''\tcase {x}: return "{x.lower().rpartition('_')[0].replace('_', '-')}"''' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
+
     subprocess.check_call(['glfw/glfw.py'])
 
 

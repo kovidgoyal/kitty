@@ -3,6 +3,7 @@
 
 import os
 import string
+import subprocess
 import sys
 from pprint import pformat
 from typing import Any, Dict, List, Union
@@ -249,6 +250,8 @@ def patch_file(path: str, what: str, text: str, start_marker: str = '/* ', end_m
         f.seek(0)
         f.truncate(0)
         f.write(raw)
+    if path.endswith('.go'):
+        subprocess.check_call(['go', 'fmt', path])
 
 
 def serialize_dict(x: Dict[Any, Any]) -> str:
