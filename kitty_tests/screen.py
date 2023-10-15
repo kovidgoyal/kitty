@@ -1212,3 +1212,5 @@ class TestScreen(BaseTest):
         t('>default,help', 'help')
         t('<', 'default')
         t('<', '0')
+        t('=left_ptr', 'default')
+        t('=fleur', 'move')

@@ -149,3 +149,15 @@ characters from the set ``a-z0-9_-``.
 #. zoom-out
 
 .. end list of shape css names
+
+
+Legacy xterm compatibility
+----------------------------
+
+The original xterm proposal for this escape code used shape names from the
+file:`X11/cursorfont.h` header on X11 based systems. Terminal implementations
+wishing to maintain compatibility with xterm can also implement these names as
+aliases for the CSS based names defined in the :ref:`pointer_shape_names` table.
+
+The simplest mode of operation of this escape code, which is no leading
+optional char and a single shape name is compatible with xterm.
