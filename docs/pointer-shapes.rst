@@ -1,6 +1,8 @@
 Mouse pointer shapes
 =======================
 
+.. versionadded:: 0.31.0
+
 This is a simple escape code that can be used by terminal programs to change
 the shape of the mouse pointer. This is useful for buttons/links, dragging to
 resize panes, etc. It is based on the original escape code proposal from xterm

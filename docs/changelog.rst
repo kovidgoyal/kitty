@@ -43,7 +43,7 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
-0.30.2 [future]
+0.31.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new option :opt:`menu_map` that allows adding entries to the global menubar on macOS (:disc:`6680`)
