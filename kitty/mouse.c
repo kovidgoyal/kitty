@@ -322,10 +322,15 @@ extend_selection(Window *w, bool ended, bool extend_nearest) {
 
 static void
 set_mouse_cursor_for_screen(Screen *screen) {
-    if (screen->modes.mouse_tracking_mode == NO_TRACKING) {
-        mouse_cursor_shape = OPT(default_pointer_shape);
+    MouseShape s = screen_pointer_shape(screen);
+    if (s != INVALID_POINTER) {
+        mouse_cursor_shape = s;
     } else {
-        mouse_cursor_shape = OPT(pointer_shape_when_grabbed);
+        if (screen->modes.mouse_tracking_mode == NO_TRACKING) {
+            mouse_cursor_shape = OPT(default_pointer_shape);
+        } else {
+            mouse_cursor_shape = OPT(pointer_shape_when_grabbed);
+        }
     }
 }
 
@@ -658,6 +663,20 @@ focus_in_event(void) {
     mouse_cursor_shape = TEXT_POINTER;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
     if (w && w->render_data.screen) {
+        screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
+        set_mouse_cursor_for_screen(w->render_data.screen);
+    }
+    set_mouse_cursor(mouse_cursor_shape);
+}
+
+void
+update_mouse_pointer_shape(void) {
+    mouse_cursor_shape = TEXT_POINTER;
+    bool in_tab_bar;
+    unsigned int window_idx = 0;
+    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    if (in_tab_bar) { mouse_cursor_shape = POINTER_POINTER; }
+    else if (w && w->render_data.screen) {
         screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
         set_mouse_cursor_for_screen(w->render_data.screen);
     }

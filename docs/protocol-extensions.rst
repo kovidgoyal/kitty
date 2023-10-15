@@ -29,6 +29,7 @@ please do so by opening issues in the `GitHub bug tracker
    keyboard-protocol
    file-transfer-protocol
    desktop-notifications
+   pointer-shapes
    unscroll
    color-stack
    deccara

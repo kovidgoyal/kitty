@@ -14,7 +14,7 @@ if __name__ == '__main__' and not __package__:
 from .key_constants import patch_file
 
 # References for these names:
-# CSS: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
+# CSS:choices_for_{option.name} https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
 # XCursor: https://tronche.com/gui/x/xlib/appendix/b/ + Absolute chaos
 # Wayland: https://wayland.app/protocols/cursor-shape-v1
 # Cocoa: https://developer.apple.com/documentation/appkit/nscursor + secret apple selectors + SDL_cocoamouse.m
@@ -59,11 +59,16 @@ grabbing      grabbing       grabbing,closedhand,dnd-none              grabbing 
 
 def main(args: List[str]=sys.argv) -> None:
     glfw_enum = []
+    css_names = []
     glfw_xc_map = {}
     glfw_xfont_map = []
     kitty_to_enum_map = {}
     enum_to_glfw_map = {}
+    enum_to_css_map = {}
     glfw_cocoa_map = {}
+    glfw_css_map = {}
+    css_to_enum = {}
+    xc_to_enum = {}
     for line in cursors.splitlines():
         line = line.strip()
         if line:
@@ -73,6 +78,10 @@ def main(args: List[str]=sys.argv) -> None:
             glfw_name = 'GLFW_' + base + '_CURSOR'
             enum_name = base + '_POINTER'
             enum_to_glfw_map[enum_name] = glfw_name
+            enum_to_css_map[enum_name] = css
+            glfw_css_map[glfw_name] = css
+            css_to_enum[css] = enum_name
+            css_names.append(css)
             for n in names:
                 kitty_to_enum_map[n] = enum_name
             glfw_enum.append(glfw_name)
@@ -84,6 +93,9 @@ def main(args: List[str]=sys.argv) -> None:
             else:
                 items = tuple('"' + x.replace('!', '') + '"' for x in xc)
                 glfw_xfont_map.append(f'case {glfw_name}: return try_cursor_names(cursor, {len(items)}, {", ".join(items)});')
+            for x in xc:
+                x = x.lstrip('!')
+                xc_to_enum[x] = enum_name
             parts = cocoa.split(':', 1)
             if len(parts) == 1:
                 if parts[0].startswith('_'):
@@ -93,6 +105,9 @@ def main(args: List[str]=sys.argv) -> None:
             else:
                 glfw_cocoa_map[glfw_name] = f'S({glfw_name}, {parts[0]}, {parts[1]});'
 
+    for x, v in xc_to_enum.items():
+        if x not in css_to_enum:
+            css_to_enum[x] = v
 
     glfw_enum.append('GLFW_INVALID_CURSOR')
     patch_file('glfw/glfw3.h', 'mouse cursor shapes', '\n'.join(f'    {x},' for x in glfw_enum))
@@ -109,7 +124,16 @@ def main(args: List[str]=sys.argv) -> None:
         f'        case {k}: set_glfw_mouse_cursor(w, {v}); break;' for k, v in enum_to_glfw_map.items()))
     patch_file('kitty/glfw.c', 'name to glfw', '\n'.join(
         f'    if (strcmp(name, "{k}") == 0) return {enum_to_glfw_map[v]};' for k, v in kitty_to_enum_map.items()))
+    patch_file('kitty/glfw.c', 'glfw to css', '\n'.join(
+        f'        case {g}: return "{c}";' for g, c in glfw_css_map.items()
+    ))
+    patch_file('kitty/screen.c', 'enum to css', '\n'.join(
+        f'        case {e}: ans = "{c}"; break;' for e, c in enum_to_css_map.items()))
+    patch_file('kitty/screen.c', 'css to enum', '\n'.join(
+        f'        else if (strcmp("{c}", css_name) == 0) s = {e};' for c, e in css_to_enum.items()))
     patch_file('glfw/cocoa_window.m', 'glfw to cocoa', '\n'.join(f'        {x}' for x in glfw_cocoa_map.values()))
+    patch_file('docs/pointer-shapes.rst', 'list of shape css names', '\n'.join(
+        f'#. {x}' if x else '' for x in [''] + sorted(css_names) + ['']), start_marker='.. ', end_marker='')
     subprocess.check_call(['glfw/glfw.py'])
 
 

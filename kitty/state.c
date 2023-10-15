@@ -1257,6 +1257,18 @@ move_cursor_to_mouse_if_in_prompt(id_type os_window_id, id_type tab_id, id_type 
     return moved;
 }
 
+static PyObject*
+pyupdate_pointer_shape(PyObject *self UNUSED, PyObject *args) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id);
+    OSWindow *orig = global_state.callback_os_window;
+    global_state.callback_os_window = os_window;
+    update_mouse_pointer_shape();
+    global_state.callback_os_window = orig;
+    END_WITH_OS_WINDOW;
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 pymouse_selection(PyObject *self UNUSED, PyObject *args) {
@@ -1325,6 +1337,7 @@ KK5I(add_borders_rect)
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 
 static PyMethodDef module_methods[] = {
+    MW(update_pointer_shape, METH_VARARGS),
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),
     MW(last_focused_os_window_id, METH_NOARGS),

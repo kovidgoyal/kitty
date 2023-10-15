@@ -389,3 +389,4 @@ void set_ignore_os_keyboard_processing(bool enabled);
 void update_menu_bar_title(PyObject *title UNUSED);
 void change_live_resize_state(OSWindow*, bool);
 bool render_os_window(OSWindow *w, monotonic_t now, bool ignore_render_frames, bool scan_for_animated_images);
+void update_mouse_pointer_shape(void);

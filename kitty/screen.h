@@ -164,6 +164,9 @@ typedef struct {
         hyperlink_id_type id;
         index_type x, y;
     } current_hyperlink_under_mouse;
+    struct {
+        uint8_t stack[16], count;
+    } main_pointer_shape_stack, alternate_pointer_shape_stack;
 } Screen;
 
 
@@ -211,6 +214,7 @@ void screen_cursor_forward(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_down1(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_up1(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_to_line(Screen *screen, unsigned int line);
+MouseShape screen_pointer_shape(Screen *self);
 void screen_insert_lines(Screen *self, unsigned int count/*=1*/);
 void screen_delete_lines(Screen *self, unsigned int count/*=1*/);
 void screen_repeat_character(Screen *self, unsigned int count);

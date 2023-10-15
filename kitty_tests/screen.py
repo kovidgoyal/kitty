@@ -1171,3 +1171,44 @@ class TestScreen(BaseTest):
         draw_prompt('p1')
         draw_prompt('p1')
         self.ae(lco(which=3), '0a\n1a')
+
+    def test_pointer_shapes(self):
+        from kitty.window import set_pointer_shape
+        s = self.create_screen()
+        c = s.callbacks
+        response = ''
+
+        def cb(data):
+            nonlocal response
+            response = set_pointer_shape(s, data)
+        c.set_pointer_shape = cb
+
+        def send(a):
+            nonlocal response
+            response = ''
+            parse_bytes(s, f'\x1b]22;{a}\x1b\\'.encode())
+            return response
+
+        self.ae(send('?__current__'), '0')
+        self.ae(send('?__default__,__grabbed__,default,ne-resize,crosshair,XXX'), 'text,default,1,1,1,0')
+
+        def t(q, e=None):
+            self.ae(send(q), '')
+            self.ae(send('?__current__'), e)
+
+        t('default', 'default')
+        s.reset()
+        self.ae(send('?__current__'), '0')
+        t('=crosshair', 'crosshair')
+        t('<', '0')
+        t('=crosshair', 'crosshair')
+        t('', '0')
+        t('>help', 'help')
+        t('>wait', 'wait')
+        t('<', 'help')
+        t('<', '0')
+        t('default,help', 'help')
+        t('<', '0')
+        t('>default,help', 'help')
+        t('<', 'default')
+        t('<', '0')

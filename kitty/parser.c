@@ -433,6 +433,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case 12:
         case 17:
         case 19:
+        case 22:
         case 110:
         case 111:
         case 112:

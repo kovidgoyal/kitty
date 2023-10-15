@@ -30,6 +30,7 @@ class Callbacks:
         self.clear()
         self.pty = pty
         self.ftc = None
+        self.set_pointer_shape = lambda data: None
 
     def write(self, data) -> None:
         self.wtcbuf += data
@@ -41,7 +42,10 @@ class Callbacks:
         self.iconbuf += data
 
     def set_dynamic_color(self, code, data) -> None:
-        self.colorbuf += data or ''
+        if code == 22:
+            self.set_pointer_shape(data)
+        else:
+            self.colorbuf += data or ''
 
     def set_color_table_color(self, code, data) -> None:
         self.ctbuf += ''

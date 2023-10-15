@@ -64,15 +64,18 @@ from .fast_data_types import (
     get_boss,
     get_click_interval,
     get_options,
+    is_css_pointer_name_valid,
     last_focused_os_window_id,
     mark_os_window_dirty,
     mouse_selection,
     move_cursor_to_mouse_if_in_prompt,
+    pointer_name_to_css_name,
     pt_to_px,
     set_window_logo,
     set_window_padding,
     set_window_render_data,
     update_ime_position_for_window,
+    update_pointer_shape,
     update_window_title,
     update_window_visibility,
     wakeup_main_loop,
@@ -1080,9 +1083,14 @@ class Window:
         identifier = sanitize_identifier_pat().sub('', identifier)
         self.screen.send_escape_code_to_child(OSC, f'99;i={identifier};')
 
+
     def set_dynamic_color(self, code: int, value: Union[str, bytes]) -> None:
         if isinstance(value, bytes):
             value = value.decode('utf-8')
+        if code == 22:
+            ret = set_pointer_shape(self.screen, value, self.os_window_id)
+            if ret:
+                self.screen.send_escape_code_to_child(OSC, '22:' + ret)
         color_changes: Dict[DynamicColor, Optional[str]] = {}
         for val in value.split(';'):
             w = DYNAMIC_COLOR_CODES.get(code)
@@ -1724,3 +1732,35 @@ class Window:
         url = docs_url(which)
         get_boss().open_url(url)
     # }}}
+
+
+def set_pointer_shape(screen: Screen, value: str, os_window_id: int = 0) -> str:
+    op, ret = '=', ''
+    if value and value[0] in '><=?':
+        op = value[0]
+        value = value[1:]
+    if op in '=>':
+        for v in value.split(','):
+            screen.change_pointer_shape(op, v)
+        if os_window_id and current_focused_os_window_id() == os_window_id:
+            update_pointer_shape(os_window_id)
+    elif op == '<':
+        screen.change_pointer_shape('<', '')
+        if os_window_id and current_focused_os_window_id() == os_window_id:
+            update_pointer_shape(os_window_id)
+    elif op == '?':
+        ans = []
+        for q in value.split(','):
+            if is_css_pointer_name_valid(q):
+                ans.append('1')
+            else:
+                if q == '__default__':
+                    ans.append(pointer_name_to_css_name(get_options().default_pointer_shape))
+                elif q == '__grabbed__':
+                    ans.append(pointer_name_to_css_name(get_options().pointer_shape_when_grabbed))
+                elif q == '__current__':
+                    ans.append(screen.current_pointer_shape())
+                else:
+                    ans.append('0')
+        ret = ','.join(ans)
+    return ret
