@@ -368,12 +368,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     output_imports(imports)
     a('')
     if choices:
-        a('if typing.TYPE_CHECKING:')
         for name, cdefn in choices.items():
-            a(f'    {name} = {cdefn}')
-        a('else:')
-        for name in choices:
-            a(f'    {name} = str')
+            a(f'{name} = {cdefn}')
 
     a('')
     a('option_names = (  # {{''{')

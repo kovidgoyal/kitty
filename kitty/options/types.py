@@ -13,42 +13,23 @@ import kitty.options.utils
 from kitty.types import FloatEdges
 import kitty.types
 
-if typing.TYPE_CHECKING:
-    choices_for_allow_cloning = typing.Literal['yes', 'y', 'true', 'no', 'n', 'false', 'ask']
-    choices_for_allow_remote_control = typing.Literal['password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true']
-    choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled']
-    choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
-    choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
-    choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
-    choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
-    choices_for_placement_strategy = typing.Literal['center', 'top-left']
-    choices_for_pointer_shape_when_dragging = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
-    choices_for_pointer_shape_when_grabbed = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
-    choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
-    choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
-    choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
-    choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
-    choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
-    choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
-    choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
-else:
-    choices_for_allow_cloning = str
-    choices_for_allow_remote_control = str
-    choices_for_background_image_layout = str
-    choices_for_default_pointer_shape = str
-    choices_for_linux_display_server = str
-    choices_for_macos_colorspace = str
-    choices_for_macos_show_window_title_in = str
-    choices_for_placement_strategy = str
-    choices_for_pointer_shape_when_dragging = str
-    choices_for_pointer_shape_when_grabbed = str
-    choices_for_strip_trailing_spaces = str
-    choices_for_tab_bar_align = str
-    choices_for_tab_bar_style = str
-    choices_for_tab_powerline_style = str
-    choices_for_tab_switch_strategy = str
-    choices_for_undercurl_style = str
-    choices_for_window_logo_position = str
+choices_for_allow_cloning = typing.Literal['yes', 'y', 'true', 'no', 'n', 'false', 'ask']
+choices_for_allow_remote_control = typing.Literal['password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true']
+choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled']
+choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
+choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
+choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
+choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
+choices_for_placement_strategy = typing.Literal['center', 'top-left']
+choices_for_pointer_shape_when_dragging = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
+choices_for_pointer_shape_when_grabbed = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
+choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
+choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
+choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
+choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
+choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
+choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
+choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 
 option_names = (  # {{{
  'action_alias',
