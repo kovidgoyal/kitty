@@ -6,6 +6,11 @@ import sys
 from functools import lru_cache
 from typing import List
 
+if __name__ == '__main__' and not __package__:
+    import __main__
+    __main__.__package__ = 'gen'
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 def to_linear(a: float) -> float:
     if a <= 0.04045:

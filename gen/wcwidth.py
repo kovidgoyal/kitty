@@ -26,6 +26,12 @@ from typing import (
 )
 from urllib.request import urlopen
 
+if __name__ == '__main__' and not __package__:
+    import __main__
+    __main__.__package__ = 'gen'
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 non_characters = frozenset(range(0xfffe, 0x10ffff, 0x10000))
 non_characters |= frozenset(range(0xffff, 0x10ffff + 1, 0x10000))
 non_characters |= frozenset(range(0xfdd0, 0xfdf0))

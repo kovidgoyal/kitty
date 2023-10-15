@@ -49,6 +49,12 @@ from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
 
+if __name__ == '__main__' and not __package__:
+    import __main__
+    __main__.__package__ = 'gen'
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 changed: List[str] = []
 
 

@@ -6,6 +6,11 @@ import subprocess
 import sys
 from typing import List
 
+if __name__ == '__main__' and not __package__:
+    import __main__
+    __main__.__package__ = 'gen'
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from .key_constants import patch_file
 
 # References for these names:

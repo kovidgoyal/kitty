@@ -7,6 +7,11 @@ import sys
 from collections import defaultdict
 from typing import Any, DefaultDict, Dict, FrozenSet, List, Tuple, Union
 
+if __name__ == '__main__' and not __package__:
+    import __main__
+    __main__.__package__ = 'gen'
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 KeymapType = Dict[str, Tuple[str, Union[FrozenSet[str], str]]]
 
 

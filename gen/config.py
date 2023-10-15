@@ -10,6 +10,11 @@ from typing import List
 
 from kitty.conf.generate import write_output
 
+if __name__ == '__main__' and not __package__:
+    import __main__
+    __main__.__package__ = 'gen'
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 def patch_color_list(path: str, colors: List[str], name: str, spc: str = '    ') -> None:
     with open(path, 'r+') as f:
