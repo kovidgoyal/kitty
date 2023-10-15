@@ -585,6 +585,8 @@ opt('focus_follows_mouse', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''
 Set the active window to the window under the mouse when moving the mouse around.
+On macOS, this will also cause the OS Window under the mouse to be focused automatically when the
+mouse enters it.
 '''
     )
 
