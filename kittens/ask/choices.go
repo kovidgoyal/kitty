@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"kitty/tools/cli/markup"
+	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
@@ -60,13 +61,16 @@ func extra_for(width, screen_width int) int {
 	return max(0, screen_width-width)/2 + 1
 }
 
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
+
 func GetChoices(o *Options) (response string, err error) {
 	response = ""
 	lp, err := loop.New()
 	if err != nil {
 		return "", err
 	}
-	lp.MouseTrackingMode(loop.BUTTONS_ONLY_MOUSE_TRACKING)
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 
 	prefix_style_pat := regexp.MustCompile("^(?:\x1b\\[[^m]*?m)+")
 	choice_order := make([]Choice, 0, len(o.Choices))
@@ -398,15 +402,30 @@ func GetChoices(o *Options) (response string, err error) {
 	}
 
 	lp.OnMouseEvent = func(ev *loop.MouseEvent) error {
-		if ev.Event_type == loop.MOUSE_CLICK {
-			for letter, ranges := range clickable_ranges {
-				for _, r := range ranges {
-					if r.has_point(ev.Cell.X, ev.Cell.Y) {
-						response = letter
-						lp.Quit(0)
-						return nil
-					}
+		on_letter := ""
+		for letter, ranges := range clickable_ranges {
+			for _, r := range ranges {
+				if r.has_point(ev.Cell.X, ev.Cell.Y) {
+					on_letter = letter
+					break
 				}
+			}
+		}
+		if on_letter != "" {
+			if s, has_shape := lp.CurrentPointerShape(); !has_shape && s != loop.POINTER_POINTER {
+				lp.PushPointerShape(loop.POINTER_POINTER)
+			}
+		} else {
+			if _, has_shape := lp.CurrentPointerShape(); has_shape {
+				lp.PopPointerShape()
+			}
+		}
+
+		if ev.Event_type == loop.MOUSE_CLICK {
+			if on_letter != "" {
+				response = on_letter
+				lp.Quit(0)
+				return nil
 			}
 			if hidden_text != "" && replacement_range.has_point(ev.Cell.X, ev.Cell.Y) {
 				unhide()

@@ -54,6 +54,7 @@ type Loop struct {
 	style_cache                            map[string]func(...any) string
 	style_ctx                              style.Context
 	atomic_update_active                   bool
+	pointer_shapes                         []PointerShape
 
 	// Suspend the loop restoring terminal state, and run the provided function. When it returns terminal state is
 	// put back to what it was before suspending unless the function returns an error or an error occurs saving/restoring state.
@@ -448,4 +449,49 @@ func (self *Loop) CopyTextToPrimarySelection(text string) {
 
 func (self *Loop) CopyTextToClipboard(text string) {
 	self.copy_text_to(text, "c")
+}
+
+func (self *Loop) PushPointerShape(s PointerShape) {
+	self.pointer_shapes = append(self.pointer_shapes, s)
+	self.QueueWriteString("\x1b]22;" + s.String() + "\x1b\\")
+}
+
+func (self *Loop) PopPointerShape() {
+	if len(self.pointer_shapes) > 0 {
+		self.pointer_shapes = self.pointer_shapes[:len(self.pointer_shapes)-1]
+		self.QueueWriteString("\x1b]22;<\x1b\\")
+	}
+}
+
+func (self *Loop) ClearPointerShapes() (ans []PointerShape) {
+	ans = self.pointer_shapes
+	for i := len(self.pointer_shapes) - 1; i >= 0; i-- {
+		self.QueueWriteString("\x1b]22;<\x1b\\")
+	}
+	self.pointer_shapes = nil
+	return ans
+}
+
+func (self *Loop) SetPointerShapes(ps []PointerShape) {
+	self.pointer_shapes = ps
+	if len(ps) > 0 {
+		s := strings.Builder{}
+		s.WriteString("\x1b]22;>")
+		for i, x := range ps {
+			s.WriteString(x.String())
+			if i+1 < len(ps) {
+				s.WriteByte(',')
+			}
+		}
+		s.WriteString("\x1b\\")
+		self.QueueWriteString(s.String())
+	}
+}
+
+func (self *Loop) CurrentPointerShape() (ans PointerShape, has_shape bool) {
+	if len(self.pointer_shapes) > 0 {
+		has_shape = true
+		ans = self.pointer_shapes[len(self.pointer_shapes)-1]
+	}
+	return
 }

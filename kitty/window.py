@@ -1741,7 +1741,8 @@ def set_pointer_shape(screen: Screen, value: str, os_window_id: int = 0) -> str:
         value = value[1:]
     if op in '=>':
         for v in value.split(','):
-            screen.change_pointer_shape(op, v)
+            if v:
+                screen.change_pointer_shape(op, v)
         if os_window_id and current_focused_os_window_id() == os_window_id:
             update_pointer_shape(os_window_id)
     elif op == '<':

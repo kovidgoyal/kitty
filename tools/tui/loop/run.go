@@ -346,6 +346,7 @@ func (self *Loop) run() (err error) {
 			self.QueueWriteString(finalizer)
 		}
 		if needs_reset_escape_codes {
+			self.ClearPointerShapes()
 			self.QueueWriteString(self.terminal_options.ResetStateEscapeCodes())
 		}
 		// flush queued data and wait for it to be written for a timeout, then wait for writer to shutdown
@@ -365,6 +366,7 @@ func (self *Loop) run() (err error) {
 	}
 
 	self.SuspendAndRun = func(run func() error) (err error) {
+		ps := self.ClearPointerShapes()
 		write_id := self.QueueWriteString(self.terminal_options.ResetStateEscapeCodes())
 		needs_reset_escape_codes = false
 		if err = self.wait_for_write_to_complete(write_id, self.tty_write_channel, write_done_channel, 2*time.Second); err != nil {
@@ -386,11 +388,13 @@ func (self *Loop) run() (err error) {
 			return err
 		}
 		write_id = self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
+		self.SetPointerShapes(ps)
 		needs_reset_escape_codes = true
 		return self.wait_for_write_to_complete(write_id, self.tty_write_channel, write_done_channel, 2*time.Second)
 	}
 
 	self.on_SIGTSTP = func() error {
+		ps := self.ClearPointerShapes()
 		write_id := self.QueueWriteString(self.terminal_options.ResetStateEscapeCodes())
 		needs_reset_escape_codes = false
 		err := self.wait_for_write_to_complete(write_id, self.tty_write_channel, write_done_channel, 2*time.Second)
@@ -406,6 +410,7 @@ func (self *Loop) run() (err error) {
 			return err
 		}
 		write_id = self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
+		self.SetPointerShapes(ps)
 		needs_reset_escape_codes = true
 		err = self.wait_for_write_to_complete(write_id, self.tty_write_channel, write_done_channel, 2*time.Second)
 		if err != nil {
