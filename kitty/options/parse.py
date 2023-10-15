@@ -1140,7 +1140,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for pointer_shape_when_dragging")
         ans["pointer_shape_when_dragging"] = val
 
-    choices_for_pointer_shape_when_dragging = frozenset(('arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing'))
+    choices_for_pointer_shape_when_dragging = choices_for_default_pointer_shape
 
     def pointer_shape_when_grabbed(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()
@@ -1148,7 +1148,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for pointer_shape_when_grabbed")
         ans["pointer_shape_when_grabbed"] = val
 
-    choices_for_pointer_shape_when_grabbed = frozenset(('arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing'))
+    choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 
     def remember_window_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['remember_window_size'] = to_bool(val)

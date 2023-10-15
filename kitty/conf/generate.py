@@ -70,6 +70,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     is_mutiple_vars = {}
     option_names = set()
     color_table = list(map(str, range(256)))
+    choice_dedup: Dict[str, str] = {}
+    choice_parser_dedup: Dict[str, str] = {}
 
     def parser_function_declaration(option_name: str) -> None:
         t('')
@@ -100,6 +102,10 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
         if option.choices:
             typ = 'typing.Literal[{}]'.format(', '.join(repr(x) for x in option.choices))
             ename = f'choices_for_{option.name}'
+            if typ in choice_dedup:
+                typ = choice_dedup[typ]
+            else:
+                choice_dedup[typ] = ename
             choices[ename] = typ
             typ = ename
             func = str
@@ -134,12 +140,18 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             imports.add(('kitty.constants', 'is_macos'))
         a(f'    {option.name}: {typ} = {defval}')
         if option.choices:
+            ecname = f'choices_for_{option.name}'
+            crepr = f'frozenset({option.choices!r})'
+            if crepr in choice_parser_dedup:
+                crepr = choice_parser_dedup[crepr]
+            else:
+                choice_parser_dedup[crepr] = ecname
             t('        val = val.lower()')
             t(f'        if val not in self.choices_for_{option.name}:')
             t(f'            raise ValueError(f"The value {{val}} is not a valid choice for {option.name}")')
             t(f'        ans["{option.name}"] = val')
             t('')
-            t(f'    choices_for_{option.name} = frozenset({option.choices!r})')
+            t(f'    {ecname} = {crepr}')
 
     for option_name, (typ, mval) in is_mutiple_vars.items():
         a(f'    {option_name}: {typ} = ' '{}')
