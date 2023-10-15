@@ -58,6 +58,7 @@ def main(args: List[str]=sys.argv) -> None:
     glfw_xfont_map = []
     kitty_to_enum_map = {}
     enum_to_glfw_map = {}
+    glfw_cocoa_map = {}
     for line in cursors.splitlines():
         line = line.strip()
         if line:
@@ -78,6 +79,15 @@ def main(args: List[str]=sys.argv) -> None:
             else:
                 items = tuple('"' + x.replace('!', '') + '"' for x in xc)
                 glfw_xfont_map.append(f'case {glfw_name}: return try_cursor_names(cursor, {len(items)}, {", ".join(items)});')
+            parts = cocoa.split(':', 1)
+            if len(parts) == 1:
+                if parts[0].startswith('_'):
+                    glfw_cocoa_map[glfw_name] = f'U({glfw_name}, {parts[0]});'
+                else:
+                    glfw_cocoa_map[glfw_name] = f'C({glfw_name}, {parts[0]});'
+            else:
+                glfw_cocoa_map[glfw_name] = f'S({glfw_name}, {parts[0]}, {parts[1]});'
+
 
     glfw_enum.append('GLFW_INVALID_CURSOR')
     patch_file('glfw/glfw3.h', 'mouse cursor shapes', '\n'.join(f'    {x},' for x in glfw_enum))
@@ -94,6 +104,7 @@ def main(args: List[str]=sys.argv) -> None:
         f'        case {k}: set_glfw_mouse_cursor(w, {v}); break;' for k, v in enum_to_glfw_map.items()))
     patch_file('kitty/glfw.c', 'name to glfw', '\n'.join(
         f'    if (strcmp(name, "{k}") == 0) return {enum_to_glfw_map[v]};' for k, v in kitty_to_enum_map.items()))
+    patch_file('glfw/cocoa_window.m', 'glfw to cocoa', '\n'.join(f'        {x}' for x in glfw_cocoa_map.values()))
     subprocess.check_call(['glfw/glfw.py'])
 
 
