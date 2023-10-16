@@ -306,6 +306,7 @@ json_field_types: Dict[str, str] = {
 
 
 def go_field_type(json_field_type: str) -> str:
+    json_field_type = json_field_type.partition('=')[0]
     q = json_field_types.get(json_field_type)
     if q:
         return q
@@ -324,6 +325,7 @@ class JSONField:
         field_def = line.split(':', 1)[0]
         self.required = False
         self.field, self.field_type = field_def.split('/', 1)
+        self.field_type, self.special_parser = self.field_type.partition('=')[::2]
         if self.field.endswith('+'):
             self.required = True
             self.field = self.field[:-1]
@@ -370,14 +372,17 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
         if oq in option_map:
             o = option_map[oq]
             used_options.add(oq)
+            optstring = f'options_{name}.{o.go_var_name}'
+            if field.special_parser:
+                optstring = f'{field.special_parser}({optstring})'
             if field.field_type == 'str':
-                jc.append(f'payload.{field.struct_field_name} = escaped_string(options_{name}.{o.go_var_name})')
+                jc.append(f'payload.{field.struct_field_name} = escaped_string({optstring})')
             elif field.field_type == 'list.str':
-                jc.append(f'payload.{field.struct_field_name} = escape_list_of_strings(options_{name}.{o.go_var_name})')
+                jc.append(f'payload.{field.struct_field_name} = escape_list_of_strings({optstring})')
             elif field.field_type == 'dict.str':
-                jc.append(f'payload.{field.struct_field_name} = escape_dict_of_strings(options_{name}.{o.go_var_name})')
+                jc.append(f'payload.{field.struct_field_name} = escape_dict_of_strings({optstring})')
             else:
-                jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
+                jc.append(f'payload.{field.struct_field_name} = {optstring}')
         elif field.field in handled_fields:
             pass
         else:

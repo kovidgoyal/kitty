@@ -62,6 +62,8 @@ Detailed list of changes
 
 - Fix trailing bracket not ignored when detecting a multi-line URL with the trailing bracket as the first character on the last line (:iss:`6710`)
 
+- Remote control launch: Fix the ``--copy-env`` option not copying current environment variables (:iss:`6724`)
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

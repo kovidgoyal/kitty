@@ -96,6 +96,8 @@ by the shell (needs :ref:`shell_integration` to work). The special value
 oldest foreground process associated with the currently active window rather
 than the newest foreground process. Finally, the special value :code:`root`
 refers to the process that was originally started when the window was created.
+When running via remote control a value of current uses the working directory
+for the remote control invocation.
 
 
 --env
@@ -322,10 +324,12 @@ def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
     return LaunchSpec(opts, args)
 
 
-def get_env(opts: LaunchCLIOptions, active_child: Optional[Child] = None) -> Dict[str, str]:
+def get_env(opts: LaunchCLIOptions, active_child: Optional[Child] = None, base_env: Optional[Dict[str,str]] = None) -> Dict[str, str]:
     env: Dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
+    if base_env is not None:
+        env.update(base_env)
     for x in opts.env:
         for k, v in parse_env(x, env):
             env[k] = v
@@ -456,6 +460,7 @@ def _launch(
     active: Optional[Window] = None,
     is_clone_launch: str = '',
     rc_from_window: Optional[Window] = None,
+    base_env: Optional[Dict[str, str]] = None,
 ) -> Optional[Window]:
     active = active or boss.active_window_for_cwd
     if active:
@@ -470,7 +475,7 @@ def _launch(
     if opts.os_window_title == 'current':
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
-    env = get_env(opts, active_child)
+    env = get_env(opts, active_child, base_env)
     remote_control_restrictions: Optional[Dict[str, Sequence[str]]] = None
     if opts.allow_remote_control and opts.remote_control_password:
         from kitty.options.utils import remote_control_password
@@ -633,12 +638,13 @@ def launch(
     active: Optional[Window] = None,
     is_clone_launch: str = '',
     rc_from_window: Optional[Window] = None,
+    base_env: Optional[Dict[str, str]] = None,
 ) -> Optional[Window]:
     active = active or boss.active_window_for_cwd
     if opts.keep_focus and active:
         orig, active.ignore_focus_changes = active.ignore_focus_changes, True
     try:
-        return _launch(boss, opts, args, target_tab, force_target_tab, active, is_clone_launch, rc_from_window)
+        return _launch(boss, opts, args, target_tab, force_target_tab, active, is_clone_launch, rc_from_window, base_env)
     finally:
         if opts.keep_focus and active:
             active.ignore_focus_changes = orig
