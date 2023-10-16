@@ -6,7 +6,7 @@ Mouse pointer shapes
 This is a simple escape code that can be used by terminal programs to change
 the shape of the mouse pointer. This is useful for buttons/links, dragging to
 resize panes, etc. It is based on the original escape code proposal from xterm
-however, it properly specifies names for the different cursors in a system
+however, it properly specifies names for the different shapes in a system
 independent manner, adds a stack for easy push/pop of shapes, allows programs
 to query support and specifies interaction with other terminal state.
 
@@ -89,19 +89,22 @@ In addition to ``__current__`` there are a couple of other special names::
 Interaction with other terminal features
 ---------------------------------------------
 
-The terminal must maintain separate shape stack for the *main* and *alternate*
+The terminal must maintain separate shape stacks for the *main* and *alternate*
 screens. This allows full screen programs, which are likely to be the main
-consumers of this feature, to easily temporarily, switch back from the alternate screen,
+consumers of this feature, to easily temporarily switch back from the alternate screen,
 without needing to worry about pointer shape state. Think of suspending a
 terminal editor to get back to the shell, for example.
 
 Resetting the terminal must empty both the shape stacks.
 
-When dragging to select text the terminal is free to ignore any mouse cursor
-specified using this escape code in favor of one appropriate for dragging.
-Similarly, when hovering over a URL or OSC 8 based hyperlink, the terminal may
-choose to change the mouse cursor regardless of the value set by this escape
-code.
+When dragging to select text, the terminal is free to ignore any mouse pointer
+shape specified using this escape code in favor of one appropriate for
+dragging.  Similarly, when hovering over a URL or OSC 8 based hyperlink, the
+terminal may choose to change the mouse pointer regardless of the value set by
+this escape code.
+
+This feature is independent of mouse reporting. The changed pointer shapes apply
+regardless of whether the terminal program has enabled mouse reporting or not.
 
 
 .. _pointer_shape_names:
