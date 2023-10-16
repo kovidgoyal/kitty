@@ -2854,6 +2854,7 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
         case GLFW_WAIT_CURSOR: return set_cursor_from_font(cursor, XC_clock);
         case GLFW_PROGRESS_CURSOR: return try_cursor_names(cursor, 3, "progress", "half-busy", "left_ptr_watch");
         case GLFW_CROSSHAIR_CURSOR: return set_cursor_from_font(cursor, XC_tcross);
+        case GLFW_CELL_CURSOR: return set_cursor_from_font(cursor, XC_plus);
         case GLFW_VERTICAL_TEXT_CURSOR: return try_cursor_names(cursor, 1, "vertical-text");
         case GLFW_MOVE_CURSOR: return set_cursor_from_font(cursor, XC_fleur);
         case GLFW_E_RESIZE_CURSOR: return set_cursor_from_font(cursor, XC_right_side);

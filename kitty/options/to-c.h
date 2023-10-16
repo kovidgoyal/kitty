@@ -144,6 +144,7 @@ pointer_shape(PyObject *shape_name) {
     else if (strcmp(name, "wait") == 0) return WAIT_POINTER;
     else if (strcmp(name, "progress") == 0) return PROGRESS_POINTER;
     else if (strcmp(name, "crosshair") == 0) return CROSSHAIR_POINTER;
+    else if (strcmp(name, "cell") == 0) return CELL_POINTER;
     else if (strcmp(name, "vertical-text") == 0) return VERTICAL_TEXT_POINTER;
     else if (strcmp(name, "move") == 0) return MOVE_POINTER;
     else if (strcmp(name, "e-resize") == 0) return E_RESIZE_POINTER;

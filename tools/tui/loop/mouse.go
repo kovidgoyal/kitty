@@ -45,28 +45,29 @@ const (
 	WAIT_POINTER          PointerShape = 4
 	PROGRESS_POINTER      PointerShape = 5
 	CROSSHAIR_POINTER     PointerShape = 6
-	VERTICAL_TEXT_POINTER PointerShape = 7
-	MOVE_POINTER          PointerShape = 8
-	E_RESIZE_POINTER      PointerShape = 9
-	NE_RESIZE_POINTER     PointerShape = 10
-	NW_RESIZE_POINTER     PointerShape = 11
-	N_RESIZE_POINTER      PointerShape = 12
-	SE_RESIZE_POINTER     PointerShape = 13
-	SW_RESIZE_POINTER     PointerShape = 14
-	S_RESIZE_POINTER      PointerShape = 15
-	W_RESIZE_POINTER      PointerShape = 16
-	EW_RESIZE_POINTER     PointerShape = 17
-	NS_RESIZE_POINTER     PointerShape = 18
-	NESW_RESIZE_POINTER   PointerShape = 19
-	NWSE_RESIZE_POINTER   PointerShape = 20
-	ZOOM_IN_POINTER       PointerShape = 21
-	ZOOM_OUT_POINTER      PointerShape = 22
-	ALIAS_POINTER         PointerShape = 23
-	COPY_POINTER          PointerShape = 24
-	NOT_ALLOWED_POINTER   PointerShape = 25
-	NO_DROP_POINTER       PointerShape = 26
-	GRAB_POINTER          PointerShape = 27
-	GRABBING_POINTER      PointerShape = 28
+	CELL_POINTER          PointerShape = 7
+	VERTICAL_TEXT_POINTER PointerShape = 8
+	MOVE_POINTER          PointerShape = 9
+	E_RESIZE_POINTER      PointerShape = 10
+	NE_RESIZE_POINTER     PointerShape = 11
+	NW_RESIZE_POINTER     PointerShape = 12
+	N_RESIZE_POINTER      PointerShape = 13
+	SE_RESIZE_POINTER     PointerShape = 14
+	SW_RESIZE_POINTER     PointerShape = 15
+	S_RESIZE_POINTER      PointerShape = 16
+	W_RESIZE_POINTER      PointerShape = 17
+	EW_RESIZE_POINTER     PointerShape = 18
+	NS_RESIZE_POINTER     PointerShape = 19
+	NESW_RESIZE_POINTER   PointerShape = 20
+	NWSE_RESIZE_POINTER   PointerShape = 21
+	ZOOM_IN_POINTER       PointerShape = 22
+	ZOOM_OUT_POINTER      PointerShape = 23
+	ALIAS_POINTER         PointerShape = 24
+	COPY_POINTER          PointerShape = 25
+	NOT_ALLOWED_POINTER   PointerShape = 26
+	NO_DROP_POINTER       PointerShape = 27
+	GRAB_POINTER          PointerShape = 28
+	GRABBING_POINTER      PointerShape = 29
 
 // end pointer shape enum
 )
@@ -88,6 +89,8 @@ func (e PointerShape) String() string {
 		return "progress"
 	case CROSSHAIR_POINTER:
 		return "crosshair"
+	case CELL_POINTER:
+		return "cell"
 	case VERTICAL_TEXT_POINTER:
 		return "vertical-text"
 	case MOVE_POINTER:

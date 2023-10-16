@@ -703,6 +703,7 @@ set_mouse_cursor(MouseShape type) {
         case WAIT_POINTER: set_glfw_mouse_cursor(w, GLFW_WAIT_CURSOR); break;
         case PROGRESS_POINTER: set_glfw_mouse_cursor(w, GLFW_PROGRESS_CURSOR); break;
         case CROSSHAIR_POINTER: set_glfw_mouse_cursor(w, GLFW_CROSSHAIR_CURSOR); break;
+        case CELL_POINTER: set_glfw_mouse_cursor(w, GLFW_CELL_CURSOR); break;
         case VERTICAL_TEXT_POINTER: set_glfw_mouse_cursor(w, GLFW_VERTICAL_TEXT_CURSOR); break;
         case MOVE_POINTER: set_glfw_mouse_cursor(w, GLFW_MOVE_CURSOR); break;
         case E_RESIZE_POINTER: set_glfw_mouse_cursor(w, GLFW_E_RESIZE_CURSOR); break;
@@ -1740,6 +1741,7 @@ pointer_name_to_glfw_name(const char *name) {
     if (strcmp(name, "wait") == 0) return GLFW_WAIT_CURSOR;
     if (strcmp(name, "progress") == 0) return GLFW_PROGRESS_CURSOR;
     if (strcmp(name, "crosshair") == 0) return GLFW_CROSSHAIR_CURSOR;
+    if (strcmp(name, "cell") == 0) return GLFW_CELL_CURSOR;
     if (strcmp(name, "vertical-text") == 0) return GLFW_VERTICAL_TEXT_CURSOR;
     if (strcmp(name, "move") == 0) return GLFW_MOVE_CURSOR;
     if (strcmp(name, "e-resize") == 0) return GLFW_E_RESIZE_CURSOR;
@@ -1787,6 +1789,7 @@ glfw_name_to_css_pointer_name(GLFWCursorShape q) {
         case GLFW_WAIT_CURSOR: return "wait";
         case GLFW_PROGRESS_CURSOR: return "progress";
         case GLFW_CROSSHAIR_CURSOR: return "crosshair";
+        case GLFW_CELL_CURSOR: return "cell";
         case GLFW_VERTICAL_TEXT_CURSOR: return "vertical-text";
         case GLFW_MOVE_CURSOR: return "move";
         case GLFW_E_RESIZE_CURSOR: return "e-resize";

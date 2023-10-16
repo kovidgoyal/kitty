@@ -2556,6 +2556,7 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
         S(GLFW_WAIT_CURSOR, busybutclickable, arrowCursor);
         S(GLFW_PROGRESS_CURSOR, busybutclickable, arrowCursor);
         C(GLFW_CROSSHAIR_CURSOR, crosshairCursor);
+        S(GLFW_CELL_CURSOR, cell, crosshairCursor);
         C(GLFW_VERTICAL_TEXT_CURSOR, IBeamCursorForVerticalLayout);
         S(GLFW_MOVE_CURSOR, move, openHandCursor);
         C(GLFW_E_RESIZE_CURSOR, resizeRightCursor);

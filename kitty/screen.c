@@ -1164,6 +1164,7 @@ current_pointer_shape(Screen *self, PyObject *args UNUSED) {
         case WAIT_POINTER: ans = "wait"; break;
         case PROGRESS_POINTER: ans = "progress"; break;
         case CROSSHAIR_POINTER: ans = "crosshair"; break;
+        case CELL_POINTER: ans = "cell"; break;
         case VERTICAL_TEXT_POINTER: ans = "vertical-text"; break;
         case MOVE_POINTER: ans = "move"; break;
         case E_RESIZE_POINTER: ans = "e-resize"; break;
@@ -1212,6 +1213,7 @@ change_pointer_shape(Screen *self, PyObject *args) {
         else if (strcmp("wait", css_name) == 0) s = WAIT_POINTER;
         else if (strcmp("progress", css_name) == 0) s = PROGRESS_POINTER;
         else if (strcmp("crosshair", css_name) == 0) s = CROSSHAIR_POINTER;
+        else if (strcmp("cell", css_name) == 0) s = CELL_POINTER;
         else if (strcmp("vertical-text", css_name) == 0) s = VERTICAL_TEXT_POINTER;
         else if (strcmp("move", css_name) == 0) s = MOVE_POINTER;
         else if (strcmp("e-resize", css_name) == 0) s = E_RESIZE_POINTER;
@@ -1247,6 +1249,8 @@ change_pointer_shape(Screen *self, PyObject *args) {
         else if (strcmp("half-busy", css_name) == 0) s = PROGRESS_POINTER;
         else if (strcmp("left_ptr_watch", css_name) == 0) s = PROGRESS_POINTER;
         else if (strcmp("tcross", css_name) == 0) s = CROSSHAIR_POINTER;
+        else if (strcmp("plus", css_name) == 0) s = CELL_POINTER;
+        else if (strcmp("cross", css_name) == 0) s = CELL_POINTER;
         else if (strcmp("fleur", css_name) == 0) s = MOVE_POINTER;
         else if (strcmp("pointer-move", css_name) == 0) s = MOVE_POINTER;
         else if (strcmp("right_side", css_name) == 0) s = E_RESIZE_POINTER;

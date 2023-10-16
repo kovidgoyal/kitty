@@ -28,6 +28,7 @@ help          help           help,!question_arrow,whats_this           help     
 wait          wait           wait,!clock,watch                         wait            busybutclickable:arrowCursor
 progress      progress       progress,half-busy,left_ptr_watch         progress        busybutclickable:arrowCursor
 crosshair     crosshair      crosshair,!tcross                         crosshair       crosshairCursor
+cell          cell           cell,!plus,!cross                         cell            cell:crosshairCursor
 vertical-text vertical-text  vertical-text                             vertical-text   IBeamCursorForVerticalLayout
 move          move           move,!fleur,pointer-move                  move            move:openHandCursor
 

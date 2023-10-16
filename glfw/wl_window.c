@@ -839,6 +839,7 @@ struct wl_cursor* _glfwLoadCursor(GLFWCursorShape shape, struct wl_cursor_theme*
         C(GLFW_WAIT_CURSOR, "wait", "clock", "watch");
         C(GLFW_PROGRESS_CURSOR, "progress", "half-busy", "left_ptr_watch");
         C(GLFW_CROSSHAIR_CURSOR, "crosshair", "tcross");
+        C(GLFW_CELL_CURSOR, "cell", "plus", "cross");
         C(GLFW_VERTICAL_TEXT_CURSOR, "vertical-text");
         C(GLFW_MOVE_CURSOR, "move", "fleur", "pointer-move");
         C(GLFW_E_RESIZE_CURSOR, "e-resize", "right_side");

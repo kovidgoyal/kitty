@@ -601,6 +601,7 @@ pointer_shape_names = (
     'wait',
     'progress',
     'crosshair',
+    'cell',
     'vertical-text',
     'move',
     'e-resize',
