@@ -96,8 +96,6 @@ by the shell (needs :ref:`shell_integration` to work). The special value
 oldest foreground process associated with the currently active window rather
 than the newest foreground process. Finally, the special value :code:`root`
 refers to the process that was originally started when the window was created.
-When running via remote control a value of current uses the working directory
-for the remote control invocation.
 
 
 --env

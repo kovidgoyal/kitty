@@ -21,7 +21,7 @@ class Launch(RemoteCommand):
     args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
     match/str: The tab to open the new window in
     window_title/str: Title for the new window
-    cwd/str=copy_local_cwd: Working directory for the new window
+    cwd/str: Working directory for the new window
     env/list.str: List of environment variables of the form NAME=VALUE
     var/list.str: List of user variables of the form NAME=VALUE
     tab_title/str: Title for the new tab

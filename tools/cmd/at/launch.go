@@ -15,12 +15,3 @@ func copy_local_env(copy_env bool) []string {
 	}
 	return nil
 }
-
-func copy_local_cwd(copy_cwd string) string {
-	if copy_cwd == "current" {
-		if c, e := os.Getwd(); e == nil {
-			copy_cwd = c
-		}
-	}
-	return copy_cwd
-}
