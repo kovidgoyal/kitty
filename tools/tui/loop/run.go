@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -45,6 +46,22 @@ func kill_self(sig unix.Signal) {
 	_ = unix.Kill(os.Getpid(), sig)
 	// Give the signal time to be delivered
 	time.Sleep(20 * time.Millisecond)
+}
+
+func (self *Loop) set_pointer_shapes(ps []PointerShape) {
+	self.pointer_shapes = ps
+	if len(ps) > 0 {
+		s := strings.Builder{}
+		s.WriteString("\x1b]22;>")
+		for i, x := range ps {
+			s.WriteString(x.String())
+			if i+1 < len(ps) {
+				s.WriteByte(',')
+			}
+		}
+		s.WriteString("\x1b\\")
+		self.QueueWriteString(s.String())
+	}
 }
 
 func (self *Loop) update_screen_size() error {
@@ -388,7 +405,7 @@ func (self *Loop) run() (err error) {
 			return err
 		}
 		write_id = self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
-		self.SetPointerShapes(ps)
+		self.set_pointer_shapes(ps)
 		needs_reset_escape_codes = true
 		return self.wait_for_write_to_complete(write_id, self.tty_write_channel, write_done_channel, 2*time.Second)
 	}
@@ -410,7 +427,7 @@ func (self *Loop) run() (err error) {
 			return err
 		}
 		write_id = self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
-		self.SetPointerShapes(ps)
+		self.set_pointer_shapes(ps)
 		needs_reset_escape_codes = true
 		err = self.wait_for_write_to_complete(write_id, self.tty_write_channel, write_done_channel, 2*time.Second)
 		if err != nil {

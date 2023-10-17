@@ -472,22 +472,6 @@ func (self *Loop) ClearPointerShapes() (ans []PointerShape) {
 	return ans
 }
 
-func (self *Loop) SetPointerShapes(ps []PointerShape) {
-	self.pointer_shapes = ps
-	if len(ps) > 0 {
-		s := strings.Builder{}
-		s.WriteString("\x1b]22;>")
-		for i, x := range ps {
-			s.WriteString(x.String())
-			if i+1 < len(ps) {
-				s.WriteByte(',')
-			}
-		}
-		s.WriteString("\x1b\\")
-		self.QueueWriteString(s.String())
-	}
-}
-
 func (self *Loop) CurrentPointerShape() (ans PointerShape, has_shape bool) {
 	if len(self.pointer_shapes) > 0 {
 		has_shape = true
