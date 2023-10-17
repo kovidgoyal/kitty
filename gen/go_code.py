@@ -504,12 +504,12 @@ def kitten_clis() -> None:
                 od.append(opt.struct_declaration())
             if ac is not None:
                 print(''.join(ac.as_go_code('ans.ArgCompleter', ' = ')))
+            if not kcd:
+                print('specialize_command(ans)')
             if has_underscore:
                 print("clone := root.AddClone(ans.Group, ans)")
                 print('clone.Hidden = false')
                 print(f'clone.Name = "{serialize_as_go_string(kitten.replace("_", "-"))}"')
-            if not kcd:
-                print('specialize_command(ans)')
             print('}')
             print('type Options struct {')
             print('\n'.join(od))
