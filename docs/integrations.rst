@@ -47,6 +47,13 @@ graphics protocol.
 Another terminal file manager, with previews of file contents powered by kitty's
 graphics protocol.
 
+.. _tool_presentterm:
+
+`presenterm <https://github.com/mfontanini/presenterm>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Show markdown based slides with images in your terminal, powered by the
+kitty graphics protocol.
+
 .. _tool_term_image:
 
 `term-image <https://github.com/AnonymouX47/term-image>`__
