@@ -43,8 +43,8 @@ w-resize      w-resize       w-resize,!left_side                       w_resize 
 
 ew-resize     ew-resize      ew-resize,!sb_h_double_arrow,split_h      ew_resize       resizeLeftRightCursor
 ns-resize     ns-resize      ns-resize,!sb_v_double_arrow,split_v      ns_resize       resizeUpDownCursor
-nesw-resize   nesw-resize    nesw-resize,size_bdiag,!sb_v_double_arrow nesw_resize     _windowResizeNorthEastSouthWestCursor
-nwse-resize   nwse-resize    nwse-resize,size_fdiag,!sb_h_double_arrow nwse_resize     _windowResizeNorthWestSouthEastCursor
+nesw-resize   nesw-resize    nesw-resize,size_bdiag,size-bdiag         nesw_resize     _windowResizeNorthEastSouthWestCursor
+nwse-resize   nwse-resize    nwse-resize,size_fdiag,size-fdiag         nwse_resize     _windowResizeNorthWestSouthEastCursor
 
 zoom-in       zoom-in        zoom-in,zoom_in                           zoom_in         zoomin:arrowCursor
 zoom-out      zoom-out       zoom-out,zoom_out                         zoom_out        zoomout:arrowCursor

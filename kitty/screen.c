@@ -1261,12 +1261,14 @@ change_pointer_shape(Screen *self, PyObject *args) {
         else if (strcmp("bottom_left_corner", css_name) == 0) s = SW_RESIZE_POINTER;
         else if (strcmp("bottom_side", css_name) == 0) s = S_RESIZE_POINTER;
         else if (strcmp("left_side", css_name) == 0) s = W_RESIZE_POINTER;
-        else if (strcmp("sb_h_double_arrow", css_name) == 0) s = NWSE_RESIZE_POINTER;
+        else if (strcmp("sb_h_double_arrow", css_name) == 0) s = EW_RESIZE_POINTER;
         else if (strcmp("split_h", css_name) == 0) s = EW_RESIZE_POINTER;
-        else if (strcmp("sb_v_double_arrow", css_name) == 0) s = NESW_RESIZE_POINTER;
+        else if (strcmp("sb_v_double_arrow", css_name) == 0) s = NS_RESIZE_POINTER;
         else if (strcmp("split_v", css_name) == 0) s = NS_RESIZE_POINTER;
         else if (strcmp("size_bdiag", css_name) == 0) s = NESW_RESIZE_POINTER;
+        else if (strcmp("size-bdiag", css_name) == 0) s = NESW_RESIZE_POINTER;
         else if (strcmp("size_fdiag", css_name) == 0) s = NWSE_RESIZE_POINTER;
+        else if (strcmp("size-fdiag", css_name) == 0) s = NWSE_RESIZE_POINTER;
         else if (strcmp("zoom_in", css_name) == 0) s = ZOOM_IN_POINTER;
         else if (strcmp("zoom_out", css_name) == 0) s = ZOOM_OUT_POINTER;
         else if (strcmp("dnd-link", css_name) == 0) s = ALIAS_POINTER;

@@ -2867,8 +2867,8 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
         case GLFW_W_RESIZE_CURSOR: return set_cursor_from_font(cursor, XC_left_side);
         case GLFW_EW_RESIZE_CURSOR: return set_cursor_from_font(cursor, XC_sb_h_double_arrow);
         case GLFW_NS_RESIZE_CURSOR: return set_cursor_from_font(cursor, XC_sb_v_double_arrow);
-        case GLFW_NESW_RESIZE_CURSOR: return set_cursor_from_font(cursor, XC_sb_v_double_arrow);
-        case GLFW_NWSE_RESIZE_CURSOR: return set_cursor_from_font(cursor, XC_sb_h_double_arrow);
+        case GLFW_NESW_RESIZE_CURSOR: return try_cursor_names(cursor, 3, "nesw-resize", "size_bdiag", "size-bdiag");
+        case GLFW_NWSE_RESIZE_CURSOR: return try_cursor_names(cursor, 3, "nwse-resize", "size_fdiag", "size-fdiag");
         case GLFW_ZOOM_IN_CURSOR: return try_cursor_names(cursor, 2, "zoom-in", "zoom_in");
         case GLFW_ZOOM_OUT_CURSOR: return try_cursor_names(cursor, 2, "zoom-out", "zoom_out");
         case GLFW_ALIAS_CURSOR: return try_cursor_names(cursor, 1, "dnd-link");

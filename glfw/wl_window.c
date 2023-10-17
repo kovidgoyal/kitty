@@ -852,8 +852,8 @@ struct wl_cursor* _glfwLoadCursor(GLFWCursorShape shape, struct wl_cursor_theme*
         C(GLFW_W_RESIZE_CURSOR, "w-resize", "left_side");
         C(GLFW_EW_RESIZE_CURSOR, "ew-resize", "sb_h_double_arrow", "split_h");
         C(GLFW_NS_RESIZE_CURSOR, "ns-resize", "sb_v_double_arrow", "split_v");
-        C(GLFW_NESW_RESIZE_CURSOR, "nesw-resize", "size_bdiag", "sb_v_double_arrow");
-        C(GLFW_NWSE_RESIZE_CURSOR, "nwse-resize", "size_fdiag", "sb_h_double_arrow");
+        C(GLFW_NESW_RESIZE_CURSOR, "nesw-resize", "size_bdiag", "size-bdiag");
+        C(GLFW_NWSE_RESIZE_CURSOR, "nwse-resize", "size_fdiag", "size-fdiag");
         C(GLFW_ZOOM_IN_CURSOR, "zoom-in", "zoom_in");
         C(GLFW_ZOOM_OUT_CURSOR, "zoom-out", "zoom_out");
         C(GLFW_ALIAS_CURSOR, "dnd-link");
