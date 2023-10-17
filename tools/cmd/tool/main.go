@@ -11,6 +11,7 @@ import (
 	"kitty/kittens/hints"
 	"kitty/kittens/hyperlinked_grep"
 	"kitty/kittens/icat"
+	"kitty/kittens/mouse_demo"
 	"kitty/kittens/show_key"
 	"kitty/kittens/ssh"
 	"kitty/kittens/themes"
@@ -50,6 +51,15 @@ func KittyToolEntryPoints(root *cli.Command) {
 	unicode_input.EntryPoint(root)
 	// show_key
 	show_key.EntryPoint(root)
+	// mouse_demo
+	root.AddSubCommand(&cli.Command{
+		Name:             "mouse_demo",
+		ShortDescription: "Demo the mouse handling kitty implements for terminal programs",
+		OnlyArgsAllowed:  true,
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			return mouse_demo.Run(args)
+		},
+	})
 	// hyperlinked_grep
 	hyperlinked_grep.EntryPoint(root)
 	// ask
