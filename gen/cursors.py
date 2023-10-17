@@ -139,6 +139,8 @@ def main(args: List[str]=sys.argv) -> None:
         f'\t{x} PointerShape = {i}' for i, x in enumerate(enum_to_glfw_map)), start_marker='// ', end_marker='')
     patch_file('tools/tui/loop/mouse.go', 'pointer shape tostring', '\n'.join(
         f'''\tcase {x}: return "{x.lower().rpartition('_')[0].replace('_', '-')}"''' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
+    patch_file('kittens/mouse_demo/main.go', 'all pointer shapes', '\n'.join(
+        f'\tloop.{x},' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
 
     subprocess.check_call(['glfw/glfw.py'])
 
