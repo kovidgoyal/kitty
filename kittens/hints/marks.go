@@ -22,6 +22,7 @@ import (
 
 	"kitty"
 	"kitty/tools/config"
+	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
 
@@ -221,7 +222,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 		return nil
 	}
 	cp := config.ConfigParser{LineHandler: handle_line}
-	cp.ParseFiles(path)
+	_ = cp.ParseFiles(path) // ignore errors and use defaults
 	if ans.Url_prefixes == nil {
 		ans.Url_prefixes = utils.NewSetWithItems(kitty.KittyConfigDefaults.Url_prefixes...)
 	}
@@ -231,6 +232,9 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 })
+
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 func functions_for(opts *Options) (pattern string, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc) {
 	switch opts.Type {
