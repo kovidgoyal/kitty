@@ -120,7 +120,7 @@ Variables that influence kitty behavior
 
 .. envvar:: KITTY_RC_PASSWORD
 
-   Set this to a pass phrase to use the ``kitty @`` remote control command with
+   Set this to a pass phrase to use the ``kitten @`` remote control command with
    :opt:`remote_control_password`.
 
 
