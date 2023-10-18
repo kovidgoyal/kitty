@@ -283,10 +283,14 @@ are matched::
 
 If you wish to run a more complex script, you can use::
 
-    map f1 launch --type=background --allow-remote-control /path/to/myscript
+    map f1 remote_control_script /path/to/myscript
 
-In this script you can use the ``kitten @`` command to run as many remote
-control commands as you like.
+In this script you can use ``kitten @`` to run as many remote
+control commands as you like and process their output.
+:ac:`remote_control_script` is really just an alias for the
+:ac:`launch` command with ``--type=background --allow-remote-control``.
+For more advanced usage, including fine grained permissions, setting
+env vars, etc. see the docs for the :doc:`launch <launch>` command.
 
 .. note:: You do not need :opt:`allow_remote_control` to use these mappings,
    as they are not actual remote programs, but are simply a way to reuse the

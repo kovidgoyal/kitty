@@ -287,6 +287,14 @@ def remote_control(func: str, rest: str) -> FuncArgsType:
     return func, args
 
 
+@func_with_args('remote_control_script')
+def remote_control_script(func: str, rest: str) -> FuncArgsType:
+    func, args = shlex_parse(func, rest)
+    if len(args) < 1:
+        log_error('Too few arguments to remote_control_script function')
+    return func, args
+
+
 @func_with_args('nth_os_window', 'nth_window', 'scroll_to_prompt', 'visual_window_select_action_trigger', 'next_layout')
 def single_integer_arg(func: str, rest: str) -> FuncArgsType:
     try:

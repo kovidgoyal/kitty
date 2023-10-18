@@ -722,7 +722,7 @@ class Boss:
         return response
 
     @ac('misc', '''
-        Run a remote control command
+        Run a remote control command without needing to allow remote control
 
         For example::
 
@@ -736,6 +736,22 @@ class Boss:
         except (Exception, SystemExit) as e:
             import shlex
             self.show_error(_('remote_control mapping failed'), shlex.join(args) + '\n' + str(e))
+
+    @ac('misc', '''
+        Run a remote control script without needing to allow remote control
+
+        For example::
+
+            map f1 remote_control_script arg1 arg2 ...
+
+        See :ref:`rc_mapping` for details.
+        ''')
+    def remote_control_script(self, path: str, *args: str) -> None:
+        path = which(path) or path
+        if not os.access(path, os.X_OK):
+            self.show_error('Remote control script not executable', f'The script {path} is not executable check its permissions')
+            return
+        self.run_background_process([path] + list(args), allow_remote_control=True)
 
     def call_remote_control(self, self_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
         from .rc.base import PayloadGetter, command_for_name, parse_subcommand_cli

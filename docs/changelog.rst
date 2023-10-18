@@ -46,7 +46,7 @@ Detailed list of changes
 0.31.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Allow :ref:`easily running arbitrarily complex remote control scripts <rc_mapping>` without needing to turn on remote control (:iss:`6712`)
+- Allow :ac:`easily running arbitrarily complex remote control scripts <remote_control_script>` without needing to turn on remote control (:iss:`6712`)
 
 - A new option :opt:`menu_map` that allows adding entries to the global menubar on macOS (:disc:`6680`)
 
