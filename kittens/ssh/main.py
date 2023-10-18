@@ -162,18 +162,18 @@ in the .conf files/themes are ignored.
 ''')
 
 opt('remote_kitty', 'if-needed', choices=('if-needed', 'no', 'yes'), long_text='''
-Make :program:`kitty` available on the remote host. Useful to run kittens such
+Make :program:`kitten` available on the remote host. Useful to run kittens such
 as the :doc:`icat kitten </kittens/icat>` to display images or the
 :doc:`transfer file kitten </kittens/transfer>` to transfer files. Only works if
-the remote host has an architecture for which :link:`pre-compiled kitty binaries
-<https://github.com/kovidgoyal/kitty/releases>` are available. Note that kitty
+the remote host has an architecture for which :link:`pre-compiled kitten binaries
+<https://github.com/kovidgoyal/kitty/releases>` are available. Note that kitten
 is not actually copied to the remote host, instead a small bootstrap script is
-copied which will download and run kitty when kitty is first executed on the
-remote host. A value of :code:`if-needed` means kitty is installed only if not
-already present in the system-wide PATH. A value of :code:`yes` means that kitty
-is installed even if already present, and the installed kitty takes precedence.
-Finally, :code:`no` means no kitty is installed on the remote host. The
-installed kitty can be updated by running: :code:`kitty +update-kitty` on the
+copied which will download and run kitten when kitten is first executed on the
+remote host. A value of :code:`if-needed` means kitten is installed only if not
+already present in the system-wide PATH. A value of :code:`yes` means that kitten
+is installed even if already present, and the installed kitten takes precedence.
+Finally, :code:`no` means no kitten is installed on the remote host. The
+installed kitten can be updated by running: :code:`kitten update-self` on the
 remote host.
 ''')
 egr()  # }}}

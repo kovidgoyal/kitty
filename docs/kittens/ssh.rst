@@ -7,7 +7,7 @@ Truly convenient SSH
 
 * Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
 
-* Make kitty itself available in the remote host :opt:`on demand <kitten-ssh.remote_kitty>`
+* Make the kitten binary available in the remote host :opt:`on demand <kitten-ssh.remote_kitty>`
 
 * Easily :opt:`change terminal colors <kitten-ssh.color_scheme>` when connecting to remote hosts
 
