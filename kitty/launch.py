@@ -72,7 +72,7 @@ Where to launch the child process:
 
 :code:`background`
     The process will be run in the :italic:`background`, without a kitty
-    window. Note that if :option:`kitty @ launch --allow-remote-control` is
+    window. Note that if :option:`kitten @ launch --allow-remote-control` is
     specified the :envvar:`KITTY_LISTEN_ON` environment variable will be set to
     a dedicated socket pair file descriptor that the process can use for remote
     control.
@@ -140,8 +140,7 @@ Copy the environment variables from the currently active window into the newly
 launched child process. Note that this only copies the environment when the
 window was first created, as it is not possible to get updated environment variables
 from arbitrary processes. To copy that environment, use either the :ref:`clone-in-kitty
-<clone_shell>` feature or the kitty remote control feature with :option:`kitty
-@ launch --copy-env`.
+<clone_shell>` feature or the kitty remote control feature with :option:`kitten @ launch --copy-env`.
 
 
 --location

@@ -25,13 +25,13 @@ class NewWindow(RemoteCommand):
     short_desc = 'Open new window'
     desc = (
         'DEPRECATED: Use the :ref:`launch <at-launch>` command instead.\n\n'
-        'Open a new window in the specified tab. If you use the :option:`kitty @ new-window --match` option'
+        'Open a new window in the specified tab. If you use the :option:`kitten @ new-window --match` option'
         ' the first matching tab is used. Otherwise the currently active tab is used.'
         ' Prints out the id of the newly opened window'
         ' (unless :option:`--no-response` is used). Any command line arguments'
         ' are assumed to be the command line used to run in the new window, if none'
         ' are provided, the default shell is run. For example::\n\n'
-        '    kitty @ new-window --title Email mutt'
+        '    kitten @ new-window --title Email mutt'
     )
     options_spec = MATCH_TAB_OPTION + '''\n
 --title

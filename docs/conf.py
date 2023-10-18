@@ -251,20 +251,20 @@ if you specify a program-to-run you can use the special placeholder
     as_rst = partial(option_spec_as_rst, heading_char='_')
     from kitty.rc.base import all_command_names, command_for_name
     from kitty.remote_control import cli_msg, global_options_spec
-    with open('generated/cli-kitty-at.rst', 'w') as f:
+    with open('generated/cli-kitten-at.rst', 'w') as f:
         p = partial(print, file=f)
-        p('kitty @')
+        p('kitten @')
         p('-' * 80)
-        p('.. program::', 'kitty @')
+        p('.. program::', 'kitten @')
         p('\n\n' + as_rst(
-            global_options_spec, message=cli_msg, usage='command ...', appname='kitty @'))
+            global_options_spec, message=cli_msg, usage='command ...', appname='kitten @'))
         from kitty.rc.base import cli_params_for
         for cmd_name in sorted(all_command_names()):
             func = command_for_name(cmd_name)
             p(f'.. _at-{func.name}:\n')
-            p('kitty @', func.name)
+            p('kitten @', func.name)
             p('-' * 120)
-            p('.. program::', 'kitty @', func.name)
+            p('.. program::', 'kitten @', func.name)
             p('\n\n' + as_rst(*cli_params_for(func)))
     from kittens.runner import get_kitten_cli_docs
 

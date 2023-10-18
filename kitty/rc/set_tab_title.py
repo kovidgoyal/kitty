@@ -19,7 +19,7 @@ class SetTabTitle(RemoteCommand):
 
     short_desc = 'Set the tab title'
     desc = (
-        'Set the title for the specified tabs. If you use the :option:`kitty @ set-tab-title --match` option'
+        'Set the title for the specified tabs. If you use the :option:`kitten @ set-tab-title --match` option'
         ' the title will be set for all matched tabs. By default, only the tab'
         ' in which the command is run is affected. If you do not specify a title, the'
         ' title of the currently active window in the tab is used.'

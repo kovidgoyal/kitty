@@ -87,7 +87,7 @@ class SendText(RemoteCommand):
         ' escaping rules. So you can use :link:`escapes <https://www.gnu.org/software/bash/manual/html_node/ANSI_002dC-Quoting.html>`'
         " like :code:`'\\\\e'` to send control codes"
         " and :code:`'\\\\u21fa'` to send Unicode characters. Remember to use single-quotes otherwise"
-        ' the backslash is interpreted as a shell escape character. If you use the :option:`kitty @ send-text --match` option'
+        ' the backslash is interpreted as a shell escape character. If you use the :option:`kitten @ send-text --match` option'
         ' the text will be sent to all matched windows. By default, text is sent to'
         ' only the currently active window.'
     )

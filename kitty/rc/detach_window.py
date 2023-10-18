@@ -20,7 +20,7 @@ class DetachWindow(RemoteCommand):
     short_desc = 'Detach the specified windows and place them in a different/new tab'
     desc = (
         'Detach the specified windows and either move them into a new tab, a new OS window'
-        ' or add them to the specified tab. Use the special value :code:`new` for :option:`kitty @ detach-window --target-tab`'
+        ' or add them to the specified tab. Use the special value :code:`new` for :option:`kitten @ detach-window --target-tab`'
         ' to move to a new tab. If no target tab is specified the windows are moved to a new OS window.'
     )
     options_spec = (

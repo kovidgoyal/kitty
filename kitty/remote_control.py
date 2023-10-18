@@ -279,14 +279,14 @@ completion=type:file relative:conf kwds:-
 default=rc-pass
 A file from which to read the password. Trailing whitespace is ignored. Relative
 paths are resolved from the kitty configuration directory. Use - to read from STDIN.
-Used if no :option:`kitty @ --password` is supplied. Defaults to checking for the
+Used if no :option:`kitten @ --password` is supplied. Defaults to checking for the
 :file:`rc-pass` file in the kitty configuration directory.
 
 
 --password-env
 default=KITTY_RC_PASSWORD
 The name of an environment variable to read the password from.
-Used if no :option:`kitty @ --password-file` is supplied. Defaults
+Used if no :option:`kitten @ --password-file` is supplied. Defaults
 to checking the environment variable :envvar:`KITTY_RC_PASSWORD`.
 
 

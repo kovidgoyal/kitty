@@ -19,7 +19,7 @@ class SignalChild(RemoteCommand):
     short_desc = 'Send a signal to the foreground process in the specified windows'
     desc = (
         'Send one or more signals to the foreground process in the specified windows.'
-        ' If you use the :option:`kitty @ signal-child --match` option'
+        ' If you use the :option:`kitten @ signal-child --match` option'
         ' the signal will be sent for all matched windows. By default, only the active'
         ' window is affected. If you do not specify any signals, :code:`SIGINT` is sent by default.'
         ' You can also map :ac:`signal_child` to a shortcut in :file:`kitty.conf`, for example::\n\n'

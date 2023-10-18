@@ -179,7 +179,7 @@ Variables that kitty sets when running child programs
 
    Set when the :doc:`remote control <remote-control>` facility is enabled and
    the a socket is used for control via :option:`kitty --listen-on` or :opt:`listen_on`.
-   Contains the path to the socket. Avoid the need to use :option:`kitty @ --to` when
+   Contains the path to the socket. Avoid the need to use :option:`kitten @ --to` when
    issuing remote control commands. Can also be a file descriptor of the form
    fd:num instead of a socket address, in which case, remote control
    communication should proceed over the specified file descriptor.

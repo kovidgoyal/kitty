@@ -24,7 +24,7 @@ Close an arbitrary set of tabs. The :code:`--match` option can be used to
 specify complex sets of tabs to close. For example, to close all non-focused
 tabs in the currently focused OS window, use::
 
-    kitty @ close-tab --match "not state:focused and state:parent_focused"
+    kitten @ close-tab --match "not state:focused and state:parent_focused"
 '''
     options_spec = MATCH_TAB_OPTION + '''\n
 --no-response

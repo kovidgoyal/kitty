@@ -18,7 +18,7 @@ class SetUserVars(RemoteCommand):
 
     short_desc = 'Set user variables on a window'
     desc = (
-        'Set user variables for the specified windows. If you use the :option:`kitty @ set-window-title --match` option'
+        'Set user variables for the specified windows. If you use the :option:`kitten @ set-user-vars --match` option'
         ' the variables will be set for all matched windows. By default, only the window'
         ' in which the command is run is affected. If you do not specify any variables, the'
         ' current variables are printed out, one per line. To unset a variable specify just its name.'

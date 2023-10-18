@@ -94,7 +94,7 @@ a number, not a regular expression. Negative values for :code:`id` match from th
 -1 is the most recently created window.
 
 The field :code:`num` refers to the window position in the current tab, starting from zero and counting clockwise (this
-is the same as the order in which the windows are reported by the :ref:`kitty @ ls <at-ls>` command).
+is the same as the order in which the windows are reported by the :ref:`kitten @ ls <at-ls>` command).
 
 The window id of the current window is available as the :envvar:`KITTY_WINDOW_ID` environment variable.
 
@@ -121,7 +121,7 @@ remote control command is run. The value :code:`overlay_parent` matches the
 window that is under the :code:`self` window, when the self window is an
 overlay.
 
-Note that you can use the :ref:`kitty @ ls <at-ls>` command to get a list of windows.
+Note that you can use the :ref:`kitten @ ls <at-ls>` command to get a list of windows.
 '''
 MATCH_TAB_OPTION = '''\
 --match -m
@@ -156,7 +156,7 @@ The field :code:`state` matches on the state of the tab. Supported states are:
 Active tabs are the tabs that are active in their parent OS window. There is only one focused tab
 and it is the tab to which keyboard events are delivered. If no tab is focused, the last focused tab is matched.
 
-Note that you can use the :ref:`kitty @ ls <at-ls>` command to get a list of tabs.
+Note that you can use the :ref:`kitten @ ls <at-ls>` command to get a list of tabs.
 '''
 
 

@@ -19,7 +19,7 @@ class SetWindowTitle(RemoteCommand):
 
     short_desc = 'Set the window title'
     desc = (
-        'Set the title for the specified windows. If you use the :option:`kitty @ set-window-title --match` option'
+        'Set the title for the specified windows. If you use the :option:`kitten @ set-window-title --match` option'
         ' the title will be set for all matched windows. By default, only the window'
         ' in which the command is run is affected. If you do not specify a title, the'
         ' last title set by the child process running in the window will be used.'

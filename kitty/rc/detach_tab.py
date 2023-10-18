@@ -20,7 +20,7 @@ class DetachTab(RemoteCommand):
     short_desc = 'Detach the specified tabs and place them in a different/new OS window'
     desc = (
         'Detach the specified tabs and either move them into a new OS window'
-        ' or add them to the OS window containing the tab specified by :option:`kitty @ detach-tab --target-tab`'
+        ' or add them to the OS window containing the tab specified by :option:`kitten @ detach-tab --target-tab`'
     )
     options_spec = MATCH_TAB_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t') + '''\n
 --self
