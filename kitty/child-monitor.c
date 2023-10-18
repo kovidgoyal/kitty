@@ -262,8 +262,12 @@ inject_peer(PyObject *s, PyObject *a) {
         talk_thread_started = true;
     }
     int fds[2] = {0};
-    if (!self_pipe(fds, false)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!self_pipe(fds, false)) {
+        safe_close(fd, __FILE__, __LINE__);
+        return PyErr_SetFromErrno(PyExc_OSError);
+    }
     if (!add_peer_to_injection_queue(fd, fds[1])) {
+        safe_close(fd, __FILE__, __LINE__);
         safe_close(fds[0], __FILE__, __LINE__); safe_close(fds[1], __FILE__, __LINE__);
         PyErr_SetString(PyExc_RuntimeError, "Too many peers waiting to be injected");
         return NULL;
