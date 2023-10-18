@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"strconv"
 	"time"
 
 	"kitty/tools/tui/loop"
@@ -151,9 +153,23 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 }
 
 func do_socket_io(io_data *rc_io_data) (serialized_response []byte, err error) {
-	conn, err := net.Dial(global_options.to_network, global_options.to_address)
-	if err != nil {
-		return
+	var conn net.Conn
+	if global_options.to_network == "fd" {
+		fd, _ := strconv.Atoi(global_options.to_address)
+		if err != nil {
+			return nil, err
+		}
+		f := os.NewFile(uintptr(fd), "fd:"+global_options.to_address)
+		conn, err = net.FileConn(f)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+	} else {
+		conn, err = net.Dial(global_options.to_network, global_options.to_address)
+		if err != nil {
+			return
+		}
 	}
 	defer conn.Close()
 	return simple_socket_io(&conn, io_data)

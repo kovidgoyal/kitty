@@ -557,21 +557,8 @@ class Window:
     def remote_control_allowed(self, pcmd: Dict[str, Any], extra_data: Dict[str, Any]) -> bool:
         if not self.allow_remote_control:
             return False
-        if not self.remote_control_passwords:
-            return True
-        pw = pcmd.get('password', '')
-        auth_items = self.remote_control_passwords.get(pw)
-        if pw == '!':
-            auth_items = None
-        if auth_items is None:
-            if '!' in self.remote_control_passwords:
-                raise PermissionError()
-            return False
-        from .remote_control import password_authorizer
-        pa = password_authorizer(auth_items)
-        if not pa.is_cmd_allowed(pcmd, self, False, extra_data):
-            raise PermissionError()
-        return True
+        from .remote_control import remote_control_allowed
+        return remote_control_allowed(pcmd, self.remote_control_passwords, self, extra_data)
 
     @property
     def file_transmission_control(self) -> 'FileTransmission':

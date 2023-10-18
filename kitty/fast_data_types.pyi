@@ -1271,6 +1271,8 @@ class ChildMonitor:
     def shutdown_monitor(self) -> None:
         pass
 
+    def inject_peer(self, fd: int) -> int: ...
+
 
 class KeyEvent:
 

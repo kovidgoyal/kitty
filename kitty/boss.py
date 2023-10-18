@@ -23,6 +23,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Sequence,
     Set,
     Tuple,
     Union,
@@ -333,6 +334,7 @@ class Boss:
         self.clipboard = Clipboard()
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
+        self.peer_data_map: Dict[int, Optional[Dict[str, Sequence[str]]]] = {}
         self.encryption_key = EllipticCurveKey()
         self.encryption_public_key = f'{RC_ENCRYPTION_PROTOCOL_VERSION}:{base64.b85encode(self.encryption_key.public).decode("ascii")}'
         self.clipboard_buffers: Dict[str, str] = {}
@@ -597,14 +599,16 @@ class Boss:
         self.window_id_map[window.id] = window
 
     def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
-        from .remote_control import is_cmd_allowed, parse_cmd
+        from .remote_control import is_cmd_allowed, parse_cmd, remote_control_allowed
         response = None
         window = window or None
+        from_socket = peer_id > 0
+        is_fd_peer = from_socket and peer_id in self.peer_data_map
         window_has_remote_control = bool(window and window.allow_remote_control)
-        if not window_has_remote_control:
+        if not window_has_remote_control and not is_fd_peer:
             if self.allow_remote_control == 'n':
                 return {'ok': False, 'error': 'Remote control is disabled'}
-            if self.allow_remote_control == 'socket-only' and peer_id == 0:
+            if self.allow_remote_control == 'socket-only' and not from_socket:
                 return {'ok': False, 'error': 'Remote control is allowed over a socket only'}
         try:
             pcmd = parse_cmd(cmd, self.encryption_key)
@@ -628,13 +632,16 @@ class Boss:
         extra_data: Dict[str, Any] = {}
         try:
             allowed_unconditionally = (
-                self.allow_remote_control == 'y' or (peer_id > 0 and self.allow_remote_control in ('socket-only', 'socket')) or
-                (window and window.remote_control_allowed(pcmd, extra_data)))
+                self.allow_remote_control == 'y' or
+                (from_socket and not is_fd_peer and self.allow_remote_control in ('socket-only', 'socket')) or
+                (window and window.remote_control_allowed(pcmd, extra_data)) or
+                (is_fd_peer and remote_control_allowed(pcmd, self.peer_data_map.get(peer_id), None, extra_data))
+            )
         except PermissionError:
             return {'ok': False, 'error': 'Remote control disallowed by window specific password'}
         if allowed_unconditionally:
             return self._execute_remote_command(pcmd, window, peer_id, self_window)
-        q = is_cmd_allowed(pcmd, window, peer_id > 0, extra_data)
+        q = is_cmd_allowed(pcmd, window, from_socket, extra_data)
         if q is True:
             return self._execute_remote_command(pcmd, window, peer_id, self_window)
         if q is None:
@@ -761,20 +768,30 @@ class Boss:
                 return None
             raise
 
-    def peer_message_received(self, msg_bytes: bytes, peer_id: int) -> Union[bytes, bool, None]:
-        cmd_prefix = b'\x1bP@kitty-cmd'
-        terminator = b'\x1b\\'
-        if msg_bytes.startswith(cmd_prefix) and msg_bytes.endswith(terminator):
-            cmd = msg_bytes[len(cmd_prefix):-len(terminator)].decode('utf-8')
-            response = self._handle_remote_command(cmd, peer_id=peer_id)
-            if response is None:
-                return None
-            if isinstance(response, AsyncResponse):
-                return True
-            from kitty.remote_control import encode_response_for_peer
-            return encode_response_for_peer(response)
+    def peer_message_received(self, msg_bytes: bytes, peer_id: int, is_remote_control: bool) -> Union[bytes, bool, None]:
+        if peer_id > 0 and msg_bytes == b'peer_death':
+            self.peer_data_map.pop(peer_id, None)
+            return False
+        if is_remote_control:
+            cmd_prefix = b'\x1bP@kitty-cmd'
+            terminator = b'\x1b\\'
+            if msg_bytes.startswith(cmd_prefix) and msg_bytes.endswith(terminator):
+                cmd = msg_bytes[len(cmd_prefix):-len(terminator)].decode('utf-8')
+                response = self._handle_remote_command(cmd, peer_id=peer_id)
+                if response is None:
+                    return None
+                if isinstance(response, AsyncResponse):
+                    return True
+                from kitty.remote_control import encode_response_for_peer
+                return encode_response_for_peer(response)
+            log_error('Malformatted remote control message received from peer, ignoring')
+            return None
 
-        data:SingleInstanceData = json.loads(msg_bytes.decode('utf-8'))
+        try:
+            data:SingleInstanceData = json.loads(msg_bytes.decode('utf-8'))
+        except Exception:
+            log_error('Malformed command received over single instance socket, ignoring')
+            return None
         if isinstance(data, dict) and data.get('cmd') == 'new_instance':
             from .cli_stub import CLIOptions
             startup_id = data['environ'].get('DESKTOP_STARTUP_ID', '')
@@ -812,7 +829,7 @@ class Boss:
             elif activation_token and is_wayland() and os_window_id:
                 focus_os_window(os_window_id, True, activation_token)
         else:
-            log_error('Unknown message received from peer, ignoring')
+            log_error('Unknown message received over single instance socket, ignoring')
         return None
 
     def handle_remote_cmd(self, cmd: str, window: Optional[Window] = None) -> None:
@@ -2232,7 +2249,9 @@ class Boss:
         cwd: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
         stdin: Optional[bytes] = None,
-        cwd_from: Optional[CwdRequest] = None
+        cwd_from: Optional[CwdRequest] = None,
+        allow_remote_control: bool = False,
+        remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
     ) -> None:
         import subprocess
         env = env or None
@@ -2244,28 +2263,56 @@ class Boss:
             with suppress(Exception):
                 cwd = cwd_from.cwd_of_child
 
+        def add_env(key: str, val: str) -> None:
+            nonlocal env
+            if env is None:
+                env = default_env().copy()
+            env[key] = val
+
         def doit(activation_token: str = '') -> None:
             nonlocal env
-            if activation_token:
-                if env is None:
-                    env = default_env().copy()
-                env['XDG_ACTIVATION_TOKEN'] = activation_token
-            if stdin:
-                r, w = safe_pipe(False)
+            pass_fds: Tuple[int, ...] = ()
+            if allow_remote_control:
+                import socket
+                local, remote = socket.socketpair()
+                os.set_inheritable(remote.fileno(), True)
+                lfd = os.dup(local.fileno())
+                local.close()
                 try:
-                    subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd, preexec_fn=clear_handled_signals)
+                    peer_id = self.child_monitor.inject_peer(lfd)
                 except Exception:
-                    os.close(w)
+                    os.close(lfd)
+                    remote.close()
+                    raise
+                pass_fds = (remote.fileno(),)
+                add_env('KITTY_LISTEN_ON', f'fd:{remote.fileno()}')
+                self.peer_data_map[peer_id] = remote_control_passwords
+            if activation_token:
+                add_env('XDG_ACTIVATION_TOKEN', activation_token)
+            try:
+                if stdin:
+                    r, w = safe_pipe(False)
+                    try:
+                        subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd, preexec_fn=clear_handled_signals, pass_fds=pass_fds, close_fds=True)
+                    except Exception:
+                        os.close(w)
+                    else:
+                        thread_write(w, stdin)
+                    finally:
+                        os.close(r)
                 else:
-                    thread_write(w, stdin)
-                finally:
-                    os.close(r)
+                    subprocess.Popen(cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals, pass_fds=pass_fds, close_fds=True)
+            finally:
+                if allow_remote_control:
+                    remote.close()
+
+        try:
+            if is_wayland():
+                run_with_activation_token(doit)
             else:
-                subprocess.Popen(cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals)
-        if is_wayland():
-            run_with_activation_token(doit)
-        else:
-            doit()
+                doit()
+        except Exception as err:
+            self.show_error(_('Failed to run background process'), _('Failed to run background process with error: {}').format(err))
 
     def pipe(self, source: str, dest: str, exe: str, *args: str) -> Optional[Window]:
         cmd = [exe] + list(args)

@@ -52,6 +52,8 @@ Detailed list of changes
 
 - A new mouse action ``mouse_selection word_and_line_from_point`` to select the current word under the mouse cursor and extend to end of line (:pull:`6663`)
 
+- Allow :option:`kitty @ launch --allow-remote-control` to work even with background processes, by using a dedicated socketpair for the process (:iss:`6712`)
+
 - Allow using the full range of standard mouse cursor shapes when customizing the mouse cursor
 
 - macOS: When running the default shell with the login program fix :file:`~/.hushlogin` not being respected when opening windows not in the home directory (:iss:`6689`)

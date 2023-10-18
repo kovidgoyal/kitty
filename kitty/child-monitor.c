@@ -47,6 +47,7 @@ typedef struct {
     char *data;
     size_t sz;
     id_type peer_id;
+    bool is_remote_control_peer;
 } Message;
 
 typedef struct {
@@ -232,7 +233,48 @@ static void* io_loop(void *data);
 static void* talk_loop(void *data);
 static void send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz);
 static void wakeup_talk_loop(bool);
+static bool add_peer_to_injection_queue(int peer_fd, int pipe_fd);
 static bool talk_thread_started = false;
+
+static bool
+simple_read_from_pipe(int fd, void *data, size_t sz) {
+    // read a small amount of data to a pipe handling only EINTR
+    while (true) {
+        ssize_t ret = read(fd, data, sz);
+        if (ret == -1 && errno == EINTR) continue;
+        return ret == (ssize_t)sz;
+    }
+}
+
+
+static PyObject*
+inject_peer(PyObject *s, PyObject *a) {
+#define inject_peer_doc "inject_peer(fd) -> Start communication with a peer over the specified file descriptor"
+    ChildMonitor *self = (ChildMonitor*)s;
+    if (!PyLong_Check(a)) { PyErr_SetString(PyExc_TypeError, "peer fd must be an int"); return NULL; }
+    long fd = PyLong_AsLong(a);
+    if (fd < 0) { PyErr_Format(PyExc_ValueError, "Invalid peer fd: %ld", fd); return NULL; }
+    if (!talk_thread_started) {
+        int ret;
+        if ((ret = pthread_create(&self->talk_thread, NULL, talk_loop, self)) != 0) {
+            return PyErr_Format(PyExc_OSError, "Failed to start talk thread with error: %s", strerror(ret));
+        }
+        talk_thread_started = true;
+    }
+    int fds[2] = {0};
+    if (!self_pipe(fds, false)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!add_peer_to_injection_queue(fd, fds[1])) {
+        safe_close(fds[0], __FILE__, __LINE__); safe_close(fds[1], __FILE__, __LINE__);
+        PyErr_SetString(PyExc_RuntimeError, "Too many peers waiting to be injected");
+        return NULL;
+    }
+    wakeup_talk_loop(false);
+    id_type peer_id = 0;
+    bool ok = simple_read_from_pipe(fds[0], &peer_id, sizeof(peer_id));
+    safe_close(fds[0], __FILE__, __LINE__);
+    if (!ok) { PyErr_SetString(PyExc_RuntimeError, "Failed to read peer id from self pipe"); return NULL; }
+    return PyLong_FromUnsignedLongLong(peer_id);
+}
 
 static PyObject *
 start(PyObject *s, PyObject *a UNUSED) {
@@ -467,7 +509,7 @@ parse_input(ChildMonitor *self) {
             Message *msg = msgs + i;
             PyObject *resp = NULL;
             if (msg->data) {
-                resp = PyObject_CallMethod(global_state.boss, "peer_message_received", "y#K", msg->data, (int)msg->sz, msg->peer_id);
+                resp = PyObject_CallMethod(global_state.boss, "peer_message_received", "y#KO", msg->data, (int)msg->sz, msg->peer_id, msg->is_remote_control_peer ? Py_True : Py_False);
                 free(msg->data);
                 if (!resp) PyErr_Print();
             }
@@ -1563,6 +1605,7 @@ typedef struct {
         size_t capacity, used;
         bool failed;
     } write;
+    bool is_remote_control_peer;
 } Peer;
 static id_type peer_id_counter = 0;
 
@@ -1577,24 +1620,33 @@ typedef struct pollfd PollFD;
 #define PEER_LIMIT 256
 #define nuke_socket(s) { shutdown(s, SHUT_RDWR); safe_close(s, __FILE__, __LINE__); }
 
-static bool
-accept_peer(int listen_fd, bool shutting_down) {
-    int peer = accept(listen_fd, NULL, NULL);
-    if (UNLIKELY(peer == -1)) {
-        if (errno == EINTR) return true;
-        if (!shutting_down) perror("accept() on talk socket failed!");
-        return false;
-    }
+static id_type
+add_peer(int peer, bool is_remote_control_peer) {
+    id_type ans = 0;
     if (talk_data.num_peers < PEER_LIMIT) {
         ensure_space_for(&talk_data, peers, Peer, talk_data.num_peers + 8, peers_capacity, 8, false);
         Peer *p = talk_data.peers + talk_data.num_peers++;
         memset(p, 0, sizeof(Peer));
         p->fd = peer; p->id = ++peer_id_counter;
         if (!p->id) p->id = ++peer_id_counter;
+        ans = p->id;
+        p->is_remote_control_peer = is_remote_control_peer;
     } else {
         log_error("Too many peers want to talk, ignoring one.");
         nuke_socket(peer);
     }
+    return ans;
+}
+
+static bool
+accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer) {
+    int peer = accept(listen_fd, NULL, NULL);
+    if (UNLIKELY(peer == -1)) {
+        if (errno == EINTR) return true;
+        if (!shutting_down) perror("accept() on talk socket failed!");
+        return false;
+    }
+    add_peer(peer, is_remote_control_peer);
     return true;
 }
 
@@ -1621,9 +1673,21 @@ queue_peer_message(ChildMonitor *self, Peer *peer) {
         }
     }
     m->peer_id = peer->id;
+    m->is_remote_control_peer = peer->is_remote_control_peer;
     peer->num_of_unresponded_messages_sent_to_main_thread++;
     talk_mutex(unlock);
     wakeup_main_loop();
+}
+
+static void
+notify_on_peer_removal(ChildMonitor *self, const Peer *p) {
+    ensure_space_for(self, messages, Message, self->messages_count + 16, messages_capacity, 16, true);
+    Message *m = self->messages + self->messages_count++;
+    memset(m, 0, sizeof(Message));
+    m->data = strdup("peer_death");
+    if (m->data) m->sz = strlen("peer_death");
+    m->peer_id = p->id;
+    m->is_remote_control_peer = p->id;
 }
 
 static bool
@@ -1702,16 +1766,51 @@ wakeup_talk_loop(bool in_signal_handler) {
 }
 
 
-static void
-prune_peers(void) {
+static bool
+prune_peers(ChildMonitor *self) {
+    bool pruned = false;
     for (size_t idx = talk_data.num_peers; idx-- > 0;) {
         Peer *p = talk_data.peers + idx;
         if (p->read.finished && !p->num_of_unresponded_messages_sent_to_main_thread && !p->write.used) {
+            notify_on_peer_removal(self, p);
             free_peer(p);
             remove_i_from_array(talk_data.peers, idx, talk_data.num_peers);
+            pruned = true;
         }
     }
+    if (pruned) wakeup_main_loop();
+    return pruned;
 }
+
+static struct {
+    size_t num;
+    struct { int peer_fd, pipe_fd; } fds[16];
+} peers_to_inject = {0};
+
+static bool
+add_peer_to_injection_queue(int peer_fd, int pipe_fd) {
+    bool added = false;
+    talk_mutex(lock);
+    if (peers_to_inject.num < arraysz(peers_to_inject.fds)) {
+        peers_to_inject.fds[peers_to_inject.num].peer_fd = peer_fd;
+        peers_to_inject.fds[peers_to_inject.num].pipe_fd = pipe_fd;
+        peers_to_inject.num++;
+        added = true;
+    }
+    talk_mutex(unlock);
+    return added;
+}
+
+static void
+simple_write_to_pipe(int fd, void *data, size_t sz) {
+    // write a small amount of data to a pipe handling only EINTR
+    while (true) {
+        ssize_t ret = write(fd, data, sz);
+        if (ret == -1 && errno == EINTR) continue;
+        break;
+    }
+}
+
 
 static void*
 talk_loop(void *data) {
@@ -1731,9 +1830,17 @@ talk_loop(void *data) {
 
     while (LIKELY(!self->shutting_down)) {
         num_peer_fds = 0;
+        talk_mutex(lock);
+        if (peers_to_inject.num) {
+            for (size_t i = 0; i < peers_to_inject.num; i++) {
+                id_type added_peer_id = add_peer(peers_to_inject.fds[i].peer_fd, true);
+                simple_write_to_pipe(peers_to_inject.fds[i].pipe_fd, &added_peer_id, sizeof(id_type));
+                safe_close(peers_to_inject.fds[i].pipe_fd, __FILE__, __LINE__);
+            }
+            peers_to_inject.num = 0;
+        }
         if (talk_data.num_peers > 0) {
-            talk_mutex(lock);
-            prune_peers();
+            prune_peers(self);
             for (size_t i = 0; i < talk_data.num_peers; i++) {
                 Peer *p = talk_data.peers + i;
                 if (!p->read.finished || p->write.used) {
@@ -1746,14 +1853,14 @@ talk_loop(void *data) {
                     fds[p->fd_array_idx].events = flags;
                 } else p->fd_array_idx = 0;
             }
-            talk_mutex(unlock);
         }
+        talk_mutex(unlock);
         for (size_t i = 0; i < num_listen_fds; i++) fds[i].revents = 0;
         int ret = poll(fds, num_listen_fds + num_peer_fds, -1);
         if (ret > 0) {
             for (size_t i = 0; i < num_listen_fds - 1; i++) {
                 if (fds[i].revents & POLLIN) {
-                    if (!accept_peer(fds[i].fd, self->shutting_down)) goto end;
+                    if (!accept_peer(fds[i].fd, self->shutting_down, fds[i].fd == self->listen_fd)) goto end;
                 }
             }
             if (fds[num_listen_fds - 1].revents & POLLIN) {
@@ -1814,6 +1921,7 @@ send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz) {
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
+    METHOD(inject_peer, METH_O)
     METHOD(needs_write, METH_VARARGS)
     METHOD(start, METH_NOARGS)
     METHOD(wakeup, METH_NOARGS)

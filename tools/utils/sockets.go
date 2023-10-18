@@ -5,6 +5,7 @@ package utils
 import (
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
@@ -34,6 +35,13 @@ func ParseSocketAddress(spec string) (network string, addr string, err error) {
 		host := ipaddr.NewHostName(addr)
 		if !host.IsAddress() {
 			err = fmt.Errorf("Not a valid IP address: %#v. Cannot use: %s", addr, spec)
+		}
+		return
+	}
+	if network == "fd" {
+		fd := -1
+		if fd, err = strconv.Atoi(addr); err != nil || fd < 0 {
+			err = fmt.Errorf("Not a valid file descriptor number: %#v. Cannot use: %s", addr, spec)
 		}
 		return
 	}

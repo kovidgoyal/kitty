@@ -55,14 +55,6 @@ func escape_list_of_strings(args []string) []escaped_string {
 	return ans
 }
 
-func escape_dict_of_strings(args map[string]string) map[escaped_string]escaped_string {
-	ans := make(map[escaped_string]escaped_string, len(args))
-	for k, v := range args {
-		ans[escaped_string(k)] = escaped_string(v)
-	}
-	return ans
-}
-
 func set_payload_string_field(io_data *rc_io_data, field, data string) {
 	payload_interface := reflect.ValueOf(&io_data.rc.Payload).Elem()
 	struct_in_interface := reflect.New(payload_interface.Elem().Type()).Elem()
@@ -142,16 +134,6 @@ func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 }
 
 type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
-
-func debug_to_log(args ...any) {
-	f, err := os.OpenFile("/tmp/kdlog", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err == nil {
-		fmt.Fprintln(f, args...)
-		f.Close()
-	}
-}
-
-var serializer serializer_func = simple_serializer
 
 func create_serializer(password string, encoded_pubkey string, io_data *rc_io_data) (err error) {
 	io_data.serializer = simple_serializer
@@ -240,7 +222,7 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 			io_data.multiple_payload_generator = nil
 			io_data.rc.NoResponse = true
 			io_data.chunks_done = false
-			do_io(io_data)
+			_, _ = do_io(io_data)
 			err = fmt.Errorf("Timed out waiting for a response from kitty")
 		}
 		return

@@ -71,7 +71,11 @@ Where to launch the child process:
     intended to run for a long time as a primary window.
 
 :code:`background`
-    The process will be run in the :italic:`background`, without a kitty window.
+    The process will be run in the :italic:`background`, without a kitty
+    window. Note that if :option:`kitty @ launch --allow-remote-control` is
+    specified the :envvar:`KITTY_LISTEN_ON` environment variable will be set to
+    a dedicated socket pair file descriptor that the process can use for remote
+    control.
 
 :code:`clipboard`, :code:`primary`
     These two are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
@@ -583,7 +587,10 @@ def _launch(
         cmd = kw['cmd']
         if not cmd:
             raise ValueError('The cmd to run must be specified when running a background process')
-        boss.run_background_process(cmd, cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'])
+        boss.run_background_process(
+            cmd, cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'],
+            allow_remote_control=kw['allow_remote_control'], remote_control_passwords=kw['remote_control_passwords']
+        )
     elif opts.type in ('clipboard', 'primary'):
         stdin = kw.get('stdin')
         if stdin is not None:

@@ -19,6 +19,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Sequence,
     Tuple,
     Union,
     cast,
@@ -102,6 +103,27 @@ def is_cmd_allowed_loader(path: str) -> CMDChecker:
 def fnmatch_pattern(pat: str) -> 're.Pattern[str]':
     from fnmatch import translate
     return re.compile(translate(pat))
+
+
+def remote_control_allowed(
+    pcmd: Dict[str, Any], remote_control_passwords: Optional[Dict[str, Sequence[str]]],
+    window: Optional['Window'], extra_data: Dict[str, Any]
+) -> bool:
+    if not remote_control_passwords:
+        return True
+    pw = pcmd.get('password', '')
+    auth_items = remote_control_passwords.get(pw)
+    if pw == '!':
+        auth_items = None
+    if auth_items is None:
+        if '!' in remote_control_passwords:
+            raise PermissionError()
+        return False
+    from .remote_control import password_authorizer
+    pa = password_authorizer(auth_items)
+    if not pa.is_cmd_allowed(pcmd, window, False, extra_data):
+        raise PermissionError()
+    return True
 
 
 class PasswordAuthorizer:
