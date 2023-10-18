@@ -139,7 +139,14 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		}
 	}
 
+	on_timer_tick := func(timer_id loop.IdType) error {
+		return lp.OnWakeup()
+	}
+
 	lp.OnInitialize = func() (string, error) {
+		if _, err = lp.AddTimer(rd.spinner.interval, true, on_timer_tick); err != nil {
+			return "", err
+		}
 		go do_download()
 		lp.QueueWriteString("Downloading: " + url + "\r\n")
 		return "\r\n", nil
@@ -179,13 +186,6 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		return nil
 	}
 
-	on_timer_tick := func(timer_id loop.IdType) error {
-		return lp.OnWakeup()
-	}
-
-	if _, err = lp.AddTimer(rd.spinner.interval, true, on_timer_tick); err != nil {
-		return
-	}
 	err = lp.Run()
 	dl_data.mutex.Lock()
 	if dl_data.temp_file_path != "" && !dl_data.download_finished {

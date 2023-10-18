@@ -972,15 +972,16 @@ def build_static_kittens(
         update_go_generated_files(args, os.path.join(launcher_dir, appname))
     cmd = [go, 'build', '-v']
     vcs_rev = args.vcs_rev or get_vcs_rev()
-    ld_flags = [f"-X 'kitty.VCSRevision={vcs_rev}'"]
+    ld_flags: List[str] = []
+    binary_data_flags = [f"-X kitty.VCSRevision={vcs_rev}"]
     if for_freeze:
-        ld_flags.append("-X 'kitty.IsFrozenBuild=true'")
+        binary_data_flags.append("-X kitty.IsFrozenBuild=true")
     if for_platform:
-        ld_flags.append("-X 'kitty.IsStandaloneBuild=true'")
+        binary_data_flags.append("-X kitty.IsStandaloneBuild=true")
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
-    cmd += ['-ldflags', ' '.join(ld_flags)]
+    cmd += ['-ldflags', ' '.join(binary_data_flags + ld_flags)]
     dest = os.path.join(destination_dir or launcher_dir, 'kitten')
     if for_platform:
         dest += f'-{for_platform[0]}-{for_platform[1]}'

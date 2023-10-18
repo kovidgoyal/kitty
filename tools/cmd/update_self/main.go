@@ -4,11 +4,11 @@ package update_self
 
 import (
 	"fmt"
-	"kitty"
 	"os"
 	"path/filepath"
 	"runtime"
 
+	"kitty"
 	"kitty/tools/cli"
 	"kitty/tools/tty"
 	"kitty/tools/tui"
@@ -33,7 +33,7 @@ func update_self(version string) (err error) {
 	if err != nil {
 		return err
 	}
-	if !kitty.IsStandaloneBuild {
+	if kitty.IsStandaloneBuild == "" {
 		return fmt.Errorf("This is not a standalone kitten executable. You must update all of kitty instead.")
 	}
 	rv := "v" + version

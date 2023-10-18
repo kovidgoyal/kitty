@@ -64,6 +64,8 @@ Detailed list of changes
 
 - Remote control launch: Fix the ``--copy-env`` option not copying current environment variables (:iss:`6724`)
 
+- Fix a regression that broke ``kitten update-self`` (:iss:`6729`)
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
