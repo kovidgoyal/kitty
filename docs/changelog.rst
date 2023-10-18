@@ -46,13 +46,13 @@ Detailed list of changes
 0.31.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Allow :ref:`easily running arbitrarily complex remote control scripts <rc_mapping>` without needing to turn on remote control (:iss:`6712`)
+
 - A new option :opt:`menu_map` that allows adding entries to the global menubar on macOS (:disc:`6680`)
 
 - A new :doc:`escape code <pointer-shapes>` that can be used by programs running in the terminal to change the shape of the mouse pointer (:iss:`6711`)
 
 - A new mouse action ``mouse_selection word_and_line_from_point`` to select the current word under the mouse cursor and extend to end of line (:pull:`6663`)
-
-- Allow :option:`kitty @ launch --allow-remote-control` to work even with background processes, by using a dedicated socketpair for the process (:iss:`6712`)
 
 - Allow using the full range of standard mouse cursor shapes when customizing the mouse cursor
 

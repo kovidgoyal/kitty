@@ -282,6 +282,13 @@ are matched::
 
     map f1 remote_control !focus-window --match XXXXXX
 
+If you wish to run a more complex script, you can use::
+
+    map f1 launch --type=background --allow-remote-control /path/to/myscript
+
+In this script you can use the ``kitten @`` command to run as many remote
+control commands as you like.
+
 .. note:: You do not need :opt:`allow_remote_control` to use these mappings,
    as they are not actual remote programs, but are simply a way to reuse the
    remote control infrastructure via keybings.
