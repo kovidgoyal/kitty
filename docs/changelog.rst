@@ -1330,10 +1330,10 @@ Detailed list of changes
 - Fix deleting windows that are not the last window via remote control leaving
   no window focused (:iss:`3619`)
 
-- Add an option :option:`kitty @ get-text --add-cursor` to also get the current
+- Add an option :option:`kitten @ get-text --add-cursor` to also get the current
   cursor position and state as ANSI escape codes (:iss:`3625`)
 
-- Add an option :option:`kitty @ get-text --add-wrap-markers` to add line wrap
+- Add an option :option:`kitten @ get-text --add-wrap-markers` to add line wrap
   markers to the output (:pull:`3633`)
 
 - Improve rendering of curly underlines on HiDPI screens (:pull:`3637`)
@@ -2937,7 +2937,7 @@ Detailed list of changes
 - diff kitten: Fix error when right hand side file is binary and left hand side
   file is text (:pull:`752`)
 
-- kitty @ new-window: Add a new option :option:`kitty @ new-window --window-type`
+- kitty @ new-window: Add a new option :option:`kitten @ new-window --window-type`
   to create top-level OS windows (:iss:`770`)
 
 - macOS: The :opt:`focus_follows_mouse` option now also works across top-level kitty OS windows
@@ -3054,7 +3054,7 @@ Detailed list of changes
 - diff kitten: Fix default foreground/background colors not being restored when
   kitten quits (:iss:`637`)
 
-- Fix :option:`kitty @ set-colors --all` not working when more than one window
+- Fix :option:`kitten @ set-colors --all` not working when more than one window
   present (:iss:`632`)
 
 - Fix a regression that broke the legacy increase/decrease_font_size actions
