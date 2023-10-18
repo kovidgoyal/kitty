@@ -2519,11 +2519,7 @@ load_hidden_system_cursor(NSString *name, SEL fallback) {
     }
 
     if (frames > 1) {
-#ifdef MAC_OS_VERSION_12_0 /* same value as deprecated symbol. */
         const NSCompositingOperation operation = NSCompositingOperationCopy;
-#else
-        const NSCompositingOperation operation = NSCompositeCopy;
-#endif
         const NSSize cropped_size = NSMakeSize(image.size.width, (int)(image.size.height / frames));
         NSImage *cropped = [[NSImage alloc] initWithSize:cropped_size];
         if (cropped == nil) {
