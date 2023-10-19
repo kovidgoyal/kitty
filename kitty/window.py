@@ -257,11 +257,15 @@ class Watchers:
     on_resize: List[Watcher]
     on_close: List[Watcher]
     on_focus_change: List[Watcher]
+    on_set_user_var: List[Watcher]
+    on_title_change: List[Watcher]
 
     def __init__(self) -> None:
         self.on_resize = []
         self.on_close = []
         self.on_focus_change = []
+        self.on_set_user_var = []
+        self.on_title_change = []
 
     def add(self, others: 'Watchers') -> None:
         def merge(base: List[Watcher], other: List[Watcher]) -> None:
@@ -271,15 +275,20 @@ class Watchers:
         merge(self.on_resize, others.on_resize)
         merge(self.on_close, others.on_close)
         merge(self.on_focus_change, others.on_focus_change)
+        merge(self.on_set_user_var, others.on_set_user_var)
+        merge(self.on_title_change, others.on_title_change)
 
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
+        del self.on_set_user_var[:], self.on_title_change[:]
 
     def copy(self) -> 'Watchers':
         ans = Watchers()
         ans.on_close = self.on_close[:]
         ans.on_resize = self.on_resize[:]
         ans.on_focus_change = self.on_focus_change[:]
+        ans.on_set_user_var = self.on_set_user_var[:]
+        ans.on_title_change = self.on_title_change[:]
         return ans
 
     @property
@@ -856,6 +865,7 @@ class Window:
         if title:
             title = sanitize_title(title)
         self.override_title = title or None
+        self.call_watchers(self.watchers.on_title_change, {'title': self.child_title, 'from_child': False})
         self.title_updated()
 
     def set_user_var(self, key: str, val: Optional[Union[str, bytes]]) -> None:
@@ -867,7 +877,10 @@ class Window:
         if val is not None:
             if isinstance(val, bytes):
                 val = val.decode('utf-8', 'replace')
-            self.user_vars[key] = sanitize_control_codes(val).replace('\n', ' ')
+            self.user_vars[key] = val = sanitize_control_codes(val).replace('\n', ' ')
+            self.call_watchers(self.watchers.on_set_user_var, {'key': key, 'value': val})
+        else:
+            self.call_watchers(self.watchers.on_set_user_var, {'key': key, 'value': None})
 
     # screen callbacks {{{
 
@@ -996,6 +1009,7 @@ class Window:
 
     def title_changed(self, new_title: Optional[str], is_base64: bool = False) -> None:
         self.child_title = process_title_from_child(new_title or self.default_title, is_base64)
+        self.call_watchers(self.watchers.on_title_change, {'title': self.child_title, 'from_child': True})
         if self.override_title is None:
             self.title_updated()
 
@@ -1241,6 +1255,7 @@ class Window:
             if pop:
                 if self.title_stack:
                     self.child_title = self.title_stack.pop()
+                    self.call_watchers(self.watchers.on_title_change, {'title': self.child_title, 'from_child': True})
                     self.title_updated()
             else:
                 if self.child_title:

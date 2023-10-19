@@ -68,6 +68,8 @@ Detailed list of changes
 
 - Fix a regression that broke ``kitten update-self`` (:iss:`6729`)
 
+- Two new event types for :ref:`watchers <watchers>`, :code:`on_title_change` and :code:`on_set_user_var`
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
