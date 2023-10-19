@@ -98,6 +98,10 @@ You can :doc:`create your own kittens to scratch your own itches
 
 For a list of all the builtin kittens, :ref:`see here <kittens>`.
 
+Additionally, you can use the :ref:`watchers <Watchers>` framework
+to create Python scripts that run in response to various events such as windows
+being resized, closing, having their titles changed, etc.
+
 .. toctree::
    :hidden:
 
