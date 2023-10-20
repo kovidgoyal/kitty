@@ -72,7 +72,7 @@ Detailed list of changes
 
 - Two new event types for :ref:`watchers <watchers>`, :code:`on_title_change` and :code:`on_set_user_var`
 
-- When pasting, if the text contains terminal control codes ask the user for permission. See :opt:`paste_actions` for details. Thanks to David Leadbetter for discovering this.
+- When pasting, if the text contains terminal control codes ask the user for permission. See :opt:`paste_actions` for details. Thanks to David Leadbeater for discovering this.
 
 
 0.30.1 [2023-10-05]
