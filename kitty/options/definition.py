@@ -523,7 +523,7 @@ clipboard.
 '''
     )
 
-opt('paste_actions', 'quote-urls-at-prompt',
+opt('paste_actions', 'quote-urls-at-prompt,confirm',
     option_type='paste_actions',
     long_text='''
 A comma separated list of actions to take when pasting text into the terminal.
@@ -533,8 +533,12 @@ The supported paste actions are:
     If the text being pasted is a URL and the cursor is at a shell prompt,
     automatically quote the URL (needs :opt:`shell_integration`).
 :code:`confirm`:
-    Confirm the paste if bracketed paste mode is not active or there is
-    a large amount of text being pasted.
+    Confirm the paste if the text to be pasted contains any terminal control codes
+    as this can be dangerous, leading to code execution if the shell/program running
+    in the terminal does not properly handle these.
+:code:`confirm-if-large`
+    Confirm the paste if it is very large (larger than 16KB) as pasting
+    large amounts of text into shells can be very slow.
 :code:`filter`:
     Run the filter_paste() function from the file :file:`paste-actions.py` in
     the kitty config directory on the pasted text. The text returned by the

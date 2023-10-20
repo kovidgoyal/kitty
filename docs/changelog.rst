@@ -72,7 +72,7 @@ Detailed list of changes
 
 - Two new event types for :ref:`watchers <watchers>`, :code:`on_title_change` and :code:`on_set_user_var`
 
-- When pasting in bracketed paste mode and the cursor is at a shell prompt, strip out C0 control codes as some shells incorrectly interpret these allowing escape from bracketed paste mode. Thanks to David Leadbetter for discovering.
+- When pasting, if the text contains terminal control codes ask the user for permission. See :opt:`paste_actions` for details. Thanks to David Leadbetter for discovering this.
 
 
 0.30.1 [2023-10-05]

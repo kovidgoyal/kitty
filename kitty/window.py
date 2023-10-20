@@ -1468,18 +1468,31 @@ class Window:
                     text = shlex.quote(text)
         btext = text.encode('utf-8')
         if 'confirm' in opts.paste_actions:
+            sanitized = sanitize_control_codes(text)
+            if sanitized != text:
+                msg = _('The text to be pasted contains terminal control codes. If the terminal program you are pasting into does not properly'
+                        ' sanitize pasted text, this can lead to code execution vulnerabilities. How would you like to proceed?')
+                get_boss().choose(
+                    msg, partial(self.handle_dangerous_paste_confirmation, btext, sanitized),
+                    's;green:Sanitize and paste', 'p;red:Paste anyway', 'c;yellow:Cancel',
+                    window=self, default='s',
+                )
+                return
+        if 'confirm-if-large' in opts.paste_actions:
             msg = ''
-            limit = 16 * 1024
-            if not self.screen.in_bracketed_paste_mode:
-                msg = _('Pasting text into shells that do not support bracketed paste can be dangerous.')
-            elif len(btext) > limit:
+            if len(btext) > 16 * 1024:
                 msg = _('Pasting very large amounts of text ({} bytes) can be slow.').format(len(btext))
-            if msg:
-                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_paste_confirmation, btext), window=self)
+                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_large_paste_confirmation, btext), window=self)
                 return
         self.paste_text(btext)
 
-    def handle_paste_confirmation(self, btext: bytes, confirmed: bool) -> None:
+    def handle_dangerous_paste_confirmation(self, btext: bytes, sanitized: str, choice: str) -> None:
+        if choice == 's':
+            self.paste_text(sanitized)
+        elif choice == 'p':
+            self.paste_text(btext)
+
+    def handle_large_paste_confirmation(self, btext: bytes, confirmed: bool) -> None:
         if confirmed:
             self.paste_text(btext)
 
@@ -1494,7 +1507,7 @@ class Window:
             if isinstance(text, str):
                 text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode:
-                text = sanitize_for_bracketed_paste(text, self.at_prompt)
+                text = sanitize_for_bracketed_paste(text)
             else:
                 # Workaround for broken editors like nano that cannot handle
                 # newlines in pasted text see https://github.com/kovidgoyal/kitty/issues/994
