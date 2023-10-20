@@ -26,6 +26,7 @@ class WindowSizeData(NamedTuple):
     remember_window_size: bool
     single_window_margin_width: FloatEdges
     window_margin_width: FloatEdges
+    single_window_padding_width: FloatEdges
     window_padding_width: FloatEdges
 
 
@@ -61,15 +62,21 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]
                 ans = getattr(opts.window_margin_width, which)
             return ans
 
+        def effective_padding(which: EdgeLiteral) -> float:
+            ans: float = getattr(opts.single_window_padding_width, which)
+            if ans < 0:
+                ans = getattr(opts.window_padding_width, which)
+            return ans
+
         if w_unit == 'cells':
             spacing = effective_margin('left') + effective_margin('right')
-            spacing += opts.window_padding_width.left + opts.window_padding_width.right
+            spacing += effective_padding('left') + effective_padding('right')
             width = cell_width * w / xscale + (dpi_x / 72) * spacing + 1
         else:
             width = w
         if h_unit == 'cells':
             spacing = effective_margin('top') + effective_margin('bottom')
-            spacing += opts.window_padding_width.top + opts.window_padding_width.bottom
+            spacing += effective_padding('top') + effective_padding('bottom')
             height = cell_height * h / yscale + (dpi_y / 72) * spacing + 1
         else:
             height = h

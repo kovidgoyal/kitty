@@ -1026,6 +1026,17 @@ bottom and left.
 '''
     )
 
+opt('single_window_padding_width', '-1',
+    option_type='optional_edge_width',
+    long_text='''
+The window padding to use when only a single window is visible (in pts). Negative
+values will cause the value of :opt:`window_padding_width` to be used instead. A
+single value sets all four sides. Two values set the vertical and horizontal
+sides. Three values set top, horizontal and bottom. Four values set top, right,
+bottom and left.
+'''
+    )
+
 opt('placement_strategy', 'center',
     choices=('center', 'top-left'),
     long_text='''

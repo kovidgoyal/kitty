@@ -934,7 +934,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for default_pointer_shape")
         ans["default_pointer_shape"] = val
 
-    choices_for_default_pointer_shape = frozenset(('arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing'))
+    choices_for_default_pointer_shape = frozenset(('arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'cell', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing'))
 
     def detect_urls(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['detect_urls'] = to_bool(val)
@@ -1201,6 +1201,9 @@ class Parser:
 
     def single_window_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['single_window_margin_width'] = optional_edge_width(val)
+
+    def single_window_padding_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['single_window_padding_width'] = optional_edge_width(val)
 
     def startup_session(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['startup_session'] = config_or_absolute_path(val)

@@ -26,7 +26,7 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
         sizes = WindowSizes(WindowSize(*opts.initial_window_width), WindowSize(*opts.initial_window_height))
     else:
         sizes = session.os_window_size
-    return WindowSizeData(sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.window_padding_width)
+    return WindowSizeData(sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.single_window_padding_width, opts.window_padding_width)
 
 
 ResizeSpec = Tuple[str, int]

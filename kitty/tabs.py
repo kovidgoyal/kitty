@@ -164,6 +164,14 @@ class Tab:  # {{{
             self._set_current_layout(l0)
             self.startup(session_tab)
 
+    def has_single_window_visible(self) -> bool:
+        if self.current_layout.only_active_window_visible:
+            return True
+        for i, g in enumerate(self.windows.iter_all_layoutable_groups(only_visible=True)):
+            if i > 0:
+                return False
+        return True
+
     def set_enabled_layouts(self, val: Iterable[str]) -> None:
         self.enabled_layouts = [x.lower() for x in val] or ['tall']
         if self.current_layout.name not in self.enabled_layouts:

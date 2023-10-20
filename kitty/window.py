@@ -585,11 +585,13 @@ class Window:
         self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)
 
-    def effective_margin(self, edge: EdgeLiteral, is_single_window: bool = False) -> int:
+    def effective_margin(self, edge: EdgeLiteral) -> int:
         q = getattr(self.margin, edge)
         if q is not None:
             return pt_to_px(q, self.os_window_id)
         opts = get_options()
+        tab = self.tabref()
+        is_single_window = tab is not None and tab.has_single_window_visible()
         if is_single_window:
             q = getattr(opts.single_window_margin_width, edge)
             if q > -0.1:
@@ -601,7 +603,14 @@ class Window:
         q = getattr(self.padding, edge)
         if q is not None:
             return pt_to_px(q, self.os_window_id)
-        q = getattr(get_options().window_padding_width, edge)
+        opts = get_options()
+        tab = self.tabref()
+        is_single_window = tab is not None and tab.has_single_window_visible()
+        if is_single_window:
+            q = getattr(opts.single_window_padding_width, edge)
+            if q > -0.1:
+                return pt_to_px(q, self.os_window_id)
+        q = getattr(opts.window_padding_width, edge)
         return pt_to_px(q, self.os_window_id)
 
     def update_effective_padding(self) -> None:

@@ -101,7 +101,7 @@ class WindowGroup:
         if not self.windows:
             return 0
         w = self.windows[0]
-        return w.effective_margin(which, is_single_window=is_single_window) + w.effective_border() * border_mult + w.effective_padding(which)
+        return w.effective_margin(which) + w.effective_border() * border_mult + w.effective_padding(which)
 
     def effective_padding(self, which: EdgeLiteral) -> int:
         if not self.windows:
