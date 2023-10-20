@@ -1486,11 +1486,11 @@ class Window:
                 return
         self.paste_text(btext)
 
-    def handle_dangerous_paste_confirmation(self, btext: bytes, sanitized: str, choice: str) -> None:
+    def handle_dangerous_paste_confirmation(self, unsanitized: bytes, sanitized: str, choice: str) -> None:
         if choice == 's':
             self.paste_text(sanitized)
         elif choice == 'p':
-            self.paste_text(btext)
+            self.paste_text(unsanitized)
 
     def handle_large_paste_confirmation(self, btext: bytes, confirmed: bool) -> None:
         if confirmed:
