@@ -590,6 +590,7 @@ class TestDataTypes(BaseTest):
             self.assertNotIn(b'\x1b[201~', q)
             self.assertNotIn('\x9b201~'.encode('utf-8'), q)
             self.assertIn(b'ab', q)
+        self.assertNotIn(b'\x03', sanitize_for_bracketed_paste(b'hi\x03world', True))
 
     def test_expand_ansi_c_escapes(self):
         for src, expected in {

@@ -1135,13 +1135,16 @@ def docs_url(which: str = '', local_docs_root: Optional[str] = '') -> str:
     return url
 
 
-def sanitize_for_bracketed_paste(text: bytes) -> bytes:
+def sanitize_for_bracketed_paste(text: bytes, at_shell_prompt: bool = False) -> bytes:
     pat = re.compile(b'(?:(?:\033\\\x5b)|(?:\x9b))201~')
     while True:
         new_text = pat.sub(b'', text)
         if new_text == text:
             break
         text = new_text
+    if at_shell_prompt:
+        # some shells dont handle C0 control codes in pasted text correctly
+        text = re.sub(b'[\x00-\x1f]+', b'', text)
     return text
 
 

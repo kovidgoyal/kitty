@@ -1494,7 +1494,7 @@ class Window:
             if isinstance(text, str):
                 text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode:
-                text = sanitize_for_bracketed_paste(text)
+                text = sanitize_for_bracketed_paste(text, self.at_prompt)
             else:
                 # Workaround for broken editors like nano that cannot handle
                 # newlines in pasted text see https://github.com/kovidgoyal/kitty/issues/994
