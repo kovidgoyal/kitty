@@ -1470,8 +1470,8 @@ class Window:
         if 'confirm' in opts.paste_actions:
             sanitized = sanitize_control_codes(text)
             if sanitized != text:
-                msg = _('The text to be pasted contains terminal control codes.\nIf the terminal program you are pasting into does not properly'
-                        ' sanitize pasted text, this can lead to code execution vulnerabilities.\nHow would you like to proceed?')
+                msg = _('The text to be pasted contains terminal control codes.\n\nIf the terminal program you are pasting into does not properly'
+                        ' sanitize pasted text, this can lead to \x1b[31mcode execution vulnerabilities\x1b[39m.\n\nHow would you like to proceed?')
                 get_boss().choose(
                     msg, partial(self.handle_dangerous_paste_confirmation, btext, sanitized),
                     's;green:Sanitize and paste', 'p;red:Paste anyway', 'c;yellow:Cancel',
