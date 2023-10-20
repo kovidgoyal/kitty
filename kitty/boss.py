@@ -678,7 +678,7 @@ class Boss:
                   ), dim=True, italic=True)),
             partial(self.remote_cmd_permission_received, pcmd, wid, peer_id, self_window),
             'a;green:Allow request', 'p;yellow:Allow password', 'r;magenta:Deny request', 'd;red:Deny password',
-            window=window, default='a', hidden_text=hidden_text
+            window=window, default='a', hidden_text=hidden_text, title=_('Allow remote control?'),
         )
         if overlay_window is None:
             return False
@@ -950,7 +950,7 @@ class Boss:
             msg = _('Are you sure you want to close this window?')
             if window.has_running_program:
                 msg += ' ' + _('It is running a program.')
-            self.confirm(msg, self.handle_close_window_confirmation, window.id, window=window)
+            self.confirm(msg, self.handle_close_window_confirmation, window.id, window=window, title=_('Close window?'))
         else:
             self.mark_window_for_close(window)
 
@@ -980,6 +980,7 @@ class Boss:
         window: Optional[Window] = None,  # the window associated with the confirmation
         confirm_on_cancel: bool = False,  # on closing window
         confirm_on_accept: bool = True,  # on pressing enter
+        title: str = ''  # window title
     ) -> Window:
         result: bool = False
 
@@ -990,9 +991,11 @@ class Boss:
         def on_popup_overlay_removal(wid: int, boss: Boss) -> None:
             callback(result, *args)
 
+        cmd = ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n']
+        if title:
+            cmd += ['--title', title]
         w = self.run_kitten_with_metadata(
-            'ask', ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n'],
-            window=window, custom_callback=callback_, action_on_removal=on_popup_overlay_removal,
+            'ask', cmd, window=window, custom_callback=callback_, action_on_removal=on_popup_overlay_removal,
             default_data={'response': 'y' if confirm_on_cancel else 'n'})
         assert isinstance(w, Window)
         return w
@@ -1006,6 +1009,7 @@ class Boss:
         hidden_text: str = '',  # text to hide in the message
         hidden_text_placeholder: str = 'HIDDEN_TEXT_PLACEHOLDER',  # placeholder text to insert in to message
         unhide_key: str = 'u',  # key to press to unhide hidden text
+        title: str = '' # window title
     ) -> Optional[Window]:
         result: str = ''
 
@@ -1025,6 +1029,8 @@ class Boss:
             input_data = hidden_text
         else:
             input_data = None
+        if title:
+            cmd += ['--title', title]
 
         def on_popup_overlay_removal(wid: int, boss: Boss) -> None:
             callback(result)
@@ -1077,7 +1083,7 @@ class Boss:
         w = self.confirm(ngettext('Are you sure you want to close this tab, it has one window running?',
                               'Are you sure you want to close this tab, it has {} windows running?', num).format(num),
             self.handle_close_tab_confirmation, tab.id,
-            window=tab.active_window,
+            window=tab.active_window, title=_('Close tab?'),
         )
         tab.confirm_close_window_id = w.id
 
@@ -1681,7 +1687,7 @@ class Boss:
                 ngettext('Are you sure you want to close this OS window, it has one window running?',
                          'Are you sure you want to close this OS window, it has {} windows running', num).format(num),
                 self.handle_close_os_window_confirmation, os_window_id,
-                window=tm.active_window,
+                window=tm.active_window, title=_('Close OS window'),
             )
             tm.confirm_close_window_id = w.id
 
@@ -1737,7 +1743,7 @@ class Boss:
             ngettext('Are you sure you want to quit kitty, it has one window running?',
                      'Are you sure you want to quit kitty, it has {} windows running?', num).format(num),
             self.handle_quit_confirmation,
-            window=tm.active_window,
+            window=tm.active_window, title=_('Quit kitty?'),
         )
         self.quit_confirmation_window_id = w.id
         set_application_quit_request(CLOSE_BEING_CONFIRMED)

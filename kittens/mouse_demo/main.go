@@ -129,6 +129,7 @@ func Run(args []string) (rc int, err error) {
 	}
 
 	lp.OnInitialize = func() (string, error) {
+		lp.SetWindowTitle("kitty mouse features demo")
 		lp.SetCursorVisible(false)
 		draw_screen()
 		return "", nil

@@ -362,12 +362,15 @@ func GetChoices(o *Options) (response string, err error) {
 		if hidden_text != "" && message != "" {
 			message = message[:hidden_text_start_pos] + hidden_text + message[hidden_text_end_pos:]
 			hidden_text = ""
-			draw_screen()
+			_ = draw_screen()
 		}
 	}
 
 	lp.OnInitialize = func() (string, error) {
 		lp.SetCursorVisible(false)
+		if o.Title != "" {
+			lp.SetWindowTitle(o.Title)
+		}
 		return "", draw_screen()
 	}
 

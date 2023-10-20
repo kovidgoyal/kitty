@@ -30,6 +30,11 @@ The name for this question. Used to store history of previous answers which can
 be used for completions and via the browse history readline bindings.
 
 
+--title --window-title
+The title for the window in which the question is displayed. Only implemented
+for yesno and choices types.
+
+
 --choice -c
 type=list
 dest=choices

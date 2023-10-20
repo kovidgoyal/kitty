@@ -950,7 +950,7 @@ class Window:
                     'What would you like to do with this URL:\n' + styled(sanitize_url_for_dispay_to_user(url), fg='yellow'),
                     partial(self.hyperlink_open_confirmed, url, cwd),
                     'o:Open', 'c:Copy to clipboard', 'n;red:Nothing', default='o',
-                    window=self,
+                    window=self, title=_('Hyperlink activated'),
                 )
                 return
         get_boss().open_url(url, cwd=cwd)
@@ -1205,6 +1205,7 @@ class Window:
                     'A program running in this window wants to clone it into another window.'
                     ' Allow it do so, once?'),
                     partial(self.handle_remote_clone_confirmation, cdata), window=self,
+                    title=_('Allow cloning of window?'),
                 )
             elif ac in ('yes', 'y', 'true'):
                 self.handle_remote_clone_confirmation(cdata, True)
@@ -1475,14 +1476,15 @@ class Window:
                 get_boss().choose(
                     msg, partial(self.handle_dangerous_paste_confirmation, btext, sanitized),
                     's;green:Sanitize and paste', 'p;red:Paste anyway', 'c;yellow:Cancel',
-                    window=self, default='s',
+                    window=self, default='s', title=_('Allow paste?'),
                 )
                 return
         if 'confirm-if-large' in opts.paste_actions:
             msg = ''
             if len(btext) > 16 * 1024:
                 msg = _('Pasting very large amounts of text ({} bytes) can be slow.').format(len(btext))
-                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_large_paste_confirmation, btext), window=self)
+                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_large_paste_confirmation, btext), window=self, title=_(
+                'Allow large paste?'))
                 return
         self.paste_text(btext)
 
