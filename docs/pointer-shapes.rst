@@ -32,7 +32,7 @@ First some examples::
 
 To demo the various shapes, simply run the following command inside kitty::
 
-    kitten mouse_demo
+    kitten mouse-demo
 
 For more details see below.
 
@@ -160,7 +160,7 @@ characters from the set ``a-z0-9_-``.
 
 To demo the various shapes, simply run the following command inside kitty::
 
-    kitten mouse_demo
+    kitten mouse-demo
 
 Legacy xterm compatibility
 ----------------------------

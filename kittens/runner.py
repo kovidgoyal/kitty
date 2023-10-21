@@ -133,7 +133,7 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
 def all_kitten_names() -> FrozenSet[str]:
     ans = []
     for name in list_kitty_resources('kittens'):
-        if '__' not in name and '.' not in name and name not in ('tui', 'mouse_demo'):
+        if '__' not in name and '.' not in name and name != 'tui':
             ans.append(name)
     return frozenset(ans)
 

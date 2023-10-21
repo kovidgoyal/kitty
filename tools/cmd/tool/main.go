@@ -11,7 +11,6 @@ import (
 	"kitty/kittens/hints"
 	"kitty/kittens/hyperlinked_grep"
 	"kitty/kittens/icat"
-	"kitty/kittens/mouse_demo"
 	"kitty/kittens/show_key"
 	"kitty/kittens/ssh"
 	"kitty/kittens/themes"
@@ -20,6 +19,7 @@ import (
 	"kitty/tools/cli"
 	"kitty/tools/cmd/at"
 	"kitty/tools/cmd/edit_in_kitty"
+	"kitty/tools/cmd/mouse_demo"
 	"kitty/tools/cmd/pytest"
 	"kitty/tools/cmd/run_shell"
 	"kitty/tools/cmd/show_error"
@@ -53,7 +53,7 @@ func KittyToolEntryPoints(root *cli.Command) {
 	show_key.EntryPoint(root)
 	// mouse_demo
 	root.AddSubCommand(&cli.Command{
-		Name:             "mouse_demo",
+		Name:             "mouse-demo",
 		ShortDescription: "Demo the mouse handling kitty implements for terminal programs",
 		OnlyArgsAllowed:  true,
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
