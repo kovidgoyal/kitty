@@ -1470,7 +1470,12 @@ class Window:
         btext = text.encode('utf-8')
         if 'confirm' in opts.paste_actions:
             sanitized = sanitize_control_codes(text)
-            if sanitized != text or (not self.screen.in_bracketed_paste_mode and re.search(r'[\r\n]', text) is not None):
+            if not self.screen.in_bracketed_paste_mode:
+                # \n is converted to \r and \r is interpreted as the enter key
+                # by legacy programs that dont support the full kitty keyboard protocol,
+                # which in the case of shells can lead to command execution
+                sanitized = re.sub(r'[\r\n]', ' ', sanitized)
+            if sanitized != text:
                 msg = _('The text to be pasted contains terminal control codes.\n\nIf the terminal program you are pasting into does not properly'
                         ' sanitize pasted text, this can lead to \x1b[31mcode execution vulnerabilities\x1b[39m.\n\nHow would you like to proceed?')
                 get_boss().choose(
