@@ -7,7 +7,6 @@
 
 #include "state.h"
 #include "screen.h"
-#include "lineops.h"
 #include "charsets.h"
 #include <limits.h>
 #include <math.h>
@@ -985,15 +984,18 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
 }
 
 static PyObject*
-send_mouse_event(PyObject *self UNUSED, PyObject *args) {
+send_mouse_event(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     Screen *screen;
-    unsigned int x, y;
+    int x, y, px=0, py=0, in_left_half_of_cell=0;
+
     int button, action, mods;
-    if (!PyArg_ParseTuple(args, "O!IIiii", &Screen_Type, &screen, &x, &y, &button, &action, &mods)) return NULL;
+    static const char* kwlist[] = {"screen", "cell_x", "cell_y", "button", "action", "mods", "pixel_x", "pixel_y", "in_left_half_of_cell"};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "O!iiiii|iip", (char**)kwlist,
+                &Screen_Type, &screen, &x, &y, &button, &action, &mods, &px, &py, &in_left_half_of_cell)) return NULL;
 
     MouseTrackingMode mode = screen->modes.mouse_tracking_mode;
     if (mode == ANY_MODE || (mode == MOTION_MODE && action != MOVE) || (mode == BUTTON_MODE && (action == PRESS || action == RELEASE))) {
-        MousePosition mpos = {.cell_x = x, .cell_y = y};
+        MousePosition mpos = {.cell_x = x, .cell_y = y, .global_x = px, .global_y = py, .in_left_half_of_cell = in_left_half_of_cell};
         int sz = encode_mouse_event_impl(&mpos, screen->modes.mouse_tracking_protocol, button, action, mods);
         if (sz > 0) {
             mouse_event_buf[sz] = 0;
@@ -1058,7 +1060,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(send_mouse_event, METH_VARARGS),
+    {"send_mouse_event", (PyCFunction)(void (*) (void))(send_mouse_event), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(test_encode_mouse, METH_VARARGS),
     METHODB(send_mock_mouse_event_to_window, METH_VARARGS),
     METHODB(mock_mouse_selection, METH_VARARGS),
