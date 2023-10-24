@@ -244,9 +244,9 @@
     {
         "name": "harfbuzz",
         "unix": {
-            "filename": "harfbuzz-2.7.4.tar.xz",
-            "hash": "sha256:6ad11d653347bd25d8317589df4e431a2de372c0cf9be3543368e07ec23bb8e7",
-            "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/2.7.4/{filename}"]
+            "filename": "harfbuzz-8.2.2.tar.xz",
+            "hash": "sha256:e433ad85fbdf57f680be29479b3f964577379aaf319f557eb76569f0ecbc90f3",
+            "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/8.2.2/{filename}"]
         }
     },
 
