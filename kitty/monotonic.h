@@ -13,6 +13,7 @@
 #define MONOTONIC_T_MAX INT64_MAX
 #define MONOTONIC_T_MIN INT64_MIN
 #define MONOTONIC_T_1e6 1000000ll
+#define MONOTONIC_T_1e3 1000ll
 #define MONOTONIC_T_1e9 1000000000ll
 
 typedef int64_t monotonic_t;
@@ -41,6 +42,12 @@ static inline int
 monotonic_t_to_ms(monotonic_t time) {
     return (int)(time / MONOTONIC_T_1e6);
 }
+
+static inline int
+monotonic_t_to_us(monotonic_t time) {
+    return (int)(time / MONOTONIC_T_1e3);
+}
+
 
 static inline double
 monotonic_t_to_s_double(monotonic_t time) {
