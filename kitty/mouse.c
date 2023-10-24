@@ -989,7 +989,7 @@ send_mouse_event(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     int x, y, px=0, py=0, in_left_half_of_cell=0;
 
     int button, action, mods;
-    static const char* kwlist[] = {"screen", "cell_x", "cell_y", "button", "action", "mods", "pixel_x", "pixel_y", "in_left_half_of_cell"};
+    static const char* kwlist[] = {"screen", "cell_x", "cell_y", "button", "action", "mods", "pixel_x", "pixel_y", "in_left_half_of_cell", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "O!iiiii|iip", (char**)kwlist,
                 &Screen_Type, &screen, &x, &y, &button, &action, &mods, &px, &py, &in_left_half_of_cell)) return NULL;
 
