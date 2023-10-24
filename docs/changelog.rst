@@ -76,6 +76,8 @@ Detailed list of changes
 
 - When pasting, if the text contains terminal control codes ask the user for permission. See :opt:`paste_actions` for details. Thanks to David Leadbeater for discovering this.
 
+- Render Private Use Unicode symbols using two cells if the second cell contains a non-breaking space as well as a normal space
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

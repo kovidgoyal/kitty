@@ -534,6 +534,7 @@ START_ALLOW_CASE_RANGE
     switch(cpu_cell->ch) {
         case 0:
         case ' ':
+        case 0xa0:  // nbsp
         case '\t':
         case IMAGE_PLACEHOLDER_CHAR:
             return BLANK_FONT;
@@ -1325,7 +1326,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             unsigned int num_spaces = 0;
             while (
                     i + num_spaces + 1 < line->xnum
-                    && line->cpu_cells[i+num_spaces+1].ch == ' '
+                    && (line->cpu_cells[i+num_spaces+1].ch == ' ' || line->cpu_cells[i+num_spaces+1].ch == 0xa0)  // space or nbsp
                     && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA
                     && num_spaces + 1 < desired_cells
                     ) {
