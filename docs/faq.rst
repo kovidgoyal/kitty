@@ -19,8 +19,8 @@ use Unicode characters from the private use area to represent symbols. Often
 these symbols are wide and should be rendered in two cells. However, since
 private use area symbols all have their width set to one in the Unicode
 standard, |kitty| renders them either smaller or truncated. The exception is if
-these characters are followed by a space or non-breaking space in which case
-kitty makes use of the extra cell to render them in two cells.  This behavior
+these characters are followed by a space or en-space (U+2002) in which case
+kitty makes use of the extra cell to render them in two cells. This behavior
 can be turned off for specific symbols using :opt:`narrow_symbols`.
 
 
