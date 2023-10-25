@@ -96,7 +96,7 @@ cmdline_of_process(PyObject *self UNUSED, PyObject *pid_) {
     if (sysctl(mib, 3, procargs, &argmax, NULL, 0) < 0) {
         // In case of zombie process or non-existent process we'll get EINVAL.
         if (errno == EINVAL)
-            PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie", pid);
+            PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie or you dont have permission", pid);
         else
             PyErr_SetFromErrno(PyExc_OSError);
         goto error;
@@ -193,7 +193,7 @@ environ_of_process(PyObject *self UNUSED, PyObject *pid_) {
         // In case of zombie process or a non-existent process we'll get EINVAL
         // to NSP and _psosx.py will translate it to ZP.
         if (errno == EINVAL)
-            PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie", pid);
+            PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie or you dont have permission", pid);
         else
             PyErr_SetFromErrno(PyExc_OSError);
         goto error;
