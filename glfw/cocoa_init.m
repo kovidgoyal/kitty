@@ -1020,12 +1020,15 @@ static NSLock *tick_lock = NULL;
 
 void _glfwDispatchTickCallback(void) {
     if (tick_lock && tick_callback) {
-        [tick_lock lock];
-        while(tick_callback_requested) {
+        while(true) {
+            bool do_call = true;
+            [tick_lock lock];
+            if (!tick_callback_requested) do_call = false;
             tick_callback_requested = false;
-            tick_callback(tick_callback_data);
+            [tick_lock unlock];
+            if (do_call) tick_callback(tick_callback_data);
+            else break;
         }
-        [tick_lock unlock];
     }
 }
 
