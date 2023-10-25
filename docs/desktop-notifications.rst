@@ -94,9 +94,9 @@ to display it based on what it does understand.
    revisions.
 
 
-=======  ====================  =========  =================
+=======  ====================  ========== =================
 Key      Value                 Default    Description
-=======  ====================  =========  =================
+=======  ====================  ========== =================
 ``a``    Comma separated list  ``focus``  What action to perform when the
          of ``report``,                   notification is clicked
          ``focus``, with
@@ -113,7 +113,14 @@ Key      Value                 Default    Description
 
 ``p``    One of ``title`` or   ``title``  Whether the payload is the notification title or body. If a
          ``body``.                        notification has no title, the body will be used as title.
-=======  ====================  =========  =================
+
+``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
+         ``unfocused`` or                 the notification is sent on does not have keyboard focus. ``invisible``
+         ``invisible``                    means the window both is unfocused
+                                          and not visible to the user, for example, because it is in an inactive tab or
+                                          its OS window is not currently active.
+                                          ``always`` is the default and always honors the request.
+=======  ====================  ========== =================
 
 
 .. note::

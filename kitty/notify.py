@@ -4,11 +4,13 @@
 import re
 from base64 import standard_b64decode
 from collections import OrderedDict
+from contextlib import suppress
+from enum import Enum
 from itertools import count
 from typing import Callable, Dict, Optional
 
 from .constants import is_macos, logo_png_file
-from .fast_data_types import get_boss
+from .fast_data_types import current_focused_os_window_id, get_boss
 from .types import run_once
 from .utils import get_custom_window_icon, log_error
 
@@ -67,6 +69,12 @@ def notify_implementation(title: str, body: str, identifier: str) -> None:
     notify(title, body, identifier=identifier)
 
 
+class OnlyWhen(Enum):
+    always = 'always'
+    unfocused = 'unfocused'
+    invisible = 'invisible'
+
+
 class NotificationCommand:
 
     done: bool = True
@@ -74,6 +82,7 @@ class NotificationCommand:
     title: str = ''
     body: str = ''
     actions: str = ''
+    only_when: OnlyWhen = OnlyWhen.always
 
     def __repr__(self) -> str:
         return f'NotificationCommand(identifier={self.identifier!r}, title={self.title!r}, body={self.body!r}, actions={self.actions!r}, done={self.done!r})'
@@ -125,6 +134,9 @@ def parse_osc_99(raw: str) -> NotificationCommand:
                 cmd.done = v != '0'
             elif k == 'a':
                 cmd.actions += f',{v}'
+            elif k == 'o':
+                with suppress(ValueError):
+                    cmd.only_when = OnlyWhen(v)
     if payload_type not in ('body', 'title'):
         log_error(f'Malformed OSC 99: unknown payload type: {payload_type}')
         return NotificationCommand()
@@ -208,6 +220,19 @@ def reset_registry() -> None:
 def notify_with_command(cmd: NotificationCommand, window_id: int, notify_implementation: NotifyImplementation = notify_implementation) -> None:
     title = cmd.title or cmd.body
     body = cmd.body if cmd.title else ''
+    if not title:
+        return
+    if cmd.only_when is not OnlyWhen.always:
+        w = get_boss().window_id_map.get(window_id)
+        if w is None:
+            return
+        boss = get_boss()
+        window_has_keyboard_focus = w.is_active and w.os_window_id == current_focused_os_window_id()
+        if window_has_keyboard_focus:
+            return
+        if cmd.only_when is OnlyWhen.invisible:
+            if w.os_window_id == current_focused_os_window_id() and w.tabref() is boss.active_tab and w.is_visible_in_layout:
+                return  # window is in the active OS window and the active tab and is visible in the tab layout
     if title:
         identifier = f'i{next(id_counter)}'
         notify_implementation(title, body, identifier)

@@ -80,6 +80,8 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that caused kitten @ ls to not report the environment variables for the default shell (:iss:`6749`)
 
+- desktop notification protocol: Allow applications sending notifications to specify that the notification should only be displayed if the window is currently unfocused (:iss:`6755`)
+
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
