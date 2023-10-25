@@ -70,6 +70,7 @@ def notify_implementation(title: str, body: str, identifier: str) -> None:
 
 
 class OnlyWhen(Enum):
+    unset = ''
     always = 'always'
     unfocused = 'unfocused'
     invisible = 'invisible'
@@ -82,7 +83,7 @@ class NotificationCommand:
     title: str = ''
     body: str = ''
     actions: str = ''
-    only_when: OnlyWhen = OnlyWhen.always
+    only_when: OnlyWhen = OnlyWhen.unset
 
     def __repr__(self) -> str:
         return f'NotificationCommand(identifier={self.identifier!r}, title={self.title!r}, body={self.body!r}, actions={self.actions!r}, done={self.done!r})'
@@ -165,6 +166,8 @@ def merge_osc_99(prev: NotificationCommand, cmd: NotificationCommand) -> Notific
     cmd.actions = limit_size(f'{prev.actions},{cmd.actions}')
     cmd.title = limit_size(prev.title + cmd.title)
     cmd.body = limit_size(prev.body + cmd.body)
+    if cmd.only_when is OnlyWhen.unset:
+        cmd.only_when = prev.only_when
     return cmd
 
 
@@ -222,7 +225,7 @@ def notify_with_command(cmd: NotificationCommand, window_id: int, notify_impleme
     body = cmd.body if cmd.title else ''
     if not title:
         return
-    if cmd.only_when is not OnlyWhen.always:
+    if cmd.only_when is not OnlyWhen.always and cmd.only_when is not OnlyWhen.unset:
         w = get_boss().window_id_map.get(window_id)
         if w is None:
             return
