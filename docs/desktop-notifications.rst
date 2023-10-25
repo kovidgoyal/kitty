@@ -124,7 +124,7 @@ Key      Value                 Default    Description
 
 
 .. note::
-   Support for the ``o`` key to prevent notifications from unfocused windows
+   Support for the ``o`` key to prevent notifications from focused windows
    was added in kitty version 0.31.0
 
 
