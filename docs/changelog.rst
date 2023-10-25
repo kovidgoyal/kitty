@@ -78,8 +78,7 @@ Detailed list of changes
 
 - Render Private Use Unicode symbols using two cells if the second cell contains a non-breaking space as well as a normal space
 
-- kitten @ ls: Return the environment of the foreground process instead of the initial child process (:iss:`6749`)
-
+- macOS: Fix a regression in the previous release that caused kitten @ ls to not report the environment variables for the default shell (:iss:`6749`)
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

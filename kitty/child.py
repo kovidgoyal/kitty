@@ -386,9 +386,9 @@ class Child:
     def environ(self) -> Dict[str, str]:
         try:
             assert self.pid is not None
-            return environ_of_process(self.pid)
+            return environ_of_process(self.pid) or self.final_env.copy()
         except Exception:
-            return {}
+            return self.final_env.copy()
 
     @property
     def current_cwd(self) -> Optional[str]:
