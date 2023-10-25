@@ -214,10 +214,11 @@ class Child:
         self.cwd = os.path.abspath(cwd)
         self.stdin = stdin
         self.env = env or {}
+        self.final_env:Dict[str, str] = {}
         self.is_default_shell = bool(self.argv and self.argv[0] == shell_path)
         self.should_run_via_run_shell_kitten = is_macos and self.is_default_shell
 
-    def final_env(self) -> Dict[str, str]:
+    def get_final_env(self) -> Dict[str, str]:
         from kitty.options.utils import DELETE_ENV_VAR
         env = default_env().copy()
         opts = fast_data_types.get_options()
@@ -273,8 +274,7 @@ class Child:
             os.set_inheritable(stdin_read_fd, True)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        final_env = self.final_env()
-        env = tuple(f'{k}={v}' for k, v in final_env.items())
+        self.final_env = self.get_final_env()
         argv = list(self.argv)
         cwd = self.cwd
         if self.should_run_via_run_shell_kitten:
@@ -311,6 +311,7 @@ class Child:
                 argv = ['/usr/bin/login', '-f', '-l', '-p', user] + argv
         self.final_exe = which(argv[0]) or argv[0]
         self.final_argv0 = argv[0]
+        env = tuple(f'{k}={v}' for k, v in self.final_env.items())
         pid = fast_data_types.spawn(
             self.final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
             ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio)

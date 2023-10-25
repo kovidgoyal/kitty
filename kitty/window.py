@@ -654,7 +654,7 @@ class Window:
             'pid': self.child.pid,
             'cwd': self.child.current_cwd or self.child.cwd,
             'cmdline': self.child.cmdline,
-            'env': self.child.environ,
+            'env': self.child.foreground_environ or self.child.environ or self.child.final_env,
             'foreground_processes': self.child.foreground_processes,
             'is_self': is_self,
             'at_prompt': self.at_prompt,
