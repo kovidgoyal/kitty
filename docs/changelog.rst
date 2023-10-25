@@ -76,7 +76,7 @@ Detailed list of changes
 
 - When pasting, if the text contains terminal control codes ask the user for permission. See :opt:`paste_actions` for details. Thanks to David Leadbeater for discovering this.
 
-- Render Private Use Unicode symbols using two cells if the second cell contains a non-breaking space as well as a normal space
+- Render Private Use Unicode symbols using two cells if the second cell contains an en-space as well as a normal space
 
 - macOS: Fix a regression in the previous release that caused kitten @ ls to not report the environment variables for the default shell (:iss:`6749`)
 
