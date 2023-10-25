@@ -124,6 +124,11 @@ Key      Value                 Default    Description
 
 
 .. note::
+   Support for the ``o`` key to prevent notifications from unfocused windows
+   was added in kitty version 0.31.0
+
+
+.. note::
    |kitty| also supports the `legacy OSC 9 protocol developed by iTerm2
    <https://iterm2.com/documentation-escape-codes.html>`__ for desktop
    notifications.
