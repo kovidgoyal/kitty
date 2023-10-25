@@ -1782,7 +1782,6 @@ prune_peers(ChildMonitor *self) {
             pruned = true;
         }
     }
-    if (pruned) wakeup_main_loop();
     return pruned;
 }
 
@@ -1834,6 +1833,7 @@ talk_loop(void *data) {
 
     while (LIKELY(!self->shutting_down)) {
         num_peer_fds = 0;
+        bool need_to_wakup_main_loop = false;
         talk_mutex(lock);
         if (peers_to_inject.num) {
             for (size_t i = 0; i < peers_to_inject.num; i++) {
@@ -1844,7 +1844,7 @@ talk_loop(void *data) {
             peers_to_inject.num = 0;
         }
         if (talk_data.num_peers > 0) {
-            prune_peers(self);
+            if (prune_peers(self)) need_to_wakup_main_loop = true;
             for (size_t i = 0; i < talk_data.num_peers; i++) {
                 Peer *p = talk_data.peers + i;
                 if (!p->read.finished || p->write.used) {
@@ -1859,6 +1859,7 @@ talk_loop(void *data) {
             }
         }
         talk_mutex(unlock);
+        if (need_to_wakup_main_loop) wakeup_main_loop();
         for (size_t i = 0; i < num_listen_fds; i++) fds[i].revents = 0;
         int ret = poll(fds, num_listen_fds + num_peer_fds, -1);
         if (ret > 0) {
