@@ -7,6 +7,7 @@
 #pragma once
 #include "data-types.h"
 #include "monotonic.h"
+#include "kitty-uthash.h"
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
@@ -34,7 +35,6 @@ typedef struct {
     int32_t z_index;
     int32_t start_row, start_column;
     uint32_t client_id;
-    id_type internal_id;
     ImageRect src_rect;
     // Indicates whether this reference represents a cell image that should be
     // removed when the corresponding cells are modified.
@@ -42,6 +42,9 @@ typedef struct {
     // Virtual refs are not displayed but they can be used as prototypes for
     // refs placed using unicode placeholders.
     bool is_virtual_ref;
+
+    id_type internal_id;
+    hash_handle_type hh;
 } ImageRef;
 
 typedef struct {
@@ -56,11 +59,8 @@ typedef struct {
     id_type internal_id;
 
     bool root_frame_data_loaded;
-    struct {
-        ImageRef *ref;
-        size_t count, capacity;
-        id_type id_counter;
-    } refs;
+    ImageRef *refs;
+    id_type ref_id_counter;
     Frame *extra_frames, root_frame;
     uint32_t current_frame_index, frame_id_counter;
     uint64_t animation_duration;

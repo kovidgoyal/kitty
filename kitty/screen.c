@@ -25,7 +25,6 @@
 #include "wcwidth-std.h"
 #include "wcswidth.h"
 #include "control-codes.h"
-#include "charsets.h"
 #include "keys.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
