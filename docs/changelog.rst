@@ -62,15 +62,15 @@ Detailed list of changes
 
 - macOS: Fix poor performance when using ligatures with some fonts, caused by slow harfbuzz shaping (:iss:`6743`)
 
-- ``kitten @ set-background-opacity`` - add a new ``--toggle`` flag to easily switch opacity between the specified value and the default (:iss:`6691`)
+- :option:`kitten @ set-background-opacity --toggle` - a new flag to easily switch opacity between the specified value and the default (:iss:`6691`)
 
 - Fix a regression caused by rewrite of kittens to Go that made various kittens reset colors in a terminal when the colors were changed by escape code (:iss:`6708`)
 
 - Fix trailing bracket not ignored when detecting a multi-line URL with the trailing bracket as the first character on the last line (:iss:`6710`)
 
-- Remote control launch: Fix the ``--copy-env`` option not copying current environment variables (:iss:`6724`)
+- Fix the :option:`kitten @ launch --copy-env` option not copying current environment variables (:iss:`6724`)
 
-- Fix a regression that broke ``kitten update-self`` (:iss:`6729`)
+- Fix a regression that broke :program:`kitten update-self` (:iss:`6729`)
 
 - Two new event types for :ref:`watchers <watchers>`, :code:`on_title_change` and :code:`on_set_user_var`
 
@@ -80,7 +80,7 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that caused kitten @ ls to not report the environment variables for the default shell (:iss:`6749`)
 
-- :doc:`desktop notification protocol </desktop-notifications>`: Allow applications sending notifications to specify that the notification should only be displayed if the window is currently unfocused (:iss:`6755`)
+- :doc:`Desktop notification protocol </desktop-notifications>`: Allow applications sending notifications to specify that the notification should only be displayed if the window is currently unfocused (:iss:`6755`)
 
 
 0.30.1 [2023-10-05]
