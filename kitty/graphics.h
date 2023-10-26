@@ -71,6 +71,8 @@ typedef struct {
     AnimationState animation_state;
     uint32_t max_loops, current_loop;
     monotonic_t current_frame_shown_at;
+
+    hash_handle_type hh;
 } Image;
 
 typedef struct {
@@ -113,11 +115,8 @@ typedef struct {
 
     size_t storage_limit;
     LoadData currently_loading;
-    struct {
-        size_t count, capacity;
-        Image *img;
-        id_type id_counter;
-    } images;
+    Image *images;
+    id_type image_id_counter;
     struct {
         size_t count, capacity;
         ImageRenderData *item;
