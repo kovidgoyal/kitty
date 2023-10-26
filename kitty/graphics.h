@@ -111,11 +111,17 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    size_t image_count, images_capacity, storage_limit;
+    size_t storage_limit;
     LoadData currently_loading;
-    Image *images;
-    size_t count, capacity;
-    ImageRenderData *render_data;
+    struct {
+        size_t count, capacity;
+        Image *img;
+        id_type id_counter;
+    } images;
+    struct {
+        size_t count, capacity;
+        ImageRenderData *item;
+    } render_data;
     bool layers_dirty;
     // The number of images below MIN_ZINDEX / 2, then the number of refs between MIN_ZINDEX / 2 and -1 inclusive, then the number of refs above 0 inclusive.
     size_t num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
