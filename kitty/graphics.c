@@ -77,8 +77,8 @@ grman_alloc(void) {
 
 static void
 free_refs_data(Image *img) {
-    free(img->refs); img->refs = NULL;
-    img->refcnt = 0; img->refcap = 0;
+    free(img->refs.ref);
+    memset(&(img->refs), 0, sizeof(img->refs));
 }
 
 static void
@@ -170,7 +170,7 @@ remove_images(GraphicsManager *self, bool(*predicate)(Image*), id_type skip_imag
 
 static bool
 trim_predicate(Image *img) {
-    return !img->root_frame_data_loaded || !img->refcnt;
+    return !img->root_frame_data_loaded || !img->refs.count;
 }
 
 
@@ -294,7 +294,7 @@ inflate_png(LoadData *load_data, uint8_t *buf, size_t bufsz) {
 
 static bool
 add_trim_predicate(Image *img) {
-    return !img->root_frame_data_loaded || (!img->client_id && !img->refcnt);
+    return !img->root_frame_data_loaded || (!img->client_id && !img->refs.count);
 }
 
 bool
@@ -713,18 +713,17 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     ImageRef *virt_img_ref = NULL;
     if (placement_id) {
         // Find the placement by the id. It must be a virtual placement.
-        for (size_t i = 0; i < img->refcnt; i++) {
-            if (img->refs[i].is_virtual_ref &&
-                img->refs[i].client_id == placement_id) {
-                virt_img_ref = img->refs + i;
+        for (size_t i = 0; i < img->refs.count; i++) {
+            if (img->refs.ref[i].is_virtual_ref && img->refs.ref[i].client_id == placement_id) {
+                virt_img_ref = img->refs.ref + i;
                 break;
             }
         }
     } else {
         // Find the first virtual image placement.
-        for (size_t i = 0; i < img->refcnt; i++) {
-            if (img->refs[i].is_virtual_ref) {
-                virt_img_ref = img->refs + i;
+        for (size_t i = 0; i < img->refs.count; i++) {
+            if (img->refs.ref[i].is_virtual_ref) {
+                virt_img_ref = img->refs.ref + i;
                 break;
             }
         }
@@ -841,10 +840,11 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     ref.z_index = -1;
 
     // Create a real ref.
-    ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
+    ensure_space_for(&(img->refs), ref, ImageRef, img->refs.count + 1, capacity, 16, true);
     self->layers_dirty = true;
-    ImageRef *real_ref = img->refs + img->refcnt++;
+    ImageRef *real_ref = img->refs.ref + img->refs.count++;
     *real_ref = ref;
+    real_ref->internal_id = ++img->refs.id_counter;
     img->atime = monotonic();
 
     update_src_rect(real_ref, img);
@@ -860,21 +860,22 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
         if (img == NULL) { set_command_failed_response("ENOENT", "Put command refers to non-existent image with id: %u and number: %u", g->id, g->image_number); return g->id; }
     }
     if (!img->root_frame_data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return img->client_id; }
-    ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
+    ensure_space_for(&(img->refs), ref, ImageRef, img->refs.count + 1, capacity, 16, true);
     *is_dirty = true;
     self->layers_dirty = true;
     ImageRef *ref = NULL;
     if (g->placement_id && img->client_id) {
-        for (size_t i=0; i < img->refcnt; i++) {
-            if (img->refs[i].client_id == g->placement_id) {
-                ref = img->refs + i;
+        for (size_t i=0; i < img->refs.count; i++) {
+            if (img->refs.ref[i].client_id == g->placement_id) {
+                ref = img->refs.ref + i;
                 break;
             }
         }
     }
     if (ref == NULL) {
-        ref = img->refs + img->refcnt++;
+        ref = img->refs.ref + img->refs.count++;
         zero_at_ptr(ref);
+        ref->internal_id = ++img->refs.id_counter;
     }
     img->atime = monotonic();
     ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
@@ -944,7 +945,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         bool was_drawn = img->is_drawn;
         img->is_drawn = false;
 
-        for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
+        for (j = 0; j < img->refs.count; j++) { ref = img->refs.ref + j;
             if (ref->is_virtual_ref) continue;
             r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
             if (ref->num_rows > 0) r.bottom = y0 - (ref->start_row + (int32_t)ref->num_rows) * dy;
@@ -1571,15 +1572,15 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
     bool matched = false;
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
-        for (size_t j = img->refcnt; j-- > 0;) {
-            ImageRef *ref = img->refs + j;
+        for (size_t j = img->refs.count; j-- > 0;) {
+            ImageRef *ref = img->refs.ref + j;
             if (filter_func(ref, img, data, cell)) {
-                remove_i_from_array(img->refs, j, img->refcnt);
+                remove_i_from_array(img->refs.ref, j, img->refs.count);
                 self->layers_dirty = true;
                 matched = true;
             }
         }
-        if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
+        if (img->refs.count == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
         if (only_first_image && matched) break;
     }
 }
@@ -1589,10 +1590,10 @@ static void
 modify_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
-        for (size_t j = img->refcnt; j-- > 0;) {
-            if (filter_func(img->refs + j, img, data, cell)) remove_i_from_array(img->refs, j, img->refcnt);
+        for (size_t j = img->refs.count; j-- > 0;) {
+            if (filter_func(img->refs.ref + j, img, data, cell)) remove_i_from_array(img->refs.ref, j, img->refs.count);
         }
-        if (img->refcnt == 0 && img->client_id == 0 && img->client_number == 0) {
+        if (img->refs.count == 0 && img->client_id == 0 && img->client_number == 0) {
             // references have all scrolled off the history buffer and the image has no way to reference it
             // to create new references so remove it.
             remove_image(self, i);
@@ -1812,8 +1813,8 @@ grman_resize(GraphicsManager *self, index_type old_lines UNUSED, index_type line
         const unsigned int vertical_shrink_size = num_content_lines_before - num_content_lines_after;
         for (size_t i = self->image_count; i-- > 0;) {
             img = self->images + i;
-            for (size_t j = img->refcnt; j-- > 0;) {
-                ref = img->refs + j;
+            for (size_t j = img->refs.count; j-- > 0;) {
+                ref = img->refs.ref + j;
                 if (ref->is_virtual_ref || ref->is_cell_image) continue;
                 ref->start_row -= vertical_shrink_size;
             }
@@ -1827,8 +1828,8 @@ grman_rescale(GraphicsManager *self, CellPixelSize cell) {
     self->layers_dirty = true;
     for (size_t i = self->image_count; i-- > 0;) {
         img = self->images + i;
-        for (size_t j = img->refcnt; j-- > 0;) {
-            ref = img->refs + j;
+        for (size_t j = img->refs.count; j-- > 0;) {
+            ref = img->refs.ref + j;
             if (ref->is_virtual_ref || ref->is_cell_image) continue;
             ref->cell_x_offset = MIN(ref->cell_x_offset, cell.width - 1);
             ref->cell_y_offset = MIN(ref->cell_y_offset, cell.height - 1);
@@ -1958,7 +1959,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
     CoalescedFrameData cfd = get_coalesced_frame_data(self, img, &img->root_frame);
     if (!cfd.buf) { PyErr_SetString(PyExc_RuntimeError, "Failed to get data for root frame"); return NULL; }
     PyObject *ans = Py_BuildValue("{sI sI sI sI sI sI sI " "sO sI sO " "sI sI sI " "sI sy# sN}",
-        U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
+        U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refs.count), U(client_number),
 
         B(root_frame_data_loaded), U(animation_state), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
 

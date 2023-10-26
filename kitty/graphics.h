@@ -34,6 +34,7 @@ typedef struct {
     int32_t z_index;
     int32_t start_row, start_column;
     uint32_t client_id;
+    id_type internal_id;
     ImageRect src_rect;
     // Indicates whether this reference represents a cell image that should be
     // removed when the corresponding cells are modified.
@@ -55,11 +56,15 @@ typedef struct {
     id_type internal_id;
 
     bool root_frame_data_loaded;
-    ImageRef *refs;
+    struct {
+        ImageRef *ref;
+        size_t count, capacity;
+        id_type id_counter;
+    } refs;
     Frame *extra_frames, root_frame;
     uint32_t current_frame_index, frame_id_counter;
     uint64_t animation_duration;
-    size_t refcnt, refcap, extra_framecnt;
+    size_t extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
     bool is_drawn;
