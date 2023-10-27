@@ -640,6 +640,58 @@ placements from the protocol perspective. They cannot be manipulated using
 graphics commands, instead they should be moved, deleted, or modified by
 manipulating the underlying Unicode placeholder as normal text.
 
+.. _relative_image_placement:
+
+Relative placements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 0.31.0
+   Support for positioning images relative to other images
+
+You can specify that a placement is positioned relative to another placement.
+This is particularly useful in combination with
+:ref:`graphics_unicode_placeholders` above. It can be used to specify a single
+transparent pixel image using a Unicode placeholder, which moves around
+naturally with the text, the real image(s) can base their position relative to
+the placeholder.
+
+To specify that a placement should be relative to another, use the
+``P=<image_id>,Q=<placement_id>`` keys, when creating the relative placement.
+For example::
+
+    <ESC>_Ga=p,i=<image_id>,p=<placement_id>,P=<parent_img_id>,Q=<parent_placement_id><ESC>\
+
+This will create a *relative placement* that refers to the *parent placement* specified
+by the ``P`` and ``Q`` keys. When the parent placement moves, the relative
+placement moves along with it. The relative placement can be offset from the
+parent's location by a specified number of cells, using the ``H`` and ``V``
+keys for horizontal and vertical displacement. Positive values move right and
+down. Negative values move left and up.
+
+The lifetime of a relative placement is tied to the lifetime of its parent. If
+its parent is deleted, it is deleted as well. If the image that the relative
+placement is a placement of, has no more placements, the image is deleted as
+well. Thus, a parent and its relative placements form a *group* that is managed
+together.
+
+A relative placement can refer to another relative placement as its parent.
+Thus the relative placements can form a chain. It is implementation dependent
+how long a chain of such placements is allowed, but implementation must allow
+a chain of length at least 8. If the implementation max depth is exceeded, the
+terminal must respond with the ``ETOODEEP`` error code.
+
+Virtual placements created for Unicode placeholder based images cannot also be
+relative placements. However, a relative placement can refer to a virtual
+placement as its parent. If a client attempts to make a virtual placement
+relative the terminal must respond with the ``EINVAL`` error code.
+
+Terminals are required to reject the creation of a relative placement
+that would create a cycle, such as when A is relative to B and B is relative to
+C and C is relative to A. In such cases, the terminal must respond with the
+``ECYCLE`` error code.
+
+If a client attempts to create a reference to a placement that does not exist
+the terminal must respond with the ``ENOPARENT`` error code.
 
 Deleting images
 ---------------------
@@ -962,6 +1014,10 @@ Key      Value                 Default    Description
 ``U``    Positive integer      ``0``      Set to ``1`` to create a virtual placement for a Unicode placeholder.
                                           ``1`` is to not move the cursor at all when placing the image.
 ``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
+``P``    Positive integer      ``0``      The id of a parent image for relative placement
+``Q``    Positive integer      ``0``      The id of a placement in the parent image for relative placement
+``H``    32-bit integer        ``0``      The offset in cells in the horizontal direction for relative placement
+``V``    32-bit integer        ``0``      The offset in cells in the vertical direction for relative placement
 
 **Keys for animation frame loading**
 -----------------------------------------------------------

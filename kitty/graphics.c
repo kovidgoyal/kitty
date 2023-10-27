@@ -65,6 +65,7 @@ next_id(id_type *counter) {
     if (UNLIKELY(ans == 0)) ans = ++(*counter);
     return ans;
 }
+static const unsigned PARENT_DEPTH_LIMIT = 8;
 
 GraphicsManager*
 grman_alloc(void) {
@@ -140,14 +141,14 @@ dealloc(GraphicsManager* self) {
 }
 
 static Image*
-img_by_internal_id(GraphicsManager *self, id_type id) {
+img_by_internal_id(const GraphicsManager *self, id_type id) {
     Image *ans;
     HASH_FIND(hh, self->images, &id, sizeof(id), ans);
     return ans;
 }
 
 static Image*
-img_by_client_id(GraphicsManager *self, uint32_t id) {
+img_by_client_id(const GraphicsManager *self, uint32_t id) {
     for (Image *img = self->images; img != NULL; img = img->hh.next) {
         if (img->client_id == id) return img;
     }
@@ -155,13 +156,31 @@ img_by_client_id(GraphicsManager *self, uint32_t id) {
 }
 
 static Image*
-img_by_client_number(GraphicsManager *self, uint32_t number) {
+img_by_client_number(const GraphicsManager *self, uint32_t number) {
     // get the newest image with the specified number
     Image *ans = NULL;
     for (Image *img = self->images; img != NULL; img = img->hh.next) {
         if (img->client_number == number && (!ans || img->internal_id > ans->internal_id)) ans = img;
     }
     return ans;
+}
+
+static ImageRef*
+ref_by_internal_id(const Image *img, id_type id) {
+    ImageRef *ans;
+    HASH_FIND(hh, img->refs, &id, sizeof(id), ans);
+    return ans;
+}
+
+
+static ImageRef*
+ref_by_client_id(const Image *img, uint32_t id) {
+    for (ImageRef *ref = img->refs; ref != NULL; ref = ref->hh.next) {
+        if (ref->client_id == id) {
+            return ref;
+        }
+    }
+    return NULL;
 }
 
 static void
@@ -709,6 +728,9 @@ create_ref(Image *img, ImageRef *clone_from) {
     return ans;
 }
 
+static inline bool
+is_cell_image(const ImageRef *self) { return self->virtual_ref_id != 0; }
+
 // Create a real image ref for a virtual image ref (placement) positioned in the
 // given cells. This is used for images positioned using Unicode placeholders.
 //
@@ -761,7 +783,7 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     // Create the ref structure on stack first. We will not create a real
     // reference if the image is completely out of bounds.
     ImageRef ref = {0};
-    ref.is_cell_image = true;
+    ref.virtual_ref_id = virt_img_ref->internal_id;
 
     uint32_t img_rows = virt_img_ref->num_rows;
     uint32_t img_columns = virt_img_ref->num_cols;
@@ -877,26 +899,93 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     return img;
 }
 
+static void remove_ref(Image *img, ImageRef *ref);
+
+static bool
+has_good_ancestry(GraphicsManager *self, ImageRef *ref) {
+    ImageRef *r = ref;
+    unsigned depth = 0;
+    while (r->parent.img) {
+        if (r == ref && depth) {
+            set_command_failed_response("ECYCLE", "This parent reference creates a cycle");
+            return false;
+        }
+        if (depth++ >= PARENT_DEPTH_LIMIT) {
+            set_command_failed_response("ETOODEEP", "Too many levels of parent references");
+            return false;
+        }
+        Image *parent = img_by_internal_id(self, r->parent.img);
+        if (!parent) {
+            set_command_failed_response("ENOENT", "One of the ancestors of this ref with image id: %u not found", r->parent.img);
+            return false;
+        }
+        ImageRef *parent_ref = ref_by_internal_id(parent, r->parent.ref);
+        if (!parent_ref) {
+            set_command_failed_response("ENOENT", "One of the ancestors of this ref with image id: %u and ref id: %u not found", r->parent.img, r->parent.ref);
+            return false;
+        }
+        r = parent_ref;
+    }
+    return true;
+}
+
 static uint32_t
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img, CellPixelSize cell) {
+    if (g->unicode_placement && g->parent_id) {
+        set_command_failed_response("EINVAL", "Put command creating a virtual placement cannot refer to a parent"); return g->id;
+    }
     if (img == NULL) {
         if (g->id) img = img_by_client_id(self, g->id);
         else if (g->image_number) img = img_by_client_number(self, g->image_number);
         if (img == NULL) { set_command_failed_response("ENOENT", "Put command refers to non-existent image with id: %u and number: %u", g->id, g->image_number); return g->id; }
     }
     if (!img->root_frame_data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return img->client_id; }
-    *is_dirty = true;
-    self->layers_dirty = true;
+    id_type parent_id = 0, parent_placement_id = 0;
+    if (g->parent_id) {
+        Image *parent = img_by_client_id(self, g->parent_id);
+        if (!parent) {
+            set_command_failed_response("ENOPARENT", "Put command refers to a parent image with id: %u that does not exist", g->parent_id);
+            return g->id;
+        }
+        if (!parent->refs) {
+            set_command_failed_response("ENOPARENT", "Put command refers to a parent image with id: %u that has no placements", g->parent_id);
+            return g->id;
+        }
+        ImageRef *parent_ref = parent->refs;
+        if (g->parent_placement_id) {
+            parent_ref = ref_by_client_id(parent, g->parent_placement_id);
+            if (!parent_ref) {
+                set_command_failed_response("ENOPARENT", "Put command refers to a parent image placement with id: %u and placement id: %u that does not exist", g->parent_id, g->parent_placement_id);
+                return g->id;
+            }
+        }
+        parent_id = parent->internal_id;
+        parent_placement_id = parent_ref->internal_id;
+    }
     ImageRef *ref = NULL;
     if (g->placement_id && img->client_id) {
         for (ImageRef *r = img->refs; r != NULL; r = r->hh.next) {
             if (r->client_id == g->placement_id) {
                 ref = r;
+                if (parent_id && parent_id == img->internal_id && parent_placement_id && parent_placement_id == r->internal_id) {
+                    set_command_failed_response("EINVAL", "Put command refers to itself as its own parent");
+                    return g->id;
+                }
+                if (parent_id && parent_placement_id) {
+                    id_type rp = ref->parent.img, rpp = ref->parent.ref;
+                    ref->parent.img = parent_id; ref->parent.ref = parent_placement_id;
+                    bool ok = has_good_ancestry(self, ref);
+                    ref->parent.img = rp; ref->parent.ref = rpp;
+                    if (!ok) return g->id;
+                }
                 break;
             }
         }
     }
     if (ref == NULL) ref = create_ref(img, NULL);
+
+    *is_dirty = true;
+    self->layers_dirty = true;
     img->atime = monotonic();
     ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
     ref->src_width = MIN(ref->src_width, img->width - ((float)img->width > ref->src_x ? ref->src_x : (float)img->width));
@@ -909,13 +998,25 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     if (img->client_id) ref->client_id = g->placement_id;
     update_src_rect(ref, img);
     update_dest_rect(ref, g->num_cells, g->num_lines, cell);
+    ref->parent.img = parent_id;
+    ref->parent.ref = parent_placement_id;
+    ref->parent.offset.x = g->offset_from_parent_x;
+    ref->parent.offset.y = g->offset_from_parent_y;
+    ref->is_virtual_ref = false;
     if (g->unicode_placement) {
         ref->is_virtual_ref = true;
         ref->start_row = ref->start_column = 0;
     }
-    // Move the cursor, the screen will take care of ensuring it is in bounds
-    if (g->cursor_movement != 1 && !g->unicode_placement) {
-        c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
+    if (ref->parent.img) {
+        if (!has_good_ancestry(self, ref)) {
+            remove_ref(img, ref);
+            return g->id;
+        }
+    } else {
+        // Move the cursor, the screen will take care of ensuring it is in bounds
+        if (g->cursor_movement != 1 && !g->unicode_placement) {
+            c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
+        }
     }
     return img->client_id;
 }
@@ -940,6 +1041,48 @@ gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, flo
     ans->group_count = 1;
 }
 
+static bool
+resolve_cell_ref(const Image *img, id_type virt_ref_id, int32_t *start_row, int32_t *start_column) {
+    *start_row = 0; *start_column = 0;
+    bool found = false;
+    for (ImageRef *ref = img->refs; ref != NULL; ref = ref->hh.next) {
+        if (ref->virtual_ref_id == virt_ref_id) {
+            if (!found || ref->start_row < *start_row) *start_row = ref->start_row;
+            if (!found || ref->start_column < *start_column) *start_column = ref->start_column;
+            found = true;
+
+        }
+    }
+    return found;
+}
+
+static bool
+resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t *start_row, int32_t *start_column, bool *is_virtual_ref) {
+    *start_row = 0; *start_column = 0;
+    int32_t x = 0, y = 0;
+    unsigned depth = 0;
+    ImageRef cell_ref = {0};
+    while (ref->parent.img) {
+        if (depth++ >= PARENT_DEPTH_LIMIT) return false;  // either a cycle or too many ancestors
+        Image *img = img_by_internal_id(self, ref->parent.img);
+        if (!img) return false;
+        ImageRef *parent = ref_by_internal_id(img, ref->parent.ref);
+        if (!parent) return false;
+        if (parent->is_virtual_ref) {
+            *is_virtual_ref = true;
+            if (!resolve_cell_ref(img, parent->internal_id, &cell_ref.start_row, &cell_ref.start_column)) return false;
+            parent = &cell_ref;
+        }
+        x += ref->parent.offset.x;
+        y += ref->parent.offset.y;
+        ref = parent;
+    }
+    *start_row = ref->start_row + y;
+    *start_column = ref->start_column + x;
+    return true;
+}
+
+
 bool
 grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize cell) {
     if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
@@ -950,7 +1093,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     self->num_of_below_refs = 0;
     self->num_of_negative_refs = 0;
     self->num_of_positive_refs = 0;
-    Image *img; ImageRef *ref;
+    Image *img, *tmpimg; ImageRef *ref, *tmpref;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
     float screen_bottom = screen_top - screen_height;
@@ -960,19 +1103,32 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
     // Iterate over all visible refs and create render data
     self->render_data.count = 0;
-    for (img = self->images; img != NULL; img = img->hh.next) {
+
+    HASH_ITER(hh, self->images, img, tmpimg) {
         bool was_drawn = img->is_drawn;
+        bool ref_removed = false;
         img->is_drawn = false;
 
-        for (ref = img->refs; ref != NULL; ref = ref->hh.next) {
+        HASH_ITER(hh, img->refs, ref, tmpref) {
             if (ref->is_virtual_ref) continue;
-            r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
-            if (ref->num_rows > 0) r.bottom = y0 - (ref->start_row + (int32_t)ref->num_rows) * dy;
+            int32_t start_row = ref->start_row, start_column = ref->start_column;
+            if (ref->parent.img) {
+                bool is_virtual_ref;
+                if (!resolve_parent_offset(self, ref, &start_row, &start_column, &is_virtual_ref)) {
+                    if (!is_virtual_ref) {
+                        remove_ref(img, ref);
+                        ref_removed = true;
+                    }
+                    continue;
+                }
+            }
+            r.top = y0 - start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
+            if (ref->num_rows > 0) r.bottom = y0 - (start_row + (int32_t)ref->num_rows) * dy;
             else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
             if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
 
-            r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) cell.width;
-            if (ref->num_cols > 0) r.right = screen_left + (ref->start_column + (int32_t)ref->num_cols) * dx;
+            r.left = screen_left + start_column * dx + dx * (float)ref->cell_x_offset / (float) cell.width;
+            if (ref->num_cols > 0) r.right = screen_left + (start_column + (int32_t)ref->num_cols) * dx;
             else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
 
             if (ref->z_index < ((int32_t)INT32_MIN/2))
@@ -986,9 +1142,13 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
             zero_at_ptr(rd);
             rd->dest_rect = r; rd->src_rect = ref->src_rect;
             self->render_data.count++;
-            rd->z_index = ref->z_index; rd->image_id = img->internal_id;
+            rd->z_index = ref->z_index; rd->image_id = img->internal_id; rd->ref_id = ref->internal_id;
             rd->texture_id = img->texture_id;
             img->is_drawn = true;
+        }
+        if (ref_removed && !img->refs) {
+            remove_image(self, img);
+            continue;
         }
         if (img->is_drawn && !was_drawn && img->animation_state != ANIMATION_STOPPED && img->extra_framecnt && img->animation_duration) {
             self->has_images_needing_animation = true;
@@ -1691,7 +1851,7 @@ grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize
 
 static bool
 cell_image_row_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
-    if (ref->is_virtual_ref || !ref->is_cell_image)
+    if (ref->is_virtual_ref || !is_cell_image(ref))
         return false;
     int32_t top = *(int32_t *)data;
     int32_t bottom = *((int32_t *)data + 1);
@@ -1700,7 +1860,7 @@ cell_image_row_filter_func(const ImageRef *ref, Image UNUSED *img, const void *d
 
 static bool
 cell_image_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data UNUSED, CellPixelSize cell UNUSED) {
-    return !ref->is_virtual_ref && ref->is_cell_image;
+    return !ref->is_virtual_ref && is_cell_image(ref);
 }
 
 // Remove cell images within the given region.
@@ -1726,7 +1886,7 @@ clear_filter_func(const ImageRef *ref, Image UNUSED *img, const void UNUSED *dat
 
 static bool
 clear_filter_func_noncell(const ImageRef *ref, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
-    if (ref->is_virtual_ref || ref->is_cell_image) return false;
+    if (ref->is_virtual_ref || is_cell_image(ref)) return false;
     return ref->start_row + (int32_t)ref->effective_num_rows > 0;
 }
 
@@ -1758,21 +1918,21 @@ number_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelS
 
 static bool
 x_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
-    if (ref->is_virtual_ref || ref->is_cell_image) return false;
+    if (ref->is_virtual_ref || is_cell_image(ref)) return false;
     const GraphicsCommand *g = data;
     return ref->start_column <= (int32_t)g->x_offset - 1 && ((int32_t)g->x_offset - 1) < ((int32_t)(ref->start_column + ref->effective_num_cols));
 }
 
 static bool
 y_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
-    if (ref->is_virtual_ref || ref->is_cell_image) return false;
+    if (ref->is_virtual_ref || is_cell_image(ref)) return false;
     const GraphicsCommand *g = data;
     return ref->start_row <= (int32_t)g->y_offset - 1 && ((int32_t)g->y_offset - 1) < ((int32_t)(ref->start_row + ref->effective_num_rows));
 }
 
 static bool
 z_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
-    if (ref->is_virtual_ref || ref->is_cell_image) return false;
+    if (ref->is_virtual_ref || is_cell_image(ref)) return false;
     const GraphicsCommand *g = data;
     return ref->z_index == g->z_index;
 }
@@ -1780,13 +1940,13 @@ z_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixe
 
 static bool
 point_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
-    if (ref->is_virtual_ref || ref->is_cell_image) return false;
+    if (ref->is_virtual_ref || is_cell_image(ref)) return false;
     return x_filter_func(ref, img, data, cell) && y_filter_func(ref, img, data, cell);
 }
 
 static bool
 point3d_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
-    if (ref->is_virtual_ref || ref->is_cell_image) return false;
+    if (ref->is_virtual_ref || is_cell_image(ref)) return false;
     return z_filter_func(ref, img, data, cell) && point_filter_func(ref, img, data, cell);
 }
 
@@ -1842,7 +2002,7 @@ grman_resize(GraphicsManager *self, index_type old_lines UNUSED, index_type line
         const unsigned int vertical_shrink_size = num_content_lines_before - num_content_lines_after;
         for (img = self->images; img != NULL; img = img->hh.next) {
             for (ref = img->refs; ref != NULL; ref = ref->hh.next) {
-                if (ref->is_virtual_ref || ref->is_cell_image) continue;
+                if (ref->is_virtual_ref || is_cell_image(ref)) continue;
                 ref->start_row -= vertical_shrink_size;
             }
         }
@@ -1855,7 +2015,7 @@ grman_rescale(GraphicsManager *self, CellPixelSize cell) {
     self->layers_dirty = true;
     for (img = self->images; img != NULL; img = img->hh.next) {
         for (ref = img->refs; ref != NULL; ref = ref->hh.next) {
-            if (ref->is_virtual_ref || ref->is_cell_image) continue;
+            if (ref->is_virtual_ref || is_cell_image(ref)) continue;
             ref->cell_x_offset = MIN(ref->cell_x_offset, cell.width - 1);
             ref->cell_y_offset = MIN(ref->cell_y_offset, cell.height - 1);
             update_dest_rect(ref, ref->num_cols, ref->num_rows, cell);
@@ -2050,7 +2210,7 @@ W(update_layers) {
         ImageRenderData *r = self->render_data.item + i;
 #define R(which) Py_BuildValue("{sf sf sf sf}", "left", r->which.left, "top", r->which.top, "right", r->which.right, "bottom", r->which.bottom)
         PyTuple_SET_ITEM(ans, i,
-            Py_BuildValue("{sN sN sI si sK}", "src_rect", R(src_rect), "dest_rect", R(dest_rect), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
+            Py_BuildValue("{sN sN sI si sK sK}", "src_rect", R(src_rect), "dest_rect", R(dest_rect), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id, "ref_id", r->ref_id)
         );
 #undef R
     }

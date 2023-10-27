@@ -123,13 +123,15 @@ def put_helpers(self, cw, ch, cols=10, lines=5):
         return s, 2 / s.columns, 2 / s.lines
 
     def put_cmd(
-            z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0,
-            height=0, cell_x_off=0, cell_y_off=0, placement_id=0,
-            cursor_movement=0, unicode_placeholder=0
+        z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0,
+        cell_y_off=0, placement_id=0, cursor_movement=0, unicode_placeholder=0, parent_id=0,
+        parent_placement_id=0, offset_from_parent_x=0, offset_from_parent_y=0,
     ):
-        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d,p=%d,C=%d,U=%d' % (
-            z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off,
-            cell_y_off, placement_id, cursor_movement, unicode_placeholder
+        return (
+            f'z={z},c={num_cols},r={num_lines},x={x_off},y={y_off},w={width},h={height},'
+            f'X={cell_x_off},Y={cell_y_off},p={placement_id},C={cursor_movement},'
+            f'U={unicode_placeholder},P={parent_id},Q={parent_placement_id},'
+            f'H={offset_from_parent_x},V={offset_from_parent_y}'
         )
 
     def put_image(screen, w, h, **kw):
@@ -539,6 +541,105 @@ class TestGraphics(BaseTest):
         self.ae(group_counts(), (4, 3, 2, 1))
         self.ae(put_image(s, 8, 16, id=2, z=-1)[1], 'OK')
         self.ae(group_counts(), (2, 1, 1, 2, 1))
+
+    def test_image_parents(self):
+        cw, ch = 10, 20
+        iw, ih = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+
+        def positions():
+            ans = {}
+            def x(x):
+                return round(((x + 1)/2) * s.columns)
+            def y(y):
+                return int(((-y + 1)/2) * s.lines)
+
+            for i in layers(s):
+                d = i['dest_rect']
+                ans[(i['image_id'], i['ref_id'])] = {'x': x(d['left']), 'y': y(d['top'])}
+            return ans
+
+        def p(x, y=0):
+            return {'x':x, 'y': y}
+
+        self.ae(put_image(s, iw, ih, id=1)[1], 'OK')
+        self.ae(put_ref(s, id=1, placement_id=1), (1, ('OK', 'i=1,p=1')))
+        pos = {(1, 1): p(0), (1, 2): p(1)}
+        self.ae(positions(), pos)
+        # check that adding a reference to a non-existent parent fails
+        self.ae(put_ref(s, id=1, placement_id=33, parent_id=1, parent_placement_id=2), (1, ('ENOPARENT', 'i=1,p=33')))
+        self.ae(put_ref(s, id=1, placement_id=33, parent_id=33), (1, ('ENOPARENT', 'i=1,p=33')))
+        # check that we cannot add a reference that is its own parent
+        self.ae(put_ref(s, id=1, placement_id=1, parent_id=1, parent_placement_id=1), (1, ('EINVAL', 'i=1,p=1')))
+
+        self.ae(put_image(s, iw, ih, id=2)[1], 'OK')
+        pos[(2,1)] = p(2)
+        self.ae(positions(), pos)
+        # Add two children to the first placement of img2
+        before = s.cursor.x, s.cursor.y
+        self.ae(put_ref(s, id=1, placement_id=2, parent_id=2, offset_from_parent_y=3), (1, ('OK', 'i=1,p=2')))
+        self.ae(before, (s.cursor.x, s.cursor.y), 'Cursor must not move for child image')
+        pos[(1,3)] = p(2, 3)
+        self.ae(positions(), pos)
+        self.ae(put_ref(s, id=2, placement_id=3, parent_id=2, offset_from_parent_y=4), (2, ('OK', 'i=2,p=3')))
+        pos[(2,2)] = p(2, 4)
+        self.ae(positions(), pos)
+        # Add a grand child to the second child of img2
+        self.ae(put_ref(s, id=2, placement_id=4, parent_id=2, parent_placement_id=3, offset_from_parent_x=-1), (2, ('OK', 'i=2,p=4')))
+        pos[(2,3)] = p(pos[(2,2)]['x']-1, pos[(2,2)]['y'])
+        self.ae(positions(), pos)
+        # Check that creating a cycle is prevented
+        self.ae(put_ref(s, id=2, placement_id=3, parent_id=2, parent_placement_id=4), (2, ('ECYCLE', 'i=2,p=3')))
+        self.ae(positions(), pos)
+        # Check that depth is limited
+        for i in range(5, 12):
+            q = put_ref(s, id=2, placement_id=i, parent_id=2, parent_placement_id=i-1, offset_from_parent_x=-1)[1][0]
+            if q == 'ETOODEEP':
+                break
+            self.ae(q, 'OK')
+        else:
+            self.assertTrue(False, 'Failed to limit reference chain depth')
+        # Check that deleting a parent removes all descendants
+        send_command(s, 'a=d,d=i,i=2,p=3')
+        pos.pop((2,3)), pos.pop((2,2))
+        self.ae(positions(), pos)
+        # Check that deleting a parent deletes all descendants and also removes
+        # images with no remaining placements
+        self.ae(put_ref(s, id=2, placement_id=3, parent_id=2, offset_from_parent_y=4), (2, ('OK', 'i=2,p=3')))
+        pos[(2,11)] = p(2, 4)
+        self.ae(positions(), pos)
+        self.ae(put_image(s, iw, ih, id=3, placement_id=97, parent_id=2, parent_placement_id=3)[1], 'OK')
+        pos[(3,1)] = p(2, 4)
+        self.ae(positions(), pos)
+        send_command(s, 'a=d,d=i,i=2')
+        pos.pop((3,1)), pos.pop((2,11)), pos.pop((2,1)), pos.pop((1,3))
+        self.ae(positions(), pos)
+        # Check that virtual placements that try to be relative are rejected
+        self.ae(put_ref(s, id=1, placement_id=11, parent_id=1, unicode_placeholder=1), (1, ('EINVAL', 'i=1,p=11')))
+        # Check creation of children of a unicode placeholder based image
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+        put_image(s, 20, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=42)
+        s.update_only_line_graphics_data()
+        self.assertFalse(positions())  # the reference is virtual
+        self.ae(put_ref(s, id=42, placement_id=11, parent_id=42, offset_from_parent_y=2, offset_from_parent_x=1), (42, ('OK', 'i=42,p=11')))
+        self.assertFalse(positions())  # the reference is virtual without any cell images so the child is invisible
+        s.apply_sgr("38;5;42")
+        # These two characters will become one 2x1 ref.
+        s.cursor.x = s.cursor.y = 1
+        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        s.cursor.x = s.cursor.y = 0
+        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        s.update_only_line_graphics_data()
+        pos = {(1, 2): p(1, 2), (1, 3): p(0), (1, 4): p(1)}
+        self.ae(positions(), pos)
+        s.cursor.x = s.cursor.y = 0
+        s.erase_in_display(0, False)
+        s.update_only_line_graphics_data()
+        self.assertFalse(positions())  # the reference is virtual without any cell images so the child is invisible
+        s.cursor.x = s.cursor.y = 2
+        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        s.update_only_line_graphics_data()
+        self.ae(positions(), {(1, 5): {'x': 2, 'y': 2}, (1, 2): {'x': 3, 'y': 4}})
 
     def test_unicode_placeholders(self):
         # This test tests basic image placement using using unicode placeholders

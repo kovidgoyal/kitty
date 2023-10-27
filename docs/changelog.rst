@@ -52,6 +52,8 @@ Detailed list of changes
 
 - A new :doc:`escape code <pointer-shapes>` that can be used by programs running in the terminal to change the shape of the mouse pointer (:iss:`6711`)
 
+- Graphics protocol: Support for positioning :ref:`images relative to other images <relative_image_placement>` (:iss:`6400`)
+
 - A new option :opt:`single_window_padding_width` to use a different padding when only a single window is visible (:iss:`6734`)
 
 - A new mouse action ``mouse_selection word_and_line_from_point`` to select the current word under the mouse cursor and extend to end of line (:pull:`6663`)

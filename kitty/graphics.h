@@ -11,7 +11,7 @@
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
-    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet;
+    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet, parent_id, parent_placement_id;
     uint32_t width, height, x_offset, y_offset;
     union { uint32_t cursor_movement, compose_mode; };
     union { uint32_t cell_x_offset, blend_mode; };
@@ -23,6 +23,7 @@ typedef struct {
     union { int32_t z_index, gap; };
     size_t payload_sz;
     bool unicode_placement;
+    int32_t offset_from_parent_x, offset_from_parent_y;
 } GraphicsCommand;
 
 typedef struct {
@@ -36,12 +37,18 @@ typedef struct {
     int32_t start_row, start_column;
     uint32_t client_id;
     ImageRect src_rect;
-    // Indicates whether this reference represents a cell image that should be
+    // Indicates whether this reference represents a cell ref that should be
     // removed when the corresponding cells are modified.
-    bool is_cell_image;
+    // The internal id of the virtual ref this cell image was created from. Is a cell ref if this is non-zero.
+    id_type virtual_ref_id;
     // Virtual refs are not displayed but they can be used as prototypes for
     // refs placed using unicode placeholders.
     bool is_virtual_ref;
+
+    struct {
+        id_type img, ref;
+        struct { int32_t x, y; } offset;
+    } parent;
 
     id_type internal_id;
     hash_handle_type hh;
@@ -86,7 +93,7 @@ typedef struct {
     ImageRect src_rect, dest_rect;
     uint32_t texture_id, group_count;
     int z_index;
-    id_type image_id;
+    id_type image_id, ref_id;
 } ImageRenderData;
 
 typedef struct {

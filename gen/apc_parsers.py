@@ -282,6 +282,10 @@ def graphics_parser() -> None:
         'z': ('z_index', 'int'),
         'C': ('cursor_movement', 'uint'),
         'U': ('unicode_placement', 'uint'),
+        'P': ('parent_id', 'uint'),
+        'Q': ('parent_placement_id', 'uint'),
+        'H': ('offset_from_parent_x', 'int'),
+        'V': ('offset_from_parent_y', 'int'),
     }
     text = generate('parse_graphics_code', 'screen_handle_graphics_command', 'graphics_command', keymap, 'GraphicsCommand')
     write_header(text, 'kitty/parse-graphics-command.h')
