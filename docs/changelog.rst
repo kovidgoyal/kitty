@@ -82,7 +82,7 @@ Detailed list of changes
 
 - :doc:`Desktop notification protocol </desktop-notifications>`: Allow applications sending notifications to specify that the notification should only be displayed if the window is currently unfocused (:iss:`6755`)
 
-- :doc:`unicode_input kitten </kittens/unicode_input>`: Fix a regression that broke the "Emoticons" panel (:iss:`6760`)
+- :doc:`unicode_input kitten </kittens/unicode_input>`: Fix a regression that broke the "Emoticons" tab (:iss:`6760`)
 
 
 0.30.1 [2023-10-05]
