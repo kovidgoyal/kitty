@@ -661,12 +661,13 @@ For example::
 
     <ESC>_Ga=p,i=<image_id>,p=<placement_id>,P=<parent_img_id>,Q=<parent_placement_id><ESC>\
 
-This will create a *relative placement* that refers to the *parent placement* specified
-by the ``P`` and ``Q`` keys. When the parent placement moves, the relative
-placement moves along with it. The relative placement can be offset from the
-parent's location by a specified number of cells, using the ``H`` and ``V``
-keys for horizontal and vertical displacement. Positive values move right and
-down. Negative values move left and up.
+This will create a *relative placement* that refers to the *parent placement*
+specified by the ``P`` and ``Q`` keys. When the parent placement moves, the
+relative placement moves along with it. The relative placement can be offset
+from the parent's location by a specified number of cells, using the ``H`` and
+``V`` keys for horizontal and vertical displacement. Positive values move right
+and down. Negative values move left and up. The origin is the top left cell of
+the parent placement.
 
 The lifetime of a relative placement is tied to the lifetime of its parent. If
 its parent is deleted, it is deleted as well. If the image that the relative
@@ -682,8 +683,12 @@ terminal must respond with the ``ETOODEEP`` error code.
 
 Virtual placements created for Unicode placeholder based images cannot also be
 relative placements. However, a relative placement can refer to a virtual
-placement as its parent. If a client attempts to make a virtual placement
-relative the terminal must respond with the ``EINVAL`` error code.
+placement as its parent. When a virtual placement is the parent, its position
+is derived from all the actual Unicode placeholder images that refer to it.
+The x position is the minimum of all the placeholder x positions and the y
+position is the minimum of all the placeholder y positions. If a client
+attempts to make a virtual placement relative the terminal must respond with
+the ``EINVAL`` error code.
 
 Terminals are required to reject the creation of a relative placement
 that would create a cycle, such as when A is relative to B and B is relative to
