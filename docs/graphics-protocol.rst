@@ -698,6 +698,13 @@ C and C is relative to A. In such cases, the terminal must respond with the
 If a client attempts to create a reference to a placement that does not exist
 the terminal must respond with the ``ENOPARENT`` error code.
 
+.. note::
+   Since a relative placement gets its position specified based on another
+   placement, instead of the cursor, the cursor must not move after a relative
+   position, regardless of the value of the ``C`` key to control cursor
+   movement.
+
+
 Deleting images
 ---------------------
 
