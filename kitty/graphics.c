@@ -916,12 +916,12 @@ has_good_ancestry(GraphicsManager *self, ImageRef *ref) {
         }
         Image *parent = img_by_internal_id(self, r->parent.img);
         if (!parent) {
-            set_command_failed_response("ENOENT", "One of the ancestors of this ref with image id: %u not found", r->parent.img);
+            set_command_failed_response("ENOENT", "One of the ancestors of this ref with image id: %llu not found", r->parent.img);
             return false;
         }
         ImageRef *parent_ref = ref_by_internal_id(parent, r->parent.ref);
         if (!parent_ref) {
-            set_command_failed_response("ENOENT", "One of the ancestors of this ref with image id: %u and ref id: %u not found", r->parent.img, r->parent.ref);
+            set_command_failed_response("ENOENT", "One of the ancestors of this ref with image id: %llu and ref id: %llu not found", r->parent.img, r->parent.ref);
             return false;
         }
         r = parent_ref;
