@@ -50,7 +50,7 @@ func build_sets() {
 	}
 	EMOTICONS_SET = make([]rune, 0, 0x1f64f-0x1f600+1)
 	for i := 0x1f600; i <= 0x1f64f; i++ {
-		DEFAULT_SET = append(DEFAULT_SET, rune(i))
+		EMOTICONS_SET = append(EMOTICONS_SET, rune(i))
 	}
 }
 
