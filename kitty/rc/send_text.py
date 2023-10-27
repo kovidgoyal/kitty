@@ -184,13 +184,13 @@ are sent as is, not interpreted for escapes.
             windows = [boss.active_window]
             match = payload_get('match')
             if match:
-                windows = list(boss.match_windows(match))
+                windows = [w for w in self.windows_for_match_payload(boss, window, payload_get)]
                 if not windows and not sid:
                     raise MatchError(payload_get('match'))
             mt = payload_get('match_tab')
             if mt:
                 windows = []
-                tabs = tuple(boss.match_tabs(mt))
+                tabs = self.tabs_for_match_payload(boss, window, payload_get)
                 if not tabs and not sid:
                     raise MatchError(payload_get('match_tab'), 'tabs')
                 for tab in tabs:
