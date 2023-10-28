@@ -12,7 +12,6 @@
 #include "base64.h"
 #include "control-codes.h"
 #include "screen.h"
-#include "graphics.h"
 #include "charsets.h"
 #include "monotonic.h"
 #include <time.h>
