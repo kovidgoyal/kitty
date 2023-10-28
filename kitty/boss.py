@@ -364,7 +364,12 @@ class Boss:
             self.allow_remote_control = 'n'
         self.listening_on = ''
         if args.listen_on and self.allow_remote_control in ('y', 'socket', 'socket-only', 'password'):
-            listen_fd, self.listening_on = listen_on(args.listen_on)
+            try:
+                listen_fd, self.listening_on = listen_on(args.listen_on)
+            except Exception:
+                log_error(f'Invalid listen_on setting: {args.listen_on}, ignoring')
+                import traceback
+                traceback.print_exc()
         self.child_monitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
