@@ -344,7 +344,6 @@ typedef struct {int x;} *SPRITE_MAP_HANDLE;
 #define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; unsigned int cell_width, cell_height;
 typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
-#define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)
 
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0;

@@ -18,6 +18,7 @@
 
 extern PyTypeObject Screen_Type;
 #define EXTENDED_OSC_SENTINEL 0x1bu
+#define PARSER_BUF_SZ (8u * 1024u)
 #define PENDING_BUF_INCREMENT (16u * 1024u)
 
 // utils {{{
