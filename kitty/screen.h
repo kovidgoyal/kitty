@@ -113,7 +113,7 @@ typedef struct {
     ColorProfile *color_profile;
     monotonic_t start_visual_bell_at;
 
-    uint32_t parser_buf[PARSER_BUF_SZ];
+    uint32_t parser_buf[8*1024];
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ], *write_buf;
