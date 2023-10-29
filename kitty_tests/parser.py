@@ -9,13 +9,19 @@ from functools import partial
 from kitty.fast_data_types import CURSOR_BLOCK, base64_decode, base64_encode
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
-from . import BaseTest
+from . import BaseTest, parse_bytes
+
+
+def cnv(x):
+    if isinstance(x, memoryview):
+        x = str(x, 'utf-8')
+    return x
 
 
 class CmdDump(list):
 
     def __call__(self, *a):
-        self.append(a)
+        self.append(tuple(map(cnv, a)))
 
 
 class TestParser(BaseTest):
@@ -24,7 +30,7 @@ class TestParser(BaseTest):
         cd = CmdDump()
         if isinstance(x, str):
             x = x.encode('utf-8')
-        cmds = tuple(('draw', x) if isinstance(x, str) else x for x in cmds)
+        cmds = tuple(('draw', x) if isinstance(x, str) else tuple(map(cnv, x)) for x in cmds)
         s.vt_parser.parse_bytes(s, x, cd)
         current = ''
         q = []
@@ -81,23 +87,6 @@ class TestParser(BaseTest):
         pb('\033x', ('Unknown char after ESC: 0x%x' % ord('x'),))
         pb('\033c123', ('screen_reset', ), '123')
         self.ae(str(s.line(0)), '123')
-
-    def test_charsets(self):
-        s = self.create_screen()
-        pb = partial(self.parse_bytes_dump, s)
-        pb(b'\xc3')
-        pb(b'\xa1', ('draw', b'\xc3\xa1'.decode('utf-8')))
-        s = self.create_screen()
-        pb = partial(self.parse_bytes_dump, s)
-        pb('\033)0\x0e/_', ('screen_designate_charset', 1, ord('0')), ('screen_change_charset', 1), '/_')
-        self.ae(str(s.line(0)), '/\xa0')
-        self.assertTrue(s.callbacks.iutf8)
-        pb('\033%@_', ('screen_use_latin1', 1), '_')
-        self.assertFalse(s.callbacks.iutf8)
-        s = self.create_screen()
-        pb = partial(self.parse_bytes_dump, s)
-        pb('\033(0/_', ('screen_designate_charset', 0, ord('0')), '/_')
-        self.ae(str(s.line(0)), '/\xa0')
 
     def test_csi_codes(self):
         s = self.create_screen()
@@ -218,7 +207,7 @@ class TestParser(BaseTest):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
         c = s.callbacks
-        pb('a\033]2;x\\ryz\x9cbcde', 'a', ('set_title', 'x\\ryz'), 'bcde')
+        pb('a\033]2;x\\ryz\033\\bcde', 'a', ('set_title', 'x\\ryz'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
         self.ae(c.titlebuf, ['x\\ryz'])
         c.clear()
@@ -319,7 +308,7 @@ class TestParser(BaseTest):
         c = s.callbacks
         pb = partial(self.parse_bytes_dump, s)
         q = hexlify(b'kind').decode('ascii')
-        pb(f'a\033P+q{q}\x9cbcde', 'a', ('screen_request_capabilities', 43, q), 'bcde')
+        pb(f'a\033P+q{q}\033\\bcde', 'a', ('screen_request_capabilities', 43, q), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
         self.ae(c.wtcbuf, '1+r{}={}'.format(q, '1b5b313b3242').encode('ascii'))
         c.clear()
@@ -331,23 +320,12 @@ class TestParser(BaseTest):
         for sgr in '0;34;102;1;2;3;4 0;38:5:200;58:2:10:11:12'.split():
             expected = set(sgr.split(';')) - {'0'}
             c.clear()
-            s.vte_parser.parse_bytes(s, f'\033[{sgr}m\033P$qm\033\\'.encode('ascii'))
+            parse_bytes(s, f'\033[{sgr}m\033P$qm\033\\'.encode('ascii'))
             r = c.wtcbuf.decode('ascii').partition('r')[2].partition('m')[0]
             self.ae(expected, set(r.split(';')))
         c.clear()
         pb('\033P$qr\033\\', ('screen_request_capabilities', ord('$'), 'r'))
         self.ae(c.wtcbuf, f'\033P1$r{s.margin_top + 1};{s.margin_bottom + 1}r\033\\'.encode('ascii'))
-
-    def test_sc81t(self):
-        s = self.create_screen()
-        pb = partial(self.parse_bytes_dump, s)
-        pb('\033 G', ('screen_set_8bit_controls', 1))
-        c = s.callbacks
-        pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
-        self.ae(c.wtcbuf, b'\x901$rm\x9c')
-        c.clear()
-        pb('\033[0c', ('report_device_attributes', 0, 0))
-        self.ae(c.wtcbuf, b'\x9b?62;c')
 
     def test_pending(self):
         s = self.create_screen()
@@ -400,12 +378,8 @@ class TestParser(BaseTest):
     def test_oth_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        for prefix in '\033_', '\u009f':
-            for suffix in '\u009c', '\033\\':
-                pb(f'a{prefix}+\\++{suffix}bcde', ('draw', 'a'), ('Unrecognized APC code: 0x2b',), ('draw', 'bcde'))
-        for prefix in '\033^', '\u009e':
-            for suffix in '\u009c', '\033\\':
-                pb(f'a{prefix}+\\++{suffix}bcde', ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))
+        pb('a\033_+\\+\033\\bcde', ('draw', 'a'), ('Unrecognized APC code: 0x2b',), ('draw', 'bcde'))
+        pb('a\033^+\\+\033\\bcde', ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))
 
     def test_graphics_command(self):
         from base64 import standard_b64encode

@@ -23,7 +23,6 @@ const (
 const (
 	SAVE_CURSOR                   = "\0337"
 	RESTORE_CURSOR                = "\0338"
-	S7C1T                         = "\033 F"
 	SAVE_PRIVATE_MODE_VALUES      = "\033[?s"
 	RESTORE_PRIVATE_MODE_VALUES   = "\033[?r"
 	SAVE_COLORS                   = "\033[#P"
@@ -115,7 +114,6 @@ func reset_modes(sb *strings.Builder, modes ...Mode) {
 func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	var sb strings.Builder
 	sb.Grow(256)
-	sb.WriteString(S7C1T)
 	if self.alternate_screen {
 		sb.WriteString(SAVE_CURSOR)
 	}

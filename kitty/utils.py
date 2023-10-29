@@ -1050,7 +1050,9 @@ def cleanup_ssh_control_masters() -> None:
             os.remove(x)
 
 
-def path_from_osc7_url(url: str) -> str:
+def path_from_osc7_url(url: Union[str, bytes]) -> str:
+    if isinstance(url, bytes):
+        url = url.decode('utf-8')
     if url.startswith('kitty-shell-cwd://'):
         return '/' + url.split('/', 3)[-1]
     if url.startswith('file://'):

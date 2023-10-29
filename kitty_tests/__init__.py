@@ -37,21 +37,21 @@ class Callbacks:
         self.set_pointer_shape = lambda data: None
 
     def write(self, data) -> None:
-        self.wtcbuf += data
+        self.wtcbuf += bytes(data)
 
     def title_changed(self, data, is_base64=False) -> None:
-        self.titlebuf.append(process_title_from_child(data, is_base64))
+        self.titlebuf.append(process_title_from_child(data, is_base64, ''))
 
     def icon_changed(self, data) -> None:
-        self.iconbuf += data
+        self.iconbuf += str(data, 'utf-8')
 
-    def set_dynamic_color(self, code, data) -> None:
+    def set_dynamic_color(self, code, data='') -> None:
         if code == 22:
             self.set_pointer_shape(data)
         else:
-            self.colorbuf += data or ''
+            self.colorbuf += str(data or b'', 'utf-8')
 
-    def set_color_table_color(self, code, data) -> None:
+    def set_color_table_color(self, code, data='') -> None:
         self.ctbuf += ''
 
     def color_profile_popped(self, x) -> None:
@@ -65,23 +65,19 @@ class Callbacks:
         for c in get_capabilities(q, None):
             self.write(c.encode('ascii'))
 
-    def use_utf8(self, on) -> None:
-        self.iutf8 = on
-
-    def desktop_notify(self, osc_code: int, raw_data: str) -> None:
-        self.notifications.append((osc_code, raw_data))
+    def desktop_notify(self, osc_code: int, raw_data: memoryview) -> None:
+        self.notifications.append((osc_code, str(raw_data, 'utf-8')))
 
     def open_url(self, url: str, hyperlink_id: int) -> None:
         self.open_urls.append((url, hyperlink_id))
 
-    def clipboard_control(self, data: str, is_partial: bool = False) -> None:
-        self.cc_buf.append((data, is_partial))
+    def clipboard_control(self, data: memoryview, is_partial: bool = False) -> None:
+        self.cc_buf.append((str(data, 'utf-8'), is_partial))
 
     def clear(self) -> None:
         self.wtcbuf = b''
         self.iconbuf = self.colorbuf = self.ctbuf = ''
         self.titlebuf = []
-        self.iutf8 = True
         self.notifications = []
         self.open_urls = []
         self.cc_buf = []
@@ -112,6 +108,7 @@ class Callbacks:
         print(text, file=sys.__stdout__, end='', flush=True)
 
     def handle_remote_clone(self, msg):
+        msg = str(msg, 'utf-8')
         if not msg:
             if self.current_clone_data:
                 cdata, self.current_clone_data = self.current_clone_data, ''
