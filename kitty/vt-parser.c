@@ -311,7 +311,8 @@ dispatch_esc_mode_byte(PS *self) {
                         case '0':
                         case 'U':
                         case 'V':
-                            REPORT_ERROR("Ignoring attempt to designate charset as we support only UTF-8");
+                            // dont report this error as fish shell designates charsets for some unholy reason, creating lot of noise in the tests
+                            /* REPORT_ERROR("Ignoring attempt to designate charset as we support only UTF-8"); */
                             break;
                         default:
                             REPORT_ERROR("Unknown charset: 0x%x", ch); break;
@@ -466,7 +467,8 @@ dispatch_osc(PS *self) {
         case 6:
         case 7:
             START_DISPATCH
-            DISPATCH_OSC_WITH_CODE(process_cwd_notification);
+            REPORT_OSC2(shell_prompt_marking, code, mv);
+            process_cwd_notification(self->screen, code, (char*)self->parser_buf + i, limit-i);
             END_DISPATCH
         case 8:
             dispatch_hyperlink(self, i, limit-i);
@@ -1047,7 +1049,11 @@ dispatch_csi(PS *self) {
         Region r = {0};
         unsigned int consumed = parse_region(&r, buf, num);
         num -= consumed; buf += consumed;
+#ifdef DUMP_COMMANDS
+        parse_sgr_dump(self, buf, num, params, "deccara", &r);
+#else
         parse_sgr(self->screen, buf, num, params, "deccara", &r);
+#endif
         return;
     }
 
@@ -1474,7 +1480,7 @@ pending_csi(PS *self) {
 
 static void
 queue_pending_bytes(PS *self) {
-    for (; self->input_pos < self->input_sz; self->input_pos++) {
+    while (self->input_pos < self->input_sz) {
         dispatch_single_byte(pending, if (!self->pending_mode.activated_at) goto end);
     }
 end:
@@ -1485,7 +1491,7 @@ static void
 parse_pending_bytes(PS *self) {
     SAVE_INPUT_DATA;
     self->input_data = self->pending_mode.buf; self->input_sz = self->pending_mode.used;
-    for (self->input_pos = 0; self->input_pos < self->input_sz; self->input_pos++) {
+    while (self->input_pos < self->input_sz) {
         dispatch_single_byte(dispatch, ;);
     }
     RESTORE_INPUT_DATA;
@@ -1504,7 +1510,7 @@ dump_partial_escape_code_to_pending(PS *self) {
 
 static void
 parse_bytes_watching_for_pending(PS *self) {
-    for (; self->input_pos < self->input_sz; self->input_pos++) {
+    while (self->input_pos < self->input_sz) {
         dispatch_single_byte(dispatch, if (self->pending_mode.activated_at) goto end);
     }
 end:

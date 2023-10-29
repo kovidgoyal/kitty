@@ -226,7 +226,7 @@ void clipboard_control(Screen *self, int code, PyObject*);
 void shell_prompt_marking(Screen *self, char *buf);
 void file_transmission(Screen *self, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
-void process_cwd_notification(Screen *self, unsigned int code, PyObject*);
+void process_cwd_notification(Screen *self, unsigned int code, const char*, size_t);
 void screen_request_capabilities(Screen *, char, const char *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
 void select_graphic_rendition(Screen *self, int *params, unsigned int count, Region*);

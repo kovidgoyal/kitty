@@ -1067,7 +1067,7 @@ class Screen:
     cursor_key_mode: bool
     auto_repeat_enabled: bool
     render_unfocused_cursor: int
-    last_reported_cwd: Optional[str]
+    last_reported_cwd: Optional[bytes]
 
     def __init__(
             self,

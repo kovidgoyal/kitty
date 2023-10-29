@@ -152,12 +152,12 @@ RPS1="{rps1}"
             pty.callbacks.clear()
             pty.send_cmd_to_child('printf "%s\x16\a%s" "a" "b"')
             pty.wait_till(lambda: 'ab' in pty.screen_contents())
-            self.assertTrue(pty.screen.last_reported_cwd.endswith(self.home_dir))
+            self.assertTrue(pty.screen.last_reported_cwd.decode().endswith(self.home_dir))
             self.assertIn('%s^G%s', pty.screen_contents())
             q = os.path.join(self.home_dir, 'testing-cwd-notification-🐱')
             os.mkdir(q)
             pty.send_cmd_to_child(f'cd {q}')
-            pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(q))
+            pty.wait_till(lambda: pty.screen.last_reported_cwd.decode().endswith(q))
         with self.run_shell(rc=f'''PS1="{ps1}"\nexport ES="a\n b c\nd"''') as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('clone-in-kitty')
@@ -188,13 +188,13 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
             pty.wait_till(lambda: 'XDD_OK' in pty.screen_contents())
 
             # CWD reporting
-            self.assertTrue(pty.screen.last_reported_cwd.endswith(self.home_dir))
+            self.assertTrue(pty.screen.last_reported_cwd.decode().endswith(self.home_dir))
             q = os.path.join(self.home_dir, 'testing-cwd-notification-🐱')
             os.mkdir(q)
             pty.send_cmd_to_child(f'cd {q}')
-            pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(q))
+            pty.wait_till(lambda: pty.screen.last_reported_cwd.decode().endswith(q))
             pty.send_cmd_to_child('cd -')
-            pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(self.home_dir))
+            pty.wait_till(lambda: pty.screen.last_reported_cwd.decode().endswith(self.home_dir))
 
             # completion and prompt marking
             pty.wait_till(lambda: 'cd -' not in pty.screen_contents().splitlines()[-1])
@@ -304,13 +304,13 @@ PS1="{ps1}"
             pty.send_cmd_to_child('printf "%s\x16\a%s" "a" "b"')
             pty.wait_till(lambda: pty.screen_contents().count(ps1) == 2)
             self.ae(pty.screen_contents(), f'{ps1}printf "%s^G%s" "a" "b"\nab{ps1}')
-            self.assertTrue(pty.screen.last_reported_cwd.endswith(self.home_dir))
+            self.assertTrue(pty.screen.last_reported_cwd.decode().endswith(self.home_dir))
             pty.send_cmd_to_child('echo $HISTFILE')
             pty.wait_till(lambda: '.bash_history' in pty.screen_contents())
             q = os.path.join(self.home_dir, 'testing-cwd-notification-🐱')
             os.mkdir(q)
             pty.send_cmd_to_child(f'cd {q}')
-            pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(q))
+            pty.wait_till(lambda: pty.screen.last_reported_cwd.decode().endswith(q))
 
         for ps1 in ('line1\\nline\\2\\prompt> ', 'line1\nprompt> ', 'line1\\nprompt> ',):
             with self.subTest(ps1=ps1), self.run_shell(

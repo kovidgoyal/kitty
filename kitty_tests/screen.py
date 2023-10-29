@@ -1188,7 +1188,7 @@ class TestScreen(BaseTest):
 
         def cb(data):
             nonlocal response
-            response = set_pointer_shape(s, data)
+            response = set_pointer_shape(s, str(data, 'utf-8'))
         c.set_pointer_shape = cb
 
         def send(a):
