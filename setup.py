@@ -614,8 +614,6 @@ def get_vcs_rev() -> str:
 
 
 def get_source_specific_defines(env: Env, src: str) -> Tuple[str, Optional[List[str]]]:
-    if src == 'kitty/parser_dump.c':
-        return 'kitty/parser.c', ['DUMP_COMMANDS']
     if src == 'kitty/vt-parser-dump.c':
         return 'kitty/vt-parser.c', ['DUMP_COMMANDS']
     if src == 'kitty/data-types.c':
@@ -770,7 +768,6 @@ def find_c_files() -> Tuple[List[str], List[str]]:
             ans.append(os.path.join('kitty', x))
         elif ext == '.h':
             headers.append(os.path.join('kitty', x))
-    ans.append('kitty/parser_dump.c')
     ans.append('kitty/vt-parser-dump.c')
     return ans, headers
 

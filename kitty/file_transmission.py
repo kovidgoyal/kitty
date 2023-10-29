@@ -20,7 +20,7 @@ from time import monotonic, time_ns
 from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
-from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options
+from kitty.fast_data_types import ESC_OSC, FILE_TRANSFER_CODE, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options
 from kitty.types import run_once
 
 from .utils import log_error
@@ -855,7 +855,7 @@ class FileTransmission:
             if self.active_sends[a].is_expired:
                 self.drop_send(a)
 
-    def handle_serialized_command(self, data: str) -> None:
+    def handle_serialized_command(self, data: memoryview) -> None:
         try:
             cmd = FileTransmissionCommand.deserialize(data)
         except Exception as e:
@@ -1147,7 +1147,7 @@ class FileTransmission:
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
             data = tuple(payload.get_serialized_fields(prefix_with_osc_code=True))
-            queued = window.screen.send_escape_code_to_child(OSC, data)
+            queued = window.screen.send_escape_code_to_child(ESC_OSC, data)
             if not queued:
                 if use_pending:
                     if appendleft:

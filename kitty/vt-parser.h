@@ -17,6 +17,6 @@ typedef struct Parser {
 } Parser;
 
 
-Parser* alloc_parser(id_type window_id);
-void parse_vte(Parser*);
-void parse_vte_dump(Parser*);
+Parser* alloc_vt_parser(id_type window_id);
+void free_vt_parser(Parser*);
+void reset_vt_parser(Parser*);

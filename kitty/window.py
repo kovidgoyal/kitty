@@ -44,13 +44,13 @@ from .fast_data_types import (
     CURSOR_BEAM,
     CURSOR_BLOCK,
     CURSOR_UNDERLINE,
-    DCS,
+    ESC_DCS,
+    ESC_OSC,
     GLFW_MOD_CONTROL,
     GLFW_PRESS,
     GLFW_RELEASE,
     GLFW_REPEAT,
     NO_CURSOR_SHAPE,
-    OSC,
     SCROLL_FULL,
     SCROLL_LINE,
     SCROLL_PAGE,
@@ -190,14 +190,16 @@ class CwdRequest:
         return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''
 
 
-def process_title_from_child(title: str, is_base64: bool) -> str:
+def process_title_from_child(title: memoryview, is_base64: bool, default_title: str) -> str:
     if is_base64:
         from base64 import standard_b64decode
         try:
-            title = standard_b64decode(title).decode('utf-8', 'replace')
+            stitle = standard_b64decode(title).decode('utf-8', 'replace')
         except Exception:
-            title = 'undecodeable title'
-    return sanitize_title(title)
+            stitle = 'undecodeable title'
+    else:
+        stitle = str(title, 'utf-8', 'replace')
+    return sanitize_title(stitle or default_title)
 
 
 @lru_cache(maxsize=64)
@@ -446,7 +448,7 @@ def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as
     return ''.join(lines)
 
 
-def process_remote_print(msg: str) -> str:
+def process_remote_print(msg: memoryview) -> str:
     from base64 import standard_b64decode
 
     from .cli import green
@@ -1004,7 +1006,8 @@ class Window:
                 ukey, has_equal, uval = val.partition('=')
                 self.set_user_var(ukey, (base64_decode(uval) if uval else b'') if has_equal == '=' else None)
 
-    def desktop_notify(self, osc_code: int, raw_data: str) -> None:
+    def desktop_notify(self, osc_code: int, raw_datab: memoryview) -> None:
+        raw_data = str(raw_datab, 'utf-8', 'replace')
         if osc_code == 1337:
             self.osc_1337(raw_data)
         if osc_code == 777:
@@ -1015,9 +1018,6 @@ class Window:
         cmd = handle_notification_cmd(osc_code, raw_data, self.id, self.prev_osc99_cmd)
         if cmd is not None and osc_code == 99:
             self.prev_osc99_cmd = cmd
-
-    def use_utf8(self, on: bool) -> None:
-        get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
     def on_mouse_event(self, event: Dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
@@ -1119,13 +1119,13 @@ class Window:
             # Cancel IME composition after loses focus
             update_ime_position_for_window(self.id, False, -1)
 
-    def title_changed(self, new_title: Optional[str], is_base64: bool = False) -> None:
-        self.child_title = process_title_from_child(new_title or self.default_title, is_base64)
+    def title_changed(self, new_title: Optional[memoryview], is_base64: bool = False) -> None:
+        self.child_title = process_title_from_child(new_title or memoryview(b''), is_base64, self.default_title)
         self.call_watchers(self.watchers.on_title_change, {'title': self.child_title, 'from_child': True})
         if self.override_title is None:
             self.title_updated()
 
-    def icon_changed(self, new_icon: object) -> None:
+    def icon_changed(self, new_icon: memoryview) -> None:
         pass  # TODO: Implement this
 
     @property
@@ -1190,20 +1190,20 @@ class Window:
         r |= r << 8
         g |= g << 8
         b |= b << 8
-        self.screen.send_escape_code_to_child(OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
+        self.screen.send_escape_code_to_child(ESC_OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
     def report_notification_activated(self, identifier: str) -> None:
         identifier = sanitize_identifier_pat().sub('', identifier)
-        self.screen.send_escape_code_to_child(OSC, f'99;i={identifier};')
+        self.screen.send_escape_code_to_child(ESC_OSC, f'99;i={identifier};')
 
 
-    def set_dynamic_color(self, code: int, value: Union[str, bytes]) -> None:
-        if isinstance(value, bytes):
-            value = value.decode('utf-8')
+    def set_dynamic_color(self, code: int, value: Union[str, bytes, memoryview] = '') -> None:
+        if isinstance(value, (bytes, memoryview)):
+            value = str(value, 'utf-8', 'replace')
         if code == 22:
             ret = set_pointer_shape(self.screen, value, self.os_window_id)
             if ret:
-                self.screen.send_escape_code_to_child(OSC, '22:' + ret)
+                self.screen.send_escape_code_to_child(ESC_OSC, '22:' + ret)
         color_changes: Dict[DynamicColor, Optional[str]] = {}
         for val in value.split(';'):
             w = DYNAMIC_COLOR_CODES.get(code)
@@ -1218,7 +1218,8 @@ class Window:
         if color_changes:
             self.change_colors(color_changes)
 
-    def set_color_table_color(self, code: int, value: str) -> None:
+    def set_color_table_color(self, code: int, bvalue: Optional[memoryview] = None) -> None:
+        value = str(bvalue or b'', 'utf-8', 'replace')
         cp = self.screen.color_profile
         if code == 4:
             changed = False
@@ -1247,12 +1248,12 @@ class Window:
 
     def request_capabilities(self, q: str) -> None:
         for result in get_capabilities(q, get_options()):
-            self.screen.send_escape_code_to_child(DCS, result)
+            self.screen.send_escape_code_to_child(ESC_DCS, result)
 
-    def handle_remote_cmd(self, cmd: str) -> None:
+    def handle_remote_cmd(self, cmd: memoryview) -> None:
         get_boss().handle_remote_cmd(cmd, self)
 
-    def handle_remote_echo(self, msg: str) -> None:
+    def handle_remote_echo(self, msg: memoryview) -> None:
         from base64 import standard_b64decode
         data = standard_b64decode(msg)
         # ensure we are not writing any control char back as this can lead to command injection on shell prompts
@@ -1260,12 +1261,12 @@ class Window:
         data = re.sub(rb'[^ -~]', b'', data)
         self.write_to_child(data)
 
-    def handle_remote_ssh(self, msg: str) -> None:
+    def handle_remote_ssh(self, msg: memoryview) -> None:
         from kittens.ssh.utils import get_ssh_data
         for line in get_ssh_data(msg, f'{os.getpid()}-{self.id}'):
             self.write_to_child(line)
 
-    def handle_kitten_result(self, msg: str) -> None:
+    def handle_kitten_result(self, msg: memoryview) -> None:
         import base64
         self.kitten_result = json.loads(base64.b85decode(msg))
         for processor in self.kitten_result_processors:
@@ -1278,17 +1279,18 @@ class Window:
     def add_kitten_result_processor(self, callback: Callable[['Window', Any], None]) -> None:
         self.kitten_result_processors.append(callback)
 
-    def handle_overlay_ready(self, msg: str) -> None:
+    def handle_overlay_ready(self, msg: memoryview) -> None:
         boss = get_boss()
         tab = boss.tab_for_window(self)
         if tab is not None:
             tab.move_window_to_top_of_group(self)
 
-    def append_remote_data(self, msg: str) -> str:
-        if not msg:
+    def append_remote_data(self, msgb: memoryview) -> str:
+        if not msgb:
             cdata = ''.join(self.current_remote_data)
             self.current_remote_data = []
             return cdata
+        msg = str(msgb, 'utf-8', 'replace')
         num, rest = msg.split(':', 1)
         max_size = get_options().clipboard_max_size * 1024 * 1024
         if num == '0' or sum(map(len, self.current_remote_data)) > max_size:
@@ -1296,13 +1298,13 @@ class Window:
         self.current_remote_data.append(rest)
         return ''
 
-    def handle_remote_edit(self, msg: str) -> None:
+    def handle_remote_edit(self, msg: memoryview) -> None:
         cdata = self.append_remote_data(msg)
         if cdata:
             from .launch import remote_edit
             remote_edit(cdata, self)
 
-    def handle_remote_clone(self, msg: str) -> None:
+    def handle_remote_clone(self, msg: memoryview) -> None:
         cdata = self.append_remote_data(msg)
         if cdata:
             ac = get_options().allow_cloning
@@ -1321,8 +1323,9 @@ class Window:
             from .launch import clone_and_launch
             clone_and_launch(cdata, self)
 
-    def handle_remote_askpass(self, msg: str) -> None:
+    def handle_remote_askpass(self, msgb: memoryview) -> None:
         from .shm import SharedMemory
+        msg = str(msgb, 'utf-8')
         with SharedMemory(name=msg, readonly=True) as shm:
             shm.seek(1)
             data = json.loads(shm.read_data_with_size())
@@ -1350,17 +1353,17 @@ class Window:
         else:
             log_error(f'Ignoring ask request with unknown type: {data["type"]}')
 
-    def handle_remote_print(self, msg: str) -> None:
+    def handle_remote_print(self, msg: memoryview) -> None:
         text = process_remote_print(msg)
         print(text, end='', flush=True)
 
     def send_cmd_response(self, response: Any) -> None:
-        self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))
+        self.screen.send_escape_code_to_child(ESC_DCS, '@kitty-cmd' + json.dumps(response))
 
-    def file_transmission(self, data: str) -> None:
+    def file_transmission(self, data: memoryview) -> None:
         self.file_transmission_control.handle_serialized_command(data)
 
-    def clipboard_control(self, data: str, is_partial: Optional[bool] = False) -> None:
+    def clipboard_control(self, data: memoryview, is_partial: Optional[bool] = False) -> None:
         if is_partial is None:
             self.clipboard_request_manager.parse_osc_5522(data)
         else:

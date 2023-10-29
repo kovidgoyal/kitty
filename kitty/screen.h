@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "vt-parser.h"
 #include "graphics.h"
 #include "monotonic.h"
 #define MAX_PARAMS 256
@@ -17,7 +18,6 @@ typedef struct {
          mBRACKETED_PASTE, mFOCUS_TRACKING, mDECSACE, mHANDLE_TERMIOS_SIGNALS;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
-    bool eight_bit_controls;  // S8C1T
 } ScreenModes;
 
 typedef struct {
@@ -58,9 +58,6 @@ typedef struct {
 #define SAVEPOINTS_SZ 256
 
 typedef struct {
-    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset;
-    unsigned int current_charset;
-    bool use_latin1;
     Cursor cursor;
     bool mDECOM, mDECAWM, mDECSCNM;
     bool is_valid;
@@ -92,15 +89,12 @@ typedef struct {
     CellPixelSize cell_size;
     OverlayLine overlay_line;
     id_type window_id;
-    uint32_t utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
-    UTF8State utf8_state;
-    unsigned int current_charset;
     Selections selections, url_ranges;
     struct {
         unsigned int cursor_x, cursor_y, scrolled_by;
         index_type lines, columns;
     } last_rendered;
-    bool use_latin1, is_dirty, scroll_changed, reload_all_gpu_data;
+    bool is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
     Savepoint main_savepoint, alt_savepoint;
     PyObject *callbacks, *test_child;
@@ -113,9 +107,6 @@ typedef struct {
     ColorProfile *color_profile;
     monotonic_t start_visual_bell_at;
 
-    uint32_t parser_buf[8*1024];
-    unsigned int parser_state, parser_text_start, parser_buf_pos;
-    bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ], *write_buf;
     monotonic_t new_input_at;
     size_t read_buf_sz, write_buf_sz, write_buf_used;
@@ -167,6 +158,7 @@ typedef struct {
     struct {
         uint8_t stack[16], count;
     } main_pointer_shape_stack, alternate_pointer_shape_stack;
+    Parser *vt_parser;
 } Screen;
 
 
@@ -221,26 +213,21 @@ void screen_repeat_character(Screen *self, unsigned int count);
 void screen_delete_characters(Screen *self, unsigned int count);
 void screen_erase_characters(Screen *self, unsigned int count);
 void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom);
-void screen_change_charset(Screen *, uint32_t to);
 void screen_handle_cmd(Screen *, PyObject *cmd);
 void screen_push_colors(Screen *, unsigned int);
 void screen_pop_colors(Screen *, unsigned int);
 void screen_report_color_stack(Screen *);
 void screen_handle_kitty_dcs(Screen *, const char *callback_name, PyObject *cmd);
-void screen_designate_charset(Screen *, uint32_t which, uint32_t as);
-void screen_use_latin1(Screen *, bool);
 void set_title(Screen *self, PyObject*);
 void desktop_notify(Screen *self, unsigned int, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
 void clipboard_control(Screen *self, int code, PyObject*);
-void shell_prompt_marking(Screen *self, PyObject*);
+void shell_prompt_marking(Screen *self, char *buf);
 void file_transmission(Screen *self, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 void process_cwd_notification(Screen *self, unsigned int code, PyObject*);
-uint32_t* translation_table(uint32_t which);
-void screen_request_capabilities(Screen *, char, PyObject *);
-void screen_set_8bit_controls(Screen *, bool);
+void screen_request_capabilities(Screen *, char, const char *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
 void select_graphic_rendition(Screen *self, int *params, unsigned int count, Region*);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
@@ -285,6 +272,7 @@ int screen_cursor_at_a_shell_prompt(const Screen *);
 bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
 bool screen_send_signal_for_key(Screen *, char key);
 bool get_line_edge_colors(Screen *self, color_type *left, color_type *right);
+void parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, int *params, const char *report_name, Region *region);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
