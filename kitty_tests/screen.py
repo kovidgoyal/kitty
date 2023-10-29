@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, Cursor, parse_bytes
+from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, Cursor
 from kitty.marks import marker_from_function, marker_from_regex
 from kitty.window import pagerhist
 
-from . import BaseTest
+from . import BaseTest, parse_bytes
 
 
 class TestScreen(BaseTest):
