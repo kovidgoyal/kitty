@@ -20,3 +20,8 @@ typedef struct Parser {
 Parser* alloc_vt_parser(id_type window_id);
 void free_vt_parser(Parser*);
 void reset_vt_parser(Parser*);
+bool vt_parser_has_pending_data(Parser*);
+monotonic_t vt_parser_pending_activated_at(Parser*);
+monotonic_t vt_parser_pending_wait_time(Parser*);
+void vt_parser_set_pending_activated_at(Parser*, monotonic_t);
+void vt_parser_set_pending_wait_time(Parser*, monotonic_t);
