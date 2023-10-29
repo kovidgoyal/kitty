@@ -17,7 +17,7 @@
 #include "base64.h"
 #include "control-codes.h"
 
-#define EXTENDED_OSC_SENTINEL 0x1bu
+#define EXTENDED_OSC_SENTINEL ESC
 #define PARSER_BUF_SZ (8u * 1024u)
 #define PENDING_BUF_INCREMENT (16u * 1024u)
 
@@ -168,6 +168,7 @@ typedef struct PS {
     size_t input_sz, input_pos;
     monotonic_t now;
     uint8_t parser_buf[PARSER_BUF_SZ + 8];  // +8 to ensure we can always zero terminate
+    bool draining_pending;
 } PS;
 
 // Normal mode {{{
@@ -371,7 +372,7 @@ accumulate_osc(PS *self) {
             }
             /* fallthrough */
         default:
-            if (self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
+            if (!self->draining_pending && self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
                 if (handle_extended_osc_code(self)) self->extended_osc_code = true;
                 else REPORT_ERROR("OSC sequence too long (> %d bytes) truncating.", PARSER_BUF_SZ);
                 return true;
@@ -1343,13 +1344,12 @@ accumulate_oth(PS *self) {
             if (accumulate_csi(self)) { dispatch##_csi(self); SET_STATE(VTE_NORMAL); watch_for_pending; } \
             break; \
         case VTE_OSC: \
-            { \
-                if (accumulate_osc(self)) {  \
-                    dispatch##_osc(self); \
-                    if (self->extended_osc_code) { \
-                        if (accumulate_osc(self)) { dispatch##_osc(self); SET_STATE(VTE_NORMAL); } \
-                    } else { SET_STATE(VTE_NORMAL); } \
-                } \
+            if (accumulate_osc(self)) {  \
+                dispatch##_osc(self); \
+                if (self->extended_osc_code) { \
+                    self->input_pos--; \
+                    if (accumulate_osc(self)) { dispatch##_osc(self); SET_STATE(VTE_NORMAL); } \
+                } else { SET_STATE(VTE_NORMAL); } \
             } \
             break; \
         case VTE_APC: \
@@ -1490,9 +1490,11 @@ static void
 parse_pending_bytes(PS *self) {
     const uint8_t *orig_input_data = self->input_data; size_t orig_input_sz = self->input_sz, orig_input_pos = self->input_pos;
     self->input_data = self->pending_mode.buf; self->input_sz = self->pending_mode.used; self->input_pos = 0;
+    self->draining_pending = true;
     while (self->input_pos < self->input_sz) {
         dispatch_single_byte(dispatch, ;);
     }
+    self->draining_pending = false;
     self->input_data = orig_input_data; self->input_sz = orig_input_sz; self->input_pos = orig_input_pos;
 }
 
