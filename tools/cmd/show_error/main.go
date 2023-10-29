@@ -42,6 +42,7 @@ func main(args []string, opts *Options) (rc int, err error) {
 	f := markup.New(true)
 	if opts.Title != "" {
 		fmt.Println(f.Err(opts.Title))
+		fmt.Println(loop.EscapeCodeToSetWindowTitle(opts.Title))
 		fmt.Println()
 	}
 	fmt.Println(m.Msg)

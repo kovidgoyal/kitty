@@ -404,10 +404,13 @@ func (self *Loop) AllowLineWrapping(allow bool) {
 	}
 }
 
+func EscapeCodeToSetWindowTitle(title string) string {
+	title = wcswidth.StripEscapeCodes(title)
+	return "\033]2;" + title + "\033\\"
+}
+
 func (self *Loop) SetWindowTitle(title string) {
-	title = strings.ReplaceAll(title, "\033", "")
-	title = strings.ReplaceAll(title, "\x9c", "")
-	self.QueueWriteString("\033]2;" + title + "\033\\")
+	self.QueueWriteString(EscapeCodeToSetWindowTitle(title))
 }
 
 func (self *Loop) ClearScreen() {
