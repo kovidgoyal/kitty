@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from io import BytesIO
 from itertools import cycle
 
-from kitty.fast_data_types import load_png_data, parse_bytes, shm_unlink, shm_write, xor_data
+from kitty.fast_data_types import load_png_data, shm_unlink, shm_write, xor_data
 
-from . import BaseTest
+from . import BaseTest, parse_bytes
 
 try:
     from PIL import Image

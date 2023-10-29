@@ -24,6 +24,10 @@ from kitty.utils import read_screen_size
 from kitty.window import process_remote_print, process_title_from_child
 
 
+def parse_bytes(screen, data):
+    return screen.vt_parser.parse_bytes(screen, data)
+
+
 class Callbacks:
 
     def __init__(self, pty=None) -> None:
