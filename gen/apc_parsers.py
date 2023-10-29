@@ -52,7 +52,7 @@ def parse_flag(keymap: KeymapType, type_map: Dict[str, Any], command_class: str)
         q = ' && '.join(f"g.{attr} != '{x}'" for x in sorted(allowed_values))
         lines.append(f'''
             case {attr}: {{
-                g.{attr} = screen->parser_buf[pos++] & 0xff;
+                g.{attr} = parser_buf[pos++];
                 if ({q}) {{
                     REPORT_ERROR("Malformed {command_class} control block, unknown flag value for {attr}: 0x%x", g.{attr});
                     return;
@@ -116,22 +116,23 @@ def generate(
         parr = 'static uint8_t payload[4096];'
         payload_case = f'''
             case PAYLOAD: {{
-                sz = screen->parser_buf_pos - pos;
+                sz = parser_buf_pos - pos;
                 g.payload_sz = sizeof(payload);
-                if (!base64_decode32(screen->parser_buf + pos, sz, payload, &g.payload_sz)) {{
+                if (!base64_decode8(parser_buf + pos, sz, payload, &g.payload_sz)) {{
                     REPORT_ERROR("Failed to parse {command_class} command payload with error: payload size (%zu) too large", sz); return; }}
-                pos = screen->parser_buf_pos;
+                pos = parser_buf_pos;
                 }}
                 break;
         '''
-        callback = f'{callback_name}(screen, &g, payload)'
+        callback = f'{callback_name}(self->screen, &g, payload)'
     else:
         payload_after_value = payload = parr = payload_case = ''
-        callback = f'{callback_name}(screen, &g)'
+        callback = f'{callback_name}(self->screen, &g)'
 
     return f'''
+    #include "base64.h"
 static inline void
-{function_name}(Screen *screen, PyObject UNUSED *dump_callback) {{
+{function_name}(PS *self, const uint8_t *parser_buf, const size_t parser_buf_pos) {{
     unsigned int pos = 1;
     enum PARSER_STATES {{ KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE {payload} }};
     enum PARSER_STATES state = KEY, value_state = FLAG;
@@ -144,12 +145,12 @@ static inline void
     {parr}
     {keys_enum}
     enum KEYS key = '{initial_key}';
-    if (screen->parser_buf[pos] == ';') state = AFTER_VALUE;
+    if (parser_buf[pos] == ';') state = AFTER_VALUE;
 
-    while (pos < screen->parser_buf_pos) {{
+    while (pos < parser_buf_pos) {{
         switch(state) {{
             case KEY:
-                key = screen->parser_buf[pos++];
+                key = parser_buf[pos++];
                 state = EQUAL;
                 switch(key) {{
                     {handle_key}
@@ -160,8 +161,8 @@ static inline void
                 break;
 
             case EQUAL:
-                if (screen->parser_buf[pos++] != '=') {{
-                    REPORT_ERROR("Malformed {command_class} control block, no = after key, found: 0x%x instead", screen->parser_buf[pos-1]);
+                if (parser_buf[pos++] != '=') {{
+                    REPORT_ERROR("Malformed {command_class} control block, no = after key, found: 0x%x instead", parser_buf[pos-1]);
                     return;
                 }}
                 state = value_state;
@@ -178,16 +179,16 @@ static inline void
 
             case INT:
 #define READ_UINT \\
-                for (i = pos; i < MIN(screen->parser_buf_pos, pos + 10); i++) {{ \\
-                    if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break; \\
+                for (i = pos; i < MIN(parser_buf_pos, pos + 10); i++) {{ \\
+                    if (parser_buf[i] < '0' || parser_buf[i] > '9') break; \\
                 }} \\
                 if (i == pos) {{ REPORT_ERROR("Malformed {command_class} control block, expecting an integer value for key: %c", key & 0xFF); return; }} \\
-                lcode = utoi(screen->parser_buf + pos, i - pos); pos = i; \\
+                lcode = utoi(parser_buf + pos, i - pos); pos = i; \\
                 if (lcode > UINT32_MAX) {{ REPORT_ERROR("Malformed {command_class} control block, number is too large"); return; }} \\
                 code = lcode;
 
                 is_negative = false;
-                if(screen->parser_buf[pos] == '-') {{ is_negative = true; pos++; }}
+                if(parser_buf[pos] == '-') {{ is_negative = true; pos++; }}
 #define I(x) case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
                 READ_UINT;
                 switch(key) {{
@@ -210,10 +211,10 @@ static inline void
 #undef READ_UINT
 
             case AFTER_VALUE:
-                switch (screen->parser_buf[pos++]) {{
+                switch (parser_buf[pos++]) {{
                     default:
                         REPORT_ERROR("Malformed {command_class} control block, expecting a comma or semi-colon after a value, found: 0x%x",
-                                     screen->parser_buf[pos - 1]);
+                                     parser_buf[pos - 1]);
                         return;
                     case ',':
                         state = KEY;

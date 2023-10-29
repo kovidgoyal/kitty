@@ -52,7 +52,7 @@ def encode_response_for_peer(response: Any) -> bytes:
     return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
 
 
-def parse_cmd(serialized_cmd: str, encryption_key: EllipticCurveKey) -> Dict[str, Any]:
+def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> Dict[str, Any]:
     try:
         pcmd = json.loads(serialized_cmd)
     except Exception:

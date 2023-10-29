@@ -10,6 +10,7 @@
     if (PyModule_AddFunctions(module, module_methods) != 0) return false; \
 }
 
+#include "control-codes.h"
 #include "state.h"
 #include "iqsort.h"
 #include "fonts.h"
@@ -24,8 +25,8 @@
 #include "modes.h"
 #include "wcwidth-std.h"
 #include "wcswidth.h"
-#include "control-codes.h"
 #include "keys.h"
+#include "vt-parser.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 
@@ -81,14 +82,6 @@ static void update_overlay_position(Screen *self);
 static void render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data);
 static void update_overlay_line_data(Screen *self, uint8_t *data);
 
-#define RESET_CHARSETS \
-        self->g0_charset = translation_table(0); \
-        self->g1_charset = self->g0_charset; \
-        self->g_charset = self->g0_charset; \
-        self->current_charset = 0; \
-        self->utf8_state = 0; \
-        self->utf8_codepoint = 0; \
-        self->use_latin1 = false;
 #define CALLBACK(...) \
     if (self->callbacks != Py_None) { \
         PyObject *callback_ret = PyObject_CallMethod(self->callbacks, __VA_ARGS__); \
@@ -114,6 +107,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Screen write_buf_lock mutex: %s", strerror(ret));
             return NULL;
         }
+        self->vt_parser = alloc_vt_parser(window_id);
+        if (self->vt_parser == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->reload_all_gpu_data = true;
         self->cell_size.width = cell_width; self->cell_size.height = cell_height;
         self->columns = columns; self->lines = lines;
@@ -127,7 +122,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->scroll_changed = false;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         self->history_line_added_count = 0;
-        RESET_CHARSETS;
+        reset_vt_parser(self->vt_parser);
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->test_child = test_child; Py_INCREF(test_child);
         self->cursor = alloc_cursor();
@@ -194,7 +189,7 @@ screen_reset(Screen *self) {
 #define R(name) self->color_profile->overridden.name.val = 0
     R(default_fg); R(default_bg); R(cursor_color); R(highlight_fg); R(highlight_bg);
 #undef R
-    RESET_CHARSETS;
+    reset_vt_parser(self->vt_parser);
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_normal_keypad_mode(self);
     init_tabstops(self->main_tabstops, self->columns);
@@ -207,10 +202,6 @@ screen_reset(Screen *self) {
     set_dynamic_color(self, 110, NULL);
     set_dynamic_color(self, 111, NULL);
     set_color_table_color(self, 104, NULL);
-    self->parser_state = 0;
-    self->parser_text_start = 0;
-    self->parser_buf_pos = 0;
-    self->parser_has_pending_text = false;
 }
 
 void
@@ -466,6 +457,7 @@ static void
 dealloc(Screen* self) {
     pthread_mutex_destroy(&self->read_buf_lock);
     pthread_mutex_destroy(&self->write_buf_lock);
+    free_vt_parser(self->vt_parser); self->vt_parser = NULL;
     Py_CLEAR(self->main_grman);
     Py_CLEAR(self->alt_grman);
     Py_CLEAR(self->last_reported_cwd);
@@ -494,34 +486,6 @@ dealloc(Screen* self) {
 } // }}}
 
 // Draw text {{{
-
-void
-screen_change_charset(Screen *self, uint32_t which) {
-    switch(which) {
-        case 0:
-            self->current_charset = 0;
-            self->g_charset = self->g0_charset;
-            break;
-        case 1:
-            self->current_charset = 1;
-            self->g_charset = self->g1_charset;
-            break;
-    }
-}
-
-void
-screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
-    switch(which) {
-        case 0:
-            self->g0_charset = translation_table(as);
-            if (self->current_charset == 0) self->g_charset = self->g0_charset;
-            break;
-        case 1:
-            self->g1_charset = translation_table(as);
-            if (self->current_charset == 1) self->g_charset = self->g1_charset;
-            break;
-    }
-}
 
 static void
 move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
@@ -681,8 +645,8 @@ draw_combining_char(Screen *self, char_type ch) {
 }
 
 static void
-draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
-    if (is_ignored_char(och)) return;
+draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
+    if (is_ignored_char(ch)) return;
     if (!self->has_activity_since_last_focus && !self->has_focus && self->callbacks != Py_None) {
         PyObject *ret = PyObject_CallMethod(self->callbacks, "on_activity_since_last_focus", NULL);
         if (ret == NULL) PyErr_Print();
@@ -691,7 +655,6 @@ draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
             Py_DECREF(ret);
         }
     }
-    uint32_t ch = och < 256 ? self->g_charset[och] : och;
     if (UNLIKELY(is_combining_char(ch))) {
         if (UNLIKELY(is_flag_codepoint(ch))) {
             if (draw_second_flag_codepoint(self, ch)) return;
@@ -816,23 +779,23 @@ write_to_child(Screen *self, const char *data, size_t sz) {
 }
 
 static void
-get_prefix_and_suffix_for_escape_code(const Screen *self, unsigned char which, const char ** prefix, const char ** suffix) {
-    *suffix = self->modes.eight_bit_controls ? "\x9c" : "\033\\";
+get_prefix_and_suffix_for_escape_code(unsigned char which, const char ** prefix, const char ** suffix) {
+    *suffix = "\033\\";
     switch(which) {
-        case DCS:
-            *prefix = self->modes.eight_bit_controls ? "\x90" : "\033P";
+        case ESC_DCS:
+            *prefix = "\033P";
             break;
-        case CSI:
-            *prefix = self->modes.eight_bit_controls ? "\x9b" : "\033["; *suffix = "";
+        case ESC_CSI:
+            *prefix = "\033["; *suffix = "";
             break;
-        case OSC:
-            *prefix = self->modes.eight_bit_controls ? "\x9d" : "\033]";
+        case ESC_OSC:
+            *prefix = "\033]";
             break;
-        case PM:
-            *prefix = self->modes.eight_bit_controls ? "\x9e" : "\033^";
+        case ESC_PM:
+            *prefix = "\033^";
             break;
-        case APC:
-            *prefix = self->modes.eight_bit_controls ? "\x9f" : "\033_";
+        case ESC_APC:
+            *prefix = "\033_";
             break;
         default:
             fatal("Unknown escape code to write: %u", which);
@@ -843,7 +806,7 @@ bool
 write_escape_code_to_child(Screen *self, unsigned char which, const char *data) {
     bool written = false;
     const char *prefix, *suffix;
-    get_prefix_and_suffix_for_escape_code(self, which, &prefix, &suffix);
+    get_prefix_and_suffix_for_escape_code(which, &prefix, &suffix);
     if (self->window_id) {
         if (suffix[0]) {
             written = schedule_write_to_child(self->window_id, 3, prefix, strlen(prefix), data, strlen(data), suffix, strlen(suffix));
@@ -863,7 +826,7 @@ static bool
 write_escape_code_to_child_python(Screen *self, unsigned char which, PyObject *data) {
     bool written = false;
     const char *prefix, *suffix;
-    get_prefix_and_suffix_for_escape_code(self, which, &prefix, &suffix);
+    get_prefix_and_suffix_for_escape_code(which, &prefix, &suffix);
     if (self->window_id) written = schedule_write_to_child_python(self->window_id, prefix, data, suffix);
     if (self->test_child != Py_None) {
         write_to_test_child(self, prefix, strlen(prefix));
@@ -911,7 +874,7 @@ void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
     const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty, self->cell_size);
-    if (response != NULL) write_escape_code_to_child(self, APC, response);
+    if (response != NULL) write_escape_code_to_child(self, ESC_APC, response);
     if (x != self->cursor->x || y != self->cursor->y) {
         bool in_margins = cursor_within_margins(self);
         if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
@@ -1070,11 +1033,6 @@ screen_reset_mode(Screen *self, unsigned int mode) {
     set_mode_from_const(self, mode, false);
 }
 
-void
-screen_set_8bit_controls(Screen *self, bool yes) {
-    self->modes.eight_bit_controls = yes;
-}
-
 uint8_t
 screen_current_key_encoding_flags(Screen *self) {
     for (unsigned i = arraysz(self->main_key_encoding_flags); i-- > 0; ) {
@@ -1090,7 +1048,7 @@ screen_report_key_encoding_flags(Screen *self) {
         debug("\x1b[35mReporting key encoding flags: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
     }
     snprintf(buf, sizeof(buf), "?%uu", screen_current_key_encoding_flags(self));
-    write_escape_code_to_child(self, CSI, buf);
+    write_escape_code_to_child(self, ESC_CSI, buf);
 }
 
 void
@@ -1534,14 +1492,6 @@ screen_linefeed(Screen *self) {
     } \
 }
 
-#define COPY_CHARSETS(self, sp) \
-    sp->utf8_state = self->utf8_state; \
-    sp->utf8_codepoint = self->utf8_codepoint; \
-    sp->g0_charset = self->g0_charset; \
-    sp->g1_charset = self->g1_charset; \
-    sp->current_charset = self->current_charset; \
-    sp->use_latin1 = self->use_latin1;
-
 void
 screen_save_cursor(Screen *self) {
     Savepoint *sp = self->linebuf == self->main_linebuf ? &self->main_savepoint : &self->alt_savepoint;
@@ -1549,7 +1499,6 @@ screen_save_cursor(Screen *self) {
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->mDECSCNM = self->modes.mDECSCNM;
-    COPY_CHARSETS(self, sp);
     sp->is_valid = true;
 }
 
@@ -1626,11 +1575,8 @@ screen_restore_cursor(Screen *self) {
     if (!sp->is_valid) {
         screen_cursor_position(self, 1, 1);
         screen_reset_mode(self, DECOM);
-        RESET_CHARSETS;
         screen_reset_mode(self, DECSCNM);
     } else {
-        COPY_CHARSETS(sp, self);
-        self->g_charset = self->current_charset ? self->g1_charset : self->g0_charset;
         set_mode_from_const(self, DECOM, sp->mDECOM);
         set_mode_from_const(self, DECAWM, sp->mDECAWM);
         set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
@@ -1965,12 +1911,6 @@ screen_erase_characters(Screen *self, unsigned int count) {
 
 // Device control {{{
 
-void
-screen_use_latin1(Screen *self, bool on) {
-    self->use_latin1 = on; self->utf8_state = 0; self->utf8_codepoint = 0;
-    CALLBACK("use_utf8", "O", on ? Py_False : Py_True);
-}
-
 bool
 screen_invert_colors(Screen *self) {
     bool inverted = false;
@@ -1998,10 +1938,10 @@ report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
     if (mode == 0) {
         switch(start_modifier) {
             case 0:
-                write_escape_code_to_child(self, CSI, "?62;c");
+                write_escape_code_to_child(self, ESC_CSI, "?62;c");
                 break;
             case '>':
-                write_escape_code_to_child(self, CSI, ">1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c");  // VT-220 + primary version + secondary version
+                write_escape_code_to_child(self, ESC_CSI, ">1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c");  // VT-220 + primary version + secondary version
                 break;
         }
     }
@@ -2010,7 +1950,7 @@ report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
 void
 screen_xtversion(Screen *self, unsigned int mode) {
     if (mode == 0) {
-        write_escape_code_to_child(self, DCS, ">|kitty(" XT_VERSION ")");
+        write_escape_code_to_child(self, ESC_DCS, ">|kitty(" XT_VERSION ")");
     }
 }
 
@@ -2038,7 +1978,7 @@ screen_report_size(Screen *self, unsigned int which) {
     }
     if (code) {
         snprintf(buf, sizeof(buf), "%u;%u;%ut", code, height, width);
-        write_escape_code_to_child(self, CSI, buf);
+        write_escape_code_to_child(self, ESC_CSI, buf);
     }
 }
 
@@ -2059,7 +1999,7 @@ report_device_status(Screen *self, unsigned int which, bool private) {
     static char buf[64];
     switch(which) {
         case 5:  // device status
-            write_escape_code_to_child(self, CSI, "0n");
+            write_escape_code_to_child(self, ESC_CSI, "0n");
             break;
         case 6:  // cursor position
             x = self->cursor->x; y = self->cursor->y;
@@ -2070,7 +2010,7 @@ report_device_status(Screen *self, unsigned int which, bool private) {
             if (self->modes.mDECOM) y -= MAX(y, self->margin_top);
             // 1-based indexing
             int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%uR", (private ? "?": ""), y + 1, x + 1);
-            if (sz > 0) write_escape_code_to_child(self, CSI, buf);
+            if (sz > 0) write_escape_code_to_child(self, ESC_CSI, buf);
             break;
     }
 }
@@ -2114,7 +2054,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
             ans = self->pending_mode.activated_at ? 1 : 2; break;
     }
     int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
-    if (sz > 0) write_escape_code_to_child(self, CSI, buf);
+    if (sz > 0) write_escape_code_to_child(self, ESC_CSI, buf);
 }
 
 void
@@ -2173,7 +2113,7 @@ set_icon(Screen *self, PyObject *icon) {
 
 void
 set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
-    if (color == NULL) { CALLBACK("set_dynamic_color", "Is", code, ""); }
+    if (color == NULL) { CALLBACK("set_dynamic_color", "I", code); }
     else { CALLBACK("set_dynamic_color", "IO", code, color); }
 }
 
@@ -2185,36 +2125,29 @@ clipboard_control(Screen *self, int code, PyObject *data) {
 
 void
 file_transmission(Screen *self, PyObject *data) {
-    if (PyUnicode_READY(data) != 0) { PyErr_Clear(); return; }
     CALLBACK("file_transmission", "O", data);
 }
 
 static void
-parse_prompt_mark(Screen *self, PyObject *parts, PromptKind *pk) {
-    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(parts); i++) {
-        PyObject *token = PyList_GET_ITEM(parts, i);
-        if (PyUnicode_CompareWithASCIIString(token, "k=s") == 0) *pk = SECONDARY_PROMPT;
-        else if (PyUnicode_CompareWithASCIIString(token, "redraw=0") == 0) self->prompt_settings.redraws_prompts_at_all = 0;
+parse_prompt_mark(Screen *self, char *buf, PromptKind *pk) {
+    char *saveptr, *str = buf;
+    while (true) {
+        const char *token = strtok_r(str, ";", &saveptr); str = NULL;
+        if (token == NULL) return;
+        if (strcmp(token, "k=s") == 0) *pk = SECONDARY_PROMPT;
+        else if (strcmp(token, "redraw=0") == 0) self->prompt_settings.redraws_prompts_at_all = 0;
     }
 }
 
 void
-shell_prompt_marking(Screen *self, PyObject *data) {
-    if (PyUnicode_READY(data) != 0) { PyErr_Clear(); return; }
-    if (PyUnicode_GET_LENGTH(data) > 0 && self->cursor->y < self->lines) {
-        Py_UCS4 ch = PyUnicode_READ_CHAR(data, 0);
+shell_prompt_marking(Screen *self, char *buf) {
+    if (self->cursor->y < self->lines) {
+        char ch = buf[0];
         switch (ch) {
             case 'A': {
                 PromptKind pk = PROMPT_START;
                 self->prompt_settings.redraws_prompts_at_all = 1;
-                if (PyUnicode_FindChar(data, ';', 0, PyUnicode_GET_LENGTH(data), 1)) {
-                    RAII_PyObject(sep, PyUnicode_FromString(";"));
-                    if (sep) {
-                        RAII_PyObject(parts, PyUnicode_Split(data, sep, -1));
-                        if (parts) parse_prompt_mark(self, parts, &pk);
-                    }
-                }
-                if (PyErr_Occurred()) PyErr_Print();
+                parse_prompt_mark(self, buf+1, &pk);
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = pk;
                 if (pk == PROMPT_START)
                     CALLBACK("cmd_output_marking", "O", Py_False);
@@ -2225,11 +2158,7 @@ shell_prompt_marking(Screen *self, PyObject *data) {
                 break;
         }
     }
-    if (global_state.debug_rendering) {
-        fprintf(stderr, "prompt_marking: x=%d y=%d op=", self->cursor->x, self->cursor->y);
-        PyObject_Print(data, stderr, 0);
-        fprintf(stderr, "\n");
-    }
+    if (global_state.debug_rendering) fprintf(stderr, "prompt_marking: x=%d y=%d op=%s\n", self->cursor->x, self->cursor->y, buf);
 }
 
 static bool
@@ -2262,7 +2191,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
 
 void
 set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
-    if (color == NULL) { CALLBACK("set_color_table_color", "Is", code, ""); }
+    if (color == NULL) { CALLBACK("set_color_table_color", "I", code); }
     else { CALLBACK("set_color_table_color", "IO", code, color); }
 }
 
@@ -2315,7 +2244,7 @@ screen_report_color_stack(Screen *self) {
     colorprofile_report_stack(self->color_profile, &idx, &count);
     char buf[128] = {0};
     snprintf(buf, arraysz(buf), "%u;%u#Q", idx, count);
-    write_escape_code_to_child(self, CSI, buf);
+    write_escape_code_to_child(self, ESC_CSI, buf);
 }
 
 void screen_handle_kitty_dcs(Screen *self, const char *callback_name, PyObject *cmd) {
@@ -2323,17 +2252,15 @@ void screen_handle_kitty_dcs(Screen *self, const char *callback_name, PyObject *
 }
 
 void
-screen_request_capabilities(Screen *self, char c, PyObject *q) {
+screen_request_capabilities(Screen *self, char c, const char *query) {
     static char buf[128];
     int shape = 0;
-    const char *query;
     switch(c) {
-        case '+':
-            CALLBACK("request_capabilities", "O", q);
-            break;
+        case '+': {
+            CALLBACK("request_capabilities", "s", query);
+        } break;
         case '$':
             // report status DECRQSS
-            query = PyUnicode_AsUTF8(q);
             if (strcmp(" q", query) == 0) {
                 // cursor shape DECSCUSR
                 switch(self->cursor->shape) {
@@ -2358,7 +2285,7 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
             } else {
                 shape = snprintf(buf, sizeof(buf), "0$r");
             }
-            if (shape > 0) write_escape_code_to_child(self, DCS, buf);
+            if (shape > 0) write_escape_code_to_child(self, ESC_DCS, buf);
             break;
     }
 }
@@ -3573,17 +3500,12 @@ draw(Screen *self, PyObject *src) {
     Py_RETURN_NONE;
 }
 
-extern void
-parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, int *params, PyObject *dump_callback, const char *report_name, Region *region);
-
 static PyObject*
 apply_sgr(Screen *self, PyObject *src) {
     if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
-    Py_UCS4 *buf = PyUnicode_AsUCS4Copy(src);
-    if (!buf) return NULL;
     int params[MAX_PARAMS] = {0};
-    parse_sgr(self, buf, PyUnicode_GET_LENGTH(src), params, NULL, "parse_sgr", NULL);
+    parse_sgr(self, (const uint8_t*)PyUnicode_AsUTF8(src), PyUnicode_GET_LENGTH(src), params, "parse_sgr", NULL);
     Py_RETURN_NONE;
 }
 
@@ -4356,9 +4278,9 @@ paste_(Screen *self, PyObject *bytes, bool allow_bracketed_paste) {
     } else {
         PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL;
     }
-    if (allow_bracketed_paste && self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_START);
+    if (allow_bracketed_paste && self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, ESC_CSI, BRACKETED_PASTE_START);
     write_to_child(self, data, sz);
-    if (allow_bracketed_paste && self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_END);
+    if (allow_bracketed_paste && self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, ESC_CSI, BRACKETED_PASTE_END);
     Py_RETURN_NONE;
 }
 
@@ -4381,7 +4303,7 @@ focus_changed(Screen *self, PyObject *has_focus_) {
         self->has_focus = has_focus;
         if (has_focus) self->has_activity_since_last_focus = false;
         else if (screen_is_overlay_active(self)) deactivate_overlay_line(self);
-        if (self->modes.mFOCUS_TRACKING) write_escape_code_to_child(self, CSI, has_focus ? "I" : "O");
+        if (self->modes.mFOCUS_TRACKING) write_escape_code_to_child(self, ESC_CSI, has_focus ? "I" : "O");
         Py_RETURN_TRUE;
     }
     Py_RETURN_FALSE;
@@ -4521,7 +4443,6 @@ line_edge_colors(Screen *self, PyObject *a UNUSED) {
 WRAP0(update_only_line_graphics_data)
 WRAP0(bell)
 
-
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
@@ -4637,6 +4558,7 @@ static PyGetSetDef getsetters[] = {
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
+    {"vt_parser", T_OBJECT_EX, offsetof(Screen, vt_parser), READONLY, "vt_parser"},
     {"last_reported_cwd", T_OBJECT, offsetof(Screen, last_reported_cwd), READONLY, "last_reported_cwd"},
     {"grman", T_OBJECT_EX, offsetof(Screen, grman), READONLY, "grman"},
     {"color_profile", T_OBJECT_EX, offsetof(Screen, color_profile), READONLY, "color_profile"},

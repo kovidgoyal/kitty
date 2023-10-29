@@ -320,6 +320,17 @@ expand_ansi_c_escapes(PyObject *self UNUSED, PyObject *src) {
     return ans;
 }
 
+static PyObject*
+find_in_memoryview(PyObject *self UNUSED, PyObject *args) {
+    const char *buf; Py_ssize_t sz;
+    unsigned char q;
+    if (!PyArg_ParseTuple(args, "y#b", &buf, &sz, &q)) return NULL;
+    const char *p = memchr(buf, q, sz);
+    Py_ssize_t ans = -1;
+    if (p) ans = p - buf;
+    return PyLong_FromSsize_t(ans);
+}
+
 static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"expand_ansi_c_escapes", (PyCFunction)expand_ansi_c_escapes, METH_O, ""},
@@ -335,13 +346,12 @@ static PyMethodDef module_methods[] = {
     {"base64_encode", (PyCFunction)pybase64_encode, METH_VARARGS, ""},
     {"base64_decode", (PyCFunction)pybase64_decode, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
-    {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
-    {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"locale_is_valid", (PyCFunction)locale_is_valid, METH_VARARGS, ""},
     {"shm_open", (PyCFunction)py_shm_open, METH_VARARGS, ""},
     {"shm_unlink", (PyCFunction)py_shm_unlink, METH_VARARGS, ""},
     {"wrapped_kitten_names", (PyCFunction)wrapped_kittens, METH_NOARGS, ""},
+    {"find_in_memoryview", (PyCFunction)find_in_memoryview, METH_VARARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
     METHODB(process_group_map, METH_NOARGS),
@@ -481,11 +491,12 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, DECCOLM);
     PyModule_AddIntMacro(m, DECOM);
     PyModule_AddIntMacro(m, IRM);
-    PyModule_AddIntMacro(m, CSI);
-    PyModule_AddIntMacro(m, DCS);
-    PyModule_AddIntMacro(m, APC);
-    PyModule_AddIntMacro(m, OSC);
     PyModule_AddIntMacro(m, FILE_TRANSFER_CODE);
+    PyModule_AddIntMacro(m, ESC_CSI);
+    PyModule_AddIntMacro(m, ESC_OSC);
+    PyModule_AddIntMacro(m, ESC_APC);
+    PyModule_AddIntMacro(m, ESC_DCS);
+    PyModule_AddIntMacro(m, ESC_PM);
 #ifdef __APPLE__
     // Apple says its SHM_NAME_MAX but SHM_NAME_MAX is not actually declared in typical CrApple style.
     // This value is based on experimentation and from qsharedmemory.cpp in Qt

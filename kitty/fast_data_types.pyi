@@ -263,8 +263,6 @@ CELL_BG_PROGRAM: int
 CELL_FG_PROGRAM: int
 CELL_PROGRAM: int
 CELL_SPECIAL_PROGRAM: int
-CSI: int
-DCS: int
 DECORATION: int
 DIM: int
 GRAPHICS_ALPHA_MASK_PROGRAM: int
@@ -274,8 +272,12 @@ MARK: int
 MARK_MASK: int
 DECORATION_MASK: int
 NUM_UNDERLINE_STYLES: int
-OSC: int
 FILE_TRANSFER_CODE: int
+ESC_CSI: int
+ESC_OSC: int
+ESC_DCS: int
+ESC_APC: int
+ESC_PM: int
 REVERSE: int
 SCROLL_FULL: int
 SCROLL_LINE: int
@@ -1564,3 +1566,4 @@ def cocoa_recreate_global_menu() -> None: ...
 def cocoa_clear_global_shortcuts() -> None: ...
 def update_pointer_shape(os_window_id: int) -> None: ...
 def os_window_focus_counters() -> Dict[int, int]: ...
+def find_in_memoryview(buf: Union[bytes, memoryview, bytearray], chr: int) -> int: ...

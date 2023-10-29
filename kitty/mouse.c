@@ -394,7 +394,7 @@ HANDLER(handle_move_event) {
     } else {
         if (!mouse_cell_changed && screen->modes.mouse_tracking_protocol != SGR_PIXEL_PROTOCOL) return;
         int sz = encode_mouse_button(w, button, button >=0 ? DRAG : MOVE, modifiers);
-        if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
+        if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
     }
 }
 
@@ -566,7 +566,7 @@ HANDLER(handle_button_event) {
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
         if (screen->modes.mouse_tracking_mode != 0) {
             int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
-            if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
+            if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
         }
     }
     // the windows array might have been re-alloced in dispatch_mouse_event
@@ -957,7 +957,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
                 if (sz > 0) {
                     mouse_event_buf[sz] = 0;
                     for (s = abs(s); s > 0; s--) {
-                        write_escape_code_to_child(screen, CSI, mouse_event_buf);
+                        write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
                     }
                 }
             } else {
@@ -974,7 +974,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
                 if (sz > 0) {
                     mouse_event_buf[sz] = 0;
                     for (s = abs(s); s > 0; s--) {
-                        write_escape_code_to_child(screen, CSI, mouse_event_buf);
+                        write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
                     }
                 }
             }
@@ -999,7 +999,7 @@ send_mouse_event(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
         int sz = encode_mouse_event_impl(&mpos, screen->modes.mouse_tracking_protocol, button, action, mods);
         if (sz > 0) {
             mouse_event_buf[sz] = 0;
-            write_escape_code_to_child(screen, CSI, mouse_event_buf);
+            write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
             Py_RETURN_TRUE;
         }
     }

@@ -112,11 +112,11 @@ def read_data_from_shared_memory(shm_name: str) -> Any:
         return json.loads(shm.read_data_with_size())
 
 
-def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
+def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes]:
     from base64 import standard_b64decode
     yield b'\nKITTY_DATA_START\n'  # to discard leading data
     try:
-        msg = standard_b64decode(msg).decode('utf-8')
+        msg = standard_b64decode(msgb).decode('utf-8')
         md = dict(x.split('=', 1) for x in msg.split(':'))
         pw = md['pw']
         pwfilename = md['pwfile']

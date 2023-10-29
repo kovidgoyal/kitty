@@ -584,7 +584,7 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
+    def _handle_remote_command(self, cmd: memoryview, window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
         from .remote_control import is_cmd_allowed, parse_cmd, remote_control_allowed
         response = None
         window = window or None
@@ -778,7 +778,7 @@ class Boss:
             cmd_prefix = b'\x1bP@kitty-cmd'
             terminator = b'\x1b\\'
             if msg_bytes.startswith(cmd_prefix) and msg_bytes.endswith(terminator):
-                cmd = msg_bytes[len(cmd_prefix):-len(terminator)].decode('utf-8')
+                cmd = memoryview(msg_bytes[len(cmd_prefix):-len(terminator)])
                 response = self._handle_remote_command(cmd, peer_id=peer_id)
                 if response is None:
                     return None
@@ -834,7 +834,7 @@ class Boss:
             log_error('Unknown message received over single instance socket, ignoring')
         return None
 
-    def handle_remote_cmd(self, cmd: str, window: Optional[Window] = None) -> None:
+    def handle_remote_cmd(self, cmd: memoryview, window: Optional[Window] = None) -> None:
         response = self._handle_remote_command(cmd, window)
         if response is not None and not isinstance(response, AsyncResponse) and window is not None:
             window.send_cmd_response(response)

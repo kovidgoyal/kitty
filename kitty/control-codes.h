@@ -55,19 +55,6 @@
 // *Delete*: Is ignored.
 #define DEL 0x7f
 
-#ifndef NO_C1_CONTROLS
-#define IND 0x84
-#define NEL 0x85
-#define HTS 0x88
-#define RI  0x8d
-#define DCS 0x90
-#define CSI 0x9b
-#define ST 0x9c
-#define OSC 0x9d
-#define PM 0x9e
-#define APC 0x9f
-#endif
-
 // Sharp control codes
 // -------------------
 
