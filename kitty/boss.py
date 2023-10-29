@@ -352,6 +352,7 @@ class Boss:
         self.os_window_death_actions: Dict[int, Callable[[], None]] = {}
         self.cursor_blinking = True
         self.shutting_down = False
+        self.misc_config_errors: List[str] = []
         talk_fd = getattr(single_instance, 'socket', None)
         talk_fd = -1 if talk_fd is None else talk_fd.fileno()
         listen_fd = -1
@@ -367,9 +368,8 @@ class Boss:
             try:
                 listen_fd, self.listening_on = listen_on(args.listen_on)
             except Exception:
-                log_error(f'Invalid listen_on setting: {args.listen_on}, ignoring')
-                import traceback
-                traceback.print_exc()
+                self.misc_config_errors.append(f'Invalid listen_on={args.listen_on}, ignoring')
+                log_error(self.misc_config_errors[-1])
         self.child_monitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
@@ -2633,7 +2633,7 @@ class Boss:
             assert isinstance(b, int)
             dbus_notification_created(a, b)
 
-    def show_bad_config_lines(self, bad_lines: Iterable[BadLine]) -> None:
+    def show_bad_config_lines(self, bad_lines: Iterable[BadLine], misc_errors: Iterable[str] = ()) -> None:
 
         def format_bad_line(bad_line: BadLine) -> str:
             return f'{bad_line.number}:{bad_line.exception} in line: {bad_line.line}\n'
@@ -2647,7 +2647,10 @@ class Boss:
             if file:
                 a(f'In file {file}:')
             [a(format_bad_line(x)) for x in groups[file]]
-
+        if misc_errors:
+            a('In final effective configuration:')
+            for line in misc_errors:
+                a(line)
         msg = '\n'.join(ans).rstrip()
         self.show_error(_('Errors parsing configuration'), msg)
 

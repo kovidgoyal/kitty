@@ -269,8 +269,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
                     wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title))
         boss = Boss(opts, args, cached_values, global_shortcuts)
         boss.start(window_id, startup_sessions)
-        if bad_lines:
-            boss.show_bad_config_lines(bad_lines)
+        if bad_lines or boss.misc_config_errors:
+            boss.show_bad_config_lines(bad_lines, boss.misc_config_errors)
+            boss.misc_config_errors = []
         try:
             boss.child_monitor.main_loop()
         finally:
