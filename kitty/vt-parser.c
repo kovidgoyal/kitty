@@ -22,9 +22,6 @@
 #define PENDING_BUF_INCREMENT (16u * 1024u)
 
 // Macros {{{
-#define SAVE_INPUT_DATA const uint8_t *orig_input_data = self->input_data; size_t orig_input_sz = self->input_sz, orig_input_pos = self->input_pos
-
-#define RESTORE_INPUT_DATA self->input_data = orig_input_data; self->input_sz = orig_input_sz; self->input_pos = orig_input_pos
 
 #define SET_STATE(state) self->vte_state = state; self->parser_buf_pos = 0; self->utf8_state = UTF8_ACCEPT;
 
@@ -144,7 +141,7 @@ utoi(const uint8_t *buf, unsigned int sz) {
 // }}}
 
 typedef enum VTEState {
-    VTE_NORMAL, VTE_ESC, VTE_CSI, VTE_OSC, VTE_DCS, VTE_APC, VTE_PM
+    VTE_NORMAL, VTE_ESC = ESC, VTE_CSI = ESC_CSI, VTE_OSC = ESC_OSC, VTE_DCS = ESC_DCS, VTE_APC = ESC_APC, VTE_PM = ESC_PM
 } VTEState;
 
 typedef struct PS {
@@ -1429,13 +1426,16 @@ pending_esc_mode_byte(PS *self) {
     }
 }
 
+#define pb(i) self->parser_buf[i]
+
 static void
 pending_escape_code(PS *self, char_type start_ch, char_type end_ch) {
     ensure_pending_space(self, 4 + self->parser_buf_pos);
     self->pending_mode.buf[self->pending_mode.used++] = ESC;
     self->pending_mode.buf[self->pending_mode.used++] = start_ch;
     memcpy(self->pending_mode.buf + self->pending_mode.used, self->parser_buf, self->parser_buf_pos);
-    self->pending_mode.buf[self->pending_mode.used++] = ESC;
+    self->pending_mode.used += self->parser_buf_pos;
+    if (start_ch != ESC_CSI) self->pending_mode.buf[self->pending_mode.used++] = ESC;
     self->pending_mode.buf[self->pending_mode.used++] = end_ch;
 }
 
@@ -1449,7 +1449,6 @@ pending_osc(PS *self) {
     if (extended) continue_osc_52(self);
 }
 
-#define pb(i) self->parser_buf[i]
 static void
 pending_dcs(PS *self) {
     if (self->parser_buf_pos >= 3 && pb(0) == '=' && (pb(1) == '1' || pb(1) == '2') && pb(2) == 's') {
@@ -1489,21 +1488,29 @@ FLUSH_DRAW;
 
 static void
 parse_pending_bytes(PS *self) {
-    SAVE_INPUT_DATA;
-    self->input_data = self->pending_mode.buf; self->input_sz = self->pending_mode.used;
+    const uint8_t *orig_input_data = self->input_data; size_t orig_input_sz = self->input_sz, orig_input_pos = self->input_pos;
+    self->input_data = self->pending_mode.buf; self->input_sz = self->pending_mode.used; self->input_pos = 0;
     while (self->input_pos < self->input_sz) {
         dispatch_single_byte(dispatch, ;);
     }
-    RESTORE_INPUT_DATA;
+    self->input_data = orig_input_data; self->input_sz = orig_input_sz; self->input_pos = orig_input_pos;
 }
 
 static void
 dump_partial_escape_code_to_pending(PS *self) {
+    ensure_pending_space(self, self->parser_buf_pos + 2);
     if (self->parser_buf_pos) {
-        ensure_pending_space(self, self->parser_buf_pos + 1);
-        self->pending_mode.buf[self->pending_mode.used++] = self->vte_state;
+        switch(self->vte_state) {
+            case VTE_NORMAL: case VTE_ESC: break;
+            case VTE_CSI: case VTE_OSC: case VTE_DCS: case VTE_APC: case VTE_PM:
+                self->pending_mode.buf[self->pending_mode.used++] = ESC;
+                self->pending_mode.buf[self->pending_mode.used++] = self->vte_state;
+                break;
+        }
         memcpy(self->pending_mode.buf + self->pending_mode.used, self->parser_buf, self->parser_buf_pos);
         self->pending_mode.used += self->parser_buf_pos;
+    } else if (self->vte_state == VTE_ESC) {
+        self->pending_mode.buf[self->pending_mode.used++] = ESC;
     }
 }
 // }}}
@@ -1545,7 +1552,7 @@ do_parse_vt(PS *self) {
                 self->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
                 if (self->pending_mode.capacity > READ_BUF_SZ + PENDING_BUF_INCREMENT) {
                     self->pending_mode.capacity = READ_BUF_SZ;
-                    self->pending_mode.buf = realloc(self->pending_mode.buf, self->pending_mode.capacity);
+                    self->pending_mode.buf = PyMem_Realloc(self->pending_mode.buf, self->pending_mode.capacity);
                     if (!self->pending_mode.buf) fatal("Out of memory");
                 }
                 if (self->pending_mode.stop_escape_code_type) {
@@ -1684,10 +1691,16 @@ alloc_vt_parser(id_type window_id) {
         if (!self->state) { Py_CLEAR(self); PyErr_NoMemory(); return NULL; }
         PS *state = (PS*)self->state;
         state->window_id = window_id;
+        state->pending_mode.wait_time = s_double_to_monotonic_t(2.0);
     }
     return self;
 }
 
+bool vt_parser_has_pending_data(Parser* p) { return ((PS*)p->state)->pending_mode.used != 0; }
+monotonic_t vt_parser_pending_activated_at(Parser*p) { return ((PS*)p->state)->pending_mode.activated_at; }
+void vt_parser_set_pending_activated_at(Parser*p, monotonic_t n) { ((PS*)p->state)->pending_mode.activated_at = n; }
+monotonic_t vt_parser_pending_wait_time(Parser*p) { return ((PS*)p->state)->pending_mode.wait_time; }
+void vt_parser_set_pending_wait_time(Parser*p, monotonic_t n) { ((PS*)p->state)->pending_mode.wait_time = n; }
 INIT_TYPE(Parser)
 #endif
 // }}}

@@ -135,7 +135,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->active_hyperlink_id = 0;
 
         self->grman = self->main_grman;
-        self->pending_mode.wait_time = s_double_to_monotonic_t(2.0);
         self->disable_ligatures = OPT(disable_ligatures);
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
         if (
@@ -476,7 +475,6 @@ dealloc(Screen* self) {
     PyMem_Free(self->overlay_line.original_line.gpu_cells);
     Py_CLEAR(self->overlay_line.overlay_text);
     PyMem_Free(self->main_tabstops);
-    free(self->pending_mode.buf);
     free(self->selections.items);
     free(self->url_ranges.items);
     free_hyperlink_pool(self->hyperlink_pool);
@@ -997,13 +995,13 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;
         case PENDING_UPDATE:
             if (val) {
-                self->pending_mode.activated_at = monotonic();
+                vt_parser_set_pending_activated_at(self->vt_parser, monotonic());
             } else {
-                if (!self->pending_mode.activated_at) log_error(
+                if (!vt_parser_pending_activated_at(self->vt_parser)) log_error(
                     "Pending mode stop command issued while not in pending mode, this can"
                     " be either a bug in the terminal application or caused by a timeout with no data"
                     " received for too long or by too much data in pending mode");
-                else self->pending_mode.activated_at = 0;
+                else vt_parser_set_pending_activated_at(self->vt_parser, 0);
             }
             break;
         case 7727 << 5:
@@ -2051,7 +2049,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         case MOUSE_SGR_PIXEL_MODE:
             ans = self->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL ? 1 : 2; break;
         case PENDING_UPDATE:
-            ans = self->pending_mode.activated_at ? 1 : 2; break;
+            ans = vt_parser_pending_activated_at(self->vt_parser) ? 1 : 2; break;
     }
     int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
     if (sz > 0) write_escape_code_to_child(self, ESC_CSI, buf);
@@ -3199,8 +3197,16 @@ hyperlink_for_id(Screen *self, PyObject *val) {
 static PyObject*
 set_pending_timeout(Screen *self, PyObject *val) {
     if (!PyFloat_Check(val)) { PyErr_SetString(PyExc_TypeError, "timeout must be a float"); return NULL; }
-    PyObject *ans = PyFloat_FromDouble(self->pending_mode.wait_time);
-    self->pending_mode.wait_time = s_double_to_monotonic_t(PyFloat_AS_DOUBLE(val));
+    PyObject *ans = PyFloat_FromDouble(monotonic_t_to_s_double(vt_parser_pending_wait_time(self->vt_parser)));
+    vt_parser_set_pending_wait_time(self->vt_parser, s_double_to_monotonic_t(PyFloat_AS_DOUBLE(val)));
+    return ans;
+}
+
+static PyObject*
+set_pending_activated_at(Screen *self, PyObject *val) {
+    if (!PyFloat_Check(val)) { PyErr_SetString(PyExc_TypeError, "timeout must be a float"); return NULL; }
+    PyObject *ans = PyFloat_FromDouble(monotonic_t_to_s_double(vt_parser_pending_activated_at(self->vt_parser)));
+    vt_parser_set_pending_activated_at(self->vt_parser, s_double_to_monotonic_t(PyFloat_AS_DOUBLE(val)));
     return ans;
 }
 
@@ -4491,6 +4497,7 @@ static PyMethodDef methods[] = {
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     {"has_selection", (PyCFunction)has_selection, METH_VARARGS, ""},
     MND(set_pending_timeout, METH_O)
+    MND(set_pending_activated_at, METH_O)
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
     MND(as_text_for_history_buf, METH_VARARGS)

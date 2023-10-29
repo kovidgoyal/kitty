@@ -439,7 +439,7 @@ static bool
 do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     bool input_read = false;
     screen_mutex(lock, read);
-    if (screen->read_buf_sz || screen->pending_mode.used) {
+    if (screen->read_buf_sz || vt_parser_has_pending_data(screen->vt_parser)) {
         monotonic_t time_since_new_input = now - screen->new_input_at;
         if (flush || time_since_new_input >= OPT(input_delay)) {
             bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
@@ -447,9 +447,10 @@ do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
             parse_func(screen, self->dump_callback, now);
             if (read_buf_full) wakeup_io_loop(self, false);  // Ensure the read fd has POLLIN set
             screen->new_input_at = 0;
-            if (screen->pending_mode.activated_at) {
-                monotonic_t time_since_pending = MAX(0, now - screen->pending_mode.activated_at);
-                set_maximum_wait(screen->pending_mode.wait_time - time_since_pending);
+            monotonic_t activated_at = vt_parser_pending_activated_at(screen->vt_parser);
+            if (activated_at) {
+                monotonic_t time_since_pending = MAX(0, now - activated_at);
+                set_maximum_wait(vt_parser_pending_wait_time(screen->vt_parser) - time_since_pending);
             }
         } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
     }

@@ -358,7 +358,6 @@ class TestParser(BaseTest):
         pb('\033[?2026h\033[32ma\033[?2026l', ('screen_set_mode', 2026, 1), ('select_graphic_rendition', '32 '), ('draw', 'a'), ('screen_reset_mode', 2026, 1))
         pb('\033[?2026h\033P+q544e\033\\ama\033P=2s\033\\',
            ('screen_set_mode', 2026, 1), ('screen_request_capabilities', 43, '544e'), ('draw', 'ama'), ('screen_stop_pending_mode',))
-        pb('\033P=1s\033\\\033(B\033P=2s\033\\', ('screen_start_pending_mode',), ('screen_designate_charset', 0, 66), ('screen_stop_pending_mode',))
 
         s.reset()
         s.set_pending_timeout(timeout)
@@ -374,6 +373,21 @@ class TestParser(BaseTest):
             ('screen_stop_pending_mode',)
         )
         self.assertEqual(str(s.line(0)), '')
+
+        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('ab')
+        s.set_pending_activated_at(0.00001)
+        pb('cd', ('draw', 'abcd'))
+        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('\033')
+        s.set_pending_activated_at(0.00001)
+        pb('7', ('screen_save_cursor',))
+        pb('\033[?2026h\033]', ('screen_set_mode', 2026, 1),)
+        s.set_pending_activated_at(0.00001)
+        pb('8;;\x07', ('set_active_hyperlink', None, None))
+        pb('\033[?2026h\033', ('screen_set_mode', 2026, 1),)
+        s.set_pending_activated_at(0.00001)
+        pb(']8;;\x07', ('set_active_hyperlink', None, None))
 
     def test_oth_codes(self):
         s = self.create_screen()
