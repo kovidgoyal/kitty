@@ -6,7 +6,7 @@ from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
-from kitty.fast_data_types import CURSOR_BLOCK, base64_decode, base64_encode, parse_bytes, parse_bytes_dump
+from kitty.fast_data_types import CURSOR_BLOCK, base64_decode, base64_encode
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest
@@ -25,7 +25,7 @@ class TestParser(BaseTest):
         if isinstance(x, str):
             x = x.encode('utf-8')
         cmds = tuple(('draw', x) if isinstance(x, str) else x for x in cmds)
-        parse_bytes_dump(cd, s, x)
+        s.vt_parser.parse_bytes(s, x, cd)
         current = ''
         q = []
         for args in cd:
@@ -65,7 +65,7 @@ class TestParser(BaseTest):
         self.ae(str(s.line(1)), '6')
         self.ae(str(s.line(2)), ' 123')
         self.ae(str(s.line(3)), '45')
-        parse_bytes(s, b'\rabcde')
+        s.vt_parser.parse_bytes(s, b'\rabcde')
         self.ae(str(s.line(3)), 'abcde')
         pb('\rßxyz1', ('screen_carriage_return',), 'ßxyz1')
         self.ae(str(s.line(3)), 'ßxyz1')
@@ -331,7 +331,7 @@ class TestParser(BaseTest):
         for sgr in '0;34;102;1;2;3;4 0;38:5:200;58:2:10:11:12'.split():
             expected = set(sgr.split(';')) - {'0'}
             c.clear()
-            parse_bytes(s, f'\033[{sgr}m\033P$qm\033\\'.encode('ascii'))
+            s.vte_parser.parse_bytes(s, f'\033[{sgr}m\033P$qm\033\\'.encode('ascii'))
             r = c.wtcbuf.decode('ascii').partition('r')[2].partition('m')[0]
             self.ae(expected, set(r.split(';')))
         c.clear()
