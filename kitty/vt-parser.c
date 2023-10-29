@@ -1589,8 +1589,15 @@ do_parse_vt(PS *self) {
 
 // Boilerplate {{{
 #define setup_worker \
-    self->input_data = screen->read_buf; self->input_sz = screen->read_buf_sz; self->dump_callback = dump_callback; \
-    self->now = now; self->input_pos = 0; self->screen = screen;
+
+static void
+run_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) {
+    PS *self = (PS*)screen->vt_parser->state;
+    self->input_data = screen->read_buf; self->input_sz = screen->read_buf_sz; self->input_pos = 0;
+    self->dump_callback = dump_callback; self->now = now; self->screen = screen;
+    do_parse_vt(self);
+    screen->read_buf_sz = 0;
+}
 
 #ifdef DUMP_COMMANDS
 void
@@ -1599,11 +1606,7 @@ parse_vt_dump(Parser *p) {
 }
 
 void
-parse_worker_dump(Screen *screen, PyObject *dump_callback, monotonic_t now) {
-    PS *self = (PS*)screen->vt_parser->state;
-    setup_worker;
-    do_parse_vt(self);
-}
+parse_worker_dump(Screen *screen, PyObject *dump_callback, monotonic_t now) { run_worker(screen, dump_callback, now); }
 #else
 static void
 parse_vt(Parser *p) {
@@ -1612,11 +1615,7 @@ parse_vt(Parser *p) {
 extern void parse_vt_dump(Parser *p);
 
 void
-parse_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) {
-    PS *self = (PS*)screen->vt_parser->state;
-    setup_worker;
-    do_parse_vt(self);
-}
+parse_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) { run_worker(screen, dump_callback, now); }
 #endif
 
 #ifndef DUMP_COMMANDS
