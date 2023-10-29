@@ -1962,12 +1962,12 @@ class Boss:
         if ec != (None, None, None):
             import traceback
             tb = traceback.format_exc()
-        cmd = [kitten_exe(), '__show_error__', kitten_exe(), '__show_error__', '--title', title]
+        cmd = [kitten_exe(), '__show_error__', '--title', title]
         env = {}
         env['KITTEN_RUNNING_AS_UI'] = '1'
         env['KITTY_CONFIG_DIRECTORY'] = config_dir
         return SpecialWindow(
-            cmd,
+            cmd, override_title=title,
             stdin=json.dumps({'msg': msg, 'tb': tb}).encode(),
             env=env,
             overlay_for=overlay_for,
