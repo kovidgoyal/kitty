@@ -247,6 +247,7 @@ class DumpCommands:  # {{{
                 if self.draw_dump_buf:
                     safe_print('draw', ''.join(self.draw_dump_buf))
                     self.draw_dump_buf = []
+                a = tuple(str(x, 'utf-8', 'replace') if isinstance(x, memoryview) else x for x in a)
                 safe_print(*a)
 # }}}
 

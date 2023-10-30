@@ -158,6 +158,22 @@ def screen_cursor_down(count: int) -> None:
     write(f'{CSI}{count}B')
 
 
+def screen_report_key_encoding_flags() -> None:
+    write(f'{CSI}?u')
+
+
+def screen_set_key_encoding_flags(flags: int, how: int) -> None:
+    write(f'{CSI}={flags};{how}u')
+
+
+def screen_push_key_encoding_flags(flags: int) -> None:
+    write(f'{CSI}>{flags}u')
+
+
+def screen_pop_key_encoding_flags(flags: int) -> None:
+    write(f'{CSI}<{flags}u')
+
+
 def screen_carriage_return() -> None:
     write('\r')
 
@@ -214,8 +230,13 @@ def write_osc(code: int, string: str = '') -> None:
         write(f'{OSC}{code}\x07')
 
 
-set_dynamic_color = set_color_table_color = process_cwd_notification = write_osc
+set_color_table_color = process_cwd_notification = write_osc
 clipboard_control_pending: str = ''
+
+
+def set_dynamic_color(payload: str) -> None:
+    code, data = payload.partition(' ')[::2]
+    write_osc(int(code), data)
 
 
 def shell_prompt_marking(payload: str) -> None:
