@@ -6,7 +6,6 @@
  */
 
 // TODO: Test clipboard kitten with 52 and 5522
-// TODO: Test shell integration with secondary prompts
 // TODO: Test screen_request_capabilities
 
 #include "vt-parser.h"
@@ -421,9 +420,10 @@ dispatch_osc(PS *self) {
 #define DISPATCH_OSC_WITH_CODE(name) REPORT_OSC2(name, code, mv); name(self->screen, code, mv);
 #define DISPATCH_OSC(name) REPORT_OSC(name, mv); name(self->screen, mv);
 #define START_DISPATCH {\
-    PyObject *mv = PyMemoryView_FromMemory((char*)self->parser_buf + i, limit - i, PyBUF_READ); \
+    RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->parser_buf + i, limit - i, PyBUF_READ)); \
     if (mv) {
-#define END_DISPATCH Py_CLEAR(mv); } PyErr_Clear(); break; }
+#define END_DISPATCH_WITHOUT_BREAK }; PyErr_Clear(); }
+#define END_DISPATCH }; PyErr_Clear(); break; }
 
     const unsigned int limit = self->parser_buf_pos;
     int code=0;
@@ -462,10 +462,13 @@ dispatch_osc(PS *self) {
             END_DISPATCH
         case 6:
         case 7:
+#ifdef DUMP_COMMANDS
             START_DISPATCH
             REPORT_OSC2(process_cwd_notification, code, mv);
+            END_DISPATCH_WITHOUT_BREAK
+#endif
             process_cwd_notification(self->screen, code, (char*)self->parser_buf + i, limit-i);
-            END_DISPATCH
+            break;
         case 8:
             dispatch_hyperlink(self, i, limit-i);
             break;
@@ -496,13 +499,16 @@ dispatch_osc(PS *self) {
             if (code == -52) continue_osc_52(self);
             END_DISPATCH
         case 133:
+#ifdef DUMP_COMMANDS
             START_DISPATCH
             REPORT_OSC2(shell_prompt_marking, code, mv);
-            if (limit - 1 > 0) {
+            END_DISPATCH_WITHOUT_BREAK
+#endif
+            if (limit > i) {
                 self->parser_buf[limit] = 0; // safe to do as we have 8 extra bytes after PARSER_BUF_SZ
                 shell_prompt_marking(self->screen, (char*)self->parser_buf + i);
             }
-            END_DISPATCH
+            break;
         case FILE_TRANSFER_CODE:
             START_DISPATCH
             DISPATCH_OSC(file_transmission);

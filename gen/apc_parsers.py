@@ -85,9 +85,9 @@ def cmd_for_report(report_name: str, keymap: KeymapType, type_map: Dict[str, Any
 
     fmt = f'{flag_fmt} {uint_fmt} {int_fmt}'
     if payload_allowed:
-        ans = [f'REPORT_VA_COMMAND("s {{{fmt} sI}} y#", "{report_name}",']
+        ans = [f'REPORT_VA_COMMAND("K s {{{fmt} sI}} y#", self->window_id, "{report_name}", ']
     else:
-        ans = [f'REPORT_VA_COMMAND("s {{{fmt}}}", "{report_name}",']
+        ans = [f'REPORT_VA_COMMAND("K s {{{fmt}}}", self->window_id, "{report_name}", ']
     ans.append(',\n     '.join((flag_attrs, uint_attrs, int_attrs)))
     if payload_allowed:
         ans.append(', "payload_sz", g.payload_sz, payload, g.payload_sz')
