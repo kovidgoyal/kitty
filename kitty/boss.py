@@ -233,14 +233,14 @@ class DumpCommands:  # {{{
 
     def __call__(self, window_id: int, what: str, *a: Any) -> None:
         if what == 'draw':
-            if a[1] is None:
+            if a[0] is None:
                 if self.draw_dump_buf:
                     safe_print('draw', ''.join(self.draw_dump_buf))
                     self.draw_dump_buf = []
             else:
-                self.draw_dump_buf.append(a[1])
+                self.draw_dump_buf.append(a[0])
         elif what == 'bytes':
-            self.dump_bytes_to.write(a[1])
+            self.dump_bytes_to.write(a[0])
             self.dump_bytes_to.flush()
         else:
             if self.draw_dump_buf:
