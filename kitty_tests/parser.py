@@ -84,6 +84,24 @@ class TestParser(BaseTest):
         c1_controls = '\x84\x85\x88\x8d\x8e\x8f\x90\x96\x97\x98\x9a\x9b\x9c\x9d\x9e\x9f'
         pb(c1_controls, c1_controls)
         self.assertFalse(str(s.line(1)) + str(s.line(2)) + str(s.line(3)))
+        pb('😀'.encode()[:-1])
+        pb('\x1b\x1b%a', ('Unknown char after ESC: 0x1b',), ('draw', '%a'))
+
+    def test_utf8_parsing(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb(b'"\xbf"', '"\ufffd"')
+        pb(b'"\x80"', '"\ufffd"')
+        pb(b'"\x80\xbf"', '"\ufffd\ufffd"')
+        pb(b'"\x80\xbf\x80"', '"\ufffd\ufffd\ufffd"')
+        pb(b'"\xc0 "', '"\ufffd "')
+        pb(b'"\xfe"', '"\ufffd"')
+        pb(b'"\xff"', '"\ufffd"')
+        pb(b'"\xff\xfe"', '"\ufffd\ufffd"')
+        pb(b'"\xfe\xfe\xff\xff"', '"\ufffd\ufffd\ufffd\ufffd"')
+        pb(b'"\xef\xbf"', '"\ufffd"')
+        pb(b'"\xe0\xa0"', '"\ufffd"')
+        pb(b'"\xf0\x9f\x98"', '"\ufffd"')
 
     def test_esc_codes(self):
         s = self.create_screen()
@@ -395,6 +413,11 @@ class TestParser(BaseTest):
         pb('\033[?2026h\033', ('screen_set_mode', 2026, 1),)
         s.set_pending_activated_at(0.00001)
         pb(']8;;\x07', ('set_active_hyperlink', None, None))
+        pb('😀'.encode()[:-1])
+        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('😀'.encode()[-1:])
+        pb('\033[?2026l', '\ufffd', ('screen_reset_mode', 2026, 1),)
+        pb('a', ('draw', 'a'))
 
     def test_oth_codes(self):
         s = self.create_screen()

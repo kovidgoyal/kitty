@@ -20,7 +20,7 @@
 
 // Macros {{{
 
-#define SET_STATE(state) self->vte_state = state; self->parser_buf_pos = 0; self->utf8_state = UTF8_ACCEPT;
+#define SET_STATE(x) self->vte_state = VTE_##x; self->parser_buf_pos = 0; self->utf8.state = UTF8_ACCEPT; self->utf8.prev = UTF8_ACCEPT;
 
 #define IS_DIGIT \
     case '0': \
@@ -145,7 +145,7 @@ typedef struct PS {
     id_type window_id;
 
     unsigned parser_buf_pos;
-    UTF8State utf8_state;
+    struct { UTF8State prev, state; } utf8;
     VTEState vte_state;
 
     // this is used only during dispatch of a single byte, its present here just to avoid adding an extra parameter to accumulate_osc()
@@ -173,15 +173,21 @@ typedef struct PS {
 static void
 draw_byte(PS *self, uint8_t b) {
     uint32_t ch;
-    switch (decode_utf8(&self->utf8_state, &ch, b)) {
+    switch (decode_utf8(&self->utf8.state, &ch, b)) {
         case UTF8_ACCEPT:
             REPORT_DRAW(ch);
             screen_draw(self->screen, ch, true);
             break;
-        case UTF8_REJECT:
-            self->utf8_state = UTF8_ACCEPT;
-            break;
+        case UTF8_REJECT: {
+            bool prev_was_accept = self->utf8.prev == UTF8_ACCEPT;
+            self->utf8.state = UTF8_ACCEPT; self->utf8.prev = UTF8_ACCEPT;
+            ch = 0xfffd;  // unicode replacement char
+            REPORT_DRAW(ch);
+            screen_draw(self->screen, ch, true);
+            if (!prev_was_accept) draw_byte(self, b);
+        } break;
     }
+    self->utf8.prev = self->utf8.state;
 }
 
 static void
@@ -206,7 +212,7 @@ dispatch_normal_mode_byte(PS *self) {
         case SO:
             REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
         case ESC:
-            SET_STATE(VTE_ESC); break;
+            SET_STATE(ESC); break;
         case NUL:
         case DEL:
             break;  // no-op
@@ -237,23 +243,23 @@ screen_nel(Screen *screen) { screen_carriage_return(screen); screen_linefeed(scr
 
 static void
 dispatch_esc_mode_byte(PS *self) {
-#define CALL_ED(name) REPORT_COMMAND(name); name(self->screen); SET_STATE(VTE_NORMAL);
-#define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(self->screen, ch); SET_STATE(VTE_NORMAL);
-#define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(self->screen, a, b); SET_STATE(VTE_NORMAL);
+#define CALL_ED(name) REPORT_COMMAND(name); name(self->screen); SET_STATE(NORMAL);
+#define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(self->screen, ch); SET_STATE(NORMAL);
+#define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(self->screen, a, b); SET_STATE(NORMAL);
     uint8_t ch = self->input_data[self->input_pos++];
     switch(self->parser_buf_pos) {
         case 0:
             switch (ch) {
                 case ESC_DCS:
-                    SET_STATE(VTE_DCS); break;
+                    SET_STATE(DCS); break;
                 case ESC_OSC:
-                    SET_STATE(VTE_OSC); break;
+                    SET_STATE(OSC); break;
                 case ESC_CSI:
-                    SET_STATE(VTE_CSI); break;
+                    SET_STATE(CSI); break;
                 case ESC_APC:
-                    SET_STATE(VTE_APC); break;
+                    SET_STATE(APC); break;
                 case ESC_PM:
-                    SET_STATE(VTE_PM); break;
+                    SET_STATE(PM); break;
                 case ESC_RIS:
                     CALL_ED(screen_reset); break;
                 case ESC_IND:
@@ -277,7 +283,7 @@ dispatch_esc_mode_byte(PS *self) {
                     break;
                 default:
                     REPORT_ERROR("%s0x%x", "Unknown char after ESC: ", ch);
-                    SET_STATE(VTE_NORMAL); break;
+                    SET_STATE(NORMAL); break;
             }
             break;
         default:
@@ -325,7 +331,7 @@ dispatch_esc_mode_byte(PS *self) {
                 default:
                     REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", self->parser_buf[0], ch); break;
             }
-            SET_STATE(VTE_NORMAL);
+            SET_STATE(NORMAL);
             break;
     }
 #undef CALL_ED
@@ -552,7 +558,7 @@ END_ALLOW_CASE_RANGE
             if (self->parser_buf_pos > 0 && self->parser_buf[self->parser_buf_pos-1] == ESC) {
                 if (ch == '\\') { self->parser_buf_pos--; return true; }
                 REPORT_ERROR("DCS sequence contained ESC without trailing \\ at pos: %u ignoring the sequence", self->parser_buf_pos);
-                SET_STATE(VTE_ESC); return false;
+                SET_STATE(ESC); return false;
             }
             if (self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
                 REPORT_ERROR("DCS sequence too long, truncating.");
@@ -682,7 +688,7 @@ accumulate_csi(PS *self) {
 #define ENSURE_SPACE \
     if (self->parser_buf_pos > PARSER_BUF_SZ - 1) { \
         REPORT_ERROR("CSI sequence too long, ignoring"); \
-        SET_STATE(VTE_NORMAL); \
+        SET_STATE(NORMAL); \
         return false; \
     }
 
@@ -701,7 +707,7 @@ accumulate_csi(PS *self) {
         case '=':
             if (self->parser_buf_pos != 0) {
                 REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
-                SET_STATE(VTE_NORMAL);
+                SET_STATE(NORMAL);
                 return false;
             }
             ENSURE_SPACE;
@@ -733,11 +739,11 @@ END_ALLOW_CASE_RANGE
             break;
         case NUL:
         case DEL:
-            SET_STATE(VTE_NORMAL);
+            SET_STATE(NORMAL);
             break;  // no-op
         default:
             REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
-            SET_STATE(VTE_NORMAL);
+            SET_STATE(NORMAL);
             return false;
 
     }
@@ -1345,25 +1351,25 @@ accumulate_oth(PS *self) {
             dispatch##_esc_mode_byte(self); \
             break; \
         case VTE_CSI: \
-            if (accumulate_csi(self)) { dispatch##_csi(self); SET_STATE(VTE_NORMAL); watch_for_pending; } \
+            if (accumulate_csi(self)) { dispatch##_csi(self); SET_STATE(NORMAL); watch_for_pending; } \
             break; \
         case VTE_OSC: \
             if (accumulate_osc(self)) {  \
                 dispatch##_osc(self); \
                 if (self->extended_osc_code) { \
                     self->input_pos--; \
-                    if (accumulate_osc(self)) { dispatch##_osc(self); SET_STATE(VTE_NORMAL); } \
-                } else { SET_STATE(VTE_NORMAL); } \
+                    if (accumulate_osc(self)) { dispatch##_osc(self); SET_STATE(NORMAL); } \
+                } else { SET_STATE(NORMAL); } \
             } \
             break; \
         case VTE_APC: \
-            if (accumulate_oth(self)) { dispatch##_apc(self); SET_STATE(VTE_NORMAL); } \
+            if (accumulate_oth(self)) { dispatch##_apc(self); SET_STATE(NORMAL); } \
             break; \
         case VTE_PM: \
-            if (accumulate_oth(self)) { dispatch##_pm(self); SET_STATE(VTE_NORMAL); } \
+            if (accumulate_oth(self)) { dispatch##_pm(self); SET_STATE(NORMAL); } \
             break; \
         case VTE_DCS: \
-            if (accumulate_dcs(self)) { dispatch##_dcs(self); SET_STATE(VTE_NORMAL); watch_for_pending; } \
+            if (accumulate_dcs(self)) { dispatch##_dcs(self); SET_STATE(NORMAL); watch_for_pending; } \
             if (self->vte_state == ESC) { self->input_pos--; dispatch##_esc_mode_byte(self); } \
             break; \
         case VTE_NORMAL: \
@@ -1389,7 +1395,7 @@ pending_normal_mode_byte(PS *self) {
     uint8_t ch = self->input_data[self->input_pos++];
     switch(ch) {
         case ESC:
-            SET_STATE(VTE_ESC); break;
+            SET_STATE(ESC); break;
         default:
             ensure_pending_space(self, 1);
             self->pending_mode.buf[self->pending_mode.used++] = ch;
@@ -1405,20 +1411,20 @@ pending_esc_mode_byte(PS *self) {
         self->pending_mode.buf[self->pending_mode.used++] = ESC;
         self->pending_mode.buf[self->pending_mode.used++] = self->parser_buf[self->parser_buf_pos - 1];
         self->pending_mode.buf[self->pending_mode.used++] = ch;
-        SET_STATE(VTE_NORMAL);
+        SET_STATE(NORMAL);
         return;
     }
     switch (ch) {
         case ESC_DCS:
-            SET_STATE(VTE_DCS); break;
+            SET_STATE(DCS); break;
         case ESC_OSC:
-            SET_STATE(VTE_OSC); break;
+            SET_STATE(OSC); break;
         case ESC_CSI:
-            SET_STATE(VTE_CSI); break;
+            SET_STATE(CSI); break;
         case ESC_APC:
-            SET_STATE(VTE_APC); break;
+            SET_STATE(APC); break;
         case ESC_PM:
-            SET_STATE(VTE_PM); break;
+            SET_STATE(PM); break;
         IS_ESCAPED_CHAR:
             self->parser_buf[self->parser_buf_pos++] = ch;
             break;
@@ -1426,7 +1432,7 @@ pending_esc_mode_byte(PS *self) {
             ensure_pending_space(self, 2);
             self->pending_mode.buf[self->pending_mode.used++] = ESC;
             self->pending_mode.buf[self->pending_mode.used++] = ch;
-            SET_STATE(VTE_NORMAL); break;
+            SET_STATE(NORMAL); break;
     }
 }
 
@@ -1651,7 +1657,8 @@ free_vt_parser(Parser* self) {
 static void
 reset(PS *self) {
     self->vte_state = VTE_NORMAL;
-    self->utf8_state = UTF8_ACCEPT;
+    self->utf8.state = UTF8_ACCEPT;
+    self->utf8.prev = UTF8_ACCEPT;
     self->parser_buf_pos = 0;
 
     self->pending_mode.activated_at = 0;
