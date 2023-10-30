@@ -79,6 +79,11 @@ class TestParser(BaseTest):
         self.ae(str(s.line(3)), 'ßxyz1')
         pb('ニチ ', 'ニチ ')
         self.ae(str(s.line(4)), 'ニチ ')
+        s.reset()
+        self.assertFalse(str(s.line(1)) + str(s.line(2)) + str(s.line(3)))
+        c1_controls = '\x84\x85\x88\x8d\x8e\x8f\x90\x96\x97\x98\x9a\x9b\x9c\x9d\x9e\x9f'
+        pb(c1_controls, c1_controls)
+        self.assertFalse(str(s.line(1)) + str(s.line(2)) + str(s.line(3)))
 
     def test_esc_codes(self):
         s = self.create_screen()
