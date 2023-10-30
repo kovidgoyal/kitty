@@ -917,10 +917,14 @@ class TestScreen(BaseTest):
             if use_pending_mode:
                 parse_bytes(s, b'\033[?2026h')
             send(q)
+            del q
             if use_pending_mode:
                 self.ae(c.cc_buf, [])
                 parse_bytes(s, b'\033[?2026l')
-            self.ae(c.cc_buf, list(expected))
+            try:
+                self.ae(c.cc_buf, list(expected))
+            finally:
+                del expected
 
         for use_pending_mode in (False, True):
             t('XYZ', use_pending_mode, ('p;XYZ', False))

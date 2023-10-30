@@ -17,7 +17,7 @@
 #define EXTENDED_OSC_SENTINEL ESC
 #define PARSER_BUF_SZ (8u * 1024u)
 #define PENDING_BUF_INCREMENT (16u * 1024u)
-#define PENDING_BUF_LIMIT (32u * READ_BUF_SZ)
+#define PENDING_BUF_LIMIT READ_BUF_SZ
 
 // Macros {{{
 
@@ -142,6 +142,27 @@ typedef enum VTEState {
     VTE_NORMAL, VTE_ESC = ESC, VTE_CSI = ESC_CSI, VTE_OSC = ESC_OSC, VTE_DCS = ESC_DCS, VTE_APC = ESC_APC, VTE_PM = ESC_PM
 } VTEState;
 
+static inline const char*
+vte_state_name(VTEState s) {
+    switch(s) {
+        case VTE_NORMAL: return "VTE_NORMAL";
+        case VTE_ESC: return "VTE_ESC";
+        case VTE_CSI: return "VTE_CSI";
+        case VTE_OSC: return "VTE_OSC";
+        case VTE_DCS: return "VTE_DCS";
+        case VTE_APC: return "VTE_APC";
+        case VTE_PM: return "VTE_PM";
+    }
+    static char buf[16];
+    snprintf(buf, sizeof(buf), "VTE_0x%x", s);
+    return buf;
+}
+
+typedef struct PendingHeader{
+    VTEState which: 8;
+    uint32_t size: 24;
+} PendingHeader;
+
 typedef struct PS {
     id_type window_id;
 
@@ -155,8 +176,7 @@ typedef struct PS {
     struct {
         monotonic_t activated_at, wait_time;
         unsigned stop_escape_code_type;
-        size_t capacity, used;
-        struct { size_t start, length; } current;
+        size_t capacity, used, current;
         uint8_t *buf;
     } pending_mode;
 
@@ -166,8 +186,9 @@ typedef struct PS {
     const uint8_t *input_data;
     size_t input_sz, input_pos;
     monotonic_t now;
-    uint8_t parser_buf[PARSER_BUF_SZ + 8];  // +8 to ensure we can always zero terminate
-    bool draining_pending;
+    uint8_t *parser_buf;
+
+    uint8_t _parser_buf[PARSER_BUF_SZ + 8];  // +8 to ensure we can always zero terminate
 } PS;
 
 // Normal mode {{{
@@ -193,9 +214,8 @@ draw_byte(PS *self, uint8_t b) {
 }
 
 static void
-dispatch_normal_mode_byte(PS *self) {
+dispatch_normal_mode_byte(PS *self, uint8_t ch, bool from_within_a_csi UNUSED) {
 #define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name); name(self->screen); break;
-    uint8_t ch = self->input_data[self->input_pos++];
     switch(ch) {
         case BEL:
             CALL_SCREEN_HANDLER(screen_bell);
@@ -243,25 +263,35 @@ dispatch_normal_mode_byte(PS *self) {
 static void
 screen_nel(Screen *screen) { screen_carriage_return(screen); screen_linefeed(screen); }
 
+static bool
+accumulate_esc(PS *self) {
+    uint8_t ch = self->input_data[self->input_pos++];
+    self->parser_buf[self->parser_buf_pos++] = ch;
+    if (self->parser_buf_pos > 1) return true;
+    switch (ch) {
+        default:
+            return true;
+        IS_ESCAPED_CHAR:
+            return false;
+    }
+}
+
 static void
-dispatch_esc_mode_byte(PS *self) {
+dispatch_esc(PS *self) {
 #define CALL_ED(name) REPORT_COMMAND(name); name(self->screen); SET_STATE(NORMAL);
 #define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(self->screen, ch); SET_STATE(NORMAL);
 #define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(self->screen, a, b); SET_STATE(NORMAL);
-    uint8_t ch = self->input_data[self->input_pos++];
+    uint8_t prev_ch, ch;
     switch(self->parser_buf_pos) {
-        case 0:
+        case 1:
+            ch = self->parser_buf[0];
             switch (ch) {
-                case ESC_DCS:
-                    SET_STATE(DCS); break;
-                case ESC_OSC:
-                    SET_STATE(OSC); break;
-                case ESC_CSI:
-                    SET_STATE(CSI); break;
-                case ESC_APC:
-                    SET_STATE(APC); break;
-                case ESC_PM:
-                    SET_STATE(PM); break;
+                case ESC_DCS: SET_STATE(DCS); break;
+                case ESC_OSC: SET_STATE(OSC); break;
+                case ESC_CSI: SET_STATE(CSI); break;
+                case ESC_APC: SET_STATE(APC); break;
+                case ESC_PM: SET_STATE(PM); break;
+
                 case ESC_RIS:
                     CALL_ED(screen_reset); break;
                 case ESC_IND:
@@ -280,16 +310,15 @@ dispatch_esc_mode_byte(PS *self) {
                     CALL_ED(screen_normal_keypad_mode); break;
                 case ESC_DECKPAM:
                     CALL_ED(screen_alternate_keypad_mode); break;
-                IS_ESCAPED_CHAR:
-                    self->parser_buf[self->parser_buf_pos++] = ch;
-                    break;
                 default:
                     REPORT_ERROR("%s0x%x", "Unknown char after ESC: ", ch);
                     SET_STATE(NORMAL); break;
             }
             break;
         default:
-            switch(self->parser_buf[0]) {
+            prev_ch = self->parser_buf[0];
+            ch = self->parser_buf[1];
+            switch(prev_ch) {
                 case '%':
                     switch(ch) {
                         case '@':
@@ -331,7 +360,7 @@ dispatch_esc_mode_byte(PS *self) {
                     }
                     break;
                 default:
-                    REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", self->parser_buf[0], ch); break;
+                    REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", prev_ch, ch); break;
             }
             SET_STATE(NORMAL);
             break;
@@ -377,7 +406,7 @@ accumulate_osc(PS *self) {
             }
             /* fallthrough */
         default:
-            if (!self->draining_pending && self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
+            if (self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
                 if (handle_extended_osc_code(self)) self->extended_osc_code = true;
                 else REPORT_ERROR("OSC sequence too long (> %d bytes) truncating.", PARSER_BUF_SZ);
                 return true;
@@ -547,35 +576,6 @@ dispatch_osc(PS *self) {
 // DCS {{{
 
 static bool
-accumulate_dcs(PS *self) {
-    uint8_t ch = self->input_data[self->input_pos++];
-    switch(ch) {
-        case NUL:
-        case DEL:
-            break;
-        case ESC:
-START_ALLOW_CASE_RANGE
-        case 32 ... 126:
-END_ALLOW_CASE_RANGE
-            if (self->parser_buf_pos > 0 && self->parser_buf[self->parser_buf_pos-1] == ESC) {
-                if (ch == '\\') { self->parser_buf_pos--; return true; }
-                REPORT_ERROR("DCS sequence contained ESC without trailing \\ at pos: %u ignoring the sequence", self->parser_buf_pos);
-                SET_STATE(ESC); return false;
-            }
-            if (self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
-                REPORT_ERROR("DCS sequence too long, truncating.");
-                return true;
-            }
-            self->parser_buf[self->parser_buf_pos++] = ch;
-            break;
-        default:
-            REPORT_ERROR("DCS sequence contained non-printable character: 0x%x ignoring the sequence", ch);
-    }
-    return false;
-}
-
-
-static bool
 startswith(const uint8_t *string, ssize_t sz, const char *prefix, ssize_t l) {
     if (sz < l) return false;
     for (ssize_t i = 0; i < l; i++) {
@@ -725,7 +725,8 @@ END_ALLOW_CASE_RANGE
         case '|':
         case '}':
         case '~':
-            self->parser_buf[self->parser_buf_pos] = ch;
+            ENSURE_SPACE;
+            self->parser_buf[self->parser_buf_pos++] = ch;
             return true;
         case BEL:
         case BS:
@@ -736,8 +737,7 @@ END_ALLOW_CASE_RANGE
         case CR:
         case SO:
         case SI:
-            self->input_pos--;
-            dispatch_normal_mode_byte(self);
+            dispatch_normal_mode_byte(self, ch, true);
             break;
         case NUL:
         case DEL:
@@ -1031,8 +1031,8 @@ dispatch_csi(PS *self) {
 }
 
     char start_modifier = 0, end_modifier = 0;
-    uint8_t *buf = self->parser_buf, code = self->parser_buf[self->parser_buf_pos];
-    unsigned int num = self->parser_buf_pos, start, i, num_params=0;
+    uint8_t *buf = self->parser_buf, code = self->parser_buf[self->parser_buf_pos - 1];
+    unsigned int num = self->parser_buf_pos - 1, start, i, num_params=0;
     static int params[MAX_PARAMS] = {0}, p1, p2;
     bool private;
     if (buf[0] == '>' || buf[0] == '<' || buf[0] == '?' || buf[0] == '!' || buf[0] == '=') {
@@ -1350,7 +1350,7 @@ accumulate_oth(PS *self) {
 #define dispatch_single_byte(dispatch, watch_for_pending) { \
     switch(self->vte_state) { \
         case VTE_ESC: \
-            dispatch##_esc_mode_byte(self); \
+            if (accumulate_esc(self)) dispatch##_esc(self); \
             break; \
         case VTE_CSI: \
             if (accumulate_csi(self)) { dispatch##_csi(self); SET_STATE(NORMAL); watch_for_pending; } \
@@ -1371,16 +1371,18 @@ accumulate_oth(PS *self) {
             if (accumulate_oth(self)) { dispatch##_pm(self); SET_STATE(NORMAL); } \
             break; \
         case VTE_DCS: \
-            if (accumulate_dcs(self)) { dispatch##_dcs(self); SET_STATE(NORMAL); watch_for_pending; } \
-            if (self->vte_state == ESC) { self->input_pos--; dispatch##_esc_mode_byte(self); } \
+            if (accumulate_oth(self)) { dispatch##_dcs(self); SET_STATE(NORMAL); watch_for_pending; } \
             break; \
         case VTE_NORMAL: \
-            dispatch##_normal_mode_byte(self); \
+            dispatch##_normal_mode_byte(self, self->input_data[self->input_pos++], false); \
             break; \
     } \
 } \
 
 // Pending mode {{{
+#define pending_header ((PendingHeader*)&self->pending_mode.buf[self->pending_mode.current])
+#define PENDING_END_SENTINEL 0xff
+
 static void
 ensure_pending_space(PS *self, size_t amt) {
     if (self->pending_mode.capacity < self->pending_mode.used + amt) {
@@ -1392,73 +1394,138 @@ ensure_pending_space(PS *self, size_t amt) {
     }
 }
 
+static bool
+current_pending_is(PS *self, VTEState state) {
+    return self->pending_mode.current < self->pending_mode.used && pending_header->which == state;
+}
+
 static void
-pending_normal_mode_byte(PS *self) {
-    uint8_t ch = self->input_data[self->input_pos++];
+align_pending_current(PS *self) {
+    // ensure PendingHeader is aligned
+    size_t off = self->pending_mode.current % sizeof(PendingHeader);
+    if (off) self->pending_mode.current += sizeof(PendingHeader) - off;  // 4 byte align
+}
+
+static void
+new_pending_state(PS *self, VTEState state) {
+    if (self->pending_mode.current < self->pending_mode.used) {
+        pending_header->size = self->pending_mode.used - self->pending_mode.current;
+        if (pending_header->size > sizeof(PendingHeader)) {
+            self->pending_mode.current = self->pending_mode.used;
+            align_pending_current(self);
+        }
+        self->pending_mode.used = self->pending_mode.current;
+    }
+    ensure_pending_space(self, sizeof(PendingHeader) + 128);
+    pending_header->which = state;
+    pending_header->size = sizeof(PendingHeader);
+    self->pending_mode.used += sizeof(PendingHeader);
+}
+
+static void
+dispatch_pending_bytes(PS *self) {
+    self->pending_mode.current = 0;
+    uint8_t *orig = self->parser_buf; size_t opos = self->parser_buf_pos;
+    while (pending_header->which != PENDING_END_SENTINEL) {
+        self->parser_buf = self->pending_mode.buf + self->pending_mode.current + sizeof(PendingHeader);
+        self->parser_buf_pos = pending_header->size - sizeof(PendingHeader);
+        if (self->parser_buf_pos) {
+            switch (pending_header->which) {
+                case VTE_ESC: dispatch_esc(self); break;
+                case VTE_CSI: dispatch_csi(self); break;
+                case VTE_OSC: dispatch_osc(self); break;
+                case VTE_DCS: dispatch_dcs(self); break;
+                case VTE_APC: dispatch_apc(self); break;
+                case VTE_PM:  dispatch_pm(self); break;
+                case VTE_NORMAL:
+                    for (unsigned i = 0; i < self->parser_buf_pos; i++) {
+                        dispatch_normal_mode_byte(self, self->parser_buf[i], false);
+                    }
+                    break;
+            }
+        }
+        self->pending_mode.current += pending_header->size;
+        align_pending_current(self);
+    }
+    self->pending_mode.current = 0;
+    self->pending_mode.used = 0;
+    self->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
+    self->parser_buf = orig; self->parser_buf_pos = opos;
+    if (self->pending_mode.capacity > PENDING_BUF_LIMIT + PENDING_BUF_INCREMENT) {
+        self->pending_mode.capacity = PENDING_BUF_LIMIT;
+        self->pending_mode.buf = realloc(self->pending_mode.buf, self->pending_mode.capacity);
+        if (!self->pending_mode.buf) fatal("Out of memory");
+    }
+}
+
+
+static void
+ensure_pending_state(PS *self, VTEState state) {
+    if (!current_pending_is(self, state)) new_pending_state(self, state);
+}
+
+static void
+pending_add_to_current(PS *self, uint8_t* data, size_t size) {
+    ensure_pending_space(self, size);
+    memcpy(self->pending_mode.buf + self->pending_mode.used, data, size);
+    self->pending_mode.used += size;
+}
+
+static void
+pending_normal_mode_byte(PS *self, uint8_t ch, bool from_within_a_csi) {
     switch(ch) {
         case ESC:
             SET_STATE(ESC); break;
         default:
-            ensure_pending_space(self, 1);
-            self->pending_mode.buf[self->pending_mode.used++] = ch;
+            if (!from_within_a_csi) {
+                ensure_pending_state(self, VTE_NORMAL);
+                pending_add_to_current(self, &ch, 1);
+            }
             break;
     }
 }
 
+#define pending_add(...) pending_add_to_current(self, (uint8_t[]){__VA_ARGS__}, sizeof((uint8_t[]){__VA_ARGS__}))
+
 static void
-pending_esc_mode_byte(PS *self) {
-    uint8_t ch = self->input_data[self->input_pos++];
-    if (self->parser_buf_pos > 0) {
-        ensure_pending_space(self, 3);
-        self->pending_mode.buf[self->pending_mode.used++] = ESC;
-        self->pending_mode.buf[self->pending_mode.used++] = self->parser_buf[self->parser_buf_pos - 1];
-        self->pending_mode.buf[self->pending_mode.used++] = ch;
-        SET_STATE(NORMAL);
-        return;
+pending_esc(PS *self) {
+    if (self->parser_buf_pos == 1) {
+        switch(self->parser_buf[0]) {
+            case ESC_DCS: SET_STATE(DCS); return;
+            case ESC_OSC: SET_STATE(OSC); return;
+            case ESC_CSI: SET_STATE(CSI); return;
+            case ESC_APC: SET_STATE(APC); return;
+            case ESC_PM: SET_STATE(PM); return;
+        }
     }
-    switch (ch) {
-        case ESC_DCS:
-            SET_STATE(DCS); break;
-        case ESC_OSC:
-            SET_STATE(OSC); break;
-        case ESC_CSI:
-            SET_STATE(CSI); break;
-        case ESC_APC:
-            SET_STATE(APC); break;
-        case ESC_PM:
-            SET_STATE(PM); break;
-        IS_ESCAPED_CHAR:
-            self->parser_buf[self->parser_buf_pos++] = ch;
-            break;
-        default:
-            ensure_pending_space(self, 2);
-            self->pending_mode.buf[self->pending_mode.used++] = ESC;
-            self->pending_mode.buf[self->pending_mode.used++] = ch;
-            SET_STATE(NORMAL); break;
-    }
+    ensure_pending_state(self, VTE_ESC);
+    if (self->parser_buf_pos == 1) pending_add(self->parser_buf[0]);
+    else pending_add(self->parser_buf[0], self->parser_buf[1]);
+    SET_STATE(NORMAL);
 }
 
 #define pb(i) self->parser_buf[i]
 
 static void
-pending_escape_code(PS *self, char_type start_ch, char_type end_ch) {
+pending_escape_code(PS *self, VTEState which) {
     ensure_pending_space(self, 4 + self->parser_buf_pos);
-    self->pending_mode.buf[self->pending_mode.used++] = ESC;
-    self->pending_mode.buf[self->pending_mode.used++] = start_ch;
-    memcpy(self->pending_mode.buf + self->pending_mode.used, self->parser_buf, self->parser_buf_pos);
-    self->pending_mode.used += self->parser_buf_pos;
-    if (start_ch != ESC_CSI) self->pending_mode.buf[self->pending_mode.used++] = ESC;
-    self->pending_mode.buf[self->pending_mode.used++] = end_ch;
+    new_pending_state(self, which);
+    pending_add_to_current(self, self->parser_buf, self->parser_buf_pos);
 }
 
-static void pending_pm(PS *self) { pending_escape_code(self, ESC_PM, ESC_ST); }
-static void pending_apc(PS *self) { pending_escape_code(self, ESC_APC, ESC_ST); }
+static void pending_pm(PS *self) { pending_escape_code(self, VTE_PM); }
+static void pending_apc(PS *self) { pending_escape_code(self, VTE_APC); }
+static void pending_osc(PS *self) {
+    const bool is_extended = is_extended_osc(self);
+    pending_escape_code(self, VTE_OSC);
+    if (is_extended) continue_osc_52(self);
+}
 
 static void
-pending_osc(PS *self) {
-    const bool extended = is_extended_osc(self);
-    pending_escape_code(self, ESC_OSC, ESC_ST);
-    if (extended) continue_osc_52(self);
+stop_pending_mode(PS *self, unsigned stop_escape_code_type) {
+    self->pending_mode.stop_escape_code_type = stop_escape_code_type;
+    self->pending_mode.activated_at = 0;
+    new_pending_state(self, PENDING_END_SENTINEL);
 }
 
 static void
@@ -1468,71 +1535,44 @@ pending_dcs(PS *self) {
         if (pb(1) == '1') {
             REPORT_COMMAND(screen_start_pending_mode);
             self->pending_mode.activated_at = monotonic();
-        } else {
-            self->pending_mode.stop_escape_code_type = ESC_DCS;
-            self->pending_mode.activated_at = 0;
-        }
-    } else pending_escape_code(self, ESC_DCS, ESC_ST);
+        } else stop_pending_mode(self, ESC_DCS);
+    } else pending_escape_code(self, VTE_DCS);
 }
 
 static void
 pending_csi(PS *self) {
-    if (self->parser_buf_pos == 5 && pb(0) == '?' && pb(1) == '2' && pb(2) == '0' && pb(3) == '2' && pb(4) == '6' && (pb(5) == 'h' || pb(5) == 'l')) {
+    if (self->parser_buf_pos == 6 && pb(0) == '?' && pb(1) == '2' && pb(2) == '0' && pb(3) == '2' && pb(4) == '6' && (pb(5) == 'h' || pb(5) == 'l')) {
         if (pb(5) == 'h') {
             REPORT_COMMAND(screen_set_mode, 2026, 1);
             self->pending_mode.activated_at = monotonic();
-        } else {
-            self->pending_mode.activated_at = 0;
-            self->pending_mode.stop_escape_code_type = ESC_CSI;
-        }
-    } else pending_escape_code(self, ESC_CSI, pb(self->parser_buf_pos));
+        } else stop_pending_mode(self, ESC_CSI);
+    } else pending_escape_code(self, VTE_CSI);
 }
 #undef pb
 
 static void
 queue_pending_bytes(PS *self) {
+#ifdef DUMP_COMMANDS
+    self->pending_mode.stop_escape_code_type = 0;
+#endif
     while (self->input_pos < self->input_sz) {
-        dispatch_single_byte(pending, if (!self->pending_mode.activated_at) goto end);
+        dispatch_single_byte(pending, if (!self->pending_mode.activated_at) goto end;);
     }
 end:
 FLUSH_DRAW;
 }
 
-static void
-parse_pending_bytes(PS *self) {
-    const uint8_t *orig_input_data = self->input_data; size_t orig_input_sz = self->input_sz, orig_input_pos = self->input_pos;
-    self->input_data = self->pending_mode.buf; self->input_sz = self->pending_mode.used; self->input_pos = 0;
-    self->draining_pending = true;
-    while (self->input_pos < self->input_sz) {
-        dispatch_single_byte(dispatch, ;);
-    }
-    self->draining_pending = false;
-    self->input_data = orig_input_data; self->input_sz = orig_input_sz; self->input_pos = orig_input_pos;
+static bool
+pending_over_limits(PS *self) {
+    return self->pending_mode.used > PENDING_BUF_LIMIT || self->pending_mode.activated_at + self->pending_mode.wait_time < self->now;
 }
 
-static void
-dump_partial_escape_code_to_pending(PS *self) {
-    ensure_pending_space(self, self->parser_buf_pos + 2);
-    if (self->parser_buf_pos) {
-        switch(self->vte_state) {
-            case VTE_NORMAL: case VTE_ESC: break;
-            case VTE_CSI: case VTE_OSC: case VTE_DCS: case VTE_APC: case VTE_PM:
-                self->pending_mode.buf[self->pending_mode.used++] = ESC;
-                self->pending_mode.buf[self->pending_mode.used++] = self->vte_state;
-                break;
-        }
-        memcpy(self->pending_mode.buf + self->pending_mode.used, self->parser_buf, self->parser_buf_pos);
-        self->pending_mode.used += self->parser_buf_pos;
-    } else if (self->vte_state == VTE_ESC) {
-        self->pending_mode.buf[self->pending_mode.used++] = ESC;
-    }
-}
 // }}}
 
 static void
 parse_bytes_watching_for_pending(PS *self) {
     while (self->input_pos < self->input_sz) {
-        dispatch_single_byte(dispatch, if (self->pending_mode.activated_at) goto end);
+        dispatch_single_byte(dispatch, if (self->pending_mode.activated_at) goto end;);
     }
 end:
 FLUSH_DRAW;
@@ -1540,61 +1580,26 @@ FLUSH_DRAW;
 
 static void
 do_parse_vt(PS *self) {
-    enum STATE {START, PARSE_PENDING, PARSE_READ_BUF, QUEUE_PENDING};
-    enum STATE state = START;
-    VTEState vte_state_at_start_of_pending = VTE_NORMAL;
-
     do {
-        switch(state) {
-            case START:
-                if (self->pending_mode.activated_at) {
-                    if (self->pending_mode.activated_at + self->pending_mode.wait_time < self->now || self->pending_mode.capacity >= PENDING_BUF_LIMIT) {
-                        dump_partial_escape_code_to_pending(self);
-                        self->pending_mode.activated_at = 0;
-                        state = START;
-                    } else state = QUEUE_PENDING;
-                } else {
-                    state = self->pending_mode.used ? PARSE_PENDING : PARSE_READ_BUF;
+        if (self->pending_mode.activated_at) {
+            queue_pending_bytes(self);
+            if (self->pending_mode.activated_at && pending_over_limits(self)) stop_pending_mode(self, 0);
+            if (!self->pending_mode.activated_at) {
+                if (self->pending_mode.used) {
+                    VTEState before = self->vte_state;
+                    dispatch_pending_bytes(self);
+                    self->vte_state = before;
                 }
-                break;
-
-            case PARSE_PENDING:
-                self->vte_state = vte_state_at_start_of_pending;
-                vte_state_at_start_of_pending = VTE_NORMAL;
-                parse_pending_bytes(self);
-                self->pending_mode.used = 0;
-                self->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
-                if (self->pending_mode.capacity > READ_BUF_SZ + PENDING_BUF_INCREMENT) {
-                    self->pending_mode.capacity = READ_BUF_SZ;
-                    self->pending_mode.buf = realloc(self->pending_mode.buf, self->pending_mode.capacity);
-                    if (!self->pending_mode.buf) fatal("Out of memory");
-                }
+#ifdef DUMP_COMMANDS
                 if (self->pending_mode.stop_escape_code_type) {
                     if (self->pending_mode.stop_escape_code_type == ESC_DCS) { REPORT_COMMAND(screen_stop_pending_mode); }
                     else if (self->pending_mode.stop_escape_code_type == ESC_CSI) { REPORT_COMMAND(screen_reset_mode, 2026, 1); }
                     self->pending_mode.stop_escape_code_type = 0;
                 }
-                state = START;
-                break;
-
-            case PARSE_READ_BUF:
-                self->pending_mode.activated_at = 0;
-                parse_bytes_watching_for_pending(self);
-                state = START;
-                break;
-
-            case QUEUE_PENDING: {
-                self->pending_mode.stop_escape_code_type = 0;
-                if (self->pending_mode.used >= READ_BUF_SZ) {
-                    dump_partial_escape_code_to_pending(self);
-                    self->pending_mode.activated_at = 0;
-                    state = START;
-                    break;
-                }
-                if (!self->pending_mode.used) vte_state_at_start_of_pending = self->vte_state;
-                queue_pending_bytes(self);
-                state = START;
-            }   break;
+#endif
+            }
+        } else {
+            parse_bytes_watching_for_pending(self);
         }
     } while(self->input_pos < self->input_sz || (!self->pending_mode.activated_at && self->pending_mode.used));
 }
@@ -1664,7 +1669,9 @@ reset(PS *self) {
     self->parser_buf_pos = 0;
 
     self->pending_mode.activated_at = 0;
+#ifdef DUMP_COMMANDS
     self->pending_mode.stop_escape_code_type = 0;
+#endif
 }
 
 void
@@ -1707,6 +1714,7 @@ PyTypeObject Parser_Type = {
 
 Parser*
 alloc_vt_parser(id_type window_id) {
+    if (false) vte_state_name(VTE_NORMAL);
     Parser *self = (Parser*)Parser_Type.tp_alloc(&Parser_Type, 1);
     if (self != NULL) {
         self->state = calloc(1, sizeof(PS));
@@ -1714,6 +1722,7 @@ alloc_vt_parser(id_type window_id) {
         PS *state = (PS*)self->state;
         state->window_id = window_id;
         state->pending_mode.wait_time = s_double_to_monotonic_t(2.0);
+        state->parser_buf = state->_parser_buf;
     }
     return self;
 }

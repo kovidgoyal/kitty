@@ -109,9 +109,10 @@ class TestParser(BaseTest):
         pb('12\033Da', '12', ('screen_index',), 'a')
         self.ae(str(s.line(0)), '12')
         self.ae(str(s.line(1)), '  a')
-        pb('\033x', ('Unknown char after ESC: 0x%x' % ord('x'),))
+        pb('\033xa', ('Unknown char after ESC: 0x%x' % ord('x'),), 'a')
         pb('\033c123', ('screen_reset', ), '123')
         self.ae(str(s.line(0)), '123')
+        pb('\033.\033a', ('Unhandled charset related escape code: 0x2e 0x1b',), 'a')
 
     def test_csi_codes(self):
         s = self.create_screen()
@@ -374,7 +375,7 @@ class TestParser(BaseTest):
         pb('\033P=1s\033\\e', ('screen_start_pending_mode',))
         pb('\033P'), pb('='), pb('2s')
         pb('\033\\', ('draw', 'e'), ('screen_stop_pending_mode',))
-        pb('\033P=1sxyz;.;\033\\''\033P=2skjf".,><?_+)98\033\\', ('screen_start_pending_mode',))
+        pb('\033P=1sxyz;.;\033\\''\033P=2skjf".,><?_+)98\033\\', ('screen_start_pending_mode',), ('screen_stop_pending_mode',))
         pb('\033P=1s\033\\f\033P=1s\033\\', ('screen_start_pending_mode',), ('screen_start_pending_mode',))
         pb('\033P=2s\033\\', ('draw', 'f'), ('screen_stop_pending_mode',))
         pb('\033P=1s\033\\XXX\033P=2s\033\\', ('screen_start_pending_mode',), ('draw', 'XXX'), ('screen_stop_pending_mode',))
@@ -389,9 +390,9 @@ class TestParser(BaseTest):
         pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
         pb('\033P+q')
         time.sleep(1.2 * timeout)
+        pb('544e\033\\', ('screen_request_capabilities', 43, '544e'))
         pb(
-            '544e' + '\033\\\033P=2s\033\\',
-            ('screen_request_capabilities', 43, '544e'),
+            '\033P=2s\033\\',
             ('Pending mode stop command issued while not in pending mode, this can be '
              'either a bug in the terminal application or caused by a timeout with no '
              'data received for too long or by too much data in pending mode',),
