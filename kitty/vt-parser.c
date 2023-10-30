@@ -17,6 +17,7 @@
 #define EXTENDED_OSC_SENTINEL ESC
 #define PARSER_BUF_SZ (8u * 1024u)
 #define PENDING_BUF_INCREMENT (16u * 1024u)
+#define PENDING_BUF_LIMIT (32u * READ_BUF_SZ)
 
 // Macros {{{
 
@@ -155,6 +156,7 @@ typedef struct PS {
         monotonic_t activated_at, wait_time;
         unsigned stop_escape_code_type;
         size_t capacity, used;
+        struct { size_t start, length; } current;
         uint8_t *buf;
     } pending_mode;
 
@@ -1546,7 +1548,7 @@ do_parse_vt(PS *self) {
         switch(state) {
             case START:
                 if (self->pending_mode.activated_at) {
-                    if (self->pending_mode.activated_at + self->pending_mode.wait_time < self->now) {
+                    if (self->pending_mode.activated_at + self->pending_mode.wait_time < self->now || self->pending_mode.capacity >= PENDING_BUF_LIMIT) {
                         dump_partial_escape_code_to_pending(self);
                         self->pending_mode.activated_at = 0;
                         state = START;
