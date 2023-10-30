@@ -21,6 +21,8 @@ def cnv(x):
 class CmdDump(list):
 
     def __call__(self, *a):
+        if a and isinstance(a[0], int):
+            a = a[1:]
         self.append(tuple(map(cnv, a)))
 
 

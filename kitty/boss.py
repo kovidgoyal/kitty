@@ -231,24 +231,23 @@ class DumpCommands:  # {{{
         if args.dump_bytes:
             self.dump_bytes_to = open(args.dump_bytes, 'wb')
 
-    def __call__(self, *a: Any) -> None:
-        if a:
-            if a[0] == 'draw':
-                if a[1] is None:
-                    if self.draw_dump_buf:
-                        safe_print('draw', ''.join(self.draw_dump_buf))
-                        self.draw_dump_buf = []
-                else:
-                    self.draw_dump_buf.append(a[1])
-            elif a[0] == 'bytes':
-                self.dump_bytes_to.write(a[1])
-                self.dump_bytes_to.flush()
-            else:
+    def __call__(self, window_id: int, what: str, *a: Any) -> None:
+        if what == 'draw':
+            if a[1] is None:
                 if self.draw_dump_buf:
                     safe_print('draw', ''.join(self.draw_dump_buf))
                     self.draw_dump_buf = []
-                a = tuple(str(x, 'utf-8', 'replace') if isinstance(x, memoryview) else x for x in a)
-                safe_print(*a)
+            else:
+                self.draw_dump_buf.append(a[1])
+        elif what == 'bytes':
+            self.dump_bytes_to.write(a[1])
+            self.dump_bytes_to.flush()
+        else:
+            if self.draw_dump_buf:
+                safe_print('draw', ''.join(self.draw_dump_buf))
+                self.draw_dump_buf = []
+            a = tuple(str(x, 'utf-8', 'replace') if isinstance(x, memoryview) else x for x in a)
+            safe_print(what, *a)
 # }}}
 
 
