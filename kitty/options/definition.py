@@ -277,6 +277,13 @@ foreground and background is below this threshold, the foreground color will be 
 to white if the background is dark or black if the background is light. The default
 value is :code:`0`, which means no overriding is performed. Useful when working with applications
 that use colors that do not contrast well with your preferred color scheme.
+
+WARNING: Some programs use characters (such as block characters) for graphics
+display and may expect to be able to set the foreground and background to the
+same color (or similar colors).  If you see unexpected stripes, dots, lines,
+incorrect color, no color where you expect color, or any kind of graphic
+display problem try setting :opt:`text_fg_override_threshold` to :code:`0` to
+see if this is the cause of the problem.
 ''')
 
 egr()  # }}}
