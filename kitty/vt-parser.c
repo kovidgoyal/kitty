@@ -38,19 +38,19 @@
 
 #ifdef DUMP_COMMANDS
 static void
-_report_error(PyObject *dump_callback, const char *fmt, ...) {
+_report_error(PyObject *dump_callback, id_type window_id, const char *fmt, ...) {
     va_list argptr;
     va_start(argptr, fmt);
-    PyObject *temp = PyUnicode_FromFormatV(fmt, argptr);
+    RAII_PyObject(temp, PyUnicode_FromFormatV(fmt, argptr));
     va_end(argptr);
     if (temp != NULL) {
-        Py_XDECREF(PyObject_CallFunctionObjArgs(dump_callback, temp, NULL)); PyErr_Clear();
-        Py_CLEAR(temp);
+        RAII_PyObject(wid, PyLong_FromUnsignedLongLong(window_id));
+        Py_XDECREF(PyObject_CallFunctionObjArgs(dump_callback, wid, temp, NULL)); PyErr_Clear();
     }
 }
 
 static void
-_report_params(PyObject *dump_callback, const char *name, int *params, unsigned int count, Region *r) {
+_report_params(PyObject *dump_callback, id_type window_id, const char *name, int *params, unsigned int count, Region *r) {
     static char buf[MAX_PARAMS*3] = {0};
     unsigned int i, p=0;
     if (r) p += snprintf(buf + p, sizeof(buf) - 2, "%u %u %u %u ", r->top, r->left, r->bottom, r->right);
@@ -60,42 +60,42 @@ _report_params(PyObject *dump_callback, const char *name, int *params, unsigned 
         p += n;
     }
     buf[p] = 0;
-    Py_XDECREF(PyObject_CallFunction(dump_callback, "ss", name, buf)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "Kss", window_id, name, buf)); PyErr_Clear();
 }
 
 #define DUMP_UNUSED
 
-#define REPORT_ERROR(...) _report_error(self->dump_callback, __VA_ARGS__);
+#define REPORT_ERROR(...) _report_error(self->dump_callback, self->window_id, __VA_ARGS__);
 
 #define REPORT_COMMAND1(name) \
-        Py_XDECREF(PyObject_CallFunction(self->dump_callback, "s", #name)); PyErr_Clear();
+        Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ks", self->window_id, #name)); PyErr_Clear();
 
 #define REPORT_COMMAND2(name, x) \
-        Py_XDECREF(PyObject_CallFunction(self->dump_callback, "si", #name, (int)x)); PyErr_Clear();
+        Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ksi", self->window_id, #name, (int)x)); PyErr_Clear();
 
 #define REPORT_COMMAND3(name, x, y) \
-        Py_XDECREF(PyObject_CallFunction(self->dump_callback, "sii", #name, (int)x, (int)y)); PyErr_Clear();
+        Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ksii", self->window_id, #name, (int)x, (int)y)); PyErr_Clear();
 
 #define GET_MACRO(_1,_2,_3,NAME,...) NAME
 #define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
 #define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__)); PyErr_Clear();
 
 #define REPORT_DRAW(ch) \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "sC", "draw", ch)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); PyErr_Clear();
 
-#define REPORT_PARAMS(name, params, num, region) _report_params(self->dump_callback, name, params, num_params, region)
+#define REPORT_PARAMS(name, params, num, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, region)
 
 #define FLUSH_DRAW \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "sO", "draw", Py_None)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, "draw", Py_None)); PyErr_Clear();
 
 #define REPORT_OSC(name, string) \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "sO", #name, string)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, #name, string)); PyErr_Clear();
 
 #define REPORT_OSC2(name, code, string) \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "siO", #name, code, string)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsiO", self->window_id, #name, code, string)); PyErr_Clear();
 
 #define REPORT_HYPERLINK(id, url) \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "szz", "set_active_hyperlink", id, url)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Kszz", self->window_id, "set_active_hyperlink", id, url)); PyErr_Clear();
 
 #else
 #define REPORT_ERROR(...) log_error(ERROR_PREFIX " " __VA_ARGS__);
@@ -1593,9 +1593,10 @@ static void
 run_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) {
     PS *self = (PS*)screen->vt_parser->state;
 #ifdef DUMP_COMMANDS
+    self->window_id = screen->window_id;
     if (screen->read_buf_sz && dump_callback) {
         RAII_PyObject(mv, PyMemoryView_FromMemory((char*)screen->read_buf, screen->read_buf_sz, PyBUF_READ));
-        PyObject *ret = PyObject_CallFunction(dump_callback, "sO", "bytes", mv);
+        PyObject *ret = PyObject_CallFunction(dump_callback, "KsO", screen->window_id, "bytes", mv);
         if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
     }
 #endif

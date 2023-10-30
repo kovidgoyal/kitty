@@ -351,9 +351,9 @@ static inline void parse_graphics_code(PS *self, const uint8_t *parser_buf,
   }
 
   REPORT_VA_COMMAND(
-      "s {sc sc sc sc sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI "
-      "sI sI sI si si si sI} y#",
-      "graphics_command", "action", g.action, "delete_action", g.delete_action,
+      "K s {sc sc sc sc sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI "
+      "sI sI sI si si si sI} y#", self->window_id, "graphics_command",
+      "action", g.action, "delete_action", g.delete_action,
       "transmission_type", g.transmission_type, "compressed", g.compressed,
       "format", (unsigned int)g.format, "more", (unsigned int)g.more, "id",
       (unsigned int)g.id, "image_number", (unsigned int)g.image_number,
