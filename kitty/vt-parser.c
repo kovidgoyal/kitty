@@ -1,11 +1,10 @@
 /*
- * bytes-parser.c
+ * vt-parser.c
  * Copyright (C) 2023 Kovid Goyal <kovid at kovidgoyal.net>
  *
  * Distributed under terms of the GPL3 license.
  */
 
-// TODO: Fix dump_commands for OSC and DCS commands that used to take strings but now take memoryview
 // TODO: Test clipboard kitten with 52 and 5522
 // TODO: Test shell integration with secondary prompts
 // TODO: Test screen_request_capabilities
@@ -1593,6 +1592,13 @@ do_parse_vt(PS *self) {
 static void
 run_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) {
     PS *self = (PS*)screen->vt_parser->state;
+#ifdef DUMP_COMMANDS
+    if (screen->read_buf_sz && dump_callback) {
+        RAII_PyObject(mv, PyMemoryView_FromMemory((char*)screen->read_buf, screen->read_buf_sz, PyBUF_READ));
+        PyObject *ret = PyObject_CallFunction(dump_callback, "sO", "bytes", mv);
+        if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
+    }
+#endif
     self->input_data = screen->read_buf; self->input_sz = screen->read_buf_sz; self->input_pos = 0;
     self->dump_callback = dump_callback; self->now = now; self->screen = screen;
     do_parse_vt(self);
