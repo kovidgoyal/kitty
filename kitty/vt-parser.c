@@ -1375,7 +1375,7 @@ ensure_pending_space(PS *self, size_t amt) {
         if (self->pending_mode.capacity) {
             self->pending_mode.capacity += self->pending_mode.capacity >= READ_BUF_SZ ? PENDING_BUF_INCREMENT : self->pending_mode.capacity;
         } else self->pending_mode.capacity = PENDING_BUF_INCREMENT;
-        self->pending_mode.buf = PyMem_Realloc(self->pending_mode.buf, self->pending_mode.capacity);
+        self->pending_mode.buf = realloc(self->pending_mode.buf, self->pending_mode.capacity);
         if (!self->pending_mode.buf) fatal("Out of memory");
     }
 }
@@ -1554,7 +1554,7 @@ do_parse_vt(PS *self) {
                 self->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
                 if (self->pending_mode.capacity > READ_BUF_SZ + PENDING_BUF_INCREMENT) {
                     self->pending_mode.capacity = READ_BUF_SZ;
-                    self->pending_mode.buf = PyMem_Realloc(self->pending_mode.buf, self->pending_mode.capacity);
+                    self->pending_mode.buf = realloc(self->pending_mode.buf, self->pending_mode.capacity);
                     if (!self->pending_mode.buf) fatal("Out of memory");
                 }
                 if (self->pending_mode.stop_escape_code_type) {
@@ -1630,8 +1630,8 @@ void
 free_vt_parser(Parser* self) {
     if (self->state) {
         PS *s = (PS*)self->state;
-        PyMem_Free(s->pending_mode.buf); s->pending_mode.buf = NULL;
-        PyMem_Free(self->state); self->state = NULL;
+        free(s->pending_mode.buf); s->pending_mode.buf = NULL;
+        free(self->state); self->state = NULL;
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -1688,7 +1688,7 @@ Parser*
 alloc_vt_parser(id_type window_id) {
     Parser *self = (Parser*)Parser_Type.tp_alloc(&Parser_Type, 1);
     if (self != NULL) {
-        self->state = PyMem_Calloc(1, sizeof(PS));
+        self->state = calloc(1, sizeof(PS));
         if (!self->state) { Py_CLEAR(self); PyErr_NoMemory(); return NULL; }
         PS *state = (PS*)self->state;
         state->window_id = window_id;
