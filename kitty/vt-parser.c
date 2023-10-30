@@ -8,7 +8,6 @@
 // TODO: Test clipboard kitten with 52 and 5522
 // TODO: Test shell integration with secondary prompts
 // TODO: Test screen_request_capabilities
-// TODO: Test that C1 characters are ignored by screen_draw()
 
 #include "vt-parser.h"
 #include "charsets.h"
@@ -464,7 +463,7 @@ dispatch_osc(PS *self) {
         case 6:
         case 7:
             START_DISPATCH
-            REPORT_OSC2(shell_prompt_marking, code, mv);
+            REPORT_OSC2(process_cwd_notification, code, mv);
             process_cwd_notification(self->screen, code, (char*)self->parser_buf + i, limit-i);
             END_DISPATCH
         case 8:
