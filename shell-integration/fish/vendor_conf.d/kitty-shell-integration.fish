@@ -108,9 +108,10 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         __update_cwd_osc
     end
 
-    if not contains "no-sudo" $_ksi and test -n "$TERMINFO"
-        # Note that neither alias nor function is recursive in fish so if the user defines an alias/function
-        # for sudo it will clobber us
+    # Note that neither alias nor function is recursive in fish so if the user defines an alias/function
+    # for sudo it will be clobbered by us, so only install this is sudo is not already function
+    if not contains "no-sudo" $_ksi
+        and test -n "$TERMINFO" -a "file" = (type -t sudo)
         # Ensure terminfo is available in sudo
         function sudo
             set --local is_sudoedit "n"
