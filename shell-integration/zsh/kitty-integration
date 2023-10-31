@@ -9,7 +9,7 @@
 # kitty-integration won't automatically run. Zsh users who want integration with
 # kitty in all shells should add the following lines to their .zshrc:
 #
-#   if [[ -n $KITTY_INSTALLATION_DIR ]]; then
+#   if [[ -n "$KITTY_INSTALLATION_DIR" ]]; then
 #     export KITTY_SHELL_INTEGRATION="enabled"
 #     autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
 #     kitty-integration
@@ -23,9 +23,9 @@
 
 builtin emulate -L zsh -o no_warn_create_global -o no_aliases
 
-[[ -o interactive ]]              || builtin return 0  # non-interactive shell
-[[ -n $KITTY_SHELL_INTEGRATION ]] || builtin return 0  # integration disabled
-(( ! $+_ksi_state ))              || builtin return 0  # already initialized
+[[ -o interactive ]]                || builtin return 0  # non-interactive shell
+[[ -n "$KITTY_SHELL_INTEGRATION" ]] || builtin return 0  # integration disabled
+(( ! $+_ksi_state ))                || builtin return 0  # already initialized
 
 # 0: no OSC 133 [AC] marks have been written yet.
 # 1: the last written OSC 133 C has not been closed with D yet.
