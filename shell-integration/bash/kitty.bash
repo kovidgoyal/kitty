@@ -16,6 +16,26 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
         [[ -f "$1" && -r "$1" ]] && builtin return 0; builtin return 1;
     }
 
+    if [[ -n "$ksi_val" && "$ksi_val" != *no-sudo* ]]; then
+        # this must be done before sourcing user bashrc otherwise aliasing of sudo does not work
+        sudo() {
+            # Ensure terminfo is available in sudo
+            builtin local is_sudoedit="n"
+            for arg; do
+                if [[ "$arg" == "-e" || $arg == "--edit" ]]; then
+                    is_sudoedit="y"
+                    builtin break;
+                fi
+                [[ "$arg" != -* && "$arg" != *=* ]] && builtin break  # command found
+            done
+            if [[ -z "$TERMINFO" || "$is_sudoedit" == "y" ]]; then
+                builtin command sudo "$@";
+            else
+                builtin command sudo TERMINFO="$TERMINFO" "$@";
+            fi
+        }
+    fi
+
     if [[ "$kitty_bash_inject" == *"posix"* ]]; then
         _ksi_sourceable "$KITTY_BASH_POSIX_ENV" && {
             builtin source "$KITTY_BASH_POSIX_ENV"
@@ -212,10 +232,6 @@ _ksi_main() {
 
     builtin alias edit-in-kitty="kitten edit-in-kitty"
 
-    if [[ "${_ksi_prompt[sudo]}" == "y" ]]; then
-        # Ensure terminfo is available in sudo
-        [[ -n "$TERMINFO" ]] && builtin alias sudo="sudo TERMINFO=\"$TERMINFO\""
-    fi
 
     if [[ "${_ksi_prompt[complete]}" == "y" ]]; then
         _ksi_completions() {
