@@ -86,6 +86,8 @@ Detailed list of changes
 
 - :doc:`unicode_input kitten </kittens/unicode_input>`: Fix a regression that broke the "Emoticons" tab (:iss:`6760`)
 
+- Shell integration: Fix ``sudo --edit`` not working and also fix completions for sudo not working in zsh (:iss:`6754`, :iss:`6771`)
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
