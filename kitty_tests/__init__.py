@@ -25,7 +25,7 @@ from kitty.window import process_remote_print, process_title_from_child
 
 
 def parse_bytes(screen, data):
-    return screen.vt_parser.parse_bytes(screen, data)
+    return screen.test_write_data(data)
 
 
 class Callbacks:
@@ -324,7 +324,7 @@ class PTY:
                 break
             bytes_read += len(data)
             self.received_bytes += data
-            self.screen.vt_parser.parse_bytes(self.screen, data)
+            self.screen.test_write_data(data)
         return bytes_read
 
     def wait_till(self, q, timeout=10):

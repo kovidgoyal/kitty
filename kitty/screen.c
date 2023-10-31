@@ -4454,7 +4454,27 @@ WRAP0(bell)
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
+static PyObject*
+test_write_data(Screen *screen, PyObject *args) {
+    const uint8_t *data; Py_ssize_t sz;
+    PyObject *dump_callback = NULL;
+    if (!PyArg_ParseTuple(args, "y#|O", &data, &sz, &dump_callback)) return NULL;
+
+    monotonic_t now = monotonic();
+    while (sz) {
+        size_t s = MIN(sz, READ_BUF_SZ);
+        memcpy(screen->read_buf, data, s);
+        screen->read_buf_sz = s;
+        data += s; sz -= s;
+        if (dump_callback) parse_worker_dump(screen, dump_callback, now);
+        else parse_worker(screen, dump_callback, now);
+    }
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef methods[] = {
+    METHODB(test_write_data, METH_VARARGS),
     MND(line_edge_colors, METH_NOARGS)
     MND(line, METH_O)
     MND(dump_lines_with_attrs, METH_O)

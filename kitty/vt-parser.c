@@ -1626,19 +1626,8 @@ run_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) {
 
 #ifdef DUMP_COMMANDS
 void
-parse_vt_dump(Parser *p) {
-    do_parse_vt((PS*)p->state);
-}
-
-void
 parse_worker_dump(Screen *screen, PyObject *dump_callback, monotonic_t now) { run_worker(screen, dump_callback, now); }
 #else
-static void
-parse_vt(Parser *p) {
-    do_parse_vt((PS*)p->state);
-}
-extern void parse_vt_dump(Parser *p);
-
 void
 parse_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) { run_worker(screen, dump_callback, now); }
 #endif
@@ -1681,23 +1670,7 @@ reset_vt_parser(Parser *self) {
 
 extern PyTypeObject Screen_Type;
 
-static PyObject*
-py_parse(Parser *p, PyObject *args) {
-    PS *self = (PS*)p->state;
-    const uint8_t *data; Py_ssize_t sz;
-    PyObject *dump_callback = NULL;
-    if (!PyArg_ParseTuple(args, "O!y#|O", &Screen_Type, &self->screen, &data, &sz, &dump_callback)) return NULL;
-
-    self->input_data = data; self->input_sz = sz; self->dump_callback = dump_callback;
-    self->input_pos = 0; self->now = monotonic();
-    if (dump_callback) parse_vt_dump(p); else parse_vt(p);
-    self->input_data = NULL; self->input_sz = 0; self->dump_callback = NULL; self->screen = NULL;
-
-    Py_RETURN_NONE;
-}
-
 static PyMethodDef methods[] = {
-    {"parse_bytes", (PyCFunction)py_parse, METH_VARARGS, ""},
     {NULL},
 };
 

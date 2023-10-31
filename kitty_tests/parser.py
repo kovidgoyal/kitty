@@ -23,6 +23,8 @@ class CmdDump(list):
     def __call__(self, *a):
         if a and isinstance(a[0], int):
             a = a[1:]
+        if a and a[0] == 'bytes':
+            return
         self.append(tuple(map(cnv, a)))
 
 
@@ -33,7 +35,7 @@ class TestParser(BaseTest):
         if isinstance(x, str):
             x = x.encode('utf-8')
         cmds = tuple(('draw', x) if isinstance(x, str) else tuple(map(cnv, x)) for x in cmds)
-        s.vt_parser.parse_bytes(s, x, cd)
+        s.test_write_data(x, cd)
         current = ''
         q = []
         for args in cd:
@@ -73,7 +75,7 @@ class TestParser(BaseTest):
         self.ae(str(s.line(1)), '6')
         self.ae(str(s.line(2)), ' 123')
         self.ae(str(s.line(3)), '45')
-        s.vt_parser.parse_bytes(s, b'\rabcde')
+        s.test_write_data(b'\rabcde')
         self.ae(str(s.line(3)), 'abcde')
         pb('\rßxyz1', ('screen_carriage_return',), 'ßxyz1')
         self.ae(str(s.line(3)), 'ßxyz1')
