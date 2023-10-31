@@ -36,8 +36,8 @@ ap = re.search(r"^appname: str\s+=\s+'([^']+)'", raw, flags=re.MULTILINE)
 if ap is not None:
     appname = ap.group(1)
 
-ALL_ACTIONS = 'man html build tag sdist upload website'.split()
-NIGHTLY_ACTIONS = 'man html build sdist upload_nightly'.split()
+ALL_ACTIONS = 'local_build man html build tag sdist upload website'.split()
+NIGHTLY_ACTIONS = 'local_build man html build sdist upload_nightly'.split()
 
 
 def echo_cmd(cmd: Iterable[str]) -> None:
@@ -59,6 +59,10 @@ def call(*cmd: str, cwd: Optional[str] = None, echo: bool = False) -> None:
     ret = subprocess.Popen(q, cwd=cwd).wait()
     if ret != 0:
         raise SystemExit(ret)
+
+
+def run_local_build(args: Any) -> None:
+    call('make debug')
 
 
 def run_build(args: Any) -> None:
