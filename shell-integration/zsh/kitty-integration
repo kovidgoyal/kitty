@@ -389,8 +389,22 @@ _ksi_deferred_init() {
     builtin alias edit-in-kitty="kitten edit-in-kitty"
 
     if (( ! opt[(Ie)no-sudo] )); then
-        # Ensure terminfo is available in sudo
-        [[ -n "$TERMINFO" ]] && builtin alias sudo="sudo TERMINFO=\"$TERMINFO\""
+        sudo() {
+            # Ensure terminfo is available in sudo
+            builtin local is_sudoedit="n"
+            for arg; do
+                if [[ "$arg" == "-e" || $arg == "--edit" ]]; then
+                    is_sudoedit="y"
+                    builtin break;
+                fi
+                [[ "$arg" != -* && "$arg" != *=* ]] && builtin break  # command found
+            done
+            if [[ -z "$TERMINFO" || "$is_sudoedit" == "y" ]]; then
+                builtin command sudo "$@"; 
+            else 
+                builtin command sudo TERMINFO="$TERMINFO" "$@"; 
+            fi
+        }
     fi
 
     # Map alt+left/right to move by word if not already mapped. This is expected behavior on macOS and I am tired
