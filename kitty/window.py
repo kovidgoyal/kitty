@@ -874,8 +874,38 @@ class Window:
         if title:
             title = sanitize_title(title)
         self.override_title = title or None
-        self.call_watchers(self.watchers.on_title_change, {'title': self.child_title, 'from_child': False})
+        self.call_watchers(self.watchers.on_title_change, {'title': self.title, 'from_child': False})
         self.title_updated()
+
+    @ac(
+        'win', '''
+        Change the title of the active window interactively, by typing in the new title.
+        If you specify an argument to this action then that is used as the title instead of asking for it.
+        Use the empty string ("") to reset the title to default. Use a space (" ") to indicate that the
+        prompt should not be pre-filled. For example::
+
+            # interactive usage
+            map f1 set_window_title
+            # set a specific title
+            map f2 set_window_title some title
+            # reset to default
+            map f3 set_window_title ""
+            # interactive usage without prefilled prompt
+            map f3 set_window_title " "
+        '''
+    )
+    def set_window_title(self, title: Optional[str] = None) -> None:
+        if title is not None and title not in ('" "', "' '"):
+            if title in ('""', "''"):
+                title = ''
+            self.set_title(title)
+            return
+        prefilled = self.title
+        if title in ('" "', "' '"):
+            prefilled = ''
+        get_boss().get_line(
+            _('Enter the new title for this window below. An empty title will cause the default title to be used.'),
+            self.set_title, window=self, initial_value=prefilled)
 
     def set_user_var(self, key: str, val: Optional[Union[str, bytes]]) -> None:
         key = sanitize_control_codes(key).replace('\n', ' ')

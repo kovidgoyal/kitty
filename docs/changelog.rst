@@ -88,6 +88,8 @@ Detailed list of changes
 
 - Shell integration: Fix ``sudo --edit`` not working and also fix completions for sudo not working in zsh (:iss:`6754`, :iss:`6771`)
 
+- A new action :ac:`set_window_title` to interactively change the title of the active window
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

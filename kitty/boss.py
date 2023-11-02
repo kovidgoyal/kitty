@@ -1053,7 +1053,8 @@ class Boss:
         callback: Callable[..., None],  # called with the answer or empty string when aborted
         window: Optional[Window] = None,  # the window associated with the confirmation
         prompt: str = '> ',
-        is_password: bool = False
+        is_password: bool = False,
+        initial_value: str = ''
     ) -> None:
         result: str = ''
 
@@ -1065,6 +1066,8 @@ class Boss:
             callback(result)
 
         cmd = ['--type', 'password' if is_password else 'line', '--message', msg, '--prompt', prompt]
+        if initial_value:
+            cmd.append('--default=' + initial_value)
         self.run_kitten_with_metadata(
             'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
         )
@@ -1942,12 +1945,11 @@ class Boss:
             prefilled = tab.name or tab.title
             if title in ('" "', "' '"):
                 prefilled = ''
-            args = [
-                '--name=tab-title', '--message', _('Enter the new title for this tab below.'),
-                '--default', prefilled, 'do_set_tab_title', str(tab.id)]
-            self.run_kitten_with_metadata('ask', args)
+            self.get_line(
+                _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
+                partial(self.do_set_tab_title, tab.id), window=tab.active_window, initial_value=prefilled)
 
-    def do_set_tab_title(self, title: str, tab_id: int) -> None:
+    def do_set_tab_title(self, tab_id: int, title: str) -> None:
         tm = self.active_tab_manager
         if tm is not None:
             tab_id = int(tab_id)
