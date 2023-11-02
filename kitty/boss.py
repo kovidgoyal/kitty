@@ -1947,16 +1947,7 @@ class Boss:
                 prefilled = ''
             self.get_line(
                 _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
-                partial(self.do_set_tab_title, tab.id), window=tab.active_window, initial_value=prefilled)
-
-    def do_set_tab_title(self, tab_id: int, title: str) -> None:
-        tm = self.active_tab_manager
-        if tm is not None:
-            tab_id = int(tab_id)
-            for tab in tm.tabs:
-                if tab.id == tab_id:
-                    tab.set_title(title)
-                    break
+                tab.set_title, window=tab.active_window, initial_value=prefilled)
 
     def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: Optional[int] = None) -> SpecialWindowInstance:
         ec = sys.exc_info()
