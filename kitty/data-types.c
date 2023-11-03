@@ -13,6 +13,7 @@
 #endif
 
 #include "data-types.h"
+#include "charsets.h"
 #include "base64.h"
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -320,6 +321,75 @@ expand_ansi_c_escapes(PyObject *self UNUSED, PyObject *src) {
     return ans;
 }
 
+START_ALLOW_CASE_RANGE
+#define C0_EXCEPT_NL_AND_SPACE 0x0 ... 0x9: case 0xb ... 0x1f: case 0x7f
+static PyObject*
+c0_replace_bytes(const char *input_data, Py_ssize_t input_sz) {
+    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, input_sz * 3));
+    if (!ans) return NULL;
+    char *output = PyBytes_AS_STRING(ans);
+    char buf[4];
+    Py_ssize_t j = 0;
+    for (Py_ssize_t i = 0; i < input_sz; i++) {
+        const char x = input_data[i];
+        switch (x) {
+            case C0_EXCEPT_NL_AND_SPACE: {
+                const uint32_t ch = 0x2400 + x;
+                const unsigned sz = encode_utf8(ch, buf);
+                for (unsigned c = 0; c < sz; c++, j++) output[j] = buf[c];
+            } break;
+            default:
+                output[j++] = x; break;
+        }
+    }
+    if (_PyBytes_Resize(&ans, j) != 0) return NULL;
+    Py_INCREF(ans);
+    return ans;
+}
+
+static PyObject*
+c0_replace_unicode(PyObject *input) {
+    RAII_PyObject(ans, PyUnicode_New(PyUnicode_GET_LENGTH(input), 1114111));
+    if (!ans) return NULL;
+    void *input_data = PyUnicode_DATA(input);
+    int input_kind = PyUnicode_KIND(input);
+    void *output_data = PyUnicode_DATA(ans);
+    int output_kind = PyUnicode_KIND(ans);
+    Py_UCS4 maxchar = 0;
+    bool changed = false;
+    for (Py_ssize_t i = 0; i < PyUnicode_GET_LENGTH(input); i++) {
+        Py_UCS4 ch = PyUnicode_READ(input_kind, input_data, i);
+        switch(ch) { case C0_EXCEPT_NL_AND_SPACE: ch += 0x2400; changed = true; }
+        if (ch > maxchar) maxchar = ch;
+        PyUnicode_WRITE(output_kind, output_data, i, ch);
+    }
+    if (!changed) { Py_INCREF(input); return input; }
+    if (maxchar > 65535) { Py_INCREF(ans); return ans; }
+    RAII_PyObject(ans2, PyUnicode_New(PyUnicode_GET_LENGTH(ans), maxchar));
+    if (!ans2) return NULL;
+    if (PyUnicode_CopyCharacters(ans2, 0, ans, 0, PyUnicode_GET_LENGTH(ans)) == -1) return NULL;
+    Py_INCREF(ans2); return ans2;
+}
+END_ALLOW_CASE_RANGE
+
+static PyObject*
+replace_c0_codes_except_for_newline_and_space(PyObject *self UNUSED, PyObject *obj) {
+    if (PyUnicode_Check(obj)) {
+        return c0_replace_unicode(obj);
+    } else if (PyBytes_Check(obj)) {
+        return c0_replace_bytes(PyBytes_AS_STRING(obj), PyBytes_GET_SIZE(obj));
+    } else if (PyMemoryView_Check(obj)) {
+        Py_buffer *buf = PyMemoryView_GET_BUFFER(obj);
+        return c0_replace_bytes(buf->buf, buf->len);
+    } else if (PyByteArray_Check(obj)) {
+        return c0_replace_bytes(PyByteArray_AS_STRING(obj), PyByteArray_GET_SIZE(obj));
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Input must be bytes, memoryview, bytearray or unicode");
+        return NULL;
+    }
+}
+
+
 static PyObject*
 find_in_memoryview(PyObject *self UNUSED, PyObject *args) {
     const char *buf; Py_ssize_t sz;
@@ -332,6 +402,7 @@ find_in_memoryview(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
+    METHODB(replace_c0_codes_except_for_newline_and_space, METH_O),
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"expand_ansi_c_escapes", (PyCFunction)expand_ansi_c_escapes, METH_O, ""},
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},

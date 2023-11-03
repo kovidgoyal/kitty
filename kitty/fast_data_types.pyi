@@ -1,17 +1,6 @@
 import termios
 from ctypes import Array, c_ubyte
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    NewType,
-    Optional,
-    Tuple,
-    TypedDict,
-    Union,
-)
+from typing import Any, Callable, Dict, Iterator, List, NewType, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
 from kitty.fonts import FontFeature
@@ -1567,3 +1556,7 @@ def cocoa_clear_global_shortcuts() -> None: ...
 def update_pointer_shape(os_window_id: int) -> None: ...
 def os_window_focus_counters() -> Dict[int, int]: ...
 def find_in_memoryview(buf: Union[bytes, memoryview, bytearray], chr: int) -> int: ...
+@overload
+def replace_c0_codes_except_for_newline_and_space(text: str) -> str:...
+@overload
+def replace_c0_codes_except_for_newline_and_space(text: Union[bytes, memoryview, bytearray]) -> bytes:...
