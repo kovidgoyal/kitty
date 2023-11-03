@@ -16,7 +16,7 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
         [[ -f "$1" && -r "$1" ]] && builtin return 0; builtin return 1;
     }
 
-    if [[ -n "$ksi_val" && "$ksi_val" != *no-sudo* ]]; then
+    if [[ -n "$ksi_val" && "$ksi_val" != *no-sudo* && -n "$TERMINFO" && ! ( -r "/usr/share/terminfo/x/xterm-kitty" || -r "/usr/share/terminfo/78/xterm-kitty" ) ]]; then
         # this must be done before sourcing user bashrc otherwise aliasing of sudo does not work
         sudo() {
             # Ensure terminfo is available in sudo
@@ -28,7 +28,7 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
                 fi
                 [[ "$arg" != -* && "$arg" != *=* ]] && builtin break  # command found
             done
-            if [[ -z "$TERMINFO" || "$is_sudoedit" == "y" ]]; then
+            if [[ "$is_sudoedit" == "y" ]]; then
                 builtin command sudo "$@";
             else
                 builtin command sudo TERMINFO="$TERMINFO" "$@";
