@@ -1942,22 +1942,6 @@ static const struct zwp_primary_selection_device_v1_listener primary_selection_d
 };
 
 
-static void
-clipboard_copy_callback_done(void *data, struct wl_callback *callback, uint32_t serial) {
-    if (_glfw.wl.dataDevice && data == (void*)_glfw.wl.dataSourceForClipboard) {
-        wl_data_device_set_selection(_glfw.wl.dataDevice, data, serial);
-    }
-    wl_callback_destroy(callback);
-}
-
-static void
-primary_selection_copy_callback_done(void *data, struct wl_callback *callback, uint32_t serial) {
-    if (_glfw.wl.primarySelectionDevice && data == (void*)_glfw.wl.dataSourceForPrimarySelection) {
-        zwp_primary_selection_device_v1_set_selection(_glfw.wl.primarySelectionDevice, data, serial);
-    }
-    wl_callback_destroy(callback);
-}
-
 void _glfwSetupWaylandDataDevice(void) {
     _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
     if (_glfw.wl.dataDevice) wl_data_device_add_listener(_glfw.wl.dataDevice, &data_device_listener, NULL);
@@ -2049,13 +2033,15 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
         }
         f(data_source, cd->mime_types[i]);
     }
-    struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
     if (t == GLFW_CLIPBOARD) {
-        static const struct wl_callback_listener clipboard_copy_callback_listener = {.done = clipboard_copy_callback_done};
-        wl_callback_add_listener(callback, &clipboard_copy_callback_listener, _glfw.wl.dataSourceForClipboard);
+        // According to the Wayland spec only the application that has keyboard focus can set the clipboard.
+        // Hurray for the Wayland nanny state!
+        wl_data_device_set_selection(_glfw.wl.dataDevice, _glfw.wl.dataSourceForClipboard, _glfw.wl.keyboard_enter_serial);
     } else {
-        static const struct wl_callback_listener primary_selection_copy_callback_listener = {.done = primary_selection_copy_callback_done};
-        wl_callback_add_listener(callback, &primary_selection_copy_callback_listener, _glfw.wl.dataSourceForPrimarySelection);
+        // According to the Wayland spec we can only set the primary selection in response to a pointer button event
+        // Hurray for the Wayland nanny state!
+        zwp_primary_selection_device_v1_set_selection(
+                _glfw.wl.primarySelectionDevice, _glfw.wl.dataSourceForPrimarySelection, _glfw.wl.input_serial);
     }
 }
 

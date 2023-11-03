@@ -94,6 +94,8 @@ Detailed list of changes
 
 - ssh kitten: Fix a regression that broken :kbd:`ctrl+space` mapping in zsh (:iss:`6780`)
 
+- Wayland: Fix primary selections not working with the river compositor (:iss:`6785`)
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

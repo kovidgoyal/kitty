@@ -99,7 +99,7 @@ static void pointerHandleEnter(void* data UNUSED,
             return;
     }
     window->wl.decorations.focus = focus;
-    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial;
     _glfw.wl.pointerFocus = window;
 
     window->wl.hovered = true;
@@ -311,7 +311,7 @@ static void pointerHandleButton(void* data UNUSED,
     if (window->wl.decorations.focus != CENTRAL_WINDOW)
         return;
 
-    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial;
 
     /* Makes left, right and middle 0, 1 and 2. Overall order follows evdev
      * codes. */
@@ -463,7 +463,7 @@ static void keyboardHandleEnter(void* data UNUSED,
             return;
     }
 
-    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.keyboard_enter_serial = serial;
     _glfw.wl.keyboardFocusId = window->id;
     _glfwInputWindowFocus(window, true);
     uint32_t* key;
