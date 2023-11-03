@@ -2041,7 +2041,7 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
         // According to the Wayland spec we can only set the primary selection in response to a pointer button event
         // Hurray for the Wayland nanny state!
         zwp_primary_selection_device_v1_set_selection(
-                _glfw.wl.primarySelectionDevice, _glfw.wl.dataSourceForPrimarySelection, _glfw.wl.input_serial);
+                _glfw.wl.primarySelectionDevice, _glfw.wl.dataSourceForPrimarySelection, _glfw.wl.pointer_serial);
     }
 }
 
