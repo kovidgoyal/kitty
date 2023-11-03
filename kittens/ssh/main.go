@@ -727,7 +727,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	if err != nil {
 		return 1, err
 	}
-	restore_escape_codes := loop.RESTORE_PRIVATE_MODE_VALUES
+	restore_escape_codes := loop.RESTORE_PRIVATE_MODE_VALUES + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToReset()
 	if escape_codes_to_set_colors != "" {
 		restore_escape_codes += "\x1b[#Q"
 	}

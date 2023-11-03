@@ -90,6 +90,8 @@ Detailed list of changes
 
 - A new action :ac:`set_window_title` to interactively change the title of the active window
 
+- ssh kitten: Fix a regression that broken :kbd:`ctrl+space` mapping in zsh (:iss:`6780`)
+
 
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
