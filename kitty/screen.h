@@ -39,7 +39,7 @@ typedef struct {
 typedef struct {
     SelectionBoundary start, end, input_start, input_current;
     unsigned int start_scrolled_by, end_scrolled_by;
-    bool rectangle_select, adjusting_start;
+    bool rectangle_select, adjusting_start, is_hyperlink;
     IterationData last_rendered;
     int sort_y, sort_x;
     struct {

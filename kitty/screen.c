@@ -2809,7 +2809,9 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
     }
     self->selections.last_rendered_count = self->selections.count;
     for (size_t i = 0; i < self->url_ranges.count; i++) {
-        apply_selection(self, address, self->url_ranges.items + i, 2);
+        Selection *s = self->url_ranges.items + i;
+        if (OPT(underline_hyperlinks) == UNDERLINE_NEVER && s->is_hyperlink) continue;
+        apply_selection(self, address, s, 2);
     }
     self->url_ranges.last_rendered_count = self->url_ranges.count;
 }
@@ -3945,12 +3947,13 @@ screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_ha
 }
 
 static void
-add_url_range(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
+add_url_range(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y, bool is_hyperlink) {
 #define A(attr, val) r->attr = val;
     ensure_space_for(&self->url_ranges, items, Selection, self->url_ranges.count + 8, capacity, 8, false);
     Selection *r = self->url_ranges.items + self->url_ranges.count++;
     memset(r, 0, sizeof(Selection));
     r->last_rendered.y = INT_MAX;
+    r->is_hyperlink = is_hyperlink;
     A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y);
     A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
     A(start.in_left_half_of_cell, true);
@@ -3960,7 +3963,7 @@ add_url_range(Screen *self, index_type start_x, index_type start_y, index_type e
 void
 screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
     self->url_ranges.count = 0;
-    if (start_x || start_y || end_x || end_y) add_url_range(self, start_x, start_y, end_x, end_y);
+    if (start_x || start_y || end_x || end_y) add_url_range(self, start_x, start_y, end_x, end_y, false);
 }
 
 static bool
@@ -3972,7 +3975,7 @@ mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id, index_ty
         bool has_hyperlink = line->cpu_cells[x].hyperlink_id == id;
         if (in_range) {
             if (!has_hyperlink) {
-                add_url_range(self, start, y, x - 1, y);
+                add_url_range(self, start, y, x - 1, y, true);
                 in_range = false;
                 start = 0;
             }
@@ -3983,7 +3986,7 @@ mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id, index_ty
             }
         }
     }
-    if (in_range) add_url_range(self, start, y, self->columns - 1, y);
+    if (in_range) add_url_range(self, start, y, self->columns - 1, y, true);
     return found;
 }
 

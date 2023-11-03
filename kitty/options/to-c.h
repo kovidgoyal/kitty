@@ -57,6 +57,16 @@ window_title_in(PyObject *title_in) {
     return ALL;
 }
 
+static UnderlineHyperlinks
+underline_hyperlinks(PyObject *x) {
+    const char *in = PyUnicode_AsUTF8(x);
+    switch(in[0]) {
+        case 'a': return UNDERLINE_ALWAYS;
+        case 'n': return UNDERLINE_NEVER;
+        default : return UNDERLINE_ON_HOVER;
+    }
+}
+
 static BackgroundImageLayout
 bglayout(PyObject *layout_name) {
     const char *name = PyUnicode_AsUTF8(layout_name);

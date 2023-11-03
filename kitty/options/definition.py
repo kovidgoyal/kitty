@@ -486,7 +486,8 @@ opt('detect_urls', 'yes',
     long_text='''
 Detect URLs under the mouse. Detected URLs are highlighted with an underline and
 the mouse cursor becomes a hand over them. Even if this option is disabled, URLs
-are still clickable.
+are still clickable. See also the :opt:`underline_hyperlinks` option to control
+how hyperlinks (as opposed to plain text URLs) are displayed.
 '''
     )
 
@@ -509,6 +510,16 @@ opt('show_hyperlink_targets', 'no',
 When the mouse hovers over a terminal hyperlink, show the actual URL that will
 be activated when the hyperlink is clicked.
 ''')
+
+
+opt('underline_hyperlinks', 'hover', choices=('hover', 'always', 'never'),
+    ctype='underline_hyperlinks', long_text='''
+Control how hyperlinks are underlined. They can either be underlined on mouse
+``hover``, ``always`` (i.e. permanently underlined) or ``never`` which means
+that kitty will not apply any underline styling to hyperlinks.
+Uses the :opt:`url_style` and :opt:`url_color` settings for the underline style.
+''')
+
 
 opt('copy_on_select', 'no',
     option_type='copy_on_select',

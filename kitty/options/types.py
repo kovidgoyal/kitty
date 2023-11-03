@@ -29,6 +29,7 @@ choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separ
 choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
 choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
 choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
+choices_for_underline_hyperlinks = typing.Literal['hover', 'always', 'never']
 choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 
 option_names = (  # {{{
@@ -432,6 +433,7 @@ option_names = (  # {{{
  'text_fg_override_threshold',
  'touch_scroll_multiplier',
  'undercurl_style',
+ 'underline_hyperlinks',
  'update_check_interval',
  'url_color',
  'url_excluded_characters',
@@ -588,6 +590,7 @@ class Options:
     text_fg_override_threshold: float = 0.0
     touch_scroll_multiplier: float = 1.0
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
+    underline_hyperlinks: choices_for_underline_hyperlinks = 'hover'
     update_check_interval: float = 24.0
     url_color: Color = Color(0, 135, 189)
     url_excluded_characters: str = ''

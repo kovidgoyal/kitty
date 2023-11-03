@@ -660,6 +660,10 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
     }
     self->cpu_cells[at].ch = ch;
     self->cpu_cells[at].hyperlink_id = hyperlink_id;
+    if (OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && hyperlink_id) {
+        g->decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;
+        g->attrs.decoration = OPT(url_style);
+    }
     memset(self->cpu_cells[at].cc_idx, 0, sizeof(self->cpu_cells[at].cc_idx));
 }
 

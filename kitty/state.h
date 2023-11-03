@@ -22,6 +22,7 @@ typedef struct {
 } UrlPrefix;
 
 typedef enum AdjustmentUnit { POINT = 0, PERCENT = 1, PIXEL = 2 } AdjustmentUnit;
+typedef enum UnderlineHyperlinks { UNDERLINE_ON_HOVER = 0, UNDERLINE_ALWAYS = 1, UNDERLINE_NEVER = 2 } UnderlineHyperlinks;
 
 struct MenuItem {
     const char* *location;
@@ -95,6 +96,7 @@ typedef struct {
         float val; AdjustmentUnit unit;
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;
     bool show_hyperlink_targets;
+    UnderlineHyperlinks underline_hyperlinks;
     int background_blur;
     long macos_titlebar_color;
     unsigned long wayland_titlebar_color;
