@@ -93,7 +93,11 @@ no-complete
 
 no-sudo
     Do not alias :program:`sudo` to ensure the kitty terminfo files are
-    available in the sudo environment
+    available in the sudo environment. This is needed if you have sudo
+    configured to disable setting of environment variables on the command line.
+    By default, if sudo is configured to allow all commands for the current
+    user, setting of environment variables at the command line is also allowed.
+    Only if commands are restricted is this needed.
 
 
 More ways to browse command output
