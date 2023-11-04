@@ -552,6 +552,10 @@ The supported paste actions are:
 :code:`quote-urls-at-prompt`:
     If the text being pasted is a URL and the cursor is at a shell prompt,
     automatically quote the URL (needs :opt:`shell_integration`).
+:code:`replace-dangerous-control-codes`
+    Replace dangerous control codes from pasted text, without confirmation.
+:code:`replace-newline`
+    Replace the newline character from pasted text, without confirmation.
 :code:`confirm`:
     Confirm the paste if the text to be pasted contains any terminal control codes
     as this can be dangerous, leading to code execution if the shell/program running

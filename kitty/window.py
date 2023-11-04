@@ -1509,6 +1509,10 @@ class Window:
                 if rest.startswith('//') or scheme in ('mailto', 'irc'):
                     import shlex
                     text = shlex.quote(text)
+        if 'replace-dangerous-control-codes' in opts.paste_actions:
+            text = replace_control_codes(text)
+        if 'replace-newline' in opts.paste_actions:
+            text = text.replace('\n', '\x1bE')
         btext = text.encode('utf-8')
         if 'confirm' in opts.paste_actions:
             sanitized = replace_control_codes(text)
