@@ -1022,7 +1022,7 @@ def reload_conf_in_all_kitties() -> None:
 
 @run_once
 def control_codes_pat() -> 'Pattern[str]':
-    return re.compile('[\x00-\x09\x0b-\x1f\x7f\x80-\x9f]')
+    return re.compile('[\x00-\x09\x0b-\x1f\x7f-\x9f]')
 
 
 def sanitize_control_codes(text: str, replace_with: str = '') -> str:
