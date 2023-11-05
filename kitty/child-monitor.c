@@ -1343,13 +1343,13 @@ read_bytes(int fd, Screen *screen) {
         if (len < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
             if (errno != EIO) perror("Call to read() from child fd failed");
+            vt_parser_commit_write(screen->vt_parser, 0);
             return false;
         }
         break;
     }
     vt_parser_commit_write(screen->vt_parser, len);
-    if (UNLIKELY(len == 0)) return false;
-    return true;
+    return len != 0;
 }
 
 

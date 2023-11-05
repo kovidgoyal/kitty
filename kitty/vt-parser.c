@@ -1581,6 +1581,7 @@ vt_parser_create_write_buffer(Parser *p, size_t *sz) {
     PS *self = (PS*)p->state;
     uint8_t *ans;
     with_lock {
+        if (self->write.sz) fatal("vt_parser_create_write_buffer() called with an already existing write buffer");
         *sz = BUF_SZ - self->read.sz;
         self->write.offset = self->read.sz;
         self->write.sz = *sz;
