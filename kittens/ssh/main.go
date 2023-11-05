@@ -731,9 +731,12 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	if escape_codes_to_set_colors != "" {
 		restore_escape_codes += "\x1b[#Q"
 	}
+	sigs := make(chan os.Signal, 8)
+	signal.Notify(sigs, unix.SIGINT, unix.SIGTERM)
 	defer func() {
 		_ = term.WriteAllString(restore_escape_codes)
 		term.RestoreAndClose()
+		signal.Reset()
 	}()
 	err = get_remote_command(&cd)
 	if err != nil {
@@ -746,8 +749,6 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	if err != nil {
 		return 1, err
 	}
-	sigs := make(chan os.Signal, 8)
-	signal.Notify(sigs, unix.SIGINT, unix.SIGTERM)
 
 	if !cd.request_data {
 		rq := fmt.Sprintf("id=%s:pwfile=%s:pw=%s", cd.replacements["REQUEST_ID"], cd.replacements["PASSWORD_FILENAME"], cd.replacements["DATA_PASSWORD"])
@@ -772,7 +773,6 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	}()
 	err = c.Wait()
 	drain_potential_tty_garbage(term)
-	signal.Reset(unix.SIGINT, unix.SIGTERM)
 	if err != nil {
 		var exit_err *exec.ExitError
 		if errors.As(err, &exit_err) {
