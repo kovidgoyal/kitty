@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, Cursor
+from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Cursor
 from kitty.marks import marker_from_function, marker_from_regex
 from kitty.window import pagerhist
 
@@ -912,23 +912,27 @@ class TestScreen(BaseTest):
         def send(what: str):
             return parse_bytes(s, f'\033]52;p;{what}\a'.encode('ascii'))
 
-        def t(q, use_pending_mode, *expected):
+        def t(q, use_pending_mode, *expected, expect_pending=True):
             c.clear()
             if use_pending_mode:
                 parse_bytes(s, b'\033[?2026h')
             send(q)
             del q
-            if use_pending_mode:
+            t.ex = list(expected)
+            del expected
+            if use_pending_mode and expect_pending:
                 self.ae(c.cc_buf, [])
                 parse_bytes(s, b'\033[?2026l')
             try:
-                self.ae(c.cc_buf, list(expected))
+                self.ae(tuple(map(len, c.cc_buf)), tuple(map(len, t.ex)))
+                self.ae(c.cc_buf, t.ex)
             finally:
-                del expected
+                del t.ex
 
         for use_pending_mode in (False, True):
             t('XYZ', use_pending_mode, ('p;XYZ', False))
-            t('a' * 8192, use_pending_mode, ('p;' + 'a' * (8192 - 6), True), (';' + 'a' * 6, False))
+            t('a' * VT_PARSER_BUFFER_SIZE, use_pending_mode, ('p;' + 'a' * (VT_PARSER_BUFFER_SIZE - 8), True),
+              (';' + 'a' * 8, False), expect_pending=False)
             t('', use_pending_mode, ('p;', False))
             t('!', use_pending_mode, ('p;!', False))
 

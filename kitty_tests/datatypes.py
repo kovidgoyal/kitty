@@ -13,7 +13,7 @@ from kitty.fast_data_types import (
     LineBuf,
     expand_ansi_c_escapes,
     parse_input_from_terminal,
-    replace_c0_codes_except_for_newline_and_space,
+    replace_c0_codes_except_nl_space_tab,
     strip_csi,
     truncate_point_for_length,
     wcswidth,
@@ -41,13 +41,14 @@ class TestDataTypes(BaseTest):
 
     def test_replace_c0_codes(self):
         def t(x: str, expected: str):
-            q = replace_c0_codes_except_for_newline_and_space(x)
+            q = replace_c0_codes_except_nl_space_tab(x)
             self.ae(expected, q)
-            q = replace_c0_codes_except_for_newline_and_space(x.encode('utf-8'))
+            q = replace_c0_codes_except_nl_space_tab(x.encode('utf-8'))
             self.ae(expected.encode('utf-8'), q)
         t('abc', 'abc')
-        t('a\0\x01b\x03\x04\t\rc', 'a\u2400\u2401b\u2403\u2404\u2409\u240dc')
-        t('a\0\x01😸\x03\x04\t\rc', 'a\u2400\u2401😸\u2403\u2404\u2409\u240dc')
+        t('a\0\x01b\x03\x04\t\rc', 'a\u2400\u2401b\u2403\u2404\t\u240dc')
+        t('a\0\x01😸\x03\x04\t\rc', 'a\u2400\u2401😸\u2403\u2404\t\u240dc')
+        t('a\nb\tc d', 'a\nb\tc d')
 
     def test_to_color(self):
         for x in 'xxx #12 #1234 rgb:a/b'.split():

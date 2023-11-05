@@ -13,18 +13,23 @@
 #include "screen.h"
 #include "base64.h"
 #include "control-codes.h"
+#include "state.h"
+#include "modes.h"
 
-#define EXTENDED_OSC_SENTINEL ESC
-#define PARSER_BUF_SZ (8u * 1024u)
-#define PENDING_BUF_INCREMENT (16u * 1024u)
-#define PENDING_BUF_LIMIT READ_BUF_SZ
+#define BUF_SZ (1024u*1024u)
+#define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4)
+#define MAX_CSI_PARAMS 256
+#define MAX_CSI_DIGITS 16
+#define DEFAULT_PENDING_WAIT_TIME s_double_to_monotonic_t(2.0)
+
 
 // Macros {{{
 
-#define SET_STATE(x) self->vte_state = VTE_##x; self->parser_buf_pos = 0; self->utf8.state = UTF8_ACCEPT; self->utf8.prev = UTF8_ACCEPT;
+#define SET_STATE(x) \
+    self->vte_state = VTE_##x; self->utf8.state = UTF8_ACCEPT; self->utf8.prev = UTF8_ACCEPT;
 
-#define IS_DIGIT \
-    case '0': \
+#define DIGIT \
+    '0': \
     case '1': \
     case '2': \
     case '3': \
@@ -33,9 +38,22 @@
     case '6': \
     case '7': \
     case '8': \
-    case '9':
+    case '9'
+
+static void
+_report_unknown_escape_code(PyObject *dump_callback, id_type window_id, const char *name, const uint8_t *payload) {
+    char buf[1024];
+    if (strlen((const char*)payload) < 64) snprintf(buf, sizeof(buf), "Unknown %s escape code: %.64s", name, payload);
+    else snprintf(buf, sizeof(buf), "Unknown %s escape code: %.64s...", name, payload);
+    if (dump_callback) {
+        Py_XDECREF(PyObject_CallFunction(dump_callback, "Kss", window_id, "error", buf)); PyErr_Clear();
+    } else log_error(ERROR_PREFIX " " "%s", buf);
+}
+
+#define REPORT_UKNOWN_ESCAPE_CODE(name, data) _report_unknown_escape_code(self->dump_callback, self->window_id, name, data);
 
 #ifdef DUMP_COMMANDS
+
 static void
 _report_error(PyObject *dump_callback, id_type window_id, const char *fmt, ...) {
     va_list argptr;
@@ -44,21 +62,24 @@ _report_error(PyObject *dump_callback, id_type window_id, const char *fmt, ...) 
     va_end(argptr);
     if (temp != NULL) {
         RAII_PyObject(wid, PyLong_FromUnsignedLongLong(window_id));
-        Py_XDECREF(PyObject_CallFunctionObjArgs(dump_callback, wid, temp, NULL)); PyErr_Clear();
+        RAII_PyObject(err, PyUnicode_FromString("error"));
+        if (wid && err) Py_XDECREF(PyObject_CallFunctionObjArgs(dump_callback, wid, err, temp, NULL));
     }
+    PyErr_Clear();
 }
 
 static void
-_report_params(PyObject *dump_callback, id_type window_id, const char *name, int *params, unsigned int count, Region *r) {
-    static char buf[MAX_PARAMS*3] = {0};
+_report_params(PyObject *dump_callback, id_type window_id, const char *name, int *params, unsigned int count, bool is_group, Region *r) {
+    static char buf[MAX_CSI_PARAMS*3] = {0};
     unsigned int i, p=0;
     if (r) p += snprintf(buf + p, sizeof(buf) - 2, "%u %u %u %u ", r->top, r->left, r->bottom, r->right);
-    for(i = 0; i < count && p < MAX_PARAMS*3-20; i++) {
-        int n = snprintf(buf + p, MAX_PARAMS*3 - p, "%i ", params[i]);
+    const char *fmt = is_group ? "%i:" : "%i ";
+    for(i = 0; i < count && p < MAX_CSI_PARAMS*3-20; i++) {
+        int n = snprintf(buf + p, MAX_CSI_PARAMS*3 - p, fmt, params[i]);
         if (n < 0) break;
         p += n;
     }
-    buf[p] = 0;
+    buf[count ? p-1 : p] = 0;
     Py_XDECREF(PyObject_CallFunction(dump_callback, "Kss", window_id, name, buf)); PyErr_Clear();
 }
 
@@ -82,7 +103,7 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_DRAW(ch) \
     Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); PyErr_Clear();
 
-#define REPORT_PARAMS(name, params, num, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, region)
+#define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, is_group, region)
 
 #define FLUSH_DRAW \
     Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, "draw", Py_None)); PyErr_Clear();
@@ -98,7 +119,6 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 
 #else
 #define REPORT_ERROR(...) log_error(ERROR_PREFIX " " __VA_ARGS__);
-
 #define REPORT_COMMAND(...)
 #define REPORT_VA_COMMAND(...)
 #define REPORT_DRAW(ch)
@@ -138,6 +158,7 @@ utoi(const uint8_t *buf, unsigned int sz) {
 }
 // }}}
 
+// Data structures {{{
 typedef enum VTEState {
     VTE_NORMAL, VTE_ESC = ESC, VTE_CSI = ESC_CSI, VTE_OSC = ESC_OSC, VTE_DCS = ESC_DCS, VTE_APC = ESC_APC, VTE_PM = ESC_PM
 } VTEState;
@@ -158,38 +179,55 @@ vte_state_name(VTEState s) {
     return buf;
 }
 
-typedef struct PendingHeader{
-    VTEState which: 8;
-    uint32_t size: 24;
-} PendingHeader;
+typedef enum { CSI_START, CSI_BODY, CSI_POST_SECONDARY } CSIState;
+typedef enum { PENDING_NORMAL, PENDING_ESC, PENDING_CSI, PENDING_DCS, PENDING_ST } PendingState;
+
+typedef struct ParsedCSI {
+    char primary, secondary, trailer;
+    CSIState state;
+    unsigned num_params, num_digits;
+    bool is_valid;
+    uint8_t digits[MAX_CSI_DIGITS];
+    int params[MAX_CSI_PARAMS];
+    uint8_t is_sub_param[MAX_CSI_PARAMS];
+} ParsedCSI;
 
 typedef struct PS {
     id_type window_id;
 
-    unsigned parser_buf_pos;
     struct { UTF8State prev, state; } utf8;
     VTEState vte_state;
-
-    // this is used only during dispatch of a single byte, its present here just to avoid adding an extra parameter to accumulate_osc()
-    bool extended_osc_code;
+    ParsedCSI csi;
 
     struct {
         monotonic_t activated_at, wait_time;
-        unsigned stop_escape_code_type;
-        size_t capacity, used, current;
-        uint8_t *buf;
+        size_t esc_code_start;
+        bool draining;
+        PendingState state;
     } pending_mode;
 
     // these are temporary variables set only for duration of a parse call
     PyObject *dump_callback;
     Screen *screen;
-    const uint8_t *input_data;
-    size_t input_sz, input_pos;
-    monotonic_t now;
-    uint8_t *parser_buf;
+    monotonic_t now, new_input_at;
+    pthread_mutex_t lock;
+    uint8_t buf[BUF_SZ + 8];
 
-    uint8_t _parser_buf[PARSER_BUF_SZ + 8];  // +8 to ensure we can always zero terminate
+    struct {
+        size_t consumed, pos, sz;
+    } read;
+    struct {
+        size_t offset, sz;
+    } write;
 } PS;
+
+static void
+reset_csi(ParsedCSI *csi) {
+    csi->num_params = 0; csi->primary = 0; csi->secondary = 0;
+    csi->trailer = 0; csi->state = CSI_START; csi->num_digits = 0;
+    csi->is_valid = false;
+}
+// }}}
 
 // Normal mode {{{
 
@@ -214,7 +252,7 @@ draw_byte(PS *self, uint8_t b) {
 }
 
 static void
-dispatch_normal_mode_byte(PS *self, uint8_t ch, bool from_within_a_csi UNUSED) {
+dispatch_normal_mode_byte(PS *self, uint8_t ch) {
 #define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name); name(self->screen); break;
     switch(ch) {
         case BEL:
@@ -244,6 +282,12 @@ dispatch_normal_mode_byte(PS *self, uint8_t ch, bool from_within_a_csi UNUSED) {
     }
 #undef CALL_SCREEN_HANDLER
 }
+
+static void
+consume_normal(PS *self) {
+    uint8_t ch = self->buf[self->read.pos++];
+    dispatch_normal_mode_byte(self, ch);
+}
 // }}}
 
 // Esc mode {{{
@@ -264,155 +308,161 @@ static void
 screen_nel(Screen *screen) { screen_carriage_return(screen); screen_linefeed(screen); }
 
 static bool
-accumulate_esc(PS *self) {
-    uint8_t ch = self->input_data[self->input_pos++];
-    self->parser_buf[self->parser_buf_pos++] = ch;
-    if (self->parser_buf_pos > 1) return true;
-    switch (ch) {
-        default:
-            return true;
-        IS_ESCAPED_CHAR:
-            return false;
-    }
-}
-
-static void
-dispatch_esc(PS *self) {
+consume_esc(PS *self) {
 #define CALL_ED(name) REPORT_COMMAND(name); name(self->screen); SET_STATE(NORMAL);
 #define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(self->screen, ch); SET_STATE(NORMAL);
 #define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(self->screen, a, b); SET_STATE(NORMAL);
-    uint8_t prev_ch, ch;
-    switch(self->parser_buf_pos) {
-        case 1:
-            ch = self->parser_buf[0];
-            switch (ch) {
-                case ESC_DCS: SET_STATE(DCS); break;
-                case ESC_OSC: SET_STATE(OSC); break;
-                case ESC_CSI: SET_STATE(CSI); break;
-                case ESC_APC: SET_STATE(APC); break;
-                case ESC_PM: SET_STATE(PM); break;
-
-                case ESC_RIS:
-                    CALL_ED(screen_reset); break;
-                case ESC_IND:
-                    CALL_ED(screen_index); break;
-                case ESC_NEL:
-                    CALL_ED(screen_nel); break;
-                case ESC_RI:
-                    CALL_ED(screen_reverse_index); break;
-                case ESC_HTS:
-                    CALL_ED(screen_set_tab_stop); break;
-                case ESC_DECSC:
-                    CALL_ED(screen_save_cursor); break;
-                case ESC_DECRC:
-                    CALL_ED(screen_restore_cursor); break;
-                case ESC_DECKPNM:
-                    CALL_ED(screen_normal_keypad_mode); break;
-                case ESC_DECKPAM:
-                    CALL_ED(screen_alternate_keypad_mode); break;
-                default:
-                    REPORT_ERROR("%s0x%x", "Unknown char after ESC: ", ch);
-                    SET_STATE(NORMAL); break;
-            }
-            break;
-        default:
-            prev_ch = self->parser_buf[0];
-            ch = self->parser_buf[1];
-            switch(prev_ch) {
-                case '%':
-                    switch(ch) {
-                        case '@':
-                            REPORT_ERROR("Ignoring attempt to switch to non-utf8 encoding");
-                            break;
-                        case 'G':
-                            REPORT_ERROR("Ignoring attempt to switch to utf8 encoding as we are always utf-8");
-                            break;
-                        default:
-                            REPORT_ERROR("Unhandled Esc %% code: 0x%x", ch);  break;
-                    }
-                    break;
-                case '#':
-                    if (ch == '8') { CALL_ED(screen_align); }
-                    else { REPORT_ERROR("Unhandled Esc # code: 0x%x", ch); }
-                    break;
-                case '(':
-                case ')':
-                    switch(ch) {
-                        case 'A':
-                        case 'B':
-                        case '0':
-                        case 'U':
-                        case 'V':
-                            // dont report this error as fish shell designates charsets for some unholy reason, creating lot of noise in the tests
-                            /* REPORT_ERROR("Ignoring attempt to designate charset as we support only UTF-8"); */
-                            break;
-                        default:
-                            REPORT_ERROR("Unknown charset: 0x%x", ch); break;
-                    }
-                    break;
-                case ' ':
-                    switch(ch) {
-                        case 'F':
-                        case 'G':
-                            REPORT_ERROR("Ignoring attempt to turn on/off C1 controls as we only support C0 controls"); break;
-                        default:
-                            REPORT_ERROR("Unhandled ESC SP escape code: 0x%x", ch); break;
-                    }
-                    break;
-                default:
-                    REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", prev_ch, ch); break;
-            }
-            SET_STATE(NORMAL);
-            break;
+    const uint8_t ch = self->buf[self->read.pos++];
+    const bool is_first_char = self->read.pos - self->read.consumed == 1;
+    if (is_first_char) {
+        switch(ch) {
+            case ESC_DCS: SET_STATE(DCS); break;
+            case ESC_OSC: SET_STATE(OSC); break;
+            case ESC_CSI: SET_STATE(CSI); reset_csi(&self->csi); break;
+            case ESC_APC: SET_STATE(APC); break;
+            case ESC_PM: SET_STATE(PM); break;
+            IS_ESCAPED_CHAR:
+                return false;
+            case ESC_RIS:
+                CALL_ED(screen_reset); break;
+            case ESC_IND:
+                CALL_ED(screen_index); break;
+            case ESC_NEL:
+                CALL_ED(screen_nel); break;
+            case ESC_RI:
+                CALL_ED(screen_reverse_index); break;
+            case ESC_HTS:
+                CALL_ED(screen_set_tab_stop); break;
+            case ESC_DECSC:
+                CALL_ED(screen_save_cursor); break;
+            case ESC_DECRC:
+                CALL_ED(screen_restore_cursor); break;
+            case ESC_DECKPNM:
+                CALL_ED(screen_normal_keypad_mode); break;
+            case ESC_DECKPAM:
+                CALL_ED(screen_alternate_keypad_mode); break;
+            default:
+                REPORT_ERROR("%s0x%x", "Unknown char after ESC: ", ch);
+                SET_STATE(NORMAL); break;
+        }
+        return true;
+    } else {
+        const uint8_t prev_ch = self->buf[self->read.pos-2];
+        SET_STATE(NORMAL);
+        switch(prev_ch) {
+            case '%':
+                switch(ch) {
+                    case '@':
+                        REPORT_ERROR("Ignoring attempt to switch to non-utf8 encoding");
+                        break;
+                    case 'G':
+                        REPORT_ERROR("Ignoring attempt to switch to utf8 encoding as we are always utf-8");
+                        break;
+                    default:
+                        REPORT_ERROR("Unhandled Esc %% code: 0x%x", ch);  break;
+                }
+                break;
+            case '#':
+                if (ch == '8') { CALL_ED(screen_align); }
+                else { REPORT_ERROR("Unhandled Esc # code: 0x%x", ch); }
+                break;
+            case '(':
+            case ')':
+                switch(ch) {
+                    case 'A':
+                    case 'B':
+                    case '0':
+                    case 'U':
+                    case 'V':
+                        // dont report this error as fish shell designates charsets for some unholy reason, creating lot of noise in the tests
+                        /* REPORT_ERROR("Ignoring attempt to designate charset as we support only UTF-8"); */
+                        break;
+                    default:
+                        REPORT_ERROR("Unknown charset: 0x%x", ch); break;
+                }
+                break;
+            case ' ':
+                switch(ch) {
+                    case 'F':
+                    case 'G':
+                        REPORT_ERROR("Ignoring attempt to turn on/off C1 controls as we only support C0 controls"); break;
+                    default:
+                        REPORT_ERROR("Unhandled ESC SP escape code: 0x%x", ch); break;
+                }
+                break;
+            default:
+                REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", prev_ch, ch); break;
+        }
+        return true;
     }
 #undef CALL_ED
 #undef CALL_ED1
 } // }}}
 
-// OSC {{{
+// ST terminator {{{
 static bool
-is_extended_osc(const PS *self) {
-    return self->parser_buf_pos > 2 && self->parser_buf[0] == EXTENDED_OSC_SENTINEL && self->parser_buf[1] == 1 && self->parser_buf[2] == ';';
+find_st_terminator(PS *self, size_t *end_pos) {
+    // TODO: Make this faster with SIMD
+    for(; self->read.pos < self->read.sz; self->read.pos++) {
+        uint8_t ch = self->buf[self->read.pos];
+        switch(ch) {
+            case BEL:
+                *end_pos = self->read.pos;
+                self->read.pos++;
+                return true;
+            case ESC_ST:
+                if (self->read.pos > 0 && self->buf[self->read.pos-1] == ESC) {
+                    *end_pos = self->read.pos - 1;
+                    self->read.pos++;
+                    return true;
+                }
+                break;
+        }
+    }
+    return false;
+}
+// }}}
+
+// OSC {{{
+
+static bool
+is_osc_52(PS *self) {
+    return memcmp(self->buf + self->read.consumed, "52;", 3) == 0;
 }
 
 static void
 continue_osc_52(PS *self) {
-    self->parser_buf[0] = '5'; self->parser_buf[1] = '2'; self->parser_buf[2] = ';';
-    self->parser_buf[3] = ';'; self->parser_buf_pos = 4;
+    self->read.pos -= 4;
+    self->read.consumed = self->read.pos;
+    self->buf[self->read.pos++] = '5'; self->buf[self->read.pos++] = '2';
+    self->buf[self->read.pos++] = ';'; self->buf[self->read.pos++] = ';';
 }
 
-static bool
-handle_extended_osc_code(PS *self) {
-    // Handle extra long OSC 52 codes
-    if (self->parser_buf[0] != '5' || self->parser_buf[1] != '2' || self->parser_buf[2] != ';') return false;
-    self->parser_buf[0] = EXTENDED_OSC_SENTINEL; self->parser_buf[1] = 1;
-    return true;
-}
 
 static bool
-accumulate_osc(PS *self) {
-    uint8_t ch = self->input_data[self->input_pos++];
-    self->extended_osc_code = false;
-    switch(ch) {
-        case BEL:
-            return true;
-        case NUL:
-        case DEL:
-            break;
-        case ESC_ST:
-            if (self->parser_buf_pos > 0 && self->parser_buf[self->parser_buf_pos - 1] == ESC) {
-                self->parser_buf_pos--;
-                return true;
-            }
-            /* fallthrough */
-        default:
-            if (self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
-                if (handle_extended_osc_code(self)) self->extended_osc_code = true;
-                else REPORT_ERROR("OSC sequence too long (> %d bytes) truncating.", PARSER_BUF_SZ);
-                return true;
-            }
-            self->parser_buf[self->parser_buf_pos++] = ch;
-            break;
+accumulate_st_terminated_esc_code(PS *self, void(dispatch)(PS*, uint8_t*, size_t, bool)) {
+    size_t pos;
+    if (find_st_terminator(self, &pos)) {
+        uint8_t *buf = self->buf + self->read.consumed;
+        size_t sz = pos - self->read.consumed;
+        buf[sz] = 0;  // ensure null termination, this is anyway an ST termination char
+        dispatch(self, buf, sz, false);
+        return true;
+    }
+    if (UNLIKELY((pos=self->read.pos - self->read.consumed) > MAX_ESCAPE_CODE_LENGTH)) {
+        if (self->vte_state == VTE_OSC && is_osc_52(self)) {
+            uint8_t *buf = self->buf + self->read.consumed;
+            // null terminate
+            self->read.pos--;
+            uint8_t before = buf[pos];
+            buf[self->read.pos] = 0;  // ensure null termination, this is anyway an ST termination char
+            dispatch(self, buf, self->read.pos - self->read.consumed, true);
+            buf[self->read.pos] = before;
+            continue_osc_52(self);
+            return accumulate_st_terminated_esc_code(self, dispatch);
+        }
+        REPORT_ERROR("%s escape code too long (%zu bytes), ignoring it", vte_state_name(self->vte_state), pos);
+        return true;
     }
     return false;
 }
@@ -437,11 +487,7 @@ parse_osc_8(char *buf, char **id, char **url) {
 }
 
 static void
-dispatch_hyperlink(PS *self, size_t pos, size_t size) {
-    if (!size) return;  // ignore empty OSC 8 since it must have two semi-colons to be valid, which means one semi-colon here
-    char *buf = (char*)self->parser_buf + pos;
-    buf[size] = 0;  // this is safe because we have an extra 8 bytes after PARSER_BUF_SZ
-
+dispatch_hyperlink(PS *self, char *buf) {
     char *id = NULL, *url = NULL;
     if (parse_osc_8(buf, &id, &url)) {
         REPORT_HYPERLINK(id, url);
@@ -453,31 +499,25 @@ dispatch_hyperlink(PS *self, size_t pos, size_t size) {
 
 
 static void
-dispatch_osc(PS *self) {
+dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
 #define DISPATCH_OSC_WITH_CODE(name) REPORT_OSC2(name, code, mv); name(self->screen, code, mv);
 #define DISPATCH_OSC(name) REPORT_OSC(name, mv); name(self->screen, mv);
 #define START_DISPATCH {\
-    RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->parser_buf + i, limit - i, PyBUF_READ)); \
+    RAII_PyObject(mv, PyMemoryView_FromMemory((char*)buf + i, limit - i, PyBUF_READ)); \
     if (mv) {
 #define END_DISPATCH_WITHOUT_BREAK }; PyErr_Clear(); }
 #define END_DISPATCH }; PyErr_Clear(); break; }
 
-    const unsigned int limit = self->parser_buf_pos;
     int code=0;
     unsigned int i;
     for (i = 0; i < MIN(limit, 5u); i++) {
-        if (self->parser_buf[i] < '0' || self->parser_buf[i] > '9') break;
+        if (buf[i] < '0' || buf[i] > '9') break;
     }
     if (i > 0) {
-        code = utoi(self->parser_buf, i);
-        if (i < limit && self->parser_buf[i] == ';') i++;
-    } else {
-        if (is_extended_osc(self)) {
-            // partial OSC 52
-            i = 3;
-            code = -52;
-        }
+        code = utoi(buf, i);
+        if (i < limit && buf[i] == ';') i++;
     }
+
     switch(code) {
         case 0:
             START_DISPATCH
@@ -504,10 +544,10 @@ dispatch_osc(PS *self) {
             REPORT_OSC2(process_cwd_notification, code, mv);
             END_DISPATCH_WITHOUT_BREAK
 #endif
-            process_cwd_notification(self->screen, code, (char*)self->parser_buf + i, limit-i);
+            process_cwd_notification(self->screen, code, (char*)buf + i, limit-i);
             break;
         case 8:
-            dispatch_hyperlink(self, i, limit-i);
+            dispatch_hyperlink(self, (char*)buf + i);
             break;
         case 9:
         case 99:
@@ -530,10 +570,10 @@ dispatch_osc(PS *self) {
             START_DISPATCH
             DISPATCH_OSC_WITH_CODE(set_dynamic_color);
             END_DISPATCH
-        case 52: case -52: case 5522:
+        case 52: case 5522:
             START_DISPATCH
+            if (is_extended_osc && code == 52) code = -52;
             DISPATCH_OSC_WITH_CODE(clipboard_control);
-            if (code == -52) continue_osc_52(self);
             END_DISPATCH
         case 133:
 #ifdef DUMP_COMMANDS
@@ -542,8 +582,8 @@ dispatch_osc(PS *self) {
             END_DISPATCH_WITHOUT_BREAK
 #endif
             if (limit > i) {
-                self->parser_buf[limit] = 0; // safe to do as we have 8 extra bytes after PARSER_BUF_SZ
-                shell_prompt_marking(self->screen, (char*)self->parser_buf + i);
+                buf[limit] = 0; // safe to do as we have 8 extra bytes after PARSER_BUF_SZ
+                shell_prompt_marking(self->screen, (char*)buf + i);
             }
             break;
         case FILE_TRANSFER_CODE:
@@ -562,7 +602,7 @@ dispatch_osc(PS *self) {
             REPORT_ERROR("Ignoring OSC 697, typically used by Fig for shell integration");
             break;
         default:
-            REPORT_ERROR("Unknown OSC code: %u", code);
+            REPORT_UKNOWN_ESCAPE_CODE("OSC", buf);
             break;
     }
 #undef DISPATCH_OSC
@@ -584,58 +624,64 @@ startswith(const uint8_t *string, ssize_t sz, const char *prefix, ssize_t l) {
     return true;
 }
 
-#define PENDING_MODE_CHAR '='
+static void
+activate_pending_mode(PS *self) {
+    self->pending_mode.activated_at = self->now;
+    self->pending_mode.state = PENDING_NORMAL;
+}
 
 static void
-dispatch_dcs(PS *self) {
-    if (self->parser_buf_pos < 2) return;
-    switch(self->parser_buf[0]) {
+dispatch_dcs(PS *self, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
+    if (bufsz < 2) return;
+    switch (buf[0]) {
         case '+':
         case '$':
-            if (self->parser_buf[1] == 'q') {
-                self->parser_buf[self->parser_buf_pos] = 0;  // safe to do since we have 8 extra bytes after PARSER_BUF_SZ
-                PyObject *mv = PyMemoryView_FromMemory((char*)self->parser_buf + 2, self->parser_buf_pos-2, PyBUF_READ);
+            if (buf[1] == 'q') {
+                PyObject *mv = PyMemoryView_FromMemory((char*)buf + 2, bufsz-2, PyBUF_READ);
                 if (mv) {
-                    REPORT_OSC2(screen_request_capabilities, (char)self->parser_buf[0], mv);
+                    REPORT_OSC2(screen_request_capabilities, (char)buf[0], mv);
                     Py_DECREF(mv);
                 } else PyErr_Clear();
-                screen_request_capabilities(self->screen, (char)self->parser_buf[0], (char*)self->parser_buf + 2);
+                screen_request_capabilities(self->screen, (char)buf[0], (char*)buf + 2);
             } else {
-                REPORT_ERROR("Unrecognized DCS %c code: 0x%x", (char)self->parser_buf[0], self->parser_buf[1]);
+                REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
             }
             break;
-        case PENDING_MODE_CHAR:
-            if (self->parser_buf_pos > 2 && (self->parser_buf[1] == '1' || self->parser_buf[1] == '2') && self->parser_buf[2] == 's') {
-                if (self->parser_buf[1] == '1') {
-                    self->pending_mode.activated_at = monotonic();
-                    REPORT_COMMAND(screen_start_pending_mode);
+        case '=':
+            if (bufsz > 2 && (buf[1] == '1' || buf[1] == '2') && buf[2] == 's') {
+                if (buf[1] == '1') {
+                    if (!self->pending_mode.draining) {
+                        REPORT_COMMAND(screen_start_pending_mode)
+                        activate_pending_mode(self);
+                    }
                 } else {
-                    // ignore stop without matching start, see queue_pending_bytes()
-                    // for how stop is detected while in pending mode.
-                    REPORT_ERROR("Pending mode stop command issued while not in pending mode, this can"
-                        " be either a bug in the terminal application or caused by a timeout with no data"
-                        " received for too long or by too much data in pending mode");
-                    REPORT_COMMAND(screen_stop_pending_mode);
+                    if (self->pending_mode.draining) {
+                        self->pending_mode.draining = false;
+                        REPORT_COMMAND(screen_stop_pending_mode);
+                    } else {
+                        REPORT_ERROR("Pending mode stop command issued while not in pending mode, this can"
+                            " be either a bug in the terminal application or caused by a timeout with no data"
+                            " received for too long or by too much data in pending mode");
+                    }
                 }
             } else {
-                REPORT_ERROR("Unrecognized DCS %c code: 0x%x", (char)self->parser_buf[0], self->parser_buf[1]);
-            }
-            break;
+                REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
+            } break;
         case '@':
-            if (startswith(self->parser_buf + 1, self->parser_buf_pos - 2, "kitty-", sizeof("kitty-") - 1)) {
-                if (startswith(self->parser_buf + 7, self->parser_buf_pos - 2, "cmd{", sizeof("cmd{") - 1)) {
-                    PyObject *cmd = PyMemoryView_FromMemory((char*)self->parser_buf + 10, self->parser_buf_pos - 10, PyBUF_READ);
+            if (startswith(buf + 1, bufsz - 2, "kitty-", sizeof("kitty-") - 1)) {
+                if (startswith(buf + 7, bufsz - 2, "cmd{", sizeof("cmd{") - 1)) {
+                    PyObject *cmd = PyMemoryView_FromMemory((char*)buf + 10, bufsz - 10, PyBUF_READ);
                     if (cmd != NULL) {
-                        REPORT_OSC2(screen_handle_cmd, (char)self->parser_buf[0], cmd);
+                        REPORT_OSC2(screen_handle_cmd, (char)buf[0], cmd);
                         screen_handle_cmd(self->screen, cmd);
                         Py_DECREF(cmd);
                     } else PyErr_Clear();
 #define IF_SIMPLE_PREFIX(prefix, func) \
-        if (startswith(self->parser_buf + 7, self->parser_buf_pos - 1, prefix, sizeof(prefix) - 1)) { \
+        if (startswith(buf + 7, bufsz - 1, prefix, sizeof(prefix) - 1)) { \
             const size_t pp_size = sizeof("kitty") + sizeof(prefix); \
-            PyObject *msg = PyMemoryView_FromMemory((char*)self->parser_buf + pp_size, self->parser_buf_pos - pp_size, PyBUF_READ); \
+            PyObject *msg = PyMemoryView_FromMemory((char*)buf + pp_size, bufsz - pp_size, PyBUF_READ); \
             if (msg != NULL) { \
-                REPORT_OSC2(func, (char)self->parser_buf[0], msg); \
+                REPORT_OSC2(func, (char)buf[0], msg); \
                 screen_handle_kitty_dcs(self->screen, #func, msg); \
                 Py_DECREF(msg); \
             } else PyErr_Clear();
@@ -650,13 +696,12 @@ dispatch_dcs(PS *self) {
                 } else IF_SIMPLE_PREFIX("edit|", handle_remote_edit)
 #undef IF_SIMPLE_PREFIX
                 } else {
-                    self->parser_buf[self->parser_buf_pos] = 0; // safe to do as we have 8 extra bytes after PARSER_BUF_SZ
-                    REPORT_ERROR("Unrecognized DCS @ code: %s", self->parser_buf);
+                    REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
                 }
             }
             break;
         default:
-            REPORT_ERROR("Unrecognized DCS code: 0x%x", self->parser_buf[0]);
+            REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
             break;
     }
 }
@@ -666,7 +711,7 @@ dispatch_dcs(PS *self) {
 // CSI {{{
 
 #define CSI_SECONDARY \
-        case ' ': \
+        ' ': \
         case '!': \
         case '"': \
         case '#': \
@@ -681,253 +726,30 @@ dispatch_dcs(PS *self) {
         case ',': \
         case '-': \
         case '.': \
-        case '/':
+        case '/'
 
+#define CSI_TRAILER \
+        '@': \
+START_ALLOW_CASE_RANGE \
+        case 'a' ... 'z': \
+        case 'A' ... 'Z': \
+END_ALLOW_CASE_RANGE \
+        case '`': \
+        case '{': \
+        case '|': \
+        case '}': \
+        case '~'
 
-
-static bool
-accumulate_csi(PS *self) {
-#define ENSURE_SPACE \
-    if (self->parser_buf_pos > PARSER_BUF_SZ - 1) { \
-        REPORT_ERROR("CSI sequence too long, ignoring"); \
-        SET_STATE(NORMAL); \
-        return false; \
-    }
-
-    uint8_t ch = self->input_data[self->input_pos++];
-    switch(ch) {
-        IS_DIGIT
-        CSI_SECONDARY
-        case ':':
-        case ';':
-            ENSURE_SPACE;
-            self->parser_buf[self->parser_buf_pos++] = ch;
-            break;
-        case '?':
-        case '>':
-        case '<':
-        case '=':
-            if (self->parser_buf_pos != 0) {
-                REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
-                SET_STATE(NORMAL);
-                return false;
-            }
-            ENSURE_SPACE;
-            self->parser_buf[self->parser_buf_pos++] = ch;
-            break;
-START_ALLOW_CASE_RANGE
-        case 'a' ... 'z':
-        case 'A' ... 'Z':
-END_ALLOW_CASE_RANGE
-        case '@':
-        case '`':
-        case '{':
-        case '|':
-        case '}':
-        case '~':
-            ENSURE_SPACE;
-            self->parser_buf[self->parser_buf_pos++] = ch;
-            return true;
-        case BEL:
-        case BS:
-        case HT:
-        case LF:
-        case VT:
-        case FF:
-        case CR:
-        case SO:
-        case SI:
-            dispatch_normal_mode_byte(self, ch, true);
-            break;
-        case NUL:
-        case DEL:
-            SET_STATE(NORMAL);
-            break;  // no-op
-        default:
-            REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
-            SET_STATE(NORMAL);
-            return false;
-
-    }
-    return false;
-#undef ENSURE_SPACE
-}
-
-
-#ifdef DUMP_COMMANDS
-static void
-parse_sgr_dump(PS *self, uint8_t *buf, unsigned int num, int *params, const char *report_name UNUSED, Region *region) {
-    Screen *screen = self->screen;
-#else
-void
-parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, int *params, const char *report_name UNUSED, Region *region) {
-#endif
-    enum State { START, NORMAL, MULTIPLE, COLOR, COLOR1, COLOR3 };
-    enum State state = START;
-    unsigned int num_params, num_start, i;
-
-#define READ_PARAM { params[num_params++] = utoi(buf + num_start, i - num_start); }
-#define SEND_SGR { REPORT_PARAMS(report_name, params, num_params, region); select_graphic_rendition(screen, params, num_params, region); state = START; num_params = 0; }
-
-    for (i=0, num_start=0, num_params=0; i < num && num_params < MAX_PARAMS; i++) {
-        switch(buf[i]) {
-            IS_DIGIT
-                switch(state) {
-                    case START:
-                        num_start = i;
-                        state = NORMAL;
-                        num_params = 0;
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            case ';':
-                switch(state) {
-                    case START:
-                        params[num_params++] = 0;
-                        SEND_SGR;
-                        break;
-                    case NORMAL:
-                        READ_PARAM;
-                        switch(params[0]) {
-                            case 38:
-                            case 48:
-                            case 58:
-                                state = COLOR;
-                                num_start = i + 1;
-                                break;
-                            default:
-                                SEND_SGR;
-                                break;
-                        }
-                        break;
-                    case MULTIPLE:
-                        READ_PARAM;
-                        SEND_SGR;
-                        break;
-                    case COLOR:
-                        READ_PARAM;
-                        switch(params[1]) {
-                            case 2:
-                                state = COLOR3;
-                                break;
-                            case 5:
-                                state = COLOR1;
-                                break;
-                            default:
-                                REPORT_ERROR("Invalid SGR color code with unknown color type: %u", params[1]);
-                                return;
-                        }
-                        num_start = i + 1;
-                        break;
-                    case COLOR1:
-                        READ_PARAM;
-                        SEND_SGR;
-                        break;
-                    case COLOR3:
-                        READ_PARAM;
-                        if (num_params == 5) { SEND_SGR; }
-                        else num_start = i + 1;
-                        break;
-                }
-                break;
-            case ':':
-                switch(state) {
-                    case START:
-                        REPORT_ERROR("Invalid SGR code containing ':' at an invalid location: %u", i);
-                        return;
-                    case NORMAL:
-                        READ_PARAM;
-                        state = MULTIPLE;
-                        num_start = i + 1;
-                        break;
-                    case MULTIPLE:
-                        READ_PARAM;
-                        num_start = i + 1;
-                        break;
-                    case COLOR:
-                    case COLOR1:
-                    case COLOR3:
-                        REPORT_ERROR("Invalid SGR code containing disallowed character: %c (U+%x)", buf[i], buf[i]);
-                        return;
-                }
-                break;
-            default:
-                REPORT_ERROR("Invalid SGR code containing disallowed character: %c (U+%x)", buf[i], buf[i]);
-                return;
-        }
-    }
-    switch(state) {
-        case START:
-            if (num_params < MAX_PARAMS) params[num_params++] = 0;
-            SEND_SGR;
-            break;
-        case COLOR1:
-        case NORMAL:
-        case MULTIPLE:
-            if (i > num_start && num_params < MAX_PARAMS) { READ_PARAM; }
-            if (num_params) { SEND_SGR; }
-            else { REPORT_ERROR("Incomplete SGR code"); }
-            break;
-        case COLOR:
-            REPORT_ERROR("Invalid SGR code containing incomplete semi-colon separated color sequence");
-            break;
-        case COLOR3:
-            if (i > num_start && num_params < MAX_PARAMS) READ_PARAM;
-            if (num_params != 5) {
-                REPORT_ERROR("Invalid SGR code containing incomplete semi-colon separated color sequence");
-                break;
-            }
-            if (num_params) { SEND_SGR; }
-            else { REPORT_ERROR("Incomplete SGR code"); }
-            break;
-    }
-#undef READ_PARAM
-#undef SEND_SGR
-}
-
-static unsigned int
-parse_region(Region *r, uint8_t *buf, unsigned int num) {
-    unsigned int i, start, num_params = 0;
-    int params[8] = {0};
-    for (i=0, start=0; i < num && num_params < 4; i++) {
-        switch(buf[i]) {
-            IS_DIGIT
-                break;
-            default:
-                if (i > start) params[num_params++] = utoi(buf + start, i - start);
-                else if (i == start && buf[i] == ';') params[num_params++] = 0;
-                start = i + 1;
-                break;
-        }
-    }
-
-    switch(num_params) {
-        case 0:
-            break;
-        case 1:
-            r->top = params[0];
-            break;
-        case 2:
-            r->top = params[0]; r->left = params[1];
-            break;
-        case 3:
-            r->top = params[0]; r->left = params[1]; r->bottom = params[2];
-            break;
-        default:
-            r->top = params[0]; r->left = params[1]; r->bottom = params[2]; r->right = params[3];
-            break;
-    }
-    return i;
-}
-
-static void
-screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, false, -1); }
-static void
-screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
-static void
-screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1u, count); i++) screen_tab(s); }
+#define CSI_NORMAL_MODE_EMBEDDINGS \
+        BEL: \
+        case BS: \
+        case HT: \
+        case LF: \
+        case VT: \
+        case FF: \
+        case CR: \
+        case SO: \
+        case SI
 
 static const char*
 csi_letter(unsigned code) {
@@ -936,6 +758,259 @@ csi_letter(unsigned code) {
     else snprintf(buf, sizeof(buf), "0x%x", code);
     return buf;
 }
+
+static bool
+commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
+    if (!csi->num_digits) return true;
+    if (csi->num_params >= MAX_CSI_PARAMS) {
+        REPORT_ERROR("CSI escape code has too many parameters, ignoring it");
+        return false;
+    }
+    csi->params[csi->num_params++] = utoi(csi->digits, csi->num_digits);
+    csi->num_digits = 0;
+    return true;
+}
+
+static bool
+csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, size_t sz, size_t start) {
+    while (*pos < sz) {
+        if (UNLIKELY(*pos - start > MAX_ESCAPE_CODE_LENGTH)) {
+            REPORT_ERROR("CSI escape too long ignoring and truncating");
+            return true;
+        }
+        uint8_t ch = buf[(*pos)++];
+        switch(csi->state) {
+            case CSI_START:
+                switch (ch) {
+                    case CSI_NORMAL_MODE_EMBEDDINGS:
+                        dispatch_normal_mode_byte(self, ch); break;
+                    case ';':
+                        csi->params[csi->num_params++] = 0;
+                        csi->state = CSI_BODY;
+                        break;
+                    case DIGIT:
+                        csi->digits[csi->num_digits++] = ch;
+                        csi->state = CSI_BODY;
+                        break;
+                    case '?':
+                    case '>':
+                    case '<':
+                    case '=':
+                        csi->state = CSI_BODY;
+                        csi->primary = ch;
+                        break;
+                    case CSI_SECONDARY:
+                        if (ch == '-') {
+                            csi->digits[csi->num_digits++] = '-';
+                            csi->state = CSI_BODY;
+                        } else {
+                            csi->secondary = ch;
+                            csi->state = CSI_POST_SECONDARY;
+                        }
+                        break;
+                    case CSI_TRAILER:
+                        csi->is_valid = true;
+                        csi->trailer = ch;
+                        return true;
+                    default:
+                        REPORT_ERROR("Invalid character in CSI: %s (0x%x), ignoring the sequence", csi_letter(ch), ch);
+                        return true;
+                }
+                break;
+            case CSI_POST_SECONDARY:
+                switch (ch) {
+                    case CSI_NORMAL_MODE_EMBEDDINGS:
+                        dispatch_normal_mode_byte(self, ch); break;
+                    case CSI_TRAILER:
+                        csi->is_valid = true;
+                        csi->trailer = ch;
+                        break;
+                    default:
+                        REPORT_ERROR("Invalid character in CSI: %s (0x%x), ignoring the sequence", csi_letter(ch), ch);
+                        break;
+                }
+                return true;
+            case CSI_BODY:
+                switch(ch) {
+                    case CSI_NORMAL_MODE_EMBEDDINGS:
+                        dispatch_normal_mode_byte(self, ch); break;
+                    case CSI_SECONDARY:
+                        if (ch == '-' && csi->num_digits == 0) {
+                            csi->digits[csi->num_digits++] = '-';
+                        } else {
+                            if (!commit_csi_param(self, csi)) return true;
+                            csi->secondary = ch;
+                            csi->state = CSI_POST_SECONDARY;
+                        }
+                        break;
+                    case CSI_TRAILER:
+                        if (csi->num_digits == 1 && csi->secondary == 0 && csi->digits[0] == '-') {
+                            csi->num_digits = 0; csi->secondary = '-';
+                        }
+                        if (!commit_csi_param(self, csi)) return true;
+                        csi->is_valid = true;
+                        csi->trailer = ch;
+                        return true;
+                    case ':':
+                        if (!commit_csi_param(self, csi)) return true;
+                        csi->is_sub_param[csi->num_params] = true;
+                        break;
+                    case ';':
+                        if (!csi->num_digits) csi->digits[csi->num_digits++] = '0';
+                        if (!commit_csi_param(self, csi)) return true;
+                        csi->is_sub_param[csi->num_params] = false;
+                        break;
+                    case DIGIT:
+                        if (csi->num_digits >= MAX_CSI_DIGITS) {
+                            REPORT_ERROR("Too many digits in CSI parameter, ignoring this CSI code");
+                            return true;
+                        }
+                        csi->digits[csi->num_digits++] = ch;
+                        break;
+                    default:
+                        REPORT_ERROR("Invalid character in CSI: %s (0x%x), ignoring the sequence", csi_letter(ch), ch);
+                        return true;
+                }
+                break;
+        }
+    }
+    return false;
+#undef COMMIT_PARAM
+}
+
+static bool
+consume_csi(PS *self) {
+    return csi_parse_loop(self, &self->csi, self->buf, &self->read.pos, self->read.sz, self->read.consumed);
+}
+
+static unsigned int
+parse_region(const ParsedCSI *csi, Region *r) {
+    switch(csi->num_params) {
+        case 0:
+            return 0;
+        case 1:
+            r->top = csi->params[0];
+            return 1;
+        case 2:
+            r->top = csi->params[0]; r->left = csi->params[1];
+            return 2;
+        case 3:
+            r->top = csi->params[0]; r->left = csi->params[1]; r->bottom = csi->params[2];
+            return 3;
+        default:
+            r->top = csi->params[0]; r->left = csi->params[1]; r->bottom = csi->params[2]; r->right = csi->params[3];
+            return 4;
+    }
+}
+
+
+static bool
+_parse_sgr(PS *self, ParsedCSI *csi) {
+#define SEND_SGR if (num_params) { \
+    REPORT_PARAMS(report_name, csi->params + first_param, num_params, state != NORMAL, region); \
+    select_graphic_rendition(screen, csi->params + first_param, num_params, state != NORMAL, region); \
+    state = NORMAL; first_param += num_params; num_params = 0; \
+}
+    Screen *screen = self->screen;
+    size_t pos = 0, first_param, num_params = 0;
+    Region r = {0}, *region = NULL;
+    const char *report_name = "select_graphic_rendition";
+    if (csi->trailer == 'r') {  // DECCARA
+        region = &r;
+        if (csi->num_params == 0) {
+            for (; csi->num_params < 5; csi->num_params++) csi->params[csi->num_params] = 0;
+        }
+        pos = parse_region(csi, region);
+        report_name = "deccara";
+        (void)report_name;
+    } else if (csi->num_params == 0) {
+        csi->params[0] = 0;
+        csi->num_params++;
+    }
+    enum State { NORMAL, SUB_PARAMS, COLOR, COLOR1, COLOR3 };
+    enum State state = NORMAL;
+
+    for (first_param = pos; pos < csi->num_params; pos++) {
+        switch (state) {
+            case NORMAL:
+                if (csi->is_sub_param[pos]) {
+                    if (num_params == 0 || pos == 0)  {
+                        REPORT_ERROR("SGR escape code has an unexpected sub-parameter ignoring the full code");
+                        return false;
+                    }
+                    num_params--;
+                    SEND_SGR;
+                    state = SUB_PARAMS;
+                    first_param = pos - 1;
+                    num_params = 1;
+                }
+                switch(csi->params[pos]) {
+                    case 38: case 48: case DECORATION_FG_CODE:
+                        SEND_SGR;
+                        state = COLOR;
+                        first_param = pos;
+                        num_params = 1;
+                        break;
+                    default:
+                        num_params++;
+                        break;
+                } break;
+            case SUB_PARAMS:
+                switch(csi->is_sub_param[pos]) {
+                    case true:
+                        num_params++; break;
+                    case false:
+                        SEND_SGR;
+                        pos--;
+                        break;
+                } break;
+            case COLOR:
+                switch(csi->params[pos]) {
+                    case 2:
+                        state = csi->is_sub_param[pos] ? SUB_PARAMS : COLOR3;
+                        num_params++;
+                        break;
+                    case 5:
+                        state = csi->is_sub_param[pos] ? SUB_PARAMS : COLOR1;
+                        num_params++;
+                        break;
+                    default:
+                        REPORT_ERROR("SGR escape code has unknown color type: %d ignoring the full code", csi->params[pos]);
+                        return false;
+                } break;
+            case COLOR1:
+                num_params++;
+                SEND_SGR;
+                break;
+            case COLOR3:
+                num_params++;
+                if (num_params >= 5) { SEND_SGR; }
+                break;
+        }
+    }
+    SEND_SGR;
+    return true;
+#undef SEND_SGR
+}
+
+#ifndef DUMP_COMMANDS
+bool
+parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name UNUSED, bool is_deccara) {
+    ParsedCSI csi = {0};
+    size_t pos = 0;
+    if (csi_parse_loop((PS*)screen->vt_parser->state, &csi, buf, &pos, num, 0)) return false;
+    pos = 0;
+    if (!csi_parse_loop((PS*)screen->vt_parser->state, &csi, (const uint8_t*)(is_deccara ? "$r" : "m"), &pos, is_deccara ? 2 : 1, 0)) return false;
+    return _parse_sgr((PS*)screen->vt_parser->state, &csi);
+}
+#endif
+
+static void
+screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, false, -1); }
+static void
+screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
+static void
+screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1u, count); i++) screen_tab(s); }
 
 static const char*
 repr_csi_params(int *params, unsigned int num_params) {
@@ -953,7 +1028,62 @@ repr_csi_params(int *params, unsigned int num_params) {
 }
 
 static void
+handle_mode(PS *self) {
+    bool is_shifted = self->csi.primary == '?';
+    int shift = is_shifted ? 5 : 0;
+    for (unsigned i = 0; i < self->csi.num_params; i++) {
+        int p = self->csi.params[i];
+        if (p >= 0) {
+            unsigned int sp = p << shift;
+            if (sp == PENDING_UPDATE) {
+                if (self->csi.trailer == SM) {
+                    if (!self->pending_mode.draining) {
+                        activate_pending_mode(self);
+                        REPORT_COMMAND(screen_start_pending_mode);
+                    }
+                } else if (self->csi.trailer == RM) {
+                    if (self->pending_mode.draining) {
+                        REPORT_COMMAND(screen_stop_pending_mode);
+                        self->pending_mode.draining = false;
+                    } else {
+                        REPORT_ERROR(
+                        "Pending mode stop command issued while not in pending mode, this can"
+                        " be either a bug in the terminal application or caused by a timeout with no data"
+                        " received for too long or by too much data in pending mode");
+                    }
+                }
+                return;
+            }
+            switch (self->csi.trailer) {
+                case SM:
+                    screen_set_mode(self->screen, sp);
+                    REPORT_COMMAND(screen_set_mode, p, is_shifted);
+                    break;
+                case RM:
+                    screen_reset_mode(self->screen, sp);
+                    REPORT_COMMAND(screen_reset_mode, p, is_shifted);
+                    break;
+                case 's':
+                    screen_save_mode(self->screen, sp);
+                    REPORT_COMMAND(screen_save_mode, p, is_shifted);
+                    break;
+                case 'r':
+                    screen_restore_mode(self->screen, sp);
+                    REPORT_COMMAND(screen_restore_mode, p, is_shifted);
+                    break;
+            }
+        }
+    }
+}
+
+static void
 dispatch_csi(PS *self) {
+#define num_params self->csi.num_params
+#define code self->csi.trailer
+#define params self->csi.params
+#define start_modifier self->csi.primary
+#define end_modifier self->csi.secondary
+
 #define AT_MOST_ONE_PARAMETER { \
     if (num_params > 1) { \
         REPORT_ERROR("CSI code %s has %u > 1 parameters", csi_letter(code), num_params); \
@@ -1013,81 +1143,19 @@ dispatch_csi(PS *self) {
     name(self->screen, p1, p2); \
     break;
 
-#define SET_MODE(func) \
-    p1 = start_modifier == '?' ? 5 : 0; \
-    for (i = 0; i < num_params; i++) { \
-        NON_NEGATIVE_PARAM(params[i]); \
-        REPORT_COMMAND(func, params[i], start_modifier == '?'); \
-        func(self->screen, params[i] << p1); \
-    } \
-    break;
-
 #define NO_MODIFIERS(modifier, special, special_msg) { \
-    if (start_modifier || end_modifier) { \
+    if (self->csi.primary || self->csi.secondary) { \
         if (special && modifier == special) { REPORT_ERROR(special_msg); } \
-        else { REPORT_ERROR("CSI code %s has unsupported start modifier: %s or end modifier: %s", csi_letter(code), csi_letter(start_modifier), csi_letter(end_modifier));} \
+        else { REPORT_ERROR("CSI code %s has unsupported start modifier: %s or end modifier: %s", csi_letter(self->csi.trailer), csi_letter(self->csi.primary), csi_letter(self->csi.secondary));} \
         break; \
     } \
 }
 
-    char start_modifier = 0, end_modifier = 0;
-    uint8_t *buf = self->parser_buf, code = self->parser_buf[self->parser_buf_pos - 1];
-    unsigned int num = self->parser_buf_pos - 1, start, i, num_params=0;
-    static int params[MAX_PARAMS] = {0}, p1, p2;
-    bool private;
-    if (buf[0] == '>' || buf[0] == '<' || buf[0] == '?' || buf[0] == '!' || buf[0] == '=') {
-        start_modifier = (char)self->parser_buf[0];
-        buf++; num--;
-    }
-    if (num > 0) {
-        switch(buf[num-1]) {
-            CSI_SECONDARY
-                end_modifier = (char)buf[--num];
-                break;
-        }
-    }
-    if (code == SGR && !start_modifier && !end_modifier) {
-#ifdef DUMP_COMMANDS
-        parse_sgr_dump(self, buf, num, params, "select_graphic_rendition", NULL);
-#else
-        parse_sgr(self->screen, buf, num, params, "select_graphic_rendition", NULL);
-#endif
-        return;
-    }
-    if (code == 'r' && !start_modifier && end_modifier == '$') {
-        // DECCARA
-        Region r = {0};
-        unsigned int consumed = parse_region(&r, buf, num);
-        num -= consumed; buf += consumed;
-#ifdef DUMP_COMMANDS
-        parse_sgr_dump(self, buf, num, params, "deccara", &r);
-#else
-        parse_sgr(self->screen, buf, num, params, "deccara", &r);
-#endif
-        return;
-    }
+    int p1, p2; bool private;
 
-    for (i=0, start=0; i < num; i++) {
-        switch(buf[i]) {
-            IS_DIGIT
-                break;
-            case '-':
-                if (i > start) {
-                    REPORT_ERROR("CSI code can contain hyphens only at the start of numbers");
-                    return;
-                }
-                break;
-            default:
-                if (i > start) params[num_params++] = utoi(buf + start, i - start);
-                else if (i == start && buf[i] == ';') params[num_params++] = 0;
-                if (num_params >= MAX_PARAMS) { i = num; start = num + 1; }
-                else { start = i + 1; break; }
-        }
-    }
-    if (i > start) params[num_params++] = utoi(buf + start, i - start);
-    switch(code) {
+    switch(self->csi.trailer) {
         case ICH:
-            NO_MODIFIERS(end_modifier, ' ', "Shift left escape code not implemented");
+            NO_MODIFIERS(self->csi.secondary, ' ', "Shift left escape code not implemented");
             CALL_CSI_HANDLER1(screen_insert_characters, 1);
         case REP:
             CALL_CSI_HANDLER1(screen_repeat_character, 1);
@@ -1151,9 +1219,9 @@ dispatch_csi(PS *self) {
         case TBC:
             CALL_CSI_HANDLER1(screen_clear_tab_stop, 0);
         case SM:
-            SET_MODE(screen_set_mode);
+            handle_mode(self); break;
         case RM:
-            SET_MODE(screen_reset_mode);
+            handle_mode(self); break;
         case DSR:
             CALL_CSI_HANDLER1P(report_device_status, 0, '?');
         case 's':
@@ -1165,7 +1233,7 @@ dispatch_csi(PS *self) {
                 if (!num_params) {
                     REPORT_COMMAND(screen_save_modes);
                     screen_save_modes(self->screen);
-                } else { SET_MODE(screen_save_mode); }
+                } else handle_mode(self);
                 break;
             }
             REPORT_ERROR("Unknown CSI s sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
@@ -1182,7 +1250,7 @@ dispatch_csi(PS *self) {
             switch(params[0]) {
                 case 4:
                 case 8:
-                    log_error("Escape codes to resize text area are not supported");
+                    REPORT_ERROR("Escape codes to resize text area are not supported");
                     break;
                 case 14:
                 case 16:
@@ -1232,7 +1300,10 @@ dispatch_csi(PS *self) {
                 if (!num_params) {
                     REPORT_COMMAND(screen_restore_modes);
                     screen_restore_modes(self->screen);
-                } else { SET_MODE(screen_restore_mode); }
+                } else handle_mode(self);
+                break;
+            } else if (!start_modifier && end_modifier == '$') {
+                _parse_sgr(self, &self->csi);
                 break;
             }
             REPORT_ERROR("Unknown CSI r sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
@@ -1272,6 +1343,10 @@ dispatch_csi(PS *self) {
             }
             break;
         case 'm':
+            if (!start_modifier && !end_modifier) {
+                _parse_sgr(self, &self->csi);
+                break;
+            }
             if (start_modifier == '>' && !end_modifier) {
                 REPORT_ERROR(
                     "The application is trying to use xterm's modifyOtherKeys."
@@ -1284,6 +1359,11 @@ dispatch_csi(PS *self) {
         default:
             REPORT_ERROR("Unknown CSI code: '%c' with start_modifier: '%c' and end_modifier: '%c' and parameters: '%s'", code, start_modifier, end_modifier, repr_csi_params(params, num_params));
     }
+#undef num_params
+#undef code
+#undef params
+#undef start_modifier
+#undef end_modifier
 }
 
 // }}}
@@ -1293,14 +1373,14 @@ dispatch_csi(PS *self) {
 #include "parse-graphics-command.h"
 
 static void
-dispatch_apc(PS *self) {
-    if (self->parser_buf_pos < 2) return;
-    switch(self->parser_buf[0]) {
+dispatch_apc(PS *self, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
+    if (bufsz < 2) return;
+    switch(buf[0]) {
         case 'G':
-            parse_graphics_code(self, self->parser_buf, self->parser_buf_pos);
+            parse_graphics_code(self, buf, bufsz);
             break;
         default:
-            REPORT_ERROR("Unrecognized APC code: 0x%x", self->parser_buf[0]);
+            REPORT_ERROR("Unrecognized APC code: 0x%x", buf[0]);
             break;
     }
 }
@@ -1309,11 +1389,11 @@ dispatch_apc(PS *self) {
 
 // PM mode {{{
 static void
-dispatch_pm(PS *self) {
-    if (self->parser_buf_pos < 2) return;
-    switch(self->parser_buf[0]) {
+dispatch_pm(PS *self UNUSED, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
+    if (bufsz < 2) return;
+    switch(buf[0]) {
         default:
-            REPORT_ERROR("Unrecognized PM code: 0x%x", self->parser_buf[0]);
+            REPORT_ERROR("Unrecognized PM code: 0x%x", buf[0]);
             break;
     }
 }
@@ -1321,315 +1401,225 @@ dispatch_pm(PS *self) {
 
 // }}}
 
+// Parse loop {{{
+static void
+consume_input(PS *self) {
+#define consume(x) if (accumulate_st_terminated_esc_code(self, dispatch_##x)) { self->read.consumed = self->read.pos; SET_STATE(NORMAL); } break;
+    switch (self->vte_state) {
+        case VTE_NORMAL:
+            consume_normal(self); self->read.consumed = self->read.pos; break;
+        case VTE_ESC:
+            if (consume_esc(self)) { self->read.consumed = self->read.pos; }
+            break;
+        case VTE_CSI:
+            if (consume_csi(self)) { self->read.consumed = self->read.pos; if (self->csi.is_valid) dispatch_csi(self); SET_STATE(NORMAL); }
+            break;
+        case VTE_OSC:
+            consume(osc);
+        case VTE_APC:
+            consume(apc);
+        case VTE_PM:
+            consume(pm);
+        case VTE_DCS:
+            consume(dcs);
+    }
+#undef consume
+}
+
+#define pending_mode_sentinel "\x1b[?2026l"
+#if PENDING_MODE != 2026
+#error "PENDING_MODE != 2026"
+#endif
+#define pmslen (literal_strlen(pending_mode_sentinel))
+
 static bool
-accumulate_oth(PS *self) {
-    uint8_t ch = self->input_data[self->input_pos++];
-    switch(ch) {
-        case BEL:
-            return true;
-        case DEL:
-        case NUL:
-            break;
-        case ESC_ST:
-            if (self->parser_buf_pos > 0 && self->parser_buf[self->parser_buf_pos - 1] == ESC) {
-                self->parser_buf_pos--;
-                return true;
-            }
-            /* fallthrough */
-        default:
-            if (self->parser_buf_pos >= PARSER_BUF_SZ - 1) {
-                REPORT_ERROR("OTH sequence too long, truncating.");
-                return true;
-            }
-            self->parser_buf[self->parser_buf_pos++] = ch;
-            break;
+find_pending_stop_csi(PS *self) {
+    // TODO: Make this faster with SIMD
+    for(; self->read.pos < self->read.sz; self->read.pos++) {
+        uint8_t ch = self->buf[self->read.pos];
+        switch(ch) {
+            case 'l':
+                if (
+                    self->read.pos >= self->read.consumed + pmslen &&
+                    memcmp(self->buf + self->read.pos - pmslen + 1, pending_mode_sentinel, pmslen) == 0
+                ) return true;
+                self->pending_mode.state = PENDING_NORMAL;
+                return false;
+            case ESC:
+                self->pending_mode.state = PENDING_ESC;
+                self->read.pos++;
+                return false;
+        }
     }
     return false;
 }
 
-#define dispatch_single_byte(dispatch, watch_for_pending) { \
-    switch(self->vte_state) { \
-        case VTE_ESC: \
-            if (accumulate_esc(self)) dispatch##_esc(self); \
-            break; \
-        case VTE_CSI: \
-            if (accumulate_csi(self)) { dispatch##_csi(self); SET_STATE(NORMAL); watch_for_pending; } \
-            break; \
-        case VTE_OSC: \
-            if (accumulate_osc(self)) {  \
-                dispatch##_osc(self); \
-                if (self->extended_osc_code) { \
-                    self->input_pos--; \
-                    if (accumulate_osc(self)) { dispatch##_osc(self); SET_STATE(NORMAL); } \
-                } else { SET_STATE(NORMAL); } \
-            } \
-            break; \
-        case VTE_APC: \
-            if (accumulate_oth(self)) { dispatch##_apc(self); SET_STATE(NORMAL); } \
-            break; \
-        case VTE_PM: \
-            if (accumulate_oth(self)) { dispatch##_pm(self); SET_STATE(NORMAL); } \
-            break; \
-        case VTE_DCS: \
-            if (accumulate_oth(self)) { dispatch##_dcs(self); SET_STATE(NORMAL); watch_for_pending; } \
-            break; \
-        case VTE_NORMAL: \
-            dispatch##_normal_mode_byte(self, self->input_data[self->input_pos++], false); \
-            break; \
-    } \
-} \
-
-// Pending mode {{{
-#define pending_header ((PendingHeader*)&self->pending_mode.buf[self->pending_mode.current])
-#define PENDING_END_SENTINEL 0xff
-
-static void
-ensure_pending_space(PS *self, size_t amt) {
-    if (self->pending_mode.capacity < self->pending_mode.used + amt) {
-        if (self->pending_mode.capacity) {
-            self->pending_mode.capacity += self->pending_mode.capacity >= READ_BUF_SZ ? PENDING_BUF_INCREMENT : self->pending_mode.capacity;
-        } else self->pending_mode.capacity = PENDING_BUF_INCREMENT;
-        self->pending_mode.buf = realloc(self->pending_mode.buf, self->pending_mode.capacity);
-        if (!self->pending_mode.buf) fatal("Out of memory");
-    }
+static bool
+find_pending_stop_dcs(PS *self, size_t end_pos) {
+#define sentinel "=2s"
+    return end_pos - self->pending_mode.esc_code_start >= literal_strlen(sentinel) && memcmp(self->buf +self->pending_mode.esc_code_start, sentinel, literal_strlen(sentinel)) == 0;
+#undef sentinel
 }
 
 static bool
-current_pending_is(PS *self, VTEState state) {
-    return self->pending_mode.current < self->pending_mode.used && pending_header->which == state;
-}
-
-static void
-align_pending_current(PS *self) {
-    // ensure PendingHeader is aligned
-    size_t off = self->pending_mode.current % sizeof(PendingHeader);
-    if (off) self->pending_mode.current += sizeof(PendingHeader) - off;  // 4 byte align
-}
-
-static void
-new_pending_state(PS *self, VTEState state) {
-    if (self->pending_mode.current < self->pending_mode.used) {
-        pending_header->size = self->pending_mode.used - self->pending_mode.current;
-        if (pending_header->size > sizeof(PendingHeader)) {
-            self->pending_mode.current = self->pending_mode.used;
-            align_pending_current(self);
-        }
-        self->pending_mode.used = self->pending_mode.current;
-    }
-    ensure_pending_space(self, sizeof(PendingHeader) + 128);
-    pending_header->which = state;
-    pending_header->size = sizeof(PendingHeader);
-    self->pending_mode.used += sizeof(PendingHeader);
-}
-
-static void
-dispatch_pending_bytes(PS *self) {
-    self->pending_mode.current = 0;
-    uint8_t *orig = self->parser_buf; size_t opos = self->parser_buf_pos;
-    while (pending_header->which != PENDING_END_SENTINEL) {
-        self->parser_buf = self->pending_mode.buf + self->pending_mode.current + sizeof(PendingHeader);
-        self->parser_buf_pos = pending_header->size - sizeof(PendingHeader);
-        if (self->parser_buf_pos) {
-            switch (pending_header->which) {
-                case VTE_ESC: dispatch_esc(self); break;
-                case VTE_CSI: dispatch_csi(self); break;
-                case VTE_OSC: dispatch_osc(self); break;
-                case VTE_DCS: dispatch_dcs(self); break;
-                case VTE_APC: dispatch_apc(self); break;
-                case VTE_PM:  dispatch_pm(self); break;
-                case VTE_NORMAL:
-                    for (unsigned i = 0; i < self->parser_buf_pos; i++) {
-                        dispatch_normal_mode_byte(self, self->parser_buf[i], false);
-                    }
-                    break;
+search_for_pending_stop(PS *self) {
+    while (self->read.pos < self->read.sz) {
+        switch(self->pending_mode.state) {
+            case PENDING_NORMAL: {
+                uint8_t *pos = memchr(self->buf + self->read.pos, ESC, self->read.sz - self->read.pos);
+                if (!pos) {
+                    self->read.pos = self->read.sz;
+                    return false;
+                }
+                self->read.pos = (pos - self->buf) + 1;
+                self->pending_mode.state = PENDING_ESC;
+            } break;
+            case PENDING_ESC: {
+                switch(self->buf[self->read.pos++]) {
+                    default:
+                        self->pending_mode.state = PENDING_NORMAL; break;
+                    case ESC_OSC: case ESC_APC: case ESC_PM:
+                        self->pending_mode.state = PENDING_ST; break;
+                    case ESC_DCS:
+                        self->pending_mode.state = PENDING_DCS; self->pending_mode.esc_code_start = self->read.pos; break;
+                    case ESC_CSI:
+                        self->pending_mode.state = PENDING_CSI; self->pending_mode.esc_code_start = self->read.pos; break;
+                }
+            } break;
+            case PENDING_ST: {
+                size_t end_pos;
+                if (find_st_terminator(self, &end_pos)) self->pending_mode.state = PENDING_NORMAL;
+            } break;
+            case PENDING_DCS: {
+                size_t end_pos;
+                if (find_st_terminator(self, &end_pos)) {
+                    self->pending_mode.state = PENDING_NORMAL;
+                    if (find_pending_stop_dcs(self, end_pos)) return true;
+                }
+            } break;
+            case PENDING_CSI: {
+                if (find_pending_stop_csi(self)) {
+                    self->pending_mode.state = PENDING_NORMAL;
+                    return true;
+                }
+                break;
             }
         }
-        self->pending_mode.current += pending_header->size;
-        align_pending_current(self);
     }
-    self->pending_mode.current = 0;
-    self->pending_mode.used = 0;
-    self->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
-    self->parser_buf = orig; self->parser_buf_pos = opos;
-    if (self->pending_mode.capacity > PENDING_BUF_LIMIT + PENDING_BUF_INCREMENT) {
-        self->pending_mode.capacity = PENDING_BUF_LIMIT;
-        self->pending_mode.buf = realloc(self->pending_mode.buf, self->pending_mode.capacity);
-        if (!self->pending_mode.buf) fatal("Out of memory");
-    }
-}
-
-
-static void
-ensure_pending_state(PS *self, VTEState state) {
-    if (!current_pending_is(self, state)) new_pending_state(self, state);
-}
-
-static void
-pending_add_to_current(PS *self, uint8_t* data, size_t size) {
-    ensure_pending_space(self, size);
-    memcpy(self->pending_mode.buf + self->pending_mode.used, data, size);
-    self->pending_mode.used += size;
-}
-
-static void
-pending_normal_mode_byte(PS *self, uint8_t ch, bool from_within_a_csi) {
-    switch(ch) {
-        case ESC:
-            SET_STATE(ESC); break;
-        default:
-            if (!from_within_a_csi) {
-                ensure_pending_state(self, VTE_NORMAL);
-                pending_add_to_current(self, &ch, 1);
-            }
-            break;
-    }
-}
-
-#define pending_add(...) pending_add_to_current(self, (uint8_t[]){__VA_ARGS__}, sizeof((uint8_t[]){__VA_ARGS__}))
-
-static void
-pending_esc(PS *self) {
-    if (self->parser_buf_pos == 1) {
-        switch(self->parser_buf[0]) {
-            case ESC_DCS: SET_STATE(DCS); return;
-            case ESC_OSC: SET_STATE(OSC); return;
-            case ESC_CSI: SET_STATE(CSI); return;
-            case ESC_APC: SET_STATE(APC); return;
-            case ESC_PM: SET_STATE(PM); return;
-        }
-    }
-    ensure_pending_state(self, VTE_ESC);
-    if (self->parser_buf_pos == 1) pending_add(self->parser_buf[0]);
-    else pending_add(self->parser_buf[0], self->parser_buf[1]);
-    SET_STATE(NORMAL);
-}
-
-#define pb(i) self->parser_buf[i]
-
-static void
-pending_escape_code(PS *self, VTEState which) {
-    ensure_pending_space(self, 4 + self->parser_buf_pos);
-    new_pending_state(self, which);
-    pending_add_to_current(self, self->parser_buf, self->parser_buf_pos);
-}
-
-static void pending_pm(PS *self) { pending_escape_code(self, VTE_PM); }
-static void pending_apc(PS *self) { pending_escape_code(self, VTE_APC); }
-static void pending_osc(PS *self) {
-    const bool is_extended = is_extended_osc(self);
-    pending_escape_code(self, VTE_OSC);
-    if (is_extended) continue_osc_52(self);
-}
-
-static void
-stop_pending_mode(PS *self, unsigned stop_escape_code_type) {
-    self->pending_mode.stop_escape_code_type = stop_escape_code_type;
-    self->pending_mode.activated_at = 0;
-    new_pending_state(self, PENDING_END_SENTINEL);
-}
-
-static void
-pending_dcs(PS *self) {
-    if (self->parser_buf_pos >= 3 && pb(0) == '=' && (pb(1) == '1' || pb(1) == '2') && pb(2) == 's') {
-        self->pending_mode.activated_at = pb(1) == '1' ? monotonic() : 0;
-        if (pb(1) == '1') {
-            REPORT_COMMAND(screen_start_pending_mode);
-            self->pending_mode.activated_at = monotonic();
-        } else stop_pending_mode(self, ESC_DCS);
-    } else pending_escape_code(self, VTE_DCS);
-}
-
-static void
-pending_csi(PS *self) {
-    if (self->parser_buf_pos == 6 && pb(0) == '?' && pb(1) == '2' && pb(2) == '0' && pb(3) == '2' && pb(4) == '6' && (pb(5) == 'h' || pb(5) == 'l')) {
-        if (pb(5) == 'h') {
-            REPORT_COMMAND(screen_set_mode, 2026, 1);
-            self->pending_mode.activated_at = monotonic();
-        } else stop_pending_mode(self, ESC_CSI);
-    } else pending_escape_code(self, VTE_CSI);
-}
-#undef pb
-
-static void
-queue_pending_bytes(PS *self) {
-#ifdef DUMP_COMMANDS
-    self->pending_mode.stop_escape_code_type = 0;
-#endif
-    while (self->input_pos < self->input_sz) {
-        dispatch_single_byte(pending, if (!self->pending_mode.activated_at) goto end;);
-    }
-end:
-FLUSH_DRAW;
-}
-
-static bool
-pending_over_limits(PS *self) {
-    return self->pending_mode.used > PENDING_BUF_LIMIT || self->pending_mode.activated_at + self->pending_mode.wait_time < self->now;
-}
-
-// }}}
-
-static void
-parse_bytes_watching_for_pending(PS *self) {
-    while (self->input_pos < self->input_sz) {
-        dispatch_single_byte(dispatch, if (self->pending_mode.activated_at) goto end;);
-    }
-end:
-FLUSH_DRAW;
+    return false;
 }
 
 static void
 do_parse_vt(PS *self) {
-    do {
+    self->read.consumed = 0;
+    self->pending_mode.draining = false;
+    /* log_error("pos: %zu consumed: %zu sz: %zu %s", self->read.pos, self->read.consumed, self->read.sz, self->buf); */
+    while (self->read.pos < self->read.sz) {
         if (self->pending_mode.activated_at) {
-            queue_pending_bytes(self);
-            if (self->pending_mode.activated_at && pending_over_limits(self)) stop_pending_mode(self, 0);
-            if (!self->pending_mode.activated_at) {
-                if (self->pending_mode.used) {
-                    VTEState before = self->vte_state;
-                    dispatch_pending_bytes(self);
-                    self->vte_state = before;
-                }
-#ifdef DUMP_COMMANDS
-                if (self->pending_mode.stop_escape_code_type) {
-                    if (self->pending_mode.stop_escape_code_type == ESC_DCS) { REPORT_COMMAND(screen_stop_pending_mode); }
-                    else if (self->pending_mode.stop_escape_code_type == ESC_CSI) { REPORT_COMMAND(screen_reset_mode, 2026, 1); }
-                    self->pending_mode.stop_escape_code_type = 0;
-                }
-#endif
-            }
-        } else {
-            parse_bytes_watching_for_pending(self);
+            if (
+                self->pending_mode.activated_at + self->pending_mode.wait_time < self->now ||
+                search_for_pending_stop(self) ||
+                self->read.pos - self->read.consumed >= BUF_SZ
+            ) {
+                self->pending_mode.activated_at = 0;
+                self->pending_mode.draining = true;
+                self->pending_mode.state = PENDING_NORMAL;
+                self->read.pos = self->read.consumed;
+            } else continue;
         }
-    } while(self->input_pos < self->input_sz || (!self->pending_mode.activated_at && self->pending_mode.used));
+        consume_input(self);
+    }
+    /* log_error("END: pos: %zu consumed: %zu sz: %zu %s", self->read.pos, self->read.consumed, self->read.sz, self->buf); */
 }
+// }}}
 
-// Boilerplate {{{
-#define setup_worker \
+// API {{{
+
+#define with_lock pthread_mutex_lock(&self->lock);
+#define end_with_lock pthread_mutex_unlock(&self->lock);
 
 static void
-run_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) {
+run_worker(void *p, ParseData *pd, bool flush) {
+    Screen *screen = (Screen*)p;
     PS *self = (PS*)screen->vt_parser->state;
+    with_lock {
 #ifdef DUMP_COMMANDS
-    self->window_id = screen->window_id;
-    if (screen->read_buf_sz && dump_callback) {
-        RAII_PyObject(mv, PyMemoryView_FromMemory((char*)screen->read_buf, screen->read_buf_sz, PyBUF_READ));
-        PyObject *ret = PyObject_CallFunction(dump_callback, "KsO", screen->window_id, "bytes", mv);
-        if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
-    }
+        self->window_id = screen->window_id;
+        if (self->read.consumed < self->read.sz && pd->dump_callback) {
+            RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->buf + self->read.consumed, self->read.sz - self->read.consumed, PyBUF_READ));
+            PyObject *ret = PyObject_CallFunction(pd->dump_callback, "KsO", screen->window_id, "bytes", mv);
+            if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
+        }
 #endif
-    self->input_data = screen->read_buf; self->input_sz = screen->read_buf_sz; self->input_pos = 0;
-    self->dump_callback = dump_callback; self->now = now; self->screen = screen;
-    do_parse_vt(self);
-    screen->read_buf_sz = 0;
+        self->screen = p;
+        if (self->read.consumed < self->read.sz) {
+            self->dump_callback = pd->dump_callback; self->now = pd->now;
+            pd->time_since_new_input = pd->now - self->new_input_at;
+            if (flush || pd->time_since_new_input >= OPT(input_delay)) {
+                bool buf_full = self->read.sz >= BUF_SZ;
+                pd->input_read = true;
+                do_parse_vt(self);
+                self->new_input_at = 0;
+                pd->pending_activated_at = self->pending_mode.activated_at;
+                pd->pending_wait_time = self->pending_mode.wait_time;
+                pd->write_space_created = buf_full && self->read.sz < BUF_SZ;
+                if (self->read.consumed) {
+                    self->read.pos -= MIN(self->read.pos, self->read.consumed);
+                    self->read.sz -= self->read.consumed;
+                    if (self->read.sz) memmove(self->buf, self->buf + self->read.consumed, self->read.sz);
+                    self->read.consumed = 0;
+                }
+            }
+        }
+    } end_with_lock;
 }
+
+#ifndef DUMP_COMMANDS
+
+uint8_t*
+vt_parser_create_write_buffer(Parser *p, size_t *sz) {
+    PS *self = (PS*)p->state;
+    uint8_t *ans;
+    with_lock {
+        *sz = BUF_SZ - self->read.sz;
+        self->write.offset = self->read.sz;
+        self->write.sz = *sz;
+        ans = self->buf + self->write.offset;
+    } end_with_lock;
+    return ans;
+}
+
+void
+vt_parser_commit_write(Parser *p, size_t sz) {
+    PS *self = (PS*)p->state;
+    with_lock {
+        if (self->write.offset > self->read.sz) memmove(self->buf + self->read.sz, self->buf + self->write.offset, sz);
+        self->read.sz += sz;
+        self->write.sz = 0;
+    } end_with_lock;
+}
+
+bool
+vt_parser_has_space_for_input(const Parser *p) {
+    PS *self = (PS*)p->state;
+    bool ans;
+    with_lock {
+        ans = self->read.sz < BUF_SZ;
+    } end_with_lock;
+    return ans;
+}
+#endif
+
+// }}}
+
+// Boilerplate {{{
 
 #ifdef DUMP_COMMANDS
 void
-parse_worker_dump(Screen *screen, PyObject *dump_callback, monotonic_t now) { run_worker(screen, dump_callback, now); }
+parse_worker_dump(void *p, ParseData *pd, bool flush) { run_worker(p, pd, flush); }
 #else
 void
-parse_worker(Screen *screen, PyObject *dump_callback, monotonic_t now) { run_worker(screen, dump_callback, now); }
+parse_worker(void *p, ParseData *pd, bool flush) { run_worker(p, pd, flush); }
 #endif
 
 #ifndef DUMP_COMMANDS
@@ -1644,7 +1634,7 @@ void
 free_vt_parser(Parser* self) {
     if (self->state) {
         PS *s = (PS*)self->state;
-        free(s->pending_mode.buf); s->pending_mode.buf = NULL;
+        pthread_mutex_destroy(&s->lock);
         free(self->state); self->state = NULL;
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -1655,12 +1645,10 @@ reset(PS *self) {
     self->vte_state = VTE_NORMAL;
     self->utf8.state = UTF8_ACCEPT;
     self->utf8.prev = UTF8_ACCEPT;
-    self->parser_buf_pos = 0;
+    reset_csi(&self->csi);
 
-    self->pending_mode.activated_at = 0;
-#ifdef DUMP_COMMANDS
-    self->pending_mode.stop_escape_code_type = 0;
-#endif
+    zero_at_ptr(&self->pending_mode);
+    self->pending_mode.wait_time = DEFAULT_PENDING_WAIT_TIME;
 }
 
 void
@@ -1669,6 +1657,18 @@ reset_vt_parser(Parser *self) {
 }
 
 extern PyTypeObject Screen_Type;
+
+static PyObject*
+current_state(Parser *self, PyObject *closure UNUSED) {
+    PS *state = (PS*)self->state;
+    return PyUnicode_FromString(vte_state_name(state->vte_state));
+}
+
+static PyGetSetDef getsetters[] = {
+    {"vte_state", (getter)current_state, NULL, "The VTE parser state", NULL},
+    {NULL}  /* Sentinel */
+};
+
 
 static PyMethodDef methods[] = {
     {NULL},
@@ -1682,29 +1682,42 @@ PyTypeObject Parser_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "VT Escape code parser",
     .tp_methods = methods,
+    .tp_getset = getsetters,
     .tp_new = new,
 };
 
 Parser*
 alloc_vt_parser(id_type window_id) {
-    if (false) vte_state_name(VTE_NORMAL);
     Parser *self = (Parser*)Parser_Type.tp_alloc(&Parser_Type, 1);
     if (self != NULL) {
+        int ret;
         self->state = calloc(1, sizeof(PS));
         if (!self->state) { Py_CLEAR(self); PyErr_NoMemory(); return NULL; }
         PS *state = (PS*)self->state;
+        if ((ret = pthread_mutex_init(&state->lock, NULL)) != 0) {
+            Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Parser lock mutex: %s", strerror(ret));
+            return NULL;
+        }
         state->window_id = window_id;
-        state->pending_mode.wait_time = s_double_to_monotonic_t(2.0);
-        state->parser_buf = state->_parser_buf;
+        state->pending_mode.wait_time = DEFAULT_PENDING_WAIT_TIME;
     }
     return self;
 }
 
-bool vt_parser_has_pending_data(Parser* p) { return ((PS*)p->state)->pending_mode.used != 0; }
 monotonic_t vt_parser_pending_activated_at(Parser*p) { return ((PS*)p->state)->pending_mode.activated_at; }
-void vt_parser_set_pending_activated_at(Parser*p, monotonic_t n) { ((PS*)p->state)->pending_mode.activated_at = n; }
 monotonic_t vt_parser_pending_wait_time(Parser*p) { return ((PS*)p->state)->pending_mode.wait_time; }
 void vt_parser_set_pending_wait_time(Parser*p, monotonic_t n) { ((PS*)p->state)->pending_mode.wait_time = n; }
+void vt_parser_set_pending_activated_at(Parser*p, monotonic_t n) {
+        PS *state = (PS*)p->state;
+        state->now = n;
+        activate_pending_mode(state);
+}
+#undef EXTRA_INIT
+#define EXTRA_INIT \
+    if (0 != PyModule_AddIntConstant(module, "VT_PARSER_BUFFER_SIZE", BUF_SZ)) return 0; \
+    if (0 != PyModule_AddIntConstant(module, "VT_PARSER_MAX_ESCAPE_CODE_SIZE", MAX_ESCAPE_CODE_LENGTH)) return 0; \
+
 INIT_TYPE(Parser)
+
 #endif
 // }}}

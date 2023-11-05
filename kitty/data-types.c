@@ -322,7 +322,6 @@ expand_ansi_c_escapes(PyObject *self UNUSED, PyObject *src) {
 }
 
 START_ALLOW_CASE_RANGE
-#define C0_EXCEPT_NL_AND_SPACE 0x0 ... 0x9: case 0xb ... 0x1f: case 0x7f
 static PyObject*
 c0_replace_bytes(const char *input_data, Py_ssize_t input_sz) {
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, input_sz * 3));
@@ -333,7 +332,7 @@ c0_replace_bytes(const char *input_data, Py_ssize_t input_sz) {
     for (Py_ssize_t i = 0; i < input_sz; i++) {
         const char x = input_data[i];
         switch (x) {
-            case C0_EXCEPT_NL_AND_SPACE: {
+            case C0_EXCEPT_NL_SPACE_TAB: {
                 const uint32_t ch = 0x2400 + x;
                 const unsigned sz = encode_utf8(ch, buf);
                 for (unsigned c = 0; c < sz; c++, j++) output[j] = buf[c];
@@ -359,7 +358,7 @@ c0_replace_unicode(PyObject *input) {
     bool changed = false;
     for (Py_ssize_t i = 0; i < PyUnicode_GET_LENGTH(input); i++) {
         Py_UCS4 ch = PyUnicode_READ(input_kind, input_data, i);
-        switch(ch) { case C0_EXCEPT_NL_AND_SPACE: ch += 0x2400; changed = true; }
+        switch(ch) { case C0_EXCEPT_NL_SPACE_TAB: ch += 0x2400; changed = true; }
         if (ch > maxchar) maxchar = ch;
         PyUnicode_WRITE(output_kind, output_data, i, ch);
     }
@@ -373,7 +372,7 @@ c0_replace_unicode(PyObject *input) {
 END_ALLOW_CASE_RANGE
 
 static PyObject*
-replace_c0_codes_except_for_newline_and_space(PyObject *self UNUSED, PyObject *obj) {
+replace_c0_codes_except_nl_space_tab(PyObject *self UNUSED, PyObject *obj) {
     if (PyUnicode_Check(obj)) {
         return c0_replace_unicode(obj);
     } else if (PyBytes_Check(obj)) {
@@ -402,7 +401,7 @@ find_in_memoryview(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(replace_c0_codes_except_for_newline_and_space, METH_O),
+    METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"expand_ansi_c_escapes", (PyCFunction)expand_ansi_c_escapes, METH_O, ""},
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
