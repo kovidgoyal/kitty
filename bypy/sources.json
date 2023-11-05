@@ -147,9 +147,9 @@
     {
         "name": "python",
         "unix": {
-            "filename": "Python-3.9.4.tar.xz",
-            "hash": "sha256:4b0e6644a76f8df864ae24ac500a51bbf68bd098f6a173e27d3b61cdca9aa134",
-            "urls": ["https://www.python.org/ftp/python/3.9.4/{filename}"]
+            "filename": "Python-3.11.6.tar.xz",
+            "hash": "sha256:0fab78fa7f133f4f38210c6260d90d7c0d5c7198446419ce057ec7ac2e6f5f38",
+            "urls": ["https://www.python.org/ftp/python/3.11.6/{filename}"]
         }
     },
 
