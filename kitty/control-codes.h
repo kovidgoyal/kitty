@@ -229,4 +229,5 @@
 #define DECSCUSR 'q'
 
 // File transfer OSC number
-# define FILE_TRANSFER_CODE 5113
+#define FILE_TRANSFER_CODE 5113
+#define PENDING_MODE 2026

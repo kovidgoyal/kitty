@@ -9,7 +9,6 @@
 #include "vt-parser.h"
 #include "graphics.h"
 #include "monotonic.h"
-#define MAX_PARAMS 256
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
@@ -107,10 +106,9 @@ typedef struct {
     ColorProfile *color_profile;
     monotonic_t start_visual_bell_at;
 
-    uint8_t read_buf[READ_BUF_SZ], *write_buf;
-    monotonic_t new_input_at;
-    size_t read_buf_sz, write_buf_sz, write_buf_used;
-    pthread_mutex_t read_buf_lock, write_buf_lock;
+    uint8_t *write_buf;
+    size_t write_buf_sz, write_buf_used;
+    pthread_mutex_t write_buf_lock;
 
     CursorRenderInfo cursor_render_info;
     unsigned int render_unfocused_cursor;
@@ -156,8 +154,6 @@ typedef struct {
 } Screen;
 
 
-void parse_worker(Screen *screen, PyObject *dump_callback, monotonic_t now);
-void parse_worker_dump(Screen *screen, PyObject *dump_callback, monotonic_t now);
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
@@ -223,7 +219,7 @@ void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 void process_cwd_notification(Screen *self, unsigned int code, const char*, size_t);
 void screen_request_capabilities(Screen *, char, const char *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
-void select_graphic_rendition(Screen *self, int *params, unsigned int count, Region*);
+void select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_group, Region *r);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
 void report_mode_status(Screen *self, unsigned int which, bool);
 void screen_apply_selection(Screen *self, void *address, size_t size);
@@ -266,7 +262,7 @@ int screen_cursor_at_a_shell_prompt(const Screen *);
 bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
 bool screen_send_signal_for_key(Screen *, char key);
 bool get_line_edge_colors(Screen *self, color_type *left, color_type *right);
-void parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, int *params, const char *report_name, Region *region);
+bool parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name, bool is_deccara);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

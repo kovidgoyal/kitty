@@ -75,6 +75,7 @@ from .fast_data_types import (
     move_cursor_to_mouse_if_in_prompt,
     pointer_name_to_css_name,
     pt_to_px,
+    replace_c0_codes_except_nl_space_tab,
     set_window_logo,
     set_window_padding,
     set_window_render_data,
@@ -502,18 +503,6 @@ class GlobalWatchers:
 
 
 global_watchers = GlobalWatchers()
-
-
-def replace_control_codes(text: str) -> str:
-    # Replace all control codes other than tab, newline and space with their graphical counterparts
-    def sub(m: 're.Match[str]') -> str:
-        c = ord(m.group())
-        if c < 0x20:
-            return chr(0x2400 + c)
-        if c == 0x7f:
-            return '\u2421'
-        return '\u2426'
-    return re.sub(r'[\0-\x08\x0b-\x19\x7f-\x9f]', sub, text)
 
 
 class Window:
@@ -1613,20 +1602,20 @@ class Window:
                     import shlex
                     text = shlex.quote(text)
         if 'replace-dangerous-control-codes' in opts.paste_actions:
-            text = replace_control_codes(text)
+            text = replace_c0_codes_except_nl_space_tab(text)
         if 'replace-newline' in opts.paste_actions:
             text = text.replace('\n', '\x1bE')
         btext = text.encode('utf-8')
         if 'confirm' in opts.paste_actions:
-            sanitized = replace_control_codes(text)
+            sanitized = replace_c0_codes_except_nl_space_tab(btext)
             if not self.screen.in_bracketed_paste_mode:
                 # \n is converted to \r and \r is interpreted as the enter key
                 # by legacy programs that dont support the full kitty keyboard protocol,
-                # which in the case of shells can lead to command execution.
-                # \eE has the same visual effect as \r\n but without the
-                # command execution risk.
-                sanitized = sanitized.replace('\n', '\x1bE')
-            if sanitized != text:
+                # which in the case of shells can lead to command execution, so
+                # replace with <ESC>E (NEL) which has the newline visual effect \r\n but
+                # isnt interpreted as Enter.
+                sanitized = sanitized.replace(b'\n', b'\x1bE')
+            if sanitized != btext:
                 msg = _('The text to be pasted contains terminal control codes.\n\nIf the terminal program you are pasting into does not properly'
                         ' sanitize pasted text, this can lead to \x1b[31mcode execution vulnerabilities\x1b[39m.\n\nHow would you like to proceed?')
                 get_boss().choose(
@@ -1644,7 +1633,7 @@ class Window:
                 return
         self.paste_text(btext)
 
-    def handle_dangerous_paste_confirmation(self, unsanitized: bytes, sanitized: str, choice: str) -> None:
+    def handle_dangerous_paste_confirmation(self, unsanitized: bytes, sanitized: bytes, choice: str) -> None:
         if choice == 's':
             self.paste_text(sanitized)
         elif choice == 'p':

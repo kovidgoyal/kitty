@@ -57,10 +57,10 @@ parse_color(int *params, unsigned int *i, unsigned int count, uint32_t *result) 
                 if (*i < count) *result = (params[(*i)++] & 0xFF) << 8 | 1;
                 break;
             case 2: \
-                if (*i < count - 2) {
+                if (*i + 2 < count) {
                     /* Ignore the first parameter in a four parameter RGB */
                     /* sequence (unused color space id), see https://github.com/kovidgoyal/kitty/issues/227 */
-                    if (*i < count - 3) (*i)++;
+                    if (*i +3 < count) (*i)++;
                     r = params[(*i)++] & 0xFF;
                     g = params[(*i)++] & 0xFF;
                     b = params[(*i)++] & 0xFF;
@@ -73,7 +73,7 @@ parse_color(int *params, unsigned int *i, unsigned int count, uint32_t *result) 
 
 
 void
-cursor_from_sgr(Cursor *self, int *params, unsigned int count) {
+cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group) {
 #define SET_COLOR(which) { parse_color(params, &i, count, &self->which); } break;
 START_ALLOW_CASE_RANGE
     unsigned int i = 0, attr;
@@ -90,7 +90,7 @@ START_ALLOW_CASE_RANGE
             case 3:
                 self->italic = true;  break;
             case 4:
-                if (i < count) { self->decoration = MIN(5, params[i]); i++; }
+                if (is_group && i < count) { self->decoration = MIN(5, params[i]); i++; }
                 else self->decoration = 1;
                 break;
             case 7:
@@ -134,13 +134,14 @@ START_ALLOW_CASE_RANGE
             case DECORATION_FG_CODE + 1:
                 self->decoration_fg = 0; break;
         }
+        if (is_group) break;
     }
 #undef SET_COLOR
 END_ALLOW_CASE_RANGE
 }
 
 void
-apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count) {
+apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group) {
 #define RANGE for(unsigned c = 0; c < cell_count; c++, cell++)
 #define SET_COLOR(which) { color_type color = 0; parse_color(params, &i, count, &color); if (color) { RANGE { cell->which = color; }} } break;
 #define SIMPLE(which, val) RANGE { cell->which = (val); } break;
@@ -165,7 +166,7 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
                 S(italic, true);
             case 4: {
                 uint8_t val = 1;
-                if (i < count) { val = MIN(5, params[i]); i++; }
+                if (is_group && i < count) { val = MIN(5, params[i]); i++; }
                 S(decoration, val);
             }
             case 7:
@@ -211,6 +212,7 @@ END_ALLOW_CASE_RANGE
             case DECORATION_FG_CODE + 1:
                 SIMPLE(decoration_fg, 0);
         }
+        if (is_group) break;
     }
 #undef SET_COLOR
 #undef RANGE

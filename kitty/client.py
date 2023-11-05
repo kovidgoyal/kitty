@@ -78,6 +78,10 @@ def select_graphic_rendition(*a: int) -> None:
     write(f'{CSI}{";".join(map(str, a))}m')
 
 
+def deccara(*a: int) -> None:
+    write(f'{CSI}{";".join(map(str, a))}$r')
+
+
 def screen_cursor_to_column(c: int) -> None:
     write(f'{CSI}{c}G')
 

@@ -42,7 +42,9 @@
 #define arraysz(x) (sizeof(x)/sizeof(x[0]))
 #define zero_at_i(array, idx) memset((array) + (idx), 0, sizeof((array)[0]))
 #define zero_at_ptr(p) memset((p), 0, sizeof((p)[0]))
+#define literal_strlen(x) (sizeof(x)-1)
 #define zero_at_ptr_count(p, count) memset((p), 0, (count) * sizeof((p)[0]))
+#define C0_EXCEPT_NL_SPACE_TAB 0x0 ... 0x8: case 0xb ... 0x1f: case 0x7f
 void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 #define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }
 static inline void cleanup_free(void *p) { free(*(void**)p); }
@@ -344,8 +346,6 @@ typedef struct {int x;} *SPRITE_MAP_HANDLE;
 #define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; unsigned int cell_width, cell_height;
 typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
-#define READ_BUF_SZ (1024u*1024u)
-
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0;
 
 #define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
@@ -392,8 +392,8 @@ void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
-void cursor_from_sgr(Cursor *self, int *params, unsigned int count);
-void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count);
+void cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group);
+void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);
 const char* cell_as_sgr(const GPUCell *, const GPUCell *);
 const char* cursor_as_sgr(const Cursor *);
 

@@ -242,6 +242,8 @@ class DumpCommands:  # {{{
         elif what == 'bytes':
             self.dump_bytes_to.write(a[0])
             self.dump_bytes_to.flush()
+        elif what == 'error':
+            log_error(*a)
         else:
             if self.draw_dump_buf:
                 safe_print('draw', ''.join(self.draw_dump_buf))

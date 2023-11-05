@@ -39,8 +39,6 @@ extern PyTypeObject Screen_Type;
 #endif
 #define USE_RENDER_FRAMES (global_state.has_render_frames && OPT(sync_to_monitor))
 
-static void (*parse_func)(Screen*, PyObject*, monotonic_t);
-
 typedef struct {
     char *data;
     size_t sz;
@@ -60,6 +58,7 @@ typedef struct {
     Message *messages;
     size_t messages_capacity, messages_count;
     LoopData io_loop_data;
+    void (*parse_func)(void*, ParseData*, bool);
 } ChildMonitor;
 
 
@@ -178,8 +177,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self->death_notify = death_notify; Py_INCREF(death_notify);
     if (dump_callback != Py_None) {
         self->dump_callback = dump_callback; Py_INCREF(dump_callback);
-        parse_func = parse_worker_dump;
-    } else parse_func = parse_worker;
+        self->parse_func = parse_worker_dump;
+    } else self->parse_func = parse_worker;
     self->count = 0;
     children_fds[0].fd = self->io_loop_data.wakeup_read_fd; children_fds[1].fd = self->io_loop_data.signal_read_fd;
     children_fds[0].events = POLLIN; children_fds[1].events = POLLIN; children_fds[2].events = POLLIN;
@@ -437,25 +436,16 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 
 static bool
 do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
-    bool input_read = false;
-    screen_mutex(lock, read);
-    if (screen->read_buf_sz || vt_parser_has_pending_data(screen->vt_parser)) {
-        monotonic_t time_since_new_input = now - screen->new_input_at;
-        if (flush || time_since_new_input >= OPT(input_delay)) {
-            bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
-            input_read = true;
-            parse_func(screen, self->dump_callback, now);
-            if (read_buf_full) wakeup_io_loop(self, false);  // Ensure the read fd has POLLIN set
-            screen->new_input_at = 0;
-            monotonic_t activated_at = vt_parser_pending_activated_at(screen->vt_parser);
-            if (activated_at) {
-                monotonic_t time_since_pending = MAX(0, now - activated_at);
-                set_maximum_wait(vt_parser_pending_wait_time(screen->vt_parser) - time_since_pending);
-            }
-        } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
+    ParseData pd = {.dump_callback = self->dump_callback, .now = now};
+    self->parse_func(screen, &pd, flush);
+    if (pd.input_read) {
+        if (pd.write_space_created) wakeup_io_loop(self, false);
     }
-    screen_mutex(unlock, read);
-    return input_read;
+    if (pd.input_read && pd.pending_activated_at) {
+        monotonic_t time_since_pending = MAX(0, now - pd.pending_activated_at);
+        set_maximum_wait(pd.pending_wait_time - time_since_pending);
+    } else set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
+    return pd.input_read;
 }
 
 static bool
@@ -1343,16 +1333,13 @@ remove_children(ChildMonitor *self) {
 static bool
 read_bytes(int fd, Screen *screen) {
     ssize_t len;
-    size_t available_buffer_space, orig_sz;
+    size_t available_buffer_space;
 
-    screen_mutex(lock, read);
-    orig_sz = screen->read_buf_sz;
-    if (orig_sz >= READ_BUF_SZ) { screen_mutex(unlock, read); return true; }  // screen read buffer is full
-    available_buffer_space = READ_BUF_SZ - orig_sz;
-    screen_mutex(unlock, read);
+    uint8_t *buf = vt_parser_create_write_buffer(screen->vt_parser, &available_buffer_space);
+    if (!available_buffer_space) return true;
 
     while(true) {
-        len = read(fd, screen->read_buf + orig_sz, available_buffer_space);
+        len = read(fd, buf, available_buffer_space);
         if (len < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
             if (errno != EIO) perror("Call to read() from child fd failed");
@@ -1360,16 +1347,8 @@ read_bytes(int fd, Screen *screen) {
         }
         break;
     }
+    vt_parser_commit_write(screen->vt_parser, len);
     if (UNLIKELY(len == 0)) return false;
-
-    screen_mutex(lock, read);
-    if (screen->new_input_at == 0) screen->new_input_at = monotonic();
-    if (orig_sz != screen->read_buf_sz) {
-        // The other thread consumed some of the screen read buffer
-        memmove(screen->read_buf + screen->read_buf_sz, screen->read_buf + orig_sz, len);
-    }
-    screen->read_buf_sz += len;
-    screen_mutex(unlock, read);
     return true;
 }
 
@@ -1516,9 +1495,10 @@ io_loop(void *data) {
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
             /* printf("i:%lu id:%lu fd: %d read_buf_sz: %lu write_buf_used: %lu\n", i, children[i].id, children[i].fd, screen->read_buf_sz, screen->write_buf_used); */
-            screen_mutex(lock, read); screen_mutex(lock, write);
-            children_fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_used ? POLLOUT  : 0);
-            screen_mutex(unlock, read); screen_mutex(unlock, write);
+            children_fds[EXTRA_FDS + i].events = vt_parser_has_space_for_input(screen->vt_parser) ? POLLIN : 0;
+            screen_mutex(lock, write);
+            children_fds[EXTRA_FDS + i].events |= (screen->write_buf_used ? POLLOUT  : 0);
+            screen_mutex(unlock, write);
         }
         if (has_pending_wakeups) {
             now = monotonic();

@@ -99,10 +99,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        if ((ret = pthread_mutex_init(&self->read_buf_lock, NULL)) != 0) {
-            Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Screen read_buf_lock mutex: %s", strerror(ret));
-            return NULL;
-        }
         if ((ret = pthread_mutex_init(&self->write_buf_lock, NULL)) != 0) {
             Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Screen write_buf_lock mutex: %s", strerror(ret));
             return NULL;
@@ -454,7 +450,6 @@ reset_callbacks(Screen *self, PyObject *a UNUSED) {
 
 static void
 dealloc(Screen* self) {
-    pthread_mutex_destroy(&self->read_buf_lock);
     pthread_mutex_destroy(&self->write_buf_lock);
     free_vt_parser(self->vt_parser); self->vt_parser = NULL;
     Py_CLEAR(self->main_grman);
@@ -724,7 +719,7 @@ screen_alignment_display(Screen *self) {
 }
 
 void
-select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *region_) {
+select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_group, Region *region_) {
     if (region_) {
         Region region = *region_;
         if (!region.top) region.top = 1;
@@ -741,7 +736,7 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *
             num = MIN(num, self->columns - x);
             for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
                 linebuf_init_line(self->linebuf, y);
-                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
+                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
             }
         } else {
             index_type x, num;
@@ -749,18 +744,18 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *
                 linebuf_init_line(self->linebuf, region.top);
                 x = MIN(region.left, self->columns-1);
                 num = MIN(self->columns - x, region.right - x + 1);
-                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
+                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
             } else {
                 for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
                     if (y == region.top) { x = MIN(region.left, self->columns - 1); num = self->columns - x; }
                     else if (y == region.bottom) { x = 0; num = MIN(region.right + 1, self->columns); }
                     else { x = 0; num = self->columns; }
                     linebuf_init_line(self->linebuf, y);
-                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
+                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
                 }
             }
         }
-    } else cursor_from_sgr(self->cursor, params, count);
+    } else cursor_from_sgr(self->cursor, params, count, is_group);
 }
 
 static void
@@ -992,17 +987,6 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         case ALTERNATE_SCREEN:
             if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self, mode == ALTERNATE_SCREEN, mode == ALTERNATE_SCREEN);
             else if (!val && self->linebuf != self->main_linebuf) screen_toggle_screen_buffer(self, mode == ALTERNATE_SCREEN, mode == ALTERNATE_SCREEN);
-            break;
-        case PENDING_UPDATE:
-            if (val) {
-                vt_parser_set_pending_activated_at(self->vt_parser, monotonic());
-            } else {
-                if (!vt_parser_pending_activated_at(self->vt_parser)) log_error(
-                    "Pending mode stop command issued while not in pending mode, this can"
-                    " be either a bug in the terminal application or caused by a timeout with no data"
-                    " received for too long or by too much data in pending mode");
-                else vt_parser_set_pending_activated_at(self->vt_parser, 0);
-            }
             break;
         case 7727 << 5:
             log_error("Application escape mode is not supported, the extended keyboard protocol should be used instead");
@@ -3512,8 +3496,10 @@ static PyObject*
 apply_sgr(Screen *self, PyObject *src) {
     if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
-    int params[MAX_PARAMS] = {0};
-    parse_sgr(self, (const uint8_t*)PyUnicode_AsUTF8(src), PyUnicode_GET_LENGTH(src), params, "parse_sgr", NULL);
+    if (!parse_sgr(self, (const uint8_t*)PyUnicode_AsUTF8(src), PyUnicode_GET_LENGTH(src), "parse_sgr", false)) {
+        PyErr_Format(PyExc_ValueError, "Invalid SGR: %s", PyUnicode_AsUTF8(src));
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
@@ -3531,7 +3517,7 @@ static PyObject*
 _select_graphic_rendition(Screen *self, PyObject *args) {
     int params[256] = {0};
     for (int i = 0; i < PyTuple_GET_SIZE(args); i++) { params[i] = PyLong_AsLong(PyTuple_GET_ITEM(args, i)); }
-    select_graphic_rendition(self, params, PyTuple_GET_SIZE(args), NULL);
+    select_graphic_rendition(self, params, PyTuple_GET_SIZE(args), false, NULL);
     Py_RETURN_NONE;
 }
 
@@ -4462,12 +4448,15 @@ test_write_data(Screen *screen, PyObject *args) {
 
     monotonic_t now = monotonic();
     while (sz) {
-        size_t s = MIN(sz, READ_BUF_SZ);
-        memcpy(screen->read_buf, data, s);
-        screen->read_buf_sz = s;
+        size_t s;
+        uint8_t *buf = vt_parser_create_write_buffer(screen->vt_parser, &s);
+        s = MIN(s, (size_t)sz);
+        memcpy(buf, data, s);
+        vt_parser_commit_write(screen->vt_parser, s);
         data += s; sz -= s;
-        if (dump_callback) parse_worker_dump(screen, dump_callback, now);
-        else parse_worker(screen, dump_callback, now);
+        ParseData pd = {.dump_callback=dump_callback,.now=now};
+        if (dump_callback) parse_worker_dump(screen, &pd, true);
+        else parse_worker(screen, &pd, true);
     }
     Py_RETURN_NONE;
 }

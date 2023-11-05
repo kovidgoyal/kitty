@@ -25,6 +25,8 @@ class CmdDump(list):
             a = a[1:]
         if a and a[0] == 'bytes':
             return
+        if a and a[0] == 'error':
+            a = a[1:]
         self.append(tuple(map(cnv, a)))
 
 
@@ -75,7 +77,7 @@ class TestParser(BaseTest):
         self.ae(str(s.line(1)), '6')
         self.ae(str(s.line(2)), ' 123')
         self.ae(str(s.line(3)), '45')
-        s.test_write_data(b'\rabcde')
+        pb(b'\rabcde', ('screen_carriage_return',), 'abcde')
         self.ae(str(s.line(3)), 'abcde')
         pb('\rßxyz1', ('screen_carriage_return',), 'ßxyz1')
         self.ae(str(s.line(3)), 'ßxyz1')
@@ -126,7 +128,7 @@ class TestParser(BaseTest):
         pb('x\033[2;7@y', 'x', ('CSI code @ has 2 > 1 parameters',), 'y')
         pb('x\033[2;-7@y', 'x', ('CSI code @ has 2 > 1 parameters',), 'y')
         pb('x\033[-2@y', 'x', ('CSI code @ is not allowed to have negative parameter (-2)',), 'y')
-        pb('x\033[2-3@y', 'x', ('CSI code can contain hyphens only at the start of numbers',), 'y')
+        pb('x\033[2-3@y', 'x', ('Invalid character in CSI: 3 (0x33), ignoring the sequence',), '@y')
         pb('x\033[@y', 'x', ('screen_insert_characters', 1), 'y')
         pb('x\033[345@y', 'x', ('screen_insert_characters', 345), 'y')
         pb('x\033[345;@y', 'x', ('screen_insert_characters', 345), 'y')
@@ -148,31 +150,36 @@ class TestParser(BaseTest):
         pb('\033[=c', ('report_device_attributes', 0, 61))
         s.reset()
 
-        def sgr(params):
-            return (('select_graphic_rendition', f'{x} ') for x in params.split())
+        def sgr(*params):
+            return (('select_graphic_rendition', f'{x}') for x in params)
 
         pb('\033[1;2;3;4;7;9;34;44m', *sgr('1 2 3 4 7 9 34 44'))
         for attr in 'bold italic reverse strikethrough dim'.split():
-            self.assertTrue(getattr(s.cursor, attr))
+            self.assertTrue(getattr(s.cursor, attr), attr)
         self.ae(s.cursor.decoration, 1)
         self.ae(s.cursor.fg, 4 << 8 | 1)
         self.ae(s.cursor.bg, 4 << 8 | 1)
-        pb('\033[38;5;1;48;5;7m', ('select_graphic_rendition', '38 5 1 '), ('select_graphic_rendition', '48 5 7 '))
+        pb('\033[38;5;1;48;5;7m', ('select_graphic_rendition', '38:5:1'), ('select_graphic_rendition', '48:5:7'))
         self.ae(s.cursor.fg, 1 << 8 | 1)
         self.ae(s.cursor.bg, 7 << 8 | 1)
-        pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38 2 1 2 3 '), ('select_graphic_rendition', '48 2 7 8 9 '))
+        pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38:2:1:2:3'), ('select_graphic_rendition', '48:2:7:8:9'))
         self.ae(s.cursor.fg, 1 << 24 | 2 << 16 | 3 << 8 | 2)
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 2)
         pb('\033[0;2m', *sgr('0 2'))
         pb('\033[;2m', *sgr('0 2'))
-        pb('\033[m', *sgr('0 '))
+        pb('\033[m', *sgr('0'))
         pb('\033[1;;2m', *sgr('1 0 2'))
-        pb('\033[38;5;1m', ('select_graphic_rendition', '38 5 1 '))
-        pb('\033[58;2;1;2;3m', ('select_graphic_rendition', '58 2 1 2 3 '))
-        pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38 2 1 2 3 '))
-        pb('\033[1001:2:1:2:3m', ('select_graphic_rendition', '1001 2 1 2 3 '))
+        pb('\033[38;5;1m', ('select_graphic_rendition', '38:5:1'))
+        pb('\033[58;2;1;2;3m', ('select_graphic_rendition', '58:2:1:2:3'))
+        pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38:2:1:2:3'))
+        pb('\033[1001:2:1:2:3m', ('select_graphic_rendition', '1001:2:1:2:3'))
         pb('\033[38:2:1:2:3;48:5:9;58;5;7m', (
-            'select_graphic_rendition', '38 2 1 2 3 '), ('select_graphic_rendition', '48 5 9 '), ('select_graphic_rendition', '58 5 7 '))
+            'select_graphic_rendition', '38:2:1:2:3'), ('select_graphic_rendition', '48:5:9'), ('select_graphic_rendition', '58:5:7'))
+        s.reset()
+        pb('\033[1;2;3;4:5;7;9;34;44m', *sgr('1 2 3', '4:5', '7 9 34 44'))
+        for attr in 'bold italic reverse strikethrough dim'.split():
+            self.assertTrue(getattr(s.cursor, attr), attr)
+        self.ae(s.cursor.decoration, 5)
         c = s.callbacks
         pb('\033[5n', ('report_device_status', 5, 0))
         self.ae(c.wtcbuf, b'\033[0n')
@@ -241,7 +248,7 @@ class TestParser(BaseTest):
         c.clear()
         pb('\033]\x07', ('set_title', ''), ('set_icon', ''))
         self.ae(c.titlebuf, ['']), self.ae(c.iconbuf, '')
-        pb('\033]ab\x07', ('set_title', 'ab'), ('set_icon', 'ab'))
+        pb('1\033]ab\x072', '1', ('set_title', 'ab'), ('set_icon', 'ab'), '2')
         self.ae(c.titlebuf, ['', 'ab']), self.ae(c.iconbuf, 'ab')
         c.clear()
         pb('\033]2;;;;\x07', ('set_title', ';;;'))
@@ -378,18 +385,19 @@ class TestParser(BaseTest):
         pb('\033P'), pb('='), pb('2s')
         pb('\033\\', ('draw', 'e'), ('screen_stop_pending_mode',))
         pb('\033P=1sxyz;.;\033\\''\033P=2skjf".,><?_+)98\033\\', ('screen_start_pending_mode',), ('screen_stop_pending_mode',))
-        pb('\033P=1s\033\\f\033P=1s\033\\', ('screen_start_pending_mode',), ('screen_start_pending_mode',))
+        pb('\033P=1s\033\\f\033P=1s\033\\', ('screen_start_pending_mode',),)
         pb('\033P=2s\033\\', ('draw', 'f'), ('screen_stop_pending_mode',))
         pb('\033P=1s\033\\XXX\033P=2s\033\\', ('screen_start_pending_mode',), ('draw', 'XXX'), ('screen_stop_pending_mode',))
 
-        pb('\033[?2026hXXX\033[?2026l', ('screen_set_mode', 2026, 1), ('draw', 'XXX'), ('screen_reset_mode', 2026, 1))
-        pb('\033[?2026h\033[32ma\033[?2026l', ('screen_set_mode', 2026, 1), ('select_graphic_rendition', '32 '), ('draw', 'a'), ('screen_reset_mode', 2026, 1))
+        pb('\033[?2026hXXX\033[?2026l', ('screen_start_pending_mode',), ('draw', 'XXX'), ('screen_stop_pending_mode',))
+        pb('\033[?2026h\033[32ma\033[?2026l', ('screen_start_pending_mode',), ('select_graphic_rendition', '32'),
+           ('draw', 'a'), ('screen_stop_pending_mode',))
         pb('\033[?2026h\033P+q544e\033\\ama\033P=2s\033\\',
-           ('screen_set_mode', 2026, 1), ('screen_request_capabilities', 43, '544e'), ('draw', 'ama'), ('screen_stop_pending_mode',))
+           ('screen_start_pending_mode',), ('screen_request_capabilities', 43, '544e'), ('draw', 'ama'), ('screen_stop_pending_mode',))
 
         s.reset()
         s.set_pending_timeout(timeout)
-        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('\033[?2026h', ('screen_start_pending_mode',),)
         pb('\033P+q')
         time.sleep(1.2 * timeout)
         pb('544e\033\\', ('screen_request_capabilities', 43, '544e'))
@@ -398,28 +406,27 @@ class TestParser(BaseTest):
             ('Pending mode stop command issued while not in pending mode, this can be '
              'either a bug in the terminal application or caused by a timeout with no '
              'data received for too long or by too much data in pending mode',),
-            ('screen_stop_pending_mode',)
         )
         self.assertEqual(str(s.line(0)), '')
 
-        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('\033[?2026h', ('screen_start_pending_mode',),)
         pb('ab')
         s.set_pending_activated_at(0.00001)
         pb('cd', ('draw', 'abcd'))
-        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('\033[?2026h', ('screen_start_pending_mode',),)
         pb('\033')
         s.set_pending_activated_at(0.00001)
         pb('7', ('screen_save_cursor',))
-        pb('\033[?2026h\033]', ('screen_set_mode', 2026, 1),)
+        pb('\033[?2026h\033]', ('screen_start_pending_mode',),)
         s.set_pending_activated_at(0.00001)
         pb('8;;\x07', ('set_active_hyperlink', None, None))
-        pb('\033[?2026h\033', ('screen_set_mode', 2026, 1),)
+        pb('\033[?2026h\033', ('screen_start_pending_mode',),)
         s.set_pending_activated_at(0.00001)
         pb(']8;;\x07', ('set_active_hyperlink', None, None))
         pb('😀'.encode()[:-1])
-        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('\033[?2026h', ('screen_start_pending_mode',),)
         pb('😀'.encode()[-1:])
-        pb('\033[?2026l', '\ufffd', ('screen_reset_mode', 2026, 1),)
+        pb('\033[?2026l', '\ufffd', ('screen_stop_pending_mode',),)
         pb('a', ('draw', 'a'))
 
     def test_oth_codes(self):
@@ -477,9 +484,9 @@ class TestParser(BaseTest):
     def test_deccara(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('\033[$r', ('deccara', '0 0 0 0 0 '))
+        pb('\033[$r', ('deccara', '0 0 0 0 0'))
         pb('\033[;;;;4:3;38:5:10;48:2:1:2:3;1$r',
-           ('deccara', '0 0 0 0 4 3 '), ('deccara', '0 0 0 0 38 5 10 '), ('deccara', '0 0 0 0 48 2 1 2 3 '), ('deccara', '0 0 0 0 1 '))
+           ('deccara', '0 0 0 0 4:3'), ('deccara', '0 0 0 0 38:5:10'), ('deccara', '0 0 0 0 48:2:1:2:3'), ('deccara', '0 0 0 0 1'))
         for y in range(s.lines):
             line = s.line(y)
             for x in range(s.columns):
@@ -490,7 +497,7 @@ class TestParser(BaseTest):
                 self.ae(c.fg, (10 << 8) | 1)
                 self.ae(c.bg, (1 << 24 | 2 << 16 | 3 << 8 | 2))
         self.ae(s.line(0).cursor_from(0).bold, True)
-        pb('\033[1;2;2;3;22;39$r', ('deccara', '1 2 2 3 22 '), ('deccara', '1 2 2 3 39 '))
+        pb('\033[1;2;2;3;22;39$r', ('deccara', '1 2 2 3 22 39'))
         self.ae(s.line(0).cursor_from(0).bold, True)
         line = s.line(0)
         for x in range(1, s.columns):
@@ -502,7 +509,7 @@ class TestParser(BaseTest):
             c = line.cursor_from(x)
             self.ae(c.bold, False)
         self.ae(line.cursor_from(3).bold, True)
-        pb('\033[2*x\033[3;2;4;3;34$r\033[*x', ('screen_decsace', 2), ('deccara', '3 2 4 3 34 '), ('screen_decsace', 0))
+        pb('\033[2*x\033[3;2;4;3;34$r\033[*x', ('screen_decsace', 2), ('deccara', '3 2 4 3 34'), ('screen_decsace', 0))
         for y in range(2, 4):
             line = s.line(y)
             for x in range(s.columns):
