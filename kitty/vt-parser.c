@@ -26,7 +26,7 @@
 // Macros {{{
 
 #define SET_STATE(x) \
-    self->vte_state = VTE_##x; self->utf8.state = UTF8_ACCEPT; self->utf8.prev = UTF8_ACCEPT;
+    self->vte_state = VTE_##x; zero_at_ptr(&self->utf8);
 
 #define DIGIT \
     '0': \
@@ -101,8 +101,7 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__)); PyErr_Clear();
 
 #define REPORT_DRAW(ch) \
-    printf("ch: %x\n", ch); \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", (int)ch)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); PyErr_Clear();
 
 #define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, is_group, region)
 
@@ -192,7 +191,7 @@ typedef struct ParsedCSI {
 typedef struct PS {
     id_type window_id;
 
-    struct { UTF8State prev, state; } utf8;
+    struct { UTF8State prev, state; uint32_t codep; } utf8;
     VTEState vte_state;
     ParsedCSI csi;
 
@@ -208,14 +207,11 @@ typedef struct PS {
     Screen *screen;
     monotonic_t now, new_input_at;
     pthread_mutex_t lock;
-    uint8_t buf[BUF_SZ + 8];
 
-    struct {
-        size_t consumed, pos, sz;
-    } read;
-    struct {
-        size_t offset, sz;
-    } write;
+    // The buffer
+    struct { size_t consumed, pos, sz; } read;
+    struct { size_t offset, sz; } write;
+    uint8_t buf[BUF_SZ];
 } PS;
 
 static void
@@ -229,20 +225,21 @@ reset_csi(ParsedCSI *csi) {
 // Normal mode {{{
 
 static void
-draw_byte(PS *self, uint8_t b) {
-    uint32_t ch;
-    switch (decode_utf8(&self->utf8.state, &ch, b)) {
+draw_byte(PS *self, const uint8_t b) {
+    switch (decode_utf8(&self->utf8.state, &self->utf8.codep, b)) {
         case UTF8_ACCEPT:
-            REPORT_DRAW(ch);
-            screen_draw(self->screen, ch, true);
+            REPORT_DRAW(self->utf8.codep);
+            screen_draw(self->screen, self->utf8.codep, true);
             break;
         case UTF8_REJECT: {
             bool prev_was_accept = self->utf8.prev == UTF8_ACCEPT;
-            self->utf8.state = UTF8_ACCEPT; self->utf8.prev = UTF8_ACCEPT;
-            ch = 0xfffd;  // unicode replacement char
-            REPORT_DRAW(ch);
-            screen_draw(self->screen, ch, true);
-            if (!prev_was_accept) draw_byte(self, b);
+            zero_at_ptr(&self->utf8);
+            REPORT_DRAW(0xfffd);
+            screen_draw(self->screen, 0xfffd, true);
+            if (!prev_was_accept) {
+                draw_byte(self, b);
+                return;  // so that prev is correct
+            }
         } break;
     }
     self->utf8.prev = self->utf8.state;
@@ -1640,9 +1637,7 @@ free_vt_parser(Parser* self) {
 
 static void
 reset(PS *self) {
-    self->vte_state = VTE_NORMAL;
-    self->utf8.state = UTF8_ACCEPT;
-    self->utf8.prev = UTF8_ACCEPT;
+    SET_STATE(NORMAL);
     reset_csi(&self->csi);
 
     zero_at_ptr(&self->pending_mode);
