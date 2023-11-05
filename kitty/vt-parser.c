@@ -437,6 +437,8 @@ static bool
 accumulate_st_terminated_esc_code(PS *self, void(dispatch)(PS*, uint8_t*, size_t, bool)) {
     size_t pos;
     if (find_st_terminator(self, &pos)) {
+        // technically we should check MAX_ESCAPE_CODE_LENGTH here but lets be generous in what we accept since  we
+        // have a full escape code
         uint8_t *buf = self->buf + self->read.consumed;
         size_t sz = pos - self->read.consumed;
         buf[sz] = 0;  // ensure null termination, this is anyway an ST termination char
@@ -445,13 +447,14 @@ accumulate_st_terminated_esc_code(PS *self, void(dispatch)(PS*, uint8_t*, size_t
     }
     if (UNLIKELY((pos=self->read.pos - self->read.consumed) > MAX_ESCAPE_CODE_LENGTH)) {
         if (self->vte_state == VTE_OSC && is_osc_52(self)) {
-            uint8_t *buf = self->buf + self->read.consumed;
             // null terminate
             self->read.pos--;
-            uint8_t before = buf[pos];
-            buf[self->read.pos] = 0;  // ensure null termination, this is anyway an ST termination char
-            dispatch(self, buf, self->read.pos - self->read.consumed, true);
-            buf[self->read.pos] = before;
+            uint8_t before = self->buf[self->read.pos];
+            self->buf[self->read.pos] = 0;
+            // send partial OSC 52
+            dispatch(self, self->buf + self->read.consumed, self->read.pos - self->read.consumed, true);
+            // continue OSC 52
+            self->buf[self->read.pos] = before;
             continue_osc_52(self);
             return accumulate_st_terminated_esc_code(self, dispatch);
         }
