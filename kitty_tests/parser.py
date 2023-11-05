@@ -37,7 +37,7 @@ class TestParser(BaseTest):
         if isinstance(x, str):
             x = x.encode('utf-8')
         cmds = tuple(('draw', x) if isinstance(x, str) else tuple(map(cnv, x)) for x in cmds)
-        s.test_write_data(x, cd)
+        parse_bytes(s, x, cd)
         current = ''
         q = []
         for args in cd:
