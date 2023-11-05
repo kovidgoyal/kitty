@@ -4441,29 +4441,35 @@ WRAP0(bell)
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
 static PyObject*
-test_write_data(Screen *screen, PyObject *args) {
-    const uint8_t *data; Py_ssize_t sz;
-    PyObject *dump_callback = NULL;
-    if (!PyArg_ParseTuple(args, "y#|O", &data, &sz, &dump_callback)) return NULL;
+test_create_write_buffer(Screen *screen UNUSED, PyObject *args UNUSED) {
+    size_t s;
+    uint8_t *buf = vt_parser_create_write_buffer(screen->vt_parser, &s);
+    return PyMemoryView_FromMemory((char*)buf, s, PyBUF_WRITE);
+}
 
-    monotonic_t now = monotonic();
-    while (sz) {
-        size_t s;
-        uint8_t *buf = vt_parser_create_write_buffer(screen->vt_parser, &s);
-        s = MIN(s, (size_t)sz);
-        memcpy(buf, data, s);
-        vt_parser_commit_write(screen->vt_parser, s);
-        data += s; sz -= s;
-        ParseData pd = {.dump_callback=dump_callback,.now=now};
-        if (dump_callback) parse_worker_dump(screen, &pd, true);
-        else parse_worker(screen, &pd, true);
-    }
+static PyObject*
+test_commit_write_buffer(Screen *screen, PyObject *args) {
+    RAII_PY_BUFFER(srcbuf); RAII_PY_BUFFER(destbuf);
+    if (!PyArg_ParseTuple(args, "y*y*", &srcbuf, &destbuf)) return NULL;
+    size_t s = MIN(srcbuf.len, destbuf.len);
+    memcpy(destbuf.buf, srcbuf.buf, s);
+    vt_parser_commit_write(screen->vt_parser, s);
+    return PyLong_FromSize_t(s);
+}
+
+static PyObject*
+test_parse_written_data(Screen *screen, PyObject *args) {
+    ParseData pd = {.now=monotonic()};
+    if (!PyArg_ParseTuple(args, "|O", &pd.dump_callback)) return NULL;
+    if (pd.dump_callback && pd.dump_callback != Py_None) parse_worker_dump(screen, &pd, true);
+    else parse_worker(screen, &pd, true);
     Py_RETURN_NONE;
 }
 
-
 static PyMethodDef methods[] = {
-    METHODB(test_write_data, METH_VARARGS),
+    METHODB(test_create_write_buffer, METH_NOARGS),
+    METHODB(test_commit_write_buffer, METH_VARARGS),
+    METHODB(test_parse_written_data, METH_VARARGS),
     MND(line_edge_colors, METH_NOARGS)
     MND(line, METH_O)
     MND(dump_lines_with_attrs, METH_O)

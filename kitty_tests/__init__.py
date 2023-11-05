@@ -24,8 +24,13 @@ from kitty.utils import read_screen_size
 from kitty.window import process_remote_print, process_title_from_child
 
 
-def parse_bytes(screen, data):
-    return screen.test_write_data(data)
+def parse_bytes(screen, data, dump_callback=None):
+    data = memoryview(data)
+    while data:
+        dest = screen.test_create_write_buffer()
+        s = screen.test_commit_write_buffer(data, dest)
+        data = data[s:]
+        screen.test_parse_written_data(dump_callback)
 
 
 class Callbacks:
@@ -324,7 +329,7 @@ class PTY:
                 break
             bytes_read += len(data)
             self.received_bytes += data
-            self.screen.test_write_data(data)
+            parse_bytes(self.screen, data)
         return bytes_read
 
     def wait_till(self, q, timeout=10):
