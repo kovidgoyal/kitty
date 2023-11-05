@@ -101,12 +101,10 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__)); PyErr_Clear();
 
 #define REPORT_DRAW(ch) \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); PyErr_Clear();
+    printf("ch: %x\n", ch); \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", (int)ch)); PyErr_Clear();
 
 #define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, is_group, region)
-
-#define FLUSH_DRAW \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, "draw", Py_None)); PyErr_Clear();
 
 #define REPORT_OSC(name, string) \
     Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, #name, string)); PyErr_Clear();
@@ -123,7 +121,6 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_VA_COMMAND(...)
 #define REPORT_DRAW(ch)
 #define REPORT_PARAMS(...)
-#define FLUSH_DRAW
 #define REPORT_OSC(name, string)
 #define REPORT_OSC2(name, code, string)
 #define REPORT_HYPERLINK(id, url)

@@ -20,9 +20,7 @@ def cnv(x):
 
 class CmdDump(list):
 
-    def __call__(self, *a):
-        if a and isinstance(a[0], int):
-            a = a[1:]
+    def __call__(self, window_id, *a):
         if a and a[0] == 'bytes':
             return
         if a and a[0] == 'error':
@@ -42,8 +40,7 @@ class TestParser(BaseTest):
         q = []
         for args in cd:
             if args[0] == 'draw':
-                if args[1] is not None:
-                    current += args[1]
+                current += args[1]
             else:
                 if current:
                     q.append(('draw', current))
