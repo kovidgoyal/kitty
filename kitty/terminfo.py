@@ -58,6 +58,8 @@ bool_capabilities = {
     # described at:
     # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
     'fullkbd',
+    # Terminal supports focus events: https://lists.gnu.org/archive/html/bug-ncurses/2023-10/msg00117.html
+    'XF',
 
     # The following are entries that we don't use
     # # background color erase
@@ -302,6 +304,10 @@ string_capabilities = {
     # Focus In and Out events
     'kxIN': r'\E[I',
     'kxOUT': r'\E[O',
+    # Enable/disable focus reporting
+    # Add to ncurses in: https://lists.gnu.org/archive/html/bug-ncurses/2023-10/msg00117.html
+    'fe': r'\E[?1004h',
+    'fd': r'\E[?1004l',
 
     # The following are entries that we don't use
     # # turn on blank mode, (characters invisible)
@@ -475,7 +481,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'XR Ms RV kxIN kxOUT Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
+    'XR Ms RV kxIN kxOUT Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG fe fd XF'.split() + [
         f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
