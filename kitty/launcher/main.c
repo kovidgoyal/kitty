@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define PY_SSIZE_T_CLEAN
 #include <libgen.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
