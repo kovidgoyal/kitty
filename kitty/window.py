@@ -451,10 +451,7 @@ def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as
 
 def process_remote_print(msg: memoryview) -> str:
     from base64 import standard_b64decode
-
-    from .cli import green
-    text = standard_b64decode(msg).decode('utf-8', 'replace')
-    return text.replace('\x1b', green(r'\e')).replace('\a', green(r'\a')).replace('\0', green(r'\0'))
+    return replace_c0_codes_except_nl_space_tab(standard_b64decode(msg)).decode('utf-8', 'replace')
 
 
 class EdgeWidths:
