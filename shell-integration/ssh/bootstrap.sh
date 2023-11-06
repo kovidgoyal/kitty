@@ -74,7 +74,6 @@ fi
 
 dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\134" "$(printf "%s" "$2" | base64_encode)" > /dev/tty; }
 debug() { dcs_to_kitty "print" "debug: $1"; }
-echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
 
 # If $HOME is configured set it here
 EXPORT_HOME_CMD

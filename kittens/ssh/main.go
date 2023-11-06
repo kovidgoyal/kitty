@@ -524,16 +524,20 @@ func get_remote_command(cd *connection_data) error {
 	return nil
 }
 
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
+
 func drain_potential_tty_garbage(term *tty.Term) {
-	err := term.ApplyOperations(tty.TCSANOW, tty.SetNoEcho)
+	err := term.ApplyOperations(tty.TCSANOW, tty.SetRaw)
 	if err != nil {
 		return
 	}
-	canary, err := secrets.TokenBase64()
+	canary, err := secrets.TokenHex()
 	if err != nil {
 		return
 	}
-	dcs, err := tui.DCSToKitty("echo", canary+"\n\r")
+	dcs, err := tui.DCSToKitty("echo", canary)
+	q := utils.UnsafeStringToBytes(canary)
 	if err != nil {
 		return
 	}
@@ -541,7 +545,6 @@ func drain_potential_tty_garbage(term *tty.Term) {
 	if err != nil {
 		return
 	}
-	q := utils.UnsafeStringToBytes(canary)
 	data := make([]byte, 0)
 	give_up_at := time.Now().Add(2 * time.Second)
 	buf := make([]byte, 0, 8192)
@@ -553,7 +556,7 @@ func drain_potential_tty_garbage(term *tty.Term) {
 		}
 		n, err := term.ReadWithTimeout(buf, timeout)
 		if err != nil {
-			return
+			break
 		}
 		data = append(data, buf[:n]...)
 	}

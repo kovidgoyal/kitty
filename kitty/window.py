@@ -1194,6 +1194,7 @@ class Window:
     def handle_remote_echo(self, msg: str) -> None:
         from base64 import standard_b64decode
         data = standard_b64decode(msg)
+        data = re.sub(rb'[^a-zA-Z0-9]', b'', data)
         self.write_to_child(data)
 
     def handle_remote_ssh(self, msg: str) -> None:
