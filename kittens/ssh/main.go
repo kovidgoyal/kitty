@@ -736,11 +736,16 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	}
 	sigs := make(chan os.Signal, 8)
 	signal.Notify(sigs, unix.SIGINT, unix.SIGTERM)
-	defer func() {
-		_ = term.WriteAllString(restore_escape_codes)
-		term.RestoreAndClose()
-		signal.Reset()
-	}()
+	cleaned_up := false
+	cleanup := func() {
+		if !cleaned_up {
+			_ = term.WriteAllString(restore_escape_codes)
+			term.RestoreAndClose()
+			signal.Reset()
+			cleaned_up = true
+		}
+	}
+	defer cleanup()
 	err = get_remote_command(&cd)
 	if err != nil {
 		return 1, err
@@ -780,6 +785,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		var exit_err *exec.ExitError
 		if errors.As(err, &exit_err) {
 			if state := exit_err.ProcessState.String(); state == "signal: interrupt" {
+				cleanup()
 				_ = unix.Kill(os.Getpid(), unix.SIGINT)
 				// Give the signal time to be delivered
 				time.Sleep(20 * time.Millisecond)
