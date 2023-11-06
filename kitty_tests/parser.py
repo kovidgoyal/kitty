@@ -27,18 +27,10 @@ class CmdDump(list):
             a = a[1:]
         self.append(tuple(map(cnv, a)))
 
-
-class TestParser(BaseTest):
-
-    def parse_bytes_dump(self, s, x, *cmds):
-        cd = CmdDump()
-        if isinstance(x, str):
-            x = x.encode('utf-8')
-        cmds = tuple(('draw', x) if isinstance(x, str) else tuple(map(cnv, x)) for x in cmds)
-        parse_bytes(s, x, cd)
+    def get_result(self):
         current = ''
         q = []
-        for args in cd:
+        for args in self:
             if args[0] == 'draw':
                 current += args[1]
             else:
@@ -48,7 +40,34 @@ class TestParser(BaseTest):
                 q.append(args)
         if current:
             q.append(('draw', current))
-        self.ae(tuple(q), cmds)
+        return tuple(q)
+
+
+class TestParser(BaseTest):
+
+    def create_write_buffer(self, screen):
+        return screen.test_create_write_buffer()
+
+    def write_bytes(self, screen, write_buf, data):
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        dest = screen.test_create_write_buffer()
+        s = screen.test_commit_write_buffer(data, dest)
+        return data[s:]
+
+    def parse_written_data(self, screen, *cmds):
+        cd = CmdDump()
+        screen.test_parse_written_data(cd)
+        cmds = tuple(('draw', x) if isinstance(x, str) else tuple(map(cnv, x)) for x in cmds)
+        self.ae(cmds, cd.get_result())
+
+    def parse_bytes_dump(self, s, x, *cmds):
+        cd = CmdDump()
+        if isinstance(x, str):
+            x = x.encode('utf-8')
+        cmds = tuple(('draw', x) if isinstance(x, str) else tuple(map(cnv, x)) for x in cmds)
+        parse_bytes(s, x, cd)
+        self.ae(cmds, cd.get_result())
 
     def test_base64(self):
         for src, expected in {
