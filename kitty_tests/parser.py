@@ -51,8 +51,7 @@ class TestParser(BaseTest):
     def write_bytes(self, screen, write_buf, data):
         if isinstance(data, str):
             data = data.encode('utf-8')
-        dest = screen.test_create_write_buffer()
-        s = screen.test_commit_write_buffer(data, dest)
+        s = screen.test_commit_write_buffer(data, write_buf)
         return data[s:]
 
     def parse_written_data(self, screen, *cmds):
@@ -68,6 +67,29 @@ class TestParser(BaseTest):
         cmds = tuple(('draw', x) if isinstance(x, str) else tuple(map(cnv, x)) for x in cmds)
         parse_bytes(s, x, cd)
         self.ae(cmds, cd.get_result())
+
+    def test_parser_threading(self):
+        s = self.create_screen()
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), 'a\x1b]2;some title'))
+        b = self.create_write_buffer(s)
+        self.parse_written_data(s, 'a')
+        self.assertFalse(self.write_bytes(s, b, ' full\x1b\\'))
+        self.parse_written_data(s, ('set_title', 'some title full'))
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), 'a\x1b]2;some title\x1b'))
+        b = self.create_write_buffer(s)
+        self.parse_written_data(s, 'a')
+        self.assertFalse(self.write_bytes(s, b, '\\b'))
+        self.parse_written_data(s, ('set_title', 'some title'), 'b')
+
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '1\x1b'))
+        self.parse_written_data(s, '1')
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), 'E2'))
+        self.parse_written_data(s, ('screen_nel',), ('draw', '2'))
+
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '1\x1b[2'))
+        self.parse_written_data(s, '1')
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '3mx'))
+        self.parse_written_data(s, ('select_graphic_rendition', '23'), 'x')
 
     def test_base64(self):
         for src, expected in {
