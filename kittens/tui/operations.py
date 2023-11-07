@@ -15,7 +15,6 @@ from kitty.typing import GraphicsCommandType, HandlerType, ScreenSize, Underline
 from .operations_stub import CMD
 
 GraphicsCommandType, ScreenSize  # needed for stub generation
-S7C1T = '\033 F'
 SAVE_CURSOR = '\0337'
 RESTORE_CURSOR = '\0338'
 SAVE_PRIVATE_MODE_VALUES = '\033[?s'
@@ -291,7 +290,7 @@ class MouseTracking(Enum):
 def init_state(alternate_screen: bool = True, mouse_tracking: MouseTracking = MouseTracking.none, kitty_keyboard_mode: bool = True) -> str:
     sc = SAVE_CURSOR if alternate_screen else ''
     ans = (
-        S7C1T + sc + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
+        sc + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
         reset_mode(Mode.IRM) + reset_mode(Mode.DECKM) + reset_mode(Mode.DECSCNM) +
         set_mode(Mode.DECARM) + set_mode(Mode.DECAWM) +
         set_mode(Mode.DECTCEM) + reset_mode(Mode.MOUSE_BUTTON_TRACKING) +
