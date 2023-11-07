@@ -1510,7 +1510,7 @@ static void
 do_parse_vt(PS *self) {
     self->read.consumed = 0;
     self->pending_mode.draining = false;
-    /* log_error("pos: %zu consumed: %zu sz: %zu %s", self->read.pos, self->read.consumed, self->read.sz, self->buf); */
+    /* log_error("pos: %zu consumed: %zu sz: %zu %.*s", self->read.pos, self->read.consumed, self->read.sz, (int)self->read.sz, self->buf); */
     while (self->read.pos < self->read.sz) {
         if (self->pending_mode.activated_at) {
             if (
@@ -1526,7 +1526,7 @@ do_parse_vt(PS *self) {
         }
         consume_input(self);
     }
-    /* log_error("END: pos: %zu consumed: %zu sz: %zu %s", self->read.pos, self->read.consumed, self->read.sz, self->buf); */
+    /* log_error("END: pos: %zu consumed: %zu sz: %zu %.*s", self->read.pos, self->read.consumed, self->read.sz, (int)self->read.sz, self->buf); */
 }
 // }}}
 
