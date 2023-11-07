@@ -58,8 +58,10 @@ def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> D
     try:
         pcmd = json.loads(bytes(serialized_cmd))
     except Exception:
+        log_error('Failed to parse JSON payload of remote command, ignoring it')
         return {}
     if not isinstance(pcmd, dict) or 'version' not in pcmd:
+        log_error('JSON payload of remote command is invalid, must be an object with a version field')
         return {}
     pcmd.pop('password', None)
     if 'encrypted' in pcmd:
