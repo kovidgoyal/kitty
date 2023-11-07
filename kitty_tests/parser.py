@@ -70,11 +70,25 @@ class TestParser(BaseTest):
 
     def test_parser_threading(self):
         s = self.create_screen()
+
         self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), 'a\x1b]2;some title'))
         b = self.create_write_buffer(s)
         self.parse_written_data(s, 'a')
         self.assertFalse(self.write_bytes(s, b, ' full\x1b\\'))
         self.parse_written_data(s, ('set_title', 'some title full'))
+
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), 'a\x1b]'))
+        b = self.create_write_buffer(s)
+        self.parse_written_data(s, 'a')
+        self.assertFalse(self.write_bytes(s, b, '2;title\x1b\\'))
+        self.parse_written_data(s, ('set_title', 'title'))
+
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), 'a\x1b'))
+        b = self.create_write_buffer(s)
+        self.parse_written_data(s, 'a')
+        self.assertFalse(self.write_bytes(s, b, ']2;title\x1b\\'))
+        self.parse_written_data(s, ('set_title', 'title'))
+
         self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), 'a\x1b]2;some title\x1b'))
         b = self.create_write_buffer(s)
         self.parse_written_data(s, 'a')
@@ -89,6 +103,16 @@ class TestParser(BaseTest):
         self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '1\x1b[2'))
         self.parse_written_data(s, '1')
         self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '3mx'))
+        self.parse_written_data(s, ('select_graphic_rendition', '23'), 'x')
+
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '1\x1b'))
+        self.parse_written_data(s, '1')
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '[23mx'))
+        self.parse_written_data(s, ('select_graphic_rendition', '23'), 'x')
+
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '1\x1b['))
+        self.parse_written_data(s, '1')
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '23mx'))
         self.parse_written_data(s, ('select_graphic_rendition', '23'), 'x')
 
     def test_base64(self):
