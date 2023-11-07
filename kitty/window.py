@@ -193,9 +193,8 @@ class CwdRequest:
 
 def process_title_from_child(title: memoryview, is_base64: bool, default_title: str) -> str:
     if is_base64:
-        from base64 import standard_b64decode
         try:
-            stitle = standard_b64decode(title).decode('utf-8', 'replace')
+            stitle = base64_decode(title).decode('utf-8', 'replace')
         except Exception:
             stitle = 'undecodeable title'
     else:
@@ -450,8 +449,7 @@ def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as
 
 
 def process_remote_print(msg: memoryview) -> str:
-    from base64 import standard_b64decode
-    return replace_c0_codes_except_nl_space_tab(standard_b64decode(msg)).decode('utf-8', 'replace')
+    return replace_c0_codes_except_nl_space_tab(base64_decode(msg)).decode('utf-8', 'replace')
 
 
 class EdgeWidths:
@@ -1240,8 +1238,7 @@ class Window:
         get_boss().handle_remote_cmd(cmd, self)
 
     def handle_remote_echo(self, msg: memoryview) -> None:
-        from base64 import standard_b64decode
-        data = standard_b64decode(msg)
+        data = base64_decode(msg)
         # ensure we are not writing any control char back as this can lead to command injection on shell prompts
         # Any bytes outside the printable ASCII range are removed.
         data = re.sub(rb'[^ -~]', b'', data)

@@ -203,7 +203,6 @@ void screen_repeat_character(Screen *self, unsigned int count);
 void screen_delete_characters(Screen *self, unsigned int count);
 void screen_erase_characters(Screen *self, unsigned int count);
 void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom);
-void screen_handle_cmd(Screen *, PyObject *cmd);
 void screen_push_colors(Screen *, unsigned int);
 void screen_pop_colors(Screen *, unsigned int);
 void screen_report_color_stack(Screen *);

@@ -423,6 +423,10 @@ class TestParser(BaseTest):
         c.clear()
         pb('\033P$qr\033\\', ('screen_request_capabilities', ord('$'), 'r'))
         self.ae(c.wtcbuf, f'\033P1$r{s.margin_top + 1};{s.margin_bottom + 1}r\033\\'.encode('ascii'))
+        pb('\033P@kitty-cmd{abc\033\\', ('handle_remote_cmd', '{abc'))
+        p = base64_encode('abcd').decode()
+        pb(f'\033P@kitty-print|{p}\033\\', ('handle_remote_print', p))
+        self.ae(['abcd'], s.callbacks.printbuf)
 
     def test_pending(self):
         s = self.create_screen()

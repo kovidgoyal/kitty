@@ -83,6 +83,7 @@ class Callbacks:
         self.wtcbuf = b''
         self.iconbuf = self.colorbuf = self.ctbuf = ''
         self.titlebuf = []
+        self.printbuf = []
         self.notifications = []
         self.open_urls = []
         self.cc_buf = []
@@ -110,7 +111,10 @@ class Callbacks:
 
     def handle_remote_print(self, msg):
         text = process_remote_print(msg)
-        print(text, file=sys.__stdout__, end='', flush=True)
+        self.printbuf.append(text)
+
+    def handle_remote_cmd(self, msg):
+        pass
 
     def handle_remote_clone(self, msg):
         msg = str(msg, 'utf-8')

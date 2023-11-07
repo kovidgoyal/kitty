@@ -2188,11 +2188,6 @@ process_cwd_notification(Screen *self, unsigned int code, const char *data, size
     }  // we ignore OSC 6 document reporting as we dont have a use for it
 }
 
-void
-screen_handle_cmd(Screen *self, PyObject *cmd) {
-    CALLBACK("handle_remote_cmd", "O", cmd);
-}
-
 bool
 screen_send_signal_for_key(Screen *self, char key) {
     int ret = 0;

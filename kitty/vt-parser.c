@@ -627,6 +627,40 @@ activate_pending_mode(PS *self) {
     self->pending_mode.state = PENDING_NORMAL;
 }
 
+static bool
+parse_kitty_dcs(PS *self, uint8_t *buf, size_t bufsz) {
+#define starts_with(x) startswith(buf, bufsz, x, literal_strlen(x))
+#define inc(x) buf += literal_strlen(x); bufsz -= literal_strlen(x)
+#define dispatch(prefix, func, delta) {\
+    if (starts_with(prefix)) {\
+        inc(prefix); buf -= delta; bufsz += delta; \
+        PyObject *cmd = PyMemoryView_FromMemory((char*)buf, bufsz, PyBUF_READ); \
+        if (cmd) { \
+            REPORT_OSC(func, cmd); \
+            screen_handle_kitty_dcs(self->screen, #func, cmd); \
+            Py_DECREF(cmd); \
+        } else PyErr_Clear(); \
+        return true; \
+    }}
+    if (!starts_with("kitty-")) return false;
+    inc("kitty-");
+
+    dispatch("cmd{", handle_remote_cmd, 1);
+    dispatch("overlay-ready|", handle_overlay_ready, 0)
+    dispatch("kitten-result|", handle_kitten_result, 0)
+    dispatch("print|", handle_remote_print, 0)
+    dispatch("echo|", handle_remote_echo, 0)
+    dispatch("ssh|", handle_remote_ssh, 0)
+    dispatch("ask|", handle_remote_askpass, 0)
+    dispatch("clone|", handle_remote_clone, 0)
+    dispatch("edit|", handle_remote_edit, 0)
+
+    return false;
+#undef dispatch
+#undef starts_with
+#undef inc
+}
+
 static void
 dispatch_dcs(PS *self, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
     if (bufsz < 2) return;
@@ -665,37 +699,7 @@ dispatch_dcs(PS *self, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
                 REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
             } break;
         case '@':
-            if (startswith(buf + 1, bufsz - 2, "kitty-", sizeof("kitty-") - 1)) {
-                if (startswith(buf + 7, bufsz - 2, "cmd{", sizeof("cmd{") - 1)) {
-                    PyObject *cmd = PyMemoryView_FromMemory((char*)buf + 10, bufsz - 10, PyBUF_READ);
-                    if (cmd != NULL) {
-                        REPORT_OSC2(screen_handle_cmd, (char)buf[0], cmd);
-                        screen_handle_cmd(self->screen, cmd);
-                        Py_DECREF(cmd);
-                    } else PyErr_Clear();
-#define IF_SIMPLE_PREFIX(prefix, func) \
-        if (startswith(buf + 7, bufsz - 1, prefix, sizeof(prefix) - 1)) { \
-            const size_t pp_size = sizeof("kitty") + sizeof(prefix); \
-            PyObject *msg = PyMemoryView_FromMemory((char*)buf + pp_size, bufsz - pp_size, PyBUF_READ); \
-            if (msg != NULL) { \
-                REPORT_OSC2(func, (char)buf[0], msg); \
-                screen_handle_kitty_dcs(self->screen, #func, msg); \
-                Py_DECREF(msg); \
-            } else PyErr_Clear();
-
-                } else IF_SIMPLE_PREFIX("overlay-ready|", handle_overlay_ready)
-                } else IF_SIMPLE_PREFIX("kitten-result|", handle_kitten_result)
-                } else IF_SIMPLE_PREFIX("print|", handle_remote_print)
-                } else IF_SIMPLE_PREFIX("echo|", handle_remote_echo)
-                } else IF_SIMPLE_PREFIX("ssh|", handle_remote_ssh)
-                } else IF_SIMPLE_PREFIX("ask|", handle_remote_askpass)
-                } else IF_SIMPLE_PREFIX("clone|", handle_remote_clone)
-                } else IF_SIMPLE_PREFIX("edit|", handle_remote_edit)
-#undef IF_SIMPLE_PREFIX
-                } else {
-                    REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
-                }
-            }
+            if (!parse_kitty_dcs(self, buf + 1, bufsz-1)) REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
             break;
         default:
             REPORT_UKNOWN_ESCAPE_CODE("DCS", buf);
