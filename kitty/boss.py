@@ -775,7 +775,7 @@ class Boss:
             cmd_prefix = b'\x1bP@kitty-cmd'
             terminator = b'\x1b\\'
             if msg_bytes.startswith(cmd_prefix) and msg_bytes.endswith(terminator):
-                cmd = memoryview(msg_bytes[len(cmd_prefix):-len(terminator)])
+                cmd = memoryview(msg_bytes)[len(cmd_prefix):-len(terminator)]
                 response = self._handle_remote_command(cmd, peer_id=peer_id)
                 if response is None:
                     return None

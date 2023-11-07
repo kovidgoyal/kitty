@@ -53,8 +53,10 @@ def encode_response_for_peer(response: Any) -> bytes:
 
 
 def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> Dict[str, Any]:
+    # See https://github.com/python/cpython/issues/74379 for why we cant use
+    # memoryview directly :((
     try:
-        pcmd = json.loads(serialized_cmd)
+        pcmd = json.loads(bytes(serialized_cmd))
     except Exception:
         return {}
     if not isinstance(pcmd, dict) or 'version' not in pcmd:
