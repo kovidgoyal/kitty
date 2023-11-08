@@ -3491,7 +3491,10 @@ static PyObject*
 apply_sgr(Screen *self, PyObject *src) {
     if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
-    if (!parse_sgr(self, (const uint8_t*)PyUnicode_AsUTF8(src), PyUnicode_GET_LENGTH(src), "parse_sgr", false)) {
+    Py_ssize_t sz;
+    const char *s = PyUnicode_AsUTF8AndSize(src, &sz);
+    if (s == NULL) return NULL;
+    if (!parse_sgr(self, (const uint8_t*)s, sz, "parse_sgr", false)) {
         PyErr_Format(PyExc_ValueError, "Invalid SGR: %s", PyUnicode_AsUTF8(src));
         return NULL;
     }
