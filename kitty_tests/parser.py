@@ -115,6 +115,18 @@ class TestParser(BaseTest):
         self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '23mx'))
         self.parse_written_data(s, ('select_graphic_rendition', '23'), 'x')
 
+        # now test with pending
+        for start in range(len('\x1b[?2026h')):
+            prefix = '\x1b[?2026h'[:start]
+            suffix = '\x1b[?2026h'[start:]
+            self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), prefix))
+            b = self.create_write_buffer(s)
+            self.parse_written_data(s)
+            self.assertFalse(self.write_bytes(s, b, suffix + 'mouse' + '\x1b[?2026l'[:start]))
+            self.parse_written_data(s, ('screen_start_pending_mode',))
+            self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '\x1b[?2026l'[start:] + ' cheese'))
+            self.parse_written_data(s, 'mouse', ('screen_stop_pending_mode',), ' cheese')
+
     def test_base64(self):
         for src, expected in {
             'bGlnaHQgdw==': 'light w',
