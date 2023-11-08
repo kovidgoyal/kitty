@@ -317,8 +317,13 @@ dispatch_normal_mode_byte(PS *self, uint8_t ch) {
 
 static void
 consume_normal(PS *self) {
-    uint8_t ch = self->buf[self->read.pos++];
-    dispatch_normal_mode_byte(self, ch);
+    const unsigned sz = self->read.sz - self->read.pos;
+    byte_loader b; byte_loader_init(&b, self->buf + self->read.pos, sz);
+    while (b.num_left && self->vte_state == VTE_NORMAL) {
+        uint8_t ch = byte_loader_next(&b);
+        dispatch_normal_mode_byte(self, ch);
+    }
+    self->read.pos += sz - b.num_left;
 }
 // }}}
 
