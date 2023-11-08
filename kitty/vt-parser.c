@@ -132,22 +132,60 @@ static const uint64_t pow_10_array[] = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
 };
 
+typedef struct byte_loader {
+    uint64_t m;
+    unsigned sz_of_next_load, digits_left, num_left;
+    const uint8_t *next_load_at;
+} byte_loader;
+
+static void
+byte_loader_init(byte_loader *self, const uint8_t *buf, const unsigned int sz) {
+    size_t s = MIN(sz, sizeof(self->m));
+    self->next_load_at = buf + s;
+    self->num_left = sz;
+    self->digits_left = sizeof(self->m);
+    memcpy(&self->m, buf, sizeof(self->m));
+    self->sz_of_next_load = sz - s;
+}
+
+
+static uint8_t
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+byte_loader_peek(const byte_loader *self) { return self->m & 0xff; }
+#define SHIFT_OP >>=
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+// no idea if this correct needs testing
+#define SHIFT_OP <<=
+byte_loader_peek(const byte_loader *self) { return (self->m >> ((sizeof(self->m) - 1)*8)) & 0xff; }
+#else
+#error "Unsupported endianness"
+#endif
+
+static uint8_t
+byte_loader_next(byte_loader *self) {
+    uint8_t ans = byte_loader_peek(self);
+    self->num_left--; self->digits_left--; self->m SHIFT_OP 8;
+    if (!self->digits_left) byte_loader_init(self, self->next_load_at, self->sz_of_next_load);
+    return ans;
+}
+
 static int64_t
-utoi(const uint8_t *buf, unsigned int sz) {
+utoi(const uint8_t *buf, const unsigned int sz) {
     int64_t ans = 0;
-    const uint8_t *p = buf;
     int mult = 1;
-    if (sz && *p == '-') {
-        mult = -1; p++; sz--;
-    }
-    // Ignore leading zeros
-    while(sz > 0) {
-        if (*p == '0') { p++; sz--; }
-        else break;
-    }
-    if (sz < sizeof(pow_10_array)/sizeof(pow_10_array[0])) {
-        for (int i = sz-1, j=0; i >= 0; i--, j++) {
-            ans += (p[i] - '0') * pow_10_array[j];
+    if (LIKELY(sz > 0)) {
+        byte_loader b;
+        byte_loader_init(&b, buf, sz);
+        uint8_t digit = byte_loader_peek(&b);
+        if (digit == '-') { mult = -1; byte_loader_next(&b); }
+        while (b.num_left) {  // ignore leading zeros
+            digit = byte_loader_peek(&b);
+            if (digit != '0') break;
+            byte_loader_next(&b);
+        }
+        while (b.num_left) {
+            digit = byte_loader_next(&b);
+            ans += (digit - '0') * *(pow_10_array + b.num_left);
         }
     }
     return ans * mult;
@@ -211,7 +249,7 @@ typedef struct PS {
     // The buffer
     struct { size_t consumed, pos, sz; } read;
     struct { size_t offset, sz; } write;
-    uint8_t buf[BUF_SZ];
+    uint8_t buf[BUF_SZ + 64]; // The extra bytes are so loads of large integers such as for AVX 512 dont read past the end of the buffer
 } PS;
 
 static void
