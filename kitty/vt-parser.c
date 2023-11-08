@@ -811,15 +811,14 @@ commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
 }
 
 static bool
-csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, size_t sz, size_t start) {
-    byte_loader b;
-    byte_loader_init(&b, buf + *pos, sz);
+csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const size_t sz, const size_t start) {
+    byte_loader b; byte_loader_init(&b, buf + *pos, sz);
     while (*pos < sz) {
         if (UNLIKELY(*pos - start > MAX_ESCAPE_CODE_LENGTH)) {
             REPORT_ERROR("CSI escape too long ignoring and truncating");
             return true;
         }
-        uint8_t ch = byte_loader_next(&b); *pos += 1;
+        const uint8_t ch = byte_loader_next(&b); *pos += 1;
         switch(csi->state) {
             case CSI_START:
                 switch (ch) {
