@@ -30,17 +30,7 @@
 #define SET_STATE(x) \
     self->vte_state = VTE_##x; if (VTE_##x == VTE_NORMAL) { zero_at_ptr(&self->utf8); }
 
-#define DIGIT \
-    '0': \
-    case '1': \
-    case '2': \
-    case '3': \
-    case '4': \
-    case '5': \
-    case '6': \
-    case '7': \
-    case '8': \
-    case '9'
+#define DIGIT '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
 
 static void
 _report_unknown_escape_code(PyObject *dump_callback, id_type window_id, const char *name, const uint8_t *payload) {
