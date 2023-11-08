@@ -6,7 +6,7 @@ from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
-from kitty.fast_data_types import CURSOR_BLOCK, base64_decode, base64_encode
+from kitty.fast_data_types import CURSOR_BLOCK, VT_PARSER_BUFFER_SIZE, base64_decode, base64_encode
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest, parse_bytes
@@ -123,9 +123,21 @@ class TestParser(BaseTest):
             b = self.create_write_buffer(s)
             self.parse_written_data(s)
             self.assertFalse(self.write_bytes(s, b, suffix + 'mouse' + '\x1b[?2026l'[:start]))
+            b = self.create_write_buffer(s)
             self.parse_written_data(s, ('screen_start_pending_mode',))
-            self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '\x1b[?2026l'[start:] + ' cheese'))
+            self.assertFalse(self.write_bytes(s, b, '\x1b[?2026l'[start:] + ' cheese'))
             self.parse_written_data(s, 'mouse', ('screen_stop_pending_mode',), ' cheese')
+        # test full write
+        sz = VT_PARSER_BUFFER_SIZE // 3 + 7
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), b'a' * sz))
+        self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), b'b' * sz))
+        left = self.write_bytes(s, self.create_write_buffer(s), b'c' * sz)
+        self.assertTrue(len(left), 3 * sz - VT_PARSER_BUFFER_SIZE)
+        self.assertFalse(self.create_write_buffer(s))
+        s.test_parse_written_data()
+        b = self.create_write_buffer(s)
+        self.assertTrue(b)
+        self.write_bytes(s, b, b'')
 
     def test_base64(self):
         for src, expected in {
