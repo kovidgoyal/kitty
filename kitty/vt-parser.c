@@ -28,7 +28,7 @@
 // Macros {{{
 
 #define SET_STATE(x) \
-    self->vte_state = VTE_##x; zero_at_ptr(&self->utf8);
+    self->vte_state = VTE_##x; if (VTE_##x == VTE_NORMAL) { zero_at_ptr(&self->utf8); }
 
 #define DIGIT \
     '0': \
