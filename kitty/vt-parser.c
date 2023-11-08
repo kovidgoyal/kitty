@@ -18,10 +18,10 @@
 
 #define BUF_SZ (1024u*1024u)
 // The extra bytes are so loads of large integers such as for AVX 512 dont read past the end of the buffer
-#define BUF_EXTRA 64
-#define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4)
-#define MAX_CSI_PARAMS 256
-#define MAX_CSI_DIGITS (2*sizeof(uint64_t))
+#define BUF_EXTRA (512u/8u)
+#define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4u)
+#define MAX_CSI_PARAMS 256u
+#define MAX_CSI_DIGITS (2u*sizeof(uint64_t))
 #define DEFAULT_PENDING_WAIT_TIME s_double_to_monotonic_t(2.0)
 
 
