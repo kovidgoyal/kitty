@@ -43,7 +43,7 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
-0.31.0 [future]
+0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow :ac:`easily running arbitrarily complex remote control scripts <remote_control_script>` without needing to turn on remote control (:iss:`6712`)
