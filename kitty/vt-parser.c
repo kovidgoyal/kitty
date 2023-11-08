@@ -17,6 +17,8 @@
 #include "modes.h"
 
 #define BUF_SZ (1024u*1024u)
+// The extra bytes are so loads of large integers such as for AVX 512 dont read past the end of the buffer
+#define BUF_EXTRA 64
 #define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4)
 #define MAX_CSI_PARAMS 256
 #define MAX_CSI_DIGITS (2*sizeof(uint64_t))
@@ -249,7 +251,7 @@ typedef struct PS {
     // The buffer
     struct { size_t consumed, pos, sz; } read;
     struct { size_t offset, sz; } write;
-    uint8_t buf[BUF_SZ + 64]; // The extra bytes are so loads of large integers such as for AVX 512 dont read past the end of the buffer
+    uint8_t buf[BUF_SZ + BUF_EXTRA];
 } PS;
 
 static void
@@ -1043,9 +1045,15 @@ bool
 parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name UNUSED, bool is_deccara) {
     ParsedCSI csi = {0};
     size_t pos = 0;
-    if (csi_parse_loop((PS*)screen->vt_parser->state, &csi, buf, &pos, num, 0)) return false;
-    pos = 0;
-    if (!csi_parse_loop((PS*)screen->vt_parser->state, &csi, (const uint8_t*)(is_deccara ? "$r" : "m"), &pos, is_deccara ? 2 : 1, 0)) return false;
+    RAII_ALLOC(uint8_t, safe_buf, malloc(num + 2 + BUF_EXTRA));
+    memcpy(safe_buf, buf, num);
+    if (is_deccara) {
+        safe_buf[num++] = '$'; safe_buf[num++] = 'r';
+    } else {
+        safe_buf[num++] = 'm';
+    }
+    safe_buf[num] = 0;
+    if (!csi_parse_loop((PS*)screen->vt_parser->state, &csi, safe_buf, &pos, num, 0)) return false;
     return _parse_sgr((PS*)screen->vt_parser->state, &csi);
 }
 #endif
