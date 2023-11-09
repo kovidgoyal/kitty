@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 )
@@ -199,6 +200,9 @@ func (self GraphicsCommand) String() string {
 	return ans + ")"
 }
 
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
+
 func (self *GraphicsCommand) serialize_to(buf io.StringWriter, chunk string) (err error) {
 	var ws func(string)
 	if self.EncodeSerializedDataFunc == nil {
@@ -264,7 +268,7 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 		return self.serialize_to(o, "")
 	}
 	if len(payload) <= compression_threshold {
-		return self.serialize_to(o, base64.StdEncoding.EncodeToString(payload))
+		return self.serialize_to(o, base64.RawStdEncoding.EncodeToString(payload))
 	}
 	gc := *self
 	if self.Format() != GRT_format_png {
@@ -274,12 +278,13 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 			payload = compressed
 		}
 	}
-	data := base64.StdEncoding.EncodeToString(payload)
+	const chunk_size = 128 * 1024
+	data := base64.RawStdEncoding.EncodeToString(payload)
 	for len(data) > 0 && err == nil {
 		chunk := data
-		if len(data) > 4096 {
-			chunk = data[:4096]
-			data = data[4096:]
+		if len(data) > chunk_size {
+			chunk = data[:chunk_size]
+			data = data[chunk_size:]
 		} else {
 			data = ""
 		}
