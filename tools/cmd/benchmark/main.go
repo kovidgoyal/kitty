@@ -74,25 +74,16 @@ func benchmark_data(data string, opts benchmark_options) (duration time.Duration
 	return duration, nil
 }
 
+var rand_src = sync.OnceValue(func() *rand.Rand {
+	return rand.New(rand.NewSource(time.Now().UnixNano()))
+})
+
 func random_string_of_bytes(n int, alphabet string) string {
-	var src = rand.NewSource(time.Now().UnixNano())
-	const (
-		letterIdxBits = 7                    // 7 bits to represent a letter index
-		letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-		letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-	)
 	b := make([]byte, n)
-	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(alphabet) {
-			b[i] = alphabet[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
+	al := len(alphabet)
+	src := rand_src()
+	for i := 0; i < n; i++ {
+		b[i] = alphabet[src.Intn(al)]
 	}
 	return utils.UnsafeBytesToString(b)
 }
@@ -103,13 +94,47 @@ type result struct {
 	duration time.Duration
 }
 
+const ascii_printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \n\t\r `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?"
+
 func simple_ascii() (r result, err error) {
-	data := random_string_of_bytes(1024*1024+13, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \n\t\r `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?")
+	data := random_string_of_bytes(1024*1024+13, ascii_printable)
 	duration, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
 		return result{}, err
 	}
 	return result{"Simple ascii characters", len(data), duration}, nil
+}
+
+func ascii_with_csi() (r result, err error) {
+	const sz = 1024 * 1024 * 17
+	out := make([]byte, 0, sz+48)
+	src := rand_src()
+	chunk := ""
+	for len(out) < sz {
+		q := src.Intn(100)
+		switch {
+		case (q < 10):
+			chunk = random_string_of_bytes(src.Intn(72)+1, ascii_printable)
+		case (10 <= q && q < 30):
+			chunk = "\x1b[m;\x1b[?1h\x1b[H"
+		case (30 <= q && q < 40):
+			chunk = "\x1b[1;2;3;4:3;31m"
+		case (40 <= q && q < 50):
+			chunk = "\x1b[38:5:24;48:2:125:136:147m"
+		case (50 <= q && q < 60):
+			chunk = "\x1b[58;5;44;2m"
+		case (60 <= q && q < 80):
+			chunk = "\x1b[m;\x1b[10A\x1b[3E\x1b[2K"
+		case (80 <= q && q < 100):
+			chunk = "\x1b[39m;\x1b[10`a\x1b[100b\x1b[?1l"
+		}
+		out = append(out, utils.UnsafeStringToBytes(chunk)...)
+	}
+	duration, err := benchmark_data(utils.UnsafeBytesToString(out), default_benchmark_options())
+	if err != nil {
+		return result{}, err
+	}
+	return result{"CSI codes with ASCII text", len(out), duration}, nil
 }
 
 var divs = []time.Duration{
@@ -141,7 +166,16 @@ func main() (err error) {
 	}
 	results = append(results, r)
 
-	fmt.Println(reset + "Results:")
+	if r, err = ascii_with_csi(); err != nil {
+		return err
+	}
+	results = append(results, r)
+
+	fmt.Print(reset)
+	fmt.Println(
+		"These results measure the time it takes the terminal to fully parse all the data sent to it. Some terminals will not render all the data, skipping frames, thereby \"cheating\" in their results. kitty does render all data.")
+	fmt.Println()
+	fmt.Println("Results:")
 	for _, r := range results {
 		present_result(r)
 	}
