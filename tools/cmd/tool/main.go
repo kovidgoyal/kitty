@@ -18,6 +18,7 @@ import (
 	"kitty/kittens/unicode_input"
 	"kitty/tools/cli"
 	"kitty/tools/cmd/at"
+	"kitty/tools/cmd/benchmark"
 	"kitty/tools/cmd/edit_in_kitty"
 	"kitty/tools/cmd/mouse_demo"
 	"kitty/tools/cmd/pytest"
@@ -121,4 +122,5 @@ func KittyToolEntryPoints(root *cli.Command) {
 			return
 		},
 	})
+	benchmark.EntryPoint(root)
 }
