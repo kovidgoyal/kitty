@@ -16,11 +16,12 @@
 #include "modes.h"
 
 #define BUF_SZ (1024u*1024u)
+#define BYTE_LOADER_T uint64_t
 // The extra bytes are so loads of large integers such as for AVX 512 dont read past the end of the buffer
 #define BUF_EXTRA (512u/8u)
 #define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4u)
 #define MAX_CSI_PARAMS 256u
-#define MAX_CSI_DIGITS (2u*sizeof(uint64_t))
+#define MAX_CSI_DIGITS (2u*sizeof(BYTE_LOADER_T))
 #define DEFAULT_PENDING_WAIT_TIME s_double_to_monotonic_t(2.0)
 
 
@@ -124,41 +125,47 @@ static const uint64_t pow_10_array[] = {
 };
 
 typedef struct byte_loader {
-    uint64_t m;
+    BYTE_LOADER_T m;
     unsigned sz_of_next_load, digits_left, num_left;
     const uint8_t *next_load_at;
 } byte_loader;
 
-static void
-byte_loader_init(byte_loader *self, const uint8_t *buf, const unsigned int sz) {
-    size_t s = MIN(sz, sizeof(self->m));
-    self->next_load_at = buf + s;
-    self->num_left = sz;
-    self->digits_left = sizeof(self->m);
-    memcpy(&self->m, buf, sizeof(self->m));
-    self->sz_of_next_load = sz - s;
-}
-
-
 static uint8_t
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 byte_loader_peek(const byte_loader *self) { return self->m & 0xff; }
-#define SHIFT_OP >>=
+#define SHIFT_OP >>
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 // no idea if this correct needs testing
-#define SHIFT_OP <<=
+#define SHIFT_OP <<
 byte_loader_peek(const byte_loader *self) { return (self->m >> ((sizeof(self->m) - 1)*8)) & 0xff; }
 #else
 #error "Unsupported endianness"
 #endif
 
+static void
+byte_loader_init(byte_loader *self, const uint8_t *buf, unsigned int sz) {
+    size_t extra = ((uintptr_t)buf) % sizeof(BYTE_LOADER_T);
+    if (extra) {
+        // align loading
+        buf -= extra; sz += extra;
+    }
+    size_t s = MIN(sz, sizeof(self->m));
+    self->next_load_at = buf + s;
+    self->num_left = sz - extra;
+    self->digits_left = sizeof(self->m) - extra;
+    self->m = *((BYTE_LOADER_T*)buf);
+    self->sz_of_next_load = sz - s;
+    if (extra) self->m = self->m SHIFT_OP (8 * extra);
+}
+
 static uint8_t
 byte_loader_next(byte_loader *self) {
     uint8_t ans = byte_loader_peek(self);
-    self->num_left--; self->digits_left--; self->m SHIFT_OP 8;
+    self->num_left--; self->digits_left--; self->m = self->m SHIFT_OP 8;
     if (!self->digits_left) byte_loader_init(self, self->next_load_at, self->sz_of_next_load);
     return ans;
 }
+#undef SHIFT_OP
 
 static int64_t
 utoi(const uint8_t *buf, const unsigned int sz) {
@@ -242,6 +249,7 @@ typedef struct PS {
     struct { size_t offset, sz; } write;
     uint8_t buf[BUF_SZ + BUF_EXTRA];
 } PS;
+static_assert(offsetof(PS, buf) > sizeof(BYTE_LOADER_T), "There must be enough space before the buf[] array for aligned loads");
 
 static void
 reset_csi(ParsedCSI *csi) {
@@ -1034,7 +1042,9 @@ bool
 parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name UNUSED, bool is_deccara) {
     ParsedCSI csi = {0};
     size_t pos = 0;
-    RAII_ALLOC(uint8_t, safe_buf, malloc(num + 2 + BUF_EXTRA));
+    RAII_ALLOC(uint8_t, _buf, malloc(num + 2 + 2*sizeof(BYTE_LOADER_T)));
+    if (!_buf) return false;
+    uint8_t *safe_buf = _buf + sizeof(BYTE_LOADER_T);
     memcpy(safe_buf, buf, num);
     if (is_deccara) {
         safe_buf[num++] = '$'; safe_buf[num++] = 'r';
