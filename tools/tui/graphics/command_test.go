@@ -27,7 +27,7 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 	test_serialize := func(payload string, vals ...string) {
 		expected := "\033_G" + strings.Join(vals, ",")
 		if payload != "" {
-			expected += ";" + base64.StdEncoding.EncodeToString([]byte(payload))
+			expected += ";" + base64.RawStdEncoding.EncodeToString([]byte(payload))
 		}
 		expected += "\033\\"
 		if diff := cmp.Diff(expected, gc.AsAPC([]byte(payload))); diff != "" {
@@ -62,7 +62,7 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 		if len(data) > 0 {
 			t.Fatalf("Unparsed remnant: %#v", string(data))
 		}
-		decoded, err := base64.StdEncoding.DecodeString(encoded.String())
+		decoded, err := base64.RawStdEncoding.DecodeString(encoded.String())
 		if err != nil {
 			t.Fatalf("Encoded data not valid base-64 with error: %v", err)
 		}
@@ -89,7 +89,7 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 	if diff := cmp.Diff(gc.AsAPC(nil), q.AsAPC(nil)); diff != "" {
 		t.Fatalf("Parsing failed:\n%s", diff)
 	}
-	if diff := cmp.Diff(q.response_message, base64.StdEncoding.EncodeToString([]byte("abcd"))); diff != "" {
+	if diff := cmp.Diff(q.response_message, base64.RawStdEncoding.EncodeToString([]byte("abcd"))); diff != "" {
 		t.Fatalf("Failed to parse payload:\n%s", diff)
 	}
 
