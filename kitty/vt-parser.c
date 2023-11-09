@@ -131,16 +131,18 @@ typedef struct byte_loader {
 } byte_loader;
 
 static uint8_t
+byte_loader_peek(const byte_loader *self) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-byte_loader_peek(const byte_loader *self) { return self->m & 0xff; }
+    return self->m & 0xff;
 #define SHIFT_OP >>
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-// no idea if this correct needs testing
+    // no idea if this is correct needs testing
+    return (self->m >> ((sizeof(self->m) - 1)*8)) & 0xff;
 #define SHIFT_OP <<
-byte_loader_peek(const byte_loader *self) { return (self->m >> ((sizeof(self->m) - 1)*8)) & 0xff; }
 #else
 #error "Unsupported endianness"
 #endif
+}
 
 static void
 byte_loader_init(byte_loader *self, const uint8_t *buf, unsigned int sz) {
