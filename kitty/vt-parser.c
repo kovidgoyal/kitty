@@ -1553,9 +1553,12 @@ search_for_pending_stop(PS *self) {
 
 static void
 do_parse_vt(PS *self) {
+#define LOG(prefix)  \
+    log_error(#prefix " state: %s pos: %zu consumed: %zu sz: %zu %.*s", vte_state_name(self->vte_state), self->read.pos, self->read.consumed, self->read.sz, (int)MIN(64u, (self->read.sz-self->read.pos)), self->buf + self->read.pos);
+
     self->read.consumed = 0;
     self->pending_mode.draining = false;
-    /* log_error("pos: %zu consumed: %zu sz: %zu %.*s", self->read.pos, self->read.consumed, self->read.sz, (int)self->read.sz, self->buf); */
+    /* LOG(START); */
     while (self->read.pos < self->read.sz) {
         if (self->pending_mode.activated_at) {
             if (
@@ -1571,7 +1574,8 @@ do_parse_vt(PS *self) {
         }
         consume_input(self);
     }
-    /* log_error("END: pos: %zu consumed: %zu sz: %zu %.*s", self->read.pos, self->read.consumed, self->read.sz, (int)self->read.sz, self->buf); */
+    /* LOG(END); */
+#undef LOG
 }
 // }}}
 
@@ -1604,12 +1608,12 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 self->new_input_at = 0;
                 pd->pending_activated_at = self->pending_mode.activated_at;
                 pd->pending_wait_time = self->pending_mode.wait_time;
-                pd->write_space_created = buf_full && self->read.sz < BUF_SZ;
                 if (self->read.consumed) {
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
                     self->read.sz -= self->read.consumed;
                     if (self->read.sz) memmove(self->buf, self->buf + self->read.consumed, self->read.sz);
                     self->read.consumed = 0;
+                    pd->write_space_created = buf_full;
                 }
             }
         }
