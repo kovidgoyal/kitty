@@ -1611,7 +1611,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
         if (self->read.consumed < self->read.sz) {
             self->dump_callback = pd->dump_callback; self->now = pd->now;
             pd->time_since_new_input = pd->now - self->new_input_at;
-            if (flush || pd->time_since_new_input >= OPT(input_delay)) {
+            if (flush || pd->time_since_new_input >= OPT(input_delay) || (BUF_SZ - self->read.sz) <= 16 * 1024) {
                 bool buf_full = self->read.sz >= BUF_SZ;
                 pd->input_read = true;
                 do_parse_vt(self);
