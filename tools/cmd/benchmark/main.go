@@ -112,10 +112,25 @@ func simple_ascii() (r result, err error) {
 	return result{"Simple ascii characters", len(data), duration}, nil
 }
 
+var divs = []time.Duration{
+	time.Duration(1), time.Duration(10), time.Duration(100), time.Duration(1000)}
+
+func round(d time.Duration, digits int) time.Duration {
+	switch {
+	case d > time.Second:
+		d = d.Round(time.Second / divs[digits])
+	case d > time.Millisecond:
+		d = d.Round(time.Millisecond / divs[digits])
+	case d > time.Microsecond:
+		d = d.Round(time.Microsecond / divs[digits])
+	}
+	return d
+}
+
 func present_result(r result) {
 	rate := float64(r.data_sz) / float64(r.duration)
 	rate *= 1e3
-	fmt.Println("\t"+r.desc+":", r.duration, fmt.Sprintf("%.2f", rate), "GiB/s")
+	fmt.Println("\t"+r.desc+":", round(r.duration, 2), fmt.Sprintf("@ %.2fGiB/s", rate))
 }
 
 func main() (err error) {
