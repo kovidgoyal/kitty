@@ -7,13 +7,12 @@ import tempfile
 import time
 import unittest
 import zlib
-from base64 import standard_b64decode, standard_b64encode
 from contextlib import suppress
 from dataclasses import dataclass
 from io import BytesIO
 from itertools import cycle
 
-from kitty.fast_data_types import load_png_data, shm_unlink, shm_write, xor_data
+from kitty.fast_data_types import base64_decode, base64_encode, load_png_data, shm_unlink, shm_write, xor_data
 
 from . import BaseTest, parse_bytes
 
@@ -28,7 +27,7 @@ def send_command(screen, cmd, payload=b''):
     if payload:
         if isinstance(payload, str):
             payload = payload.encode('utf-8')
-        payload = standard_b64encode(payload).decode('ascii')
+        payload = base64_encode(payload).decode('ascii')
         cmd += ';' + payload
     cmd += '\033\\'
     c = screen.callbacks
@@ -342,20 +341,27 @@ class TestGraphics(BaseTest):
         img = g.image_for_client_id(1)
         self.ae(img['data'], b'abcdefghijklmnop')
 
+        random_data = byte_block(32 * 1024)
+        sl(
+            random_data,
+            s=1024,
+            v=8,
+            expecting_data=random_data
+        )
+
         # Test compression
-        random_data = byte_block(3 * 1024)
         compressed_random_data = zlib.compress(random_data)
         sl(
             compressed_random_data,
-            s=24,
-            v=32,
+            s=1024,
+            v=8,
             o='z',
             expecting_data=random_data
         )
 
         # Test chunked + compressed
         b = len(compressed_random_data) // 2
-        self.assertIsNone(pl(compressed_random_data[:b], s=24, v=32, o='z', m=1))
+        self.assertIsNone(pl(compressed_random_data[:b], s=1024, v=8, o='z', m=1))
         self.ae(pl(compressed_random_data[b:], m=0), 'OK')
         img = g.image_for_client_id(1)
         self.ae(img['data'], random_data)
@@ -364,10 +370,10 @@ class TestGraphics(BaseTest):
         def load_temp(prefix='tty-graphics-protocol-'):
             f = tempfile.NamedTemporaryFile(prefix=prefix)
             f.write(random_data), f.flush()
-            sl(f.name, s=24, v=32, t='f', expecting_data=random_data)
+            sl(f.name, s=1024, v=8, t='f', expecting_data=random_data)
             self.assertTrue(os.path.exists(f.name))
             f.seek(0), f.truncate(), f.write(compressed_random_data), f.flush()
-            sl(f.name, s=24, v=32, t='t', o='z', expecting_data=random_data)
+            sl(f.name, s=1024, v=8, t='t', o='z', expecting_data=random_data)
             return f
 
         f = load_temp()
@@ -381,7 +387,7 @@ class TestGraphics(BaseTest):
         # Test loading from POSIX SHM
         name = '/kitty-test-shm'
         shm_write(name, random_data)
-        sl(name, s=24, v=32, t='s', expecting_data=random_data)
+        sl(name, s=1024, v=8, t='s', expecting_data=random_data)
         self.assertRaises(
             FileNotFoundError, shm_unlink, name
         )  # check that file was deleted
@@ -421,7 +427,7 @@ class TestGraphics(BaseTest):
 
     def test_load_png_simple(self):
         # 1x1 transparent PNG
-        png_data = standard_b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
+        png_data = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
         expected = b'\x00\xff\xff\x7f'
         self.ae(load_png_data(png_data), (expected, 1, 1))
         s, g, pl, sl = load_helpers(self)

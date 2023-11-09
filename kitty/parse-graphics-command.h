@@ -3,7 +3,7 @@
 #pragma once
 
 #include "base64.h"
-static inline void parse_graphics_code(PS *self, const uint8_t *parser_buf,
+static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
                                        const size_t parser_buf_pos) {
   unsigned int pos = 1;
   enum PARSER_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE, PAYLOAD };
@@ -14,7 +14,7 @@ static inline void parse_graphics_code(PS *self, const uint8_t *parser_buf,
   bool is_negative;
   memset(&g, 0, sizeof(g));
   size_t sz;
-  static uint8_t payload[4096];
+  uint8_t *payload = parser_buf;
 
   enum KEYS {
     action = 'a',
@@ -320,7 +320,7 @@ static inline void parse_graphics_code(PS *self, const uint8_t *parser_buf,
 
     case PAYLOAD: {
       sz = parser_buf_pos - pos;
-      g.payload_sz = sizeof(payload);
+      g.payload_sz = MAX(BUF_EXTRA, sz);
       if (!base64_decode8(parser_buf + pos, sz, payload, &g.payload_sz)) {
         REPORT_ERROR("Failed to parse GraphicsCommand command payload with "
                      "error: payload size (%zu) too large",

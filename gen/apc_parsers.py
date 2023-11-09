@@ -113,11 +113,11 @@ def generate(
     if payload_allowed:
         payload_after_value = "case ';': state = PAYLOAD; break;"
         payload = ', PAYLOAD'
-        parr = 'static uint8_t payload[4096];'
+        parr = 'uint8_t *payload = parser_buf;'
         payload_case = f'''
             case PAYLOAD: {{
                 sz = parser_buf_pos - pos;
-                g.payload_sz = sizeof(payload);
+                g.payload_sz = MAX(BUF_EXTRA, sz);
                 if (!base64_decode8(parser_buf + pos, sz, payload, &g.payload_sz)) {{
                     REPORT_ERROR("Failed to parse {command_class} command payload with error: payload size (%zu) too large", sz); return; }}
                 pos = parser_buf_pos;
@@ -132,7 +132,7 @@ def generate(
     return f'''
     #include "base64.h"
 static inline void
-{function_name}(PS *self, const uint8_t *parser_buf, const size_t parser_buf_pos) {{
+{function_name}(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {{
     unsigned int pos = 1;
     enum PARSER_STATES {{ KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE {payload} }};
     enum PARSER_STATES state = KEY, value_state = FLAG;
