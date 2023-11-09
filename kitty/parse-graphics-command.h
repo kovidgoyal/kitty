@@ -14,7 +14,6 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
   bool is_negative;
   memset(&g, 0, sizeof(g));
   size_t sz;
-  uint8_t *payload = parser_buf;
 
   enum KEYS {
     action = 'a',
@@ -321,10 +320,12 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
     case PAYLOAD: {
       sz = parser_buf_pos - pos;
       g.payload_sz = MAX(BUF_EXTRA, sz);
-      if (!base64_decode8(parser_buf + pos, sz, payload, &g.payload_sz)) {
+      if (!base64_decode8(parser_buf + pos, sz, parser_buf, &g.payload_sz)) {
+        g.payload_sz = MAX(BUF_EXTRA, sz);
         REPORT_ERROR("Failed to parse GraphicsCommand command payload with "
-                     "error: payload size (%zu) too large",
-                     sz);
+                     "error: invalid base64 data in chunk of size: %zu with "
+                     "output buffer size: %zu",
+                     sz, g.payload_sz);
         return;
       }
       pos = parser_buf_pos;
@@ -372,7 +373,7 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
       "parent_placement_id", (unsigned int)g.parent_placement_id, "z_index",
       (int)g.z_index, "offset_from_parent_x", (int)g.offset_from_parent_x,
       "offset_from_parent_y", (int)g.offset_from_parent_y, "payload_sz",
-      g.payload_sz, payload, g.payload_sz);
+      g.payload_sz, parser_buf, g.payload_sz);
 
-  screen_handle_graphics_command(self->screen, &g, payload);
+  screen_handle_graphics_command(self->screen, &g, parser_buf);
 }
