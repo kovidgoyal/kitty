@@ -129,12 +129,12 @@ func (self *Loop) RemoveTimer(id IdType) bool {
 }
 
 func (self *Loop) NoAlternateScreen() *Loop {
-	self.terminal_options.alternate_screen = false
+	self.terminal_options.Alternate_screen = false
 	return self
 }
 
 func NoAlternateScreen(self *Loop) {
-	self.terminal_options.alternate_screen = false
+	self.terminal_options.Alternate_screen = false
 }
 
 func (self *Loop) OnlyDisambiguateKeys() *Loop {
@@ -268,7 +268,7 @@ func (self *Loop) Run() (err error) {
 				}
 				fmt.Fprintf(os.Stderr, "%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line)
 			}
-			if self.terminal_options.alternate_screen {
+			if self.terminal_options.Alternate_screen {
 				term, err := tty.OpenControllingTerm(tty.SetRaw)
 				if err == nil {
 					defer term.RestoreAndClose()

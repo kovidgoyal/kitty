@@ -22,7 +22,7 @@ var SIGNULL unix.Signal
 
 func new_loop() *Loop {
 	l := Loop{controlling_term: nil}
-	l.terminal_options.alternate_screen = true
+	l.terminal_options.Alternate_screen = true
 	l.terminal_options.restore_colors = true
 	l.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS
 	l.escape_code_parser.HandleCSI = l.handle_csi

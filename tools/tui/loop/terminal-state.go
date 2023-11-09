@@ -94,7 +94,7 @@ const (
 )
 
 type TerminalStateOptions struct {
-	alternate_screen, restore_colors bool
+	Alternate_screen, restore_colors bool
 	mouse_tracking                   MouseTracking
 	kitty_keyboard_mode              KeyboardStateBits
 }
@@ -114,7 +114,7 @@ func reset_modes(sb *strings.Builder, modes ...Mode) {
 func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	var sb strings.Builder
 	sb.Grow(256)
-	if self.alternate_screen {
+	if self.Alternate_screen {
 		sb.WriteString(SAVE_CURSOR)
 	}
 	sb.WriteString(SAVE_PRIVATE_MODE_VALUES)
@@ -126,7 +126,7 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 		IRM, DECKM, DECSCNM, BRACKETED_PASTE, FOCUS_TRACKING,
 		MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING, MOUSE_MOVE_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE)
 	set_modes(&sb, DECARM, DECAWM, DECTCEM)
-	if self.alternate_screen {
+	if self.Alternate_screen {
 		set_modes(&sb, ALTERNATE_SCREEN)
 		sb.WriteString(CLEAR_SCREEN)
 	}
@@ -153,7 +153,7 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 	var sb strings.Builder
 	sb.Grow(64)
 	sb.WriteString("\033[<u")
-	if self.alternate_screen {
+	if self.Alternate_screen {
 		sb.WriteString(ALTERNATE_SCREEN.EscapeCodeToReset())
 	} else {
 		sb.WriteString(SAVE_CURSOR)
