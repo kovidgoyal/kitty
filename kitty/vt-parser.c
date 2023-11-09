@@ -1605,7 +1605,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 bool buf_full = self->read.sz >= BUF_SZ;
                 pd->input_read = true;
                 do_parse_vt(self);
-                self->new_input_at = 0;
+                self->new_input_at = pd->now;
                 pd->pending_activated_at = self->pending_mode.activated_at;
                 pd->pending_wait_time = self->pending_mode.wait_time;
                 if (self->read.consumed) {
