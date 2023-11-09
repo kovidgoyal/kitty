@@ -88,8 +88,3 @@ encode_utf8(uint32_t ch, char* dest) {
     }
     return 0;
 }
-
-
-// Base64
-#define INCLUDE_BASE64_DEFINITIONS
-#include "base64.h"
