@@ -12,6 +12,7 @@ import (
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
+	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 
@@ -139,6 +140,26 @@ func ascii_with_csi() (r result, err error) {
 	return result{"CSI codes with ASCII text", len(out), duration}, nil
 }
 
+func images() (r result, err error) {
+	g := graphics.GraphicsCommand{}
+	g.SetImageId(12345)
+	g.SetQuiet(graphics.GRT_quiet_silent)
+	g.SetAction(graphics.GRT_action_query)
+	g.SetFormat(graphics.GRT_format_rgba)
+	const dim = 1024
+	g.SetDataWidth(dim)
+	g.SetDataHeight(dim)
+	b := strings.Builder{}
+	b.Grow(4*dim*dim + 256)
+	_ = g.WriteWithPayloadTo(&b, make([]byte, 4*dim*dim))
+	data := b.String()
+	duration, err := benchmark_data(data, default_benchmark_options())
+	if err != nil {
+		return result{}, err
+	}
+	return result{"Images", len(data), duration}, nil
+}
+
 var divs = []time.Duration{
 	time.Duration(1), time.Duration(10), time.Duration(100), time.Duration(1000)}
 
@@ -155,15 +176,15 @@ func round(d time.Duration, digits int) time.Duration {
 }
 
 func present_result(r result, col_width int) {
-	rate := float64(r.data_sz) / float64(r.duration)
-	rate *= 1e3
+	rate := float64(r.data_sz) / r.duration.Seconds()
+	rate /= 1024 * 1024
 	f := fmt.Sprintf("%%-%ds", col_width)
-	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%.1f\x1b[m GiB/s\n", r.desc, round(r.duration, 2), rate)
+	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%.1f\x1b[m MB/s\n", r.desc, round(r.duration, 2), rate)
 }
 
 func all_benchamrks() []string {
 	return []string{
-		"ascii", "csi",
+		"ascii", "csi", "images",
 	}
 }
 
@@ -182,6 +203,13 @@ func main(args []string) (err error) {
 
 	if slices.Index(args, "csi") >= 0 {
 		if r, err = ascii_with_csi(); err != nil {
+			return err
+		}
+		results = append(results, r)
+	}
+
+	if slices.Index(args, "images") >= 0 {
+		if r, err = images(); err != nil {
 			return err
 		}
 		results = append(results, r)
