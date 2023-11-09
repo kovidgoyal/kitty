@@ -161,13 +161,15 @@ func present_result(r result, col_width int) {
 	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%.1f\x1b[m GiB/s\n", r.desc, round(r.duration, 2), rate)
 }
 
-var all_benchamrks = []string{
-	"ascii", "csi",
+func all_benchamrks() []string {
+	return []string{
+		"ascii", "csi",
+	}
 }
 
 func main(args []string) (err error) {
 	if len(args) == 0 {
-		args = all_benchamrks
+		args = all_benchamrks()
 	}
 	var results []result
 	var r result
@@ -204,7 +206,7 @@ func EntryPoint(root *cli.Command) {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "__benchmark__",
 		ShortDescription: "Run various benchmarks",
-		HelpText:         "To run only particular benchmarks, specify them on the command line from the set: " + strings.Join(all_benchamrks, ", "),
+		HelpText:         "To run only particular benchmarks, specify them on the command line from the set: " + strings.Join(all_benchamrks(), ", "),
 		Usage:            "[options] [optional benchmark to run ...]",
 		Hidden:           true,
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
