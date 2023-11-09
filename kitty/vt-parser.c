@@ -145,17 +145,15 @@ byte_loader_peek(const byte_loader *self) { return (self->m >> ((sizeof(self->m)
 static void
 byte_loader_init(byte_loader *self, const uint8_t *buf, unsigned int sz) {
     size_t extra = ((uintptr_t)buf) % sizeof(BYTE_LOADER_T);
-    if (extra) {
-        // align loading
+    if (extra) { // align loading
         buf -= extra; sz += extra;
     }
     size_t s = MIN(sz, sizeof(self->m));
     self->next_load_at = buf + s;
     self->num_left = sz - extra;
     self->digits_left = sizeof(self->m) - extra;
-    self->m = *((BYTE_LOADER_T*)buf);
+    self->m = (*((BYTE_LOADER_T*)buf)) SHIFT_OP (8 * extra);
     self->sz_of_next_load = sz - s;
-    if (extra) self->m = self->m SHIFT_OP (8 * extra);
 }
 
 static uint8_t
