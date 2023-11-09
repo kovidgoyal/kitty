@@ -11,7 +11,6 @@
 #include "vt-parser.h"
 #include "charsets.h"
 #include "screen.h"
-#include "base64.h"
 #include "control-codes.h"
 #include "state.h"
 #include "modes.h"

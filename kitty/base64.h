@@ -8,43 +8,23 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#ifndef B64_INPUT_BITSIZE
-#define B64_INPUT_BITSIZE 8
-#endif
-
-#if B64_INPUT_BITSIZE == 8
-#define INPUT_T uint8_t
 #define inner_func base64_decode_inner8
 #define decode_func base64_decode8
 #define encode_func base64_encode8
-#else
-#define INPUT_T uint32_t
-#define inner_func base64_decode_inner32
-#define decode_func base64_decode32
-#define encode_func base64_encode32
-#endif
 
-bool decode_func(const INPUT_T *src, size_t src_sz, uint8_t *dest, size_t *dest_sz);
+bool decode_func(const uint8_t *src, size_t src_sz, uint8_t *dest, size_t *dest_sz);
 bool encode_func(const unsigned char *src, size_t src_len, unsigned char *out, size_t *out_len, bool add_padding);
-#ifndef B64_INCLUDED_ONCE
 static inline size_t required_buffer_size_for_base64_decode(size_t src_sz) { return (src_sz * 3) / 4 + 4; }
 static inline size_t required_buffer_size_for_base64_encode(size_t src_sz) { return (src_sz * 4) / 3 + 5; }
-#endif
-
-#ifndef B64_INCLUDED_ONCE
-#define B64_INCLUDED_ONCE
-#endif
 
 #ifdef INCLUDE_BASE64_DEFINITIONS
-#if B64_INPUT_BITSIZE == 8
 // standard decoding using + and / with = being the padding character
 static uint8_t b64_decoding_table[256] = {
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
-#endif
 
 static void
-inner_func(const INPUT_T *src, size_t src_sz, uint8_t *dest) {
+inner_func(const uint8_t *src, size_t src_sz, uint8_t *dest) {
     for (size_t i = 0, j = 0; i < src_sz;) {
         uint32_t sextet_a = b64_decoding_table[src[i++] & 0xff];
         uint32_t sextet_b = b64_decoding_table[src[i++] & 0xff];
@@ -59,7 +39,7 @@ inner_func(const INPUT_T *src, size_t src_sz, uint8_t *dest) {
 }
 
 bool
-decode_func(const INPUT_T *src, size_t src_sz, uint8_t *dest, size_t *dest_sz) {
+decode_func(const uint8_t *src, size_t src_sz, uint8_t *dest, size_t *dest_sz) {
     while (src_sz && src[src_sz-1] == '=') src_sz--;  // remove trailing padding
     if (!src_sz) { *dest_sz = 0; return true; }
     const size_t dest_capacity = *dest_sz;
@@ -70,7 +50,7 @@ decode_func(const INPUT_T *src, size_t src_sz, uint8_t *dest, size_t *dest_sz) {
     if (*dest_sz + 4 > dest_capacity) return false;
     if (src_sz) inner_func(src, src_sz, dest);
     if (extra > 1 && extra < 4) {  // < 4 is not needed but it helps compiler unroll the loop
-        INPUT_T buf[4] = {0};
+        uint8_t buf[4] = {0};
         for (size_t i = 0; i < extra; i++) buf[i] = src[src_sz+i];
         inner_func(buf, extra, dest + *dest_sz);
         *dest_sz += extra - 1;
@@ -80,10 +60,8 @@ decode_func(const INPUT_T *src, size_t src_sz, uint8_t *dest, size_t *dest_sz) {
     return true;
 }
 
-#if B64_INPUT_BITSIZE == 8
 static const unsigned char base64_table[65] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-#endif
 
 bool
 encode_func(const unsigned char *src, size_t src_len, unsigned char *out, size_t *out_len, bool add_padding) {
@@ -119,6 +97,4 @@ encode_func(const unsigned char *src, size_t src_len, unsigned char *out, size_t
 #undef encode_func
 #undef decode_func
 #undef inner_func
-#undef INPUT_T
-#undef B64_INPUT_BITSIZE
 #endif

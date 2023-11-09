@@ -91,8 +91,5 @@ encode_utf8(uint32_t ch, char* dest) {
 
 
 // Base64
-#define B64_INPUT_BITSIZE 8
 #define INCLUDE_BASE64_DEFINITIONS
-#include "base64.h"
-#define B64_INPUT_BITSIZE 32
 #include "base64.h"
