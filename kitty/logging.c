@@ -20,21 +20,24 @@ static bool use_os_log = false;
 
 void
 log_error(const char *fmt, ...) {
-#define bufprint(fmt, ...) { \
-    if ((size_t)(p - logbuf) < sizeof(logbuf) - 2) { \
-        p += vsnprintf(p, sizeof(logbuf) - (p - logbuf), fmt, __VA_ARGS__); \
-    } }
-    char logbuf[16 * 1024];
-    char *p = logbuf;
+    int n = 0;
     va_list ar;
     va_start(ar, fmt);
-    bufprint(fmt, ar);
+    n = vsnprintf(NULL, 0, fmt, ar);
     va_end(ar);
-    RAII_ALLOC(char, sanbuf, calloc(1, 3*(p - logbuf) + 1));
+    if (n < 0) return;
+    size_t size = 5 * (size_t)n + 8;
+    RAII_ALLOC(char, arena, calloc(size, sizeof(char)));
+    if (!arena) return;
+    va_start(ar, fmt);
+    n = vsnprintf(arena, size, fmt, ar);
+    va_end(ar);
+    char *sanbuf = arena + n + 1;
+
     char utf8buf[4];
     START_ALLOW_CASE_RANGE
     size_t j = 0;
-    for (char *x = logbuf; x < p; x++) {
+    for (char *x = arena; x < arena + n; x++) {
         switch(*x) {
             case C0_EXCEPT_NL_SPACE_TAB: {
                 const uint32_t ch = 0x2400 + *x;
