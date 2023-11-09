@@ -90,7 +90,7 @@ def cmd_for_report(report_name: str, keymap: KeymapType, type_map: Dict[str, Any
         ans = [f'REPORT_VA_COMMAND("K s {{{fmt}}}", self->window_id, "{report_name}", ']
     ans.append(',\n     '.join((flag_attrs, uint_attrs, int_attrs)))
     if payload_allowed:
-        ans.append(', "payload_sz", g.payload_sz, payload, g.payload_sz')
+        ans.append(', "payload_sz", g.payload_sz, parser_buf, g.payload_sz')
     ans.append(');')
     return '\n'.join(ans)
 
@@ -113,20 +113,21 @@ def generate(
     if payload_allowed:
         payload_after_value = "case ';': state = PAYLOAD; break;"
         payload = ', PAYLOAD'
-        parr = 'uint8_t *payload = parser_buf;'
         payload_case = f'''
             case PAYLOAD: {{
                 sz = parser_buf_pos - pos;
                 g.payload_sz = MAX(BUF_EXTRA, sz);
-                if (!base64_decode8(parser_buf + pos, sz, payload, &g.payload_sz)) {{
-                    REPORT_ERROR("Failed to parse {command_class} command payload with error: payload size (%zu) too large", sz); return; }}
+                if (!base64_decode8(parser_buf + pos, sz, parser_buf, &g.payload_sz)) {{
+                    g.payload_sz = MAX(BUF_EXTRA, sz);
+                    REPORT_ERROR("Failed to parse {command_class} command payload with error: \
+invalid base64 data in chunk of size: %zu with output buffer size: %zu", sz, g.payload_sz); return; }}
                 pos = parser_buf_pos;
                 }}
                 break;
         '''
-        callback = f'{callback_name}(self->screen, &g, payload)'
+        callback = f'{callback_name}(self->screen, &g, parser_buf)'
     else:
-        payload_after_value = payload = parr = payload_case = ''
+        payload_after_value = payload = payload_case = ''
         callback = f'{callback_name}(self->screen, &g)'
 
     return f'''
@@ -142,7 +143,6 @@ static inline void
     bool is_negative;
     memset(&g, 0, sizeof(g));
     size_t sz;
-    {parr}
     {keys_enum}
     enum KEYS key = '{initial_key}';
     if (parser_buf[pos] == ';') state = AFTER_VALUE;
