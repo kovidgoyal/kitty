@@ -14,6 +14,8 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+
+	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -152,32 +154,48 @@ func round(d time.Duration, digits int) time.Duration {
 	return d
 }
 
-func present_result(r result) {
+func present_result(r result, col_width int) {
 	rate := float64(r.data_sz) / float64(r.duration)
 	rate *= 1e3
-	fmt.Println("\t"+r.desc+":", round(r.duration, 2), fmt.Sprintf("@ %.2fGiB/s", rate))
+	f := fmt.Sprintf("%%-%ds", col_width)
+	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%.1f\x1b[m GiB/s\n", r.desc, round(r.duration, 2), rate)
 }
 
-func main() (err error) {
+var all_benchamrks = []string{
+	"ascii", "csi",
+}
+
+func main(args []string) (err error) {
+	if len(args) == 0 {
+		args = all_benchamrks
+	}
 	var results []result
 	var r result
-	if r, err = simple_ascii(); err != nil {
-		return err
+	if slices.Index(args, "ascii") >= 0 {
+		if r, err = simple_ascii(); err != nil {
+			return err
+		}
+		results = append(results, r)
 	}
-	results = append(results, r)
 
-	if r, err = ascii_with_csi(); err != nil {
-		return err
+	if slices.Index(args, "csi") >= 0 {
+		if r, err = ascii_with_csi(); err != nil {
+			return err
+		}
+		results = append(results, r)
 	}
-	results = append(results, r)
 
 	fmt.Print(reset)
 	fmt.Println(
 		"These results measure the time it takes the terminal to fully parse all the data sent to it. Some terminals will not render all the data, skipping frames, thereby \"cheating\" in their results. kitty does render all data.")
 	fmt.Println()
 	fmt.Println("Results:")
+	mlen := 10
 	for _, r := range results {
-		present_result(r)
+		mlen = max(mlen, len(r.desc))
+	}
+	for _, r := range results {
+		present_result(r, mlen)
 	}
 	return
 }
@@ -186,9 +204,11 @@ func EntryPoint(root *cli.Command) {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "__benchmark__",
 		ShortDescription: "Run various benchmarks",
+		HelpText:         "To run only particular benchmarks, specify them on the command line from the set: " + strings.Join(all_benchamrks, ", "),
+		Usage:            "[options] [optional benchmark to run ...]",
 		Hidden:           true,
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
-			if err = main(); err != nil {
+			if err = main(args); err != nil {
 				ret = 1
 			}
 			return
