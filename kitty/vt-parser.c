@@ -14,9 +14,9 @@
 #include "control-codes.h"
 #include "state.h"
 #include "modes.h"
+#include "simd-string.h"
 
 #define BUF_SZ (1024u*1024u)
-#define BYTE_LOADER_T uint64_t
 // The extra bytes are so loads of large integers such as for AVX 512 dont read past the end of the buffer
 #define BUF_EXTRA (512u/8u)
 #define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4u)
@@ -124,55 +124,12 @@ static const uint64_t pow_10_array[] = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
 };
 
-typedef struct byte_loader {
-    BYTE_LOADER_T m;
-    unsigned sz_of_next_load, digits_left, num_left;
-    const uint8_t *next_load_at;
-} byte_loader;
-
-static uint8_t
-byte_loader_peek(const byte_loader *self) {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    return self->m & 0xff;
-#define SHIFT_OP >>
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    // no idea if this is correct needs testing
-    return (self->m >> ((sizeof(self->m) - 1)*8)) & 0xff;
-#define SHIFT_OP <<
-#else
-#error "Unsupported endianness"
-#endif
-}
-
-static void
-byte_loader_init(byte_loader *self, const uint8_t *buf, unsigned int sz) {
-    size_t extra = ((uintptr_t)buf) % sizeof(BYTE_LOADER_T);
-    if (extra) { // align loading
-        buf -= extra; sz += extra;
-    }
-    size_t s = MIN(sz, sizeof(self->m));
-    self->next_load_at = buf + s;
-    self->num_left = sz - extra;
-    self->digits_left = sizeof(self->m) - extra;
-    self->m = (*((BYTE_LOADER_T*)buf)) SHIFT_OP (8 * extra);
-    self->sz_of_next_load = sz - s;
-}
-
-static uint8_t
-byte_loader_next(byte_loader *self) {
-    uint8_t ans = byte_loader_peek(self);
-    self->num_left--; self->digits_left--; self->m = self->m SHIFT_OP 8;
-    if (!self->digits_left) byte_loader_init(self, self->next_load_at, self->sz_of_next_load);
-    return ans;
-}
-#undef SHIFT_OP
-
 static int64_t
 utoi(const uint8_t *buf, const unsigned int sz) {
     int64_t ans = 0;
     int mult = 1;
     if (LIKELY(sz > 0)) {
-        byte_loader b;
+        ByteLoader b;
         byte_loader_init(&b, buf, sz);
         uint8_t digit = byte_loader_peek(&b);
         if (digit == '-') { mult = -1; byte_loader_next(&b); }
@@ -317,7 +274,7 @@ dispatch_normal_mode_byte(PS *self, uint8_t ch) {
 static void
 consume_normal(PS *self) {
     const unsigned sz = self->read.sz - self->read.pos;
-    byte_loader b; byte_loader_init(&b, self->buf + self->read.pos, sz);
+    ByteLoader b; byte_loader_init(&b, self->buf + self->read.pos, sz);
     while (b.num_left && self->vte_state == VTE_NORMAL) {
         uint8_t ch = byte_loader_next(&b);
         dispatch_normal_mode_byte(self, ch);
@@ -438,22 +395,26 @@ consume_esc(PS *self) {
 // ST terminator {{{
 static bool
 find_st_terminator(PS *self, size_t *end_pos) {
-    // TODO: Make this faster with SIMD
-    for(; self->read.pos < self->read.sz; self->read.pos++) {
-        uint8_t ch = self->buf[self->read.pos];
-        switch(ch) {
-            case BEL:
-                *end_pos = self->read.pos;
-                self->read.pos++;
+    const size_t sz = self->read.sz - self->read.pos;
+    uint8_t *haystack = self->buf + self->read.pos;
+    uint8_t *q = find_either_of_two_chars(haystack, sz, BEL, ESC_ST);
+    if (q == NULL) {
+        self->read.pos += sz;
+        return false;
+    }
+    switch(*q) {
+        case ESC_ST:
+            if (q > self->buf && *(q-1) == ESC) {
+                *end_pos = q - 1 - self->buf;
+                self->read.pos = *end_pos + 2;
                 return true;
-            case ESC_ST:
-                if (self->read.pos > 0 && self->buf[self->read.pos-1] == ESC) {
-                    *end_pos = self->read.pos - 1;
-                    self->read.pos++;
-                    return true;
-                }
-                break;
-        }
+            }
+            self->read.pos = (q - self->buf) + 1;
+            break;
+        case BEL:
+            *end_pos = q - self->buf;
+            self->read.pos = *end_pos + 1;
+            return true;
     }
     return false;
 }
@@ -816,7 +777,7 @@ commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
 
 static bool
 csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const size_t sz, const size_t start) {
-    byte_loader b; byte_loader_init(&b, buf + *pos, sz);
+    ByteLoader b; byte_loader_init(&b, buf + *pos, sz);
     while (*pos < sz) {
         if (UNLIKELY(*pos - start > MAX_ESCAPE_CODE_LENGTH)) {
             REPORT_ERROR("CSI escape too long ignoring and truncating");
