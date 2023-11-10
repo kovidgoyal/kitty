@@ -272,14 +272,26 @@ dispatch_normal_mode_byte(PS *self, uint8_t ch) {
 }
 
 static void
-consume_normal(PS *self) {
-    const unsigned sz = self->read.sz - self->read.pos;
-    ByteLoader b; byte_loader_init(&b, self->buf + self->read.pos, sz);
-    while (b.num_left && self->vte_state == VTE_NORMAL) {
-        uint8_t ch = byte_loader_next(&b);
-        dispatch_normal_mode_byte(self, ch);
+dispatch_printable_ascii(PS *self, const size_t sz) {
+    for (const size_t limit = self->read.pos + sz; self->read.pos < limit; self->read.pos++) {
+        REPORT_DRAW(self->buf[self->read.pos]);
+        screen_draw(self->screen, self->buf[self->read.pos], true);
     }
-    self->read.pos += sz - b.num_left;
+}
+
+static void
+consume_normal(PS *self) {
+    do {
+        if (self->utf8.state == UTF8_ACCEPT) {
+            size_t sz = self->read.sz - self->read.pos;
+            uint8_t *p = find_start_of_two_ranges(self->buf + self->read.pos, sz, 0, 31, 0x7f, 0xff);
+            if (p != NULL) sz = p - (self->buf + self->read.pos);
+            if (sz) dispatch_printable_ascii(self, sz);
+            else dispatch_normal_mode_byte(self, self->buf[self->read.pos++]);
+        } else {
+            dispatch_normal_mode_byte(self, self->buf[self->read.pos++]);
+        }
+    } while (self->read.pos < self->read.sz && self->vte_state == VTE_NORMAL);
 }
 // }}}
 
