@@ -222,13 +222,13 @@ draw_byte(PS *self, const uint8_t b) {
     switch (decode_utf8(&self->utf8.state, &self->utf8.codep, b)) {
         case UTF8_ACCEPT:
             REPORT_DRAW(self->utf8.codep);
-            screen_draw(self->screen, self->utf8.codep, true);
+            screen_draw(self->screen, self->utf8.codep);
             break;
         case UTF8_REJECT: {
             bool prev_was_accept = self->utf8.prev == UTF8_ACCEPT;
             zero_at_ptr(&self->utf8);
             REPORT_DRAW(0xfffd);
-            screen_draw(self->screen, 0xfffd, true);
+            screen_draw(self->screen, 0xfffd);
             if (!prev_was_accept) {
                 draw_byte(self, b);
                 return;  // so that prev is correct
@@ -274,7 +274,7 @@ static void
 dispatch_printable_ascii(PS *self, const size_t sz) {
     for (const size_t limit = self->read.pos + sz; self->read.pos < limit; self->read.pos++) {
         REPORT_DRAW(self->buf[self->read.pos]);
-        screen_draw(self->screen, self->buf[self->read.pos], true);
+        screen_draw(self->screen, self->buf[self->read.pos]);
     }
 }
 

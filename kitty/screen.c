@@ -691,8 +691,8 @@ draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
 }
 
 void
-screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
-    draw_codepoint(self, och, from_input_stream);
+screen_draw(Screen *self, uint32_t och) {
+    draw_codepoint(self, och, true);
 }
 
 void
@@ -1855,7 +1855,7 @@ screen_repeat_character(Screen *self, unsigned int count) {
     if (self->last_graphic_char) {
         if (count == 0) count = 1;
         unsigned int num = MIN(count, CSI_REP_MAX_REPETITIONS);
-        while (num-- > 0) screen_draw(self, self->last_graphic_char, false);
+        while (num-- > 0) draw_codepoint(self, self->last_graphic_char, false);
     }
 }
 
@@ -3483,7 +3483,7 @@ draw(Screen *self, PyObject *src) {
     int kind = PyUnicode_KIND(src);
     void *buf = PyUnicode_DATA(src);
     Py_ssize_t sz = PyUnicode_GET_LENGTH(src);
-    for (Py_ssize_t i = 0; i < sz; i++) screen_draw(self, PyUnicode_READ(kind, buf, i), true);
+    for (Py_ssize_t i = 0; i < sz; i++) draw_codepoint(self, PyUnicode_READ(kind, buf, i), true);
     Py_RETURN_NONE;
 }
 
