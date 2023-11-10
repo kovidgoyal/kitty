@@ -105,7 +105,7 @@ func simple_ascii() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Simple ascii characters", len(data), duration}, nil
+	return result{"Only ASCII chars", len(data), duration}, nil
 }
 
 func ascii_with_csi() (r result, err error) {
@@ -137,7 +137,7 @@ func ascii_with_csi() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{"CSI codes with ASCII text", len(out), duration}, nil
+	return result{"CSI codes with ASCII chars", len(out), duration}, nil
 }
 
 func images() (r result, err error) {
