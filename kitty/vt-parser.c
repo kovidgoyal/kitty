@@ -284,7 +284,7 @@ consume_normal(PS *self) {
     do {
         if (self->utf8.state == UTF8_ACCEPT) {
             size_t sz = self->read.sz - self->read.pos;
-            uint8_t *p = find_start_of_two_ranges(self->buf + self->read.pos, sz, 0, 31, 0x7f, 0xff);
+            uint8_t *p = find_byte_not_in_range(self->buf + self->read.pos, sz, 32, 126);
             if (p != NULL) sz = p - (self->buf + self->read.pos);
             if (sz) dispatch_printable_ascii(self, sz);
             else dispatch_normal_mode_byte(self, self->buf[self->read.pos++]);
