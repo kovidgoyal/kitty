@@ -9,6 +9,7 @@
 #include "simd-string.h"
 #include <immintrin.h>
 
+// ByteLoader {{{
 uint8_t
 byte_loader_peek(const ByteLoader *self) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -56,13 +57,15 @@ byte_loader_skip(ByteLoader *self) {
         self->num_left = 0;
     }
 }
+// }}}
 
+// find_either_of_two_bytes {{{
 #define haszero(v) (((v) - 0x0101010101010101ULL) & ~(v) & 0x8080808080808080ULL)
 #define prepare_for_hasvalue(n) (~0ULL/255 * (n))
 #define hasvalue(x,n) (haszero((x) ^ (n)))
 
-static const uint8_t*
-find_either_of_two_bytes_simple(const uint8_t *haystack, const size_t sz, const uint8_t x, const uint8_t y) {
+static uint8_t*
+find_either_of_two_bytes_simple(uint8_t *haystack, const size_t sz, const uint8_t x, const uint8_t y) {
     ByteLoader it; byte_loader_init(&it, (uint8_t*)haystack, sz);
 
     // first align by testing the first few bytes one at a time
@@ -74,7 +77,7 @@ find_either_of_two_bytes_simple(const uint8_t *haystack, const size_t sz, const 
     const BYTE_LOADER_T a = prepare_for_hasvalue(x), b = prepare_for_hasvalue(y);
     while (it.num_left) {
         if (hasvalue(it.m, a) || hasvalue(it.m, b)) {
-            const uint8_t *ans = haystack + sz - it.num_left, q = hasvalue(it.m, a) ? x : y;
+            uint8_t *ans = haystack + sz - it.num_left, q = hasvalue(it.m, a) ? x : y;
             while (it.num_left) {
                 if (byte_loader_next(&it) == q) return ans;
                 ans++;
@@ -87,11 +90,11 @@ find_either_of_two_bytes_simple(const uint8_t *haystack, const size_t sz, const 
 }
 #undef SHIFT_OP
 
-static const uint8_t*
-find_either_of_two_bytes_simd_impl(const uint8_t *haystack, const uint8_t* needle_, size_t sz) {
+static uint8_t*
+find_either_of_two_bytes_sse4_2_impl(uint8_t *haystack, const uint8_t* needle_, size_t sz) {
     size_t extra = (uintptr_t)haystack % sizeof(__m128i);
     if (extra) { // need aligned loads for performance so search first few bytes by hand
-        const uint8_t *ans = find_either_of_two_bytes_simple(haystack, MIN(sz, extra), needle_[0], needle_[1]);
+        uint8_t *ans = find_either_of_two_bytes_simple(haystack, MIN(sz, extra), needle_[0], needle_[1]);
         if (ans) return ans;
         extra = MIN(extra, sz);
         sz -= extra;
@@ -109,23 +112,27 @@ find_either_of_two_bytes_simd_impl(const uint8_t *haystack, const uint8_t* needl
     return NULL;
 }
 
-static const uint8_t*
-find_either_of_two_bytes_simd(uint8_t *haystack, const size_t sz, const uint8_t x, const uint8_t y) {
+static uint8_t*
+find_either_of_two_bytes_sse4_2(uint8_t *haystack, const size_t sz, const uint8_t x, const uint8_t y) {
     uint8_t before = haystack[sz];
     haystack[sz] = 0;
     uint8_t needle[16] = {x, y, 0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    const uint8_t *ans = find_either_of_two_bytes_simd_impl(haystack, needle, sz);
+    uint8_t *ans = find_either_of_two_bytes_sse4_2_impl(haystack, needle, sz);
     haystack[sz] = before;
     return ans;
 }
 
+static uint8_t* (*find_either_of_two_bytes_impl)(uint8_t*, const size_t, const uint8_t, const uint8_t) = find_either_of_two_bytes_simple;
+
 uint8_t*
 find_either_of_two_bytes(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
-    return (uint8_t*)find_either_of_two_bytes_simd(haystack, sz, a, b);
+    return (uint8_t*)find_either_of_two_bytes_impl(haystack, sz, a, b);
 }
+// }}}
 
-static const uint8_t*
-find_byte_not_in_range_simple(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
+// find_byte_not_in_range {{{
+static uint8_t*
+find_byte_not_in_range_simple(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
     ByteLoader it; byte_loader_init(&it, haystack, sz);
     while (it.num_left) {
         const uint8_t ch = byte_loader_next(&it);
@@ -134,12 +141,12 @@ find_byte_not_in_range_simple(const uint8_t *haystack, const size_t sz, const ui
     return NULL;
 }
 
-static const uint8_t*
-find_byte_not_in_range_simd_impl(const uint8_t *haystack, const uint8_t* needle_, size_t sz) {
+static uint8_t*
+find_byte_not_in_range_sse4_2_impl(uint8_t *haystack, const uint8_t* needle_, size_t sz) {
     size_t extra = (uintptr_t)haystack % sizeof(__m128i);
     if (extra) { // need aligned loads for performance so search first few bytes by hand
-        const uint8_t *ans = find_byte_not_in_range_simple((const uint8_t*)haystack, MIN(sz, extra), needle_[0], needle_[1]);
-        if (ans) return (const uint8_t*)ans;
+        uint8_t *ans = find_byte_not_in_range_simple(haystack, MIN(sz, extra), needle_[0], needle_[1]);
+        if (ans) return ans;
         extra = MIN(extra, sz);
         sz -= extra;
         haystack += extra;
@@ -162,14 +169,29 @@ find_byte_not_in_range_sse4_2(uint8_t *haystack, const size_t sz, const uint8_t 
     uint8_t before = haystack[sz];
     haystack[sz] = 0;
     uint8_t needle[16] = {a, b, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0};
-    uint8_t *ans = (uint8_t*)find_byte_not_in_range_simd_impl((uint8_t*)haystack, needle, sz);
+    uint8_t *ans = (uint8_t*)find_byte_not_in_range_sse4_2_impl((uint8_t*)haystack, needle, sz);
     haystack[sz] = before;
     return ans;
 
 }
 
+static uint8_t* (*find_byte_not_in_range_impl)(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) = find_byte_not_in_range_simple;
 
 uint8_t*
 find_byte_not_in_range(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
-    return (uint8_t*)find_byte_not_in_range_sse4_2(haystack, sz, a, b);
+    return (uint8_t*)find_byte_not_in_range_impl(haystack, sz, a, b);
+}
+// }}}
+
+bool
+init_simd(void *x) {
+    PyObject *module = (PyObject*)x;
+    bool has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; bool has_avx2 = __builtin_cpu_supports("avx2");
+    if (0 != PyModule_AddObjectRef(module, "has_sse4_2", has_sse4_2 ? Py_True : Py_False)) return false;
+    if (0 != PyModule_AddObjectRef(module, "has_avx2", has_avx2 ? Py_True : Py_False)) return false;
+    if (has_sse4_2) {
+        find_byte_not_in_range_impl = find_byte_not_in_range_sse4_2;
+        find_either_of_two_bytes_impl = find_either_of_two_bytes_sse4_2;
+    }
+    return true;
 }

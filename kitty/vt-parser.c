@@ -1747,6 +1747,7 @@ void vt_parser_set_pending_activated_at(Parser*p, monotonic_t n) {
 #define EXTRA_INIT \
     if (0 != PyModule_AddIntConstant(module, "VT_PARSER_BUFFER_SIZE", BUF_SZ)) return 0; \
     if (0 != PyModule_AddIntConstant(module, "VT_PARSER_MAX_ESCAPE_CODE_SIZE", MAX_ESCAPE_CODE_LENGTH)) return 0; \
+    if (!init_simd(module)) return 0; \
 
 INIT_TYPE(Parser)
 
