@@ -1525,10 +1525,9 @@ do_parse_vt(PS *self) {
 #define LOG(prefix)  \
     log_error(#prefix " state: %s pos: %zu consumed: %zu sz: %zu %.*s", vte_state_name(self->vte_state), self->read.pos, self->read.consumed, self->read.sz, (int)MIN(64u, (self->read.sz-self->read.pos)), self->buf + self->read.pos);
 
-    self->read.consumed = 0;
     self->pending_mode.draining = false;
     /* LOG(START); */
-    while (self->read.pos < self->read.sz) {
+    do {
         if (self->pending_mode.activated_at) {
             if (
                 self->pending_mode.activated_at + self->pending_mode.wait_time < self->now ||
@@ -1542,7 +1541,7 @@ do_parse_vt(PS *self) {
             } else continue;
         }
         consume_input(self);
-    }
+    } while (self->read.pos < self->read.sz);
     /* LOG(END); */
 #undef LOG
 }
@@ -1568,15 +1567,17 @@ run_worker(void *p, ParseData *pd, bool flush) {
         }
 #endif
         self->screen = p;
-        if (self->read.consumed < self->read.sz) {
+        if (self->read.pos < self->read.sz) {
             self->dump_callback = pd->dump_callback; self->now = pd->now;
             pd->time_since_new_input = pd->now - self->new_input_at;
             if (flush || pd->time_since_new_input >= OPT(input_delay) || (BUF_SZ - self->read.sz) <= 16 * 1024) {
                 pd->input_read = true;
-                end_with_lock; {
-                    do_parse_vt(self);
-                } with_lock;
-                self->read.sz += self->write.pending; self->write.pending = 0;
+                do {
+                    end_with_lock; {
+                        do_parse_vt(self);
+                    } with_lock;
+                    self->read.sz += self->write.pending; self->write.pending = 0;
+                } while (self->read.pos < self->read.sz);
                 self->new_input_at = pd->now;
                 pd->pending_activated_at = self->pending_mode.activated_at;
                 pd->pending_wait_time = self->pending_mode.wait_time;
