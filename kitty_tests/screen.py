@@ -603,6 +603,13 @@ class TestScreen(BaseTest):
     def test_serialize(self):
         from kitty.window import as_text
         s = self.create_screen()
+        parse_bytes(s, b'\x1b[1;91m')
+        s.draw('X')
+        parse_bytes(s, b'\x1b[0m\x1b[2m')
+        s.draw('Y')
+        self.ae(as_text(s, True), '\x1b[m\x1b[22;1;91mX\x1b[22;2;39mY\n\n\n\n')
+
+        s.reset()
         s.draw('ab' * s.columns)
         s.carriage_return(), s.linefeed()
         s.draw('c')
