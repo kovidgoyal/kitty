@@ -20,4 +20,8 @@ typedef struct ByteLoader {
 uint8_t byte_loader_peek(const ByteLoader *self);
 void byte_loader_init(ByteLoader *self, const uint8_t *buf, unsigned int sz);
 uint8_t byte_loader_next(ByteLoader *self);
+
+// Requires haystack[sz] to be writable and 7 bytes to the left of haystack to
+// be readable. Returns pointer to first position in haystack that contains
+// either of the two chars or NULL if not found.
 uint8_t* find_either_of_two_bytes(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
