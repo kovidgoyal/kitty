@@ -996,7 +996,7 @@ class TestScreen(BaseTest):
         w('#P')
         w('#R')
         ac(0, 1)
-        w('#10P')
+        w('10#P')
         w('#R')
         ac(0, 1)
         w('#Q')
