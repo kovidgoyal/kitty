@@ -21,7 +21,6 @@
 #define BUF_EXTRA (512u/8u)
 #define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4u)
 #define MAX_CSI_PARAMS 256u
-#define MAX_CSI_DIGITS (2u*sizeof(BYTE_LOADER_T))
 #define DEFAULT_PENDING_WAIT_TIME s_double_to_monotonic_t(2.0)
 
 
@@ -176,7 +175,7 @@ typedef struct ParsedCSI {
     CSIState state;
     unsigned num_params, num_digits;
     bool is_valid;
-    uint8_t digits[MAX_CSI_DIGITS];
+    uint64_t accumulator; int mult;
     int params[MAX_CSI_PARAMS];
     uint8_t is_sub_param[MAX_CSI_PARAMS];
 } ParsedCSI;
@@ -212,7 +211,7 @@ static void
 reset_csi(ParsedCSI *csi) {
     csi->num_params = 0; csi->primary = 0; csi->secondary = 0;
     csi->trailer = 0; csi->state = CSI_START; csi->num_digits = 0;
-    csi->is_valid = false;
+    csi->is_valid = false; csi->accumulator = 0; csi->mult = 1;
 }
 // }}}
 
@@ -774,6 +773,25 @@ csi_letter(unsigned code) {
     return buf;
 }
 
+static const int64_t csi_multipliers[] = {
+ 10000000000000000l,
+ 1000000000000000l,
+ 100000000000000l,
+ 10000000000000l,
+ 1000000000000l,
+ 100000000000l,
+ 10000000000l,
+ 1000000000l,
+ 100000000l,
+ 10000000l,
+ 1000000l,
+ 100000l,
+ 10000l,
+ 1000l,
+ 100l,
+ 1l
+};
+
 static bool
 commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
     if (!csi->num_digits) return true;
@@ -781,9 +799,15 @@ commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
         REPORT_ERROR("CSI escape code has too many parameters, ignoring it");
         return false;
     }
-    csi->params[csi->num_params++] = utoi(csi->digits, csi->num_digits);
-    csi->num_digits = 0;
+    csi->params[csi->num_params++] = csi->mult * (csi->accumulator / csi_multipliers[csi->num_digits - 1]);
+    csi->num_digits = 0; csi->mult = 1; csi->accumulator = 0;
     return true;
+}
+
+static void
+csi_add_digit(ParsedCSI *csi, uint8_t ch) {
+    if (UNLIKELY(csi->num_digits >= arraysz(csi_multipliers))) return;
+    csi->accumulator += (ch - '0') * csi_multipliers[csi->num_digits++];
 }
 
 static bool
@@ -805,7 +829,7 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         csi->state = CSI_BODY;
                         break;
                     case DIGIT:
-                        csi->digits[csi->num_digits++] = ch;
+                        csi_add_digit(csi, ch);
                         csi->state = CSI_BODY;
                         break;
                     case '?':
@@ -817,7 +841,8 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         break;
                     case CSI_SECONDARY:
                         if (ch == '-') {
-                            csi->digits[csi->num_digits++] = '-';
+                            csi->mult = -1;
+                            csi->num_digits++;
                             csi->state = CSI_BODY;
                         } else {
                             csi->secondary = ch;
@@ -852,7 +877,7 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         dispatch_normal_mode_byte(self, ch); break;
                     case CSI_SECONDARY:
                         if (ch == '-' && csi->num_digits == 0) {
-                            csi->digits[csi->num_digits++] = '-';
+                            csi->mult = -1; csi->num_digits = 1;
                         } else {
                             if (!commit_csi_param(self, csi)) return true;
                             csi->secondary = ch;
@@ -860,7 +885,7 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         }
                         break;
                     case CSI_TRAILER:
-                        if (csi->num_digits == 1 && csi->secondary == 0 && csi->digits[0] == '-') {
+                        if (csi->num_digits == 1 && csi->secondary == 0 && csi->mult == -1) {
                             csi->num_digits = 0; csi->secondary = '-';
                         }
                         if (!commit_csi_param(self, csi)) return true;
@@ -872,16 +897,12 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         csi->is_sub_param[csi->num_params] = true;
                         break;
                     case ';':
-                        if (!csi->num_digits) csi->digits[csi->num_digits++] = '0';
+                        if (!csi->num_digits) csi->num_digits++;  // Empty means zero
                         if (!commit_csi_param(self, csi)) return true;
                         csi->is_sub_param[csi->num_params] = false;
                         break;
                     case DIGIT:
-                        if (csi->num_digits >= MAX_CSI_DIGITS) {
-                            REPORT_ERROR("Too many digits in CSI parameter, ignoring this CSI code");
-                            return true;
-                        }
-                        csi->digits[csi->num_digits++] = ch;
+                        csi_add_digit(csi, ch);
                         break;
                     default:
                         REPORT_ERROR("Invalid character in CSI: %s (0x%x), ignoring the sequence", csi_letter(ch), ch);
@@ -1012,7 +1033,7 @@ _parse_sgr(PS *self, ParsedCSI *csi) {
 #ifndef DUMP_COMMANDS
 bool
 parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name UNUSED, bool is_deccara) {
-    ParsedCSI csi = {0};
+    ParsedCSI csi = {.mult=1};
     size_t pos = 0;
     RAII_ALLOC(uint8_t, _buf, malloc(num + 2 + 2*sizeof(BYTE_LOADER_T)));
     if (!_buf) return false;
@@ -1729,6 +1750,7 @@ alloc_vt_parser(id_type window_id) {
             Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Parser lock mutex: %s", strerror(ret));
             return NULL;
         }
+        state->csi.mult = 1;
         state->window_id = window_id;
         state->pending_mode.wait_time = DEFAULT_PENDING_WAIT_TIME;
     }
