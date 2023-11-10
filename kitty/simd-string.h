@@ -28,6 +28,6 @@ uint8_t* find_either_of_two_bytes(uint8_t *haystack, const size_t sz, const uint
 
 // Requires haystack[sz] to be writable and 7 bytes to the left of haystack to
 // be readable. Returns pointer to first position in haystack that contains
-// a char that is in [a1, a2] or [a2, a3]
+// a char that is not in [a, b]. a must be <= b
 uint8_t*
-find_start_of_two_ranges(uint8_t *haystack, const size_t sz, const uint8_t a1, const uint8_t a2, const uint8_t a3, const uint8_t a4);
+find_byte_not_in_range(uint8_t *haystack, const size_t sz, const uint8_t a1, const uint8_t b);
