@@ -161,7 +161,7 @@ func images() (r result, err error) {
 }
 
 func long_escape_codes() (r result, err error) {
-	data := random_string_of_bytes(8192, ascii_printable)
+	data := random_string_of_bytes(8024, ascii_printable)
 	// OSC 6 is document reporting which kitty ignores after parsing
 	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
 	duration, err := benchmark_data(data, default_benchmark_options())
