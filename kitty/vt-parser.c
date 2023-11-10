@@ -396,8 +396,7 @@ consume_esc(PS *self) {
 static bool
 find_st_terminator(PS *self, size_t *end_pos) {
     const size_t sz = self->read.sz - self->read.pos;
-    uint8_t *haystack = self->buf + self->read.pos;
-    uint8_t *q = find_either_of_two_chars(haystack, sz, BEL, ESC_ST);
+    uint8_t *q = find_either_of_two_chars(self->buf + self->read.pos, sz, BEL, ESC_ST);
     if (q == NULL) {
         self->read.pos += sz;
         return false;
@@ -1447,22 +1446,21 @@ consume_input(PS *self) {
 
 static bool
 find_pending_stop_csi(PS *self) {
-    // TODO: Make this faster with SIMD
-    for(; self->read.pos < self->read.sz; self->read.pos++) {
-        uint8_t ch = self->buf[self->read.pos];
-        switch(ch) {
-            case 'l':
-                if (
-                    self->read.pos >= self->read.consumed + pmslen &&
-                    memcmp(self->buf + self->read.pos - pmslen + 1, pending_mode_sentinel, pmslen) == 0
-                ) return true;
-                self->pending_mode.state = PENDING_NORMAL;
-                return false;
-            case ESC:
-                self->pending_mode.state = PENDING_ESC;
-                self->read.pos++;
-                return false;
-        }
+    const size_t sz = self->read.sz - self->read.pos;
+    uint8_t *q = find_either_of_two_chars(self->buf + self->read.pos, sz, ESC, 'l');
+    if (q == NULL) {
+        self->read.pos += sz;
+        return false;
+    }
+    switch(*q) {
+        case 'l':
+            self->pending_mode.state = PENDING_NORMAL;
+            self->read.pos = q - self->buf + 1;
+            return self->read.pos > self->read.consumed + pmslen && memcmp(self->buf + self->read.pos - pmslen, pending_mode_sentinel, pmslen) == 0;
+        case ESC:
+            self->pending_mode.state = PENDING_ESC;
+            self->read.pos = q - self->buf + 1;
+            break;
     }
     return false;
 }
