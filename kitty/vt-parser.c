@@ -203,7 +203,7 @@ typedef struct PS {
 
     // The buffer
     struct { size_t consumed, pos, sz; } read;
-    struct { size_t offset, sz; } write;
+    struct { size_t offset, sz, pending; } write;
     uint8_t buf[BUF_SZ + BUF_EXTRA];
 } PS;
 static_assert(offsetof(PS, buf) > sizeof(BYTE_LOADER_T), "There must be enough space before the buf[] array for aligned loads");
@@ -1558,6 +1558,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
     Screen *screen = (Screen*)p;
     PS *self = (PS*)screen->vt_parser->state;
     with_lock {
+        self->read.sz += self->write.pending; self->write.pending = 0;
 #ifdef DUMP_COMMANDS
         self->window_id = screen->window_id;
         if (self->read.consumed < self->read.sz && pd->dump_callback) {
@@ -1571,13 +1572,16 @@ run_worker(void *p, ParseData *pd, bool flush) {
             self->dump_callback = pd->dump_callback; self->now = pd->now;
             pd->time_since_new_input = pd->now - self->new_input_at;
             if (flush || pd->time_since_new_input >= OPT(input_delay) || (BUF_SZ - self->read.sz) <= 16 * 1024) {
-                bool buf_full = self->read.sz >= BUF_SZ;
                 pd->input_read = true;
-                do_parse_vt(self);
+                end_with_lock; {
+                    do_parse_vt(self);
+                } with_lock;
+                self->read.sz += self->write.pending; self->write.pending = 0;
                 self->new_input_at = pd->now;
                 pd->pending_activated_at = self->pending_mode.activated_at;
                 pd->pending_wait_time = self->pending_mode.wait_time;
                 if (self->read.consumed) {
+                    bool buf_full = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
                     self->read.sz -= self->read.consumed;
                     if (self->read.sz) memmove(self->buf, self->buf + self->read.consumed, self->read.sz);
@@ -1597,8 +1601,8 @@ vt_parser_create_write_buffer(Parser *p, size_t *sz) {
     uint8_t *ans;
     with_lock {
         if (self->write.sz) fatal("vt_parser_create_write_buffer() called with an already existing write buffer");
-        *sz = BUF_SZ - self->read.sz;
-        self->write.offset = self->read.sz;
+        self->write.offset = self->read.sz + self->write.pending;
+        *sz = BUF_SZ - self->write.offset;
         self->write.sz = *sz;
         ans = self->buf + self->write.offset;
     } end_with_lock;
@@ -1609,8 +1613,9 @@ void
 vt_parser_commit_write(Parser *p, size_t sz) {
     PS *self = (PS*)p->state;
     with_lock {
-        if (self->write.offset > self->read.sz) memmove(self->buf + self->read.sz, self->buf + self->write.offset, sz);
-        self->read.sz += sz;
+        size_t off = self->read.sz + self->write.pending;
+        if (self->write.offset > off) memmove(self->buf + off, self->buf + self->write.offset, sz);
+        self->write.pending += sz;
         self->write.sz = 0;
     } end_with_lock;
 }
@@ -1620,7 +1625,7 @@ vt_parser_has_space_for_input(const Parser *p) {
     PS *self = (PS*)p->state;
     bool ans;
     with_lock {
-        ans = self->read.sz < BUF_SZ;
+        ans = self->read.sz + self->write.pending < BUF_SZ;
     } end_with_lock;
     return ans;
 }
