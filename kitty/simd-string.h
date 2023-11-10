@@ -20,4 +20,4 @@ typedef struct ByteLoader {
 uint8_t byte_loader_peek(const ByteLoader *self);
 void byte_loader_init(ByteLoader *self, const uint8_t *buf, unsigned int sz);
 uint8_t byte_loader_next(ByteLoader *self);
-uint8_t* find_either_of_two_chars(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
+uint8_t* find_either_of_two_bytes(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);

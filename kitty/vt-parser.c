@@ -396,7 +396,7 @@ consume_esc(PS *self) {
 static bool
 find_st_terminator(PS *self, size_t *end_pos) {
     const size_t sz = self->read.sz - self->read.pos;
-    uint8_t *q = find_either_of_two_chars(self->buf + self->read.pos, sz, BEL, ESC_ST);
+    uint8_t *q = find_either_of_two_bytes(self->buf + self->read.pos, sz, BEL, ESC_ST);
     if (q == NULL) {
         self->read.pos += sz;
         return false;
@@ -1447,7 +1447,7 @@ consume_input(PS *self) {
 static bool
 find_pending_stop_csi(PS *self) {
     const size_t sz = self->read.sz - self->read.pos;
-    uint8_t *q = find_either_of_two_chars(self->buf + self->read.pos, sz, ESC, 'l');
+    uint8_t *q = find_either_of_two_bytes(self->buf + self->read.pos, sz, ESC, 'l');
     if (q == NULL) {
         self->read.pos += sz;
         return false;
