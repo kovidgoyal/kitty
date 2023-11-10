@@ -160,6 +160,17 @@ func images() (r result, err error) {
 	return result{"Images", len(data), duration}, nil
 }
 
+func long_escape_codes() (r result, err error) {
+	data := random_string_of_bytes(8192, ascii_printable)
+	// OSC 6 is document reporting which kitty ignores after parsing
+	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
+	duration, err := benchmark_data(data, default_benchmark_options())
+	if err != nil {
+		return result{}, err
+	}
+	return result{"Images", len(data), duration}, nil
+}
+
 var divs = []time.Duration{
 	time.Duration(1), time.Duration(10), time.Duration(100), time.Duration(1000)}
 
@@ -177,14 +188,14 @@ func round(d time.Duration, digits int) time.Duration {
 
 func present_result(r result, col_width int) {
 	rate := float64(r.data_sz) / r.duration.Seconds()
-	rate /= 1024 * 1024
+	rate /= 1024. * 1024.
 	f := fmt.Sprintf("%%-%ds", col_width)
 	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%.1f\x1b[m MB/s\n", r.desc, round(r.duration, 2), rate)
 }
 
 func all_benchamrks() []string {
 	return []string{
-		"ascii", "csi", "images",
+		"ascii", "csi", "images", "long_escape_codes",
 	}
 }
 
@@ -203,6 +214,13 @@ func main(args []string) (err error) {
 
 	if slices.Index(args, "csi") >= 0 {
 		if r, err = ascii_with_csi(); err != nil {
+			return err
+		}
+		results = append(results, r)
+	}
+
+	if slices.Index(args, "long_escape_codes") >= 0 {
+		if r, err = long_escape_codes(); err != nil {
 			return err
 		}
 		results = append(results, r)
