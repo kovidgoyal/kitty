@@ -284,7 +284,7 @@ consume_normal(PS *self) {
     do {
         if (self->utf8.state == UTF8_ACCEPT) {
             size_t sz = self->read.sz - self->read.pos;
-            uint8_t *p = find_byte_not_in_range(self->buf + self->read.pos, sz, 32, 126);
+            const uint8_t *p = find_byte_not_in_range(self->buf + self->read.pos, sz, 32, 126);
             if (p != NULL) sz = p - (self->buf + self->read.pos);
             if (sz) dispatch_printable_ascii(self, sz);
             else dispatch_normal_mode_byte(self, self->buf[self->read.pos++]);
@@ -408,7 +408,7 @@ consume_esc(PS *self) {
 static bool
 find_st_terminator(PS *self, size_t *end_pos) {
     const size_t sz = self->read.sz - self->read.pos;
-    uint8_t *q = find_either_of_two_bytes(self->buf + self->read.pos, sz, BEL, ESC_ST);
+    const uint8_t *q = find_either_of_two_bytes(self->buf + self->read.pos, sz, BEL, ESC_ST);
     if (q == NULL) {
         self->read.pos += sz;
         return false;
@@ -1459,7 +1459,7 @@ consume_input(PS *self) {
 static bool
 find_pending_stop_csi(PS *self) {
     const size_t sz = self->read.sz - self->read.pos;
-    uint8_t *q = find_either_of_two_bytes(self->buf + self->read.pos, sz, ESC, 'l');
+    const uint8_t *q = find_either_of_two_bytes(self->buf + self->read.pos, sz, ESC, 'l');
     if (q == NULL) {
         self->read.pos += sz;
         return false;
