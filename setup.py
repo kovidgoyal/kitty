@@ -491,6 +491,8 @@ def init_env(
         cflags.append('-g3')
         ldflags.append('-lprofiler')
 
+    if not native_optimizations:
+        cflags.append('-msse4.2')
     library_paths: Dict[str, List[str]] = {}
 
     def add_lpath(which: str, name: str, val: Optional[str]) -> None:
