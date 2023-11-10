@@ -126,7 +126,7 @@ find_either_of_two_bytes_sse4_2(uint8_t *haystack, const size_t sz, const uint8_
 
 #define start_simd2(bits, aligner) \
     const size_t extra = (uintptr_t)haystack % sizeof(__m##bits##i); \
-    if (extra) { \
+    if (extra) { /* do aligned loading */ \
         size_t es = MIN(sz, sizeof(__m##bits##i) - extra); \
         uint8_t *ans = aligner; \
         if (ans) return ans; \
@@ -144,17 +144,19 @@ find_either_of_two_bytes_sse4_2(uint8_t *haystack, const size_t sz, const uint8_
         if (haystack + pos < limit) return haystack + pos; \
     }
 
+#define either_of_two(bits, aligner) \
+    start_simd2(bits, aligner) { \
+        __m##bits##i chunk = _mm##bits##_load_si##bits((__m##bits##i*)(haystack)); \
+        __m##bits##i a_cmp = _mm##bits##_cmpeq_epi8(chunk, a_vec); \
+        __m##bits##i b_cmp = _mm##bits##_cmpeq_epi8(chunk, b_vec); \
+        __m##bits##i matches = _mm##bits##_or_si##bits(a_cmp, b_cmp); \
+        const int mask = _mm##bits##_movemask_epi8(matches); \
+        end_simd2; \
+    } return NULL;
+
 static uint8_t*
 find_either_of_two_bytes_avx2(uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) {
-    start_simd2(256, (has_sse4_2 && es > 15) ? find_either_of_two_bytes_sse4_2(haystack, es, a, b) : find_either_of_two_bytes_simple(haystack, es, a, b)) {
-        __m256i chunk = _mm256_load_si256((__m256i*)(haystack));
-        __m256i a_cmp = _mm256_cmpeq_epi8(chunk, a_vec);
-        __m256i b_cmp = _mm256_cmpeq_epi8(chunk, b_vec);
-        __m256i matches = _mm256_or_si256(a_cmp, b_cmp);
-        const int mask = _mm256_movemask_epi8(matches);
-        end_simd2;
-    }
-    return NULL;
+    either_of_two(256, (has_sse4_2 && es > 15) ? find_either_of_two_bytes_sse4_2(haystack, es, a, b) : find_either_of_two_bytes_simple(haystack, es, a, b));
 }
 
 
@@ -211,17 +213,19 @@ find_byte_not_in_range_sse4_2(uint8_t *haystack, const size_t sz, const uint8_t 
 
 }
 
+#define not_in_range(bits, aligner) \
+    start_simd2(bits, aligner) { \
+        __m256i chunk = _mm256_load_si256((__m256i*)(haystack)); \
+        __m256i above_lower = _mm256_cmpgt_epi8(chunk, a_vec); \
+        __m256i below_upper = _mm256_cmpgt_epi8(b_vec, chunk); \
+        __m256i in_range = _mm256_and_si256(above_lower, below_upper); \
+        const int mask = ~_mm256_movemask_epi8(in_range); /* ~ as we want not in range */ \
+        end_simd2; \
+    } return NULL;
+
 static uint8_t*
 find_byte_not_in_range_avx2(uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) {
-    start_simd2(256, (has_sse4_2 && extra > 15) ? find_byte_not_in_range_sse4_2(haystack, es, a, b) : find_byte_not_in_range_simple(haystack, es, a, b)) {
-        __m256i chunk = _mm256_load_si256((__m256i*)(haystack));
-        __m256i above_lower = _mm256_cmpgt_epi8(chunk, a_vec);
-        __m256i below_upper = _mm256_cmpgt_epi8(b_vec, chunk);
-        __m256i in_range = _mm256_and_si256(above_lower, below_upper);
-        const int mask = ~_mm256_movemask_epi8(in_range); // ~ as we want not in range
-        end_simd2;
-    }
-    return NULL;
+    not_in_range(256, (has_sse4_2 && extra > 15) ? find_byte_not_in_range_sse4_2(haystack, es, a, b) : find_byte_not_in_range_simple(haystack, es, a, b));
 }
 
 static uint8_t* (*find_byte_not_in_range_impl)(uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) = find_byte_not_in_range_simple;
