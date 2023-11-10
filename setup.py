@@ -415,7 +415,7 @@ def init_env(
     verbose: bool = True,
     vcs_rev: str = '',
 ) -> Env:
-    native_optimizations = native_optimizations and not sanitize and not debug
+    native_optimizations = native_optimizations and not sanitize
     if native_optimizations and is_macos and is_arm:
         # see https://github.com/kovidgoyal/kitty/issues/3126
         # -march=native is not supported when targeting Apple Silicon
