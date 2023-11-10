@@ -88,6 +88,6 @@ find_either_of_two_chars_simple(uint8_t *haystack, const size_t sz, const uint8_
 #undef SHIFT_OP
 
 uint8_t*
-find_either_of_two_chars(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
+find_either_of_two_bytes(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
     return find_either_of_two_chars_simple(haystack, sz, a, b);
 }
