@@ -166,7 +166,7 @@ void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
 void screen_erase_in_line(Screen *, unsigned int, bool);
 void screen_erase_in_display(Screen *, unsigned int, bool);
-void screen_draw(Screen *screen, uint32_t codepoint, bool);
+void screen_draw(Screen *screen, uint32_t codepoint);
 void screen_ensure_bounds(Screen *self, bool use_margins, bool cursor_was_within_margins);
 void screen_toggle_screen_buffer(Screen *self, bool, bool);
 void screen_normal_keypad_mode(Screen *self);
