@@ -733,7 +733,10 @@ cell_as_sgr(const GPUCell *cell, const GPUCell *prev) {
 #define PA prev->attrs
     bool intensity_differs = CA.bold != PA.bold || CA.dim != PA.dim;
     if (intensity_differs) {
-        P("22;"); if (CA.bold) P("1;"); if (CA.dim) P("2;");
+        if (CA.bold && CA.dim) { if (!PA.bold) P("1;"); if (!PA.dim) P("2;"); }
+        else {
+            P("22;"); if (CA.bold) P("1;"); if (CA.dim) P("2;");
+        }
     }
     if (CA.italic != PA.italic) P(CA.italic ? "3;" : "23;");
     if (CA.reverse != PA.reverse) P(CA.reverse ? "7;" : "27;");
