@@ -44,21 +44,48 @@ byte_loader_next(ByteLoader *self) {
     if (!self->digits_left) byte_loader_init(self, self->next_load_at, self->sz_of_next_load);
     return ans;
 }
-#undef SHIFT_OP
 
+static void
+byte_loader_skip(ByteLoader *self) {
+    if (self->num_left >= sizeof(BYTE_LOADER_T)) {
+        self->m = *(BYTE_LOADER_T*)self->next_load_at;
+        self->num_left -= sizeof(BYTE_LOADER_T);
+        self->digits_left = sizeof(BYTE_LOADER_T);
+        self->next_load_at += sizeof(BYTE_LOADER_T);
+    } else {
+        self->num_left = 0;
+    }
+}
+
+#define haszero(v) (((v) - 0x0101010101010101ULL) & ~(v) & 0x8080808080808080ULL)
+#define prepare_for_hasvalue(n) (~0ULL/255 * (n))
+#define hasvalue(x,n) (haszero((x) ^ (n)))
 
 static uint8_t*
 find_either_of_two_chars_simple(uint8_t *haystack, const size_t sz, const uint8_t x, const uint8_t y) {
-    ByteLoader b; byte_loader_init(&b, haystack, sz);
-    uint8_t ch;
-    while (b.num_left) {
-        ch = byte_loader_next(&b);
-        if (ch == x || ch == y) {
-            return haystack + sz - b.num_left - 1;
+    ByteLoader it; byte_loader_init(&it, haystack, sz);
+
+    // first align by testing the first few bytes one at a time
+    while (it.num_left && it.digits_left < sizeof(BYTE_LOADER_T)) {
+        const uint8_t ch = byte_loader_next(&it);
+        if (ch == x || ch == y) return haystack + sz - it.num_left - 1;
+    }
+
+    const BYTE_LOADER_T a = prepare_for_hasvalue(x), b = prepare_for_hasvalue(y);
+    while (it.num_left) {
+        if (hasvalue(it.m, a) || hasvalue(it.m, b)) {
+            uint8_t *ans = haystack + sz - it.num_left, q = hasvalue(it.m, a) ? x : y;
+            while (it.num_left) {
+                if (byte_loader_next(&it) == q) return ans;
+                ans++;
+            }
+            return NULL; // happens for final word and it.num_left < sizeof(BYTE_LOADER_T)
         }
+        byte_loader_skip(&it);
     }
     return NULL;
 }
+#undef SHIFT_OP
 
 uint8_t*
 find_either_of_two_chars(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {

@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define BYTE_LOADER_T uint64_t
+#define BYTE_LOADER_T unsigned long long
 typedef struct ByteLoader {
     BYTE_LOADER_T m;
     unsigned sz_of_next_load, digits_left, num_left;
