@@ -168,7 +168,7 @@ func long_escape_codes() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Images", len(data), duration}, nil
+	return result{"Long escape codes", len(data), duration}, nil
 }
 
 var divs = []time.Duration{
@@ -190,7 +190,7 @@ func present_result(r result, col_width int) {
 	rate := float64(r.data_sz) / r.duration.Seconds()
 	rate /= 1024. * 1024.
 	f := fmt.Sprintf("%%-%ds", col_width)
-	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%.1f\x1b[m MB/s\n", r.desc, round(r.duration, 2), rate)
+	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%-7.1f\x1b[m MB/s\n", r.desc, round(r.duration, 2), rate)
 }
 
 func all_benchamrks() []string {
