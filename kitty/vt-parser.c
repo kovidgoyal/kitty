@@ -1582,12 +1582,11 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 pd->pending_activated_at = self->pending_mode.activated_at;
                 pd->pending_wait_time = self->pending_mode.wait_time;
                 if (self->read.consumed) {
-                    bool buf_full = self->read.sz >= BUF_SZ;
+                    pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
                     self->read.sz -= self->read.consumed;
                     if (self->read.sz) memmove(self->buf, self->buf + self->read.consumed, self->read.sz);
                     self->read.consumed = 0;
-                    pd->write_space_created = buf_full;
                 }
             }
         }
