@@ -21,6 +21,9 @@ uint8_t byte_loader_peek(const ByteLoader *self);
 void byte_loader_init(ByteLoader *self, const uint8_t *buf, unsigned int sz);
 uint8_t byte_loader_next(ByteLoader *self);
 
+// Pass a PyModule PyObject* as the argument. Must be called once at application startup
+bool init_simd(void* module);
+
 // Requires haystack[sz] to be writable and 7 bytes to the left of haystack to
 // be readable. Returns pointer to first position in haystack that contains
 // either of the two chars or NULL if not found.
