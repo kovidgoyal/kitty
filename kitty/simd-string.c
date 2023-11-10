@@ -123,3 +123,18 @@ uint8_t*
 find_either_of_two_bytes(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
     return find_either_of_two_bytes_simd(haystack, sz, a, b);
 }
+
+static const uint8_t*
+find_start_of_two_ranges_simple(const uint8_t *haystack, const size_t sz, const uint8_t a1, const uint8_t a2, const uint8_t a3, const uint8_t a4) {
+    ByteLoader it; byte_loader_init(&it, haystack, sz);
+    while (it.num_left) {
+        const uint8_t ch = byte_loader_next(&it);
+        if ((a1 <= ch && ch <= a2) || (a3 <= ch && ch <= a4)) return haystack + sz - it.num_left - 1;
+    }
+    return NULL;
+}
+
+uint8_t*
+find_start_of_two_ranges(uint8_t *haystack, const size_t sz, const uint8_t a1, const uint8_t a2, const uint8_t a3, const uint8_t a4) {
+    return (uint8_t*)find_start_of_two_ranges_simple(haystack, sz, a1, a2, a3, a4);
+}

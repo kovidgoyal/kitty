@@ -25,3 +25,9 @@ uint8_t byte_loader_next(ByteLoader *self);
 // be readable. Returns pointer to first position in haystack that contains
 // either of the two chars or NULL if not found.
 uint8_t* find_either_of_two_bytes(uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
+
+// Requires haystack[sz] to be writable and 7 bytes to the left of haystack to
+// be readable. Returns pointer to first position in haystack that contains
+// a char that is in [a1, a2] or [a2, a3]
+uint8_t*
+find_start_of_two_ranges(uint8_t *haystack, const size_t sz, const uint8_t a1, const uint8_t a2, const uint8_t a3, const uint8_t a4);
