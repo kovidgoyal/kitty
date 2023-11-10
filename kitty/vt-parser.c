@@ -1596,7 +1596,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 if (self->read.consumed) {
                     pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
-                    self->read.sz -= self->read.consumed;
+                    self->read.sz -= MIN(self->read.sz, self->read.consumed);
                     if (self->read.sz) memmove(self->buf, self->buf + self->read.consumed, self->read.sz);
                     self->read.consumed = 0;
                 }
