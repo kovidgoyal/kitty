@@ -552,8 +552,8 @@ def monkeypatch_man_writer() -> None:
     '''
     Monkeypatch the docutils man translator to be nicer
     '''
-    from docutils.writers.manpage import Table, Translator
     from docutils.nodes import Element
+    from docutils.writers.manpage import Table, Translator
     from sphinx.writers.manpage import ManualPageTranslator
 
     # Generate nicer tables https://sourceforge.net/p/docutils/bugs/475/
