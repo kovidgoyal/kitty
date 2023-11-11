@@ -98,7 +98,7 @@ func ShowHelpInPager(text string) {
 	pager.Stdin = strings.NewReader(text)
 	pager.Stdout = os.Stdout
 	pager.Stderr = os.Stderr
-	pager.Run()
+	_ = pager.Run()
 }
 
 func (self *Command) ShowHelpWithCommandString(cs string) {
