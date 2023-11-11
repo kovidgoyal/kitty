@@ -3,6 +3,11 @@ Draw a GPU accelerated dock panel on your desktop
 
 .. highlight:: sh
 
+.. only:: man
+
+    Overview
+    --------------
+
 
 You can use this kitten to draw a GPU accelerated panel on the edge of your
 screen, that shows the output from an arbitrary terminal program.

@@ -1,6 +1,11 @@
 broadcast
 ==================================================
 
+.. only:: man
+
+    Overview
+    --------------
+
 *Type text in all kitty windows simultaneously*
 
 The ``broadcast`` kitten can be used to type text simultaneously in all

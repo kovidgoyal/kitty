@@ -1,6 +1,12 @@
 Hyperlinked grep
 =================
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 .. note::
 
    As of ripgrep versions newer that 13.0 it supports hyperlinks

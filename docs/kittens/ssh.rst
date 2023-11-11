@@ -1,6 +1,11 @@
 Truly convenient SSH
 =========================================
 
+.. only:: man
+
+   Overview
+   ----------------
+
 * Automatic :ref:`shell_integration` on remote hosts
 
 * Easily :ref:`clone local shell/editor config <real_world_ssh_kitten_config>` on remote hosts

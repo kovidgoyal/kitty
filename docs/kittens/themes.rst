@@ -1,6 +1,12 @@
 Changing kitty colors
 ========================
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 The themes kitten allows you to easily change color themes, from a collection of
 over three hundred pre-built themes available at `kitty-themes
 <https://github.com/kovidgoyal/kitty-themes>`_. To use it, simply run::

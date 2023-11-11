@@ -1,6 +1,12 @@
 icat
 ========================================
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 *Display images in the terminal*
 
 The ``icat`` kitten can be used to display arbitrary images in the |kitty|

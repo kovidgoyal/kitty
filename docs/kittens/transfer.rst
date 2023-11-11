@@ -1,6 +1,12 @@
 Transfer files
 ================
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 .. versionadded:: 0.30.0
 
 .. _rsync: https://en.wikipedia.org/wiki/Rsync

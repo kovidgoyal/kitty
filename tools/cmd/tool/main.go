@@ -96,4 +96,29 @@ func KittyToolEntryPoints(root *cli.Command) {
 			return confirm_and_run_shebang(args)
 		},
 	})
+	// __generate_man_pages__
+	root.AddSubCommand(&cli.Command{
+		Name:            "__generate_man_pages__",
+		Hidden:          true,
+		OnlyArgsAllowed: true,
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			q := root
+			if len(args) > 0 {
+				for _, scname := range args {
+					sc := q.FindSubCommand(scname)
+					if sc == nil {
+						return 1, fmt.Errorf("No sub command named: %s found", scname)
+					}
+					if err = sc.GenerateManPages(1, true); err != nil {
+						return 1, err
+					}
+				}
+			} else {
+				if err = q.GenerateManPages(1, false); err != nil {
+					rc = 1
+				}
+			}
+			return
+		},
+	})
 }

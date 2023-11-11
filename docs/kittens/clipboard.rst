@@ -1,6 +1,11 @@
 clipboard
 ==================================================
 
+.. only:: man
+
+    Overview
+    --------------
+
 *Copy/paste to the system clipboard from shell scripts*
 
 .. highlight:: sh

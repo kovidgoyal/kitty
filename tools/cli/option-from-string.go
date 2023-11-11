@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"kitty/tools/cli/markup"
 	"kitty/tools/utils"
 )
 
@@ -191,6 +192,168 @@ func option_from_spec(spec OptionSpec) (*Option, error) {
 
 func indent_of_line(x string) int {
 	return len(x) - len(strings.TrimLeft(x, " \n\t\v\f"))
+}
+
+func escape_text_for_man(raw string) string {
+	italic := func(x string) string {
+		return "\n.I " + x
+	}
+	bold := func(x string) string {
+		return "\n.B " + x
+	}
+	text_without_target := func(val string) string {
+		text, target := markup.Text_and_target(val)
+		no_title := text == target
+		if no_title {
+			return val
+		}
+		return text
+	}
+	ref_hyperlink := func(val, prefix string) string {
+		return text_without_target(val)
+	}
+
+	raw = markup.ReplaceAllRSTRoles(raw, func(group markup.Rst_format_match) string {
+		val := group.Payload
+		switch group.Role {
+		case "file":
+			return italic(val)
+		case "env", "envvar":
+			return bold(val)
+		case "doc":
+			return text_without_target(val)
+		case "iss":
+			return "Issue #" + val
+		case "pull":
+			return "PR #" + val
+		case "disc":
+			return "Discussion #" + val
+		case "ref":
+			return ref_hyperlink(val, "")
+		case "ac":
+			return ref_hyperlink(val, "action-")
+		case "term":
+			return ref_hyperlink(val, "term-")
+		case "code":
+			return markup.Remove_backslash_escapes(val)
+		case "link":
+			return text_without_target(val)
+		case "option":
+			idx := strings.LastIndex(val, "--")
+			if idx < 0 {
+				idx = strings.Index(val, "-")
+			}
+			if idx > -1 {
+				val = strings.TrimSuffix(val[idx:], ">")
+			}
+			return bold(val)
+		case "opt":
+			return bold(val)
+		case "yellow":
+			return val
+		case "blue":
+			return val
+		case "green":
+			return val
+		case "cyan":
+			return val
+		case "magenta":
+			return val
+		case "emph":
+			return val
+		default:
+			return val
+		}
+	})
+	sb := strings.Builder{}
+	sb.Grow(2 * len(raw))
+	replacements := map[rune]string{
+		'"': `\[dq]`, '\'': `\[aq]`, '-': `\-`, '\\': `\e`, '^': `\(ha`, '`': `\(ga`, '~': `\(ti`,
+	}
+	for _, ch := range raw {
+		if rep, found := replacements[ch]; found {
+			sb.WriteString(rep)
+		} else {
+			sb.WriteRune(ch)
+		}
+	}
+	return sb.String()
+}
+
+func escape_help_for_man(raw string) string {
+	help := strings.Builder{}
+	help.Grow(len(raw) + 256)
+	prev_indent := 0
+	in_code_block := false
+	lines := utils.Splitlines(raw)
+
+	handle_non_empty_line := func(i int, line string) int {
+		if strings.TrimSpace(line) == "#placeholder_for_formatting#" {
+			return i + 1
+		}
+		if strings.HasPrefix(line, ".. code::") {
+			in_code_block = true
+			return i + 1
+		}
+		current_indent := indent_of_line(line)
+		if current_indent > 1 {
+			if prev_indent == 0 {
+				help.WriteString("\n")
+			} else {
+				line = strings.TrimSpace(line)
+			}
+		}
+		prev_indent = current_indent
+		if help.Len() > 0 && !strings.HasSuffix(help.String(), "\n") {
+			help.WriteString(" ")
+		}
+		help.WriteString(line)
+		return i
+	}
+
+	handle_empty_line := func(i int, line string) int {
+		prev_indent = 0
+		help.WriteString("\n")
+		if !strings.HasSuffix(help.String(), "::") {
+			help.WriteString("\n")
+		}
+		return i
+	}
+
+	handle_code_block_line := func(i int, line string) int {
+		if line == "" {
+			help.WriteString("\n")
+			return i
+		}
+		current_indent := indent_of_line(line)
+		if current_indent == 0 {
+			in_code_block = false
+			return handle_non_empty_line(i, line)
+		}
+		line = line[4:]
+		is_prompt := strings.HasPrefix(line, "$ ")
+		if is_prompt {
+			help.WriteString(":yellow:`$ `")
+			line = line[2:]
+		}
+		help.WriteString(line)
+		help.WriteString("\n")
+		return i
+	}
+
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		if in_code_block {
+			i = handle_code_block_line(i, line)
+			continue
+		}
+		if line != "" {
+			i = handle_non_empty_line(i, line)
+		} else {
+			i = handle_empty_line(i, line)
+		}
+	}
+	return escape_text_for_man(help.String())
 }
 
 func prepare_help_text_for_display(raw string) string {

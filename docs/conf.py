@@ -7,6 +7,7 @@
 # full list see the documentation:
 # https://www.sphinx-doc.org/en/master/config
 
+import glob
 import os
 import re
 import subprocess
@@ -27,7 +28,7 @@ if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
 
 from kitty.conf.types import Definition, expand_opt_references  # noqa
-from kitty.constants import str_version, website_url  # noqa
+from kitty.constants import str_version, website_url # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -176,8 +177,8 @@ manpages_url = 'https://man7.org/linux/man-pages/man{section}/{page}.{section}.h
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('invocation', 'kitty', 'kitty Documentation', [author], 1),
-    ('conf', 'kitty.conf', 'kitty terminal emulator configuration file', [author], 5)
+    ('invocation', 'kitty', 'The fast, feature rich terminal emulator', [author], 1),
+    ('conf', 'kitty.conf', 'Configuration file for kitty', [author], 5)
 ]
 
 
@@ -549,10 +550,13 @@ def add_html_context(app: Any, pagename: str, templatename: str, context: Any, d
 @lru_cache
 def monkeypatch_man_writer() -> None:
     '''
-    Monkeypatch the docutils man translator to output better tables
+    Monkeypatch the docutils man translator to be nicer
     '''
     from docutils.writers.manpage import Table, Translator
+    from docutils.nodes import Element
+    from sphinx.writers.manpage import ManualPageTranslator
 
+    # Generate nicer tables https://sourceforge.net/p/docutils/bugs/475/
     class PatchedTable(Table):  # type: ignore
         _options: list[str]
         def __init__(self) -> None:
@@ -572,15 +576,100 @@ def monkeypatch_man_writer() -> None:
                     del ans[3]  # top border
                 del ans[-2] # bottom border
             return ans
-    def visit_table(self: Translator, node: object) -> None:
+    def visit_table(self: ManualPageTranslator, node: object) -> None:
         setattr(self, '_active_table', PatchedTable())
-    setattr(Translator, 'visit_table', visit_table)
+    setattr(ManualPageTranslator, 'visit_table', visit_table)
+
+    # Improve header generation
+    def header(self: ManualPageTranslator) -> str:
+        di = getattr(self, '_docinfo')
+        di['ktitle'] = di['title'].replace('_', '-')
+        th = (".TH \"%(ktitle)s\" %(manual_section)s"
+              " \"%(date)s\" \"%(version)s\"") % di
+        if di["manual_group"]:
+            th += " \"%(manual_group)s\"" % di
+        th += "\n"
+        sh_tmpl: str = (".SH Name\n"
+                   "%(ktitle)s \\- %(subtitle)s\n")
+        return th + sh_tmpl % di  # type: ignore
+
+    setattr(ManualPageTranslator, 'header', header)
+
+    def visit_image(self: ManualPageTranslator, node: Element) -> None:
+        pass
+
+    def depart_image(self: ManualPageTranslator, node: Element) -> None:
+        pass
+
+    def depart_figure(self: ManualPageTranslator, node: Element) -> None:
+        self.body.append(' (images not supported)\n')
+        Translator.depart_figure(self, node)
+
+    setattr(ManualPageTranslator, 'visit_image', visit_image)
+    setattr(ManualPageTranslator, 'depart_image', depart_image)
+    setattr(ManualPageTranslator, 'depart_figure', depart_figure)
+
+    orig_astext = Translator.astext
+    def astext(self: Translator) -> str:
+        b = []
+        for line in self.body:
+            if line.startswith('.SH'):
+                x, y = line.split(' ', 1)
+                parts = y.splitlines(keepends=True)
+                parts[0] = parts[0].capitalize()
+                line = x + ' ' + '\n'.join(parts)
+            b.append(line)
+        self.body = b
+        return orig_astext(self)
+    setattr(Translator, 'astext', astext)
+
+
+def setup_man_pages() -> None:
+    from kittens.runner import get_kitten_cli_docs
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for x in glob.glob(os.path.join(base, 'docs/kittens/*.rst')):
+        kn = os.path.basename(x).rpartition('.')[0]
+        if kn == 'custom':
+            continue
+        cd = get_kitten_cli_docs(kn) or {}
+        khn = kn.replace('_', '-')
+        man_pages.append((f'kittens/{kn}', 'kitten-' + khn, cd.get('short_desc', 'kitten Documentation'), [author], 1))
+    monkeypatch_man_writer()
+
+
+def build_extra_man_pages() -> None:
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    kitten = os.path.join(base, 'kitty/launcher/kitten')
+    if not os.path.exists(kitten):
+        raise Exception('The kitten binary is not built cannot generate man pages')
+    raw = subprocess.check_output([kitten, '-h']).decode()
+    started = 0
+    names = set()
+    for line in raw.splitlines():
+        if line.strip() == '@':
+            started = len(line.rstrip()[:-1])
+        q = line.strip()
+        if started and len(q.split()) == 1 and not q.startswith('-') and ':' not in q:
+            if len(line) - len(line.lstrip()) == started:
+                if not os.path.exists(os.path.join(base, f'docs/kittens/{q}.rst')):
+                    names.add(q)
+    cwd = os.path.join(base, 'docs/_build/man')
+    subprocess.check_call([kitten, '__generate_man_pages__'], cwd=cwd)
+    subprocess.check_call([kitten, '__generate_man_pages__'] + list(names), cwd=cwd)
+
+
+if building_man_pages:
+    setup_man_pages()
+
+
+def build_finished(*a: Any, **kw: Any) -> None:
+    if building_man_pages:
+        build_extra_man_pages()
 
 
 def setup(app: Any) -> None:
     os.makedirs('generated/conf', exist_ok=True)
     from kittens.runner import all_kitten_names
-    monkeypatch_man_writer()
     kn = all_kitten_names()
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
@@ -589,6 +678,7 @@ def setup(app: Any) -> None:
     app.connect('source-read', replace_string)
     app.add_config_value('analytics_id', '', 'env')
     app.connect('html-page-context', add_html_context)
+    app.connect('build-finished', build_finished)
     app.add_lexer('session', SessionLexer() if version_info[0] < 3 else SessionLexer)
     app.add_role('link', link_role)
     app.add_role('commit', commit_role)

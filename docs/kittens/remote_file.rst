@@ -1,6 +1,12 @@
 Remote files
 ==============
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 |kitty| has the ability to easily *Edit*, *Open* or *Download* files from a
 computer into which you are SSHed. In your SSH session run::
 

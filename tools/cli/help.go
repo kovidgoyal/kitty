@@ -8,12 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
+	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 
 	"kitty"
 	"kitty/tools/cli/markup"
 	"kitty/tools/tty"
+	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 )
 
@@ -62,6 +65,37 @@ func (self *Command) FormatSubCommands(output io.Writer, formatter *markup.Conte
 
 }
 
+func (self *Option) FormatOptionForMan(output io.Writer) {
+	fmt.Fprintln(output, ".TP")
+	fmt.Fprint(output, ".BI \"")
+	for i, a := range self.Aliases {
+		fmt.Fprint(output, a.String())
+		if i != len(self.Aliases)-1 {
+			fmt.Fprint(output, ", ")
+		}
+	}
+	fmt.Fprint(output, "\" ")
+	defval := self.Default
+	switch self.OptionType {
+	case StringOption:
+		if self.IsList {
+			defval = ""
+		}
+	case BoolOption, CountOption:
+		defval = ""
+	}
+
+	if defval != "" {
+		fmt.Fprintf(output, "\" [=%s]\"", escape_text_for_man(defval))
+	}
+	fmt.Fprintln(output)
+	fmt.Fprintln(output, escape_help_for_man(self.Help))
+	if self.Choices != nil {
+		fmt.Fprintln(output)
+		fmt.Fprintln(output, "Choices: "+strings.Join(self.Choices, ", "))
+	}
+}
+
 func (self *Option) FormatOption(output io.Writer, formatter *markup.Context, screen_width int) {
 	fmt.Fprint(output, "  ")
 	for i, a := range self.Aliases {
@@ -99,6 +133,82 @@ func ShowHelpInPager(text string) {
 	pager.Stdout = os.Stdout
 	pager.Stderr = os.Stderr
 	_ = pager.Run()
+}
+
+func (self *Command) GenerateManPages(level int, recurse bool) (err error) {
+	var names []string
+	p := self
+	for p != nil {
+		names = append(names, p.Name)
+		p = p.Parent
+	}
+	slices.Reverse(names)
+	name := strings.Join(names, "-")
+	outf, err := os.Create(fmt.Sprintf("%s.%d", name, level))
+	if err != nil {
+		return err
+	}
+	defer outf.Close()
+	fmt.Fprintf(outf, `.TH "%s" "1" "%s" "%s" "%s"`, name, time.Now().Format("Jan 02, 2006"), kitty.VersionString, "kitten Manual")
+	fmt.Fprintln(outf)
+	fmt.Fprintln(outf, ".SH Name")
+	fmt.Fprintln(outf, name, "\\-", escape_text_for_man(self.ShortDescription))
+	fmt.Fprintln(outf, ".SH Usage")
+	fmt.Fprintln(outf, ".SY", `"`+self.CommandStringForUsage()+` `+self.Usage+`"`)
+	fmt.Fprintln(outf, ".YS")
+	if self.HelpText != "" {
+		fmt.Fprintln(outf, ".SH Description")
+		fmt.Fprintln(outf, escape_help_for_man(self.HelpText))
+	}
+
+	if self.HasVisibleSubCommands() {
+		for _, g := range self.SubCommandGroups {
+			if !g.HasVisibleSubCommands() {
+				continue
+			}
+			title := g.Title
+			if title == "" {
+				title = "Commands"
+			}
+			fmt.Fprintln(outf, ".SH", title)
+
+			for _, c := range utils.Sort(g.SubCommands, func(a, b *Command) int { return strings.Compare(a.Name, b.Name) }) {
+				if c.Hidden {
+					continue
+				}
+				if recurse {
+					if err = c.GenerateManPages(level, recurse); err != nil {
+						return err
+					}
+				}
+				fmt.Fprintln(outf, ".TP", "2")
+				fmt.Fprintln(outf, c.Name)
+				fmt.Fprintln(outf, escape_text_for_man(c.ShortDescription)+".", "See: ")
+				fmt.Fprintf(outf, ".MR %s %d\n", name+"-"+c.Name, level)
+			}
+		}
+		fmt.Fprintln(outf, ".PP")
+		fmt.Fprintln(outf, "Get help for an individual command by running:")
+		fmt.Fprintln(outf, ".SY", self.CommandStringForUsage())
+		fmt.Fprintln(outf, "command", "-h")
+		fmt.Fprintln(outf, ".YS")
+	}
+
+	group_titles, gmap := self.GetVisibleOptions()
+	if len(group_titles) > 0 {
+		for _, title := range group_titles {
+			ptitle := title
+			if title == "" {
+				ptitle = "Options"
+			}
+			fmt.Fprintln(outf, ".SH", ptitle)
+			for _, opt := range gmap[title] {
+				opt.FormatOptionForMan(outf)
+			}
+		}
+	}
+
+	return
 }
 
 func (self *Command) ShowHelpWithCommandString(cs string) {

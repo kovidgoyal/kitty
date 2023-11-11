@@ -1,6 +1,12 @@
 Unicode input
 ================
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 You can input Unicode characters by name, hex code, recently used and even an
 editable favorites list. Press :sc:`input_unicode_character` to start the
 unicode input kitten, shown below.

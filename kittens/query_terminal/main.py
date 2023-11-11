@@ -258,3 +258,4 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = options_spec
     cd['help_text'] = help_text
+    cd['short_desc'] = 'Query the terminal for various capabilities'

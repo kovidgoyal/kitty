@@ -1,6 +1,12 @@
 Hints
 ==========
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 |kitty| has a *hints mode* to select and act on arbitrary text snippets
 currently visible on the screen.  For example, you can press :sc:`open_url`
 to choose any URL visible on the screen and then open it using your default web

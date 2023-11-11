@@ -1,6 +1,12 @@
 Query terminal
 =================
 
+.. only:: man
+
+    Overview
+    --------------
+
+
 This kitten is used to query |kitty| from terminal programs about version, values
 of various runtime options controlling its features, etc.
 

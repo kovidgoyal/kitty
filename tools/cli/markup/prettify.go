@@ -53,7 +53,7 @@ func New(allow_escape_codes bool) *Context {
 	return &ans
 }
 
-func remove_backslash_escapes(text string) string {
+func Remove_backslash_escapes(text string) string {
 	// see https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#escaping-mechanism
 	out := strings.Builder{}
 	prev_was_slash := false
@@ -75,11 +75,11 @@ func remove_backslash_escapes(text string) string {
 	return out.String()
 }
 
-func replace_all_rst_roles(str string, repl func(rst_format_match) string) string {
-	var m rst_format_match
+func ReplaceAllRSTRoles(str string, repl func(Rst_format_match) string) string {
+	var m Rst_format_match
 	rf := func(full_match string, groupdict map[string]utils.SubMatch) string {
-		m.payload = groupdict["payload"].Text
-		m.role = groupdict["role"].Text
+		m.Payload = groupdict["payload"].Text
+		m.Role = groupdict["role"].Text
 		return repl(m)
 	}
 	return utils.ReplaceAll(utils.MustCompile(":(?P<role>[a-z]+):(?:(?:`(?P<payload>[^`]+)`)|(?:'(?P<payload>[^']+)'))"), str, rf)
@@ -103,35 +103,35 @@ func (self *Context) hyperlink_for_path(path string, text string) string {
 	return self.hyperlink_for_url(url, text)
 }
 
-func text_and_target(x string) (text string, target string) {
+func Text_and_target(x string) (text string, target string) {
 	parts := strings.SplitN(x, "<", 2)
 	text = strings.TrimSpace(parts[0])
 	target = strings.TrimRight(parts[len(parts)-1], ">")
 	return
 }
 
-type rst_format_match struct {
-	role, payload string
+type Rst_format_match struct {
+	Role, Payload string
 }
 
 func (self *Context) link(x string) string {
-	text, url := text_and_target(x)
+	text, url := Text_and_target(x)
 	return self.hyperlink_for_url(url, text)
 }
 
 func (self *Context) ref_hyperlink(x string, prefix string) string {
-	text, target := text_and_target(x)
+	text, target := Text_and_target(x)
 	url := "kitty+doc://" + utils.Hostname() + "/#ref=" + prefix + target
-	text = replace_all_rst_roles(text, func(group rst_format_match) string {
-		return group.payload
+	text = ReplaceAllRSTRoles(text, func(group Rst_format_match) string {
+		return group.Payload
 	})
 	return self.hyperlink_for_url(url, text)
 }
 
 func (self *Context) Prettify(text string) string {
-	return replace_all_rst_roles(text, func(group rst_format_match) string {
-		val := group.payload
-		switch group.role {
+	return ReplaceAllRSTRoles(text, func(group Rst_format_match) string {
+		val := group.Payload
+		switch group.Role {
 		case "file":
 			if val == "kitty.conf" && self.fmt_ctx.AllowEscapeCodes {
 				path := filepath.Join(utils.ConfigDir(), val)
@@ -141,7 +141,7 @@ func (self *Context) Prettify(text string) string {
 		case "env", "envvar":
 			return self.ref_hyperlink(val, "envvar-")
 		case "doc":
-			text, target := text_and_target(val)
+			text, target := Text_and_target(val)
 			no_title := text == target
 			target = strings.Trim(target, "/")
 			if title, ok := kitty.DocTitleMap[target]; ok && no_title {
@@ -163,7 +163,7 @@ func (self *Context) Prettify(text string) string {
 		case "term":
 			return self.ref_hyperlink(val, "term-")
 		case "code":
-			return self.Code(remove_backslash_escapes(val))
+			return self.Code(Remove_backslash_escapes(val))
 		case "link":
 			return self.link(val)
 		case "option":
