@@ -960,9 +960,6 @@ def build_static_kittens(
     args: Options, launcher_dir: str, destination_dir: str = '', for_freeze: bool = False,
     for_platform: Optional[Tuple[str, str]] = None
 ) -> str:
-    if args.skip_building_kitten:
-        print('Skipping building of the kitten binary because of a command line option. Build is incomplete', file=sys.stderr)
-        return ''
     sys.stdout.flush()
     sys.stderr.flush()
     go = shutil.which('go')
@@ -974,6 +971,9 @@ def build_static_kittens(
         raise SystemExit(f'The version of go on this system ({current_go_version}) is too old. go >= {required_go_version} is needed')
     if not for_platform:
         update_go_generated_files(args, os.path.join(launcher_dir, appname))
+    if args.skip_building_kitten:
+        print('Skipping building of the kitten binary because of a command line option. Build is incomplete', file=sys.stderr)
+        return ''
     cmd = [go, 'build', '-v']
     vcs_rev = args.vcs_rev or get_vcs_rev()
     ld_flags: List[str] = []
@@ -1155,7 +1155,11 @@ def compile_python(base_path: str) -> None:
 
 
 def create_linux_bundle_gunk(ddir: str, libdir_name: str) -> None:
+    base = Path(ddir)
+    in_src_launcher = base / (f'{libdir_name}/kitty/kitty/launcher/kitty')
+    launcher = base / 'bin/kitty'
     if not os.path.exists('docs/_build/html'):
+        os.environ['KITTEN_EXE_FOR_DOCS'] = os.path.join(os.path.dirname(str(launcher)), 'kitten')
         make = 'gmake' if is_freebsd else 'make'
         run_tool([make, 'docs'])
     copy_man_pages(ddir)
@@ -1199,9 +1203,6 @@ MimeType=image/*;application/x-sh;application/x-shellscript;inode/directory;text
 '''
             )
 
-    base = Path(ddir)
-    in_src_launcher = base / (f'{libdir_name}/kitty/kitty/launcher/kitty')
-    launcher = base / 'bin/kitty'
     if os.path.exists(in_src_launcher):
         os.remove(in_src_launcher)
     os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)

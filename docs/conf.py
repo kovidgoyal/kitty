@@ -639,9 +639,9 @@ def setup_man_pages() -> None:
 
 def build_extra_man_pages() -> None:
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    kitten = os.path.join(base, 'kitty/launcher/kitten')
+    kitten = os.environ.get('KITTEN_EXE_FOR_DOCS', os.path.join(base, 'kitty/launcher/kitten'))
     if not os.path.exists(kitten):
-        raise Exception('The kitten binary is not built cannot generate man pages')
+        raise Exception(f'The kitten binary {kitten} is not built cannot generate man pages')
     raw = subprocess.check_output([kitten, '-h']).decode()
     started = 0
     names = set()
