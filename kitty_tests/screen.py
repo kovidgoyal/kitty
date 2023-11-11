@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, Cursor, parse_bytes
