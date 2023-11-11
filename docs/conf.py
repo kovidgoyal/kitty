@@ -610,7 +610,7 @@ def monkeypatch_man_writer() -> None:
     setattr(ManualPageTranslator, 'depart_figure', depart_figure)
 
     orig_astext = Translator.astext
-    def astext(self: Translator) -> str:
+    def astext(self: Translator) -> Any:
         b = []
         for line in self.body:
             if line.startswith('.SH'):
