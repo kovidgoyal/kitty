@@ -5,9 +5,10 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define SIMDE_ENABLE_NATIVE_ALIASES
 #include "data-types.h"
 #include "simd-string.h"
-#include <immintrin.h>
+#include <simde/x86/avx2.h>
 
 static bool has_sse4_2 = false, has_avx2 = false;
 
@@ -194,7 +195,18 @@ bool
 init_simd(void *x) {
     PyObject *module = (PyObject*)x;
 #define A(x, val) { Py_INCREF(Py_##val); if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; }
+#ifdef __APPLE__
+    // Modern Apple Intel processors should all support AVX2. And simde takes care of NEON on Apple Silicon
+    has_sse4_2 = true; has_avx2 = true;
+#else
+#ifdef __aarch64__
+    // no idea how to probe ARM cpu for NEON support. This file uses pretty
+    // basic AVX2 and SSE4.2 intrinsics, so hopefully they work on ARM
+    has_sse4_2 = true; has_avx2 = true;
+#else
     has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; has_avx2 = __builtin_cpu_supports("avx2");
+#endif
+#endif
     if (has_avx2) {
         A(has_avx2, True);
         find_byte_not_in_range_impl = find_byte_not_in_range_avx2;
