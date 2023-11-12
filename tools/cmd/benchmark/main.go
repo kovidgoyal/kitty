@@ -60,6 +60,7 @@ func benchmark_data(data string, opts benchmark_options) (duration time.Duration
 	defer func() { _, _ = term.WriteString(state.ResetStateEscapeCodes() + reset) }()
 	lock := sync.Mutex{}
 	const count = 3
+	goroutine_started := make(chan byte)
 
 	go func() {
 		lock.Lock()
@@ -67,6 +68,7 @@ func benchmark_data(data string, opts benchmark_options) (duration time.Duration
 		buf := make([]byte, 8192)
 		var data []byte
 		q := []byte(strings.Repeat("\x1b[0n", count))
+		goroutine_started <- 'y'
 		for !bytes.Contains(data, q) {
 			n, err := term.Read(buf)
 			if err != nil {
@@ -75,6 +77,7 @@ func benchmark_data(data string, opts benchmark_options) (duration time.Duration
 			data = append(data, buf[:n]...)
 		}
 	}()
+	<-goroutine_started
 
 	start := time.Now()
 	repeat_count := opts.repeat_count
