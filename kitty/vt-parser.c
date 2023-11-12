@@ -94,6 +94,9 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_DRAW(ch) \
     Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); PyErr_Clear();
 
+#define REPORT_DRAW_ASCII(ch, sz) \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Kss#", self->window_id, "draw", ch, (Py_ssize_t)sz)); PyErr_Clear();
+
 #define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, is_group, region)
 
 #define REPORT_OSC(name, string) \
@@ -110,6 +113,7 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_COMMAND(...)
 #define REPORT_VA_COMMAND(...)
 #define REPORT_DRAW(ch)
+#define REPORT_DRAW_ASCII(ch, sz)
 #define REPORT_PARAMS(...)
 #define REPORT_OSC(name, string)
 #define REPORT_OSC2(name, code, string)
@@ -272,10 +276,9 @@ dispatch_normal_mode_byte(PS *self, uint8_t ch) {
 
 static void
 dispatch_printable_ascii(PS *self, const size_t sz) {
-    for (const size_t limit = self->read.pos + sz; self->read.pos < limit; self->read.pos++) {
-        REPORT_DRAW(self->buf[self->read.pos]);
-        screen_draw(self->screen, self->buf[self->read.pos]);
-    }
+    REPORT_DRAW_ASCII(self->buf + self->read.pos, sz);
+    screen_draw_printable_ascii(self->screen, self->buf + self->read.pos, sz);
+    self->read.pos += sz;
 }
 
 static void
