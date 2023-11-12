@@ -200,7 +200,6 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
 
     a('    config_paths: typing.Tuple[str, ...] = ()')
     a('    all_config_paths: typing.Tuple[str, ...] = ()')
-    a('    config_paths: typing.Tuple[str, ...] = ()')
     a('    config_overrides: typing.Tuple[str, ...] = ()')
     a('')
     a('    def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:')

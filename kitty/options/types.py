@@ -664,7 +664,6 @@ class Options:
     ))
     config_paths: typing.Tuple[str, ...] = ()
     all_config_paths: typing.Tuple[str, ...] = ()
-    config_paths: typing.Tuple[str, ...] = ()
     config_overrides: typing.Tuple[str, ...] = ()
 
     def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:
