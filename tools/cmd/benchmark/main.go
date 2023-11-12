@@ -47,15 +47,15 @@ func default_benchmark_options() benchmark_options {
 	return benchmark_options{alternate_screen: true, repeat_count: 10}
 }
 
-func benchmark_data(data string, opts benchmark_options) (duration time.Duration, err error) {
+func benchmark_data(data string, opts benchmark_options) (duration time.Duration, sent_data_size int, err error) {
 	term, err := tty.OpenControllingTerm(tty.SetRaw)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer term.RestoreAndClose()
 	state := loop.TerminalStateOptions{Alternate_screen: opts.alternate_screen}
 	if _, err = term.WriteString(state.SetStateEscapeCodes()); err != nil {
-		return 0, err
+		return
 	}
 	defer func() { _, _ = term.WriteString(state.ResetStateEscapeCodes() + reset) }()
 	lock := sync.Mutex{}
@@ -80,16 +80,17 @@ func benchmark_data(data string, opts benchmark_options) (duration time.Duration
 	repeat_count := opts.repeat_count
 	for ; repeat_count > 0; repeat_count-- {
 		if _, err = term.WriteString(data); err != nil {
-			return 0, err
+			return
 		}
+		sent_data_size += len(data)
 	}
 	if _, err = term.WriteString(strings.Repeat("\x1b[5n", count)); err != nil {
-		return 0, err
+		return
 	}
 	lock.Lock()
 	duration = time.Since(start) / time.Duration(opts.repeat_count)
 	lock.Unlock()
-	return duration, nil
+	return
 }
 
 var rand_src = sync.OnceValue(func() *rand.Rand {
@@ -114,20 +115,20 @@ type result struct {
 
 func simple_ascii() (r result, err error) {
 	data := random_string_of_bytes(1024*2048+13, ascii_printable)
-	duration, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Only ASCII chars", len(data), duration}, nil
+	return result{"Only ASCII chars", data_sz, duration}, nil
 }
 
 func unicode() (r result, err error) {
 	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 1024)
-	duration, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Unicode chars", len(data), duration}, nil
+	return result{"Unicode chars", data_sz, duration}, nil
 }
 
 func ascii_with_csi() (r result, err error) {
@@ -155,11 +156,11 @@ func ascii_with_csi() (r result, err error) {
 		}
 		out = append(out, utils.UnsafeStringToBytes(chunk)...)
 	}
-	duration, err := benchmark_data(utils.UnsafeBytesToString(out), default_benchmark_options())
+	duration, data_sz, err := benchmark_data(utils.UnsafeBytesToString(out), default_benchmark_options())
 	if err != nil {
 		return result{}, err
 	}
-	return result{"CSI codes with ASCII chars", len(out), duration}, nil
+	return result{"CSI codes with few chars", data_sz, duration}, nil
 }
 
 func images() (r result, err error) {
@@ -175,22 +176,22 @@ func images() (r result, err error) {
 	b.Grow(4*dim*dim + 256)
 	_ = g.WriteWithPayloadTo(&b, make([]byte, 4*dim*dim))
 	data := b.String()
-	duration, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Images", len(data), duration}, nil
+	return result{"Images", data_sz, duration}, nil
 }
 
 func long_escape_codes() (r result, err error) {
 	data := random_string_of_bytes(8024, ascii_printable)
 	// OSC 6 is document reporting which kitty ignores after parsing
 	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
-	duration, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Long escape codes", len(data), duration}, nil
+	return result{"Long escape codes", data_sz, duration}, nil
 }
 
 var divs = []time.Duration{
@@ -229,7 +230,7 @@ func main(args []string) (err error) {
 	var r result
 	// First warm up the terminal by getting it to render all chars so that font rendering
 	// time is not polluting out benchmarks.
-	if _, err = benchmark_data(strings.Repeat(ascii_printable+chinese_lorem_ipsum+misc_unicode, 2), default_benchmark_options()); err != nil {
+	if _, _, err = benchmark_data(strings.Repeat(ascii_printable+chinese_lorem_ipsum+misc_unicode, 2), default_benchmark_options()); err != nil {
 		return err
 	}
 	if slices.Index(args, "ascii") >= 0 {
