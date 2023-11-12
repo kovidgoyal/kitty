@@ -233,7 +233,7 @@ func main(args []string) (err error) {
 	var r result
 	// First warm up the terminal by getting it to render all chars so that font rendering
 	// time is not polluting out benchmarks.
-	if _, _, err = benchmark_data(strings.Repeat(ascii_printable+chinese_lorem_ipsum+misc_unicode, 2), default_benchmark_options()); err != nil {
+	if _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, default_benchmark_options()); err != nil {
 		return err
 	}
 	if slices.Index(args, "ascii") >= 0 {
