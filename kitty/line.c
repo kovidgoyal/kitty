@@ -648,6 +648,15 @@ line_get_char(Line *self, index_type at) {
 }
 
 void
+line_set_printable_ascii_chars(Line *self, unsigned int at, const uint8_t *chars, unsigned num, GPUCell g, CPUCell cc) {
+    for (unsigned i = at; i < at + num; i++, chars++) {
+        cc.ch = *chars;
+        self->gpu_cells[i] = g;
+        self->cpu_cells[i] = cc;
+    }
+}
+
+void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, hyperlink_id_type hyperlink_id) {
     GPUCell *g = self->gpu_cells + at;
     if (cursor == NULL) {
