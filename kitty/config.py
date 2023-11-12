@@ -164,7 +164,8 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     from .options.parse import merge_result_dicts
 
     overrides = tuple(overrides) if overrides is not None else ()
-    opts_dict, paths = _load_config(defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines), merge_result_dicts, *paths, overrides=overrides)
+    opts_dict, found_paths = _load_config(
+        defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines), merge_result_dicts, *paths, overrides=overrides)
     opts = Options(opts_dict)
 
     opts.alias_map = build_action_aliases(opts.kitten_alias, 'kitten')
@@ -179,7 +180,8 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color > 0:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
-    opts.config_paths = paths
+    opts.config_paths = found_paths
+    opts.all_config_paths = paths
     opts.config_overrides = overrides
     return opts
 

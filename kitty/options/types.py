@@ -663,6 +663,8 @@ class Options:
         0xa8a8a8, 0xb2b2b2, 0xbcbcbc, 0xc6c6c6, 0xd0d0d0, 0xdadada, 0xe4e4e4, 0xeeeeee,
     ))
     config_paths: typing.Tuple[str, ...] = ()
+    all_config_paths: typing.Tuple[str, ...] = ()
+    config_paths: typing.Tuple[str, ...] = ()
     config_overrides: typing.Tuple[str, ...] = ()
 
     def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:

@@ -2574,7 +2574,7 @@ class Boss:
         from .cli import default_config_paths
         from .config import load_config
         old_opts = get_options()
-        prev_paths = old_opts.config_paths or default_config_paths(self.args.config)
+        prev_paths = old_opts.all_config_paths or default_config_paths(self.args.config)
         paths = paths or prev_paths
         bad_lines: List[BadLine] = []
         opts = load_config(*paths, overrides=old_opts.config_overrides if apply_overrides else None, accumulate_bad_lines=bad_lines)

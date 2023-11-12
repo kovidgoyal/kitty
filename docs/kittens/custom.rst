@@ -337,9 +337,10 @@ You can parse and read the options in your kitten using the following code:
             return ans
 
         overrides = tuple(overrides) if overrides is not None else ()
-        opts_dict, paths = _load_config(defaults, parse_config, merge_result_dicts, *paths, overrides=overrides)
+        opts_dict, found_paths = _load_config(defaults, parse_config, merge_result_dicts, *paths, overrides=overrides)
         opts = Options(opts_dict)
-        opts.config_paths = paths
+        opts.config_paths = found_paths
+        opts.all_config_paths = paths
         opts.config_overrides = overrides
         return opts
 
