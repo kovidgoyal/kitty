@@ -108,10 +108,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->reload_all_gpu_data = true;
         self->cell_size.width = cell_width; self->cell_size.height = cell_height;
         self->columns = columns; self->lines = lines;
-        self->write_buf = PyMem_RawMalloc(BUFSIZ);
-        self->window_id = window_id;
-        if (self->write_buf == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->write_buf_sz = BUFSIZ;
+        self->write_buf = PyMem_RawMalloc(self->write_buf_sz);
+        if (self->write_buf == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
+        self->window_id = window_id;
         self->modes = empty_modes;
         self->saved_modes = empty_modes;
         self->is_dirty = true;
