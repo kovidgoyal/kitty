@@ -661,7 +661,7 @@ screen_draw_printable_ascii(Screen *self, const uint8_t *chars, size_t num) {
     screen_on_input(self);
     self->last_graphic_char = chars[num-1];
     self->is_dirty = true;
-    CPUCell cc = {.hyperlink_id=self->active_hyperlink_id};
+    const CPUCell cc = {.hyperlink_id=self->active_hyperlink_id};
     GPUCell g = {.attrs=cursor_to_attrs(self->cursor, 1), .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK, .decoration_fg=self->cursor->decoration_fg & COL_MASK};
     if (OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && cc.hyperlink_id) {
         g.decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;
@@ -671,8 +671,15 @@ screen_draw_printable_ascii(Screen *self, const uint8_t *chars, size_t num) {
 #define fill_single_line(chars, num) { \
         linebuf_init_line(self->linebuf, self->cursor->y); \
         if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, num); \
-        line_set_printable_ascii_chars(self->linebuf->line, self->cursor->x, chars, num, g, cc); \
-        self->cursor->x += num; \
+        const unsigned limit = self->cursor->x + num; \
+        const uint8_t *p = chars; \
+        GPUCell *gp = self->linebuf->line->gpu_cells; \
+        CPUCell *cp = self->linebuf->line->cpu_cells; \
+        for (; self->cursor->x < limit; self->cursor->x++, p++) { \
+            gp[self->cursor->x] = g; \
+            cp[self->cursor->x] = cc; \
+            cp[self->cursor->x].ch = *p; \
+        } \
         if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections); \
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y); \
 }
