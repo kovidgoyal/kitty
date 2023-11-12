@@ -676,8 +676,8 @@ screen_draw_printable_ascii(Screen *self, const uint8_t *chars, size_t num) {
         GPUCell *gp = self->linebuf->line->gpu_cells; \
         CPUCell *cp = self->linebuf->line->cpu_cells; \
         for (; self->cursor->x < limit; self->cursor->x++, p++) { \
-            gp[self->cursor->x] = g; \
-            cp[self->cursor->x] = cc; \
+            memcpy(gp + self->cursor->x, &g, sizeof(g)); \
+            memcpy(cp + self->cursor->x, &cc, sizeof(cc)); \
             cp[self->cursor->x].ch = *p; \
         } \
         if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections); \
