@@ -22,6 +22,7 @@ import (
 var _ = fmt.Print
 
 const reset = "\x1b]\x1b\\\x1bc"
+const ascii_printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \n\t `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?"
 
 type benchmark_options struct {
 	alternate_screen bool
@@ -96,8 +97,6 @@ type result struct {
 	data_sz  int
 	duration time.Duration
 }
-
-const ascii_printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \n\t\r `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?"
 
 func simple_ascii() (r result, err error) {
 	data := random_string_of_bytes(1024*1024+13, ascii_printable)
@@ -205,6 +204,11 @@ func main(args []string) (err error) {
 	}
 	var results []result
 	var r result
+	// First warm up the terminal by getting it to render all chars so that font rendering
+	// time is not polluting out benchmarks.
+	if _, err = benchmark_data(strings.Repeat(ascii_printable, 1024), default_benchmark_options()); err != nil {
+		return err
+	}
 	if slices.Index(args, "ascii") >= 0 {
 		if r, err = simple_ascii(); err != nil {
 			return err
