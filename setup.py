@@ -1154,16 +1154,29 @@ def compile_python(base_path: str) -> None:
         invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH, ddir='')
 
 
-def create_linux_bundle_gunk(ddir: str, libdir_name: str) -> None:
+def create_linux_bundle_gunk(ddir: str, args: Options) -> None:
+    libdir_name = args.libdir_name
     base = Path(ddir)
     in_src_launcher = base / (f'{libdir_name}/kitty/kitty/launcher/kitty')
     launcher = base / 'bin/kitty'
+    skip_docs = False
     if not os.path.exists('docs/_build/html'):
-        os.environ['KITTEN_EXE_FOR_DOCS'] = os.path.join(os.path.dirname(str(launcher)), 'kitten')
-        make = 'gmake' if is_freebsd else 'make'
-        run_tool([make, 'docs'])
-    copy_man_pages(ddir)
-    copy_html_docs(ddir)
+        kitten_exe = os.path.join(os.path.dirname(str(launcher)), 'kitten')
+        if os.path.exists(kitten_exe):
+            os.environ['KITTEN_EXE_FOR_DOCS'] = kitten_exe
+            make = 'gmake' if is_freebsd else 'make'
+            run_tool([make, 'docs'])
+        else:
+            if args.skip_building_kitten:
+                skip_docs = True
+                print('WARNING: You have chosen to skip building kitten.'
+                      ' This means docs could not be generated and will not be included in the linux package.'
+                      ' You should build kitten and then re-run this build.', file=sys.stderr)
+            else:
+                raise SystemExit(f'kitten binary not found at: {kitten_exe}')
+    if not skip_docs:
+        copy_man_pages(ddir)
+        copy_html_docs(ddir)
     for (icdir, ext) in {'256x256': 'png', 'scalable': 'svg'}.items():
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', icdir, 'apps')
         safe_makedirs(icdir)
@@ -1545,7 +1558,7 @@ def package(args: Options, bundle_type: str) -> None:
     if not for_freeze and not bundle_type.startswith('macos-'):
         build_static_kittens(args, launcher_dir=launcher_dir)
     if not is_macos:
-        create_linux_bundle_gunk(ddir, args.libdir_name)
+        create_linux_bundle_gunk(ddir, args)
 
     if bundle_type.startswith('macos-'):
         create_macos_bundle_gunk(ddir, for_freeze, args)
