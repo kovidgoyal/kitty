@@ -113,7 +113,7 @@ type result struct {
 }
 
 func simple_ascii() (r result, err error) {
-	data := random_string_of_bytes(1024*1024+13, ascii_printable)
+	data := random_string_of_bytes(1024*2048+13, ascii_printable)
 	duration, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
 		return result{}, err
@@ -122,7 +122,7 @@ func simple_ascii() (r result, err error) {
 }
 
 func unicode() (r result, err error) {
-	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 64)
+	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 1024)
 	duration, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
 		return result{}, err
@@ -131,7 +131,7 @@ func unicode() (r result, err error) {
 }
 
 func ascii_with_csi() (r result, err error) {
-	const sz = 1024 * 1024 * 17
+	const sz = 1024*1024 + 17
 	out := make([]byte, 0, sz+48)
 	src := rand_src()
 	chunk := ""
@@ -168,7 +168,7 @@ func images() (r result, err error) {
 	g.SetQuiet(graphics.GRT_quiet_silent)
 	g.SetAction(graphics.GRT_action_query)
 	g.SetFormat(graphics.GRT_format_rgba)
-	const dim = 1024
+	const dim = 2048
 	g.SetDataWidth(dim)
 	g.SetDataHeight(dim)
 	b := strings.Builder{}
