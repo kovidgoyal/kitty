@@ -251,6 +251,15 @@
     },
 
     {
+        "name": "simde",
+        "unix": {
+            "filename": "simde-amalgamated-0.7.6.tar.xz",
+            "hash": "sha256:703eac1f2af7de1f7e4aea2286130b98e1addcc0559426e78304c92e2b4eb5e1",
+            "urls": ["https://github.com/simd-everywhere/simde/releases/download/v0.7.6/{filename}"]
+        }
+    },
+
+    {
         "name": "wayland",
         "os": "linux",
         "unix": {

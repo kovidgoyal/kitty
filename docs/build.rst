@@ -96,6 +96,7 @@ Run-time dependencies:
 Build-time dependencies:
 
 * ``gcc`` or ``clang``
+* ``simde``
 * ``go`` >= _build_go_version (see :file:`go.mod` for go packages used during building)
 * ``pkg-config``
 * For building on Linux in addition to the above dependencies you might also
