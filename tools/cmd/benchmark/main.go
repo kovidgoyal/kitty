@@ -23,6 +23,20 @@ var _ = fmt.Print
 
 const reset = "\x1b]\x1b\\\x1bc"
 const ascii_printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \n\t `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?"
+const chinese_lorem_ipsum = `
+旦海司有幼雞讀松鼻種比門真目怪少：扒裝虎怕您跑綠蝶黃，位香法士錯乙音造活羽詞坡村目園尺封鳥朋；法松夕點我冬停雪因科對只貓息加黃住蝶，明鴨乾春呢風乙時昔孝助？小紅女父故去。
+飯躲裝個哥害共買去隻把氣年，己你校跟飛百拉！快石牙飽知唱想土人吹象毛吉每浪四又連見、欠耍外豆雞秋鼻。住步帶。
+打六申幾麼：或皮又荷隻乙犬孝習秋還何氣；幾裏活打能花是入海乙山節會。種第共後陽沒喜姐三拍弟海肖，行知走亮包，他字幾，的木卜流旦乙左杯根毛。
+您皮買身苦八手牛目地止哥彩第合麻讀午。原朋河乾種果「才波久住這香松」兄主衣快他玉坐要羽和亭但小山吉也吃耳怕，也爪斗斥可害朋許波怎祖葉卜。
+行花兩耍許車丟學「示想百吃門高事」不耳見室九星枝買裝，枝十新央發旁品丁青給，科房火；事出出孝肉古：北裝愛升幸百東鼻到從會故北「可休笑物勿三游細斗」娘蛋占犬。我羊波雨跳風。
+牛大燈兆新七馬，叫這牙後戶耳、荷北吃穿停植身玩間告或西丟再呢，他禾七愛干寺服石安：他次唱息它坐屋父見這衣發現來，苗會開條弓世者吃英定豆哭；跳風掃叫美神。
+寸再了耍休壯植己，燈錯和，蝶幾欠雞定和愛，司紅後弓第樹會金拉快喝夕見往，半瓜日邊出讀雞苦歌許開；發火院爸乙；四帶亮錯鳥洋個讀。
+`
+const misc_unicode = `
+‘’“”‹›«»‚„ 😀😛😇😈😉😍😎😮👍👎 —–§¶†‡©®™ →⇒•·°±−×÷¼½½¾
+…µ¢£€¿¡¨´¸ˆ˜ ÀÁÂÃÄÅÆÇÈÉÊË ÌÍÎÏÐÑÒÓÔÕÖØ ŒŠÙÚÛÜÝŸÞßàá âãäåæçèéêëìí
+îïðñòóôõöøœš ùúûüýÿþªºαΩ∞
+`
 
 type benchmark_options struct {
 	alternate_screen bool
@@ -105,6 +119,15 @@ func simple_ascii() (r result, err error) {
 		return result{}, err
 	}
 	return result{"Only ASCII chars", len(data), duration}, nil
+}
+
+func unicode() (r result, err error) {
+	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 64)
+	duration, err := benchmark_data(data, default_benchmark_options())
+	if err != nil {
+		return result{}, err
+	}
+	return result{"Unicode chars", len(data), duration}, nil
 }
 
 func ascii_with_csi() (r result, err error) {
@@ -194,7 +217,7 @@ func present_result(r result, col_width int) {
 
 func all_benchamrks() []string {
 	return []string{
-		"ascii", "csi", "images", "long_escape_codes",
+		"ascii", "unicode", "csi", "images", "long_escape_codes",
 	}
 }
 
@@ -206,11 +229,18 @@ func main(args []string) (err error) {
 	var r result
 	// First warm up the terminal by getting it to render all chars so that font rendering
 	// time is not polluting out benchmarks.
-	if _, err = benchmark_data(strings.Repeat(ascii_printable, 1024), default_benchmark_options()); err != nil {
+	if _, err = benchmark_data(strings.Repeat(ascii_printable+chinese_lorem_ipsum+misc_unicode, 2), default_benchmark_options()); err != nil {
 		return err
 	}
 	if slices.Index(args, "ascii") >= 0 {
 		if r, err = simple_ascii(); err != nil {
+			return err
+		}
+		results = append(results, r)
+	}
+
+	if slices.Index(args, "unicode") >= 0 {
+		if r, err = unicode(); err != nil {
 			return err
 		}
 		results = append(results, r)
