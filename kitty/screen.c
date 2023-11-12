@@ -638,8 +638,7 @@ draw_combining_char(Screen *self, char_type ch) {
 }
 
 static void
-draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
-    if (is_ignored_char(ch)) return;
+screen_on_input(Screen *self) {
     if (!self->has_activity_since_last_focus && !self->has_focus && self->callbacks != Py_None) {
         PyObject *ret = PyObject_CallMethod(self->callbacks, "on_activity_since_last_focus", NULL);
         if (ret == NULL) PyErr_Print();
@@ -648,6 +647,61 @@ draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
             Py_DECREF(ret);
         }
     }
+}
+
+static void
+screen_continue_to_next_line(Screen *self) {
+    linebuf_set_last_char_as_continuation(self->linebuf, self->cursor->y, true);
+    self->cursor->x = 0;
+    screen_linefeed(self);
+}
+
+void
+screen_draw_printable_ascii(Screen *self, const uint8_t *chars, size_t num) {
+    screen_on_input(self);
+    self->last_graphic_char = chars[num-1];
+    self->is_dirty = true;
+    CPUCell cc = {.hyperlink_id=self->active_hyperlink_id};
+    GPUCell g = {.attrs=cursor_to_attrs(self->cursor, 1), .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK, .decoration_fg=self->cursor->decoration_fg & COL_MASK};
+    if (OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && cc.hyperlink_id) {
+        g.decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;
+        g.attrs.decoration = OPT(url_style);
+    }
+
+#define fill_single_line(chars, num) { \
+        linebuf_init_line(self->linebuf, self->cursor->y); \
+        if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, num); \
+        line_set_printable_ascii_chars(self->linebuf->line, self->cursor->x, chars, num, g, cc); \
+        self->cursor->x += num; \
+        if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections); \
+        linebuf_mark_line_dirty(self->linebuf, self->cursor->y); \
+}
+
+    int avail = self->columns - self->cursor->x;
+    if (avail >= (int)num) {
+        fill_single_line(chars, num);
+    } else {
+        if (self->modes.mDECAWM) {
+            while (num) {
+                avail = self->columns - self->cursor->x;
+                if (!avail) { screen_continue_to_next_line(self); avail = self->columns; }
+                unsigned nc = MIN((unsigned)avail, num);
+                fill_single_line(chars, nc);
+                num -= nc;
+                chars += nc;
+            }
+        } else {
+            if (avail > 1) { fill_single_line(chars, avail - 1); }
+            else if (avail == 0) self->cursor->x--;
+            fill_single_line(chars + num - 1, 1);
+        }
+    }
+}
+
+static void
+draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
+    if (from_input_stream) screen_on_input(self);
+    if (is_ignored_char(ch)) return;
     if (UNLIKELY(is_combining_char(ch))) {
         if (UNLIKELY(is_flag_codepoint(ch))) {
             if (draw_second_flag_codepoint(self, ch)) return;
@@ -663,13 +717,8 @@ draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
     }
     if (from_input_stream) self->last_graphic_char = ch;
     if (UNLIKELY(self->columns - self->cursor->x < (unsigned int)char_width)) {
-        if (self->modes.mDECAWM) {
-            linebuf_set_last_char_as_continuation(self->linebuf, self->cursor->y, true);
-            screen_carriage_return(self);
-            screen_linefeed(self);
-        } else {
-            self->cursor->x = self->columns - char_width;
-        }
+        if (self->modes.mDECAWM) screen_continue_to_next_line(self);
+        else self->cursor->x = self->columns - char_width;
     }
 
     linebuf_init_line(self->linebuf, self->cursor->y);

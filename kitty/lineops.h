@@ -86,6 +86,7 @@ void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 char_type line_get_char(Line *self, index_type at);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, hyperlink_id_type);
+void line_set_printable_ascii_chars(Line *self, unsigned int at, const uint8_t *chars, unsigned num, GPUCell g, CPUCell cc);
 void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
