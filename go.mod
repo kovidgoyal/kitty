@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/ALTree/bigfloat v0.2.0
-	github.com/alecthomas/chroma/v2 v2.10.0
+	github.com/alecthomas/chroma/v2 v2.11.1
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/dlclark/regexp2 v1.10.0
@@ -14,7 +14,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.10
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
-	golang.org/x/image v0.13.0
+	golang.org/x/image v0.14.0
 	golang.org/x/sys v0.14.0
 	howett.net/plist v1.0.0
 )
