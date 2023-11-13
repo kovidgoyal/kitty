@@ -145,6 +145,7 @@ type GraphicsCommand struct {
 
 	z int32
 
+	DisableCompression       bool
 	WrapPrefix, WrapSuffix   string
 	EncodeSerializedDataFunc func(string) string
 
@@ -271,7 +272,7 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 		return self.serialize_to(o, base64.RawStdEncoding.EncodeToString(payload))
 	}
 	gc := *self
-	if self.Format() != GRT_format_png {
+	if !self.DisableCompression && self.Format() != GRT_format_png {
 		compressed := compress_with_zlib(payload)
 		if len(compressed) < len(payload) {
 			gc.SetCompression(GRT_compression_zlib)

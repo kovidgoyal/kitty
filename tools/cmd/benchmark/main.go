@@ -170,14 +170,18 @@ func images() (r result, err error) {
 	g := graphics.GraphicsCommand{}
 	g.SetImageId(12345)
 	g.SetQuiet(graphics.GRT_quiet_silent)
-	g.SetAction(graphics.GRT_action_query)
+	g.SetAction(graphics.GRT_action_transmit)
 	g.SetFormat(graphics.GRT_format_rgba)
-	const dim = 2048
+	const dim = 1024
 	g.SetDataWidth(dim)
 	g.SetDataHeight(dim)
+	g.DisableCompression = true // dont want to measure the speed of zlib
 	b := strings.Builder{}
-	b.Grow(4*dim*dim + 256)
+	b.Grow(8 * dim * dim)
 	_ = g.WriteWithPayloadTo(&b, make([]byte, 4*dim*dim))
+	g.SetAction(graphics.GRT_action_delete)
+	g.SetDelete(graphics.GRT_free_by_id)
+	_ = g.WriteWithPayloadTo(&b, nil)
 	data := b.String()
 	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
 	if err != nil {
@@ -277,7 +281,7 @@ func main(args []string) (err error) {
 
 	fmt.Print(reset)
 	fmt.Println(
-		"These results measure the time it takes the terminal to fully parse all the data sent to it. Some terminals will not render all the data, skipping frames, thereby \"cheating\" in their results. kitty does render all data.")
+		"These results measure the time it takes the terminal to fully parse all the data sent to it. Note that not all data transmitted will be displayed as input parsing is typically asynchronous with rendering in high performance terminals.")
 	fmt.Println()
 	fmt.Println("Results:")
 	mlen := 10
