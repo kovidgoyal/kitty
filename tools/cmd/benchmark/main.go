@@ -232,10 +232,14 @@ func main(args []string) (err error) {
 	var results []result
 	var r result
 	// First warm up the terminal by getting it to render all chars so that font rendering
-	// time is not polluting out benchmarks.
-	if _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, default_benchmark_options()); err != nil {
+	// time is not polluting the benchmarks.
+	opts := default_benchmark_options()
+	opts.repeat_count = 1
+	if _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, opts); err != nil {
 		return err
 	}
+	time.Sleep(time.Second / 2)
+
 	if slices.Index(args, "ascii") >= 0 {
 		if r, err = simple_ascii(); err != nil {
 			return err
