@@ -96,7 +96,11 @@ pybase64_decode(PyObject UNUSED *self, PyObject *args) {
     size_t sz = required_buffer_size_for_base64_decode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
-    base64_decode8(view.buf, view.len, (unsigned char*)PyBytes_AS_STRING(ans), &sz);
+    if (!base64_decode8(view.buf, view.len, (unsigned char*)PyBytes_AS_STRING(ans), &sz)) {
+        Py_DECREF(ans);
+        PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
+        return NULL;
+    }
     if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
     return ans;
 }

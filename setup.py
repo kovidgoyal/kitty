@@ -621,17 +621,42 @@ def get_vcs_rev() -> str:
     return ans
 
 
-def get_source_specific_defines(env: Env, src: str) -> Tuple[str, Optional[List[str]]]:
+@lru_cache
+def base64_defines() -> List[str]:
+    defs = {
+        'HAVE_AVX512': 0,
+        'HAVE_AVX2': 0,
+        'HAVE_NEON32': 0,
+        'HAVE_NEON64': 0,
+        'HAVE_SSSE3': 0,
+        'HAVE_SSE41': 0,
+        'HAVE_SSE42': 0,
+        'HAVE_AVX': 0,
+    }
+    if is_arm:
+        defs['HAVE_NEON64'] = 1
+    else:
+        defs['HAVE_AVX2'] = 1
+        defs['HAVE_AVX'] = 1
+        defs['HAVE_SSE42'] = 1
+        defs['HAVE_SSE41'] = 1
+        defs['HAVE_SSE3'] = 1
+    return [f'{k}={v}' for k, v in defs.items()]
+
+
+def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Optional[List[str]]]:
     if src == 'kitty/vt-parser-dump.c':
-        return 'kitty/vt-parser.c', ['DUMP_COMMANDS']
+        return 'kitty/vt-parser.c', [], ['DUMP_COMMANDS']
     if src == 'kitty/data-types.c':
         if not env.vcs_rev:
             env.vcs_rev = get_vcs_rev()
-        return src, [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
+        return src, [], [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
+    if src.startswith('base64/'):
+        return src, ['base64',], base64_defines()
     try:
-        return src, env.library_paths[src]
+        return src, [], env.library_paths[src]
     except KeyError:
-        return src, None
+        return src, [], None
 
 
 def newer(dest: str, *sources: str) -> bool:
@@ -730,17 +755,17 @@ def compile_c_extension(
 ) -> None:
     prefix = os.path.basename(module)
     objects = [
-        os.path.join(build_dir, f'{prefix}-{os.path.basename(src)}.o')
+        os.path.join(build_dir, f'{prefix}-{src.replace("/", "-")}.o')
         for src in sources
     ]
 
     for original_src, dest in zip(sources, objects):
         src = original_src
         cppflags = kenv.cppflags[:]
-        src, defines = get_source_specific_defines(kenv, src)
+        src, include_paths, defines = get_source_specific_defines(kenv, src)
         if defines is not None:
             cppflags.extend(map(define, defines))
-        cmd = kenv.cc + ['-MMD'] + cppflags + kenv.cflags
+        cmd = kenv.cc + ['-MMD'] + cppflags + [f'-I{x}' for x in include_paths] + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
         key = CompileKey(original_src, os.path.basename(dest))
         desc = f'Compiling {emphasis(desc_prefix + src)} ...'
@@ -777,6 +802,12 @@ def find_c_files() -> Tuple[List[str], List[str]]:
         elif ext == '.h':
             headers.append(os.path.join('kitty', x))
     ans.append('kitty/vt-parser-dump.c')
+
+    # base64
+    ans.extend(glob.glob('base64/lib/arch/*/codec.c'))
+    ans.append('base64/lib/tables/tables.c')
+    ans.append('base64/lib/codec_choose.c')
+    ans.append('base64/lib/lib.c')
     return ans, headers
 
 
