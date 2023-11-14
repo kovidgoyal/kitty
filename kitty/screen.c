@@ -657,9 +657,8 @@ screen_continue_to_next_line(Screen *self) {
 }
 
 void
-screen_draw_printable_ascii(Screen *self, const uint8_t *chars, size_t num) {
+screen_draw_printable_ascii(Screen *self, ByteLoader *it) {
     screen_on_input(self);
-    self->last_graphic_char = chars[num-1];
     self->is_dirty = true;
     const CPUCell cc = {.hyperlink_id=self->active_hyperlink_id};
     GPUCell g = {.attrs=cursor_to_attrs(self->cursor, 1), .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK, .decoration_fg=self->cursor->decoration_fg & COL_MASK};
@@ -668,41 +667,39 @@ screen_draw_printable_ascii(Screen *self, const uint8_t *chars, size_t num) {
         g.attrs.decoration = OPT(url_style);
     }
 
-#define fill_single_line(chars, num) { \
+#define fill_single_line(num) { \
         linebuf_init_line(self->linebuf, self->cursor->y); \
         if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, num); \
         const unsigned limit = self->cursor->x + num; \
-        const uint8_t *p = chars; \
         GPUCell *gp = self->linebuf->line->gpu_cells; \
         CPUCell *cp = self->linebuf->line->cpu_cells; \
-        for (; self->cursor->x < limit; self->cursor->x++, p++) { \
+        for (; self->cursor->x < limit; self->cursor->x++) { \
             memcpy(gp + self->cursor->x, &g, sizeof(g)); \
             memcpy(cp + self->cursor->x, &cc, sizeof(cc)); \
-            cp[self->cursor->x].ch = *p; \
+            cp[self->cursor->x].ch = byte_loader_next(it); \
         } \
         if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections); \
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y); \
 }
 
     int avail = self->columns - self->cursor->x;
-    if (avail >= (int)num) {
-        fill_single_line(chars, num);
+    if (avail >= (int)it->num_left) {
+        fill_single_line(it->num_left);
     } else {
         if (self->modes.mDECAWM) {
-            while (num) {
+            while (it->num_left) {
                 avail = self->columns - self->cursor->x;
                 if (!avail) { screen_continue_to_next_line(self); avail = self->columns; }
-                unsigned nc = MIN((unsigned)avail, num);
-                fill_single_line(chars, nc);
-                num -= nc;
-                chars += nc;
+                unsigned nc = MIN((unsigned)avail, it->num_left);
+                fill_single_line(nc);
             }
         } else {
-            if (avail > 1) { fill_single_line(chars, avail - 1); }
+            if (avail > 1) { fill_single_line(avail - 1); }
             else if (avail == 0) self->cursor->x--;
-            fill_single_line(chars + num - 1, 1);
+            fill_single_line(1);
         }
     }
+    self->last_graphic_char = self->linebuf->line->cpu_cells[self->cursor->x-1].ch;
 }
 
 static void

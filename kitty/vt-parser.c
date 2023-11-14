@@ -277,7 +277,8 @@ dispatch_normal_mode_byte(PS *self, uint8_t ch) {
 static void
 dispatch_printable_ascii(PS *self, const size_t sz) {
     REPORT_DRAW_ASCII(self->buf + self->read.pos, sz);
-    screen_draw_printable_ascii(self->screen, self->buf + self->read.pos, sz);
+    ByteLoader b; byte_loader_init(&b, self->buf + self->read.pos, sz);
+    screen_draw_printable_ascii(self->screen, &b);
     self->read.pos += sz;
 }
 
