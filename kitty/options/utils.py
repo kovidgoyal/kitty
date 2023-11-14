@@ -706,10 +706,11 @@ class NotifyOnCmdFinish(NamedTuple):
     when: str
     duration: float
     action: str
-    cmdline: List[str]
+    cmdline: Tuple[str, ...]
+
 
 def notify_on_cmd_finish(x: str) -> NotifyOnCmdFinish:
-    parts = x.split()
+    parts = x.split(maxsplit=3)
     if parts[0] not in ('never', 'unfocused', 'invisible', 'always'):
         raise ValueError(f'Unknown notify_on_cmd_finish value: {parts[0]}')
     when = parts[0]
@@ -717,14 +718,14 @@ def notify_on_cmd_finish(x: str) -> NotifyOnCmdFinish:
     if len(parts) > 1:
         duration = float(parts[1])
     action = 'notify'
-    cmdline = []
+    cmdline: Tuple[str, ...] = ()
     if len(parts) > 2:
         if parts[2] not in ('notify', 'bell', 'command'):
             raise ValueError(f'Unknown notify_on_cmd_finish action: {parts[2]}')
         action = parts[2]
         if action == 'command':
             if len(parts) > 3:
-                cmdline = parts[3:]
+                cmdline = tuple(to_cmdline(parts[3]))
             else:
                 raise ValueError('notify_on_cmd_finish `command` action needs a command line')
     return NotifyOnCmdFinish(when, duration, action, cmdline)
