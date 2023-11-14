@@ -543,7 +543,7 @@ class Window:
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
-        self.last_cmd_output_start_time = 0
+        self.last_cmd_output_start_time = 0.
         self.actions_on_close: List[Callable[['Window'], None]] = []
         self.actions_on_focus_change: List[Callable[['Window', bool], None]] = []
         self.actions_on_removal: List[Callable[['Window'], None]] = []
@@ -1331,19 +1331,17 @@ class Window:
 
             self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": True, "time": start_time})
         else:
-            if self.last_cmd_output_start_time > 0:
+            if self.last_cmd_output_start_time > 0.:
                 end_time = monotonic()
                 last_cmd_output_duration = end_time - self.last_cmd_output_start_time
-                self.last_cmd_output_start_time = 0
+                self.last_cmd_output_start_time = 0.
 
                 self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": False, "time": end_time})
 
                 opts = get_options()
-                mode = opts.notify_on_cmd_finish
-                if mode == 'never':
-                    return
+                mode, duration = opts.notify_on_cmd_finish
 
-                if last_cmd_output_duration >= opts.notify_on_cmd_finish_min_duration:
+                if last_cmd_output_duration >= duration and mode != 'never':
                     cmd = NotificationCommand()
                     cmd.title = 'kitty'
                     cmd.body = 'Command finished in a background window.\nClick to focus.'

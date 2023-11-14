@@ -20,7 +20,6 @@ choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'text', 'poi
 choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
 choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
-choices_for_notify_on_cmd_finish = typing.Literal['never', 'unfocused', 'invisible', 'always']
 choices_for_placement_strategy = typing.Literal['center', 'top-left']
 choices_for_pointer_shape_when_dragging = choices_for_default_pointer_shape
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
@@ -388,7 +387,6 @@ option_names = (  # {{{
  'mouse_map',
  'narrow_symbols',
  'notify_on_cmd_finish',
- 'notify_on_cmd_finish_min_duration',
  'open_url_with',
  'paste_actions',
  'placement_strategy',
@@ -548,8 +546,7 @@ class Options:
     mark3_background: Color = Color(242, 116, 188)
     mark3_foreground: Color = Color(0, 0, 0)
     mouse_hide_wait: float = 0.0 if is_macos else 3.0
-    notify_on_cmd_finish: choices_for_notify_on_cmd_finish = 'never'
-    notify_on_cmd_finish_min_duration: float = 5.0
+    notify_on_cmd_finish: typing.Tuple[str, float] = ('never', 5.0)
     open_url_with: typing.List[str] = ['default']
     paste_actions: typing.FrozenSet[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     placement_strategy: choices_for_placement_strategy = 'center'

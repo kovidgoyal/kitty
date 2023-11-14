@@ -3149,10 +3149,8 @@ first valid match, in the order specified, is sourced.
 '''
     )
 
-opt('notify_on_cmd_finish', 'never',
-    choices=('never', 'unfocused', 'invisible', 'always'),
-    long_text='''
-Whether to send a desktop notification when a long-running command finishes
+opt('notify_on_cmd_finish', 'never', option_type='notify_on_cmd_finish', long_text='''
+Show a desktop notification when a long-running command finishes
 (needs :opt:`shell_integration`).
 The possible values are:
 
@@ -3168,17 +3166,13 @@ The possible values are:
     is not currently active.
 
 :code:`always`
-    Always send a notification, even if the window is focused.
-'''
-    )
+    Always send a notification, regardless of window state.
 
-opt('notify_on_cmd_finish_min_duration', '5.0',
-    option_type="float",
-    long_text='''
-Only send a notification if a command takes more than specified seconds of time.
-It's not recommended to set a value too small, as you probably don't want a
-notification when a command launches a new window and exit immediately (e.g. the
-`code` command from vscode).
+Furthermore, you can set the minimum duration for what is considered a
+long running command. The default is 5 seconds. Specify a second argument
+to set the duration. For example: :code:`invisible 15`.
+Do not set the value too small, otherwise a command that launches a new OS Window
+and exits will spam a notification.
 '''
     )
 

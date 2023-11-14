@@ -702,6 +702,16 @@ def active_tab_title_template(x: str) -> Optional[str]:
     return None if x == 'none' else x
 
 
+def notify_on_cmd_finish(x: str) -> Tuple[str, float]:
+    parts = x.split()
+    if parts[0] not in ('never', 'unfocused', 'invisible', 'always'):
+        raise ValueError(f'Unknown notify_on_cmd_finish value: {x}')
+    duration = 5.0
+    if len(parts) > 1:
+        duration = float(parts[1])
+    return parts[0], duration
+
+
 def config_or_absolute_path(x: str, env: Optional[Dict[str, str]] = None) -> Optional[str]:
     if not x or x.lower() == 'none':
         return None

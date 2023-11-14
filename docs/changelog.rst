@@ -43,6 +43,11 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
+0.32.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- A new option :opt:`notify_on_cmd_finish` to show a desktop notification when a long running command finishes (:pull:`6817`)
+
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
