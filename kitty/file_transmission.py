@@ -329,14 +329,14 @@ class FileTransmissionCommand:
     def deserialize(cls, data: Union[str, bytes, memoryview]) -> 'FileTransmissionCommand':
         ans = FileTransmissionCommand()
         fmap = serialized_to_field_map()
-        from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
+        from kittens.transfer.rsync import parse_ftc
 
         def handle_item(key: memoryview, val: memoryview) -> None:
             field = fmap.get(key)
             if field is None:
                 return
             if issubclass(field.type, Enum):
-                setattr(ans, field.name, field.type[decode_utf8_buffer(val)])
+                setattr(ans, field.name, field.type[str(val, "utf-8")])
             elif field.type is bytes:
                 setattr(ans, field.name, base64_decode(val))
             elif field.type is int:
@@ -345,7 +345,7 @@ class FileTransmissionCommand:
                 if field.metadata.get('base64'):
                     sval = base64_decode(val).decode('utf-8')
                 else:
-                    sval = safe_string(decode_utf8_buffer(val))
+                    sval = safe_string(str(val, "utf-8"))
                 setattr(ans, field.name, sval)
 
         parse_ftc(data, handle_item)

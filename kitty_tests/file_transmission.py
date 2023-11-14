@@ -10,7 +10,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from pathlib import Path
 
-from kittens.transfer.rsync import Differ, Hasher, Patcher, decode_utf8_buffer, parse_ftc
+from kittens.transfer.rsync import Differ, Hasher, Patcher, parse_ftc
 from kittens.transfer.utils import set_paths
 from kitty.constants import kitten_exe
 from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor
@@ -307,8 +307,8 @@ class TestFileTransmission(BaseTest):
             a = []
 
             def c(k, v):
-                a.append(decode_utf8_buffer(k))
-                a.append(decode_utf8_buffer(v))
+                a.append(str(k, 'utf-8'))
+                a.append(str(v, 'utf-8'))
 
             parse_ftc(raw, c)
             self.ae(tuple(a), expected)

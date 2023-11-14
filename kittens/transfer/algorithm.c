@@ -901,13 +901,6 @@ PyTypeObject Hasher_Type = {
 };
 // }}} end Hasher
 
-static PyObject*
-decode_utf8_buffer(PyObject *self UNUSED, PyObject *args) {
-    RAII_PY_BUFFER(buf);
-    if (!PyArg_ParseTuple(args, "s*", &buf)) return NULL;
-    return PyUnicode_FromStringAndSize(buf.buf, buf.len);
-}
-
 static bool
 call_ftc_callback(PyObject *callback, char *src, Py_ssize_t key_start, Py_ssize_t key_length, Py_ssize_t val_start, Py_ssize_t val_length) {
     while(src[key_start] == ';' && key_length > 0 ) { key_start++; key_length--; }
@@ -952,7 +945,6 @@ parse_ftc(PyObject *self UNUSED, PyObject *args) {
 
 static PyMethodDef module_methods[] = {
     {"parse_ftc", parse_ftc, METH_VARARGS, ""},
-    {"decode_utf8_buffer", decode_utf8_buffer, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
