@@ -83,7 +83,9 @@ from .fast_data_types import (
 from .keys import keyboard_mode_name, mod_mask
 from .notify import (
     NotificationCommand,
+    OnlyWhen,
     handle_notification_cmd,
+    notify_with_command,
     sanitize_identifier_pat,
 )
 from .options.types import Options
@@ -536,6 +538,7 @@ class Window:
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
+        self.last_cmd_output_start_time = 0
         self.actions_on_close: List[Callable[['Window'], None]] = []
         self.actions_on_focus_change: List[Callable[['Window', bool], None]] = []
         self.actions_on_removal: List[Callable[['Window'], None]] = []
@@ -1315,6 +1318,27 @@ class Window:
             else:
                 if self.child_title:
                     self.title_stack.append(self.child_title)
+
+    def cmd_output_marking(self, is_start: int) -> None:
+        if is_start:
+            self.last_cmd_output_start_time = monotonic()
+        else:
+            if self.last_cmd_output_start_time > 0:
+                last_cmd_output_duration = monotonic() - self.last_cmd_output_start_time
+                self.last_cmd_output_start_time = 0
+
+                opts = get_options()
+                mode = opts.notify_on_cmd_finish
+                if mode == 'never':
+                    return
+
+                if last_cmd_output_duration >= opts.notify_on_cmd_finish_min_duration:
+                    cmd = NotificationCommand()
+                    cmd.title = 'kitty'
+                    cmd.body = 'Command finished in a background window.\nClick to focus.'
+                    cmd.actions = 'focus'
+                    cmd.only_when = OnlyWhen(mode)
+                    notify_with_command(cmd, self.id)
     # }}}
 
     # mouse actions {{{

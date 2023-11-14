@@ -3149,6 +3149,39 @@ first valid match, in the order specified, is sourced.
 '''
     )
 
+opt('notify_on_cmd_finish', 'never',
+    choices=('never', 'unfocused', 'invisible', 'always'),
+    long_text='''
+Whether to send a desktop notification when a long-running command finishes
+(needs :opt:`shell_integration`).
+The possible values are:
+
+:code:`never`
+    Never send a notification.
+
+:code:`unfocused`
+    Only send a notification when the window does not have keyboard focus.
+
+:code:`invisible`
+    Only send a notification when the window both is unfocused and not visible
+    to the user, for example, because it is in an inactive tab or its OS window
+    is not currently active.
+
+:code:`always`
+    Always send a notification, even if the window is focused.
+'''
+    )
+
+opt('notify_on_cmd_finish_min_duration', '5.0',
+    option_type="float",
+    long_text='''
+Only send a notification if a command takes more than specified seconds of time.
+It's not recommended to set a value too small, as you probably don't want a
+notification when a command launches a new window and exit immediately (e.g. the
+`code` command from vscode).
+'''
+    )
+
 opt('term', 'xterm-kitty',
     long_text='''
 The value of the :envvar:`TERM` environment variable to set. Changing this can
