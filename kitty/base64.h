@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../base64/include/libbase64.h"
+#include "../3rdparty/base64/include/libbase64.h"
 
 static inline size_t required_buffer_size_for_base64_decode(size_t src_sz) { return (src_sz / 4 * 3 + 2); }
 static inline size_t required_buffer_size_for_base64_encode(size_t src_sz) { return ((src_sz + 2) / 3 * 4); }

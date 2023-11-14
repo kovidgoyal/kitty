@@ -16,6 +16,7 @@ kittens/diff/options/types.py linguist-generated=true
 kittens/diff/options/parse.py linguist-generated=true
 glfw/*.c linguist-vendored=true
 glfw/*.h linguist-vendored=true
+3rdparty/** linguist-vendored=true
 kittens/unicode_input/names.h linguist-generated=true
 tools/wcswidth/std.go linguist-generated=true
 tools/unicode_names/names.txt linguist-generated=true

@@ -5,12 +5,13 @@ import subprocess
 ls_files = subprocess.check_output([ 'git', 'ls-files']).decode('utf-8')
 all_files = set(ls_files.splitlines())
 all_files.discard('')
-cp = subprocess.run(['git', 'check-attr', 'linguist-generated', '--stdin'],
-                    check=True, stdout=subprocess.PIPE, input='\n'.join(all_files).encode('utf-8'))
-for line in cp.stdout.decode().splitlines():
-    if line.endswith(' true'):
-        fname = line.split(':', 1)[0]
-        all_files.discard(fname)
+for attr in ('linguist-generated', 'linguist-vendored'):
+    cp = subprocess.run(['git', 'check-attr', attr, '--stdin'],
+                        check=True, stdout=subprocess.PIPE, input='\n'.join(all_files).encode('utf-8'))
+    for line in cp.stdout.decode().splitlines():
+        if line.endswith(' true'):
+            fname = line.split(':', 1)[0]
+            all_files.discard(fname)
 
 all_files -= {'gen/nerd-fonts-glyphs.txt', 'gen/rowcolumn-diacritics.txt'}
 cp = subprocess.run(['cloc', '--list-file', '-'], input='\n'.join(all_files).encode())
