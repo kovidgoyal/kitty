@@ -497,8 +497,12 @@ def init_env(
         ldflags.append('-lprofiler')
 
     # SIMD instructions
-    cflags.append('-msse4.2')
-    cflags.append('-mavx2')
+    if is_arm:
+        if not is_macos:
+            cflags.append('-mfpu=neon')
+    else:
+        cflags.append('-msse4.2')
+        cflags.append('-mavx2')
     library_paths: Dict[str, List[str]] = {}
 
     def add_lpath(which: str, name: str, val: Optional[str]) -> None:
