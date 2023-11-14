@@ -803,6 +803,8 @@ def find_c_files() -> Tuple[List[str], List[str]]:
             headers.append(os.path.join('kitty', x))
     ans.append('kitty/vt-parser-dump.c')
 
+    # ringbuf
+    ans.append('3rdparty/ringbuf/ringbuf.c')
     # base64
     ans.extend(glob.glob('3rdparty/base64/lib/arch/*/codec.c'))
     ans.append('3rdparty/base64/lib/tables/tables.c')

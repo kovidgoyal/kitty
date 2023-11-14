@@ -9,7 +9,7 @@
 #include "lineops.h"
 #include "charsets.h"
 #include <structmember.h>
-#include "ringbuf.h"
+#include "../3rdparty/ringbuf/ringbuf.h"
 
 extern PyTypeObject Line_Type;
 #define SEGMENT_SIZE 2048
