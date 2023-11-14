@@ -83,7 +83,9 @@ from .fast_data_types import (
 from .keys import keyboard_mode_name, mod_mask
 from .notify import (
     NotificationCommand,
+    OnlyWhen,
     handle_notification_cmd,
+    notify_with_command,
     sanitize_identifier_pat,
 )
 from .options.types import Options
@@ -259,6 +261,7 @@ class Watchers:
     on_focus_change: List[Watcher]
     on_set_user_var: List[Watcher]
     on_title_change: List[Watcher]
+    on_cmd_startstop: List[Watcher]
 
     def __init__(self) -> None:
         self.on_resize = []
@@ -266,6 +269,7 @@ class Watchers:
         self.on_focus_change = []
         self.on_set_user_var = []
         self.on_title_change = []
+        self.on_cmd_startstop = []
 
     def add(self, others: 'Watchers') -> None:
         def merge(base: List[Watcher], other: List[Watcher]) -> None:
@@ -277,10 +281,11 @@ class Watchers:
         merge(self.on_focus_change, others.on_focus_change)
         merge(self.on_set_user_var, others.on_set_user_var)
         merge(self.on_title_change, others.on_title_change)
+        merge(self.on_cmd_startstop, others.on_cmd_startstop)
 
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
-        del self.on_set_user_var[:], self.on_title_change[:]
+        del self.on_set_user_var[:], self.on_title_change[:], self.on_cmd_startstop[:]
 
     def copy(self) -> 'Watchers':
         ans = Watchers()
@@ -289,11 +294,13 @@ class Watchers:
         ans.on_focus_change = self.on_focus_change[:]
         ans.on_set_user_var = self.on_set_user_var[:]
         ans.on_title_change = self.on_title_change[:]
+        ans.on_cmd_startstop = self.on_cmd_startstop[:]
         return ans
 
     @property
     def has_watchers(self) -> bool:
-        return bool(self.on_close or self.on_resize or self.on_focus_change)
+        return bool(self.on_close or self.on_resize or self.on_focus_change
+                    or self.on_set_user_var or self.on_title_change or self.on_cmd_startstop)
 
 
 def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: Dict[str, Any]) -> None:
@@ -536,6 +543,7 @@ class Window:
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
+        self.last_cmd_output_start_time = 0
         self.actions_on_close: List[Callable[['Window'], None]] = []
         self.actions_on_focus_change: List[Callable[['Window', bool], None]] = []
         self.actions_on_removal: List[Callable[['Window'], None]] = []
@@ -1315,6 +1323,33 @@ class Window:
             else:
                 if self.child_title:
                     self.title_stack.append(self.child_title)
+
+    def cmd_output_marking(self, is_start: int) -> None:
+        if is_start:
+            start_time = monotonic()
+            self.last_cmd_output_start_time = start_time
+
+            self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": True, "time": start_time})
+        else:
+            if self.last_cmd_output_start_time > 0:
+                end_time = monotonic()
+                last_cmd_output_duration = end_time - self.last_cmd_output_start_time
+                self.last_cmd_output_start_time = 0
+
+                self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": False, "time": end_time})
+
+                opts = get_options()
+                mode = opts.notify_on_cmd_finish
+                if mode == 'never':
+                    return
+
+                if last_cmd_output_duration >= opts.notify_on_cmd_finish_min_duration:
+                    cmd = NotificationCommand()
+                    cmd.title = 'kitty'
+                    cmd.body = 'Command finished in a background window.\nClick to focus.'
+                    cmd.actions = 'focus'
+                    cmd.only_when = OnlyWhen(mode)
+                    notify_with_command(cmd, self.id)
     # }}}
 
     # mouse actions {{{

@@ -1120,6 +1120,17 @@ class Parser:
         for k, v in narrow_symbols(val):
             ans["narrow_symbols"][k] = v
 
+    def notify_on_cmd_finish(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_notify_on_cmd_finish:
+            raise ValueError(f"The value {val} is not a valid choice for notify_on_cmd_finish")
+        ans["notify_on_cmd_finish"] = val
+
+    choices_for_notify_on_cmd_finish = frozenset(('never', 'unfocused', 'invisible', 'always'))
+
+    def notify_on_cmd_finish_min_duration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['notify_on_cmd_finish_min_duration'] = float(val)
+
     def open_url_with(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['open_url_with'] = to_cmdline(val)
 
