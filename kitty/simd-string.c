@@ -8,7 +8,13 @@
 #define SIMDE_ENABLE_NATIVE_ALIASES
 #include "data-types.h"
 #include "simd-string.h"
+#ifdef __clang__
+_Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
+#endif
 #include <simde/x86/avx2.h>
+#ifdef __clang__
+_Pragma("clang diagnostic pop")
+#endif
 
 static bool has_sse4_2 = false, has_avx2 = false;
 
