@@ -651,8 +651,8 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
         if not env.vcs_rev:
             env.vcs_rev = get_vcs_rev()
         return src, [], [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
-    if src.startswith('base64/'):
-        return src, ['base64',], base64_defines()
+    if src.startswith('3rdparty/base64/'):
+        return src, ['3rdparty/base64',], base64_defines()
     try:
         return src, [], env.library_paths[src]
     except KeyError:
@@ -804,10 +804,10 @@ def find_c_files() -> Tuple[List[str], List[str]]:
     ans.append('kitty/vt-parser-dump.c')
 
     # base64
-    ans.extend(glob.glob('base64/lib/arch/*/codec.c'))
-    ans.append('base64/lib/tables/tables.c')
-    ans.append('base64/lib/codec_choose.c')
-    ans.append('base64/lib/lib.c')
+    ans.extend(glob.glob('3rdparty/base64/lib/arch/*/codec.c'))
+    ans.append('3rdparty/base64/lib/tables/tables.c')
+    ans.append('3rdparty/base64/lib/codec_choose.c')
+    ans.append('3rdparty/base64/lib/lib.c')
     return ans, headers
 
 
