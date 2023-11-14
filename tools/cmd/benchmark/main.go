@@ -21,6 +21,11 @@ import (
 
 var _ = fmt.Print
 
+type Options struct {
+	Repetitions    int
+	WithScrollback bool
+}
+
 const reset = "\x1b]\x1b\\\x1bc"
 const ascii_printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \n\t `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?"
 const chinese_lorem_ipsum = `
@@ -38,22 +43,15 @@ const misc_unicode = `
 îïðñòóôõöøœš ùúûüýÿþªºαΩ∞
 `
 
-type benchmark_options struct {
-	alternate_screen bool
-	repeat_count     int
-}
+var opts Options
 
-func default_benchmark_options() benchmark_options {
-	return benchmark_options{alternate_screen: true, repeat_count: 10}
-}
-
-func benchmark_data(data string, opts benchmark_options) (duration time.Duration, sent_data_size int, err error) {
+func benchmark_data(data string, opts Options) (duration time.Duration, sent_data_size int, err error) {
 	term, err := tty.OpenControllingTerm(tty.SetRaw)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer term.RestoreAndClose()
-	state := loop.TerminalStateOptions{Alternate_screen: opts.alternate_screen}
+	state := loop.TerminalStateOptions{Alternate_screen: !opts.WithScrollback}
 	if _, err = term.WriteString(state.SetStateEscapeCodes()); err != nil {
 		return
 	}
@@ -80,7 +78,7 @@ func benchmark_data(data string, opts benchmark_options) (duration time.Duration
 	<-goroutine_started
 
 	start := time.Now()
-	repeat_count := opts.repeat_count
+	repeat_count := opts.Repetitions
 	for ; repeat_count > 0; repeat_count-- {
 		if _, err = term.WriteString(data); err != nil {
 			return
@@ -91,7 +89,7 @@ func benchmark_data(data string, opts benchmark_options) (duration time.Duration
 		return
 	}
 	lock.Lock()
-	duration = time.Since(start) / time.Duration(opts.repeat_count)
+	duration = time.Since(start) / time.Duration(opts.Repetitions)
 	lock.Unlock()
 	return
 }
@@ -118,7 +116,7 @@ type result struct {
 
 func simple_ascii() (r result, err error) {
 	data := random_string_of_bytes(1024*2048+13, ascii_printable)
-	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
@@ -127,7 +125,7 @@ func simple_ascii() (r result, err error) {
 
 func unicode() (r result, err error) {
 	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 1024)
-	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
@@ -159,7 +157,7 @@ func ascii_with_csi() (r result, err error) {
 		}
 		out = append(out, utils.UnsafeStringToBytes(chunk)...)
 	}
-	duration, data_sz, err := benchmark_data(utils.UnsafeBytesToString(out), default_benchmark_options())
+	duration, data_sz, err := benchmark_data(utils.UnsafeBytesToString(out), opts)
 	if err != nil {
 		return result{}, err
 	}
@@ -183,7 +181,7 @@ func images() (r result, err error) {
 	g.SetDelete(graphics.GRT_free_by_id)
 	_ = g.WriteWithPayloadTo(&b, nil)
 	data := b.String()
-	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
@@ -194,7 +192,7 @@ func long_escape_codes() (r result, err error) {
 	data := random_string_of_bytes(8024, ascii_printable)
 	// OSC 6 is document reporting which kitty ignores after parsing
 	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
-	duration, data_sz, err := benchmark_data(data, default_benchmark_options())
+	duration, data_sz, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
@@ -237,9 +235,8 @@ func main(args []string) (err error) {
 	var r result
 	// First warm up the terminal by getting it to render all chars so that font rendering
 	// time is not polluting the benchmarks.
-	opts := default_benchmark_options()
-	opts.repeat_count = 1
-	if _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, opts); err != nil {
+	w := Options{Repetitions: 1}
+	if _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, w); err != nil {
 		return err
 	}
 	time.Sleep(time.Second / 2)
@@ -302,11 +299,25 @@ func EntryPoint(root *cli.Command) {
 		Usage:            "[options] [optional benchmark to run ...]",
 		Hidden:           true,
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
+			if err = cmd.GetOptionValues(&opts); err != nil {
+				return 1, err
+			}
+			opts.Repetitions = max(1, opts.Repetitions)
 			if err = main(args); err != nil {
 				ret = 1
 			}
 			return
 		},
 	})
-	_ = sc
+	sc.Add(cli.OptionSpec{
+		Name:    "--repetitions",
+		Default: "10",
+		Type:    "int",
+		Help:    "The number of repetitions of each benchmark",
+	})
+	sc.Add(cli.OptionSpec{
+		Name: "--with-scrollback",
+		Type: "bool-set",
+		Help: "Use the main screen instead of the alt screen so speed of scrollback is also tested",
+	})
 }
