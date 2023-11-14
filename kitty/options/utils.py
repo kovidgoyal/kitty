@@ -702,14 +702,32 @@ def active_tab_title_template(x: str) -> Optional[str]:
     return None if x == 'none' else x
 
 
-def notify_on_cmd_finish(x: str) -> Tuple[str, float]:
+class NotifyOnCmdFinish(NamedTuple):
+    when: str
+    duration: float
+    action: str
+    cmdline: List[str]
+
+def notify_on_cmd_finish(x: str) -> NotifyOnCmdFinish:
     parts = x.split()
     if parts[0] not in ('never', 'unfocused', 'invisible', 'always'):
-        raise ValueError(f'Unknown notify_on_cmd_finish value: {x}')
+        raise ValueError(f'Unknown notify_on_cmd_finish value: {parts[0]}')
+    when = parts[0]
     duration = 5.0
     if len(parts) > 1:
         duration = float(parts[1])
-    return parts[0], duration
+    action = 'notify'
+    cmdline = []
+    if len(parts) > 2:
+        if parts[2] not in ('notify', 'bell', 'command'):
+            raise ValueError(f'Unknown notify_on_cmd_finish action: {parts[2]}')
+        action = parts[2]
+        if action == 'command':
+            if len(parts) > 3:
+                cmdline = parts[3:]
+            else:
+                raise ValueError('notify_on_cmd_finish `command` action needs a command line')
+    return NotifyOnCmdFinish(when, duration, action, cmdline)
 
 
 def config_or_absolute_path(x: str, env: Optional[Dict[str, str]] = None) -> Optional[str]:

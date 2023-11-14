@@ -8,7 +8,10 @@ import kitty.constants
 from kitty.fast_data_types import Color, SingleKey
 import kitty.fast_data_types
 import kitty.fonts
-from kitty.options.utils import AliasMap, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, TabBarMarginHeight
+from kitty.options.utils import (
+    AliasMap, KeyDefinition, KeyMap, MouseMap, MouseMapping, NotifyOnCmdFinish, SequenceMap,
+    TabBarMarginHeight
+)
 import kitty.options.utils
 from kitty.types import FloatEdges
 import kitty.types
@@ -546,7 +549,7 @@ class Options:
     mark3_background: Color = Color(242, 116, 188)
     mark3_foreground: Color = Color(0, 0, 0)
     mouse_hide_wait: float = 0.0 if is_macos else 3.0
-    notify_on_cmd_finish: typing.Tuple[str, float] = ('never', 5.0)
+    notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=[])
     open_url_with: typing.List[str] = ['default']
     paste_actions: typing.FrozenSet[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     placement_strategy: choices_for_placement_strategy = 'center'

@@ -1339,15 +1339,26 @@ class Window:
                 self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": False, "time": end_time})
 
                 opts = get_options()
-                mode, duration = opts.notify_on_cmd_finish
+                when, duration, action, cmdline = opts.notify_on_cmd_finish
 
-                if last_cmd_output_duration >= duration and mode != 'never':
+                if last_cmd_output_duration >= duration and when != 'never':
                     cmd = NotificationCommand()
                     cmd.title = 'kitty'
                     cmd.body = 'Command finished in a background window.\nClick to focus.'
                     cmd.actions = 'focus'
-                    cmd.only_when = OnlyWhen(mode)
-                    notify_with_command(cmd, self.id)
+                    cmd.only_when = OnlyWhen(when)
+                    if action == 'notify':
+                        notify_with_command(cmd, self.id)
+                    elif action == 'bell':
+                        def bell(title: str, body: str, identifier: str) -> None:
+                            self.screen.bell()
+                        notify_with_command(cmd, self.id, notify_implementation=bell)
+                    elif action == 'command':
+                        def run_command(title: str, body: str, identifier: str) -> None:
+                            open_cmd(cmdline)
+                        notify_with_command(cmd, self.id, notify_implementation=run_command)
+                    else:
+                        raise ValueError(f'Unknown action in option `notify_on_cmd_finish`: {action}')
     # }}}
 
     # mouse actions {{{

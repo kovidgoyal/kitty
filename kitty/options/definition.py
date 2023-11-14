@@ -3168,11 +3168,35 @@ The possible values are:
 :code:`always`
     Always send a notification, regardless of window state.
 
-Furthermore, you can set the minimum duration for what is considered a
+Furthermore, you can set two optional arguments:
+
+1. The minimum duration for what is considered a
 long running command. The default is 5 seconds. Specify a second argument
 to set the duration. For example: :code:`invisible 15`.
 Do not set the value too small, otherwise a command that launches a new OS Window
 and exits will spam a notification.
+
+2. The action to perform. The default is :code:`notify`. The possible values are:
+
+:code:`notify`
+    Send a desktop notification.
+
+:code:`bell`
+    Ring the terminal bell.
+
+:code:`command`
+    Run a custom command. All subsequent arguments are the cmdline to run.
+
+Some more examples::
+
+    # Send a notification when a command takes more than 5 seconds in an unfocused window
+    notify_on_cmd_finish unfocused
+    # Send a notification when a command takes more than 10 seconds in a invisible window
+    notify_on_cmd_finish invisible 10.0
+    # Ring a bell when a command takes more than 10 seconds in a invisible window
+    notify_on_cmd_finish invisible 10.0 bell
+    # Run 'notify-send' when a command takes more than 10 seconds in a invisible window
+    notify_on_cmd_finish invisible 10.0 command notify-send command finished
 '''
     )
 
