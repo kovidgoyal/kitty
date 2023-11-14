@@ -261,6 +261,7 @@ class Watchers:
     on_focus_change: List[Watcher]
     on_set_user_var: List[Watcher]
     on_title_change: List[Watcher]
+    on_cmd_startstop: List[Watcher]
 
     def __init__(self) -> None:
         self.on_resize = []
@@ -268,6 +269,7 @@ class Watchers:
         self.on_focus_change = []
         self.on_set_user_var = []
         self.on_title_change = []
+        self.on_cmd_startstop = []
 
     def add(self, others: 'Watchers') -> None:
         def merge(base: List[Watcher], other: List[Watcher]) -> None:
@@ -279,10 +281,11 @@ class Watchers:
         merge(self.on_focus_change, others.on_focus_change)
         merge(self.on_set_user_var, others.on_set_user_var)
         merge(self.on_title_change, others.on_title_change)
+        merge(self.on_cmd_startstop, others.on_cmd_startstop)
 
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
-        del self.on_set_user_var[:], self.on_title_change[:]
+        del self.on_set_user_var[:], self.on_title_change[:], self.on_cmd_startstop[:]
 
     def copy(self) -> 'Watchers':
         ans = Watchers()
@@ -291,11 +294,13 @@ class Watchers:
         ans.on_focus_change = self.on_focus_change[:]
         ans.on_set_user_var = self.on_set_user_var[:]
         ans.on_title_change = self.on_title_change[:]
+        ans.on_cmd_startstop = self.on_cmd_startstop[:]
         return ans
 
     @property
     def has_watchers(self) -> bool:
-        return bool(self.on_close or self.on_resize or self.on_focus_change)
+        return bool(self.on_close or self.on_resize or self.on_focus_change
+                    or self.on_set_user_var or self.on_title_change or self.on_cmd_startstop)
 
 
 def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: Dict[str, Any]) -> None:
@@ -1321,11 +1326,17 @@ class Window:
 
     def cmd_output_marking(self, is_start: int) -> None:
         if is_start:
-            self.last_cmd_output_start_time = monotonic()
+            start_time = monotonic()
+            self.last_cmd_output_start_time = start_time
+
+            self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": True, "time": start_time})
         else:
             if self.last_cmd_output_start_time > 0:
-                last_cmd_output_duration = monotonic() - self.last_cmd_output_start_time
+                end_time = monotonic()
+                last_cmd_output_duration = end_time - self.last_cmd_output_start_time
                 self.last_cmd_output_start_time = 0
+
+                self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": False, "time": end_time})
 
                 opts = get_options()
                 mode = opts.notify_on_cmd_finish
