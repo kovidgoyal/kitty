@@ -53,6 +53,9 @@ class Callbacks:
     def color_profile_popped(self, x) -> None:
         pass
 
+    def cmd_output_marking(self, is_start: bool) -> None:
+        pass
+
     def request_capabilities(self, q) -> None:
         from kitty.terminfo import get_capabilities
         for c in get_capabilities(q, None):

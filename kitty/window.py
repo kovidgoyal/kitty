@@ -1324,7 +1324,7 @@ class Window:
                 if self.child_title:
                     self.title_stack.append(self.child_title)
 
-    def cmd_output_marking(self, is_start: int) -> None:
+    def cmd_output_marking(self, is_start: bool) -> None:
         if is_start:
             start_time = monotonic()
             self.last_cmd_output_start_time = start_time

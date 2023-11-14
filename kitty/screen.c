@@ -2217,11 +2217,11 @@ shell_prompt_marking(Screen *self, PyObject *data) {
                 if (PyErr_Occurred()) PyErr_Print();
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = pk;
                 if (pk == PROMPT_START)
-                    CALLBACK("cmd_output_marking", "i", 0);
+                    CALLBACK("cmd_output_marking", "O", Py_False);
             } break;
             case 'C':
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = OUTPUT_START;
-                CALLBACK("cmd_output_marking", "i", 1);
+                CALLBACK("cmd_output_marking", "O", Py_True);
                 break;
         }
     }
