@@ -15,6 +15,7 @@
 #include "state.h"
 #include "modes.h"
 #include "simd-string.h"
+#include <stdalign.h>
 
 #define BUF_SZ (1024u*1024u)
 // The extra bytes are so loads of large integers such as for AVX 512 dont read past the end of the buffer
@@ -207,7 +208,7 @@ typedef struct PS {
     // The buffer
     struct { size_t consumed, pos, sz; } read;
     struct { size_t offset, sz, pending; } write;
-    uint8_t buf[BUF_SZ + BUF_EXTRA];
+    alignas(BUF_EXTRA) uint8_t buf[BUF_SZ + BUF_EXTRA];
 } PS;
 static_assert(offsetof(PS, buf) > sizeof(BYTE_LOADER_T), "There must be enough space before the buf[] array for aligned loads");
 
