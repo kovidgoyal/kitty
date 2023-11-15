@@ -246,31 +246,32 @@ draw_byte(PS *self, const uint8_t b) {
 static void
 dispatch_normal_mode_byte(PS *self, uint8_t ch) {
 #define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name); name(self->screen); break;
-    switch(ch) {
-        case BEL:
-            CALL_SCREEN_HANDLER(screen_bell);
-        case BS:
-            CALL_SCREEN_HANDLER(screen_backspace);
-        case HT:
-            CALL_SCREEN_HANDLER(screen_tab);
-        case LF:
-        case VT:
-        case FF:
-            CALL_SCREEN_HANDLER(screen_linefeed);
-        case CR:
-            CALL_SCREEN_HANDLER(screen_carriage_return);
-        case SI:
-            REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
-        case SO:
-            REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
-        case ESC:
-            SET_STATE(ESC); break;
-        case NUL:
-        case DEL:
-            break;  // no-op
-        default:
-            draw_byte(self, ch);
-            break;
+    if (ch < ' ') {
+        switch(ch) {
+            case BEL:
+                CALL_SCREEN_HANDLER(screen_bell);
+            case BS:
+                CALL_SCREEN_HANDLER(screen_backspace);
+            case HT:
+                CALL_SCREEN_HANDLER(screen_tab);
+            case LF:
+            case VT:
+            case FF:
+                CALL_SCREEN_HANDLER(screen_linefeed);
+            case CR:
+                CALL_SCREEN_HANDLER(screen_carriage_return);
+            case SI:
+                REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
+            case SO:
+                REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
+            case ESC:
+                SET_STATE(ESC); break;
+                break;
+            default:
+                break;
+        }
+    } else {
+        draw_byte(self, ch);
     }
 #undef CALL_SCREEN_HANDLER
 }
