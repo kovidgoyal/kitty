@@ -165,16 +165,17 @@ typedef struct ImageAnchorPosition {
     }
 
 #ifdef __clang__
-#define IGNORE_PEDANTIC_WARNINGS _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wpedantic\"")
-#define END_IGNORE_PEDANTIC_WARNINGS _Pragma("clang diagnostic pop")
-#define ALLOW_UNUSED_RESULT _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wunused-result\"")
-#define END_ALLOW_UNUSED_RESULT _Pragma("clang diagnostic pop")
+#define START_IGNORE_DIAGNOSTIC(diag) _Pragma(xstr(clang diagnostic push))  _Pragma(xstr(clang diagnostic ignored diag))
+#define END_IGNORE_DIAGNOSTIC _Pragma("clang diagnostic pop")
 #else
-#define IGNORE_PEDANTIC_WARNINGS _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
-#define END_IGNORE_PEDANTIC_WARNINGS _Pragma("GCC diagnostic pop")
-#define ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic ignored \"-Wunused-result\"")
-#define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
+#define START_IGNORE_DIAGNOSTIC(diag) _Pragma(xstr(GCC diagnostic push))  _Pragma(xstr(GCC diagnostic ignored diag))
+#define END_IGNORE_DIAGNOSTIC _Pragma("GCC diagnostic pop")
 #endif
+
+#define IGNORE_PEDANTIC_WARNINGS START_IGNORE_DIAGNOSTIC("-Wpedantic")
+#define END_IGNORE_PEDANTIC_WARNINGS END_IGNORE_DIAGNOSTIC
+#define ALLOW_UNUSED_RESULT IGNORE_DIAGNOSTIC("-Wunused-result")
+#define END_ALLOW_UNUSED_RESULT END_IGNORE_DIAGNOSTIC
 #define START_ALLOW_CASE_RANGE IGNORE_PEDANTIC_WARNINGS
 #define END_ALLOW_CASE_RANGE END_IGNORE_PEDANTIC_WARNINGS
 #define BIT_MASK(__TYPE__, __ONE_COUNT__) \
