@@ -658,22 +658,20 @@ screen_on_input(Screen *self) {
 }
 
 static void
-ensure_cursor_not_on_wide_char_trailer_for_insert(Screen *self) {
-    if (self->cursor->x == 0) return;
-    CPUCell *c; GPUCell *g;
-    linebuf_init_cells(self->linebuf, self->cursor->y, &c, &g);
-    if (g[self->cursor->x - 1].attrs.width == 2) {
-        g[self->cursor->x-1].attrs.width = 1;
-        c[self->cursor->x-1].ch = ' ';
-        c[self->cursor->x].ch = 0;
-        memset(c[self->cursor->x-1].cc_idx, 0, sizeof(c[0].cc_idx));
-        memset(c[self->cursor->x].cc_idx, 0, sizeof(c[0].cc_idx));
+ensure_cursor_not_on_wide_char_trailer_for_insert(Screen *self, text_loop_state *s) {
+    if (UNLIKELY(self->cursor->x > 0 && s->gp[self->cursor->x - 1].attrs.width == 2)) {
+        memcpy(s->gp + self->cursor->x - 1, &s->g, sizeof(s->g));
+        memcpy(s->cp + self->cursor->x - 1, &s->cc, sizeof(s->cc));
+        s->cp[self->cursor->x-1].ch = ' ';
+        memcpy(s->gp + self->cursor->x, &s->g, sizeof(s->g));
+        memcpy(s->cp + self->cursor->x, &s->cc, sizeof(s->cc));
     }
 }
 
 static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
+    if (chars[0] < 0x7f || !is_combining_char(chars[0])) ensure_cursor_not_on_wide_char_trailer_for_insert(self, s);
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = chars[i];
         if (ch < ' ') continue;
@@ -701,7 +699,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 init_text_loop_line(self, s);
             } else {
                 self->cursor->x = self->columns - char_width;
-                ensure_cursor_not_on_wide_char_trailer_for_insert(self);
+                ensure_cursor_not_on_wide_char_trailer_for_insert(self, s);
             }
         }
         if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, char_width);
@@ -738,7 +736,6 @@ draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
             .decoration_fg=force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->decoration_fg & COL_MASK,
         }
     };
-    ensure_cursor_not_on_wide_char_trailer_for_insert(self);
     draw_text_loop(self, chars, num_chars, &s);
 }
 
