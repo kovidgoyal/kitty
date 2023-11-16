@@ -20,11 +20,20 @@ SW = None
 def run(*a):
     if len(a) == 1:
         a = shlex.split(a[0])
-    print(' '.join(map(shlex.quote, a)))
+    cmd = ' '.join(map(shlex.quote, a))
+    print(cmd)
     sys.stdout.flush()
     ret = subprocess.Popen(a).wait()
     if ret != 0:
-        raise SystemExit(ret)
+        if ret < 0:
+            import signal
+            try:
+                sig = signal.Signals(-ret)
+            except ValueError:
+                pass
+            else:
+                raise SystemExit(f'The following process was killed by signal: {sig.name}:\n{cmd}')
+        raise SystemExit(f'The following process failed with exit code: {ret}:\n{cmd}')
 
 
 def install_deps():
