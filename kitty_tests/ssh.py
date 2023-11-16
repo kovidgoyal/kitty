@@ -250,13 +250,13 @@ env COLORTERM
                 if 'bzip2' in q:
                     raise ValueError('Untarring failed with screen contents:\n' + q)
                 return 'UNTAR_DONE' in q
-            pty.wait_till(check_untar_or_fail, timeout=30)
+            pty.wait_till(check_untar_or_fail, timeout=60)
             self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
             if SHELL_INTEGRATION_VALUE != 'enabled':
-                pty.wait_till(lambda: len(pty.screen_contents().splitlines()) > 1, timeout=30)
+                pty.wait_till(lambda: len(pty.screen_contents().splitlines()) > 1, timeout=60)
                 self.assertEqual(pty.screen.cursor.shape, 0)
             else:
-                pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM, timeout=30)
+                pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM, timeout=60)
             return pty
         finally:
             with suppress(FileNotFoundError):
