@@ -747,11 +747,10 @@ screen_draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
 }
 
 static void
-draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
-    if (from_input_stream) screen_on_input(self);
+draw_codepoint(Screen *self, char_type ch) {
     uint32_t lch = self->last_graphic_char;
     draw_text(self, &ch, 1);
-    if (!from_input_stream) self->last_graphic_char = lch;
+    self->last_graphic_char = lch;
 }
 
 void
@@ -3130,7 +3129,7 @@ screen_draw_overlay_line(Screen *self) {
     const Py_ssize_t sz = PyUnicode_GET_LENGTH(self->overlay_line.overlay_text);
     for (Py_ssize_t pos = 0; pos < sz; pos++) {
         before = self->cursor->x;
-        draw_codepoint(self, PyUnicode_READ(kind, data, pos), false);
+        draw_codepoint(self, PyUnicode_READ(kind, data, pos));
         index_type len = self->cursor->x - before;
         if (columns_exceeded > 0) {
             // Reset the cursor to maintain right alignment when the overlay exceeds the screen width.
