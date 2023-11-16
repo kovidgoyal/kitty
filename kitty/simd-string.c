@@ -243,8 +243,12 @@ init_simd(void *x) {
     PyObject *module = (PyObject*)x;
 #define A(x, val) { Py_INCREF(Py_##val); if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; }
 #ifdef __APPLE__
-    // Modern Apple Intel processors should all support AVX2. And simde takes care of NEON on Apple Silicon
+#ifdef __arm64__
+    // simde takes care of NEON on Apple Silicon
     has_sse4_2 = true; has_avx2 = true;
+#else
+    has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; has_avx2 = __builtin_cpu_supports("avx2");
+#endif
 #else
 #ifdef __aarch64__
     // no idea how to probe ARM cpu for NEON support. This file uses pretty

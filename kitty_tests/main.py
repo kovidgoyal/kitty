@@ -298,6 +298,8 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     if os.environ.get('CI') == 'true' or report_env:
         print('Using PATH in test environment:', path)
         print('Python:', python_for_type_check())
+        from kitty.fast_data_types import has_avx2, has_sse4_2
+        print(f'Intrinsics: {has_avx2=} {has_sse4_2=}')
 
     with TemporaryDirectory() as tdir, env_vars(
         HOME=tdir,
