@@ -3541,10 +3541,10 @@ static PyObject*
 draw(Screen *self, PyObject *src) {
     if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
-    int kind = PyUnicode_KIND(src);
-    void *buf = PyUnicode_DATA(src);
-    Py_ssize_t sz = PyUnicode_GET_LENGTH(src);
-    for (Py_ssize_t i = 0; i < sz; i++) draw_codepoint(self, PyUnicode_READ(kind, buf, i), true);
+    Py_UCS4 *buf = PyUnicode_AsUCS4Copy(src);
+    if (!buf) return NULL;
+    draw_text(self, buf, PyUnicode_GetLength(src));
+    PyMem_Free(buf);
     Py_RETURN_NONE;
 }
 
