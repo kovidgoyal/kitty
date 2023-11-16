@@ -1100,7 +1100,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
             sanitize_args = get_sanitize_args(env.cc, env.ccver)
             cflags.extend(sanitize_args)
             ldflags.extend(sanitize_args)
-            libs += ['-lasan'] if is_gcc(env.cc) and not is_macos else []
+            libs += ['-lasan'] if not is_macos and is_gcc(env.cc) else []
         else:
             cflags.append('-g')
         if args.profile:
