@@ -482,6 +482,7 @@ dealloc(Screen* self) {
 // Draw text {{{
 typedef struct text_loop_state {
     bool image_placeholder_marked;
+    const CPUCell cc; const GPUCell g;
     CPUCell *cp; GPUCell *gp;
 } text_loop_state;
 
@@ -520,12 +521,12 @@ init_text_loop_line(Screen *self, text_loop_state *s) {
 
 
 static void
-move_widened_char(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos, const CPUCell cc, const GPUCell g) {
+move_widened_char(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
     self->cursor->x = xpos; self->cursor->y = ypos;
     CPUCell src_cpu = *cpu_cell, *dest_cpu;
     GPUCell src_gpu = *gpu_cell, *dest_gpu;
-    memcpy(cpu_cell, &cc, sizeof(cc));
-    memcpy(gpu_cell, &g, sizeof(g));
+    memcpy(cpu_cell, &s->cc, sizeof(s->cc));
+    memcpy(gpu_cell, &s->g, sizeof(s->g));
 
     if (self->modes.mDECAWM) {  // overflow goes onto next line
         continue_to_next_line(self);
@@ -538,8 +539,8 @@ move_widened_char(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *
         self->cursor->x = self->columns;
     }
     *dest_cpu = src_cpu; *dest_gpu = src_gpu;
-    memcpy(dest_cpu + 1 , &cc, sizeof(cc));
-    memcpy(dest_gpu + 1, &g, sizeof(g));
+    memcpy(dest_cpu + 1 , &s->cc, sizeof(s->cc));
+    memcpy(dest_gpu + 1, &s->g, sizeof(s->g));
     dest_gpu[1].attrs.width = 0;
 }
 
@@ -602,7 +603,7 @@ draw_second_flag_codepoint(Screen *self, char_type ch) {
 }
 
 static void
-draw_combining_char(Screen *self, text_loop_state *s, char_type ch, const CPUCell cc, const GPUCell g) {
+draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     bool has_prev_char = false;
     index_type xpos = 0, ypos = 0;
     if (self->cursor->x > 0) {
@@ -624,11 +625,11 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch, const CPUCel
             if (gpu_cell->attrs.width != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
                 gpu_cell->attrs.width = 2;
                 if (xpos + 1 < self->columns) {
-                    memcpy(cp + xpos + 1, &cc, sizeof(cc));
-                    memcpy(gp + xpos + 1, &g, sizeof(g));
+                    memcpy(cp + xpos + 1, &s->cc, sizeof(s->cc));
+                    memcpy(gp + xpos + 1, &s->g, sizeof(s->g));
                     gp[xpos + 1].attrs.width = 0;
                     self->cursor->x++;
-                } else move_widened_char(self, s, cpu_cell, gpu_cell, xpos, ypos, cc, g);
+                } else move_widened_char(self, s, cpu_cell, gpu_cell, xpos, ypos);
             }
         } else if (ch == 0xfe0e) {
             CPUCell *cpu_cell = cp + xpos;
@@ -671,9 +672,8 @@ ensure_cursor_not_on_wide_char_trailer_for_insert(Screen *self) {
 }
 
 static void
-draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, const CPUCell cc, const GPUCell g) {
-    text_loop_state s;
-    init_text_loop_line(self, &s);
+draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
+    init_text_loop_line(self, s);
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = chars[i];
         if (ch < ' ') continue;
@@ -684,7 +684,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, const CPUC
                 if (UNLIKELY(is_flag_codepoint(ch))) {
                     if (draw_second_flag_codepoint(self, ch)) continue;
                 } else {
-                    draw_combining_char(self, &s, ch, cc, g);
+                    draw_combining_char(self, s, ch);
                     continue;
                 }
             }
@@ -698,26 +698,26 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, const CPUC
         if (UNLIKELY(self->columns < self->cursor->x + (unsigned int)char_width)) {
             if (self->modes.mDECAWM) {
                 continue_to_next_line(self);
-                init_text_loop_line(self, &s);
+                init_text_loop_line(self, s);
             } else {
                 self->cursor->x = self->columns - char_width;
                 ensure_cursor_not_on_wide_char_trailer_for_insert(self);
             }
         }
         if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, char_width);
-        if (UNLIKELY(!s.image_placeholder_marked && ch == IMAGE_PLACEHOLDER_CHAR)) {
+        if (UNLIKELY(!s->image_placeholder_marked && ch == IMAGE_PLACEHOLDER_CHAR)) {
             linebuf_set_line_has_image_placeholders(self->linebuf, self->cursor->y, true);
-            s.image_placeholder_marked = true;
+            s->image_placeholder_marked = true;
         }
-        memcpy(s.gp + self->cursor->x, &g, sizeof(g));
-        memcpy(s.cp + self->cursor->x, &cc, sizeof(cc));
-        s.cp[self->cursor->x].ch = ch;
+        memcpy(s->gp + self->cursor->x, &s->g, sizeof(s->g));
+        memcpy(s->cp + self->cursor->x, &s->cc, sizeof(s->cc));
+        s->cp[self->cursor->x].ch = ch;
         self->cursor->x++;
         if (char_width == 2) {
-            s.gp[self->cursor->x-1].attrs.width = 2;
-            memcpy(s.gp + self->cursor->x, &g, sizeof(g));
-            memcpy(s.cp + self->cursor->x, &cc, sizeof(cc));
-            s.gp[self->cursor->x].attrs.width = 0;
+            s->gp[self->cursor->x-1].attrs.width = 2;
+            memcpy(s->gp + self->cursor->x, &s->g, sizeof(s->g));
+            memcpy(s->cp + self->cursor->x, &s->cc, sizeof(s->cc));
+            s->gp[self->cursor->x].attrs.width = 0;
             self->cursor->x++;
         }
     }
@@ -727,14 +727,19 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, const CPUC
 static void
 draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
     self->is_dirty = true;
-    const CPUCell cc = {.hyperlink_id=self->active_hyperlink_id};
-    GPUCell g = {.attrs=cursor_to_attrs(self->cursor, 1), .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK, .decoration_fg=self->cursor->decoration_fg & COL_MASK};
-    if (OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && cc.hyperlink_id) {
-        g.decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;
-        g.attrs.decoration = OPT(url_style);
-    }
+    const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0;
+    CellAttrs attrs = cursor_to_attrs(self->cursor, 1);
+    if (force_underline) attrs.decoration = OPT(url_style);
+    text_loop_state s={
+        .cc=(CPUCell){.hyperlink_id=self->active_hyperlink_id},
+        .g=(GPUCell){
+            .attrs=attrs,
+            .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK,
+            .decoration_fg=force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->decoration_fg & COL_MASK,
+        }
+    };
     ensure_cursor_not_on_wide_char_trailer_for_insert(self);
-    draw_text_loop(self, chars, num_chars, cc, g);
+    draw_text_loop(self, chars, num_chars, &s);
 }
 
 void
