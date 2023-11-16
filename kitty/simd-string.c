@@ -7,6 +7,7 @@
 
 #define SIMDE_ENABLE_NATIVE_ALIASES
 #include "data-types.h"
+#include "charsets.h"
 #include "simd-string.h"
 #ifdef __clang__
 _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
@@ -197,6 +198,46 @@ find_byte_not_in_range(const uint8_t *haystack, const size_t sz, const uint8_t a
 }
 // }}}
 
+// UTF-8 {{{
+
+static unsigned
+utf8_decode_to_sentinel_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
+    unsigned num_consumed = 0, num_output = 0;
+    while (num_consumed < src_sz && num_output < arraysz(d->output)) {
+        const uint8_t ch = src[num_consumed++];
+        if (ch < ' ') {
+            zero_at_ptr(&d->state);
+            if (num_output) { d->output_chars_callback(d->callback_data, d->output, num_output); num_output = 0; }
+            d->control_byte_callback(d->callback_data, ch);
+            if (ch == sentinel) break;
+        } else {
+            switch(decode_utf8(&d->state.cur, &d->state.codep, ch)) {
+                case UTF8_ACCEPT:
+                    d->output[num_output++] = d->state.codep;
+                    break;
+                case UTF8_REJECT: {
+                    const bool prev_was_accept = d->state.prev == UTF8_ACCEPT;
+                    zero_at_ptr(&d->state);
+                    d->output[num_output++] = 0xfffd;
+                    if (!prev_was_accept) {
+                        num_consumed--;
+                        continue; // so that prev is correct
+                    }
+                } break;
+            }
+        }
+        d->state.prev = d->state.cur;
+    }
+    if (num_output) d->output_chars_callback(d->callback_data, d->output, num_output);
+    return num_consumed;
+}
+
+unsigned
+utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
+    return utf8_decode_to_sentinel_scalar(d, src, src_sz, sentinel);
+}
+
+// }}}
 bool
 init_simd(void *x) {
     PyObject *module = (PyObject*)x;

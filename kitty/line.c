@@ -433,10 +433,10 @@ width(Line *self, PyObject *val) {
 }
 
 void
-line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
-    CPUCell *cell = self->cpu_cells + x;
+line_add_combining_char(CPUCell *cpu_cells, GPUCell *gpu_cells, uint32_t ch, unsigned int x) {
+    CPUCell *cell = cpu_cells + x;
     if (!cell->ch) {
-        if (x > 0 && (self->gpu_cells[x-1].attrs.width) == 2 && self->cpu_cells[x-1].ch) cell = self->cpu_cells + x - 1;
+        if (x > 0 && (gpu_cells[x-1].attrs.width) == 2 && cpu_cells[x-1].ch) cell = cpu_cells + x - 1;
         else return; // don't allow adding combining chars to a null cell
     }
     for (unsigned i = 0; i < arraysz(cell->cc_idx); i++) {
@@ -455,7 +455,7 @@ add_combining_char(Line* self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Column index out of bounds");
         return NULL;
     }
-    line_add_combining_char(self, new_char, x);
+    line_add_combining_char(self->cpu_cells, self->gpu_cells, new_char, x);
     Py_RETURN_NONE;
 }
 

@@ -9,7 +9,6 @@
 // TODO: Test screen_request_capabilities
 
 #include "vt-parser.h"
-#include "charsets.h"
 #include "screen.h"
 #include "control-codes.h"
 #include "state.h"
@@ -28,7 +27,7 @@
 // Macros {{{
 
 #define SET_STATE(x) \
-    self->vte_state = VTE_##x; if (VTE_##x == VTE_NORMAL) { zero_at_ptr(&self->utf8); }
+    self->vte_state = VTE_##x;
 
 #define DIGIT '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
 
@@ -66,13 +65,22 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
     unsigned int i, p=0;
     if (r) p += snprintf(buf + p, sizeof(buf) - 2, "%u %u %u %u ", r->top, r->left, r->bottom, r->right);
     const char *fmt = is_group ? "%i:" : "%i ";
-    for(i = 0; i < count && p < MAX_CSI_PARAMS*3-20; i++) {
-        int n = snprintf(buf + p, MAX_CSI_PARAMS*3 - p, fmt, params[i]);
+    for(i = 0; i < count && p < arraysz(buf)-20; i++) {
+        int n = snprintf(buf + p, arraysz(buf) - p, fmt, params[i]);
         if (n < 0) break;
         p += n;
     }
     buf[count ? p-1 : p] = 0;
     Py_XDECREF(PyObject_CallFunction(dump_callback, "Kss", window_id, name, buf)); PyErr_Clear();
+}
+
+static void
+_report_draw(PyObject *dump_callback, id_type window_id, const uint32_t *chars, unsigned num) {
+    RAII_PyObject(s, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, chars, num));
+    if (s) {
+        RAII_PyObject(t, PyObject_CallFunction(dump_callback, "KsO", window_id, "draw", s));
+        if (t == NULL) PyErr_Clear();
+    }
 }
 
 #define DUMP_UNUSED
@@ -92,11 +100,7 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
 #define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__)); PyErr_Clear();
 
-#define REPORT_DRAW(ch) \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); PyErr_Clear();
-
-#define REPORT_DRAW_ASCII(ch, sz) \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Kss#", self->window_id, "draw", ch, (Py_ssize_t)sz)); PyErr_Clear();
+#define REPORT_DRAW(chars, num) _report_draw(self->dump_callback, self->window_id, chars, num);
 
 #define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, is_group, region)
 
@@ -113,8 +117,7 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_ERROR(...) log_error(ERROR_PREFIX " " __VA_ARGS__);
 #define REPORT_COMMAND(...)
 #define REPORT_VA_COMMAND(...)
-#define REPORT_DRAW(ch)
-#define REPORT_DRAW_ASCII(ch, sz)
+#define REPORT_DRAW(chars, num)
 #define REPORT_PARAMS(...)
 #define REPORT_OSC(name, string)
 #define REPORT_OSC2(name, code, string)
@@ -188,7 +191,7 @@ typedef struct ParsedCSI {
 typedef struct PS {
     id_type window_id;
 
-    struct { UTF8State prev, state; uint32_t codep; } utf8;
+    UTF8Decoder utf8_decoder;
     VTEState vte_state;
     ParsedCSI csi;
 
@@ -223,79 +226,45 @@ reset_csi(ParsedCSI *csi) {
 // Normal mode {{{
 
 static void
-draw_byte(PS *self, const uint8_t b) {
-    switch (decode_utf8(&self->utf8.state, &self->utf8.codep, b)) {
-        case UTF8_ACCEPT:
-            REPORT_DRAW(self->utf8.codep);
-            screen_draw(self->screen, self->utf8.codep);
-            break;
-        case UTF8_REJECT: {
-            bool prev_was_accept = self->utf8.prev == UTF8_ACCEPT;
-            zero_at_ptr(&self->utf8);
-            REPORT_DRAW(0xfffd);
-            screen_draw(self->screen, 0xfffd);
-            if (!prev_was_accept) {
-                draw_byte(self, b);
-                return;  // so that prev is correct
-            }
-        } break;
-    }
-    self->utf8.prev = self->utf8.state;
-}
-
-static void
-dispatch_normal_mode_byte(PS *self, uint8_t ch) {
+dispatch_single_byte_control(void *s, uint8_t ch) {
 #define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name); name(self->screen); break;
-    if (ch < ' ') {
-        switch(ch) {
-            case BEL:
-                CALL_SCREEN_HANDLER(screen_bell);
-            case BS:
-                CALL_SCREEN_HANDLER(screen_backspace);
-            case HT:
-                CALL_SCREEN_HANDLER(screen_tab);
-            case LF:
-            case VT:
-            case FF:
-                CALL_SCREEN_HANDLER(screen_linefeed);
-            case CR:
-                CALL_SCREEN_HANDLER(screen_carriage_return);
-            case SI:
-                REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
-            case SO:
-                REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
-            case ESC:
-                SET_STATE(ESC); break;
-                break;
-            default:
-                break;
-        }
-    } else {
-        draw_byte(self, ch);
+    PS *self = s;
+    switch(ch) {
+        case BEL:
+            CALL_SCREEN_HANDLER(screen_bell);
+        case BS:
+            CALL_SCREEN_HANDLER(screen_backspace);
+        case HT:
+            CALL_SCREEN_HANDLER(screen_tab);
+        case LF:
+        case VT:
+        case FF:
+            CALL_SCREEN_HANDLER(screen_linefeed);
+        case CR:
+            CALL_SCREEN_HANDLER(screen_carriage_return);
+        case SI:
+            REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
+        case SO:
+            REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
+        case ESC:
+            SET_STATE(ESC); break;
+        default:
+            break;
     }
 #undef CALL_SCREEN_HANDLER
 }
 
 static void
-dispatch_printable_ascii(PS *self, const size_t sz) {
-    REPORT_DRAW_ASCII(self->buf + self->read.pos, sz);
-    ByteLoader b; byte_loader_init(&b, self->buf + self->read.pos, sz);
-    screen_draw_printable_ascii(self->screen, &b);
-    self->read.pos += sz;
+dispatch_output_chars(void *s, const uint32_t *chars, unsigned sz) {
+    PS *self = s;
+    REPORT_DRAW(chars, sz);
+    screen_draw_text(self->screen, chars, sz);
 }
 
 static void
 consume_normal(PS *self) {
     do {
-        if (self->utf8.state == UTF8_ACCEPT) {
-            size_t sz = self->read.sz - self->read.pos;
-            const uint8_t *p = find_byte_not_in_range(self->buf + self->read.pos, sz, 32, 126);
-            if (p != NULL) sz = p - (self->buf + self->read.pos);
-            if (sz) dispatch_printable_ascii(self, sz);
-            else dispatch_normal_mode_byte(self, self->buf[self->read.pos++]);
-        } else {
-            dispatch_normal_mode_byte(self, self->buf[self->read.pos++]);
-        }
+        self->read.pos += utf8_decode_to_sentinel(&self->utf8_decoder, self->buf + self->read.pos, self->read.sz - self->read.pos, ESC);
     } while (self->read.pos < self->read.sz && self->vte_state == VTE_NORMAL);
 }
 // }}}
@@ -829,7 +798,7 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
             case CSI_START:
                 switch (ch) {
                     case CSI_NORMAL_MODE_EMBEDDINGS:
-                        dispatch_normal_mode_byte(self, ch); break;
+                        dispatch_single_byte_control(self, ch); break;
                     case ';':
                         csi->params[csi->num_params++] = 0;
                         csi->state = CSI_BODY;
@@ -867,7 +836,7 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
             case CSI_POST_SECONDARY:
                 switch (ch) {
                     case CSI_NORMAL_MODE_EMBEDDINGS:
-                        dispatch_normal_mode_byte(self, ch); break;
+                        dispatch_single_byte_control(self, ch); break;
                     case CSI_TRAILER:
                         csi->is_valid = true;
                         csi->trailer = ch;
@@ -880,7 +849,7 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
             case CSI_BODY:
                 switch(ch) {
                     case CSI_NORMAL_MODE_EMBEDDINGS:
-                        dispatch_normal_mode_byte(self, ch); break;
+                        dispatch_single_byte_control(self, ch); break;
                     case CSI_SECONDARY:
                         if (ch == '-' && csi->num_digits == 0) {
                             csi->mult = -1; csi->num_digits = 1;
@@ -1605,12 +1574,16 @@ run_worker(void *p, ParseData *pd, bool flush) {
             if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
         }
 #endif
-        self->screen = p;
         if (self->read.pos < self->read.sz) {
-            self->dump_callback = pd->dump_callback; self->now = pd->now;
             pd->time_since_new_input = pd->now - self->new_input_at;
             if (flush || pd->time_since_new_input >= OPT(input_delay) || (BUF_SZ - self->read.sz) <= 16 * 1024) {
                 pd->input_read = true;
+                self->dump_callback = pd->dump_callback; self->now = pd->now;
+                self->screen = p;
+                // these are here as they need to be specialized to dump/non dump versions
+                self->utf8_decoder.control_byte_callback = dispatch_single_byte_control;
+                self->utf8_decoder.output_chars_callback = dispatch_output_chars;
+                self->utf8_decoder.callback_data = self;
                 do {
                     end_with_lock; {
                         do_parse_vt(self);
@@ -1704,7 +1677,7 @@ static void
 reset(PS *self) {
     SET_STATE(NORMAL);
     reset_csi(&self->csi);
-
+    utf8_decoder_reset(&self->utf8_decoder);
     zero_at_ptr(&self->pending_mode);
     self->pending_mode.wait_time = DEFAULT_PENDING_WAIT_TIME;
 }
@@ -1756,9 +1729,10 @@ alloc_vt_parser(id_type window_id) {
             Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Parser lock mutex: %s", strerror(ret));
             return NULL;
         }
-        state->csi.mult = 1;
         state->window_id = window_id;
         state->pending_mode.wait_time = DEFAULT_PENDING_WAIT_TIME;
+        utf8_decoder_reset(&state->utf8_decoder);
+        reset_csi(&state->csi);
     }
     return self;
 }

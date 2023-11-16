@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdalign.h>
+#include "data-types.h"
 
 #define BYTE_LOADER_T unsigned long long
 typedef struct ByteLoader {
@@ -16,11 +18,23 @@ typedef struct ByteLoader {
     unsigned sz_of_next_load, digits_left, num_left;
     const uint8_t *next_load_at;
 } ByteLoader;
-
-
 uint8_t byte_loader_peek(const ByteLoader *self);
 void byte_loader_init(ByteLoader *self, const uint8_t *buf, unsigned int sz);
 uint8_t byte_loader_next(ByteLoader *self);
+
+typedef void (*control_byte_callback)(void *data, uint8_t ch);
+typedef void (*output_chars_callback)(void *data, const uint32_t *chars, unsigned count);
+
+typedef struct UTF8Decoder {
+    struct { uint32_t cur, prev, codep; } state;
+    alignas(64) uint32_t output[64];
+
+    void *callback_data;
+    control_byte_callback control_byte_callback;
+    output_chars_callback output_chars_callback;
+} UTF8Decoder;
+static inline void utf8_decoder_reset(UTF8Decoder *self) { zero_at_ptr(&self->state); }
+unsigned utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel);
 
 // Pass a PyModule PyObject* as the argument. Must be called once at application startup
 bool init_simd(void* module);

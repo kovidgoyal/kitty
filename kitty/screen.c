@@ -25,6 +25,7 @@
 #include "modes.h"
 #include "wcwidth-std.h"
 #include "wcswidth.h"
+#include <stdalign.h>
 #include "keys.h"
 #include "vt-parser.h"
 
@@ -479,30 +480,16 @@ dealloc(Screen* self) {
 } // }}}
 
 // Draw text {{{
+typedef struct text_loop_state {
+    bool image_placeholder_marked;
+    CPUCell *cp; GPUCell *gp;
+} text_loop_state;
 
 static void
-move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
-    self->cursor->x = xpos; self->cursor->y = ypos;
-    CPUCell src_cpu = *cpu_cell, *dest_cpu;
-    GPUCell src_gpu = *gpu_cell, *dest_gpu;
-    line_clear_text(self->linebuf->line, xpos, 1, BLANK_CHAR);
-
-    if (self->modes.mDECAWM) {  // overflow goes onto next line
-        linebuf_set_last_char_as_continuation(self->linebuf, self->cursor->y, true);
-        screen_carriage_return(self);
-        screen_linefeed(self);
-        linebuf_init_line(self->linebuf, self->cursor->y);
-        dest_cpu = self->linebuf->line->cpu_cells;
-        dest_gpu = self->linebuf->line->gpu_cells;
-        self->cursor->x = MIN(2u, self->columns);
-        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
-    } else {
-        dest_cpu = cpu_cell - 1;
-        dest_gpu = gpu_cell - 1;
-        self->cursor->x = self->columns;
-    }
-    *dest_cpu = src_cpu;
-    *dest_gpu = src_gpu;
+continue_to_next_line(Screen *self) {
+    linebuf_set_last_char_as_continuation(self->linebuf, self->cursor->y, true);
+    self->cursor->x = 0;
+    screen_linefeed(self);
 }
 
 static bool
@@ -518,6 +505,42 @@ selection_has_screen_line(const Selections *selections, const int y) {
         }
     }
     return false;
+}
+
+static void
+init_text_loop_line(Screen *self, text_loop_state *s) {
+    if (self->modes.mIRM) {
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        s->cp = self->linebuf->line->cpu_cells; s->gp = self->linebuf->line->gpu_cells;
+    } else linebuf_init_cells(self->linebuf, self->cursor->y, &s->cp, &s->gp);
+    if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
+    linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
+    s->image_placeholder_marked = false;
+}
+
+
+static void
+move_widened_char(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos, const CPUCell cc, const GPUCell g) {
+    self->cursor->x = xpos; self->cursor->y = ypos;
+    CPUCell src_cpu = *cpu_cell, *dest_cpu;
+    GPUCell src_gpu = *gpu_cell, *dest_gpu;
+    memcpy(cpu_cell, &cc, sizeof(cc));
+    memcpy(gpu_cell, &g, sizeof(g));
+
+    if (self->modes.mDECAWM) {  // overflow goes onto next line
+        continue_to_next_line(self);
+        init_text_loop_line(self, s);
+        dest_cpu = s->cp; dest_gpu = s->gp;
+        self->cursor->x = MIN(2u, self->columns);
+    } else {
+        dest_cpu = cpu_cell - 1;
+        dest_gpu = gpu_cell - 1;
+        self->cursor->x = self->columns;
+    }
+    *dest_cpu = src_cpu; *dest_gpu = src_gpu;
+    memcpy(dest_cpu + 1 , &cc, sizeof(cc));
+    memcpy(dest_gpu + 1, &g, sizeof(g));
+    dest_gpu[1].attrs.width = 0;
 }
 
 void
@@ -570,68 +593,52 @@ draw_second_flag_codepoint(Screen *self, char_type ch) {
         xpos = self->columns - 2;
     } else return false;
 
-    linebuf_init_line(self->linebuf, ypos);
-    CPUCell *cell = self->linebuf->line->cpu_cells + xpos;
+    CPUCell *cp; GPUCell *gp;
+    linebuf_init_cells(self->linebuf, ypos, &cp, &gp);
+    CPUCell *cell = cp + xpos;
     if (!is_flag_pair(cell->ch, ch) || cell->cc_idx[0]) return false;
-    line_add_combining_char(self->linebuf->line, ch, xpos);
-    self->is_dirty = true;
-    if (selection_has_screen_line(&self->selections, ypos)) clear_selection(&self->selections);
-    linebuf_mark_line_dirty(self->linebuf, ypos);
+    line_add_combining_char(cp, gp, ch, xpos);
     return true;
 }
 
 static void
-draw_combining_char(Screen *self, char_type ch) {
+draw_combining_char(Screen *self, text_loop_state *s, char_type ch, const CPUCell cc, const GPUCell g) {
     bool has_prev_char = false;
     index_type xpos = 0, ypos = 0;
     if (self->cursor->x > 0) {
         ypos = self->cursor->y;
-        linebuf_init_line(self->linebuf, ypos);
         xpos = self->cursor->x - 1;
         has_prev_char = true;
     } else if (self->cursor->y > 0) {
         ypos = self->cursor->y - 1;
-        linebuf_init_line(self->linebuf, ypos);
-        xpos = self->columns - 1;
-        has_prev_char = true;
-    }
-    if (self->cursor->x > 0) {
-        ypos = self->cursor->y;
-        linebuf_init_line(self->linebuf, ypos);
-        xpos = self->cursor->x - 1;
-        has_prev_char = true;
-    } else if (self->cursor->y > 0) {
-        ypos = self->cursor->y - 1;
-        linebuf_init_line(self->linebuf, ypos);
         xpos = self->columns - 1;
         has_prev_char = true;
     }
     if (has_prev_char) {
-        line_add_combining_char(self->linebuf->line, ch, xpos);
-        self->is_dirty = true;
-        if (selection_has_screen_line(&self->selections, ypos)) clear_selection(&self->selections);
-        linebuf_mark_line_dirty(self->linebuf, ypos);
+        CPUCell *cp; GPUCell *gp;
+        linebuf_init_cells(self->linebuf, ypos, &cp, &gp);
+        line_add_combining_char(cp, gp, ch, xpos);
         if (ch == 0xfe0f) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
-            CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
-            GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
+            CPUCell *cpu_cell = cp + xpos;
+            GPUCell *gpu_cell = gp + xpos;
             if (gpu_cell->attrs.width != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
-                if (self->cursor->x <= self->columns - 1) line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, self->active_hyperlink_id);
                 gpu_cell->attrs.width = 2;
-                if (xpos == self->columns - 1) move_widened_char(self, cpu_cell, gpu_cell, xpos, ypos);
-                else self->cursor->x++;
+                if (xpos + 1 < self->columns) {
+                    memcpy(cp + xpos + 1, &cc, sizeof(cc));
+                    memcpy(gp + xpos + 1, &g, sizeof(g));
+                    gp[xpos + 1].attrs.width = 0;
+                    self->cursor->x++;
+                } else move_widened_char(self, s, cpu_cell, gpu_cell, xpos, ypos, cc, g);
             }
         } else if (ch == 0xfe0e) {
-            CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
-            GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
+            CPUCell *cpu_cell = cp + xpos;
+            GPUCell *gpu_cell = gp + xpos;
             if (gpu_cell->attrs.width == 0 && cpu_cell->ch == 0 && xpos > 0) {
-                xpos--;
-                if (self->cursor->x > 0) self->cursor->x--;
-                cpu_cell = self->linebuf->line->cpu_cells + xpos;
-                gpu_cell = self->linebuf->line->gpu_cells + xpos;
+                cpu_cell--; gpu_cell--;
             }
-
             if (gpu_cell->attrs.width == 2 && cpu_cell->cc_idx[0] == VS15 && is_emoji_presentation_base(cpu_cell->ch)) {
                 gpu_cell->attrs.width = 1;
+                self->cursor->x--;
             }
         }
     }
@@ -650,15 +657,75 @@ screen_on_input(Screen *self) {
 }
 
 static void
-screen_continue_to_next_line(Screen *self) {
-    linebuf_set_last_char_as_continuation(self->linebuf, self->cursor->y, true);
-    self->cursor->x = 0;
-    screen_linefeed(self);
+ensure_cursor_not_on_wide_char_trailer_for_insert(Screen *self) {
+    if (self->cursor->x == 0) return;
+    CPUCell *c; GPUCell *g;
+    linebuf_init_cells(self->linebuf, self->cursor->y, &c, &g);
+    if (g[self->cursor->x - 1].attrs.width == 2) {
+        g[self->cursor->x-1].attrs.width = 1;
+        c[self->cursor->x-1].ch = ' ';
+        c[self->cursor->x].ch = 0;
+        memset(c[self->cursor->x-1].cc_idx, 0, sizeof(c[0].cc_idx));
+        memset(c[self->cursor->x].cc_idx, 0, sizeof(c[0].cc_idx));
+    }
 }
 
-void
-screen_draw_printable_ascii(Screen *self, ByteLoader *it) {
-    screen_on_input(self);
+static void
+draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, const CPUCell cc, const GPUCell g) {
+    text_loop_state s;
+    init_text_loop_line(self, &s);
+    for (size_t i = 0; i < num_chars; i++) {
+        uint32_t ch = chars[i];
+        if (ch < ' ') continue;
+        int char_width = 1;
+        if (ch > 0x7f) {  // not printable ASCII
+            if (is_ignored_char(ch)) continue;
+            if (UNLIKELY(is_combining_char(ch))) {
+                if (UNLIKELY(is_flag_codepoint(ch))) {
+                    if (draw_second_flag_codepoint(self, ch)) continue;
+                } else {
+                    draw_combining_char(self, &s, ch, cc, g);
+                    continue;
+                }
+            }
+            char_width = wcwidth_std(ch);
+            if (UNLIKELY(char_width < 1)) {
+                if (char_width == 0) continue;
+                char_width = 1;
+            }
+        }
+        self->last_graphic_char = ch;
+        if (UNLIKELY(self->columns < self->cursor->x + (unsigned int)char_width)) {
+            if (self->modes.mDECAWM) {
+                continue_to_next_line(self);
+                init_text_loop_line(self, &s);
+            } else {
+                self->cursor->x = self->columns - char_width;
+                ensure_cursor_not_on_wide_char_trailer_for_insert(self);
+            }
+        }
+        if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, char_width);
+        if (UNLIKELY(!s.image_placeholder_marked && ch == IMAGE_PLACEHOLDER_CHAR)) {
+            linebuf_set_line_has_image_placeholders(self->linebuf, self->cursor->y, true);
+            s.image_placeholder_marked = true;
+        }
+        memcpy(s.gp + self->cursor->x, &g, sizeof(g));
+        memcpy(s.cp + self->cursor->x, &cc, sizeof(cc));
+        s.cp[self->cursor->x].ch = ch;
+        self->cursor->x++;
+        if (char_width == 2) {
+            s.gp[self->cursor->x-1].attrs.width = 2;
+            memcpy(s.gp + self->cursor->x, &g, sizeof(g));
+            memcpy(s.cp + self->cursor->x, &cc, sizeof(cc));
+            s.gp[self->cursor->x].attrs.width = 0;
+            self->cursor->x++;
+        }
+    }
+#undef init_line
+}
+
+static void
+draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
     self->is_dirty = true;
     const CPUCell cc = {.hyperlink_id=self->active_hyperlink_id};
     GPUCell g = {.attrs=cursor_to_attrs(self->cursor, 1), .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK, .decoration_fg=self->cursor->decoration_fg & COL_MASK};
@@ -666,86 +733,22 @@ screen_draw_printable_ascii(Screen *self, ByteLoader *it) {
         g.decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;
         g.attrs.decoration = OPT(url_style);
     }
-
-#define fill_single_line(num) { \
-        linebuf_init_line(self->linebuf, self->cursor->y); \
-        if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, num); \
-        const unsigned limit = self->cursor->x + num; \
-        GPUCell *gp = self->linebuf->line->gpu_cells; \
-        CPUCell *cp = self->linebuf->line->cpu_cells; \
-        for (; self->cursor->x < limit; self->cursor->x++) { \
-            memcpy(gp + self->cursor->x, &g, sizeof(g)); \
-            memcpy(cp + self->cursor->x, &cc, sizeof(cc)); \
-            cp[self->cursor->x].ch = byte_loader_next(it); \
-        } \
-        if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections); \
-        linebuf_mark_line_dirty(self->linebuf, self->cursor->y); \
+    ensure_cursor_not_on_wide_char_trailer_for_insert(self);
+    draw_text_loop(self, chars, num_chars, cc, g);
 }
 
-    int avail = self->columns - self->cursor->x;
-    if (avail >= (int)it->num_left) {
-        fill_single_line(it->num_left);
-    } else {
-        if (self->modes.mDECAWM) {
-            while (it->num_left) {
-                avail = self->columns - self->cursor->x;
-                if (!avail) { screen_continue_to_next_line(self); avail = self->columns; }
-                unsigned nc = MIN((unsigned)avail, it->num_left);
-                fill_single_line(nc);
-            }
-        } else {
-            if (avail > 1) { fill_single_line(avail - 1); }
-            else if (avail == 0) self->cursor->x--;
-            fill_single_line(1);
-        }
-    }
-    self->last_graphic_char = self->linebuf->line->cpu_cells[self->cursor->x-1].ch;
+void
+screen_draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
+    screen_on_input(self);
+    draw_text(self, chars, num_chars);
 }
 
 static void
 draw_codepoint(Screen *self, char_type ch, bool from_input_stream) {
     if (from_input_stream) screen_on_input(self);
-    if (is_ignored_char(ch)) return;
-    if (UNLIKELY(is_combining_char(ch))) {
-        if (UNLIKELY(is_flag_codepoint(ch))) {
-            if (draw_second_flag_codepoint(self, ch)) return;
-        } else {
-            draw_combining_char(self, ch);
-            return;
-        }
-    }
-    int char_width = wcwidth_std(ch);
-    if (UNLIKELY(char_width < 1)) {
-        if (char_width == 0) return;
-        char_width = 1;
-    }
-    if (from_input_stream) self->last_graphic_char = ch;
-    if (UNLIKELY(self->columns - self->cursor->x < (unsigned int)char_width)) {
-        if (self->modes.mDECAWM) screen_continue_to_next_line(self);
-        else self->cursor->x = self->columns - char_width;
-    }
-
-    linebuf_init_line(self->linebuf, self->cursor->y);
-    if (self->modes.mIRM) {
-        line_right_shift(self->linebuf->line, self->cursor->x, char_width);
-    }
-    line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor, self->active_hyperlink_id);
-    self->cursor->x++;
-    if (char_width == 2) {
-        line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, self->active_hyperlink_id);
-        self->cursor->x++;
-    }
-    if (UNLIKELY(ch == IMAGE_PLACEHOLDER_CHAR)) {
-        linebuf_set_line_has_image_placeholders(self->linebuf, self->cursor->y, true);
-    }
-    self->is_dirty = true;
-    if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
-    linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
-}
-
-void
-screen_draw(Screen *self, uint32_t och) {
-    draw_codepoint(self, och, true);
+    uint32_t lch = self->last_graphic_char;
+    draw_text(self, &ch, 1);
+    if (!from_input_stream) self->last_graphic_char = lch;
 }
 
 void
@@ -1908,7 +1911,9 @@ screen_repeat_character(Screen *self, unsigned int count) {
     if (self->last_graphic_char) {
         if (count == 0) count = 1;
         unsigned int num = MIN(count, CSI_REP_MAX_REPETITIONS);
-        while (num-- > 0) draw_codepoint(self, self->last_graphic_char, false);
+        alignas(64) uint32_t buf[64];
+        for (unsigned i = 0; i < arraysz(buf); i++) buf[i] = self->last_graphic_char;
+        for (unsigned i = 0; i < num; i += arraysz(buf)) screen_draw_text(self, buf, MIN(num - i, arraysz(buf)));
     }
 }
 
