@@ -600,6 +600,21 @@ class TestScreen(BaseTest):
         s.draw('\u25b6\ufe0f')
         self.ae(s.cursor.x, 2)
 
+    def test_writing_with_cursor_on_trailer_of_wide_character(self):
+        s = self.create_screen()
+        def r(x, pos, expected):
+            s.reset()
+            s.draw('😸')
+            self.ae(s.cursor.x, 2)
+            s.cursor.x = 1
+            s.draw(x)
+            self.ae(s.cursor.x, pos)
+            self.ae(str(s.line(0)), expected)
+
+        r('a', 2, ' a')
+        r('😸', 3, ' 😸')
+        r('\u0304', 1, '😸\u0304')
+
     def test_serialize(self):
         from kitty.window import as_text
         s = self.create_screen()
