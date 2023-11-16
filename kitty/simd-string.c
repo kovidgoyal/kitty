@@ -158,46 +158,6 @@ find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t
 }
 // }}}
 
-// find_byte_not_in_range {{{
-static const uint8_t*
-find_byte_not_in_range_simple(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
-    ByteLoader it; byte_loader_init(&it, haystack, sz);
-    while (it.num_left) {
-        const uint8_t ch = byte_loader_next(&it);
-        if (ch < a || ch > b) return haystack + sz - it.num_left - 1;
-    }
-    return NULL;
-}
-
-#define not_in_range(bits, aligner) \
-    start_simd2(bits, aligner) { \
-        __m##bits##i chunk = _mm##bits##_load_si##bits((__m##bits##i*)(haystack)); \
-        __m##bits##i above_lower = _mm##bits##_cmpgt_epi8(chunk, a_vec); \
-        __m##bits##i below_upper = _mm##bits##_cmpgt_epi8(b_vec, chunk); \
-        __m##bits##i in_range = _mm##bits##_and_si##bits(above_lower, below_upper); \
-        const int mask = ~_mm##bits##_movemask_epi8(in_range); /* ~ as we want not in range */ \
-        end_simd2; \
-    } return NULL;
-
-static const uint8_t*
-find_byte_not_in_range_sse4_2(const uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) {
-    not_in_range(128, find_byte_not_in_range_simple(haystack, es, a, b));
-}
-
-
-static const uint8_t*
-find_byte_not_in_range_avx2(const uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) {
-    not_in_range(256, (has_sse4_2 && extra > 15) ? find_byte_not_in_range_sse4_2(haystack, es, a, b) : find_byte_not_in_range_simple(haystack, es, a, b));
-}
-
-static const uint8_t* (*find_byte_not_in_range_impl)(const uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) = find_byte_not_in_range_simple;
-
-const uint8_t*
-find_byte_not_in_range(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
-    return (uint8_t*)find_byte_not_in_range_impl(haystack, sz, a, b);
-}
-// }}}
-
 // UTF-8 {{{
 
 static unsigned
@@ -260,14 +220,12 @@ init_simd(void *x) {
 #endif
     if (has_avx2) {
         A(has_avx2, True);
-        find_byte_not_in_range_impl = find_byte_not_in_range_avx2;
         find_either_of_two_bytes_impl = find_either_of_two_bytes_avx2;
     } else {
         A(has_avx2, False);
     }
     if (has_sse4_2) {
         A(has_sse4_2, True);
-        if (find_byte_not_in_range == find_byte_not_in_range_simple) find_byte_not_in_range_impl = find_byte_not_in_range_sse4_2;
         if (find_either_of_two_bytes_impl == find_either_of_two_bytes_simple) find_either_of_two_bytes_impl = find_either_of_two_bytes_sse4_2;
     } else {
         A(has_sse4_2, False);
