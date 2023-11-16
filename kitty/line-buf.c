@@ -124,6 +124,13 @@ dealloc(LineBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+void
+linebuf_init_cells(LineBuf *lb, index_type idx, CPUCell **c, GPUCell **g) {
+    const index_type ynum = lb->line_map[idx];
+    *c = cpu_lineptr(lb, ynum);
+    *g = gpu_lineptr(lb, ynum);
+}
+
 static void
 init_line(LineBuf *lb, Line *l, index_type ynum) {
     l->cpu_cells = cpu_lineptr(lb, ynum);

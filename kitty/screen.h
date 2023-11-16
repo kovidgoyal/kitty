@@ -9,7 +9,6 @@
 #include "vt-parser.h"
 #include "graphics.h"
 #include "monotonic.h"
-#include "simd-string.h"
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
@@ -167,8 +166,7 @@ void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
 void screen_erase_in_line(Screen *, unsigned int, bool);
 void screen_erase_in_display(Screen *, unsigned int, bool);
-void screen_draw(Screen *screen, uint32_t codepoint);
-void screen_draw_printable_ascii(Screen *self, ByteLoader* );
+void screen_draw_text(Screen *self, const uint32_t *chars, size_t num_chars);
 void screen_ensure_bounds(Screen *self, bool use_margins, bool cursor_was_within_margins);
 void screen_toggle_screen_buffer(Screen *self, bool, bool);
 void screen_normal_keypad_mode(Screen *self);

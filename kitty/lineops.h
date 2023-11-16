@@ -87,7 +87,7 @@ void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int
 char_type line_get_char(Line *self, index_type at);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, hyperlink_id_type);
 void line_right_shift(Line *, unsigned int , unsigned int );
-void line_add_combining_char(Line *, uint32_t , unsigned int );
+void line_add_combining_char(CPUCell *, GPUCell *, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool);
 bool line_startswith_url_chars(Line*);
@@ -101,6 +101,7 @@ PyObject* unicode_in_range(const Line *self, const index_type start, const index
 PyObject* line_as_unicode(Line *, bool);
 
 void linebuf_init_line(LineBuf *, index_type);
+void linebuf_init_cells(LineBuf *lb, index_type ynum, CPUCell **c, GPUCell **g);
 void linebuf_clear(LineBuf *, char_type ch);
 void linebuf_index(LineBuf* self, index_type top, index_type bottom);
 void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
