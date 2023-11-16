@@ -603,6 +603,12 @@ draw_second_flag_codepoint(Screen *self, char_type ch) {
 }
 
 static void
+zero_cells(text_loop_state *s, CPUCell *c, GPUCell *g) {
+    memcpy(c, &s->cc, sizeof(s->cc));
+    memcpy(g, &s->g, sizeof(s->g));
+}
+
+static void
 draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     bool has_prev_char = false;
     index_type xpos = 0, ypos = 0;
@@ -625,8 +631,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
             if (gpu_cell->attrs.width != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
                 gpu_cell->attrs.width = 2;
                 if (xpos + 1 < self->columns) {
-                    memcpy(cp + xpos + 1, &s->cc, sizeof(s->cc));
-                    memcpy(gp + xpos + 1, &s->g, sizeof(s->g));
+                    zero_cells(s, cp + xpos + 1, gp + xpos + 1);
                     gp[xpos + 1].attrs.width = 0;
                     self->cursor->x++;
                 } else move_widened_char(self, s, cpu_cell, gpu_cell, xpos, ypos);
@@ -660,11 +665,9 @@ screen_on_input(Screen *self) {
 static void
 ensure_cursor_not_on_wide_char_trailer_for_insert(Screen *self, text_loop_state *s) {
     if (UNLIKELY(self->cursor->x > 0 && s->gp[self->cursor->x - 1].attrs.width == 2)) {
-        memcpy(s->gp + self->cursor->x - 1, &s->g, sizeof(s->g));
-        memcpy(s->cp + self->cursor->x - 1, &s->cc, sizeof(s->cc));
+        zero_cells(s, s->cp + self->cursor->x - 1, s->gp + self->cursor->x - 1);
         s->cp[self->cursor->x-1].ch = ' ';
-        memcpy(s->gp + self->cursor->x, &s->g, sizeof(s->g));
-        memcpy(s->cp + self->cursor->x, &s->cc, sizeof(s->cc));
+        zero_cells(s, s->cp + self->cursor->x, s->gp + self->cursor->x);
     }
 }
 
@@ -707,14 +710,12 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             linebuf_set_line_has_image_placeholders(self->linebuf, self->cursor->y, true);
             s->image_placeholder_marked = true;
         }
-        memcpy(s->gp + self->cursor->x, &s->g, sizeof(s->g));
-        memcpy(s->cp + self->cursor->x, &s->cc, sizeof(s->cc));
+        zero_cells(s, s->cp + self->cursor->x, s->gp + self->cursor->x);
         s->cp[self->cursor->x].ch = ch;
         self->cursor->x++;
         if (char_width == 2) {
             s->gp[self->cursor->x-1].attrs.width = 2;
-            memcpy(s->gp + self->cursor->x, &s->g, sizeof(s->g));
-            memcpy(s->cp + self->cursor->x, &s->cc, sizeof(s->cc));
+            zero_cells(s, s->cp + self->cursor->x, s->gp + self->cursor->x);
             s->gp[self->cursor->x].attrs.width = 0;
             self->cursor->x++;
         }
