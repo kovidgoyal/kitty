@@ -31,22 +31,14 @@ find_either_of_two_bytes_scalar(const uint8_t *haystack, const size_t sz, const 
 
 #define _mm128_set1_epi8 _mm_set1_epi8
 #define _mm128_load_si128 _mm_load_si128
+#define _mm128_loadu_si128 _mm_loadu_si128
 #define _mm128_cmpeq_epi8 _mm_cmpeq_epi8
 #define _mm128_or_si128 _mm_or_si128
 #define _mm128_movemask_epi8 _mm_movemask_epi8
 #define _mm128_cmpgt_epi8 _mm_cmpgt_epi8
 #define _mm128_and_si128 _mm_and_si128
 
-#define start_simd2(bits, aligner) \
-    const size_t extra = (uintptr_t)haystack % sizeof(__m##bits##i); \
-    if (extra) { /* do aligned loading */ \
-        size_t es = MIN(sz, sizeof(__m##bits##i) - extra); \
-        const uint8_t *ans = aligner; \
-        if (ans) return ans; \
-        sz -= es; \
-        haystack += es; \
-        if (!sz) return NULL; \
-    } \
+#define start_simd2(bits) \
     __m##bits##i a_vec = _mm##bits##_set1_epi8(a); \
     __m##bits##i b_vec = _mm##bits##_set1_epi8(b); \
     for (const uint8_t* limit = haystack + sz; haystack < limit; haystack += sizeof(__m##bits##i))
@@ -57,9 +49,9 @@ find_either_of_two_bytes_scalar(const uint8_t *haystack, const size_t sz, const 
         if (haystack + pos < limit) return haystack + pos; \
     }
 
-#define either_of_two(bits, aligner) \
-    start_simd2(bits, aligner) { \
-        __m##bits##i chunk = _mm##bits##_load_si##bits((__m##bits##i*)(haystack)); \
+#define either_of_two(bits) \
+    start_simd2(bits) { \
+        __m##bits##i chunk = _mm##bits##_loadu_si##bits((__m##bits##i*)(haystack)); \
         __m##bits##i a_cmp = _mm##bits##_cmpeq_epi8(chunk, a_vec); \
         __m##bits##i b_cmp = _mm##bits##_cmpeq_epi8(chunk, b_vec); \
         __m##bits##i matches = _mm##bits##_or_si##bits(a_cmp, b_cmp); \
@@ -69,13 +61,13 @@ find_either_of_two_bytes_scalar(const uint8_t *haystack, const size_t sz, const 
 
 static const uint8_t*
 find_either_of_two_bytes_sse4_2(const uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) {
-    either_of_two(128, find_either_of_two_bytes_scalar(haystack, es, a, b));
+    either_of_two(128);
 }
 
 
 static const uint8_t*
 find_either_of_two_bytes_avx2(const uint8_t *haystack, size_t sz, const uint8_t a, const uint8_t b) {
-    either_of_two(256, (has_sse4_2 && es > 15) ? find_either_of_two_bytes_sse4_2(haystack, es, a, b) : find_either_of_two_bytes_scalar(haystack, es, a, b));
+    either_of_two(256);
 }
 
 
