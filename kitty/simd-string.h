@@ -16,8 +16,8 @@ typedef void (*control_byte_callback)(void *data, uint8_t ch);
 typedef void (*output_chars_callback)(void *data, const uint32_t *chars, unsigned count);
 
 typedef struct UTF8Decoder {
+    alignas(512/8) uint32_t output[512/8];  // we can process at most 512 bits of input (AVX512) so we get at most 64 chars of output
     struct { uint32_t cur, prev, codep; } state;
-    alignas(64) uint32_t output[64];
 
     void *callback_data;
     control_byte_callback control_byte_callback;
