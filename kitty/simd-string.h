@@ -12,16 +12,6 @@
 #include <stdalign.h>
 #include "data-types.h"
 
-#define BYTE_LOADER_T unsigned long long
-typedef struct ByteLoader {
-    BYTE_LOADER_T m;
-    unsigned sz_of_next_load, digits_left, num_left;
-    const uint8_t *next_load_at;
-} ByteLoader;
-uint8_t byte_loader_peek(const ByteLoader *self);
-void byte_loader_init(ByteLoader *self, const uint8_t *buf, unsigned int sz);
-uint8_t byte_loader_next(ByteLoader *self);
-
 typedef void (*control_byte_callback)(void *data, uint8_t ch);
 typedef void (*output_chars_callback)(void *data, const uint32_t *chars, unsigned count);
 

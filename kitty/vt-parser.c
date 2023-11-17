@@ -207,7 +207,6 @@ typedef struct PS {
     struct { size_t offset, sz, pending; } write;
     alignas(BUF_EXTRA) uint8_t buf[BUF_SZ + BUF_EXTRA];
 } PS;
-static_assert(offsetof(PS, buf) > sizeof(BYTE_LOADER_T), "There must be enough space before the buf[] array for aligned loads");
 
 static void
 reset_csi(ParsedCSI *csi) {
@@ -987,17 +986,16 @@ bool
 parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name UNUSED, bool is_deccara) {
     ParsedCSI csi = {.mult=1};
     size_t pos = 0;
-    RAII_ALLOC(uint8_t, _buf, malloc(num + 2 + 2*sizeof(BYTE_LOADER_T)));
+    RAII_ALLOC(uint8_t, _buf, malloc(num + 3));
     if (!_buf) return false;
-    uint8_t *safe_buf = _buf + sizeof(BYTE_LOADER_T);
-    memcpy(safe_buf, buf, num);
+    memcpy(_buf, buf, num);
     if (is_deccara) {
-        safe_buf[num++] = '$'; safe_buf[num++] = 'r';
+        _buf[num++] = '$'; _buf[num++] = 'r';
     } else {
-        safe_buf[num++] = 'm';
+        _buf[num++] = 'm';
     }
-    safe_buf[num] = 0;
-    if (!csi_parse_loop((PS*)screen->vt_parser->state, &csi, safe_buf, &pos, num, 0)) return false;
+    _buf[num] = 0;
+    if (!csi_parse_loop((PS*)screen->vt_parser->state, &csi, _buf, &pos, num, 0)) return false;
     return _parse_sgr((PS*)screen->vt_parser->state, &csi);
 }
 #endif
