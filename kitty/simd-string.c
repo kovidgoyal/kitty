@@ -66,12 +66,6 @@ utf8_decode_to_sentinel_scalar(UTF8Decoder *d, const uint8_t *src, const size_t 
     return num_consumed;
 }
 
-static unsigned
-utf8_decode_to_sentinel_sse4_2(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
-    (void)d; (void)src; (void)src_sz; (void)sentinel;
-    return 0;
-}
-
 static unsigned (*utf8_decode_to_sentinel_impl)(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) = utf8_decode_to_sentinel_scalar;
 
 unsigned
@@ -116,7 +110,9 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
         case 1:
             consumed = utf8_decode_to_sentinel_scalar(&d, src, src_sz, sentinel); break;
         case 2:
-            consumed = utf8_decode_to_sentinel_sse4_2(&d, src, src_sz, sentinel); break;
+            consumed = utf8_decode_to_sentinel_128(&d, src, src_sz, sentinel); break;
+        case 3:
+            consumed = utf8_decode_to_sentinel_256(&d, src, src_sz, sentinel); break;
         default:
             consumed = utf8_decode_to_sentinel(&d, src, src_sz, sentinel); break;
     }
@@ -153,13 +149,14 @@ init_simd(void *x) {
     if (has_avx2) {
         A(has_avx2, True);
         find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
+        /* utf8_decode_to_sentinel_impl = utf8_decode_to_sentinel_256; */
     } else {
         A(has_avx2, False);
     }
     if (has_sse4_2) {
         A(has_sse4_2, True);
         if (find_either_of_two_bytes_impl == find_either_of_two_bytes_scalar) find_either_of_two_bytes_impl = find_either_of_two_bytes_128;
-        /* if (utf8_decode_to_sentinel_impl == utf8_decode_to_sentinel_scalar) utf8_decode_to_sentinel_impl = utf8_decode_to_sentinel_sse4_2; */
+        /* if (utf8_decode_to_sentinel_impl == utf8_decode_to_sentinel_scalar) utf8_decode_to_sentinel_impl = utf8_decode_to_sentinel_128; */
     } else {
         A(has_sse4_2, False);
     }
