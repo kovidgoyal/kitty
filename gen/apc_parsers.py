@@ -139,7 +139,7 @@ static inline void
     enum PARSER_STATES state = KEY, value_state = FLAG;
     static {command_class} g;
     unsigned int i, code;
-    uint64_t lcode;
+    uint64_t lcode; int64_t accumulator;
     bool is_negative;
     memset(&g, 0, sizeof(g));
     size_t sz;
@@ -179,11 +179,12 @@ static inline void
 
             case INT:
 #define READ_UINT \\
-                for (i = pos; i < MIN(parser_buf_pos, pos + 10); i++) {{ \\
-                    if (parser_buf[i] < '0' || parser_buf[i] > '9') break; \\
+                for (i = pos, accumulator=0; i < MIN(parser_buf_pos, pos + 10); i++) {{ \\
+                    int64_t n = parser_buf[i] - '0'; if (n < 0 || n > 9) break; \\
+                    accumulator += n * digit_multipliers[i - pos]; \\
                 }} \\
                 if (i == pos) {{ REPORT_ERROR("Malformed {command_class} control block, expecting an integer value for key: %c", key & 0xFF); return; }} \\
-                lcode = utoi(parser_buf + pos, i - pos); pos = i; \\
+                lcode = accumulator / digit_multipliers[i - pos - 1]; pos = i; \\
                 if (lcode > UINT32_MAX) {{ REPORT_ERROR("Malformed {command_class} control block, number is too large"); return; }} \\
                 code = lcode;
 

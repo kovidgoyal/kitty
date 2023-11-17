@@ -127,31 +127,25 @@ _report_draw(PyObject *dump_callback, id_type window_id, const uint32_t *chars, 
 // }}}
 
 // Utils {{{
-static const uint64_t pow_10_array[] = {
-    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
+static const int64_t digit_multipliers[] = {
+ 10000000000000000l,
+ 1000000000000000l,
+ 100000000000000l,
+ 10000000000000l,
+ 1000000000000l,
+ 100000000000l,
+ 10000000000l,
+ 1000000000l,
+ 100000000l,
+ 10000000l,
+ 1000000l,
+ 100000l,
+ 10000l,
+ 1000l,
+ 100l,
+ 1l
 };
 
-static int64_t
-utoi(const uint8_t *buf, const unsigned int sz) {
-    int64_t ans = 0;
-    int mult = 1;
-    if (LIKELY(sz > 0)) {
-        ByteLoader b;
-        byte_loader_init(&b, buf, sz);
-        uint8_t digit = byte_loader_peek(&b);
-        if (digit == '-') { mult = -1; byte_loader_next(&b); }
-        while (b.num_left) {  // ignore leading zeros
-            digit = byte_loader_peek(&b);
-            if (digit != '0') break;
-            byte_loader_next(&b);
-        }
-        while (b.num_left) {
-            digit = byte_loader_next(&b);
-            ans += (digit - '0') * *(pow_10_array + b.num_left);
-        }
-    }
-    return ans * mult;
-}
 // }}}
 
 // Data structures {{{
@@ -493,13 +487,16 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
 #define END_DISPATCH_WITHOUT_BREAK }; PyErr_Clear(); }
 #define END_DISPATCH }; PyErr_Clear(); break; }
 
+    int64_t accumulator = 0;
     int code=0;
     unsigned int i;
     for (i = 0; i < MIN(limit, 5u); i++) {
-        if (buf[i] < '0' || buf[i] > '9') break;
+        int64_t num = buf[i] - '0';
+        if (num < 0 || num > 9) break;
+        accumulator += num * digit_multipliers[i];
     }
     if (i > 0) {
-        code = utoi(buf, i);
+        code = accumulator / digit_multipliers[i - 1];
         if (i < limit && buf[i] == ';') i++;
     }
 
@@ -748,25 +745,6 @@ csi_letter(unsigned code) {
     return buf;
 }
 
-static const int64_t csi_multipliers[] = {
- 10000000000000000l,
- 1000000000000000l,
- 100000000000000l,
- 10000000000000l,
- 1000000000000l,
- 100000000000l,
- 10000000000l,
- 1000000000l,
- 100000000l,
- 10000000l,
- 1000000l,
- 100000l,
- 10000l,
- 1000l,
- 100l,
- 1l
-};
-
 static bool
 commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
     if (!csi->num_digits) return true;
@@ -774,15 +752,15 @@ commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
         REPORT_ERROR("CSI escape code has too many parameters, ignoring it");
         return false;
     }
-    csi->params[csi->num_params++] = csi->mult * (csi->accumulator / csi_multipliers[csi->num_digits - 1]);
+    csi->params[csi->num_params++] = csi->mult * (csi->accumulator / digit_multipliers[csi->num_digits - 1]);
     csi->num_digits = 0; csi->mult = 1; csi->accumulator = 0;
     return true;
 }
 
 static void
 csi_add_digit(ParsedCSI *csi, uint8_t ch) {
-    if (UNLIKELY(csi->num_digits >= arraysz(csi_multipliers))) return;
-    csi->accumulator += (ch - '0') * csi_multipliers[csi->num_digits++];
+    if (UNLIKELY(csi->num_digits >= arraysz(digit_multipliers))) return;
+    csi->accumulator += (ch - '0') * digit_multipliers[csi->num_digits++];
 }
 
 static bool
