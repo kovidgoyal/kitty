@@ -11,4 +11,4 @@ https://www.reddit.com/r/KittyTerminal[Reddit community]
 
 Packaging status in various repositories:
 
-image:https://repology.org/badge/vertical-allrepos/kitty.svg["Packaging status", link="https://repology.org/project/kitty/versions"]
+image:https://repology.org/badge/vertical-allrepos/kitty.svg?columns=3&header=kitty["Packaging status", link="https://repology.org/project/kitty/versions"]
