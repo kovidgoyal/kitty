@@ -8,6 +8,8 @@
 #define BITS 128
 #endif
 
+#include "simd-string.h"
+
 #ifdef __clang__
 _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #endif
@@ -17,17 +19,18 @@ _Pragma("clang diagnostic pop")
 #endif
 
 
+#define CONCAT(A, B) A##B
+#define CONCAT_EXPAND(A, B) CONCAT(A,B)
+#define FUNC(name) CONCAT_EXPAND(name##_, BITS)
+#define integer_t CONCAT_EXPAND(CONCAT_EXPAND(__m, BITS), i)
+
 #if BITS == 128
-#define FUNC(name) name##_##128
-#define integer_t __m128i
 #define set1_epi8 simde_mm_set1_epi8
 #define load_unaligned simde_mm_loadu_si128
 #define cmpeq_epi8 simde_mm_cmpeq_epi8
 #define or_si simde_mm_or_si128
 #define movemask_epi8 simde_mm_movemask_epi8
 #else
-#define FUNC(name) name##_##256
-#define integer_t __m256i
 #define set1_epi8 simde_mm256_set1_epi8
 #define load_unaligned simde_mm256_loadu_si256
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
@@ -53,6 +56,12 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
     return NULL;
 }
 
+static inline unsigned
+FUNC(utf8_decode_to_sentinel)(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
+    (void)d; (void)src; (void)src_sz; (void)sentinel;
+    return 0;
+}
+
 
 #undef FUNC
 #undef integer_t
@@ -61,3 +70,5 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
 #undef cmpeq_epi8
 #undef or_si
 #undef movemask_epi8
+#undef CONCAT
+#undef CONCAT_EXPAND
