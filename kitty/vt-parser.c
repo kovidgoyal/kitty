@@ -787,9 +787,8 @@ csi_add_digit(ParsedCSI *csi, uint8_t ch) {
 
 static bool
 csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const size_t sz, const size_t start) {
-    ByteLoader b; byte_loader_init(&b, buf + *pos, sz);
     while (*pos < sz) {
-        const uint8_t ch = byte_loader_next(&b); *pos += 1;
+        const uint8_t ch = buf[*pos]; *pos += 1;
         switch(csi->state) {
             case CSI_START:
                 switch (ch) {
