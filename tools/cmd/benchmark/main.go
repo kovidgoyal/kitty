@@ -45,10 +45,10 @@ const misc_unicode = `
 
 var opts Options
 
-func benchmark_data(data string, opts Options) (duration time.Duration, sent_data_size int, err error) {
+func benchmark_data(data string, opts Options) (duration time.Duration, sent_data_size int, reps int, err error) {
 	term, err := tty.OpenControllingTerm(tty.SetRaw)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	defer term.RestoreAndClose()
 	state := loop.TerminalStateOptions{Alternate_screen: !opts.WithScrollback}
@@ -78,18 +78,18 @@ func benchmark_data(data string, opts Options) (duration time.Duration, sent_dat
 	<-goroutine_started
 
 	start := time.Now()
-	repeat_count := opts.Repetitions
-	for ; repeat_count > 0; repeat_count-- {
+	for reps < opts.Repetitions {
 		if _, err = term.WriteString(data); err != nil {
 			return
 		}
 		sent_data_size += len(data)
+		reps += 1
 	}
 	if _, err = term.WriteString(strings.Repeat("\x1b[5n", count)); err != nil {
 		return
 	}
 	lock.Lock()
-	duration = time.Since(start) / time.Duration(opts.Repetitions)
+	duration = time.Since(start)
 	lock.Unlock()
 	return
 }
@@ -109,27 +109,28 @@ func random_string_of_bytes(n int, alphabet string) string {
 }
 
 type result struct {
-	desc     string
-	data_sz  int
-	duration time.Duration
+	desc        string
+	data_sz     int
+	duration    time.Duration
+	repetitions int
 }
 
 func simple_ascii() (r result, err error) {
 	data := random_string_of_bytes(1024*2048+13, ascii_printable)
-	duration, data_sz, err := benchmark_data(data, opts)
+	duration, data_sz, reps, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Only ASCII chars", data_sz, duration}, nil
+	return result{"Only ASCII chars", data_sz, duration, reps}, nil
 }
 
 func unicode() (r result, err error) {
 	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 1024)
-	duration, data_sz, err := benchmark_data(data, opts)
+	duration, data_sz, reps, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Unicode chars", data_sz, duration}, nil
+	return result{"Unicode chars", data_sz, duration, reps}, nil
 }
 
 func ascii_with_csi() (r result, err error) {
@@ -157,11 +158,11 @@ func ascii_with_csi() (r result, err error) {
 		}
 		out = append(out, utils.UnsafeStringToBytes(chunk)...)
 	}
-	duration, data_sz, err := benchmark_data(utils.UnsafeBytesToString(out), opts)
+	duration, data_sz, reps, err := benchmark_data(utils.UnsafeBytesToString(out), opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"CSI codes with few chars", data_sz, duration}, nil
+	return result{"CSI codes with few chars", data_sz, duration, reps}, nil
 }
 
 func images() (r result, err error) {
@@ -181,22 +182,22 @@ func images() (r result, err error) {
 	g.SetDelete(graphics.GRT_free_by_id)
 	_ = g.WriteWithPayloadTo(&b, nil)
 	data := b.String()
-	duration, data_sz, err := benchmark_data(data, opts)
+	duration, data_sz, reps, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Images", data_sz, duration}, nil
+	return result{"Images", data_sz, duration, reps}, nil
 }
 
 func long_escape_codes() (r result, err error) {
 	data := random_string_of_bytes(8024, ascii_printable)
 	// OSC 6 is document reporting which kitty ignores after parsing
 	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
-	duration, data_sz, err := benchmark_data(data, opts)
+	duration, data_sz, reps, err := benchmark_data(data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Long escape codes", data_sz, duration}, nil
+	return result{"Long escape codes", data_sz, duration, reps}, nil
 }
 
 var divs = []time.Duration{
@@ -236,7 +237,7 @@ func main(args []string) (err error) {
 	// First warm up the terminal by getting it to render all chars so that font rendering
 	// time is not polluting the benchmarks.
 	w := Options{Repetitions: 1}
-	if _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, w); err != nil {
+	if _, _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, w); err != nil {
 		return err
 	}
 	time.Sleep(time.Second / 2)
