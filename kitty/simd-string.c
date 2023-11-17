@@ -20,6 +20,17 @@ _Pragma("clang diagnostic pop")
 static bool has_sse4_2 = false, has_avx2 = false;
 
 // ByteLoader {{{
+#define BYTE_LOADER_T unsigned long long
+typedef struct ByteLoader {
+    BYTE_LOADER_T m;
+    unsigned sz_of_next_load, digits_left, num_left;
+    const uint8_t *next_load_at;
+} ByteLoader;
+uint8_t byte_loader_peek(const ByteLoader *self);
+void byte_loader_init(ByteLoader *self, const uint8_t *buf, unsigned int sz);
+uint8_t byte_loader_next(ByteLoader *self);
+
+
 uint8_t
 byte_loader_peek(const ByteLoader *self) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
