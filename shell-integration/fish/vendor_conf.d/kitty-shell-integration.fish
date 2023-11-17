@@ -121,7 +121,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
                     set is_sudoedit "y"
                     break
                 end
-                if not string match -r -q "^-" "$arg" and not string match -r -q "=" "$arg"
+                if not string match -r -q -- "^-" "$arg" and not string match -r -q -- "=" "$arg"
                     break  # reached the command
                 end
             end
