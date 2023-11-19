@@ -479,7 +479,7 @@ Controlling displayed image layout
 
 The image is rendered at the current cursor position, from the upper left corner of
 the current cell. You can also specify extra ``X=3`` and ``Y=4`` pixel offsets to display from
-a different origin within the cell. Note that the offsets must be smaller that the size of the cell.
+a different origin within the cell. Note that the offsets must be smaller than the size of the cell.
 
 By default, the entire image will be displayed (images wider than the available
 width will be truncated on the right edge). You can choose a source rectangle (in pixels)
