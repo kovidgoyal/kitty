@@ -17,14 +17,12 @@ typedef void (*output_chars_callback)(void *data, const uint32_t *chars, unsigne
 
 typedef struct UTF8Decoder {
     alignas(512/8) uint32_t output[512/8];  // we can process at most 512 bits of input (AVX512) so we get at most 64 chars of output
-    struct { uint32_t cur, prev, codep; } state;
+    unsigned output_sz, num_consumed;
 
-    void *callback_data;
-    control_byte_callback control_byte_callback;
-    output_chars_callback output_chars_callback;
+    struct { uint32_t cur, prev, codep; } state;
 } UTF8Decoder;
 static inline void utf8_decoder_reset(UTF8Decoder *self) { zero_at_ptr(&self->state); }
-unsigned utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel);
+bool utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel);
 
 // Pass a PyModule PyObject* as the argument. Must be called once at application startup
 bool init_simd(void* module);
