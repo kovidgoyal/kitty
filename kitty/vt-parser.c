@@ -92,8 +92,8 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__)); PyErr_Clear();
 
 #define REPORT_DRAW(chars, num) { \
-    for (unsigned i = 0; i < num; i++) { \
-        uint32_t ch = chars[i]; \
+    for (unsigned i = 0; i < (num); i++) { \
+        uint32_t ch = (chars)[i]; \
         switch(ch) { \
             case BEL: REPORT_COMMAND(screen_bell); break; \
             case BS: REPORT_COMMAND(screen_backspace); break; \
@@ -228,6 +228,7 @@ reset_csi(ParsedCSI *csi) {
 
 static void
 dispatch_single_byte_control(PS *self, uint32_t ch) {
+    REPORT_DRAW(&ch, 1);
     screen_draw_text(self->screen, &ch, 1);
 }
 
