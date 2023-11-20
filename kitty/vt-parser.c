@@ -74,15 +74,6 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
     Py_XDECREF(PyObject_CallFunction(dump_callback, "Kss", window_id, name, buf)); PyErr_Clear();
 }
 
-static void
-_report_draw(PyObject *dump_callback, id_type window_id, const uint32_t *chars, unsigned num) {
-    RAII_PyObject(s, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, chars, num));
-    if (s) {
-        RAII_PyObject(t, PyObject_CallFunction(dump_callback, "KsO", window_id, "draw", s));
-        if (t == NULL) PyErr_Clear();
-    }
-}
-
 #define DUMP_UNUSED
 
 #define REPORT_ERROR(...) _report_error(self->dump_callback, self->window_id, __VA_ARGS__);
@@ -100,7 +91,24 @@ _report_draw(PyObject *dump_callback, id_type window_id, const uint32_t *chars, 
 #define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
 #define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__)); PyErr_Clear();
 
-#define REPORT_DRAW(chars, num) _report_draw(self->dump_callback, self->window_id, chars, num);
+#define REPORT_DRAW(chars, num) { \
+    for (unsigned i = 0; i < num; i++) { \
+        uint32_t ch = chars[i]; \
+        switch(ch) { \
+            case BEL: REPORT_COMMAND(screen_bell); break; \
+            case BS: REPORT_COMMAND(screen_backspace); break; \
+            case HT: REPORT_COMMAND(screen_tab); break; \
+            case LF: case VT: case FF: REPORT_COMMAND(screen_linefeed); break; \
+            case CR: REPORT_COMMAND(screen_carriage_return); break; \
+            default: \
+                if (ch >= ' ') { \
+                    RAII_PyObject(t, PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); \
+                    if (t == NULL) PyErr_Clear(); \
+                } \
+        } \
+    } \
+}
+
 
 #define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, is_group, region)
 
@@ -117,7 +125,7 @@ _report_draw(PyObject *dump_callback, id_type window_id, const uint32_t *chars, 
 #define REPORT_ERROR(...) log_error(ERROR_PREFIX " " __VA_ARGS__);
 #define REPORT_COMMAND(...)
 #define REPORT_VA_COMMAND(...)
-#define REPORT_DRAW(chars, num)
+#define REPORT_DRAW(...)
 #define REPORT_PARAMS(...)
 #define REPORT_OSC(name, string)
 #define REPORT_OSC2(name, code, string)
@@ -219,46 +227,21 @@ reset_csi(ParsedCSI *csi) {
 // Normal mode {{{
 
 static void
-dispatch_single_byte_control(void *s, uint8_t ch) {
-#define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name); name(self->screen); break;
-    PS *self = s;
-    switch(ch) {
-        case BEL:
-            CALL_SCREEN_HANDLER(screen_bell);
-        case BS:
-            CALL_SCREEN_HANDLER(screen_backspace);
-        case HT:
-            CALL_SCREEN_HANDLER(screen_tab);
-        case LF:
-        case VT:
-        case FF:
-            CALL_SCREEN_HANDLER(screen_linefeed);
-        case CR:
-            CALL_SCREEN_HANDLER(screen_carriage_return);
-        case SI:
-            REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
-        case SO:
-            REPORT_ERROR("Ignoring request to change charset as we only support UTF-8"); break;
-        case ESC:
-            SET_STATE(ESC); break;
-        default:
-            break;
-    }
-#undef CALL_SCREEN_HANDLER
-}
-
-static void
-dispatch_output_chars(void *s, const uint32_t *chars, unsigned sz) {
-    PS *self = s;
-    REPORT_DRAW(chars, sz);
-    screen_draw_text(self->screen, chars, sz);
+dispatch_single_byte_control(PS *self, uint32_t ch) {
+    screen_draw_text(self->screen, &ch, 1);
 }
 
 static void
 consume_normal(PS *self) {
     do {
-        self->read.pos += utf8_decode_to_sentinel(&self->utf8_decoder, self->buf + self->read.pos, self->read.sz - self->read.pos, ESC);
-    } while (self->read.pos < self->read.sz && self->vte_state == VTE_NORMAL);
+        const bool sentinel_found = utf8_decode_to_sentinel(&self->utf8_decoder, self->buf + self->read.pos, self->read.sz - self->read.pos, ESC);
+        self->read.pos += self->utf8_decoder.num_consumed;
+        if (self->utf8_decoder.output_sz) {
+            REPORT_DRAW(self->utf8_decoder.output, self->utf8_decoder.output_sz);
+            screen_draw_text(self->screen, self->utf8_decoder.output, self->utf8_decoder.output_sz);
+        }
+        if (sentinel_found) { SET_STATE(ESC); break; }
+    } while (self->read.pos < self->read.sz);
 }
 // }}}
 
@@ -1555,10 +1538,6 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 pd->input_read = true;
                 self->dump_callback = pd->dump_callback; self->now = pd->now;
                 self->screen = p;
-                // these are here as they need to be specialized to dump/non dump versions
-                self->utf8_decoder.control_byte_callback = dispatch_single_byte_control;
-                self->utf8_decoder.output_chars_callback = dispatch_output_chars;
-                self->utf8_decoder.callback_data = self;
                 do {
                     end_with_lock; {
                         do_parse_vt(self);

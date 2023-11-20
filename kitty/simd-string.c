@@ -34,27 +34,26 @@ find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t
 
 // UTF-8 {{{
 
-static unsigned
+static bool
 utf8_decode_to_sentinel_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
-    unsigned num_consumed = 0, num_output = 0;
-    while (num_consumed < src_sz && num_output < arraysz(d->output)) {
-        const uint8_t ch = src[num_consumed++];
-        if (ch < ' ') {
+    d->output_sz = 0; d->num_consumed = 0;
+    while (d->num_consumed < src_sz && d->output_sz < arraysz(d->output)) {
+        const uint8_t ch = src[d->num_consumed++];
+        if (ch == sentinel) {
+            if (d->state.cur != UTF8_ACCEPT) d->output[d->output_sz++] = 0xfffd;
             zero_at_ptr(&d->state);
-            if (num_output) { d->output_chars_callback(d->callback_data, d->output, num_output); num_output = 0; }
-            d->control_byte_callback(d->callback_data, ch);
-            if (ch == sentinel) break;
+            return true;
         } else {
             switch(decode_utf8(&d->state.cur, &d->state.codep, ch)) {
                 case UTF8_ACCEPT:
-                    d->output[num_output++] = d->state.codep;
+                    d->output[d->output_sz++] = d->state.codep;
                     break;
                 case UTF8_REJECT: {
                     const bool prev_was_accept = d->state.prev == UTF8_ACCEPT;
                     zero_at_ptr(&d->state);
-                    d->output[num_output++] = 0xfffd;
-                    if (!prev_was_accept) {
-                        num_consumed--;
+                    d->output[d->output_sz++] = 0xfffd;
+                    if (!prev_was_accept && d->num_consumed) {
+                        d->num_consumed--;
                         continue; // so that prev is correct
                     }
                 } break;
@@ -62,13 +61,12 @@ utf8_decode_to_sentinel_scalar(UTF8Decoder *d, const uint8_t *src, const size_t 
         }
         d->state.prev = d->state.cur;
     }
-    if (num_output) d->output_chars_callback(d->callback_data, d->output, num_output);
-    return num_consumed;
+    return false;
 }
 
-static unsigned (*utf8_decode_to_sentinel_impl)(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) = utf8_decode_to_sentinel_scalar;
+static bool (*utf8_decode_to_sentinel_impl)(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) = utf8_decode_to_sentinel_scalar;
 
-unsigned
+bool
 utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
     return utf8_decode_to_sentinel_impl(d, src, src_sz, sentinel);
 }
@@ -76,22 +74,6 @@ utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz,
 // }}}
 
 // Boilerplate {{{
-static void
-test_control_byte_callback(void *l, uint8_t ch) {
-    if (!PyErr_Occurred()) {
-        RAII_PyObject(c, PyLong_FromUnsignedLong((unsigned long)ch));
-        if (c) PyList_Append((PyObject*)l, c);
-    }
-}
-
-static void
-test_output_chars_callback(void *l, const uint32_t *chars, unsigned sz) {
-    if (!PyErr_Occurred()) {
-        RAII_PyObject(c, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, chars, (Py_ssize_t)sz));
-        if (c) PyList_Append((PyObject*)l, c);
-    }
-}
-
 static PyObject*
 test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     const uint8_t *src; Py_ssize_t src_sz;
@@ -99,24 +81,20 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     static UTF8Decoder d = {0};
     unsigned char sentinel = 0x1b;
     if (!PyArg_ParseTuple(args, "s#|iB", &src, &src_sz, &which_function, &sentinel)) return NULL;
-    RAII_PyObject(ans, PyList_New(0));
-    d.callback_data = ans;
-    d.control_byte_callback = test_control_byte_callback;
-    d.output_chars_callback = test_output_chars_callback;
-    unsigned long consumed;
+    bool found_sentinel = false;
     switch(which_function) {
         case -1:
             zero_at_ptr(&d); Py_RETURN_NONE;
         case 1:
-            consumed = utf8_decode_to_sentinel_scalar(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_sentinel_scalar(&d, src, src_sz, sentinel); break;
         case 2:
-            consumed = utf8_decode_to_sentinel_128(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_sentinel_128(&d, src, src_sz, sentinel); break;
         case 3:
-            consumed = utf8_decode_to_sentinel_256(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_sentinel_256(&d, src, src_sz, sentinel); break;
         default:
-            consumed = utf8_decode_to_sentinel(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_sentinel(&d, src, src_sz, sentinel); break;
     }
-    return Py_BuildValue("kO", consumed, ans);
+    return Py_BuildValue("ON", found_sentinel ? Py_True : Py_False, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, d.output, d.output_sz));
 }
 // }}}
 

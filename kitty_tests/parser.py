@@ -175,7 +175,7 @@ class TestParser(BaseTest):
         pb(c1_controls, c1_controls)
         self.assertFalse(str(s.line(1)) + str(s.line(2)) + str(s.line(3)))
         pb('😀'.encode()[:-1])
-        pb('\x1b\x1b%a', ('Unknown char after ESC: 0x1b',), ('draw', '%a'))
+        pb('\x1b\x1b%a', '\ufffd', ('Unknown char after ESC: 0x1b',), ('draw', '%a'))
 
     def test_utf8_parsing(self):
         s = self.create_screen()
@@ -515,7 +515,7 @@ class TestParser(BaseTest):
         s.set_pending_activated_at(0.00001)
         pb(']8;;\x07', ('set_active_hyperlink', None, None))
         pb('😀'.encode()[:-1])
-        pb('\033[?2026h', ('screen_start_pending_mode',),)
+        pb('\033[?2026h',  '\ufffd', ('screen_start_pending_mode',),)
         pb('😀'.encode()[-1:])
         pb('\033[?2026l', '\ufffd', ('screen_stop_pending_mode',),)
         pb('a', ('draw', 'a'))
