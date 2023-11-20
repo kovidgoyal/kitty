@@ -57,8 +57,8 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
 }
 
 static inline unsigned
-FUNC(utf8_decode_to_sentinel)(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
-    (void)d; (void)src; (void)src_sz; (void)sentinel;
+FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
+    (void)d; (void)src; (void)src_sz;
     return 0;
 }
 

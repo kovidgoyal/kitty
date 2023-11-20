@@ -235,7 +235,7 @@ dispatch_single_byte_control(PS *self, uint32_t ch) {
 static void
 consume_normal(PS *self) {
     do {
-        const bool sentinel_found = utf8_decode_to_sentinel(&self->utf8_decoder, self->buf + self->read.pos, self->read.sz - self->read.pos, ESC);
+        const bool sentinel_found = utf8_decode_to_esc(&self->utf8_decoder, self->buf + self->read.pos, self->read.sz - self->read.pos);
         self->read.pos += self->utf8_decoder.num_consumed;
         if (self->utf8_decoder.output_sz) {
             REPORT_DRAW(self->utf8_decoder.output, self->utf8_decoder.output_sz);
