@@ -22,7 +22,7 @@ typedef struct UTF8Decoder {
     struct { uint32_t cur, prev, codep; } state;
 } UTF8Decoder;
 static inline void utf8_decoder_reset(UTF8Decoder *self) { zero_at_ptr(&self->state); }
-bool utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel);
+bool utf8_decode_to_esc(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
 
 // Pass a PyModule PyObject* as the argument. Must be called once at application startup
 bool init_simd(void* module);

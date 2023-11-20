@@ -35,11 +35,11 @@ find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t
 // UTF-8 {{{
 
 static bool
-utf8_decode_to_sentinel_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
+utf8_decode_to_esc_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz) {
     d->output_sz = 0; d->num_consumed = 0;
     while (d->num_consumed < src_sz && d->output_sz < arraysz(d->output)) {
         const uint8_t ch = src[d->num_consumed++];
-        if (ch == sentinel) {
+        if (ch == 0x1b) {
             if (d->state.cur != UTF8_ACCEPT) d->output[d->output_sz++] = 0xfffd;
             zero_at_ptr(&d->state);
             return true;
@@ -64,11 +64,11 @@ utf8_decode_to_sentinel_scalar(UTF8Decoder *d, const uint8_t *src, const size_t 
     return false;
 }
 
-static bool (*utf8_decode_to_sentinel_impl)(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) = utf8_decode_to_sentinel_scalar;
+static bool (*utf8_decode_to_esc_impl)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) = utf8_decode_to_esc_scalar;
 
 bool
-utf8_decode_to_sentinel(UTF8Decoder *d, const uint8_t *src, const size_t src_sz, const uint8_t sentinel) {
-    return utf8_decode_to_sentinel_impl(d, src, src_sz, sentinel);
+utf8_decode_to_esc(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
+    return utf8_decode_to_esc_impl(d, src, src_sz);
 }
 
 // }}}
@@ -79,20 +79,19 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     const uint8_t *src; Py_ssize_t src_sz;
     int which_function = 0;
     static UTF8Decoder d = {0};
-    unsigned char sentinel = 0x1b;
-    if (!PyArg_ParseTuple(args, "s#|iB", &src, &src_sz, &which_function, &sentinel)) return NULL;
+    if (!PyArg_ParseTuple(args, "s#|i", &src, &src_sz, &which_function)) return NULL;
     bool found_sentinel = false;
     switch(which_function) {
         case -1:
             zero_at_ptr(&d); Py_RETURN_NONE;
         case 1:
-            found_sentinel = utf8_decode_to_sentinel_scalar(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_esc(&d, src, src_sz); break;
         case 2:
-            found_sentinel = utf8_decode_to_sentinel_128(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_esc_128(&d, src, src_sz); break;
         case 3:
-            found_sentinel = utf8_decode_to_sentinel_256(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_esc_256(&d, src, src_sz); break;
         default:
-            found_sentinel = utf8_decode_to_sentinel(&d, src, src_sz, sentinel); break;
+            found_sentinel = utf8_decode_to_esc(&d, src, src_sz); break;
     }
     return Py_BuildValue("ON", found_sentinel ? Py_True : Py_False, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, d.output, d.output_sz));
 }
