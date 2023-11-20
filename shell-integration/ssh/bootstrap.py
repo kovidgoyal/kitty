@@ -295,7 +295,10 @@ def main():
     cwd = os.environ.pop('KITTY_LOGIN_CWD', '')
     install_kitty_bootstrap()
     if cwd:
-        os.chdir(cwd)
+        try:
+            os.chdir(cwd)
+        except Exception as err:
+            print(f'Failed to change working directory to: {cwd} with error: {err}', file=sys.stderr)
     ksi = frozenset(filter(None, os.environ.get('KITTY_SHELL_INTEGRATION', '').split()))
     exec_cmd = b'EXEC_CMD'
     if exec_cmd:
