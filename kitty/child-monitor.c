@@ -441,9 +441,8 @@ do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     if (pd.input_read) {
         if (pd.write_space_created) wakeup_io_loop(self, false);
     }
-    if (pd.input_read && pd.pending_activated_at) {
-        monotonic_t time_since_pending = MAX(0, now - pd.pending_activated_at);
-        set_maximum_wait(pd.pending_wait_time - time_since_pending);
+    if (pd.input_read && screen->paused_rendering.expires_at) {
+        set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
     } else set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
     return pd.input_read;
 }
@@ -652,7 +651,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 static bool
 cursor_needs_render(Window *w) {
-    return w->cursor_visible_at_last_render != w->render_data.screen->cursor_render_info.is_visible || w->render_data.screen->cursor_render_info.last.x != w->render_data.screen->cursor_render_info.x || w->render_data.screen->cursor_render_info.last.y != w->render_data.screen->cursor_render_info.y || w->last_cursor_shape != w->render_data.screen->cursor_render_info.shape;
+    return w->cursor_visible_at_last_render != w->render_data.screen->cursor_render_info.is_visible || w->render_data.screen->last_rendered.cursor_x != w->render_data.screen->cursor_render_info.x || w->render_data.screen->last_rendered.cursor_y != w->render_data.screen->cursor_render_info.y || w->last_cursor_shape != w->render_data.screen->cursor_render_info.shape;
 }
 
 static bool
@@ -665,7 +664,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
         ans->x = rd->screen->overlay_line.cursor_x;
         ans->y = rd->screen->overlay_line.ynum;
     } else {
-        cursor = rd->screen->cursor;
+        cursor = rd->screen->paused_rendering.expires_at ? &rd->screen->paused_rendering.cursor : rd->screen->cursor;
         ans->x = cursor->x; ans->y = cursor->y;
     }
     ans->is_visible = false;
@@ -799,7 +798,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             if (WD.screen->start_visual_bell_at != 0) {
                 set_maximum_wait(OPT(repaint_delay));
             }
-            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; WD.screen->cursor_render_info.last.x = WD.screen->cursor_render_info.x; WD.screen->cursor_render_info.last.y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
+            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
     if (os_window->live_resize.in_progress) draw_resizing_text(os_window);

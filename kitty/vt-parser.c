@@ -12,7 +12,6 @@
 #include "screen.h"
 #include "control-codes.h"
 #include "state.h"
-#include "modes.h"
 #include "simd-string.h"
 #include <stdalign.h>
 
@@ -21,7 +20,6 @@
 #define BUF_EXTRA (512u/8u)
 #define MAX_ESCAPE_CODE_LENGTH (BUF_SZ / 4u)
 #define MAX_CSI_PARAMS 256u
-#define DEFAULT_PENDING_WAIT_TIME s_double_to_monotonic_t(2.0)
 
 
 // Macros {{{
@@ -178,7 +176,6 @@ vte_state_name(VTEState s) {
 }
 
 typedef enum { CSI_START, CSI_BODY, CSI_POST_SECONDARY } CSIState;
-typedef enum { PENDING_NORMAL, PENDING_ESC, PENDING_CSI, PENDING_DCS, PENDING_ST } PendingState;
 
 typedef struct ParsedCSI {
     char primary, secondary, trailer;
@@ -196,13 +193,6 @@ typedef struct PS {
     UTF8Decoder utf8_decoder;
     VTEState vte_state;
     ParsedCSI csi;
-
-    struct {
-        monotonic_t activated_at, wait_time;
-        size_t esc_code_start;
-        bool draining;
-        PendingState state;
-    } pending_mode;
 
     // these are temporary variables set only for duration of a parse call
     PyObject *dump_callback;
@@ -589,12 +579,6 @@ startswith(const uint8_t *string, ssize_t sz, const char *prefix, ssize_t l) {
     return true;
 }
 
-static void
-activate_pending_mode(PS *self) {
-    self->pending_mode.activated_at = self->now;
-    self->pending_mode.state = PENDING_NORMAL;
-}
-
 static bool
 parse_kitty_dcs(PS *self, uint8_t *buf, size_t bufsz) {
 #define starts_with(x) startswith(buf, bufsz, x, literal_strlen(x))
@@ -649,15 +633,13 @@ dispatch_dcs(PS *self, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
         case '=':
             if (bufsz > 2 && (buf[1] == '1' || buf[1] == '2') && buf[2] == 's') {
                 if (buf[1] == '1') {
-                    if (!self->pending_mode.draining) {
-                        REPORT_COMMAND(screen_start_pending_mode)
-                        activate_pending_mode(self);
+                    REPORT_COMMAND(screen_start_pending_mode)
+                    if (!screen_pause_rendering(self->screen, true, 0)) {
+                        REPORT_ERROR("Pending mode start requested while already in pending mode. This is most likely an application error.");
                     }
                 } else {
-                    if (self->pending_mode.draining) {
-                        self->pending_mode.draining = false;
-                        REPORT_COMMAND(screen_stop_pending_mode);
-                    } else {
+                    REPORT_COMMAND(screen_stop_pending_mode);
+                    if (!screen_pause_rendering(self->screen, false, 0)) {
                         REPORT_ERROR("Pending mode stop command issued while not in pending mode, this can"
                             " be either a bug in the terminal application or caused by a timeout with no data"
                             " received for too long or by too much data in pending mode");
@@ -1016,25 +998,6 @@ handle_mode(PS *self) {
         int p = self->csi.params[i];
         if (p >= 0) {
             unsigned int sp = p << shift;
-            if (sp == PENDING_UPDATE) {
-                if (self->csi.trailer == SM) {
-                    if (!self->pending_mode.draining) {
-                        activate_pending_mode(self);
-                        REPORT_COMMAND(screen_start_pending_mode);
-                    }
-                } else if (self->csi.trailer == RM) {
-                    if (self->pending_mode.draining) {
-                        REPORT_COMMAND(screen_stop_pending_mode);
-                        self->pending_mode.draining = false;
-                    } else {
-                        REPORT_ERROR(
-                        "Pending mode stop command issued while not in pending mode, this can"
-                        " be either a bug in the terminal application or caused by a timeout with no data"
-                        " received for too long or by too much data in pending mode");
-                    }
-                }
-                return;
-            }
             switch (self->csi.trailer) {
                 case SM:
                     screen_set_mode(self->screen, sp);
@@ -1407,113 +1370,6 @@ consume_input(PS *self) {
 #undef consume
 }
 
-#define pending_mode_sentinel "\x1b[?2026l"
-#if PENDING_MODE != 2026
-#error "PENDING_MODE != 2026"
-#endif
-#define pmslen (literal_strlen(pending_mode_sentinel))
-
-static bool
-find_pending_stop_csi(PS *self) {
-    const size_t sz = self->read.sz - self->read.pos;
-    const uint8_t *q = find_either_of_two_bytes(self->buf + self->read.pos, sz, ESC, 'l');
-    if (q == NULL) {
-        self->read.pos += sz;
-        return false;
-    }
-    switch(*q) {
-        case 'l':
-            self->pending_mode.state = PENDING_NORMAL;
-            self->read.pos = q - self->buf + 1;
-            return self->read.pos > self->read.consumed + pmslen && memcmp(self->buf + self->read.pos - pmslen, pending_mode_sentinel, pmslen) == 0;
-        case ESC:
-            self->pending_mode.state = PENDING_ESC;
-            self->read.pos = q - self->buf + 1;
-            break;
-    }
-    return false;
-}
-
-static bool
-find_pending_stop_dcs(PS *self, size_t end_pos) {
-#define sentinel "=2s"
-    return end_pos - self->pending_mode.esc_code_start >= literal_strlen(sentinel) && memcmp(self->buf +self->pending_mode.esc_code_start, sentinel, literal_strlen(sentinel)) == 0;
-#undef sentinel
-}
-
-static bool
-search_for_pending_stop(PS *self) {
-    while (self->read.pos < self->read.sz) {
-        switch(self->pending_mode.state) {
-            case PENDING_NORMAL: {
-                uint8_t *pos = memchr(self->buf + self->read.pos, ESC, self->read.sz - self->read.pos);
-                if (!pos) {
-                    self->read.pos = self->read.sz;
-                    return false;
-                }
-                self->read.pos = (pos - self->buf) + 1;
-                self->pending_mode.state = PENDING_ESC;
-            } break;
-            case PENDING_ESC: {
-                switch(self->buf[self->read.pos++]) {
-                    default:
-                        self->pending_mode.state = PENDING_NORMAL; break;
-                    case ESC_OSC: case ESC_APC: case ESC_PM:
-                        self->pending_mode.state = PENDING_ST; break;
-                    case ESC_DCS:
-                        self->pending_mode.state = PENDING_DCS; self->pending_mode.esc_code_start = self->read.pos; break;
-                    case ESC_CSI:
-                        self->pending_mode.state = PENDING_CSI; self->pending_mode.esc_code_start = self->read.pos; break;
-                }
-            } break;
-            case PENDING_ST: {
-                size_t end_pos;
-                if (find_st_terminator(self, &end_pos)) self->pending_mode.state = PENDING_NORMAL;
-            } break;
-            case PENDING_DCS: {
-                size_t end_pos;
-                if (find_st_terminator(self, &end_pos)) {
-                    self->pending_mode.state = PENDING_NORMAL;
-                    if (find_pending_stop_dcs(self, end_pos)) return true;
-                }
-            } break;
-            case PENDING_CSI: {
-                if (find_pending_stop_csi(self)) {
-                    self->pending_mode.state = PENDING_NORMAL;
-                    return true;
-                }
-                break;
-            }
-        }
-    }
-    return false;
-}
-
-static void
-do_parse_vt(PS *self) {
-#define LOG(prefix)  \
-    log_error(#prefix " state: %s pos: %zu consumed: %zu sz: %zu %.*s", vte_state_name(self->vte_state), self->read.pos, self->read.consumed, self->read.sz, (int)MIN(64u, (self->read.sz-self->read.pos)), self->buf + self->read.pos);
-
-    self->pending_mode.draining = false;
-    /* LOG(START); */
-    do {
-        if (self->pending_mode.activated_at) {
-            if (
-                self->pending_mode.activated_at + self->pending_mode.wait_time < self->now ||
-                search_for_pending_stop(self) ||
-                self->read.pos - self->read.consumed >= BUF_SZ
-            ) {
-                self->pending_mode.activated_at = 0;
-                self->pending_mode.draining = true;
-                self->pending_mode.state = PENDING_NORMAL;
-                self->read.pos = self->read.consumed;
-            } else continue;
-        }
-        consume_input(self);
-    } while (self->read.pos < self->read.sz);
-    /* LOG(END); */
-#undef LOG
-}
 // }}}
 
 // API {{{
@@ -1543,13 +1399,11 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 self->screen = screen;
                 do {
                     end_with_lock; {
-                        do_parse_vt(self);
+                        consume_input(self);
                     } with_lock;
                     self->read.sz += self->write.pending; self->write.pending = 0;
                 } while (self->read.pos < self->read.sz);
                 self->new_input_at = 0;
-                pd->pending_activated_at = self->pending_mode.activated_at;
-                pd->pending_wait_time = self->pending_mode.wait_time;
                 if (self->read.consumed) {
                     pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
@@ -1636,8 +1490,6 @@ reset(PS *self) {
     SET_STATE(NORMAL);
     reset_csi(&self->csi);
     utf8_decoder_reset(&self->utf8_decoder);
-    zero_at_ptr(&self->pending_mode);
-    self->pending_mode.wait_time = DEFAULT_PENDING_WAIT_TIME;
 }
 
 void
@@ -1688,21 +1540,12 @@ alloc_vt_parser(id_type window_id) {
             return NULL;
         }
         state->window_id = window_id;
-        state->pending_mode.wait_time = DEFAULT_PENDING_WAIT_TIME;
         utf8_decoder_reset(&state->utf8_decoder);
         reset_csi(&state->csi);
     }
     return self;
 }
 
-monotonic_t vt_parser_pending_activated_at(Parser*p) { return ((PS*)p->state)->pending_mode.activated_at; }
-monotonic_t vt_parser_pending_wait_time(Parser*p) { return ((PS*)p->state)->pending_mode.wait_time; }
-void vt_parser_set_pending_wait_time(Parser*p, monotonic_t n) { ((PS*)p->state)->pending_mode.wait_time = n; }
-void vt_parser_set_pending_activated_at(Parser*p, monotonic_t n) {
-        PS *state = (PS*)p->state;
-        state->now = n;
-        activate_pending_mode(state);
-}
 #undef EXTRA_INIT
 #define EXTRA_INIT \
     if (0 != PyModule_AddIntConstant(module, "VT_PARSER_BUFFER_SIZE", BUF_SZ)) return 0; \

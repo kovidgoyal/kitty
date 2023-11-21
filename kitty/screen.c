@@ -1067,6 +1067,11 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         case 7727 << 5:
             log_error("Application escape mode is not supported, the extended keyboard protocol should be used instead");
             break;
+        case PENDING_MODE << 5:
+            if (!screen_pause_rendering(self, val, 0)) {
+                log_error("Pending mode change to already current mode (%d) requested. Either pending mode expired or there is an application bug.", val);
+            }
+            break;
         default:
             private = mode >= 1 << 5;
             if (private) mode >>= 5;
@@ -2111,7 +2116,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         case MOUSE_SGR_PIXEL_MODE:
             ans = self->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL ? 1 : 2; break;
         case PENDING_UPDATE:
-            ans = vt_parser_pending_activated_at(self->vt_parser) ? 1 : 2; break;
+            ans = self->paused_rendering.expires_at ? 1 : 2; break;
     }
     int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
     if (sz > 0) write_escape_code_to_child(self, ESC_CSI, buf);
@@ -2350,6 +2355,21 @@ screen_request_capabilities(Screen *self, char c, const char *query) {
 // }}}
 
 // Rendering {{{
+
+bool
+screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
+    if (!pause) {
+        if (!self->paused_rendering.expires_at) return false;
+        self->paused_rendering.expires_at = 0;
+        return true;
+    }
+    if (self->paused_rendering.expires_at) return false;
+    if (for_in_ms <= 0) for_in_ms = 2000;
+    self->paused_rendering.expires_at = monotonic() + ms_to_monotonic_t(for_in_ms);
+    memcpy(&self->paused_rendering.cursor, self->cursor, sizeof(self->paused_rendering.cursor));
+    return true;
+}
+
 static color_type
 effective_cell_edge_color(char_type ch, color_type fg, color_type bg, bool is_left_edge) {
     START_ALLOW_CASE_RANGE
@@ -3249,22 +3269,6 @@ hyperlink_for_id(Screen *self, PyObject *val) {
     unsigned long id = PyLong_AsUnsignedLong(val);
     if (id > HYPERLINK_MAX_NUMBER) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
     return Py_BuildValue("s", get_hyperlink_for_id(self->hyperlink_pool, id, true));
-}
-
-static PyObject*
-set_pending_timeout(Screen *self, PyObject *val) {
-    if (!PyFloat_Check(val)) { PyErr_SetString(PyExc_TypeError, "timeout must be a float"); return NULL; }
-    PyObject *ans = PyFloat_FromDouble(monotonic_t_to_s_double(vt_parser_pending_wait_time(self->vt_parser)));
-    vt_parser_set_pending_wait_time(self->vt_parser, s_double_to_monotonic_t(PyFloat_AS_DOUBLE(val)));
-    return ans;
-}
-
-static PyObject*
-set_pending_activated_at(Screen *self, PyObject *val) {
-    if (!PyFloat_Check(val)) { PyErr_SetString(PyExc_TypeError, "timeout must be a float"); return NULL; }
-    PyObject *ans = PyFloat_FromDouble(monotonic_t_to_s_double(vt_parser_pending_activated_at(self->vt_parser)));
-    vt_parser_set_pending_activated_at(self->vt_parser, s_double_to_monotonic_t(PyFloat_AS_DOUBLE(val)));
-    return ans;
 }
 
 static Line* get_visual_line(void *x, int y) { return visual_line_(x, y); }
@@ -4600,8 +4604,6 @@ static PyMethodDef methods[] = {
     MND(cursor_forward, METH_VARARGS)
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     {"has_selection", (PyCFunction)has_selection, METH_VARARGS, ""},
-    MND(set_pending_timeout, METH_O)
-    MND(set_pending_activated_at, METH_O)
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
     MND(as_text_for_history_buf, METH_VARARGS)

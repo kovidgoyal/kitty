@@ -150,6 +150,10 @@ typedef struct {
         uint8_t stack[16], count;
     } main_pointer_shape_stack, alternate_pointer_shape_stack;
     Parser *vt_parser;
+    struct {
+        monotonic_t expires_at;
+        Cursor cursor;
+    } paused_rendering;
 } Screen;
 
 
@@ -261,6 +265,7 @@ bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
 bool screen_send_signal_for_key(Screen *, char key);
 bool get_line_edge_colors(Screen *self, color_type *left, color_type *right);
 bool parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name, bool is_deccara);
+bool screen_pause_rendering(Screen *self, bool pause, int for_in_ms);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

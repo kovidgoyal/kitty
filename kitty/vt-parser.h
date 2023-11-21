@@ -21,17 +21,13 @@ typedef struct ParseData {
     monotonic_t now;
 
     bool input_read, write_space_created;
-    monotonic_t pending_activated_at, pending_wait_time, time_since_new_input;
+    monotonic_t time_since_new_input;
 } ParseData;
 
 // The must only be called on the main thread
 Parser* alloc_vt_parser(id_type window_id);
 void free_vt_parser(Parser*);
 void reset_vt_parser(Parser*);
-monotonic_t vt_parser_pending_activated_at(Parser*);
-monotonic_t vt_parser_pending_wait_time(Parser*);
-void vt_parser_set_pending_activated_at(Parser*, monotonic_t);
-void vt_parser_set_pending_wait_time(Parser*, monotonic_t);
 
 
 // The following are thread safe, using an internal lock
