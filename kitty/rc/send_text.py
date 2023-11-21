@@ -56,7 +56,7 @@ class ClearSession(SessionAction):
             for wid in s.window_ids:
                 qw = boss.window_id_map.get(wid)
                 if qw is not None:
-                    qw.screen.render_unfocused_cursor = 0
+                    qw.screen.render_unfocused_cursor = False
 
 
 class FocusChangedSession(SessionAction):
@@ -65,11 +65,10 @@ class FocusChangedSession(SessionAction):
         s = sessions_map.get(self.sid)
         if s is not None:
             boss = get_boss()
-            val = int(focused)
             for wid in s.window_ids:
                 qw = boss.window_id_map.get(wid)
                 if qw is not None:
-                    qw.screen.render_unfocused_cursor = val
+                    qw.screen.render_unfocused_cursor = focused
 
 
 class SendText(RemoteCommand):
@@ -217,7 +216,7 @@ on bracketed paste mode.
         if session == 'end':
             s = create_or_update_session()
             for w in actual_windows:
-                w.screen.render_unfocused_cursor = 0
+                w.screen.render_unfocused_cursor = False
                 s.window_ids.discard(w.id)
             ClearSession(sid)()
         elif session == 'start':
@@ -232,7 +231,7 @@ on bracketed paste mode.
                 window.actions_on_removal.append(ClearSession(sid))
                 window.actions_on_focus_change.append(FocusChangedSession(sid))
             for w in actual_windows:
-                w.screen.render_unfocused_cursor = 1
+                w.screen.render_unfocused_cursor = True
                 s.window_ids.add(w.id)
         else:
             bp = payload_get('bracketed_paste')
@@ -240,7 +239,7 @@ on bracketed paste mode.
                 s = create_or_update_session()
             for w in actual_windows:
                 if sid:
-                    w.screen.render_unfocused_cursor = 1
+                    w.screen.render_unfocused_cursor = True
                     s.window_ids.add(w.id)
                 if isinstance(data, WindowSystemKeyEvent):
                     kdata = w.encoded_key(data)
