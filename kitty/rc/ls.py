@@ -49,16 +49,11 @@ Only list the window this command is run in.
         tab_filter: Optional[Callable[[Tab], bool]] = None
         window_filter: Optional[Callable[[Window], bool]] = None
 
-        if payload_get('match') is not None:
-            window_ids = frozenset(w.id for w in self.windows_for_match_payload(boss, window, payload_get))
+        if payload_get('match') is not None or payload_get('match_tab') is not None:
+            window_ids = frozenset(w.id for w in self.windows_for_payload(boss, window, payload_get))
             def wf(w: Window) -> bool:
                 return w.id in window_ids
             window_filter = wf
-        if payload_get('match_tab') is not None:
-            tab_ids = frozenset(w.id for w in self.tabs_for_match_payload(boss, window, payload_get))
-            def tf(w: Tab) -> bool:
-                return w.id in tab_ids
-            tab_filter = tf
         data = list(boss.list_os_windows(window, tab_filter, window_filter))
         if not payload_get('all_env_vars'):
             all_env_blocks: List[Dict[str, str]] = []

@@ -3,7 +3,7 @@
 
 import base64
 import sys
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Union
 
 from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
 from kitty.fast_data_types import get_boss
@@ -16,7 +16,6 @@ from .base import (
     ArgsType,
     Boss,
     CmdGenerator,
-    MatchError,
     PayloadGetType,
     PayloadType,
     RCOptions,
@@ -178,24 +177,7 @@ are sent as is, not interpreted for escapes.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         sid = payload_get('session_id', '')
-        if payload_get('all'):
-            windows: List[Optional[Window]] = list(boss.all_windows)
-        else:
-            windows = [boss.active_window]
-            match = payload_get('match')
-            if match:
-                windows = [w for w in self.windows_for_match_payload(boss, window, payload_get)]
-                if not windows and not sid:
-                    raise MatchError(payload_get('match'))
-            mt = payload_get('match_tab')
-            if mt:
-                windows = []
-                tabs = self.tabs_for_match_payload(boss, window, payload_get)
-                if not tabs and not sid:
-                    raise MatchError(payload_get('match_tab'), 'tabs')
-                for tab in tabs:
-                    if tab:
-                        windows += tuple(tab)
+        windows = self.windows_for_payload(boss, None, payload_get)
         pdata: str = payload_get('data')
         encoding, _, q = pdata.partition(':')
         session = ''
