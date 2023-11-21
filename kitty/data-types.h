@@ -303,6 +303,7 @@ typedef struct {
     bool is_visible, is_focused, render_even_when_unfocused;
     CursorShape shape;
     unsigned int x, y;
+    struct { unsigned int x, y; } last;
 } CursorRenderInfo;
 
 typedef enum DynamicColorType {

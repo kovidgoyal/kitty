@@ -652,7 +652,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 static bool
 cursor_needs_render(Window *w) {
-    return w->cursor_visible_at_last_render != w->render_data.screen->cursor_render_info.is_visible || w->last_cursor_x != w->render_data.screen->cursor_render_info.x || w->last_cursor_y != w->render_data.screen->cursor_render_info.y || w->last_cursor_shape != w->render_data.screen->cursor_render_info.shape;
+    return w->cursor_visible_at_last_render != w->render_data.screen->cursor_render_info.is_visible || w->render_data.screen->cursor_render_info.last.x != w->render_data.screen->cursor_render_info.x || w->render_data.screen->cursor_render_info.last.y != w->render_data.screen->cursor_render_info.y || w->last_cursor_shape != w->render_data.screen->cursor_render_info.shape;
 }
 
 static bool
@@ -799,7 +799,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             if (WD.screen->start_visual_bell_at != 0) {
                 set_maximum_wait(OPT(repaint_delay));
             }
-            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
+            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; WD.screen->cursor_render_info.last.x = WD.screen->cursor_render_info.x; WD.screen->cursor_render_info.last.y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
     if (os_window->live_resize.in_progress) draw_resizing_text(os_window);
