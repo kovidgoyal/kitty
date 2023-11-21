@@ -85,6 +85,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     const int ascii_test_mask = movemask_epi8(vec);
     const unsigned num_of_bytes_to_first_non_ascii_byte = __builtin_ctz(ascii_test_mask);
 
+    // Plain ASCII {{{
     if (num_of_bytes_to_first_non_ascii_byte >= src_sz) {  // no bytes with high bit (0x80) set, so just plain ASCII
 #if BITS == 128
         for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += sizeof(integer_t)/sizeof(uint32_t)) {
@@ -114,7 +115,9 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         }
 #endif
         d->output_sz = src_sz;
-    }
+        return sentinel_found;
+    } // }}}
+
     return sentinel_found;
 }
 
