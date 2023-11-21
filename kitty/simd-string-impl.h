@@ -86,28 +86,8 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
         printf("\n"); \
 }
 
-static inline bool
-FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
-    d->output_sz = 0; d->num_consumed = 0;
-    src_sz = MIN(src_sz, sizeof(integer_t));
-    integer_t vec = load_unaligned((integer_t*)src);
-
-    const integer_t esc_vec = set1_epi8(0x1b);
-    const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
-    const int esc_test_mask = movemask_epi8(esc_cmp);
-    bool sentinel_found = false;
-    const unsigned num_of_bytes_to_first_esc = __builtin_ctz(esc_test_mask);
-    if (num_of_bytes_to_first_esc < src_sz) {
-        sentinel_found = true;
-        d->num_consumed = num_of_bytes_to_first_esc + 1;  // esc is also consumed
-        src_sz = d->num_consumed - 1;
-    } else d->num_consumed = src_sz;
-
-    const int ascii_test_mask = movemask_epi8(vec);
-    const unsigned num_of_bytes_to_first_non_ascii_byte = __builtin_ctz(ascii_test_mask);
-
-    // Plain ASCII {{{
-    if (num_of_bytes_to_first_non_ascii_byte >= src_sz) {  // no bytes with high bit (0x80) set, so just plain ASCII
+static inline void
+FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
 #if BITS == 128
         for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += sizeof(integer_t)/sizeof(uint32_t)) {
             const integer_t unpacked = extract_lower_quarter_as_chars(vec);
@@ -136,8 +116,32 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         }
 #endif
         d->output_sz = src_sz;
+}
+
+static inline bool
+FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
+    d->output_sz = 0; d->num_consumed = 0;
+    src_sz = MIN(src_sz, sizeof(integer_t));
+    integer_t vec = load_unaligned((integer_t*)src);
+
+    const integer_t esc_vec = set1_epi8(0x1b);
+    const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
+    const int esc_test_mask = movemask_epi8(esc_cmp);
+    bool sentinel_found = false;
+    const unsigned num_of_bytes_to_first_esc = __builtin_ctz(esc_test_mask);
+    if (num_of_bytes_to_first_esc < src_sz) {
+        sentinel_found = true;
+        d->num_consumed = num_of_bytes_to_first_esc + 1;  // esc is also consumed
+        src_sz = d->num_consumed - 1;
+    } else d->num_consumed = src_sz;
+
+    const int ascii_test_mask = movemask_epi8(vec);
+    const unsigned num_of_bytes_to_first_non_ascii_byte = __builtin_ctz(ascii_test_mask);
+
+    if (num_of_bytes_to_first_non_ascii_byte >= src_sz) {  // no bytes with high bit (0x80) set, so just plain ASCII
+        FUNC(output_plain_ascii)(d, vec, src_sz);
         return sentinel_found;
-    } // }}}
+    }
 
 #if 0
     // Classify the bytes
