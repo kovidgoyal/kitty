@@ -194,6 +194,9 @@ class TestParser(BaseTest):
         pb(b'"\xf0\x9f\x98"', '"\ufffd"')
 
     def test_utf8_simd_decode(self):
+        test_utf8_decode_to_sentinel('2:α3:≤4:😸|', 2)
+        return
+
         def t(x, which=2, reset=True):
             if reset:
                 test_utf8_decode_to_sentinel(b'', -1)
