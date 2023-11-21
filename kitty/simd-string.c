@@ -81,19 +81,30 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     static UTF8Decoder d = {0};
     if (!PyArg_ParseTuple(args, "s#|i", &src, &src_sz, &which_function)) return NULL;
     bool found_sentinel = false;
+    bool(*func)(UTF8Decoder*, const uint8_t*, size_t sz) = utf8_decode_to_esc;
     switch(which_function) {
         case -1:
             zero_at_ptr(&d); Py_RETURN_NONE;
         case 1:
-            found_sentinel = utf8_decode_to_esc(&d, src, src_sz); break;
+            func = utf8_decode_to_esc_scalar; break;
         case 2:
-            found_sentinel = utf8_decode_to_esc_128(&d, src, src_sz); break;
+            func = utf8_decode_to_esc_128; break;
         case 3:
-            found_sentinel = utf8_decode_to_esc_256(&d, src, src_sz); break;
-        default:
-            found_sentinel = utf8_decode_to_esc(&d, src, src_sz); break;
+            func = utf8_decode_to_esc_256; break;
     }
-    return Py_BuildValue("ON", found_sentinel ? Py_True : Py_False, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, d.output, d.output_sz));
+    RAII_PyObject(ans, PyUnicode_FromString(""));
+    ssize_t p = 0;
+    while(p < src_sz && !found_sentinel) {
+        found_sentinel = func(&d, src + p, src_sz - p);
+        p += d.num_consumed;
+        if (d.output_sz) {
+            RAII_PyObject(temp, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, d.output, d.output_sz));
+            PyObject *t = PyUnicode_Concat(ans, temp);
+            Py_DECREF(ans);
+            ans = t;
+        }
+    }
+    return Py_BuildValue("OO", found_sentinel ? Py_True : Py_False, ans);
 }
 // }}}
 

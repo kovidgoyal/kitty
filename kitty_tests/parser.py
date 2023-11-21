@@ -6,7 +6,7 @@ from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
-from kitty.fast_data_types import CURSOR_BLOCK, VT_PARSER_BUFFER_SIZE, base64_decode, base64_encode
+from kitty.fast_data_types import CURSOR_BLOCK, VT_PARSER_BUFFER_SIZE, base64_decode, base64_encode, test_utf8_decode_to_sentinel
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest, parse_bytes
@@ -192,6 +192,20 @@ class TestParser(BaseTest):
         pb(b'"\xef\xbf"', '"\ufffd"')
         pb(b'"\xe0\xa0"', '"\ufffd"')
         pb(b'"\xf0\x9f\x98"', '"\ufffd"')
+
+    def test_utf8_simd_decode(self):
+        def t(x, which=2, reset=True):
+            if reset:
+                test_utf8_decode_to_sentinel(b'', -1)
+            expected = test_utf8_decode_to_sentinel(x, 1)
+            actual = test_utf8_decode_to_sentinel(x, which)
+            self.ae(expected, actual)
+        for which in (2, 3):
+            with self.subTest(which=which):
+                x = partial(t, which=which)
+                x('abcd1234efgh5678')
+                x('abc\x1bd1234efgh5678')
+                x('abcd1234efgh5678ijklABCDmnopEFGH')
 
     def test_esc_codes(self):
         s = self.create_screen()
