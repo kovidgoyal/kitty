@@ -230,4 +230,5 @@
 
 // File transfer OSC number
 #define FILE_TRANSFER_CODE 5113
+// Pending mode CSI code
 #define PENDING_MODE 2026

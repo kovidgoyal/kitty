@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import time
 from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
@@ -115,18 +114,6 @@ class TestParser(BaseTest):
         self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), '23mx'))
         self.parse_written_data(s, ('select_graphic_rendition', '23'), 'x')
 
-        # now test with pending
-        for start in range(len('\x1b[?2026h')):
-            prefix = '\x1b[?2026h'[:start]
-            suffix = '\x1b[?2026h'[start:]
-            self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), prefix))
-            b = self.create_write_buffer(s)
-            self.parse_written_data(s)
-            self.assertFalse(self.write_bytes(s, b, suffix + 'mouse' + '\x1b[?2026l'[:start]))
-            b = self.create_write_buffer(s)
-            self.parse_written_data(s, ('screen_start_pending_mode',))
-            self.assertFalse(self.write_bytes(s, b, '\x1b[?2026l'[start:] + ' cheese'))
-            self.parse_written_data(s, 'mouse', ('screen_stop_pending_mode',), ' cheese')
         # test full write
         sz = VT_PARSER_BUFFER_SIZE // 3 + 7
         self.assertFalse(self.write_bytes(s, self.create_write_buffer(s), b'a' * sz))
@@ -469,73 +456,6 @@ class TestParser(BaseTest):
         p = base64_encode('abcd').decode()
         pb(f'\033P@kitty-print|{p}\033\\', ('handle_remote_print', p))
         self.ae(['abcd'], s.callbacks.printbuf)
-
-    def test_pending(self):
-        s = self.create_screen()
-        timeout = 0.1
-        s.set_pending_timeout(timeout)
-        pb = partial(self.parse_bytes_dump, s)
-
-        pb('\033P=1s\033\\', ('screen_start_pending_mode',))
-        pb('a')
-        self.ae(str(s.line(0)), '')
-        pb('\033P=2s\033\\', ('draw', 'a'), ('screen_stop_pending_mode',))
-        self.ae(str(s.line(0)), 'a')
-        pb('\033P=1s\033\\', ('screen_start_pending_mode',))
-        pb('b')
-        self.ae(str(s.line(0)), 'a')
-        time.sleep(timeout)
-        pb('c', ('draw', 'bc'))
-        self.ae(str(s.line(0)), 'abc')
-        pb('\033P=1s\033\\d', ('screen_start_pending_mode',))
-        pb('\033P=2s\033\\', ('draw', 'd'), ('screen_stop_pending_mode',))
-        pb('\033P=1s\033\\e', ('screen_start_pending_mode',))
-        pb('\033P'), pb('='), pb('2s')
-        pb('\033\\', ('draw', 'e'), ('screen_stop_pending_mode',))
-        pb('\033P=1sxyz;.;\033\\''\033P=2skjf".,><?_+)98\033\\', ('screen_start_pending_mode',), ('screen_stop_pending_mode',))
-        pb('\033P=1s\033\\f\033P=1s\033\\', ('screen_start_pending_mode',),)
-        pb('\033P=2s\033\\', ('draw', 'f'), ('screen_stop_pending_mode',))
-        pb('\033P=1s\033\\XXX\033P=2s\033\\', ('screen_start_pending_mode',), ('draw', 'XXX'), ('screen_stop_pending_mode',))
-
-        pb('\033[?2026hXXX\033[?2026l', ('screen_start_pending_mode',), ('draw', 'XXX'), ('screen_stop_pending_mode',))
-        pb('\033[?2026h\033[32ma\033[?2026l', ('screen_start_pending_mode',), ('select_graphic_rendition', '32'),
-           ('draw', 'a'), ('screen_stop_pending_mode',))
-        pb('\033[?2026h\033P+q544e\033\\ama\033P=2s\033\\',
-           ('screen_start_pending_mode',), ('screen_request_capabilities', 43, '544e'), ('draw', 'ama'), ('screen_stop_pending_mode',))
-
-        s.reset()
-        s.set_pending_timeout(timeout)
-        pb('\033[?2026h', ('screen_start_pending_mode',),)
-        pb('\033P+q')
-        time.sleep(1.2 * timeout)
-        pb('544e\033\\', ('screen_request_capabilities', 43, '544e'))
-        pb(
-            '\033P=2s\033\\',
-            ('Pending mode stop command issued while not in pending mode, this can be '
-             'either a bug in the terminal application or caused by a timeout with no '
-             'data received for too long or by too much data in pending mode',),
-        )
-        self.assertEqual(str(s.line(0)), '')
-
-        pb('\033[?2026h', ('screen_start_pending_mode',),)
-        pb('ab')
-        s.set_pending_activated_at(0.00001)
-        pb('cd', ('draw', 'abcd'))
-        pb('\033[?2026h', ('screen_start_pending_mode',),)
-        pb('\033')
-        s.set_pending_activated_at(0.00001)
-        pb('7', ('screen_save_cursor',))
-        pb('\033[?2026h\033]', ('screen_start_pending_mode',),)
-        s.set_pending_activated_at(0.00001)
-        pb('8;;\x07', ('set_active_hyperlink', None, None))
-        pb('\033[?2026h\033', ('screen_start_pending_mode',),)
-        s.set_pending_activated_at(0.00001)
-        pb(']8;;\x07', ('set_active_hyperlink', None, None))
-        pb('😀'.encode()[:-1])
-        pb('\033[?2026h',  '\ufffd', ('screen_start_pending_mode',),)
-        pb('😀'.encode()[-1:])
-        pb('\033[?2026l', '\ufffd', ('screen_stop_pending_mode',),)
-        pb('a', ('draw', 'a'))
 
     def test_oth_codes(self):
         s = self.create_screen()
