@@ -27,24 +27,35 @@ _Pragma("clang diagnostic pop")
 
 #if BITS == 128
 #define set1_epi8 simde_mm_set1_epi8
+#define add_epi8 simde_mm_add_epi8
 #define load_unaligned simde_mm_loadu_si128
 #define store_aligned simde_mm_store_si128
 #define cmpeq_epi8 simde_mm_cmpeq_epi8
+#define cmplt_epi8 simde_mm_cmplt_epi8
 #define or_si simde_mm_or_si128
+#define and_si simde_mm_and_si128
 #define movemask_epi8 simde_mm_movemask_epi8
 #define extract_lower_quarter_as_chars simde_mm_cvtepu8_epi32
 #define shift_left_by_chars simde_mm_slli_epi32
 #define shift_left_by_bytes simde_mm_slli_si128
+#define blendv_epi8 simde_mm_blendv_epi8
+// output[i] = MAX(0, a[i] - b[1i])
+#define subtract_saturate_epu8 simde_mm_subs_epu8
 #else
 #define set1_epi8 simde_mm256_set1_epi8
+#define add_epi8 simde_mm256_add_epi8
 #define load_unaligned simde_mm256_loadu_si256
 #define store_aligned simde_mm256_store_si256
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
+#define cmplt_epi8 simde_mm256_cmplt_epi8
 #define or_si simde_mm256_or_si256
+#define and_si simde_mm256_and_si256
 #define movemask_epi8 simde_mm256_movemask_epi8
 #define extract_lower_half_as_chars simde_mm256_cvtepu8_epi32
 #define shift_left_by_chars simde_mm256_slli_epi32
 #define shift_left_by_bytes simde_mm256_slli_si256
+#define blendv_epi8 simde_mm256_blendv_epi8
+#define subtract_saturate_epu8 simde_mm256_subs_epu8
 #endif
 
 static inline const uint8_t*
@@ -63,6 +74,16 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
         }
     }
     return NULL;
+}
+
+#define print_register_as_bytes(r) { \
+        alignas(64) uint8_t data[sizeof(r)]; \
+        store_aligned((integer_t*)data, r); \
+        for (unsigned i = 0; i < sizeof(integer_t); i++) { \
+            uint8_t ch = data[i]; \
+            if (' ' <= ch && ch < 0x7f) printf(" %c ", ch); else printf("%.2x ", ch); \
+        } \
+        printf("\n"); \
 }
 
 static inline bool
@@ -118,6 +139,33 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         return sentinel_found;
     } // }}}
 
+#if 0
+    // Classify the bytes
+    integer_t state = set1_epi8((char)0x80);
+    integer_t vec_signed = add_epi8(vec, state);
+    printf("source:\n"); print_register_as_bytes(vec);
+
+    integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(_mm_set1_epi8(0xc0 - 1 - 0x80), vec_signed);
+    state = blendv_epi8(state , _mm_set1_epi8((char)0xc2),  bytes_indicating_start_of_two_byte_sequence);
+    // state now has 0xc2 on all bytes that start a 2 byte sequence and 0x80 on the rest
+    integer_t bytes_indicating_start_of_three_byte_sequence = cmplt_epi8(_mm_set1_epi8(0xe0 - 1 - 0x80), vec_signed);
+    state = blendv_epi8(state , _mm_set1_epi8((char)0xe3),  bytes_indicating_start_of_three_byte_sequence);
+    integer_t bytes_indicating_start_of_four_byte_sequence = cmplt_epi8(_mm_set1_epi8(0xf0 - 1 - 0x80), vec_signed);
+    state = blendv_epi8(state , _mm_set1_epi8((char)0xf4),  bytes_indicating_start_of_four_byte_sequence);
+    // state now has 0xc2 on all bytes that start a 2 byte sequence, 0xe3 on start of 3-byte sequence, 0xf4 on 4-byte start and 0x80 on rest
+    print_register_as_bytes(state);
+    integer_t mask = and_si(state, set1_epi8((char)0xf8));  // keep upper 5 bits of state
+    printf("mask:\n"); print_register_as_bytes(mask);
+    integer_t count = and_si(state, set1_epi8(0x7));  // keep lower three bytes of state
+    printf("count:\n"); print_register_as_bytes(count);
+    // count contains 0 for ASCII and continuation bytes and number of bytes in sequence for start of sequence bytes
+#define subtract_shift_and_add(target, amt) add_epi8(target, shift_left_by_bytes(subtract_saturate_epu8(target, set1_epi8(amt)), amt))
+    integer_t counts = subtract_shift_and_add(count, 1);
+    counts = subtract_shift_and_add(counts, 2);
+    printf("counts:\n"); print_register_as_bytes(counts);
+
+    d->num_consumed = src_sz;
+#endif
     return sentinel_found;
 }
 
@@ -128,7 +176,9 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef load_unaligned
 #undef store_aligned
 #undef cmpeq_epi8
+#undef cmplt_epi8
 #undef or_si
+#undef and_si
 #undef movemask_epi8
 #undef CONCAT
 #undef CONCAT_EXPAND
@@ -138,3 +188,6 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef shift_right_by_bytes128
 #undef extract_lower_quarter_as_chars
 #undef extract_lower_half_as_chars
+#undef blendv_epi8
+#undef add_epi8
+#undef subtract_saturate_epu8
