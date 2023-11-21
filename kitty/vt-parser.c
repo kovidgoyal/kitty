@@ -1535,7 +1535,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
 #endif
         if (self->read.pos < self->read.sz) {
             pd->time_since_new_input = pd->now - self->new_input_at;
-            if (flush || pd->time_since_new_input >= OPT(input_delay) || (BUF_SZ - self->read.sz) <= 16 * 1024) {
+            if (flush || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + 16 * 1024 > BUF_SZ) {
                 pd->input_read = true;
                 self->dump_callback = pd->dump_callback; self->now = pd->now;
                 self->screen = p;
