@@ -167,7 +167,7 @@ screen_reset(Screen *self) {
         update_ime_position_for_window(self->window_id, false, -1);
     }
     Py_CLEAR(self->last_reported_cwd);
-    self->render_unfocused_cursor = false;
+    self->cursor_render_info.render_even_when_unfocused = false;
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
     self->display_window_char = 0;
@@ -3677,6 +3677,19 @@ static int disable_ligatures_set(Screen *self, PyObject *val, void UNUSED *closu
 }
 
 static PyObject*
+render_unfocused_cursor_get(Screen *self, void UNUSED *closure) {
+    if (self->cursor_render_info.render_even_when_unfocused) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+static int
+render_unfocused_cursor_set(Screen *self, PyObject *val, void UNUSED *closure) {
+    if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; }
+    self->cursor_render_info.render_even_when_unfocused = PyObject_IsTrue(val);
+    return 0;
+}
+
+static PyObject*
 cursor_up(Screen *self, PyObject *args) {
     unsigned int count = 1;
     int do_carriage_return = false, move_direction = -1;
@@ -4644,6 +4657,7 @@ static PyGetSetDef getsetters[] = {
     GETSET(cursor_visible)
     GETSET(cursor_key_mode)
     GETSET(disable_ligatures)
+    GETSET(render_unfocused_cursor)
     {NULL}  /* Sentinel */
 };
 
@@ -4671,7 +4685,6 @@ static PyMemberDef members[] = {
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
     {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
     {"history_line_added_count", T_UINT, offsetof(Screen, history_line_added_count), 0, "history_line_added_count"},
-    {"render_unfocused_cursor", T_UINT, offsetof(Screen, render_unfocused_cursor), 0, "render_unfocused_cursor"},
     {NULL}
 };
 

@@ -115,7 +115,7 @@ typedef struct {
     ssize_t vao_idx;
     float xstart, ystart, dx, dy;
     Screen *screen;
-} ScreenRenderData;
+} WindowRenderData;
 
 typedef struct {
     unsigned int left, top, right, bottom;
@@ -154,7 +154,7 @@ typedef struct {
     unsigned int last_cursor_x, last_cursor_y;
     CursorShape last_cursor_shape;
     PyObject *title;
-    ScreenRenderData render_data;
+    WindowRenderData render_data;
     WindowLogoRenderData window_logo;
     MousePosition mouse_pos;
     struct {
@@ -223,7 +223,7 @@ typedef struct {
     BackgroundImage *bgimage;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render;
-    ScreenRenderData tab_bar_render_data;
+    WindowRenderData tab_bar_render_data;
     struct {
         color_type left, right;
     } tab_bar_edge_color;
@@ -315,7 +315,7 @@ ssize_t create_cell_vao(void);
 ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);
 bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
-void draw_cells(ssize_t, const ScreenRenderData*, OSWindow *, bool, bool, Window*);
+void draw_cells(ssize_t, const WindowRenderData*, OSWindow *, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
