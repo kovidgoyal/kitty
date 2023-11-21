@@ -1545,7 +1545,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
                     } with_lock;
                     self->read.sz += self->write.pending; self->write.pending = 0;
                 } while (self->read.pos < self->read.sz);
-                self->new_input_at = pd->now;
+                self->new_input_at = 0;
                 pd->pending_activated_at = self->pending_mode.activated_at;
                 pd->pending_wait_time = self->pending_mode.wait_time;
                 if (self->read.consumed) {
@@ -1581,6 +1581,7 @@ vt_parser_commit_write(Parser *p, size_t sz) {
     PS *self = (PS*)p->state;
     with_lock {
         size_t off = self->read.sz + self->write.pending;
+        if (self->new_input_at == 0) self->new_input_at = monotonic();
         if (self->write.offset > off) memmove(self->buf + off, self->buf + self->write.offset, sz);
         self->write.pending += sz;
         self->write.sz = 0;
