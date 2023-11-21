@@ -64,26 +64,26 @@ decode_utf8_string(const char *src, size_t sz, uint32_t *dest) {
 
 unsigned int
 encode_utf8(uint32_t ch, char* dest) {
-    if (ch < 0x80) {
-        dest[0] = (char)ch;
+    if (ch < 0x80) { // only lower 7 bits cab be 1
+        dest[0] = (char)ch;  // 0xxxxxxx
         return 1;
     }
-    if (ch < 0x800) {
-        dest[0] = (ch>>6) | 0xC0;
-        dest[1] = (ch & 0x3F) | 0x80;
+    if (ch < 0x800) { // only lower 11 bits can be 1
+        dest[0] = (ch>>6) | 0xC0; // 110xxxxx
+        dest[1] = (ch & 0x3F) | 0x80;  // 10xxxxxx
         return 2;
     }
-    if (ch < 0x10000) {
-        dest[0] = (ch>>12) | 0xE0;
-        dest[1] = ((ch>>6) & 0x3F) | 0x80;
-        dest[2] = (ch & 0x3F) | 0x80;
+    if (ch < 0x10000) { // only lower 16 bits can be 1
+        dest[0] = (ch>>12) | 0xE0; // 1110xxxx
+        dest[1] = ((ch>>6) & 0x3F) | 0x80;  // 10xxxxxx
+        dest[2] = (ch & 0x3F) | 0x80;       // 10xxxxxx
         return 3;
     }
-    if (ch < 0x110000) {
-        dest[0] = (ch>>18) | 0xF0;
-        dest[1] = ((ch>>12) & 0x3F) | 0x80;
-        dest[2] = ((ch>>6) & 0x3F) | 0x80;
-        dest[3] = (ch & 0x3F) | 0x80;
+    if (ch < 0x110000) { // only lower 21 bits can be 1
+        dest[0] = (ch>>18) | 0xF0; // 11110xxx
+        dest[1] = ((ch>>12) & 0x3F) | 0x80; // 10xxxxxx
+        dest[2] = ((ch>>6) & 0x3F) | 0x80;  // 10xxxxxx
+        dest[3] = (ch & 0x3F) | 0x80; // 10xxxxxx
         return 4;
     }
     return 0;
