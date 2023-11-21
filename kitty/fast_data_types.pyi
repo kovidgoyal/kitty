@@ -1055,7 +1055,7 @@ class Screen:
     disable_ligatures: int
     cursor_key_mode: bool
     auto_repeat_enabled: bool
-    render_unfocused_cursor: int
+    render_unfocused_cursor: bool
     last_reported_cwd: Optional[bytes]
 
     def __init__(

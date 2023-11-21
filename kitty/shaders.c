@@ -909,7 +909,7 @@ get_visual_bell_intensity(Screen *screen) {
 }
 
 void
-draw_cells(ssize_t vao_idx, const ScreenRenderData *srd, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
+draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
     float x_ratio = 1., y_ratio = 1.;
     if (os_window->live_resize.in_progress) {
         x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;

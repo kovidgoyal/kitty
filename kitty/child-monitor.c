@@ -657,7 +657,7 @@ cursor_needs_render(Window *w) {
 
 static bool
 collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow *os_window) {
-    ScreenRenderData *rd = &w->render_data;
+    WindowRenderData *rd = &w->render_data;
     const Cursor *cursor;
     if (screen_is_overlay_active(rd->screen)) {
         // Do not force the cursor to be visible here for the sake of some programs that prefer it hidden
@@ -746,7 +746,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
             } else {
-                if (WD.screen->render_unfocused_cursor) {
+                if (WD.screen->cursor_render_info.render_even_when_unfocused) {
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
                     WD.screen->cursor_render_info.is_focused = false;
                 } else {

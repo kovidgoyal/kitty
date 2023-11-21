@@ -111,7 +111,6 @@ typedef struct {
     pthread_mutex_t write_buf_lock;
 
     CursorRenderInfo cursor_render_info;
-    unsigned int render_unfocused_cursor;
 
     DisableLigature disable_ligatures;
     PyObject *marker;

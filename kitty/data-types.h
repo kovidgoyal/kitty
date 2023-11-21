@@ -300,7 +300,7 @@ typedef struct {
 } Cursor;
 
 typedef struct {
-    bool is_visible, is_focused;
+    bool is_visible, is_focused, render_even_when_unfocused;
     CursorShape shape;
     unsigned int x, y;
 } CursorRenderInfo;
