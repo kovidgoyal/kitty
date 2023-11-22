@@ -159,6 +159,7 @@ static Line* range_line_(Screen *self, int y);
 
 void
 screen_reset(Screen *self) {
+    screen_pause_rendering(self, false, 0);
     self->main_pointer_shape_stack.count = 0; self->alternate_pointer_shape_stack.count = 0;
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (screen_is_overlay_active(self)) {
@@ -338,6 +339,7 @@ found:
 
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
+    screen_pause_rendering(self, false, 0);
     lines = MAX(1u, lines); columns = MAX(1u, columns);
 
     bool is_main = self->linebuf == self->main_linebuf;
@@ -1790,11 +1792,17 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
 }
 
 static void
+dirty_scroll(Screen *self) {
+    self->scroll_changed = true;
+    screen_pause_rendering(self, false, 0);
+}
+
+static void
 screen_clear_scrollback(Screen *self) {
     historybuf_clear(self->historybuf);
     if (self->scrolled_by != 0) {
         self->scrolled_by = 0;
-        self->scroll_changed = true;
+        dirty_scroll(self);
     }
 }
 
@@ -2250,7 +2258,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
         self->scrolled_by = y >= 0 ? 0 : -y;
         screen_set_last_visited_prompt(self, 0);
     }
-    if (old != self->scrolled_by) self->scroll_changed = true;
+    if (old != self->scrolled_by) dirty_scroll(self);
     return old != self->scrolled_by;
 }
 
@@ -3132,7 +3140,7 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
     // Since we are typing, scroll to the bottom
     if (self->scrolled_by != 0) {
         self->scrolled_by = 0;
-        self->scroll_changed = true;
+        dirty_scroll(self);
     }
 }
 
@@ -3903,7 +3911,7 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
     unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
     if (new_scroll != self->scrolled_by) {
         self->scrolled_by = new_scroll;
-        self->scroll_changed = true;
+        dirty_scroll(self);
         return true;
     }
     return false;
@@ -3944,6 +3952,7 @@ screen_is_selection_dirty(Screen *self) {
 
 void
 screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool rectangle_select, SelectionExtendMode extend_mode) {
+    screen_pause_rendering(self, false, 0);
 #define A(attr, val) self->selections.items->attr = val;
     ensure_space_for(&self->selections, items, Selection, self->selections.count + 1, capacity, 1, false);
     memset(self->selections.items, 0, sizeof(Selection));
@@ -4471,7 +4480,7 @@ scroll_prompt_to_bottom(Screen *self, PyObject *args UNUSED) {
     // always scroll to the bottom
     if (self->scrolled_by != 0) {
         self->scrolled_by = 0;
-        self->scroll_changed = true;
+        dirty_scroll(self);
     }
     Py_RETURN_NONE;
 }
