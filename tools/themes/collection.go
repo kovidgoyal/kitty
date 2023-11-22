@@ -476,7 +476,6 @@ func ParseThemeMetadata(path string) (*ThemeMetadata, map[string]string, error) 
 	read_is_dark := func(key, val string) (err error) {
 		settings[key] = val
 		if key == "background" {
-			val = strings.TrimSpace(val)
 			if val != "" {
 				bg, err := style.ParseColor(val)
 				if err == nil {

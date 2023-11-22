@@ -119,8 +119,14 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 			}
 			continue
 		}
-		key, val, _ := strings.Cut(line, " ")
-		val = strings.TrimSpace(val)
+		key, val := line, ""
+		for i, ch := range line {
+			if ch == ' ' || ch == '\t' {
+				key = line[:i]
+				val = strings.TrimSpace(line[i+1:])
+				break
+			}
+		}
 		switch key {
 		default:
 			err := self.LineHandler(key, val)
