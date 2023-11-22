@@ -11,7 +11,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 
 	"kitty/tools/utils"
 )
@@ -48,6 +50,10 @@ type Scanner interface {
 func (self *ConfigParser) BadLines() []ConfigLine {
 	return self.bad_lines
 }
+
+var key_pat = sync.OnceValue(func() *regexp.Regexp {
+	return regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$`)
+})
 
 func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes string, depth int) error {
 	if self.seen_includes[name] { // avoid include loops
@@ -119,7 +125,12 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 			}
 			continue
 		}
-		key, val := line, ""
+		m := key_pat().FindStringSubmatch(line)
+		if len(m) < 3 {
+			self.bad_lines = append(self.bad_lines, ConfigLine{Src_file: name, Line: line, Line_number: lnum, Err: fmt.Errorf("Invalid config line: %#v", line)})
+			continue
+		}
+		key, val := m[1], m[2]
 		for i, ch := range line {
 			if ch == ' ' || ch == '\t' {
 				key = line[:i]
