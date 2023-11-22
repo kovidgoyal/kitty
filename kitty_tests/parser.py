@@ -309,6 +309,18 @@ class TestParser(BaseTest):
         pb('\033[T', ('screen_reverse_scroll', 1))
         pb('\033[+T', ('screen_reverse_scroll_and_fill_from_scrollback', 1))
 
+        c.clear()
+        pb('\033[?2026$p', ('report_mode_status', 2026, 1))
+        self.ae(c.wtcbuf, b'\x1b[?2026;2$y')
+        c.clear()
+        pb('\033[?2026h', ('screen_set_mode', 2026, 1))
+        pb('\033[?2026$p', ('report_mode_status', 2026, 1))
+        self.ae(c.wtcbuf, b'\x1b[?2026;1$y')
+        pb('\033[?2026l', ('screen_reset_mode', 2026, 1))
+        c.clear()
+        pb('\033[?2026$p', ('report_mode_status', 2026, 1))
+        self.ae(c.wtcbuf, b'\x1b[?2026;2$y')
+
     def test_csi_code_rep(self):
         s = self.create_screen(8)
         pb = partial(self.parse_bytes_dump, s)
@@ -456,6 +468,19 @@ class TestParser(BaseTest):
         p = base64_encode('abcd').decode()
         pb(f'\033P@kitty-print|{p}\033\\', ('handle_remote_print', p))
         self.ae(['abcd'], s.callbacks.printbuf)
+
+        c.clear()
+        pb('\033[?2026$p', ('report_mode_status', 2026, 1))
+        self.ae(c.wtcbuf, b'\x1b[?2026;2$y')
+        pb('\033P=1s\033\\', ('screen_start_pending_mode',))
+        c.clear()
+        pb('\033[?2026$p', ('report_mode_status', 2026, 1))
+        self.ae(c.wtcbuf, b'\x1b[?2026;1$y')
+        pb('\033P=2s\033\\', ('screen_stop_pending_mode',))
+        c.clear()
+        pb('\033[?2026$p', ('report_mode_status', 2026, 1))
+        self.ae(c.wtcbuf, b'\x1b[?2026;2$y')
+
 
     def test_oth_codes(self):
         s = self.create_screen()
