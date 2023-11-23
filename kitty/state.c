@@ -1153,7 +1153,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
         bgimage = calloc(1, sizeof(BackgroundImage));
         if (!bgimage) return PyErr_NoMemory();
         bool ok;
-        if (png_data) {
+        if (png_data && png_data_size) {
             ok = png_from_data(png_data, png_data_size, path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
         } else {
             ok = png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
@@ -1274,7 +1274,7 @@ pymouse_selection(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(set_window_logo) {
+PYWRAP1(sotet_window_logo) {
     id_type os_window_id, tab_id, window_id;
     const char *path; PyObject *position;
     float alpha = 0.5;
