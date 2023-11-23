@@ -305,7 +305,7 @@ err:
 }
 
 static void
-png_error_handler(const char *code, const char *msg) {
+png_error_handler(png_read_data *d UNUSED, const char *code, const char *msg) {
     set_command_failed_response(code, "%s", msg);
 }
 
@@ -333,6 +333,17 @@ add_trim_predicate(Image *img) {
     return !img->root_frame_data_loaded || (!img->client_id && !img->refs);
 }
 
+static void
+print_png_read_error(png_read_data *d, const char *code, const char* msg) {
+    if (d->error.used >= d->error.capacity) {
+        size_t cap = MAX(2 * d->error.capacity, 1024 + d->error.used);
+        d->error.buf = realloc(d->error.buf, cap);
+        if (!d->error.buf) return;
+        d->error.capacity = cap;
+    }
+    d->error.used += snprintf(d->error.buf + d->error.used, d->error.capacity - d->error.used, "%s: %s ", code, msg);
+}
+
 bool
 png_from_file_pointer(FILE *fp, const char *path_for_error_messages, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
     size_t capacity = 16*1024, pos = 0;
@@ -356,16 +367,16 @@ png_from_file_pointer(FILE *fp, const char *path_for_error_messages, uint8_t** d
             return false;
         }
     }
-    png_read_data d = {0};
+    png_read_data d = {.err_handler=print_png_read_error};
     inflate_png_inner(&d, buf, pos);
     free(buf);
     if (!d.ok) {
-        free(d.decompressed); free(d.row_pointers);
-        log_error("Failed to decode PNG image at: %s", path_for_error_messages);
+        log_error("Failed to decode PNG image at: %s with error: %s", path_for_error_messages, d.error.used > 0 ? d.error.buf : "");
+        free(d.decompressed); free(d.row_pointers); free(d.error.buf);
         return false;
     }
     *data = d.decompressed;
-    free(d.row_pointers);
+    free(d.row_pointers); free(d.error.buf);
     *sz = d.sz;
     *height = d.height; *width = d.width;
     return true;

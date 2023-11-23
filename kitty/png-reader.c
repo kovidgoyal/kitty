@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#include "data-types.h"
 #include "png-reader.h"
 #include "cleanup.h"
 #include "state.h"
@@ -26,7 +27,7 @@ read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
 
 struct custom_error_handler {
     jmp_buf jb;
-    png_error_handler_func err_handler;
+    png_read_data *d;
 };
 
 static void
@@ -34,7 +35,7 @@ read_png_error_handler(png_structp png_ptr, png_const_charp msg) {
     struct custom_error_handler *eh;
     eh = png_get_error_ptr(png_ptr);
     if (eh == NULL) fatal("read_png_error_handler: could not retrieve error handler");
-    if(eh->err_handler) eh->err_handler("EBADPNG", msg);
+    if(eh->d->err_handler) eh->d->err_handler(eh->d, "EBADPNG", msg);
     longjmp(eh->jb, 1);
 }
 
@@ -43,14 +44,14 @@ read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp msg) {
     if (global_state.debug_rendering) log_error("libpng WARNING: %s", msg);
 }
 
-#define ABRT(code, msg) { if(d->err_handler) d->err_handler(#code, msg); goto err; }
+#define ABRT(code, msg) { if(d->err_handler) d->err_handler(d, #code, msg); goto err; }
 
 void
 inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
     struct fake_file f = {.buf = buf, .sz = bufsz};
     png_structp png = NULL;
     png_infop info = NULL;
-    struct custom_error_handler eh = {.err_handler = d->err_handler};
+    struct custom_error_handler eh = {.d = d};
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, &eh, read_png_error_handler, read_png_warn_handler);
     if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
     info = png_create_info_struct(png);
@@ -131,8 +132,8 @@ err:
 }
 
 static void
-png_error_handler(const char *code, const char *msg) {
-    PyErr_Format(PyExc_ValueError, "[%s] %s", code, msg);
+png_error_handler(png_read_data *d UNUSED, const char *code, const char *msg) {
+    if (!PyErr_Occurred()) PyErr_Format(PyExc_ValueError, "[%s] %s", code, msg);
 }
 
 static PyObject*
