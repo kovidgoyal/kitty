@@ -1274,7 +1274,7 @@ pymouse_selection(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(sotet_window_logo) {
+PYWRAP1(set_window_logo) {
     id_type os_window_id, tab_id, window_id;
     const char *path; PyObject *position;
     float alpha = 0.5;
