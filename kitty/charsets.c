@@ -64,7 +64,7 @@ decode_utf8_string(const char *src, size_t sz, uint32_t *dest) {
 
 unsigned int
 encode_utf8(uint32_t ch, char* dest) {
-    if (ch < 0x80) { // only lower 7 bits cab be 1
+    if (ch < 0x80) { // only lower 7 bits can be 1
         dest[0] = (char)ch;  // 0xxxxxxx
         return 1;
     }
