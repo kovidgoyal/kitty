@@ -83,7 +83,7 @@ the command line:
     data to STDIN.
 
 ``@input-line-number``
-    Replaced the number of lines a pager should scroll to match the current
+    Replaced by the number of lines a pager should scroll to match the current
     scroll position in kitty. See :opt:`scrollback_pager` for details.
 
 ``@scrolled-by``
