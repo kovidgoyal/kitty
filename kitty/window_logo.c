@@ -66,11 +66,7 @@ find_or_create_window_logo(WindowLogoTable *head, const char *path, void *png_da
     if (png_data == NULL) {
         ok = png_path_to_bitmap(path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
     } else {
-        FILE *fp = fmemopen(png_data, png_data_size, "r");
-        if (fp != NULL) {
-            ok = png_from_file_pointer(fp, path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
-            fclose(fp);
-        }
+        ok = png_from_data(png_data, png_data_size, path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
     }
     if (ok) s->wl.load_from_disk_ok = true;
     s->refcnt++;

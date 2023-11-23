@@ -1154,14 +1154,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
         if (!bgimage) return PyErr_NoMemory();
         bool ok;
         if (png_data) {
-            FILE *fp = fmemopen(png_data, png_data_size, "r");
-            if (fp == NULL) {
-                PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
-                free(bgimage);
-                return NULL;
-            }
-            ok = png_from_file_pointer(fp, path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
-            fclose(fp);
+            ok = png_from_data(png_data, png_data_size, path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
         } else {
             ok = png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
         }
