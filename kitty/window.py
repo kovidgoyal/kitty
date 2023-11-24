@@ -488,7 +488,7 @@ global_watchers = GlobalWatchers()
 
 def replace_control_codes(text: str) -> str:
     # Replace all control codes other than tab, newline and space with their graphical counterparts
-    def sub(m: re.Match[str]) -> str:
+    def sub(m: 're.Match[str]') -> str:
         c = ord(m.group())
         if c < 0x20:
             return chr(0x2400 + c)
