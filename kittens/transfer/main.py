@@ -128,8 +128,10 @@ def main(args: List[str]) -> None:
 if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__doc__':
+    from kitty.cli import CompletionSpec
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = option_text
     cd['help_text'] = help_text
     cd['short_desc'] = 'Transfer files easily over the TTY device'
+    cd['args_completion'] = CompletionSpec.from_string('type:file group:"Files"')
