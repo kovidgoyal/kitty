@@ -93,6 +93,9 @@ func GetChoices(o *Options) (response string, err error) {
 			}
 			letter = strings.ToLower(letter)
 			idx := strings.Index(strings.ToLower(text), letter)
+			if idx < 0 {
+				return "", fmt.Errorf("The choice letter %#v is not present in the choice text: %#v", letter, text)
+			}
 			idx = len([]rune(strings.ToLower(text)[:idx]))
 			allowed.Add(letter)
 			c := Choice{text: text, idx: idx, color: color, letter: letter}
