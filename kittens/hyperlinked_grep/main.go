@@ -43,16 +43,18 @@ func get_options_for_rg() (expecting_args map[string]bool, alias_map map[string]
 		if options_started {
 			s := strings.TrimLeft(line, " ")
 			indent := len(line) - len(s)
-			if indent < 12 && indent > 0 {
-				s, _, expecting_arg := strings.Cut(s, "<")
+			if indent < 8 && indent > 0 {
+				expecting_arg := strings.Contains(s, "=")
 				single_letter_aliases := make([]string, 0, 1)
 				long_option_names := make([]string, 0, 1)
 				for _, x := range strings.Split(s, ",") {
 					x = strings.TrimSpace(x)
 					if strings.HasPrefix(x, "--") {
-						long_option_names = append(long_option_names, x[2:])
+						lon, _, _ := strings.Cut(x[2:], "=")
+						long_option_names = append(long_option_names, lon)
 					} else if strings.HasPrefix(x, "-") {
-						single_letter_aliases = append(single_letter_aliases, x[1:])
+						son, _, _ := strings.Cut(x[1:], " ")
+						single_letter_aliases = append(single_letter_aliases, son)
 					}
 				}
 				if len(long_option_names) == 0 {
@@ -68,10 +70,14 @@ func get_options_for_rg() (expecting_args map[string]bool, alias_map map[string]
 				expecting_args[long_option_names[0]] = expecting_arg
 			}
 		} else {
-			if strings.HasPrefix(line, "OPTIONS:") {
+			if strings.HasSuffix(line, "OPTIONS:") {
 				options_started = true
 			}
 		}
+	}
+	if len(expecting_args) == 0 || len(alias_map) == 0 {
+		err = fmt.Errorf("Failed to parse rg help output, could not find any options")
+		return
 	}
 	return
 }
