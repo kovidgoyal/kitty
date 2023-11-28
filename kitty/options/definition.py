@@ -705,10 +705,10 @@ You can run kitty with the :option:`kitty --debug-input` command line option
 to see mouse events. See the builtin actions below to get a sense of what is
 possible.
 
-If you want to unmap an action, map it to :ac:`no_op`. For example, to disable
+If you want to unmap a button, map it to nothing. For example, to disable
 opening of URLs with a plain click::
 
-    mouse_map left click ungrabbed no_op
+    mouse_map left click ungrabbed
 
 See all the mappable actions including mouse actions :doc:`here </actions>`.
 
@@ -3419,10 +3419,9 @@ Here, the key name for the :kbd:`A` key is :code:`0x61` and you can use it with:
 
 to map :kbd:`Ctrl+A` to something.
 
-You can use the special action :ac:`no_op` to unmap a keyboard shortcut that is
-assigned in the default configuration::
+You can unmap a keyboard shortcut defined in the default configuration by mapping it to nothing::
 
-    map kitty_mod+space no_op
+    map kitty_mod+space
 
 If you would like kitty to completely ignore a key event, not even sending it to
 the program running in the terminal, map it to :ac:`discard_event`::

@@ -104,22 +104,13 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] =
     sequence_map: SequenceMap = {}
 
     for defn in defns:
-        is_no_op = defn.is_no_op
         if defn.is_sequence:
             keymap.pop(defn.trigger, None)
             s = sequence_map.setdefault(defn.trigger, {})
-            if is_no_op:
-                s.pop(defn.rest, None)
-                if not s:
-                    del sequence_map[defn.trigger]
-            else:
-                s[defn.rest] = defn.definition
+            s[defn.rest] = defn.definition
         else:
             sequence_map.pop(defn.trigger, None)
-            if is_no_op:
-                keymap.pop(defn.trigger, None)
-            else:
-                keymap[defn.trigger] = defn.definition
+            keymap[defn.trigger] = defn.definition
     opts.keymap = keymap
     opts.sequence_map = sequence_map
 
@@ -140,11 +131,10 @@ def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: Optional[List[B
     mousemap: MouseMap = {}
 
     for defn in defns:
-        is_no_op = defn.is_no_op
-        if is_no_op:
-            mousemap.pop(defn.trigger, None)
-        else:
+        if defn.definition:
             mousemap[defn.trigger] = defn.definition
+        else:
+            mousemap.pop(defn.trigger, None)
     opts.mousemap = mousemap
 
 

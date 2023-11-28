@@ -1353,7 +1353,7 @@ class Boss:
                 return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
-        elif isinstance(key_action, str):
+        elif key_action and isinstance(key_action, str):
             return self.combine(key_action)
         return False
 

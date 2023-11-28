@@ -1085,12 +1085,10 @@ class BaseDefinition:
     definition_location: CurrentlyParsing
 
     def __init__(self, definition: str = '') -> None:
+        if definition in BaseDefinition.no_op_actions:
+            definition = ''
         self.definition = definition
         self.definition_location = currently_parsing.__copy__()
-
-    @property
-    def is_no_op(self) -> bool:
-        return self.definition in self.no_op_actions
 
     def pretty_repr(self, *fields: str) -> str:
         kwds = []
@@ -1163,11 +1161,12 @@ class KeyDefinition(BaseDefinition):
 
 def parse_map(val: str) -> Iterable[KeyDefinition]:
     parts = val.split(maxsplit=1)
-    if len(parts) != 2:
-        return
-    sc, action = parts
+    if len(parts) == 2:
+        sc, action = parts
+    else:
+        sc, action = val, ''
     sc, action = sc.strip().strip(sequence_sep), action.strip()
-    if not sc or not action:
+    if not sc:
         return
     is_sequence = sequence_sep in sc
     if is_sequence:
@@ -1206,10 +1205,14 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
 
 def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
     parts = val.split(maxsplit=3)
-    if len(parts) != 4:
+    if len(parts) == 4:
+        xbutton, event, modes, action = parts
+    elif len(parts) > 2:
+        xbutton, event, modes = parts
+        action = ''
+    else:
         log_error(f'Ignoring invalid mouse action: {val}')
         return
-    xbutton, event, modes, action = parts
     kparts = xbutton.split('+')
     if len(kparts) > 1:
         mparts, obutton = kparts[:-1], kparts[-1].lower()
