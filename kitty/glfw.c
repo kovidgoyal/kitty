@@ -6,7 +6,6 @@
 
 #include "state.h"
 #include "cleanup.h"
-#include "fonts.h"
 #include "monotonic.h"
 #include "charsets.h"
 #include <structmember.h>
@@ -323,9 +322,13 @@ change_live_resize_state(OSWindow *w, bool in_progress) {
     if (in_progress != w->live_resize.in_progress) {
         w->live_resize.in_progress = in_progress;
         w->live_resize.num_of_resize_events = 0;
-        apply_swap_interval(in_progress ? 0 : -1);
 #ifdef __APPLE__
         cocoa_out_of_sequence_render(w);
+#else
+        GLFWwindow *orig_ctx = make_os_window_context_current(w);
+        apply_swap_interval(in_progress ? 0 : -1);
+        if (orig_ctx) glfwMakeContextCurrent(orig_ctx);
+
 #endif
     }
 }
@@ -753,13 +756,14 @@ set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
 }
 
 
-void
+void*
 make_os_window_context_current(OSWindow *w) {
     GLFWwindow *current_context = glfwGetCurrentContext();
     if (w->handle != current_context) {
         glfwMakeContextCurrent(w->handle);
-        global_state.current_opengl_context_id = w->id;
+        return current_context;
     }
+    return NULL;
 }
 
 void
@@ -1176,7 +1180,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
     w->is_semi_transparent = is_semi_transparent;
-    global_state.current_opengl_context_id = w->id;
     if (want_semi_transparent && !w->is_semi_transparent) {
         static bool warned = false;
         if (!warned) {

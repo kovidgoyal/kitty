@@ -255,7 +255,7 @@ typedef struct {
 typedef struct {
     Options opts;
 
-    id_type os_window_id_counter, tab_id_counter, window_id_counter, current_opengl_context_id;
+    id_type os_window_id_counter, tab_id_counter, window_id_counter;
     PyObject *boss;
     BackgroundImage *bgimage;
     OSWindow *os_windows;
@@ -286,7 +286,7 @@ extern GlobalState global_state;
 void gl_init(void);
 void remove_vao(ssize_t vao_idx);
 bool remove_os_window(id_type os_window_id);
-void make_os_window_context_current(OSWindow *w);
+void* make_os_window_context_current(OSWindow *w);
 void set_os_window_size(OSWindow *os_window, int x, int y);
 void get_os_window_size(OSWindow *os_window, int *w, int *h, int *fw, int *fh);
 void get_os_window_content_scale(OSWindow *os_window, double *xdpi, double *ydpi, float *xscale, float *yscale);
