@@ -341,6 +341,8 @@ examples::
     not id:1
     (id:2 or id:3) and title:something
 
+.. include:: generated/matching.rst
+
 .. toctree::
    :hidden:
 

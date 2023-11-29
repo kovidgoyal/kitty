@@ -530,6 +530,18 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     from kitty.actions import as_rst
     with open('generated/actions.rst', 'w', encoding='utf-8') as f:
         f.write(as_rst())
+
+    from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
+    with open('generated/matching.rst', 'w') as f:
+        print('Matching windows', file=f)
+        print('______________________________', file=f)
+        w = 'm' + MATCH_WINDOW_OPTION[MATCH_WINDOW_OPTION.find('Match') + 1:]
+        print('When matching windows,', w, file=f)
+        print('Matching tabs', file=f)
+        print('______________________________', file=f)
+        w = 'm' + MATCH_TAB_OPTION[MATCH_TAB_OPTION.find('Match') + 1:]
+        print('When matching tabs,', w, file=f)
+
 # }}}
 
 
