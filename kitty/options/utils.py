@@ -940,11 +940,10 @@ def shell_integration(x: str) -> FrozenSet[str]:
 
 
 def paste_actions(x: str) -> FrozenSet[str]:
-    s = frozenset({'quote-urls-at-prompt', 'confirm', 'filter', 'confirm-if-large', 'replace-dangerous-control-codes', 'replace-newline'})
+    s = frozenset({'quote-urls-at-prompt', 'confirm', 'filter', 'confirm-if-large', 'replace-dangerous-control-codes', 'replace-newline', 'no-op'})
     q = frozenset(x.lower().split(','))
     if not q.issubset(s):
-        log_error(f'Invalid paste actions: {q - s}, ignoring')
-        return (q & s) or frozenset({'invalid'})
+        raise ValueError(f'Invalid paste actions: {q - s}, ignoring')
     return q
 
 

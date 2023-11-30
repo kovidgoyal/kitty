@@ -567,6 +567,8 @@ The supported paste actions are:
     Run the filter_paste() function from the file :file:`paste-actions.py` in
     the kitty config directory on the pasted text. The text returned by the
     function will be actually pasted.
+:code:`no-op`:
+    Has no effect.
 '''
     )
 
