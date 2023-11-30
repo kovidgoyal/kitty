@@ -38,8 +38,8 @@ class TestConfParsing(BaseTest):
             return ans
 
         def keys_for_func(opts, name):
-            for key, defn in opts.keymap.items():
-                for action in opts.alias_map.resolve_aliases(defn):
+            for key, defns in opts.keymap.items():
+                for action in opts.alias_map.resolve_aliases(defns[0].definition):
                     if action.func == name:
                         yield key
 
@@ -69,8 +69,8 @@ class TestConfParsing(BaseTest):
         self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': DELETE_ENV_VAR})
 
         def ac(which=0):
-            ka = tuple(opts.keymap.values())[0]
-            acs = opts.alias_map.resolve_aliases(ka)
+            ka = tuple(opts.keymap.values())[0][0]
+            acs = opts.alias_map.resolve_aliases(ka.definition)
             return acs[which]
 
         ka = ac()
