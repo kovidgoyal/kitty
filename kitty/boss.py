@@ -1366,6 +1366,8 @@ class Boss:
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
             if self.pop_keyboard_mode():
+                if get_options().enable_audio_bell:
+                    ring_bell()
                 return True
         else:
             final_action = self.matching_key_action(key_action)
