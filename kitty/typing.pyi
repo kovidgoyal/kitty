@@ -30,7 +30,6 @@ from .key_encoding import KeyEvent as KeyEventType
 from .layout.base import Layout as LayoutType
 from .options.utils import AliasMap as AliasMap
 from .options.utils import KeyMap as KeyMap
-from .options.utils import SequenceMap as SequenceMap
 from .rc.base import RemoteCommand as RemoteCommandType
 from .session import Session as SessionType
 from .session import Tab as SessionTab

@@ -1404,8 +1404,8 @@ class Boss:
                     if w and w in self.match_windows(x.options.when_focus_on):
                         ans = x
                 except Exception:
-                    import traceback
-                    traceback.print_exc()
+                    self.show_error(_('Invalid key mapping'), _(
+                        'The match expression {0} is not valid for {1}').format(x.options.when_focus_on, '--when-focus-on'))
             else:
                 ans = x
         return ans
@@ -1620,8 +1620,6 @@ class Boss:
             try:
                 actions = get_options().alias_map.resolve_aliases(action_definition, 'map' if dispatch_type == 'KeyPress' else 'mouse_map')
             except Exception as e:
-                import traceback
-                traceback.print_exc()
                 self.show_error('Failed to parse action', f'{action_definition}\n{e}')
                 return True
             if actions:
@@ -1631,8 +1629,6 @@ class Boss:
                         if len(actions) > 1:
                             self.drain_actions(list(actions[1:]), window_for_dispatch, dispatch_type)
                 except Exception as e:
-                    import traceback
-                    traceback.print_exc()
                     self.show_error('Key action failed', f'{actions[0].pretty()}\n{e}')
                     consumed = True
         return consumed
