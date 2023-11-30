@@ -1438,7 +1438,8 @@ class Boss:
             w = self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
             self.current_visual_select.window_used_for_selection_id = 0 if w is None else w.id
             return
-        pending_sequences: SubSequenceMap = {}
+        km = KeyboardMode('__visual_select__')
+        km.end_on_action = True
         fmap = get_name_to_functional_number_map()
         alphanumerics = get_options().visual_window_select_characters
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
@@ -1451,11 +1452,11 @@ class Boss:
             window.screen.set_window_char(ch)
             self.current_visual_select.window_ids.append(window.id)
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
-                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = [ac]
+                km.keymap[SingleKey(mods=mods, key=ord(ch.lower()))].append(ac)
                 if ch in string.digits:
-                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = [ac]
+                    km.keymap[SingleKey(mods=mods, key=fmap[f'KP_{ch}'])].append(ac)
         if len(self.current_visual_select.window_ids) > 1:
-            self.set_pending_sequences(pending_sequences, default_pending_action='visual_window_select_action_trigger 0')
+            self._push_keyboard_mode(km)
             redirect_mouse_handling(True)
             self.mouse_handler = self.visual_window_select_mouse_handler
         else:
