@@ -1178,6 +1178,12 @@ class KeyDefinition(BaseDefinition):
     def __repr__(self) -> str:
         return self.pretty_repr('is_sequence', 'trigger', 'rest', 'options')
 
+    def human_repr(self) -> str:
+        ans = self.definition or 'no-op'
+        if self.options.when_focus_on:
+            ans = f'[--when-focus-on={self.options.when_focus_on}]{ans}'
+        return ans
+
     def resolve_and_copy(self, kitty_mod: int) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             return k.resolve_kitty_mod(kitty_mod)

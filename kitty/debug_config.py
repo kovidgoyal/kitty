@@ -10,15 +10,16 @@ import time
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import IO, Callable, Dict, Iterator, Optional, Set, TypeVar
+from typing import IO, Callable, Dict, Iterable, Iterator, Optional, Set, TypeVar
 
 from kittens.tui.operations import colored, styled
 
 from .cli import version
 from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
-from .fast_data_types import Color, num_users
+from .fast_data_types import Color, SingleKey, num_users
 from .options.types import Options as KittyOpts
 from .options.types import defaults
+from .options.utils import KeyboardMode, KeyDefinition
 from .rgb import color_as_sharp
 from .types import MouseEvent, Shortcut, mod_to_names
 
@@ -50,24 +51,21 @@ def print_mapping_changes(defns: Dict[str, str], changes: Set[str], text: str, p
             print_event(k, defns[k], print)
 
 
-def compare_maps(final: Dict[AnyEvent, str], final_kitty_mod: int, initial: Dict[AnyEvent, str], initial_kitty_mod: int, print: Print) -> None:
+def compare_maps(
+    final: Dict[AnyEvent, str], final_kitty_mod: int, initial: Dict[AnyEvent, str], initial_kitty_mod: int, print: Print, mode_name: str = ''
+) -> None:
     ei = {k.human_repr(initial_kitty_mod): v for k, v in initial.items()}
     ef = {k.human_repr(final_kitty_mod): v for k, v in final.items()}
     added = set(ef) - set(ei)
     removed = set(ei) - set(ef)
     changed = {k for k in set(ef) & set(ei) if ef[k] != ei[k]}
     which = 'shortcuts' if isinstance(next(iter(initial)), Shortcut) else 'mouse actions'
+    if mode_name and (added or removed or changed):
+        print(f'{title("Changes in keyboard mode: + " + mode_name)}')
     print_mapping_changes(ef, added, f'Added {which}:', print)
     print_mapping_changes(ei, removed, f'Removed {which}:', print)
     print_mapping_changes(ef, changed, f'Changed {which}:', print)
 
-
-def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
-    ans = {}
-    for key_spec, rest_map in m.items():
-        for r, action in rest_map.items():
-            ans[Shortcut((key_spec,) + (r))] = action
-    return ans
 
 
 def compare_opts(opts: KittyOpts, print: Print) -> None:
@@ -106,13 +104,26 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
                     print(fmt.format(f), str(getattr(opts, f)))
 
     compare_maps(opts.mousemap, opts.kitty_mod, default_opts.mousemap, default_opts.kitty_mod, print)
-    final_, initial_ = opts.keymap, default_opts.keymap
-    final: ShortcutMap = {Shortcut((k,)): v for k, v in final_.items()}
-    initial: ShortcutMap = {Shortcut((k,)): v for k, v in initial_.items()}
-    final_s, initial_s = map(flatten_sequence_map, (opts.sequence_map, default_opts.sequence_map))
-    final.update(final_s)
-    initial.update(initial_s)
-    compare_maps(final, opts.kitty_mod, initial, default_opts.kitty_mod, print)
+    def as_sc(k: SingleKey, v: KeyDefinition) -> Shortcut:
+        if v.is_sequence:
+            return Shortcut((v.trigger,) + v.rest)
+        return Shortcut((k,))
+
+    def as_str(defns: Iterable[KeyDefinition]) -> str:
+        return ', '.join(d.human_repr() for d in defns)
+
+    for kmn, initial_ in default_opts.keyboard_modes.items():
+        initial = {as_sc(k, v[0]): as_str(v) for k, v in initial_.keymap.items()}
+        final_ = opts.keyboard_modes.get(kmn, KeyboardMode(kmn))
+        final = {as_sc(k, v[0]): as_str(v) for k, v in final_.keymap.items()}
+        compare_maps(final, opts.kitty_mod, initial, default_opts.kitty_mod, print, mode_name=kmn)
+    new_keyboard_modes = set(opts.keyboard_modes) - set(default_opts.keyboard_modes)
+    for kmn in new_keyboard_modes:
+        initial_ = KeyboardMode(kmn)
+        initial = {as_sc(k, v[0]): as_str(v) for k, v in initial_.keymap.items()}
+        final_ = opts.keyboard_modes[kmn]
+        final = {as_sc(k, v[0]): as_str(v) for k, v in final_.keymap.items()}
+        compare_maps(final, opts.kitty_mod, initial, default_opts.kitty_mod, print, mode_name=kmn)
     if colors:
         print(f'{title("Colors")}:', end='\n\t')
         print('\n\t'.join(sorted(colors)))
