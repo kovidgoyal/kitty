@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import List, Optional, Union, overload
+from typing import List, Optional
 
 from .fast_data_types import GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_HYPER, GLFW_MOD_META, GLFW_MOD_SHIFT, GLFW_MOD_SUPER, KeyEvent, SingleKey
-from .options.utils import KeyDefinition, KeyMap, SequenceMap, SubSequenceMap
+from .options.utils import KeyDefinition, KeyMap
 from .typing import ScreenType
 
 mod_mask = GLFW_MOD_ALT | GLFW_MOD_CONTROL | GLFW_MOD_SHIFT | GLFW_MOD_SUPER | GLFW_MOD_META | GLFW_MOD_HYPER
@@ -17,12 +17,7 @@ def keyboard_mode_name(screen: ScreenType) -> str:
     return 'application' if screen.cursor_key_mode else 'normal'
 
 
-@overload
-def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> Optional[List[KeyDefinition]]: ...
-@overload
-def get_shortcut(keymap: SequenceMap, ev: KeyEvent) -> Optional[SubSequenceMap]: ...
-
-def get_shortcut(keymap: Union[KeyMap, SequenceMap], ev: KeyEvent) -> Union[List[KeyDefinition], SubSequenceMap, None]:
+def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> Optional[List[KeyDefinition]]:
     mods = ev.mods & mod_mask
     ans = keymap.get(SingleKey(mods, False, ev.key))
     if ans is None and ev.shifted_key and mods & GLFW_MOD_SHIFT:

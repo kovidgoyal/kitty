@@ -746,9 +746,8 @@ PYWRAP1(set_options) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(set_in_sequence_mode) {
-    global_state.in_sequence_mode = PyObject_IsTrue(args);
-    set_ignore_os_keyboard_processing(global_state.in_sequence_mode);
+PYWRAP1(set_ignore_os_keyboard_processing) {
+    set_ignore_os_keyboard_processing(PyObject_IsTrue(args));
     Py_RETURN_NONE;
 }
 
@@ -1343,7 +1342,7 @@ static PyMethodDef module_methods[] = {
     MW(redirect_mouse_handling, METH_O),
     MW(mouse_selection, METH_VARARGS),
     MW(set_window_logo, METH_VARARGS),
-    MW(set_in_sequence_mode, METH_O),
+    MW(set_ignore_os_keyboard_processing, METH_O),
     MW(handle_for_window_id, METH_VARARGS),
     MW(update_ime_position_for_window, METH_VARARGS),
     MW(pt_to_px, METH_VARARGS),

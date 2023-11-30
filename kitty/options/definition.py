@@ -10,7 +10,7 @@ from kitty.constants import website_url
 
 definition = Definition(
     'kitty',
-    Action('map', 'parse_map', {'keymap': 'KeyMap', 'sequence_map': 'SequenceMap', 'alias_map': 'AliasMap'},
+    Action('map', 'parse_map', {'keyboard_modes': 'KeyboardModeMap', 'alias_map': 'AliasMap'},
            ['KeyDefinition', 'kitty.fast_data_types.SingleKey']),
     Action('mouse_map', 'parse_mouse_map', {'mousemap': 'MouseMap'}, ['MouseMapping']),
     has_color_table=True,

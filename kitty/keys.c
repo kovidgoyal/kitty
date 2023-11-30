@@ -9,7 +9,6 @@
 #include "keys.h"
 #include "screen.h"
 #include "glfw-wrapper.h"
-#include "control-codes.h"
 #include <structmember.h>
 
 // python KeyEvent object {{{
@@ -200,17 +199,6 @@ on_key_input(GLFWkeyevent *ev) {
     else { consumed = ret == Py_True; Py_CLEAR(ret); } \
     w = window_for_window_id(active_window_id); \
 }
-    if (global_state.in_sequence_mode) {
-        debug("in sequence mode, handling as a potential shortcut\n");
-        dispatch_key_event(process_sequence);
-        if (dispatch_ok) {
-          if (consumed && action != GLFW_RELEASE && w && !is_modifier_key(key)) {
-            w->last_special_key_pressed = key;
-          }
-        }
-        return;
-    }
-
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         w->last_special_key_pressed = 0;
         dispatch_key_event(dispatch_possible_special_key);

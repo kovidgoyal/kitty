@@ -9,7 +9,7 @@ from kitty.fast_data_types import Color, SingleKey
 import kitty.fast_data_types
 import kitty.fonts
 from kitty.options.utils import (
-    AliasMap, KeyDefinition, KeyMap, MouseMap, MouseMapping, NotifyOnCmdFinish, SequenceMap,
+    AliasMap, KeyDefinition, KeyboardModeMap, MouseMap, MouseMapping, NotifyOnCmdFinish,
     TabBarMarginHeight
 )
 import kitty.options.utils
@@ -628,8 +628,7 @@ class Options:
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
     watcher: typing.Dict[str, str] = {}
     map: typing.List[kitty.options.utils.KeyDefinition] = []
-    keymap: KeyMap = {}
-    sequence_map: SequenceMap = {}
+    keyboard_modes: KeyboardModeMap = {}
     alias_map: AliasMap = AliasMap()
     mouse_map: typing.List[kitty.options.utils.MouseMapping] = []
     mousemap: MouseMap = {}

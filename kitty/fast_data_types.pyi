@@ -604,7 +604,7 @@ def thread_write(fd: int, data: bytes) -> None:
     pass
 
 
-def set_in_sequence_mode(yes: bool) -> None:
+def set_ignore_os_keyboard_processing(yes: bool) -> None:
     pass
 
 

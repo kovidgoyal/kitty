@@ -265,7 +265,6 @@ typedef struct {
     bool has_render_frames;
     bool debug_rendering, debug_font_fallback;
     bool has_pending_resizes, has_pending_closes;
-    bool in_sequence_mode;
     bool check_for_active_animated_images;
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window, tracked_drag_in_window;

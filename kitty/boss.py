@@ -66,7 +66,6 @@ from .fast_data_types import (
     GLFW_MOD_SUPER,
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_PRESS,
-    GLFW_RELEASE,
     IMPERATIVE_CLOSE_REQUESTED,
     NO_CLOSE_REQUESTED,
     ChildMonitor,
@@ -92,7 +91,6 @@ from .fast_data_types import (
     get_options,
     get_os_window_size,
     global_font_size,
-    is_modifier_key,
     last_focused_os_window_id,
     mark_os_window_for_close,
     os_window_font_size,
@@ -105,7 +103,7 @@ from .fast_data_types import (
     set_application_quit_request,
     set_background_image,
     set_boss,
-    set_in_sequence_mode,
+    set_ignore_os_keyboard_processing,
     set_options,
     set_os_window_chrome,
     set_os_window_size,
@@ -117,11 +115,11 @@ from .fast_data_types import (
     wrapped_kitten_names,
 )
 from .key_encoding import get_name_to_functional_number_map
-from .keys import get_shortcut, shortcut_matches
+from .keys import get_shortcut
 from .layout.base import set_layout_options
 from .notify import notification_activated
 from .options.types import Options
-from .options.utils import MINIMUM_FONT_SIZE, KeyDefinition, KeyMap, SubSequenceMap
+from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition, KeyMap
 from .os_window_size import initial_window_size_func
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
@@ -297,7 +295,7 @@ class VisualSelect:
         set_os_window_title(self.os_window_id, '')
         boss = get_boss()
         redirect_mouse_handling(False)
-        boss.clear_pending_sequences()
+        boss.keyboard_mode_stack = []
         for wid in self.window_ids:
             w = boss.window_id_map.get(wid)
             if w is not None:
@@ -343,10 +341,7 @@ class Boss:
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.current_visual_select: Optional[VisualSelect] = None
         self.startup_cursor_text_color = opts.cursor_text_color
-        self.pending_sequences: Optional[SubSequenceMap] = None
         # A list of events received so far that are potentially part of a sequence keybinding.
-        self.current_sequence: List[KeyEvent] = []
-        self.default_pending_action: str = ''
         self.cached_values = cached_values
         self.os_window_map: Dict[int, TabManager] = {}
         self.os_window_death_actions: Dict[int, Callable[[], None]] = {}
@@ -378,6 +373,7 @@ class Boss:
         set_boss(self)
         self.args = args
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
+        self.keyboard_mode_stack: List[KeyboardMode] = []
         self.update_keymap(global_shortcuts)
         if is_macos:
             from .fast_data_types import cocoa_set_notification_activated_callback
@@ -392,9 +388,11 @@ class Boss:
                 global_shortcuts = {}
         self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k)] for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
-        self.keymap = get_options().keymap.copy()
+        self.keyboard_modes = get_options().keyboard_modes.copy()
+        km = self.keyboard_modes[''].keymap
+        self.keyboard_modes[''].keymap = km = km.copy()
         for sc in self.global_shortcuts.values():
-            self.keymap.pop(sc, None)
+            km.pop(sc, None)
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
@@ -1337,71 +1335,64 @@ class Boss:
         t = self.active_tab
         return None if t is None else t.active_window
 
-    def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: str = '') -> None:
-        self.pending_sequences = sequences
-        self.default_pending_action = default_pending_action
-        set_in_sequence_mode(True)
+    @ac('misc', '''
+    End the current keyboard mode switching to the previous mode.
+    ''')
+    def pop_keyboard_mode(self) -> bool:
+        if self.keyboard_mode_stack:
+            self.keyboard_mode_stack.pop()
+            if not self.keyboard_mode_stack:
+                set_ignore_os_keyboard_processing(False)
+            return True
+        return False
+
+    @ac('misc', '''
+    Switch to the specified keyboard mode, pushing it onto the stack of keyboard modes.
+    ''')
+    def push_keyboard_mode(self, new_mode: str) -> None:
+        mode = self.keyboard_modes[new_mode]
+        self._push_keyboard_mode(mode)
+
+    def _push_keyboard_mode(self, mode: KeyboardMode) -> None:
+        self.keyboard_mode_stack.append(mode)
+        set_ignore_os_keyboard_processing(True)
 
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
         # Handles shortcuts, return True if the key was consumed
-        key_action = get_shortcut(self.keymap, ev)
+        is_root_mode = not self.keyboard_mode_stack
+        mode = self.keyboard_modes[''] if is_root_mode else self.keyboard_mode_stack[-1]
+        key_action = get_shortcut(mode.keymap, ev)
         if key_action is None:
-            sequences = get_shortcut(get_options().sequence_map, ev)
-            if sequences:
-                self.set_pending_sequences(sequences)
-                self.current_sequence = [ev]
-                return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
-        elif key_action:
+            if self.pop_keyboard_mode():
+                return True
+        else:
             final_action = self.matching_key_action(key_action)
             if final_action is not None:
-                return self.combine(final_action.definition)
-        return False
-
-    def clear_pending_sequences(self) -> None:
-        self.pending_sequences = None
-        self.current_sequence = []
-        self.default_pending_action = ''
-        set_in_sequence_mode(False)
-
-    def process_sequence(self, ev: KeyEvent) -> bool:
-        # Process an event as part of a sequence. Returns whether the key
-        # is consumed as part of a kitty sequence keybinding.
-        if not self.pending_sequences:
-            set_in_sequence_mode(False)
-            return False
-
-        if self.current_sequence:
-            self.current_sequence.append(ev)
-        if ev.action == GLFW_RELEASE or is_modifier_key(ev.key):
-            return True
-        # For a press/repeat event that's not a modifier, try matching with
-        # kitty bindings:
-        remaining = {}
-        matched_action = None
-        for seq, key_actions in self.pending_sequences.items():
-            if shortcut_matches(seq[0], ev):
-                key_action = self.matching_key_action(key_actions)
-                if key_action is not None:
-                    seq = seq[1:]
-                    if seq:
-                        remaining[seq] = [key_action]
+                mode_pos = len(self.keyboard_mode_stack) - 1
+                if final_action.is_sequence:
+                    if mode.sequence_left is None:
+                        sm = KeyboardMode('__sequence__')
+                        sm.end_on_action = True
+                        sm.sequence_left = final_action.rest[1:]
+                        sm.keymap[final_action.rest[0]].append(final_action)
+                        self._push_keyboard_mode(sm)
+                    elif mode.sequence_left:
+                        mode.keymap.clear()
+                        mode.keymap[mode.sequence_left[0]].append(final_action)
+                        mode.sequence_left = mode.sequence_left[1:]
                     else:
-                        matched_action = key_action
-
-        if remaining:
-            self.pending_sequences = remaining
-            return True
-        final_action = self.default_pending_action if matched_action is None else matched_action.definition
-        if final_action:
-            self.clear_pending_sequences()
-            self.combine(final_action)
-            return True
-        w = self.active_window
-        if w is not None:
-            w.write_to_child(b''.join(w.encoded_key(ev) for ev in self.current_sequence))
-        self.clear_pending_sequences()
+                        self.pop_keyboard_mode()
+                        return self.combine(final_action.definition)
+                    return True
+                consumed = self.combine(final_action.definition)
+                if consumed and not is_root_mode and mode.end_on_action:
+                    if mode_pos < len(self.keyboard_mode_stack) and self.keyboard_mode_stack[mode_pos] is mode:
+                        del self.keyboard_mode_stack[mode_pos]
+                        if not self.keyboard_mode_stack:
+                            set_ignore_os_keyboard_processing(False)
+                return consumed
         return False
 
     def matching_key_action(self, candidates: Iterable[KeyDefinition]) -> Optional[KeyDefinition]:

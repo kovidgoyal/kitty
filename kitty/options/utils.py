@@ -5,6 +5,7 @@
 import enum
 import re
 import sys
+from collections import defaultdict
 from dataclasses import dataclass, fields
 from functools import lru_cache
 from typing import Any, Callable, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Union
@@ -35,8 +36,6 @@ from kitty.utils import expandvars, log_error, resolve_abs_or_config_path
 KeyMap = Dict[SingleKey, List['KeyDefinition']]
 MouseMap = Dict[MouseEvent, str]
 KeySequence = Tuple[SingleKey, ...]
-SubSequenceMap = Dict[KeySequence, List['KeyDefinition']]
-SequenceMap = Dict[SingleKey, SubSequenceMap]
 MINIMUM_FONT_SIZE = 4
 default_tab_separator = ' ┇'
 mod_map = {'⌃': 'CONTROL', 'CTRL': 'CONTROL', '⇧': 'SHIFT', '⌥': 'ALT', 'OPTION': 'ALT', 'OPT': 'ALT',
@@ -142,7 +141,7 @@ def detach_tab_parse(func: str, rest: str) -> FuncArgsType:
     return func, (rest,)
 
 
-@func_with_args('set_background_opacity', 'goto_layout', 'toggle_layout', 'kitty_shell', 'show_kitty_doc', 'set_tab_title')
+@func_with_args('set_background_opacity', 'goto_layout', 'toggle_layout', 'kitty_shell', 'show_kitty_doc', 'set_tab_title', 'push_keyboard_mode')
 def simple_parse(func: str, rest: str) -> FuncArgsType:
     return func, [rest]
 
@@ -1157,6 +1156,7 @@ class KeyMapOptions:
     new_mode: str = ''
     mode: str = ''
     passthrough_unknown: BoolField = BoolField(False)
+    end_on_action: BoolField = BoolField(False)
 
 
 default_key_map_options = KeyMapOptions()
@@ -1188,6 +1188,20 @@ class KeyDefinition(BaseDefinition):
         )
         ans.definition_location = self.definition_location
         return ans
+
+
+class KeyboardMode:
+
+    passthrough_unknown: bool = False
+    end_on_action: bool = False
+    sequence_left: Optional[Sequence[SingleKey]] = None
+
+    def __init__(self, name: str = '') -> None:
+        self.name = name
+        self.keymap: KeyMap = defaultdict(list)
+
+
+KeyboardModeMap = Dict[str, KeyboardMode]
 
 
 def parse_options_for_map(val: str) -> Tuple[KeyMapOptions, List[str]]:

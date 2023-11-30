@@ -3,7 +3,6 @@
 
 import json
 import os
-from collections import defaultdict
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
@@ -12,7 +11,7 @@ from .conf.utils import BadLine, parse_config_base
 from .conf.utils import load_config as _load_config
 from .constants import cache_dir, defconf
 from .options.types import Options, defaults, option_names
-from .options.utils import KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, build_action_aliases
+from .options.utils import KeyboardMode, KeyboardModeMap, KeyDefinition, MouseMap, MouseMapping, build_action_aliases
 from .typing import TypedDict
 from .utils import log_error
 
@@ -101,19 +100,21 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] =
                 else:
                     accumulate_bad_lines.append(BadLine(d.definition_location.number, d.definition_location.line, err, d.definition_location.file))
 
-    keymap: KeyMap = defaultdict(list)
-    sequence_map: SequenceMap = {}
+    modes: KeyboardModeMap = {'': KeyboardMode()}
 
     for defn in defns:
-        if defn.is_sequence:
-            keymap.pop(defn.trigger, None)
-            s = sequence_map.setdefault(defn.trigger, defaultdict(list))
-            s[defn.rest].append(defn)
-        else:
-            sequence_map.pop(defn.trigger, None)
-            keymap[defn.trigger].append(defn)
-    opts.keymap = keymap
-    opts.sequence_map = sequence_map
+        if defn.options.new_mode:
+            modes[defn.options.new_mode] = nm = KeyboardMode(defn.options.new_mode)
+            nm.passthrough_unknown = defn.options.passthrough_unknown
+            nm.end_on_action = defn.options.end_on_action
+            defn.definition = f'push_keyboard_mode {defn.options.new_mode}'
+        try:
+            m = modes[defn.options.mode]
+        except KeyError:
+            log_error(f'The keyboard mode {defn.options.mode} is unknown, ignoring the mapping: {defn}')
+            continue
+        m.keymap[defn.trigger].append(defn)
+    opts.keyboard_modes = modes
 
 
 def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] = None) -> None:
