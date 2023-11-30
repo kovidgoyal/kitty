@@ -38,7 +38,7 @@ class TestConfParsing(BaseTest):
             return ans
 
         def keys_for_func(opts, name):
-            for key, defns in opts.keymap.items():
+            for key, defns in opts.keyboard_modes[''].keymap.items():
                 for action in opts.alias_map.resolve_aliases(defns[0].definition):
                     if action.func == name:
                         yield key
@@ -47,9 +47,9 @@ class TestConfParsing(BaseTest):
         self.ae(opts.font_size, 11.37)
         self.ae(opts.mouse_hide_wait, 0 if is_macos else 3)
         self.ae(opts.color23, Color(255, 0, 0))
-        self.assertFalse(opts.keymap)
+        self.assertFalse(opts.keyboard_modes[''].keymap)
         opts = p('clear_all_shortcuts y', 'map f1 next_window')
-        self.ae(len(opts.keymap), 1)
+        self.ae(len(opts.keyboard_modes[''].keymap), 1)
         opts = p('clear_all_mouse_actions y', 'mouse_map left click ungrabbed mouse_click_url_or_select')
         self.ae(len(opts.mousemap), 1)
         opts = p('strip_trailing_spaces always')
@@ -69,7 +69,7 @@ class TestConfParsing(BaseTest):
         self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': DELETE_ENV_VAR})
 
         def ac(which=0):
-            ka = tuple(opts.keymap.values())[0][0]
+            ka = tuple(opts.keyboard_modes[''].keymap.values())[0][0]
             acs = opts.alias_map.resolve_aliases(ka.definition)
             return acs[which]
 
@@ -120,7 +120,7 @@ class TestConfParsing(BaseTest):
 
         # deprecation handling
         opts = p('clear_all_shortcuts y', 'send_text all f1 hello')
-        self.ae(len(opts.keymap), 1)
+        self.ae(len(opts.keyboard_modes[''].keymap), 1)
         opts = p('macos_hide_titlebar y' if is_macos else 'x11_hide_window_decorations y')
         self.assertTrue(opts.hide_window_decorations)
         self.ae(len(self.error_messages), 1)
