@@ -220,7 +220,7 @@ def set_cocoa_global_shortcuts(opts: Options) -> Dict[str, SingleKey]:
         func_map = defaultdict(list)
         for k, v in opts.keymap.items():
             for kd in v:
-                if not kd.when_focus_on:
+                if not kd.options.when_focus_on:
                     parts = tuple(kd.definition.split())
                     func_map[parts].append(k)
 

@@ -1408,9 +1408,9 @@ class Boss:
         w = self.active_window
         ans = None
         for x in candidates:
-            if x.when_focus_on:
+            if x.options.when_focus_on:
                 try:
-                    if w and w in self.match_windows(x.when_focus_on):
+                    if w and w in self.match_windows(x.options.when_focus_on):
                         ans = x
                 except Exception:
                     import traceback

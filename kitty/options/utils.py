@@ -5,6 +5,7 @@
 import enum
 import re
 import sys
+from dataclasses import dataclass, fields
 from functools import lru_cache
 from typing import Any, Callable, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Union
 
@@ -1134,46 +1135,78 @@ class MouseMapping(BaseDefinition):
         return MouseEvent(self.button, self.mods, self.repeat_count, self.grabbed)
 
 
+class BoolField:
+    def __init__(self, default: bool = False):
+        self._default = default
+
+    def __set_name__(self, owner: object, name: str) -> None:
+        self._name = "_" + name
+
+    def __get__(self, obj: object, type: Optional[type] = None) -> bool:
+        if obj is None:
+            return self._default
+        return getattr(obj, self._name, self._default)
+
+    def __set__(self, obj: object, value: str) -> None:
+        setattr(obj, self._name, to_bool(value))
+
+
+@dataclass(init=False, frozen=True)
+class KeyMapOptions:
+    when_focus_on: str = ''
+    new_mode: str = ''
+    mode: str = ''
+    passthrough_unknown: BoolField = BoolField(False)
+
+
+default_key_map_options = KeyMapOptions()
+allowed_key_map_options = frozenset(f.name for f in fields(KeyMapOptions))
+
+
 class KeyDefinition(BaseDefinition):
 
     def __init__(
         self, is_sequence: bool = False, trigger: SingleKey = SingleKey(),
-            rest: Tuple[SingleKey, ...] = (), definition: str = '',
-            when_focus_on: str = '',
+        rest: Tuple[SingleKey, ...] = (), definition: str = '',
+        options: KeyMapOptions = default_key_map_options
     ):
         super().__init__(definition)
         self.is_sequence = is_sequence
         self.trigger = trigger
         self.rest = rest
-        self.when_focus_on = when_focus_on
+        self.options = options
 
     def __repr__(self) -> str:
-        return self.pretty_repr('is_sequence', 'trigger', 'rest', 'when_focus_on')
+        return self.pretty_repr('is_sequence', 'trigger', 'rest', 'options')
 
     def resolve_and_copy(self, kitty_mod: int) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             return k.resolve_kitty_mod(kitty_mod)
         ans = KeyDefinition(
             self.is_sequence, r(self.trigger), tuple(map(r, self.rest)),
-            self.definition, self.when_focus_on
+            self.definition, self.options
         )
         ans.definition_location = self.definition_location
         return ans
 
 
-def parse_options_for_map(val: str) -> Tuple[Dict[str, str], List[str]]:
+def parse_options_for_map(val: str) -> Tuple[KeyMapOptions, List[str]]:
     expecting_arg = ''
-    ans = {}
+    ans = KeyMapOptions()
     parts = val.split()
     for i, x in enumerate(parts):
         if expecting_arg:
-            ans[expecting_arg] = x
+            object.__setattr__(ans, expecting_arg, x)
             expecting_arg = ''
         elif x.startswith('--'):
             expecting_arg = x[2:]
             k, sep, v = expecting_arg.partition('=')
+            k = k.replace('-', '_')
+            expecting_arg = k
+            if expecting_arg not in allowed_key_map_options:
+                raise KeyError(f'The map option {x} is unknown')
             if sep == '=':
-                ans[k] = v
+                object.__setattr__(ans, k, v)
                 expecting_arg = ''
         else:
             return ans, parts[i:]
@@ -1182,7 +1215,7 @@ def parse_options_for_map(val: str) -> Tuple[Dict[str, str], List[str]]:
 
 def parse_map(val: str) -> Iterable[KeyDefinition]:
     parts = val.split(maxsplit=1)
-    options: Dict[str, str] = {}
+    options = default_key_map_options
     if len(parts) == 2:
         sc, action = parts
         if sc.startswith('--'):
@@ -1226,10 +1259,10 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
             return
     if is_sequence:
         if trigger is not None:
-            yield KeyDefinition(True, trigger, rest, definition=action, when_focus_on=options.get('when-focus-on', ''))
+            yield KeyDefinition(True, trigger, rest, definition=action, options=options)
     else:
         assert key is not None
-        yield KeyDefinition(False, SingleKey(mods, is_native, key), definition=action, when_focus_on=options.get('when-focus-on', ''))
+        yield KeyDefinition(False, SingleKey(mods, is_native, key), definition=action, options=options)
 
 
 def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
