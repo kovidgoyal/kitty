@@ -31,10 +31,10 @@ from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent
 from kitty.utils import expandvars, log_error, resolve_abs_or_config_path
 
-KeyMap = Dict[SingleKey, str]
+KeyMap = Dict[SingleKey, List['KeyDefinition']]
 MouseMap = Dict[MouseEvent, str]
 KeySequence = Tuple[SingleKey, ...]
-SubSequenceMap = Dict[KeySequence, str]
+SubSequenceMap = Dict[KeySequence, List['KeyDefinition']]
 SequenceMap = Dict[SingleKey, SubSequenceMap]
 MINIMUM_FONT_SIZE = 4
 default_tab_separator = ' ┇'
@@ -1138,31 +1138,60 @@ class KeyDefinition(BaseDefinition):
 
     def __init__(
         self, is_sequence: bool = False, trigger: SingleKey = SingleKey(),
-            rest: Tuple[SingleKey, ...] = (), definition: str = ''
+            rest: Tuple[SingleKey, ...] = (), definition: str = '',
+            when_focus_on: str = '',
     ):
         super().__init__(definition)
         self.is_sequence = is_sequence
         self.trigger = trigger
         self.rest = rest
+        self.when_focus_on = when_focus_on
 
     def __repr__(self) -> str:
-        return self.pretty_repr('is_sequence', 'trigger', 'rest')
+        return self.pretty_repr('is_sequence', 'trigger', 'rest', 'when_focus_on')
 
     def resolve_and_copy(self, kitty_mod: int) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             return k.resolve_kitty_mod(kitty_mod)
         ans = KeyDefinition(
             self.is_sequence, r(self.trigger), tuple(map(r, self.rest)),
-            self.definition
+            self.definition, self.when_focus_on
         )
         ans.definition_location = self.definition_location
         return ans
 
 
+def parse_options_for_map(val: str) -> Tuple[Dict[str, str], List[str]]:
+    expecting_arg = ''
+    ans = {}
+    parts = val.split()
+    for i, x in enumerate(parts):
+        if expecting_arg:
+            ans[expecting_arg] = x
+            expecting_arg = ''
+        elif x.startswith('--'):
+            expecting_arg = x[2:]
+            k, sep, v = expecting_arg.partition('=')
+            if sep == '=':
+                ans[k] = v
+                expecting_arg = ''
+        else:
+            return ans, parts[i:]
+    return ans, []
+
+
 def parse_map(val: str) -> Iterable[KeyDefinition]:
     parts = val.split(maxsplit=1)
+    options: Dict[str, str] = {}
     if len(parts) == 2:
         sc, action = parts
+        if sc.startswith('--'):
+            options, parts = parse_options_for_map(val)
+            if len(parts) == 1:
+                sc, action = parts[0], ''
+            else:
+                sc = parts[0]
+                action = ' '.join(parts[1:])
     else:
         sc, action = val, ''
     sc, action = sc.strip().strip(sequence_sep), action.strip()
@@ -1197,10 +1226,10 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
             return
     if is_sequence:
         if trigger is not None:
-            yield KeyDefinition(True, trigger, rest, definition=action)
+            yield KeyDefinition(True, trigger, rest, definition=action, when_focus_on=options.get('when-focus-on', ''))
     else:
         assert key is not None
-        yield KeyDefinition(False, SingleKey(mods, is_native, key), definition=action)
+        yield KeyDefinition(False, SingleKey(mods, is_native, key), definition=action, when_focus_on=options.get('when-focus-on', ''))
 
 
 def parse_mouse_map(val: str) -> Iterable[MouseMapping]:

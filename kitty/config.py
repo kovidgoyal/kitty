@@ -3,6 +3,7 @@
 
 import json
 import os
+from collections import defaultdict
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
@@ -100,17 +101,17 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] =
                 else:
                     accumulate_bad_lines.append(BadLine(d.definition_location.number, d.definition_location.line, err, d.definition_location.file))
 
-    keymap: KeyMap = {}
+    keymap: KeyMap = defaultdict(list)
     sequence_map: SequenceMap = {}
 
     for defn in defns:
         if defn.is_sequence:
             keymap.pop(defn.trigger, None)
-            s = sequence_map.setdefault(defn.trigger, {})
-            s[defn.rest] = defn.definition
+            s = sequence_map.setdefault(defn.trigger, defaultdict(list))
+            s[defn.rest].append(defn)
         else:
             sequence_map.pop(defn.trigger, None)
-            keymap[defn.trigger] = defn.definition
+            keymap[defn.trigger].append(defn)
     opts.keymap = keymap
     opts.sequence_map = sequence_map
 

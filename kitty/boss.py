@@ -121,7 +121,7 @@ from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
 from .notify import notification_activated
 from .options.types import Options
-from .options.utils import MINIMUM_FONT_SIZE, KeyMap, SubSequenceMap
+from .options.utils import MINIMUM_FONT_SIZE, KeyDefinition, KeyMap, SubSequenceMap
 from .os_window_size import initial_window_size_func
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
@@ -390,7 +390,7 @@ class Boss:
                 global_shortcuts = set_cocoa_global_shortcuts(get_options())
             else:
                 global_shortcuts = {}
-        self.global_shortcuts_map: KeyMap = {v: k for k, v in global_shortcuts.items()}
+        self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k)] for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
         self.keymap = get_options().keymap.copy()
         for sc in self.global_shortcuts.values():
@@ -1347,14 +1347,16 @@ class Boss:
         key_action = get_shortcut(self.keymap, ev)
         if key_action is None:
             sequences = get_shortcut(get_options().sequence_map, ev)
-            if sequences and not isinstance(sequences, str):
+            if sequences:
                 self.set_pending_sequences(sequences)
                 self.current_sequence = [ev]
                 return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
-        elif key_action and isinstance(key_action, str):
-            return self.combine(key_action)
+        elif key_action:
+            final_action = self.matching_key_action(key_action)
+            if final_action is not None:
+                return self.combine(final_action.definition)
         return False
 
     def clear_pending_sequences(self) -> None:
@@ -1378,27 +1380,44 @@ class Boss:
         # kitty bindings:
         remaining = {}
         matched_action = None
-        for seq, key_action in self.pending_sequences.items():
+        for seq, key_actions in self.pending_sequences.items():
             if shortcut_matches(seq[0], ev):
-                seq = seq[1:]
-                if seq:
-                    remaining[seq] = key_action
-                else:
-                    matched_action = key_action
+                key_action = self.matching_key_action(key_actions)
+                if key_action is not None:
+                    seq = seq[1:]
+                    if seq:
+                        remaining[seq] = [key_action]
+                    else:
+                        matched_action = key_action
 
         if remaining:
             self.pending_sequences = remaining
             return True
-        matched_action = matched_action or self.default_pending_action
-        if matched_action:
+        final_action = self.default_pending_action if matched_action is None else matched_action.definition
+        if final_action:
             self.clear_pending_sequences()
-            self.combine(matched_action)
+            self.combine(final_action)
             return True
         w = self.active_window
         if w is not None:
             w.write_to_child(b''.join(w.encoded_key(ev) for ev in self.current_sequence))
         self.clear_pending_sequences()
         return False
+
+    def matching_key_action(self, candidates: Iterable[KeyDefinition]) -> Optional[KeyDefinition]:
+        w = self.active_window
+        ans = None
+        for x in candidates:
+            if x.when_focus_on:
+                try:
+                    if w and w in self.match_windows(x.when_focus_on):
+                        ans = x
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+            else:
+                ans = x
+        return ans
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
@@ -1434,16 +1453,16 @@ class Boss:
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
             if only_window_ids and window.id not in only_window_ids:
                 continue
-            ac = f'visual_window_select_action_trigger {window.id}'
+            ac = KeyDefinition(definition=f'visual_window_select_action_trigger {window.id}')
             if idx >= len(alphanumerics):
                 break
             ch = alphanumerics[idx]
             window.screen.set_window_char(ch)
             self.current_visual_select.window_ids.append(window.id)
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
-                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = ac
+                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = [ac]
                 if ch in string.digits:
-                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = ac
+                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = [ac]
         if len(self.current_visual_select.window_ids) > 1:
             self.set_pending_sequences(pending_sequences, default_pending_action='visual_window_select_action_trigger 0')
             redirect_mouse_handling(True)

@@ -56,6 +56,7 @@ from .fast_data_types import (
     Screen,
     add_timer,
     add_window,
+    base64_decode,
     cell_size_for_window,
     click_mouse_cmd_output,
     click_mouse_url,
@@ -947,9 +948,8 @@ class Window:
         for record in raw_data.split(';'):
             key, _, val = record.partition('=')
             if key == 'SetUserVar':
-                from base64 import standard_b64decode
                 ukey, has_equal, uval = val.partition('=')
-                self.set_user_var(ukey, (standard_b64decode(uval) if uval else b'') if has_equal == '=' else None)
+                self.set_user_var(ukey, (base64_decode(uval) if uval else b'') if has_equal == '=' else None)
 
     def desktop_notify(self, osc_code: int, raw_data: str) -> None:
         if osc_code == 1337:

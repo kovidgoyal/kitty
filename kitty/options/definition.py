@@ -3447,6 +3447,33 @@ For example::
 
     map ctrl+f>2 set_font_size 20
 
+You can create mappings that apply when the focused window matches some condition,
+such as having a particular program running. For example::
+
+    map --when-focus-on title:keyboard.protocol kitty_mod+t
+
+This will cause :kbd:`kitty_mod+t` (the default shortcut for opening a new tab)
+to be unmapped only when the focused window
+has :code:`keyboard protocol` in its title. Run the show-key kitten as::
+
+    kitten show-key -m kitty
+
+and press :kbd:`ctrl+shift+t` and instead of a new tab opening, you will
+see the key press being reported by the kitten. :code:`--when-focus-on` can test
+the focused window using very powerful criteria, see :ref:`search_syntax` for
+details. Note that spaces are not allowed in the argument of --when-focus-on.
+Use the . character or :code:`\\\\s` to match spaces.
+A more practical example unmaps the key when the focused window is running vim::
+
+    map --when-focus-on var:in_editor
+
+In order to make this work, you need the following lines in your :file:`.vimrc`::
+
+    let &t_ti = &t_ti . "\\033]1337;SetUserVar=in_editor=MQo\\007"
+    let &t_te = &t_te . "\\033]1337;SetUserVar=in_editor\\007"
+
+These cause vim to set the :code:`in_editor` variable in kitty and unset it when leaving vim.
+
 The full list of actions that can be mapped to key presses is available
 :doc:`here </actions>`.
 ''')
