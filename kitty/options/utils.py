@@ -65,7 +65,7 @@ class InvalidMods(ValueError):
 @func_with_args(
     'pass_selection_to_program', 'new_window', 'new_tab', 'new_os_window',
     'new_window_with_cwd', 'new_tab_with_cwd', 'new_os_window_with_cwd',
-    'launch', 'mouse_handle_click'
+    'launch', 'mouse_handle_click', 'show_error',
     )
 def shlex_parse(func: str, rest: str) -> FuncArgsType:
     return func, to_cmdline(rest)
@@ -1184,6 +1184,9 @@ class KeyDefinition(BaseDefinition):
             ans = f'[--when-focus-on={self.options.when_focus_on}]{ans}'
         return ans
 
+    def shift_sequence_and_copy(self) -> 'KeyDefinition':
+        return KeyDefinition(self.is_sequence, self.trigger, self.rest[1:], self.definition, self.options)
+
     def resolve_and_copy(self, kitty_mod: int) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             return k.resolve_kitty_mod(kitty_mod)
@@ -1199,7 +1202,7 @@ class KeyboardMode:
 
     passthrough_unknown: bool = False
     end_on_action: bool = False
-    sequence_left: Optional[Sequence[SingleKey]] = None
+    is_sequence: bool = False
 
     def __init__(self, name: str = '') -> None:
         self.name = name

@@ -1370,24 +1370,26 @@ class Boss:
                     ring_bell()
                 return True
         else:
-            final_action = self.matching_key_action(key_action)
-            if final_action is not None:
+            final_actions = self.matching_key_actions(key_action)
+            if final_actions:
                 mode_pos = len(self.keyboard_mode_stack) - 1
-                if final_action.is_sequence:
-                    if mode.sequence_left is None:
+                if final_actions[0].is_sequence:
+                    if not mode.is_sequence:
                         sm = KeyboardMode('__sequence__')
                         sm.end_on_action = True
-                        sm.sequence_left = final_action.rest[1:]
-                        sm.keymap[final_action.rest[0]].append(final_action)
+                        sm.is_sequence = True
+                        for fa in final_actions:
+                            sm.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
                         self._push_keyboard_mode(sm)
-                    elif mode.sequence_left:
-                        mode.keymap.clear()
-                        mode.keymap[mode.sequence_left[0]].append(final_action)
-                        mode.sequence_left = mode.sequence_left[1:]
                     else:
-                        self.pop_keyboard_mode()
-                        return self.combine(final_action.definition)
+                        if len(final_actions) == 1:
+                            self.pop_keyboard_mode()
+                            return self.combine(final_actions[0].definition)
+                        mode.keymap.clear()
+                        for fa in final_actions:
+                            mode.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
                     return True
+                final_action = final_actions[0]
                 consumed = self.combine(final_action.definition)
                 if consumed and not is_root_mode and mode.end_on_action:
                     if mode_pos < len(self.keyboard_mode_stack) and self.keyboard_mode_stack[mode_pos] is mode:
@@ -1397,20 +1399,32 @@ class Boss:
                 return consumed
         return False
 
-    def matching_key_action(self, candidates: Iterable[KeyDefinition]) -> Optional[KeyDefinition]:
+    def matching_key_actions(self, candidates: Iterable[KeyDefinition]) -> List[KeyDefinition]:
         w = self.active_window
-        ans = None
+        matches = []
+        has_sequence_match = False
         for x in candidates:
             if x.options.when_focus_on:
                 try:
                     if w and w in self.match_windows(x.options.when_focus_on):
-                        ans = x
+                        matches.append(x)
+                        if x.is_sequence:
+                            has_sequence_match = True
                 except Exception:
                     self.show_error(_('Invalid key mapping'), _(
                         'The match expression {0} is not valid for {1}').format(x.options.when_focus_on, '--when-focus-on'))
+                    return []
             else:
-                ans = x
-        return ans
+                if x.is_sequence:
+                    has_sequence_match = True
+                matches.append(x)
+        if has_sequence_match:
+            matches = [x for x in matches if x.is_sequence]
+            q = matches[-1].options.when_focus_on
+            matches = [x for x in matches if x.options.when_focus_on == q]
+        else:
+            matches = [matches[-1]]
+        return matches
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
@@ -1975,6 +1989,7 @@ class Boss:
             overlay_for=overlay_for,
         )
 
+    @ac('misc', 'Show an error message with the specified title and text')
     def show_error(self, title: str, msg: str) -> None:
         tab = self.active_tab
         w = self.active_window
