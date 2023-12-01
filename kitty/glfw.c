@@ -1135,7 +1135,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
         get_platform_dependent_config_values(glfw_window);
+        GLint encoding;
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT, GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, &encoding);
+        if (encoding != GL_SRGB) log_error("The output buffer does not support sRGB color encoding, colors will be incorrect.");
         is_first_window = false;
+
     }
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
