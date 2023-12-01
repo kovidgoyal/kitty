@@ -448,11 +448,12 @@ def init_env(
     std = '' if is_openbsd else '-std=c11'
     sanitize_flag = ' '.join(sanitize_args)
     march = '-march=native' if native_optimizations else ''
+    control_flow_protection = '-mbranch-protection=standard' if is_arm else '-fcf-protection=full'
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
             f' {werror} {optimize} {sanitize_flag} -fwrapv {stack_protector} {missing_braces}'
-            f' -pipe {march} -fvisibility=hidden {fortify_source}'
+            f' -pipe {march} -fvisibility=hidden {fortify_source} {control_flow_protection}'
         )
     )
     cflags = shlex.split(cflags_) + shlex.split(
