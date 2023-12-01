@@ -1034,6 +1034,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwSetHasCurrentSelectionCallback(has_current_selection);
         glfwSetIMECursorPositionCallback(get_ime_cursor_position);
         glfwSetSystemColorThemeChangeCallback(on_system_color_scheme_change);
+        // Request SRGB output buffer
+        glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
