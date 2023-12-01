@@ -91,6 +91,7 @@ from .fast_data_types import (
     get_options,
     get_os_window_size,
     global_font_size,
+    is_modifier_key,
     last_focused_os_window_id,
     mark_os_window_for_close,
     os_window_font_size,
@@ -1363,6 +1364,8 @@ class Boss:
         mode = self.keyboard_modes[''] if is_root_mode else self.keyboard_mode_stack[-1]
         key_action = get_shortcut(mode.keymap, ev)
         if key_action is None:
+            if is_modifier_key(ev.key):
+                return False
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
             if self.pop_keyboard_mode():
