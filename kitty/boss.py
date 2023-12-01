@@ -1381,10 +1381,14 @@ class Boss:
                         for fa in final_actions:
                             sm.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
                         self._push_keyboard_mode(sm)
+                        if self.args.debug_keyboard:
+                            print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='', flush=True)
                     else:
                         if len(final_actions) == 1:
                             self.pop_keyboard_mode()
                             return self.combine(final_actions[0].definition)
+                        if self.args.debug_keyboard:
+                            print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='', flush=True)
                         mode.keymap.clear()
                         for fa in final_actions:
                             mode.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
@@ -1589,7 +1593,8 @@ class Boss:
         def report_match(f: Callable[..., Any]) -> None:
             if self.args.debug_keyboard:
                 prefix = '\n' if dispatch_type == 'KeyPress' else ''
-                print(f'{prefix}\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), flush=True)
+                end = ', ' if dispatch_type == 'KeyPress' else '\n'
+                print(f'{prefix}\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), end=end, flush=True)
 
         if key_action is not None:
             f = getattr(self, key_action.func, None)
