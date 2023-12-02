@@ -26,7 +26,7 @@ from kitty.conf.utils import (
     unit_float,
 )
 from kitty.constants import is_macos
-from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color, SingleKey
+from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color, Shlex, SingleKey
 from kitty.fonts import FontFeature, FontModification, ModificationType, ModificationUnit, ModificationValue
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases, get_key_name_lookup
 from kitty.rgb import color_as_int
@@ -1212,11 +1212,12 @@ class KeyboardMode:
 KeyboardModeMap = Dict[str, KeyboardMode]
 
 
-def parse_options_for_map(val: str) -> Tuple[KeyMapOptions, List[str]]:
+def parse_options_for_map(val: str) -> Tuple[KeyMapOptions, str]:
     expecting_arg = ''
     ans = KeyMapOptions()
-    parts = val.split()
-    for i, x in enumerate(parts):
+    s = Shlex(val)
+    while (tok := s.next_word())[0] > -1:
+        x = tok[1]
         if expecting_arg:
             object.__setattr__(ans, expecting_arg, x)
             expecting_arg = ''
@@ -1231,8 +1232,8 @@ def parse_options_for_map(val: str) -> Tuple[KeyMapOptions, List[str]]:
                 object.__setattr__(ans, k, v)
                 expecting_arg = ''
         else:
-            return ans, parts[i:]
-    return ans, []
+            return ans, val[tok[0]:]
+    return ans, ''
 
 
 def parse_map(val: str) -> Iterable[KeyDefinition]:
@@ -1241,7 +1242,8 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
     if len(parts) == 2:
         sc, action = parts
         if sc.startswith('--'):
-            options, parts = parse_options_for_map(val)
+            options, leftover = parse_options_for_map(val)
+            parts = leftover.split(maxsplit=1)
             if len(parts) == 1:
                 sc, action = parts[0], ''
             else:

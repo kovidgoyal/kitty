@@ -3452,7 +3452,7 @@ For example::
 You can create mappings that apply when the focused window matches some condition,
 such as having a particular program running. For example::
 
-    map --when-focus-on title:keyboard.protocol kitty_mod+t
+    map --when-focus-on "title:keyboard.protocol" kitty_mod+t
 
 This will cause :kbd:`kitty_mod+t` (the default shortcut for opening a new tab)
 to be unmapped only when the focused window
@@ -3463,9 +3463,7 @@ has :code:`keyboard protocol` in its title. Run the show-key kitten as::
 and press :kbd:`ctrl+shift+t` and instead of a new tab opening, you will
 see the key press being reported by the kitten. :code:`--when-focus-on` can test
 the focused window using very powerful criteria, see :ref:`search_syntax` for
-details. Note that spaces are not allowed in the argument of --when-focus-on.
-Use the . character or :code:`\\\\s` to match spaces.
-A more practical example unmaps the key when the focused window is running vim::
+details. A more practical example unmaps the key when the focused window is running vim::
 
     map --when-focus-on var:in_editor
 
