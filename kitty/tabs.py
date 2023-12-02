@@ -58,7 +58,7 @@ from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .tab_bar import TabBar, TabBarData
 from .types import ac
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
-from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell
+from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell, shlex_split
 from .window import CwdRequest, Watchers, Window, WindowDict
 from .window_list import WindowList
 
@@ -472,14 +472,11 @@ class Tab:  # {{{
                         cwd = old_exe
                         cmd = resolved_shell(get_options())
                     elif not is_executable:
-                        import shlex
-
-                        from .utils import which
                         with suppress(OSError):
                             with open(old_exe) as f:
                                 if f.read(2) == '#!':
                                     line = f.read(4096).splitlines()[0]
-                                    cmd[:0] = shlex.split(line)
+                                    cmd[:0] = shlex_split(line)
                                 else:
                                     cmd[:0] = [resolved_shell(get_options())[0]]
                                 cmd[0] = which(cmd[0]) or cmd[0]

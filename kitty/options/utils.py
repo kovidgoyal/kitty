@@ -31,7 +31,7 @@ from kitty.fonts import FontFeature, FontModification, ModificationType, Modific
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases, get_key_name_lookup
 from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent
-from kitty.utils import expandvars, log_error, resolve_abs_or_config_path
+from kitty.utils import expandvars, log_error, resolve_abs_or_config_path, shlex_split
 
 KeyMap = Dict[SingleKey, List['KeyDefinition']]
 MouseMap = Dict[MouseEvent, str]
@@ -262,8 +262,7 @@ def move_window(func: str, rest: str) -> FuncArgsType:
 
 @func_with_args('pipe')
 def pipe(func: str, rest: str) -> FuncArgsType:
-    import shlex
-    r = shlex.split(rest)
+    r = list(shlex_split(rest))
     if len(r) < 3:
         log_error('Too few arguments to pipe function')
         r = ['none', 'none', 'true']
@@ -272,8 +271,7 @@ def pipe(func: str, rest: str) -> FuncArgsType:
 
 @func_with_args('set_colors')
 def set_colors(func: str, rest: str) -> FuncArgsType:
-    import shlex
-    r = shlex.split(rest)
+    r = list(shlex_split(rest))
     if len(r) < 1:
         log_error('Too few arguments to set_colors function')
     return func, r
@@ -366,12 +364,11 @@ def parse_marker_spec(ftype: str, parts: Sequence[str]) -> Tuple[str, Union[str,
 
 @func_with_args('toggle_marker')
 def toggle_marker(func: str, rest: str) -> FuncArgsType:
-    import shlex
     parts = rest.split(maxsplit=1)
     if len(parts) != 2:
         raise ValueError(f'{rest} is not a valid marker specification')
     ftype, spec = parts
-    parts = shlex.split(spec)
+    parts = list(shlex_split(spec))
     return func, list(parse_marker_spec(ftype, parts))
 
 
@@ -411,8 +408,7 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
 
 @func_with_args('load_config_file')
 def load_config_file(func: str, rest: str) -> FuncArgsType:
-    import shlex
-    return func, shlex.split(rest)
+    return func, list(shlex_split(rest))
 # }}}
 
 

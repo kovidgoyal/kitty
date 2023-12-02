@@ -3,7 +3,6 @@
 
 import os
 import re
-import shlex
 import sys
 from contextlib import contextmanager
 from typing import (
@@ -29,7 +28,7 @@ from ..fast_data_types import Color
 from ..rgb import to_color as as_color
 from ..types import ConvertibleToNumbers, ParsedShortcut, run_once
 from ..typing import Protocol
-from ..utils import expandvars, log_error
+from ..utils import expandvars, log_error, shlex_split
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 ItemParser = Callable[[str, str, Dict[str, Any]], bool]
@@ -94,7 +93,6 @@ class ToCmdline:
         return self
 
     def __call__(self, x: str, expand: bool = True) -> List[str]:
-        ans = shlex.split(x)
         if expand:
             ans = list(
                 map(
@@ -103,9 +101,11 @@ class ToCmdline:
                         os.environ if self.override_env is None else self.override_env,
                         fallback_to_os_env=False
                     ),
-                    ans
+                    shlex_split(x)
                 )
             )
+        else:
+            ans = list(shlex_split(x))
         return ans
 
 

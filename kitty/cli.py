@@ -3,7 +3,6 @@
 
 import os
 import re
-import shlex
 import sys
 from collections import deque
 from dataclasses import dataclass
@@ -17,6 +16,7 @@ from .fast_data_types import wcswidth
 from .options.types import Options as KittyOpts
 from .types import run_once
 from .typing import BadLineType, TypedDict
+from .utils import shlex_split
 
 
 class CompletionType(Enum):
@@ -45,7 +45,7 @@ class CompletionSpec:
     @staticmethod
     def from_string(raw: str) -> 'CompletionSpec':
         self = CompletionSpec()
-        for x in shlex.split(raw):
+        for x in shlex_split(raw):
             ck, vv = x.split(':', 1)
             if ck == 'type':
                 self.type = getattr(CompletionType, vv)

@@ -59,6 +59,7 @@ from .utils import (
     log_error,
     parse_os_window_state,
     safe_mtime,
+    shlex_split,
     single_instance,
     startup_notification_handler,
     unix_socket_paths,
@@ -358,9 +359,8 @@ def macos_cmdline(argv_args: List[str]) -> List[str]:
             raw = f.read()
     except FileNotFoundError:
         return argv_args
-    import shlex
     raw = raw.strip()
-    ans = shlex.split(raw)
+    ans = list(shlex_split(raw))
     if ans and ans[0] == 'kitty':
         del ans[0]
     return ans
