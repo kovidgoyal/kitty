@@ -220,7 +220,7 @@ def set_cocoa_global_shortcuts(opts: Options) -> Dict[str, SingleKey]:
         func_map = defaultdict(list)
         for k, v in opts.keyboard_modes[''].keymap.items():
             for kd in v:
-                if not kd.options.when_focus_on and not kd.options.mode and not kd.options.new_mode and not kd.is_sequence:
+                if kd.is_suitable_for_global_shortcut:
                     parts = tuple(kd.definition.split())
                     func_map[parts].append(k)
 

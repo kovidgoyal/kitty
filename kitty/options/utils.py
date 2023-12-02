@@ -1175,6 +1175,10 @@ class KeyDefinition(BaseDefinition):
         self.rest = rest
         self.options = options
 
+    @property
+    def is_suitable_for_global_shortcut(self) -> bool:
+        return not self.options.when_focus_on and not self.options.mode and not self.options.new_mode and not self.is_sequence
+
     def __repr__(self) -> str:
         return self.pretty_repr('is_sequence', 'trigger', 'rest', 'options')
 
