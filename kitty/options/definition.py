@@ -3452,7 +3452,7 @@ For example::
 You can create mappings that apply when the focused window matches some condition,
 such as having a particular program running. For example::
 
-    map --when-focus-on "title:keyboard.protocol" kitty_mod+t
+    map --when-focus-on title:keyboard.protocol kitty_mod+t
 
 This will cause :kbd:`kitty_mod+t` (the default shortcut for opening a new tab)
 to be unmapped only when the focused window
