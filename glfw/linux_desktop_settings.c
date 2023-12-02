@@ -21,7 +21,6 @@
 static char theme_name[128] = {0};
 static int theme_size = -1;
 static uint32_t appearance = 0;
-static bool is_gnome = false;
 static bool cursor_theme_changed = false;
 
 int
@@ -102,7 +101,7 @@ HANDLER(process_desktop_settings)
                 dbus_message_iter_recurse(&item, &settings);
                 if (strcmp(namespace, FDO_DESKTOP_NAMESPACE) == 0) {
                     process_settings_dict(&settings, process_fdo_setting);
-                } else if (is_gnome && strcmp(namespace, GNOME_DESKTOP_NAMESPACE) == 0) {
+                } else if (strcmp(namespace, GNOME_DESKTOP_NAMESPACE) == 0) {
                     process_settings_dict(&settings, process_gnome_setting);
                 }
             }
@@ -192,8 +191,6 @@ setting_changed(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
 void
 glfw_initialize_desktop_settings(void) {
     get_cursor_theme_from_env();
-    const char *desktop = getenv("XDG_CURRENT_DESKTOP");
-    is_gnome = desktop && strstr(desktop, "GNOME");
     DBusConnection *session_bus = glfw_dbus_session_bus();
     if (session_bus) {
         if (!read_desktop_settings(session_bus)) _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to read desktop settings, make sure you have the desktop portal running.");
