@@ -1513,6 +1513,11 @@ class AES256GCMDecrypt:
     def add_data_to_be_decrypted(self, data: bytes, finished: bool = False) -> bytes: ...
 
 
+class Shlex:
+    def __init__(self, src: str): ...
+    def next_word(self) -> Tuple[int, str]: ...
+
+
 class SingleKey:
 
     __slots__ = ()

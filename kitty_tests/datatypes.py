@@ -20,7 +20,7 @@ from kitty.fast_data_types import (
 )
 from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
-from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user
+from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user, shlex_split_with_positions
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -612,3 +612,20 @@ class TestDataTypes(BaseTest):
         }.items():
             actual = expand_ansi_c_escapes(src)
             self.ae(expected, actual)
+
+    def test_shlex_split(self):
+        for bad in (
+            'abc\\', '\\', "'abc", "'", '"', 'asd' + '\\',
+        ):
+            with self.assertRaises(ValueError, msg=f'Failed to raise exception for {bad!r}'):
+                tuple(shlex_split_with_positions(bad))
+
+        for q, expected in {
+            '"ab"': ((0, 'ab'),),
+            r'x "ab"y \m': ((0, 'x'), (2, 'aby'), (8, 'm')),
+            r'''x'y"\z'1''': ((0, 'xy"\\z1'),),
+            r'\abc\ d': ((0, 'abc d'),),
+            '': (), '   ': (), ' \tabc\n\t\r ': ((2, 'abc'),),
+        }.items():
+            actual = tuple(shlex_split_with_positions(q))
+            self.ae(expected, actual, f'Failed for text: {q!r}')

@@ -43,7 +43,7 @@ from .constants import (
     shell_path,
     ssh_control_master_template,
 )
-from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, get_options, open_tty
+from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, Shlex, get_options, open_tty
 from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
@@ -1226,3 +1226,15 @@ def key_val_matcher(items: Iterable[Tuple[str, str]], key_pat: 're.Pattern[str]'
                 val_pat is None or val_pat.search(val) is not None):
             return True
     return False
+
+
+def shlex_split(text: str) -> Iterator[str]:
+    s = Shlex(text)
+    while (q := s.next_word())[0] > -1:
+        yield q[1]
+
+
+def shlex_split_with_positions(text: str) -> Iterator[Tuple[int, str]]:
+    s = Shlex(text)
+    while (q := s.next_word())[0] > -1:
+        yield q
