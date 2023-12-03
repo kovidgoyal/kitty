@@ -199,8 +199,8 @@ In order to make this work, you need the following lines in your :file:`.vimrc`:
 
 These cause vim to set the :code:`in_editor` variable in kitty and unset it when leaving vim.
 
-Sending arbitrary text to the program running in kitty using mappings
-------------------------------------------------------------------------
+Sending arbitrary text or keys to the program running in kitty
+--------------------------------------------------------------------------------
 
 This is accomplished by using ``map`` with :sc:`send_text <send_text>` in :file:`kitty.conf`.
 For example::
@@ -227,6 +227,72 @@ you press the :kbd:`alt+s` key. To see this in action, run::
 
 Which will print out what key events it receives.
 
+Modal mappings
+--------------------------
+
+kitty has the ability, like vim, to use *modal* key maps. Except that unlike
+vim it allows you to define your own arbitrary number of modes. To create a new
+mode, use ``map --new-mode <my mode name> <shortcut to enter mode>``. For
+example, lets create a mode to manage windows: switching focus, moving the window, etc.::
+
+    # Create a new "manage windows" mode (mw)
+    map --new-mode mw kitty_mod+f7
+
+    # Switch focus to the neighboring window in the indicated direction using arrow keys
+    map --mode mw left neighboring_window left
+    map --mode mw right neighboring_window right
+    map --mode mw up neighboring_window up
+    map --mode mw down neighboring_window down
+
+    # Move the active window in the indicated direction
+    map --mode mw shift+up move_window up
+    map --mode mw shift+left move_window left
+    map --mode mw shift+right move_window right
+    map --mode mw shift+down move_window down
+
+    # Resize the active window
+    map --mode mw n resize_window narrower
+    map --mode mw w resize_window wider
+    map --mode mw t resize_window taller
+    map --mode mw s resize_window shorter
+
+    # Exit the manage window mode
+    map --mode mw esc pop_keyboard_mode
+
+Now, if run kitty as:
+
+.. code-block:: sh
+
+    kitty -o enabled_layouts=vertical --session <(echo "launch\nlaunch\nlaunch")
+
+Press :kbd:`Ctrl+Shift+F7` to enter the mode and then press the up and
+down arrow keys to focus the next/previous window. Press :kbd:`Shift+Up` or
+:kbd:`Shift+Down` to move the active window up and down. Press :kbd:`t` to make
+the active window taller and :kbd:`s` to make it shorter. To exit the mode
+press :kbd:`Esc`.
+
+Pressing an unknown key while in a custom keyboard mode by default
+beeps. This can be controlled by the ``map --on-unknown`` option as shown
+below::
+
+    # Beep on unknown keys
+    map --new-mode XXX --on-unknown beep XXX
+    # Ingore unknown keys silently
+    map --new-mode XXX --on-unknown ignore XXX
+    # Beep and exit the keyboard mode on unknown key
+    map --new-mode XXX --on-unknown end XXX
+    # Pass unknown keys to the program running in the active window
+    map --new-mode XXX --on-unknown passthrough XXX
+
+When a key matches an action in a custom keyboard mode, the action is performed
+and the custom keyboard mode remains in effect. If you would rather have the
+keyboard mode end after the action you can use ``map --on-action`` as shown
+below::
+
+    # Have this keyboar dmode automatically exit after performing any action
+    map --new-mode XXX --on-action end
+
+
 All mappable actions
 ------------------------
 
@@ -244,8 +310,8 @@ To see what key events are sent to applications, run kitty like this::
     kitty kitten show-key
 
 Press the keys you want to debug and the kitten will print out the bytes it
-receives. Note that this uses the legacy terminal keyboard protocol that doesnt
-support all keys and key events. To debug the :doc:`full kitty keyboard
+receives. Note that this uses the legacy terminal keyboard protocol that does
+not support all keys and key events. To debug the :doc:`full kitty keyboard
 protocol that <keyboard-protocol>` that is nowadays being adopted by more and
 more programs, use::
 
