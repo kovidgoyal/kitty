@@ -58,7 +58,7 @@ from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .tab_bar import TabBar, TabBarData
 from .types import ac
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
-from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell, shlex_split
+from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowDict
 from .window_list import WindowList
 
@@ -455,7 +455,6 @@ class Tab:  # {{{
         if check_for_suitability:
             old_exe = cmd[0]
             if not os.path.isabs(old_exe):
-                from .utils import which
                 actual_exe = which(old_exe)
                 old_exe = actual_exe if actual_exe else os.path.abspath(old_exe)
             try:
