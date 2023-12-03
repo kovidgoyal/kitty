@@ -46,6 +46,10 @@ Detailed list of changes
 0.32.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :ref:`conditional_mappings`
+
+- Support for :ref:`modal_mappings` such as in modal editors like vim
+
 - A new option :opt:`notify_on_cmd_finish` to show a desktop notification when a long running command finishes (:pull:`6817`)
 
 - A new action :ac:`send_key` to simplify mapping key presses to other keys without needing :ac:`send_text`

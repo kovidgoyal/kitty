@@ -165,6 +165,7 @@ the program running in the terminal, map it to :ac:`discard_event`::
 
     map kitty_mod+f1 discard_event
 
+.. _conditional_mappings:
 
 Conditional mappings depending on the state of the focused window
 ----------------------------------------------------------------------
@@ -226,6 +227,8 @@ you press the :kbd:`alt+s` key. To see this in action, run::
     kitten show-key -m kitty
 
 Which will print out what key events it receives.
+
+.. _modal_mappings:
 
 Modal mappings
 --------------------------
