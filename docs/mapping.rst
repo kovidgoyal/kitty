@@ -236,7 +236,7 @@ Debugging mapping issues
 ------------------------------
 
 To debug mapping issues, kitty has several facilities. First, when you run
-kitty with the :option:`--debug-input` command line flag it outputs details
+kitty with the ``--debug-input`` command line flag it outputs details
 about all key events it receives form the system and how they are handled.
 
 To see what key events are sent to applications, run kitty like this::
