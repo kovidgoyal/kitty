@@ -178,6 +178,7 @@ matches some criteria, such as when it has a particular title or user variable.
 Let's see some examples::
 
     map --when-focus-on title:keyboard.protocol kitty_mod+t
+
 This will cause :kbd:`kitty_mod+t` (the default shortcut for opening a new tab)
 to be unmapped only when the focused window
 has :code:`keyboard protocol` in its title. Run the show-key kitten as::
