@@ -48,6 +48,7 @@ from .fast_data_types import (
     GLFW_MOD_CONTROL,
     GLFW_PRESS,
     GLFW_RELEASE,
+    GLFW_REPEAT,
     NO_CURSOR_SHAPE,
     OSC,
     SCROLL_FULL,
@@ -881,19 +882,21 @@ class Window:
         To send a pattern of press and release for multiple keys use the :ac:`combine` action. For example::
 
             map f1 send_key ctrl+x alt+y
-            map f1 combine : send_key ctrl+x : send_key ctrl+y
+            map f1 combine : send_key ctrl+x : send_key alt+y
     ''')
     def send_key(self, *args: str) -> bool:
         from .options.utils import parse_shortcut
         km = get_options().kitty_mod
         passthrough = True
         events = []
+        prev = ''
         for human_key in args:
             sk = parse_shortcut(human_key)
             if sk.is_native:
                 raise ValueError(f'Native key codes not allowed in send_key: {human_key}')
             sk = sk.resolve_kitty_mod(km)
-            events.append(KeyEvent(key=sk.key, mods=sk.mods, action=GLFW_PRESS))
+            events.append(KeyEvent(key=sk.key, mods=sk.mods, action=GLFW_REPEAT if human_key == prev else GLFW_PRESS))
+            prev = human_key
         for ev in events + [KeyEvent(key=x.key, mods=x.mods, action=GLFW_RELEASE) for x in reversed(events)]:
             enc = self.encoded_key(ev)
             if enc:
