@@ -1170,7 +1170,7 @@ class LiteralField(Generic[T]):
     def __set__(self, obj: object, value: str) -> None:
         if value not in self._vals:
             raise KeyError(f'Invalid value for {self._name[1:]}: {value!r}')
-        object.__setattr__(self, self._name, value)
+        object.__setattr__(obj, self._name, value)
 
 
 OnUnknown = Literal['beep', 'end', 'ignore', 'passthrough']
