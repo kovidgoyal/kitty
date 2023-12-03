@@ -1340,12 +1340,13 @@ class Boss:
     End the current keyboard mode switching to the previous mode.
     ''')
     def pop_keyboard_mode(self) -> bool:
+        passthrough = True
         if self.keyboard_mode_stack:
             self.keyboard_mode_stack.pop()
             if not self.keyboard_mode_stack:
                 set_ignore_os_keyboard_processing(False)
-            return True
-        return False
+            passthrough = False
+        return passthrough
 
     @ac('misc', '''
     Switch to the specified keyboard mode, pushing it onto the stack of keyboard modes.
@@ -1368,7 +1369,7 @@ class Boss:
                 return False
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
-            if self.pop_keyboard_mode():
+            if not self.pop_keyboard_mode():
                 if get_options().enable_audio_bell:
                     ring_bell()
                 return True
