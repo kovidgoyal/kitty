@@ -111,7 +111,12 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] =
         try:
             m = modes[defn.options.mode]
         except KeyError:
-            log_error(f'The keyboard mode {defn.options.mode} is unknown, ignoring the mapping: {defn}')
+            kerr = f'The keyboard mode {defn.options.mode} is unknown, ignoring the mapping'
+            if accumulate_bad_lines is None:
+                log_error(kerr)
+            else:
+                dl = defn.definition_location
+                accumulate_bad_lines.append(BadLine(dl.number, dl.line, KeyError(kerr), dl.file))
             continue
         m.keymap[defn.trigger].append(defn)
     opts.keyboard_modes = modes

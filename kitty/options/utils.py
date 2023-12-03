@@ -1170,7 +1170,7 @@ class LiteralField(Generic[T]):
     def __set__(self, obj: object, value: str) -> None:
         if value not in self._vals:
             raise KeyError(f'Invalid value for {self._name[1:]}: {value!r}')
-        setattr(obj, self._name, value)
+        object.__setattr__(self, self._name, value)
 
 
 OnUnknown = Literal['beep', 'end', 'ignore', 'passthrough']
@@ -1182,8 +1182,8 @@ class KeyMapOptions:
     when_focus_on: str = ''
     new_mode: str = ''
     mode: str = ''
-    on_unknown = LiteralField[OnUnknown](get_args(OnUnknown))
-    on_action = LiteralField[OnAction](get_args(OnAction))
+    on_unknown: LiteralField[OnUnknown] = LiteralField[OnUnknown](get_args(OnUnknown))
+    on_action: LiteralField[OnAction] = LiteralField[OnAction](get_args(OnAction))
 
 
 default_key_map_options = KeyMapOptions()
@@ -1259,7 +1259,7 @@ def parse_options_for_map(val: str) -> Tuple[KeyMapOptions, str]:
             k = k.replace('-', '_')
             expecting_arg = k
             if expecting_arg not in allowed_key_map_options:
-                raise KeyError(f'The map option {x} is unknown')
+                raise KeyError(f'The map option {x} is unknown. Allowed options: {", ".join(allowed_key_map_options)}')
             if sep == '=':
                 object.__setattr__(ans, k, v)
                 expecting_arg = ''
