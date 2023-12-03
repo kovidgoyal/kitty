@@ -215,23 +215,16 @@ also simulate pressing the enter key which is ``\r``. For example::
 Now, if you press :kbd:`f1` when at shell prompt it will run the ``echo Hello,
 world!`` command.
 
-To have one key press send another key press::
+To have one key press send another key press, use :ac:`send_key`::
 
-    map alt+s send_text normal,application \x13
+    map alt+s send_key ctrl+s
 
-This maps :kbd:`alt+s` to :kbd:`ctrl+s`. To figure out what bytes to use for
-the :sc:`send_text <send_text>` you can use the ``show_key`` kitten. Run::
+This causes the program running in kitty to receive the :kbd:`ctrl+s` key when
+you press the :kbd:`alt+s` key. To see this in action, run::
 
-    kitten show_key
+    kitten show-key -m kitty
 
-Then press the key you want to emulate. Note that this kitten will only show
-keys that actually reach the terminal program, in particular, keys mapped to
-actions in kitty will not be shown. To check those first unmap them.
-You can also start a kitty instance without any shortcuts to interfere:
-
-.. code-block:: sh
-
-    kitty -o clear_all_shortcuts=yes kitten show_key
+Which will print out what key events it receives.
 
 All mappable actions
 ------------------------

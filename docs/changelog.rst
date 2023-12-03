@@ -48,6 +48,9 @@ Detailed list of changes
 
 - A new option :opt:`notify_on_cmd_finish` to show a desktop notification when a long running command finishes (:pull:`6817`)
 
+- A new action :ac:`send_key` to simplify mapping key presses to other keys without needing :ac:`send_text`
+
+
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

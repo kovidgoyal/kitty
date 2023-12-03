@@ -389,20 +389,14 @@ How do I map key presses in kitty to different keys in the terminal program?
 This is accomplished by using ``map`` with :sc:`send_text <send_text>` in :file:`kitty.conf`.
 For example::
 
-    map alt+s send_text normal,application \x13
+    map alt+s send_key ctrl+s
 
-This maps :kbd:`alt+s` to :kbd:`ctrl+s`. To figure out what bytes to use for
-the :sc:`send_text <send_text>` you can use the ``show_key`` kitten. Run::
+This causes the program running in kitty to receive the :kbd:`ctrl+s` key when
+you press the :kbd:`alt+s` key. To see this in action, run::
 
-    kitten show_key
+    kitten show-key -m kitty
 
-Then press the key you want to emulate. Note that this kitten will only show
-keys that actually reach the terminal program, in particular, keys mapped to
-actions in kitty will not be shown. To check those first map them to
-:ac:`no_op`. You can also start a kitty instance without any shortcuts to
-interfere::
-
-    kitty -o clear_all_shortcuts=yes kitten show_key
+Which will print out what key events it receives.
 
 
 How do I open a new window or tab with the same working directory as the current window?

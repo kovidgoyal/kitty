@@ -89,6 +89,11 @@ def send_text_parse(func: str, rest: str) -> FuncArgsType:
     return func, [mode, data]
 
 
+@func_with_args('send_key')
+def send_key(func: str, rest: str) -> FuncArgsType:
+    return func, rest.split()
+
+
 @func_with_args('run_kitten', 'run_simple_kitten', 'kitten')
 def kitten_parse(func: str, rest: str) -> FuncArgsType:
     if func == 'kitten':

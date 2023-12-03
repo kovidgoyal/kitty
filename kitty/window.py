@@ -46,6 +46,8 @@ from .fast_data_types import (
     CURSOR_UNDERLINE,
     DCS,
     GLFW_MOD_CONTROL,
+    GLFW_PRESS,
+    GLFW_RELEASE,
     NO_CURSOR_SHAPE,
     OSC,
     SCROLL_FULL,
@@ -870,6 +872,34 @@ class Window:
             return True
         self.write_to_child(text)
         return False
+
+    @ac(
+        'misc', '''
+        Send the specified keys to the active window.
+        Note that the key will be sent only if the current keyboard mode of the program running in the terminal supports it.
+        Both key press and key release are sent. First presses for all specified keys and then releases in reverse order.
+        To send a pattern of press and release for multiple keys use the :ac:`combine` action. For example::
+
+            map f1 send_key ctrl+x alt+y
+            map f1 combine : send_key ctrl+x : send_key ctrl+y
+    ''')
+    def send_key(self, *args: str) -> bool:
+        from .options.utils import parse_shortcut
+        km = get_options().kitty_mod
+        passthrough = True
+        events = []
+        for human_key in args:
+            sk = parse_shortcut(human_key)
+            if sk.is_native:
+                raise ValueError(f'Native key codes not allowed in send_key: {human_key}')
+            sk = sk.resolve_kitty_mod(km)
+            events.append(KeyEvent(key=sk.key, mods=sk.mods, action=GLFW_PRESS))
+        for ev in events + [KeyEvent(key=x.key, mods=x.mods, action=GLFW_RELEASE) for x in reversed(events)]:
+            enc = self.encoded_key(ev)
+            if enc:
+                self.write_to_child(enc)
+                passthrough = False
+        return passthrough
 
     @ac('debug', 'Show a dump of the current lines in the scrollback + screen with their line attributes')
     def dump_lines_with_attrs(self) -> None:
