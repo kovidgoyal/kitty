@@ -3396,83 +3396,19 @@ at :ref:`Functional key definitions <functional>`. For modifier keys, the names
 are :kbd:`ctrl` (:kbd:`control`, :kbd:`⌃`), :kbd:`shift` (:kbd:`⇧`), :kbd:`alt`
 (:kbd:`opt`, :kbd:`option`, :kbd:`⌥`), :kbd:`super` (:kbd:`cmd`, :kbd:`command`,
 :kbd:`⌘`).
-See also: :link:`GLFW mods <https://www.glfw.org/docs/latest/group__mods.html>`
 
-On Linux you can also use XKB key names to bind keys that are not supported by
-GLFW. See :link:`XKB keys
-<https://github.com/xkbcommon/libxkbcommon/blob/master/include/xkbcommon/xkbcommon-keysyms.h>`
-for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
-prefix. Note that you can only use an XKB key name for keys that are not known
-as GLFW keys.
+Simple shortcut mapping is done with the :code:`map` directive. For full details
+on advanced mapping including modal and per application maps, see :doc:`mapping`.
+Some quick examples to illustrate common tasks::
 
-Finally, you can use raw system key codes to map keys, again only for keys that
-are not known as GLFW keys. To see the system key code for a key, start kitty
-with the :option:`kitty --debug-input` option, kitty will output some debug text
-for every key event. In that text look for :code:`native_code`, the value
-of that becomes the key name in the shortcut. For example:
-
-.. code-block:: none
-
-    on_key_input: glfw key: 0x61 native_code: 0x61 action: PRESS mods: none text: 'a'
-
-Here, the key name for the :kbd:`A` key is :code:`0x61` and you can use it with::
-
-    map ctrl+0x61 something
-
-to map :kbd:`Ctrl+A` to something.
-
-You can unmap a keyboard shortcut defined in the default configuration by mapping it to nothing::
-
+    # unmap a keyboard shortcut, passing it to the program running in kitty
     map kitty_mod+space
-
-If you would like kitty to completely ignore a key event, not even sending it to
-the program running in the terminal, map it to :ac:`discard_event`::
-
-    map kitty_mod+f1 discard_event
-
-You can combine multiple actions to be triggered by a single shortcut with
-:ac:`combine` action, using the syntax below::
-
-    map key combine <separator> action1 <separator> action2 <separator> action3 ...
-
-For example::
-
+    # completely ignore a keyboard event
+    map ctrl+alt+f1 discard_event
+    # combine multiple actions
     map kitty_mod+e combine : new_window : next_layout
-
-This will create a new window and switch to the next available layout.
-
-You can use multi-key shortcuts with the syntax shown below::
-
-    map key1>key2>key3 action
-
-For example::
-
-    map ctrl+f>2 set_font_size 20
-
-You can create mappings that apply when the focused window matches some condition,
-such as having a particular program running. For example::
-
-    map --when-focus-on title:keyboard.protocol kitty_mod+t
-
-This will cause :kbd:`kitty_mod+t` (the default shortcut for opening a new tab)
-to be unmapped only when the focused window
-has :code:`keyboard protocol` in its title. Run the show-key kitten as::
-
-    kitten show-key -m kitty
-
-and press :kbd:`ctrl+shift+t` and instead of a new tab opening, you will
-see the key press being reported by the kitten. :code:`--when-focus-on` can test
-the focused window using very powerful criteria, see :ref:`search_syntax` for
-details. A more practical example unmaps the key when the focused window is running vim::
-
-    map --when-focus-on var:in_editor
-
-In order to make this work, you need the following lines in your :file:`.vimrc`::
-
-    let &t_ti = &t_ti . "\\033]1337;SetUserVar=in_editor=MQo\\007"
-    let &t_te = &t_te . "\\033]1337;SetUserVar=in_editor\\007"
-
-These cause vim to set the :code:`in_editor` variable in kitty and unset it when leaving vim.
+    # multi-key shortcuts
+    map ctrl+x>ctrl+y>z action
 
 The full list of actions that can be mapped to key presses is available
 :doc:`here </actions>`.

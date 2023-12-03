@@ -124,7 +124,9 @@ Other keyboard shortcuts
 ----------------------------------
 
 The full list of actions that can be mapped to key presses is available
-:doc:`here </actions>`.
+:doc:`here </actions>`. To learn how to do more sophisticated keyboard
+mappings, such as modal mappings, per application mappings, etc. see
+:doc:`mapping`.
 
 ==================================  =======================
 Action                              Shortcut

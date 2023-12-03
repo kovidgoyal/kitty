@@ -1,0 +1,258 @@
+:orphan:
+
+Making your keyboard dance
+==============================
+
+.. highlight:: conf
+
+kitty has extremely powerful facilities for mapping keyboard actions.
+Things like combining actions, multi-key mappings, modal mappings,
+mappings that send arbitrary text, and mappings dependent on the program
+currently running in kitty.
+
+Let's start with the basics. You can map a key press to an action in kitty using
+the following syntax::
+
+    map ctrl+a new_window_with_cwd
+
+This will map the key press :kbd:`Ctrl+a` to open a new :term:`window`
+with the working directory set to the working directory of the current window.
+This is the basic operation of the map directive, the tip of the iceberg, for
+more read the sections below.
+
+
+Combining multiple actions on a single keypress
+-----------------------------------------------------
+
+Multiple actions can be combined on a single keypress, like a macro. To do this
+map the key press to the :ac:`combine` action::
+
+    map key combine <separator> action1 <separator> action2 <separator> action3 ...
+
+For example::
+
+    map kitty_mod+e combine : new_window : next_layout
+
+This will create a new window and switch to the next available layout. You can
+also run arbitrarily powerful scripts on a key press. There are two major
+techniques for doing this, using remote control scripts or using kittens.
+
+Remote control scripts
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These can be written in any language and use the "kitten" binary to control
+kitty via its extensive :doc:`Remote control <remote-control>` API. First,
+if you just want to run a single remote control command on a key press,
+you can just do::
+
+    map f1 remote_control set-spacing margin=30
+
+This will run the ``set-spacing`` command, changing window margins to 30 pixels. For
+more complex scripts, write a script file in any language you like and save it
+somewhere, preferably in the kitty configuration directory. Do not forget to make it
+executable. In the script file you run remote control commands by running the
+"kitten" binary, for example:
+
+.. code-block:: sh
+
+   #!/bin/sh
+
+   kitten @ set-spacing margin=30
+   kitten @ new_window
+   ...
+
+The script can perform arbitrarily complex logic and actions, limited only by
+the remote control API, that you can browse by running ``kitten @ --help``.
+To run the script you created on a key press, use::
+
+    map f1 remote_control_script /path/to/myscript
+
+
+Kittens
+^^^^^^^^^^^^^
+
+Here, kittens refer to Python scripts. The scripts have two parts, one that
+runs as a regular command line program inside a kitty window to, for example,
+ask the user for some input and a second part that runs inside the kitty
+process itself and can perform any operation on the kitty UI, which is itself
+implemented in Python. However, the kitty internal API is not documented and
+can (very rarely) change, so kittens are harder to get started with than remote
+control scripts. To run a kitten on a key press::
+
+    map f1 kitten mykitten.py
+
+Many of kitty;s features are themselves implemented as kittens, for example,
+:doc:`/kittens/unicode_input`, :doc:`/kittens/hints` and
+:doc:`/kittens/themes`. To learn about writing your own kittens, see
+:doc:`/kittens/custom`.
+
+Syntax for specifying keys
+-----------------------------
+
+A mapping maps a key press to some action. In their most basic form, keypresses
+are :code:`modifier+key`. Keys are identified simply by their lowercase Unicode
+characters. For example: :code:`a` for the :kbd:`A` key, :code:`[` for the left
+square bracket key, etc.  For functional keys, such as :kbd:`Enter` or
+:kbd:`Escape`, the names are present at :ref:`Functional key definitions
+<functional>`. For modifier keys, the names are :kbd:`ctrl` (:kbd:`control`,
+:kbd:`⌃`), :kbd:`shift` (:kbd:`⇧`), :kbd:`alt` (:kbd:`opt`, :kbd:`option`,
+:kbd:`⌥`), :kbd:`super` (:kbd:`cmd`, :kbd:`command`, :kbd:`⌘`).
+
+Additionally, you can use the name :opt:`kitty_mod` as a modifier, the default
+value of which is :kbd:`ctrl+shift`. The default kitty shortcuts are defined
+using this value, so by changing it in :file:`kitty.conf` you can change
+all the modifiers used by all the default shortcuts.
+
+On Linux, you can also use XKB names for functional keys that don't have kitty
+names. See :link:`XKB keys
+<https://github.com/xkbcommon/libxkbcommon/blob/master/include/xkbcommon/xkbcommon-keysyms.h>`
+for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
+prefix. Note that you can only use an XKB key name for keys that are not known
+as kitty keys.
+
+Finally, you can use raw system key codes to map keys, again only for keys that
+are not known as kitty keys. To see the system key code for a key, start kitty
+with the :option:`kitty --debug-input` option, kitty will output some debug text
+for every key event. In that text look for :code:`native_code`, the value
+of that becomes the key name in the shortcut. For example:
+
+.. code-block:: none
+
+    on_key_input: glfw key: 0x61 native_code: 0x61 action: PRESS mods: none text: 'a'
+
+Here, the key name for the :kbd:`A` key is :code:`0x61` and you can use it with::
+
+    map ctrl+0x61 something
+
+This maps :kbd:`Ctrl+A` to something.
+
+
+Multi-key mappings
+--------------------
+
+A mapping in kitty can involve pressing multiple keys in sequence, with the
+syntax shown below::
+
+    map key1>key2>key3 action
+
+For example::
+
+    map ctrl+f>2 set_font_size 20
+
+The default mappings to run the :doc:`hints kitten </kittens/hints>` to select text on the screen are
+examples of multi-key mappings.
+
+Unmapping default shortcuts
+-----------------------------
+
+kitty comes with dozens of default keyboard mappings for common operations. See
+:doc:`actions` for the full list of actions and the default shortcuts that map
+to them. You can unmap an individual shortcut, so that it is passed on to the
+program running inside kitty, by mapping it to nothing, for example::
+
+    map kitty_mod+enter
+
+This unmaps the default shortcut :sc:`new_window` to open a new window. Almost
+all default shortcuts are of the form ``modifier + key`` where the
+modifier defaults to :kbd:`Ctrl+Shift` and can be changed using the :opt:`kitty_mod` setting
+in :file:`kitty.conf`.
+
+If you want to clear all default shortcuts, you can use
+:opt:`clear_all_shortcuts` in :file:`kitty.conf`.
+
+If you would like kitty to completely ignore a key event, not even sending it to
+the program running in the terminal, map it to :ac:`discard_event`::
+
+    map kitty_mod+f1 discard_event
+
+
+Conditional mappings depending on the state of the focused window
+----------------------------------------------------------------------
+
+Sometimes, you may want different mappings to be active when running a
+particular program in kitty, perhaps because it has some native functionality
+that duplicates kitty functions or there is a conflict, etc. kitty has the
+ability to create mappings that work only when the currently focused window
+matches some criteria, such as when it has a particular title or user variable.
+
+Let's see some examples::
+
+    map --when-focus-on title:keyboard.protocol kitty_mod+t
+This will cause :kbd:`kitty_mod+t` (the default shortcut for opening a new tab)
+to be unmapped only when the focused window
+has :code:`keyboard protocol` in its title. Run the show-key kitten as::
+
+    kitten show-key -m kitty
+
+Press :kbd:`ctrl+shift+t` and instead of a new tab opening, you will
+see the key press being reported by the kitten. :code:`--when-focus-on` can test
+the focused window using very powerful criteria, see :ref:`search_syntax` for
+details. A more practical example unmaps the key when the focused window is running vim::
+
+    map --when-focus-on var:in_editor
+
+In order to make this work, you need the following lines in your :file:`.vimrc`::
+
+    let &t_ti = &t_ti . "\\033]1337;SetUserVar=in_editor=MQo\\007"
+    let &t_te = &t_te . "\\033]1337;SetUserVar=in_editor\\007"
+
+These cause vim to set the :code:`in_editor` variable in kitty and unset it when leaving vim.
+
+Sending arbitrary text to the program running in kitty using mappings
+------------------------------------------------------------------------
+
+This is accomplished by using ``map`` with :sc:`send_text <send_text>` in :file:`kitty.conf`.
+For example::
+
+    map f1 send_text normal,application Hello, world!
+
+Now, pressing :kbd:`f1` will cause ``Hello, world!`` to show up at your shell
+prompt. To have the shell execute a command sent via ``send_text`` you need to
+also simulate pressing the enter key which is ``\r``. For example::
+
+    map f1 send_text normal,application echo Hello, world!\r
+
+Now, if you press :kbd:`f1` when at shell prompt it will run the ``echo Hello,
+world!`` command.
+
+To have one key press send another key press::
+
+    map alt+s send_text normal,application \x13
+
+This maps :kbd:`alt+s` to :kbd:`ctrl+s`. To figure out what bytes to use for
+the :sc:`send_text <send_text>` you can use the ``show_key`` kitten. Run::
+
+    kitten show_key
+
+Then press the key you want to emulate. Note that this kitten will only show
+keys that actually reach the terminal program, in particular, keys mapped to
+actions in kitty will not be shown. To check those first unmap them.
+You can also start a kitty instance without any shortcuts to interfere:
+
+.. code-block:: sh
+
+    kitty -o clear_all_shortcuts=yes kitten show_key
+
+All mappable actions
+------------------------
+
+There is a list of :doc:`all mappable actions <actions>`.
+
+Debugging mapping issues
+------------------------------
+
+To debug mapping issues, kitty has several facilities. First, when you run
+kitty with the :option:`--debug-input` command line flag it outputs details
+about all key events it receives form the system and how they are handled.
+
+To see what key events are sent to applications, run kitty like this::
+
+    kitty kitten show-key
+
+Press the keys you want to debug and the kitten will print out the bytes it
+receives. Note that this uses the legacy terminal keyboard protocol that doesnt
+support all keys and key events. To debug the :doc:`full kitty keyboard
+protocol that <keyboard-protocol>` that is nowadays being adopted by more and
+more programs, use::
+
+    kitty kitten show-key -m kitty
