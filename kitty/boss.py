@@ -1369,6 +1369,13 @@ class Boss:
                 return False
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
+            if not is_root_mode:
+                if mode.on_unknown in ('beep', 'ignore'):
+                    if mode.on_unknown == 'beep' and get_options().enable_audio_bell:
+                        ring_bell()
+                    return True
+                if mode.on_unknown == 'passthrough':
+                    return False
             if not self.pop_keyboard_mode():
                 if get_options().enable_audio_bell:
                     ring_bell()
@@ -1380,7 +1387,7 @@ class Boss:
                 if final_actions[0].is_sequence:
                     if not mode.is_sequence:
                         sm = KeyboardMode('__sequence__')
-                        sm.end_on_action = True
+                        sm.on_action = 'end'
                         sm.is_sequence = True
                         for fa in final_actions:
                             sm.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
@@ -1399,7 +1406,7 @@ class Boss:
                     return True
                 final_action = final_actions[0]
                 consumed = self.combine(final_action.definition)
-                if consumed and not is_root_mode and mode.end_on_action:
+                if consumed and not is_root_mode and mode.on_action == 'end':
                     if mode_pos < len(self.keyboard_mode_stack) and self.keyboard_mode_stack[mode_pos] is mode:
                         del self.keyboard_mode_stack[mode_pos]
                         if not self.keyboard_mode_stack:
@@ -1463,7 +1470,7 @@ class Boss:
             self.current_visual_select.window_used_for_selection_id = 0 if w is None else w.id
             return
         km = KeyboardMode('__visual_select__')
-        km.end_on_action = True
+        km.on_action = 'end'
         fmap = get_name_to_functional_number_map()
         alphanumerics = get_options().visual_window_select_characters
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):

@@ -8,7 +8,25 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass, fields
 from functools import lru_cache
-from typing import Any, Callable, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Container,
+    Dict,
+    FrozenSet,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    get_args,
+)
 
 import kitty.fast_data_types as defines
 from kitty.conf.utils import (
@@ -1134,20 +1152,29 @@ class MouseMapping(BaseDefinition):
         return MouseEvent(self.button, self.mods, self.repeat_count, self.grabbed)
 
 
-class BoolField:
-    def __init__(self, default: bool = False):
-        self._default = default
+T = TypeVar('T')
+
+
+class LiteralField(Generic[T]):
+    def __init__(self, vals: Tuple[T, ...]):
+        self._vals = vals
 
     def __set_name__(self, owner: object, name: str) -> None:
         self._name = "_" + name
 
-    def __get__(self, obj: object, type: Optional[type] = None) -> bool:
+    def __get__(self, obj: object, type: Optional[type] = None) -> T:
         if obj is None:
-            return self._default
-        return getattr(obj, self._name, self._default)
+            return self._vals[0]
+        return getattr(obj, self._name, self._vals[0])
 
     def __set__(self, obj: object, value: str) -> None:
-        setattr(obj, self._name, to_bool(value))
+        if value not in self._vals:
+            raise KeyError(f'Invalid value for {self._name[1:]}: {value!r}')
+        setattr(obj, self._name, value)
+
+
+OnUnknown = Literal['beep', 'end', 'ignore', 'passthrough']
+OnAction = Literal['keep', 'end']
 
 
 @dataclass(init=False, frozen=True)
@@ -1155,8 +1182,8 @@ class KeyMapOptions:
     when_focus_on: str = ''
     new_mode: str = ''
     mode: str = ''
-    passthrough_unknown: BoolField = BoolField(False)
-    end_on_action: BoolField = BoolField(False)
+    on_unknown = LiteralField[OnUnknown](get_args(OnUnknown))
+    on_action = LiteralField[OnAction](get_args(OnAction))
 
 
 default_key_map_options = KeyMapOptions()
@@ -1205,8 +1232,8 @@ class KeyDefinition(BaseDefinition):
 
 class KeyboardMode:
 
-    passthrough_unknown: bool = False
-    end_on_action: bool = False
+    on_unknown: OnUnknown = get_args(OnUnknown)[0]
+    on_action : OnAction = get_args(OnAction)[0]
     is_sequence: bool = False
 
     def __init__(self, name: str = '') -> None:

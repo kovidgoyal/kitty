@@ -105,8 +105,8 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] =
     for defn in defns:
         if defn.options.new_mode:
             modes[defn.options.new_mode] = nm = KeyboardMode(defn.options.new_mode)
-            nm.passthrough_unknown = defn.options.passthrough_unknown
-            nm.end_on_action = defn.options.end_on_action
+            nm.on_unknown = defn.options.on_unknown
+            nm.on_action = defn.options.on_action
             defn.definition = f'push_keyboard_mode {defn.options.new_mode}'
         try:
             m = modes[defn.options.mode]
