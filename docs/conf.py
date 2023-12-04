@@ -14,12 +14,12 @@ import subprocess
 import sys
 import time
 from functools import lru_cache, partial
-from typing import Any, Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 from pygments.lexer import RegexLexer, bygroups  # type: ignore
-from pygments.token import Comment, Keyword, Literal, Name, Number, String, Whitespace  # type: ignore
+from pygments.token import Comment, Error, Keyword, Literal, Name, Number, String, Whitespace  # type: ignore
 from sphinx import addnodes, version_info
 from sphinx.util.logging import getLogger
 
@@ -29,6 +29,7 @@ if kitty_src not in sys.path:
 
 from kitty.conf.types import Definition, expand_opt_references  # noqa
 from kitty.constants import str_version, website_url # noqa
+from kitty.fast_data_types import Shlex  # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -345,6 +346,62 @@ class ConfLexer(RegexLexer):  # type: ignore
     aliases = ['conf']
     filenames = ['*.conf']
 
+    def map_flags(self: RegexLexer, val: str, start_pos: int) -> Iterator[Tuple[int, Any, str]]:
+            expecting_arg = ''
+            s = Shlex(val)
+            from kitty.options.utils import allowed_key_map_options
+            last_pos = 0
+            while (tok := s.next_word())[0] > -1:
+                x = tok[1]
+                if tok[0] > last_pos:
+                    yield start_pos + last_pos, Whitespace, ' ' * (tok[0] - last_pos)
+                last_pos = tok[0] + len(x)
+                tok_start = start_pos + tok[0]
+                if expecting_arg:
+                    yield tok_start, String, x
+                    expecting_arg = ''
+                elif x.startswith('--'):
+                    expecting_arg = x[2:]
+                    k, sep, v = expecting_arg.partition('=')
+                    k = k.replace('-', '_')
+                    expecting_arg = k
+                    if expecting_arg not in allowed_key_map_options:
+                        yield tok_start, Error, x
+                    elif sep == '=':
+                        expecting_arg = ''
+                        yield tok_start, Name, x
+                    else:
+                        yield tok_start, Name, x
+                else:
+                    break
+
+    def mapargs(self: RegexLexer, match: 're.Match[str]') -> Iterator[Tuple[int, Any, str]]:
+        start_pos = match.start()
+        val = match.group()
+        parts = val.split(maxsplit=1)
+        if parts[0].startswith('--'):
+            seen = 0
+            for (pos, token, text) in self.map_flags(val, start_pos):
+                yield pos, token, text
+                seen += len(text)
+            start_pos += seen
+            val = val[seen:]
+            parts = val.split(maxsplit=1)
+
+        if not val:
+            return
+        yield start_pos, Literal, parts[0]  # key spec
+        if len(parts) == 1:
+            return
+        start_pos += len(parts[0])
+        val = val[len(parts[0]):]
+        m = re.match(r'(\s+)(\S+)', val)
+        if m is None:
+            return
+        yield start_pos, Whitespace, m.group(1)
+        yield start_pos + m.start(2), Name.Function, m.group(2)  # action function
+        yield start_pos + m.end(2), String, val[m.end(2):]
+
     tokens = {
         'root': [
             (r'#.*?$', Comment.Single),
@@ -352,7 +409,7 @@ class ConfLexer(RegexLexer):  # type: ignore
             (r'\s+', Whitespace),
             (r'(include)(\s+)(.+?)$', bygroups(Comment.Preproc, Whitespace, Name.Namespace)),
             (r'(map)(\s+)', bygroups(
-                Keyword.Declaration, Whitespace), 'args'),
+                Keyword.Declaration, Whitespace), 'mapargs'),
             (r'(mouse_map)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)', bygroups(
                 Keyword.Declaration, Whitespace, String, Whitespace, Name.Variable, Whitespace, String, Whitespace), 'action'),
             (r'(symbol_map)(\s+)(\S+)(\s+)(.+?)$', bygroups(
@@ -363,6 +420,9 @@ class ConfLexer(RegexLexer):  # type: ignore
         'action': [
             (r'[a-z_0-9]+$', Name.Function, 'root'),
             (r'[a-z_0-9]+', Name.Function, 'args'),
+        ],
+        'mapargs': [
+            (r'.+$', mapargs, 'root'),
         ],
         'args': [
             (r'\s+', Whitespace, 'args'),

@@ -262,7 +262,7 @@ example, lets create a mode to manage windows: switching focus, moving the windo
     # Exit the manage window mode
     map --mode mw esc pop_keyboard_mode
 
-Now, if run kitty as:
+Now, if you run kitty as:
 
 .. code-block:: sh
 
@@ -279,21 +279,21 @@ beeps. This can be controlled by the ``map --on-unknown`` option as shown
 below::
 
     # Beep on unknown keys
-    map --new-mode XXX --on-unknown beep XXX
+    map --new-mode XXX --on-unknown beep ...
     # Ingore unknown keys silently
-    map --new-mode XXX --on-unknown ignore XXX
+    map --new-mode XXX --on-unknown ignore ...
     # Beep and exit the keyboard mode on unknown key
-    map --new-mode XXX --on-unknown end XXX
+    map --new-mode XXX --on-unknown end ...
     # Pass unknown keys to the program running in the active window
-    map --new-mode XXX --on-unknown passthrough XXX
+    map --new-mode XXX --on-unknown passthrough ...
 
 When a key matches an action in a custom keyboard mode, the action is performed
 and the custom keyboard mode remains in effect. If you would rather have the
 keyboard mode end after the action you can use ``map --on-action`` as shown
 below::
 
-    # Have this keyboar dmode automatically exit after performing any action
-    map --new-mode XXX --on-action end
+    # Have this keyboard mode automatically exit after performing any action
+    map --new-mode XXX --on-action end ...
 
 
 All mappable actions
