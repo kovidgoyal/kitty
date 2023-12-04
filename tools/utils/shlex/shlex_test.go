@@ -1,7 +1,6 @@
 package shlex
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -13,76 +12,22 @@ var (
 	testString = "one two \"three four\" \"five \\\"six\\\"\" seven#eight # nine # ten eleven 'twelve\\' thirteen=13 fourteen/14"
 )
 
-func TestClassifier(t *testing.T) {
-	classifier := newDefaultClassifier()
-	tests := map[rune]runeTokenClass{
-		' ':  spaceRuneClass,
-		'"':  escapingQuoteRuneClass,
-		'\'': nonEscapingQuoteRuneClass}
-	for runeChar, want := range tests {
-		got := classifier.ClassifyRune(runeChar)
-		if got != want {
-			t.Errorf("ClassifyRune(%v) -> %v. Want: %v", runeChar, got, want)
-		}
-	}
-}
-
-func TestTokenizer(t *testing.T) {
-	testInput := testString
-	expectedTokens := []*Token{
-		{WordToken, "one", 0},
-		{SpaceToken, " ", 3},
-		{WordToken, "two", 4},
-		{SpaceToken, " ", 7},
-		{WordToken, "three four", 8},
-		{SpaceToken, " ", 20},
-		{WordToken, "five \"six\"", 21},
-		{SpaceToken, " ", 35},
-		{WordToken, "seven#eight", 36},
-		{SpaceToken, " ", 47},
-		{WordToken, "#", 48},
-		{SpaceToken, " ", 49},
-		{WordToken, "nine", 50},
-		{SpaceToken, " ", 54},
-		{WordToken, "#", 55},
-		{SpaceToken, " ", 56},
-		{WordToken, "ten", 57},
-		{SpaceToken, " ", 60},
-		{WordToken, "eleven", 61},
-		{SpaceToken, " ", 67},
-		{WordToken, "twelve\\", 68},
-		{SpaceToken, " ", 77},
-		{WordToken, "thirteen=13", 78},
-		{SpaceToken, " ", 89},
-		{WordToken, "fourteen/14", 90},
-	}
-
-	tokenizer := NewTokenizer(strings.NewReader(testInput))
-	for i, want := range expectedTokens {
-		got, err := tokenizer.Next()
-		if err != nil {
-			t.Error(err)
-		}
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Fatalf("Tokenizer.Next()[%v] of: %s:\n%s", i, testString, diff)
-		}
-	}
-}
-
 func TestLexer(t *testing.T) {
 	testInput := testString
 	expectedStrings := []string{"one", "two", "three four", "five \"six\"", "seven#eight", "#", "nine", "#", "ten", "eleven", "twelve\\", "thirteen=13", "fourteen/14"}
 
-	lexer := NewLexer(strings.NewReader(testInput))
+	lexer := NewLexer(testInput)
 	for i, want := range expectedStrings {
-		got, err := lexer.Next()
-		if err != nil {
-			t.Error(err)
-		}
-		if got != want {
+		got := lexer.Next()
+		if got.Value != want {
 			t.Errorf("Lexer.Next()[%v] of %q -> %v. Want: %v", i, testString, got, want)
 		}
 	}
+}
+
+type Tok struct {
+	Pos int
+	Val string
 }
 
 func TestSplit(t *testing.T) {
@@ -99,6 +44,43 @@ func TestSplit(t *testing.T) {
 			t.Errorf("Split(%q)[%v] -> %v. Want: %v", testString, i, got[i], want[i])
 		}
 	}
+
+	for _, x := range []string{
+		`abc\`, `\`, `'abc`, `'`, `"`, `asd\`,
+	} {
+		_, err := Split(x)
+		if err == nil {
+			t.Fatalf("Failed to get an error for: %#v", x)
+		}
+	}
+	s := func(q string) (ans []Tok) {
+		l := NewLexer(q)
+		for {
+			w := l.Next()
+			if w.Err != nil {
+				t.Fatal(w.Err)
+			}
+			if w.Value == "" {
+				break
+			}
+			ans = append(ans, Tok{w.Pos, w.Value})
+		}
+		return
+	}
+	for q, expected := range map[string][]Tok{
+		`"ab"`:          {{0, "ab"}},
+		`x "ab"y \m`:    {{0, `x`}, {2, `aby`}, {8, `m`}},
+		`x'y"\z'1`:      {{0, `xy"\z1`}},
+		`\abc\ d`:       {{0, `abc d`}},
+		``:              nil,
+		`   `:           nil,
+		" \tabc\n\t\r ": {{2, "abc"}},
+	} {
+		if diff := cmp.Diff(expected, s(q)); diff != "" {
+			t.Fatalf("Failed for string: %#v\n%s", q, diff)
+		}
+	}
+
 }
 
 func TestSplitForCompletion(t *testing.T) {
@@ -108,7 +90,7 @@ func TestSplitForCompletion(t *testing.T) {
 			t.Fatalf("Failed to split: %s\n%s", cmdline, diff)
 		}
 		if last_arg_pos != actual_pos {
-			t.Fatalf("Failed to split: %s\n Last arg pos: %d != %d", cmdline, last_arg_pos, actual_pos)
+			t.Fatalf("Failed to split: %#v\n Last arg pos: %d != %d", cmdline, last_arg_pos, actual_pos)
 		}
 	}
 	test("a b", 2, "a", "b")

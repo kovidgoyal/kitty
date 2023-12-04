@@ -28,6 +28,9 @@ func TestParseSSHArgs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if len(ans) == 0 {
+			ans = []string{}
+		}
 		return ans
 	}
 
@@ -39,7 +42,7 @@ func TestParseSSHArgs(t *testing.T) {
 		check := func(a, b any) {
 			diff := cmp.Diff(a, b)
 			if diff != "" {
-				t.Fatalf("Unexpected value for args: %s\n%s", args, diff)
+				t.Fatalf("Unexpected value for args: %#v\n%s", args, diff)
 			}
 		}
 		check(split(expected_ssh_args), ssh_args)

@@ -109,7 +109,6 @@ next_word(Shlex *self, PyObject *args UNUSED) {
                 switch(ch) {
                     case STRING_WITHOUT_ESCAPES_DELIM:
                         set_state(self, WORD);
-                        if (self->buf_pos && self->state == NORMAL) return get_word(self);
                         break;
                     default: write_ch(self, ch); break;
                 } break;
@@ -117,13 +116,9 @@ next_word(Shlex *self, PyObject *args UNUSED) {
                 switch(ch) {
                     case STRING_WITH_ESCAPES_DELIM:
                         set_state(self, WORD);
-                        if (self->buf_pos && self->state == NORMAL) return get_word(self);
                         break;
                     case ESCAPE_CHAR:
-                        if (self->src_pos < self->src_sz) {
-                            Py_UCS4 nch = PyUnicode_READ(self->kind, self->src_data, self->src_pos); self->src_pos++;
-                            write_ch(self, nch);
-                        }
+                        write_escape_ch(self);
                         break;
                     default: write_ch(self, ch); break;
                 } break;
