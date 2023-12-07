@@ -130,6 +130,9 @@ func GetChoices(o *Options) (response string, err error) {
 	}
 
 	draw_long_text := func(screen_width int, text string, msg_lines []string) []string {
+		if screen_width < 3 {
+			return msg_lines
+		}
 		if text == "" {
 			msg_lines = append(msg_lines, "")
 		} else {
