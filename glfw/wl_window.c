@@ -2034,9 +2034,19 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
         f(data_source, cd->mime_types[i]);
     }
     if (t == GLFW_CLIPBOARD) {
-        // According to the Wayland spec only the application that has keyboard focus can set the clipboard.
+        // According to some interpretations of the Wayland spec only the application that has keyboard focus can set the clipboard.
         // Hurray for the Wayland nanny state!
-        wl_data_device_set_selection(_glfw.wl.dataDevice, _glfw.wl.dataSourceForClipboard, _glfw.wl.keyboard_enter_serial);
+        //
+        // However in wl-roots based compositors, using the serial from the keyboard enter event doesn't work. No clue what
+        // the correct serial to use here is. Given this Wayland there probably isn't one. What a joke.
+        // Bug report: https://github.com/kovidgoyal/kitty/issues/6890
+        // Ironically one of the contributors to wl_roots claims the keyboard enter serial is the correct one to use:
+        // https://emersion.fr/blog/2020/wayland-clipboard-drag-and-drop/
+        // The Wayland spec itself says "serial number of the event that triggered this request"
+        // https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_data_device
+        // So who the fuck knows. Just use the latest received serial and ask anybody that uses Wayland
+        // to get their head examined.
+        wl_data_device_set_selection(_glfw.wl.dataDevice, _glfw.wl.dataSourceForClipboard, _glfw.wl.serial);
     } else {
         // According to the Wayland spec we can only set the primary selection in response to a pointer button event
         // Hurray for the Wayland nanny state!

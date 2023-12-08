@@ -54,6 +54,9 @@ Detailed list of changes
 
 - A new action :ac:`send_key` to simplify mapping key presses to other keys without needing :ac:`send_text`
 
+- Wayland: Fix a regression in the previous release that broke copying to clipboard under wl-roots based compositors in some circumstances
+  (:iss:`6890`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
