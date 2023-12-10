@@ -59,6 +59,8 @@ Detailed list of changes
 
 - macOS: Fix some combining characters not being rendered (:iss:`6898`)
 
+- macOS: Fix returning from full screen via the button when the titlebar is hidden not hiding the buttons (:iss:`6883`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

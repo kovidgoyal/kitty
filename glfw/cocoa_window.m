@@ -1716,6 +1716,24 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     return YES;
 }
 
+static void
+update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow* w, bool traditional, bool made_fullscreen) {
+    // Update window button visibility
+    if (w->ns.titlebar_hidden) {
+        NSWindow *window = w->ns.object;
+        // The hidden buttons might be automatically reset to be visible after going full screen
+        // to show up in the auto-hide title bar, so they need to be set back to hidden.
+        BOOL button_hidden = YES;
+        // When title bar is configured to be hidden, it should be shown with buttons (auto-hide) after going to full screen.
+        if (!traditional) {
+            button_hidden = (BOOL) !made_fullscreen;
+        }
+        [[window standardWindowButton: NSWindowCloseButton] setHidden:button_hidden];
+        [[window standardWindowButton: NSWindowMiniaturizeButton] setHidden:button_hidden];
+        [[window standardWindowButton: NSWindowZoomButton] setHidden:button_hidden];
+    }
+}
+
 - (void)toggleFullScreen:(nullable id)sender
 {
     if (glfw_window) {
@@ -1723,6 +1741,8 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         if (glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1) return;
         glfw_window->ns.in_fullscreen_transition = true;
     }
+    NSWindowStyleMask sm = [self styleMask];
+    bool is_fullscreen_already = (sm & NSWindowStyleMaskFullScreen) != 0;
     // When resizeIncrements is set, Cocoa cannot restore the original window size after returning from fullscreen.
     const NSSize original = [self resizeIncrements];
     [self setResizeIncrements:NSMakeSize(1.0, 1.0)];
@@ -1731,6 +1751,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     // When the window decoration is hidden, toggling fullscreen causes the style mask to be changed,
     // and causes the first responder to be cleared.
     if (glfw_window && !glfw_window->decorated && glfw_window->ns.view) [self makeFirstResponder:glfw_window->ns.view];
+    update_titlebar_button_visibility_after_fullscreen_transition(glfw_window, false, !is_fullscreen_already);
 }
 
 - (void)zoom:(id)sender
@@ -2657,19 +2678,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
         if (in_fullscreen) made_fullscreen = false;
         [window toggleFullScreen: nil];
     }
-    // Update window button visibility
-    if (w->ns.titlebar_hidden) {
-        // The hidden buttons might be automatically reset to be visible after going full screen
-        // to show up in the auto-hide title bar, so they need to be set back to hidden.
-        BOOL button_hidden = YES;
-        // When title bar is configured to be hidden, it should be shown with buttons (auto-hide) after going to full screen.
-        if (!traditional) {
-            button_hidden = (BOOL) !made_fullscreen;
-        }
-        [[window standardWindowButton: NSWindowCloseButton] setHidden:button_hidden];
-        [[window standardWindowButton: NSWindowMiniaturizeButton] setHidden:button_hidden];
-        [[window standardWindowButton: NSWindowZoomButton] setHidden:button_hidden];
-    }
+    update_titlebar_button_visibility_after_fullscreen_transition(w, traditional, made_fullscreen);
     return made_fullscreen;
 }
 
