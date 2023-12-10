@@ -319,6 +319,9 @@ harfbuzz_font_for_face(PyObject* s) {
     if (!self->hb_font) {
         self->hb_font = hb_coretext_font_create(self->ct_font);
         if (!self->hb_font) fatal("Failed to create hb_font");
+        // dunno if we need this, harfbuzz docs say it is used by CoreText
+        // for optical sizing which changes the look of glyphs at small and large sizes
+        hb_font_set_ptem(self->hb_font, self->scaled_point_sz);
         hb_ot_font_set_funcs(self->hb_font);
     }
     return self->hb_font;
@@ -421,13 +424,12 @@ struct RenderBuffers {
     CGGlyph *glyphs;
     CGRect *boxes;
     CGPoint *positions;
-    CGSize *advances;
 };
 static struct RenderBuffers buffers = {0};
 
 static void
 finalize(void) {
-    free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions); free(buffers.advances);
+    free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions);
     memset(&buffers, 0, sizeof(struct RenderBuffers));
     if (all_fonts_collection_data) CFRelease(all_fonts_collection_data);
     if (window_title_font) CFRelease(window_title_font);
@@ -471,11 +473,10 @@ ensure_render_space(size_t width, size_t height, size_t num_glyphs) {
     }
     if (buffers.sz < num_glyphs) {
         buffers.sz = MAX(128, num_glyphs * 2);
-        buffers.advances = calloc(sizeof(buffers.advances[0]), buffers.sz);
         buffers.boxes = calloc(sizeof(buffers.boxes[0]), buffers.sz);
         buffers.glyphs = calloc(sizeof(buffers.glyphs[0]), buffers.sz);
         buffers.positions = calloc(sizeof(buffers.positions[0]), buffers.sz);
-        if (!buffers.advances || !buffers.boxes || !buffers.glyphs || !buffers.positions) fatal("Out of memory");
+        if (!buffers.boxes || !buffers.glyphs || !buffers.positions) fatal("Out of memory");
     }
 }
 
@@ -631,13 +632,15 @@ do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, 
             return ret;
         }
     }
-    (void)units_per_em;
     CGFloat x = 0, y = 0;
-    CTFontGetAdvancesForGlyphs(ct_font, kCTFontOrientationDefault, buffers.glyphs, buffers.advances, num_glyphs);
+    CGFloat scale = CTFontGetSize(ct_font) / units_per_em;
     for (unsigned i=0; i < num_glyphs; i++) {
-        buffers.positions[i].x = x; buffers.positions[i].y = y;
-        if (debug_rendering) printf("x=%f origin=%f width=%f advance=%f\n", x, buffers.boxes[i].origin.x, buffers.boxes[i].size.width, buffers.advances[i].width);
-        x += buffers.advances[i].width; y += buffers.advances[i].height;
+        buffers.positions[i].x = x + hb_positions[i].x_offset * scale; buffers.positions[i].y = y + hb_positions[i].y_offset * scale;
+        if (debug_rendering) printf("x=%f y=%f origin=%f width=%f x_advance=%f x_offset=%f y_advance=%f y_offset=%f\n",
+                buffers.positions[i].x, buffers.positions[i].y, buffers.boxes[i].origin.x, buffers.boxes[i].size.width,
+                hb_positions[i].x_advance * scale, hb_positions[i].x_offset * scale,
+                hb_positions[i].y_advance * scale, hb_positions[i].y_offset * scale);
+        x += hb_positions[i].x_advance * scale; y += hb_positions[i].y_advance * scale;
     }
     if (*was_colored) {
         render_color_glyph(ct_font, (uint8_t*)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
@@ -692,8 +695,8 @@ postscript_name_for_face(const PyObject *face_) {
 static PyObject *
 repr(CTFace *self) {
     char buf[1024] = {0};
-    snprintf(buf, sizeof(buf)/sizeof(buf[0]), "ascent=%.1f, descent=%.1f, leading=%.1f, point_sz=%.1f, scaled_point_sz=%.1f, underline_position=%.1f underline_thickness=%.1f",
-        (self->ascent), (self->descent), (self->leading), (self->point_sz), (self->scaled_point_sz), (self->underline_position), (self->underline_thickness));
+    snprintf(buf, sizeof(buf)/sizeof(buf[0]), "ascent=%.1f, descent=%.1f, leading=%.1f, scaled_point_sz=%.1f, underline_position=%.1f underline_thickness=%.1f",
+        (self->ascent), (self->descent), (self->leading), (self->scaled_point_sz), (self->underline_position), (self->underline_thickness));
     return PyUnicode_FromFormat(
         "Face(family=%U, full_name=%U, postscript_name=%U, path=%U, units_per_em=%u, %s)",
         self->family_name, self->full_name, self->postscript_name, self->path, self->units_per_em, buf
@@ -709,7 +712,6 @@ static PyMethodDef module_methods[] = {
 static PyMemberDef members[] = {
 #define MEM(name, type) {#name, type, offsetof(CTFace, name), READONLY, #name}
     MEM(units_per_em, T_UINT),
-    MEM(point_sz, T_FLOAT),
     MEM(scaled_point_sz, T_FLOAT),
     MEM(ascent, T_FLOAT),
     MEM(descent, T_FLOAT),

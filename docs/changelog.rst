@@ -57,6 +57,8 @@ Detailed list of changes
 - Wayland: Fix a regression in the previous release that broke copying to clipboard under wl-roots based compositors in some circumstances
   (:iss:`6890`)
 
+- macOS: Fix some combining characters not being rendered (:iss:`6898`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
