@@ -612,7 +612,7 @@ render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *re
 
 
 static bool
-do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {
+do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {
     unsigned int canvas_width = cell_width * num_cells;
     ensure_render_space(canvas_width, cell_height, num_glyphs);
     CGRect br = CTFontGetBoundingRectsForGlyphs(ct_font, kCTFontOrientationHorizontal, buffers.glyphs, buffers.boxes, num_glyphs);
@@ -626,11 +626,12 @@ do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_g
             CGFloat sz = CTFontGetSize(ct_font);
             sz *= canvas_width / right;
             CTFontRef new_font = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
-            bool ret = do_render(new_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, false, fg, center_glyph);
+            bool ret = do_render(new_font, CTFontGetUnitsPerEm(new_font), bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, false, fg, center_glyph);
             CFRelease(new_font);
             return ret;
         }
     }
+    (void)units_per_em;
     CGFloat x = 0, y = 0;
     CTFontGetAdvancesForGlyphs(ct_font, kCTFontOrientationDefault, buffers.glyphs, buffers.advances, num_glyphs);
     for (unsigned i=0; i < num_glyphs; i++) {
@@ -661,7 +662,7 @@ render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *inf
     CTFace *self = (CTFace*)s;
     ensure_render_space(128, 128, num_glyphs);
     for (unsigned i=0; i < num_glyphs; i++) buffers.glyphs[i] = info[i].codepoint;
-    return do_render(self->ct_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg, center_glyph);
+    return do_render(self->ct_font, self->units_per_em, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg, center_glyph);
 }
 
 
