@@ -218,6 +218,17 @@ set_load_error(const char *path, int error) {
     return NULL;
 }
 
+bool
+face_equals_descriptor(PyObject *face_, PyObject *descriptor) {
+    Face *face = (Face*)face_;
+    PyObject *t = PyDict_GetItemString(descriptor, "path");
+    if (!t) return false;
+    if (PyObject_RichCompareBool(face->path, t, Py_EQ) != 1) return false;
+    t = PyDict_GetItemString(descriptor, "index");
+    if (t && PyLong_AsLong(t) != face->index) return false;
+    return true;
+}
+
 PyObject*
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
 #define D(key, conv, missing_ok) { \
@@ -284,7 +295,6 @@ repr(Face *self) {
         self->ascender, self->descender, self->height, self->underline_position, self->underline_thickness, self->strikethrough_position, self->strikethrough_thickness
     );
 }
-
 
 const char*
 postscript_name_for_face(const PyObject *face_) {
@@ -722,7 +732,6 @@ static PyMethodDef methods[] = {
     METHODB(extra_data, METH_NOARGS),
     {NULL}  /* Sentinel */
 };
-
 
 PyTypeObject Face_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)

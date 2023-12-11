@@ -12,6 +12,7 @@
 #include "unicode-data.h"
 #include "charsets.h"
 #include "glyph-cache.h"
+#include "kitty-uthash.h"
 
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
@@ -71,6 +72,12 @@ typedef struct Canvas {
     unsigned current_cells, alloced_cells;
 } Canvas;
 
+typedef struct fallback_font_map {
+    const char *cell_text;
+    size_t font_idx;
+    UT_hash_handle hh;
+} fallback_font_map_t;
+
 typedef struct {
     FONTS_DATA_HEAD
     id_type id;
@@ -80,6 +87,7 @@ typedef struct {
     Font *fonts;
     Canvas canvas;
     GPUSpriteTracker sprite_tracker;
+    fallback_font_map_t *fallback_font_map;
 } FontGroup;
 
 static FontGroup* font_groups = NULL;
@@ -152,6 +160,15 @@ static void
 del_font_group(FontGroup *fg) {
     free(fg->canvas.buf); fg->canvas.buf = NULL; fg->canvas = (Canvas){0};
     fg->sprite_map = free_sprite_map(fg->sprite_map);
+    if (fg->fallback_font_map) {
+        fallback_font_map_t *current, *tmp;
+        HASH_ITER(hh, fg->fallback_font_map, current, tmp) {
+            free((void*)current->cell_text);
+            HASH_DEL(fg->fallback_font_map, current);
+            free(current);
+        }
+        fg->fallback_font_map = NULL;
+    }
     for (size_t i = 0; i < fg->fonts_count; i++) del_font(fg->fonts + i);
     free(fg->fonts); fg->fonts = NULL;
 }
@@ -451,6 +468,16 @@ output_cell_fallback_data(CPUCell *cell, bool bold, bool italic, bool emoji_pres
     printf("\n");
 }
 
+PyObject*
+iter_fallback_faces(FONTS_DATA_HANDLE fgh, ssize_t *idx) {
+    FontGroup *fg = (FontGroup*)fgh;
+    if (*idx + 1 < (ssize_t)fg->fallback_fonts_count) {
+        *idx += 1;
+        return fg->fonts[fg->first_fallback_font_idx + *idx].face;
+    }
+    return NULL;
+}
+
 static ssize_t
 load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool emoji_presentation) {
     if (fg->fallback_fonts_count > 100) { log_error("Too many fallback fonts"); return MISSING_FONT; }
@@ -464,6 +491,7 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
     if (face == NULL) { PyErr_Print(); return MISSING_FONT; }
     if (face == Py_None) { Py_DECREF(face); return MISSING_FONT; }
     if (global_state.debug_font_fallback) output_cell_fallback_data(cell, bold, italic, emoji_presentation, face, true);
+    if (PyLong_Check(face)) { ssize_t ans = fg->first_fallback_font_idx + PyLong_AsSsize_t(face); Py_DECREF(face); return ans; }
     set_size_for_face(face, fg->cell_height, true, (FONTS_DATA_HANDLE)fg);
 
     ensure_space_for(fg, fonts, Font, fg->fonts_count + 1, fonts_capacity, 5, true);
@@ -495,17 +523,24 @@ fallback_font(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     bool bold = gpu_cell->attrs.bold;
     bool italic = gpu_cell->attrs.italic;
     bool emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
-
-    // Check if one of the existing fallback fonts has this text
-    for (size_t i = 0, j = fg->first_fallback_font_idx; i < fg->fallback_fonts_count; i++, j++)  {
-        Font *ff = fg->fonts +j;
-        if (ff->bold == bold && ff->italic == italic && ff->emoji_presentation == emoji_presentation && has_cell_text(ff, cpu_cell)) {
-            if (global_state.debug_font_fallback) output_cell_fallback_data(cpu_cell, bold, italic, emoji_presentation, ff->face, false);
-            return j;
+    char cell_text[6 + arraysz(cpu_cell->cc_idx) * 4];
+    const size_t cell_text_len = cell_as_utf8(cpu_cell, true, cell_text, ' ');
+    if (fg->fallback_font_map) {
+        fallback_font_map_t *s;
+        HASH_FIND_STR(fg->fallback_font_map, cell_text, s);
+        /* printf("cache %s\n", (s ? "hit" : "miss")); */
+        if (s) return s->font_idx;
+    }
+    ssize_t idx = load_fallback_font(fg, cpu_cell, bold, italic, emoji_presentation);
+    fallback_font_map_t *ffm = calloc(1, sizeof(fallback_font_map_t));
+    if (ffm) {
+        ffm->font_idx = idx;
+        ffm->cell_text = strndup(cell_text, cell_text_len);
+        if (ffm->cell_text) {
+            HASH_ADD_KEYPTR(hh, fg->fallback_font_map, ffm->cell_text, cell_text_len, ffm);
         }
     }
-
-    return load_fallback_font(fg, cpu_cell, bold, italic, emoji_presentation);
+    return idx;
 }
 
 static ssize_t

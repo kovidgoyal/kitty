@@ -450,7 +450,15 @@ create_fallback_face(PyObject UNUSED *base_face, CPUCell* cell, bool bold, bool 
     size_t num = cell_as_unicode_for_fallback(cell, char_buf);
     add_charset(pat, num);
     PyObject *d = _fc_match(pat);
-    if (d) { ans = face_from_descriptor(d, fg); Py_CLEAR(d); }
+    if (d) {
+        ssize_t idx = -1;
+        PyObject *q;
+        while ((q = iter_fallback_faces(fg, &idx))) {
+            if (face_equals_descriptor(q, d)) { ans = PyLong_FromSsize_t(idx); Py_CLEAR(d); goto end; }
+        }
+        ans = face_from_descriptor(d, fg);
+        Py_CLEAR(d);
+    }
 end:
     if (pat != NULL) FcPatternDestroy(pat);
     return ans;

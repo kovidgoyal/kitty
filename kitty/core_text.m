@@ -240,7 +240,7 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
                 new_font = manually_search_fallback_fonts(old_font, cpu_cell);
                 if (new_font) return new_font;
             }
-            PyErr_SetString(PyExc_ValueError, "Failed to find fallback CTFont other than the LastResort font");
+            PyErr_Format(PyExc_ValueError, "Failed to find fallback CTFont other than the LastResort font for: %s", [(NSString *)str UTF8String]);
             return NULL;
         }
         return new_font;
@@ -270,7 +270,22 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool 
     }
     else { search_for_fallback(); }
     if (new_font == NULL) return NULL;
-    return (PyObject*)ct_face(new_font, fg);
+    NSURL *url = (NSURL*)CTFontCopyAttribute(new_font, kCTFontURLAttribute);
+    const char *font_path = [[url path] UTF8String];
+    ssize_t idx = -1;
+    PyObject *q, *ans = NULL;
+    while ((q = iter_fallback_faces(fg, &idx))) {
+        CTFace *qf = (CTFace*)q;
+        const char *qpath;
+        if (qf->path && (qpath = PyUnicode_AsUTF8(qf->path)) && strcmp(qpath, font_path) == 0) {
+            ans = PyLong_FromSsize_t(idx);
+            break;
+        }
+    }
+    [url release];
+    if (ans == NULL) return (PyObject*)ct_face(new_font, fg);
+    CFRelease(new_font);
+    return ans;
 }
 
 unsigned int

@@ -61,6 +61,8 @@ Detailed list of changes
 
 - macOS: Fix returning from full screen via the button when the titlebar is hidden not hiding the buttons (:iss:`6883`)
 
+- Font fallback: Fix the font used to render a character sometimes dependent on the order in which characters appear on screen (:iss:`6865`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -30,6 +30,8 @@ PyObject* create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bo
 PyObject* specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE);
 PyObject* face_from_path(const char *path, int index, FONTS_DATA_HANDLE);
 PyObject* face_from_descriptor(PyObject*, FONTS_DATA_HANDLE);
+PyObject* iter_fallback_faces(FONTS_DATA_HANDLE fgh, ssize_t *idx);
+bool face_equals_descriptor(PyObject *face_, PyObject *descriptor);
 const char* postscript_name_for_face(const PyObject*);
 
 void sprite_tracker_current_layout(FONTS_DATA_HANDLE data, unsigned int *x, unsigned int *y, unsigned int *z);
