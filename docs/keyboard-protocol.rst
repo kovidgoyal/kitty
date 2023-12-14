@@ -195,7 +195,7 @@ reset.
 .. note:: Not all platforms will provide independent events for left and right
    modifier keys. For example on macOS, the system does not send an event to
    the application when the holding left control and also pressing right
-   control. Therefore applications are adviced to not rely on these.
+   control. Therefore applications are advised to not rely on these.
 
 .. _event_types:
 
