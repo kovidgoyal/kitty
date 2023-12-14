@@ -1259,6 +1259,15 @@ is_ascii_control_char(char x) {
     }
 }
 
+static bool
+is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_mask, NSUInteger either_mask) {
+    bool target_pressed = (flags & target_mask) != 0;
+    bool other_pressed = (flags & other_mask) != 0;
+    bool either_pressed = (flags & either_mask) != 0;
+    if (either_pressed != (target_pressed || other_pressed)) return either_pressed;
+    return target_pressed;
+}
+
 - (void)flagsChanged:(NSEvent *)event
 {
     int action = GLFW_RELEASE;
@@ -1271,29 +1280,24 @@ is_ascii_control_char(char x) {
     const bool process_text = !_glfw.ignoreOSKeyboardProcessing && (!window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, modifierFlags) != 1);
     const char *mod_name = "unknown";
 
+    // Code for handling modifier key events copied form SDL_cocoakeyboard.m, with thanks. See IsModifierKeyPressedFunction()
+#define action_for(modname, target_mask, other_mask, either_mask) action = is_modifier_pressed([event modifierFlags], target_mask, other_mask, either_mask) ? GLFW_PRESS : GLFW_RELEASE; mod_name = #modname; break;
     switch(key) {
         case GLFW_FKEY_CAPS_LOCK:
             mod_name = "capslock";
             action = modifierFlags & NSEventModifierFlagCapsLock ? GLFW_PRESS : GLFW_RELEASE; break;
-        case GLFW_FKEY_LEFT_SUPER:
-        case GLFW_FKEY_RIGHT_SUPER:
-            mod_name = "super";
-            action = modifierFlags & NSEventModifierFlagCommand ? GLFW_PRESS : GLFW_RELEASE; break;
-        case GLFW_FKEY_LEFT_CONTROL:
-        case GLFW_FKEY_RIGHT_CONTROL:
-            mod_name = "ctrl";
-            action = modifierFlags & NSEventModifierFlagControl ? GLFW_PRESS : GLFW_RELEASE; break;
-        case GLFW_FKEY_LEFT_ALT:
-        case GLFW_FKEY_RIGHT_ALT:
-            mod_name = "alt";
-            action = modifierFlags & NSEventModifierFlagOption ? GLFW_PRESS : GLFW_RELEASE; break;
-        case GLFW_FKEY_LEFT_SHIFT:
-        case GLFW_FKEY_RIGHT_SHIFT:
-            mod_name = "shift";
-            action = modifierFlags & NSEventModifierFlagShift ? GLFW_PRESS : GLFW_RELEASE; break;
+        case GLFW_FKEY_LEFT_SUPER: action_for(super, NX_DEVICELCMDKEYMASK, NX_DEVICERCMDKEYMASK, NX_COMMANDMASK);
+        case GLFW_FKEY_RIGHT_SUPER: action_for(super, NX_DEVICERCMDKEYMASK, NX_DEVICELCMDKEYMASK, NX_COMMANDMASK);
+        case GLFW_FKEY_LEFT_CONTROL: action_for(ctrl, NX_DEVICELCTLKEYMASK, NX_DEVICERCTLKEYMASK, NX_CONTROLMASK);
+        case GLFW_FKEY_RIGHT_CONTROL: action_for(ctrl, NX_DEVICERCTLKEYMASK, NX_DEVICELCTLKEYMASK, NX_CONTROLMASK);
+        case GLFW_FKEY_LEFT_ALT: action_for(alt, NX_DEVICELALTKEYMASK, NX_DEVICERALTKEYMASK, NX_ALTERNATEMASK);
+        case GLFW_FKEY_RIGHT_ALT: action_for(alt, NX_DEVICERALTKEYMASK, NX_DEVICELALTKEYMASK, NX_ALTERNATEMASK);
+        case GLFW_FKEY_LEFT_SHIFT: action_for(shift, NX_DEVICELSHIFTKEYMASK, NX_DEVICERSHIFTKEYMASK, NX_SHIFTMASK);
+        case GLFW_FKEY_RIGHT_SHIFT: action_for(shift, NX_DEVICERSHIFTKEYMASK, NX_DEVICELSHIFTKEYMASK, NX_SHIFTMASK);
         default:
             return;
     }
+#undef action_for
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = action, .mods = mods};
     debug_key("\x1b[33mflagsChanged:\x1b[m modifier: %s native_key: 0x%x (%s) glfw_key: 0x%x %s\n",
             mod_name, keycode, safe_name_for_keycode(keycode), key, format_mods(mods));

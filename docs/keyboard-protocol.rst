@@ -192,11 +192,6 @@ when releasing it, it must be reset. When both left and right control keys are
 pressed and one is released, the release event must again have the ``ctrl`` bit
 reset.
 
-.. note:: Not all platforms will provide independent events for left and right
-   modifier keys. For example on macOS, the system does not send an event when
-   holding left control and also pressing right control. Therefore
-   applications are advised to not rely on these.
-
 .. _event_types:
 
 Event types
