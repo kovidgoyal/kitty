@@ -427,6 +427,8 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
         } else {
             mods_at_last_key_or_button_event |= key_modifier;
         }
+        // Normalize mods state to be what the kitty keyboard protocol requires
+        ev->mods = mods_at_last_key_or_button_event;
     }
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (is_window_ready_for_callbacks()) on_key_input(ev);
