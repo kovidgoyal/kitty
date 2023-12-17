@@ -827,7 +827,7 @@ class Window:
         if self.destroyed:
             return
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
-            self.screen.resize(new_geometry.ynum, new_geometry.xnum)
+            self.screen.resize(max(0, new_geometry.ynum), max(0, new_geometry.xnum))
             self.needs_layout = False
             call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         current_pty_size = (

@@ -165,7 +165,7 @@ def blank_rects_for_window(wg: WindowGeometry) -> Generator[Rect, None, None]:
 
 def window_geometry(xstart: int, xnum: int, ystart: int, ynum: int, left: int, top: int, right: int, bottom: int) -> WindowGeometry:
     return WindowGeometry(
-        left=xstart, top=ystart, xnum=xnum, ynum=ynum,
+        left=xstart, top=ystart, xnum=max(0, xnum), ynum=max(0, ynum),
         right=xstart + lgd.cell_width * xnum, bottom=ystart + lgd.cell_height * ynum,
         spaces=Edges(left, top, right, bottom)
     )
