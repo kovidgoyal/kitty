@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, List, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
-from kitty.constants import appname, is_macos
+from kitty.constants import appname, is_macos, is_wayland
 from kitty.fast_data_types import make_x11_window_a_dock_window
 from kitty.os_window_size import WindowSizeData
 
@@ -103,15 +103,36 @@ def setup_x11_window(win_id: int) -> None:
 
 def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
     from kitty.fast_data_types import glfw_primary_monitor_size
+    from kitty.typing import EdgeLiteral
+
+    def effective_margin(which: EdgeLiteral) -> float:
+        ans: float = getattr(opts.single_window_margin_width, which)
+        if ans < 0:
+            ans = getattr(opts.window_margin_width, which)
+        return ans
+
+    def effective_padding(which: EdgeLiteral) -> float:
+        ans: float = getattr(opts.single_window_padding_width, which)
+        if ans < 0:
+            ans = getattr(opts.window_padding_width, which)
+        return ans
 
     def initial_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> Tuple[int, int]:
+        if not is_macos and not is_wayland():
+            # Not sure what the deal with scaling on X11 is
+            xscale = yscale = 1
         global window_width, window_height
         monitor_width, monitor_height = glfw_primary_monitor_size()
+
         if args.edge in {'top', 'bottom'}:
-            window_height = cell_height * args.lines + 1
+            spacing = effective_margin('top') + effective_margin('bottom')
+            spacing += effective_padding('top') + effective_padding('bottom')
+            window_height = int(cell_height * args.lines / yscale + (dpi_y / 72) * spacing + 1)
             window_width = monitor_width
         else:
-            window_width = cell_width * args.columns + 1
+            spacing = effective_margin('left') + effective_margin('right')
+            spacing += effective_padding('left') + effective_padding('right')
+            window_width = int(cell_width * args.columns / xscale + (dpi_x / 72) * spacing + 1)
             window_height = monitor_height
         return window_width, window_height
 
