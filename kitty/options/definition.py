@@ -1150,15 +1150,16 @@ faded and one being fully opaque.
 opt('resize_debounce_time', '0.1 0.5',
     option_type='resize_debounce_time', ctype='!resize_debounce_time',
     long_text='''
-The time to wait before redrawing the screen during a live resize of the OS
-window, when no new resize events have been received, i.e. when resizing is
-either paused or finished. On platforms such as macOS, where the operating
-system sends events corresponding to the start and end of a live resize, the
-second number is used for redraw-after-pause since kitty can distinguish
-between a pause and end of resizing.  On such systems the first number is
-ignored and redraw is immediate after end of resize.  On other systems the
-first number is used so that kitty is "ready" quickly after the end of
-resizing, while not also continuously redrawing, to save energy.
+The time to wait (in seconds) before asking the program running in kitty to resize and
+redraw the screen during a live resize of the OS window, when no new resize
+events have been received, i.e. when resizing is either paused or finished.
+On platforms such as macOS, where the operating system sends events corresponding
+to the start and end of a live resize, the second number is used for
+redraw-after-pause since kitty can distinguish between a pause and end of
+resizing. On such systems the first number is ignored and redraw is immediate
+after end of resize. On other systems only the first number is used so that kitty
+is "ready" quickly after the end of resizing, while not also continuously
+redrawing, to save energy.
 '''
     )
 
