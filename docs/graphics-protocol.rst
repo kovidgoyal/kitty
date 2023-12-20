@@ -1024,7 +1024,6 @@ Key      Value                 Default    Description
 ``C``    Positive integer      ``0``      Cursor movement policy. ``0`` is the default, to move the cursor to after the image.
                                           ``1`` is to not move the cursor at all when placing the image.
 ``U``    Positive integer      ``0``      Set to ``1`` to create a virtual placement for a Unicode placeholder.
-                                          ``1`` is to not move the cursor at all when placing the image.
 ``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
 ``P``    Positive integer      ``0``      The id of a parent image for relative placement
 ``Q``    Positive integer      ``0``      The id of a placement in the parent image for relative placement
