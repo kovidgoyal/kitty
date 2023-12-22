@@ -61,6 +61,8 @@ Detailed list of changes
 
 - macOS: Fix returning from full screen via the button when the titlebar is hidden not hiding the buttons (:iss:`6883`)
 
+- macOS: Fix newly created OS windows not always appearing on the "active" monitor (:pull:`6932`)
+
 - Font fallback: Fix the font used to render a character sometimes dependent on the order in which characters appear on screen (:iss:`6865`)
 
 - panel kitten: Fix rendering with non-zero margin.padding in kitty.conf (:iss:`6923`)
