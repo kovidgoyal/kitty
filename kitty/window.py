@@ -732,9 +732,6 @@ class Window:
         return not self.at_prompt
 
     def matches(self, field: str, pat: MatchPatternType) -> bool:
-        if not pat:
-            return False
-
         if isinstance(pat, tuple):
             if field == 'env':
                 return key_val_matcher(self.child.environ.items(), *pat)
