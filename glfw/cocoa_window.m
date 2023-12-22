@@ -1821,9 +1821,15 @@ static bool createNativeWindow(_GLFWwindow* window,
     else
     {
         [(NSWindow*) window->ns.object center];
-        _glfw.ns.cascadePoint =
-            NSPointToCGPoint([window->ns.object cascadeTopLeftFromPoint:
-                              NSPointFromCGPoint(_glfw.ns.cascadePoint)]);
+        CGRect screen_frame = [[(NSWindow*) window->ns.object screen] frame];
+        if (CGRectContainsPoint(screen_frame, _glfw.ns.cascadePoint)
+            || CGPointEqualToPoint(CGPointZero, _glfw.ns.cascadePoint)) {
+            _glfw.ns.cascadePoint =
+                NSPointToCGPoint([window->ns.object cascadeTopLeftFromPoint:
+                                  NSPointFromCGPoint(_glfw.ns.cascadePoint)]);
+        } else {
+            _glfw.ns.cascadePoint = CGPointZero;
+        }
 
         if (wndconfig->resizable)
         {
