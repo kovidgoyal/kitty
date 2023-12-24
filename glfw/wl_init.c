@@ -572,9 +572,16 @@ static void seatHandleCapabilities(void* data UNUSED,
     {
         _glfw.wl.pointer = wl_seat_get_pointer(seat);
         wl_pointer_add_listener(_glfw.wl.pointer, &pointerListener, NULL);
+        if (_glfw.wl.wp_cursor_shape_manager_v1) {
+            if (_glfw.wl.wp_cursor_shape_device_v1) wp_cursor_shape_device_v1_destroy(_glfw.wl.wp_cursor_shape_device_v1);
+            _glfw.wl.wp_cursor_shape_device_v1 = NULL;
+            _glfw.wl.wp_cursor_shape_device_v1 = wp_cursor_shape_manager_v1_get_pointer(_glfw.wl.wp_cursor_shape_manager_v1, _glfw.wl.pointer);
+        }
     }
     else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && _glfw.wl.pointer)
     {
+        if (_glfw.wl.wp_cursor_shape_device_v1) wp_cursor_shape_device_v1_destroy(_glfw.wl.wp_cursor_shape_device_v1);
+        _glfw.wl.wp_cursor_shape_device_v1 = NULL;
         wl_pointer_destroy(_glfw.wl.pointer);
         _glfw.wl.pointer = NULL;
         if (_glfw.wl.cursorAnimationTimer) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
@@ -715,6 +722,9 @@ static void registryHandleGlobal(void* data UNUSED,
     }
     else if (is(xdg_activation_v1)) {
         _glfw.wl.xdg_activation_v1 = wl_registry_bind(registry, name, &xdg_activation_v1_interface, 1);
+    }
+    else if (false && is(wp_cursor_shape_manager_v1)) {
+        _glfw.wl.wp_cursor_shape_manager_v1 = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
     }
 #undef is
 }
@@ -950,6 +960,9 @@ void _glfwPlatformTerminate(void)
         zwp_primary_selection_device_manager_v1_destroy(_glfw.wl.primarySelectionDeviceManager);
     if (_glfw.wl.xdg_activation_v1)
         xdg_activation_v1_destroy(_glfw.wl.xdg_activation_v1);
+    if (_glfw.wl.wp_cursor_shape_manager_v1)
+        wp_cursor_shape_manager_v1_destroy(_glfw.wl.wp_cursor_shape_manager_v1);
+
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);
     if (_glfw.wl.display)

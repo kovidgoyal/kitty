@@ -70,6 +70,7 @@ def main(args: List[str]=sys.argv) -> None:
     glfw_css_map = {}
     css_to_enum = {}
     xc_to_enum = {}
+    glfw_wayland = {}
     for line in cursors.splitlines():
         line = line.strip()
         if line:
@@ -83,6 +84,7 @@ def main(args: List[str]=sys.argv) -> None:
             glfw_css_map[glfw_name] = css
             css_to_enum[css] = enum_name
             css_names.append(css)
+            glfw_wayland[glfw_name] = 'WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_' + wayland.replace('-', '_').upper()
             for n in names:
                 kitty_to_enum_map[n] = enum_name
             glfw_enum.append(glfw_name)
@@ -112,6 +114,7 @@ def main(args: List[str]=sys.argv) -> None:
 
     glfw_enum.append('GLFW_INVALID_CURSOR')
     patch_file('glfw/glfw3.h', 'mouse cursor shapes', '\n'.join(f'    {x},' for x in glfw_enum))
+    patch_file('glfw/wl_window.c', 'glfw to wayland mapping', '\n'.join(f'        C({g}, {x});' for g, x in glfw_wayland.items()))
     patch_file('glfw/wl_window.c', 'glfw to xc mapping', '\n'.join(f'        C({g}, {x});' for g, x in glfw_xc_map.items()))
     patch_file('glfw/x11_window.c', 'glfw to xc mapping', '\n'.join(f'        {x}' for x in glfw_xfont_map))
     patch_file('kitty/data-types.h', 'mouse shapes', '\n'.join(f'    {x},' for x in enum_to_glfw_map))
@@ -139,7 +142,7 @@ def main(args: List[str]=sys.argv) -> None:
         f'\t{x} PointerShape = {i}' for i, x in enumerate(enum_to_glfw_map)), start_marker='// ', end_marker='')
     patch_file('tools/tui/loop/mouse.go', 'pointer shape tostring', '\n'.join(
         f'''\tcase {x}: return "{x.lower().rpartition('_')[0].replace('_', '-')}"''' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
-    patch_file('kittens/mouse_demo/main.go', 'all pointer shapes', '\n'.join(
+    patch_file('tools/cmd/mouse_demo/main.go', 'all pointer shapes', '\n'.join(
         f'\tloop.{x},' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
 
     subprocess.check_call(['glfw/glfw.py'])
