@@ -622,28 +622,29 @@ static void registryHandleGlobal(void* data UNUSED,
                                  const char* interface,
                                  uint32_t version)
 {
-    if (strcmp(interface, "wl_compositor") == 0)
+#define is(x) strcmp(interface, #x) == 0
+    if (is(wl_compositor))
     {
         _glfw.wl.compositorVersion = min(3, version);
         _glfw.wl.compositor =
             wl_registry_bind(registry, name, &wl_compositor_interface,
                              _glfw.wl.compositorVersion);
     }
-    else if (strcmp(interface, "wl_subcompositor") == 0)
+    else if (is(wl_subcompositor))
     {
         _glfw.wl.subcompositor =
             wl_registry_bind(registry, name, &wl_subcompositor_interface, 1);
     }
-    else if (strcmp(interface, "wl_shm") == 0)
+    else if (is(wl_shm))
     {
         _glfw.wl.shm =
             wl_registry_bind(registry, name, &wl_shm_interface, 1);
     }
-    else if (strcmp(interface, "wl_output") == 0)
+    else if (is(wl_output))
     {
         _glfwAddOutputWayland(name, version);
     }
-    else if (strcmp(interface, "wl_seat") == 0)
+    else if (is(wl_seat))
     {
         if (!_glfw.wl.seat)
         {
@@ -661,38 +662,38 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfwWaylandInitTextInput();
         }
     }
-    else if (strcmp(interface, "xdg_wm_base") == 0)
+    else if (is(xdg_wm_base))
     {
         _glfw.wl.wmBase =
             wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
         xdg_wm_base_add_listener(_glfw.wl.wmBase, &wmBaseListener, NULL);
     }
-    else if (strcmp(interface, "zxdg_decoration_manager_v1") == 0)
+    else if (is(zxdg_decoration_manager_v1))
     {
         _glfw.wl.decorationManager =
         wl_registry_bind(registry, name,
             &zxdg_decoration_manager_v1_interface, 1);
     }
-    else if (strcmp(interface, "zwp_relative_pointer_manager_v1") == 0)
+    else if (is(zwp_relative_pointer_manager_v1))
     {
         _glfw.wl.relativePointerManager =
             wl_registry_bind(registry, name,
                              &zwp_relative_pointer_manager_v1_interface,
                              1);
     }
-    else if (strcmp(interface, "zwp_pointer_constraints_v1") == 0)
+    else if (is(zwp_pointer_constraints_v1))
     {
         _glfw.wl.pointerConstraints =
             wl_registry_bind(registry, name,
                              &zwp_pointer_constraints_v1_interface,
                              1);
     }
-    else if (strcmp(interface, GLFW_WAYLAND_TEXT_INPUT_INTERFACE_NAME) == 0)
+    else if (is(zwp_text_input_manager_v3))
     {
         _glfwWaylandBindTextInput(registry, name);
         _glfwWaylandInitTextInput();
     }
-    else if (strcmp(interface, "wl_data_device_manager") == 0)
+    else if (is(wl_data_device_manager))
     {
         _glfw.wl.dataDeviceManager =
             wl_registry_bind(registry, name,
@@ -702,7 +703,7 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfwSetupWaylandDataDevice();
         }
     }
-    else if (strcmp(interface, "zwp_primary_selection_device_manager_v1") == 0)
+    else if (is(zwp_primary_selection_device_manager_v1))
     {
         _glfw.wl.primarySelectionDeviceManager =
             wl_registry_bind(registry, name,
@@ -712,10 +713,10 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfwSetupWaylandPrimarySelectionDevice();
         }
     }
-    else if (strstr(interface, "xdg_activation_v1") != 0) {
+    else if (is(xdg_activation_v1)) {
         _glfw.wl.xdg_activation_v1 = wl_registry_bind(registry, name, &xdg_activation_v1_interface, 1);
     }
-
+#undef is
 }
 
 static void registryHandleGlobalRemove(void *data UNUSED,
