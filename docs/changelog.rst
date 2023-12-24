@@ -69,6 +69,10 @@ Detailed list of changes
 
 - kitty keyboard protocol: Specify the behavior of the modifier bits during modifier key events (:iss:`6913`)
 
+- Wayland: Enable support for the new cursor-shape protocol so that the mouse
+  cursor is always rendered at the correct size in compositors that support
+  this protocol (:iss:`6914`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -723,7 +723,7 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(xdg_activation_v1)) {
         _glfw.wl.xdg_activation_v1 = wl_registry_bind(registry, name, &xdg_activation_v1_interface, 1);
     }
-    else if (false && is(wp_cursor_shape_manager_v1)) {
+    else if (is(wp_cursor_shape_manager_v1)) {
         _glfw.wl.wp_cursor_shape_manager_v1 = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
     }
 #undef is
