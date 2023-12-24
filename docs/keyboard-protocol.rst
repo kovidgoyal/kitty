@@ -186,12 +186,12 @@ In the escape code, the modifier value is encoded as a decimal number which is
 and so on. If the modifier field is not present in the escape code, its default
 value is ``1`` which means no modifiers.
 
-When the key event is related to an actual modifier key, the corresponding modifier's bit
-must be set for the press event and reset for the release event. For example
-when pressing the :kbd:`LEFT_CONTROL` key, the ``ctrl`` bit must be set and
-when releasing it, it must be reset. When both left and right control keys are
-pressed and one is released, the release event must again have the ``ctrl`` bit
-reset.
+When the key event is related to an actual modifier key, the corresponding
+modifier's bit must be set to the modifier state including the effect for the
+current event. For example, when pressing the :kbd:`LEFT_CONTROL` key, the
+``ctrl`` bit must be set and when releasing it, it must be reset. When both
+left and right control keys are pressed and one is released, the release event
+must have the ``ctrl`` bit set. See :iss:`6913` for discussion of this design.
 
 .. _event_types:
 

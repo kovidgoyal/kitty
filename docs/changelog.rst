@@ -67,6 +67,8 @@ Detailed list of changes
 
 - panel kitten: Fix rendering with non-zero margin.padding in kitty.conf (:iss:`6923`)
 
+- kitty keyboard protocol: Specify the behavior of the modifier bits during modifier key events (:iss:`6913`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

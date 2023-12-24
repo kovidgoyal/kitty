@@ -390,25 +390,31 @@ refresh_callback(GLFWwindow *w) {
 
 static int mods_at_last_key_or_button_event = 0;
 
+#ifndef __APPLE__
+typedef struct modifier_key_state {
+    bool left, right;
+} modifier_key_state;
+
 static int
-key_to_modifier(uint32_t key) {
+key_to_modifier(uint32_t key, bool *is_left) {
+    *is_left = false;
     switch(key) {
-        case GLFW_FKEY_LEFT_SHIFT:
+        case GLFW_FKEY_LEFT_SHIFT: *is_left = true; /* fallthrough */
         case GLFW_FKEY_RIGHT_SHIFT:
             return GLFW_MOD_SHIFT;
-        case GLFW_FKEY_LEFT_CONTROL:
+        case GLFW_FKEY_LEFT_CONTROL: *is_left = true; /* fallthrough */
         case GLFW_FKEY_RIGHT_CONTROL:
             return GLFW_MOD_CONTROL;
-        case GLFW_FKEY_LEFT_ALT:
+        case GLFW_FKEY_LEFT_ALT: *is_left = true; /* fallthrough */
         case GLFW_FKEY_RIGHT_ALT:
             return GLFW_MOD_ALT;
-        case GLFW_FKEY_LEFT_SUPER:
+        case GLFW_FKEY_LEFT_SUPER: *is_left = true; /* fallthrough */
         case GLFW_FKEY_RIGHT_SUPER:
             return GLFW_MOD_SUPER;
-        case GLFW_FKEY_LEFT_HYPER:
+        case GLFW_FKEY_LEFT_HYPER: *is_left = true; /* fallthrough */
         case GLFW_FKEY_RIGHT_HYPER:
             return GLFW_MOD_HYPER;
-        case GLFW_FKEY_LEFT_META:
+        case GLFW_FKEY_LEFT_META: *is_left = true; /* fallthrough */
         case GLFW_FKEY_RIGHT_META:
             return GLFW_MOD_META;
         default:
@@ -416,20 +422,40 @@ key_to_modifier(uint32_t key) {
     }
 }
 
+
+static void
+update_modifier_state_on_modifier_key_event(GLFWkeyevent *ev, int key_modifier, bool is_left) {
+    // Update mods state to be what the kitty keyboard protocol requires, as on Linux modifier key events do not update modifier bits
+    static modifier_key_state all_states[8] = {0};
+    modifier_key_state *state = all_states + MIN((unsigned)__builtin_ctz(key_modifier), sizeof(all_states)-1);
+    const int modifier_was_set_before_event = ev->mods & key_modifier;
+    const bool is_release = ev->action == GLFW_RELEASE;
+    if (modifier_was_set_before_event) {
+        // a press with modifier already set means other modifier key is pressed
+        if (!is_release) { if (is_left) state->right = true; else state->left = true;  }
+    } else {
+        // if modifier is not set before event, means both keys are released
+        state->left = false; state->right = false;
+    }
+    if (is_release) {
+        if (is_left) state->left = false; else state->right = false;
+        if (modifier_was_set_before_event && !state->left && !state->right) ev->mods &= ~key_modifier;
+    } else {
+        if (is_left) state->left = true; else state->right = true;
+        ev->mods |= key_modifier;
+    }
+}
+#endif
+
 static void
 key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     if (!set_callback_window(w)) return;
+#ifndef __APPLE__
+    bool is_left;
+    int key_modifier = key_to_modifier(ev->key, &is_left);
+    if (key_modifier != -1) update_modifier_state_on_modifier_key_event(ev, key_modifier, is_left);
+#endif
     mods_at_last_key_or_button_event = ev->mods;
-    int key_modifier = key_to_modifier(ev->key);
-    if (key_modifier != -1) {
-        if (ev->action == GLFW_RELEASE) {
-            mods_at_last_key_or_button_event &= ~key_modifier;
-        } else {
-            mods_at_last_key_or_button_event |= key_modifier;
-        }
-        // Normalize mods state to be what the kitty keyboard protocol requires
-        ev->mods = mods_at_last_key_or_button_event;
-    }
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (is_window_ready_for_callbacks()) on_key_input(ev);
     global_state.callback_os_window = NULL;
