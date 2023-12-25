@@ -153,6 +153,7 @@ typedef struct {
     struct {
         monotonic_t expires_at;
         Cursor cursor;
+        ColorProfile color_profile;
     } paused_rendering;
 } Screen;
 
