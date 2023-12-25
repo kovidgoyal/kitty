@@ -1986,9 +1986,7 @@ screen_erase_characters(Screen *self, unsigned int count) {
 
 bool
 screen_invert_colors(Screen *self) {
-    bool inverted = false;
-    if (self->modes.mDECSCNM) inverted = true;
-    return inverted;
+    return self->paused_rendering.expires_at ? self->paused_rendering.inverted : (self->modes.mDECSCNM ? true : false);
 }
 
 void
@@ -2374,6 +2372,7 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (self->paused_rendering.expires_at) return false;
     if (for_in_ms <= 0) for_in_ms = 2000;
     self->paused_rendering.expires_at = monotonic() + ms_to_monotonic_t(for_in_ms);
+    self->paused_rendering.inverted = self->modes.mDECSCNM ? true : false;
     memcpy(&self->paused_rendering.cursor, self->cursor, sizeof(self->paused_rendering.cursor));
     memcpy(&self->paused_rendering.color_profile, self->color_profile, sizeof(self->paused_rendering.color_profile));
     return true;
