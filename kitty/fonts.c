@@ -10,9 +10,7 @@
 #include "state.h"
 #include "emoji.h"
 #include "unicode-data.h"
-#include "charsets.h"
 #include "glyph-cache.h"
-#include "kitty-uthash.h"
 
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
@@ -523,8 +521,10 @@ fallback_font(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     bool bold = gpu_cell->attrs.bold;
     bool italic = gpu_cell->attrs.italic;
     bool emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
-    char cell_text[6 + arraysz(cpu_cell->cc_idx) * 4];
-    const size_t cell_text_len = cell_as_utf8(cpu_cell, true, cell_text, ' ');
+    char fs;
+    if (bold) fs = italic ? 'z' : 'b'; else fs = italic ? 'i' : 'r';
+    char cell_text[8 + arraysz(cpu_cell->cc_idx) * 4] = {fs, emoji_presentation ? 'e': '0'};
+    const size_t cell_text_len = 2 + cell_as_utf8(cpu_cell, true, cell_text + 2, ' ');
     if (fg->fallback_font_map) {
         fallback_font_map_t *s;
         HASH_FIND_STR(fg->fallback_font_map, cell_text, s);
