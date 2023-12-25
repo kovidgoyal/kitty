@@ -521,10 +521,10 @@ fallback_font(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     bool bold = gpu_cell->attrs.bold;
     bool italic = gpu_cell->attrs.italic;
     bool emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
-    char fs;
-    if (bold) fs = italic ? 'z' : 'b'; else fs = italic ? 'i' : 'r';
-    char cell_text[8 + arraysz(cpu_cell->cc_idx) * 4] = {fs, emoji_presentation ? 'e': '0'};
-    const size_t cell_text_len = 2 + cell_as_utf8(cpu_cell, true, cell_text + 2, ' ');
+    char style = emoji_presentation ? 'a' : 'A';
+    if (bold) style += italic ? 3 : 2; else style += italic ? 1 : 0;
+    char cell_text[8 + arraysz(cpu_cell->cc_idx) * 4] = {style};
+    const size_t cell_text_len = 1 + cell_as_utf8(cpu_cell, true, cell_text + 1, ' ');
     if (fg->fallback_font_map) {
         fallback_font_map_t *s;
         HASH_FIND_STR(fg->fallback_font_map, cell_text, s);
