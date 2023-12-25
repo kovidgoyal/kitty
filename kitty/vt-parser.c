@@ -979,8 +979,10 @@ parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *repo
         _buf[num++] = 'm';
     }
     _buf[num] = 0;
-    if (!csi_parse_loop((PS*)screen->vt_parser->state, &csi, _buf, &pos, num, 0)) return false;
-    return _parse_sgr((PS*)screen->vt_parser->state, &csi);
+    PS *state = (PS*)screen->vt_parser->state;
+    state->screen = screen;
+    if (!csi_parse_loop(state, &csi, _buf, &pos, num, 0)) return false;
+    return _parse_sgr(state, &csi);
 }
 #endif
 
@@ -1538,7 +1540,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
             if (flush || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + 16 * 1024 > BUF_SZ) {
                 pd->input_read = true;
                 self->dump_callback = pd->dump_callback; self->now = pd->now;
-                self->screen = p;
+                self->screen = screen;
                 do {
                     end_with_lock; {
                         do_parse_vt(self);
