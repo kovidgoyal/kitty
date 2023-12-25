@@ -1089,6 +1089,10 @@ close_os_window(ChildMonitor *self, OSWindow *os_window) {
     if (os_window->before_fullscreen.is_set && is_os_window_fullscreen(os_window)) {
         w = os_window->before_fullscreen.w; h = os_window->before_fullscreen.h;
     }
+    // On GNOME Wayland w, h are the content area size, we need to add the frame size back
+    int content_area_width, content_area_height;
+    adjust_window_size_for_csd(os_window, w, h, &content_area_width, &content_area_height);
+    w += w - content_area_width; h += h - content_area_height;
     destroy_os_window(os_window);
     call_boss(on_os_window_closed, "Kii", os_window->id, w, h);
     for (size_t t=0; t < os_window->num_tabs; t++) {

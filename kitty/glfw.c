@@ -116,7 +116,7 @@ min_size_for_os_window(OSWindow *window, int *min_width, int *min_height) {
 }
 
 
-static void
+void
 adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height) {
     *adjusted_width = width; *adjusted_height = height;
     if (global_state.is_wayland) {
