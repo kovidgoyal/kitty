@@ -177,7 +177,7 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
 }
 
 DynamicColor
-colorprofile_to_color(ColorProfile *self, DynamicColor entry, DynamicColor defval) {
+colorprofile_to_color(const ColorProfile *self, DynamicColor entry, DynamicColor defval) {
     switch(entry.type) {
         case COLOR_NOT_SET:
             return defval;

@@ -403,7 +403,7 @@ bool schedule_write_to_child(unsigned long id, unsigned int num, ...);
 bool schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject* tuple_of_str_or_bytes, const char *suffix);
 bool set_iutf8(int, bool);
 
-DynamicColor colorprofile_to_color(ColorProfile *self, DynamicColor entry, DynamicColor defval);
+DynamicColor colorprofile_to_color(const ColorProfile *self, DynamicColor entry, DynamicColor defval);
 color_type
 colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval);
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);

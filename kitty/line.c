@@ -614,7 +614,7 @@ left_shift(Line *self, PyObject *args) {
 }
 
 static color_type
-resolve_color(ColorProfile *cp, color_type val, color_type defval) {
+resolve_color(const ColorProfile *cp, color_type val, color_type defval) {
     switch(val & 0xff) {
         case 1:
             return cp->color_table[(val >> 8) & 0xff];
@@ -626,7 +626,7 @@ resolve_color(ColorProfile *cp, color_type val, color_type defval) {
 }
 
 bool
-colors_for_cell(Line *self, ColorProfile *cp, index_type *x, color_type *fg, color_type *bg, bool *reversed) {
+colors_for_cell(Line *self, const ColorProfile *cp, index_type *x, color_type *fg, color_type *bg, bool *reversed) {
     if (*x >= self->xnum) return false;
     if (*x > 0 && !self->gpu_cells[*x].attrs.width && self->gpu_cells[*x-1].attrs.width == 2) (*x)--;
     *fg = resolve_color(cp, self->gpu_cells[*x].fg, *fg);
