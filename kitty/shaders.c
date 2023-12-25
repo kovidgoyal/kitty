@@ -275,7 +275,7 @@ create_graphics_vao(void) {
 #define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
 
 static void
-pick_cursor_color(Line *line, ColorProfile *color_profile, color_type cell_fg, color_type cell_bg, index_type cell_color_x, color_type *cursor_fg, color_type *cursor_bg, color_type default_fg, color_type default_bg) {
+pick_cursor_color(Line *line, const ColorProfile *color_profile, color_type cell_fg, color_type cell_bg, index_type cell_color_x, color_type *cursor_fg, color_type *cursor_bg, color_type default_fg, color_type default_bg) {
     ARGB32 fg, bg, dfg, dbg;
     (void) line; (void) color_profile; (void) cell_color_x;
     fg.rgb = cell_fg; bg.rgb = cell_bg;
