@@ -2291,6 +2291,10 @@ typedef bool (*glfwWaylandSetTitlebarColor_func)(GLFWwindow*, uint32_t, bool);
 GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
 #define glfwWaylandSetTitlebarColor glfwWaylandSetTitlebarColor_impl
 
+typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
+GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;
+#define glfwWaylandRedrawCSDWindowTitle glfwWaylandRedrawCSDWindowTitle_impl
+
 typedef unsigned long long (*glfwDBusUserNotify_func)(const char*, const char*, const char*, const char*, const char*, int32_t, GLFWDBusnotificationcreatedfun, void*);
 GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl

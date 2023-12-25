@@ -2332,3 +2332,8 @@ GLFWAPI bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, boo
     }
     return false;
 }
+
+GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    change_csd_title(window);
+}
