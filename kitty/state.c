@@ -1035,9 +1035,8 @@ PYWRAP1(os_window_font_size) {
                 }
             }
             os_window_update_size_increments(os_window);
-        // On Wayland with CSD title needs to be re-rendered in a different font size
-        if (os_window->window_title && global_state.is_wayland) set_os_window_title(os_window, NULL);
-
+            // On Wayland with CSD title needs to be re-rendered in a different font size
+            if (os_window->window_title && global_state.is_wayland) set_os_window_title(os_window, NULL);
         }
         return Py_BuildValue("d", os_window->font_sz_in_pts);
     END_WITH_OS_WINDOW
