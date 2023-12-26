@@ -65,7 +65,7 @@ Detailed list of changes
 
 - Font fallback: Fix the font used to render a character sometimes dependent on the order in which characters appear on screen (:iss:`6865`)
 
-- panel kitten: Fix rendering with non-zero margin.padding in kitty.conf (:iss:`6923`)
+- panel kitten: Fix rendering with non-zero margin/padding in kitty.conf (:iss:`6923`)
 
 - kitty keyboard protocol: Specify the behavior of the modifier bits during modifier key events (:iss:`6913`)
 
