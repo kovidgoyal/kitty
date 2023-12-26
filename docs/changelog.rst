@@ -73,6 +73,8 @@ Detailed list of changes
 
 - GNOME Wayland: Fix remembered window size smaller than actual size (:iss:`6946`)
 
+- Mouse reporting: Fix incorrect position reported for windows with padding (:iss:`6950`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

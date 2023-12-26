@@ -236,7 +236,7 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
     bool in_left_half = true;
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
-    double left = window_left(w), top = window_top(w), right = window_right(w), bottom = window_bottom(w);
+    double left = g->left, top = g->top, right = g->right, bottom = g->bottom;
     w->mouse_pos.global_x = mouse_x - left; w->mouse_pos.global_y = mouse_y - top;
     if (clamp_to_window) {
         mouse_x = MIN(MAX(mouse_x, left), right);
