@@ -154,7 +154,9 @@ typedef struct {
         monotonic_t expires_at;
         Cursor cursor;
         ColorProfile color_profile;
-        bool inverted;
+        bool inverted, cell_data_updated;
+        unsigned int scrolled_by;
+        LineBuf *linebuf;
     } paused_rendering;
 } Screen;
 
@@ -268,6 +270,7 @@ bool screen_send_signal_for_key(Screen *, char key);
 bool get_line_edge_colors(Screen *self, color_type *left, color_type *right);
 bool parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name, bool is_deccara);
 bool screen_pause_rendering(Screen *self, bool pause, int for_in_ms);
+void screen_check_pause_rendering(Screen *self, monotonic_t now);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

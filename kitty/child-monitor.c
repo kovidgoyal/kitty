@@ -724,6 +724,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
         Window *w = tab->windows + i;
 #define WD w->render_data
         if (w->visible && WD.screen) {
+            screen_check_pause_rendering(WD.screen, now);
             *num_visible_windows += 1;
             color_type window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg).rgb;
             if (*num_visible_windows == 1) first_window_bg = window_bg;
