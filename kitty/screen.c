@@ -476,6 +476,8 @@ dealloc(Screen* self) {
     Py_CLEAR(self->paused_rendering.linebuf);
     free(self->selections.items);
     free(self->url_ranges.items);
+    free(self->paused_rendering.url_ranges.items);
+    free(self->paused_rendering.selections.items);
     free_hyperlink_pool(self->hyperlink_pool);
     free(self->as_ansi_buf.buf);
     free(self->last_rendered_window_char.canvas);
@@ -2368,6 +2370,18 @@ screen_check_pause_rendering(Screen *self, monotonic_t now) {
     if (self->paused_rendering.expires_at && now > self->paused_rendering.expires_at) screen_pause_rendering(self, false, 0);
 }
 
+static bool
+copy_selections(Selections *dest, const Selections *src) {
+    if (dest->capacity < src->count) {
+        dest->items = realloc(dest->items, sizeof(dest->items[0]) * src->count);
+        if (!dest->items) { dest->capacity = 0; dest->count = 0; return false; }
+        dest->capacity = src->count;
+    }
+    dest->count = src->count;
+    for (unsigned i = 0; i < dest->count; i++) memcpy(dest->items + i, src->items + i, sizeof(dest->items[0]));
+    return true;
+}
+
 bool
 screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (!pause) {
@@ -2395,6 +2409,8 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
         copy_line(src, self->linebuf->line);
         self->paused_rendering.linebuf->line_attrs[y] = src->attrs;
     }
+    copy_selections(&self->paused_rendering.selections, &self->selections);
+    copy_selections(&self->paused_rendering.url_ranges, &self->url_ranges);
     return true;
 }
 
@@ -2827,9 +2843,13 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 static void
 apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask) {
     iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, self->scrolled_by);
+    Line *line;
 
     for (int y = MAX(0, s->last_rendered.y); y < s->last_rendered.y_limit && y < (int)self->lines; y++) {
-        Line *line = visual_line_(self, y);
+        if (self->paused_rendering.expires_at) {
+            linebuf_init_line(self->paused_rendering.linebuf, y);
+            line = self->paused_rendering.linebuf->line;
+        } else line = visual_line_(self, y);
         uint8_t *line_start = data + self->columns * y;
         XRange xr = xrange_for_iteration(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) line_start[x] |= set_mask;
@@ -2853,16 +2873,16 @@ screen_has_selection(Screen *self) {
 void
 screen_apply_selection(Screen *self, void *address, size_t size) {
     memset(address, 0, size);
-    for (size_t i = 0; i < self->selections.count; i++) {
-        apply_selection(self, address, self->selections.items + i, 1);
-    }
-    self->selections.last_rendered_count = self->selections.count;
-    for (size_t i = 0; i < self->url_ranges.count; i++) {
-        Selection *s = self->url_ranges.items + i;
+    Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
+    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1);
+    sel->last_rendered_count = sel->count;
+    sel = self->paused_rendering.expires_at ? &self->paused_rendering.url_ranges : &self->url_ranges;
+    for (size_t i = 0; i < sel->count; i++) {
+        Selection *s = sel->items + i;
         if (OPT(underline_hyperlinks) == UNDERLINE_NEVER && s->is_hyperlink) continue;
         apply_selection(self, address, s, 2);
     }
-    self->url_ranges.last_rendered_count = self->url_ranges.count;
+    sel->last_rendered_count = sel->count;
 }
 
 static index_type

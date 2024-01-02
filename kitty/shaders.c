@@ -409,18 +409,22 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
         screen->last_rendered.cursor_y = cursor->y;
     }
 
+#define update_selection_data \
+    sz = (size_t)screen->lines * screen->columns; \
+    address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY); \
+    screen_apply_selection(screen, address, sz); \
+    unmap_vao_buffer(vao_idx, selection_buffer); address = NULL; \
+    changed = true;
+
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) {
+            update_selection_data;
         }
         screen->paused_rendering.cell_data_updated = true;
         screen->last_rendered.scrolled_by = screen->paused_rendering.scrolled_by;
     } else {
         if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen)) {
-            sz = (size_t)screen->lines * screen->columns;
-            address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
-            screen_apply_selection(screen, address, sz);
-            unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
-            changed = true;
+            update_selection_data;
         }
 
         if (grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines, screen->cell_size)) {
@@ -428,6 +432,8 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
         }
         screen->last_rendered.scrolled_by = screen->scrolled_by;
     }
+#undef update_selection_data
+#undef update_cell_data
     screen->last_rendered.columns = screen->columns;
     screen->last_rendered.lines = screen->lines;
     return changed;
