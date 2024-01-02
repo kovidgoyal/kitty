@@ -2406,7 +2406,7 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     for (index_type y = 0; y < self->lines; y++) {
         Line *src = visual_line_(self, y);
         linebuf_init_line(self->paused_rendering.linebuf, y);
-        copy_line(src, self->linebuf->line);
+        copy_line(src, self->paused_rendering.linebuf->line);
         self->paused_rendering.linebuf->line_attrs[y] = src->attrs;
     }
     copy_selections(&self->paused_rendering.selections, &self->selections);
