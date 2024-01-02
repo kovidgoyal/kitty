@@ -395,10 +395,10 @@ replace_c0_codes_except_nl_space_tab(PyObject *self UNUSED, PyObject *obj) {
 
 static PyObject*
 find_in_memoryview(PyObject *self UNUSED, PyObject *args) {
-    const char *buf; Py_ssize_t sz;
     unsigned char q;
-    if (!PyArg_ParseTuple(args, "y#b", &buf, &sz, &q)) return NULL;
-    const char *p = memchr(buf, q, sz);
+    RAII_PY_BUFFER(view);
+    if (!PyArg_ParseTuple(args, "y*b", &view, &q)) return NULL;
+    const char *buf = view.buf, *p = memchr(buf, q, view.len);
     Py_ssize_t ans = -1;
     if (p) ans = p - buf;
     return PyLong_FromSsize_t(ans);
