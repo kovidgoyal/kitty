@@ -2387,7 +2387,10 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (!pause) {
         if (!self->paused_rendering.expires_at) return false;
         self->paused_rendering.expires_at = 0;
+        // ensure cell data is updated on GPU
         self->is_dirty = true;
+        // ensure selection data is updated on GPU
+        self->selections.last_rendered_count = SIZE_MAX; self->url_ranges.last_rendered_count = SIZE_MAX;
         return true;
     }
     if (self->paused_rendering.expires_at) return false;
