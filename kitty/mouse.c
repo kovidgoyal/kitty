@@ -384,7 +384,7 @@ HANDLER(handle_move_event) {
     bool cell_half_changed = false;
     if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
     Screen *screen = w->render_data.screen;
-    if(OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
+    if (OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
     bool in_tracking_mode = (
         screen->modes.mouse_tracking_mode == ANY_MODE ||
         (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0));
