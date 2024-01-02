@@ -154,7 +154,7 @@ typedef struct {
         monotonic_t expires_at;
         Cursor cursor;
         ColorProfile color_profile;
-        bool inverted, cell_data_updated;
+        bool inverted, cell_data_updated, cursor_visible;
         unsigned int scrolled_by;
         LineBuf *linebuf;
         Selections selections, url_ranges;
@@ -245,7 +245,6 @@ void screen_update_selection(Screen *self, index_type x, index_type y, bool in_l
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 PyObject* as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
 Line* screen_visual_line(Screen *self, index_type y);
-unsigned long screen_current_char_width(Screen *self);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);
 void set_active_hyperlink(Screen*, char*, char*);
 hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);

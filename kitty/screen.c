@@ -1324,7 +1324,7 @@ change_pointer_shape(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-unsigned long
+static unsigned long
 screen_current_char_width(Screen *self) {
     unsigned long ans = 1;
     if (self->cursor->x < self->columns - 1 && self->cursor->y < self->lines) {
@@ -1335,7 +1335,7 @@ screen_current_char_width(Screen *self) {
 
 bool
 screen_is_cursor_visible(const Screen *self) {
-    return self->modes.mDECTCEM;
+    return self->paused_rendering.expires_at ? self->paused_rendering.cursor_visible : self->modes.mDECTCEM;
 }
 
 void
@@ -2393,9 +2393,10 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (self->paused_rendering.expires_at) return false;
     if (for_in_ms <= 0) for_in_ms = 2000;
     self->paused_rendering.expires_at = monotonic() + ms_to_monotonic_t(for_in_ms);
-    self->paused_rendering.inverted = self->modes.mDECSCNM ? true : false;
+    self->paused_rendering.inverted = self->modes.mDECSCNM;
     self->paused_rendering.scrolled_by = self->scrolled_by;
     self->paused_rendering.cell_data_updated = false;
+    self->paused_rendering.cursor_visible = self->modes.mDECTCEM;
     memcpy(&self->paused_rendering.cursor, self->cursor, sizeof(self->paused_rendering.cursor));
     memcpy(&self->paused_rendering.color_profile, self->color_profile, sizeof(self->paused_rendering.color_profile));
     if (!self->paused_rendering.linebuf || self->paused_rendering.linebuf->xnum != self->columns || self->paused_rendering.linebuf->ynum != self->lines) {
