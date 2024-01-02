@@ -473,6 +473,7 @@ dealloc(Screen* self) {
     PyMem_Free(self->overlay_line.original_line.gpu_cells);
     Py_CLEAR(self->overlay_line.overlay_text);
     PyMem_Free(self->main_tabstops);
+    Py_CLEAR(self->paused_rendering.linebuf);
     free(self->selections.items);
     free(self->url_ranges.items);
     free_hyperlink_pool(self->hyperlink_pool);
@@ -2362,19 +2363,38 @@ screen_request_capabilities(Screen *self, char c, const char *query) {
 
 // Rendering {{{
 
+void
+screen_check_pause_rendering(Screen *self, monotonic_t now) {
+    if (self->paused_rendering.expires_at && now > self->paused_rendering.expires_at) screen_pause_rendering(self, false, 0);
+}
+
 bool
 screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (!pause) {
         if (!self->paused_rendering.expires_at) return false;
         self->paused_rendering.expires_at = 0;
+        self->is_dirty = true;
         return true;
     }
     if (self->paused_rendering.expires_at) return false;
     if (for_in_ms <= 0) for_in_ms = 2000;
     self->paused_rendering.expires_at = monotonic() + ms_to_monotonic_t(for_in_ms);
     self->paused_rendering.inverted = self->modes.mDECSCNM ? true : false;
+    self->paused_rendering.scrolled_by = self->scrolled_by;
+    self->paused_rendering.cell_data_updated = false;
     memcpy(&self->paused_rendering.cursor, self->cursor, sizeof(self->paused_rendering.cursor));
     memcpy(&self->paused_rendering.color_profile, self->color_profile, sizeof(self->paused_rendering.color_profile));
+    if (!self->paused_rendering.linebuf || self->paused_rendering.linebuf->xnum != self->columns || self->paused_rendering.linebuf->ynum != self->lines) {
+        if (self->paused_rendering.linebuf) Py_CLEAR(self->paused_rendering.linebuf);
+        self->paused_rendering.linebuf = alloc_linebuf(self->lines, self->columns);
+        if (!self->paused_rendering.linebuf) { PyErr_Clear(); self->paused_rendering.expires_at = 0; return false; }
+    }
+    for (index_type y = 0; y < self->lines; y++) {
+        Line *src = visual_line_(self, y);
+        linebuf_init_line(self->paused_rendering.linebuf, y);
+        copy_line(src, self->linebuf->line);
+        self->paused_rendering.linebuf->line_attrs[y] = src->attrs;
+    }
     return true;
 }
 
@@ -2571,6 +2591,22 @@ screen_update_only_line_graphics_data(Screen *self) {
 
 void
 screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool cursor_has_moved) {
+    if (self->paused_rendering.expires_at) {
+        if (!self->paused_rendering.cell_data_updated) {
+            LineBuf *linebuf = self->paused_rendering.linebuf;
+            for (index_type y = 0; y < self->lines; y++) {
+                linebuf_init_line(linebuf, y);
+                if (linebuf->line->attrs.has_dirty_text) {
+                    render_line(fonts_data, linebuf->line, y, &self->paused_rendering.cursor, self->disable_ligatures);
+                    screen_render_line_graphics(self, linebuf->line, y);
+                    if (linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, linebuf->line);
+                    linebuf_mark_line_clean(linebuf, y);
+                }
+                update_line_data(linebuf->line, y, address);
+            }
+        }
+        return;
+    }
     const bool is_overlay_active = screen_is_overlay_active(self);
     unsigned int history_line_added_count = self->history_line_added_count;
     index_type lnum;
