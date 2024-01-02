@@ -651,7 +651,9 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 static bool
 cursor_needs_render(Window *w) {
-    return w->cursor_visible_at_last_render != w->render_data.screen->cursor_render_info.is_visible || w->render_data.screen->last_rendered.cursor_x != w->render_data.screen->cursor_render_info.x || w->render_data.screen->last_rendered.cursor_y != w->render_data.screen->cursor_render_info.y || w->last_cursor_shape != w->render_data.screen->cursor_render_info.shape;
+#define cri w->render_data.screen->cursor_render_info
+    return w->cursor_visible_at_last_render != cri.is_visible || w->render_data.screen->last_rendered.cursor_x != cri.x || w->render_data.screen->last_rendered.cursor_y != cri.y || w->last_cursor_shape != cri.shape;
+#undef cri
 }
 
 static bool

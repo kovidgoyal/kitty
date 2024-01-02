@@ -321,6 +321,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     rd->use_cell_for_selection_bg = IS_SPECIAL_COLOR(highlight_bg) ? 1. : 0.;
     // Cursor position
     enum { BLOCK_IDX = 0, BEAM_IDX = NUM_UNDERLINE_STYLES + 3, UNDERLINE_IDX = NUM_UNDERLINE_STYLES + 4, UNFOCUSED_IDX = NUM_UNDERLINE_STYLES + 5 };
+    Line *line_for_cursor = NULL;
     if (cursor->is_visible) {
         rd->cursor_x = cursor->x, rd->cursor_y = cursor->y;
         if (cursor->is_focused) {
@@ -335,14 +336,19 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         } else rd->cursor_fg_sprite_idx = UNFOCUSED_IDX;
         color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;
         index_type cell_color_x = cursor->x;
-        bool cursor_ok = cursor->x < screen->columns && cursor->y < screen->lines;
         bool reversed = false;
-        if (cursor_ok) {
-            linebuf_init_line(screen->linebuf, cursor->y);
-            colors_for_cell(screen->linebuf->line, cp, &cell_color_x, &cell_fg, &cell_bg, &reversed);
+        if (cursor->x < screen->columns && cursor->y < screen->lines) {
+            if (screen->paused_rendering.expires_at) {
+                linebuf_init_line(screen->paused_rendering.linebuf, cursor->y); line_for_cursor = screen->paused_rendering.linebuf->line;
+            } else {
+                linebuf_init_line(screen->linebuf, cursor->y); line_for_cursor = screen->linebuf->line;
+            }
+        }
+        if (line_for_cursor) {
+            colors_for_cell(line_for_cursor, cp, &cell_color_x, &cell_fg, &cell_bg, &reversed);
         }
         if (IS_SPECIAL_COLOR(cursor_color)) {
-            if (cursor_ok) pick_cursor_color(screen->linebuf->line, cp, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->default_bg);
+            if (line_for_cursor) pick_cursor_color(line_for_cursor, cp, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->default_bg);
             else { rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg; }
             if (cell_bg == cell_fg) {
                 rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg;
@@ -354,10 +360,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         }
     } else rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;
     rd->cursor_w = rd->cursor_x;
-    if (
-            (rd->cursor_fg_sprite_idx == BLOCK_IDX || rd->cursor_fg_sprite_idx == UNDERLINE_IDX) &&
-            screen_current_char_width(screen) > 1
-    ) rd->cursor_w += 1;
+    if ((rd->cursor_fg_sprite_idx == BLOCK_IDX || rd->cursor_fg_sprite_idx == UNDERLINE_IDX) && line_for_cursor && line_for_cursor->gpu_cells[cursor->x].attrs.width > 1) {
+        rd->cursor_w += 1;
+    }
 
     rd->xnum = screen->columns; rd->ynum = screen->lines;
 
