@@ -2730,7 +2730,7 @@ selection_is_left_to_right(const Selection *self) {
 }
 
 static void
-iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int min_y, bool add_scrolled_by) {
+iteration_data(const Selection *sel, IterationData *ans, unsigned x_limit, int min_y, unsigned add_scrolled_by) {
     memset(ans, 0, sizeof(IterationData));
     const SelectionBoundary *start = &sel->start, *end = &sel->end;
     int start_y = (int)start->y - sel->start_scrolled_by, end_y = (int)end->y - sel->end_scrolled_by;
@@ -2759,7 +2759,7 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
         ans->first.x = x; ans->body.x = x; ans->last.x = x;
         ans->first.x_limit = x_limit; ans->body.x_limit = x_limit; ans->last.x_limit = x_limit;
     } else {
-        index_type line_limit = self->columns;
+        index_type line_limit = x_limit;
 
         if (start_y == end_y) {
             if (start->x == end->x) {
@@ -2791,9 +2791,7 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
         ans->y = MIN(start_y, end_y); ans->y_limit = MAX(start_y, end_y) + 1;
 
     }
-    if (add_scrolled_by) {
-        ans->y += self->scrolled_by; ans->y_limit += self->scrolled_by;
-    }
+    ans->y += add_scrolled_by; ans->y_limit += add_scrolled_by;
     ans->y = MAX(ans->y, min_y);
     ans->y_limit = MAX(ans->y, ans->y_limit);  // iteration is from y to y_limit
 }
@@ -2828,7 +2826,7 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 
 static void
 apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask) {
-    iteration_data(self, s, &s->last_rendered, -self->historybuf->count, true);
+    iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, self->scrolled_by);
 
     for (int y = MAX(0, s->last_rendered.y); y < s->last_rendered.y_limit && y < (int)self->lines; y++) {
         Line *line = visual_line_(self, y);
@@ -2845,7 +2843,7 @@ screen_has_selection(Screen *self) {
     for (size_t i = 0; i < self->selections.count; i++) {
         Selection *s = self->selections.items + i;
         if (!is_selection_empty(s)) {
-            iteration_data(self, s, &idata, -self->historybuf->count, true);
+            iteration_data(s, &idata, self->columns, -self->historybuf->count, self->scrolled_by);
             if (!iteration_data_is_empty(self, &idata)) return true;
         }
     }
@@ -2887,7 +2885,7 @@ limit_without_trailing_whitespace(const Line *line, index_type limit) {
 static PyObject*
 text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool strip_trailing_whitespace) {
     IterationData idata;
-    iteration_data(self, sel, &idata, -self->historybuf->count, false);
+    iteration_data(sel, &idata, self->columns, -self->historybuf->count, 0);
     int limit = MIN((int)self->lines, idata.y_limit);
     PyObject *ans = PyTuple_New(limit - idata.y);
     if (!ans) return NULL;
@@ -2917,7 +2915,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
 static PyObject*
 ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool strip_trailing_whitespace) {
     IterationData idata;
-    iteration_data(self, sel, &idata, -self->historybuf->count, false);
+    iteration_data(sel, &idata, self->columns, -self->historybuf->count, 0);
     int limit = MIN((int)self->lines, idata.y_limit);
     RAII_PyObject(ans, PyTuple_New(limit - idata.y + 1));
     RAII_PyObject(nl, PyUnicode_FromString("\n"));
@@ -2959,7 +2957,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
 static hyperlink_id_type
 hyperlink_id_for_range(Screen *self, const Selection *sel) {
     IterationData idata;
-    iteration_data(self, sel, &idata, -self->historybuf->count, false);
+    iteration_data(sel, &idata, self->columns, -self->historybuf->count, 0);
     for (int i = 0, y = idata.y; y < idata.y_limit && y < (int)self->lines; y++, i++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
@@ -3976,11 +3974,11 @@ screen_is_selection_dirty(Screen *self) {
     if (self->scrolled_by != self->last_rendered.scrolled_by) return true;
     if (self->selections.last_rendered_count != self->selections.count || self->url_ranges.last_rendered_count != self->url_ranges.count) return true;
     for (size_t i = 0; i < self->selections.count; i++) {
-        iteration_data(self, self->selections.items + i, &q, 0, true);
+        iteration_data(self->selections.items + i, &q, self->columns, 0, self->scrolled_by);
         if (memcmp(&q, &self->selections.items[i].last_rendered, sizeof(IterationData)) != 0) return true;
     }
     for (size_t i = 0; i < self->url_ranges.count; i++) {
-        iteration_data(self, self->url_ranges.items + i, &q, 0, true);
+        iteration_data(self->url_ranges.items + i, &q, self->columns, 0, self->scrolled_by);
         if (memcmp(&q, &self->url_ranges.items[i].last_rendered, sizeof(IterationData)) != 0) return true;
     }
     return false;
@@ -4051,7 +4049,7 @@ static void
 sort_ranges(const Screen *self, Selections *s) {
     IterationData a;
     for (size_t i = 0; i < s->count; i++) {
-        iteration_data(self, s->items + i, &a, 0, false);
+        iteration_data(s->items + i, &a, self->columns, 0, 0);
         s->items[i].sort_x = a.first.x;
         s->items[i].sort_y = a.y;
     }
