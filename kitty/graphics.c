@@ -102,9 +102,32 @@ free_load_data(LoadData *ld) {
     ld->loading_for = (const ImageAndFrame){0};
 }
 
+static void*
+clear_texture_ref(TextureRef **x) {
+    if (*x) {
+        if ((*x)->refcnt < 2) {
+            if ((*x)->id) free_texture(&(*x)->id);
+            free(*x); *x = NULL;
+        } else (*x)->refcnt--;
+    }
+    return NULL;
+}
+
+static TextureRef*
+new_texture_ref(void) {
+    TextureRef *ans = malloc(sizeof(TextureRef));
+    if (ans) { ans->id = 0; ans->refcnt = 1; }
+    return ans;
+}
+
+static uint32_t
+texture_id_for_img(Image *img) {
+    return img->texture ? img->texture->id : 0;
+}
+
 static void
 free_image_resources(GraphicsManager *self, Image *img) {
-    if (img->texture_id) free_texture(&img->texture_id);
+    clear_texture_ref(&img->texture);
     ImageAndFrame key = { .image_id=img->internal_id, .frame_id = img->root_frame.id };
     if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
     for (unsigned i = 0; i < img->extra_framecnt; i++) {
@@ -412,7 +435,10 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
     }
     *existing = false;
     Image *ans = calloc(1, sizeof(Image));
+    if (!ans) fatal("Out of memory allocating Image object");
     ans->internal_id = next_id(&self->image_id_counter);
+    ans->texture = new_texture_ref();
+    if (!ans->texture) fatal("Out of memory allocating TextureRef");
     HASH_ADD(hh, self->images, internal_id, sizeof(ans->internal_id), ans);
     return ans;
 }
@@ -604,8 +630,7 @@ upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const boo
         if (!make_window_context_current(self->window_id)) return;
         self->context_made_current_for_this_command = true;
     }
-    // We use linear interpolation as the image may be resized on the GPU if r/c is specified or unicode placeholders are used.
-    send_image_to_gpu(&img->texture_id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP);
+    if (img->texture) send_image_to_gpu(&img->texture->id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP);
 }
 
 static Image*
@@ -1164,7 +1189,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
             rd->dest_rect = r; rd->src_rect = ref->src_rect;
             self->render_data.count++;
             rd->z_index = ref->z_index; rd->image_id = img->internal_id; rd->ref_id = ref->internal_id;
-            rd->texture_id = img->texture_id;
+            rd->texture_id = texture_id_for_img(img);
             img->is_drawn = true;
         }
         if (ref_removed && !img->refs) {
@@ -2165,7 +2190,8 @@ image_as_dict(GraphicsManager *self, Image *img) {
     CoalescedFrameData cfd = get_coalesced_frame_data(self, img, &img->root_frame);
     if (!cfd.buf) { PyErr_SetString(PyExc_RuntimeError, "Failed to get data for root frame"); return NULL; }
     PyObject *ans = Py_BuildValue("{sI sI sI sI sI sI sI " "sO sI sO " "sI sI sI " "sI sy# sN}",
-        U(texture_id), U(client_id), U(width), U(height), U(internal_id), "refs.count", (unsigned int)HASH_COUNT(img->refs), U(client_number),
+        "texture_id", texture_id_for_img(img), U(client_id), U(width), U(height), U(internal_id),
+        "refs.count", (unsigned int)HASH_COUNT(img->refs), U(client_number),
 
         B(root_frame_data_loaded), U(animation_state), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
 
