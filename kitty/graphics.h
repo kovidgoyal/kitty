@@ -61,8 +61,13 @@ typedef struct {
 
 typedef enum { ANIMATION_STOPPED = 0, ANIMATION_LOADING = 1, ANIMATION_RUNNING = 2} AnimationState;
 
+typedef struct TextureRef {
+    uint32_t id, refcnt;
+} TextureRef;
+
 typedef struct {
-    uint32_t texture_id, client_id, client_number, width, height;
+    uint32_t client_id, client_number, width, height;
+    TextureRef *texture;
     id_type internal_id;
 
     bool root_frame_data_loaded;
