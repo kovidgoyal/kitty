@@ -24,6 +24,7 @@ var _ = fmt.Print
 type Options struct {
 	Repetitions    int
 	WithScrollback bool
+	Render         bool
 }
 
 const reset = "\x1b]\x1b\\\x1bc"
@@ -45,7 +46,7 @@ const misc_unicode = `
 
 var opts Options
 
-func benchmark_data(data string, opts Options) (duration time.Duration, sent_data_size int, reps int, err error) {
+func benchmark_data(description string, data string, opts Options) (duration time.Duration, sent_data_size int, reps int, err error) {
 	term, err := tty.OpenControllingTerm(tty.SetRaw)
 	if err != nil {
 		return 0, 0, 0, err
@@ -77,6 +78,11 @@ func benchmark_data(data string, opts Options) (duration time.Duration, sent_dat
 	}()
 	<-goroutine_started
 
+	if !opts.Render {
+		if _, err = term.WriteString("\x1b[H\x1b[2JRunning: " + description + "\r\n\x1b[?2026h"); err != nil {
+			return
+		}
+	}
 	start := time.Now()
 	for reps < opts.Repetitions {
 		if _, err = term.WriteString(data); err != nil {
@@ -85,6 +91,12 @@ func benchmark_data(data string, opts Options) (duration time.Duration, sent_dat
 		sent_data_size += len(data)
 		reps += 1
 	}
+	if !opts.Render {
+		if _, err = term.WriteString("\x1b[H\x1b[2J\x1b[?2026l"); err != nil {
+			return
+		}
+	}
+
 	if _, err = term.WriteString(strings.Repeat("\x1b[5n", count)); err != nil {
 		return
 	}
@@ -116,21 +128,23 @@ type result struct {
 }
 
 func simple_ascii() (r result, err error) {
+	const desc = "Only ASCII chars"
 	data := random_string_of_bytes(1024*2048+13, ascii_printable)
-	duration, data_sz, reps, err := benchmark_data(data, opts)
+	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Only ASCII chars", data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps}, nil
 }
 
 func unicode() (r result, err error) {
+	const desc = "Unicode chars"
 	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 1024)
-	duration, data_sz, reps, err := benchmark_data(data, opts)
+	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Unicode chars", data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps}, nil
 }
 
 func ascii_with_csi() (r result, err error) {
@@ -158,11 +172,12 @@ func ascii_with_csi() (r result, err error) {
 		}
 		out = append(out, utils.UnsafeStringToBytes(chunk)...)
 	}
-	duration, data_sz, reps, err := benchmark_data(utils.UnsafeBytesToString(out), opts)
+	const desc = "CSI codes with few chars"
+	duration, data_sz, reps, err := benchmark_data(desc, utils.UnsafeBytesToString(out), opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"CSI codes with few chars", data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps}, nil
 }
 
 func images() (r result, err error) {
@@ -182,22 +197,24 @@ func images() (r result, err error) {
 	g.SetDelete(graphics.GRT_free_by_id)
 	_ = g.WriteWithPayloadTo(&b, nil)
 	data := b.String()
-	duration, data_sz, reps, err := benchmark_data(data, opts)
+	const desc = "Images"
+	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Images", data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps}, nil
 }
 
 func long_escape_codes() (r result, err error) {
 	data := random_string_of_bytes(8024, ascii_printable)
 	// OSC 6 is document reporting which kitty ignores after parsing
 	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
-	duration, data_sz, reps, err := benchmark_data(data, opts)
+	const desc = "Long escape codes"
+	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
 	if err != nil {
 		return result{}, err
 	}
-	return result{"Long escape codes", data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps}, nil
 }
 
 var divs = []time.Duration{
@@ -237,7 +254,7 @@ func main(args []string) (err error) {
 	// First warm up the terminal by getting it to render all chars so that font rendering
 	// time is not polluting the benchmarks.
 	w := Options{Repetitions: 1}
-	if _, _, _, err = benchmark_data(ascii_printable+chinese_lorem_ipsum+misc_unicode, w); err != nil {
+	if _, _, _, err = benchmark_data("Warmup", ascii_printable+chinese_lorem_ipsum+misc_unicode, w); err != nil {
 		return err
 	}
 	time.Sleep(time.Second / 2)
@@ -279,7 +296,12 @@ func main(args []string) (err error) {
 
 	fmt.Print(reset)
 	fmt.Println(
-		"These results measure the time it takes the terminal to fully parse all the data sent to it. Note that not all data transmitted will be displayed as input parsing is typically asynchronous with rendering in high performance terminals.")
+		"These results measure the time it takes the terminal to fully parse all the data sent to it.")
+	if opts.Render {
+		fmt.Println("Note that not all data transmitted will be displayed as input parsing is typically asynchronous with rendering in high performance terminals.")
+	} else {
+		fmt.Println("Note that \x1b[31mrendering is suppressed\x1b[m (if the terminal supports the synchronized output escape code) to better benchmark parser performance. Use the --render flag to enable rendering.")
+	}
 	fmt.Println()
 	fmt.Println("Results:")
 	mlen := 10
@@ -321,4 +343,10 @@ func EntryPoint(root *cli.Command) {
 		Type: "bool-set",
 		Help: "Use the main screen instead of the alt screen so speed of scrollback is also tested",
 	})
+	sc.Add(cli.OptionSpec{
+		Name: "--render",
+		Type: "bool-set",
+		Help: "Allow rendering of the data sent during tests. Note that modern terminals render asynchronously, so timings do not generally reflect render performance.",
+	})
+
 }
