@@ -99,7 +99,7 @@ static void pointerHandleEnter(void* data UNUSED,
             return;
     }
     window->wl.decorations.focus = focus;
-    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial; _glfw.wl.pointer_enter_serial = serial;
     _glfw.wl.pointerFocus = window;
 
     window->wl.hovered = true;

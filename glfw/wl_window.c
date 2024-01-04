@@ -200,7 +200,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
     if (_glfw.wl.wp_cursor_shape_device_v1) {
         int which = glfw_cursor_shape_to_wayland_cursor_shape(cursorWayland->shape);
         if (which > -1) {
-            wp_cursor_shape_device_v1_set_shape(_glfw.wl.wp_cursor_shape_device_v1, _glfw.wl.serial, (uint32_t)which);
+            wp_cursor_shape_device_v1_set_shape(_glfw.wl.wp_cursor_shape_device_v1, _glfw.wl.pointer_enter_serial, (uint32_t)which);
             return;
         }
     }
