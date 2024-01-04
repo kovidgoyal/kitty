@@ -68,7 +68,7 @@ next_id(id_type *counter) {
 static const unsigned PARENT_DEPTH_LIMIT = 8;
 
 GraphicsManager*
-grman_alloc(void) {
+grman_alloc(bool for_paused_rendering) {
     GraphicsManager *self = (GraphicsManager *)GraphicsManager_Type.tp_alloc(&GraphicsManager_Type, 0);
     self->render_data.capacity = 64;
     self->render_data.item = calloc(self->render_data.capacity, sizeof(self->render_data.item[0]));
@@ -77,8 +77,10 @@ grman_alloc(void) {
         PyErr_NoMemory();
         Py_CLEAR(self); return NULL;
     }
-    self->disk_cache = create_disk_cache();
-    if (!self->disk_cache) { Py_CLEAR(self); return NULL; }
+    if (!for_paused_rendering) {
+        self->disk_cache = create_disk_cache();
+        if (!self->disk_cache) { Py_CLEAR(self); return NULL; }
+    }
     return self;
 }
 
@@ -114,6 +116,12 @@ clear_texture_ref(TextureRef **x) {
 }
 
 static TextureRef*
+incref_texture_ref(TextureRef *ref) {
+    if (ref) ref->refcnt++;
+    return ref;
+}
+
+static TextureRef*
 new_texture_ref(void) {
     TextureRef *ans = malloc(sizeof(TextureRef));
     if (ans) { ans->id = 0; ans->refcnt = 1; }
@@ -128,18 +136,20 @@ texture_id_for_img(Image *img) {
 static void
 free_image_resources(GraphicsManager *self, Image *img) {
     clear_texture_ref(&img->texture);
-    ImageAndFrame key = { .image_id=img->internal_id, .frame_id = img->root_frame.id };
-    if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
-    for (unsigned i = 0; i < img->extra_framecnt; i++) {
-        key.frame_id = img->extra_frames[i].id;
+    if (self->disk_cache) {
+        ImageAndFrame key = { .image_id=img->internal_id, .frame_id = img->root_frame.id };
         if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
+        for (unsigned i = 0; i < img->extra_framecnt; i++) {
+            key.frame_id = img->extra_frames[i].id;
+            if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
+        }
     }
     if (img->extra_frames) {
         free(img->extra_frames);
         img->extra_frames = NULL;
     }
     free_refs_data(img);
-    self->used_storage -= img->used_storage;
+    self->used_storage = img->used_storage <= self->used_storage ? self->used_storage - img->used_storage : 0;
 }
 
 static void
@@ -150,7 +160,7 @@ free_image(GraphicsManager *self, Image *img) {
 }
 
 static void
-dealloc(GraphicsManager* self) {
+free_all_images(GraphicsManager *self) {
     if (self->images) {
         Image *img, *tmp;
         HASH_ITER(hh, self->images, img, tmp) {
@@ -158,6 +168,11 @@ dealloc(GraphicsManager* self) {
         }
         self->images = NULL;
     }
+}
+
+static void
+dealloc(GraphicsManager* self) {
+    free_all_images(self);
     free(self->render_data.item);
     Py_CLEAR(self->disk_cache);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -222,6 +237,38 @@ remove_images(GraphicsManager *self, bool(*predicate)(Image*), id_type skip_imag
     }
 }
 
+void
+grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
+    make_window_context_current(dest->window_id);
+    free_all_images(dest); dest->images = NULL;
+    dest->render_data.count = 0;
+    if (self == NULL) return;
+    dest->window_id = self->window_id;
+    dest->layers_dirty = true;
+    dest->last_scrolled_by = 0;
+
+    Image *img, *tmpimg;
+
+    HASH_ITER(hh, self->images, img, tmpimg) {
+        Image *clone = calloc(1, sizeof(Image));
+        if (!clone) continue;
+        memcpy(clone, img, sizeof(*clone));
+        clone->extra_frames = NULL;
+        if (img->refs) {
+            clone->refs = NULL;
+            ImageRef *ref, *tmpref;
+            HASH_ITER(hh, img->refs, ref, tmpref) {
+                ImageRef *cr = malloc(sizeof(ImageRef));
+                if (cr) {
+                    memcpy(cr, ref, sizeof(*cr));
+                    HASH_ADD(hh, clone->refs, internal_id, sizeof(cr->internal_id), cr);
+                }
+            }
+        }
+        HASH_ADD(hh, dest->images, internal_id, sizeof(clone->internal_id), clone);
+        clone->texture = incref_texture_ref(img->texture);
+    }
+}
 
 // Loading image data {{{
 
@@ -2164,7 +2211,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
 // Boilerplate {{{
 static PyObject *
 new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
-    PyObject *ans = (PyObject*)grman_alloc();
+    PyObject *ans = (PyObject*)grman_alloc(false);
     if (ans == NULL) PyErr_NoMemory();
     return ans;
 }

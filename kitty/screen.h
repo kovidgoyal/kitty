@@ -157,6 +157,7 @@ typedef struct {
         bool inverted, cell_data_updated, cursor_visible;
         unsigned int scrolled_by;
         LineBuf *linebuf;
+        GraphicsManager *grman;
         Selections selections, url_ranges;
     } paused_rendering;
 } Screen;

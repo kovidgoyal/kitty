@@ -419,15 +419,18 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
     changed = true; \
 }
 
+#define update_graphics_data(grman) \
+    grman_update_layers(grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines, screen->cell_size)
+
     if (screen->paused_rendering.expires_at) {
-        if (!screen->paused_rendering.cell_data_updated) update_selection_data;
+        if (!screen->paused_rendering.cell_data_updated) {
+            update_selection_data; update_graphics_data(screen->paused_rendering.grman);
+        }
         screen->paused_rendering.cell_data_updated = true;
         screen->last_rendered.scrolled_by = screen->paused_rendering.scrolled_by;
     } else {
         if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen)) update_selection_data;
-        if (grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines, screen->cell_size)) {
-            changed = true;
-        }
+        if (update_graphics_data(screen->grman)) changed = true;
         screen->last_rendered.scrolled_by = screen->scrolled_by;
     }
 #undef update_selection_data
@@ -563,11 +566,12 @@ static void
 draw_cells_simple(ssize_t vao_idx, Screen *screen, const CellRenderData *crd, bool is_semi_transparent) {
     bind_program(CELL_PROGRAM);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    if (screen->grman->render_data.count) {
+    GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
+    if (grman->render_data.count) {
         glEnable(GL_BLEND);
         int program = GRAPHICS_PROGRAM;
         if (is_semi_transparent) { BLEND_PREMULT; program = GRAPHICS_PREMULT_PROGRAM; } else { BLEND_ONTO_OPAQUE; }
-        draw_graphics(program, vao_idx, screen->grman->render_data.item, 0, screen->grman->render_data.count, viewport_for_cells(crd));
+        draw_graphics(program, vao_idx, grman->render_data.item, 0, grman->render_data.count, viewport_for_cells(crd));
         glDisable(GL_BLEND);
     }
 }
@@ -804,20 +808,21 @@ draw_cells_interleaved(ssize_t vao_idx, Screen *screen, OSWindow *w, const CellR
         BLEND_ONTO_OPAQUE;
     }
 
-    if (screen->grman->num_of_below_refs || has_bgimage(w) || wl) {
+    GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
+    if (grman->num_of_below_refs || has_bgimage(w) || wl) {
         if (wl) {
             draw_window_logo(vao_idx, w, wl, crd);
             BLEND_ONTO_OPAQUE;
         }
-        if (screen->grman->num_of_below_refs) draw_graphics(
-                GRAPHICS_PROGRAM, vao_idx, screen->grman->render_data.item, 0, screen->grman->num_of_below_refs, viewport_for_cells(crd));
+        if (grman->num_of_below_refs) draw_graphics(
+                GRAPHICS_PROGRAM, vao_idx, grman->render_data.item, 0, grman->num_of_below_refs, viewport_for_cells(crd));
         bind_program(CELL_BG_PROGRAM);
         // draw background for non-default bg cells
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].uniforms.draw_bg_bitfield, 2);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     }
 
-    if (screen->grman->num_of_negative_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, screen->grman->render_data.item, screen->grman->num_of_below_refs, screen->grman->num_of_negative_refs, viewport_for_cells(crd));
+    if (grman->num_of_negative_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, grman->render_data.item, grman->num_of_below_refs, grman->num_of_negative_refs, viewport_for_cells(crd));
 
     bind_program(CELL_SPECIAL_PROGRAM);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
@@ -827,7 +832,7 @@ draw_cells_interleaved(ssize_t vao_idx, Screen *screen, OSWindow *w, const CellR
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     BLEND_ONTO_OPAQUE;
 
-    if (screen->grman->num_of_positive_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, screen->grman->render_data.item, screen->grman->num_of_negative_refs + screen->grman->num_of_below_refs, screen->grman->num_of_positive_refs, viewport_for_cells(crd));
+    if (grman->num_of_positive_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, grman->render_data.item, grman->num_of_negative_refs + grman->num_of_below_refs, grman->num_of_positive_refs, viewport_for_cells(crd));
 
     glDisable(GL_BLEND);
 }
@@ -848,13 +853,14 @@ draw_cells_interleaved_premult(ssize_t vao_idx, Screen *screen, OSWindow *os_win
     glEnable(GL_BLEND);
     BLEND_PREMULT;
 
-    if (screen->grman->num_of_below_refs || has_bgimage(os_window) || wl) {
+    GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
+    if (grman->num_of_below_refs || has_bgimage(os_window) || wl) {
         if (wl) {
             draw_window_logo(vao_idx, os_window, wl, crd);
             BLEND_PREMULT;
         }
-        if (screen->grman->num_of_below_refs) draw_graphics(
-            GRAPHICS_PREMULT_PROGRAM, vao_idx, screen->grman->render_data.item, 0, screen->grman->num_of_below_refs, viewport_for_cells(crd));
+        if (grman->num_of_below_refs) draw_graphics(
+            GRAPHICS_PREMULT_PROGRAM, vao_idx, grman->render_data.item, 0, grman->num_of_below_refs, viewport_for_cells(crd));
         bind_program(CELL_BG_PROGRAM);
         // Draw background for non-default bg cells
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].uniforms.draw_bg_bitfield, 2);
@@ -865,8 +871,8 @@ draw_cells_interleaved_premult(ssize_t vao_idx, Screen *screen, OSWindow *os_win
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     }
 
-    if (screen->grman->num_of_negative_refs) {
-        draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, screen->grman->render_data.item, screen->grman->num_of_below_refs, screen->grman->num_of_negative_refs, viewport_for_cells(crd));
+    if (grman->num_of_negative_refs) {
+        draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, grman->render_data.item, grman->num_of_below_refs, grman->num_of_negative_refs, viewport_for_cells(crd));
     }
 
     bind_program(CELL_SPECIAL_PROGRAM);
@@ -875,7 +881,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, Screen *screen, OSWindow *os_win
     bind_program(CELL_FG_PROGRAM);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
 
-    if (screen->grman->num_of_positive_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, screen->grman->render_data.item, screen->grman->num_of_negative_refs + screen->grman->num_of_below_refs, screen->grman->num_of_positive_refs, viewport_for_cells(crd));
+    if (grman->num_of_positive_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, grman->render_data.item, grman->num_of_negative_refs + grman->num_of_below_refs, grman->num_of_positive_refs, viewport_for_cells(crd));
 
     if (!has_bgimage(os_window)) glDisable(GL_BLEND);
 }
@@ -957,15 +963,16 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
         set_on_gpu_state(window->window_logo.instance, true);
     } else wl = NULL;
     ImageRenderData *previous_graphics_render_data = NULL;
-    if (os_window->live_resize.in_progress && screen->grman->render_data.count && (crd.x_ratio != 1 || crd.y_ratio != 1)) {
-        previous_graphics_render_data = malloc(sizeof(previous_graphics_render_data[0]) * screen->grman->render_data.capacity);
+    GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
+    if (os_window->live_resize.in_progress && grman->render_data.count && (crd.x_ratio != 1 || crd.y_ratio != 1)) {
+        previous_graphics_render_data = malloc(sizeof(previous_graphics_render_data[0]) * grman->render_data.capacity);
         if (previous_graphics_render_data) {
-            memcpy(previous_graphics_render_data, screen->grman->render_data.item, sizeof(previous_graphics_render_data[0]) * screen->grman->render_data.count);
-            for (size_t i = 0; i < screen->grman->render_data.count; i++)
-                scale_rendered_graphic(screen->grman->render_data.item + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
+            memcpy(previous_graphics_render_data, grman->render_data.item, sizeof(previous_graphics_render_data[0]) * grman->render_data.count);
+            for (size_t i = 0; i < grman->render_data.count; i++)
+                scale_rendered_graphic(grman->render_data.item + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
         }
     }
-    has_underlying_image |= screen->grman->num_of_below_refs > 0 || screen->grman->num_of_negative_refs > 0;
+    has_underlying_image |= grman->num_of_below_refs > 0 || grman->num_of_negative_refs > 0;
     if (os_window->is_semi_transparent) {
         if (has_underlying_image) draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, wl);
         else draw_cells_simple(vao_idx, screen, &crd, os_window->is_semi_transparent);
@@ -982,8 +989,8 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
     if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
     if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id && !is_mouse_hidden(os_window)) draw_hyperlink_target(os_window, screen, &crd, window);
     if (previous_graphics_render_data) {
-        free(screen->grman->render_data.item);
-        screen->grman->render_data.item = previous_graphics_render_data;
+        free(grman->render_data.item);
+        grman->render_data.item = previous_graphics_render_data;
     }
 }
 // }}}

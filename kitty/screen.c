@@ -127,8 +127,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size));
-        self->main_grman = grman_alloc();
-        self->alt_grman = grman_alloc();
+        self->main_grman = grman_alloc(false);
+        self->alt_grman = grman_alloc(false);
         self->active_hyperlink_id = 0;
 
         self->grman = self->main_grman;
@@ -474,6 +474,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->overlay_line.overlay_text);
     PyMem_Free(self->main_tabstops);
     Py_CLEAR(self->paused_rendering.linebuf);
+    Py_CLEAR(self->paused_rendering.grman);
     free(self->selections.items);
     free(self->url_ranges.items);
     free(self->paused_rendering.url_ranges.items);
@@ -2391,9 +2392,13 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
         self->is_dirty = true;
         // ensure selection data is updated on GPU
         self->selections.last_rendered_count = SIZE_MAX; self->url_ranges.last_rendered_count = SIZE_MAX;
+        // free grman data
+        grman_pause_rendering(NULL, self->paused_rendering.grman);
         return true;
     }
     if (self->paused_rendering.expires_at) return false;
+    if (!self->paused_rendering.grman) self->paused_rendering.grman = grman_alloc(true);
+    if (!self->paused_rendering.grman) return false;
     if (for_in_ms <= 0) for_in_ms = 2000;
     self->paused_rendering.expires_at = monotonic() + ms_to_monotonic_t(for_in_ms);
     self->paused_rendering.inverted = self->modes.mDECSCNM;
@@ -2415,6 +2420,7 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     }
     copy_selections(&self->paused_rendering.selections, &self->selections);
     copy_selections(&self->paused_rendering.url_ranges, &self->url_ranges);
+    grman_pause_rendering(self->grman, self->paused_rendering.grman);
     return true;
 }
 

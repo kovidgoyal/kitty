@@ -180,7 +180,7 @@ gl_pos_y(const unsigned int px_from_top_margin, const unsigned int viewport_size
 }
 
 
-GraphicsManager* grman_alloc(void);
+GraphicsManager* grman_alloc(bool for_paused_rendering);
 void grman_clear(GraphicsManager*, bool, CellPixelSize fg);
 const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize fg);
 Image* grman_put_cell_image(GraphicsManager *self, uint32_t row, uint32_t col, uint32_t image_id, uint32_t placement_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h, CellPixelSize cell);
@@ -196,3 +196,4 @@ bool png_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, u
 bool png_from_data(void *png_data, size_t png_data_sz, const char *path_for_error_messages, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);
 void scale_rendered_graphic(ImageRenderData*, float xstart, float ystart, float x_scale, float y_scale);
+void grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest);
