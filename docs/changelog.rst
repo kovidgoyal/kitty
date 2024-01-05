@@ -75,6 +75,9 @@ Detailed list of changes
 
 - Mouse reporting: Fix incorrect position reported for windows with padding (:iss:`6950`)
 
+- Fix :ac:`focus_visible_window` not switching to other window in stack layout
+  when only two windows are present (:iss:`6970`)
+
 
 0.31.0 [2023-11-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

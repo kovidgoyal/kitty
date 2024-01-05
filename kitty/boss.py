@@ -1466,8 +1466,7 @@ class Boss:
             focus_os_window(tab.os_window_id, True)
         self.current_visual_select = VisualSelect(tab.id, tab.os_window_id, initial_tab_id, initial_os_window_id, choose_msg, callback, reactivate_prev_tab)
         if tab.current_layout.only_active_window_visible:
-            w = self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
-            self.current_visual_select.window_used_for_selection_id = 0 if w is None else w.id
+            self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
             return
         km = KeyboardMode('__visual_select__')
         km.on_action = 'end'
@@ -1522,11 +1521,16 @@ class Boss:
             self.mouse_handler(ev)
 
     def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> Optional[Window]:
-        windows = tuple((None, f'Current window: {w.title}' if w is self.active_window else w.title)
-                        if only_window_ids and w.id not in only_window_ids else (w.id, w.title)
-                        for i, w in tab.windows.iter_windows_with_number(only_visible=False))
-        if len(windows) < 1:
-            self.visual_window_select_action_trigger(windows[0][0] if windows and windows[0][0] is not None else 0)
+        windows: List[Tuple[Optional[int], str]] = []
+        selectable_windows: List[Tuple[int, str]] = []
+        for i, w in tab.windows.iter_windows_with_number(only_visible=False):
+            if only_window_ids and w.id not in only_window_ids:
+                windows.append((None, f'Current window: {w.title}' if w is self.active_window else w.title))
+            else:
+                windows.append((w.id, w.title))
+                selectable_windows.append((w.id, w.title))
+        if len(selectable_windows) < 2:
+            self.visual_window_select_action_trigger(selectable_windows[0][0] if selectable_windows else 0)
             if get_options().enable_audio_bell:
                 ring_bell()
             return None
