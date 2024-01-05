@@ -48,7 +48,7 @@ _Pragma("clang diagnostic pop")
 #define load_unaligned simde_mm256_loadu_si256
 #define store_aligned simde_mm256_store_si256
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
-#define cmplt_epi8 simde_mm256_cmplt_epi8
+#define cmplt_epi8(a, b) simde_mm256_cmpgt_epi8(b, a)
 #define or_si simde_mm256_or_si256
 #define and_si simde_mm256_and_si256
 #define movemask_epi8 simde_mm256_movemask_epi8
@@ -144,32 +144,31 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         return sentinel_found;
     }
 
-#if 0
+#if 1
     // Classify the bytes
     integer_t state = set1_epi8((char)0x80);
     integer_t vec_signed = add_epi8(vec, state);
     printf("source:\n"); print_register_as_bytes(vec);
 
-    integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(_mm_set1_epi8(0xc0 - 1 - 0x80), vec_signed);
-    state = blendv_epi8(state , _mm_set1_epi8((char)0xc2),  bytes_indicating_start_of_two_byte_sequence);
+    integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(set1_epi8(0xc0 - 1 - 0x80), vec_signed);
+    state = blendv_epi8(state , set1_epi8((char)0xc2),  bytes_indicating_start_of_two_byte_sequence);
     // state now has 0xc2 on all bytes that start a 2 byte sequence and 0x80 on the rest
-    integer_t bytes_indicating_start_of_three_byte_sequence = cmplt_epi8(_mm_set1_epi8(0xe0 - 1 - 0x80), vec_signed);
-    state = blendv_epi8(state , _mm_set1_epi8((char)0xe3),  bytes_indicating_start_of_three_byte_sequence);
-    integer_t bytes_indicating_start_of_four_byte_sequence = cmplt_epi8(_mm_set1_epi8(0xf0 - 1 - 0x80), vec_signed);
-    state = blendv_epi8(state , _mm_set1_epi8((char)0xf4),  bytes_indicating_start_of_four_byte_sequence);
+    integer_t bytes_indicating_start_of_three_byte_sequence = cmplt_epi8(set1_epi8(0xe0 - 1 - 0x80), vec_signed);
+    state = blendv_epi8(state , set1_epi8((char)0xe3),  bytes_indicating_start_of_three_byte_sequence);
+    integer_t bytes_indicating_start_of_four_byte_sequence = cmplt_epi8(set1_epi8(0xf0 - 1 - 0x80), vec_signed);
+    state = blendv_epi8(state , set1_epi8((char)0xf4),  bytes_indicating_start_of_four_byte_sequence);
     // state now has 0xc2 on all bytes that start a 2 byte sequence, 0xe3 on start of 3-byte sequence, 0xf4 on 4-byte start and 0x80 on rest
     print_register_as_bytes(state);
     integer_t mask = and_si(state, set1_epi8((char)0xf8));  // keep upper 5 bits of state
     printf("mask:\n"); print_register_as_bytes(mask);
-    integer_t count = and_si(state, set1_epi8(0x7));  // keep lower three bytes of state
+    integer_t count = and_si(state, set1_epi8(0x7));  // keep lower 3 bits of state
     printf("count:\n"); print_register_as_bytes(count);
-    // count contains 0 for ASCII and continuation bytes and number of bytes in sequence for start of sequence bytes
+    // count contains 0 for ASCII and number of bytes in sequence for other bytes
 #define subtract_shift_and_add(target, amt) add_epi8(target, shift_left_by_bytes(subtract_saturate_epu8(target, set1_epi8(amt)), amt))
     integer_t counts = subtract_shift_and_add(count, 1);
     counts = subtract_shift_and_add(counts, 2);
     printf("counts:\n"); print_register_as_bytes(counts);
 
-    d->num_consumed = src_sz;
 #endif
     return sentinel_found;
 }
