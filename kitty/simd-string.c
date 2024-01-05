@@ -5,14 +5,15 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define SIMDE_ENABLE_NATIVE_ALIASES
 #include "data-types.h"
 #include "charsets.h"
 #include "simd-string.h"
-#include "simd-string-impl.h"
 #undef BITS
+#define BITS 128
+#include "simd-string-impl.h"
 #define BITS 256
 #include "simd-string-impl.h"
+#undef BITS
 static bool has_sse4_2 = false, has_avx2 = false;
 
 // find_either_of_two_bytes {{{
