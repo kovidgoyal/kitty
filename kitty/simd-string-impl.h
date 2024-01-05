@@ -24,6 +24,7 @@ _Pragma("clang diagnostic pop")
 #define FUNC(name) CONCAT_EXPAND(name##_, BITS)
 #define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, BITS), i)
 #define shift_right_by_bytes128 simde_mm_srli_si128
+#define count_trailing_zeros __builtin_ctz
 
 #if BITS == 128
 #define set1_epi8 simde_mm_set1_epi8
@@ -68,7 +69,7 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
         const integer_t matches = or_si(a_cmp, b_cmp);
         const int mask = movemask_epi8(matches);
         if (mask != 0) {
-            size_t pos = __builtin_ctz(mask);
+            size_t pos = count_trailing_zeros(mask);
             const uint8_t *ans = haystack + pos;
             if (ans < limit) return ans;
         }
@@ -128,7 +129,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
     const int esc_test_mask = movemask_epi8(esc_cmp);
     bool sentinel_found = false;
-    const unsigned num_of_bytes_to_first_esc = __builtin_ctz(esc_test_mask);
+    const unsigned num_of_bytes_to_first_esc = count_trailing_zeros(esc_test_mask);
     if (num_of_bytes_to_first_esc < src_sz) {
         sentinel_found = true;
         d->num_consumed = num_of_bytes_to_first_esc + 1;  // esc is also consumed
@@ -136,7 +137,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     } else d->num_consumed = src_sz;
 
     const int ascii_test_mask = movemask_epi8(vec);
-    const unsigned num_of_bytes_to_first_non_ascii_byte = __builtin_ctz(ascii_test_mask);
+    const unsigned num_of_bytes_to_first_non_ascii_byte = count_trailing_zeros(ascii_test_mask);
 
     if (num_of_bytes_to_first_non_ascii_byte >= src_sz) {  // no bytes with high bit (0x80) set, so just plain ASCII
         FUNC(output_plain_ascii)(d, vec, src_sz);
