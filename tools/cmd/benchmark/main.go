@@ -77,12 +77,16 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 		}
 	}()
 	<-goroutine_started
-
+	const clear_screen = "\x1b[H\x1b[2J\x1b[m"
+	desc := clear_screen + "Running: " + description + "\r\n"
+	const pause_rendering = "\x1b[?2026h"
+	const resume_rendering = "\x1b[?2026l"
 	if !opts.Render {
-		if _, err = term.WriteString("\x1b[H\x1b[2JRunning: " + description + "\r\n\x1b[?2026h"); err != nil {
+		if _, err = term.WriteString(desc + pause_rendering); err != nil {
 			return
 		}
 	}
+
 	start := time.Now()
 	for reps < opts.Repetitions {
 		if _, err = term.WriteString(data); err != nil {
@@ -90,16 +94,21 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 		}
 		sent_data_size += len(data)
 		reps += 1
+		if !opts.Render {
+			if _, err = term.WriteString(desc + resume_rendering + pause_rendering); err != nil {
+				return
+			}
+		}
+	}
+	if _, err = term.WriteString(clear_screen + "Waiting for response indicating parsing finished\r\n" + strings.Repeat("\x1b[5n", count)); err != nil {
+		return
 	}
 	if !opts.Render {
-		if _, err = term.WriteString("\x1b[H\x1b[2J\x1b[?2026l"); err != nil {
+		if _, err = term.WriteString(resume_rendering); err != nil {
 			return
 		}
 	}
 
-	if _, err = term.WriteString(strings.Repeat("\x1b[5n", count)); err != nil {
-		return
-	}
 	lock.Lock()
 	duration = time.Since(start)
 	lock.Unlock()
@@ -158,7 +167,7 @@ func ascii_with_csi() (r result, err error) {
 		case (q < 10):
 			chunk = random_string_of_bytes(src.Intn(72)+1, ascii_printable)
 		case (10 <= q && q < 30):
-			chunk = "\x1b[m;\x1b[?1h\x1b[H"
+			chunk = "\x1b[m\x1b[?1h\x1b[H"
 		case (30 <= q && q < 40):
 			chunk = "\x1b[1;2;3;4:3;31m"
 		case (40 <= q && q < 50):
@@ -166,9 +175,9 @@ func ascii_with_csi() (r result, err error) {
 		case (50 <= q && q < 60):
 			chunk = "\x1b[58;5;44;2m"
 		case (60 <= q && q < 80):
-			chunk = "\x1b[m;\x1b[10A\x1b[3E\x1b[2K"
+			chunk = "\x1b[m\x1b[10A\x1b[3E\x1b[2K"
 		case (80 <= q && q < 100):
-			chunk = "\x1b[39m;\x1b[10`a\x1b[100b\x1b[?1l"
+			chunk = "\x1b[39m\x1b[10`a\x1b[100b\x1b[?1l"
 		}
 		out = append(out, utils.UnsafeStringToBytes(chunk)...)
 	}
