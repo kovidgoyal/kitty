@@ -171,6 +171,18 @@ class CwdRequest:
                 set_cwd_in_cmdline(reported_cwd, argv)
                 set_server_args_in_cmdline(server_args, argv, allocate_tty=not run_shell)
                 if env is not None:
+                    # Assume env is coming from a local process so drop env
+                    # vars that can cause issues when set on the remote host
+                    if env.get('KITTY_KITTEN_RUN_MODULE') == 'ssh_askpass':
+                        for k in ('KITTY_KITTEN_RUN_MODULE', 'SSH_ASKPASS', 'SSH_ASKPASS_REQUIRE'):
+                            env.pop(k, None)
+                    for k in (
+                        'HOME', 'USER', 'TEMP', 'TMP', 'TMPDIR', 'PATH', 'PWD', 'OLDPWD', 'KITTY_INSTALLATION_DIR',
+                        'HOSTNAME', 'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'KITTY_WINDOW_ID', 'KITTY_STDIO_FORWARDED',
+                        'KITTY_PID', 'KITTY_PUBLIC_KEY', 'KITTY_WINDOW_ID', 'TERMINFO', 'XDG_RUNTIME_DIR', 'XDG_VTNR',
+                        'XDG_DATA_DIRS', 'XAUTHORITY', 'EDITOR', 'VISUAL',
+                    ):
+                        env.pop(k, None)
                     set_env_in_cmdline(env, argv, clone=False)
                 return ''
             if not window.child_is_remote and (self.request_type is CwdRequestType.last_reported or window.at_prompt):
