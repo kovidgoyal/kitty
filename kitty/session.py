@@ -14,7 +14,7 @@ from .options.types import Options
 from .options.utils import resize_window, to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
-from .utils import cmdline_for_hold, expandvars, log_error, resolve_custom_file, resolved_shell, shlex_split, which
+from .utils import expandvars, log_error, resolve_custom_file, resolved_shell, shlex_split
 
 if TYPE_CHECKING:
     from .launch import LaunchSpec
@@ -237,11 +237,8 @@ def create_sessions(
     ans.tabs[-1].layout = current_layout
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
-        if args and args.hold:
-            cmd[0] = which(cmd[0]) or cmd[0]
-            cmd = cmdline_for_hold(cmd)
         from kitty.tabs import SpecialWindow
         cwd: Optional[str] = args.directory if respect_cwd and args else None
-        special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd)
+        special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, hold=bool(args and args.hold))
     ans.add_special_window(special_window)
     yield ans

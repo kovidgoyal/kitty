@@ -11,7 +11,7 @@ import kitty.fast_data_types as fast_data_types
 
 from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
-from .utils import log_error, which
+from .utils import cmdline_for_hold, log_error, which
 
 try:
     from typing import TypedDict
@@ -200,6 +200,7 @@ class Child:
         cwd_from: Optional['CwdRequest'] = None,
         is_clone_launch: str = '',
         add_listen_on_env_var: bool = True,
+        hold: bool = False,
     ):
         self.is_clone_launch = is_clone_launch
         self.add_listen_on_env_var = add_listen_on_env_var
@@ -217,6 +218,7 @@ class Child:
         self.final_env:Dict[str, str] = {}
         self.is_default_shell = bool(self.argv and self.argv[0] == shell_path)
         self.should_run_via_run_shell_kitten = is_macos and self.is_default_shell
+        self.hold = hold
 
     def get_final_env(self) -> Dict[str, str]:
         from kitty.options.utils import DELETE_ENV_VAR
@@ -309,11 +311,14 @@ class Child:
                     argv.append('--cwd=' + cwd)
                     cwd = os.path.expanduser('~')
                 argv = ['/usr/bin/login', '-f', '-l', '-p', user] + argv
-        self.final_exe = which(argv[0]) or argv[0]
+        self.final_exe = final_exe = which(argv[0]) or argv[0]
         self.final_argv0 = argv[0]
+        if self.hold:
+            argv = cmdline_for_hold(argv)
+            final_exe = argv[0]
         env = tuple(f'{k}={v}' for k, v in self.final_env.items())
         pid = fast_data_types.spawn(
-            self.final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
+            final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
             ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio)
         os.close(slave)
         self.pid = pid

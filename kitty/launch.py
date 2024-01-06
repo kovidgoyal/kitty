@@ -16,7 +16,7 @@ from .fast_data_types import add_timer, get_boss, get_options, get_os_window_tit
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
-from .utils import cmdline_for_hold, get_editor, log_error, resolve_custom_file, resolved_shell, which
+from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
 try:
@@ -423,6 +423,7 @@ class LaunchKwds(TypedDict):
     cmd: Optional[List[str]]
     overlay_for: Optional[int]
     stdin: Optional[bytes]
+    hold: bool
 
 
 def apply_colors(window: Window, spec: Sequence[str]) -> None:
@@ -504,7 +505,8 @@ def _launch(
         'marker': opts.marker or None,
         'cmd': None,
         'overlay_for': None,
-        'stdin': None
+        'stdin': None,
+        'hold': False,
     }
     spacing = {}
     if opts.spacing:
@@ -607,11 +609,7 @@ def _launch(
             else:
                 set_primary_selection(stdin)
     else:
-        if opts.hold:
-            cmd = kw['cmd'] or resolved_shell()
-            if not os.path.isabs(cmd[0]):
-                cmd[0] = which(cmd[0]) or cmd[0]
-            kw['cmd'] = cmdline_for_hold(cmd)
+        kw['hold'] = opts.hold
         if force_target_tab:
             tab = target_tab
         else:
