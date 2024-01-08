@@ -38,7 +38,8 @@ _Pragma("clang diagnostic pop")
 #define andnot_si simde_mm_andnot_si128
 #define movemask_epi8 simde_mm_movemask_epi8
 #define extract_lower_quarter_as_chars simde_mm_cvtepu8_epi32
-#define shift_right_by_bytes simde_mm_slli_si128
+#define shift_right_by_one_byte(x) simde_mm_slli_si128(x, 1)
+#define shift_right_by_two_bytes(x) simde_mm_slli_si128(x, 2)
 #define blendv_epi8 simde_mm_blendv_epi8
 #define shift_left_by_bits16 _mm_slli_epi16
 #define shift_right_by_bits32 _mm_srli_epi32
@@ -62,15 +63,9 @@ _Pragma("clang diagnostic pop")
 #define shift_left_by_bits16 _mm256_slli_epi16
 #define shift_right_by_bits32 _mm256_srli_epi32
 #define create_zero_integer _mm256_setzero_si256
+#define shift_right_by_one_byte(x) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 1)
+#define shift_right_by_two_bytes(x) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 2)
 
-static inline integer_t
-shift_right_by_bytes(const integer_t vec, const unsigned amt) {
-    if (amt == 0) return vec;
-    if (amt < 16) return simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - amt);
-    if (amt == 16) return simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0));
-    if (amt < 32) return simde_mm256_slli_si256(simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), amt - 16);
-    return create_zero_integer();
-}
 #endif
 
 static inline const uint8_t*
@@ -178,11 +173,11 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     integer_t count = and_si(state, set1_epi8(0x7));  // keep lower 3 bits of state
     print_register_as_bytes(count);
     // count contains 0 for ASCII and number of bytes in sequence for other bytes
-#define subtract_shift_and_add(target, amt) add_epi8(target, shift_right_by_bytes(subtract_saturate_epu8(target, set1_epi8(amt)), amt))
+#define subtract_shift_and_add(target, amt, s) add_epi8(target, shift_right_by_##amt(subtract_saturate_epu8(target, set1_epi8(s))))
     // shift 02 bytes by 1 and subtract 1
-    integer_t counts = subtract_shift_and_add(count, 1);
+    integer_t counts = subtract_shift_and_add(count, one_byte, 1);
     // shift 03 and 04 bytes by 2 and subtract 2
-    counts = subtract_shift_and_add(counts, 2);
+    counts = subtract_shift_and_add(counts, two_bytes, 2);
     // counts now contains the number of bytes remaining in each utf-8 sequence of 2 or more bytes
     print_register_as_bytes(counts);
 #undef subtract_shift_and_add
@@ -198,7 +193,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // In addition, the ASCII bytes are copied unchanged from vec
     integer_t vec_non_ascii = andnot_si(cmpeq_epi8(counts, create_zero_integer()), vec);
     print_register_as_bytes(vec_non_ascii);
-    integer_t vec_right1 = shift_right_by_bytes(vec_non_ascii, 1);
+    integer_t vec_right1 = shift_right_by_one_byte(vec_non_ascii);
     integer_t output1 = blendv_epi8(vec,
             or_si(
                 vec, and_si(shift_left_by_bits16(vec_right1, 6), set1_epi8(0xc0))
@@ -216,6 +211,9 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     print_register_as_bytes(output2);
 
     // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
+    integer_t count3_locations = cmpeq_epi8(counts, set1_epi8(3));
+    integer_t output3 = and_si(set1_epi8(3), shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
+    output3 = and_si(output3, count3_locations);
 
     return sentinel_found;
 }
@@ -235,7 +233,8 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef CONCAT
 #undef CONCAT_EXPAND
 #undef BITS
-#undef shift_right_by_bytes
+#undef shift_right_by_one_byte
+#undef shift_right_by_two_bytes
 #undef shift_left_by_bits16
 #undef shift_right_by_bits32
 #undef shift_right_by_bytes128
