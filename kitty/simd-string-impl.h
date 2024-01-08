@@ -86,16 +86,20 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
     return NULL;
 }
 
+#if 1
 #define print_register_as_bytes(r) { \
     printf("%s:\n", #r); \
     alignas(64) uint8_t data[sizeof(r)]; \
     store_aligned((integer_t*)data, r); \
     for (unsigned i = 0; i < sizeof(integer_t); i++) { \
         uint8_t ch = data[i]; \
-        if (' ' <= ch && ch < 0x7f) printf(" %c ", ch); else printf("%.2x ", ch); \
+        if (' ' <= ch && ch < 0x7f) printf("_%c ", ch); else printf("%.2x ", ch); \
     } \
     printf("\n"); \
 }
+#else
+#define print_register_as_bytes(r)
+#endif
 
 static inline void
 FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
@@ -146,25 +150,22 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         src_sz = d->num_consumed - 1;
     } else d->num_consumed = src_sz;
 
-    const int ascii_test_mask = movemask_epi8(vec);
-    const unsigned num_of_bytes_to_first_non_ascii_byte = count_trailing_zeros(ascii_test_mask);
+    // Classify the bytes
+    print_register_as_bytes(vec);
+    integer_t state = set1_epi8(0x80);
+    const integer_t vec_signed = add_epi8(vec, state); // needed because cmplt_epi8 works only on signed chars
 
+    const integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(set1_epi8(0xc0 - 1 - 0x80), vec_signed);
+    const unsigned num_of_bytes_to_first_non_ascii_byte = count_trailing_zeros(movemask_epi8(bytes_indicating_start_of_two_byte_sequence));
     if (num_of_bytes_to_first_non_ascii_byte >= src_sz) {  // no bytes with high bit (0x80) set, so just plain ASCII
         FUNC(output_plain_ascii)(d, vec, src_sz);
         return sentinel_found;
     }
-
-    // Classify the bytes
-    integer_t state = set1_epi8(0x80);
-    integer_t vec_signed = add_epi8(vec, state);
-    print_register_as_bytes(vec);
-
-    integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(set1_epi8(0xc0 - 1 - 0x80), vec_signed);
     state = blendv_epi8(state, set1_epi8(0xc2), bytes_indicating_start_of_two_byte_sequence);
-    // state now has 0xc2 on all bytes that start a 2 byte sequence and 0x80 on the rest
-    integer_t bytes_indicating_start_of_three_byte_sequence = cmplt_epi8(set1_epi8(0xe0 - 1 - 0x80), vec_signed);
+    // state now has 0xc2 on all bytes that start a 2 or more byte sequence and 0x80 on the rest
+    const integer_t bytes_indicating_start_of_three_byte_sequence = cmplt_epi8(set1_epi8(0xe0 - 1 - 0x80), vec_signed);
     state = blendv_epi8(state, set1_epi8(0xe3), bytes_indicating_start_of_three_byte_sequence);
-    integer_t bytes_indicating_start_of_four_byte_sequence = cmplt_epi8(set1_epi8(0xf0 - 1 - 0x80), vec_signed);
+    const integer_t bytes_indicating_start_of_four_byte_sequence = cmplt_epi8(set1_epi8(0xf0 - 1 - 0x80), vec_signed);
     state = blendv_epi8(state, set1_epi8(0xf4), bytes_indicating_start_of_four_byte_sequence);
     // state now has 0xc2 on all bytes that start a 2 byte sequence, 0xe3 on start of 3-byte sequence, 0xf4 on 4-byte start and 0x80 on rest
     print_register_as_bytes(state);
@@ -181,13 +182,13 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // counts now contains the number of bytes remaining in each utf-8 sequence of 2 or more bytes
     print_register_as_bytes(counts);
 #undef subtract_shift_and_add
-    // Processing
+
+    // Process the bytes storing the three resulting bytes that make up the unicode codepoint
     // mask all control bits so that we have only useful bits left
-    print_register_as_bytes(vec);
     vec = andnot_si(mask, vec);
     print_register_as_bytes(vec);
 
-    // Now calculate the four output vectors
+    // Now calculate the three output vectors
 
     // The lowest byte is made up of 6 bits from locations with counts == 1 and the lowest two bits from locations with count == 2
     // In addition, the ASCII bytes are copied unchanged from vec
@@ -213,7 +214,10 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
     integer_t count3_locations = cmpeq_epi8(counts, set1_epi8(3));
     integer_t output3 = and_si(set1_epi8(3), shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
-    output3 = and_si(output3, count3_locations);
+    // bits from count == 4 locations, placed at count == 3 locations shifted left by 2 bits
+    output3 = or_si(output3, and_si(set1_epi8(0xfc), shift_left_by_bits16(vec_right1, 2)));
+    output3 = and_si(output3, count3_locations);  // keep only count3 bytes
+    print_register_as_bytes(output3);
 
     return sentinel_found;
 }
