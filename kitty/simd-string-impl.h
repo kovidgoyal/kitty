@@ -150,6 +150,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         src_sz = d->num_consumed - 1;
     } else d->num_consumed = src_sz;
 
+    const integer_t one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3);
     // Classify the bytes
     print_register_as_bytes(vec);
     integer_t state = set1_epi8(0x80);
@@ -176,11 +177,11 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     integer_t count = and_si(state, set1_epi8(0x7));  // keep lower 3 bits of state
     print_register_as_bytes(count);
     // count contains 0 for ASCII and number of bytes in sequence for other bytes
-#define subtract_shift_and_add(target, amt, s) add_epi8(target, shift_right_by_##amt(subtract_saturate_epu8(target, set1_epi8(s))))
+#define subtract_shift_and_add(target, amt, s) add_epi8(target, shift_right_by_##amt(subtract_saturate_epu8(target, s)))
     // shift 02 bytes by 1 and subtract 1
-    integer_t counts = subtract_shift_and_add(count, one_byte, 1);
+    integer_t counts = subtract_shift_and_add(count, one_byte, one);
     // shift 03 and 04 bytes by 2 and subtract 2
-    counts = subtract_shift_and_add(counts, two_bytes, 2);
+    counts = subtract_shift_and_add(counts, two_bytes, two);
     // counts now contains the number of bytes remaining in each utf-8 sequence of 2 or more bytes
     print_register_as_bytes(counts);
 #undef subtract_shift_and_add
@@ -201,12 +202,12 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
             or_si(
                 vec, and_si(shift_left_by_bits16(vec_right1, 6), set1_epi8(0xc0))
             ),
-            cmpeq_epi8(counts, set1_epi8(1))
+            cmpeq_epi8(counts, one)
     );
     print_register_as_bytes(output1);
 
     // The next byte is made up of 4 bits (5, 4, 3, 2) from locations with count == 2 and the first 4 bits from locations with count == 3
-    integer_t count2_locations = cmpeq_epi8(counts, set1_epi8(2));
+    integer_t count2_locations = cmpeq_epi8(counts, two);
     integer_t output2 = and_si(vec, count2_locations);
     output2 = shift_right_by_bits32(output2, 2);  // selects the bits 5, 4, 3, 2
     output2 = or_si(output2, and_si(shift_left_by_bits16(vec_right1, 4), set1_epi8(0xf0))); // move 4 bits left and mask lower four bits and OR
@@ -214,8 +215,8 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     print_register_as_bytes(output2);
 
     // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
-    integer_t count3_locations = cmpeq_epi8(counts, set1_epi8(3));
-    integer_t output3 = and_si(set1_epi8(3), shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
+    integer_t count3_locations = cmpeq_epi8(counts, three);
+    integer_t output3 = and_si(three, shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
     // bits from count == 4 locations, placed at count == 3 locations shifted left by 2 bits
     output3 = or_si(output3, and_si(set1_epi8(0xfc), shift_left_by_bits16(vec_right1, 2)));
     output3 = and_si(output3, count3_locations);  // keep only count3 bytes
