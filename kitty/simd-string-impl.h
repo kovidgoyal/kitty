@@ -156,8 +156,10 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     const integer_t vec_signed = add_epi8(vec, state); // needed because cmplt_epi8 works only on signed chars
 
     const integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(set1_epi8(0xc0 - 1 - 0x80), vec_signed);
-    const unsigned num_of_bytes_to_first_non_ascii_byte = count_trailing_zeros(movemask_epi8(bytes_indicating_start_of_two_byte_sequence));
-    if (num_of_bytes_to_first_non_ascii_byte >= src_sz) {  // no bytes with high bit (0x80) set, so just plain ASCII
+    if (
+            (unsigned)count_trailing_zeros(movemask_epi8(bytes_indicating_start_of_two_byte_sequence)) >= src_sz &&
+            (unsigned)count_trailing_zeros(movemask_epi8(vec)) >= src_sz)
+    { // no bytes with high bit (0x80) set, so just plain ASCII
         FUNC(output_plain_ascii)(d, vec, src_sz);
         return sentinel_found;
     }
