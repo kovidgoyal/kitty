@@ -484,13 +484,17 @@ a different origin within the cell. Note that the offsets must be smaller than t
 By default, the entire image will be displayed (images wider than the available
 width will be truncated on the right edge). You can choose a source rectangle (in pixels)
 as the part of the image to display. This is done with the keys: ``x, y, w, h`` which specify
-the top-left corner, width and height of the source rectangle.
+the top-left corner, width and height of the source rectangle. The displayed
+area is the intersection of the specified rectangle with the source image
+rectangle.
 
 You can also ask the terminal emulator to display the image in a specified rectangle
 (num of columns / num of lines), using the control codes ``c,r``. ``c`` is the number of columns
 and `r` the number of rows. The image will be scaled (enlarged/shrunk) as needed to fit
 the specified area. Note that if you specify a start cell offset via the ``X,Y`` keys, it is not
-added to the number of rows/columns.
+added to the number of rows/columns. If only one of either ``r`` or ``c`` is
+specified, the other one is computed based on the source image aspect ratio, so
+that the image is displayed without distortion.
 
 Finally, you can specify the image *z-index*, i.e. the vertical stacking order. Images
 placed in the same location with different z-index values will be blended if
