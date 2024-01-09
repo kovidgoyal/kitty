@@ -28,6 +28,7 @@ _Pragma("clang diagnostic pop")
 
 #if BITS == 128
 #define set1_epi8(x) simde_mm_set1_epi8((char)(x))
+#define set_epi8 simde_mm_set_epi8
 #define add_epi8 simde_mm_add_epi8
 #define load_unaligned simde_mm_loadu_si128
 #define store_aligned simde_mm_store_si128
@@ -40,6 +41,14 @@ _Pragma("clang diagnostic pop")
 #define extract_lower_quarter_as_chars simde_mm_cvtepu8_epi32
 #define shift_right_by_one_byte(x) simde_mm_slli_si128(x, 1)
 #define shift_right_by_two_bytes(x) simde_mm_slli_si128(x, 2)
+#define shift_right_by_four_bytes(x) simde_mm_slli_si128(x, 4)
+#define shift_right_by_eight_bytes(x) simde_mm_slli_si128(x, 8)
+#define shift_right_by_sixteen_bytes(x) simde_mm_slli_si128(x, 16)
+#define shift_left_by_one_byte(x) simde_mm_srli_si128(x, 1)
+#define shift_left_by_two_bytes(x) simde_mm_srli_si128(x, 2)
+#define shift_left_by_four_bytes(x) simde_mm_srli_si128(x, 4)
+#define shift_left_by_eight_bytes(x) simde_mm_srli_si128(x, 8)
+#define shift_left_by_sixteen_bytes(x) simde_mm_srli_si128(x, 16)
 #define blendv_epi8 simde_mm_blendv_epi8
 #define shift_left_by_bits16 _mm_slli_epi16
 #define shift_right_by_bits32 _mm_srli_epi32
@@ -48,6 +57,7 @@ _Pragma("clang diagnostic pop")
 #define create_zero_integer _mm_setzero_si128
 #else
 #define set1_epi8(x) simde_mm256_set1_epi8((char)(x))
+#define set_epi8 simde_mm256_set_epi8
 #define add_epi8 simde_mm256_add_epi8
 #define load_unaligned simde_mm256_loadu_si256
 #define store_aligned simde_mm256_store_si256
@@ -63,8 +73,16 @@ _Pragma("clang diagnostic pop")
 #define shift_left_by_bits16 _mm256_slli_epi16
 #define shift_right_by_bits32 _mm256_srli_epi32
 #define create_zero_integer _mm256_setzero_si256
-#define shift_right_by_one_byte(x) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 1)
-#define shift_right_by_two_bytes(x) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 2)
+#define shift_right_by_one_byte(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 1)
+#define shift_right_by_two_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 2)
+#define shift_right_by_four_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 4)
+#define shift_right_by_eight_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 8)
+#define shift_right_by_sixteen_bytes(vec) _mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0))
+#define shift_left_by_one_byte(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 1)
+#define shift_left_by_two_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 2)
+#define shift_left_by_four_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 4)
+#define shift_left_by_eight_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 8)
+#define shift_left_by_sixteen_bytes(vec) _mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1))
 
 #endif
 
@@ -135,6 +153,7 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
 
 static inline bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
+    // Based on the algorithm described in: https://woboq.com/blog/utf-8-processing-using-simd.html
     d->output_sz = 0; d->num_consumed = 0;
     src_sz = MIN(src_sz, sizeof(integer_t));
     integer_t vec = load_unaligned((integer_t*)src);
@@ -222,6 +241,41 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     output3 = and_si(output3, count3_locations);  // keep only count3 bytes
     print_register_as_bytes(output3);
 
+    // Shuffle bytes to remove continuation bytes
+    integer_t shifts = subtract_saturate_epu8(count, one);  // number of bytes we need to skip for each UTF-8 sequence
+    // propagate the shifts to all subsequent bytes by shift and add
+    shifts = add_epi8(shifts, shift_right_by_one_byte(shifts));
+    shifts = add_epi8(shifts, shift_right_by_two_bytes(shifts));
+    shifts = add_epi8(shifts, shift_right_by_four_bytes(shifts));
+    shifts = add_epi8(shifts, shift_right_by_eight_bytes(shifts));
+#if BITS == 256
+    shifts = add_epi8(shifts, shift_right_by_sixteen_bytes(shifts));
+#endif
+    // zero the shifts for discarded continuation bytes
+    shifts = and_si(shifts, cmplt_epi8(counts, two));
+    // now we need to convert shifts into a mask for the shuffle. The mask has each byte of the
+    // form 0000xxxx the lower four bits indicating the destination location for the byte. For 256 bit shuffle we use lower 5 bits.
+    // First we move the numbers in shifts to discard the unwanted UTF-8 sequence bytes. We note that the numbers
+    // are bounded by sizeof(integer_t) and so we need at most 4 (for 128 bit) or 5 (for 256 bit) moves. The numbers are
+    // monotonic from left to right and change value only at the end of a UTF-8 sequence. We move them leftwards, accumulating the
+    // moves bit-by-bit.
+    //
+#define move(shifts, amt, which_bit) blendv_epi8(shifts, shift_left_by_##amt(shifts), shift_left_by_##amt(shift_left_by_bits16(shifts, 8 - which_bit)))
+    shifts = move(shifts, one_byte, 1);
+    shifts = move(shifts, two_bytes, 2);
+    shifts = move(shifts, four_bytes, 3);
+    shifts = move(shifts, eight_bytes, 4);
+#if BITS == 256
+    shifts = move(shifts, sixteen_bytes, 5);
+#endif
+#undef move
+    // convert the shifts into a suitable mask for shuffle by adding the byte number to each byte
+#if BITS == 128
+    shifts = add_epi8(shifts, set_epi8(15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0));
+#else
+    shifts = add_epi8(shifts, set_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0));
+#endif
+    print_register_as_bytes(shifts);
     return sentinel_found;
 }
 
@@ -229,6 +283,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef FUNC
 #undef integer_t
 #undef set1_epi8
+#undef set_epi8
 #undef load_unaligned
 #undef store_aligned
 #undef cmpeq_epi8
@@ -242,6 +297,14 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef BITS
 #undef shift_right_by_one_byte
 #undef shift_right_by_two_bytes
+#undef shift_right_by_four_bytes
+#undef shift_right_by_eight_bytes
+#undef shift_right_by_sixteen_bytes
+#undef shift_left_by_one_byte
+#undef shift_left_by_two_bytes
+#undef shift_left_by_four_bytes
+#undef shift_left_by_eight_bytes
+#undef shift_left_by_sixteen_bytes
 #undef shift_left_by_bits16
 #undef shift_right_by_bits32
 #undef shift_right_by_bytes128
