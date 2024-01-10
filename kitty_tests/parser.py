@@ -181,21 +181,18 @@ class TestParser(BaseTest):
         pb(b'"\xf0\x9f\x98"', '"\ufffd"')
 
     def test_utf8_simd_decode(self):
-        test_utf8_decode_to_sentinel('2:α3:≤4:😸|', 2)
-        return
-
         def t(x, which=2, reset=True):
             if reset:
                 test_utf8_decode_to_sentinel(b'', -1)
             expected = test_utf8_decode_to_sentinel(x, 1)
             actual = test_utf8_decode_to_sentinel(x, which)
-            self.ae(expected, actual)
+            self.ae(expected, actual, msg=f'Failed for {x!r} with {which=}\n{expected!r} !=\n{actual!r}')
         for which in (2, 3):
-            with self.subTest(which=which):
-                x = partial(t, which=which)
-                x('abcd1234efgh5678')
-                x('abc\x1bd1234efgh5678')
-                x('abcd1234efgh5678ijklABCDmnopEFGH')
+            x = partial(t, which=which)
+            x('2:α3:≤4:😸|')
+            x('abcd1234efgh5678')
+            x('abc\x1bd1234efgh5678')
+            x('abcd1234efgh5678ijklABCDmnopEFGH')
 
     def test_esc_codes(self):
         s = self.create_screen()
