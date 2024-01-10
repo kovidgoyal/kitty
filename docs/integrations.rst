@@ -243,7 +243,8 @@ Scrollback manipulation
 
 `kitty-scrollback.nvim <https://github.com/mikesmithgh/kitty-scrollback.nvim>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-😽 Open your Kitty scrollback buffer with Neovim. Ameowzing!
+Browse the scrollback buffer with Neovim, with simple key actions for efficient
+copy/paste and even execution of commands.
 
 .. tool_kitty_search:
 
