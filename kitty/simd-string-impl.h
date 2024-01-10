@@ -10,6 +10,7 @@
 
 #include "simd-string.h"
 
+// Boilerplate {{{
 #ifdef __clang__
 _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #endif
@@ -110,6 +111,7 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 }
 #define shuffle_epi8 shuffle_impl256
 #endif
+// }}}
 
 static inline integer_t
 FUNC(zero_last_n_bytes)(integer_t vec, int n) {
@@ -154,33 +156,75 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
 static inline void
 FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
 #if BITS == 128
-        for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += sizeof(integer_t)/sizeof(uint32_t)) {
-            const integer_t unpacked = extract_lower_quarter_as_chars(vec);
-            store_aligned((integer_t*)p, unpacked);
-            vec = shift_right_by_bytes128(vec, sizeof(integer_t)/sizeof(uint32_t));
-        }
+    for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += sizeof(integer_t)/sizeof(uint32_t)) {
+        const integer_t unpacked = extract_lower_quarter_as_chars(vec);
+        store_aligned((integer_t*)p, unpacked);
+        vec = shift_right_by_bytes128(vec, sizeof(integer_t)/sizeof(uint32_t));
+    }
 #else
-        const uint32_t *limit = d->output + src_sz, *p = d->output;
-        simde__m128i x = simde_mm256_extractf128_si256(vec, 0);
-        integer_t unpacked = extract_lower_half_as_chars(x);
+    const uint32_t *limit = d->output + src_sz, *p = d->output;
+    simde__m128i x = simde_mm256_extracti128_si256(vec, 0);
+    integer_t unpacked = extract_lower_half_as_chars(x);
+    store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
+    if (p < limit) {
+        x = shift_right_by_bytes128(x, sizeof(integer_t)/sizeof(uint32_t));
+        unpacked = extract_lower_half_as_chars(x);
         store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
         if (p < limit) {
-            x = shift_right_by_bytes128(x, sizeof(integer_t)/sizeof(uint32_t));
+            x = simde_mm256_extracti128_si256(vec, 1);
             unpacked = extract_lower_half_as_chars(x);
             store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
             if (p < limit) {
-                x = simde_mm256_extractf128_si256(vec, 1);
+                x = shift_right_by_bytes128(x, sizeof(integer_t)/sizeof(uint32_t));
                 unpacked = extract_lower_half_as_chars(x);
                 store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
-                if (p < limit) {
-                    x = shift_right_by_bytes128(x, sizeof(integer_t)/sizeof(uint32_t));
-                    unpacked = extract_lower_half_as_chars(x);
-                    store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
-                }
             }
         }
+    }
 #endif
-        d->output_sz = src_sz;
+    d->output_sz = src_sz;
+}
+
+static inline void
+FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integer_t output3, const size_t num_codepoints) {
+#if BITS == 128
+    for (const uint32_t *limit = d->output + num_codepoints, *p = d->output; p < limit; p += sizeof(integer_t)/sizeof(uint32_t)) {
+        const integer_t unpacked1 = extract_lower_quarter_as_chars(output1);
+        const integer_t unpacked2 = shift_left_by_one_byte(extract_lower_quarter_as_chars(output2));
+        const integer_t unpacked3 = shift_left_by_two_bytes(extract_lower_quarter_as_chars(output3));
+        store_aligned((integer_t*)p, or_si(or_si(unpacked1, unpacked2), unpacked3));
+        output1 = shift_right_by_bytes128(output1, sizeof(integer_t)/sizeof(d->output[0]));
+        output2 = shift_right_by_bytes128(output2, sizeof(integer_t)/sizeof(d->output[0]));
+        output3 = shift_right_by_bytes128(output3, sizeof(integer_t)/sizeof(d->output[0]));
+    }
+#else
+    const uint32_t *limit = d->output + num_codepoints;
+    uint32_t *p = d->output;
+    simde__m128i x1, x2, x3;
+#define chunk() { \
+        const integer_t unpacked1 = extract_lower_half_as_chars(x1); \
+        const integer_t unpacked2 = shift_left_by_one_byte(extract_lower_half_as_chars(x2)); \
+        const integer_t unpacked3 = shift_left_by_two_bytes(extract_lower_half_as_chars(x3)); \
+        store_aligned((integer_t*)p, or_si(or_si(unpacked1, unpacked2), unpacked3)); \
+        p += sizeof(integer_t)/sizeof(uint32_t); \
+}
+#define extract(which) x1 = simde_mm256_extracti128_si256(output1, which); x2 = simde_mm256_extracti128_si256(output2, which); x3 = simde_mm256_extracti128_si256(output3, which);
+#define shift() x1 = shift_right_by_bytes128(x1, sizeof(integer_t)/sizeof(d->output[0])); x2 = shift_right_by_bytes128(x2, sizeof(integer_t)/sizeof(d->output[0])); x3 = shift_right_by_bytes128(x3, sizeof(integer_t)/sizeof(d->output[0]));
+    extract(0); chunk();
+    if (p < limit) {
+        shift(); chunk();
+        if (p < limit) {
+            extract(1); chunk();
+            if (p < limit) {
+                shift(); chunk();
+            }
+        }
+    }
+#undef chunk
+#undef extract
+#undef shift
+#endif
+    d->output_sz += num_codepoints;
 }
 
 #ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
@@ -218,7 +262,6 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     }
     src_sz = MIN(src_sz, sizeof(integer_t));
     integer_t vec = load_unaligned((integer_t*)src);
-    if (src_sz < sizeof(integer_t)/8) zero_last_n_bytes(vec, sizeof(integer_t)/8 - src_sz);
 
     const integer_t esc_vec = set1_epi8(0x1b);
     const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
@@ -227,9 +270,10 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     const unsigned num_of_bytes_to_first_esc = count_trailing_zeros(esc_test_mask);
     if (num_of_bytes_to_first_esc < src_sz) {
         sentinel_found = true;
-        d->num_consumed = num_of_bytes_to_first_esc + 1;  // esc is also consumed
-        src_sz = d->num_consumed - 1;
+        src_sz = num_of_bytes_to_first_esc;
+        d->num_consumed = src_sz + 1;  // esc is also consumed
     } else d->num_consumed = src_sz;
+    if (src_sz < sizeof(integer_t)/8) zero_last_n_bytes(vec, sizeof(integer_t)/8 - src_sz);
 
     const integer_t one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3);
     // Classify the bytes
