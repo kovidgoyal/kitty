@@ -25,6 +25,7 @@ _Pragma("clang diagnostic pop")
 #define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, BITS), i)
 #define shift_right_by_bytes128 simde_mm_srli_si128
 #define count_trailing_zeros __builtin_ctz
+#define zero_last_n_bytes FUNC(zero_last_n_bytes)
 
 #if BITS == 128
 #define set1_epi8(x) simde_mm_set1_epi8((char)(x))
@@ -34,6 +35,7 @@ _Pragma("clang diagnostic pop")
 #define store_aligned simde_mm_store_si128
 #define cmpeq_epi8 simde_mm_cmpeq_epi8
 #define cmplt_epi8 simde_mm_cmplt_epi8
+#define cmpgt_epi8 simde_mm_cmpgt_epi8
 #define or_si simde_mm_or_si128
 #define and_si simde_mm_and_si128
 #define andnot_si simde_mm_andnot_si128
@@ -53,6 +55,7 @@ _Pragma("clang diagnostic pop")
 #define shift_left_by_bits16 simde_mm_slli_epi16
 #define shift_right_by_bits32 simde_mm_srli_epi32
 #define shuffle_epi8 simde_mm_shuffle_epi8
+#define numbered_bytes() set_epi8(15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 // output[i] = MAX(0, a[i] - b[1i])
 #define subtract_saturate_epu8 simde_mm_subs_epu8
 #define create_zero_integer simde_mm_setzero_si128
@@ -65,7 +68,8 @@ _Pragma("clang diagnostic pop")
 #define load_unaligned simde_mm256_loadu_si256
 #define store_aligned simde_mm256_store_si256
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
-#define cmplt_epi8(a, b) simde_mm256_cmpgt_epi8(b, a)
+#define cmpgt_epi8 simde_mm256_cmpgt_epi8
+#define cmplt_epi8(a, b) cmpgt_epi8(b, a)
 #define or_si simde_mm256_or_si256
 #define and_si simde_mm256_and_si256
 #define andnot_si simde_mm256_andnot_si256
@@ -86,6 +90,7 @@ _Pragma("clang diagnostic pop")
 #define shift_left_by_four_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 4)
 #define shift_left_by_eight_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 8)
 #define shift_left_by_sixteen_bytes(vec) simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1))
+#define numbered_bytes() set_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 
 static inline integer_t shuffle_impl256(const integer_t value, const integer_t shuffle) {
 #define K0 simde_mm256_setr_epi8( \
@@ -105,6 +110,13 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 }
 #define shuffle_epi8 shuffle_impl256
 #endif
+
+static inline integer_t
+FUNC(zero_last_n_bytes)(integer_t vec, int n) {
+    const integer_t threshold = set1_epi8(n);
+    const integer_t index = numbered_bytes();
+    return andnot_si(cmpgt_epi8(threshold, index), vec);
+}
 
 static inline const uint8_t*
 FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
@@ -171,12 +183,42 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
         d->output_sz = src_sz;
 }
 
+#ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
+static void
+scalar_decode_to_accept(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
+    while (d->num_consumed < src_sz && d->output_sz < arraysz(d->output) && d->state.cur != UTF8_ACCEPT) {
+        const uint8_t ch = src[d->num_consumed++];
+        switch(ch) {
+            case UTF8_ACCEPT:
+                d->output[d->output_sz++] = d->state.codep;
+                break;
+            case UTF8_REJECT: {
+                    const bool prev_was_accept = d->state.prev == UTF8_ACCEPT;
+                    zero_at_ptr(&d->state);
+                    d->output[d->output_sz++] = 0xfffd;
+                    if (!prev_was_accept && d->num_consumed) {
+                        d->num_consumed--;
+                        continue; // so that prev is correct
+                    }
+            } break;
+        }
+        d->state.prev = d->state.cur;
+    }
+}
+#endif
+
 static inline bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // Based on the algorithm described in: https://woboq.com/blog/utf-8-processing-using-simd.html
     d->output_sz = 0; d->num_consumed = 0;
+    if (d->state.cur != UTF8_ACCEPT) {
+        scalar_decode_to_accept(d, src, src_sz);
+        src += d->num_consumed; src_sz -= d->num_consumed;
+        if (!src_sz) return false;
+    }
     src_sz = MIN(src_sz, sizeof(integer_t));
     integer_t vec = load_unaligned((integer_t*)src);
+    if (src_sz < sizeof(integer_t)/8) zero_last_n_bytes(vec, sizeof(integer_t)/8 - src_sz);
 
     const integer_t esc_vec = set1_epi8(0x1b);
     const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
@@ -292,11 +334,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #endif
 #undef move
     // convert the shifts into a suitable mask for shuffle by adding the byte number to each byte
-#if BITS == 128
-    shifts = add_epi8(shifts, set_epi8(15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0));
-#else
-    shifts = add_epi8(shifts, set_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0));
-#endif
+    shifts = add_epi8(shifts, numbered_bytes());
     print_register_as_bytes(shifts);
 
     output1 = shuffle_epi8(output1, shifts);
@@ -317,6 +355,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef store_aligned
 #undef cmpeq_epi8
 #undef cmplt_epi8
+#undef cmpgt_epi8
 #undef or_si
 #undef and_si
 #undef andnot_si
@@ -344,3 +383,8 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef subtract_saturate_epu8
 #undef create_zero_integer
 #undef shuffle_epi8
+#undef numbered_bytes
+#undef zero_last_n_bytes
+#ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
+#define SIMD_STRING_IMPL_INCLUDED_ONCE
+#endif
