@@ -189,6 +189,7 @@ class TestParser(BaseTest):
             self.ae(expected, actual, msg=f'Failed for {x!r} with {which=}\n{expected!r} !=\n{actual!r}')
         for which in (2, 3):
             x = partial(t, which=which)
+            x('2:α3')
             x('2:α3:≤4:😸|')
             x('abcd1234efgh5678')
             x('abc\x1bd1234efgh5678')
