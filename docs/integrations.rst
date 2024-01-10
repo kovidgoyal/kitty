@@ -239,16 +239,22 @@ running around inside nvim <https://github.com/giusgad/pets.nvim>`__.
 Scrollback manipulation
 -------------------------
 
+.. tool_kitty_scrollback_nvim:
+
+`kitty-scrollback.nvim <https://github.com/mikesmithgh/kitty-scrollback.nvim>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+😽 Open your Kitty scrollback buffer with Neovim. Ameowzing!
+
 .. tool_kitty_search:
 
 `kitty-search <https://github.com/trygveaa/kitty-kitten-search>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Live incremental search of the scrollback buffer.
 
 .. tool_kitty_grab:
 
 `kitty-grab <https://github.com/yurikhan/kitty_grab>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Keyboard based text selection for the kitty scrollback buffer.
 
 
