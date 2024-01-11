@@ -83,18 +83,60 @@ _Pragma("clang diagnostic pop")
 #define shift_left_by_bits16 simde_mm256_slli_epi16
 #define shift_right_by_bits32 simde_mm256_srli_epi32
 #define create_zero_integer simde_mm256_setzero_si256
-#define shift_right_by_one_byte(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 1)
-#define shift_right_by_two_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 2)
-#define shift_right_by_four_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 4)
-#define shift_right_by_eight_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 8)
-#define shift_right_by_sixteen_bytes(vec) simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(0, 0, 2, 0))
-#define shift_left_by_one_byte(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 1)
-#define shift_left_by_two_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 2)
-#define shift_left_by_four_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 4)
-#define shift_left_by_eight_bytes(vec) simde_mm256_alignr_epi8(vec, simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1)), 8)
-#define shift_left_by_sixteen_bytes(vec) simde_mm256_permute2x128_si256(vec, vec, _MM_SHUFFLE(2, 0, 0, 1))
 #define numbered_bytes() set_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 #define reverse_numbered_bytes() simde_mm256_setr_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
+
+static inline integer_t
+shift_right_by_one_byte(const integer_t A) {
+    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 1);
+}
+
+static inline integer_t
+shift_right_by_two_bytes(const integer_t A) {
+    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 2);
+}
+
+static inline integer_t
+shift_right_by_four_bytes(const integer_t A) {
+    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 4);
+}
+
+static inline integer_t
+shift_right_by_eight_bytes(const integer_t A) {
+    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 8);
+}
+
+static inline integer_t
+shift_right_by_sixteen_bytes(const integer_t A) {
+    return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0));
+}
+
+static inline integer_t
+shift_left_by_one_byte(const integer_t A) {
+    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 1);
+}
+
+static inline integer_t
+shift_left_by_two_bytes(const integer_t A) {
+    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 2);
+}
+
+static inline integer_t
+shift_left_by_four_bytes(const integer_t A) {
+    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 4);
+}
+
+static inline integer_t
+shift_left_by_eight_bytes(const integer_t A) {
+    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 8);
+}
+
+static inline integer_t
+shift_left_by_sixteen_bytes(const integer_t A) {
+    return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1));
+}
+
+
 
 static inline integer_t shuffle_impl256(const integer_t value, const integer_t shuffle) {
 #define K0 simde_mm256_setr_epi8( \
@@ -114,7 +156,7 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 }
 
 #define shuffle_epi8 shuffle_impl256
-#define sum_bytes(x) (sum_bytes_128(simde_mm256_extracti128_si256(vec, 0)) + sum_bytes_128(simde_mm256_extracti128_si256(vec, 1)))
+#define sum_bytes(x) (sum_bytes_128(simde_mm256_extracti128_si256(x, 0)) + sum_bytes_128(simde_mm256_extracti128_si256(x, 1)))
 #endif
 #if 1
 #define print_register_as_bytes(r) { \
@@ -389,7 +431,6 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // are bounded by sizeof(integer_t) and so we need at most 4 (for 128 bit) or 5 (for 256 bit) moves. The numbers are
     // monotonic from left to right and change value only at the end of a UTF-8 sequence. We move them leftwards, accumulating the
     // moves bit-by-bit.
-    //
 #define move(shifts, amt, which_bit) blendv_epi8(shifts, shift_left_by_##amt(shifts), shift_left_by_##amt(shift_left_by_bits16(shifts, 8 - which_bit)))
     shifts = move(shifts, one_byte, 1);
     shifts = move(shifts, two_bytes, 2);
