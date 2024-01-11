@@ -157,7 +157,8 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 #define shuffle_epi8 shuffle_impl256
 #define sum_bytes(x) (sum_bytes_128(simde_mm256_extracti128_si256(x, 0)) + sum_bytes_128(simde_mm256_extracti128_si256(x, 1)))
 #endif
-#if 1
+
+#if 0
 #define print_register_as_bytes(r) { \
     printf("%s:\n", #r); \
     alignas(64) uint8_t data[sizeof(r)]; \
