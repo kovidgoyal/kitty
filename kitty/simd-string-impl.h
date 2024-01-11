@@ -25,7 +25,6 @@ _Pragma("clang diagnostic pop")
 #define FUNC(name) CONCAT_EXPAND(name##_, BITS)
 #define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, BITS), i)
 #define shift_right_by_bytes128 simde_mm_srli_si128
-#define count_trailing_zeros __builtin_ctz
 #define zero_last_n_bytes FUNC(zero_last_n_bytes)
 
 #if BITS == 128
@@ -193,10 +192,9 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
         const integer_t a_cmp = cmpeq_epi8(chunk, a_vec);
         const integer_t b_cmp = cmpeq_epi8(chunk, b_vec);
         const integer_t matches = or_si(a_cmp, b_cmp);
-        const int mask = movemask_epi8(matches);
+        const int32_t mask = movemask_epi8(matches);
         if (mask != 0) {
-            size_t pos = count_trailing_zeros(mask);
-            const uint8_t *ans = haystack + pos;
+            const uint8_t *ans = haystack + __builtin_ctz(mask);
             if (ans < limit) return ans;
         }
     }
@@ -314,6 +312,11 @@ scalar_decode_to_accept(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         d->state.prev = d->state.cur;
     }
 }
+
+static inline unsigned short
+count_trailing_zeros(int32_t mask) {
+    return mask ? __builtin_ctz(mask) : 0;
+}
 #endif
 
 static inline bool
@@ -332,8 +335,8 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
     const int esc_test_mask = movemask_epi8(esc_cmp);
     bool sentinel_found = false;
-    const unsigned num_of_bytes_to_first_esc = count_trailing_zeros(esc_test_mask);
-    if (num_of_bytes_to_first_esc < src_sz) {
+    unsigned short num_of_bytes_to_first_esc;
+    if (esc_test_mask && (num_of_bytes_to_first_esc = __builtin_ctz(esc_test_mask)) < src_sz) {
         sentinel_found = true;
         src_sz = num_of_bytes_to_first_esc;
         d->num_consumed = src_sz + 1;  // esc is also consumed
