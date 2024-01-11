@@ -313,10 +313,6 @@ scalar_decode_to_accept(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     }
 }
 
-static inline unsigned short
-count_trailing_zeros(int32_t mask) {
-    return mask ? __builtin_ctz(mask) : 0;
-}
 #endif
 
 static inline bool
@@ -343,19 +339,17 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     } else d->num_consumed = src_sz;
     if (src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - src_sz);
 
-    // Classify the bytes
+    // Check if we have pure ASCII and use fast path
     print_register_as_bytes(vec);
+    if (!movemask_epi8(vec)) { // no bytes with high bit (0x80) set, so just plain ASCII
+        FUNC(output_plain_ascii)(d, vec, src_sz);
+        return sentinel_found;
+    }
+    // Classify the bytes
     integer_t state = set1_epi8(0x80);
     const integer_t vec_signed = add_epi8(vec, state); // needed because cmplt_epi8 works only on signed chars
 
     const integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(set1_epi8(0xc0 - 1 - 0x80), vec_signed);
-    if (
-            (unsigned)count_trailing_zeros(movemask_epi8(bytes_indicating_start_of_two_byte_sequence)) >= src_sz &&
-            (unsigned)count_trailing_zeros(movemask_epi8(vec)) >= src_sz)
-    { // no bytes with high bit (0x80) set, so just plain ASCII
-        FUNC(output_plain_ascii)(d, vec, src_sz);
-        return sentinel_found;
-    }
     state = blendv_epi8(state, set1_epi8(0xc2), bytes_indicating_start_of_two_byte_sequence);
     // state now has 0xc2 on all bytes that start a 2 or more byte sequence and 0x80 on the rest
     const integer_t bytes_indicating_start_of_three_byte_sequence = cmplt_epi8(set1_epi8(0xe0 - 1 - 0x80), vec_signed);
