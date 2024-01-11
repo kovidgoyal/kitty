@@ -343,7 +343,6 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     } else d->num_consumed = src_sz;
     if (src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - src_sz);
 
-    const integer_t one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3);
     // Classify the bytes
     print_register_as_bytes(vec);
     integer_t state = set1_epi8(0x80);
@@ -369,6 +368,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     print_register_as_bytes(mask);
     integer_t count = and_si(state, set1_epi8(0x7));  // keep lower 3 bits of state
     print_register_as_bytes(count);
+    const integer_t one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3);
     // count contains the number of bytes in the sequence for the start byte of every sequence and zero elsewhere
     // shift 02 bytes by 1 and subtract 1
     integer_t count_subs1 = subtract_saturate_epu8(count, one);
