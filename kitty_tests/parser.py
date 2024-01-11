@@ -184,9 +184,27 @@ class TestParser(BaseTest):
         def reset_state():
             test_utf8_decode_to_sentinel(b'', -1)
 
-        def t(x, which=2):
-            expected = test_utf8_decode_to_sentinel(x, 1)
-            actual = test_utf8_decode_to_sentinel(x, which)
+        def asbytes(x):
+            if isinstance(x, str):
+                x = x.encode()
+            return x
+
+        def t(*a, which=2):
+
+            def parse_parts(which):
+                esc_found = False
+                parts = []
+                for x in a:
+                    found_sentinel, x = test_utf8_decode_to_sentinel(asbytes(x), which)
+                    if found_sentinel:
+                        esc_found = found_sentinel
+                    parts.append(x)
+                return esc_found, ''.join(parts)
+
+            reset_state()
+            actual = parse_parts(1)
+            reset_state()
+            expected = parse_parts(which)
             self.ae(expected, actual, msg=f'Failed for {x!r} with {which=}\n{expected!r} !=\n{actual!r}')
 
         def double_test(x):
@@ -197,10 +215,15 @@ class TestParser(BaseTest):
 
         x = double_test
         x('2:α3')
+        x('2:α\x1b3')
         x('2:α3:≤4:😸|')
         x('abcd1234efgh5678')
         x('abc\x1bd1234efgh5678')
         x('abcd1234efgh5678ijklABCDmnopEFGH')
+
+        for which in (2, 3):
+            t('abcdef', 'ghij')
+            t('2:α3', ':≤4:😸|')
 
     def test_esc_codes(self):
         s = self.create_screen()
