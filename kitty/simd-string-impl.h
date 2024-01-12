@@ -27,6 +27,7 @@ _Pragma("clang diagnostic pop")
 #define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, BITS), i)
 #define shift_right_by_bytes128 simde_mm_srli_si128
 #define zero_last_n_bytes FUNC(zero_last_n_bytes)
+#define is_zero FUNC(is_zero)
 
 #if BITS == 128
 #define set1_epi8(x) simde_mm_set1_epi8((char)(x))
@@ -63,6 +64,8 @@ _Pragma("clang diagnostic pop")
 #define create_zero_integer simde_mm_setzero_si128
 #define sum_bytes sum_bytes_128
 
+static inline int
+FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 #else
 
 #define set1_epi8(x) simde_mm256_set1_epi8((char)(x))
@@ -85,6 +88,9 @@ _Pragma("clang diagnostic pop")
 #define create_zero_integer simde_mm256_setzero_si256
 #define numbered_bytes() set_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 #define reverse_numbered_bytes() simde_mm256_setr_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
+
+static inline int
+FUNC(is_zero)(const integer_t a) { return simde_mm256_testz_si256(a, a); }
 
 static inline integer_t
 shift_right_by_one_byte(const integer_t A) {
@@ -357,8 +363,10 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
         d->num_consumed += src_sz + 1;  // esc is also consumed
     } else d->num_consumed += src_sz;
 
-    // use scalar decode for short input
-    if (src_sz < 4) { scalar_decode_all(d, src, src_sz); return sentinel_found; }
+    // use scalar decode for short input and check that all bytes are less than 0xf4
+    if (src_sz < 4 || !is_zero(subtract_saturate_epu8(vec, set1_epi8(0xf4)))) {
+        scalar_decode_all(d, src, src_sz); return sentinel_found;
+    }
 
     // check for an incomplete trailing utf8 sequence
     unsigned num_of_trailing_bytes = 0;
@@ -527,6 +535,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef reverse_numbered_bytes
 #undef zero_last_n_bytes
 #undef sum_bytes
+#undef is_zero
 #ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
 #define SIMD_STRING_IMPL_INCLUDED_ONCE
 #endif

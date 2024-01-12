@@ -227,6 +227,13 @@ class TestParser(BaseTest):
             x('2:α3', ':≤4:😸|')
             # trailing incomplete sequence
             x(b'abcd\xf0\x9f', b'\x98\xb81234')
+            x(b'abcd\xf0\x9f\x9b', b'\xb81234')
+            x(b'abcd\xf0', b'\x9f\x98\xb81234')
+            x(b'abcd\xc3', b'\xa41234')
+            x(b'abcd\xe2', b'\x89\xa41234')
+            x(b'abcd\xe2\x89', b'\xa41234')
+            # various invalid input
+            x(b'abcd\xf51234\xffABCD')  # bytes > 0xf4
 
 
     def test_esc_codes(self):
