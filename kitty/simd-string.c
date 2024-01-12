@@ -83,7 +83,7 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s#|i", &src, &src_sz, &which_function)) return NULL;
     bool found_sentinel = false;
     bool(*func)(UTF8Decoder*, const uint8_t*, size_t sz) = utf8_decode_to_esc;
-    switch(which_function) {
+    switch (which_function) {
         case -1:
             zero_at_ptr(&d); Py_RETURN_NONE;
         case 1:
@@ -95,7 +95,7 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     }
     RAII_PyObject(ans, PyUnicode_FromString(""));
     ssize_t p = 0;
-    while(p < src_sz && !found_sentinel) {
+    while (p < src_sz && !found_sentinel) {
         found_sentinel = func(&d, src + p, src_sz - p);
         p += d.num_consumed;
         if (d.output_sz) {

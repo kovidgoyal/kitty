@@ -205,7 +205,7 @@ class TestParser(BaseTest):
             actual = parse_parts(1)
             reset_state()
             expected = parse_parts(which)
-            self.ae(expected, actual, msg=f'Failed for {x!r} with {which=}\n{expected!r} !=\n{actual!r}')
+            self.ae(expected, actual, msg=f'Failed for {a} with {which=}\n{expected!r} !=\n{actual!r}')
 
         def double_test(x):
             for which in (2, 3):
@@ -222,8 +222,12 @@ class TestParser(BaseTest):
         x('abcd1234efgh5678ijklABCDmnopEFGH')
 
         for which in (2, 3):
-            t('abcdef', 'ghij')
-            t('2:α3', ':≤4:😸|')
+            x = partial(t, which=which)
+            x('abcdef', 'ghijk')
+            x('2:α3', ':≤4:😸|')
+            # trailing incomplete sequence
+            x(b'abcd\xf0\x9f', b'\x98\xb81234')
+
 
     def test_esc_codes(self):
         s = self.create_screen()
