@@ -232,9 +232,31 @@ class TestParser(BaseTest):
             x(b'abcd\xc3', b'\xa41234')
             x(b'abcd\xe2', b'\x89\xa41234')
             x(b'abcd\xe2\x89', b'\xa41234')
-            # various invalid input
-            x(b'abcd\xf51234\xffABCD')  # bytes > 0xf4
 
+        def test_invalid(src, expected, which=2):
+            reset_state()
+            _, actual = test_utf8_decode_to_sentinel(b'filler' + asbytes(src), which)
+            expected = 'filler' + expected
+            self.ae(expected, actual, f'Failed for: {src!r} with {which=}')
+
+        # various invalid input
+        for which in (1, 2, 3):
+            pb = partial(test_invalid, which=which)
+            pb(b'abcd\xf51234', 'abcd\ufffd1234')  # bytes > 0xf4
+            pb(b'abcd\xff1234', 'abcd\ufffd1234')  # bytes > 0xf4
+            pb(b'"\xbf"', '"\ufffd"')
+            pb(b'"\x80"', '"\ufffd"')
+            pb(b'"\x80\xbf"', '"\ufffd\ufffd"')
+            pb(b'"\x80\xbf\x80"', '"\ufffd\ufffd\ufffd"')
+            pb(b'"\xc0 "', '"\ufffd "')
+            pb(b'"\xfe"', '"\ufffd"')
+            pb(b'"\xff"', '"\ufffd"')
+            pb(b'"\xff\xfe"', '"\ufffd\ufffd"')
+            pb(b'"\xfe\xfe\xff\xff"', '"\ufffd\ufffd\ufffd\ufffd"')
+            pb(b'"\xef\xbf"', '"\ufffd"')
+            pb(b'"\xe0\xa0"', '"\ufffd"')
+            pb(b'"\xf0\x9f\x98"', '"\ufffd"')
+            pb(b'"\xef\x93\x94\x95"', '"\uf4d4\ufffd"')
 
     def test_esc_codes(self):
         s = self.create_screen()
