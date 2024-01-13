@@ -167,7 +167,6 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 #define sum_bytes(x) (sum_bytes_128(simde_mm256_extracti128_si256(x, 0)) + sum_bytes_128(simde_mm256_extracti128_si256(x, 1)))
 #endif
 
-#if 0
 #define print_register_as_bytes(r) { \
     printf("%s:\n", #r); \
     alignas(64) uint8_t data[sizeof(r)]; \
@@ -178,9 +177,12 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
     } \
     printf("\n"); \
 }
+
+#if 0
+#define debug_register print_register_as_bytes
 #define debug printf
 #else
-#define print_register_as_bytes(r)
+#define debug_register(...)
 #define debug(...)
 #endif
 
@@ -379,7 +381,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     if (src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - src_sz);
 
     // Check if we have pure ASCII and use fast path
-    print_register_as_bytes(vec);
+    debug_register(vec);
     int32_t ascii_mask = movemask_epi8(vec);
     if (!ascii_mask) { // no bytes with high bit (0x80) set, so just plain ASCII
         FUNC(output_plain_ascii)(d, vec, src_sz);
@@ -398,11 +400,11 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     const integer_t bytes_indicating_start_of_four_byte_sequence = cmplt_epi8(set1_epi8(0xf0 - 1 - 0x80), vec_signed);
     state = blendv_epi8(state, set1_epi8(0xf4), bytes_indicating_start_of_four_byte_sequence);
     // state now has 0xc2 on all bytes that start a 2 byte sequence, 0xe3 on start of 3-byte sequence, 0xf4 on 4-byte start and 0x80 on rest
-    print_register_as_bytes(state);
+    debug_register(state);
     integer_t mask = and_si(state, set1_epi8(0xf8));  // keep upper 5 bits of state
-    print_register_as_bytes(mask);
+    debug_register(mask);
     integer_t count = and_si(state, set1_epi8(0x7));  // keep lower 3 bits of state
-    print_register_as_bytes(count);
+    debug_register(count);
     const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3);
     // count contains the number of bytes in the sequence for the start byte of every sequence and zero elsewhere
     // shift 02 bytes by 1 and subtract 1
@@ -411,7 +413,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // shift 03 and 04 bytes by 2 and subtract 2
     counts = add_epi8(counts, shift_right_by_two_bytes(subtract_saturate_epu8(counts, two)));
     // counts now contains the number of bytes remaining in each utf-8 sequence of 2 or more bytes
-    print_register_as_bytes(counts);
+    debug_register(counts);
     // Only ASCII chars should have corresponding byte of counts == 0
     if (ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero))) goto invalid_utf8;
     // The difference between a byte in counts and the next one should be negative,
@@ -421,14 +423,14 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // Process the bytes storing the three resulting bytes that make up the unicode codepoint
     // mask all control bits so that we have only useful bits left
     vec = andnot_si(mask, vec);
-    print_register_as_bytes(vec);
+    debug_register(vec);
 
     // Now calculate the three output vectors
 
     // The lowest byte is made up of 6 bits from locations with counts == 1 and the lowest two bits from locations with count == 2
     // In addition, the ASCII bytes are copied unchanged from vec
     integer_t vec_non_ascii = andnot_si(cmpeq_epi8(counts, zero), vec);
-    print_register_as_bytes(vec_non_ascii);
+    debug_register(vec_non_ascii);
     integer_t vec_right1 = shift_right_by_one_byte(vec_non_ascii);
     integer_t output1 = blendv_epi8(vec,
             or_si(
@@ -436,7 +438,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
             ),
             cmpeq_epi8(counts, one)
     );
-    print_register_as_bytes(output1);
+    debug_register(output1);
 
     // The next byte is made up of 4 bits (5, 4, 3, 2) from locations with count == 2 and the first 4 bits from locations with count == 3
     integer_t count2_locations = cmpeq_epi8(counts, two);
@@ -445,7 +447,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     output2 = or_si(output2, and_si(shift_left_by_bits16(vec_right1, 4), set1_epi8(0xf0))); // move 4 bits left and mask lower four bits and OR
     output2 = and_si(output2, count2_locations); // keep only the count2 bytes
     output2 = shift_right_by_one_byte(output2);
-    print_register_as_bytes(output2);
+    debug_register(output2);
 
     // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
     integer_t count3_locations = cmpeq_epi8(counts, three);
@@ -454,7 +456,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     output3 = or_si(output3, and_si(set1_epi8(0xfc), shift_left_by_bits16(vec_right1, 2)));
     output3 = and_si(output3, count3_locations);  // keep only count3 bytes
     output3 = shift_right_by_two_bytes(output3);
-    print_register_as_bytes(output3);
+    debug_register(output3);
 
     // Shuffle bytes to remove continuation bytes
     integer_t shifts = count_subs1;  // number of bytes we need to skip for each UTF-8 sequence
@@ -485,14 +487,14 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 #undef move
     // convert the shifts into a suitable mask for shuffle by adding the byte number to each byte
     shifts = add_epi8(shifts, numbered_bytes());
-    print_register_as_bytes(shifts);
+    debug_register(shifts);
 
     output1 = shuffle_epi8(output1, shifts);
     output2 = shuffle_epi8(output2, shifts);
     output3 = shuffle_epi8(output3, shifts);
-    print_register_as_bytes(output1);
-    print_register_as_bytes(output2);
-    print_register_as_bytes(output3);
+    debug_register(output1);
+    debug_register(output2);
+    debug_register(output3);
 
     const unsigned num_of_discarded_bytes = sum_bytes(count_subs1);
     const unsigned num_codepoints = src_sz - num_of_discarded_bytes;
@@ -548,6 +550,7 @@ invalid_utf8:
 #undef zero_last_n_bytes
 #undef sum_bytes
 #undef is_zero
+#undef print_register_as_bytes
 #ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
 #define SIMD_STRING_IMPL_INCLUDED_ONCE
 #endif
