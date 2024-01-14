@@ -21,6 +21,9 @@ _Pragma("clang diagnostic pop")
 #endif
 
 
+#ifndef _MM_SHUFFLE
+#define _MM_SHUFFLE(z, y, x, w) (((z) << 6) | ((y) << 4) | ((x) << 2) | (w))
+#endif
 #define CONCAT(A, B) A##B
 #define CONCAT_EXPAND(A, B) CONCAT(A,B)
 #define FUNC(name) CONCAT_EXPAND(name##_, BITS)
