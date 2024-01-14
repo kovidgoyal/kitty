@@ -220,8 +220,6 @@ class TestParser(BaseTest):
         x('abcd1234efgh5678')
         x('abc\x1bd1234efgh5678')
         x('abcd1234efgh5678ijklABCDmnopEFGH')
-        x('ニチ')
-        x('\x84\x85')
 
         for which in (2, 3):
             x = partial(t, which=which)
@@ -235,15 +233,17 @@ class TestParser(BaseTest):
             x(b'abcd\xe2', b'\x89\xa41234')
             x(b'abcd\xe2\x89', b'\xa41234')
 
-        def test_invalid(src, expected, which=2):
+        def test_expected(src, expected, which=2):
             reset_state()
             _, actual = test_utf8_decode_to_sentinel(b'filler' + asbytes(src), which)
             expected = 'filler' + expected
             self.ae(expected, actual, f'Failed for: {src!r} with {which=}')
 
-        # various invalid input
         for which in (1, 2, 3):
-            pb = partial(test_invalid, which=which)
+            pb = partial(test_expected, which=which)
+            pb('ニチ', 'ニチ')
+            pb('\x84\x85', '\x84\x85')
+            # various invalid input
             pb(b'abcd\xf51234', 'abcd\ufffd1234')  # bytes > 0xf4
             pb(b'abcd\xff1234', 'abcd\ufffd1234')  # bytes > 0xf4
             pb(b'"\xbf"', '"\ufffd"')
