@@ -213,31 +213,33 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
     return NULL;
 }
 
+#define output_increment sizeof(integer_t)/sizeof(uint32_t)
+
 static inline void
 FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
 #if BITS == 128
-    for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += sizeof(integer_t)/sizeof(uint32_t)) {
+    for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += output_increment) {
         const integer_t unpacked = extract_lower_quarter_as_chars(vec);
         store_aligned((integer_t*)p, unpacked);
-        vec = shift_right_by_bytes128(vec, sizeof(integer_t)/sizeof(uint32_t));
+        vec = shift_right_by_bytes128(vec, output_increment);
     }
 #else
     const uint32_t *limit = d->output + src_sz, *p = d->output;
     simde__m128i x = simde_mm256_extracti128_si256(vec, 0);
     integer_t unpacked = extract_lower_half_as_chars(x);
-    store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
+    store_aligned((integer_t*)p, unpacked); p += output_increment;
     if (p < limit) {
-        x = shift_right_by_bytes128(x, sizeof(integer_t)/sizeof(uint32_t));
+        x = shift_right_by_bytes128(x, output_increment);
         unpacked = extract_lower_half_as_chars(x);
-        store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
+        store_aligned((integer_t*)p, unpacked); p += output_increment;
         if (p < limit) {
             x = simde_mm256_extracti128_si256(vec, 1);
             unpacked = extract_lower_half_as_chars(x);
-            store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
+            store_aligned((integer_t*)p, unpacked); p += output_increment;
             if (p < limit) {
-                x = shift_right_by_bytes128(x, sizeof(integer_t)/sizeof(uint32_t));
+                x = shift_right_by_bytes128(x, output_increment);
                 unpacked = extract_lower_half_as_chars(x);
-                store_aligned((integer_t*)p, unpacked); p += sizeof(integer_t)/sizeof(uint32_t);
+                store_aligned((integer_t*)p, unpacked); p += output_increment;
             }
         }
     }
@@ -248,15 +250,15 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
 static inline void
 FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integer_t output3, const size_t num_codepoints) {
 #if BITS == 128
-    for (const uint32_t *limit = d->output + num_codepoints, *p = d->output; p < limit; p += sizeof(integer_t)/sizeof(uint32_t)) {
+    for (const uint32_t *limit = d->output + num_codepoints, *p = d->output; p < limit; p += output_increment) {
         const integer_t unpacked1 = extract_lower_quarter_as_chars(output1);
         const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_quarter_as_chars(output2));
         const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_quarter_as_chars(output3));
         const integer_t unpacked = or_si(or_si(unpacked1, unpacked2), unpacked3);
         store_aligned((integer_t*)p, unpacked);
-        output1 = shift_right_by_bytes128(output1, sizeof(integer_t)/sizeof(d->output[0]));
-        output2 = shift_right_by_bytes128(output2, sizeof(integer_t)/sizeof(d->output[0]));
-        output3 = shift_right_by_bytes128(output3, sizeof(integer_t)/sizeof(d->output[0]));
+        output1 = shift_right_by_bytes128(output1, output_increment);
+        output2 = shift_right_by_bytes128(output2, output_increment);
+        output3 = shift_right_by_bytes128(output3, output_increment);
     }
 #else
     const uint32_t *limit = d->output + num_codepoints;
@@ -267,10 +269,10 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
         const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_half_as_chars(x2)); \
         const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_half_as_chars(x3)); \
         store_aligned((integer_t*)p, or_si(or_si(unpacked1, unpacked2), unpacked3)); \
-        p += sizeof(integer_t)/sizeof(uint32_t); \
+        p += output_increment; \
 }
 #define extract(which) x1 = simde_mm256_extracti128_si256(output1, which); x2 = simde_mm256_extracti128_si256(output2, which); x3 = simde_mm256_extracti128_si256(output3, which);
-#define shift() x1 = shift_right_by_bytes128(x1, sizeof(integer_t)/sizeof(d->output[0])); x2 = shift_right_by_bytes128(x2, sizeof(integer_t)/sizeof(d->output[0])); x3 = shift_right_by_bytes128(x3, sizeof(integer_t)/sizeof(d->output[0]));
+#define shift() x1 = shift_right_by_bytes128(x1, output_increment); x2 = shift_right_by_bytes128(x2, output_increment); x3 = shift_right_by_bytes128(x3, output_increment);
     extract(0); chunk();
     if (p < limit) {
         shift(); chunk();
@@ -287,6 +289,7 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
 #endif
     d->output_sz += num_codepoints;
 }
+#undef output_increment
 
 #ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
 static inline unsigned

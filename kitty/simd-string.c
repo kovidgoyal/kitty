@@ -139,14 +139,14 @@ init_simd(void *x) {
     if (has_avx2) {
         A(has_avx2, True);
         find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
-        /* utf8_decode_to_sentinel_impl = utf8_decode_to_sentinel_256; */
+        /* utf8_decode_to_esc_impl = utf8_decode_to_esc_256; */
     } else {
         A(has_avx2, False);
     }
     if (has_sse4_2) {
         A(has_sse4_2, True);
         if (find_either_of_two_bytes_impl == find_either_of_two_bytes_scalar) find_either_of_two_bytes_impl = find_either_of_two_bytes_128;
-        /* if (utf8_decode_to_sentinel_impl == utf8_decode_to_sentinel_scalar) utf8_decode_to_sentinel_impl = utf8_decode_to_sentinel_128; */
+        /* if (utf8_decode_to_esc_impl == utf8_decode_to_esc_scalar) utf8_decode_to_esc_impl = utf8_decode_to_esc_128; */
     } else {
         A(has_sse4_2, False);
     }
