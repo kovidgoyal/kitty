@@ -343,7 +343,7 @@ func EntryPoint(root *cli.Command) {
 	})
 	sc.Add(cli.OptionSpec{
 		Name:    "--repetitions",
-		Default: "10",
+		Default: "100",
 		Type:    "int",
 		Help:    "The number of repetitions of each benchmark",
 	})
