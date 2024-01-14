@@ -188,9 +188,10 @@ typedef struct ParsedCSI {
 } ParsedCSI;
 
 typedef struct PS {
+    alignas(BUF_EXTRA) UTF8Decoder utf8_decoder;
+
     id_type window_id;
 
-    UTF8Decoder utf8_decoder;
     VTEState vte_state;
     ParsedCSI csi;
 
@@ -1532,9 +1533,21 @@ alloc_vt_parser(id_type window_id) {
     Parser *self = (Parser*)Parser_Type.tp_alloc(&Parser_Type, 1);
     if (self != NULL) {
         int ret;
-        self->state = calloc(1, sizeof(PS));
-        if (!self->state) { Py_CLEAR(self); PyErr_NoMemory(); return NULL; }
+        if ((ret = posix_memalign((void**)&self->state, BUF_EXTRA, sizeof(PS))) != 0) {
+            Py_CLEAR(self);
+            PyErr_Format(PyExc_RuntimeError, "Failed to call posix_memalign: %s", strerror(ret));
+            return NULL;
+        }
+        memset(self->state, 0, sizeof(PS));
         PS *state = (PS*)self->state;
+        if ((intptr_t)state->utf8_decoder.output % BUF_EXTRA != 0) {
+            Py_CLEAR(self); PyErr_SetString(PyExc_TypeError, "UTF8Decoder is not aligned");
+            return NULL;
+        }
+        if ((intptr_t)state->buf % BUF_EXTRA != 0) {
+            Py_CLEAR(self); PyErr_SetString(PyExc_TypeError, "PS->buf is not aligned");
+            return NULL;
+        }
         if ((ret = pthread_mutex_init(&state->lock, NULL)) != 0) {
             Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Parser lock mutex: %s", strerror(ret));
             return NULL;
