@@ -443,29 +443,38 @@ start_classification:
     // In addition, the ASCII bytes are copied unchanged from vec
     integer_t vec_non_ascii = andnot_si(cmpeq_epi8(counts, zero), vec);
     debug_register(vec_non_ascii);
-    integer_t vec_right1 = shift_right_by_one_byte(vec_non_ascii);
     integer_t output1 = blendv_epi8(vec,
             or_si(
-                vec, and_si(shift_left_by_bits16(vec_right1, 6), set1_epi8(0xc0))
+                // there are no count == 1 locations without a count == 2 location to its left so we dont need to AND with count2_locations
+                vec, and_si(shift_left_by_bits16(shift_right_by_one_byte(vec_non_ascii), 6), set1_epi8(0xc0))
             ),
             cmpeq_epi8(counts, one)
     );
     debug_register(output1);
 
     // The next byte is made up of 4 bits (5, 4, 3, 2) from locations with count == 2 and the first 4 bits from locations with count == 3
-    integer_t count2_locations = cmpeq_epi8(counts, two);
+    integer_t count2_locations = cmpeq_epi8(counts, two), count3_locations = cmpeq_epi8(counts, three);
     integer_t output2 = and_si(vec, count2_locations);
     output2 = shift_right_by_bits32(output2, 2);  // selects the bits 5, 4, 3, 2
-    output2 = or_si(output2, and_si(shift_left_by_bits16(vec_right1, 4), set1_epi8(0xf0))); // move 4 bits left and mask lower four bits and OR
+    // select the first 4 bits from locs with count == 3 by shifting count 3 locations right by one byte and left by 4 bits
+    output2 = or_si(output2,
+        and_si(set1_epi8(0xf0),
+            shift_left_by_bits16(shift_right_by_one_byte(and_si(count3_locations, vec_non_ascii)), 4)
+        )
+    );
     output2 = and_si(output2, count2_locations); // keep only the count2 bytes
     output2 = shift_right_by_one_byte(output2);
     debug_register(output2);
 
     // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
-    integer_t count3_locations = cmpeq_epi8(counts, three);
     integer_t output3 = and_si(three, shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
-    // bits from count == 4 locations, placed at count == 3 locations shifted left by 2 bits
-    output3 = or_si(output3, and_si(set1_epi8(0xfc), shift_left_by_bits16(vec_right1, 2)));
+    integer_t count4_locations = cmpeq_epi8(counts, set1_epi8(4));
+    // 3 bits from count == 4 locations, placed at count == 3 locations shifted left by 2 bits
+    output3 = or_si(output3,
+        and_si(set1_epi8(0xfc),
+            shift_left_by_bits16(shift_right_by_one_byte(and_si(count4_locations, vec_non_ascii)), 2)
+        )
+    );
     output3 = and_si(output3, count3_locations);  // keep only count3 bytes
     output3 = shift_right_by_two_bytes(output3);
     debug_register(output3);
