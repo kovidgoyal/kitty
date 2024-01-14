@@ -220,6 +220,8 @@ class TestParser(BaseTest):
         x('abcd1234efgh5678')
         x('abc\x1bd1234efgh5678')
         x('abcd1234efgh5678ijklABCDmnopEFGH')
+        x('ニチ')
+        x('\x84\x85')
 
         for which in (2, 3):
             x = partial(t, which=which)
