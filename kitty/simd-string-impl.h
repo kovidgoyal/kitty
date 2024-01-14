@@ -371,18 +371,16 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     if (src_sz < 4) {
         scalar_decode_all(d, src, src_sz); return sentinel_found;
     }
-
-    // check for an incomplete trailing utf8 sequence
-    unsigned num_of_trailing_bytes = 0;
-    if (src[src_sz-1] >= 0xc0) num_of_trailing_bytes = 1;      // 2-, 3- and 4-byte characters with only 1 byte left
-    else if (src[src_sz-2] >= 0xe0) num_of_trailing_bytes = 2; // 3- and 4-byte characters with only 1 byte left
-    else if (src[src_sz-3] >= 0xf0) num_of_trailing_bytes = 3; // 4-byte characters with only 3 bytes left
-    src_sz -= num_of_trailing_bytes;
     if (src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - src_sz);
+
+    unsigned num_of_trailing_bytes = 0;
+    bool check_for_trailing_bytes = true;
 
     // Check if we have pure ASCII and use fast path
     debug_register(vec);
-    int32_t ascii_mask = movemask_epi8(vec);
+    int32_t ascii_mask;
+start_classification:
+    ascii_mask = movemask_epi8(vec);
     if (!ascii_mask) { // no bytes with high bit (0x80) set, so just plain ASCII
         FUNC(output_plain_ascii)(d, vec, src_sz);
         if (num_of_trailing_bytes) scalar_decode_all(d, src + src_sz, num_of_trailing_bytes);
@@ -414,6 +412,17 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     counts = add_epi8(counts, shift_right_by_two_bytes(subtract_saturate_epu8(counts, two)));
     // counts now contains the number of bytes remaining in each utf-8 sequence of 2 or more bytes
     debug_register(counts);
+    // check for an incomplete trailing utf8 sequence
+    if (check_for_trailing_bytes && movemask_epi8(cmplt_epi8(one, and_si(counts, cmpeq_epi8(numbered_bytes(), set1_epi8(src_sz - 1)))))) {
+        // The value of counts at the last byte is > 1 indicating we have a trailing incomplete sequence
+        check_for_trailing_bytes = false;
+        if (src[src_sz-1] >= 0xc0) num_of_trailing_bytes = 1;      // 2-, 3- and 4-byte characters with only 1 byte left
+        else if (src_sz > 1 && src[src_sz-2] >= 0xe0) num_of_trailing_bytes = 2; // 3- and 4-byte characters with only 1 byte left
+        else if (src_sz > 2 && src[src_sz-3] >= 0xf0) num_of_trailing_bytes = 3; // 4-byte characters with only 3 bytes left
+        src_sz -= num_of_trailing_bytes;
+        vec = zero_last_n_bytes(vec, sizeof(integer_t) - src_sz);
+        goto start_classification;
+    }
     // Only ASCII chars should have corresponding byte of counts == 0
     if (ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero))) goto invalid_utf8;
     // The difference between a byte in counts and the next one should be negative,
