@@ -243,6 +243,11 @@ class TestParser(BaseTest):
             pb = partial(test_expected, which=which)
             pb('ニチ', 'ニチ')
             pb('\x84\x85', '\x84\x85')
+            pb('\x84\x85', '\x84\x85')
+            pb('\uf4df', '\uf4df')
+            pb('\uffff', '\uffff')
+            pb('\0', '\0')
+            pb(chr(0x10ffff), chr(0x10ffff))
             # various invalid input
             pb(b'abcd\xf51234', 'abcd\ufffd1234')  # bytes > 0xf4
             pb(b'abcd\xff1234', 'abcd\ufffd1234')  # bytes > 0xf4
