@@ -74,7 +74,7 @@ konsole 23.08.04   25.2    37.7    23.6  23.4   27.48
 
 .. note::
 
-   By default, the benchmark kitten suppress actual rendering, to better focus
+   By default, the benchmark kitten suppresses actual rendering, to better focus
    on parser speed, you can pass it the ``--render`` flag to not suppress
    rendering. However, modern terminals typically render asynchronously,
    therefore the numbers are not really useful for comparison. However, even
