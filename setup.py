@@ -462,7 +462,7 @@ def init_env(
     else:
         if native_optimizations:
             march = '-march=native -mtune=native'
-        elif sys.maxsize > 2**32 and not is_arm:  # 64 bit Intel
+        elif sys.maxsize > 2**32 and not is_arm and not is_macos:  # 64 bit Intel (on macOS we get SIGILL sometimes)
             march = '-march=x86-64-v2 -mtune=generic'
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
