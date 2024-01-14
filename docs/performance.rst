@@ -86,6 +86,13 @@ konsole 23.08.04   25.2    37.7    23.6  23.4   27.48
    gnome-terminal is left out as I could not get it to start on my system
    and foot is left out as it does not run under X11.
 
+.. note::
+
+   konsole and xterm dont support the `Synchronized update
+   <https://gitlab.com/gnachman/iterm2/-/wikis/synchronized-updates-spec>`__
+   escape code used to suppress rendering, if and when they gain support for it
+   their numbers are likely to improve by ``20 - 30%``.
+
 
 Energy usage
 ^^^^^^^^^^^^^^^^^
