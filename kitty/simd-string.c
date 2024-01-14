@@ -118,7 +118,6 @@ bool
 init_simd(void *x) {
     PyObject *module = (PyObject*)x;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-    __builtin_cpu_init();
 #define A(x, val) { Py_INCREF(Py_##val); if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; }
 #ifdef __APPLE__
 #ifdef __arm64__
