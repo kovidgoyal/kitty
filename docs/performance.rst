@@ -71,6 +71,9 @@ xterm 389          47.7    18.3    0.6   56.3   30.72
 konsole 23.08.04   25.2    37.7    23.6  23.4   27.48
 ================   ======  ======= ===== ====== =======
 
+In this table, each column represents different types of data. The CSI column
+is for data consisting of a mix of typical formatting escape codes and some
+ascii text.
 
 .. note::
 
