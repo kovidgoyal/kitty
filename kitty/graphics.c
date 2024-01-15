@@ -1032,7 +1032,8 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     } else {
         // Move the cursor, the screen will take care of ensuring it is in bounds
         if (g->cursor_movement != 1 && !g->unicode_placement) {
-            c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
+            c->x += ref->effective_num_cols;
+            if (ref->effective_num_rows) c->y += ref->effective_num_rows - 1;
         }
     }
     return img->client_id;
