@@ -52,11 +52,14 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 		return 0, 0, 0, err
 	}
 	defer term.RestoreAndClose()
+	write_with_retry := func(data string) (err error) {
+		return term.WriteAllString(data)
+	}
 	state := loop.TerminalStateOptions{Alternate_screen: !opts.WithScrollback}
-	if _, err = term.WriteString(state.SetStateEscapeCodes()); err != nil {
+	if err = write_with_retry(state.SetStateEscapeCodes()); err != nil {
 		return
 	}
-	defer func() { _, _ = term.WriteString(state.ResetStateEscapeCodes() + reset) }()
+	defer func() { _ = write_with_retry(state.ResetStateEscapeCodes() + reset) }()
 	lock := sync.Mutex{}
 	const count = 3
 	goroutine_started := make(chan byte)
@@ -82,29 +85,29 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 	const pause_rendering = "\x1b[?2026h"
 	const resume_rendering = "\x1b[?2026l"
 	if !opts.Render {
-		if _, err = term.WriteString(desc + pause_rendering); err != nil {
+		if err = write_with_retry(desc + pause_rendering); err != nil {
 			return
 		}
 	}
 
 	start := time.Now()
 	for reps < opts.Repetitions {
-		if _, err = term.WriteString(data); err != nil {
+		if err = write_with_retry(data); err != nil {
 			return
 		}
 		sent_data_size += len(data)
 		reps += 1
 		if !opts.Render {
-			if _, err = term.WriteString(desc + resume_rendering + pause_rendering); err != nil {
+			if err = write_with_retry(desc + resume_rendering + pause_rendering); err != nil {
 				return
 			}
 		}
 	}
-	if _, err = term.WriteString(clear_screen + "Waiting for response indicating parsing finished\r\n" + strings.Repeat("\x1b[5n", count)); err != nil {
+	if err = write_with_retry(clear_screen + "Waiting for response indicating parsing finished\r\n" + strings.Repeat("\x1b[5n", count)); err != nil {
 		return
 	}
 	if !opts.Render {
-		if _, err = term.WriteString(resume_rendering); err != nil {
+		if err = write_with_retry(resume_rendering); err != nil {
 			return
 		}
 	}
