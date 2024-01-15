@@ -64,7 +64,7 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 	defer func() { _ = write_with_retry(state.ResetStateEscapeCodes() + reset) }()
 	const count = 3
 
-	const clear_screen = "\x1b[H\x1b[2J\x1b[m"
+	const clear_screen = "\x1b[m\x1b[H\x1b[2J"
 	desc := clear_screen + "Running: " + description + "\r\n"
 	const pause_rendering = "\x1b[?2026h"
 	const resume_rendering = "\x1b[?2026l"
@@ -180,6 +180,7 @@ func ascii_with_csi() (r result, err error) {
 		}
 		out = append(out, utils.UnsafeStringToBytes(chunk)...)
 	}
+	out = append(out, "\x1b[m"...)
 	const desc = "CSI codes with few chars"
 	duration, data_sz, reps, err := benchmark_data(desc, utils.UnsafeBytesToString(out), opts)
 	if err != nil {
