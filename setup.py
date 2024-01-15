@@ -451,7 +451,8 @@ def init_env(
     # Using -mbranch-protection=standard causes crashes on Linux ARM, reported
     # in https://github.com/kovidgoyal/kitty/issues/6845#issuecomment-1835886938
     arm_control_flow_protection = '-mbranch-protection=standard' if is_macos else ''
-    control_flow_protection = arm_control_flow_protection if is_arm else '-fcf-protection=full'
+    intel_control_flow_protection =  '-fcf-protection=full' if ccver >= (9, 0) else ''
+    control_flow_protection = arm_control_flow_protection if is_arm else intel_control_flow_protection
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
