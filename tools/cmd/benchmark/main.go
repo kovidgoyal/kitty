@@ -4,6 +4,7 @@ package benchmark
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"kitty/tools/utils"
 
 	"golang.org/x/exp/slices"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -101,6 +103,9 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 	for !bytes.Contains(read_data, q) {
 		n, err := term.Read(buf)
 		if err != nil {
+			if (errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EINTR)) && n == 0 {
+				continue
+			}
 			break
 		}
 		read_data = append(read_data, buf[:n]...)
