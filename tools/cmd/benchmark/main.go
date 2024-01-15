@@ -60,26 +60,8 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 		return
 	}
 	defer func() { _ = write_with_retry(state.ResetStateEscapeCodes() + reset) }()
-	lock := sync.Mutex{}
 	const count = 3
-	goroutine_started := make(chan byte)
 
-	go func() {
-		lock.Lock()
-		defer lock.Unlock()
-		buf := make([]byte, 8192)
-		var data []byte
-		q := []byte(strings.Repeat("\x1b[0n", count))
-		goroutine_started <- 'y'
-		for !bytes.Contains(data, q) {
-			n, err := term.Read(buf)
-			if err != nil {
-				break
-			}
-			data = append(data, buf[:n]...)
-		}
-	}()
-	<-goroutine_started
 	const clear_screen = "\x1b[H\x1b[2J\x1b[m"
 	desc := clear_screen + "Running: " + description + "\r\n"
 	const pause_rendering = "\x1b[?2026h"
@@ -103,18 +85,25 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 			}
 		}
 	}
-	if err = write_with_retry(clear_screen + "Waiting for response indicating parsing finished\r\n" + strings.Repeat("\x1b[5n", count)); err != nil {
+	finalize := clear_screen + "Waiting for response indicating parsing finished\r\n"
+	if !opts.Render {
+		finalize += resume_rendering
+	}
+	finalize += strings.Repeat("\x1b[5n", count)
+	if err = write_with_retry(finalize); err != nil {
 		return
 	}
-	if !opts.Render {
-		if err = write_with_retry(resume_rendering); err != nil {
-			return
+	q := []byte(strings.Repeat("\x1b[0n", count))
+	var read_data []byte
+	buf := make([]byte, 8192)
+	for !bytes.Contains(read_data, q) {
+		n, err := term.Read(buf)
+		if err != nil {
+			break
 		}
+		read_data = append(read_data, buf[:n]...)
 	}
-
-	lock.Lock()
 	duration = time.Since(start)
-	lock.Unlock()
 	return
 }
 
