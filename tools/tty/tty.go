@@ -285,8 +285,19 @@ func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) 
 	}
 }
 
-func (self *Term) Read(b []byte) (int, error) {
-	return self.os_file.Read(b)
+func is_temporary_read_error(err error) bool {
+	return errors.Is(err, unix.EINTR) || errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EWOULDBLOCK)
+}
+
+func (self *Term) Read(b []byte) (n int, err error) {
+	for {
+		n, err = self.os_file.Read(b)
+		// On macOS we get EAGAIN if another thread is writing to the tty at the same time
+		if err != nil && is_temporary_read_error(err) && n <= 0 {
+			continue
+		}
+		return
+	}
 }
 
 func (self *Term) Write(b []byte) (int, error) {
