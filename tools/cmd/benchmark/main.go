@@ -73,16 +73,18 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 	}
 
 	start := time.Now()
+	end_of_loop_reset := desc
+	if !opts.Render {
+		end_of_loop_reset += resume_rendering + pause_rendering
+	}
 	for reps < opts.Repetitions {
 		if err = write_with_retry(data); err != nil {
 			return
 		}
 		sent_data_size += len(data)
 		reps += 1
-		if !opts.Render {
-			if err = write_with_retry(desc + resume_rendering + pause_rendering); err != nil {
-				return
-			}
+		if err = write_with_retry(end_of_loop_reset); err != nil {
+			return
 		}
 	}
 	finalize := clear_screen + "Waiting for response indicating parsing finished\r\n"
