@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+import glob
 import io
 import os
 import shlex
@@ -17,7 +18,15 @@ is_macos = 'darwin' in sys.platform.lower()
 SW = None
 
 
-def run(*a):
+def do_print_crash_reports():
+    for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports'):
+        for f in glob.glob(os.path.join(cdir, 'kitty_*')):
+            print(os.path.basename())
+            with open(f) as src:
+                print(src.read())
+
+
+def run(*a, print_crash_reports=False):
     if len(a) == 1:
         a = shlex.split(a[0])
     cmd = ' '.join(map(shlex.quote, a))
@@ -32,6 +41,8 @@ def run(*a):
             except ValueError:
                 pass
             else:
+                if print_crash_reports:
+                    do_print_crash_reports()
                 raise SystemExit(f'The following process was killed by signal: {sig.name}:\n{cmd}')
         raise SystemExit(f'The following process failed with exit code: {ret}:\n{cmd}')
 
@@ -74,7 +85,7 @@ def build_kitty():
 
 
 def test_kitty():
-    run('./test.py')
+    run('./test.py', print_crash_reports=True)
 
 
 def package_kitty():
