@@ -1514,7 +1514,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     (void)range; (void)actualRange;
     if (_glfw.callbacks.get_ime_cursor_position) {
         GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_CURSOR_POSITION };
-        if (_glfw.callbacks.get_ime_cursor_position((GLFWwindow*)window, &ev)) {
+        if (window && _glfw.callbacks.get_ime_cursor_position((GLFWwindow*)window, &ev)) {
             const CGFloat left = (CGFloat)ev.cursor.left / window->ns.xscale;
             const CGFloat top = (CGFloat)ev.cursor.top / window->ns.yscale;
             const CGFloat cellWidth = (CGFloat)ev.cursor.width / window->ns.xscale;
