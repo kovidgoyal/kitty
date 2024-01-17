@@ -48,6 +48,9 @@ func shell_input_parser(data []byte, shell_state map[string]string) ([][]string,
 	return [][]string{words}, nil
 }
 
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
+
 func zsh_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {
 	matcher := shell_state["_matcher"]
 	q := ""
