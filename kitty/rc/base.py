@@ -375,20 +375,23 @@ class RemoteCommand:
             return [t]
         return []
 
-    def windows_for_payload(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> List['Window']:
+    def windows_for_payload(
+        self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType,
+        window_match_name: str = 'match_window', tab_match_name: str = 'match_tab',
+    ) -> List['Window']:
         if payload_get('all'):
             windows = list(boss.all_windows)
         else:
             window = window or boss.active_window
             windows = [window] if window else []
-            if payload_get('match_window'):
-                windows = list(boss.match_windows(payload_get('match_window')))
+            if payload_get(window_match_name):
+                windows = list(boss.match_windows(payload_get(window_match_name)))
                 if not windows:
-                    raise MatchError(payload_get('match_window'))
-            if payload_get('match_tab'):
-                tabs = tuple(boss.match_tabs(payload_get('match_tab')))
+                    raise MatchError(payload_get(window_match_name))
+            if payload_get(tab_match_name):
+                tabs = tuple(boss.match_tabs(payload_get(tab_match_name)))
                 if not tabs:
-                    raise MatchError(payload_get('match_tab'), 'tabs')
+                    raise MatchError(payload_get(tab_match_name), 'tabs')
                 for tab in tabs:
                     windows += list(tab)
         return windows
