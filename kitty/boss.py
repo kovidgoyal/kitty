@@ -1706,7 +1706,15 @@ class Boss:
                         text = '\n'.join(urls)
                 w.paste_text(text)
 
-    @ac('win', 'Focus the nth OS window')
+    @ac('win', '''
+        Focus the nth OS window. -1 for the previously focused OS window.
+        For example::
+
+            # focus the previously focused kitty OS window
+            map f1 nth_os_window -1
+            # focus the first kitty OS window
+            map f1 nth_os_window 1
+        ''')
     def nth_os_window(self, num: int = 1) -> None:
         if self.os_window_map and num > 0:
             ids = list(self.os_window_map.keys())
