@@ -92,6 +92,7 @@ from .fast_data_types import (
     get_os_window_size,
     global_font_size,
     is_modifier_key,
+    last_focused_counter,
     last_focused_os_window_id,
     mark_os_window_for_close,
     os_window_font_size,
@@ -1711,6 +1712,14 @@ class Boss:
             ids = list(self.os_window_map.keys())
             os_window_id = ids[min(num, len(ids)) - 1]
             focus_os_window(os_window_id, True)
+        elif self.os_window_map and num == -1:
+            ids = list(self.os_window_map.keys())
+            if len(ids) <= 1:
+                return
+            counters = [(x, last_focused_counter(x)) for x in ids]
+            counters = sorted(counters, key=lambda x: x[1])
+            focus_os_window(counters[-2][0], True)
+
 
     @ac('win', 'Close the currently active OS Window')
     def close_os_window(self) -> None:

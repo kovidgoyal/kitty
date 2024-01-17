@@ -105,6 +105,17 @@ current_os_window(void) {
 }
 
 static id_type
+last_focused_counter(id_type os_window_id) {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = &global_state.os_windows[i];
+        if (w->id == os_window_id) {
+            return w->last_focused_counter;
+        }
+    }
+    return 0;
+}
+
+static id_type
 last_focused_os_window_id(void) {
     id_type ans = 0, max_fc_count = 0;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
@@ -693,6 +704,10 @@ PYWRAP1(update_ime_position_for_window) {
 
 PYWRAP0(next_window_id) {
     return PyLong_FromUnsignedLongLong(global_state.window_id_counter + 1);
+}
+
+PYWRAP1(last_focused_counter) {
+    return PyLong_FromUnsignedLongLong(last_focused_counter(PyLong_AsUnsignedLongLong(args)));
 }
 
 PYWRAP0(last_focused_os_window_id) {
@@ -1334,6 +1349,7 @@ static PyMethodDef module_methods[] = {
     MW(update_pointer_shape, METH_VARARGS),
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),
+    MW(last_focused_counter, METH_O),
     MW(last_focused_os_window_id, METH_NOARGS),
     MW(current_focused_os_window_id, METH_NOARGS),
     MW(set_options, METH_VARARGS),

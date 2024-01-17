@@ -815,6 +815,8 @@ def destroy_global_data() -> None:
 def current_os_window() -> Optional[int]:
     pass
 
+def last_focused_counter(os_window_id: int) -> int:
+    pass
 
 def last_focused_os_window_id() -> int:
     pass
