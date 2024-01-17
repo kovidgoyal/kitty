@@ -19,11 +19,19 @@ SW = None
 
 
 def do_print_crash_reports():
+    print('Printing available crash reports...')
     for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports'):
+        if not os.path.exists(cdir):
+            continue
+        print(cdir)
+        found = False
         for f in glob.glob(os.path.join(cdir, 'kitty_*')):
+            found = True
             print(os.path.basename())
             with open(f) as src:
                 print(src.read())
+        if not found:
+            print(os.listdir(cdir))
 
 
 def run(*a, print_crash_reports=False):
