@@ -327,7 +327,7 @@ func EntryPoint(root *cli.Command) {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "__benchmark__",
 		ShortDescription: "Run various benchmarks",
-		HelpText:         "To run only particular benchmarks, specify them on the command line from the set: " + strings.Join(all_benchamrks(), ", "),
+		HelpText:         "To run only particular benchmarks, specify them on the command line from the set: " + strings.Join(all_benchamrks(), ", ") + ". Benchmarking works by sending large amount of data to the TTY device and waiting for the terminal to process the data and respond to queries sent to it in the data. By default rendering is suppressed during benchmarking to focus on parser performance. Use the --render flag to enable it, but be aware that rendering in modern terminals is typically asynchronous so it wont be properly benchmarked by this kitten.",
 		Usage:            "[options] [optional benchmark to run ...]",
 		Hidden:           true,
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
