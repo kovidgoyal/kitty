@@ -1712,10 +1712,14 @@ class Boss:
         this is useful if focus is not on any kitty OS window at all, however, it will only work if the window manager
         allows applications to grab focus. For example::
 
-            # focus the previously active OS window
-            map ctrl+p nth_window -1
-            # focus the first OS window
-            map ctrl+1 nth_window 0
+            # focus the previously active kitty OS window
+            map ctrl+p nth_os_window -1
+            # focus the current kitty OS window (grab focus)
+            map ctrl+0 nth_os_window 0
+            # focus the first kitty OS window
+            map ctrl+1 nth_os_window 1
+            # focus the last kitty OS window
+            map ctrl+1 nth_os_window 999
     ''')
     def nth_os_window(self, num: int = 1) -> None:
         if not self.os_window_map:
