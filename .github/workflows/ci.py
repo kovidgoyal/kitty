@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import time
 from urllib.request import urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
@@ -21,6 +22,7 @@ SW = None
 def do_print_crash_reports():
     print('Printing available crash reports...')
     if is_macos:
+        time.sleep(60)
         for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports', '/cores'):
             if not os.path.exists(cdir):
                 continue
