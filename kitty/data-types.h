@@ -372,6 +372,8 @@ cursor_to_attrs(const Cursor *c, const uint16_t width) {
     return ans;
 }
 
+#define cursor_as_gpu_cell(cursor) {.attrs=cursor_to_attrs(cursor, 0), .fg=(cursor->fg & COL_MASK), .bg=(cursor->bg & COL_MASK), .decoration_fg=cursor->decoration_fg & COL_MASK}
+
 static inline void
 attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
     c->decoration = attrs.decoration; c->bold = attrs.bold;  c->italic = attrs.italic;

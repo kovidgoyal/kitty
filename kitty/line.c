@@ -539,8 +539,8 @@ clear_text(Line* self, PyObject *args) {
 }
 
 void
-line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
-    GPUCell gc = {.attrs=cursor_to_attrs(cursor, 0), .fg=(cursor->fg & COL_MASK), .bg=(cursor->bg & COL_MASK), .decoration_fg=cursor->decoration_fg & COL_MASK};
+line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
+    GPUCell gc = cursor_as_gpu_cell(cursor);
     if (clear_char) {
         for (index_type i = at; i < self->xnum && i < at + num; i++) {
             memset(self->cpu_cells + i, 0, sizeof(self->cpu_cells[0]));

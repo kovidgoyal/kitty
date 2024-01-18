@@ -1866,16 +1866,14 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     }
     if (b > a) {
         if (how != 3) screen_dirty_line_graphics(self, a, b, self->linebuf == self->main_linebuf);
-        for (unsigned int i=a; i < b; i++) {
-            linebuf_init_line(self->linebuf, i);
-            if (private) {
+        if (private) {
+            for (unsigned int i=a; i < b; i++) {
+                linebuf_init_line(self->linebuf, i);
                 line_clear_text(self->linebuf->line, 0, self->columns, BLANK_CHAR);
                 linebuf_set_last_char_as_continuation(self->linebuf, i, false);
-            } else {
-                line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
+                linebuf_clear_attrs_and_dirty(self->linebuf, i);
             }
-            linebuf_clear_attrs_and_dirty(self->linebuf, i);
-        }
+        } else linebuf_clear_lines(self->linebuf, self->cursor, a, b);
         self->is_dirty = true;
         clear_selection(&self->selections);
     }
