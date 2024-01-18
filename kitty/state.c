@@ -116,7 +116,6 @@ last_focused_os_window_id(void) {
     return ans;
 }
 
-
 static id_type
 current_focused_os_window_id(void) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
@@ -1327,10 +1326,25 @@ KKK(set_active_window)
 KII(swap_tabs)
 KK5I(add_borders_rect)
 
+static PyObject*
+os_window_focus_counters(PyObject *self UNUSED, PyObject *args UNUSED) {
+    RAII_PyObject(ans, PyDict_New());
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = &global_state.os_windows[i];
+        RAII_PyObject(key, PyLong_FromUnsignedLongLong(w->id));
+        RAII_PyObject(val, PyLong_FromUnsignedLongLong(w->last_focused_counter));
+        if (!key || !val) return NULL;
+        if (PyDict_SetItem(ans, key, val) != 0) return NULL;
+    }
+    Py_INCREF(ans);
+    return ans;
+}
+
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 
 static PyMethodDef module_methods[] = {
+    M(os_window_focus_counters, METH_NOARGS),
     MW(update_pointer_shape, METH_VARARGS),
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),

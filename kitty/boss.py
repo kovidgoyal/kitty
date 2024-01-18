@@ -94,6 +94,7 @@ from .fast_data_types import (
     is_modifier_key,
     last_focused_os_window_id,
     mark_os_window_for_close,
+    os_window_focus_counters,
     os_window_font_size,
     patch_global_colors,
     redirect_mouse_handling,
@@ -1705,11 +1706,36 @@ class Boss:
                         text = '\n'.join(urls)
                 w.paste_text(text)
 
-    @ac('win', 'Focus the nth OS window')
+    @ac('win', '''
+        Focus the nth OS window if positive or the previously active OS windows if negative. When the number is larger
+        than the number of OS windows focus the last OS window. A value of zero will refocus the currently focused OS window,
+        this is useful if focus is not on any kitty OS window at all, however, it will only work if the window manager
+        allows applications to grab focus. For example::
+
+            # focus the previously active OS window
+            map ctrl+p nth_window -1
+            # focus the first OS window
+            map ctrl+1 nth_window 0
+    ''')
     def nth_os_window(self, num: int = 1) -> None:
-        if self.os_window_map and num > 0:
-            ids = list(self.os_window_map.keys())
+        if not self.os_window_map:
+            return
+        if num == 0:
+            os_window_id = current_focused_os_window_id() or last_focused_os_window_id()
+            focus_os_window(os_window_id, True)
+        elif num > 0:
+            ids = tuple(self.os_window_map.keys())
             os_window_id = ids[min(num, len(ids)) - 1]
+            focus_os_window(os_window_id, True)
+        elif num < 0:
+            fc_map = os_window_focus_counters()
+            s = sorted(fc_map.keys(), key=fc_map.__getitem__, reverse=True)
+            if not s:
+                return
+            try:
+                os_window_id = s[num-1]
+            except IndexError:
+                os_window_id = s[0]
             focus_os_window(os_window_id, True)
 
     @ac('win', 'Close the currently active OS Window')
