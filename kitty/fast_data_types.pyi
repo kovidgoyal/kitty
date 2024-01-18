@@ -514,9 +514,9 @@ def create_os_window(
     wm_class_class: str,
     window_state: Optional[int] = WINDOW_NORMAL,
     load_programs: Optional[Callable[[bool], None]] = None,
-    x: Optional[int] = -1,
-    y: Optional[int] = -1,
-    disallow_override_title: Optional[bool] = False,
+    x: Optional[int] = None,
+    y: Optional[int] = None,
+    disallow_override_title: bool = False,
 ) -> int:
     pass
 
