@@ -300,7 +300,9 @@ be rendered with a "reverse video" effect. It's color will be the color of the
 text in the cell it is over and the text will be rendered with the background
 color of the cell. Note that if the program running in the terminal sets a
 cursor color, this takes precedence. Also, the cursor colors are modified if
-the cell background and foreground colors have very low contrast.
+the cell background and foreground colors have very low contrast. Note that some
+themes set this value, so if you want to override it, place your value after
+the lines where the theme file is included.
 '''
     )
 
@@ -310,7 +312,8 @@ opt('cursor_text_color', '#111111',
 The color of text under the cursor. If you want it rendered with the
 background color of the cell underneath instead, use the special keyword:
 background. Note that if :opt:`cursor` is set to :code:`none` then this option
-is ignored.
+is ignored. Note that some themes set this value, so if you want to override it,
+place your value after the lines where the theme file is included.
 '''
     )
 
