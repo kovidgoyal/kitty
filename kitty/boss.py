@@ -1733,7 +1733,7 @@ class Boss:
             focus_os_window(os_window_id, True)
         elif num < 0:
             fc_map = os_window_focus_counters()
-            s = sorted(fc_map.keys(), key=fc_map.__getitem__, reverse=True)
+            s = sorted(fc_map.keys(), key=fc_map.__getitem__)
             if not s:
                 return
             try:
