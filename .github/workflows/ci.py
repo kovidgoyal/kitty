@@ -32,7 +32,7 @@ def do_print_crash_reports():
                 with open(f) as src:
                     print(src.read())
             if not found:
-                print(os.listdir(cdir))
+                print('\n'.join(os.listdir(cdir)))
     else:
         run('sh -c "echo bt | coredumpctl debug"')
     print(flush=True)
