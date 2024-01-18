@@ -30,7 +30,6 @@
 
 #include "internal.h"
 #include "backend_utils.h"
-#include "memfd.h"
 #include "linux_notify.h"
 #include "wl_client_side_decorations.h"
 #include "../kitty/monotonic.h"
