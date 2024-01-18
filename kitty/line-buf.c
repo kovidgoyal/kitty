@@ -148,6 +148,9 @@ linebuf_init_line(LineBuf *self, index_type idx) {
 
 void
 linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index_type end) {
+#if BLANK_CHAR != 0
+#error This implementation is incorrect for BLANK_CHAR != 0
+#endif
     GPUCell *first_gpu_line = gpu_lineptr(self, start);
     GPUCell gc = cursor_as_gpu_cell(cursor);
     for (index_type i = 0; i < self->xnum; i++) memcpy(first_gpu_line + i, &gc, sizeof(gc));

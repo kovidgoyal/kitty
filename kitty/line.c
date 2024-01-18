@@ -542,6 +542,9 @@ void
 line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
     GPUCell gc = cursor_as_gpu_cell(cursor);
     if (clear_char) {
+#if BLANK_CHAR != 0
+#error This implementation is incorrect for BLANK_CHAR != 0
+#endif
         for (index_type i = at; i < self->xnum && i < at + num; i++) {
             memset(self->cpu_cells + i, 0, sizeof(self->cpu_cells[0]));
             memcpy(self->gpu_cells + i, &gc, sizeof(gc));
