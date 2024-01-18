@@ -540,24 +540,19 @@ clear_text(Line* self, PyObject *args) {
 
 void
 line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
-    CellAttrs attrs = cursor_to_attrs(cursor, 0);
-    color_type fg = (cursor->fg & COL_MASK), bg = (cursor->bg & COL_MASK);
-    color_type dfg = cursor->decoration_fg & COL_MASK;
-
-    for (index_type i = at; i < self->xnum && i < at + num; i++) {
-        if (clear_char) {
-            self->cpu_cells[i].ch = BLANK_CHAR;
-            self->cpu_cells[i].hyperlink_id = 0;
-            memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx));
-            self->gpu_cells[i].attrs = attrs;
-            clear_sprite_position(self->gpu_cells[i]);
-        } else {
-            attrs.width = self->gpu_cells[i].attrs.width;
-            attrs.mark = self->gpu_cells[i].attrs.mark;
-            self->gpu_cells[i].attrs = attrs;
+    GPUCell gc = {.attrs=cursor_to_attrs(cursor, 0), .fg=(cursor->fg & COL_MASK), .bg=(cursor->bg & COL_MASK), .decoration_fg=cursor->decoration_fg & COL_MASK};
+    if (clear_char) {
+        for (index_type i = at; i < self->xnum && i < at + num; i++) {
+            memset(self->cpu_cells + i, 0, sizeof(self->cpu_cells[0]));
+            memcpy(self->gpu_cells + i, &gc, sizeof(gc));
         }
-        self->gpu_cells[i].fg = fg; self->gpu_cells[i].bg = bg;
-        self->gpu_cells[i].decoration_fg = dfg;
+    } else {
+        for (index_type i = at; i < self->xnum && i < at + num; i++) {
+            gc.attrs.width = self->gpu_cells[i].attrs.width;
+            gc.attrs.mark = self->gpu_cells[i].attrs.mark;
+            gc.sprite_x = self->gpu_cells[i].sprite_x; gc.sprite_y = self->gpu_cells[i].sprite_y; gc.sprite_z = self->gpu_cells[i].sprite_z;
+            memcpy(self->gpu_cells + i, &gc, sizeof(gc));
+        }
     }
 }
 
