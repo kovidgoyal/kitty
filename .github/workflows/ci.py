@@ -93,8 +93,8 @@ def build_kitty():
 
 
 def test_kitty():
-    run('ulimit -c unlimited')
     if is_macos:
+        run('ulimit -c unlimited')
         run('sudo chmod -R 777 /cores')
     run('./test.py', print_crash_reports=True)
 
