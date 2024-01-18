@@ -20,18 +20,22 @@ SW = None
 
 def do_print_crash_reports():
     print('Printing available crash reports...')
-    for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports', '/cores'):
-        if not os.path.exists(cdir):
-            continue
-        print(cdir)
-        found = False
-        for f in glob.glob(os.path.join(cdir, 'kitty_*')):
-            found = True
-            print(os.path.basename())
-            with open(f) as src:
-                print(src.read())
-        if not found:
-            print(os.listdir(cdir))
+    if is_macos:
+        for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports', '/cores'):
+            if not os.path.exists(cdir):
+                continue
+            print(cdir)
+            found = False
+            for f in glob.glob(os.path.join(cdir, 'kitty_*')):
+                found = True
+                print(os.path.basename())
+                with open(f) as src:
+                    print(src.read())
+            if not found:
+                print(os.listdir(cdir))
+    else:
+        run('sh -c "echo bt | coredumpctl debug"')
+    print(flush=True)
 
 
 def run(*a, print_crash_reports=False):
