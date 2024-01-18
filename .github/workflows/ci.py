@@ -20,7 +20,7 @@ SW = None
 
 def do_print_crash_reports():
     print('Printing available crash reports...')
-    for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports'):
+    for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports', '/cores'):
         if not os.path.exists(cdir):
             continue
         print(cdir)
@@ -93,6 +93,9 @@ def build_kitty():
 
 
 def test_kitty():
+    run('ulimit -c unlimited')
+    if is_macos:
+        run('sudo chmod -R 777 /cores')
     run('./test.py', print_crash_reports=True)
 
 
