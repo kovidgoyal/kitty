@@ -146,6 +146,22 @@ linebuf_init_line(LineBuf *self, index_type idx) {
     init_line(self, self->line, self->line_map[idx]);
 }
 
+void
+linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index_type end) {
+    GPUCell *first_gpu_line = gpu_lineptr(self, start);
+    GPUCell gc = cursor_as_gpu_cell(cursor);
+    for (index_type i = 0; i < self->xnum; i++) memcpy(first_gpu_line + i, &gc, sizeof(gc));
+    const size_t cpu_stride = sizeof(self->cpu_cell_buf[0]) * self->xnum;
+    memset(cpu_lineptr(self, start), 0, cpu_stride);
+    const size_t gpu_stride = sizeof(self->gpu_cell_buf[0]) * self->xnum;
+    linebuf_clear_attrs_and_dirty(self, start);
+    for (index_type i = start + 1; i < end; i++) {
+        memset(cpu_lineptr(self, i), 0, cpu_stride);
+        memcpy(gpu_lineptr(self, i), first_gpu_line, gpu_stride);
+        linebuf_clear_attrs_and_dirty(self, i);
+    }
+}
+
 static PyObject*
 line(LineBuf *self, PyObject *y) {
 #define line_doc      "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used at a time."

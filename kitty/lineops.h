@@ -83,7 +83,7 @@ line_is_empty(const Line *line) {
 
 typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
-void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
+void line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 char_type line_get_char(Line *self, index_type at);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, hyperlink_id_type);
 void line_right_shift(Line *, unsigned int , unsigned int );
@@ -103,6 +103,7 @@ PyObject* line_as_unicode(Line *, bool);
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_init_cells(LineBuf *lb, index_type ynum, CPUCell **c, GPUCell **g);
 void linebuf_clear(LineBuf *, char_type ch);
+void linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index_type end);
 void linebuf_index(LineBuf* self, index_type top, index_type bottom);
 void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
 void linebuf_clear_line(LineBuf *self, index_type y, bool clear_attrs);
