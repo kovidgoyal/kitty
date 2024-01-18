@@ -805,6 +805,16 @@ set_os_window_size(OSWindow *os_window, int x, int y) {
     glfwSetWindowSize(os_window->handle, x, y);
 }
 
+void
+get_os_window_pos(OSWindow *os_window, int *x, int *y) {
+    glfwGetWindowPos(os_window->handle, x, y);
+}
+
+void
+set_os_window_pos(OSWindow *os_window, int x, int y) {
+    glfwSetWindowPos(os_window->handle, x, y);
+}
+
 static void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
     // if you change this function also change createSurface() in wl_window.c
