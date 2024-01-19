@@ -32,7 +32,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <limits.h>
 #include <stdio.h>
 
 
@@ -236,10 +235,10 @@ bool _glfwRefreshContextAttribs(_GLFWwindow* window,
         }
     }
 
-    if (!sscanf(version, "%d.%d.%d",
+    if (sscanf(version, "%d.%d.%d",
                 &window->context.major,
                 &window->context.minor,
-                &window->context.revision))
+                &window->context.revision) < 1)
     {
         if (window->context.client == GLFW_OPENGL_API)
         {
