@@ -43,6 +43,11 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
+0.32.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- macOS: Fix a regression in the previous release that broke overriding keyboard shortcuts for actions present in the global menu bar (:iss:`7016`)
+
 0.32.0 [2024-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

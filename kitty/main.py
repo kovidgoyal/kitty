@@ -219,11 +219,11 @@ def set_cocoa_global_shortcuts(opts: Options) -> Dict[str, SingleKey]:
     if is_macos:
         from collections import defaultdict
         func_map = defaultdict(list)
-        for k, v in opts.keyboard_modes[''].keymap.items():
-            for kd in v:
-                if kd.is_suitable_for_global_shortcut:
-                    parts = tuple(kd.definition.split())
-                    func_map[parts].append(k)
+        for single_key, v in opts.keyboard_modes[''].keymap.items():
+            kd = v[-1]  # the last definition is the active one
+            if kd.is_suitable_for_global_shortcut:
+                parts = tuple(kd.definition.split())
+                func_map[parts].append(single_key)
 
         for ac in ('new_os_window', 'close_os_window', 'close_tab', 'edit_config_file', 'previous_tab',
                    'next_tab', 'new_tab', 'new_window', 'close_window', 'toggle_macos_secure_keyboard_entry', 'toggle_fullscreen',
