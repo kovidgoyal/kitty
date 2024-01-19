@@ -43,7 +43,7 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
-0.32.0 [future]
+0.32.0 [2024-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :ref:`conditional_mappings`
