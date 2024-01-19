@@ -76,7 +76,7 @@ blur_mask(kernel_type *image_data, ssize_t width, ssize_t height, ssize_t kernel
 
 static kernel_type*
 create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_size, kernel_type base_alpha, kernel_type sigma) {
-    kernel_type *mask = calloc(sizeof(kernel_type), 2 * width * height + kernel_size);
+    kernel_type *mask = calloc(2 * width * height + kernel_size, sizeof(kernel_type));
     if (!mask) return NULL;
     for (size_t y = margin; y < height - margin; y++) {
         kernel_type *row = mask + y * width;

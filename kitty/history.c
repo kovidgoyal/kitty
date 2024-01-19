@@ -392,7 +392,7 @@ static void
 pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     PagerHistoryBuf *ph = self->pagerhist;
     if (!ph->ringbuf || !ringbuf_bytes_used(ph->ringbuf)) return;
-    PagerHistoryBuf *nph = calloc(sizeof(PagerHistoryBuf), 1);
+    PagerHistoryBuf *nph = calloc(1, sizeof(PagerHistoryBuf));
     if (!nph) return;
     nph->maximum_size = ph->maximum_size;
     nph->ringbuf = ringbuf_new(MIN(ph->maximum_size, ringbuf_capacity(ph->ringbuf) + 4096));
