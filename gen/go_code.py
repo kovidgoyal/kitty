@@ -428,7 +428,7 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
 # kittens {{{
 
 @lru_cache
-def wrapped_kittens() -> Sequence[str]:
+def wrapped_kittens() -> Tuple[str, ...]:
     with open('shell-integration/ssh/kitty') as f:
         for line in f:
             if line.startswith('    wrapped_kittens="'):
@@ -465,7 +465,7 @@ def generate_extra_cli_parser(name: str, spec: str) -> None:
 
 def kitten_clis() -> None:
     from kittens.runner import get_kitten_conf_docs, get_kitten_extra_cli_parsers
-    for kitten in wrapped_kittens():
+    for kitten in wrapped_kittens() + ('pager',):
         defn = get_kitten_conf_docs(kitten)
         if defn is not None:
             generate_conf_parser(kitten, defn)
