@@ -52,20 +52,13 @@ func read_input(input_file *os.File, input_file_name string, input_channel chan<
 		}
 	}
 
-	read_with_retry := func(b []byte) (n int, err error) {
-		for {
-			n, err = input_file.Read(b)
-			if err != unix.EAGAIN && err != unix.EINTR {
-				break
-			}
-		}
-		return
-	}
-
 	for err != nil {
-		n, err = read_with_retry(buf_array[:])
+		n, err = input_file.Read(buf_array[:])
 		if n > 0 {
 			process_chunk(buf_array[:n])
+		}
+		if err == unix.EAGAIN || err == unix.EINTR {
+			err = nil
 		}
 	}
 }
