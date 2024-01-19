@@ -14,7 +14,11 @@ choices=pager,scrollback
 The role the pager is used for. The default is a standard less like pager.
 '''.format
 
-help_text = 'Display text in a pager with various features such as searching, copy/paste, etc. Text can some from the specified file or from STDIN.'
+help_text = '''\
+Display text in a pager with various features such as searching, copy/paste, etc.
+Text can some from the specified file or from STDIN. If no filename is specified
+and STDIN is not a TTY, it is used.
+'''
 usage = '[filename]'
 
 
