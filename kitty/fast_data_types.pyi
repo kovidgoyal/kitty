@@ -1396,6 +1396,12 @@ def get_os_window_size(os_window_id: int) -> Optional[OSWindowSize]:
     pass
 
 
+def get_os_window_pos(os_window_id: int) -> Tuple[int, int]:
+    pass
+
+def set_os_window_pos(os_window_id: int, x: int, y: int) -> None:
+    pass
+
 def get_all_processes() -> Tuple[int, ...]:
     pass
 

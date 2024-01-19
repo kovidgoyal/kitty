@@ -288,6 +288,8 @@ bool remove_os_window(id_type os_window_id);
 void* make_os_window_context_current(OSWindow *w);
 void set_os_window_size(OSWindow *os_window, int x, int y);
 void get_os_window_size(OSWindow *os_window, int *w, int *h, int *fw, int *fh);
+void get_os_window_pos(OSWindow *os_window, int *x, int *y);
+void set_os_window_pos(OSWindow *os_window, int x, int y);
 void get_os_window_content_scale(OSWindow *os_window, double *xdpi, double *ydpi, float *xscale, float *yscale);
 void update_os_window_references(void);
 void mark_os_window_for_close(OSWindow* w, CloseRequest cr);
