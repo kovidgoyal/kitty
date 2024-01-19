@@ -534,7 +534,7 @@ dispatch_possible_click(Window *w, int button, int modifiers) {
     Screen *screen = w->render_data.screen;
     int count = multi_click_count(w, button);
     if (release_is_click(w, button)) {
-        PendingClick *pc = calloc(sizeof(PendingClick), 1);
+        PendingClick *pc = calloc(1, sizeof(PendingClick));
         if (pc) {
             const ClickQueue *q = &w->click_queues[button];
             pc->press_num = q->length ? q->clicks[q->length - 1].num : 0;

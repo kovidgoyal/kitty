@@ -345,7 +345,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
                 if (pbm.rows > bm_height) {
                     double ratio = pbm.width / (double)pbm.rows;
                     bm_width = (unsigned)(ratio * bm_height);
-                    buf = calloc(sizeof(pixel), (size_t)bm_height * bm_width);
+                    buf = calloc((size_t)bm_height * bm_width, sizeof(pixel));
                     if (!buf) break;
                     downsample_32bit_image(pbm.buf, pbm.width, pbm.rows, pbm.stride, buf, bm_width, bm_height);
                     pbm.buf = buf; pbm.stride = 4 * bm_width; pbm.width = bm_width; pbm.rows = bm_height;
@@ -442,7 +442,7 @@ render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pix
     if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return false; }
 
     size_t text_len = strlen(text);
-    char_type *unicode = calloc(sizeof(char_type), text_len + 1);
+    char_type *unicode = calloc(text_len + 1, sizeof(char_type));
     if (!unicode) { PyErr_NoMemory(); return false; }
     bool ok = false;
     text_len = decode_utf8_string(text, text_len, unicode);
