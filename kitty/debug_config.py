@@ -61,7 +61,7 @@ def compare_maps(
     changed = {k for k in set(ef) & set(ei) if ef[k] != ei[k]}
     which = 'shortcuts' if isinstance(next(iter(initial or final)), Shortcut) else 'mouse actions'
     if mode_name and (added or removed or changed):
-        print(f'{title("Changes in keyboard mode: + " + mode_name)}')
+        print(f'{title("Changes in keyboard mode: " + mode_name)}')
     print_mapping_changes(ef, added, f'Added {which}:', print)
     print_mapping_changes(ei, removed, f'Removed {which}:', print)
     print_mapping_changes(ef, changed, f'Changed {which}:', print)
