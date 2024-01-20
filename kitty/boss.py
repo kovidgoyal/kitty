@@ -1371,6 +1371,12 @@ class Boss:
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
             if not is_root_mode:
+                if mode.sequence_keys is not None:
+                    self.pop_keyboard_mode()
+                    w = self.active_window
+                    if w is not None:
+                        w.send_key_sequence(*mode.sequence_keys)
+                    return False
                 if mode.on_unknown in ('beep', 'ignore'):
                     if mode.on_unknown == 'beep' and get_options().enable_audio_bell:
                         ring_bell()
@@ -1386,16 +1392,17 @@ class Boss:
             if final_actions:
                 mode_pos = len(self.keyboard_mode_stack) - 1
                 if final_actions[0].is_sequence:
-                    if not mode.is_sequence:
+                    if mode.sequence_keys is None:
                         sm = KeyboardMode('__sequence__')
                         sm.on_action = 'end'
-                        sm.is_sequence = True
+                        sm.sequence_keys = [ev]
                         for fa in final_actions:
                             sm.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
                         self._push_keyboard_mode(sm)
                         if self.args.debug_keyboard:
                             print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='', flush=True)
                     else:
+                        mode.sequence_keys.append(ev)
                         if len(final_actions) == 1:
                             self.pop_keyboard_mode()
                             return self.combine(final_actions[0].definition)

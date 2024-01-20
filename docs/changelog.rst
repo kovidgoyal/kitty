@@ -48,6 +48,8 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that broke overriding keyboard shortcuts for actions present in the global menu bar (:iss:`7016`)
 
+- Fix a regression in the previous release that caused multi-key sequences to not abort when pressing an unknown key (:iss:`7022`)
+
 0.32.0 [2024-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -1234,7 +1234,7 @@ class KeyboardMode:
 
     on_unknown: OnUnknown = get_args(OnUnknown)[0]
     on_action : OnAction = get_args(OnAction)[0]
-    is_sequence: bool = False
+    sequence_keys: Optional[List[defines.KeyEvent]] = None
 
     def __init__(self, name: str = '') -> None:
         self.name = name

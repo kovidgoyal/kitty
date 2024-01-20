@@ -913,6 +913,17 @@ class Window:
                 passthrough = False
         return passthrough
 
+    def send_key_sequence(self, *keys: KeyEvent, synthesize_release_events: bool = True) -> None:
+        for key in keys:
+            enc = self.encoded_key(key)
+            if enc:
+                self.write_to_child(enc)
+            if synthesize_release_events and key.action != GLFW_RELEASE:
+                rkey = KeyEvent(key=key.key, mods=key.mods, action=GLFW_RELEASE)
+                enc = self.encoded_key(rkey)
+                if enc:
+                    self.write_to_child(enc)
+
     @ac('debug', 'Show a dump of the current lines in the scrollback + screen with their line attributes')
     def dump_lines_with_attrs(self) -> None:
         strings: List[str] = []
