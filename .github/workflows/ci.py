@@ -22,19 +22,17 @@ SW = None
 def do_print_crash_reports():
     print('Printing available crash reports...')
     if is_macos:
-        time.sleep(60)
-        for cdir in (os.path.expanduser('~/Library/Logs/DiagnosticReports'), '/Library/Logs/DiagnosticReports', '/cores'):
-            if not os.path.exists(cdir):
-                continue
-            print(cdir)
-            found = False
-            for f in glob.glob(os.path.join(cdir, 'kitty_*')):
-                found = True
-                print(os.path.basename())
-                with open(f) as src:
-                    print(src.read())
-            if not found:
-                print('\n'.join(os.listdir(cdir)))
+        end_time = time.monotonic() + 90
+        while time.monotonic() < end_time:
+            time.sleep(1)
+            items = glob.glob(os.path.join(os.path.expanduser('~/Library/Logs/DiagnosticReports'), 'kitty-*.ips'))
+            if items:
+                break
+        if items:
+            time.sleep(1)
+            print(os.path.basename(items[0]))
+            with open(items[0]) as src:
+                print(src.read())
     else:
         run('sh -c "echo bt | coredumpctl debug"')
     print(flush=True)
