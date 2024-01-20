@@ -154,7 +154,7 @@ linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index
 #define lineptr(which, i) which##_lineptr(self, self->line_map[i])
     GPUCell *first_gpu_line = lineptr(gpu, start);
     const GPUCell gc = cursor_as_gpu_cell(cursor);
-    for (index_type i = 0; i < self->xnum; i++) memcpy(first_gpu_line + i, &gc, sizeof(GPUCell));
+    memset_array(first_gpu_line, gc, self->xnum);
     const size_t cpu_stride = sizeof(CPUCell) * self->xnum;
     memset(lineptr(cpu, start), 0, cpu_stride);
     const size_t gpu_stride = sizeof(GPUCell) * self->xnum;
