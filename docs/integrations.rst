@@ -189,13 +189,6 @@ A tool to display weather information in your terminal with curl
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 View and manage the system clipboard under Wayland in your kitty terminal
 
-.. tool_dmenu_term:
-
-`dmenu-term <https://github.com/maximbaz/dmenu-term>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Run applications on your system with fuzzy find inside a kitty window
-
-
 Editor integration
 -----------------------
 
