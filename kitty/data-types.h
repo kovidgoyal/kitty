@@ -427,3 +427,13 @@ SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
 const char* get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
 void log_event(const char *format, ...) __attribute__((format(printf, 1, 2)));
+
+#define memset_array(array, val, count) if ((count) > 0) { \
+    (array)[0] = (val); \
+    size_t __copied__ = 1; \
+    while (__copied__ < (count)) { \
+        const size_t __num__ = MIN(__copied__, (count) - __copied__); \
+        memcpy((array) + __copied__, (array), __num__ * sizeof((val))); \
+        __copied__ += __num__; \
+    } \
+}

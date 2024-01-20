@@ -521,11 +521,10 @@ cursor_from(Line* self, PyObject *args) {
 void
 line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
     const uint16_t width = ch ? 1 : 0;
-    for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
-        self->cpu_cells[i].ch = ch; memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx));
-        self->cpu_cells[i].hyperlink_id = 0;
-        self->gpu_cells[i].attrs.width = width;
-    }
+    const CPUCell cc = {.ch=ch};
+    if (at + num > self->xnum) num = self->xnum > at ? self->xnum - at : 0;
+    memset_array(self->cpu_cells + at, cc, num);
+    for (index_type i = at; i < at + num; i++) self->gpu_cells[i].attrs.width = width;
 }
 
 static PyObject*
@@ -545,10 +544,9 @@ line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned in
 #if BLANK_CHAR != 0
 #error This implementation is incorrect for BLANK_CHAR != 0
 #endif
-        for (index_type i = at; i < self->xnum && i < at + num; i++) {
-            memset(self->cpu_cells + i, 0, sizeof(self->cpu_cells[0]));
-            memcpy(self->gpu_cells + i, &gc, sizeof(gc));
-        }
+        if (at + num > self->xnum) { num = at < self->xnum ? self->xnum - at : 0; }
+        memset(self->cpu_cells + at, 0, num * sizeof(CPUCell));
+        memset_array(self->gpu_cells + at, gc, num);
     } else {
         for (index_type i = at; i < self->xnum && i < at + num; i++) {
             gc.attrs.width = self->gpu_cells[i].attrs.width;
