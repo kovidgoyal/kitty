@@ -151,18 +151,20 @@ linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index
 #if BLANK_CHAR != 0
 #error This implementation is incorrect for BLANK_CHAR != 0
 #endif
-    GPUCell *first_gpu_line = gpu_lineptr(self, start);
+#define lineptr(which, i) which##_lineptr(self, self->line_map[i])
+    GPUCell *first_gpu_line = lineptr(gpu, start);
     GPUCell gc = cursor_as_gpu_cell(cursor);
-    for (index_type i = 0; i < self->xnum; i++) memcpy(first_gpu_line + i, &gc, sizeof(gc));
-    const size_t cpu_stride = sizeof(self->cpu_cell_buf[0]) * self->xnum;
-    memset(cpu_lineptr(self, start), 0, cpu_stride);
-    const size_t gpu_stride = sizeof(self->gpu_cell_buf[0]) * self->xnum;
+    for (index_type i = 0; i < self->xnum; i++) memcpy(first_gpu_line + i, &gc, sizeof(GPUCell));
+    const size_t cpu_stride = sizeof(CPUCell) * self->xnum;
+    memset(lineptr(cpu, start), 0, cpu_stride);
+    const size_t gpu_stride = sizeof(GPUCell) * self->xnum;
     linebuf_clear_attrs_and_dirty(self, start);
     for (index_type i = start + 1; i < end; i++) {
-        memset(cpu_lineptr(self, i), 0, cpu_stride);
-        memcpy(gpu_lineptr(self, i), first_gpu_line, gpu_stride);
+        memset(lineptr(cpu, i), 0, cpu_stride);
+        memcpy(lineptr(gpu, i), first_gpu_line, gpu_stride);
         linebuf_clear_attrs_and_dirty(self, i);
     }
+#undef lineptr
 }
 
 static PyObject*
