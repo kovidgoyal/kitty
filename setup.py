@@ -55,6 +55,10 @@ env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 
 
+def LinkKey(output: str) -> CompileKey:
+    return CompileKey('', output)
+
+
 class CompilationDatabase:
 
     def __init__(self, incremental: bool = False):
@@ -788,12 +792,12 @@ def compile_c_extension(
     def on_success() -> None:
         os.rename(dest, real_dest)
 
-    compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success, key=CompileKey('', f'{module}.so'))
+    compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success, key=LinkKey(f'{module}.so'))
     if is_macos and build_dsym:
         real_dest = os.path.abspath(real_dest)
         desc = f'Linking dSYM {emphasis(desc_prefix + module)} ...'
         dsym = f'{real_dest}.dSYM/Contents/Resources/DWARF/{os.path.basename(real_dest)}'
-        compilation_database.add_command(desc, ['dsymutil', real_dest], partial(newer, dsym, real_dest), key=CompileKey(real_dest, dsym))
+        compilation_database.add_command(desc, ['dsymutil', real_dest], partial(newer, dsym, real_dest), key=LinkKey(dsym))
 
 
 def find_c_files() -> Tuple[List[str], List[str]]:
@@ -1162,11 +1166,11 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     dest = os.path.join(launcher_dir, 'kitty')
     desc = f'Linking {emphasis("launcher")} ...'
     cmd = env.cc + ldflags + objects + libs + pylib + ['-o', dest]
-    args.compilation_database.add_command(desc, cmd, partial(newer, dest, *objects), key=CompileKey('', 'kitty'))
+    args.compilation_database.add_command(desc, cmd, partial(newer, dest, *objects), key=LinkKey('kitty'))
     if args.build_dsym and is_macos:
         desc = f'Linking dSYM {emphasis("launcher")} ...'
         dsym = f'{dest}.dSYM/Contents/Resources/DWARF/{os.path.basename(dest)}'
-        args.compilation_database.add_command(desc, ['dsymutil', dest], partial(newer, dsym, dest), key=CompileKey(dest, dsym))
+        args.compilation_database.add_command(desc, ['dsymutil', dest], partial(newer, dsym, dest), key=LinkKey(dsym))
     args.compilation_database.build_all()
 
 
