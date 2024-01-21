@@ -71,7 +71,7 @@ clear(LineBuf *self, PyObject *a UNUSED) {
 }
 
 static PyObject *
-new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+new_linebuf_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     LineBuf *self;
     unsigned int xnum = 1, ynum = 1;
 
@@ -555,7 +555,7 @@ PyTypeObject LineBuf_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_str = (reprfunc)__str__,
-    .tp_new = new
+    .tp_new = new_linebuf_object
 };
 
 INIT_TYPE(LineBuf)
@@ -637,5 +637,5 @@ rewrap(LineBuf *self, PyObject *args) {
 }
 
 LineBuf *alloc_linebuf(unsigned int lines, unsigned int columns) {
-    return (LineBuf*)new(&LineBuf_Type, Py_BuildValue("II", lines, columns), NULL);
+    return (LineBuf*)new_linebuf_object(&LineBuf_Type, Py_BuildValue("II", lines, columns), NULL);
 }

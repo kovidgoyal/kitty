@@ -90,7 +90,7 @@ static void update_overlay_line_data(Screen *self, uint8_t *data);
     }
 
 static PyObject*
-new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
     int ret = 0;
     PyObject *callbacks = Py_None, *test_child = Py_None;
@@ -4770,7 +4770,7 @@ PyTypeObject Screen_Type = {
     .tp_doc = "Screen",
     .tp_methods = methods,
     .tp_members = members,
-    .tp_new = new,
+    .tp_new = new_screen_object,
     .tp_getset = getsetters,
 };
 

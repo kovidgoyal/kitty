@@ -22,7 +22,7 @@ typedef struct {
 static PyObject* convert_glfw_key_event_to_python(const GLFWkeyevent *ev);
 
 static PyObject*
-new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
+new_keyevent_object(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
     static char *kwds[] = {"key", "shifted_key", "alternate_key", "mods", "action", "native_key", "ime_state", "text", NULL};
     GLFWkeyevent ev = {.action=GLFW_PRESS};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "I|IIiiiiz", kwds, &ev.key, &ev.shifted_key, &ev.alternate_key, &ev.mods, &ev.action, &ev.native_key, &ev.ime_state, &ev.text)) return NULL;
@@ -69,7 +69,7 @@ PyTypeObject PyKeyEvent_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "A key event",
     .tp_members = members,
-    .tp_new = new,
+    .tp_new = new_keyevent_object,
 };
 
 static PyObject*

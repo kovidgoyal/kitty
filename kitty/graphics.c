@@ -2210,7 +2210,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
 
 // Boilerplate {{{
 static PyObject *
-new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+new_graphicsmanager_object(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     PyObject *ans = (PyObject*)grman_alloc(false);
     if (ans == NULL) PyErr_NoMemory();
     return ans;
@@ -2343,7 +2343,7 @@ PyTypeObject GraphicsManager_Type = {
     .tp_dealloc = (destructor)dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "GraphicsManager",
-    .tp_new = new,
+    .tp_new = new_graphicsmanager_object,
     .tp_methods = methods,
     .tp_members = members,
     .tp_getset = getsets,

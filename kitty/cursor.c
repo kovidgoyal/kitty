@@ -10,7 +10,7 @@
 #include <structmember.h>
 
 static PyObject *
-new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+new_cursor_object(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     Cursor *self;
 
     self = (Cursor *)type->tp_alloc(type, 0);
@@ -310,7 +310,7 @@ PyTypeObject Cursor_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_getset = getseters,
-    .tp_new = new,
+    .tp_new = new_cursor_object,
 };
 
 RICHCMP(Cursor)
@@ -332,7 +332,7 @@ copy(Cursor *self, PyObject *a UNUSED) {
 }
 
 Cursor *alloc_cursor(void) {
-    return (Cursor*)new(&Cursor_Type, NULL, NULL);
+    return (Cursor*)new_cursor_object(&Cursor_Type, NULL, NULL);
 }
 
 INIT_TYPE(Cursor)

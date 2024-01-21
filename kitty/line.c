@@ -14,7 +14,7 @@
 extern PyTypeObject Cursor_Type;
 
 static PyObject *
-new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+new_line_object(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     PyErr_SetString(PyExc_TypeError, "Line objects cannot be instantiated directly, create them using LineBuf.line()");
     return NULL;
 }
@@ -955,7 +955,7 @@ PyTypeObject Line_Type = {
     .tp_richcompare = richcmp,
     .tp_doc = "Lines",
     .tp_methods = methods,
-    .tp_new = new
+    .tp_new = new_line_object
 };
 
 Line *alloc_line(void) {
