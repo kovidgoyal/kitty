@@ -454,9 +454,11 @@ def init_env(
     # Universal build fails with -fcf-protection clang is not smart enough to filter it out for the ARM part
     intel_control_flow_protection = '-fcf-protection=full' if ccver >= (9, 0) and not build_universal_binary else ''
     control_flow_protection = arm_control_flow_protection if is_arm else intel_control_flow_protection
-    if control_flow_protection:
-        if not test_compile(cc, control_flow_protection):
-            control_flow_protection = ''
+    env_cflags = shlex.split(os.environ.get('CFLAGS', ''))
+    env_cppflags = shlex.split(os.environ.get('CPPFLAGS', ''))
+    env_ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
+    if control_flow_protection and not test_compile(cc, control_flow_protection, *env_cppflags, *env_cflags, ldflags=env_ldflags):
+        control_flow_protection = ''
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
@@ -473,9 +475,9 @@ def init_env(
     )
     ldflags = shlex.split(ldflags_)
     ldflags.append('-shared')
-    cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
-    cflags += shlex.split(os.environ.get('CFLAGS', ''))
-    ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
+    cppflags += env_cppflags
+    cflags += env_cflags
+    ldflags += env_ldflags
     if not debug and not sanitize and not is_openbsd and link_time_optimization:
         # See https://github.com/google/sanitizers/issues/647
         cflags.append('-flto')
