@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iter
 
 from kitty.cli import CompletionSpec, get_defaults_from_seq, parse_args, parse_option_spec
 from kitty.cli_stub import RCOptions as R
+from kitty.conf.utils import uniq
 from kitty.constants import appname, list_kitty_resources, running_in_kitty
 from kitty.types import AsyncResponse
 
@@ -394,6 +395,7 @@ class RemoteCommand:
                     raise MatchError(payload_get(tab_match_name), 'tabs')
                 for tab in tabs:
                     windows += list(tab)
+            windows = uniq(windows)
         return windows
 
     def create_async_responder(self, payload_get: PayloadGetType, window: Optional[Window]) -> AsyncResponder:

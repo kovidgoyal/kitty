@@ -52,6 +52,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused `kitten @ launch --cwd=current` to fail over SSH (:iss:`7028`)
 
+- Fix a regression in the previous release that caused `kitten @ send-text` with a match parameter to send text twice to the active window (:iss:`7027`)
+
 0.32.0 [2024-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
