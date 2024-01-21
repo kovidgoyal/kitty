@@ -12,6 +12,11 @@ OPTIONS = '''
 default=pager
 choices=pager,scrollback
 The role the pager is used for. The default is a standard less like pager.
+
+
+--follow
+type=bool-set
+Follow changes in the specified file, automatically scrolling if currently on the last line.
 '''.format
 
 help_text = '''\

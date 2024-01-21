@@ -25,8 +25,10 @@ var debugprintln = tty.DebugPrintln
 var _ = debugprintln
 
 type input_line_struct struct {
-	line string
-	err  error
+	line                 string
+	num_carriage_returns int
+	is_a_complete_line   bool
+	err                  error
 }
 
 type global_state_struct struct {
@@ -59,7 +61,11 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		}
 		global_state.input_file_name = args[0]
 	}
-	go read_input(input_file, global_state.input_file_name, input_channel)
+	follow := global_state.opts.Follow
+	if follow && global_state.input_file_name == "/dev/stdin" {
+		follow = false
+	}
+	go read_input(input_file, global_state.input_file_name, input_channel, follow, global_state.opts.Role == "scrollback")
 	return
 }
 
