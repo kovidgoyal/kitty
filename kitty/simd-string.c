@@ -119,7 +119,8 @@ init_simd(void *x) {
     PyObject *module = (PyObject*)x;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #define A(x, val) { Py_INCREF(Py_##val); if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; }
-#define do_check() has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; has_avx2 = __builtin_cpu_supports("avx2") != 0;
+#define do_check() { has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; has_avx2 = __builtin_cpu_supports("avx2") != 0; }
+
 #ifdef __APPLE__
 #ifdef __arm64__
     // simde takes care of NEON on Apple Silicon
@@ -136,6 +137,7 @@ init_simd(void *x) {
     do_check();
 #endif
 #endif
+
 #undef do_check
     if (has_avx2) {
         A(has_avx2, True);
