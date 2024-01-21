@@ -65,6 +65,7 @@ class CompilationDatabase:
         self.incremental = incremental
         self.compile_commands: List[Command] = []
         self.link_commands: List[Command] = []
+        self.post_link_commands: List[Command] = []
 
     def add_command(
         self,
@@ -73,12 +74,16 @@ class CompilationDatabase:
         is_newer_func: Callable[[], bool],
         key: Optional[CompileKey] = None,
         on_success: Optional[Callable[[], None]] = None,
-        keyfile: Optional[str] = None
+        keyfile: Optional[str] = None,
+        is_post_link: bool = False,
     ) -> None:
         def no_op() -> None:
             pass
 
-        queue = self.link_commands if keyfile is None else self.compile_commands
+        if is_post_link:
+            queue = self.post_link_commands
+        else:
+            queue = self.link_commands if keyfile is None else self.compile_commands
         queue.append(Command(desc, cmd, is_newer_func, on_success or no_op, key, keyfile))
 
     def build_all(self) -> None:
@@ -97,6 +102,12 @@ class CompilationDatabase:
 
         items = []
         for compile_cmd in self.link_commands:
+            if not self.incremental or compile_cmd.is_newer_func():
+                items.append(compile_cmd)
+        parallel_run(items)
+
+        items = []
+        for compile_cmd in self.post_link_commands:
             if not self.incremental or compile_cmd.is_newer_func():
                 items.append(compile_cmd)
         parallel_run(items)
@@ -797,7 +808,7 @@ def compile_c_extension(
         real_dest = os.path.abspath(real_dest)
         desc = f'Linking dSYM {emphasis(desc_prefix + module)} ...'
         dsym = f'{real_dest}.dSYM/Contents/Resources/DWARF/{os.path.basename(real_dest)}'
-        compilation_database.add_command(desc, ['dsymutil', real_dest], partial(newer, dsym, real_dest), key=LinkKey(dsym))
+        compilation_database.add_command(desc, ['dsymutil', real_dest], partial(newer, dsym, real_dest), key=LinkKey(dsym), is_post_link=True)
 
 
 def find_c_files() -> Tuple[List[str], List[str]]:
@@ -1170,7 +1181,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     if args.build_dsym and is_macos:
         desc = f'Linking dSYM {emphasis("launcher")} ...'
         dsym = f'{dest}.dSYM/Contents/Resources/DWARF/{os.path.basename(dest)}'
-        args.compilation_database.add_command(desc, ['dsymutil', dest], partial(newer, dsym, dest), key=LinkKey(dsym))
+        args.compilation_database.add_command(desc, ['dsymutil', dest], partial(newer, dsym, dest), key=LinkKey(dsym), is_post_link=True)
     args.compilation_database.build_all()
 
 
