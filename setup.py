@@ -151,6 +151,7 @@ class Options:
     python_linker_flags: str = ''
     incremental: bool = True
     build_universal_binary: bool = False
+    build_dsym: bool = False
     ignore_compiler_warnings: bool = False
     profile: bool = False
     libdir_name: str = 'lib'
@@ -753,7 +754,8 @@ def compile_c_extension(
     compilation_database: CompilationDatabase,
     sources: List[str],
     headers: List[str],
-    desc_prefix: str = ''
+    desc_prefix: str = '',
+    build_dsym: bool = False,
 ) -> None:
     prefix = os.path.basename(module)
     objects = [
@@ -787,6 +789,11 @@ def compile_c_extension(
         os.rename(dest, real_dest)
 
     compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success, key=CompileKey('', f'{module}.so'))
+    if is_macos and build_dsym:
+        real_dest = os.path.abspath(real_dest)
+        desc = f'Linking dSYM {emphasis(desc_prefix + module)} ...'
+        dsym = f'{real_dest}.dSYM/Contents/Resources/DWARF/{os.path.basename(real_dest)}'
+        compilation_database.add_command(desc, ['dsymutil', real_dest], partial(newer, dsym, real_dest), key=CompileKey(real_dest, dsym))
 
 
 def find_c_files() -> Tuple[List[str], List[str]]:
@@ -815,7 +822,7 @@ def find_c_files() -> Tuple[List[str], List[str]]:
     return ans, headers
 
 
-def compile_glfw(compilation_database: CompilationDatabase) -> None:
+def compile_glfw(compilation_database: CompilationDatabase, build_dsym: bool = False) -> None:
     modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
@@ -837,7 +844,7 @@ def compile_glfw(compilation_database: CompilationDatabase) -> None:
                 continue
         compile_c_extension(
             genv, f'kitty/glfw-{module}', compilation_database,
-            sources, all_headers, desc_prefix=f'[{module}] ')
+            sources, all_headers, desc_prefix=f'[{module}] ', build_dsym=build_dsym)
 
 
 def kittens_env(args: Options) -> Env:
@@ -875,7 +882,7 @@ def compile_kittens(args: Options) -> None:
         final_env.cflags.extend(f'-I{x}' for x in includes)
         final_env.ldpaths[:0] = list(libraries)
         compile_c_extension(
-            final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'])
+            final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'], build_dsym=args.build_dsym)
 
 
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
@@ -974,9 +981,10 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     headers.append(build_ref_map(args.skip_code_generation))
     headers.append(build_uniforms_header(args.skip_code_generation))
     compile_c_extension(
-        kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers
+        kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers,
+        build_dsym=args.build_dsym,
     )
-    compile_glfw(args.compilation_database)
+    compile_glfw(args.compilation_database, args.build_dsym)
     compile_kittens(args)
 
 
@@ -1155,6 +1163,10 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     desc = f'Linking {emphasis("launcher")} ...'
     cmd = env.cc + ldflags + objects + libs + pylib + ['-o', dest]
     args.compilation_database.add_command(desc, cmd, partial(newer, dest, *objects), key=CompileKey('', 'kitty'))
+    if args.build_dsym and is_macos:
+        desc = f'Linking dSYM {emphasis("launcher")} ...'
+        dsym = f'{dest}.dSYM/Contents/Resources/DWARF/{os.path.basename(dest)}'
+        args.compilation_database.add_command(desc, ['dsymutil', dest], partial(newer, dsym, dest), key=CompileKey(dest, dsym))
     args.compilation_database.build_all()
 
 
@@ -1849,6 +1861,11 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         '--build-universal-binary',
         default=Options.build_universal_binary, action='store_true',
         help='Build a universal binary (ARM + Intel on macOS, ignored on other platforms)'
+    )
+    p.add_argument(
+        '--build-dSYM', dest='build_dsym',
+        default=Options.build_dsym, action='store_true',
+        help='Build the dSYM bundle on macOS, ignored on other platforms'
     )
     return p
 # }}}

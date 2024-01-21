@@ -91,6 +91,8 @@ def install_deps():
 def build_kitty():
     python = shutil.which('python3') if is_bundle else sys.executable
     cmd = f'{python} setup.py build --verbose'
+    if is_macos:
+        cmd += ' --build-dSYM'
     if os.environ.get('KITTY_SANITIZE') == '1':
         cmd += ' --debug --sanitize'
     run(cmd)
