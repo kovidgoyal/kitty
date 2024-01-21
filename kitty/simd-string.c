@@ -127,6 +127,12 @@ init_simd(void *x) {
     has_sse4_2 = true; has_avx2 = true;
 #else
     do_check();
+    // On GitHub actions there are some weird macOS machines which report avx2 not available but sse4.2 is available and then
+    // SIGILL when using basic sse instructions
+    if (!has_avx2 && has_sse4_2) {
+        const char *ci = getenv("CI");
+        if (ci && strcmp(ci, "true") == 0) has_sse4_2 = false;
+    }
 #endif
 #else
 #ifdef __aarch64__
