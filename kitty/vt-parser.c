@@ -1470,7 +1470,7 @@ parse_worker(void *p, ParseData *pd, bool flush) { run_worker(p, pd, flush); }
 
 #ifndef DUMP_COMMANDS
 static PyObject*
-new(PyTypeObject *type UNUSED, PyObject *args, PyObject UNUSED *kwds) {
+new_vtparser_object(PyTypeObject *type UNUSED, PyObject *args, PyObject UNUSED *kwds) {
     id_type window_id=0;
     if (!PyArg_ParseTuple(args, "|K", &window_id)) return NULL;
     return (PyObject*) alloc_vt_parser(window_id);
@@ -1525,7 +1525,7 @@ PyTypeObject Parser_Type = {
     .tp_doc = "VT Escape code parser",
     .tp_methods = methods,
     .tp_getset = getsetters,
-    .tp_new = new,
+    .tp_new = new_vtparser_object,
 };
 
 Parser*

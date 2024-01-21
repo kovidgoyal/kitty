@@ -153,7 +153,7 @@ mask_kitty_signals_process_wide(PyObject *self UNUSED, PyObject *a UNUSED) {
 }
 
 static PyObject *
-new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+new_childmonitor_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
     PyObject *dump_callback, *death_notify;
     int talk_fd = -1, listen_fd = -1;
@@ -1933,7 +1933,7 @@ PyTypeObject ChildMonitor_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "ChildMonitor",
     .tp_methods = methods,
-    .tp_new = new,
+    .tp_new = new_childmonitor_object,
 };
 
 

@@ -66,7 +66,7 @@ free_cache_entry(CacheEntry *e) {
 #define mutex(op) pthread_mutex_##op(&self->lock)
 
 static PyObject*
-new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+new_diskcache_object(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     DiskCache *self;
     self = (DiskCache*)type->tp_alloc(type, 0);
     if (self) {
@@ -783,7 +783,7 @@ PyTypeObject DiskCache_Type = {
     .tp_doc = "A disk based secure cache",
     .tp_methods = methods,
     .tp_members = members,
-    .tp_new = new,
+    .tp_new = new_diskcache_object,
 };
 
 static PyMethodDef module_methods[] = {
@@ -792,4 +792,4 @@ static PyMethodDef module_methods[] = {
 };
 
 INIT_TYPE(DiskCache)
-PyObject* create_disk_cache(void) { return new(&DiskCache_Type, NULL, NULL); }
+PyObject* create_disk_cache(void) { return new_diskcache_object(&DiskCache_Type, NULL, NULL); }

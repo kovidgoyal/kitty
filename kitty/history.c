@@ -133,7 +133,7 @@ create_historybuf(PyTypeObject *type, unsigned int xnum, unsigned int ynum, unsi
 }
 
 static PyObject *
-new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+new_history_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     unsigned int xnum = 1, ynum = 1, pagerhist_sz = 0;
     if (!PyArg_ParseTuple(args, "II|I", &ynum, &xnum, &pagerhist_sz)) return NULL;
     HistoryBuf *ans = create_historybuf(type, xnum, ynum, pagerhist_sz);
@@ -569,7 +569,7 @@ PyTypeObject HistoryBuf_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_str = (reprfunc)__str__,
-    .tp_new = new
+    .tp_new = new_history_object
 };
 
 INIT_TYPE(HistoryBuf)

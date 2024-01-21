@@ -19,7 +19,7 @@ typedef struct {
 
 
 static PyObject *
-new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+new_shlex_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Shlex *self;
     self = (Shlex *)type->tp_alloc(type, 0);
     if (self) {
@@ -154,7 +154,7 @@ PyTypeObject Shlex_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Lexing like a shell",
     .tp_methods = methods,
-    .tp_new = new,
+    .tp_new = new_shlex_object,
 };
 
 INIT_TYPE(Shlex)
