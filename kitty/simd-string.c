@@ -143,6 +143,9 @@ init_simd(void *x) {
     do_check();
 #endif
 #endif
+    if (getenv("KITTY_NO_SIMD")) {
+        has_avx2 = false; has_sse4_2 = false;
+    }
 
 #undef do_check
     if (has_avx2) {
