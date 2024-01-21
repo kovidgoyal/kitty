@@ -1860,7 +1860,11 @@ class Boss:
 
         cmd = list(map(prepare_arg, get_options().scrollback_pager))
         if not os.path.isabs(cmd[0]):
-            cmd[0] = which(cmd[0]) or cmd[0]
+            resolved_exe = which(cmd[0])
+            if not resolved_exe:
+                log_error(f'The scrollback_pager {cmd[0]} was not found in PATH, falling back to less')
+                resolved_exe = which('less') or 'less'
+            cmd[0] = resolved_exe
 
         if os.path.basename(cmd[0]) == 'less':
             cmd.append('-+F')  # reset --quit-if-one-screen
