@@ -4,7 +4,6 @@
 import importlib
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -190,7 +189,6 @@ def run_go(packages: Set[str], names: str) -> GoProc:
     for name in names:
         cmd.extend(('-run', name))
     cmd += go_pkg_args
-    print(shlex.join(cmd), flush=True)
     return GoProc(cmd)
 
 
@@ -246,6 +244,7 @@ def run_python_tests(args: Any, go_proc: 'Optional[GoProc]' = None) -> None:
 
 
 def run_tests(report_env: bool = False) -> None:
+    report_env = report_env or BaseTest.is_ci
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -271,6 +270,10 @@ def run_tests(report_env: bool = False) -> None:
     else:
         go_proc = None
     with env_for_python_tests(report_env):
+        if go_pkgs:
+            if report_env:
+                print('Go executable:', go_exe())
+            print('Go packages being tested:', ' '.join(go_pkgs))
         sys.stdout.flush()
         run_python_tests(args, go_proc)
 
@@ -299,7 +302,7 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     path = f'{launcher_dir}{os.pathsep}{path}'
     python_for_type_check()
     print('Running under CI:', BaseTest.is_ci)
-    if BaseTest.is_ci or report_env:
+    if report_env:
         print('Using PATH in test environment:', path)
         print('Python:', python_for_type_check())
         from kitty.fast_data_types import has_avx2, has_sse4_2
