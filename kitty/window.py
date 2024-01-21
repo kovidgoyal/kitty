@@ -178,8 +178,8 @@ class CwdRequest:
                             env.pop(k, None)
                     for k in (
                         'HOME', 'USER', 'TEMP', 'TMP', 'TMPDIR', 'PATH', 'PWD', 'OLDPWD', 'KITTY_INSTALLATION_DIR',
-                        'HOSTNAME', 'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'KITTY_WINDOW_ID', 'KITTY_STDIO_FORWARDED',
-                        'KITTY_PID', 'KITTY_PUBLIC_KEY', 'KITTY_WINDOW_ID', 'TERMINFO', 'XDG_RUNTIME_DIR', 'XDG_VTNR',
+                        'HOSTNAME', 'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'KITTY_STDIO_FORWARDED',
+                        'KITTY_PUBLIC_KEY', 'TERMINFO', 'XDG_RUNTIME_DIR', 'XDG_VTNR',
                         'XDG_DATA_DIRS', 'XAUTHORITY', 'EDITOR', 'VISUAL',
                     ):
                         env.pop(k, None)

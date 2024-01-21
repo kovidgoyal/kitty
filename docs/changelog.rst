@@ -50,6 +50,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused multi-key sequences to not abort when pressing an unknown key (:iss:`7022`)
 
+- Fix a regression in the previous release that caused `kitten @ launch --cwd=current` to fail over SSH (:iss:`7028`)
+
 0.32.0 [2024-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
