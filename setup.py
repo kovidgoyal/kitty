@@ -454,6 +454,9 @@ def init_env(
     # Universal build fails with -fcf-protection clang is not smart enough to filter it out for the ARM part
     intel_control_flow_protection = '-fcf-protection=full' if ccver >= (9, 0) and not build_universal_binary else ''
     control_flow_protection = arm_control_flow_protection if is_arm else intel_control_flow_protection
+    if control_flow_protection:
+        if not test_compile(cc, control_flow_protection):
+            control_flow_protection = ''
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
