@@ -28,6 +28,8 @@ from typing import (
     Tuple,
 )
 
+from . import BaseTest
+
 
 def contents(package: str) -> Iterator[str]:
     try:
@@ -269,6 +271,7 @@ def run_tests(report_env: bool = False) -> None:
     else:
         go_proc = None
     with env_for_python_tests(report_env):
+        sys.stdout.flush()
         run_python_tests(args, go_proc)
 
 
@@ -295,7 +298,8 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     path = f'{launcher_dir}{os.pathsep}{path}'
     python_for_type_check()
-    if os.environ.get('CI') == 'true' or report_env:
+    print('Running under CI:', BaseTest.is_ci)
+    if BaseTest.is_ci or report_env:
         print('Using PATH in test environment:', path)
         print('Python:', python_for_type_check())
         from kitty.fast_data_types import has_avx2, has_sse4_2
