@@ -455,11 +455,9 @@ def init_env(
     if control_flow_protection and not test_compile(cc, control_flow_protection, *env_cppflags, *env_cflags, ldflags=env_ldflags):
         control_flow_protection = ''
     march = ''
-    if is_macos and is_arm:
+    if not (is_macos and is_arm) and not build_universal_binary:
         # see https://github.com/kovidgoyal/kitty/issues/3126
         # -march=native is not supported when targeting Apple Silicon
-        pass
-    else:
         if native_optimizations:
             march = '-march=native -mtune=native'
         elif sys.maxsize > 2**32 and not is_arm:
