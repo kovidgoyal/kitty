@@ -242,7 +242,9 @@ func dependencies(args []string) {
 	chdir_to_base()
 	nf := flag.NewFlagSet("deps", flag.ExitOnError)
 	docsptr := nf.Bool("for-docs", false, "download the dependencies needed to build the documentation")
-	nf.Parse(args)
+	if err := nf.Parse(args); err != nil {
+		exit(err)
+	}
 	if *docsptr {
 		dependencies_for_docs()
 		fmt.Println("Dependencies needed to generate documentation have been installed. Build docs with ./dev.sh docs")
@@ -384,7 +386,9 @@ func docs(args []string) {
 	nf := flag.NewFlagSet("deps", flag.ExitOnError)
 	livereload := nf.Bool("live-reload", false, "build the docs and make them available via s local server with live reloading for ease of development")
 	failwarn := nf.Bool("fail-warn", false, "make warnings fatal when building the docs")
-	nf.Parse(args)
+	if err := nf.Parse(args); err != nil {
+		exit(err)
+	}
 	exe := filepath.Join(root_dir(), "bin", "sphinx-build")
 	aexe := filepath.Join(root_dir(), "bin", "sphinx-autobuild")
 	target := "docs"
