@@ -230,3 +230,8 @@ Variables that kitty sets when running child programs
 
    Set to ``1`` when kitty is running a shell because of the ``--hold`` flag. Can
    be used to specialize shell behavior in the shell rc files as desired.
+
+.. envvar:: KITTY_NO_SIMD
+
+   Set it to any value to prevent kitty from using SIMD CPU vector
+   instructions.
