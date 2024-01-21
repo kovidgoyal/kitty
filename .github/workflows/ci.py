@@ -31,8 +31,8 @@ def do_print_crash_reports():
         if items:
             time.sleep(1)
             print(os.path.basename(items[0]))
-            with open(items[0]) as src:
-                print(src.read())
+            sdir = os.path.dirname(os.path.abspath(__file__))
+            subprocess.check_call([sys.executable, os.path.join(sdir, 'macos_crash_report.py'), items[0]])
     else:
         run('sh -c "echo bt | coredumpctl debug"')
     print(flush=True)
