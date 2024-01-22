@@ -56,3 +56,4 @@ void bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index)
 void unbind_vertex_array(void);
 void unbind_program(void);
 GLuint compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * string);
+bool is_nvidia_gpu_driver(void);

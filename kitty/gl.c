@@ -38,6 +38,10 @@ check_for_gl_error(void UNUSED *ret, const char *name, GLADapiproc UNUSED funcpt
     }
 }
 
+static bool is_nvidia = false;
+
+bool is_nvidia_gpu_driver(void) { return is_nvidia; }
+
 void
 gl_init(void) {
     static bool glad_loaded = false;
@@ -59,7 +63,9 @@ gl_init(void) {
         glad_loaded = true;
         int gl_major = GLAD_VERSION_MAJOR(gl_version);
         int gl_minor = GLAD_VERSION_MINOR(gl_version);
-        if (global_state.debug_rendering) printf("GL version string: '%s' Detected version: %d.%d\n", glGetString(GL_VERSION), gl_major, gl_minor);
+        const char *gvs = (const char*)glGetString(GL_VERSION);
+        if (strstr(gvs, "NVIDIA")) is_nvidia = true;
+        if (global_state.debug_rendering) printf("GL version string: '%s' Detected version: %d.%d\n", gvs, gl_major, gl_minor);
         if (gl_major < OPENGL_REQUIRED_VERSION_MAJOR || (gl_major == OPENGL_REQUIRED_VERSION_MAJOR && gl_minor < OPENGL_REQUIRED_VERSION_MINOR)) {
             fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", gl_major, gl_minor);
         }

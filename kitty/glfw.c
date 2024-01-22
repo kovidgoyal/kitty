@@ -1075,7 +1075,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwSetIMECursorPositionCallback(get_ime_cursor_position);
         glfwSetSystemColorThemeChangeCallback(on_system_color_scheme_change);
         // Request SRGB output buffer
-        glfwWindowHint(GLFW_SRGB_CAPABLE, true);
+        // Prevents kitty from starting on Wayland + NVIDIA, sigh: https://github.com/kovidgoyal/kitty/issues/7021
+        // Remove after https://github.com/NVIDIA/egl-wayland/issues/85 is fixed.
+        if (!global_state.is_wayland || !is_nvidia_gpu_driver()) glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
