@@ -5,7 +5,7 @@ from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
-from kitty.fast_data_types import CURSOR_BLOCK, VT_PARSER_BUFFER_SIZE, base64_decode, base64_encode, test_utf8_decode_to_sentinel
+from kitty.fast_data_types import CURSOR_BLOCK, VT_PARSER_BUFFER_SIZE, base64_decode, base64_encode, has_avx2, has_sse4_2, test_utf8_decode_to_sentinel
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest, parse_bytes
@@ -181,6 +181,9 @@ class TestParser(BaseTest):
         pb(b'"\xf0\x9f\x98"', '"\ufffd"')
 
     def test_utf8_simd_decode(self):
+        def unsupported(which):
+            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2)
+
         def reset_state():
             test_utf8_decode_to_sentinel(b'', -1)
 
@@ -190,6 +193,8 @@ class TestParser(BaseTest):
             return x
 
         def t(*a, which=2):
+            if unsupported(which):
+                return
 
             def parse_parts(which):
                 esc_found = False
@@ -209,7 +214,7 @@ class TestParser(BaseTest):
 
         def double_test(x):
             for which in (2, 3):
-                t(x)
+                t(x, which=which)
             t(x*2, which=3)
             reset_state()
 
@@ -234,6 +239,8 @@ class TestParser(BaseTest):
             x(b'abcd\xe2\x89', b'\xa41234')
 
         def test_expected(src, expected, which=2):
+            if unsupported(which):
+                return
             reset_state()
             _, actual = test_utf8_decode_to_sentinel(b'filler' + asbytes(src), which)
             expected = 'filler' + expected
