@@ -16,10 +16,10 @@ frames-per-second. See below for an overview of all customization possibilities.
 You can open the config file within kitty by pressing :sc:`edit_config_file`
 (:kbd:`⌘+,` on macOS). A :file:`kitty.conf` with commented default
 configurations and descriptions will be created if the file does not exist.
-You can reload the config file within kitty by pressing :sc:`reload_config_file`
-(:kbd:`⌃+⌘+,` on macOS) or sending kitty the ``SIGUSR1`` signal.
-You can also display the current configuration by pressing :sc:`debug_config`
-(:kbd:`⌥+⌘+,` on macOS).
+You can reload the config file within kitty by pressing
+:sc:`reload_config_file` (:kbd:`⌃+⌘+,` on macOS) or sending kitty the
+``SIGUSR1`` signal with ``kill -SIGUSR1 $KITTY_PID``. You can also display the
+current configuration by pressing :sc:`debug_config` (:kbd:`⌥+⌘+,` on macOS).
 
 .. _confloc:
 
