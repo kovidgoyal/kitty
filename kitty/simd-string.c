@@ -124,8 +124,8 @@ init_simd(void *x) {
 #ifdef __APPLE__
 #ifdef __arm64__
     // simde takes care of NEON on Apple Silicon
-    // ARM has only 128 bit registers.
-    has_sse4_2 = true; has_avx2 = false;
+    // ARM has only 128 bit registers buy using the avx2 code is still slightly faster
+    has_sse4_2 = true; has_avx2 = true;
 #else
     do_check();
     // On GitHub actions there are some weird macOS machines which report avx2 not available but sse4.2 is available and then
@@ -139,8 +139,8 @@ init_simd(void *x) {
 #ifdef __aarch64__
     // no idea how to probe ARM cpu for NEON support. This file uses pretty
     // basic AVX2 and SSE4.2 intrinsics, so hopefully they work on ARM
-    // ARM has only 128 bit registers.
-    has_sse4_2 = true; has_avx2 = false;
+    // ARM has only 128 bit registers buy using the avx2 code is still slightly faster
+    has_sse4_2 = true; has_avx2 = true;
 #else
     do_check();
 #endif
