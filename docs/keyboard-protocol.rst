@@ -105,9 +105,7 @@ do not. When a key event produces text, the text is sent directly as UTF-8
 encoded bytes. This is safe as UTF-8 contains no C0 control codes.
 When the key event does not have text, the key event is encoded as an escape code. In
 legacy compatibility mode (the default) this uses legacy escape codes, so old terminal
-applications continue to work. Key events that could not be represented in
-legacy mode are encoded using a ``CSI u`` escape code, that most terminal
-programs should just ignore. For more advanced features, such as release/repeat
+applications continue to work. For more advanced features, such as release/repeat
 reporting etc., applications can tell the terminal they want this information by
 sending an escape code to :ref:`progressively enhance <progressive_enhancement>` the data reported for
 key events.
@@ -481,6 +479,12 @@ must correspond to the :kbd:`Backspace` key.
 
 All keypad keys are reported as their equivalent non-keypad keys. To
 distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
+
+Terminals may choose what they want to do about functional keys that have no
+legacy encoding. kitty chooses to encode these using ``CSI u`` encoding even in
+legacy mode, so that they become usable even in programs that do not
+understand the full kitty keyboard protocol. However, terminals may instead choose to
+ignore such keys in legacy mode instead, or have an option to control this behavior.
 
 .. _legacy_text:
 
