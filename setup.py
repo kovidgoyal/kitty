@@ -476,8 +476,6 @@ def init_env(
         # -march=native is not supported when targeting Apple Silicon
         if native_optimizations:
             march = '-march=native -mtune=native'
-        elif sys.maxsize > 2**32 and not is_arm:
-            march = '-march=x86-64-v2 -mtune=generic'
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
