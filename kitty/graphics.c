@@ -123,8 +123,9 @@ incref_texture_ref(TextureRef *ref) {
 
 static TextureRef*
 new_texture_ref(void) {
-    TextureRef *ans = malloc(sizeof(TextureRef));
-    if (ans) { ans->id = 0; ans->refcnt = 1; }
+    TextureRef *ans = calloc(1, sizeof(TextureRef));
+    if (!ans) fatal("Out of memory allocating a TextureRef");
+    ans->refcnt = 1;
     return ans;
 }
 
@@ -485,7 +486,6 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
     if (!ans) fatal("Out of memory allocating Image object");
     ans->internal_id = next_id(&self->image_id_counter);
     ans->texture = new_texture_ref();
-    if (!ans->texture) fatal("Out of memory allocating TextureRef");
     HASH_ADD(hh, self->images, internal_id, sizeof(ans->internal_id), ans);
     return ans;
 }
@@ -694,6 +694,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img = find_or_create_image(self, iid, &existing);
         if (existing) {
             free_image_resources(self, img);
+            img->texture = new_texture_ref();
             img->root_frame_data_loaded = false;
             img->is_drawn = false;
             img->current_frame_shown_at = 0;
