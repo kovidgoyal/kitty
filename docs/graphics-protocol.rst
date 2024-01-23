@@ -460,7 +460,10 @@ When you specify a placement id, it will be added to the acknowledgement code
 above. Every placement is uniquely identified by the pair of the ``image id``
 and the ``placement id``. If you specify a placement id for an image that does
 not have an id (i.e. has id=0), it will be ignored. In particular this means
-there can exist multiple images with ``image id=0, placement id=0``.
+there can exist multiple images with ``image id=0, placement id=0``. Not
+specifying a placement id or using ``p=0`` for multiple put commands (``a=p``)
+with the same non-zero image id results in multiple placements the image.
+
 An example response::
 
     <ESC>_Gi=<image id>,p=<placement id>;OK<ESC>\
