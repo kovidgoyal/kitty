@@ -54,6 +54,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused `kitten @ send-text` with a match tab parameter to send text twice to the active window (:iss:`7027`)
 
+- Fix a regression in the previous release that caused overriding of existing multi-key mappings to fail (:iss:`7044`)
+
 - Wayland+NVIDIA: Do not request an sRGB output buffer as a bug in Wayland causes kitty to not start (:iss:`7021`)
 
 0.32.0 [2024-01-19]

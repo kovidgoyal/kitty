@@ -118,7 +118,10 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] =
                 dl = defn.definition_location
                 accumulate_bad_lines.append(BadLine(dl.number, dl.line, KeyError(kerr), dl.file))
             continue
-        m.keymap[defn.trigger].append(defn)
+        items = m.keymap[defn.trigger]
+        if defn.is_sequence:
+            items = m.keymap[defn.trigger] = [kd for kd in items if defn.rest != kd.rest or defn.options.when_focus_on != kd.options.when_focus_on]
+        items.append(defn)
     opts.keyboard_modes = modes
 
 
