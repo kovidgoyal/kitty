@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"kitty/tools/cli"
+	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/shell_integration"
 )
@@ -67,6 +68,9 @@ func main(args []string, opts *Options) (rc int, err error) {
 	}
 	return
 }
+
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 func EntryPoint(root *cli.Command) *cli.Command {
 	sc := root.AddSubCommand(&cli.Command{
