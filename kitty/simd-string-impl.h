@@ -4,6 +4,13 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#pragma once
+#ifdef KITTY_NO_SIMD
+bool utf8_decode_to_esc_128(UTF8Decoder *d, const uint8_t *src, size_t src_sz) { fatal("No SIMD implementations for this CPU"); }
+bool utf8_decode_to_esc_256(UTF8Decoder *d, const uint8_t *src, size_t src_sz) { fatal("No SIMD implementations for this CPU"); }
+const uint8_t* find_either_of_two_bytes_128(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) { fatal("No SIMD implementations for this CPU"); }
+const uint8_t* find_either_of_two_bytes_256(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) { fatal("No SIMD implementations for this CPU"); }
+#else
 #ifndef KITTY_SIMD_LEVEL
 #define KITTY_SIMD_LEVEL 128
 #endif
@@ -574,3 +581,4 @@ invalid_utf8:
 #undef sum_bytes
 #undef is_zero
 #undef print_register_as_bytes
+#endif // KITTY_NO_SIMD

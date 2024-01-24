@@ -709,12 +709,11 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
 def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     ans = list(env.cflags)
     # SIMD specific flags, ignored for native optimizations as they give slightly better performance
-    if src == 'kitty/simd-string-128.c':
+    if src in ('kitty/simd-string-128.c', 'kitty/simd-string-256.c'):
         if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
-            ans.append('-msse4.2')
-    elif src == 'kitty/simd-string-256.c':
-        if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
-            ans.append('-mavx2')
+            ans.append('-msse4.2' if '128' in src else '-mavx2')
+        elif env.binary_arch.isa != ISA.ARM64:
+            ans.append('-DKITTY_NO_SIMD')
     elif src.startswith('3rdparty/base64/lib/arch/'):
         if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
             q = src.split(os.path.sep)
