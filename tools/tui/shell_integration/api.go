@@ -6,8 +6,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
-	"kitty"
-	"kitty/tools/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +13,10 @@ import (
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+
+	"kitty"
+	"kitty/tools/tty"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -230,6 +232,9 @@ func fish_setup_func(shell_integration_dir string, argv []string, env map[string
 	}
 	return argv, env, nil
 }
+
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 func bash_setup_func(shell_integration_dir string, argv []string, env map[string]string) ([]string, map[string]string, error) {
 	inject := utils.NewSetWithItems(`1`)
