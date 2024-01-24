@@ -12,11 +12,12 @@
 #include "charsets.h"
 
 // Boilerplate {{{
-#ifdef __clang__
-_Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
+#if  defined(__clang__) && __clang_major__ > 12
+_Pragma("clang diagnostic push")
+_Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #endif
 #include <simde/x86/avx2.h>
-#ifdef __clang__
+#if  defined(__clang__) && __clang_major__ > 12
 _Pragma("clang diagnostic pop")
 #endif
 
