@@ -56,7 +56,6 @@ class Env:
     ldpaths: List[str] = []
     ccver: Tuple[int, int]
     vcs_rev: str = ''
-    build_universal_binary: bool = False
     binary_arch: BinaryArch = BinaryArch()
     native_optimizations: bool = False
 
@@ -71,14 +70,13 @@ class Env:
     def __init__(
         self, cc: List[str] = [], cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
         library_paths: Dict[str, List[str]] = {}, ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0),
-        vcs_rev: str = '', build_universal_binary: bool = False, binary_arch: BinaryArch = BinaryArch(),
+        vcs_rev: str = '', binary_arch: BinaryArch = BinaryArch(),
         native_optimizations: bool = False,
     ):
         self.cc, self.cppflags, self.cflags, self.ldflags, self.library_paths = cc, cppflags, cflags, ldflags, library_paths
         self.ldpaths = ldpaths or []
         self.ccver = ccver
         self.vcs_rev = vcs_rev
-        self.build_universal_binary = build_universal_binary
         self.binary_arch = binary_arch
         self.native_optimizations = native_optimizations
 
@@ -91,7 +89,6 @@ class Env:
         ans.wayland_scanner_code = self.wayland_scanner_code
         ans.wayland_protocols = self.wayland_protocols
         ans.vcs_rev = self.vcs_rev
-        ans.build_universal_binary = self.build_universal_binary
         ans.binary_arch = self.binary_arch
         ans.native_optimizations = self.native_optimizations
         return ans

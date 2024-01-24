@@ -46,7 +46,7 @@ def run(*args, **extra_env):
     return subprocess.call(list(args), env=env, cwd=cwd)
 
 
-SETUP_CMD = [PYTHON, 'setup.py', '--build-universal-binary']
+SETUP_CMD = [PYTHON, 'setup.py']
 
 
 def build_frozen_launcher(extra_include_dirs):
