@@ -231,7 +231,10 @@ Variables that kitty sets when running child programs
    Set to ``1`` when kitty is running a shell because of the ``--hold`` flag. Can
    be used to specialize shell behavior in the shell rc files as desired.
 
-.. envvar:: KITTY_NO_SIMD
+.. envvar:: KITTY_SIMD
 
-   Set it to any value to prevent kitty from using SIMD CPU vector
-   instructions.
+   Set it to ``128`` to use 128 bit vector registers, ``256`` to use 256 bit
+   vector registers or any other value to prevent kitty from using SIMD CPU
+   vector instructions. Warning, this overrides CPU capability detection so
+   will cause kitty to crash with SIGILL if your CPU does not support the
+   necessary SIMD extensions.

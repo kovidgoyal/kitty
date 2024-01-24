@@ -139,8 +139,10 @@ init_simd(void *x) {
     do_check();
 #endif
 #endif
-    if (getenv("KITTY_NO_SIMD")) {
-        has_avx2 = false; has_sse4_2 = false;
+    const char *simd_env = getenv("KITTY_SIMD");
+    if (simd_env) {
+        has_sse4_2 = strcmp(simd_env, "128") == 0;
+        has_avx2 = strcmp(simd_env, "256") == 0;
     }
 
 #undef do_check
