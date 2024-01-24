@@ -227,8 +227,10 @@ enhancement <progressive_enhancement>` mechanism described below. Some examples:
     shift+a -> CSI 97 ; 2 ; 65 u  # The text 'A' is reported as 65
     option+a -> CSI 97 ; ; 229 u  # The text 'å' is reported as 229
 
-If multiple code points are present, they must be separated by colons.
-If no known key is associated with the text the key number ``0`` must be used.
+If multiple code points are present, they must be separated by colons.  If no
+known key is associated with the text the key number ``0`` must be used. The
+associated text must not contain control codes (control codes are code points
+below U+0020 and codepoints in the C0 and C1 blocks).
 
 
 Non-Unicode keys
