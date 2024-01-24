@@ -4,8 +4,8 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#ifndef BITS
-#define BITS 128
+#ifndef KITTY_SIMD_LEVEL
+#define KITTY_SIMD_LEVEL 128
 #endif
 
 #include "simd-string.h"
@@ -26,13 +26,13 @@ _Pragma("clang diagnostic pop")
 #endif
 #define CONCAT(A, B) A##B
 #define CONCAT_EXPAND(A, B) CONCAT(A,B)
-#define FUNC(name) CONCAT_EXPAND(name##_, BITS)
-#define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, BITS), i)
+#define FUNC(name) CONCAT_EXPAND(name##_, KITTY_SIMD_LEVEL)
+#define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, KITTY_SIMD_LEVEL), i)
 #define shift_right_by_bytes128 simde_mm_srli_si128
 #define zero_last_n_bytes FUNC(zero_last_n_bytes)
 #define is_zero FUNC(is_zero)
 
-#if BITS == 128
+#if KITTY_SIMD_LEVEL == 128
 #define set1_epi8(x) simde_mm_set1_epi8((char)(x))
 #define set_epi8 simde_mm_set_epi8
 #define add_epi8 simde_mm_add_epi8
@@ -199,7 +199,7 @@ FUNC(zero_last_n_bytes)(integer_t vec, char n) {
     return andnot_si(mask, vec);
 }
 
-static inline const uint8_t*
+const uint8_t*
 FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
     const integer_t a_vec = set1_epi8(a), b_vec = set1_epi8(b);
     for (const uint8_t* limit = haystack + sz; haystack < limit; haystack += sizeof(integer_t)) {
@@ -220,7 +220,7 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
 
 static inline void
 FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
-#if BITS == 128
+#if KITTY_SIMD_LEVEL == 128
     for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += output_increment) {
         const integer_t unpacked = extract_lower_quarter_as_chars(vec);
         store_aligned((integer_t*)p, unpacked);
@@ -252,7 +252,7 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
 
 static inline void
 FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integer_t output3, const size_t num_codepoints) {
-#if BITS == 128
+#if KITTY_SIMD_LEVEL == 128
     for (const uint32_t *limit = d->output + num_codepoints, *p = d->output; p < limit; p += output_increment) {
         const integer_t unpacked1 = extract_lower_quarter_as_chars(output1);
         const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_quarter_as_chars(output2));
@@ -294,7 +294,6 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
 }
 #undef output_increment
 
-#ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
 static inline unsigned
 sum_bytes_128(simde__m128i v) {
     // Use _mm_sad_epu8 to perform a sum of absolute differences against zero
@@ -345,9 +344,8 @@ scalar_decode_all(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     return pos;
 }
 #undef do_one_byte
-#endif
 
-static inline bool
+bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // Based on the algorithm described in: https://woboq.com/blog/utf-8-processing-using-simd.html
 
@@ -489,7 +487,7 @@ start_classification:
     shifts = add_epi8(shifts, shift_right_by_two_bytes(shifts));
     shifts = add_epi8(shifts, shift_right_by_four_bytes(shifts));
     shifts = add_epi8(shifts, shift_right_by_eight_bytes(shifts));
-#if BITS == 256
+#if KITTY_SIMD_LEVEL == 256
     shifts = add_epi8(shifts, shift_right_by_sixteen_bytes(shifts));
 #endif
     // zero the shifts for discarded continuation bytes
@@ -505,7 +503,7 @@ start_classification:
     shifts = move(shifts, two_bytes, 2);
     shifts = move(shifts, four_bytes, 3);
     shifts = move(shifts, eight_bytes, 4);
-#if BITS == 256
+#if KITTY_SIMD_LEVEL == 256
     shifts = move(shifts, sixteen_bytes, 5);
 #endif
 #undef move
@@ -547,7 +545,7 @@ invalid_utf8:
 #undef movemask_epi8
 #undef CONCAT
 #undef CONCAT_EXPAND
-#undef BITS
+#undef KITTY_SIMD_LEVEL
 #undef shift_right_by_one_byte
 #undef shift_right_by_two_bytes
 #undef shift_right_by_four_bytes
@@ -575,6 +573,3 @@ invalid_utf8:
 #undef sum_bytes
 #undef is_zero
 #undef print_register_as_bytes
-#ifndef SIMD_STRING_IMPL_INCLUDED_ONCE
-#define SIMD_STRING_IMPL_INCLUDED_ONCE
-#endif

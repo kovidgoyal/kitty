@@ -6,7 +6,8 @@ import json
 import os
 import re
 import sys
-from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
+from enum import Enum
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 _plat = sys.platform.lower()
 is_linux = 'linux' in _plat
@@ -32,6 +33,19 @@ class Command(NamedTuple):
     keyfile: Optional[str] = None
 
 
+class ISA(Enum):
+    X86 = 0x03
+    AMD64 = 0x3e
+    ARM64 = 0xb7
+    Other = 0x0
+
+
+class BinaryArch(NamedTuple):
+    bits: int = 64
+    isa: ISA = ISA.AMD64
+
+
+
 class Env:
 
     cc: List[str] = []
@@ -42,6 +56,9 @@ class Env:
     ldpaths: List[str] = []
     ccver: Tuple[int, int]
     vcs_rev: str = ''
+    build_universal_binary: bool = False
+    binary_arch: BinaryArch = BinaryArch()
+    native_optimizations: bool = False
 
     # glfw stuff
     all_headers: List[str] = []
@@ -54,12 +71,16 @@ class Env:
     def __init__(
         self, cc: List[str] = [], cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
         library_paths: Dict[str, List[str]] = {}, ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0),
-        vcs_rev: str = ''
+        vcs_rev: str = '', build_universal_binary: bool = False, binary_arch: BinaryArch = BinaryArch(),
+        native_optimizations: bool = False,
     ):
         self.cc, self.cppflags, self.cflags, self.ldflags, self.library_paths = cc, cppflags, cflags, ldflags, library_paths
         self.ldpaths = ldpaths or []
         self.ccver = ccver
         self.vcs_rev = vcs_rev
+        self.build_universal_binary = build_universal_binary
+        self.binary_arch = binary_arch
+        self.native_optimizations = native_optimizations
 
     def copy(self) -> 'Env':
         ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
@@ -70,6 +91,9 @@ class Env:
         ans.wayland_scanner_code = self.wayland_scanner_code
         ans.wayland_protocols = self.wayland_protocols
         ans.vcs_rev = self.vcs_rev
+        ans.build_universal_binary = self.build_universal_binary
+        ans.binary_arch = self.binary_arch
+        ans.native_optimizations = self.native_optimizations
         return ans
 
 
@@ -83,7 +107,7 @@ def init_env(
     pkg_config: Callable[..., List[str]],
     pkg_version: Callable[[str], Tuple[int, int]],
     at_least_version: Callable[..., None],
-    test_compile: Callable[..., bool],
+    test_compile: Callable[..., Any],
     module: str = 'x11'
 ) -> Env:
     ans = env.copy()

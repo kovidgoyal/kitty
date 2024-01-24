@@ -6,11 +6,9 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdalign.h>
 #include "data-types.h"
+#include <stddef.h>
+#include <stdalign.h>
 
 typedef void (*control_byte_callback)(void *data, uint8_t ch);
 typedef void (*output_chars_callback)(void *data, const uint32_t *chars, unsigned count);
@@ -36,3 +34,9 @@ const uint8_t* find_either_of_two_bytes(const uint8_t *haystack, const size_t sz
 // first position in haystack that contains a char that is not in [a, b].
 // a must be <= b
 const uint8_t* find_byte_not_in_range(const uint8_t *haystack, const size_t sz, const uint8_t a1, const uint8_t b);
+
+// SIMD implementations, internal use
+bool utf8_decode_to_esc_128(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
+bool utf8_decode_to_esc_256(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
+const uint8_t* find_either_of_two_bytes_128(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
+const uint8_t* find_either_of_two_bytes_256(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);

@@ -10,6 +10,7 @@ import re
 import runpy
 import shlex
 import shutil
+import struct
 import subprocess
 import sys
 import sysconfig
@@ -22,7 +23,7 @@ from pathlib import Path
 from typing import Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
 
 from glfw import glfw
-from glfw.glfw import Command, CompileKey
+from glfw.glfw import ISA, BinaryArch, Command, CompileKey
 
 if sys.version_info[:2] < (3, 8):
     raise SystemExit('kitty requires python >= 3.8')
@@ -362,6 +363,24 @@ def get_sanitize_args(cc: List[str], ccver: Tuple[int, int]) -> List[str]:
     return sanitize_args
 
 
+def get_binary_arch(path: str) -> BinaryArch:
+    with open(path, 'rb') as f:
+        sig = f.read(64)
+    if sig.startswith(b'\x7fELF'):  # ELF
+        bits = {1: 32, 2: 64}[sig[4]]
+        endian = {1: '<', 2: '>'}[sig[5]]
+        machine, = struct.unpack_from(endian + 'H', sig, 0x12)
+        isa = {i.value:i for i in ISA}.get(machine, ISA.Other)
+    elif sig[:4] in (b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe'): # Mach-O
+        s, cpu_type, = struct.unpack_from('<II', sig, 0)
+        bits = {0xfeedface: 32, 0xfeedfacf: 64}[s]
+        cpu_type &= 0xff
+        isa = {0x7: ISA.AMD64, 0xc: ISA.ARM64}[cpu_type]
+    else:
+        raise SystemExit(f'Unknown binary format with signature: {sig[:4]!r}')
+    return BinaryArch(bits=bits, isa=isa)
+
+
 def test_compile(
     cc: List[str], *cflags: str,
     src: str = '',
@@ -370,18 +389,25 @@ def test_compile(
     show_stderr: bool = False,
     libraries: Iterable[str] = (),
     ldflags: Iterable[str] = (),
-) -> bool:
+    get_output_arch: bool = False,
+) -> Union[bool, BinaryArch]:
     src = src or 'int main(void) { return 0; }'
     with tempfile.TemporaryDirectory(prefix='kitty-test-compile-') as tdir:
         with open(os.path.join(tdir, f'source.{source_ext}'), 'w', encoding='utf-8') as srcf:
             print(src, file=srcf)
-        return subprocess.Popen(
+        output = os.path.join(tdir, 'source.output')
+        ret = subprocess.Popen(
             cc + ['-Werror=implicit-function-declaration'] + list(cflags) + ([] if link_also else ['-c']) +
-            ['-o', os.path.join(tdir, 'source.output'), srcf.name] +
+            ['-o', output, srcf.name] +
             [f'-l{x}' for x in libraries] + list(ldflags),
             stdout=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
             stderr=None if show_stderr else subprocess.DEVNULL
-        ).wait() == 0
+        ).wait()
+        if get_output_arch:
+            if ret != 0:
+                raise SystemExit(f'Failed to determine target architecture compiling test program failed with exit code: {ret}')
+            return get_binary_arch(output)
+        return ret == 0
 
 
 def first_successful_compile(cc: List[str], *cflags: str, src: str = '', source_ext: str = 'c') -> str:
@@ -432,6 +458,7 @@ def init_env(
     vcs_rev: str = '',
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize
+    build_universal_binary = build_universal_binary and is_macos
     cc, ccver = cc_version()
     if verbose:
         print('CC:', cc, ccver)
@@ -463,7 +490,7 @@ def init_env(
     # in https://github.com/kovidgoyal/kitty/issues/6845#issuecomment-1835886938
     arm_control_flow_protection = '-mbranch-protection=standard' if is_macos else ''
     # Universal build fails with -fcf-protection clang is not smart enough to filter it out for the ARM part
-    intel_control_flow_protection = '-fcf-protection=full' if ccver >= (9, 0) and not build_universal_binary else ''
+    intel_control_flow_protection = '-fcf-protection=full' if ccver >= (9, 0) else ''
     control_flow_protection = arm_control_flow_protection if is_arm else intel_control_flow_protection
     env_cflags = shlex.split(os.environ.get('CFLAGS', ''))
     env_cppflags = shlex.split(os.environ.get('CPPFLAGS', ''))
@@ -471,11 +498,10 @@ def init_env(
     if control_flow_protection and not test_compile(cc, control_flow_protection, *env_cppflags, *env_cflags, ldflags=env_ldflags):
         control_flow_protection = ''
     march = ''
-    if not (is_macos and is_arm) and not build_universal_binary:
+    if native_optimizations and not build_universal_binary and not (is_macos and is_arm):
         # see https://github.com/kovidgoyal/kitty/issues/3126
         # -march=native is not supported when targeting Apple Silicon
-        if native_optimizations:
-            march = '-march=native -mtune=native'
+        march = '-march=native -mtune=native'
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
@@ -508,13 +534,6 @@ def init_env(
         cflags.append('-g3')
         ldflags.append('-lprofiler')
 
-    # SIMD instructions
-    if is_arm:
-        if not is_macos:
-            cflags.append('-mfpu=neon')
-    else:
-        cflags.append('-msse4.2')
-        cflags.append('-mavx2')
     library_paths: Dict[str, List[str]] = {}
 
     def add_lpath(which: str, name: str, val: Optional[str]) -> None:
@@ -539,11 +558,13 @@ def init_env(
         cflags.insert(0, f'-I{os.environ["DEVELOP_ROOT"]}/include')
         ldpaths.insert(0, f'-L{os.environ["DEVELOP_ROOT"]}/lib')
 
-    if build_universal_binary:
-        set_arches(cflags)
-        set_arches(ldflags)
+    ba = test_compile(cc, *(cppflags + cflags), ldflags=ldflags, get_output_arch=True)
+    assert isinstance(ba, BinaryArch)
 
-    return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev)
+    return Env(
+        cc, cppflags, cflags, ldflags, library_paths, binary_arch=ba, native_optimizations=native_optimizations,
+        ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev, build_universal_binary=build_universal_binary
+    )
 
 
 def kitty_env(args: Options) -> Env:
@@ -638,7 +659,7 @@ def get_vcs_rev() -> str:
 
 
 @lru_cache
-def base64_defines() -> List[str]:
+def base64_defines(isa: ISA) -> List[str]:
     defs = {
         'HAVE_AVX512': 0,
         'HAVE_AVX2': 0,
@@ -649,11 +670,15 @@ def base64_defines() -> List[str]:
         'HAVE_SSE42': 0,
         'HAVE_AVX': 0,
     }
-    if is_arm:
+    if isa == ISA.ARM64:
         defs['HAVE_NEON64'] = 1
-    else:
+    elif isa == ISA.AMD64:
         defs['HAVE_AVX2'] = 1
         defs['HAVE_AVX'] = 1
+        defs['HAVE_SSE42'] = 1
+        defs['HAVE_SSE41'] = 1
+        defs['HAVE_SSE3'] = 1
+    elif isa == ISA.X86:
         defs['HAVE_SSE42'] = 1
         defs['HAVE_SSE41'] = 1
         defs['HAVE_SSE3'] = 1
@@ -668,11 +693,38 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
             env.vcs_rev = get_vcs_rev()
         return src, [], [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
     if src.startswith('3rdparty/base64/'):
-        return src, ['3rdparty/base64',], base64_defines()
+        return src, ['3rdparty/base64',], base64_defines(env.binary_arch.isa)
     try:
         return src, [], env.library_paths[src]
     except KeyError:
         return src, [], None
+
+
+def get_source_specific_cflags(env: Env, src: str) -> List[str]:
+    ans = list(env.cflags)
+    # SIMD specific flags, ignored for native optimizations as they give slightly better performance
+    if src == 'kitty/simd-string-128.c':
+        if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
+            if not env.native_optimizations:
+                ans.append('-msse4.2')
+    elif src == 'kitty/simd-string-256.c':
+        if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
+            if not env.native_optimizations:
+                ans.append('-mavx2')
+    elif src.startswith('3rdparty/base64/lib/arch/'):
+        if not env.native_optimizations:
+            q = src.split(os.path.sep)
+            if 'sse3' in q:
+                ans.append('-msse3')
+            elif 'sse41' in q:
+                ans.append('-msse4.1')
+            elif 'sse42' in q:
+                ans.append('-msse4.2')
+            elif 'avx' in q:
+                ans.append('-mavx')
+            elif 'avx2' in q:
+                ans.append('-mavx2')
+    return ans
 
 
 def newer(dest: str, *sources: str) -> bool:
@@ -782,7 +834,8 @@ def compile_c_extension(
         src, include_paths, defines = get_source_specific_defines(kenv, src)
         if defines is not None:
             cppflags.extend(map(define, defines))
-        cmd = kenv.cc + ['-MMD'] + cppflags + [f'-I{x}' for x in include_paths] + kenv.cflags
+        cflags = get_source_specific_cflags(kenv, src)
+        cmd = kenv.cc + ['-MMD'] + cppflags + [f'-I{x}' for x in include_paths] + cflags
         cmd += ['-c', src] + ['-o', dest]
         key = CompileKey(original_src, os.path.basename(dest))
         desc = f'Compiling {emphasis(desc_prefix + src)} ...'
