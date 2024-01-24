@@ -306,7 +306,7 @@ PS1="{ps1}"
             self.ae(pty.screen_contents(), f'{ps1}printf "%s^G%s" "a" "b"\nab{ps1}')
             self.assertTrue(pty.screen.last_reported_cwd.decode().endswith(self.home_dir))
             pty.send_cmd_to_child('echo $HISTFILE')
-            pty.wait_till(lambda: '.bash_history' in pty.screen_contents())
+            pty.wait_till(lambda: '.bash_history' in pty.screen_contents().replace('\n', ''))
             q = os.path.join(self.home_dir, 'testing-cwd-notification-🐱')
             os.mkdir(q)
             pty.send_cmd_to_child(f'cd {q}')
