@@ -1207,6 +1207,10 @@ class KeyDefinition(BaseDefinition):
     def is_suitable_for_global_shortcut(self) -> bool:
         return not self.options.when_focus_on and not self.options.mode and not self.options.new_mode and not self.is_sequence
 
+    @property
+    def full_key_sequence_to_trigger(self) -> Tuple[SingleKey, ...]:
+        return (self.trigger,) + self.rest
+
     def __repr__(self) -> str:
         return self.pretty_repr('is_sequence', 'trigger', 'rest', 'options')
 

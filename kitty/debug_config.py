@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import IO, Callable, Dict, Iterable, Iterator, Optional, Set, TypeVar
+from typing import IO, Callable, Dict, Iterator, Optional, Sequence, Set, TypeVar
 
 from kittens.tui.operations import colored, styled
 
@@ -109,8 +109,15 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
             return Shortcut((v.trigger,) + v.rest)
         return Shortcut((k,))
 
-    def as_str(defns: Iterable[KeyDefinition]) -> str:
-        return ', '.join(d.human_repr() for d in defns)
+    def as_str(defns: Sequence[KeyDefinition]) -> str:
+        seen = set()
+        uniq = []
+        for d in reversed(defns):
+            key = d.full_key_sequence_to_trigger, d.options.when_focus_on
+            if key not in seen:
+                seen.add(key)
+                uniq.append(d)
+        return ', '.join(d.human_repr() for d in uniq)
 
     for kmn, initial_ in default_opts.keyboard_modes.items():
         initial = {as_sc(k, v[0]): as_str(v) for k, v in initial_.keymap.items()}
