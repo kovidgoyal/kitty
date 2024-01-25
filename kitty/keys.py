@@ -69,11 +69,7 @@ class Mappings:
 
     def update_keymap(self, global_shortcuts:Optional[Dict[str, SingleKey]] = None) -> None:
         if global_shortcuts is None:
-            if is_macos:
-                from .main import set_cocoa_global_shortcuts
-                global_shortcuts = set_cocoa_global_shortcuts(self.get_options())
-            else:
-                global_shortcuts = {}
+            global_shortcuts = self.set_cocoa_global_shortcuts(self.get_options()) if is_macos else {}
         self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k)] for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
         self.keyboard_modes = self.get_options().keyboard_modes.copy()
@@ -224,4 +220,8 @@ class Mappings:
         b = get_boss()
         if b.args.debug_keyboard:
             print(*args, end=end, flush=True)
+
+    def set_cocoa_global_shortcuts(self, opts: Options) -> Dict[str, SingleKey]:
+        from .main import set_cocoa_global_shortcuts
+        return set_cocoa_global_shortcuts(opts)
     # }}}

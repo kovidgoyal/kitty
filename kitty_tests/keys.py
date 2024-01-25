@@ -553,6 +553,9 @@ class TestKeys(BaseTest):
             def set_ignore_os_keyboard_processing(self, on: bool) -> None:
                 pass
 
+            def set_cocoa_global_shortcuts(self, opts):
+                return {}
+
             def get_options(self):
                 return self.options
 
