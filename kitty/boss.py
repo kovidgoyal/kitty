@@ -91,7 +91,6 @@ from .fast_data_types import (
     get_options,
     get_os_window_size,
     global_font_size,
-    is_modifier_key,
     last_focused_os_window_id,
     mark_os_window_for_close,
     os_window_focus_counters,
@@ -105,7 +104,6 @@ from .fast_data_types import (
     set_application_quit_request,
     set_background_image,
     set_boss,
-    set_ignore_os_keyboard_processing,
     set_options,
     set_os_window_chrome,
     set_os_window_size,
@@ -117,11 +115,11 @@ from .fast_data_types import (
     wrapped_kitten_names,
 )
 from .key_encoding import get_name_to_functional_number_map
-from .keys import get_shortcut
+from .keys import Mappings
 from .layout.base import set_layout_options
 from .notify import notification_activated
 from .options.types import Options
-from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition, KeyMap
+from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition
 from .os_window_size import initial_window_size_func
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
@@ -297,7 +295,7 @@ class VisualSelect:
         set_os_window_title(self.os_window_id, '')
         boss = get_boss()
         redirect_mouse_handling(False)
-        boss.keyboard_mode_stack = []
+        boss.mappings.clear_keyboard_modes()
         for wid in self.window_ids:
             w = boss.window_id_map.get(wid)
             if w is not None:
@@ -375,26 +373,10 @@ class Boss:
         set_boss(self)
         self.args = args
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
-        self.keyboard_mode_stack: List[KeyboardMode] = []
-        self.update_keymap(global_shortcuts)
+        self.mappings = Mappings(global_shortcuts)
         if is_macos:
             from .fast_data_types import cocoa_set_notification_activated_callback
             cocoa_set_notification_activated_callback(notification_activated)
-
-    def update_keymap(self, global_shortcuts:Optional[Dict[str, SingleKey]] = None) -> None:
-        if global_shortcuts is None:
-            if is_macos:
-                from .main import set_cocoa_global_shortcuts
-                global_shortcuts = set_cocoa_global_shortcuts(get_options())
-            else:
-                global_shortcuts = {}
-        self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k)] for k, v in global_shortcuts.items()}
-        self.global_shortcuts = global_shortcuts
-        self.keyboard_modes = get_options().keyboard_modes.copy()
-        km = self.keyboard_modes[''].keymap
-        self.keyboard_modes[''].keymap = km = km.copy()
-        for sc in self.global_shortcuts.values():
-            km.pop(sc, None)
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
@@ -1341,117 +1323,16 @@ class Boss:
     End the current keyboard mode switching to the previous mode.
     ''')
     def pop_keyboard_mode(self) -> bool:
-        passthrough = True
-        if self.keyboard_mode_stack:
-            self.keyboard_mode_stack.pop()
-            if not self.keyboard_mode_stack:
-                set_ignore_os_keyboard_processing(False)
-            passthrough = False
-        return passthrough
+        return self.mappings.pop_keyboard_mode()
 
     @ac('misc', '''
     Switch to the specified keyboard mode, pushing it onto the stack of keyboard modes.
     ''')
     def push_keyboard_mode(self, new_mode: str) -> None:
-        mode = self.keyboard_modes[new_mode]
-        self._push_keyboard_mode(mode)
-
-    def _push_keyboard_mode(self, mode: KeyboardMode) -> None:
-        self.keyboard_mode_stack.append(mode)
-        set_ignore_os_keyboard_processing(True)
+        self.mappings.push_keyboard_mode(new_mode)
 
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
-        # Handles shortcuts, return True if the key was consumed
-        is_root_mode = not self.keyboard_mode_stack
-        mode = self.keyboard_modes[''] if is_root_mode else self.keyboard_mode_stack[-1]
-        key_action = get_shortcut(mode.keymap, ev)
-        if key_action is None:
-            if is_modifier_key(ev.key):
-                return False
-            if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
-                return True
-            if not is_root_mode:
-                if mode.sequence_keys is not None:
-                    self.pop_keyboard_mode()
-                    w = self.active_window
-                    if w is not None:
-                        w.send_key_sequence(*mode.sequence_keys)
-                    return False
-                if mode.on_unknown in ('beep', 'ignore'):
-                    if mode.on_unknown == 'beep' and get_options().enable_audio_bell:
-                        ring_bell()
-                    return True
-                if mode.on_unknown == 'passthrough':
-                    return False
-            if not self.pop_keyboard_mode():
-                if get_options().enable_audio_bell:
-                    ring_bell()
-                return True
-        else:
-            final_actions = self.matching_key_actions(key_action)
-            if final_actions:
-                mode_pos = len(self.keyboard_mode_stack) - 1
-                if final_actions[0].is_sequence:
-                    if mode.sequence_keys is None:
-                        sm = KeyboardMode('__sequence__')
-                        sm.on_action = 'end'
-                        sm.sequence_keys = [ev]
-                        for fa in final_actions:
-                            sm.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
-                        self._push_keyboard_mode(sm)
-                        if self.args.debug_keyboard:
-                            print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='', flush=True)
-                    else:
-                        mode.sequence_keys.append(ev)
-                        if len(final_actions) == 1:
-                            self.pop_keyboard_mode()
-                            return self.combine(final_actions[0].definition)
-                        if self.args.debug_keyboard:
-                            print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='', flush=True)
-                        mode.keymap.clear()
-                        for fa in final_actions:
-                            mode.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
-                    return True
-                final_action = final_actions[0]
-                consumed = self.combine(final_action.definition)
-                if consumed and not is_root_mode and mode.on_action == 'end':
-                    if mode_pos < len(self.keyboard_mode_stack) and self.keyboard_mode_stack[mode_pos] is mode:
-                        del self.keyboard_mode_stack[mode_pos]
-                        if not self.keyboard_mode_stack:
-                            set_ignore_os_keyboard_processing(False)
-                return consumed
-        return False
-
-    def matching_key_actions(self, candidates: Iterable[KeyDefinition]) -> List[KeyDefinition]:
-        w = self.active_window
-        matches = []
-        has_sequence_match = False
-        for x in candidates:
-            if x.options.when_focus_on:
-                try:
-                    if w and w in self.match_windows(x.options.when_focus_on):
-                        matches.append(x)
-                        if x.is_sequence:
-                            has_sequence_match = True
-                except Exception:
-                    self.show_error(_('Invalid key mapping'), _(
-                        'The match expression {0} is not valid for {1}').format(x.options.when_focus_on, '--when-focus-on'))
-                    return []
-            else:
-                if x.is_sequence:
-                    has_sequence_match = True
-                matches.append(x)
-        if has_sequence_match:
-            terminal_matches = [x for x in matches if not x.rest]
-            if terminal_matches:
-                matches = [terminal_matches[-1]]
-            else:
-                matches = [x for x in matches if x.is_sequence]
-                q = matches[-1].options.when_focus_on
-                matches = [x for x in matches if x.options.when_focus_on == q]
-        else:
-            matches = [matches[-1]]
-        return matches
+        return self.mappings.dispatch_possible_special_key(ev)
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
@@ -1498,7 +1379,7 @@ class Boss:
                 if ch in string.digits:
                     km.keymap[SingleKey(mods=mods, key=fmap[f'KP_{ch}'])].append(ac)
         if len(self.current_visual_select.window_ids) > 1:
-            self._push_keyboard_mode(km)
+            self.mappings._push_keyboard_mode(km)
             redirect_mouse_handling(True)
             self.mouse_handler = self.visual_window_select_mouse_handler
         else:
@@ -2633,7 +2514,7 @@ class Boss:
         if is_macos:
             from .fast_data_types import cocoa_clear_global_shortcuts
             cocoa_clear_global_shortcuts()
-        self.update_keymap()
+        self.mappings.update_keymap()
         if is_macos:
             from .fast_data_types import cocoa_recreate_global_menu
             cocoa_recreate_global_menu()
