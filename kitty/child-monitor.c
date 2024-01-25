@@ -440,8 +440,6 @@ do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     self->parse_func(screen, &pd, flush);
     if (pd.input_read) {
         if (pd.write_space_created) wakeup_io_loop(self, false);
-    }
-    if (pd.input_read) {
         if (screen->paused_rendering.expires_at) {
             set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
         } else set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
