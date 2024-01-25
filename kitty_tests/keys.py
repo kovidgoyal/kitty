@@ -548,6 +548,10 @@ class TestKeys(BaseTest):
 
             def combine(self, action_definition: str) -> bool:
                 self.actions.append(action_definition)
+                if action_definition.startswith('push_keyboard_mode '):
+                    self.push_keyboard_mode(action_definition.partition(' ')[2])
+                elif action_definition == 'pop_keyboard_mode':
+                    self.pop_keyboard_mode()
                 return bool(action_definition)
 
             def set_ignore_os_keyboard_processing(self, on: bool) -> None:
@@ -606,3 +610,14 @@ class TestKeys(BaseTest):
         self.ae(tm('ctrl+shift+t'), [True])
         tm.active_window = tm.windows[1]
         self.ae(tm('ctrl+shift+t'), [False])
+
+        # modal mappings
+        tm = TM('map --new-mode mw --on-unknown end kitty_mod+f7', 'map --mode mw left neighboring_window left', 'map --mode mw right neighboring_window right')
+        self.ae(tm('ctrl+shift+f7'), [True])
+        self.ae(tm.actions, ['push_keyboard_mode mw'])
+        self.ae(tm('right'), [True])
+        self.ae(tm.actions, ['neighboring_window right'])
+        self.ae(tm('left'), [True])
+        self.ae(tm.actions, ['neighboring_window left'])
+        self.ae(tm('x'), [True])
+        af(tm.keyboard_mode_stack)
