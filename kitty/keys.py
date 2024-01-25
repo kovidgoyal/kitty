@@ -20,6 +20,7 @@ from .fast_data_types import (
     ring_bell,
     set_ignore_os_keyboard_processing,
 )
+from .options.types import Options
 from .options.utils import KeyboardMode, KeyDefinition, KeyMap
 from .typing import ScreenType
 
@@ -70,12 +71,12 @@ class Mappings:
         if global_shortcuts is None:
             if is_macos:
                 from .main import set_cocoa_global_shortcuts
-                global_shortcuts = set_cocoa_global_shortcuts(get_options())
+                global_shortcuts = set_cocoa_global_shortcuts(self.get_options())
             else:
                 global_shortcuts = {}
         self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k)] for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
-        self.keyboard_modes = get_options().keyboard_modes.copy()
+        self.keyboard_modes = self.get_options().keyboard_modes.copy()
         km = self.keyboard_modes[''].keymap
         self.keyboard_modes[''].keymap = km = km.copy()
         for sc in self.global_shortcuts.values():
@@ -100,11 +101,6 @@ class Mappings:
     def push_keyboard_mode(self, new_mode: str) -> None:
         mode = self.keyboard_modes[new_mode]
         self._push_keyboard_mode(mode)
-
-    def debug_print(self, *args: Any, end: str = '\n') -> None:
-        b = get_boss()
-        if b.args.debug_keyboard:
-            print(*args, end=end, flush=True)
 
     def matching_key_actions(self, candidates: Iterable[KeyDefinition]) -> List[KeyDefinition]:
         w = self.get_active_window()
@@ -207,7 +203,7 @@ class Mappings:
         return get_boss().show_error(title, msg)
 
     def ring_bell(self) -> None:
-        if get_options().enable_audio_bell:
+        if self.get_options().enable_audio_bell:
             ring_bell()
 
     def combine(self, action_definition: str) -> bool:
@@ -215,4 +211,12 @@ class Mappings:
 
     def set_ignore_os_keyboard_processing(self, on: bool) -> None:
         set_ignore_os_keyboard_processing(on)
+
+    def get_options(self) -> Options:
+        return get_options()
+
+    def debug_print(self, *args: Any, end: str = '\n') -> None:
+        b = get_boss()
+        if b.args.debug_keyboard:
+            print(*args, end=end, flush=True)
     # }}}

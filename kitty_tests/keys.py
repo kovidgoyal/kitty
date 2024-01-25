@@ -5,6 +5,7 @@ from functools import partial
 
 import kitty.fast_data_types as defines
 from kitty.key_encoding import EventType, KeyEvent, decode_key_event, encode_key_event
+from kitty.keys import Mappings
 
 from . import BaseTest
 
@@ -504,3 +505,97 @@ class TestKeys(BaseTest):
         self.ae(enc(mods=defines.GLFW_MOD_SHIFT), '<4;1;1M')
         self.ae(enc(mods=defines.GLFW_MOD_ALT), '<8;1;1M')
         self.ae(enc(mods=defines.GLFW_MOD_CONTROL), '<16;1;1M')
+
+    def test_mapping(self):
+        from kitty.config import load_config
+        from kitty.options.utils import parse_shortcut
+        af = self.assertFalse
+
+        class Window:
+            def __init__(self, id=1):
+                self.key_seqs = []
+                self.id = id
+
+            def send_key_sequence(self, *s):
+                self.key_seqs.extend(s)
+
+        class TM(Mappings):
+
+            def __init__(self, *lines, active_window = Window()):
+                self.active_window = active_window
+                self.windows = [active_window]
+                bad_lines = []
+                self.options = load_config(overrides=lines, accumulate_bad_lines=bad_lines)
+                af(bad_lines)
+                super().__init__()
+
+            def get_active_window(self):
+                return self.active_window
+
+            def match_windows(self, expr: str):
+                for w in self.windows:
+                    if str(w.id) == expr:
+                        yield w
+
+            def show_error(self, title: str, msg: str) -> None:
+                pass
+
+            def ring_bell(self) -> None:
+                pass
+
+            def debug_print(self, *args, end: str = '\n') -> None:
+                pass
+
+            def combine(self, action_definition: str) -> bool:
+                self.actions.append(action_definition)
+                return bool(action_definition)
+
+            def set_ignore_os_keyboard_processing(self, on: bool) -> None:
+                pass
+
+            def get_options(self):
+                return self.options
+
+            def __call__(self, *keys: str):
+                self.actions = []
+                self.active_window.key_seqs = []
+                consumed = []
+                for key in keys:
+                    sk = parse_shortcut(key)
+                    ev = defines.KeyEvent(sk.key, 0, 0, sk.mods)
+                    consumed.append(self.dispatch_possible_special_key(ev))
+                return consumed
+
+        tm = TM('map ctrl+a new_window_with_cwd')
+        self.ae(tm('ctrl+a'), [True])
+        self.ae(tm.actions, ['new_window_with_cwd'])
+
+        tm = TM('map ctrl+f>2 set_font_size 20')
+        self.ae(tm('ctrl+f', '2'), [True, True])
+        self.ae(tm.actions, ['set_font_size 20'])
+        af(tm.active_window.key_seqs)
+        # unmatched multi key mapping should send all keys to child
+        self.ae(tm('ctrl+f', '1'), [True, False])
+        af(tm.actions)
+        self.ae(len(tm.active_window.key_seqs), 1)  # ctrl+f should have been sent to the window
+
+        # unmap
+        tm = TM('map kitty_mod+enter')
+        self.ae(tm('ctrl+shift+enter'), [False])
+
+        # single key mapping overrides all multi-key mappings with same prefix
+        tm = TM('map kitty_mod+p new_window')
+        self.ae(tm('ctrl+shift+p', 'f'), [True, False])
+        self.ae(tm.actions, ['new_window'])
+
+        # changing a multi key mapping
+        tm = TM('map kitty_mod+p>f new_window')
+        self.ae(tm('ctrl+shift+p', 'f'), [True, True])
+        self.ae(tm.actions, ['new_window'])
+
+        # different behavior with focus selection
+        tm = TM('map --when-focus-on 2 kitty_mod+t')
+        tm.windows.append(Window(2))
+        self.ae(tm('ctrl+shift+t'), [True])
+        tm.active_window = tm.windows[1]
+        self.ae(tm('ctrl+shift+t'), [False])
