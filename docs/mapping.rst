@@ -193,12 +193,37 @@ details. A more practical example unmaps the key when the focused window is runn
 
     map --when-focus-on var:in_editor
 
-In order to make this work, you need the following lines in your :file:`.vimrc`::
+In order to make this work, you need to configure your editor as show below:
 
-    let &t_ti = &t_ti . "\\033]1337;SetUserVar=in_editor=MQo\\007"
-    let &t_te = &t_te . "\\033]1337;SetUserVar=in_editor\\007"
+.. tab:: vim
 
-These cause vim to set the :code:`in_editor` variable in kitty and unset it when leaving vim.
+   In :file:`~/.vimrc` add:
+    .. code-block:: vim
+
+        let &t_ti = &t_ti . "\\033]1337;SetUserVar=in_editor=MQo\\007"
+        let &t_te = &t_te . "\\033]1337;SetUserVar=in_editor\\007"
+
+.. tab:: neovim
+
+   In :file:`~/.config/nvim/init.lua` add:
+
+    .. code-block:: lua
+
+        vim.api.nvim_create_autocmd({ "VimEnter" }, {
+            group = vim.api.nvim_create_augroup("KittySetVarVimEnter", { clear = true }),
+            callback = function()
+                io.stdout:write("\x1b]1337;SetUserVar=in_editor=MQo\007")
+            end,
+        })
+
+        vim.api.nvim_create_autocmd({ "VimLeave" }, {
+            group = vim.api.nvim_create_augroup("KittyUnsetVarVimLeave", { clear = true }),
+            callback = function()
+                io.stdout:write("\x1b]1337;SetUserVar=in_editor\007")
+            end,
+        })
+
+These cause the editor to set the :code:`in_editor` variable in kitty and unset it when exiting.
 
 Sending arbitrary text or keys to the program running in kitty
 --------------------------------------------------------------------------------
