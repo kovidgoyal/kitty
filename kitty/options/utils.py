@@ -1211,6 +1211,10 @@ class KeyDefinition(BaseDefinition):
     def full_key_sequence_to_trigger(self) -> Tuple[SingleKey, ...]:
         return (self.trigger,) + self.rest
 
+    @property
+    def unique_identity_within_keymap(self) -> Tuple[Tuple[SingleKey, ...], str]:
+        return self.full_key_sequence_to_trigger, self.options.when_focus_on
+
     def __repr__(self) -> str:
         return self.pretty_repr('is_sequence', 'trigger', 'rest', 'options')
 

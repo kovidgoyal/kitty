@@ -113,7 +113,7 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
         seen = set()
         uniq = []
         for d in reversed(defns):
-            key = d.full_key_sequence_to_trigger, d.options.when_focus_on
+            key = d.unique_identity_within_keymap
             if key not in seen:
                 seen.add(key)
                 uniq.append(d)
