@@ -1442,11 +1442,11 @@ class Boss:
                     has_sequence_match = True
                 matches.append(x)
         if has_sequence_match:
-            matches = [x for x in matches if x.is_sequence]
             terminal_matches = [x for x in matches if not x.rest]
             if terminal_matches:
                 matches = [terminal_matches[-1]]
             else:
+                matches = [x for x in matches if x.is_sequence]
                 q = matches[-1].options.when_focus_on
                 matches = [x for x in matches if x.options.when_focus_on == q]
         else:
