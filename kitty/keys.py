@@ -173,10 +173,15 @@ class Mappings:
                         self._push_keyboard_mode(sm)
                         self.debug_print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='')
                     else:
-                        mode.sequence_keys.append(ev)
                         if len(final_actions) == 1:
                             self.pop_keyboard_mode()
-                            return self.combine(final_actions[0].definition)
+                            consumed = self.combine(final_actions[0].definition)
+                            if not consumed:
+                                w = self.get_active_window()
+                                if w is not None:
+                                    w.send_key_sequence(*mode.sequence_keys)
+                            return consumed
+                        mode.sequence_keys.append(ev)
                         self.debug_print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='')
                         mode.keymap.clear()
                         for fa in final_actions:

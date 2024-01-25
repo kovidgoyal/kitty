@@ -578,6 +578,10 @@ class TestKeys(BaseTest):
         self.ae(tm('ctrl+f', '1'), [True, False])
         af(tm.actions)
         self.ae(len(tm.active_window.key_seqs), 1)  # ctrl+f should have been sent to the window
+        # multi-key mapping that is unmapped should send all keys to child
+        tm = TM('map kitty_mod+p>f')
+        self.ae(tm('ctrl+shift+p', 'f'), [True, False])
+        self.ae(len(tm.active_window.key_seqs), 1)
 
         # unmap
         tm = TM('map kitty_mod+enter')
