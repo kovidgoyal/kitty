@@ -103,28 +103,34 @@ class Mappings:
         matches = []
         has_sequence_match = False
         for x in candidates:
+            is_applicable = False
             if x.options.when_focus_on:
                 try:
                     if w and w in self.match_windows(x.options.when_focus_on):
-                        matches.append(x)
-                        if x.is_sequence:
-                            has_sequence_match = True
+                        is_applicable = True
                 except Exception:
+                    self.clear_keyboard_modes()
                     self.show_error(_('Invalid key mapping'), _(
                         'The match expression {0} is not valid for {1}').format(x.options.when_focus_on, '--when-focus-on'))
                     return []
             else:
+                is_applicable = True
+            if is_applicable:
+                matches.append(x)
                 if x.is_sequence:
                     has_sequence_match = True
-                matches.append(x)
         if has_sequence_match:
-            terminal_matches = [x for x in matches if not x.rest]
-            if terminal_matches:
-                matches = [terminal_matches[-1]]
-            else:
-                matches = [x for x in matches if x.is_sequence]
-                q = matches[-1].options.when_focus_on
-                matches = [x for x in matches if x.options.when_focus_on == q]
+            last_terminal_idx = -1
+            for i, x in enumerate(matches):
+                if not x.rest:
+                    last_terminal_idx = i
+            if last_terminal_idx > -1:
+                if last_terminal_idx == len(matches) -1:
+                    matches = matches[last_terminal_idx:]
+                else:
+                    matches = matches[last_terminal_idx+1:]
+            q = matches[-1].options.when_focus_on
+            matches = [x for x in matches if x.options.when_focus_on == q]
         else:
             matches = [matches[-1]]
         return matches

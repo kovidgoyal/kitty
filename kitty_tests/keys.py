@@ -598,6 +598,17 @@ class TestKeys(BaseTest):
         tm = TM('map kitty_mod+p new_window')
         self.ae(tm('ctrl+shift+p', 'f'), [True, False])
         self.ae(tm.actions, ['new_window'])
+        # multi-key mapping overrides previous single key mapping with same prefix
+        tm = TM('map kitty_mod+s>p new_window')
+        self.ae(tm('ctrl+shift+s', 'p'), [True, True])
+        self.ae(tm.actions, ['new_window'])
+        # mix of single and multi-key mappings with same prefix
+        tm = TM('map alt+p>1 multi1', 'map alt+p single1', 'map alt+p>2 multi2')
+        self.ae(tm('alt+p', '2'), [True, True])
+        self.ae(tm.actions, ['multi2'])
+        self.ae(tm('alt+p', '1'), [True, False])
+        af(tm.actions)
+        self.ae(len(tm.active_window.key_seqs), 1)
 
         # changing a multi key mapping
         tm = TM('map kitty_mod+p>f new_window')
