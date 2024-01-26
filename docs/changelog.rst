@@ -46,6 +46,10 @@ Detailed list of changes
 0.32.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- kitten @ send-text: Add a new option to automatically wrap the sent text in
+  bracketed paste escape codes if the program in the destination window has
+  turned on bracketed paste.
+
 - Fix a single key mapping not overriding a previously defined multi-key mapping
 
 0.32.1 [2024-01-26]

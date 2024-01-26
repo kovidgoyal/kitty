@@ -9,6 +9,7 @@ from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
 from kitty.fast_data_types import get_boss
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.options.utils import parse_send_text_bytes
+from kitty.utils import sanitize_for_bracketed_paste
 
 from .base import (
     MATCH_TAB_OPTION,
@@ -79,6 +80,7 @@ class SendText(RemoteCommand):
     all/bool: A boolean indicating all windows should be matched.
     exclude_active/bool: A boolean that prevents sending text to the active window
     session_id/str: A string that identifies a "broadcast session"
+    bracketed_paste/choices.disable.auto.enable: Whether to wrap the text in bracketed paste escape codes
     '''
     short_desc = 'Send arbitrary text to specified windows'
     desc = (
@@ -110,12 +112,23 @@ not interpreted for escapes. If stdin is a terminal, you can press :kbd:`Ctrl+D`
 --from-file
 Path to a file whose contents you wish to send. Note that in this case the file contents
 are sent as is, not interpreted for escapes.
+
+
+--bracketed-paste
+choices=disable,auto,enable
+default=disable
+When sending text to a window, wrap the text in bracketed paste escape codes. The default is to not do this.
+A value of :code:`auto` means, bracketed paste will be used only if the program running in the window has turned
+on bracketed paste mode.
 '''
     args = RemoteCommand.Args(spec='[TEXT TO SEND]', json_field='data', special_parse='+session_id:parse_send_text(io_data, args)')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         limit = 1024
-        ret = {'match': opts.match, 'data': '', 'match_tab': opts.match_tab, 'all': opts.all, 'exclude_active': opts.exclude_active}
+        ret = {
+            'match': opts.match, 'data': '', 'match_tab': opts.match_tab, 'all': opts.all, 'exclude_active': opts.exclude_active,
+            'bracketed_paste': opts.bracketed_paste,
+        }
 
         def pipe() -> CmdGenerator:
             if sys.stdin.isatty():
@@ -222,6 +235,7 @@ are sent as is, not interpreted for escapes.
                 w.screen.render_unfocused_cursor = 1
                 s.window_ids.add(w.id)
         else:
+            bp = payload_get('bracketed_paste')
             if sid:
                 s = create_or_update_session()
             for w in actual_windows:
@@ -233,6 +247,8 @@ are sent as is, not interpreted for escapes.
                     if kdata:
                         w.write_to_child(kdata)
                 else:
+                    if bp == 'enable' or (bp == 'auto' and w.screen.in_bracketed_paste_mode):
+                        data = b'\x1b[200~' + sanitize_for_bracketed_paste(data) + b'\x1b[201~'
                     w.write_to_child(data)
         return None
 
