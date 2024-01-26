@@ -175,7 +175,7 @@ class Mappings:
                         self._push_keyboard_mode(sm)
                         self.debug_print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='')
                     else:
-                        if len(final_actions) == 1:
+                        if len(final_actions) == 1 and not final_actions[0].rest:
                             self.pop_keyboard_mode()
                             consumed = self.combine(final_actions[0].definition)
                             if not consumed:
