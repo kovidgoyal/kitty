@@ -594,7 +594,7 @@ class TestKeys(BaseTest):
         tm = TM('map kitty_mod+enter')
         self.ae(tm('ctrl+shift+enter'), [False])
 
-        # single key mapping overrides all multi-key mappings with same prefix
+        # single key mapping overrides previous all multi-key mappings with same prefix
         tm = TM('map kitty_mod+p new_window')
         self.ae(tm('ctrl+shift+p', 'f'), [True, False])
         self.ae(tm.actions, ['new_window'])
