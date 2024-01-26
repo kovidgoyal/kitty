@@ -611,9 +611,12 @@ class TestKeys(BaseTest):
         self.ae(len(tm.active_window.key_seqs), 1)
 
         # a single multi-key mapping should not prematurely match
-        tm = TM('map alt+1>2>3')
+        tm = TM('map alt+1>2>3 new_window')
         self.ae(tm('alt+1', '2'), [True, True])
         af(tm.actions)
+        tm = TM('map alt+1>2>3 new_window')
+        self.ae(tm('alt+1', '2', '3'), [True, True, True])
+        self.ae(tm.actions, ['new_window'])
 
         # changing a multi key mapping
         tm = TM('map kitty_mod+p>f new_window')
