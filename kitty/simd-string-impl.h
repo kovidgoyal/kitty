@@ -83,12 +83,6 @@ typedef int32_t find_mask_t;
 static inline int
 FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 
-static inline find_mask_t
-mask_for_find(const integer_t a) { return movemask_epi8(a); }
-
-static inline unsigned
-bytes_to_first_match(const find_mask_t m) { return __builtin_ctz(m); }
-
 #else
 
 #define set1_epi8(x) simde_mm256_set1_epi8((char)(x))
@@ -115,12 +109,6 @@ bytes_to_first_match(const find_mask_t m) { return __builtin_ctz(m); }
 
 static inline int
 FUNC(is_zero)(const integer_t a) { return simde_mm256_testz_si256(a, a); }
-
-static inline find_mask_t
-mask_for_find(const integer_t a) { return movemask_epi8(a); }
-
-static inline unsigned
-bytes_to_first_match(const find_mask_t m) { return __builtin_ctz(m); }
 
 static inline integer_t
 shift_right_by_one_byte(const integer_t A) {
@@ -213,6 +201,13 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 #define debug_register(...)
 #define debug(...)
 #endif
+
+static inline find_mask_t
+mask_for_find(const integer_t a) { return movemask_epi8(a); }
+
+static inline unsigned
+bytes_to_first_match(const find_mask_t m) { return __builtin_ctz(m); }
+
 
 // }}}
 
