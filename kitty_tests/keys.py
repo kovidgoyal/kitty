@@ -527,6 +527,7 @@ class TestKeys(BaseTest):
                 bad_lines = []
                 self.options = load_config(overrides=lines, accumulate_bad_lines=bad_lines)
                 af(bad_lines)
+                self.ignore_os_keyboard_processing = False
                 super().__init__()
 
             def get_active_window(self):
@@ -555,7 +556,7 @@ class TestKeys(BaseTest):
                 return bool(action_definition)
 
             def set_ignore_os_keyboard_processing(self, on: bool) -> None:
-                pass
+                self.ignore_os_keyboard_processing = on
 
             def set_cocoa_global_shortcuts(self, opts):
                 return {}
@@ -640,3 +641,9 @@ class TestKeys(BaseTest):
         self.ae(tm.actions, ['neighboring_window left'])
         self.ae(tm('x'), [True])
         af(tm.keyboard_mode_stack)
+
+        # modal mapping with --on-action=end must restore OS keyboard processing
+        tm = TM('map --new-mode mw --on-action end m', 'map --mode mw a new_window')
+        self.ae(tm('m', 'a'), [True, True])
+        self.ae(tm.actions, ['push_keyboard_mode mw', 'new_window'])
+        af(tm.ignore_os_keyboard_processing)

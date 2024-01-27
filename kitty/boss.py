@@ -295,7 +295,6 @@ class VisualSelect:
         set_os_window_title(self.os_window_id, '')
         boss = get_boss()
         redirect_mouse_handling(False)
-        boss.mappings.clear_keyboard_modes()
         for wid in self.window_ids:
             w = boss.window_id_map.get(wid)
             if w is not None:

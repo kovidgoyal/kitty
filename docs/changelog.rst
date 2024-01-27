@@ -52,6 +52,8 @@ Detailed list of changes
 
 - Fix a single key mapping not overriding a previously defined multi-key mapping
 
+- macOS: Fix :code:`kitten @ select-window` leaving the keyboard in a partially functional state (:iss:`7074`)
+
 0.32.1 [2024-01-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

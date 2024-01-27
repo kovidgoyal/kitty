@@ -80,6 +80,7 @@ class Mappings:
 
     def clear_keyboard_modes(self) -> None:
         self.keyboard_mode_stack = []
+        self.set_ignore_os_keyboard_processing(False)
 
     def pop_keyboard_mode(self) -> bool:
         passthrough = True
