@@ -39,6 +39,7 @@ _Pragma("clang diagnostic pop")
 #define shift_right_by_bytes128 simde_mm_srli_si128
 #define zero_last_n_bytes FUNC(zero_last_n_bytes)
 #define is_zero FUNC(is_zero)
+typedef int32_t find_mask_t;
 
 #if KITTY_SIMD_LEVEL == 128
 #define set1_epi8(x) simde_mm_set1_epi8((char)(x))
@@ -78,6 +79,13 @@ _Pragma("clang diagnostic pop")
 
 static inline int
 FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
+
+static inline find_mask_t
+mask_for_find(const integer_t a) { return movemask_epi8(a); }
+
+static inline unsigned
+bytes_to_first_match(const find_mask_t m) { return __builtin_ctz(m); }
+
 #else
 
 #define set1_epi8(x) simde_mm256_set1_epi8((char)(x))
@@ -104,6 +112,12 @@ FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 
 static inline int
 FUNC(is_zero)(const integer_t a) { return simde_mm256_testz_si256(a, a); }
+
+static inline find_mask_t
+mask_for_find(const integer_t a) { return movemask_epi8(a); }
+
+static inline unsigned
+bytes_to_first_match(const find_mask_t m) { return __builtin_ctz(m); }
 
 static inline integer_t
 shift_right_by_one_byte(const integer_t A) {
@@ -215,7 +229,7 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
         const integer_t a_cmp = cmpeq_epi8(chunk, a_vec);
         const integer_t b_cmp = cmpeq_epi8(chunk, b_vec);
         const integer_t matches = or_si(a_cmp, b_cmp);
-        const int32_t mask = movemask_epi8(matches);
+        const find_mask_t mask = mask_for_find(matches);
         if (mask != 0) {
             const uint8_t *ans = haystack + __builtin_ctz(mask);
             if (ans < limit) return ans;
@@ -370,7 +384,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 
     const integer_t esc_vec = set1_epi8(0x1b);
     const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
-    const int esc_test_mask = movemask_epi8(esc_cmp);
+    const find_mask_t esc_test_mask = mask_for_find(esc_cmp);
     bool sentinel_found = false;
     unsigned short num_of_bytes_to_first_esc;
     if (esc_test_mask && (num_of_bytes_to_first_esc = __builtin_ctz(esc_test_mask)) < src_sz) {
@@ -390,9 +404,9 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 
     // Check if we have pure ASCII and use fast path
     debug_register(vec);
-    int32_t ascii_mask;
+    find_mask_t ascii_mask;
 start_classification:
-    ascii_mask = movemask_epi8(vec);
+    ascii_mask = mask_for_find(vec);
     if (!ascii_mask) { // no bytes with high bit (0x80) set, so just plain ASCII
         FUNC(output_plain_ascii)(d, vec, src_sz);
         if (num_of_trailing_bytes) scalar_decode_all(d, src + src_sz, num_of_trailing_bytes);
@@ -425,7 +439,7 @@ start_classification:
     // counts now contains the number of bytes remaining in each utf-8 sequence of 2 or more bytes
     debug_register(counts);
     // check for an incomplete trailing utf8 sequence
-    if (check_for_trailing_bytes && movemask_epi8(cmplt_epi8(one, and_si(counts, cmpeq_epi8(numbered_bytes(), set1_epi8(src_sz - 1)))))) {
+    if (check_for_trailing_bytes && mask_for_find(cmplt_epi8(one, and_si(counts, cmpeq_epi8(numbered_bytes(), set1_epi8(src_sz - 1)))))) {
         // The value of counts at the last byte is > 1 indicating we have a trailing incomplete sequence
         check_for_trailing_bytes = false;
         if (src[src_sz-1] >= 0xc0) num_of_trailing_bytes = 1;      // 2-, 3- and 4-byte characters with only 1 byte left
@@ -436,10 +450,10 @@ start_classification:
         goto start_classification;
     }
     // Only ASCII chars should have corresponding byte of counts == 0
-    if (ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero))) goto invalid_utf8;
+    if (ascii_mask != mask_for_find(cmpgt_epi8(counts, zero))) goto invalid_utf8;
     // The difference between a byte in counts and the next one should be negative,
     // zero, or one. Any other value means there is not enough continuation bytes.
-    if (movemask_epi8(cmpgt_epi8(subtract_epi8(shift_right_by_one_byte(counts), counts), one))) goto invalid_utf8;
+    if (mask_for_find(cmpgt_epi8(subtract_epi8(shift_right_by_one_byte(counts), counts), one))) goto invalid_utf8;
 
     // Process the bytes storing the three resulting bytes that make up the unicode codepoint
     // mask all control bits so that we have only useful bits left
