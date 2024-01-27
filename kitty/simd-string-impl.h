@@ -5,17 +5,23 @@
  */
 
 #pragma once
-#ifdef KITTY_NO_SIMD
-bool utf8_decode_to_esc_128(UTF8Decoder *d, const uint8_t *src, size_t src_sz) { fatal("No SIMD implementations for this CPU"); }
-bool utf8_decode_to_esc_256(UTF8Decoder *d, const uint8_t *src, size_t src_sz) { fatal("No SIMD implementations for this CPU"); }
-const uint8_t* find_either_of_two_bytes_128(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) { fatal("No SIMD implementations for this CPU"); }
-const uint8_t* find_either_of_two_bytes_256(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) { fatal("No SIMD implementations for this CPU"); }
-#else
+#include "data-types.h"
+#include "simd-string.h"
+
 #ifndef KITTY_SIMD_LEVEL
 #define KITTY_SIMD_LEVEL 128
 #endif
+#define CONCAT(A, B) A##B
+#define CONCAT_EXPAND(A, B) CONCAT(A,B)
+#define FUNC(name) CONCAT_EXPAND(name##_, KITTY_SIMD_LEVEL)
 
-#include "simd-string.h"
+#ifdef KITTY_NO_SIMD
+#define NOSIMD { fatal("No SIMD implementations for this CPU"); }
+bool FUNC(utf8_decode_to_esc)(UTF8Decoder *d UNUSED, const uint8_t *src UNUSED, size_t src_sz UNUSED) NOSIMD
+const uint8_t* FUNC(find_either_of_two_bytes)(const uint8_t *haystack UNUSED, const size_t sz UNUSED, const uint8_t a UNUSED, const uint8_t b UNUSED) NOSIMD
+#undef NOSIMD
+#else
+
 #include "charsets.h"
 
 // Boilerplate {{{
@@ -32,9 +38,6 @@ _Pragma("clang diagnostic pop")
 #ifndef _MM_SHUFFLE
 #define _MM_SHUFFLE(z, y, x, w) (((z) << 6) | ((y) << 4) | ((x) << 2) | (w))
 #endif
-#define CONCAT(A, B) A##B
-#define CONCAT_EXPAND(A, B) CONCAT(A,B)
-#define FUNC(name) CONCAT_EXPAND(name##_, KITTY_SIMD_LEVEL)
 #define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, KITTY_SIMD_LEVEL), i)
 #define shift_right_by_bytes128 simde_mm_srli_si128
 #define zero_last_n_bytes FUNC(zero_last_n_bytes)
