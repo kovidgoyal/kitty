@@ -608,7 +608,7 @@ upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const boo
 }
 
 static Image*
-handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
+handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid, bool is_query) {
     bool existing, init_img = true;
     Image *img = NULL;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
@@ -663,13 +663,15 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             .is_4byte_aligned = self->currently_loading.is_4byte_aligned,
             .width = img->width, .height = img->height,
         };
-        if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id=img->root_frame.id}, self->currently_loading.data, self->currently_loading.data_sz)) {
-            if (PyErr_Occurred()) PyErr_Print();
-            ABRT("ENOSPC", "Failed to store image data in disk cache");
+        if (!is_query) {
+            if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id=img->root_frame.id}, self->currently_loading.data, self->currently_loading.data_sz)) {
+                if (PyErr_Occurred()) PyErr_Print();
+                ABRT("ENOSPC", "Failed to store image data in disk cache");
+            }
+            upload_to_gpu(self, img, img->root_frame.is_opaque, img->root_frame.is_4byte_aligned, self->currently_loading.data);
+            self->used_storage += required_sz;
+            img->used_storage = required_sz;
         }
-        upload_to_gpu(self, img, img->root_frame.is_opaque, img->root_frame.is_4byte_aligned, self->currently_loading.data);
-        self->used_storage += required_sz;
-        img->used_storage = required_sz;
         img->root_frame_data_loaded = true;
     }
     return img;
@@ -2060,7 +2062,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             uint32_t iid = g->id, q_iid = iid;
             bool is_query = g->action == 'q';
             if (is_query) { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
-            Image *image = handle_add_command(self, g, payload, is_dirty, iid);
+            Image *image = handle_add_command(self, g, payload, is_dirty, iid, is_query);
             if (!self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);
             GraphicsCommand *lg = &self->currently_loading.start_command;
             if (g->quiet) lg->quiet = g->quiet;
