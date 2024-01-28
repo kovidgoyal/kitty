@@ -229,7 +229,7 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
         const integer_t matches = or_si(a_cmp, b_cmp);
         const find_mask_t mask = mask_for_find(matches);
         if (mask != 0) {
-            const uint8_t *ans = haystack + __builtin_ctz(mask);
+            const uint8_t *ans = haystack + bytes_to_first_match(mask);
             if (ans < limit) return ans;
         }
     }
@@ -385,7 +385,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     const find_mask_t esc_test_mask = mask_for_find(esc_cmp);
     bool sentinel_found = false;
     unsigned short num_of_bytes_to_first_esc;
-    if (esc_test_mask && (num_of_bytes_to_first_esc = __builtin_ctz(esc_test_mask)) < src_sz) {
+    if (esc_test_mask && (num_of_bytes_to_first_esc = bytes_to_first_match(esc_test_mask)) < src_sz) {
         sentinel_found = true;
         src_sz = num_of_bytes_to_first_esc;
         d->num_consumed += src_sz + 1;  // esc is also consumed
