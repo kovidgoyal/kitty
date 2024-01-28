@@ -604,7 +604,8 @@ upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const boo
         if (!make_window_context_current(self->window_id)) return;
         self->context_made_current_for_this_command = true;
     }
-    send_image_to_gpu(&img->texture_id, data, img->width, img->height, is_opaque, is_4byte_aligned, false, REPEAT_CLAMP);
+    // We use linear interpolation as the image may be resized on the GPU if r/c is specified or unicode placeholders are used.
+    send_image_to_gpu(&img->texture_id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP);
 }
 
 static Image*
