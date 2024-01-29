@@ -189,9 +189,10 @@ has :code:`keyboard protocol` in its title. Run the show-key kitten as::
 Press :kbd:`ctrl+shift+t` and instead of a new tab opening, you will
 see the key press being reported by the kitten. :code:`--when-focus-on` can test
 the focused window using very powerful criteria, see :ref:`search_syntax` for
-details. A more practical example unmaps the key when the focused window is running vim::
+details. A more practical example unmaps the key when the focused window is
+running an editor::
 
-    map --when-focus-on var:in_editor
+    map --when-focus-on var:in_editor kitty_mod+c
 
 In order to make this work, you need to configure your editor as show below:
 
@@ -224,6 +225,10 @@ In order to make this work, you need to configure your editor as show below:
         })
 
 These cause the editor to set the :code:`in_editor` variable in kitty and unset it when exiting.
+As a result, the :kbd:`ctrl+shift+c` key will be passed to the editor instead of
+copying to clipboard. In the editor, you can map it to copy to the clipboard,
+thereby allowing use of a common shortcut both inside and outside the editor
+for copying to clipboard.
 
 Sending arbitrary text or keys to the program running in kitty
 --------------------------------------------------------------------------------
