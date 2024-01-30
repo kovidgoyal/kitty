@@ -25,6 +25,7 @@ const uint8_t* FUNC(find_either_of_two_bytes)(const uint8_t *haystack UNUSED, co
 #include "charsets.h"
 
 // Boilerplate {{{
+START_IGNORE_DIAGNOSTIC("-Wfloat-conversion")
 #if  defined(__clang__) && __clang_major__ > 12
 _Pragma("clang diagnostic push")
 _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
@@ -34,6 +35,7 @@ _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #if  defined(__clang__) && __clang_major__ > 12
 _Pragma("clang diagnostic pop")
 #endif
+END_IGNORE_DIAGNOSTIC
 
 
 #ifndef _MM_SHUFFLE
