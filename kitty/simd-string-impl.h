@@ -42,13 +42,13 @@ _Pragma("clang diagnostic pop")
 #define shift_right_by_bytes128 simde_mm_srli_si128
 #define zero_last_n_bytes FUNC(zero_last_n_bytes)
 #define is_zero FUNC(is_zero)
-typedef int32_t find_mask_t;
 
 #if KITTY_SIMD_LEVEL == 128
 #define set1_epi8(x) simde_mm_set1_epi8((char)(x))
 #define set_epi8 simde_mm_set_epi8
 #define add_epi8 simde_mm_add_epi8
 #define load_unaligned simde_mm_loadu_si128
+#define load_aligned simde_mm_load_si128
 #define store_aligned simde_mm_store_si128
 #define cmpeq_epi8 simde_mm_cmpeq_epi8
 #define cmplt_epi8 simde_mm_cmplt_epi8
@@ -89,6 +89,7 @@ FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 #define set_epi8 simde_mm256_set_epi8
 #define add_epi8 simde_mm256_add_epi8
 #define load_unaligned simde_mm256_loadu_si256
+#define load_aligned simde_mm256_load_si256
 #define store_aligned simde_mm256_store_si256
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
 #define cmpgt_epi8 simde_mm256_cmpgt_epi8
@@ -202,6 +203,8 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 #define debug(...)
 #endif
 
+
+typedef int32_t find_mask_t;
 static inline find_mask_t
 mask_for_find(const integer_t a) { return movemask_epi8(a); }
 
@@ -222,16 +225,27 @@ FUNC(zero_last_n_bytes)(integer_t vec, char n) {
 const uint8_t*
 FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
     const integer_t a_vec = set1_epi8(a), b_vec = set1_epi8(b);
-    for (const uint8_t* limit = haystack + sz; haystack < limit; haystack += sizeof(integer_t)) {
-        const integer_t chunk = load_unaligned((integer_t*)haystack);
-        const integer_t a_cmp = cmpeq_epi8(chunk, a_vec);
-        const integer_t b_cmp = cmpeq_epi8(chunk, b_vec);
-        const integer_t matches = or_si(a_cmp, b_cmp);
-        const find_mask_t mask = mask_for_find(matches);
-        if (mask != 0) {
-            const uint8_t *ans = haystack + bytes_to_first_match(mask);
-            if (ans < limit) return ans;
-        }
+    const uint8_t* limit = haystack + sz;
+    integer_t chunk; find_mask_t mask;
+
+#define check_chunk() { \
+    const integer_t matches = or_si(cmpeq_epi8(chunk, a_vec), cmpeq_epi8(chunk, b_vec)); \
+    if ((mask = mask_for_find(matches))) { \
+        const uint8_t *ans = haystack + bytes_to_first_match(mask); \
+        return ans < limit ? ans : NULL; \
+    }}
+
+    // check the first possibly unaligned chunk
+    chunk = load_unaligned(haystack);
+    check_chunk();
+    const uintptr_t unaligned_leading_count = sizeof(integer_t) - (((uintptr_t)haystack) & (sizeof(integer_t) - 1));
+    haystack += unaligned_leading_count; // advance to the first aligned chunk
+
+    // Iterate over aligned chunks, this repeats checking of
+    // (sizeof(integer_t) - unaligned_leading_count) bytes, but better than a branch
+    for (; haystack < limit; haystack += sizeof(integer_t)) {
+        chunk = load_aligned((integer_t*)haystack);
+        check_chunk();
     }
     return NULL;
 }
@@ -555,6 +569,7 @@ invalid_utf8:
 #undef set1_epi8
 #undef set_epi8
 #undef load_unaligned
+#undef load_aligned
 #undef store_aligned
 #undef cmpeq_epi8
 #undef cmplt_epi8
