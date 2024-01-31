@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"go/types"
 	"io"
@@ -1184,6 +1185,9 @@ func exit(msg any) {
 
 func write_file(name, text string) {
 	b := unsafe.Slice(unsafe.StringData(text), len(text))
+	if existing, err := os.ReadFile(name); err == nil && bytes.Equal(existing, b) {
+		return
+	}
 	if err := os.WriteFile(name, b, 0660); err != nil {
 		exit(err)
 	}
