@@ -13,6 +13,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/unix"
+
+	"kitty/tools/simdstring"
 )
 
 var _ = fmt.Print
@@ -68,13 +70,16 @@ func read_input(input_file *os.File, input_file_name string, input_channel chan<
 
 	if count_carriage_returns {
 		process_chunk = func(chunk []byte) {
-			for _, ch := range chunk {
-				switch ch {
+			for len(chunk) > 0 {
+				idx := simdstring.UnsafeIndexByte2(chunk, '\n', '\r')
+				if idx == -1 {
+					_, _ = output_buf.Write(chunk)
+					chunk = nil
+				}
+				switch chunk[idx] {
 				case '\r':
 					num_carriage_returns += 1
 				default:
-					_ = output_buf.WriteByte(ch)
-				case '\n':
 					input_channel <- input_line_struct{line: output_buf.String(), num_carriage_returns: num_carriage_returns, is_a_complete_line: true}
 					num_carriage_returns = 0
 					output_buf.Reset()
