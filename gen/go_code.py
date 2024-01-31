@@ -855,7 +855,12 @@ def generate_ssh_kitten_data() -> None:
             write_compressed_data(buf.getvalue(), d)
 
 
+def start_simdgen() -> 'subprocess.Popen[bytes]':
+    return subprocess.Popen(['go', 'run', 'generate.go'], cwd='tools/simdstring', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
 def main(args: List[str]=sys.argv) -> None:
+    simdgen_process = start_simdgen()
     with replace_if_needed('constants_generated.go') as f:
         f.write(generate_constants())
     with replace_if_needed('tools/utils/style/color-names_generated.go') as f:
@@ -878,6 +883,12 @@ def main(args: List[str]=sys.argv) -> None:
     kitten_clis()
     stringify()
     print(json.dumps(changed, indent=2))
+    stdout, stderr = simdgen_process.communicate()
+    if simdgen_process.wait() != 0:
+        print('Failed to generate SIMD ASM', file=sys.stderr)
+        sys.stdout.buffer.write(stdout)
+        sys.stderr.buffer.write(stderr)
+        raise SystemExit(simdgen_process.returncode)
 
 
 if __name__ == '__main__':
