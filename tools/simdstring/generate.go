@@ -1079,45 +1079,19 @@ func (isa *ISA) LEA() string {
 	return "LEAQ"
 }
 
-func (s *State) indexbyte2() {
-	f := s.NewFunction("index_byte2_asm", "Find the index of either of two bytes", []FunctionParam{{"data", ByteSlice}, {"b1", types.Byte}, {"b2", types.Byte}}, []FunctionParam{{"ans", types.Int}})
-	if s.ISA.HasSIMD {
-		s.indexbyte2_body(f)
-	}
-	f = s.NewFunction("index_byte2_string_asm", "Find the index of either of two bytes", []FunctionParam{{"data", types.String}, {"b1", types.Byte}, {"b2", types.Byte}}, []FunctionParam{{"ans", types.Int}})
-	if s.ISA.HasSIMD {
-		s.indexbyte2_body(f)
-	}
-
-}
-
-func (s *State) indexbyte2_body(f *Function) {
-	b1 := f.Vec()
-	b2 := f.Vec()
-	test_ans := f.Vec()
-	f.Set1Epi8FromParam("b1", b1)
-	f.Set1Epi8FromParam("b2", b2)
+func (s *State) index_func(f *Function, test_bytes_impl func(pos, test_ans Register, aligned bool, byte_found_label string)) {
 	pos := f.Reg()
+	test_ans := f.Vec()
 	data_start := f.LoadParam(`data`)
 	limit := f.LoadParamLen(`data`)
 	f.AddToSelf(limit, data_start)
 
-	test_bytes := func(aligned bool) {
-		bytes_to_test := f.Vec()
-		defer f.ReleaseReg(bytes_to_test)
-		if aligned {
-			f.LoadPointerAligned(pos, bytes_to_test)
-		} else {
-			f.LoadPointerUnaligned(pos, bytes_to_test)
-		}
-		f.CmpEqEpi8(bytes_to_test, b1, test_ans)
-		f.CmpEqEpi8(bytes_to_test, b2, bytes_to_test)
-		f.Or(test_ans, bytes_to_test, test_ans)
-		f.JumpIfNonZero(test_ans, "byte_found")
-	}
-
 	vecsz := f.ISA.Bits / 8
 	f.CopyRegister(data_start, pos)
+
+	test_bytes := func(aligned bool) {
+		test_bytes_impl(pos, test_ans, aligned, "byte_found")
+	}
 
 	f.Comment("Load next vector of possibly unaligned bytes and check if either of the bytes are present in it")
 	test_bytes(false)
@@ -1161,6 +1135,39 @@ func (s *State) indexbyte2_body(f *Function) {
 		f.SetReturnValue("ans", res)
 		f.Return()
 	}()
+
+}
+
+func (s *State) indexbyte2_body(f *Function) {
+	b1 := f.Vec()
+	b2 := f.Vec()
+	f.Set1Epi8FromParam("b1", b1)
+	f.Set1Epi8FromParam("b2", b2)
+	test_bytes := func(pos, test_ans Register, aligned bool, byte_found_label string) {
+		bytes_to_test := f.Vec()
+		defer f.ReleaseReg(bytes_to_test)
+		if aligned {
+			f.LoadPointerAligned(pos, bytes_to_test)
+		} else {
+			f.LoadPointerUnaligned(pos, bytes_to_test)
+		}
+		f.CmpEqEpi8(bytes_to_test, b1, test_ans)
+		f.CmpEqEpi8(bytes_to_test, b2, bytes_to_test)
+		f.Or(test_ans, bytes_to_test, test_ans)
+		f.JumpIfNonZero(test_ans, byte_found_label)
+	}
+	s.index_func(f, test_bytes)
+}
+
+func (s *State) indexbyte2() {
+	f := s.NewFunction("index_byte2_asm", "Find the index of either of two bytes", []FunctionParam{{"data", ByteSlice}, {"b1", types.Byte}, {"b2", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.indexbyte2_body(f)
+	}
+	f = s.NewFunction("index_byte2_string_asm", "Find the index of either of two bytes", []FunctionParam{{"data", types.String}, {"b1", types.Byte}, {"b2", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.indexbyte2_body(f)
+	}
 
 }
 
