@@ -781,7 +781,7 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 			case 256:
 				temp := f.Vec(128)
 				defer f.ReleaseReg(temp)
-				f.instr("MOVL", r, temp)
+				f.instr("VMOVD", r, temp)
 				f.instr("VPBROADCASTB", temp, vec)
 			}
 		}
@@ -798,7 +798,7 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 			case 256:
 				temp := f.Vec(128)
 				defer f.ReleaseReg(temp)
-				f.instr("MOVL", v, temp)
+				f.instr("VMOVD", v, temp)
 				f.instr("VPBROADCASTB", temp, vec)
 			}
 		}
