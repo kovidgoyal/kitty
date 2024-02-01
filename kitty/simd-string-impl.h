@@ -492,13 +492,13 @@ start_classification:
         state = blendv_epi8(state, vec_f4, bytes_indicating_start_of_four_byte_sequence);
         // state now has 0xc2 on all bytes that start a 2 byte sequence, 0xe3 on start of 3-byte, 0xf4 on 4-byte start and 0x80 on rest
         debug_register(state);
-        integer_t mask = and_si(state, set1_epi8(0xf8));  // keep upper 5 bits of state
+        const integer_t mask = and_si(state, set1_epi8(0xf8));  // keep upper 5 bits of state
         debug_register(mask);
-        integer_t count = and_si(state, set1_epi8(0x7));  // keep lower 3 bits of state
+        const integer_t count = and_si(state, set1_epi8(0x7));  // keep lower 3 bits of state
         debug_register(count);
         // count contains the number of bytes in the sequence for the start byte of every sequence and zero elsewhere
         // shift 02 bytes by 1 and subtract 1
-        integer_t count_subs1 = subtract_saturate_epu8(count, one);
+        const integer_t count_subs1 = subtract_saturate_epu8(count, one);
         integer_t counts = add_epi8(count, shift_right_by_one_byte(count_subs1));
         // shift 03 and 04 bytes by 2 and subtract 2
         counts = add_epi8(counts, shift_right_by_two_bytes(subtract_saturate_epu8(counts, two)));
@@ -532,7 +532,7 @@ start_classification:
 
         // The lowest byte is made up of 6 bits from locations with counts == 1 and the lowest two bits from locations with count == 2
         // In addition, the ASCII bytes are copied unchanged from vec
-        integer_t vec_non_ascii = andnot_si(cmpeq_epi8(counts, zero), vec);
+        const integer_t vec_non_ascii = andnot_si(cmpeq_epi8(counts, zero), vec);
         debug_register(vec_non_ascii);
         integer_t output1 = blendv_epi8(vec,
                 or_si(
@@ -544,7 +544,7 @@ start_classification:
         debug_register(output1);
 
         // The next byte is made up of 4 bits (5, 4, 3, 2) from locations with count == 2 and the first 4 bits from locations with count == 3
-        integer_t count2_locations = cmpeq_epi8(counts, two), count3_locations = cmpeq_epi8(counts, three);
+        const integer_t count2_locations = cmpeq_epi8(counts, two), count3_locations = cmpeq_epi8(counts, three);
         integer_t output2 = and_si(vec, count2_locations);
         output2 = shift_right_by_bits32(output2, 2);  // selects the bits 5, 4, 3, 2
         // select the first 4 bits from locs with count == 3 by shifting count 3 locations right by one byte and left by 4 bits
@@ -559,7 +559,7 @@ start_classification:
 
         // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
         integer_t output3 = and_si(three, shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
-        integer_t count4_locations = cmpeq_epi8(counts, four);
+        const integer_t count4_locations = cmpeq_epi8(counts, four);
         // 3 bits from count == 4 locations, placed at count == 3 locations shifted left by 2 bits
         output3 = or_si(output3,
             and_si(set1_epi8(0xfc),
