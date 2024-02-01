@@ -92,7 +92,7 @@ func init() {
 		}
 	case "arm64":
 		Have128bit = HasSIMD128Code
-		Have128bit = HasSIMD256Code
+		Have256bit = HasSIMD256Code
 	}
 	if Have256bit {
 		UnsafeIndexByte2 = index_byte2_asm_256

@@ -44,6 +44,16 @@ func test_cmpeq_epi8(a, b []byte) []byte {
 	return ans
 }
 
+func test_cmplt_epi8(a, b []byte) []byte {
+	ans := make([]byte, len(a))
+	if len(ans) == 16 {
+		test_cmplt_epi8_asm_128(a, b, ans)
+	} else {
+		test_cmplt_epi8_asm_256(a, b, ans)
+	}
+	return ans
+}
+
 func test_or(a, b []byte) []byte {
 	ans := make([]byte, len(a))
 	if len(ans) == 16 {
@@ -81,14 +91,18 @@ func broadcast_byte(b byte, size int) []byte {
 }
 
 func TestSIMDStringOps(t *testing.T) {
+	sizes := []int{}
+	if Have128bit {
+		sizes = append(sizes, 16)
+	}
+	if Have256bit {
+		sizes = append(sizes, 32)
+	}
+
+	if len(sizes) == 0 {
+		t.Skip("skipping as no SIMD available at runtime")
+	}
 	test := func(haystack []byte, a, b byte) {
-		sizes := []int{}
-		if Have128bit {
-			sizes = append(sizes, 16)
-		}
-		if Have256bit {
-			sizes = append(sizes, 32)
-		}
 		var actual int
 		safe_haystack := append(bytes.Repeat([]byte{'<'}, 64), haystack...)
 		safe_haystack = append(safe_haystack, bytes.Repeat([]byte{'>'}, 64)...)
@@ -170,6 +184,9 @@ func TestIntrinsics(t *testing.T) {
 		if !HasSIMD128Code {
 			t.Fatal("SIMD 128bit code not built")
 		}
+		if !Have128bit {
+			t.Fatal("SIMD 128bit support not available at runtime")
+		}
 	}
 	ae := func(sz int, func_name string, a, b any) {
 		if s := cmp.Diff(a, b); s != "" {
@@ -192,6 +209,14 @@ func TestIntrinsics(t *testing.T) {
 		b := ordered_bytes(sz)
 		ans := test_cmpeq_epi8(a, b)
 		ae(sz, `cmpeq_epi8_test`, broadcast_byte(0xff, sz), ans)
+		threshold := -1
+		a[1] = byte(threshold)
+		a[2] = byte(threshold - 1)
+		ans = test_cmplt_epi8(a, broadcast_byte(byte(threshold), sz))
+		expected := broadcast_byte(0xff, sz)
+		expected[1] = 0
+		expected[2] = 0
+		ae(sz, `cmplt_epi8_test`, expected, ans)
 	})
 	tests = append(tests, func(sz int) {
 		a := make([]byte, sz)
@@ -246,6 +271,9 @@ func TestIntrinsics(t *testing.T) {
 	}
 	if Have256bit {
 		sizes = append(sizes, 32)
+	}
+	if len(sizes) == 0 {
+		t.Skip("skipping as no SIMD available at runtime")
 	}
 	for _, sz := range sizes {
 		for _, test := range tests {
