@@ -52,7 +52,7 @@ END_IGNORE_DIAGNOSTIC
 #define add_epi8 simde_mm_add_epi8
 #define load_unaligned simde_mm_loadu_si128
 #define load_aligned simde_mm_load_si128
-#define store_aligned simde_mm_store_si128
+#define store_unaligned simde_mm_storeu_si128
 #define cmpeq_epi8 simde_mm_cmpeq_epi8
 #define cmplt_epi8 simde_mm_cmplt_epi8
 #define cmpgt_epi8 simde_mm_cmpgt_epi8
@@ -93,7 +93,7 @@ FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 #define add_epi8 simde_mm256_add_epi8
 #define load_unaligned simde_mm256_loadu_si256
 #define load_aligned simde_mm256_load_si256
-#define store_aligned simde_mm256_store_si256
+#define store_unaligned simde_mm256_storeu_si256
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
 #define cmpgt_epi8 simde_mm256_cmpgt_epi8
 #define cmplt_epi8(a, b) cmpgt_epi8(b, a)
@@ -190,7 +190,7 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 #define print_register_as_bytes(r) { \
     printf("%s:\n", #r); \
     alignas(64) uint8_t data[sizeof(r)]; \
-    store_aligned((integer_t*)data, r); \
+    store_unaligned((integer_t*)data, r); \
     for (unsigned i = 0; i < sizeof(integer_t); i++) { \
         uint8_t ch = data[i]; \
         if (' ' <= ch && ch < 0x7f) printf("_%c ", ch); else printf("%.2x ", ch); \
@@ -289,26 +289,26 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
 #if KITTY_SIMD_LEVEL == 128
     for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += output_increment) {
         const integer_t unpacked = extract_lower_quarter_as_chars(vec);
-        store_aligned((integer_t*)p, unpacked);
+        store_unaligned((integer_t*)p, unpacked);
         vec = shift_right_by_bytes128(vec, output_increment);
     }
 #else
     const uint32_t *limit = d->output + src_sz, *p = d->output;
     simde__m128i x = simde_mm256_extracti128_si256(vec, 0);
     integer_t unpacked = extract_lower_half_as_chars(x);
-    store_aligned((integer_t*)p, unpacked); p += output_increment;
+    store_unaligned((integer_t*)p, unpacked); p += output_increment;
     if (p < limit) {
         x = shift_right_by_bytes128(x, output_increment);
         unpacked = extract_lower_half_as_chars(x);
-        store_aligned((integer_t*)p, unpacked); p += output_increment;
+        store_unaligned((integer_t*)p, unpacked); p += output_increment;
         if (p < limit) {
             x = simde_mm256_extracti128_si256(vec, 1);
             unpacked = extract_lower_half_as_chars(x);
-            store_aligned((integer_t*)p, unpacked); p += output_increment;
+            store_unaligned((integer_t*)p, unpacked); p += output_increment;
             if (p < limit) {
                 x = shift_right_by_bytes128(x, output_increment);
                 unpacked = extract_lower_half_as_chars(x);
-                store_aligned((integer_t*)p, unpacked); p += output_increment;
+                store_unaligned((integer_t*)p, unpacked); p += output_increment;
             }
         }
     }
@@ -324,7 +324,7 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
         const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_quarter_as_chars(output2));
         const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_quarter_as_chars(output3));
         const integer_t unpacked = or_si(or_si(unpacked1, unpacked2), unpacked3);
-        store_aligned((integer_t*)p, unpacked);
+        store_unaligned((integer_t*)p, unpacked);
         output1 = shift_right_by_bytes128(output1, output_increment);
         output2 = shift_right_by_bytes128(output2, output_increment);
         output3 = shift_right_by_bytes128(output3, output_increment);
@@ -337,7 +337,7 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
         const integer_t unpacked1 = extract_lower_half_as_chars(x1); \
         const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_half_as_chars(x2)); \
         const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_half_as_chars(x3)); \
-        store_aligned((integer_t*)p, or_si(or_si(unpacked1, unpacked2), unpacked3)); \
+        store_unaligned((integer_t*)p, or_si(or_si(unpacked1, unpacked2), unpacked3)); \
         p += output_increment; \
 }
 #define extract(which) x1 = simde_mm256_extracti128_si256(output1, which); x2 = simde_mm256_extracti128_si256(output2, which); x3 = simde_mm256_extracti128_si256(output3, which);
@@ -601,7 +601,7 @@ invalid_utf8:
 #undef set_epi8
 #undef load_unaligned
 #undef load_aligned
-#undef store_aligned
+#undef store_unaligned
 #undef cmpeq_epi8
 #undef cmplt_epi8
 #undef cmpgt_epi8
