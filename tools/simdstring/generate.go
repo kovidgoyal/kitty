@@ -734,7 +734,7 @@ func (f *Function) CmpGtEpi8(a, b, ans Register) {
 }
 
 func (f *Function) CmpLtEpi8(a, b, ans Register) {
-	f.cmp(b, a, ans, "GT", "<")
+	f.cmp(b, a, ans, "GT", ">")
 }
 
 func (f *Function) CmpEqEpi8(a, b, ans Register) {
