@@ -39,6 +39,8 @@ func get_safe_slice_with_cap(addr uintptr, mask, datalen, datacap int) (align_le
 	return get_safe_slice(addr, mask, datalen)
 }
 
+// Return the index at which either a or b first occurs in data. If neither is
+// found -1 is returned.
 func IndexByte2(data []byte, a, b byte) int {
 	align_len, vecsafe_len := get_safe_slice_with_cap(uintptr(unsafe.Pointer(&data)), VectorSize-1, len(data), cap(data))
 	if align_len > 0 {
@@ -61,6 +63,8 @@ func IndexByte2(data []byte, a, b byte) int {
 	return -1
 }
 
+// Return the index at which either a or b first occurs in data. If neither is
+// found -1 is returned.
 func IndexByte2String(data string, a, b byte) int {
 	align_len, vecsafe_len := get_safe_slice(uintptr(unsafe.Pointer(&data)), VectorSize-1, len(data))
 	if align_len > 0 {

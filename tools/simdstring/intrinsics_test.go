@@ -200,7 +200,7 @@ func TestSIMDStringOps(t *testing.T) {
 	}
 
 	c0tests("")
-	c0tests("a")
+	c0tests("abcdef")
 	c0tests("a\x00")
 	c0tests("afsgdfg\x7f")
 	c0tests("a\nfgdfgd\r")
