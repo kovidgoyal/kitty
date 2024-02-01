@@ -418,14 +418,12 @@ scalar_decode_all(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // Based on the algorithm described in: https://woboq.com/blog/utf-8-processing-using-simd.html
-
     d->output.pos = 0; d->num_consumed = 0;
+
     if (d->state.cur != UTF8_ACCEPT) {
-        // Finish the trailing sequence only, we will be called again to process the rest allows use of aligned stores since output
-        // is not pre-filled.
-        d->num_consumed = scalar_decode_to_accept(d, src, src_sz);
+        // Finish the trailing sequence only
+        d->num_consumed += scalar_decode_to_accept(d, src, src_sz);
         src += d->num_consumed; src_sz -= d->num_consumed;
-        return false;
     }
     src_sz = MIN(src_sz, sizeof(integer_t));
     integer_t vec = load_unaligned((integer_t*)src);
