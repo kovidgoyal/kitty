@@ -14,13 +14,24 @@ typedef void (*control_byte_callback)(void *data, uint8_t ch);
 typedef void (*output_chars_callback)(void *data, const uint32_t *chars, unsigned count);
 
 typedef struct UTF8Decoder {
-    alignas(512/8) uint32_t output[512/8];  // we can process at most 512 bits of input (AVX512) so we get at most 64 chars of output
-    unsigned output_sz, num_consumed;
-
+    struct { uint32_t *storage; unsigned pos, capacity; } output;
     struct { uint32_t cur, prev, codep; } state;
+    unsigned num_consumed;
 } UTF8Decoder;
 static inline void utf8_decoder_reset(UTF8Decoder *self) { zero_at_ptr(&self->state); }
 bool utf8_decode_to_esc(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
+static inline void utf8_decoder_ensure_capacity(UTF8Decoder *d, unsigned sz) {
+    if (d->output.capacity + d->output.pos < sz) {
+        d->output.capacity = d->output.pos + sz + 4096;
+        d->output.storage = realloc(d->output.storage, d->output.capacity * sizeof(d->output.storage[0]) + 64);  // allow for overwrite of upto 64 bytes
+        if (!d->output.storage) fatal("Output of memory for UTF8Decoder output buffer at capacity: %u", d->output.capacity);
+    }
+}
+static inline void utf8_decoder_free(UTF8Decoder *d) {
+    free(d->output.storage);
+    zero_at_ptr(&(d->output));
+}
+
 
 // Pass a PyModule PyObject* as the argument. Must be called once at application startup
 bool init_simd(void* module);
