@@ -169,6 +169,42 @@ func TestSIMDStringOps(t *testing.T) {
 			tbs(addr, datalen)
 		}
 	}
+
+	c0test := func(haystack []byte) {
+		var actual int
+		safe_haystack := append(bytes.Repeat([]byte{'<'}, 64), haystack...)
+		safe_haystack = append(safe_haystack, bytes.Repeat([]byte{'>'}, 64)...)
+		haystack = safe_haystack[64 : 64+len(haystack)]
+		expected := index_c0_scalar(haystack)
+
+		for _, sz := range sizes {
+			switch sz {
+			case 16:
+				actual = index_c0_asm_128(haystack)
+			case 32:
+				actual = index_c0_asm_256(haystack)
+			}
+			if actual != expected {
+				t.Fatalf("Failed to find C0 char in: %#v (%d != %d) at size: %d", string(haystack), expected, actual, sz)
+			}
+		}
+
+	}
+
+	c0tests := func(h string) {
+		c0test([]byte(h))
+		for _, sz := range []int{16, 32, 64, 79} {
+			q := strings.Repeat(" ", sz) + h
+			c0test([]byte(q))
+		}
+	}
+
+	c0tests("")
+	c0tests("a")
+	c0tests("a\x00")
+	c0tests("afsgdfg\x7f")
+	c0tests("a\nfgdfgd\r")
+	c0tests("afgd\rfgd\t")
 }
 
 func TestIntrinsics(t *testing.T) {

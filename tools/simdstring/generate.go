@@ -575,6 +575,27 @@ func (f *Function) Or(a, b, dest Register) {
 	f.AddTrailingComment(dest, "=", a, "|", b, "(bitwise)")
 }
 
+func (f *Function) And(a, b, dest Register) {
+	if f.ISA.Goarch == ARM64 {
+		f.instr("VAND", a.ARMFullWidth(), b.ARMFullWidth(), dest.ARMFullWidth())
+	} else {
+		if f.ISA.Bits == 128 {
+			switch dest.Name {
+			case b.Name:
+				f.instr("PAND", a, b)
+			case a.Name:
+				f.instr("PAND", b, a)
+			default:
+				f.CopyRegister(b, dest)
+				f.instr("PAND", a, dest)
+			}
+		} else {
+			f.instr("VAND", a, b, dest)
+		}
+	}
+	f.AddTrailingComment(dest, "=", a, "&", b, "(bitwise)")
+}
+
 func (f *Function) ClearRegisterToZero(r Register) {
 	defer func() { f.AddTrailingComment("set", r, "to zero") }()
 	if f.ISA.Goarch == ARM64 {
@@ -959,9 +980,12 @@ func (s *Function) AddTrailingComment(x ...any) {
 }
 
 func val_repr_for_arithmetic(val any) (ans string) {
-	switch val.(type) {
+	switch v := val.(type) {
 	case int:
-		return fmt.Sprintf("$%d", val)
+		if v < 0 {
+			return fmt.Sprintf("$%d", v)
+		}
+		return fmt.Sprintf("$0x%x", v)
 	case string:
 		return val.(string)
 	case fmt.Stringer:
@@ -1279,6 +1303,47 @@ func (s *State) indexbyte2() {
 
 }
 
+func (s *State) indexc0_body(f *Function) {
+	lower := f.Vec()
+	upper := f.Vec()
+	del := f.Vec()
+	f.Set1Epi8(-1, lower)
+	f.Set1Epi8(int(' '), upper)
+	f.Set1Epi8(0x7f, del)
+
+	test_bytes := func(pos, test_ans Register, aligned bool, byte_found_label string) {
+		bytes_to_test := f.Vec()
+		defer f.ReleaseReg(bytes_to_test)
+		temp := f.Vec()
+		defer f.ReleaseReg(temp)
+
+		if aligned {
+			f.LoadPointerAligned(pos, bytes_to_test)
+		} else {
+			f.LoadPointerUnaligned(pos, bytes_to_test)
+		}
+		f.CmpEqEpi8(bytes_to_test, del, test_ans)
+		f.CmpLtEpi8(bytes_to_test, upper, temp)
+		f.CmpGtEpi8(bytes_to_test, lower, bytes_to_test)
+		f.And(temp, bytes_to_test, bytes_to_test)
+		f.Or(test_ans, bytes_to_test, test_ans)
+		f.JumpIfNonZero(test_ans, byte_found_label)
+	}
+	s.index_func(f, test_bytes)
+}
+
+func (s *State) indexc0() {
+	f := s.NewFunction("index_c0_asm", "Find the index of a C0 control code", []FunctionParam{{"data", ByteSlice}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.indexc0_body(f)
+	}
+	f = s.NewFunction("index_c0_string_asm", "Find the index of a C0 control code", []FunctionParam{{"data", types.String}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.indexc0_body(f)
+	}
+
+}
+
 func (s *State) Generate() {
 	s.test_load()
 	s.test_set1_epi8()
@@ -1289,6 +1354,7 @@ func (s *State) Generate() {
 	s.test_count_to_match()
 
 	s.indexbyte2()
+	s.indexc0()
 
 	s.OutputFunction()
 }

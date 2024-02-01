@@ -21,3 +21,21 @@ func index_byte2_string_scalar(data string, a, b byte) int {
 	}
 	return -1
 }
+
+func index_c0_scalar(data []byte) int {
+	for i := 0; i < len(data); i++ {
+		if data[i] == 0x7f || data[i] < ' ' {
+			return i
+		}
+	}
+	return -1
+}
+
+func index_c0_string_scalar(data string) int {
+	for i := 0; i < len(data); i++ {
+		if data[i] == 0x7f || data[i] < ' ' {
+			return i
+		}
+	}
+	return -1
+}
