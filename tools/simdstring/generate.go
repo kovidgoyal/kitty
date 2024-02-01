@@ -752,7 +752,6 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 		f.instr("PSHUFB", shuffle_mask, vec)
 		f.ReleaseReg(shuffle_mask)
 	}
-	defer f.Comment()
 
 	switch v := val.(type) {
 	default:
@@ -766,26 +765,12 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 			f.AllOnesRegister(vec)
 			return
 		}
-
-		f.Comment("Set all bytes of", vec, "to", v)
 		r := f.Reg()
 		defer f.ReleaseReg(r)
 		f.SetRegisterTo(r, v)
-
-		if f.ISA.Goarch == ARM64 {
-			f.instr("VMOV", r, vec.ARMFullWidth())
-		} else {
-			switch vec.Size {
-			case 128:
-				do_shuffle_load(r)
-			case 256:
-				temp := f.Vec(128)
-				defer f.ReleaseReg(temp)
-				f.instr("VMOVD", r, temp)
-				f.instr("VPBROADCASTB", temp, vec)
-			}
-		}
+		f.Set1Epi8(r, vec)
 	case Register:
+		f.Comment("Set all bytes of", vec, "to the lowest byte in", v)
 		if v.Size != f.ISA.GeneralPurposeRegisterSize {
 			panic("Can only set1_epi8 from a general purpose register")
 		}
@@ -802,6 +787,7 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 				f.instr("VPBROADCASTB", temp, vec)
 			}
 		}
+		defer f.Comment()
 	case string:
 		f.Comment("Set all bytes of", vec, "to the first byte in", v)
 		if f.ISA.Goarch == ARM64 {
@@ -818,6 +804,7 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 		case 256:
 			f.instr("VPBROADCASTB", f.ParamPos(v), vec)
 		}
+		defer f.Comment()
 	}
 }
 
