@@ -575,7 +575,7 @@ func (f *Function) Or(a, b, dest Register) {
 	f.AddTrailingComment(dest, "=", a, "|", b, "(bitwise)")
 }
 
-func (f *Function) ZeroRegister(r Register) {
+func (f *Function) ClearRegisterToZero(r Register) {
 	defer func() { f.AddTrailingComment("set", r, "to zero") }()
 	if f.ISA.Goarch == ARM64 {
 		if r.Size == f.ISA.GeneralPurposeRegisterSize {
@@ -596,6 +596,25 @@ func (f *Function) ZeroRegister(r Register) {
 		}
 	case 256:
 		f.instr("VPXOR", r, r, r)
+	}
+}
+
+func (f *Function) AllOnesRegister(r Register) {
+	switch r.Size {
+	default:
+		f.CmpEqEpi8(r, r, r)
+	case f.ISA.GeneralPurposeRegisterSize:
+		if f.ISA.Goarch == ARM64 {
+			f.instr("MOVD", "$-1", r)
+		} else {
+			switch r.Size {
+			case 32:
+				f.instr("MOVL", "$0xFFFFFFFF")
+			case 64:
+				f.instr("MOVQ", "$0xFFFFFFFFFFFFFFFF")
+			}
+		}
+		f.AddTrailingComment(r, "= all ones")
 	}
 }
 
@@ -631,12 +650,19 @@ func (f *Function) SetRegsiterTo(self Register, val any) {
 		if self.Size != f.ISA.GeneralPurposeRegisterSize {
 			panic("TODO: Cannot yet set constant values in vector registers")
 		}
-		if f.ISA.Goarch == ARM64 {
-			f.instr("MOVD", val_repr_for_arithmetic(v), self)
-		} else {
-			f.instr(f.MemLoadForBasicType(types.Int32), val_repr_for_arithmetic(v), self)
+		switch v {
+		case 0:
+			f.ClearRegisterToZero(self)
+		case -1:
+			f.AllOnesRegister(self)
+		default:
+			if f.ISA.Goarch == ARM64 {
+				f.instr("MOVD", val_repr_for_arithmetic(v), self)
+			} else {
+				f.instr(f.MemLoadForBasicType(types.Int32), val_repr_for_arithmetic(v), self)
+			}
+			f.AddTrailingComment(self, "= ", v)
 		}
-		f.AddTrailingComment(self, "= ", v)
 	case string:
 		f.instr(f.MemLoadForBasicType(types.Uintptr), v)
 		f.AddTrailingComment(self, "=", self.Size/8, "bytes at the address", v)
@@ -701,7 +727,7 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 	do_shuffle_load := func(r Register) {
 		f.instr("MOVL", r, vec)
 		shuffle_mask := f.Vec()
-		f.ZeroRegister(shuffle_mask)
+		f.ClearRegisterToZero(shuffle_mask)
 		f.instr("PSHUFB", shuffle_mask, vec)
 		f.ReleaseReg(shuffle_mask)
 	}
@@ -711,6 +737,15 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 	default:
 		panic("unknown type for set1_epi8")
 	case int:
+		switch v {
+		case 0:
+			f.ClearRegisterToZero(vec)
+			return
+		case -1:
+			f.AllOnesRegister(vec)
+			return
+		}
+
 		f.Comment("Set all bytes of", vec, "to", v)
 		r := f.Reg()
 		defer f.ReleaseReg(r)
