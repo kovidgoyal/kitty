@@ -57,18 +57,19 @@ terminal emulator you want to test, where the kitten binary is part of the
 kitty install.
 
 The numbers are megabytes per second of data that the terminal
-processes. Measurements were taken under Linux/X11 with a ``AMD Ryzen 7 PRO
-5850U``. Entries are in order of decreasing performance. kitty is clearly
-faster than the rest.
+processes. Measurements were taken under Linux/X11 with an ``AMD Ryzen 7 PRO
+5850U``. Entries are in order of decreasing performance. kitty is twice
+as fast as the next best.
 
 ================   ======  ======= ===== ====== =======
 Terminal           ASCII   Unicode CSI   Images Average
 ================   ======  ======= ===== ====== =======
-kitty 0.33         88.3    74.1    41.2  235.8  109.85
+kitty 0.33         117.7   104.0   59.3  249.7  132.68
 alacritty 0.13.1   43.1    46.5    32.5  94.1   54.05
 wezterm 20230712   16.4    26.0    11.1  140.5  48.5
 xterm 389          47.7    18.3    0.6   56.3   30.72
 konsole 23.08.04   25.2    37.7    23.6  23.4   27.48
+alacritty+tmux     30.3    7.8     14.7  46.1   24.73
 ================   ======  ======= ===== ====== =======
 
 In this table, each column represents different types of data. The CSI column
@@ -86,8 +87,11 @@ ASCII only text.
 
 .. note::
 
-   gnome-terminal is left out as I could not get it to start on my system
-   and foot is left out as it does not run under X11.
+   gnome-terminal is left out as I could not get it to start on my system and
+   foot is left out as it does not run under X11. Alacritty+tmux is included
+   just to show the effect of putting a terminal multiplexer into the mix
+   (halving throughput) and because alacritty isnt really comparable to any of
+   the other terminals feature wise without tmux.
 
 .. note::
 
