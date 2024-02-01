@@ -694,33 +694,73 @@ func (f *Function) CmpEqEpi8(a, b, ans Register) {
 	f.cmp(a, b, ans, "EQ", "==")
 }
 
-func (f *Function) Set1Epi8FromParam(function_parameter string, vec Register) {
-	if f.ISA.Goarch == ARM64 {
-		r := f.LoadParam(function_parameter)
-		f.instr("VMOV", r, vec.ARMFullWidth())
-		f.ReleaseReg(r)
-		return
+func (f *Function) Set1Epi8(val any, vec Register) {
+	if vec.Size != 128 && vec.Size != 256 {
+		panic("Set1Epi8 only works on vector registers")
 	}
-	switch vec.Size {
-	case 128:
-		f.Comment("Set all bytes of", vec, "to the first byte in", function_parameter)
-		r := f.LoadParam(function_parameter)
-		defer f.ReleaseReg(r)
-		if f.ISA.Goarch == ARM64 {
-			f.instr("MOVD", r, vec)
-		} else {
-			f.instr("MOVL", r, vec)
-		}
+	do_shuffle_load := func(r Register) {
+		f.instr("MOVL", r, vec)
 		shuffle_mask := f.Vec()
 		f.ZeroRegister(shuffle_mask)
 		f.instr("PSHUFB", shuffle_mask, vec)
 		f.ReleaseReg(shuffle_mask)
-		f.BlankLine()
-	case 256:
-		// Note that VPBROADCASTB can only load from registers in AVX512, but can from memory as of AVX1
-		f.instr("VPBROADCASTB", f.ParamPos(function_parameter), vec)
+	}
+	defer f.Comment()
+
+	switch v := val.(type) {
 	default:
-		panic("Set1Epi8FromParam only works on vector registers")
+		panic("unknown type for set1_epi8")
+	case int:
+		f.Comment("Set all bytes of", vec, "to", v)
+		r := f.Reg()
+		defer f.ReleaseReg(r)
+		f.SetRegsiterTo(r, v)
+		if f.ISA.Goarch == ARM64 {
+			f.instr("VMOV", r, vec.ARMFullWidth())
+		} else {
+			switch vec.Size {
+			case 128:
+				do_shuffle_load(r)
+			case 256:
+				temp := f.Vec(128)
+				defer f.ReleaseReg(temp)
+				f.instr("MOVL", r, temp)
+				f.instr("VPBROADCASTB", temp, vec)
+			}
+		}
+	case Register:
+		if v.Size != f.ISA.GeneralPurposeRegisterSize {
+			panic("Can only set1_epi8 from a general purpose register")
+		}
+		if f.ISA.Goarch == ARM64 {
+			f.instr("VMOV", v, vec.ARMFullWidth())
+		} else {
+			switch vec.Size {
+			case 128:
+				do_shuffle_load(v)
+			case 256:
+				temp := f.Vec(128)
+				defer f.ReleaseReg(temp)
+				f.instr("MOVL", v, temp)
+				f.instr("VPBROADCASTB", temp, vec)
+			}
+		}
+	case string:
+		f.Comment("Set all bytes of", vec, "to the first byte in", v)
+		if f.ISA.Goarch == ARM64 {
+			r := f.LoadParam(v)
+			f.instr("VMOV", r, vec.ARMFullWidth())
+			f.ReleaseReg(r)
+			return
+		}
+		switch vec.Size {
+		case 128:
+			r := f.LoadParam(v)
+			do_shuffle_load(r)
+			defer f.ReleaseReg(r)
+		case 256:
+			f.instr("VPBROADCASTB", f.ParamPos(v), vec)
+		}
 	}
 }
 
@@ -805,7 +845,6 @@ func (s *Function) print_signature(w io.Writer) {
 		print_p(p)
 	}
 	fmt.Fprint(w, ")")
-
 }
 
 func (s *Function) OutputStub(w io.Writer) {
@@ -1038,7 +1077,7 @@ func (s *State) test_set1_epi8() {
 		return
 	}
 	vec := f.Vec()
-	f.Set1Epi8FromParam("b", vec)
+	f.Set1Epi8("b", vec)
 	f.store_vec_in_param(vec, `ans`)
 }
 
@@ -1095,7 +1134,7 @@ func (s *State) test_count_to_match() {
 	}
 	a := f.load_vec_from_param("a")
 	b := f.Vec()
-	f.Set1Epi8FromParam("b", b)
+	f.Set1Epi8("b", b)
 	f.CmpEqEpi8(a, b, b)
 	f.JumpIfZero(b, "fail")
 	res := f.Reg()
@@ -1175,8 +1214,8 @@ func (s *State) index_func(f *Function, test_bytes_impl func(pos, test_ans Regis
 func (s *State) indexbyte2_body(f *Function) {
 	b1 := f.Vec()
 	b2 := f.Vec()
-	f.Set1Epi8FromParam("b1", b1)
-	f.Set1Epi8FromParam("b2", b2)
+	f.Set1Epi8("b1", b1)
+	f.Set1Epi8("b2", b2)
 	test_bytes := func(pos, test_ans Register, aligned bool, byte_found_label string) {
 		bytes_to_test := f.Vec()
 		defer f.ReleaseReg(bytes_to_test)
