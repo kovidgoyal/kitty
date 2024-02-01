@@ -324,7 +324,7 @@ func (f *Function) set_return_value(offset int, q FunctionParam, val any) {
 	if f.ISA.Goarch == ARM64 && strings.HasPrefix(vr, `$`) {
 		// no way to store an immediate value into a memory address
 		temp := f.Reg()
-		f.SetRegsiterTo(temp, val)
+		f.SetRegisterTo(temp, val)
 		defer f.ReleaseReg(temp)
 		vr = temp.Name
 	}
@@ -590,7 +590,7 @@ func (f *Function) And(a, b, dest Register) {
 				f.instr("PAND", a, dest)
 			}
 		} else {
-			f.instr("VAND", a, b, dest)
+			f.instr("VPAND", a, b, dest)
 		}
 	}
 	f.AddTrailingComment(dest, "=", a, "&", b, "(bitwise)")
@@ -663,7 +663,7 @@ func (f *Function) CopyRegister(a, ans Register) {
 	f.AddTrailingComment(ans, "=", a)
 }
 
-func (f *Function) SetRegsiterTo(self Register, val any) {
+func (f *Function) SetRegisterTo(self Register, val any) {
 	switch v := val.(type) {
 	case Register:
 		f.CopyRegister(self, v)
@@ -680,7 +680,7 @@ func (f *Function) SetRegsiterTo(self Register, val any) {
 			if f.ISA.Goarch == ARM64 {
 				f.instr("MOVD", val_repr_for_arithmetic(v), self)
 			} else {
-				f.instr(f.MemLoadForBasicType(types.Int32), val_repr_for_arithmetic(v), self)
+				f.instr("MOVL", val_repr_for_arithmetic(v), self)
 			}
 			f.AddTrailingComment(self, "= ", v)
 		}
@@ -770,7 +770,8 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 		f.Comment("Set all bytes of", vec, "to", v)
 		r := f.Reg()
 		defer f.ReleaseReg(r)
-		f.SetRegsiterTo(r, v)
+		f.SetRegisterTo(r, v)
+
 		if f.ISA.Goarch == ARM64 {
 			f.instr("VMOV", r, vec.ARMFullWidth())
 		} else {
@@ -812,8 +813,8 @@ func (f *Function) Set1Epi8(val any, vec Register) {
 		switch vec.Size {
 		case 128:
 			r := f.LoadParam(v)
-			do_shuffle_load(r)
 			defer f.ReleaseReg(r)
+			do_shuffle_load(r)
 		case 256:
 			f.instr("VPBROADCASTB", f.ParamPos(v), vec)
 		}
@@ -1021,7 +1022,7 @@ func (f *Function) SubtractFromSelf(self Register, val any) {
 
 func (s *Function) SetRegisterToOffset(dest Register, base_register Register, constant_offset int, offset_register Register) {
 	if s.ISA.Goarch == ARM64 {
-		s.SetRegsiterTo(dest, constant_offset)
+		s.SetRegisterTo(dest, constant_offset)
 		s.AddToSelf(dest, base_register)
 		s.AddToSelf(dest, offset_register)
 	} else {
