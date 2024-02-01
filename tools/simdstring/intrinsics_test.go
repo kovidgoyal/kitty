@@ -185,7 +185,7 @@ func TestSIMDStringOps(t *testing.T) {
 				actual = index_c0_asm_256(haystack)
 			}
 			if actual != expected {
-				t.Fatalf("Failed to find C0 char in: %#v (%d != %d) at size: %d", string(haystack), expected, actual, sz)
+				t.Fatalf("C0 char index failed in: %#v (%d != %d) at size: %d", string(haystack), expected, actual, sz)
 			}
 		}
 
@@ -201,10 +201,10 @@ func TestSIMDStringOps(t *testing.T) {
 
 	c0tests("")
 	c0tests("abcdef")
-	c0tests("a\x00")
 	c0tests("afsgdfg\x7f")
 	c0tests("a\nfgdfgd\r")
 	c0tests("afgd\rfgd\t")
+	c0tests("a\x00")
 }
 
 func TestIntrinsics(t *testing.T) {
