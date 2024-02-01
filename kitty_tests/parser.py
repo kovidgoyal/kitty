@@ -197,26 +197,32 @@ class TestParser(BaseTest):
                 return
 
             def parse_parts(which):
+                total_consumed = 0
                 esc_found = False
                 parts = []
                 for x in a:
-                    found_sentinel, x = test_utf8_decode_to_sentinel(asbytes(x), which)
+                    found_sentinel, x, num_consumed = test_utf8_decode_to_sentinel(asbytes(x), which)
+                    total_consumed += num_consumed
                     if found_sentinel:
                         esc_found = found_sentinel
                     parts.append(x)
-                return esc_found, ''.join(parts)
+                return esc_found, ''.join(parts), total_consumed
 
             reset_state()
             actual = parse_parts(1)
             reset_state()
             expected = parse_parts(which)
             self.ae(expected, actual, msg=f'Failed for {a} with {which=}\n{expected!r} !=\n{actual!r}')
+            return actual
 
         def double_test(x):
             for which in (2, 3):
                 t(x, which=which)
             t(x*2, which=3)
             reset_state()
+
+        # incomplete trailer at end of vector
+        t("a"*10 + "😸😸" + "b"*15)
 
         x = double_test
         x('2:α3')
@@ -231,18 +237,20 @@ class TestParser(BaseTest):
             x('abcdef', 'ghijk')
             x('2:α3', ':≤4:😸|')
             # trailing incomplete sequence
-            x(b'abcd\xf0\x9f', b'\x98\xb81234')
-            x(b'abcd\xf0\x9f\x9b', b'\xb81234')
-            x(b'abcd\xf0', b'\x9f\x98\xb81234')
-            x(b'abcd\xc3', b'\xa41234')
-            x(b'abcd\xe2', b'\x89\xa41234')
-            x(b'abcd\xe2\x89', b'\xa41234')
+            for prefix in (b'abcd', '😸'.encode()):
+                for suffix in (b'1234', '😸'.encode()):
+                    x(prefix + b'\xf0\x9f', b'\x98\xb8' + suffix)
+                    x(prefix + b'\xf0\x9f\x9b', b'\xb8' + suffix)
+                    x(prefix + b'\xf0', b'\x9f\x98\xb8' + suffix)
+                    x(prefix + b'\xc3', b'\xa4' + suffix)
+                    x(prefix + b'\xe2', b'\x89\xa4' + suffix)
+                    x(prefix + b'\xe2\x89', b'\xa4' + suffix)
 
         def test_expected(src, expected, which=2):
             if unsupported(which):
                 return
             reset_state()
-            _, actual = test_utf8_decode_to_sentinel(b'filler' + asbytes(src), which)
+            _, actual, _ = t(b'filler' + asbytes(src), which=which)
             expected = 'filler' + expected
             self.ae(expected, actual, f'Failed for: {src!r} with {which=}')
 

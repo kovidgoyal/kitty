@@ -101,7 +101,7 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
         }
     }
     utf8_decoder_free(&d);
-    return Py_BuildValue("OO", found_sentinel ? Py_True : Py_False, ans);
+    return Py_BuildValue("OOi", found_sentinel ? Py_True : Py_False, ans, p);
 }
 // }}}
 
