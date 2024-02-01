@@ -1304,7 +1304,7 @@ func write_file(name, text string) {
 	if existing, err := os.ReadFile(name); err == nil && bytes.Equal(existing, b) {
 		return
 	}
-	if err := os.WriteFile(name, b, 0660); err != nil {
+	if err := os.WriteFile(name, b, 0664); err != nil {
 		exit(err)
 	}
 }
