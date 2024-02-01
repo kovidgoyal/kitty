@@ -1379,11 +1379,11 @@ func do_one(s *State) {
 	s.Generate()
 
 	if s.ISA.HasSIMD {
-		write_file(fmt.Sprintf("asm_%d_%s.s", s.ISA.Bits, s.ISA.Goarch), s.ASMOutput.String())
-		write_file(fmt.Sprintf("asm_%d_%s_test.s", s.ISA.Bits, s.ISA.Goarch), s.TestASMOutput.String())
+		write_file(fmt.Sprintf("asm_%d_%s_generated.s", s.ISA.Bits, s.ISA.Goarch), s.ASMOutput.String())
+		write_file(fmt.Sprintf("asm_%d_%s_generated_test.s", s.ISA.Bits, s.ISA.Goarch), s.TestASMOutput.String())
 	}
-	write_file(fmt.Sprintf("asm_%d_%s.go", s.ISA.Bits, s.ISA.Goarch), s.StubOutput.String())
-	write_file(fmt.Sprintf("asm_%d_%s_test.go", s.ISA.Bits, s.ISA.Goarch), s.TestStubOutput.String())
+	write_file(fmt.Sprintf("asm_%d_%s_generated.go", s.ISA.Bits, s.ISA.Goarch), s.StubOutput.String())
+	write_file(fmt.Sprintf("asm_%d_%s_generated_test.go", s.ISA.Bits, s.ISA.Goarch), s.TestStubOutput.String())
 }
 
 func create_isa(arch Arch, bits int) ISA {
@@ -1430,8 +1430,8 @@ func main() {
 		s.ISA.HasSIMD = false
 		fmt.Fprintf(&s.StubOutput, "const HasSIMD%dCode = false\n", bits)
 		s.Generate()
-		write_file(fmt.Sprintf("asm_other_%d.go", bits), s.StubOutput.String())
-		write_file(fmt.Sprintf("asm_other_%d_test.go", bits), s.TestStubOutput.String())
+		write_file(fmt.Sprintf("asm_other_%d_generated.go", bits), s.StubOutput.String())
+		write_file(fmt.Sprintf("asm_other_%d_generated_test.go", bits), s.TestStubOutput.String())
 	}
 }
 

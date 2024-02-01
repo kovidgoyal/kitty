@@ -1733,6 +1733,13 @@ def clean(for_cross_compile: bool = False) -> None:
         q = os.path.relpath(os.path.join(root, d), src_base).replace(os.sep, '/')
         return q in ('.git', 'bypy/b', 'dependencies')
 
+    def is_generated(f: str) -> bool:
+        e = f.endswith
+        return (
+            e('_generated.h') or e('_generated.go') or e('_generated.bin') or
+            e('_generated.s') or e('_generated_test.s') or e('_generated_test.go')
+        )
+
     for root, dirs, files in os.walk(src_base, topdown=True):
         dirs[:] = [d for d in dirs if not excluded(root, d)]
         remove_dirs = {d for d in dirs if d == '__pycache__' or d.endswith('.dSYM')}
@@ -1741,9 +1748,7 @@ def clean(for_cross_compile: bool = False) -> None:
             dirs.remove(d)
         for f in files:
             ext = f.rpartition('.')[-1]
-            if ext in ('so', 'dylib', 'pyc', 'pyo') or (not for_cross_compile and (
-                    f.endswith('_generated.h') or f.endswith('_generated.go') or f.endswith('_generated.bin'))
-            ):
+            if ext in ('so', 'dylib', 'pyc', 'pyo') or (not for_cross_compile and is_generated(f)):
                 os.unlink(os.path.join(root, f))
     for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)

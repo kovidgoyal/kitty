@@ -22,6 +22,11 @@ tools/wcswidth/std.go linguist-generated=true
 tools/unicode_names/names.txt linguist-generated=true
 terminfo/kitty.term* linguist-generated=true
 terminfo/x/* linguist-generated=true
+*_generated.h linguist-generated=true
+*_generated.go linguist-generated=true
+*_generated_test.go linguist-generated=true
+*_generated_test.s linguist-generated=true
+*_generated.s linguist-generated=true
 
 *.py  text diff=python
 *.m  text diff=objc
