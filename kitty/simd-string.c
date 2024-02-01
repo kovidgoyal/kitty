@@ -31,22 +31,23 @@ find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t
 
 static bool
 utf8_decode_to_esc_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz) {
-    d->output_sz = 0; d->num_consumed = 0;
-    while (d->num_consumed < src_sz && d->output_sz < arraysz(d->output)) {
+    d->output.pos = 0; d->num_consumed = 0;
+    utf8_decoder_ensure_capacity(d, src_sz);
+    while (d->num_consumed < src_sz) {
         const uint8_t ch = src[d->num_consumed++];
         if (ch == 0x1b) {
-            if (d->state.cur != UTF8_ACCEPT) d->output[d->output_sz++] = 0xfffd;
+            if (d->state.cur != UTF8_ACCEPT) d->output.storage[d->output.pos++] = 0xfffd;
             zero_at_ptr(&d->state);
             return true;
         } else {
             switch(decode_utf8(&d->state.cur, &d->state.codep, ch)) {
                 case UTF8_ACCEPT:
-                    d->output[d->output_sz++] = d->state.codep;
+                    d->output.storage[d->output.pos++] = d->state.codep;
                     break;
                 case UTF8_REJECT: {
                     const bool prev_was_accept = d->state.prev == UTF8_ACCEPT;
                     zero_at_ptr(&d->state);
-                    d->output[d->output_sz++] = 0xfffd;
+                    d->output.storage[d->output.pos++] = 0xfffd;
                     if (!prev_was_accept && d->num_consumed) {
                         d->num_consumed--;
                         continue; // so that prev is correct
@@ -92,13 +93,14 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     while (p < src_sz && !found_sentinel) {
         found_sentinel = func(&d, src + p, src_sz - p);
         p += d.num_consumed;
-        if (d.output_sz) {
-            RAII_PyObject(temp, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, d.output, d.output_sz));
+        if (d.output.pos) {
+            RAII_PyObject(temp, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, d.output.storage, d.output.pos));
             PyObject *t = PyUnicode_Concat(ans, temp);
             Py_DECREF(ans);
             ans = t;
         }
     }
+    utf8_decoder_free(&d);
     return Py_BuildValue("OO", found_sentinel ? Py_True : Py_False, ans);
 }
 // }}}

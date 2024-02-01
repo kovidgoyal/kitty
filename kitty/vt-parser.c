@@ -188,7 +188,8 @@ typedef struct ParsedCSI {
 } ParsedCSI;
 
 typedef struct PS {
-    alignas(BUF_EXTRA) UTF8Decoder utf8_decoder;
+    alignas(BUF_EXTRA) uint8_t buf[BUF_SZ + BUF_EXTRA];
+    UTF8Decoder utf8_decoder;
 
     id_type window_id;
 
@@ -204,7 +205,6 @@ typedef struct PS {
     // The buffer
     struct { size_t consumed, pos, sz; } read;
     struct { size_t offset, sz, pending; } write;
-    alignas(BUF_EXTRA) uint8_t buf[BUF_SZ + BUF_EXTRA];
 } PS;
 
 static void
@@ -228,9 +228,9 @@ consume_normal(PS *self) {
     do {
         const bool sentinel_found = utf8_decode_to_esc(&self->utf8_decoder, self->buf + self->read.pos, self->read.sz - self->read.pos);
         self->read.pos += self->utf8_decoder.num_consumed;
-        if (self->utf8_decoder.output_sz) {
-            REPORT_DRAW(self->utf8_decoder.output, self->utf8_decoder.output_sz);
-            screen_draw_text(self->screen, self->utf8_decoder.output, self->utf8_decoder.output_sz);
+        if (self->utf8_decoder.output.pos) {
+            REPORT_DRAW(self->utf8_decoder.output.storage, self->utf8_decoder.output.pos);
+            screen_draw_text(self->screen, self->utf8_decoder.output.storage, self->utf8_decoder.output.pos);
         }
         if (sentinel_found) { SET_STATE(ESC); break; }
     } while (self->read.pos < self->read.sz);
@@ -1480,6 +1480,7 @@ void
 free_vt_parser(Parser* self) {
     if (self->state) {
         PS *s = (PS*)self->state;
+        utf8_decoder_free(&s->utf8_decoder);
         pthread_mutex_destroy(&s->lock);
         free(self->state); self->state = NULL;
     }
@@ -1540,10 +1541,6 @@ alloc_vt_parser(id_type window_id) {
         }
         memset(self->state, 0, sizeof(PS));
         PS *state = (PS*)self->state;
-        if ((intptr_t)state->utf8_decoder.output % BUF_EXTRA != 0) {
-            Py_CLEAR(self); PyErr_SetString(PyExc_TypeError, "UTF8Decoder is not aligned");
-            return NULL;
-        }
         if ((intptr_t)state->buf % BUF_EXTRA != 0) {
             Py_CLEAR(self); PyErr_SetString(PyExc_TypeError, "PS->buf is not aligned");
             return NULL;

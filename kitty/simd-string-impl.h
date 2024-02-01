@@ -286,14 +286,15 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
 
 static inline void
 FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
+    utf8_decoder_ensure_capacity(d, src_sz);
 #if KITTY_SIMD_LEVEL == 128
-    for (const uint32_t *limit = d->output + src_sz, *p = d->output; p < limit; p += output_increment) {
+    for (const uint32_t *p = d->output.storage + d->output.pos, *limit = p + src_sz; p < limit; p += output_increment) {
         const integer_t unpacked = extract_lower_quarter_as_chars(vec);
         store_unaligned((integer_t*)p, unpacked);
         vec = shift_right_by_bytes128(vec, output_increment);
     }
 #else
-    const uint32_t *limit = d->output + src_sz, *p = d->output;
+    const uint32_t *p = d->output.storage + d->output.pos, *limit = p + src_sz;
     simde__m128i x = simde_mm256_extracti128_si256(vec, 0);
     integer_t unpacked = extract_lower_half_as_chars(x);
     store_unaligned((integer_t*)p, unpacked); p += output_increment;
@@ -313,13 +314,14 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
         }
     }
 #endif
-    d->output_sz += src_sz;
+    d->output.pos += src_sz;
 }
 
 static inline void
 FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integer_t output3, const size_t num_codepoints) {
+    utf8_decoder_ensure_capacity(d, 64);
 #if KITTY_SIMD_LEVEL == 128
-    for (const uint32_t *limit = d->output + num_codepoints, *p = d->output; p < limit; p += output_increment) {
+    for (const uint32_t *p = d->output.storage + d->output.pos, *limit = p + num_codepoints; p < limit; p += output_increment) {
         const integer_t unpacked1 = extract_lower_quarter_as_chars(output1);
         const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_quarter_as_chars(output2));
         const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_quarter_as_chars(output3));
@@ -330,8 +332,8 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
         output3 = shift_right_by_bytes128(output3, output_increment);
     }
 #else
-    const uint32_t *limit = d->output + num_codepoints;
-    uint32_t *p = d->output;
+    uint32_t *p = d->output.storage + d->output.pos;
+    const uint32_t *limit = p + num_codepoints;
     simde__m128i x1, x2, x3;
 #define chunk() { \
         const integer_t unpacked1 = extract_lower_half_as_chars(x1); \
@@ -356,7 +358,7 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
 #undef extract
 #undef shift
 #endif
-    d->output_sz += num_codepoints;
+    d->output.pos += num_codepoints;
 }
 #undef output_increment
 
@@ -378,12 +380,12 @@ sum_bytes_128(simde__m128i v) {
     const uint8_t ch = src[pos++]; \
     switch (decode_utf8(&d->state.cur, &d->state.codep, ch)) { \
         case UTF8_ACCEPT: \
-            d->output[d->output_sz++] = d->state.codep; \
+            d->output.storage[d->output.pos++] = d->state.codep; \
             break; \
         case UTF8_REJECT: { \
                 const bool prev_was_accept = d->state.prev == UTF8_ACCEPT; \
                 zero_at_ptr(&d->state); \
-                d->output[d->output_sz++] = 0xfffd; \
+                d->output.storage[d->output.pos++] = 0xfffd; \
                 if (!prev_was_accept) { \
                     pos--; \
                     continue; /* so that prev is correct */ \
@@ -395,7 +397,8 @@ sum_bytes_128(simde__m128i v) {
 static inline size_t
 scalar_decode_to_accept(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     size_t pos = 0;
-    while (pos < src_sz && d->output_sz < arraysz(d->output) && d->state.cur != UTF8_ACCEPT) {
+    utf8_decoder_ensure_capacity(d, src_sz);
+    while (pos < src_sz && d->state.cur != UTF8_ACCEPT) {
         do_one_byte
     }
     return pos;
@@ -404,7 +407,8 @@ scalar_decode_to_accept(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 static inline size_t
 scalar_decode_all(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     size_t pos = 0;
-    while (pos < src_sz && d->output_sz < arraysz(d->output)) {
+    utf8_decoder_ensure_capacity(d, src_sz);
+    while (pos < src_sz) {
         do_one_byte
     }
     return pos;
@@ -415,7 +419,7 @@ bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
     // Based on the algorithm described in: https://woboq.com/blog/utf-8-processing-using-simd.html
 
-    d->output_sz = 0; d->num_consumed = 0;
+    d->output.pos = 0; d->num_consumed = 0;
     if (d->state.cur != UTF8_ACCEPT) {
         // Finish the trailing sequence only, we will be called again to process the rest allows use of aligned stores since output
         // is not pre-filled.
