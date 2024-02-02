@@ -1169,8 +1169,24 @@ func (s *State) test_set1_epi8() {
 		return
 	}
 	vec := f.Vec()
+	r := f.LoadParam("b")
+	q := f.Reg()
+	f.SetRegisterTo(q, int(' '))
+	f.JumpIfEqual(r, q, "space")
+	f.SetRegisterTo(q, 11)
+	f.JumpIfEqual(r, q, "eleven")
 	f.Set1Epi8("b", vec)
 	f.store_vec_in_param(vec, `ans`)
+	f.Return()
+	f.Label("space")
+	f.Set1Epi8(int(' '), vec)
+	f.store_vec_in_param(vec, `ans`)
+	f.Return()
+	f.Label("eleven")
+	f.Set1Epi8(-1, vec)
+	f.store_vec_in_param(vec, `ans`)
+	f.Return()
+
 }
 
 func (s *State) test_cmpeq_epi8() {

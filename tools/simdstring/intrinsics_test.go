@@ -236,9 +236,10 @@ func TestIntrinsics(t *testing.T) {
 		ae(sz, `load_test`, a, test_load(a))
 	})
 	tests = append(tests, func(sz int) {
-		for _, b := range []byte{1, 0b110111, 0xff, 0} {
+		for _, b := range []byte{1, 0b110111, 0xff, 0, ' '} {
 			ae(sz, `set1_epi8_test`, broadcast_byte(b, sz), test_set1_epi8(b, sz))
 		}
+		ae(sz, `set1_epi8_test`, broadcast_byte(0xff, sz), test_set1_epi8(11, sz))
 	})
 	tests = append(tests, func(sz int) {
 		a := ordered_bytes(sz)
