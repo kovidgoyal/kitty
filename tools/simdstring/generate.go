@@ -1052,7 +1052,21 @@ func (s *Function) OutputASM(w io.Writer) {
 		fmt.Fprintln(w, "\tVZEROUPPER // zero upper bits of AVX registers to avoid dependencies when switching between SSE and AVX code")
 	}
 
-	s.Return()
+	has_trailing_return := false
+	for _, i := range s.Instructions {
+		if len(i) == 0 {
+			continue
+		}
+		if strings.HasPrefix(i, "\tRET ") {
+			has_trailing_return = true
+		} else {
+			has_trailing_return = false
+		}
+	}
+
+	if !has_trailing_return {
+		s.Return()
+	}
 	for _, i := range s.Instructions {
 		fmt.Fprintln(w, i)
 	}
