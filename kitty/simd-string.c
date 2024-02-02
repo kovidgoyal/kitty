@@ -29,7 +29,7 @@ find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t
 
 // UTF-8 {{{
 
-static bool
+bool
 utf8_decode_to_esc_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz) {
     d->output.pos = 0; d->num_consumed = 0;
     utf8_decoder_ensure_capacity(d, src_sz);

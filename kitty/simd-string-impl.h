@@ -423,6 +423,11 @@ scalar_decode_all(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len) {
     // Based on the algorithm described in: https://woboq.com/blog/utf-8-processing-using-simd.html
+#ifdef compare_with_scalar
+    UTF8Decoder debugdec ={0};
+    memcpy(&debugdec.state, &d->state, sizeof(debugdec.state));
+    bool scalar_sentinel_found = utf8_decode_to_esc_scalar(&debugdec, src_data, src_len);
+#endif
     d->output.pos = 0; d->num_consumed = 0;
     if (d->state.cur != UTF8_ACCEPT) {
         // Finish the trailing sequence only
@@ -618,6 +623,25 @@ start_classification:
         FUNC(output_unicode)(d, output1, output2, output3, num_codepoints);
         handle_trailing_bytes();
     }
+#ifdef compare_with_scalar
+    if (debugdec.output.pos != d->output.pos || debugdec.num_consumed != d->num_consumed ||
+        memcmp(d->output.storage, debugdec.output.storage, d->output.pos * sizeof(d->output.storage[0])) != 0 ||
+        sentinel_found != scalar_sentinel_found || debugdec.state.cur != d->state.cur
+    ) {
+        fprintf(stderr, "vector decode output differs from scalar: input_sz=%zu consumed=(%u %u) output_sz=(%u %u) sentinel=(%d %d) state_changed: %d output_different: %d\n",
+                src_len, debugdec.num_consumed, d->num_consumed, debugdec.output.pos, d->output.pos, scalar_sentinel_found, sentinel_found,
+                debugdec.state.cur != d->state.cur,
+                memcmp(d->output.storage, debugdec.output.storage, MIN(d->output.pos, debugdec.output.pos) * sizeof(d->output.storage[0]))
+        );
+        fprintf(stderr, "\"");
+        for (unsigned i = 0; i < src_len; i++) {
+            if (32 <= src_data[i] && src_data[i] < 0x7f && src_data[i] != '"') fprintf(stderr, "%c", src_data[i]);
+            else fprintf(stderr, "\\x%x", src_data[i]);
+        }
+        fprintf(stderr, "\"\n");
+    }
+    utf8_decoder_free(&debugdec);
+#endif
     zero_upper();
     return sentinel_found;
 #undef abort_with_invalid_utf8
