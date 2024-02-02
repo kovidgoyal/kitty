@@ -184,14 +184,35 @@ func (f *Function) Vec(size ...int) Register {
 	if len(size) > 0 {
 		szq = size[0]
 	}
-	for _, r := range f.ISA.Registers {
-		if r.Size == szq && !r.Restricted && !f.UsedRegisters[r] {
-			f.UsedRegisters[r] = true
-			if r.Size > 128 {
-				f.Used256BitReg = true
+	if f.ISA.Goarch == ARM64 {
+		for _, r := range f.ISA.Registers {
+			if r.Size == szq && !r.Restricted && !f.UsedRegisters[r] {
+				f.UsedRegisters[r] = true
+				if r.Size > 128 {
+					f.Used256BitReg = true
+				}
+				return r
 			}
-			return r
 		}
+	} else {
+		// In Intels crazy architecture AVX registers and SSE registers are the same hardware register so changing
+		// one can change the other. Sigh.
+		used := make(map[uint32]bool, len(f.UsedRegisters))
+		for r, is_used := range f.UsedRegisters {
+			if is_used && r.Size > f.ISA.GeneralPurposeRegisterSize {
+				used[r.ARMId()] = true
+			}
+		}
+		for _, r := range f.ISA.Registers {
+			if r.Size == szq && !r.Restricted && !used[r.ARMId()] {
+				f.UsedRegisters[r] = true
+				if r.Size > 128 {
+					f.Used256BitReg = true
+				}
+				return r
+			}
+		}
+
 	}
 	panic("No available vector registers")
 }
