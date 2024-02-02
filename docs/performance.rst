@@ -136,5 +136,5 @@ You can generate detailed per-function performance data using
 `gperftools <https://github.com/gperftools/gperftools>`__. Build |kitty| with
 ``make profile``. Run kitty and perform the task you want to analyse, for
 example, scrolling a large file with :program:`less`. After you quit, function
-call statistics will be printed to STDOUT and you can use tools like
-*KCachegrind* for more detailed analysis.
+call statistics will be displayed in *KCachegrind*. Hence, profiling is best done
+on Linux which has these tools easily available.
