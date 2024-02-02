@@ -680,7 +680,7 @@ ensure_cursor_not_on_wide_char_trailer_for_insert(Screen *self, text_loop_state 
 static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
-    if ((' ' >= chars[0] && chars[0] < 0x7f) || !is_combining_char(chars[0])) ensure_cursor_not_on_wide_char_trailer_for_insert(self, s);
+    if (' ' <= chars[0] && chars[0] != DEL && !is_combining_char(chars[0])) ensure_cursor_not_on_wide_char_trailer_for_insert(self, s);
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = chars[i];
         if (ch < ' ') {
@@ -703,7 +703,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             continue;
         }
         int char_width = 1;
-        if (ch > 0x7f) {  // not printable ASCII
+        if (ch > DEL) {  // not printable ASCII
             if (is_ignored_char(ch)) continue;
             if (UNLIKELY(is_combining_char(ch))) {
                 if (UNLIKELY(is_flag_codepoint(ch))) {

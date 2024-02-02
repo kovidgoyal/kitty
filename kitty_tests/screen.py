@@ -614,6 +614,8 @@ class TestScreen(BaseTest):
         r('a', 2, ' a')
         r('😸', 3, ' 😸')
         r('\u0304', 1, '😸\u0304')
+        r('\r', 0, '😸')
+
 
     def test_serialize(self):
         from kitty.window import as_text
