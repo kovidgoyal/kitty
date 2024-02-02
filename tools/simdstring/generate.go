@@ -406,7 +406,11 @@ func (f *Function) CountBytesToFirstMatchDestructive(vec, ans Register) {
 		f.instr("UBFX", "$2", ans, "$30", ans)
 		f.AddTrailingComment(ans, ">>= 2 (divide by 4)")
 	} else {
-		f.instr("VPMOVMSKB", vec, ans)
+		if f.ISA.Bits == 128 {
+			f.instr("PMOVMSKB", vec, ans)
+		} else {
+			f.instr("VPMOVMSKB", vec, ans)
+		}
 		f.AddTrailingComment(ans, "= mask of the highest bit in every byte in", vec)
 		f.CountTrailingZeros(ans, ans)
 	}
@@ -492,6 +496,8 @@ func (f *Function) test_if_zero(a Register) {
 		f.instr("TESTL", a, a)
 	case 64:
 		f.instr("TESTQ", a, a)
+	case 128:
+		f.instr("PTEST", a, a)
 	default:
 		f.instr("VPTEST", a, a)
 	}
@@ -668,7 +674,7 @@ func (f *Function) CopyRegister(a, ans Register) {
 		if f.ISA.Goarch == ARM64 {
 			f.instr("VDUP", a.Name[1:]+".D2", ans.Name+".D2")
 		} else {
-			f.instr("VMOVDQA", a, ans)
+			f.instr(f.aligned_move(), a, ans)
 		}
 	} else {
 		if f.ISA.Goarch == ARM64 {
