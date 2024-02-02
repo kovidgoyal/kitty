@@ -82,12 +82,14 @@ END_IGNORE_DIAGNOSTIC
 #define subtract_epi8 simde_mm_sub_epi8
 #define create_zero_integer simde_mm_setzero_si128
 #define sum_bytes sum_bytes_128
+#define zero_upper()
 
 static inline int
 FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 
 #else
 
+#define zero_upper _mm256_zeroupper
 #define set1_epi8(x) simde_mm256_set1_epi8((char)(x))
 #define set_epi8 simde_mm256_set_epi8
 #define add_epi8 simde_mm256_add_epi8
@@ -256,6 +258,7 @@ FUNC(zero_last_n_bytes)(integer_t vec, char n) {
 
 const uint8_t*
 FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
+    zero_upper();
     const integer_t a_vec = set1_epi8(a), b_vec = set1_epi8(b);
     const uint8_t* limit = haystack + sz;
     integer_t chunk;
@@ -264,6 +267,7 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
     const int n = bytes_to_first_match(or_si(cmpeq_epi8(chunk, a_vec), cmpeq_epi8(chunk, b_vec))); \
     if (n > -1) { \
         const uint8_t *ans = haystack + n; \
+        zero_upper(); \
         return ans < limit ? ans : NULL; \
     }}
 
@@ -279,6 +283,7 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
         chunk = load_aligned((integer_t*)haystack);
         check_chunk();
     }
+    zero_upper();
     return NULL;
 }
 
@@ -614,6 +619,7 @@ start_classification:
         FUNC(output_unicode)(d, output1, output2, output3, num_codepoints);
         handle_trailing_bytes();
     }
+    zero_upper();
     return sentinel_found;
 #undef abort_with_invalid_utf8
 #undef handle_trailing_bytes
@@ -663,5 +669,6 @@ start_classification:
 #undef zero_last_n_bytes
 #undef sum_bytes
 #undef is_zero
+#undef zero_upper
 #undef print_register_as_bytes
 #endif // KITTY_NO_SIMD
