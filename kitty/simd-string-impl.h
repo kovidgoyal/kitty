@@ -249,9 +249,8 @@ bytes_to_first_match(const integer_t vec) {
 // }}}
 
 static inline integer_t
-FUNC(zero_last_n_bytes)(integer_t vec, char n) {
+FUNC(zero_last_n_bytes)(integer_t vec, const integer_t index, char n) {
     const integer_t threshold = set1_epi8(n);
-    const integer_t index = reverse_numbered_bytes();
     const integer_t mask = cmpgt_epi8(threshold, index);
     return andnot_si(mask, vec);
 }
@@ -431,8 +430,8 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         src_data += d->num_consumed; src_len -= d->num_consumed;
     }
     const integer_t esc_vec = set1_epi8(0x1b);
-    const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3), four = set1_epi8(4);
-    const integer_t vec_c2 = set1_epi8(0xc2), vec_e3 = set1_epi8(0xe3), vec_f4 = set1_epi8(0xf4);
+    const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3), numbered = numbered_bytes();
+    const integer_t reverse_numbered = reverse_numbered_bytes();
     const uint8_t *limit = src_data + src_len, *p = src_data, *start_of_current_chunk = src_data;
     bool sentinel_found = false;
     unsigned chunk_src_sz = 0;
@@ -453,7 +452,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
             if (!chunk_src_sz) continue;
         } else d->num_consumed += chunk_src_sz;
 
-        if (chunk_src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
+        if (chunk_src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, reverse_numbered, sizeof(integer_t) - chunk_src_sz);
 
         num_of_trailing_bytes = 0;
         bool check_for_trailing_bytes = !sentinel_found;
@@ -489,12 +488,12 @@ start_classification:
         const integer_t vec_signed = add_epi8(vec, state); // needed because cmplt_epi8 works only on signed chars
 
         const integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(set1_epi8(0xc0 - 1 - 0x80), vec_signed);
-        state = blendv_epi8(state, vec_c2, bytes_indicating_start_of_two_byte_sequence);
+        state = blendv_epi8(state, set1_epi8(0xc2), bytes_indicating_start_of_two_byte_sequence);
         // state now has 0xc2 on all bytes that start a 2 or more byte sequence and 0x80 on the rest
         const integer_t bytes_indicating_start_of_three_byte_sequence = cmplt_epi8(set1_epi8(0xe0 - 1 - 0x80), vec_signed);
-        state = blendv_epi8(state, vec_e3, bytes_indicating_start_of_three_byte_sequence);
+        state = blendv_epi8(state, set1_epi8(0xe3), bytes_indicating_start_of_three_byte_sequence);
         const integer_t bytes_indicating_start_of_four_byte_sequence = cmplt_epi8(set1_epi8(0xf0 - 1 - 0x80), vec_signed);
-        state = blendv_epi8(state, vec_f4, bytes_indicating_start_of_four_byte_sequence);
+        state = blendv_epi8(state, set1_epi8(0xf4), bytes_indicating_start_of_four_byte_sequence);
         // state now has 0xc2 on all bytes that start a 2 byte sequence, 0xe3 on start of 3-byte, 0xf4 on 4-byte start and 0x80 on rest
         debug_register(state);
         const integer_t mask = and_si(state, set1_epi8(0xf8));  // keep upper 5 bits of state
@@ -510,7 +509,7 @@ start_classification:
         // counts now contains the number of bytes remaining in each utf-8 sequence of 2 or more bytes
         debug_register(counts);
         // check for an incomplete trailing utf8 sequence
-        if (check_for_trailing_bytes && !is_zero(cmplt_epi8(one, and_si(counts, cmpeq_epi8(numbered_bytes(), set1_epi8(chunk_src_sz - 1)))))) {
+        if (check_for_trailing_bytes && !is_zero(cmplt_epi8(one, and_si(counts, cmpeq_epi8(numbered, set1_epi8(chunk_src_sz - 1)))))) {
             // The value of counts at the last byte is > 1 indicating we have a trailing incomplete sequence
             check_for_trailing_bytes = false;
             if (start_of_current_chunk[chunk_src_sz-1] >= 0xc0) num_of_trailing_bytes = 1;      // 2-, 3- and 4-byte characters with only 1 byte left
@@ -519,7 +518,7 @@ start_classification:
             chunk_src_sz -= num_of_trailing_bytes;
             d->num_consumed -= num_of_trailing_bytes;
             if (!chunk_src_sz) { abort_with_invalid_utf8(); }
-            vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
+            vec = zero_last_n_bytes(vec, reverse_numbered, sizeof(integer_t) - chunk_src_sz);
             goto start_classification;
         }
         // Only ASCII chars should have corresponding byte of counts == 0
@@ -564,7 +563,7 @@ start_classification:
 
         // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
         integer_t output3 = and_si(three, shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
-        const integer_t count4_locations = cmpeq_epi8(counts, four);
+        const integer_t count4_locations = cmpeq_epi8(counts, set1_epi8(4));
         // 3 bits from count == 4 locations, placed at count == 3 locations shifted left by 2 bits
         output3 = or_si(output3,
             and_si(set1_epi8(0xfc),
@@ -603,7 +602,7 @@ start_classification:
 #endif
 #undef move
         // convert the shifts into a suitable mask for shuffle by adding the byte number to each byte
-        shifts = add_epi8(shifts, numbered_bytes());
+        shifts = add_epi8(shifts, numbered);
         debug_register(shifts);
 
         output1 = shuffle_epi8(output1, shifts);
