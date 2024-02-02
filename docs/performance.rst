@@ -65,6 +65,7 @@ as fast as the next best.
 Terminal           ASCII   Unicode CSI   Images Average
 ================   ======  ======= ===== ====== =======
 kitty 0.33         117.7   104.0   59.3  249.7  132.68
+gnometerm 3.50.1   33.4    55.0    16.1  142.8  61.83
 alacritty 0.13.1   43.1    46.5    32.5  94.1   54.05
 wezterm 20230712   16.4    26.0    11.1  140.5  48.5
 xterm 389          47.7    18.3    0.6   56.3   30.72
@@ -78,27 +79,28 @@ ASCII only text.
 
 .. note::
 
-   By default, the benchmark kitten suppresses actual rendering, to better focus
-   on parser speed, you can pass it the ``--render`` flag to not suppress
+   By default, the benchmark kitten suppresses actual rendering, to better
+   focus on parser speed, you can pass it the ``--render`` flag to not suppress
    rendering. However, modern terminals typically render asynchronously,
-   therefore the numbers are not really useful for comparison. However, even
-   with rendering enabled kitty is still much faster than all the rest. For
-   brevity those numbers are not included.
+   therefore the numbers are not really useful for comparison, as it is just a
+   game about how much input to *batch* before rendering the next frame.
+   However, even with rendering enabled kitty is still faster than all the
+   rest. For brevity those numbers are not included.
 
 .. note::
 
-   gnome-terminal is left out as I could not get it to start on my system and
-   foot is left out as it does not run under X11. Alacritty+tmux is included
-   just to show the effect of putting a terminal multiplexer into the mix
-   (halving throughput) and because alacritty isnt really comparable to any of
-   the other terminals feature wise without tmux.
+   foot, iterm2 and Terminal.app are left out as they do not run under X11.
+   Alacritty+tmux is included just to show the effect of putting a terminal
+   multiplexer into the mix (halving throughput) and because alacritty isnt
+   remotely comparable to any of the other terminals feature wise without tmux.
 
 .. note::
 
-   konsole and xterm dont support the `Synchronized update
+   konsole, gnome-terminal and xterm do not support the `Synchronized update
    <https://gitlab.com/gnachman/iterm2/-/wikis/synchronized-updates-spec>`__
    escape code used to suppress rendering, if and when they gain support for it
-   their numbers are likely to improve by ``20 - 30%``.
+   their numbers are likely to improve by ``20 - 50%``, depending on how well they
+   implement it.
 
 
 Energy usage
