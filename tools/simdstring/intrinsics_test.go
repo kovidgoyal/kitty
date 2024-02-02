@@ -90,7 +90,7 @@ func broadcast_byte(b byte, size int) []byte {
 	return bytes.Repeat([]byte{b}, size)
 }
 
-func TestSIMDStringOps(t *testing.T) {
+func get_sizes(t *testing.T) []int {
 	sizes := []int{}
 	if Have128bit {
 		sizes = append(sizes, 16)
@@ -102,6 +102,11 @@ func TestSIMDStringOps(t *testing.T) {
 	if len(sizes) == 0 {
 		t.Skip("skipping as no SIMD available at runtime")
 	}
+	return sizes
+}
+
+func TestSIMDStringOps(t *testing.T) {
+	sizes := get_sizes(t)
 	test := func(haystack []byte, a, b byte) {
 		var actual int
 		safe_haystack := append(bytes.Repeat([]byte{'<'}, 64), haystack...)
@@ -199,11 +204,11 @@ func TestSIMDStringOps(t *testing.T) {
 		}
 	}
 
+	c0tests("a\nfgdfgd\r")
 	c0tests("")
 	c0tests("abcdef")
 	c0tests("afsgdfg\x7f")
-	c0tests("a\nfgdfgd\r")
-	c0tests("afgd\rfgd\t")
+	c0tests("afgd\x1bfgd\t")
 	c0tests("a\x00")
 }
 
@@ -301,17 +306,7 @@ func TestIntrinsics(t *testing.T) {
 		}
 	})
 
-	sizes := []int{}
-
-	if Have128bit {
-		sizes = append(sizes, 16)
-	}
-	if Have256bit {
-		sizes = append(sizes, 32)
-	}
-	if len(sizes) == 0 {
-		t.Skip("skipping as no SIMD available at runtime")
-	}
+	sizes := get_sizes(t)
 	for _, sz := range sizes {
 		for _, test := range tests {
 			test(sz)
