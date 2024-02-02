@@ -44,12 +44,21 @@ func test_cmpeq_epi8(a, b []byte) []byte {
 	return ans
 }
 
-func test_cmplt_epi8(a, b []byte) []byte {
+func test_cmplt_epi8(t *testing.T, a, b []byte) []byte {
 	ans := make([]byte, len(a))
-	if len(ans) == 16 {
-		test_cmplt_epi8_asm_128(a, b, ans)
-	} else {
-		test_cmplt_epi8_asm_256(a, b, ans)
+	var prev []byte
+	for which := 0; which < 3; which++ {
+		if len(ans) == 16 {
+			test_cmplt_epi8_asm_128(a, b, which, ans)
+		} else {
+			test_cmplt_epi8_asm_256(a, b, which, ans)
+		}
+		if prev != nil {
+			if s := cmp.Diff(prev, ans); s != "" {
+				t.Fatalf("cmplt returned different result for which=%d\n%s", which, s)
+			}
+		}
+		prev = bytes.Clone(ans)
 	}
 	return ans
 }
@@ -251,14 +260,25 @@ func TestIntrinsics(t *testing.T) {
 		b := ordered_bytes(sz)
 		ans := test_cmpeq_epi8(a, b)
 		ae(sz, `cmpeq_epi8_test`, broadcast_byte(0xff, sz), ans)
-		threshold := -1
-		a[1] = byte(threshold)
-		a[2] = byte(threshold - 1)
-		ans = test_cmplt_epi8(a, broadcast_byte(byte(threshold), sz))
-		expected := broadcast_byte(0xff, sz)
-		expected[1] = 0
-		expected[2] = 0
-		ae(sz, `cmplt_epi8_test`, expected, ans)
+
+		lt := func(a, b []byte) []byte {
+			ans := make([]byte, len(a))
+			for i := range ans {
+				if int8(a[i]) < int8(b[i]) {
+					ans[i] = 0xff
+				}
+			}
+			return ans
+		}
+
+		ae(sz, "cmplt_epi8_test with equal vecs of non-negative numbers", lt(a, b), test_cmplt_epi8(t, a, b))
+		a = broadcast_byte(1, sz)
+		b = broadcast_byte(2, sz)
+		ae(sz, "cmplt_epi8_test with 1 and 2", lt(a, b), test_cmplt_epi8(t, a, b))
+		ae(sz, "cmplt_epi8_test with 2 and 1", lt(b, a), test_cmplt_epi8(t, b, a))
+		a = broadcast_byte(0xff, sz)
+		b = broadcast_byte(0, sz)
+		ae(sz, "cmplt_epi8_test with -1 and 0", lt(a, b), test_cmplt_epi8(t, a, b))
 	})
 	tests = append(tests, func(sz int) {
 		a := make([]byte, sz)
