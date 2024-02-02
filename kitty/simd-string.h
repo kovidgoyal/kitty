@@ -22,6 +22,7 @@ typedef struct UTF8Decoder {
 static inline void utf8_decoder_reset(UTF8Decoder *self) { zero_at_ptr(&self->state); }
 
 bool utf8_decode_to_esc(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
+bool utf8_decode_to_esc_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz);
 
 static inline void utf8_decoder_ensure_capacity(UTF8Decoder *d, unsigned sz) {
     if (d->output.pos + sz > d->output.capacity) {
