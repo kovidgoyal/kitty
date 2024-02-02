@@ -668,19 +668,22 @@ screen_on_input(Screen *self) {
     }
 }
 
+static bool
+cursor_on_wide_char_trailer(Screen *self, text_loop_state *s) {
+    return self->cursor->x > 0 && s->gp[self->cursor->x - 1].attrs.width == 2;
+}
+
 static void
-ensure_cursor_not_on_wide_char_trailer_for_insert(Screen *self, text_loop_state *s) {
-    if (UNLIKELY(self->cursor->x > 0 && s->gp[self->cursor->x - 1].attrs.width == 2)) {
-        zero_cells(s, s->cp + self->cursor->x - 1, s->gp + self->cursor->x - 1);
-        s->cp[self->cursor->x-1].ch = ' ';
-        zero_cells(s, s->cp + self->cursor->x, s->gp + self->cursor->x);
-    }
+move_cursor_off_wide_char_trailer(Screen *self, text_loop_state *s) {
+    zero_cells(s, s->cp + self->cursor->x - 1, s->gp + self->cursor->x - 1);
+    s->cp[self->cursor->x-1].ch = ' ';
+    zero_cells(s, s->cp + self->cursor->x, s->gp + self->cursor->x);
 }
 
 static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
-    if (' ' <= chars[0] && chars[0] != DEL && !is_combining_char(chars[0])) ensure_cursor_not_on_wide_char_trailer_for_insert(self, s);
+    if (cursor_on_wide_char_trailer(self, s) && ' ' <= chars[0] && chars[0] != DEL && !is_combining_char(chars[0])) move_cursor_off_wide_char_trailer(self, s);
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = chars[i];
         if (ch < ' ') {
@@ -726,7 +729,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 init_text_loop_line(self, s);
             } else {
                 self->cursor->x = self->columns - char_width;
-                ensure_cursor_not_on_wide_char_trailer_for_insert(self, s);
+                if (cursor_on_wide_char_trailer(self, s)) move_cursor_off_wide_char_trailer(self, s);
             }
         }
         if (self->modes.mIRM) line_right_shift(self->linebuf->line, self->cursor->x, char_width);
