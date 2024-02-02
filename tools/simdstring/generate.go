@@ -386,7 +386,7 @@ func shrn8b_immediate4(a, b Register) uint32 {
 }
 
 func encode_cmgt16b(a, b, dest Register) (ans uint32) {
-	return 0x271<<21 | a.ARMId()<<16 | 0xd<<10 | b.ARMId()<<5 | dest.ARMId()
+	return 0x271<<21 | b.ARMId()<<16 | 0xd<<10 | a.ARMId()<<5 | dest.ARMId()
 }
 
 func (f *Function) CountBytesToFirstMatchDestructive(vec, ans Register) {
@@ -738,19 +738,36 @@ func (f *Function) cmp(a, b, ans Register, op, c_rep string) {
 			f.instr("WORD", fmt.Sprintf("$0x%x", encode_cmgt16b(a, b, ans)))
 		}
 	} else {
-		op := `PCMP` + op + "B"
+		fop := `PCMP` + op + "B"
 		if f.ISA.Bits == 128 {
-			switch ans.Name {
-			case a.Name:
-				f.instr(op, b, ans)
-			case b.Name:
-				f.instr(op, a, ans)
-			default:
-				f.CopyRegister(a, ans)
-				f.instr(op, b, ans)
+			if op == "EQ" {
+				switch ans.Name {
+				case a.Name:
+					f.instr(fop, b, ans)
+				case b.Name:
+					f.instr(fop, a, ans)
+				default:
+					f.CopyRegister(a, ans)
+					f.instr(fop, b, ans)
+				}
+			} else {
+				// order matters, we want destination aka 2nd arg to be both a and ans
+				switch ans.Name {
+				case a.Name:
+					f.instr(fop, b, a)
+				case b.Name:
+					vec := f.Vec(a.Size)
+					f.CopyRegister(a, vec)
+					f.instr(fop, b, vec)
+					f.CopyRegister(vec, b)
+					f.ReleaseReg(vec)
+				default:
+					f.CopyRegister(a, ans)
+					f.instr(fop, b, ans)
+				}
 			}
 		} else {
-			f.instr("V"+op, a, b, ans)
+			f.instr("V"+fop, b, a, ans)
 		}
 	}
 	f.AddTrailingComment(ans, "= 0xff on every byte where", a.Name+"[n]", c_rep, b.Name+"[n] and zero elsewhere")
@@ -1201,14 +1218,31 @@ func (s *State) test_cmpeq_epi8() {
 }
 
 func (s *State) test_cmplt_epi8() {
-	f := s.NewFunction("test_cmplt_epi8_asm", "Test byte comparison of two vectors", []FunctionParam{{"a", ByteSlice}, {"b", ByteSlice}, {"ans", ByteSlice}}, nil)
+	f := s.NewFunction(
+		"test_cmplt_epi8_asm", "Test byte comparison of two vectors", []FunctionParam{{"a", ByteSlice}, {"b", ByteSlice}, {"which", types.Int}, {"ans", ByteSlice}}, nil)
 	if !s.ISA.HasSIMD {
 		return
 	}
+	which := f.LoadParam("which")
 	a := f.load_vec_from_param("a")
 	b := f.load_vec_from_param("b")
+	r := f.Reg()
+	f.SetRegisterTo(r, 1)
+	f.JumpIfEqual(which, r, "one")
+	f.SetRegisterTo(r, 2)
+	f.JumpIfEqual(which, r, "two")
+	ans := f.Vec()
+	f.CmpLtEpi8(a, b, ans)
+	f.store_vec_in_param(ans, "ans")
+	f.Return()
+	f.Label("one")
 	f.CmpLtEpi8(a, b, a)
 	f.store_vec_in_param(a, "ans")
+	f.Return()
+	f.Label("two")
+	f.CmpLtEpi8(a, b, b)
+	f.store_vec_in_param(b, "ans")
+	f.Return()
 }
 
 func (s *State) test_or() {
