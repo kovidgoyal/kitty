@@ -1534,9 +1534,7 @@ screen_reverse_scroll_and_fill_from_scrollback(Screen *self, unsigned int count)
 
 void
 screen_carriage_return(Screen *self) {
-    if (self->cursor->x != 0) {
-        self->cursor->x = 0;
-    }
+    self->cursor->x = 0;
 }
 
 void
