@@ -386,7 +386,7 @@ You can also change the icon manually by following the steps:
 How do I map key presses in kitty to different keys in the terminal program?
 --------------------------------------------------------------------------------------
 
-This is accomplished by using ``map`` with :sc:`send_text <send_text>` in :file:`kitty.conf`.
+This is accomplished by using ``map`` with :ac:`send_key` in :file:`kitty.conf`.
 For example::
 
     map alt+s send_key ctrl+s
@@ -396,7 +396,8 @@ you press the :kbd:`alt+s` key. To see this in action, run::
 
     kitten show-key -m kitty
 
-Which will print out what key events it receives.
+Which will print out what key events it receives. To send arbitrary text rather
+than a key press, see :sc:`send_text <send_text>` instead.
 
 
 How do I open a new window or tab with the same working directory as the current window?
