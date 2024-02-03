@@ -470,7 +470,7 @@ opt('url_style', 'curly',
 opt('open_url_with', 'default',
     option_type='to_cmdline',
     long_text='''
-The program to open clicked URLs. The special value :code:`default` with first
+The program to open clicked URLs. The special value :code:`default` will first
 look for any URL handlers defined via the :doc:`open_actions` facility and if
 non are found, it will use the Operating System's default URL handler
 (:program:`open` on macOS and :program:`xdg-open` on Linux).
