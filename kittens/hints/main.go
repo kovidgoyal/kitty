@@ -178,7 +178,11 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		if hint == "" {
 			hint = " "
 		}
-		mark_text = mark_text[len(hint):]
+		if len(mark_text) <= len(hint) {
+			mark_text = ""
+		} else {
+			mark_text = mark_text[len(hint):]
+		}
 		return hint_style(hint) + text_style(mark_text)
 	}
 
