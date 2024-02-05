@@ -207,17 +207,24 @@ var PostProcessorMap = sync.OnceValue(func() map[string]PostProcessorFunc {
 
 type KittyOpts struct {
 	Url_prefixes              *utils.Set[string]
+	Url_excluded_characters   string
 	Select_by_word_characters string
 }
 
 func read_relevant_kitty_opts(path string) KittyOpts {
-	ans := KittyOpts{Select_by_word_characters: kitty.KittyConfigDefaults.Select_by_word_characters}
+	ans := KittyOpts{
+		Select_by_word_characters: kitty.KittyConfigDefaults.Select_by_word_characters,
+		Url_excluded_characters:   kitty.KittyConfigDefaults.Url_excluded_characters}
 	handle_line := func(key, val string) error {
 		switch key {
 		case "url_prefixes":
 			ans.Url_prefixes = utils.NewSetWithItems(strings.Split(val, " ")...)
 		case "select_by_word_characters":
 			ans.Select_by_word_characters = strings.TrimSpace(val)
+		case "url_excluded_characters":
+			if s, err := config.StringLiteral(val); err == nil {
+				ans.Url_excluded_characters = s
+			}
 		}
 		return nil
 	}
@@ -236,7 +243,111 @@ var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
 var debugprintln = tty.DebugPrintln
 var _ = debugprintln
 
-func functions_for(opts *Options) (pattern string, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc) {
+func url_excluded_characters_as_ranges_for_regex(extra_excluded string) string {
+	// See https://url.spec.whatwg.org/#url-code-points
+	ans := strings.Builder{}
+	ans.Grow(4096)
+	type cr struct{ start, end rune }
+	ranges := []cr{}
+	r := func(start rune, end ...rune) {
+		if len(end) == 0 {
+			ranges = append(ranges, cr{start, start})
+		} else {
+			ranges = append(ranges, cr{start, end[0]})
+		}
+	}
+	if !strings.Contains(extra_excluded, "\n") {
+		r('\n')
+	}
+	if !strings.Contains(extra_excluded, "\r") {
+		r('\r')
+	}
+	r('!')
+	r('$')
+	r('&')
+	r('#')
+	r('\'')
+	r('/')
+	r(':')
+	r(';')
+	r('@')
+	r('_')
+	r('~')
+	r('(')
+	r(')')
+	r('*')
+	r('+')
+	r(',')
+	r('-')
+	r('.')
+	r('=')
+	r('?')
+	r('%')
+	r('a', 'z')
+	r('A', 'Z')
+	r('0', '9')
+	slices.SortFunc(ranges, func(a, b cr) int { return int(a.start - b.start) })
+	var prev rune = -1
+	for _, cr := range ranges {
+		if cr.start-1 > prev+1 {
+			ans.WriteString(regexp.QuoteMeta(string(prev + 1)))
+			ans.WriteRune('-')
+			ans.WriteString(regexp.QuoteMeta(string(cr.start - 1)))
+		}
+		prev = cr.end
+	}
+	ans.WriteString(regexp.QuoteMeta(string(ranges[len(ranges)-1].end + 1)))
+	ans.WriteRune('-')
+	ans.WriteRune(0x9f)
+	ans.WriteString(`\x{d800}-\x{dfff}`)
+	ans.WriteString(`\x{fdd0}-\x{fdef}`)
+	w := func(x rune) { ans.WriteRune(x) }
+
+	w(0xFFFE)
+	w(0xFFFF)
+	w(0x1FFFE)
+	w(0x1FFFF)
+	w(0x2FFFE)
+	w(0x2FFFF)
+	w(0x3FFFE)
+	w(0x3FFFF)
+	w(0x4FFFE)
+	w(0x4FFFF)
+	w(0x5FFFE)
+	w(0x5FFFF)
+	w(0x6FFFE)
+	w(0x6FFFF)
+	w(0x7FFFE)
+	w(0x7FFFF)
+	w(0x8FFFE)
+	w(0x8FFFF)
+	w(0x9FFFE)
+	w(0x9FFFF)
+	w(0xAFFFE)
+	w(0xAFFFF)
+	w(0xBFFFE)
+	w(0xBFFFF)
+	w(0xCFFFE)
+	w(0xCFFFF)
+	w(0xDFFFE)
+	w(0xDFFFF)
+	w(0xEFFFE)
+	w(0xEFFFF)
+	w(0xFFFFE)
+	w(0xFFFFF)
+
+	if strings.Contains(extra_excluded, "-") {
+		extra_excluded = strings.ReplaceAll(extra_excluded, "-", "")
+		extra_excluded = regexp.QuoteMeta(extra_excluded) + "-"
+	} else {
+		extra_excluded = regexp.QuoteMeta(extra_excluded)
+	}
+	ans.WriteString(extra_excluded)
+	return ans.String()
+
+}
+
+func functions_for(opts *Options) (pattern string, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc, err error) {
 	switch opts.Type {
 	case "url":
 		var url_prefixes *utils.Set[string]
@@ -245,7 +356,14 @@ func functions_for(opts *Options) (pattern string, post_processors []PostProcess
 		} else {
 			url_prefixes = utils.NewSetWithItems(strings.Split(opts.UrlPrefixes, ",")...)
 		}
-		pattern = fmt.Sprintf(`(?:%s)://[^%s]{3,}`, strings.Join(url_prefixes.AsSlice(), "|"), URL_DELIMITERS)
+		url_excluded_characters := RelevantKittyOpts().Url_excluded_characters
+		if opts.UrlExcludedCharacters != "default" {
+			if url_excluded_characters, err = config.StringLiteral(opts.UrlExcludedCharacters); err != nil {
+				err = fmt.Errorf("Failed to parse --url-excluded-characters value: %#v with error: %w", opts.UrlExcludedCharacters, err)
+				return
+			}
+		}
+		pattern = fmt.Sprintf(`(?:%s)://[^%s]{3,}`, strings.Join(url_prefixes.AsSlice(), "|"), url_excluded_characters_as_ranges_for_regex(url_excluded_characters))
 		post_processors = append(post_processors, PostProcessorMap()["url"])
 	case "path":
 		pattern = path_regex()
@@ -530,7 +648,10 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 	sanitized_text, hyperlinks := process_escape_codes(text)
 
 	run_basic_matching := func() error {
-		pattern, post_processors, group_processors := functions_for(opts)
+		pattern, post_processors, group_processors, err := functions_for(opts)
+		if err != nil {
+			return err
+		}
 		r, err := regexp2.Compile(pattern, regexp2.RE2)
 		if err != nil {
 			return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)

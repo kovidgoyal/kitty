@@ -6,6 +6,7 @@
 START_ALLOW_CASE_RANGE
 
 #include "unicode-data.h"
+START_ALLOW_CASE_RANGE
 bool
 is_combining_char(char_type code) {
 	// Combining and default ignored characters (6424 codepoints) {{{

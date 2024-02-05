@@ -5,7 +5,6 @@
 
 START_ALLOW_CASE_RANGE
 
-#include "unicode-data.h"
 int diacritic_to_num(char_type code) {
 	switch (code) {
 		case 0x305 ... 0x306:

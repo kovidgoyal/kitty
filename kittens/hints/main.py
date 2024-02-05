@@ -148,6 +148,13 @@ Comma separated list of recognized URL prefixes. Defaults to the list of
 prefixes defined by the :opt:`url_prefixes` option in :file:`kitty.conf`.
 
 
+--url-excluded-characters
+default=default
+Characters to exclude when matching URLs. Defaults to the list of characters
+defined by the :opt:`url_excluded_characters` option in :file:`kitty.conf`.
+The syntax for this option is the same as for :opt:`url_excluded_characters`.
+
+
 --word-characters
 Characters to consider as part of a word. In addition, all characters marked as
 alphanumeric in the Unicode database will be considered as word characters.

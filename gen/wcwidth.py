@@ -404,6 +404,7 @@ def gen_ucd() -> None:
     cz = {c for c in class_maps if c[0] in 'CZ'}
     with create_header('kitty/unicode-data.c') as p:
         p('#include "unicode-data.h"')
+        p('START_ALLOW_CASE_RANGE')
         category_test(
                 'is_combining_char', p,
                 (),
@@ -553,7 +554,6 @@ def gen_rowcolumn_diacritics() -> None:
 
     go_file = 'tools/utils/images/rowcolumn_diacritics.go'
     with create_header('kitty/rowcolumn-diacritics.c') as p, create_header(go_file, include_data_types=False) as g:
-        p('#include "unicode-data.h"')
         p('int diacritic_to_num(char_type code) {')
         p('\tswitch (code) {')
         g('package images')

@@ -56,6 +56,7 @@ func TestHintMarking(t *testing.T) {
 	reset()
 	u := `http://test.me/`
 	r(u, u)
+	r(u+"#fragme", u+"#fragme")
 	r(`"`+u+`"`, u)
 	r("("+u+")", u)
 	cols = len(u)

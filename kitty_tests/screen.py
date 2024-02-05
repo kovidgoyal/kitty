@@ -1017,11 +1017,12 @@ class TestScreen(BaseTest):
 
         t('http://moo.com')
         t('http://moo.com/something?else=+&what-')
+        t('http://moo.com#fragme')
         for (st, e) in '() {} [] <>'.split():
             t('http://moo.com', before=st, after=e)
-        for trailer in ')-=]}':
+        for trailer in ')-=':
             t('http://moo.com' + trailer)
-        for trailer in '{([':
+        for trailer in '{([]}<>':
             t('http://moo.com', after=trailer)
         t('http://moo.com', x=s.columns - 9)
         t('https://wraps-by-one-char.com', before='[', after=']')

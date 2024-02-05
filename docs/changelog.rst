@@ -58,6 +58,12 @@ Detailed list of changes
   row/column boxes by resizing them using linear instead of nearest neighbor
   interpolation on the GPU (:iss:`7070`)
 
+- When matching URLs use the definition of legal characters in URLs from the
+  `WHATWG spec <https://url.spec.whatwg.org/#url-code-points>`__ rather than older standards (:iss:`7095`)
+
+- hints kitten: Respect the kitty :opt:`url_excluded_characters` option
+  (:iss:`7075`)
+
 0.32.1 [2024-01-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
