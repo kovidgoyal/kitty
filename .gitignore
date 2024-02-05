@@ -4,6 +4,9 @@
 *.bin
 *_stub.pyi
 *_generated.go
+*_generated.s
+*_generated_test.go
+*_generated_test.s
 *_generated.h
 /.dmypy.json
 /dependencies
@@ -18,6 +21,7 @@ __pycache__/
 /glfw/wayland-*-client-protocol.[ch]
 /docs/_build/
 /docs/generated/
+/tools/simdstring/simdstring.test
 /.mypy_cache
 /.ruff_cache
 .DS_Store
