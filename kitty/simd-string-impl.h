@@ -89,7 +89,11 @@ FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 
 #else
 
+#if defined(SIMDE_ARCH_AMD64) || defined(SIMDE_ARCH_X86)
 #define zero_upper _mm256_zeroupper
+#else
+#define zero_upper()
+#endif
 #define set1_epi8(x) simde_mm256_set1_epi8((char)(x))
 #define set_epi8 simde_mm256_set_epi8
 #define add_epi8 simde_mm256_add_epi8
