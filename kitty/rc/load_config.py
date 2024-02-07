@@ -4,6 +4,8 @@
 
 from typing import TYPE_CHECKING, Optional
 
+from kitty.constants import appname
+
 from .base import (
     ArgsType,
     Boss,
@@ -33,7 +35,7 @@ class LoadConfig(RemoteCommand):
         ' Note that the specified paths must exist and be readable by the kitty process on the computer that process is running on.'
         ' Relative paths are resolved with respect to the kitty config directory on the computer running kitty.'
     )
-    options_spec = '''\
+    options_spec = f'''\
 --ignore-overrides
 type=bool-set
 By default, any config overrides previously specified at the kitty invocation command line
