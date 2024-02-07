@@ -2539,14 +2539,17 @@ class Boss:
 
             map f5 load_config_file /path/to/some/kitty.conf
         ''')
-    def load_config_file(self, *paths: str, apply_overrides: bool = True) -> None:
+    def load_config_file(self, *paths: str, apply_overrides: bool = True, overrides: Sequence[str] = ()) -> None:
         from .cli import default_config_paths
         from .config import load_config
         old_opts = get_options()
         prev_paths = old_opts.all_config_paths or default_config_paths(self.args.config)
         paths = paths or prev_paths
         bad_lines: List[BadLine] = []
-        opts = load_config(*paths, overrides=old_opts.config_overrides if apply_overrides else None, accumulate_bad_lines=bad_lines)
+        final_overrides = old_opts.config_overrides if apply_overrides else ()
+        if overrides:
+            final_overrides += tuple(overrides)
+        opts = load_config(*paths, overrides=final_overrides or None, accumulate_bad_lines=bad_lines)
         if bad_lines:
             self.show_bad_config_lines(bad_lines)
         self.apply_new_options(opts)

@@ -46,6 +46,8 @@ Detailed list of changes
 0.32.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- kitten @ load-config: Allow (re)loading kitty.conf via remote control
+
 - kitten @ send-text: Add a new option to automatically wrap the sent text in
   bracketed paste escape codes if the program in the destination window has
   turned on bracketed paste.

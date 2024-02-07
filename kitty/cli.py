@@ -1066,12 +1066,20 @@ def default_config_paths(conf_paths: Sequence[str]) -> Tuple[str, ...]:
     return tuple(resolve_config(SYSTEM_CONF, defconf, conf_paths))
 
 
+@run_once
+def override_pat() -> 're.Pattern[str]':
+    return re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
+
+
+def parse_override(x: str) -> str:
+    # Does not cover the case where `name =` when `=` is the value.
+    return override_pat().sub(r'\1 ', x.lstrip())
+
+
 def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> KittyOpts:
     from .config import load_config
     config = default_config_paths(args.config)
-    # Does not cover the case where `name =` when `=` is the value.
-    pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
-    overrides = (pat.sub(r'\1 ', a.lstrip()) for a in args.override or ())
+    overrides = map(parse_override, args.override or ())
     opts = load_config(*config, overrides=overrides, accumulate_bad_lines=accumulate_bad_lines)
     return opts
 
