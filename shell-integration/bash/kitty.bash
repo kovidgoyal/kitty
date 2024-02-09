@@ -280,7 +280,7 @@ _ksi_main() {
     # from the shell
     builtin local pc
     pc='builtin declare -F _ksi_prompt_command > /dev/null 2> /dev/null && _ksi_prompt_command'
-    if [[ -z "${PROMPT_COMMAND}" ]]; then
+    if [[ -z "${PROMPT_COMMAND[*]}" ]]; then
         PROMPT_COMMAND=([0]="$pc")
     elif [[ $(builtin declare -p PROMPT_COMMAND 2> /dev/null) =~ 'declare -a PROMPT_COMMAND' ]]; then
         PROMPT_COMMAND+=("$pc")
