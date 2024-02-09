@@ -3051,8 +3051,8 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     NSColor *background = nil;
     NSAppearance *appearance = nil;
     bool titlebar_transparent = false;
-    NSWindowStyleMask current_style_mask = [window->ns.object styleMask];
-    bool in_fullscreen = ((current_style_mask & NSWindowStyleMaskFullScreen) != 0) || window->ns.in_traditional_fullscreen;
+    const NSWindowStyleMask current_style_mask = [window->ns.object styleMask];
+    const bool in_fullscreen = ((current_style_mask & NSWindowStyleMaskFullScreen) != 0) || window->ns.in_traditional_fullscreen;
     NSAppearance *light_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantLight] : [NSAppearance appearanceNamed:NSAppearanceNameAqua];
     NSAppearance *dark_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark] : [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
     if (use_system_color || background_opacity < 1.0) {

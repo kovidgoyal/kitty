@@ -56,7 +56,7 @@ Detailed list of changes
 
 - macOS: Fix :code:`kitten @ select-window` leaving the keyboard in a partially functional state (:iss:`7074`)
 
-- Graphics protocol: Improve display of images using unicode placeholders or
+- Graphics protocol: Improve display of images using Unicode placeholders or
   row/column boxes by resizing them using linear instead of nearest neighbor
   interpolation on the GPU (:iss:`7070`)
 
