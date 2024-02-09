@@ -66,6 +66,8 @@ Detailed list of changes
 - hints kitten: Respect the kitty :opt:`url_excluded_characters` option
   (:iss:`7075`)
 
+- macOS: Fix an abort when changing OS window chrome for a full screen window via remote control or the themes kitten (:iss:`7106`)
+
 0.32.1 [2024-01-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
