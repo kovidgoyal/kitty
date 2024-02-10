@@ -70,6 +70,8 @@ Detailed list of changes
 
 - Special case rendering of some more box drawing characters using shades from the block of symbols for legacy computing (:iss:`7110`)
 
+- A new :ac:`close_other_os_windows` to close non active OS windows (:disc:`7113`)
+
 0.32.1 [2024-01-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

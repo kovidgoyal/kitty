@@ -959,6 +959,14 @@ class Boss:
                 if tab is not active_tab:
                     self.close_tab(tab)
 
+    @ac('win', 'Close all other OS Windows other than the OS Window containing the currently active window')
+    def close_other_os_windows(self) -> None:
+        active = self.active_tab_manager
+        if active is not None:
+            for x in self.os_window_map.values():
+                if x is not active:
+                    self.mark_os_window_for_close(x.os_window_id)
+
     def confirm(
         self, msg: str,  # can contain newlines and ANSI formatting
         callback: Callable[..., None],  # called with True or False and *args
