@@ -44,6 +44,7 @@ or a previous load-config-file command are respected. Use this option to have th
 
 --override -o
 type=list
+completion=type:special group:complete_kitty_override
 Override individual configuration options, can be specified multiple times.
 Syntax: :italic:`name=value`. For example: :option:`{appname} -o` font_size=20
 

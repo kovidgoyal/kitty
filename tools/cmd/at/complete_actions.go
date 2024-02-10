@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"kitty"
 	"kitty/tools/cli"
 	"kitty/tools/utils"
 )
@@ -21,6 +22,18 @@ func complete_actions(completions *cli.Completions, word string, arg_num int) {
 			if line != "" && strings.HasPrefix(line, word) {
 				mg.AddMatch(line)
 			}
+		}
+	}
+}
+
+func complete_kitty_override(completions *cli.Completions, word string, arg_num int) {
+	mg := completions.AddMatchGroup("Config directives")
+	mg.NoTrailingSpace = true
+	scanner := utils.NewLineScanner(kitty.OptionNames)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, word) {
+			mg.AddMatch(line + "=")
 		}
 	}
 }

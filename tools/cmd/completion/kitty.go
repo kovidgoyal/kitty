@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	kitty_constants "kitty"
 	"kitty/tools/cli"
 	"kitty/tools/themes"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -15,9 +17,11 @@ var _ = fmt.Print
 func complete_kitty_override(completions *cli.Completions, word string, arg_num int) {
 	mg := completions.AddMatchGroup("Config directives")
 	mg.NoTrailingSpace = true
-	for _, q := range kitty_option_names_for_completion {
-		if strings.HasPrefix(q, word) {
-			mg.AddMatch(q + "=")
+	scanner := utils.NewLineScanner(kitty_constants.OptionNames)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, word) {
+			mg.AddMatch(line + "=")
 		}
 	}
 }

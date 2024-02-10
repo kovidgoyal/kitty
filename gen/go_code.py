@@ -238,13 +238,10 @@ def completion_for_launch_wrappers(*names: str) -> None:
 
 
 def generate_completions_for_kitty() -> None:
-    from kitty.config import option_names_for_completion
     print('package completion\n')
     print('import "kitty/tools/cli"')
     print('import "kitty/tools/cmd/tool"')
     print('import "kitty/tools/cmd/at"')
-    conf_names = ', '.join((f'"{serialize_as_go_string(x)}"' for x in option_names_for_completion()))
-    print('var kitty_option_names_for_completion = []string{' + conf_names + '}')
 
     print('func kitty(root *cli.Command) {')
 
@@ -573,6 +570,7 @@ def load_ref_map() -> Dict[str, Dict[str, str]]:
 
 def generate_constants() -> str:
     from kittens.hints.main import DEFAULT_REGEX
+    from kitty.config import option_names_for_completion
     from kitty.fast_data_types import FILE_TRANSFER_CODE
     from kitty.options.utils import allowed_shell_integration_values
     del sys.modules['kittens.hints.main']
@@ -583,6 +581,7 @@ def generate_constants() -> str:
         placeholder_char = int(m.group(1), 16)
     dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
     url_prefixes = ','.join(f'"{x}"' for x in Options.url_prefixes)
+    option_names = '`' + '\n'.join(option_names_for_completion()) + '`'
     return f'''\
 package kitty
 
@@ -618,6 +617,7 @@ Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)
 Select_by_word_characters: `{Options.select_by_word_characters}`, Wheel_scroll_multiplier: {Options.wheel_scroll_multiplier},
 Shell: "{Options.shell}", Url_excluded_characters: "{Options.url_excluded_characters}",
 }}
+const OptionNames = {option_names}
 '''  # }}}
 
 
