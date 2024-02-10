@@ -46,6 +46,13 @@ or a previous load-config-file command are respected. Use this option to have th
 type=list
 Override individual configuration options, can be specified multiple times.
 Syntax: :italic:`name=value`. For example: :option:`{appname} -o` font_size=20
+
+
+--no-response
+type=bool-set
+default=false
+Don't wait for a response indicating the success of the action. Note that
+using this option means that you will not be notified of failures.
 '''
 
     args = RemoteCommand.Args(spec='CONF_FILE ...', json_field='paths',

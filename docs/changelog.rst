@@ -48,6 +48,8 @@ Detailed list of changes
 
 - kitten @ load-config: Allow (re)loading kitty.conf via remote control
 
+- Remote control: Allow running mappable actions via remote control (`kitten @ action`)
+
 - kitten @ send-text: Add a new option to automatically wrap the sent text in
   bracketed paste escape codes if the program in the destination window has
   turned on bracketed paste.

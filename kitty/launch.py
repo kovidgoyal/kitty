@@ -321,7 +321,7 @@ def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
     try:
         opts, args = parse_args(result_class=LaunchCLIOptions, args=args, ospec=options_spec)
     except SystemExit as e:
-        raise ValueError from e
+        raise ValueError(str(e)) from e
     return LaunchSpec(opts, args)
 
 

@@ -31,6 +31,11 @@ class RemoteControlError(Exception):
     pass
 
 
+class RemoteControlErrorWithoutTraceback(Exception):
+
+    hide_traceback = True
+
+
 class MatchError(ValueError):
 
     hide_traceback = True
@@ -219,7 +224,10 @@ class ArgsHandling:
                 yield f'args = append(args, "{x}")'
             yield '}'
         if self.minimum_count > -1:
-            yield f'if len(args) < {self.minimum_count} {{ return fmt.Errorf("%s", "Must specify at least {self.minimum_count} arguments to {cmd_name}") }}'
+            if self.minimum_count == 1:
+                yield f'if len(args) < {self.minimum_count} {{ return fmt.Errorf("%s", "Must specify at least one argument to {cmd_name}") }}'
+            else:
+                yield f'if len(args) < {self.minimum_count} {{ return fmt.Errorf("%s", "Must specify at least {self.minimum_count} arguments to {cmd_name}") }}'
         if self.args_choices:
             achoices = tuple(self.args_choices())
             yield 'achoices := map[string]bool{' + ' '.join(f'"{x}":true,' for x in achoices) + '}'
