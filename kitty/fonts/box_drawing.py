@@ -613,22 +613,54 @@ def inner_corner(buf: BufType, width: int, height: int, which: str = 'tl', level
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
-def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bool = False) -> None:
-    square_sz = max(1, width // 12)
-    number_of_rows = height // square_sz
-    number_of_cols = width // square_sz
-    nums = range(square_sz)
+def shade(
+    buf: BufType, width: int, height: int, light: bool = False, invert: bool = False, which_half: str = '', fill_blank: bool = False,
+    xnum: int = 12, ynum: int = 0,
+) -> None:
+    square_width = max(1, width // xnum)
+    square_height = max(1, (height // ynum) if ynum else square_width)
+    number_of_rows = height // square_height
+    number_of_cols = width // square_width
+    rows = range(number_of_rows)
+    cols = range(number_of_cols)
+    if which_half == 'top':
+        rows = range(number_of_rows//2)
+    elif which_half == 'bottom':
+        rows = range(number_of_rows//2, number_of_rows)
+    elif which_half == 'left':
+        cols = range(number_of_cols // 2)
+    elif which_half == 'right':
+        cols = range(number_of_cols // 2, number_of_cols)
 
-    for r in range(number_of_rows):
-        for c in range(number_of_cols):
+    for r in rows:
+        for c in cols:
             if invert ^ ((r % 2 != c % 2) or (light and r % 2 == 1)):
                 continue
-            for yr in nums:
-                y = r * square_sz + yr
+            for yr in range(square_height):
+                y = r * square_height + yr
                 offset = width * y
-                for xc in nums:
-                    x = c * square_sz + xc
+                for xc in range(square_width):
+                    x = c * square_width + xc
                     buf[offset + x] = 255
+    if not fill_blank:
+        return
+    if which_half == 'bottom':
+        rows = range(height//2)
+        cols = range(width)
+    elif which_half == 'top':
+        rows = range(height//2 - 1, height)
+        cols = range(width)
+    elif which_half == 'right':
+        cols = range(width // 2)
+        rows = range(height)
+    elif which_half == 'left':
+        cols = range(width // 2 - 1, width)
+        rows = range(height)
+
+    for r in rows:
+        off = r * width
+        for c in cols:
+            buf[off + c] = 255
 
 
 def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
@@ -862,10 +894,23 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '▎': [p(eight_block, which=(0, 1))],
     '▏': [p(eight_bar)],
     '▐': [p(eight_block, which=(4, 5, 6, 7))],
+
     '░': [p(shade, light=True)],
     '▒': [shade],
     '▓': [p(shade, light=True, invert=True)],
+    '🮌': [p(shade, which_half='left')],
+    '🮍': [p(shade, which_half='right')],
+    '🮎': [p(shade, which_half='top')],
+    '🮏': [p(shade, which_half='bottom')],
     '🮐': [p(shade, invert=True)],
+    '🮑': [p(shade, which_half='bottom', invert=True, fill_blank=True)],
+    '🮒': [p(shade, which_half='top', invert=True, fill_blank=True)],
+    '🮓': [p(shade, which_half='right', invert=True, fill_blank=True)],
+    '🮔': [p(shade, which_half='left', invert=True, fill_blank=True)],
+    '🮕': [p(shade, xnum=4, ynum=4)],
+    '🮖': [p(shade, xnum=4, ynum=4, invert=True)],
+    '🮗': [p(shade, xnum=1, ynum=4, invert=True)],
+
     '▔': [p(eight_bar, horizontal=True)],
     '▕': [p(eight_bar, which=7)],
     '▖': [p(quad, y=1)],
