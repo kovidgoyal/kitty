@@ -69,6 +69,7 @@ typedef struct {
     unsigned long tab_bar_min_tabs;
     DisableLigature disable_ligatures;
     bool force_ltr;
+    bool box_drawing_main_font;
     bool resize_in_steps;
     bool sync_to_monitor;
     bool close_on_child_death;

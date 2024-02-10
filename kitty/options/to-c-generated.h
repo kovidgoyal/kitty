@@ -58,6 +58,19 @@ convert_from_opts_modify_font(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_box_drawing_main_font(PyObject *val, Options *opts) {
+    opts->box_drawing_main_font = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_box_drawing_main_font(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "box_drawing_main_font");
+    if (ret == NULL) return;
+    convert_from_python_box_drawing_main_font(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_text_composition_strategy(PyObject *val, Options *opts) {
     text_composition_strategy(val, opts);
 }
@@ -1119,6 +1132,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_disable_ligatures(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_modify_font(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_box_drawing_main_font(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_text_composition_strategy(py_opts, opts);
     if (PyErr_Occurred()) return false;

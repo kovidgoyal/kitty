@@ -58,6 +58,7 @@ option_names = (  # {{{
  'bell_path',
  'bold_font',
  'bold_italic_font',
+ 'box_drawing_main_font',
  'box_drawing_scale',
  'clear_all_mouse_actions',
  'clear_all_shortcuts',
@@ -483,6 +484,7 @@ class Options:
     bell_path: typing.Optional[str] = None
     bold_font: str = 'auto'
     bold_italic_font: str = 'auto'
+    box_drawing_main_font: bool = False
     box_drawing_scale: typing.Tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False

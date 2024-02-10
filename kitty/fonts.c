@@ -579,6 +579,10 @@ START_ALLOW_CASE_RANGE
         case 0xe0b0 ... 0xe0bf:    // powerline box drawing
         case 0x1fb00 ... 0x1fb97:  // symbols for legacy computing
         case 0x1fb9a ... 0x1fbae:  // symbols for legacy computing
+            if (OPT(box_drawing_main_font) && has_cell_text(fg->fonts + fg->medium_font_idx, cpu_cell)) {
+                *is_main_font = true;
+                return fg->medium_font_idx;
+            }
             return BOX_FONT;
         default:
             *is_emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);

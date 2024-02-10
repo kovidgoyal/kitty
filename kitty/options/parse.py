@@ -106,6 +106,9 @@ class Parser:
     def bold_italic_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['bold_italic_font'] = str(val)
 
+    def box_drawing_main_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['box_drawing_main_font'] = to_bool(val)
+
     def box_drawing_scale(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['box_drawing_scale'] = box_drawing_scale(val)
 

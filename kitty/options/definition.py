@@ -216,6 +216,14 @@ glyphs inside the cell and decreasing it lowers them. Decreasing the cell size
 might cause rendering artifacts, so use with care.
 ''')
 
+opt('box_drawing_main_font', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Use the main font for box drawing if the box drawing character is defined in the
+font.
+'''
+    )
+
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',
     option_type='box_drawing_scale',
     long_text='''
