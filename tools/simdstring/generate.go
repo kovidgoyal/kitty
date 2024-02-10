@@ -1294,7 +1294,7 @@ func (isa *ISA) LEA() string {
 	return "LEAQ"
 }
 
-func (s *State) index_func(f *Function, test_bytes_impl func(pos, test_ans Register, aligned bool, byte_found_label string)) {
+func (s *State) index_func(f *Function, test_bytes_impl func(bytes_to_test, test_ans Register)) {
 	pos := f.Reg()
 	test_ans := f.Vec()
 	data_start := f.LoadParam(`data`)
@@ -1305,7 +1305,15 @@ func (s *State) index_func(f *Function, test_bytes_impl func(pos, test_ans Regis
 	f.CopyRegister(data_start, pos)
 
 	test_bytes := func(aligned bool) {
-		test_bytes_impl(pos, test_ans, aligned, "byte_found")
+		vec := f.Vec()
+		defer f.ReleaseReg(vec)
+		if aligned {
+			f.LoadPointerAligned(pos, vec)
+		} else {
+			f.LoadPointerUnaligned(pos, vec)
+		}
+		test_bytes_impl(vec, test_ans)
+		f.JumpIfNonZero(test_ans, "byte_found")
 	}
 
 	f.Comment("Load next vector of possibly unaligned bytes and check if either of the bytes are present in it")
@@ -1358,18 +1366,10 @@ func (s *State) indexbyte2_body(f *Function) {
 	b2 := f.Vec()
 	f.Set1Epi8("b1", b1)
 	f.Set1Epi8("b2", b2)
-	test_bytes := func(pos, test_ans Register, aligned bool, byte_found_label string) {
-		bytes_to_test := f.Vec()
-		defer f.ReleaseReg(bytes_to_test)
-		if aligned {
-			f.LoadPointerAligned(pos, bytes_to_test)
-		} else {
-			f.LoadPointerUnaligned(pos, bytes_to_test)
-		}
+	test_bytes := func(bytes_to_test, test_ans Register) {
 		f.CmpEqEpi8(bytes_to_test, b1, test_ans)
 		f.CmpEqEpi8(bytes_to_test, b2, bytes_to_test)
 		f.Or(test_ans, bytes_to_test, test_ans)
-		f.JumpIfNonZero(test_ans, byte_found_label)
 	}
 	s.index_func(f, test_bytes)
 }
@@ -1394,23 +1394,14 @@ func (s *State) indexc0_body(f *Function) {
 	f.Set1Epi8(int(' '), upper)
 	f.Set1Epi8(0x7f, del)
 
-	test_bytes := func(pos, test_ans Register, aligned bool, byte_found_label string) {
-		bytes_to_test := f.Vec()
-		defer f.ReleaseReg(bytes_to_test)
+	test_bytes := func(bytes_to_test, test_ans Register) {
 		temp := f.Vec()
 		defer f.ReleaseReg(temp)
-
-		if aligned {
-			f.LoadPointerAligned(pos, bytes_to_test)
-		} else {
-			f.LoadPointerUnaligned(pos, bytes_to_test)
-		}
 		f.CmpEqEpi8(bytes_to_test, del, test_ans)
 		f.CmpLtEpi8(bytes_to_test, upper, temp)
 		f.CmpGtEpi8(bytes_to_test, lower, bytes_to_test)
 		f.And(temp, bytes_to_test, bytes_to_test)
 		f.Or(test_ans, bytes_to_test, test_ans)
-		f.JumpIfNonZero(test_ans, byte_found_label)
 	}
 	s.index_func(f, test_bytes)
 }
