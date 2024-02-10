@@ -32,6 +32,7 @@ from typing import (
 import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kittens.tui.spinners import spinners
+from kitty.actions import get_all_actions
 from kitty.cli import (
     CompletionSpec,
     GoOption,
@@ -688,6 +689,15 @@ func add_rc_global_opts(cmd *cli.Command) {{
 def update_completion() -> None:
     with replace_if_needed('tools/cmd/completion/kitty_generated.go'):
         generate_completions_for_kitty()
+
+    with replace_if_needed('tools/cmd/at/kitty_actions_generated.go'):
+        print("package at")
+        print("const KittyActionNames = `", end='')
+        for grp, actions in get_all_actions().items():
+            for ac in actions:
+                print(ac.name)
+        print('`')
+
     with replace_if_needed('tools/cmd/edit_in_kitty/launch_generated.go'):
         print('package edit_in_kitty')
         print('import "kitty/tools/cli"')

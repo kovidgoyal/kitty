@@ -51,7 +51,10 @@ Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
 ''' + '\n\n' + MATCH_WINDOW_OPTION
 
-    args = RemoteCommand.Args(spec='ACTION [ARGS FOR ACTION...]', json_field='action', minimum_count=1)
+    args = RemoteCommand.Args(
+        spec='ACTION [ARGS FOR ACTION...]', json_field='action', minimum_count=1,
+        completion=RemoteCommand.CompletionSpec.from_string('type:special group:complete_actions')
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'action': ' '.join(args), 'self': opts.self, 'match_window': opts.match}
