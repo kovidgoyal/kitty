@@ -68,6 +68,8 @@ Detailed list of changes
 
 - macOS: Fix an abort when changing OS window chrome for a full screen window via remote control or the themes kitten (:iss:`7106`)
 
+- Special case rendering of some more box drawing characters using shades from the block of symbols for legacy computing (:iss:`7110`)
+
 0.32.1 [2024-01-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

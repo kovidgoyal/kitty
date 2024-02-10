@@ -577,8 +577,7 @@ START_ALLOW_CASE_RANGE
         case 0x2574 ... 0x259f:
         case 0x2800 ... 0x28ff:
         case 0xe0b0 ... 0xe0bf:  // powerline box drawing
-        case 0x1fb00 ... 0x1fb97:  // symbols for legacy computing
-        case 0x1fba0 ... 0x1fbae:
+        case 0x1fb00 ... 0x1fbae:  // symbols for legacy computing
             return BOX_FONT;
         default:
             *is_emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
@@ -615,12 +614,10 @@ START_ALLOW_CASE_RANGE
             return ch - 0x2500; // IDs from 0x00 to 0x9f
         case 0xe0b0 ... 0xe0d4:
             return 0xa0 + ch - 0xe0b0;  // IDs from 0xa0 to 0xc4
-        case 0x1fb00 ... 0x1fb97:
-            return 0xc5 + ch - 0x1fb00;  // IDs from 0xc5 to 0x15c
-        case 0x1fba0 ... 0x1fbae:
-            return 0x15d + ch - 0x1fba0; // IDs from 0x15d to 0x16b
+        case 0x1fb00 ... 0x1fbae:
+            return 0xc5 + ch - 0x1fb00;  // IDs from 0xc5 to 0x173
         case 0x2800 ... 0x28ff:
-            return 0x16c + ch - 0x2800;
+            return 0x174 + ch - 0x2800;
         default:
             return 0xffff;
     }

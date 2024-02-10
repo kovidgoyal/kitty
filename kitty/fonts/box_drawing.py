@@ -663,6 +663,18 @@ def shade(
             buf[off + c] = 255
 
 
+def mask(
+    mask_func: Callable[[BufType, int, int], None], buf: BufType, width: int, height: int,
+) -> None:
+    m = bytearray(width * height)
+    mask_func(m, width, height)
+    for y in range(height):
+        offset = y * width
+        for x in range(width):
+            p = offset + x
+            buf[p] = int(255.0 * (buf[p] / 255.0 * m[p] / 255.0))
+
+
 def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
     num_cols = width // 2
     left = x * num_cols
@@ -910,6 +922,10 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '🮕': [p(shade, xnum=4, ynum=4)],
     '🮖': [p(shade, xnum=4, ynum=4, invert=True)],
     '🮗': [p(shade, xnum=1, ynum=4, invert=True)],
+    '🮜': [shade, p(mask, p(corner_triangle, corner='top-left'))],
+    '🮝': [shade, p(mask, p(corner_triangle, corner='top-right'))],
+    '🮞': [shade, p(mask, p(corner_triangle, corner='bottom-right'))],
+    '🮟': [shade, p(mask, p(corner_triangle, corner='bottom-left'))],
 
     '▔': [p(eight_bar, horizontal=True)],
     '▕': [p(eight_bar, which=7)],
@@ -981,9 +997,11 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '🭪': [p(half_triangle, which='right', inverted=True)],
     '🭫': [p(half_triangle, which='bottom', inverted=True)],
     '🭬': [half_triangle],
+    '🮛': [half_triangle, p(half_triangle, which='right')],
     '🭭': [p(half_triangle, which='top')],
     '🭮': [p(half_triangle, which='right')],
     '🭯': [p(half_triangle, which='bottom')],
+    '🮚': [p(half_triangle, which='bottom'), p(half_triangle, which='top')],
 
     '🭼': [eight_bar, p(eight_bar, which=7, horizontal=True)],
     '🭽': [eight_bar, p(eight_bar, horizontal=True)],
