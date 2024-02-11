@@ -226,6 +226,13 @@ movemask_arm128(const simde__m128i vec) {
 static inline int
 bytes_to_first_match(const integer_t vec) { const uint64_t m = movemask_arm128(vec); return m ? (__builtin_ctzll(m) >> 2) : -1; }
 
+static inline int
+bytes_to_first_match_ignoring_leading_n(const integer_t vec, uintptr_t num_ignored) {
+    uint64_t m = movemask_arm128(vec);
+    m >>= num_ignored >> 2;
+    return m ? (__builtin_ctzll(m) >> 2) : -1;
+}
+
 #else
 
 static inline int
@@ -237,6 +244,18 @@ bytes_to_first_match(const integer_t vec) {
     return 16 + (__builtin_ctzll(movemask_arm128(v)) >> 2);
 }
 
+static inline int
+bytes_to_first_match_ignoring_leading_n(const integer_t vec, uintptr_t num_ignored) {
+    num_ignored >>= 2;
+    simde__m128i v = simde_mm256_extracti128_si256(vec, 0);
+    uint64_t m = movemask_arm128(vec);
+    m >>= num_ignored;
+    if (m) return __builtin_ctzll(m) >> 2;
+    v = simde_mm256_extracti128_si256(vec, 1);
+    m = movemask_arm128(vec);
+    m >>= num_ignored;
+    return m ? (16 + (__builtin_ctzll(m) >> 2)) : -1;
+}
 #endif
 
 #else
@@ -244,6 +263,13 @@ bytes_to_first_match(const integer_t vec) {
 static inline int
 bytes_to_first_match(const integer_t vec) {
     return is_zero(vec) ? -1 : __builtin_ctz(movemask_epi8(vec));
+}
+
+static inline int
+bytes_to_first_match_ignoring_leading_n(const integer_t vec, const uintptr_t num_ignored) {
+    uint32_t mask = movemask_epi8(vec);
+    mask >>= num_ignored;
+    return mask ? __builtin_ctz(mask) : -1;
 }
 
 
