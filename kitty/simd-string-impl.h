@@ -61,16 +61,18 @@ END_IGNORE_DIAGNOSTIC
 #define andnot_si simde_mm_andnot_si128
 #define movemask_epi8 simde_mm_movemask_epi8
 #define extract_lower_quarter_as_chars simde_mm_cvtepu8_epi32
-#define shift_right_by_one_byte(x) simde_mm_slli_si128(x, 1)
-#define shift_right_by_two_bytes(x) simde_mm_slli_si128(x, 2)
-#define shift_right_by_four_bytes(x) simde_mm_slli_si128(x, 4)
-#define shift_right_by_eight_bytes(x) simde_mm_slli_si128(x, 8)
-#define shift_right_by_sixteen_bytes(x) simde_mm_slli_si128(x, 16)
-#define shift_left_by_one_byte(x) simde_mm_srli_si128(x, 1)
-#define shift_left_by_two_bytes(x) simde_mm_srli_si128(x, 2)
-#define shift_left_by_four_bytes(x) simde_mm_srli_si128(x, 4)
-#define shift_left_by_eight_bytes(x) simde_mm_srli_si128(x, 8)
-#define shift_left_by_sixteen_bytes(x) simde_mm_srli_si128(x, 16)
+#define shift_right_by_bytes(x, n) simde_mm_slli_si128(x, n)
+#define shift_right_by_one_byte(x) shift_right_by_bytes(x, 1)
+#define shift_right_by_two_bytes(x) shift_right_by_bytes(x, 2)
+#define shift_right_by_four_bytes(x) shift_right_by_bytes(x, 4)
+#define shift_right_by_eight_bytes(x) shift_right_by_bytes(x, 8)
+#define shift_right_by_sixteen_bytes(x) shift_right_by_bytes(x, 16)
+#define shift_left_by_bytes(x, n) simde_mm_srli_si128(x, n)
+#define shift_left_by_one_byte(x) shift_left_by_bytes(x, 1)
+#define shift_left_by_two_bytes(x) shift_left_by_bytes(x, 2)
+#define shift_left_by_four_bytes(x) shift_left_by_bytes(x, 4)
+#define shift_left_by_eight_bytes(x) shift_left_by_bytes(x, 8)
+#define shift_left_by_sixteen_bytes(x) shift_left_by_bytes(x, 16)
 #define blendv_epi8 simde_mm_blendv_epi8
 #define shift_left_by_bits16 simde_mm_slli_epi16
 #define shift_right_by_bits32 simde_mm_srli_epi32
@@ -120,57 +122,56 @@ FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 static inline int
 FUNC(is_zero)(const integer_t a) { return simde_mm256_testz_si256(a, a); }
 
-static inline integer_t
-shift_right_by_one_byte(const integer_t A) {
-    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 1);
+#define GA(LA) LA(1) LA(2) LA(3) LA(4) LA(5) LA(6) LA(7) LA(8) LA(9) LA(10) LA(11) LA(12) LA(13) LA(14) LA(15)
+#define GB(LA) LA(17) LA(18) LA(19) LA(20) LA(21) LA(22) LA(23) LA(24) LA(25) LA(26) LA(27) LA(28) LA(29) LA(30) LA(31)
+#define RA(n) case n: return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - n);
+#define RB(n)  case n: return simde_mm256_slli_si256(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), n - 16); \
+
+#define shift_right_by_bytes_macro(A, n) { \
+    switch(n) { \
+        default: return A; \
+        GA(RA) \
+        case 16: return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)); \
+        GB(RB) \
+    } \
 }
 
-static inline integer_t
-shift_right_by_two_bytes(const integer_t A) {
-    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 2);
-}
-
-static inline integer_t
-shift_right_by_four_bytes(const integer_t A) {
-    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 4);
-}
-
-static inline integer_t
-shift_right_by_eight_bytes(const integer_t A) {
-    return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 8);
-}
-
-static inline integer_t
-shift_right_by_sixteen_bytes(const integer_t A) {
-    return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0));
-}
-
-static inline integer_t
-shift_left_by_one_byte(const integer_t A) {
-    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 1);
-}
-
-static inline integer_t
-shift_left_by_two_bytes(const integer_t A) {
-    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 2);
-}
-
-static inline integer_t
-shift_left_by_four_bytes(const integer_t A) {
-    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 4);
-}
-
-static inline integer_t
-shift_left_by_eight_bytes(const integer_t A) {
-    return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, 8);
-}
-
-static inline integer_t
-shift_left_by_sixteen_bytes(const integer_t A) {
-    return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1));
+#define LA(n) case n: return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, n);
+#define LB(n) case n: return simde_mm256_srli_si256(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), n - 16);
+#define shift_left_by_bytes_macro(A, n) { \
+    switch(n) { \
+        default: return A; \
+        GA(LA) \
+        case 16: return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)); \
+        GB(LB) \
+    } \
 }
 
 
+static inline integer_t shift_right_by_bytes(const integer_t A, unsigned n) { shift_right_by_bytes_macro(A, n) }
+static inline integer_t shift_left_by_bytes(const integer_t A, unsigned n) { shift_left_by_bytes_macro(A, n) }
+
+#define w(dir, word, num) static inline integer_t shift_##dir##_by_##word(const integer_t A) { shift_##dir##_by_bytes_macro(A, num); }
+
+w(right, one_byte, 1)
+w(right, two_bytes, 2)
+w(right, four_bytes, 4)
+w(right, eight_bytes, 8)
+w(right, sixteen_bytes, 16)
+w(left, one_byte, 1)
+w(left, two_bytes, 2)
+w(left, four_bytes, 4)
+w(left, eight_bytes, 8)
+w(left, sixteen_bytes, 16)
+#undef LA
+#undef LB
+#undef GA
+#undef GB
+#undef RA
+#undef RB
+#undef w
+#undef shift_right_by_bytes_macro
+#undef shift_left_by_bytes_macro
 
 static inline integer_t shuffle_impl256(const integer_t value, const integer_t shuffle) {
 #define K0 simde_mm256_setr_epi8( \
