@@ -291,7 +291,7 @@ FUNC(zero_last_n_bytes)(integer_t vec, const integer_t index, char n) {
 
 #define check_chunk() { \
     if (n > -1) { \
-        const uint8_t *ans = haystack + n + unaligned_bytes; \
+        const uint8_t *ans = haystack + n; \
         zero_upper(); \
         return ans < limit ? ans : NULL; \
     }}
@@ -301,14 +301,15 @@ FUNC(zero_last_n_bytes)(integer_t vec, const integer_t index, char n) {
     const uint8_t* limit = haystack + sz; \
     integer_t chunk; int n; \
 \
-    const uintptr_t addr = (uintptr_t)haystack; \
-    uintptr_t unaligned_bytes = addr & (sizeof(integer_t) - 1); \
-    haystack -= unaligned_bytes;  /* align haystack to the first sizeof(integer_t) boundary <= original position */ \
-    chunk = load_aligned(haystack); \
-    n = bytes_to_first_match_ignoring_leading_n(get_test_vec(chunk), unaligned_bytes); \
-    check_chunk(); \
-    haystack += sizeof(integer_t); \
-    unaligned_bytes = 0; \
+    { /* first chunk which is possibly unaligned */  \
+        const uintptr_t addr = (uintptr_t)haystack; \
+        const uintptr_t unaligned_bytes = addr & (sizeof(integer_t) - 1); \
+        chunk = load_aligned(haystack - unaligned_bytes); /* this is an aligned load from the first aligned pos before haystack */ \
+        n = bytes_to_first_match_ignoring_leading_n(get_test_vec(chunk), unaligned_bytes); \
+        check_chunk(); \
+        haystack += sizeof(integer_t) - unaligned_bytes; \
+    } \
+\
     /* Iterate over aligned chunks */ \
     for (; haystack < limit; haystack += sizeof(integer_t)) { \
         chunk = load_aligned(haystack); \
