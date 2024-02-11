@@ -327,7 +327,7 @@ func bash_setup_func(shell_integration_dir string, argv []string, env map[string
 	}
 	argv = slices.Insert(argv, 1, `--posix`)
 
-	if bashrc := os.Getenv(`KITTY_RUNNING_BASH_INTEGRATION_TEST`); bashrc != `` {
+	if bashrc := os.Getenv(`KITTY_RUNNING_BASH_INTEGRATION_TEST`); bashrc != `` && os.Getenv("KITTY_RUNNING_SHELL_INTEGRATION_TEST") == "1" {
 		// prevent bash from sourcing /etc/profile which is not under our control
 		env[`KITTY_BASH_INJECT`] += ` posix`
 		env[`KITTY_BASH_POSIX_ENV`] = bashrc
