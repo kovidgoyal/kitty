@@ -5,7 +5,16 @@ from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
-from kitty.fast_data_types import CURSOR_BLOCK, VT_PARSER_BUFFER_SIZE, base64_decode, base64_encode, has_avx2, has_sse4_2, test_utf8_decode_to_sentinel
+from kitty.fast_data_types import (
+    CURSOR_BLOCK,
+    VT_PARSER_BUFFER_SIZE,
+    base64_decode,
+    base64_encode,
+    has_avx2,
+    has_sse4_2,
+    test_find_either_of_two_bytes,
+    test_utf8_decode_to_sentinel,
+)
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest, parse_bytes
@@ -279,6 +288,43 @@ class TestParser(BaseTest):
             pb(b'"\xe0\xa0"', '"\ufffd"')
             pb(b'"\xf0\x9f\x98"', '"\ufffd"')
             pb(b'"\xef\x93\x94\x95"', '"\uf4d4\ufffd"')
+
+    def test_find_either_of_two_bytes(self):
+
+        def test(buf, a, b, align_offset=0):
+            a, b = ord(a), ord(b)
+            sizes = [0]
+            if has_sse4_2:
+                sizes.append(2)
+            if has_avx2:
+                sizes.append(3)
+            expected = test_find_either_of_two_bytes(buf, a, b, 1)
+
+            for sz in sizes:
+                actual = test_find_either_of_two_bytes(buf, a, b, sz, align_offset)
+                self.ae(expected, actual, f'Failed for: {buf!r} at {sz=} and {align_offset=}')
+
+        q = 'abc'
+        for off in range(32):
+            test(q, '<', '>', off)
+            test(q, ' ', 'b', off)
+            test(q, '<', 'a', off)
+            test(q, '<', 'b', off)
+            test(q, 'c', '>', off)
+
+        def tests(buf, a, b):
+            for sz in (0, 16, 32, 64, 79):
+                buf = (' ' * sz) + buf
+                for align_offset in range(32):
+                    test(buf, a, b, align_offset)
+        tests("", '<', '>')
+        tests("a", '\0', '\0')
+        tests("a", '<', '>')
+        tests("dsdfsfa", '1', 'a')
+        tests("xa", 'a', 'a')
+        tests("bbb", 'a', '1')
+        tests("bba", 'a', '<')
+        tests("baa", '>', 'a')
 
     def test_esc_codes(self):
         s = self.create_screen()
