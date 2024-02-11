@@ -103,10 +103,42 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     utf8_decoder_free(&d);
     return Py_BuildValue("OOi", found_sentinel ? Py_True : Py_False, ans, p);
 }
+
+static PyObject*
+test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
+    RAII_PY_BUFFER(buf);
+    int which_function = 0, align_offset = 0;
+    const uint8_t*(*func)(const uint8_t*, const size_t sz, const uint8_t, const uint8_t) = find_either_of_two_bytes;
+    unsigned char a, b;
+    if (!PyArg_ParseTuple(args, "s*BB|ii", &buf, &a, &b, &which_function, &align_offset)) return NULL;
+    switch (which_function) {
+        case 1:
+            func = find_either_of_two_bytes_scalar; break;
+        case 2:
+            func = find_either_of_two_bytes_128; break;
+        case 3:
+            func = find_either_of_two_bytes_256; break;
+    }
+    uint8_t *abuf;
+    if (posix_memalign((void**)&abuf, 64, 256 + buf.len) != 0) {
+        return PyErr_NoMemory();
+    }
+    uint8_t *p = abuf;
+    memset(p, '<', 64 + align_offset); p += 64 + align_offset;
+    memcpy(p, buf.buf, buf.len);
+    memset(p + buf.len, '>', 64);
+    const uint8_t *ans = func(p, buf.len, a, b);
+    free(abuf);
+    if (ans == NULL) return PyLong_FromLong(-1);
+    unsigned long long n = ans - p;
+    return PyLong_FromUnsignedLongLong(n);
+}
+
 // }}}
 
 static PyMethodDef module_methods[] = {
     METHODB(test_utf8_decode_to_sentinel, METH_VARARGS),
+    METHODB(test_find_either_of_two_bytes, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
