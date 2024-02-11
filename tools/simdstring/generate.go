@@ -81,7 +81,7 @@ func (ans *ISA) add_x86_regs() {
 	if ans.GeneralPurposeRegisterSize == 64 {
 		ans.add_regs(ans.GeneralPurposeRegisterSize, `R8`, `R9`, `R10`, `R11`, `R12`, `R13`, `R14`, `R15`)
 	}
-	// CX is used by the assembler in some modes
+	// CX is used for shift and rotate instructions
 	ans.Registers = append(ans.Registers, Register{`CX`, ans.GeneralPurposeRegisterSize, true})
 	// SP is the stack pointer used by the Go runtime
 	ans.Registers = append(ans.Registers, Register{`SP`, ans.GeneralPurposeRegisterSize, true})
@@ -177,6 +177,21 @@ func (f *Function) Reg() Register {
 		}
 	}
 	panic(fmt.Sprint("No available general purpose registers, used registers: ", strings.Join(b, ", ")))
+}
+
+func (f *Function) RegForShifts() Register {
+	if f.ISA.Goarch == ARM64 {
+		return f.Reg()
+	}
+	for _, r := range f.ISA.Registers {
+		if r.Name == "CX" {
+			if f.UsedRegisters[r] {
+				panic("The register for shifts is already used")
+			}
+			return r
+		}
+	}
+	panic("No register for shifts found")
 }
 
 func (f *Function) Vec(size ...int) Register {
@@ -389,9 +404,9 @@ func encode_cmgt16b(a, b, dest Register) (ans uint32) {
 	return 0x271<<21 | b.ARMId()<<16 | 0xd<<10 | a.ARMId()<<5 | dest.ARMId()
 }
 
-func (f *Function) CountBytesToFirstMatchDestructive(vec, ans Register) {
+func (f *Function) MaskForCountDestructive(vec, ans Register) {
+	// vec is clobbered by this function
 	f.Comment("Count the number of bytes to the first 0xff byte and put the result in", ans)
-	defer f.ReleaseReg(vec)
 	if f.ISA.Goarch == ARM64 {
 		// See https://community.arm.com/arm-community-blogs/b/infrastructure-solutions-blog/posts/porting-x86-vector-bitmask-optimizations-to-arm-neon
 		f.Comment("Go assembler doesn't support the shrn instruction, below we have: shrn.8b", vec, vec, "#4")
@@ -399,12 +414,6 @@ func (f *Function) CountBytesToFirstMatchDestructive(vec, ans Register) {
 		f.instr("WORD", fmt.Sprintf("$0x%x", shrn8b_immediate4(vec, vec)))
 		f.instr("FMOVD", "F"+vec.Name[1:], ans)
 		f.AddTrailingComment("Extract the lower 64 bits from", vec, "and put them into", ans)
-		f.instr("RBIT", ans, ans)
-		f.AddTrailingComment("reverse bits in", ans)
-		f.instr("CLZ", ans, ans)
-		f.AddTrailingComment(ans, "= count of leading zeros in", ans)
-		f.instr("UBFX", "$2", ans, "$30", ans)
-		f.AddTrailingComment(ans, ">>= 2 (divide by 4)")
 	} else {
 		if f.ISA.Bits == 128 {
 			f.instr("PMOVMSKB", vec, ans)
@@ -412,8 +421,49 @@ func (f *Function) CountBytesToFirstMatchDestructive(vec, ans Register) {
 			f.instr("VPMOVMSKB", vec, ans)
 		}
 		f.AddTrailingComment(ans, "= mask of the highest bit in every byte in", vec)
-		f.CountTrailingZeros(ans, ans)
 	}
+}
+
+func (f *Function) ShiftSelfRight(self, amt any) {
+	op := "SHRQ"
+	if f.ISA.Goarch == ARM64 {
+		op = "LSR"
+	}
+	switch v := amt.(type) {
+	case Register:
+		if f.ISA.Goarch != ARM64 && v.Name != "CX" {
+			panic("On Intel only the CX register can be used for shifts")
+		}
+		f.instr(op, v, self)
+	default:
+		f.instr(op, val_repr_for_arithmetic(v), self)
+	}
+}
+
+func (f *Function) ShiftMaskRightDestructive(mask, amt Register) {
+	// The amt register is clobbered by this function
+	if f.ISA.Goarch == ARM64 {
+		f.Comment("The mask has 4 bits per byte, so multiply", amt, "by 4")
+		f.ShiftSelfRight(amt, 2)
+	}
+	f.ShiftSelfRight(mask, amt)
+}
+
+func (f *Function) CountLeadingZeroBytesInMask(src, ans Register) {
+	if f.ISA.Goarch == ARM64 {
+		f.CountTrailingZeros(src, ans)
+		f.instr("UBFX", "$2", ans, "$30", ans)
+		f.AddTrailingComment(ans, ">>= 2 (divide by 4)")
+	} else {
+		f.CountTrailingZeros(src, ans)
+	}
+}
+
+func (f *Function) CountBytesToFirstMatchDestructive(vec, ans Register) {
+	// vec is clobbered by this function
+	f.Comment("Count the number of bytes to the first 0xff byte and put the result in", ans)
+	f.MaskForCountDestructive(vec, ans)
+	f.CountLeadingZeroBytesInMask(ans, ans)
 	f.BlankLine()
 }
 
@@ -1294,70 +1344,59 @@ func (isa *ISA) LEA() string {
 	return "LEAQ"
 }
 
-func (s *State) index_func(f *Function, test_bytes_impl func(bytes_to_test, test_ans Register)) {
+func (s *State) index_func(f *Function, test_bytes func(bytes_to_test, test_ans Register)) {
 	pos := f.Reg()
 	test_ans := f.Vec()
+	bytes_to_test := f.Vec()
 	data_start := f.LoadParam(`data`)
 	limit := f.LoadParamLen(`data`)
 	f.AddToSelf(limit, data_start)
+	mask := f.Reg()
 
 	vecsz := f.ISA.Bits / 8
 	f.CopyRegister(data_start, pos)
 
-	test_bytes := func(aligned bool) {
-		vec := f.Vec()
-		defer f.ReleaseReg(vec)
-		if aligned {
-			f.LoadPointerAligned(pos, vec)
-		} else {
-			f.LoadPointerUnaligned(pos, vec)
-		}
-		test_bytes_impl(vec, test_ans)
-		f.JumpIfNonZero(test_ans, "byte_found")
-	}
-
-	f.Comment("Load next vector of possibly unaligned bytes and check if either of the bytes are present in it")
-	test_bytes(false)
-
 	func() {
-		f.Comment("Increment address to aligned position")
-		unaligned_bytes := f.Reg()
-		defer f.ReleaseReg(unaligned_bytes)
-		f.CopyRegister(data_start, pos)
-		f.AndSelf(unaligned_bytes, vecsz-1)
-		f.Comment(unaligned_bytes, "now has the number of unaligned bytes")
-		f.AddToSelf(pos, vecsz)
-		f.SubtractFromSelf(pos, unaligned_bytes)
-		f.Comment("")
+		extra_bytes := f.RegForShifts()
+		defer f.ReleaseReg(extra_bytes)
+		f.CopyRegister(data_start, extra_bytes)
+		f.AndSelf(extra_bytes, vecsz-1)
+		f.SubtractFromSelf(pos, extra_bytes)
+		f.Comment(fmt.Sprintf("%s is now aligned to a %d byte boundary so loading from it is safe", pos, vecsz))
+		f.LoadPointerAligned(pos, bytes_to_test)
+		test_bytes(bytes_to_test, test_ans)
+		f.MaskForCountDestructive(test_ans, mask)
+		f.Comment("We need to shift out the possible extra bytes at the start of the string caused by the unaligned read")
+		f.ShiftMaskRightDestructive(mask, extra_bytes)
+		f.JumpIfNonZero(mask, "byte_found")
 	}()
 
-	f.Comment("Now loop over aligned blocks (this will repeat checking of", vecsz, "- unaligned_bytes initial bytes, but better than a branch")
+	f.Comment("Now loop over aligned blocks")
 	fail := func() {
 		f.SetReturnValue("ans", -1)
 		f.Return()
 	}
 	f.Label("loop_start")
+	f.AddToSelf(pos, vecsz)
 	f.JumpIfLessThan(pos, limit, "loop_body")
 	fail()
 	f.Label("loop_body")
-	test_bytes(true)
-	f.AddToSelf(pos, vecsz)
+	f.LoadPointerAligned(pos, bytes_to_test)
+	test_bytes(bytes_to_test, test_ans)
+	f.MaskForCountDestructive(test_ans, mask)
+	f.JumpIfNonZero(mask, "byte_found")
 	f.JumpTo("loop_start")
 
-	func() {
-		f.Comment("Get the result from", test_ans, "and return it")
-		f.Label("byte_found")
-		res := f.Reg()
-		defer f.ReleaseReg(res)
-		f.CountBytesToFirstMatchDestructive(test_ans, res)
-		f.AddToSelf(res, pos)
-		f.JumpIfLessThan(res, limit, "result_in_bounds")
-		fail()
-		f.Label("result_in_bounds")
-		f.SubtractFromSelf(res, data_start)
-		f.SetReturnValue("ans", res)
-		f.Return()
-	}()
+	f.Comment("Get the result from", mask, "and return it")
+	f.Label("byte_found")
+	f.CountLeadingZeroBytesInMask(mask, mask)
+	f.AddToSelf(mask, pos)
+	f.JumpIfLessThan(mask, limit, "result_in_bounds")
+	fail()
+	f.Label("result_in_bounds")
+	f.SubtractFromSelf(mask, data_start)
+	f.SetReturnValue("ans", mask)
+	f.Return()
 
 }
 
