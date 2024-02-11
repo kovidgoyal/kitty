@@ -290,17 +290,16 @@ class TestParser(BaseTest):
             pb(b'"\xef\x93\x94\x95"', '"\uf4d4\ufffd"')
 
     def test_find_either_of_two_bytes(self):
+        sizes = []
+        if has_sse4_2:
+            sizes.append(2)
+        if has_avx2:
+            sizes.append(3)
+        sizes.append(0)
 
         def test(buf, a, b, align_offset=0):
             a, b = ord(a), ord(b)
-            sizes = []
-            if has_sse4_2:
-                sizes.append(2)
-            if has_avx2:
-                sizes.append(3)
-            sizes.append(0)
-            expected = test_find_either_of_two_bytes(buf, a, b, 1)
-
+            expected = test_find_either_of_two_bytes(buf, a, b, 1, 0)
             for sz in sizes:
                 actual = test_find_either_of_two_bytes(buf, a, b, sz, align_offset)
                 self.ae(expected, actual, f'Failed for: {buf!r} at {sz=} and {align_offset=}')
