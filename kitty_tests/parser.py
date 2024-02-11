@@ -298,11 +298,11 @@ class TestParser(BaseTest):
         sizes.append(0)
 
         def test(buf, a, b, align_offset=0):
-            a, b = ord(a), ord(b)
-            expected = test_find_either_of_two_bytes(buf, a, b, 1, 0)
+            a_, b_ = ord(a), ord(b)
+            expected = test_find_either_of_two_bytes(buf, a_, b_, 1, 0)
             for sz in sizes:
-                actual = test_find_either_of_two_bytes(buf, a, b, sz, align_offset)
-                self.ae(expected, actual, f'Failed for: {buf!r} at {sz=} and {align_offset=}')
+                actual = test_find_either_of_two_bytes(buf, a_, b_, sz, align_offset)
+                self.ae(expected, actual, f'Failed for: {buf!r} {a=} {b=} at {sz=} and {align_offset=}')
 
         q = 'abc'
         for off in range(32):
