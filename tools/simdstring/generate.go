@@ -1053,24 +1053,11 @@ func (s *Function) Return() {
 }
 
 func (s *Function) end_function() {
-	v := strings.Split(runtime.Version()[2:], ".")[:2]
-	atoi := func(x string) (v int) {
-		if v, err := strconv.Atoi(x); err != nil {
-			panic(err)
-		} else {
-			return v
-		}
+	amt := 16
+	if s.Used256BitReg {
+		amt = 32
 	}
-	ver := struct {
-		major, minor int
-	}{atoi(v[0]), atoi(v[1])}
-	if s.ISA.Goarch == ARM64 || (ver.major > 1 || ver.minor > 21) {
-		amt := 16
-		if s.Used256BitReg {
-			amt = 32
-		}
-		s.instr(fmt.Sprintf("PCALIGN $%d\n", amt))
-	}
+	s.instr(fmt.Sprintf("PCALIGN $%d\n", amt))
 	s.Return()
 }
 
