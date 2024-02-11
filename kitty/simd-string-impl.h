@@ -212,7 +212,7 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 #define debug(...)
 #endif
 
-#if defined(SIMDE_ARCH_AARCH64)
+#if (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)
 // See https://community.arm.com/arm-community-blogs/b/infrastructure-solutions-blog/posts/porting-x86-vector-bitmask-optimizations-to-arm-neon
 
 static inline uint64_t
