@@ -42,9 +42,8 @@ static inline void utf8_decoder_free(UTF8Decoder *d) {
 // Pass a PyModule PyObject* as the argument. Must be called once at application startup
 bool init_simd(void* module);
 
-// Requires 31 bytes to the right of haystack to be readable. Returns pointer to
-// first position in haystack that contains either of the two chars or NULL if
-// not found.
+// Returns pointer to first position in haystack that contains either of the
+// two chars or NULL if not found.
 const uint8_t* find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
 
 // SIMD implementations, internal use
