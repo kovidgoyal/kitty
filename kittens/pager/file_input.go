@@ -71,7 +71,7 @@ func read_input(input_file *os.File, input_file_name string, input_channel chan<
 	if count_carriage_returns {
 		process_chunk = func(chunk []byte) {
 			for len(chunk) > 0 {
-				idx := simdstring.UnsafeIndexByte2(chunk, '\n', '\r')
+				idx := simdstring.IndexByte2(chunk, '\n', '\r')
 				if idx == -1 {
 					_, _ = output_buf.Write(chunk)
 					chunk = nil
