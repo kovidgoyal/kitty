@@ -296,7 +296,7 @@ FUNC(zero_last_n_bytes)(integer_t vec, const integer_t index, char n) {
 }
 
 #define find_match(haystack, sz, get_test_vec) { \
-    zero_upper(); \
+    /* zero_upper(); this is disabled as some buggy compilers re-order instructions causing the test result vec to be zero after the test */\
     const uint8_t* limit = haystack + sz; \
     integer_t chunk; int n; \
 \
