@@ -163,7 +163,7 @@ func RunShell(shell_cmd []string, shell_integration_env_var_val, cwd string) (er
 		shell_env = env
 	}
 	exe := shell_cmd[0]
-	if runtime.GOOS == "darwin" && os.Getenv("KITTY_RUNNING_BASH_INTEGRATION_TEST") != "" {
+	if runtime.GOOS == "darwin" && (os.Getenv("KITTY_RUNNING_SHELL_INTEGRATION_TEST") != "1" || os.Getenv("KITTY_RUNNING_BASH_INTEGRATION_TEST") != "") {
 		// ensure shell runs in login mode. On macOS lots of people use ~/.bash_profile instead of ~/.bashrc
 		// which means they expect the shell to run in login mode always. Le Sigh.
 		shell_cmd[0] = "-" + filepath.Base(shell_cmd[0])

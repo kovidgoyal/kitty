@@ -90,6 +90,7 @@ class ShellIntegration(BaseTest):
         cmd = cmd or shell
         cmd = shlex.split(cmd.format(**locals()))
         env = (setup_env or safe_env_for_running_shell)(cmd, home_dir, rc=rc, shell=shell, with_kitten=self.with_kitten)
+        env['KITTY_RUNNING_SHELL_INTEGRATION_TEST'] = '1'
         try:
             if self.with_kitten:
                 cmd = [kitten_exe(), 'run-shell', '--shell', shlex.join(cmd)]
