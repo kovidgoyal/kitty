@@ -5,6 +5,7 @@ package simdstring
 import (
 	"bytes"
 	"fmt"
+	"kitty/tools/utils"
 	"runtime"
 	"strings"
 	"testing"
@@ -119,21 +120,25 @@ func addressof_data(b []byte) uintptr {
 	return uintptr(unsafe.Pointer(&b[0]))
 }
 
-func aligned_slice(sz, alignment int) []byte {
-	ans := make([]byte, sz+alignment)
+func aligned_slice(sz, alignment int) ([]byte, []byte) {
+	ans := make([]byte, sz+alignment+512)
 	a := addressof_data(ans)
 	a &= uintptr(alignment - 1)
 	extra := uintptr(alignment) - a
-	return ans[extra : extra+uintptr(sz)]
+	utils.Memset(ans, '<')
+	utils.Memset(ans[extra+uintptr(sz):], '>')
+	return ans[extra : extra+uintptr(sz)], ans
 }
 
 func TestSIMDStringOps(t *testing.T) {
 	sizes := get_sizes(t)
-	test := func(haystack []byte, a, b byte) {
+	test := func(haystack []byte, a, b byte, dont_pad ...bool) {
 		var actual int
-		safe_haystack := append(bytes.Repeat([]byte{'<'}, 64), haystack...)
-		safe_haystack = append(safe_haystack, bytes.Repeat([]byte{'>'}, 64)...)
-		haystack = safe_haystack[64 : 64+len(haystack)]
+		if len(dont_pad) == 0 || !dont_pad[0] {
+			safe_haystack := append(bytes.Repeat([]byte{'<'}, 64), haystack...)
+			safe_haystack = append(safe_haystack, bytes.Repeat([]byte{'>'}, 64)...)
+			haystack = safe_haystack[64 : 64+len(haystack)]
+		}
 		expected := index_byte2_scalar(haystack, a, b)
 
 		for _, sz := range sizes {
@@ -144,21 +149,24 @@ func TestSIMDStringOps(t *testing.T) {
 				actual = index_byte2_asm_256(haystack, a, b)
 			}
 			if actual != expected {
-				t.Fatalf("Failed to find '%c' or '%c' in: %#v (%d != %d) at size: %d", a, b, string(haystack), expected, actual, sz)
+				t.Fatalf("Failed to find '%c' or '%c' in: %#v at align: %d (expected: %d != actual: %d) at size: %d",
+					a, b, string(haystack), addressof_data(haystack)&uintptr(sz-1), expected, actual, sz)
 			}
 		}
 
 	}
 	// test alignment issues
 	for sz := 0; sz < 32; sz++ {
-		q := aligned_slice(sz+3, 64)[sz:]
+		as, _ := aligned_slice(sz+3, 32)
+		q := as[sz:]
 		q[0] = 'a'
 		q[1] = 'b'
 		q[2] = 'c'
-		test(q, '<', '>')
-		test(q, '<', 'a')
-		test(q, '<', 'b')
-		test(q, 'c', '>')
+		test(q, '<', '>', true)
+		test(q, ' ', 'b', true)
+		test(q, '<', 'a', true)
+		test(q, '<', 'b', true)
+		test(q, 'c', '>', true)
 	}
 
 	tests := func(h string, a, b byte) {
