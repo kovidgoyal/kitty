@@ -424,10 +424,18 @@ func (f *Function) MaskForCountDestructive(vec, ans Register) {
 	}
 }
 
-func (f *Function) ShiftSelfRight(self, amt any) {
-	op := "SHRQ"
-	if f.ISA.Goarch == ARM64 {
-		op = "LSR"
+func (f *Function) shift_self(right bool, self, amt any) {
+	op := ""
+	if right {
+		op = "SHRQ"
+		if f.ISA.Goarch == ARM64 {
+			op = "LSR"
+		}
+	} else {
+		op = "SHLQ"
+		if f.ISA.Goarch == ARM64 {
+			op = "LSL"
+		}
 	}
 	switch v := amt.(type) {
 	case Register:
@@ -440,13 +448,31 @@ func (f *Function) ShiftSelfRight(self, amt any) {
 	}
 }
 
-func (f *Function) ShiftMaskRightDestructive(mask, amt Register) {
+func (f *Function) ShiftSelfRight(self, amt any) {
+	f.shift_self(true, self, amt)
+}
+
+func (f *Function) ShiftSelfLeft(self, amt any) {
+	f.shift_self(false, self, amt)
+}
+
+func (f *Function) ShiftMaskRightDestructive(mask, amt any) {
 	// The amt register is clobbered by this function
-	if f.ISA.Goarch == ARM64 {
-		f.Comment("The mask has 4 bits per byte, so multiply", amt, "by 4")
-		f.ShiftSelfRight(amt, 2)
+	switch n := amt.(type) {
+	case Register:
+		if f.ISA.Goarch == ARM64 {
+			f.Comment("The mask has 4 bits per byte, so multiply", n, "by 4")
+			f.ShiftSelfLeft(n, 2)
+		}
+		f.ShiftSelfRight(mask, n)
+	case int:
+		if f.ISA.Goarch == ARM64 {
+			n <<= 2
+		}
+		f.ShiftSelfRight(mask, n)
+	default:
+		panic(fmt.Sprintf("Cannot shift by: %s", amt))
 	}
-	f.ShiftSelfRight(mask, amt)
 }
 
 func (f *Function) CountLeadingZeroBytesInMask(src, ans Register) {
@@ -1101,6 +1127,15 @@ func (f *Function) AndSelf(self Register, val any) {
 	f.AddTrailingComment(self, "&=", val)
 }
 
+func (f *Function) NegateSelf(self Register) {
+	if f.ISA.Goarch == "ARM64" {
+		f.instr("NEG", self, self)
+	} else {
+		f.instr("NEGQ", self)
+	}
+	f.AddTrailingComment(self, "*= -1")
+}
+
 func (f *Function) AddToSelf(self Register, val any) {
 	f.instr(f.ISA.NativeAdd(), val_repr_for_arithmetic(val), self) // pos += sizeof(vec)
 	f.AddTrailingComment(self, "+=", val)
@@ -1379,7 +1414,9 @@ func (s *State) index_func(f *Function, test_bytes func(bytes_to_test, test_ans 
 		f.MaskForCountDestructive(test_ans, mask)
 		f.Comment("We need to shift out the possible extra bytes at the start of the string caused by the unaligned read")
 		f.ShiftMaskRightDestructive(mask, unaligned_bytes)
-		f.JumpIfNonZero(mask, "byte_found_in_mask")
+		f.JumpIfZero(mask, "loop_start")
+		f.CopyRegister(data_start, pos)
+		f.JumpTo("byte_found_in_mask")
 	}()
 
 	f.Comment("Now loop over aligned blocks")
