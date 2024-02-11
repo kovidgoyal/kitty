@@ -51,7 +51,7 @@ END_IGNORE_DIAGNOSTIC
 #define set_epi8 simde_mm_set_epi8
 #define add_epi8 simde_mm_add_epi8
 #define load_unaligned simde_mm_loadu_si128
-#define load_aligned simde_mm_load_si128
+#define load_aligned(x) simde_mm_load_si128((const integer_t*)(x))
 #define store_unaligned simde_mm_storeu_si128
 #define cmpeq_epi8 simde_mm_cmpeq_epi8
 #define cmplt_epi8 simde_mm_cmplt_epi8
@@ -98,7 +98,7 @@ FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
 #define set_epi8 simde_mm256_set_epi8
 #define add_epi8 simde_mm256_add_epi8
 #define load_unaligned simde_mm256_loadu_si256
-#define load_aligned simde_mm256_load_si256
+#define load_aligned(x) simde_mm256_load_si256((const integer_t*)(x))
 #define store_unaligned simde_mm256_storeu_si256
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
 #define cmpgt_epi8 simde_mm256_cmpgt_epi8
@@ -229,7 +229,7 @@ bytes_to_first_match(const integer_t vec) { const uint64_t m = movemask_arm128(v
 static inline int
 bytes_to_first_match_ignoring_leading_n(const integer_t vec, uintptr_t num_ignored) {
     uint64_t m = movemask_arm128(vec);
-    m >>= num_ignored >> 2;
+    m >>= num_ignored << 2;
     return m ? (__builtin_ctzll(m) >> 2) : -1;
 }
 
@@ -246,15 +246,19 @@ bytes_to_first_match(const integer_t vec) {
 
 static inline int
 bytes_to_first_match_ignoring_leading_n(const integer_t vec, uintptr_t num_ignored) {
-    num_ignored >>= 2;
-    simde__m128i v = simde_mm256_extracti128_si256(vec, 0);
-    uint64_t m = movemask_arm128(vec);
-    m >>= num_ignored;
-    if (m) return __builtin_ctzll(m) >> 2;
-    v = simde_mm256_extracti128_si256(vec, 1);
-    m = movemask_arm128(vec);
-    m >>= num_ignored;
-    return m ? (16 + (__builtin_ctzll(m) >> 2)) : -1;
+    uint64_t m;
+    int offset;
+    if (num_ignored < 16) {
+        m = ((uint64_t)movemask_arm128(simde_mm256_extracti128_si256(vec, 0))) >> (num_ignored << 2);
+        if (m) return (__builtin_ctzll(m) >> 2);
+        offset = 16 - num_ignored;
+        num_ignored = 0;
+    } else {
+        num_ignored -= 16;
+        offset = 0;
+    }
+    m = ((uint64_t)movemask_arm128(simde_mm256_extracti128_si256(vec, 1))) >> (num_ignored << 2);
+    return m ? (offset + (__builtin_ctzll(m) >> 2)) : -1;
 }
 #endif
 
@@ -285,36 +289,46 @@ FUNC(zero_last_n_bytes)(integer_t vec, const integer_t index, char n) {
     return andnot_si(mask, vec);
 }
 
-const uint8_t*
-FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
-    zero_upper();
-    const integer_t a_vec = set1_epi8(a), b_vec = set1_epi8(b);
-    const uint8_t* limit = haystack + sz;
-    integer_t chunk;
-
 #define check_chunk() { \
-    const int n = bytes_to_first_match(or_si(cmpeq_epi8(chunk, a_vec), cmpeq_epi8(chunk, b_vec))); \
     if (n > -1) { \
-        const uint8_t *ans = haystack + n; \
+        const uint8_t *ans = haystack + n + unaligned_bytes; \
         zero_upper(); \
         return ans < limit ? ans : NULL; \
     }}
 
-    // check the first possibly unaligned chunk
-    chunk = load_unaligned(haystack);
-    check_chunk();
-    const uintptr_t unaligned_leading_count = sizeof(integer_t) - (((uintptr_t)haystack) & (sizeof(integer_t) - 1));
-    haystack += unaligned_leading_count; // advance to the first aligned chunk
-
-    // Iterate over aligned chunks, this repeats checking of
-    // (sizeof(integer_t) - unaligned_leading_count) bytes, but better than a branch
-    for (; haystack < limit; haystack += sizeof(integer_t)) {
-        chunk = load_aligned((integer_t*)haystack);
-        check_chunk();
-    }
-    zero_upper();
-    return NULL;
+#define find_match(haystack, sz, get_test_vec) { \
+    zero_upper(); \
+    const uint8_t* limit = haystack + sz; \
+    integer_t chunk; int n; \
+\
+    const uintptr_t addr = (uintptr_t)haystack; \
+    uintptr_t unaligned_bytes = addr & (sizeof(integer_t) - 1); \
+    haystack -= unaligned_bytes;  /* align haystack to the first sizeof(integer_t) boundary <= original position */ \
+    chunk = load_aligned(haystack); \
+    n = bytes_to_first_match_ignoring_leading_n(get_test_vec(chunk), unaligned_bytes); \
+    check_chunk(); \
+    haystack += sizeof(integer_t); \
+    unaligned_bytes = 0; \
+    /* Iterate over aligned chunks */ \
+    for (; haystack < limit; haystack += sizeof(integer_t)) { \
+        chunk = load_aligned(haystack); \
+        n = bytes_to_first_match(get_test_vec(chunk)); \
+        check_chunk(); \
+    } \
+    zero_upper(); \
+    return NULL;\
 }
+
+const uint8_t*
+FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
+    if (!sz) return NULL;
+    const integer_t a_vec = set1_epi8(a), b_vec = set1_epi8(b);
+#define get_test_from_chunk(chunk) (or_si(cmpeq_epi8(chunk, a_vec), cmpeq_epi8(chunk, b_vec)))
+    find_match(haystack, sz, get_test_from_chunk);
+#undef get_test_from_chunk
+}
+
+#undef check_chunk
 
 #define output_increment sizeof(integer_t)/sizeof(uint32_t)
 
