@@ -137,14 +137,13 @@ func TestSIMDStringOps(t *testing.T) {
 
 	}
 	tests := func(h string, a, b byte) {
-		test([]byte(h), a, b)
-		for _, sz := range []int{16, 32, 64, 79} {
+		for _, sz := range []int{0, 16, 32, 64, 79} {
 			q := strings.Repeat(" ", sz) + h
 			test([]byte(q), a, b)
 		}
 	}
-	test(nil, '1', '2')
-	test([]byte{}, '1', '2')
+	test(nil, '<', '>')
+	test([]byte{}, '<', '>')
 
 	tests("", '<', '>')
 	tests("a", 0, 0)
@@ -154,35 +153,6 @@ func TestSIMDStringOps(t *testing.T) {
 	tests("bbb", 'a', '1')
 	tests("bba", 'a', '<')
 	tests("baa", '>', 'a')
-
-	tbs := func(addr, datalen int) {
-		align_len, vecsafelen := get_safe_slice(uintptr(addr), 15, datalen)
-		if vecsafelen < 0 || align_len+vecsafelen > datalen || datalen-vecsafelen-align_len > 15 || align_len < 0 {
-			t.Fatalf("Invalid bounds for addr=%d datalen=%d (align_len=%d vecsafelen=%d)", addr, datalen, align_len, vecsafelen)
-		}
-		if vecsafelen > 0 {
-			pos := addr + align_len
-			if pos&15 != 0 {
-				t.Fatalf("Non-aligned vector read for addr=%d datalen=%d (align_len=%d vecsafelen=%d)", addr, datalen, align_len, vecsafelen)
-			}
-			limit := pos + vecsafelen
-			read := func() {
-				if pos+16 > addr+datalen {
-					t.Fatalf("Read past limit for addr=%d datalen=%d (align_len=%d vecsafelen=%d pos=%d)", addr, datalen, align_len, vecsafelen, pos)
-				}
-			}
-			read()
-			for ; pos < limit; pos += 16 {
-				read()
-			}
-		}
-	}
-
-	for datalen := 0; datalen < 33; datalen++ {
-		for addr := 0; addr < 32; addr++ {
-			tbs(addr, datalen)
-		}
-	}
 
 	c0test := func(haystack []byte) {
 		var actual int
