@@ -289,12 +289,11 @@ FUNC(zero_last_n_bytes)(integer_t vec, const integer_t index, char n) {
     return andnot_si(mask, vec);
 }
 
-#define check_chunk() { \
-    if (n > -1) { \
-        const uint8_t *ans = haystack + n; \
-        zero_upper(); \
-        return ans < limit ? ans : NULL; \
-    }}
+#define check_chunk() if (n > -1) { \
+    const uint8_t *ans = haystack + n; \
+    zero_upper(); \
+    return ans < limit ? ans : NULL; \
+}
 
 #define find_match(haystack, sz, get_test_vec) { \
     zero_upper(); \
