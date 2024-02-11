@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"time"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 
@@ -34,19 +33,9 @@ func wait_for_file_to_grow(file_name string, limit int64) (err error) {
 	return
 }
 
-func aligned_slice(b []byte, alignment uintptr) []byte {
-	addr := uintptr(unsafe.Pointer(&b))
-	extra := addr & (alignment - 1)
-	if extra > 0 {
-		return b[alignment-extra:]
-	}
-	return b
-}
-
 func read_input(input_file *os.File, input_file_name string, input_channel chan<- input_line_struct, follow bool, count_carriage_returns bool) {
 	const buf_capacity = 8192
-	var buf_storage [buf_capacity + 128]byte // ensure we have an 64 byte aligned slice with at least 64 bytes after it
-	buf := aligned_slice(buf_storage[:], 64)[:buf_capacity]
+	buf := make([]byte, buf_capacity)
 	output_buf := strings.Builder{}
 	output_buf.Grow(buf_capacity)
 	var err error

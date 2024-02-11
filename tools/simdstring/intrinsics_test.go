@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unsafe"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -114,6 +115,18 @@ func get_sizes(t *testing.T) []int {
 	return sizes
 }
 
+func addressof_data(b []byte) uintptr {
+	return uintptr(unsafe.Pointer(&b[0]))
+}
+
+func aligned_slice(sz, alignment int) []byte {
+	ans := make([]byte, sz+alignment)
+	a := addressof_data(ans)
+	a &= uintptr(alignment - 1)
+	extra := uintptr(alignment) - a
+	return ans[extra : extra+uintptr(sz)]
+}
+
 func TestSIMDStringOps(t *testing.T) {
 	sizes := get_sizes(t)
 	test := func(haystack []byte, a, b byte) {
@@ -136,6 +149,18 @@ func TestSIMDStringOps(t *testing.T) {
 		}
 
 	}
+	// test alignment issues
+	for sz := 0; sz < 32; sz++ {
+		q := aligned_slice(sz+3, 64)[sz:]
+		q[0] = 'a'
+		q[1] = 'b'
+		q[2] = 'c'
+		test(q, '<', '>')
+		test(q, '<', 'a')
+		test(q, '<', 'b')
+		test(q, 'c', '>')
+	}
+
 	tests := func(h string, a, b byte) {
 		for _, sz := range []int{0, 16, 32, 64, 79} {
 			q := strings.Repeat(" ", sz) + h
