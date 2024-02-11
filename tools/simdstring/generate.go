@@ -621,6 +621,16 @@ func (f *Function) JumpIfLessThan(a, b Register, label string) {
 	f.AddTrailingComment("jump to:", label, "if", a, "<", b)
 }
 
+func (f *Function) JumpIfLessThanOrEqual(a, b Register, label string) {
+	f.compare(a, b)
+	if f.ISA.Goarch == ARM64 {
+		f.instr("BLE", label)
+	} else {
+		f.instr("JLE", label)
+	}
+	f.AddTrailingComment("jump to:", label, "if", a, "<=", b)
+}
+
 func (f *Function) JumpIfEqual(a, b Register, label string) {
 	f.compare(a, b)
 	if f.ISA.Goarch == ARM64 {
@@ -1350,6 +1360,7 @@ func (s *State) index_func(f *Function, test_bytes func(bytes_to_test, test_ans 
 	bytes_to_test := f.Vec()
 	data_start := f.LoadParam(`data`)
 	limit := f.LoadParamLen(`data`)
+	f.JumpIfZero(limit, "fail")
 	f.AddToSelf(limit, data_start)
 	mask := f.Reg()
 
@@ -1357,30 +1368,24 @@ func (s *State) index_func(f *Function, test_bytes func(bytes_to_test, test_ans 
 	f.CopyRegister(data_start, pos)
 
 	func() {
-		extra_bytes := f.RegForShifts()
-		defer f.ReleaseReg(extra_bytes)
-		f.CopyRegister(data_start, extra_bytes)
-		f.AndSelf(extra_bytes, vecsz-1)
-		f.SubtractFromSelf(pos, extra_bytes)
+		unaligned_bytes := f.RegForShifts()
+		defer f.ReleaseReg(unaligned_bytes)
+		f.CopyRegister(data_start, unaligned_bytes)
+		f.AndSelf(unaligned_bytes, vecsz-1)
+		f.SubtractFromSelf(pos, unaligned_bytes)
 		f.Comment(fmt.Sprintf("%s is now aligned to a %d byte boundary so loading from it is safe", pos, vecsz))
 		f.LoadPointerAligned(pos, bytes_to_test)
 		test_bytes(bytes_to_test, test_ans)
 		f.MaskForCountDestructive(test_ans, mask)
 		f.Comment("We need to shift out the possible extra bytes at the start of the string caused by the unaligned read")
-		f.ShiftMaskRightDestructive(mask, extra_bytes)
+		f.ShiftMaskRightDestructive(mask, unaligned_bytes)
 		f.JumpIfNonZero(mask, "byte_found_in_mask")
 	}()
 
 	f.Comment("Now loop over aligned blocks")
-	fail := func() {
-		f.SetReturnValue("ans", -1)
-		f.Return()
-	}
 	f.Label("loop_start")
 	f.AddToSelf(pos, vecsz)
-	f.JumpIfLessThan(pos, limit, "loop_body")
-	fail()
-	f.Label("loop_body")
+	f.JumpIfLessThanOrEqual(limit, pos, "fail")
 	f.LoadPointerAligned(pos, bytes_to_test)
 	test_bytes(bytes_to_test, test_ans)
 	f.JumpIfNonZero(test_ans, "byte_found_in_vec")
@@ -1392,13 +1397,13 @@ func (s *State) index_func(f *Function, test_bytes func(bytes_to_test, test_ans 
 	f.Label("byte_found_in_mask")
 	f.CountLeadingZeroBytesInMask(mask, mask)
 	f.AddToSelf(mask, pos)
-	f.JumpIfLessThan(mask, limit, "result_in_bounds")
-	fail()
-	f.Label("result_in_bounds")
+	f.JumpIfLessThanOrEqual(limit, mask, "fail")
 	f.SubtractFromSelf(mask, data_start)
 	f.SetReturnValue("ans", mask)
 	f.Return()
-
+	f.Label("fail")
+	f.SetReturnValue("ans", -1)
+	f.Return()
 }
 
 func (s *State) indexbyte2_body(f *Function) {
