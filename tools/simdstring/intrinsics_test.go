@@ -132,13 +132,12 @@ func aligned_slice(sz, alignment int) ([]byte, []byte) {
 
 func TestSIMDStringOps(t *testing.T) {
 	sizes := get_sizes(t)
-	test := func(haystack []byte, a, b byte, dont_pad ...bool) {
+	test := func(haystack []byte, a, b byte, align_offset int) {
 		var actual int
-		if len(dont_pad) == 0 || !dont_pad[0] {
-			safe_haystack := append(bytes.Repeat([]byte{'<'}, 64), haystack...)
-			safe_haystack = append(safe_haystack, bytes.Repeat([]byte{'>'}, 64)...)
-			haystack = safe_haystack[64 : 64+len(haystack)]
-		}
+		sh, _ := aligned_slice(len(haystack)+align_offset, 64)
+		sh = sh[align_offset:]
+		copy(sh, haystack)
+		haystack = sh
 		expected := index_byte2_scalar(haystack, a, b)
 
 		for _, sz := range sizes {
@@ -156,27 +155,25 @@ func TestSIMDStringOps(t *testing.T) {
 
 	}
 	// test alignment issues
+	q := []byte("abc")
 	for sz := 0; sz < 32; sz++ {
-		as, _ := aligned_slice(sz+3, 32)
-		q := as[sz:]
-		q[0] = 'a'
-		q[1] = 'b'
-		q[2] = 'c'
-		test(q, '<', '>', true)
-		test(q, ' ', 'b', true)
-		test(q, '<', 'a', true)
-		test(q, '<', 'b', true)
-		test(q, 'c', '>', true)
+		test(q, '<', '>', sz)
+		test(q, ' ', 'b', sz)
+		test(q, '<', 'a', sz)
+		test(q, '<', 'b', sz)
+		test(q, 'c', '>', sz)
 	}
 
 	tests := func(h string, a, b byte) {
 		for _, sz := range []int{0, 16, 32, 64, 79} {
 			q := strings.Repeat(" ", sz) + h
-			test([]byte(q), a, b)
+			for sz := 0; sz < 32; sz++ {
+				test([]byte(q), a, b, sz)
+			}
 		}
 	}
-	test(nil, '<', '>')
-	test([]byte{}, '<', '>')
+	test(nil, '<', '>', 1)
+	test([]byte{}, '<', '>', 1)
 
 	tests("", '<', '>')
 	tests("a", 0, 0)
