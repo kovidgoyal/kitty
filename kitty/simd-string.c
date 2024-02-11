@@ -118,6 +118,10 @@ test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
             func = find_either_of_two_bytes_128; break;
         case 3:
             func = find_either_of_two_bytes_256; break;
+        case 0: break;
+        default:
+            PyErr_SetString(PyExc_ValueError, "Unknown which_function");
+            return NULL;
     }
     uint8_t *abuf;
     if (posix_memalign((void**)&abuf, 64, 256 + buf.len) != 0) {
