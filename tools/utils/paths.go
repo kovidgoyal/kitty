@@ -7,7 +7,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"io/fs"
-	not_rand "math/rand"
+	not_rand "math/rand/v2"
 	"os"
 	"os/exec"
 	"os/user"
@@ -137,7 +137,7 @@ var CacheDir = sync.OnceValue(func() (cache_dir string) {
 		}
 		candidate = filepath.Join(Expanduser(candidate), "kitty")
 	}
-	os.MkdirAll(candidate, 0o755)
+	_ = os.MkdirAll(candidate, 0o755)
 	return candidate
 })
 

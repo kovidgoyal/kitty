@@ -11,7 +11,7 @@ import (
 	"io"
 	"kitty"
 	"math"
-	not_rand "math/rand"
+	not_rand "math/rand/v2"
 	"os"
 	"path/filepath"
 	"strings"

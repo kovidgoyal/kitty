@@ -6,9 +6,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strings"
-	"sync"
 	"time"
 
 	"kitty/tools/cli"
@@ -114,16 +113,11 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 	return
 }
 
-var rand_src = sync.OnceValue(func() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
-})
-
 func random_string_of_bytes(n int, alphabet string) string {
 	b := make([]byte, n)
 	al := len(alphabet)
-	src := rand_src()
 	for i := 0; i < n; i++ {
-		b[i] = alphabet[src.Intn(al)]
+		b[i] = alphabet[rand.IntN(al)]
 	}
 	return utils.UnsafeBytesToString(b)
 }
@@ -158,13 +152,12 @@ func unicode() (r result, err error) {
 func ascii_with_csi() (r result, err error) {
 	const sz = 1024*1024 + 17
 	out := make([]byte, 0, sz+48)
-	src := rand_src()
 	chunk := ""
 	for len(out) < sz {
-		q := src.Intn(100)
+		q := rand.IntN(100)
 		switch {
 		case (q < 10):
-			chunk = random_string_of_bytes(src.Intn(72)+1, ascii_printable)
+			chunk = random_string_of_bytes(rand.IntN(72)+1, ascii_printable)
 		case (10 <= q && q < 30):
 			chunk = "\x1b[m\x1b[?1h\x1b[H"
 		case (30 <= q && q < 40):
