@@ -712,6 +712,13 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     if src in ('kitty/simd-string-128.c', 'kitty/simd-string-256.c'):
         if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
             ans.append('-msse4.2' if '128' in src else '-mavx2')
+            if '256' in src:
+                # We have manual vzeroupper so prevent compiler from emitting it causing duplicates
+                if is_gcc(env.cc):
+                    ans.append('-mno-vzeroupper')
+                else:
+                    ans.append('-mllvm')
+                    ans.append('-x86-use-vzeroupper=0')
         elif env.binary_arch.isa != ISA.ARM64:
             ans.append('-DKITTY_NO_SIMD')
     elif src.startswith('3rdparty/base64/lib/arch/'):
