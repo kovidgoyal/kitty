@@ -281,9 +281,9 @@ def cross_line(buf: SSByteArray, width: int, height: int, left: bool = True, lev
 
 
 @supersampled()
-def cross_shade(buf: SSByteArray, width: int, height: int, rotate: bool = False, density_factor: int = 2) -> None:
-    line_thickness = width // 7
-    delta = int(density_factor * line_thickness)
+def cross_shade(buf: SSByteArray, width: int, height: int, rotate: bool = False, num_of_lines: int = 7) -> None:
+    line_thickness = width // num_of_lines
+    delta = int(2 * line_thickness)
     y1, y2 = (height, 0) if rotate else (0, height)
     for x in range(0, width, delta):
         thick_line(buf, width, height, line_thickness, (0 + x, y1), (width + x, y2))
