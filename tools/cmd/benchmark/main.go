@@ -57,10 +57,10 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 		return term.WriteAllString(data)
 	}
 	state := loop.TerminalStateOptions{Alternate_screen: !opts.WithScrollback}
-	if err = write_with_retry(state.SetStateEscapeCodes()); err != nil {
+	if err = write_with_retry(state.SetStateEscapeCodes() + loop.DECTCEM.EscapeCodeToReset()); err != nil {
 		return
 	}
-	defer func() { _ = write_with_retry(state.ResetStateEscapeCodes() + reset) }()
+	defer func() { _ = write_with_retry(state.ResetStateEscapeCodes() + loop.DECTCEM.EscapeCodeToSet() + reset) }()
 	const count = 3
 
 	const clear_screen = "\x1b[m\x1b[H\x1b[2J"
