@@ -43,7 +43,6 @@ END_IGNORE_DIAGNOSTIC
 #endif
 #define integer_t CONCAT_EXPAND(CONCAT_EXPAND(simde__m, KITTY_SIMD_LEVEL), i)
 #define shift_right_by_bytes128 simde_mm_srli_si128
-#define zero_last_n_bytes FUNC(zero_last_n_bytes)
 #define is_zero FUNC(is_zero)
 
 #if KITTY_SIMD_LEVEL == 128
@@ -71,6 +70,7 @@ END_IGNORE_DIAGNOSTIC
 #define subtract_saturate_epu8 simde_mm_subs_epu8
 #define subtract_epi8 simde_mm_sub_epi8
 #define create_zero_integer simde_mm_setzero_si128
+#define create_all_ones_integer() simde_mm_set1_epi64x(-1)
 #define sum_bytes sum_bytes_128
 #define zero_upper()
 
@@ -132,6 +132,7 @@ w(left, sixteen_bytes, 16)
 #define shift_left_by_bits16 simde_mm256_slli_epi16
 #define shift_right_by_bits32 simde_mm256_srli_epi32
 #define create_zero_integer simde_mm256_setzero_si256
+#define create_all_ones_integer() simde_mm256_set1_epi64x(-1)
 #define numbered_bytes() set_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 #define reverse_numbered_bytes() simde_mm256_setr_epi8(31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 
@@ -300,10 +301,10 @@ bytes_to_first_match_ignoring_leading_n(const integer_t vec, const uintptr_t num
 // }}}
 
 static inline integer_t
-FUNC(zero_last_n_bytes)(integer_t vec, const integer_t index, char n) {
-    const integer_t threshold = set1_epi8(n);
-    const integer_t mask = cmpgt_epi8(threshold, index);
-    return andnot_si(mask, vec);
+zero_last_n_bytes(const integer_t vec, const char n) {
+    integer_t mask = create_all_ones_integer();
+    mask = shift_left_by_bytes(mask, n);
+    return and_si(mask, vec);
 }
 
 #define check_chunk() if (n > -1) { \
@@ -496,7 +497,6 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
     }
     const integer_t esc_vec = set1_epi8(0x1b);
     const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3), numbered = numbered_bytes();
-    const integer_t reverse_numbered = reverse_numbered_bytes();
     const uint8_t *limit = src_data + src_len, *p = src_data, *start_of_current_chunk = src_data;
     bool sentinel_found = false;
     unsigned chunk_src_sz = 0;
@@ -517,7 +517,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
             if (!chunk_src_sz) continue;
         } else d->num_consumed += chunk_src_sz;
 
-        if (chunk_src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, reverse_numbered, sizeof(integer_t) - chunk_src_sz);
+        if (chunk_src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
 
         num_of_trailing_bytes = 0;
         bool check_for_trailing_bytes = !sentinel_found;
@@ -583,7 +583,7 @@ start_classification:
             chunk_src_sz -= num_of_trailing_bytes;
             d->num_consumed -= num_of_trailing_bytes;
             if (!chunk_src_sz) { abort_with_invalid_utf8(); }
-            vec = zero_last_n_bytes(vec, reverse_numbered, sizeof(integer_t) - chunk_src_sz);
+            vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
             goto start_classification;
         }
         // Only ASCII chars should have corresponding byte of counts == 0
@@ -746,10 +746,10 @@ start_classification:
 #undef subtract_saturate_epu8
 #undef subtract_epi8
 #undef create_zero_integer
+#undef create_all_ones_integer
 #undef shuffle_epi8
 #undef numbered_bytes
 #undef reverse_numbered_bytes
-#undef zero_last_n_bytes
 #undef sum_bytes
 #undef is_zero
 #undef zero_upper
