@@ -1153,10 +1153,6 @@ func (s *Function) OutputASM(w io.Writer) {
 	s.print_signature(w)
 	fmt.Fprintf(w, "\nTEXT ·%s(SB), NOSPLIT, $0-%d\n", s.Name, s.Size)
 
-	if s.Used256BitReg {
-		fmt.Fprintln(w, "\tVZEROUPPER // zero upper bits of AVX registers to avoid dependencies when switching between SSE and AVX code")
-	}
-
 	has_trailing_return := false
 	for _, i := range s.Instructions {
 		if len(i) == 0 {
