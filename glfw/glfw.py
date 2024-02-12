@@ -90,7 +90,7 @@ class Env:
 
     @property
     def is_gcc(self) -> bool:
-        return '(GCC)' in self.cc_version_string
+        return self.cc_version_string.startswith('gcc ')
 
     def copy(self) -> 'Env':
         ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
