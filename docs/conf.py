@@ -211,10 +211,10 @@ def commit_role(
     ' Link to a github commit '
     try:
         commit_id = subprocess.check_output(
-            f'git rev-list --max-count=1 --skip=# {text}'.split()).decode('utf-8').strip()
+            f'git rev-list --max-count=1 {text}'.split()).decode('utf-8').strip()
     except Exception:
         msg = inliner.reporter.error(
-            f'GitHub commit id "{text}" not recognized.', line=lineno)
+            f'git commit id "{text}" not recognized.', line=lineno)
         prb = inliner.problematic(rawtext, rawtext, msg)
         return [prb], [msg]
     url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
