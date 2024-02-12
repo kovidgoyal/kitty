@@ -43,7 +43,7 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 Detailed list of changes
 -------------------------------------
 
-0.32.2 [future]
+0.32.2 [2023-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - kitten @ load-config: Allow (re)loading kitty.conf via remote control
