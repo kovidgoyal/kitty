@@ -281,6 +281,21 @@ def cross_line(buf: SSByteArray, width: int, height: int, left: bool = True, lev
 
 
 @supersampled()
+def cross_shade(buf: SSByteArray, width: int, height: int, rotate: bool = False, density_factor: int = 4) -> None:
+    line_thickness = buf.supersample_factor * thickness(1)
+    delta = int(density_factor * line_thickness)
+
+    if rotate:
+        for x in range(0, width, delta):
+            thick_line(buf, width, height, line_thickness, (0 + x, height), (width + x, 0))
+            thick_line(buf, width, height, line_thickness, (0 - x, height), (width - x, 0))
+    else:
+        for x in range(0, width, delta):
+            thick_line(buf, width, height, line_thickness, (0 + x, 0), (width + x, height))
+            thick_line(buf, width, height, line_thickness, (0 - x, 0), (width - x, height))
+
+
+@supersampled()
 def half_cross_line(buf: SSByteArray, width: int, height: int, which: str = 'tl', level: int = 1) -> None:
     thickness_in_pixels = thickness(level) * buf.supersample_factor
     my = (height - 1) // 2
@@ -926,6 +941,8 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '🮝': [shade, p(mask, p(corner_triangle, corner='top-right'))],
     '🮞': [shade, p(mask, p(corner_triangle, corner='bottom-right'))],
     '🮟': [shade, p(mask, p(corner_triangle, corner='bottom-left'))],
+    '🮘': [cross_shade],
+    '🮙': [p(cross_shade, rotate=True)],
 
     '▔': [p(eight_bar, horizontal=True)],
     '▕': [p(eight_bar, which=7)],
