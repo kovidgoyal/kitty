@@ -30,7 +30,7 @@ to build kitty with your changes.
 
 .. note::
    If you plan to run kitty from source long-term, there are a couple of
-   caveats to be aware of. You should occassionally run ``./dev.sh deps``
+   caveats to be aware of. You should occasionally run ``./dev.sh deps``
    to have the dependencies re-downloaded as they are updated periodically.
    Also, the built kitty executable assumes it will find source in whatever
    directory you first ran :code:`./dev.sh build` in. If you move/rename the
