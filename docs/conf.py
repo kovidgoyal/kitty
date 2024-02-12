@@ -220,7 +220,7 @@ def commit_role(
     url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
     set_classes(options)
     short_id = subprocess.check_output(
-        f'git rev-list --max-count=1 --abbrev-commit --skip=# {commit_id}'.split()).decode('utf-8').strip()
+        f'git rev-list --max-count=1 --abbrev-commit {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
     return [node], []
 # }}}
