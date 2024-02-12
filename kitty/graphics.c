@@ -1541,7 +1541,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         ABRT("EINVAL", "Frame height %u larger than image height: %u", load_data->height, img->height);
     if (is_new_frame && cache_size(self) + load_data->data_sz > self->storage_limit * 5) {
         remove_images(self, trim_predicate, img->internal_id);
-        if (is_new_frame && cache_size(self) + load_data->data_sz > self->storage_limit * 5)
+        if (cache_size(self) + load_data->data_sz > self->storage_limit * 5)
             ABRT("ENOSPC", "Cache size exceeded cannot add new frames");
     }
 
