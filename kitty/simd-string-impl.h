@@ -61,18 +61,6 @@ END_IGNORE_DIAGNOSTIC
 #define andnot_si simde_mm_andnot_si128
 #define movemask_epi8 simde_mm_movemask_epi8
 #define extract_lower_quarter_as_chars simde_mm_cvtepu8_epi32
-#define shift_right_by_bytes(x, n) simde_mm_slli_si128(x, n)
-#define shift_right_by_one_byte(x) shift_right_by_bytes(x, 1)
-#define shift_right_by_two_bytes(x) shift_right_by_bytes(x, 2)
-#define shift_right_by_four_bytes(x) shift_right_by_bytes(x, 4)
-#define shift_right_by_eight_bytes(x) shift_right_by_bytes(x, 8)
-#define shift_right_by_sixteen_bytes(x) shift_right_by_bytes(x, 16)
-#define shift_left_by_bytes(x, n) simde_mm_srli_si128(x, n)
-#define shift_left_by_one_byte(x) shift_left_by_bytes(x, 1)
-#define shift_left_by_two_bytes(x) shift_left_by_bytes(x, 2)
-#define shift_left_by_four_bytes(x) shift_left_by_bytes(x, 4)
-#define shift_left_by_eight_bytes(x) shift_left_by_bytes(x, 8)
-#define shift_left_by_sixteen_bytes(x) shift_left_by_bytes(x, 16)
 #define blendv_epi8 simde_mm_blendv_epi8
 #define shift_left_by_bits16 simde_mm_slli_epi16
 #define shift_right_by_bits32 simde_mm_srli_epi32
@@ -88,6 +76,34 @@ END_IGNORE_DIAGNOSTIC
 
 static inline int
 FUNC(is_zero)(const integer_t a) { return simde_mm_testz_si128(a, a); }
+
+#define GA(LA) LA(1) LA(2) LA(3) LA(4) LA(5) LA(6) LA(7) LA(8) LA(9) LA(10) LA(11) LA(12) LA(13) LA(14) LA(15)
+#define L(n) case n: return simde_mm_srli_si128(A, n);
+#define R(n) case n: return simde_mm_slli_si128(A, n);
+#define shift_left_by_bytes_macro(A, n) { switch(n) { default: return A; GA(L) } }
+#define shift_right_by_bytes_macro(A, n) { switch(n) { default: return A; GA(R) } }
+
+static inline integer_t shift_right_by_bytes(const integer_t A, unsigned n) { shift_right_by_bytes_macro(A, n) }
+static inline integer_t shift_left_by_bytes(const integer_t A, unsigned n) { shift_left_by_bytes_macro(A, n) }
+
+#define w(dir, word, num) static inline integer_t shift_##dir##_by_##word(const integer_t A) { shift_##dir##_by_bytes_macro(A, num); }
+
+w(right, one_byte, 1)
+w(right, two_bytes, 2)
+w(right, four_bytes, 4)
+w(right, eight_bytes, 8)
+w(right, sixteen_bytes, 16)
+w(left, one_byte, 1)
+w(left, two_bytes, 2)
+w(left, four_bytes, 4)
+w(left, eight_bytes, 8)
+w(left, sixteen_bytes, 16)
+#undef w
+#undef GA
+#undef L
+#undef R
+#undef shift_right_by_bytes_macro
+#undef shift_left_by_bytes_macro
 
 #else
 
