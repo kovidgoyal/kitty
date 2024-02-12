@@ -5,6 +5,7 @@
 import json
 import os
 import re
+import subprocess
 import sys
 from enum import Enum
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
@@ -79,10 +80,22 @@ class Env:
         self.vcs_rev = vcs_rev
         self.binary_arch = binary_arch
         self.native_optimizations = native_optimizations
+        self._cc_version_string = ''
+
+    @property
+    def cc_version_string(self) -> str:
+        if not self._cc_version_string:
+            self._cc_version_string = subprocess.check_output(self.cc + ['--version']).decode()
+        return self._cc_version_string
+
+    @property
+    def is_gcc(self) -> bool:
+        return '(GCC)' in self.cc_version_string
 
     def copy(self) -> 'Env':
         ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
         ans.all_headers = list(self.all_headers)
+        ans._cc_version_string = self._cc_version_string
         ans.sources = list(self.sources)
         ans.wayland_packagedir = self.wayland_packagedir
         ans.wayland_scanner = self.wayland_scanner

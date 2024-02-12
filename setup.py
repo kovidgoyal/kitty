@@ -431,16 +431,6 @@ def set_arches(flags: List[str], *arches: str) -> None:
         flags.extend(('-arch', arch))
 
 
-def is_gcc(cc: Iterable[str]) -> bool:
-
-    @lru_cache()
-    def f(cc: Tuple[str]) -> bool:
-        raw = subprocess.check_output(cc + ('--version',)).decode('utf-8').splitlines()[0]
-        return '(GCC)' in raw.split()
-
-    return f(tuple(cc))
-
-
 def init_env(
     debug: bool = False,
     sanitize: bool = False,
@@ -465,7 +455,7 @@ def init_env(
         print('CC:', cc, ccver)
     stack_protector = first_successful_compile(cc, '-fstack-protector-strong', '-fstack-protector')
     missing_braces = ''
-    if ccver < (5, 2) and is_gcc(cc):
+    if ccver < (5, 2):
         missing_braces = '-Wno-missing-braces'
     df = '-g3'
     float_conversion = ''
@@ -568,10 +558,13 @@ def init_env(
     if native_optimizations and ba.isa in (ISA.AMD64, ISA.X86):
         cflags.extend('-march=native -mtune=native'.split())
 
-    return Env(
+    ans = Env(
         cc, cppflags, cflags, ldflags, library_paths, binary_arch=ba, native_optimizations=native_optimizations,
         ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev,
     )
+    if verbose:
+        print(ans.cc_version_string)
+    return ans
 
 
 def kitty_env(args: Options) -> Env:
@@ -714,7 +707,7 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
             ans.append('-msse4.2' if '128' in src else '-mavx2')
             if '256' in src:
                 # We have manual vzeroupper so prevent compiler from emitting it causing duplicates
-                if is_gcc(env.cc):
+                if env.is_gcc:
                     ans.append('-mno-vzeroupper')
                 else:
                     ans.append('-mllvm')
@@ -1183,7 +1176,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
             sanitize_args = get_sanitize_args(env.cc, env.ccver)
             cflags.extend(sanitize_args)
             ldflags.extend(sanitize_args)
-            libs += ['-lasan'] if not is_macos and is_gcc(env.cc) else []
+            libs += ['-lasan'] if not is_macos and env.is_gcc else []
         else:
             cflags.append('-g')
         if args.profile:
