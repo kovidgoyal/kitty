@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from itertools import cycle
 
-from kitty.fast_data_types import base64_decode, base64_encode, load_png_data, shm_unlink, shm_write, xor_data
+from kitty.fast_data_types import base64_decode, base64_encode, load_png_data, shm_unlink, shm_write, xor_data64
 
 from . import BaseTest, parse_bytes
 
@@ -189,12 +189,12 @@ class TestGraphics(BaseTest):
             ckey = cycle(bytearray(skey))
             return bytes(bytearray(k ^ d for k, d in zip(ckey, bytearray(data))))
 
-        base_data = os.urandom(64)
-        key = os.urandom(len(base_data))
-        for base in (b'', base_data):
+        base_data = os.urandom(61)
+        key = os.urandom(64)
+        for base in (b'', base_data, base_data * 3):
             for extra in range(len(base_data)):
                 data = base + base_data[:extra]
-                self.assertEqual(xor_data(key, data), xor(key, data))
+                self.assertEqual(xor(key, data), xor_data64(key, data))
 
     def test_disk_cache(self):
         s = self.create_screen()

@@ -10,6 +10,12 @@
 #include "simd-string.h"
 static bool has_sse4_2 = false, has_avx2 = false;
 
+// xor_data64 {{{
+static void xor_data64_scalar(const uint8_t key[64], uint8_t* data, const size_t data_sz) { for (size_t i = 0; i < data_sz; i++) data[i] ^= key[i & 63]; }
+static void (*xor_data64_impl)(const uint8_t key[64], uint8_t* data, const size_t data_sz) = xor_data64_scalar;
+void xor_data64(const uint8_t key[64], uint8_t* data, const size_t data_sz) { xor_data64_impl(key, data, data_sz); }
+// }}}
+
 // find_either_of_two_bytes {{{
 static const uint8_t*
 find_either_of_two_bytes_scalar(const uint8_t *haystack, const size_t sz, const uint8_t x, const uint8_t y) {
@@ -188,6 +194,7 @@ init_simd(void *x) {
         A(has_avx2, True);
         find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
         utf8_decode_to_esc_impl = utf8_decode_to_esc_256;
+        xor_data64_impl = xor_data64_256;
     } else {
         A(has_avx2, False);
     }
@@ -195,6 +202,7 @@ init_simd(void *x) {
         A(has_sse4_2, True);
         if (find_either_of_two_bytes_impl == find_either_of_two_bytes_scalar) find_either_of_two_bytes_impl = find_either_of_two_bytes_128;
         if (utf8_decode_to_esc_impl == utf8_decode_to_esc_scalar) utf8_decode_to_esc_impl = utf8_decode_to_esc_128;
+        if (xor_data64_impl == xor_data64_scalar) xor_data64_impl = xor_data64_128;
     } else {
         A(has_sse4_2, False);
     }
