@@ -199,6 +199,7 @@ class TestGraphics(BaseTest):
     def test_disk_cache(self):
         s = self.create_screen()
         dc = s.grman.disk_cache
+        dc.small_hole_threshold = 0
         data = {}
 
         def key_as_bytes(key):
@@ -222,6 +223,13 @@ class TestGraphics(BaseTest):
             for key, val in data.items():
                 self.ae(dc.get(key_as_bytes(key)), val)
 
+        def reset(small_hole_threshold=0):
+            nonlocal dc, data, s
+            s = self.create_screen()
+            dc = s.grman.disk_cache
+            dc.small_hole_threshold = small_hole_threshold
+            data = {}
+
         for i in range(25):
             self.assertIsNone(add(i, f'{i}' * i))
 
@@ -235,6 +243,7 @@ class TestGraphics(BaseTest):
             check_data()
             self.assertRaises(KeyError, dc.get, key_as_bytes(x))
             self.assertEqual(sz, dc.size_on_disk())
+        self.assertEqual(sz, dc.size_on_disk())
         for x in ('xy', 'C'*4, 'B'*6, 'A'*8):
             add(x, x)
             self.assertTrue(dc.wait_for_write())
@@ -287,6 +296,27 @@ class TestGraphics(BaseTest):
 
         dc.remove_from_ram(clear_predicate)
         self.assertEqual(dc.num_cached_in_ram(), 0)
+
+        reset(512)
+        self.assertIsNone(add(1, '1' * 1024))
+        self.assertIsNone(add(2, '2' * 1024))
+        dc.wait_for_write()
+        sz = dc.size_on_disk()
+        remove(1)
+        self.ae(sz, dc.size_on_disk())
+        self.assertIsNone(add(3, '3' * 800))
+        dc.wait_for_write()
+        self.ae(sz, dc.size_on_disk())
+        self.assertIsNone(add(4, '4' * 100))
+        sz += 100
+        dc.wait_for_write()
+        self.ae(sz, dc.size_on_disk())
+        check_data()
+        remove(4)
+        self.assertIsNone(add(5, '5' * 10))
+        sz += 10
+        dc.wait_for_write()
+        self.ae(sz, dc.size_on_disk())
 
     def test_suppressing_gr_command_responses(self):
         s, g, pl, sl = load_helpers(self)
