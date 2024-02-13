@@ -116,6 +116,9 @@ const (
 	GRT_delete_by_cell_zindex // q
 	GRT_free_by_cell_zindex   // Q
 
+	GRT_delete_by_range // r
+	GRT_free_by_range   // R
+
 	GRT_delete_by_column // x
 	GRT_free_by_column   // X
 

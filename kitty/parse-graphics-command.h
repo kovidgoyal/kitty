@@ -183,12 +183,13 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
         if (g.delete_action != 'A' && g.delete_action != 'C' &&
             g.delete_action != 'F' && g.delete_action != 'I' &&
             g.delete_action != 'N' && g.delete_action != 'P' &&
-            g.delete_action != 'Q' && g.delete_action != 'X' &&
-            g.delete_action != 'Y' && g.delete_action != 'Z' &&
-            g.delete_action != 'a' && g.delete_action != 'c' &&
-            g.delete_action != 'f' && g.delete_action != 'i' &&
-            g.delete_action != 'n' && g.delete_action != 'p' &&
-            g.delete_action != 'q' && g.delete_action != 'x' &&
+            g.delete_action != 'Q' && g.delete_action != 'R' &&
+            g.delete_action != 'X' && g.delete_action != 'Y' &&
+            g.delete_action != 'Z' && g.delete_action != 'a' &&
+            g.delete_action != 'c' && g.delete_action != 'f' &&
+            g.delete_action != 'i' && g.delete_action != 'n' &&
+            g.delete_action != 'p' && g.delete_action != 'q' &&
+            g.delete_action != 'r' && g.delete_action != 'x' &&
             g.delete_action != 'y' && g.delete_action != 'z') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for delete_action: 0x%x",

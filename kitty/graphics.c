@@ -2006,6 +2006,13 @@ id_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize 
 }
 
 static bool
+id_range_filter_func(const ImageRef *ref UNUSED, Image *img, const void *data, CellPixelSize cell UNUSED) {
+    const GraphicsCommand *g = data;
+    return img->client_id && g->x_offset <= img->client_id && img->client_id <= g->y_offset;
+}
+
+
+static bool
 number_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
     if (g->image_number && img->client_number == g->image_number) return !g->placement_id || ref->client_id == g->placement_id;
@@ -2059,6 +2066,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
         case 0:
         D('a', 'A', NULL, clear_filter_func_noncell);
         G('i', 'I', id_filter_func);
+        G('r', 'R', id_range_filter_func);
         G('p', 'P', point_filter_func);
         G('q', 'Q', point3d_filter_func);
         G('x', 'X', x_filter_func);

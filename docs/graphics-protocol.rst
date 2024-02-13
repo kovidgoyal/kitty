@@ -637,7 +637,7 @@ terminal may apply other heuristics (but it doesn't have to).
 It is important to distinguish between virtual image placements and real images
 displayed on top of Unicode placeholders. Virtual placements are invisible and only play
 the role of prototypes for real images. Virtual placements can be deleted by a
-deletion command only when the `d` key is equal to ``i``, ``I``, ``n`` or ``N``.
+deletion command only when the `d` key is equal to ``i``, ``I``, ``r``, ``R``, ``n`` or ``N``.
 The key values ``a``, ``c``, ``p``, ``q``, ``x``, ``y``, ``z`` and their capital
 variants never affect virtual placements because they do not have a physical
 location on the screen.
@@ -729,13 +729,14 @@ scrollback buffer. The values of the ``x`` and ``y`` keys are the same as cursor
 Value of ``d``       Meaning
 =================    ============
 ``a`` or ``A``       Delete all placements visible on screen
-``i`` or ``I``       Delete all images with the specified id, specified using the ``i`` key. If you specify a ``p`` key for the placement                      id as well, then only the placement with the specified image id and placement id will be deleted.
+``i`` or ``I``       Delete all images with the specified id, specified using the ``i`` key. If you specify a ``p`` key for the placement                          id as well, then only the placement with the specified image id and placement id will be deleted.
 ``n`` or ``N``       Delete newest image with the specified number, specified using the ``I`` key. If you specify a ``p`` key for the
                      placement id as well, then only the placement with the specified number and placement id will be deleted.
 ``c`` or ``C``       Delete all placements that intersect with the current cursor position.
 ``f`` or ``F``       Delete animation frames.
 ``p`` or ``P``       Delete all placements that intersect a specific cell, the cell is specified using the ``x`` and ``y`` keys
 ``q`` or ``Q``       Delete all placements that intersect a specific cell having a specific z-index. The cell and z-index is specified using the ``x``, ``y`` and ``z`` keys.
+``r`` or ``R``       Delete all images whose id is greater than or equal to the value of the ``x`` key and less than or equal to the value of the ``y`` (added in kitty version 0.33.0).
 ``x`` or ``X``       Delete all placements that intersect the specified column, specified using the ``x`` key.
 ``y`` or ``Y``       Delete all placements that intersect the specified row, specified using the ``y`` key.
 ``z`` or ``Z``       Delete all placements that have the specified z-index, specified using the ``z`` key.
@@ -1083,9 +1084,11 @@ Key      Value                 Default    Description
 **Keys for deleting images**
 -----------------------------------------------------------
 ``d``    Single character.     ``a``      What to delete.
-         ``(a, A, c, C, n, N,
-         i, I, p, P, q, Q, x,
-         X, y, Y, z, Z)``.
+         ``(
+         a, A, c, C, n, N,
+         i, I, p, P, q, Q, r,
+         R, x, X, y, Y, z, Z
+         )``.
 =======  ====================  =========  =================
 
 
