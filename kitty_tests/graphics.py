@@ -1016,6 +1016,13 @@ class TestGraphics(BaseTest):
         put_image(s, cw, ch, z=9)
         delete('Z', z=9)
         self.ae(s.grman.image_count, 0)
+        put_image(s, cw, ch, id=1)
+        put_image(s, cw, ch, id=2)
+        put_image(s, cw, ch, id=3)
+        delete('R', y=2)
+        self.ae(s.grman.image_count, 1)
+        delete('R', x=3, y=3)
+        self.ae(s.grman.image_count, 0)
         self.assertEqual(s.grman.disk_cache.total_size, 0)
 
         # test put + delete + put

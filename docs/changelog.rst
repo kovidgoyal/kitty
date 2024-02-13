@@ -46,6 +46,8 @@ Detailed list of changes
 0.33.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Graphics protocol: Add a new delete mode for deleting images whose ids fall within a range. Useful for bulk deletion (:iss:`7080`)
+
 - Keyboard protocol: Fix the :kbd:`Enter`, :kbd:`Tab` and :kbd:`Backspace` keys
   generating spurious release events even when report all keys as escape codes
   is not set (:iss:`7136`)
