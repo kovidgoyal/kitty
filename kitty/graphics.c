@@ -27,11 +27,14 @@ PyTypeObject GraphicsManager_Type;
 #define RAII_CoalescedFrameData(name, initializer) __attribute__((cleanup(cfd_free))) CoalescedFrameData name = initializer
 
 // caching {{{
-#define CACHE_KEY_BUFFER_SIZE 32
+#define member_size(type, member) sizeof(((type *)0)->member)
+#define CACHE_KEY_BUFFER_SIZE (member_size(ImageAndFrame, image_id) + member_size(ImageAndFrame, frame_id))
 
 static size_t
 cache_key(const ImageAndFrame x, char *key) {
-    return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:%x", x.image_id, x.frame_id);
+    memcpy(key, &x.image_id, sizeof(x.image_id));
+    memcpy(key + sizeof(x.image_id), &x.frame_id, sizeof(x.frame_id));
+    return CACHE_KEY_BUFFER_SIZE;
 }
 #define CK(x) key, cache_key(x, key)
 
