@@ -7,6 +7,7 @@
 #pragma once
 #include "data-types.h"
 #include "simd-string.h"
+#include <stdalign.h>
 
 #ifndef KITTY_SIMD_LEVEL
 #define KITTY_SIMD_LEVEL 128
@@ -19,6 +20,7 @@
 #define NOSIMD { fatal("No SIMD implementations for this CPU"); }
 bool FUNC(utf8_decode_to_esc)(UTF8Decoder *d UNUSED, const uint8_t *src UNUSED, size_t src_sz UNUSED) NOSIMD
 const uint8_t* FUNC(find_either_of_two_bytes)(const uint8_t *haystack UNUSED, const size_t sz UNUSED, const uint8_t a UNUSED, const uint8_t b UNUSED) NOSIMD
+void FUNC(xor_data64)(const uint8_t key[64], uint8_t* data, const size_t data_sz);
 #undef NOSIMD
 #else
 
@@ -52,11 +54,13 @@ END_IGNORE_DIAGNOSTIC
 #define load_unaligned simde_mm_loadu_si128
 #define load_aligned(x) simde_mm_load_si128((const integer_t*)(x))
 #define store_unaligned simde_mm_storeu_si128
+#define store_aligned(dest, vec) simde_mm_store_si128((integer_t*)dest, vec)
 #define cmpeq_epi8 simde_mm_cmpeq_epi8
 #define cmplt_epi8 simde_mm_cmplt_epi8
 #define cmpgt_epi8 simde_mm_cmpgt_epi8
 #define or_si simde_mm_or_si128
 #define and_si simde_mm_and_si128
+#define xor_si simde_mm_xor_si128
 #define andnot_si simde_mm_andnot_si128
 #define movemask_epi8 simde_mm_movemask_epi8
 #define extract_lower_quarter_as_chars simde_mm_cvtepu8_epi32
@@ -118,11 +122,13 @@ w(left, sixteen_bytes, 16)
 #define load_unaligned simde_mm256_loadu_si256
 #define load_aligned(x) simde_mm256_load_si256((const integer_t*)(x))
 #define store_unaligned simde_mm256_storeu_si256
+#define store_aligned(dest, vec) simde_mm256_store_si256((integer_t*)dest, vec)
 #define cmpeq_epi8 simde_mm256_cmpeq_epi8
 #define cmpgt_epi8 simde_mm256_cmpgt_epi8
 #define cmplt_epi8(a, b) cmpgt_epi8(b, a)
 #define or_si simde_mm256_or_si256
 #define and_si simde_mm256_and_si256
+#define xor_si simde_mm256_xor_si256
 #define andnot_si simde_mm256_andnot_si256
 #define movemask_epi8 simde_mm256_movemask_epi8
 #define extract_lower_half_as_chars simde_mm256_cvtepu8_epi32
@@ -306,6 +312,42 @@ zero_last_n_bytes(const integer_t vec, const char n) {
     mask = shift_left_by_bytes(mask, n);
     return and_si(mask, vec);
 }
+
+#define KEY_SIZE 64
+void
+FUNC(xor_data64)(const uint8_t key[KEY_SIZE], uint8_t* data, const size_t data_sz) {
+    // First process unaligned bytes at the start of data
+    const uintptr_t unaligned_bytes = KEY_SIZE - ((uintptr_t)data & (KEY_SIZE - 1));
+    if (data_sz <= unaligned_bytes) { for (unsigned i = 0; i < data_sz; i++) data[i] ^= key[i]; return; }
+    for (unsigned i = 0; i < unaligned_bytes; i++) data[i] ^= key[i];
+
+    // Rotate the key by unaligned_bytes
+    alignas(sizeof(integer_t)) char aligned_key[KEY_SIZE];
+    memcpy(aligned_key, key + unaligned_bytes, KEY_SIZE - unaligned_bytes);
+    memcpy(aligned_key + KEY_SIZE - unaligned_bytes, key, unaligned_bytes);
+
+    const integer_t v1 = load_aligned(aligned_key), v2 = load_aligned(aligned_key + sizeof(integer_t));
+#if KITTY_SIMD_LEVEL == 128
+    const integer_t v3 = load_aligned(aligned_key + 2*sizeof(integer_t)), v4 = load_aligned(aligned_key + 3 * sizeof(integer_t));
+#endif
+    // Process KEY_SIZE aligned chunks using SIMD
+    integer_t d;
+    uint8_t *p = data + unaligned_bytes, *limit = data + data_sz;
+    const uintptr_t trailing_bytes = (uintptr_t)limit & (KEY_SIZE - 1);
+    limit -= trailing_bytes;
+#define do_one(which) d = load_aligned(p); store_aligned(p, xor_si(which, d)); p += sizeof(integer_t);
+    while (p < limit) {
+        do_one(v1); do_one(v2);
+#if KITTY_SIMD_LEVEL == 128
+        do_one(v3); do_one(v4);
+#endif
+    }
+#undef do_one
+    // Process remaining trailing_bytes
+    for (unsigned i = 0; i < trailing_bytes; i++) limit[i] ^= aligned_key[i];
+    zero_upper(); return;
+}
+#undef KEY_SIZE
 
 #define check_chunk() if (n > -1) { \
     const uint8_t *ans = haystack + n; \
@@ -716,11 +758,13 @@ start_classification:
 #undef load_unaligned
 #undef load_aligned
 #undef store_unaligned
+#undef store_aligned
 #undef cmpeq_epi8
 #undef cmplt_epi8
 #undef cmpgt_epi8
 #undef or_si
 #undef and_si
+#undef xor_si
 #undef andnot_si
 #undef movemask_epi8
 #undef CONCAT

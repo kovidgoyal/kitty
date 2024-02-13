@@ -11,6 +11,7 @@
 #include "disk-cache.h"
 #include "safe-wrappers.h"
 #include "kitty-uthash.h"
+#include "simd-string.h"
 #include "loop-utils.h"
 #include "fast-file-copy.h"
 #include "threading.h"
@@ -56,17 +57,6 @@ typedef struct {
     Holes holes;
     unsigned long long total_size;
 } DiskCache;
-
-static void
-xor_data(const uint8_t* restrict key, const size_t key_sz, uint8_t* restrict data, const size_t data_sz) {
-    size_t unaligned_sz = data_sz % key_sz;
-    size_t aligned_sz = data_sz - unaligned_sz;
-    for (size_t offset = 0; offset < aligned_sz; offset += key_sz) {
-        for (size_t i = 0; i < key_sz; i++) data[offset + i] ^= key[i];
-    }
-    for (size_t i = 0; i < unaligned_sz; i++) data[aligned_sz + i] ^= key[i];
-}
-
 
 void
 free_cache_entry(CacheEntry *e) {
@@ -285,7 +275,7 @@ find_cache_entry_to_write(DiskCache *self) {
                 s->data = NULL;
                 self->currently_writing.data_sz = s->data_sz;
                 self->currently_writing.pos_in_cache_file = -1;
-                xor_data(s->encryption_key, sizeof(s->encryption_key), self->currently_writing.data, s->data_sz);
+                xor_data64(s->encryption_key, self->currently_writing.data, s->data_sz);
                 self->currently_writing.hash_keylen = MIN(s->hash_keylen, MAX_KEY_SIZE);
                 memcpy(self->currently_writing.hash_key, s->hash_key, self->currently_writing.hash_keylen);
                 find_hole_to_use(self, self->currently_writing.data_sz);
@@ -612,11 +602,11 @@ read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allo
     if (s->data) { memcpy(data, s->data, s->data_sz); }
     else if (self->currently_writing.data && self->currently_writing.hash_key && self->currently_writing.hash_keylen == key_sz && memcmp(self->currently_writing.hash_key, key, key_sz) == 0) {
         memcpy(data, self->currently_writing.data, s->data_sz);
-        xor_data(s->encryption_key, sizeof(s->encryption_key), data, s->data_sz);
+        xor_data64(s->encryption_key, data, s->data_sz);
     }
     else {
         read_from_cache_entry(self, s, data);
-        xor_data(s->encryption_key, sizeof(s->encryption_key), data, s->data_sz);
+        xor_data64(s->encryption_key, data, s->data_sz);
     }
     if (store_in_ram && !s->data && s->data_sz) {
         void *copy = malloc(s->data_sz);
@@ -697,16 +687,15 @@ PYWRAP(ensure_state) {
     Py_RETURN_NONE;
 }
 
-PYWRAP(xor_data) {
+PYWRAP(xor_data64) {
     (void) self;
     const char *key, *data;
     Py_ssize_t keylen, data_sz;
-    PA("y#y#", &key, &keylen, &data, &data_sz);
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, data_sz);
+    PA("s#s#", &key, &keylen, &data, &data_sz);
+    if (keylen != 64) { PyErr_SetString(PyExc_TypeError, "key must be 64 bytes long"); return NULL; }
+    PyObject *ans = PyBytes_FromStringAndSize(data, data_sz);
     if (ans == NULL) return NULL;
-    void *dest = PyBytes_AS_STRING(ans);
-    memcpy(dest, data, data_sz);
-    xor_data((const uint8_t*)key, keylen, dest, data_sz);
+    xor_data64((const uint8_t*)key, (uint8_t*)PyBytes_AS_STRING(ans), data_sz);
     return ans;
 }
 
@@ -848,7 +837,7 @@ PyTypeObject DiskCache_Type = {
 };
 
 static PyMethodDef module_methods[] = {
-    MW(xor_data, METH_VARARGS),
+    MW(xor_data64, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
