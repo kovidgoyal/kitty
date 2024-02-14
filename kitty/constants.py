@@ -194,7 +194,7 @@ def glfw_path(module: str) -> str:
 
 
 def detect_if_wayland_ok() -> bool:
-    if 'WAYLAND_DISPLAY' not in os.environ:
+    if 'WAYLAND_DISPLAY' not in os.environ and 'WAYLAND_SOCKET' not in os.environ:
         return False
     if 'KITTY_DISABLE_WAYLAND' in os.environ:
         return False
