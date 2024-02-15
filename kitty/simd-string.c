@@ -144,11 +144,49 @@ test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
     return PyLong_FromUnsignedLongLong(n);
 }
 
+static PyObject*
+test_xor64(PyObject *self UNUSED, PyObject *args) {
+    RAII_PY_BUFFER(buf);
+    RAII_PY_BUFFER(key);
+    int which_function = 0, align_offset = 0;
+    void (*func)(const uint8_t key[64], uint8_t* data, const size_t data_sz) = xor_data64;
+    if (!PyArg_ParseTuple(args, "s*s*BB|ii", &key, &buf, &which_function, &align_offset)) return NULL;
+    switch (which_function) {
+        case 1:
+            func = xor_data64_scalar; break;
+        case 2:
+            func = xor_data64_128; break;
+        case 3:
+            func = xor_data64_256; break;
+        case 0: break;
+        default:
+            PyErr_SetString(PyExc_ValueError, "Unknown which_function");
+            return NULL;
+    }
+    uint8_t *abuf;
+    if (posix_memalign((void**)&abuf, 64, 256 + buf.len) != 0) {
+        return PyErr_NoMemory();
+    }
+    uint8_t *p = abuf;
+    memset(p, '<', 64 + align_offset); p += 64 + align_offset;
+    memcpy(p, buf.buf, buf.len);
+    memset(p + buf.len, '>', 64);
+    func(key.buf, p, buf.len);
+    PyObject *ans = NULL;
+    for (int i = 0; i < 64 + align_offset; i++) if (abuf[i] != '<') { PyErr_SetString(PyExc_SystemError, "xor wrote before start of data region"); }
+    for (int i = 0; i < 64; i++) if (p[i + buf.len] != '>') { PyErr_SetString(PyExc_SystemError, "xor wrote after end of data region"); }
+    if (!PyErr_Occurred()) ans = PyBytes_FromStringAndSize((const char*)p, buf.len);
+    free(abuf);
+    return ans;
+}
+
+
 // }}}
 
 static PyMethodDef module_methods[] = {
     METHODB(test_utf8_decode_to_sentinel, METH_VARARGS),
     METHODB(test_find_either_of_two_bytes, METH_VARARGS),
+    METHODB(test_xor64, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

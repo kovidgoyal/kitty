@@ -5,7 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #define MAX_KEY_SIZE 16u
 
 #include "disk-cache.h"
@@ -687,18 +686,6 @@ PYWRAP(ensure_state) {
     Py_RETURN_NONE;
 }
 
-PYWRAP(xor_data64) {
-    (void) self;
-    const char *key, *data;
-    Py_ssize_t keylen, data_sz;
-    PA("s#s#", &key, &keylen, &data, &data_sz);
-    if (keylen != 64) { PyErr_SetString(PyExc_TypeError, "key must be 64 bytes long"); return NULL; }
-    PyObject *ans = PyBytes_FromStringAndSize(data, data_sz);
-    if (ans == NULL) return NULL;
-    xor_data64((const uint8_t*)key, (uint8_t*)PyBytes_AS_STRING(ans), data_sz);
-    return ans;
-}
-
 PYWRAP(read_from_cache_file) {
     Py_ssize_t pos = 0, sz = -1;
     PA("|nn", &pos, &sz);
@@ -834,11 +821,6 @@ PyTypeObject DiskCache_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_new = new_diskcache_object,
-};
-
-static PyMethodDef module_methods[] = {
-    MW(xor_data64, METH_VARARGS),
-    {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 INIT_TYPE(DiskCache)
