@@ -56,9 +56,14 @@ typedef struct {
 
 #define SAVEPOINTS_SZ 256
 
+typedef struct CharsetState {
+    uint32_t *zero, *one, *current, current_num;
+} CharsetState;
+
 typedef struct {
     Cursor cursor;
     bool mDECOM, mDECAWM, mDECSCNM;
+    CharsetState charset;
     bool is_valid;
 } Savepoint;
 
@@ -83,7 +88,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by;
+    unsigned int columns, lines, margin_top, margin_bottom, scrolled_by;
     double pending_scroll_pixels_x, pending_scroll_pixels_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
@@ -160,6 +165,7 @@ typedef struct {
         GraphicsManager *grman;
         Selections selections, url_ranges;
     } paused_rendering;
+    CharsetState charset;
 } Screen;
 
 
@@ -272,6 +278,7 @@ bool get_line_edge_colors(Screen *self, color_type *left, color_type *right);
 bool parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name, bool is_deccara);
 bool screen_pause_rendering(Screen *self, bool pause, int for_in_ms);
 void screen_check_pause_rendering(Screen *self, monotonic_t now);
+void screen_designate_charset(Screen *self, uint32_t which, uint32_t as);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
