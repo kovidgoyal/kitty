@@ -335,6 +335,7 @@ FUNC(xor_data64)(const uint8_t key[KEY_SIZE], uint8_t* data, const size_t data_s
     uint8_t *p = data + unaligned_bytes, *limit = data + data_sz;
     const uintptr_t trailing_bytes = (uintptr_t)limit & (KEY_SIZE - 1);
     limit -= trailing_bytes;
+    // p is aligned to first KEY_SIZE boundary >= data and limit is aligned to first KEY_SIZE boundary <= (data + data_sz)
 #define do_one(which) d = load_aligned(p); store_aligned(p, xor_si(which, d)); p += sizeof(integer_t);
     while (p < limit) {
         do_one(v1); do_one(v2);
