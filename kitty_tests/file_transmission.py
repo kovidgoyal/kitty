@@ -7,7 +7,7 @@ import shutil
 import stat
 import tempfile
 from collections import namedtuple
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from kittens.transfer.rsync import Differ, Hasher, Patcher, parse_ftc
@@ -188,7 +188,8 @@ class TestFileTransmission(BaseTest):
         self.orig_home = os.environ.get('HOME')
 
     def tearDown(self):
-        shutil.rmtree(self.tdir)
+        with suppress(FileNotFoundError):
+            shutil.rmtree(self.tdir)
         self.responses = []
         if self.orig_home is None:
             os.environ.pop('HOME', None)
