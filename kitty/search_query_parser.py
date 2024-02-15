@@ -6,6 +6,8 @@ from functools import lru_cache
 from gettext import gettext as _
 from typing import Callable, Iterator, List, NamedTuple, Optional, Sequence, Set, Tuple, TypeVar, Union
 
+from .types import run_once
+
 
 class ParseException(Exception):
 
@@ -115,13 +117,15 @@ class Token(NamedTuple):
     val: str
 
 
-lex_scanner = getattr(re, 'Scanner')([
-        (r'[()]', lambda x, t: Token(TokenType.OPCODE, t)),
-        (r'@.+?:[^")\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
-        (r'[^"()\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
-        (r'".*?((?<!\\)")', lambda x, t: Token(TokenType.QUOTED_WORD, t[1:-1])),
-        (r'\s+',              None)
-], flags=re.DOTALL)
+@run_once
+def lex_scanner() -> Callable[[str], Tuple[List[Token], str]]:
+    return getattr(re, 'Scanner')([  # type: ignore
+            (r'[()]', lambda x, t: Token(TokenType.OPCODE, t)),
+            (r'@.+?:[^")\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
+            (r'[^"()\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
+            (r'".*?((?<!\\)")', lambda x, t: Token(TokenType.QUOTED_WORD, t[1:-1])),
+            (r'\s+',              None)
+    ], flags=re.DOTALL).scan
 REPLACEMENTS = tuple(('\\' + x, chr(i + 1)) for i, x in enumerate('\\"()'))
 
 
@@ -174,7 +178,7 @@ class Parser:
         # lex scanner doesn't get confused. We put them back later.
         for k, v in REPLACEMENTS:
             expr = expr.replace(k, v)
-        tokens = lex_scanner.scan(expr)[0]
+        tokens = lex_scanner()(expr)[0]
 
         def unescape(x: str) -> str:
             for k, v in REPLACEMENTS:
