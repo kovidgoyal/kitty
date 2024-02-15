@@ -263,8 +263,10 @@ fonts to be freely resizable, so it does not support bitmapped fonts.
    symbols from it automatically, and you can tell it to do so explicitly in
    case it doesn't with the :opt:`symbol_map` directive::
 
-        # Nerd Fonts v2.3.3
+        # Use with Nerd Fonts v3
+        symbol_map U+E5FA-U+E62B, U+e700-U+e7c5, U+f000-U+f2e0, U+e200-U+e2a9, U+f0001-U+f1af0, U+e300-U+e3e3, U+f400-U+f532, U+2665, U+26A1, U+E0A0-U+E0A2, U+E0B0-U+E0B3, U+E0B4-U+E0C8, U+E0CC-U+E0D4, U+E0A3, U+E0CA, U+23FB-U+23FE, U+2B58, U+F300-U+F32F, U+E000-U+E00A, U+EA60-U+EBEB, U+E276C-U+2771, U+2500-U+259F Symbols Nerd Font Mono
 
+        # Use with Nerd Fonts v2.3.3
         symbol_map U+23FB-U+23FE,U+2665,U+26A1,U+2B58,U+E000-U+E00A,U+E0A0-U+E0A3,U+E0B0-U+E0D4,U+E200-U+E2A9,U+E300-U+E3E3,U+E5FA-U+E6AA,U+E700-U+E7C5,U+EA60-U+EBEB,U+F000-U+F2E0,U+F300-U+F32F,U+F400-U+F4A9,U+F500-U+F8FF,U+F0001-U+F1AF0 Symbols Nerd Font Mono
 
    Those Unicode symbols beyond the ``E000-F8FF`` Unicode private use area are
