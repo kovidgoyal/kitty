@@ -126,7 +126,11 @@ def lex_scanner() -> Callable[[str], Tuple[List[Token], str]]:
             (r'".*?((?<!\\)")', lambda x, t: Token(TokenType.QUOTED_WORD, t[1:-1])),
             (r'\s+',              None)
     ], flags=re.DOTALL).scan
-REPLACEMENTS = tuple(('\\' + x, chr(i + 1)) for i, x in enumerate('\\"()'))
+
+
+@run_once
+def replacements() -> Tuple[Tuple[str, str], ...]:
+    return tuple(('\\' + x, chr(i + 1)) for i, x in enumerate('\\"()'))
 
 
 class NoLocation(ParseException):
@@ -176,12 +180,12 @@ class Parser:
     def tokenize(self, expr: str) -> List[Token]:
         # Strip out escaped backslashes, quotes and parens so that the
         # lex scanner doesn't get confused. We put them back later.
-        for k, v in REPLACEMENTS:
+        for k, v in replacements():
             expr = expr.replace(k, v)
         tokens = lex_scanner()(expr)[0]
 
         def unescape(x: str) -> str:
-            for k, v in REPLACEMENTS:
+            for k, v in replacements():
                 x = x.replace(v, k[1:])
             return x
 
