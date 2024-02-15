@@ -2,11 +2,9 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import suppress
 from functools import partial
 
 from kitty.constants import is_macos, read_kitty_resource
@@ -35,8 +33,7 @@ class Rendering(BaseTest):
     def tearDown(self):
         self.test_ctx.__exit__()
         del self.sprites, self.cell_width, self.cell_height, self.test_ctx
-        with suppress(FileNotFoundError):
-            shutil.rmtree(self.tdir)
+        self.rmtree_ignoring_errors(self.tdir)
         super().tearDown()
 
     def test_sprite_map(self):

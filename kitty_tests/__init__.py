@@ -6,6 +6,7 @@ import io
 import os
 import select
 import shlex
+import shutil
 import signal
 import struct
 import sys
@@ -178,6 +179,12 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
     maxDiff = 2048
     is_ci = os.environ.get('CI') == 'true'
+
+    def rmtree_ignoring_errors(self, tdir):
+        try:
+            shutil.rmtree(tdir)
+        except FileNotFoundError as err:
+            print('Failed to delete the directory:', tdir, 'with error:', err, file=sys.stderr)
 
     def tearDown(self):
         set_options(None)
