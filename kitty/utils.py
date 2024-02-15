@@ -1153,7 +1153,8 @@ def sanitize_url_for_dispay_to_user(url: str) -> str:
         if purl.path:
             purl = purl._replace(path=unquote(purl.path))
         url = urlunparse(purl)
-    except Exception:
+    except Exception as e:
+        log_error(e)
         url = 'Unparseable URL: ' + url
     return url
 
