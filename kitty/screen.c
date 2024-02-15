@@ -14,6 +14,7 @@
 #include "state.h"
 #include "iqsort.h"
 #include "fonts.h"
+#include "charsets.h"
 #include "lineops.h"
 #include "hyperlink.h"
 #include <structmember.h>
@@ -187,6 +188,7 @@ screen_reset(Screen *self) {
     R(default_fg); R(default_bg); R(cursor_color); R(highlight_fg); R(highlight_bg);
 #undef R
     reset_vt_parser(self->vt_parser);
+    zero_at_ptr(&self->charset);
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_normal_keypad_mode(self);
     init_tabstops(self->main_tabstops, self->columns);
@@ -681,11 +683,46 @@ move_cursor_off_wide_char_trailer(Screen *self, text_loop_state *s) {
 }
 
 static void
+screen_change_charset(Screen *self, uint32_t which) {
+    switch(which) {
+        case 0:
+            self->charset.current_num = 0;
+            self->charset.current = self->charset.zero;
+            break;
+        case 1:
+            self->charset.current_num = 1;
+            self->charset.current = self->charset.one;
+            break;
+    }
+}
+
+void
+screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
+    switch(which) {
+        case 0:
+            self->charset.zero = translation_table(as);
+            if (self->charset.current_num == 0) self->charset.current = self->charset.zero;
+            break;
+        case 1:
+            self->charset.one = translation_table(as);
+            if (self->charset.current_num == 1) self->charset.current = self->charset.one;
+            break;
+    }
+}
+
+
+static uint32_t
+map_char(Screen *self, const uint32_t ch) {
+    return UNLIKELY(self->charset.current && ch < 256) ? self->charset.current[ch] : ch;
+}
+
+static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
-    if (cursor_on_wide_char_trailer(self, s) && ' ' <= chars[0] && chars[0] != DEL && !is_combining_char(chars[0])) move_cursor_off_wide_char_trailer(self, s);
+    const uint32_t first_char = map_char(self, chars[0]);
+    if (cursor_on_wide_char_trailer(self, s) && ' ' <= first_char && first_char != DEL && !is_combining_char(first_char)) move_cursor_off_wide_char_trailer(self, s);
     for (size_t i = 0; i < num_chars; i++) {
-        uint32_t ch = chars[i];
+        uint32_t ch = map_char(self, chars[i]);
         if (ch < ' ') {
             switch (ch) {
                 case BEL:
@@ -694,6 +731,10 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                     screen_backspace(self); break;
                 case HT:
                     screen_tab(self); break;
+                case SI:
+                    screen_change_charset(self, 0); break;
+                case SO:
+                    screen_change_charset(self, 1); break;
                 case LF:
                 case VT:
                 case FF:
@@ -1569,6 +1610,7 @@ screen_save_cursor(Screen *self) {
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->mDECSCNM = self->modes.mDECSCNM;
+    memcpy(&sp->charset, &self->charset, sizeof(self->charset));
     sp->is_valid = true;
 }
 
@@ -1646,11 +1688,13 @@ screen_restore_cursor(Screen *self) {
         screen_cursor_position(self, 1, 1);
         screen_reset_mode(self, DECOM);
         screen_reset_mode(self, DECSCNM);
+        zero_at_ptr(&self->charset);
     } else {
         set_mode_from_const(self, DECOM, sp->mDECOM);
         set_mode_from_const(self, DECAWM, sp->mDECAWM);
         set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
         cursor_copy_to(&(sp->cursor), self->cursor);
+        memcpy(&self->charset, &sp->charset, sizeof(self->charset));
         screen_ensure_bounds(self, false, false);
     }
 }

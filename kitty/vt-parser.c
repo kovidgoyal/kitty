@@ -96,6 +96,8 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
             case BEL: REPORT_COMMAND(screen_bell); break; \
             case BS: REPORT_COMMAND(screen_backspace); break; \
             case HT: REPORT_COMMAND(screen_tab); break; \
+            case SI: REPORT_COMMAND(screen_change_charset, 0); break; \
+            case SO: REPORT_COMMAND(screen_change_charset, 1); break; \
             case LF: case VT: case FF: REPORT_COMMAND(screen_linefeed); break; \
             case CR: REPORT_COMMAND(screen_carriage_return); break; \
             default: \
@@ -321,9 +323,7 @@ consume_esc(PS *self) {
                     case '0':
                     case 'U':
                     case 'V':
-                        // dont report this error as fish shell designates charsets for some unholy reason, creating lot of noise in the tests
-                        /* REPORT_ERROR("Ignoring attempt to designate charset as we support only UTF-8"); */
-                        break;
+                        CALL_ED2(screen_designate_charset, prev_ch - '(', ch); break;
                     default:
                         REPORT_ERROR("Unknown charset: 0x%x", ch); break;
                 }
