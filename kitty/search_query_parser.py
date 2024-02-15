@@ -182,7 +182,9 @@ class Parser:
         # lex scanner doesn't get confused. We put them back later.
         for k, v in replacements():
             expr = expr.replace(k, v)
-        tokens = lex_scanner()(expr)[0]
+        tokens, leftover = lex_scanner()(expr)
+        if leftover:
+            raise ParseException(_('Extra characters at end of search'))
 
         def unescape(x: str) -> str:
             for k, v in replacements():
