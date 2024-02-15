@@ -263,11 +263,12 @@ fonts to be freely resizable, so it does not support bitmapped fonts.
    symbols from it automatically, and you can tell it to do so explicitly in
    case it doesn't with the :opt:`symbol_map` directive::
 
-        # Nerd Fonts v2.3.3
+        # Nerd Fonts v3.1.0
 
-        symbol_map U+23FB-U+23FE,U+2665,U+26A1,U+2B58,U+E000-U+E00A,U+E0A0-U+E0A3,U+E0B0-U+E0D4,U+E200-U+E2A9,U+E300-U+E3E3,U+E5FA-U+E6AA,U+E700-U+E7C5,U+EA60-U+EBEB,U+F000-U+F2E0,U+F300-U+F32F,U+F400-U+F4A9,U+F500-U+F8FF,U+F0001-U+F1AF0 Symbols Nerd Font Mono
+        symbol_map U+e000-U+e00a,U+ea60-U+ebeb,U+e0a0-U+e0c8,U+e0ca,U+e0cc-U+e0d4,U+e200-U+e2a9,U+e300-U+e3e3,U+e5fa-U+e6b1,U+e700-U+e7c5,U+f000-U+f2e0,U+f300-f372,U+f400-U+f532,U+f0001-U+f1af0 Symbols Nerd Font Mono
 
-   Those Unicode symbols beyond the ``E000-F8FF`` Unicode private use area are
+   Those Unicode symbols not in the `Unicode private use areas
+   <https://en.wikipedia.org/wiki/Private_Use_Areas>`__ are
    not included.
 
 If your font is not listed in ``kitty +list-fonts`` it means that it is not
