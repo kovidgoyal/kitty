@@ -104,6 +104,8 @@ or another OS window::
     map ctrl+f3 detach_window tab-prev
     # moves the window into the tab at the left of the active tab
     map ctrl+f3 detach_window tab-left
+    # moves the window into a new tab created to the left of the active tab
+    map ctrl+f3 detach_window new-tab-left
     # asks which tab to move the window into
     map ctrl+f4 detach_window ask
 

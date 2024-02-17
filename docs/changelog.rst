@@ -55,6 +55,8 @@ Detailed list of changes
 - macOS: The command line args from :file:`macos-launch-services-cmdline` are now
   prefixed to any args from ``open --args`` rather than overwriting them (:iss:`7135`)
 
+- Allow specifying where the new tab is created for :ac:`detach_window` (:pull:`7134`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
