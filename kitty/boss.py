@@ -2675,10 +2675,9 @@ class Boss:
                         tm = q
                     else:
                         tm = self.os_window_map[target_os_window_id]
-                    if target_tab_id == 'new':
-                        target_tab = tm.new_tab(empty_tab=True)
-                    elif target_tab_id == 'new_as_neighbor':
-                        target_tab = tm.new_tab(empty_tab=True, as_neighbor=True)
+                    if target_tab_id.startswith('new'):
+                        # valid values for target_tab_id are 'new', 'new_after' and 'new_before'
+                        target_tab = tm.new_tab(empty_tab=True, location=(target_tab_id[4:] or 'last'))
                     else:
                         target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True)
                 else:
@@ -2769,11 +2768,13 @@ class Boss:
     def detach_window(self, *args: str) -> None:
         if not args or args[0] == 'new':
             return self._move_window_to(target_os_window_id='new')
-        if args[0] in ('new-tab', 'tab-prev', 'tab-left', 'tab-right', 'new-tab-neighbor'):
+        if args[0] in ('new-tab', 'tab-prev', 'tab-left', 'tab-right', 'new-tab-left', 'new-tab-right'):
             if args[0] == 'new-tab':
                 where = 'new'
-            elif args[0] == 'new-tab-neighbor':
-                where = 'new_as_neighbor'
+            elif args[0] == 'new-tab-right':
+                where = 'new_after'
+            elif args[0] == 'new-tab-left':
+                where = 'new_before'
             else:
                 where = args[0][4:]
             return self._move_window_to(target_tab_id=where)
