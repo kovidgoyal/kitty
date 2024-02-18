@@ -1384,20 +1384,13 @@ run_worker(void *p, ParseData *pd, bool flush) {
     PS *self = (PS*)screen->vt_parser->state;
     with_lock {
         self->read.sz += self->write.pending; self->write.pending = 0;
-#ifdef DUMP_COMMANDS
-        self->window_id = screen->window_id;
-        if (self->read.consumed < self->read.sz && pd->dump_callback) {
-            RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->buf + self->read.consumed, self->read.sz - self->read.consumed, PyBUF_READ));
-            PyObject *ret = PyObject_CallFunction(pd->dump_callback, "KsO", screen->window_id, "bytes", mv);
-            if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
-        }
-#endif
         if (self->read.pos < self->read.sz) {
             pd->time_since_new_input = pd->now - self->new_input_at;
             if (flush || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + 16 * 1024 > BUF_SZ) {
                 pd->input_read = true;
                 self->dump_callback = pd->dump_callback; self->now = pd->now;
                 self->screen = screen;
+                self->read.consumed = 0;
                 do {
                     end_with_lock; {
                         consume_input(self);
@@ -1406,11 +1399,15 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 } while (self->read.pos < self->read.sz);
                 self->new_input_at = 0;
                 if (self->read.consumed) {
+#ifdef DUMP_COMMANDS
+                    RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->buf + self->read.pos - self->read.consumed, self->read.consumed, PyBUF_READ));
+                    PyObject *ret = PyObject_CallFunction(pd->dump_callback, "KsO", screen->window_id, "bytes", mv);
+                    if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
+#endif
                     pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
                     self->read.sz -= MIN(self->read.sz, self->read.consumed);
                     if (self->read.sz) memmove(self->buf, self->buf + self->read.consumed, self->read.sz);
-                    self->read.consumed = 0;
                 }
             }
         }
