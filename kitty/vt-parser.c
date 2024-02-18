@@ -1384,7 +1384,8 @@ run_worker(void *p, ParseData *pd, bool flush) {
     PS *self = (PS*)screen->vt_parser->state;
     with_lock {
         self->read.sz += self->write.pending; self->write.pending = 0;
-        if (self->read.pos < self->read.sz) {
+        pd->has_pending_input = self->read.pos < self->read.sz;
+        if (pd->has_pending_input) {
             pd->time_since_new_input = pd->now - self->new_input_at;
             if (flush || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + 16 * 1024 > BUF_SZ) {
                 pd->input_read = true;

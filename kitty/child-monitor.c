@@ -443,7 +443,7 @@ do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
         if (screen->paused_rendering.expires_at) {
             set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
         } else set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
-    }
+    } else if (pd.has_pending_input) set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
     return pd.input_read;
 }
 

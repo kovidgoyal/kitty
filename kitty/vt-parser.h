@@ -20,7 +20,7 @@ typedef struct ParseData {
     PyObject *dump_callback;
     monotonic_t now;
 
-    bool input_read, write_space_created;
+    bool input_read, write_space_created, has_pending_input;
     monotonic_t time_since_new_input;
 } ParseData;
 
