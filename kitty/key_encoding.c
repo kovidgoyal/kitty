@@ -176,9 +176,9 @@ encode_function_key(const KeyEvent *ev, char *output) {
         }
         if (!ev->report_text) {
             switch(key_number) {
-                case GLFW_FKEY_ENTER: SIMPLE("\r");
-                case GLFW_FKEY_BACKSPACE: SIMPLE("\x7f");
-                case GLFW_FKEY_TAB: SIMPLE("\t");
+                case GLFW_FKEY_ENTER: if (ev->action == RELEASE) return -1; SIMPLE("\r");
+                case GLFW_FKEY_BACKSPACE: if (ev->action == RELEASE) return -1; SIMPLE("\x7f");
+                case GLFW_FKEY_TAB: if (ev->action == RELEASE) return -1; SIMPLE("\t");
                 default: break;
             }
         }

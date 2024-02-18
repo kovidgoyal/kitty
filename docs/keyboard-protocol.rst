@@ -348,6 +348,13 @@ and key release events. Normally only key press events are reported and key
 repeat events are treated as key press events. See :ref:`event_types` for
 details on how these are reported.
 
+.. note::
+
+   The :kbd:`Enter`, :kbd:`Tab` and :kbd:`Backspace` keys will not have release
+   events unless :ref:`report_all_keys` is also set, so that the user can still
+   type reset at a shell prompt when a program that sets this mode ends without
+   resetting it.
+
 .. _report_alternates:
 
 Report alternate keys

@@ -438,6 +438,9 @@ class TestKeys(BaseTest):
         ae(tq(ord('a'), action=defines.GLFW_REPEAT), csi(num='a', action=2))
         ae(tq(ord('a'), action=defines.GLFW_RELEASE), csi(num='a', action=3))
         ae(tq(ord('a'), action=defines.GLFW_RELEASE, mods=shift), csi(shift, num='a', action=3))
+        tq = partial(enc, key_encoding_flags=0b11)
+        ae(tq(defines.GLFW_FKEY_BACKSPACE), '\x7f')
+        ae(tq(defines.GLFW_FKEY_BACKSPACE, action=release), '')
 
         # test alternate key reporting
         aq = partial(enc, key_encoding_flags=0b100)
