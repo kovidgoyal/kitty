@@ -363,7 +363,7 @@ def macos_cmdline(argv_args: List[str]) -> List[str]:
     ans = list(shlex_split(raw))
     if ans and ans[0] == 'kitty':
         del ans[0]
-    return ans
+    return ans + argv_args
 
 
 def expand_listen_on(listen_on: str, from_config_file: bool) -> str:

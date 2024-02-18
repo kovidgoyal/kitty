@@ -50,6 +50,9 @@ Detailed list of changes
   generating spurious release events even when report all keys as escape codes
   is not set (:iss:`7136`)
 
+- macOS: The command line args from :file:`macos-launch-services-cmdline` are now
+  prefixed to any args from ``open --args`` rather than overwriting them (:iss:`7135`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
