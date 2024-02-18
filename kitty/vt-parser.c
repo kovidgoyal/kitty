@@ -1348,8 +1348,14 @@ dispatch_pm(PS *self UNUSED, uint8_t *buf, size_t bufsz, bool is_extended UNUSED
 
 // Parse loop {{{
 static void
-consume_input(PS *self) {
+consume_input(PS *self, PyObject *dump_callback UNUSED, id_type window_id UNUSED) {
 #define consume(x) if (accumulate_st_terminated_esc_code(self, dispatch_##x)) { self->read.consumed = self->read.pos; SET_STATE(NORMAL); } break;
+
+#ifdef DUMP_COMMANDS
+    PyObject *dumped_bytes = PyBytes_FromStringAndSize((const char*)self->buf + self->read.pos, self->read.sz - self->read.pos);
+    size_t pre_consume_pos = self->read.pos;
+#endif
+
     switch (self->vte_state) {
         case VTE_NORMAL:
             consume_normal(self); self->read.consumed = self->read.pos; break;
@@ -1368,6 +1374,17 @@ consume_input(PS *self) {
         case VTE_DCS:
             consume(dcs);
     }
+
+#ifdef DUMP_COMMANDS
+    if (dumped_bytes && dump_callback && self->read.pos > pre_consume_pos) {
+        if (_PyBytes_Resize(&dumped_bytes, self->read.pos - pre_consume_pos) == 0) {
+            PyObject *ret = PyObject_CallFunction(dump_callback, "KsO", window_id, "bytes", dumped_bytes);
+            Py_DECREF(dumped_bytes);
+            if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
+        }
+    }
+#endif
+
 #undef consume
 }
 
@@ -1394,19 +1411,12 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 self->read.consumed = 0;
                 do {
                     end_with_lock; {
-                        consume_input(self);
+                        consume_input(self, pd->dump_callback, screen->window_id);
                     } with_lock;
                     self->read.sz += self->write.pending; self->write.pending = 0;
                 } while (self->read.pos < self->read.sz);
                 self->new_input_at = 0;
                 if (self->read.consumed) {
-#ifdef DUMP_COMMANDS
-                    if (pd->dump_callback) {
-                        RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->buf + self->read.pos - self->read.consumed, self->read.consumed, PyBUF_READ));
-                        PyObject *ret = PyObject_CallFunction(pd->dump_callback, "KsO", screen->window_id, "bytes", mv);
-                        if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
-                    }
-#endif
                     pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
                     self->read.sz -= MIN(self->read.sz, self->read.consumed);
