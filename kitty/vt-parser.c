@@ -1400,9 +1400,11 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 self->new_input_at = 0;
                 if (self->read.consumed) {
 #ifdef DUMP_COMMANDS
-                    RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->buf + self->read.pos - self->read.consumed, self->read.consumed, PyBUF_READ));
-                    PyObject *ret = PyObject_CallFunction(pd->dump_callback, "KsO", screen->window_id, "bytes", mv);
-                    if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
+                    if (pd->dump_callback) {
+                        RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->buf + self->read.pos - self->read.consumed, self->read.consumed, PyBUF_READ));
+                        PyObject *ret = PyObject_CallFunction(pd->dump_callback, "KsO", screen->window_id, "bytes", mv);
+                        if (ret) { Py_DECREF(ret); } else { PyErr_Clear(); }
+                    }
 #endif
                     pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
