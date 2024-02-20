@@ -207,6 +207,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
     struct wl_buffer* buffer = NULL;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
     const int scale = window->wl.scale;
+    if (!_glfw.wl.pointer) return;
 
     if (cursorWayland->scale < 0) {
         buffer = cursorWayland->buffer;
