@@ -167,7 +167,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	fctx := style.Context{AllowEscapeCodes: true}
 	faint := fctx.SprintFunc("dim")
 	hint_style := fctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", o.HintsForegroundColor, o.HintsBackgroundColor))
-	text_style := fctx.SprintFunc(fmt.Sprintf("fg=bright-%s bold", o.HintsTextColor))
+	text_style := fctx.SprintFunc(fmt.Sprintf("fg=%s bold", o.HintsTextColor))
 
 	highlight_mark := func(m *Mark, mark_text string) string {
 		hint := encode_hint(m.Index, alphabet)

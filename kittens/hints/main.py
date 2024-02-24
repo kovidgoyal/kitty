@@ -225,7 +225,7 @@ The background color for hints.
 
 
 --hints-text-color
-default=gray
+default=bright-gray
 type=str
 The foreground color for text pointed to by the hints.
 
