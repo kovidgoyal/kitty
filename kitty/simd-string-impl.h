@@ -241,7 +241,7 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 
 static inline uint64_t
 movemask_arm128(const simde__m128i vec) {
-    simde_uint8x8_t res = simde_vshrn_n_u16(simde_vreinterpretq_u16_u8(vec), 4);
+    simde_uint8x8_t res = simde_vshrn_n_u16(simde_vreinterpretq_u16_u8((simde_uint8x16_t)vec), 4);
     return simde_vget_lane_u64(simde_vreinterpret_u64_u8(res), 0);
 }
 
