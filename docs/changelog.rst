@@ -57,6 +57,9 @@ Detailed list of changes
 
 - Allow specifying where the new tab is created for :ac:`detach_window` (:pull:`7134`)
 
+- hints kitten: The option to set the text color for hints now allows arbitrary
+  colors (:pull:`7150`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

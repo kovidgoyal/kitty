@@ -215,19 +215,25 @@ bottom.
 --hints-foreground-color
 default=black
 type=str
-The foreground color for hints.
+The foreground color for hints. You can use color names or hex values. For the eight basic
+named terminal colors you can also use the :code:`bright-` prefix to get the bright variant of the
+color.
 
 
 --hints-background-color
 default=green
 type=str
-The background color for hints.
+The background color for hints. You can use color names or hex values. For the eight basic
+named terminal colors you can also use the :code:`bright-` prefix to get the bright variant of the
+color.
 
 
 --hints-text-color
-default=gray
+default=bright-gray
 type=str
-The foreground color for text pointed to by the hints.
+The foreground color for text pointed to by the hints. You can use color names or hex values. For the eight basic
+named terminal colors you can also use the :code:`bright-` prefix to get the bright variant of the
+color.
 
 
 --customize-processing
