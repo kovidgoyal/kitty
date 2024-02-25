@@ -44,6 +44,8 @@ which means kitty's actual numbers would be even lower.
 <https://github.com/kovidgoyal/kitty/issues/2701#issuecomment-911089374>`__
 show that kitty has far and away the best latency of the terminals tested.
 
+.. _throughput:
+
 Throughput
 ^^^^^^^^^^^^^^^^
 

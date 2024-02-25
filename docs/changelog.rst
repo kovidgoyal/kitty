@@ -9,6 +9,19 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Even more speed
+~~~~~~~~~~~~~~~~~~~~~~
+
+kitty now parses data it receives in parallel :iss:`using SIMD vector CPU
+instructions <7005>` for a 2x speedup in benchmarks and a 10%-50% real world speedup
+depending on workload. There is a new benchmarking kitten ``kitten
+__benchmark__`` that can be used to measure terminal throughput. There is also
+:ref:`a table <throughput>` showing kitty is much faster than other terminal
+emulators based on the benchmark kitten. While kitty was already so fast that
+its performance was never a bottleneck, this improvement makes it even faster
+and more importantly reduces the energy consumption to do the same tasks.
+
+
 File transfer over the tty device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -28,16 +41,6 @@ The kitten can transfer files to and from the remote computer. It supports
 recursive transfer of directories, symlinks and hardlinks. It can even use the
 rsync algorithm to speed up repeated transfers of large files.
 
-Truly convenient SSH
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
-
-* Automatic :ref:`shell_integration` on remote machines
-* Easily :ref:`clone local shell/editor config <real_world_ssh_kitten_config>` on remote machines
-* Easily :ref:`edit files in your local editor <edit_file>` on remote machines
-* Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
-
 .. }}}
 
 Detailed list of changes
@@ -45,6 +48,13 @@ Detailed list of changes
 
 0.33.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- :ref:`Even more speed <throughput>` with a redesigned render loop and a 2x faster escape code
+  parser that uses SIMD CPU vector instruction to parse data in parallel
+  (:iss:`7005`)
+
+- A new benchmark kitten (``kitten __benchmark__``) to measure terminal
+  throughput performance
 
 - Graphics protocol: Add a new delete mode for deleting images whose ids fall within a range. Useful for bulk deletion (:iss:`7080`)
 
