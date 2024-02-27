@@ -72,6 +72,11 @@ The amount of time (in seconds) to wait for a response from the terminal, when
 detecting image display support.
 
 
+--use-window-size
+Instead of querying the terminal for the window size, use the specified size, which must
+be of the format: width_in_cells,height_in_cells,width_in_pixels,height_in_pixels
+
+
 --print-window-size
 type=bool-set
 Print out the window size as <:italic:`width`>x<:italic:`height`> (in pixels) and quit. This is a

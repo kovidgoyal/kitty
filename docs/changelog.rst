@@ -70,6 +70,8 @@ Detailed list of changes
 - hints kitten: The option to set the text color for hints now allows arbitrary
   colors (:pull:`7150`)
 
+- icat kitten: Add a command line argument to override terminal window size detection (:iss:`7165`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
