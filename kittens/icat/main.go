@@ -182,9 +182,6 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
 		}
 		screen_size.Ypixel = uint16(t)
-		if screen_size.Xpixel == 0 || screen_size.Ypixel == 0 {
-			return 1, fmt.Errorf("zero is not allowed for screen pixel size")
-		}
 	}
 
 	if opts.PrintWindowSize {
