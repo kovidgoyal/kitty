@@ -1170,10 +1170,10 @@ class Boss:
             map f1 clear_terminal scrollback active
             # Scroll the contents of the screen into the scrollback
             map f1 clear_terminal scroll active
-            # Clear everything up to the line with the cursor or if the cursor is at a prompt, the first line of the prompt.
+            # Clear everything up to the line with the cursor or the start of the current prompt (needs shell integration)
             # Useful for clearing the screen up to the shell prompt and moving the shell prompt to the top of the screen.
             map f1 clear_terminal to_cursor active
-            # Clear everything up to the line with the cursor or prompt, saving the cleared lines in the scrollback
+            # Same as above except cleared lines are moved into scrollback
             map f1 clear_terminal to_cursor_scroll active
         ''')
     def clear_terminal(self, action: str, only_active: bool) -> None:

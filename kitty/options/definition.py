@@ -4124,8 +4124,10 @@ You can create shortcuts to clear/reset the terminal. For example::
     map f1 clear_terminal scrollback active
     # Scroll the contents of the screen into the scrollback
     map f1 clear_terminal scroll active
-    # Clear everything up to the line with the cursor
+    # Clear everything up to the line with the cursor or the start of the current prompt (needs shell integration)
     map f1 clear_terminal to_cursor active
+    # Same as above except cleared lines are moved into scrollback
+    map f1 clear_terminal to_cursor_scroll active
 
 If you want to operate on all kitty windows instead of just the current one, use
 :italic:`all` instead of :italic:`active`.
@@ -4161,6 +4163,8 @@ the screen, instead of just clearing the screen. For ZSH, in :file:`~/.zshrc`, a
     zle -N ctrl_l
     bindkey '^l' ctrl_l
 
+Alternatively, you can just add :code:`map ctrl+l clear_terminal to_cursor_scroll active` to :file:`kitty.conf` which
+works with no changes to the shell rc files, but only clears up to the prompt, it does not clear anytext at the prompt itself.
 '''
     )
 
