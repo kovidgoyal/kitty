@@ -1171,7 +1171,7 @@ class Screen:
     def cmd_output(self, which: int, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> bool:
         pass
 
-    def scroll_until_cursor_prompt(self) -> None:
+    def scroll_until_cursor_prompt(self, add_to_scrollback: bool = True) -> None:
         pass
 
     def reset(self) -> None:

@@ -1821,14 +1821,13 @@ class Window:
             return None
         return True
 
-    @ac('sc', 'Scroll prompt to the top of the screen, filling screen with empty lines, when in main screen')
+    @ac('sc', 'Scroll prompt to the top of the screen, filling screen with empty lines, when in main screen.'
+        ' To avoid putting the lines above the prompt into the scrollback use scroll_prompt_to_top y')
     def scroll_prompt_to_top(self, clear_scrollback: bool = False) -> Optional[bool]:
         if self.screen.is_main_linebuf():
-            self.screen.scroll_until_cursor_prompt()
-            if clear_scrollback:
-                self.screen.clear_scrollback()
-            elif self.screen.scrolled_by > 0:
-                self.screen.scroll(SCROLL_FULL, False)
+            self.screen.scroll_until_cursor_prompt(not clear_scrollback)
+            if self.screen.scrolled_by > 0:
+                self.scroll_end()
             return None
         return True
 

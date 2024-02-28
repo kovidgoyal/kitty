@@ -1170,8 +1170,11 @@ class Boss:
             map f1 clear_terminal scrollback active
             # Scroll the contents of the screen into the scrollback
             map f1 clear_terminal scroll active
-            # Clear everything up to the line with the cursor
+            # Clear everything up to the line with the cursor or if the cursor is at a prompt, the first line of the prompt.
+            # Useful for clearing the screen up to the shell prompt and moving the shell prompt to the top of the screen.
             map f1 clear_terminal to_cursor active
+            # Clear everything up to the line with the cursor or prompt, saving the cleared lines in the scrollback
+            map f1 clear_terminal to_cursor_scroll active
         ''')
     def clear_terminal(self, action: str, only_active: bool) -> None:
         if only_active:
@@ -1196,6 +1199,11 @@ class Boss:
         elif action == 'to_cursor':
             for w in windows:
                 w.scroll_prompt_to_top(clear_scrollback=True)
+        elif action == 'to_cursor_scroll':
+            for w in windows:
+                w.scroll_prompt_to_top(clear_scrollback=False)
+        else:
+            self.show_error(_('Unknown clear type'), _('The clear type: {} is unknown').format(action))
 
     def increase_font_size(self) -> None:  # legacy
         cfs = global_font_size()

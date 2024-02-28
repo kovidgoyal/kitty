@@ -72,6 +72,9 @@ Detailed list of changes
 
 - icat kitten: Add a command line argument to override terminal window size detection (:iss:`7165`)
 
+- When :ac:`clearing terminal <clear_terminal>` add a new type ``to_cursor_scroll`` which can be
+  used to clear to prompt while moving cleared lines into the scrollback
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

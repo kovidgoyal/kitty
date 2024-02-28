@@ -1503,10 +1503,10 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     }
 }
 
-#define INDEX_UP \
+#define INDEX_UP(add_to_history) \
     linebuf_index(self->linebuf, top, bottom); \
     INDEX_GRAPHICS(-1) \
-    if (self->linebuf == self->main_linebuf && self->margin_top == 0) { \
+    if (add_to_history) { \
         /* Only add to history when no top margin has been set */ \
         linebuf_init_line(self->linebuf, bottom); \
         historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
@@ -1525,17 +1525,29 @@ screen_index(Screen *self) {
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == bottom) {
-        INDEX_UP;
+        const bool add_to_history = self->linebuf == self->main_linebuf && self->margin_top == 0;
+        INDEX_UP(add_to_history);
     } else screen_cursor_down(self, 1);
 }
+
+static void
+screen_index_without_adding_to_history(Screen *self) {
+    // Move cursor down one line, scrolling screen if needed
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    if (self->cursor->y == bottom) {
+        INDEX_UP(false);
+    } else screen_cursor_down(self, 1);
+}
+
 
 void
 screen_scroll(Screen *self, unsigned int count) {
     // Scroll the screen up by count lines, not moving the cursor
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    const bool add_to_history = self->linebuf == self->main_linebuf && self->margin_top == 0;
     while (count > 0) {
         count--;
-        INDEX_UP;
+        INDEX_UP(add_to_history);
     }
 }
 
@@ -1868,9 +1880,10 @@ screen_move_into_scrollback(Screen *self) {
     }
     if (num_of_lines_to_move) {
         unsigned int top, bottom;
+        const bool add_to_history = self->linebuf == self->main_linebuf && self->margin_top == 0;
         for (; num_of_lines_to_move; num_of_lines_to_move--) {
             top = 0, bottom = num_of_lines_to_move - 1;
-            INDEX_UP
+            INDEX_UP(add_to_history);
         }
     }
 }
@@ -1945,14 +1958,15 @@ screen_insert_lines(Screen *self, unsigned int count) {
 }
 
 static void
-screen_scroll_until_cursor_prompt(Screen *self) {
+screen_scroll_until_cursor_prompt(Screen *self, bool add_to_scrollback) {
     bool in_margins = cursor_within_margins(self);
     int q = screen_cursor_at_a_shell_prompt(self);
     unsigned int y = q > -1 ? (unsigned int)q : self->cursor->y;
     unsigned int num_lines_to_scroll = MIN(self->margin_bottom, y);
     unsigned int final_y = num_lines_to_scroll <= self->cursor->y ? self->cursor->y - num_lines_to_scroll : 0;
     self->cursor->y = self->margin_bottom;
-    while (num_lines_to_scroll--) screen_index(self);
+    if (add_to_scrollback) while (num_lines_to_scroll--) screen_index(self);
+    else while (num_lines_to_scroll--) screen_index_without_adding_to_history(self);
     self->cursor->y = final_y;
     screen_ensure_bounds(self, false, in_margins);
 }
@@ -3751,7 +3765,8 @@ is_using_alternate_linebuf(Screen *self, PyObject *a UNUSED) {
 WRAP1E(cursor_back, 1, -1)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
-WRAP0(scroll_until_cursor_prompt)
+static PyObject* scroll_until_cursor_prompt(Screen *self, PyObject *args) { int b=false; if(!PyArg_ParseTuple(args, "|p", &b)) return NULL; screen_scroll_until_cursor_prompt(self, b); Py_RETURN_NONE; }
+
 WRAP0(clear_scrollback)
 
 #define MODE_GETSET(name, uname) \
@@ -4699,7 +4714,7 @@ static PyMethodDef methods[] = {
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
     MND(clear_scrollback, METH_NOARGS)
-    MND(scroll_until_cursor_prompt, METH_NOARGS)
+    MND(scroll_until_cursor_prompt, METH_VARARGS)
     MND(hyperlinks_as_list, METH_NOARGS)
     MND(garbage_collect_hyperlink_pool, METH_NOARGS)
     MND(hyperlink_for_id, METH_O)

@@ -93,6 +93,11 @@ def parse_send_text_bytes(text: str) -> bytes:
     return defines.expand_ansi_c_escapes(text).encode('utf-8')
 
 
+@func_with_args('scroll_prompt_to_top')
+def scroll_prompt_to_top(func: str, rest: str) -> FuncArgsType:
+    return func, [to_bool(rest) if rest else False]
+
+
 @func_with_args('send_text')
 def send_text_parse(func: str, rest: str) -> FuncArgsType:
     args = rest.split(maxsplit=1)
@@ -211,7 +216,7 @@ def clear_terminal(func: str, rest: str) -> FuncArgsType:
         args = ['reset', True]
     else:
         action = vals[0].lower()
-        if action not in ('reset', 'scroll', 'scrollback', 'clear', 'to_cursor',):
+        if action not in ('reset', 'scroll', 'scrollback', 'clear', 'to_cursor', 'to_cursor_scroll'):
             log_error(f'{action} is unknown for clear_terminal, using reset')
             action = 'reset'
         args = [action, vals[1].lower() == 'active']
