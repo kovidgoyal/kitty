@@ -883,7 +883,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, Screen *screen, OSWindow *os_win
 
     if (grman->num_of_positive_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, grman->render_data.item, grman->num_of_negative_refs + grman->num_of_below_refs, grman->num_of_positive_refs, viewport_for_cells(crd));
 
-    if (!has_bgimage(os_window)) glDisable(GL_BLEND);
+    glDisable(GL_BLEND);
 }
 
 void
