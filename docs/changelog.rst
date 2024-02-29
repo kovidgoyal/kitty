@@ -9,17 +9,18 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
-Even more speed
+Cheetah speed 🐆
 ~~~~~~~~~~~~~~~~~~~~~~
 
-kitty now parses data it receives in parallel :iss:`using SIMD vector CPU
-instructions <7005>` for a 2x speedup in benchmarks and a 10%-50% real world speedup
-depending on workload. There is a new benchmarking kitten ``kitten
-__benchmark__`` that can be used to measure terminal throughput. There is also
-:ref:`a table <throughput>` showing kitty is much faster than other terminal
-emulators based on the benchmark kitten. While kitty was already so fast that
-its performance was never a bottleneck, this improvement makes it even faster
-and more importantly reduces the energy consumption to do the same tasks.
+kitty has grown up and become a cheetah. It now parses data it receives in
+parallel :iss:`using SIMD vector CPU instructions <7005>` for a 2x speedup in
+benchmarks and a 10%-50% real world speedup depending on workload. There is a
+new benchmarking kitten ``kitten __benchmark__`` that can be used to measure
+terminal throughput. There is also :ref:`a table <throughput>` showing kitty is
+much faster than other terminal emulators based on the benchmark kitten. While
+kitty was already so fast that its performance was never a bottleneck, this
+improvement makes it even faster and more importantly reduces the energy
+consumption to do the same tasks.
 
 
 File transfer over the tty device
@@ -49,7 +50,7 @@ Detailed list of changes
 0.33.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :ref:`Even more speed <throughput>` with a redesigned render loop and a 2x faster escape code
+- :ref:`Cheetah speed <throughput>` with a redesigned render loop and a 2x faster escape code
   parser that uses SIMD CPU vector instruction to parse data in parallel
   (:iss:`7005`)
 
@@ -74,6 +75,9 @@ Detailed list of changes
 
 - When :ac:`clearing terminal <clear_terminal>` add a new type ``to_cursor_scroll`` which can be
   used to clear to prompt while moving cleared lines into the scrollback
+
+- Fix a performance bottleneck when dealing with thousands of small images
+  (:iss:`7080`)
 
 
 0.32.2 [2024-02-12]
