@@ -235,14 +235,17 @@ needs_defrag(DiskCache *self) {
 static void
 add_hole(DiskCache *self, off_t pos, off_t size) {
     if (size <= self->small_hole_threshold) return;
-    // see if we can find a hole that ends where we start and merge
-    // look through the prev at most 128 holes for a match
-    Hole *h = &self->holes.items[self->holes.count-1];
-    for (size_t i = 0; i < MIN(self->holes.count, 128u); i++, h--) {
-        if (h->pos + h->size == pos) {
-            h->size += size;
-            self->holes.largest_hole_size = MAX(self->holes.largest_hole_size, h->size);
-            return;
+    Hole *h;
+    if (self->holes.count) {
+        // see if we can find a hole that ends where we start and merge
+        // look through the prev at most 128 holes for a match
+        h = &self->holes.items[self->holes.count-1];
+        for (size_t i = 0; i < MIN(self->holes.count, 128u); i++, h--) {
+            if (h->pos + h->size == pos) {
+                h->size += size;
+                self->holes.largest_hole_size = MAX(self->holes.largest_hole_size, h->size);
+                return;
+            }
         }
     }
     ensure_space_for(&self->holes, items, Hole, 1, capacity, 64, false);
