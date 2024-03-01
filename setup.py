@@ -356,13 +356,7 @@ def get_python_flags(args: Options, cflags: List[str], for_main_executable: bool
 
 
 def get_sanitize_args(cc: List[str], ccver: Tuple[int, int]) -> List[str]:
-    sanitize_args = ['-fsanitize=address']
-    if ccver >= (5, 0):
-        sanitize_args.append('-fsanitize=undefined')
-        # if cc == 'gcc' or (cc == 'clang' and ccver >= (4, 2)):
-        #     sanitize_args.append('-fno-sanitize-recover=all')
-    sanitize_args.append('-fno-omit-frame-pointer')
-    return sanitize_args
+    return ['-fsanitize=address,undefined', '-fno-omit-frame-pointer']
 
 
 def get_binary_arch(path: str) -> BinaryArch:
@@ -464,7 +458,7 @@ def init_env(
         float_conversion = '-Wfloat-conversion'
     fortify_source = '' if sanitize and is_macos else '-D_FORTIFY_SOURCE=2'
     optimize = df if debug or sanitize else '-O3'
-    sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
+    sanitize_args = get_sanitize_args(cc, ccver) if sanitize else []
     cppflags_ = os.environ.get(
         'OVERRIDE_CPPFLAGS', '-D{}DEBUG'.format('' if debug else 'N'),
     )
