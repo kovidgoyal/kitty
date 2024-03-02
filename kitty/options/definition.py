@@ -4113,7 +4113,7 @@ map('Reset background opacity',
 
 map('Reset the terminal',
     'reset_terminal kitty_mod+delete clear_terminal reset active',
-    long_text='''
+    long_text=r'''
 You can create shortcuts to clear/reset the terminal. For example::
 
     # Reset the terminal
