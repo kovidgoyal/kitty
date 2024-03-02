@@ -11,7 +11,7 @@ from enum import Enum, IntEnum, auto
 from functools import lru_cache, partial
 from gettext import gettext as _
 from itertools import chain
-from time import monotonic
+from time import monotonic, time_ns
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -230,6 +230,7 @@ class WindowDict(TypedDict):
     columns: int
     user_vars: Dict[str, str]
     at_prompt: bool
+    created_at: int
 
 
 class PipeData(TypedDict):
@@ -541,6 +542,7 @@ class Window:
         self.is_focused: bool = False
         self.last_resized_at = 0.
         self.started_at = monotonic()
+        self.created_at = time_ns()
         self.current_remote_data: List[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
@@ -683,6 +685,7 @@ class Window:
             'lines': self.screen.lines,
             'columns': self.screen.columns,
             'user_vars': self.user_vars,
+            'created_at': self.created_at,
         }
 
     def serialize_state(self) -> Dict[str, Any]:

@@ -79,6 +79,8 @@ Detailed list of changes
 - Fix a performance bottleneck when dealing with thousands of small images
   (:iss:`7080`)
 
+- kitten @ ls: Return the timestamp at which the window was created (:iss:`7178`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
