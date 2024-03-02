@@ -83,7 +83,7 @@ text (``CSI`` is the bytes ``0x1b 0x5b``)::
 The ``number`` in the first form above will be either the Unicode codepoint for a
 key, such as ``97`` for the :kbd:`a` key, or one of the numbers from the
 :ref:`functional` table below. The ``modifiers`` optional parameter encodes any
-modifiers pressed for the key event. The encoding is described in the
+modifiers active for the key event. The encoding is described in the
 :ref:`modifiers` section.
 
 The second form is used for a few functional keys, such as the :kbd:`Home`,
@@ -179,10 +179,12 @@ bit field with::
     num_lock  0b10000000  (128)
 
 In the escape code, the modifier value is encoded as a decimal number which is
-``1 + actual modifiers``. So to represent :kbd:`shift` only, the value would be ``1 +
-1 = 2``, to represent :kbd:`ctrl+shift` the value would be ``1 + 0b101 = 6``
-and so on. If the modifier field is not present in the escape code, its default
-value is ``1`` which means no modifiers.
+``1 + actual modifiers``. So to represent :kbd:`shift` only, the value would be
+``1 + 1 = 2``, to represent :kbd:`ctrl+shift` the value would be ``1 + 0b101 =
+6`` and so on. If the modifier field is not present in the escape code, its
+default value is ``1`` which means no modifiers. If a modifier is *active* when
+the key event occurs, i.e. if the key is pressed or the lock (for caps lock/num
+lock) is enabled, the key event must have the bit for that modifier set.
 
 When the key event is related to an actual modifier key, the corresponding
 modifier's bit must be set to the modifier state including the effect for the
