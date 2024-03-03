@@ -338,7 +338,9 @@ much easier to integrate into the application event loop. The only exceptions
 are the :kbd:`Enter`, :kbd:`Tab` and :kbd:`Backspace` keys which still generate the same
 bytes as in legacy mode this is to allow the user to type and execute commands
 in the shell such as ``reset`` after a program that sets this mode crashes
-without clearing it.
+without clearing it. Note that the Lock modifiers are not reported for text
+producing keys, to keep them useable in legacy programs. To get lock modifiers
+for all keys use the :ref:`report_all_keys` enhancement.
 
 .. _report_events:
 
