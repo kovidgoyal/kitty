@@ -70,6 +70,7 @@
 #define ESC_ST '\\'
 #define ESC_PM '^'
 #define ESC_APC '_'
+#define ESC_SOS 'X'
 
 // *Reset*.
 #define ESC_RIS 'c'

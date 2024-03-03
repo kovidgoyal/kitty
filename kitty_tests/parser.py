@@ -630,6 +630,7 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         pb('a\033_+\\+\033\\bcde', ('draw', 'a'), ('Unrecognized APC code: 0x2b',), ('draw', 'bcde'))
         pb('a\033^+\\+\033\\bcde', ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))
+        pb('a\033X+\\+\033\\bcde', ('draw', 'a'), ('Unrecognized SOS code: 0x2b',), ('draw', 'bcde'))
 
     def test_graphics_command(self):
         from base64 import standard_b64encode
