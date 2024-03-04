@@ -406,8 +406,7 @@ shells:
 
 * Jupyter console and IPython via a patch (:iss:`4475`)
 * `xonsh <https://github.com/xonsh/xonsh/issues/4623>`__
-* `nushell <https://github.com/nushell/nushell/discussions/12065>`__
-
+* `Nushell <https://github.com/nushell/nushell/discussions/12065>`__: Set ``$env.config.shell_integration = true`` in your ``config.nu`` to enable it.
 
 Notes for shell developers
 -----------------------------
