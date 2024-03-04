@@ -81,6 +81,8 @@ Detailed list of changes
 
 - kitten @ ls: Return the timestamp at which the window was created (:iss:`7178`)
 
+- hints kitten: Use default editor rather than hardcoding vim to open file at specific line (:iss:`7186`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

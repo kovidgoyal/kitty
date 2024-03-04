@@ -10,7 +10,7 @@ from kitty.clipboard import set_clipboard_string, set_primary_selection
 from kitty.constants import website_url
 from kitty.fast_data_types import get_options
 from kitty.typing import BossType
-from kitty.utils import resolve_custom_file
+from kitty.utils import get_editor, resolve_custom_file
 
 from ..tui.handler import result_handler
 
@@ -272,7 +272,10 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
     if not path:
         return
 
-    cmd = [x.format(path=path, line=line) for x in extra_cli_args or ('vim', '+{line}', '{path}')]
+    if extra_cli_args:
+        cmd = [x.format(path=path, line=line) for x in extra_cli_args]
+    else:
+        cmd = get_editor(path_to_edit=path, line_number=line)
     w = boss.window_id_map.get(target_window_id)
     action = data['linenum_action']
 

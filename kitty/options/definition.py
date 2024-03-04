@@ -4031,7 +4031,7 @@ map('Open the selected file at the selected line',
     'goto_file_line kitty_mod+p>n kitten hints --type linenum',
     long_text='''
 Select something that looks like :code:`filename:linenum` and open it in
-:program:`vim` at the specified line number.
+your default editor at the specified line number.
 '''
     )
 

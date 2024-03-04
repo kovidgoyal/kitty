@@ -26,8 +26,10 @@ and adding them to the command line for the next command.
 
 You can also press :sc:`goto_file_line` to select anything that looks like a
 path or filename followed by a colon and a line number and open the file in
-:program:`vim` at the specified line number. The patterns and editor to be used
-can be modified using options passed to the kitten. For example::
+your default editor at the specified line number (opening at line number will
+work only if your editor supports the +linenum command line syntax or is a
+"known" editor). The patterns and editor to be used can be modified using
+options passed to the kitten. For example::
 
     map ctrl+g kitten hints --type=linenum --linenum-action=tab nvim +{line} {path}
 
