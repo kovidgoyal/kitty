@@ -83,6 +83,9 @@ Detailed list of changes
 
 - hints kitten: Use default editor rather than hardcoding vim to open file at specific line (:iss:`7186`)
 
+- Remote control: Fix ``--match`` argument not working for @ls, @send-key,
+  @set-background-image (:iss:`7192`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

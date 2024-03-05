@@ -50,7 +50,7 @@ Only list the window this command is run in.
         window_filter: Optional[Callable[[Window], bool]] = None
 
         if payload_get('match') is not None or payload_get('match_tab') is not None:
-            window_ids = frozenset(w.id for w in self.windows_for_payload(boss, window, payload_get))
+            window_ids = frozenset(w.id for w in self.windows_for_payload(boss, window, payload_get, window_match_name='match'))
             def wf(w: Window) -> bool:
                 return w.id in window_ids
             window_filter = wf

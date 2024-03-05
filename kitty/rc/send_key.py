@@ -52,7 +52,7 @@ Do not send text to the active window, even if it is one of the matched windows.
         return ret
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        windows = self.windows_for_payload(boss, None, payload_get)
+        windows = self.windows_for_payload(boss, None, payload_get, window_match_name='match')
         keys = payload_get('keys')
         sent = False
         for w in windows:

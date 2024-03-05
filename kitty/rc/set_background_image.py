@@ -108,7 +108,7 @@ failed, the command will exit with a success code.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         data = payload_get('data')
-        windows = self.windows_for_payload(boss, window, payload_get)
+        windows = self.windows_for_payload(boss, window, payload_get, window_match_name='match')
         os_windows = tuple({w.os_window_id for w in windows if w})
         layout = payload_get('layout')
         if data == '-':
