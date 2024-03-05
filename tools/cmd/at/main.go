@@ -225,7 +225,7 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 			_, _ = do_io(io_data)
 			err = fmt.Errorf("Timed out waiting for a response from kitty")
 		}
-		return
+		return nil, err
 	}
 	if len(serialized_response) == 0 {
 		if io_data.rc.NoResponse {
