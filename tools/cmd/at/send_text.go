@@ -31,7 +31,6 @@ func make_file_gen(f *os.File) func(*rc_io_data) (bool, error) {
 
 }
 func parse_send_text(io_data *rc_io_data, args []string) error {
-	io_data.rc.NoResponse = true
 	generators := make([]func(io_data *rc_io_data) (bool, error), 0, 1)
 
 	if len(args) > 0 {

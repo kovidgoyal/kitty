@@ -331,6 +331,7 @@ class RemoteCommand:
     argspec = args_count = args_completion = ArgsHandling()
     field_to_option_map: Optional[Dict[str, str]] = None
     reads_streaming_data: bool = False
+    disallow_responses: bool = False
 
     def __init__(self) -> None:
         self.desc = self.desc or self.short_desc

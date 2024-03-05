@@ -72,6 +72,7 @@ class FocusChangedSession(SessionAction):
 
 
 class SendText(RemoteCommand):
+    disallow_responses = True
     protocol_spec = __doc__ = '''
     data+/str: The data being sent. Can be either: text: followed by text or base64: followed by standard base64 encoded bytes
     match/str: A string indicating the window to send text to

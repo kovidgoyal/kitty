@@ -335,7 +335,6 @@ class JSONField:
 
 def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> str:
     template = '\n' + template[len('//go:build exclude'):]
-    NO_RESPONSE_BASE = 'false'
     af: List[str] = []
     a = af.append
     af.extend(cmd.args.as_go_completion_code('ans'))
@@ -405,13 +404,14 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
     argspec = cmd.args.spec
     if argspec:
         argspec = ' ' + argspec
+    NO_RESPONSE = 'true' if cmd.disallow_responses else 'false'
     ans = replace(
         template,
         CMD_NAME=name, __FILE__=__file__, CLI_NAME=name.replace('_', '-'),
         SHORT_DESC=serialize_as_go_string(cmd.short_desc),
         LONG_DESC=serialize_as_go_string(cmd.desc.strip()),
         IS_ASYNC='true' if cmd.is_asynchronous else 'false',
-        NO_RESPONSE_BASE=NO_RESPONSE_BASE, ADD_FLAGS_CODE='\n'.join(af),
+        NO_RESPONSE_BASE=NO_RESPONSE, ADD_FLAGS_CODE='\n'.join(af),
         WAIT_TIMEOUT=str(cmd.response_timeout),
         OPTIONS_DECLARATION_CODE='\n'.join(od),
         JSON_DECLARATION_CODE='\n'.join(jd),
