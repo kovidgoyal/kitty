@@ -89,8 +89,12 @@ class SendText(RemoteCommand):
         " and :code:`'\\\\u21fa'` to send Unicode characters. Remember to use single-quotes otherwise"
         ' the backslash is interpreted as a shell escape character. If you use the :option:`kitten @ send-text --match` option'
         ' the text will be sent to all matched windows. By default, text is sent to'
-        ' only the currently active window.'
+        ' only the currently active window. Note that errors are not reported, for technical reasons,'
+        ' so send-text always succeeds, even if no text was sent to any window.'
     )
+    # since send-text can send data over the tty to the window in which it was
+    # run --no-reponse is always in effect for it, hence errors are not
+    # reported.
     options_spec = MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t') + '''\n
 --all
 type=bool-set
