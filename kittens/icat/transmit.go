@@ -210,8 +210,8 @@ func calculate_in_cell_x_offset(width, cell_width int) int {
 }
 
 func place_cursor(imgd *image_data) {
-	cw := int(screen_size.Xpixel) / int(screen_size.Col)
-	ch := int(screen_size.Ypixel) / int(screen_size.Row)
+	cw := max(int(screen_size.Xpixel)/int(screen_size.Col), 1)
+	ch := max(int(screen_size.Ypixel)/int(screen_size.Row), 1)
 	imgd.cell_x_offset = calculate_in_cell_x_offset(imgd.canvas_width, cw)
 	imgd.width_cells = int(math.Ceil(float64(imgd.canvas_width) / float64(cw)))
 	imgd.height_cells = int(math.Ceil(float64(imgd.canvas_height) / float64(ch)))

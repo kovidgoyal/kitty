@@ -182,6 +182,12 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
 		}
 		screen_size.Ypixel = uint16(t)
+		if screen_size.Xpixel < screen_size.Col {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: The pixel width is smaller than the number of columns", opts.UseWindowSize)
+		}
+		if screen_size.Ypixel < screen_size.Row {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: The pixel height is smaller than the number of rows", opts.UseWindowSize)
+		}
 	}
 
 	if opts.PrintWindowSize {
