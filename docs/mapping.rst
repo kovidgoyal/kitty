@@ -340,7 +340,7 @@ about all key events it receives form the system and how they are handled.
 
 To see what key events are sent to applications, run kitty like this::
 
-    kitty kitten show-key
+    kitty +kitten show_key
 
 Press the keys you want to debug and the kitten will print out the bytes it
 receives. Note that this uses the legacy terminal keyboard protocol that does
@@ -348,4 +348,4 @@ not support all keys and key events. To debug the :doc:`full kitty keyboard
 protocol that <keyboard-protocol>` that is nowadays being adopted by more and
 more programs, use::
 
-    kitty kitten show-key -m kitty
+    kitty +kitten show_key -m kitty
