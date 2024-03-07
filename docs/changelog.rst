@@ -86,6 +86,8 @@ Detailed list of changes
 - Remote control: Fix ``--match`` argument not working for @ls, @send-key,
   @set-background-image (:iss:`7192`)
 
+- Keyboard protocol: Do not deliver a fake key release events on OS window focus out for engaged modifiers (:iss:`7196`)
+
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

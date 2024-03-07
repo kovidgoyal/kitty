@@ -1288,6 +1288,9 @@ typedef struct GLFWkeyevent
     // For internal use only. On Linux it is the actual keycode reported by the windowing system, in contrast
     // to native_key which can be the result of a compose operation. On macOS it is the same as native_key.
     uint32_t native_key_id;
+
+    // True if this is a synthesized event on focus change
+    bool fake_event_on_focus_change;
 } GLFWkeyevent;
 
 /*! @brief The function pointer type for error callbacks.

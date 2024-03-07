@@ -457,7 +457,7 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
 #endif
     mods_at_last_key_or_button_event = ev->mods;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
-    if (is_window_ready_for_callbacks()) on_key_input(ev);
+    if (is_window_ready_for_callbacks() && !ev->fake_event_on_focus_change) on_key_input(ev);
     global_state.callback_os_window = NULL;
     request_tick_callback();
 }
