@@ -1451,6 +1451,27 @@ func (s *State) indexbyte2() {
 
 }
 
+func (s *State) indexbyte_body(f *Function) {
+	b := f.Vec()
+	f.Set1Epi8("b", b)
+	test_bytes := func(bytes_to_test, test_ans Register) {
+		f.CmpEqEpi8(bytes_to_test, b, test_ans)
+	}
+	s.index_func(f, test_bytes)
+}
+
+func (s *State) indexbyte() {
+	f := s.NewFunction("index_byte_asm", "Find the index of a byte", []FunctionParam{{"data", ByteSlice}, {"b", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.indexbyte_body(f)
+	}
+	f = s.NewFunction("index_byte_string_asm", "Find the index of a byte", []FunctionParam{{"data", types.String}, {"b", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.indexbyte_body(f)
+	}
+
+}
+
 func (s *State) indexc0_body(f *Function) {
 	lower := f.Vec()
 	upper := f.Vec()
@@ -1494,6 +1515,7 @@ func (s *State) Generate() {
 
 	s.indexbyte2()
 	s.indexc0()
+	s.indexbyte()
 
 	s.OutputFunction()
 }

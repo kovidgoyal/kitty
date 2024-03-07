@@ -219,6 +219,26 @@ func TestSIMDStringOps(t *testing.T) {
 	c0tests("afsgdfg\x7f")
 	c0tests("afgd\x1bfgd\t")
 	c0tests("a\x00")
+
+	index_test := func(haystack []byte, needle byte) {
+		var actual int
+		expected := index_byte_scalar(haystack, needle)
+
+		for _, sz := range sizes {
+			switch sz {
+			case 16:
+				actual = index_byte_asm_128(haystack, needle)
+			case 32:
+				actual = index_byte_asm_256(haystack, needle)
+			}
+			if actual != expected {
+				t.Fatalf("index failed in: %#v (%d != %d) at size: %d with needle: %#v", string(haystack), expected, actual, sz, needle)
+			}
+		}
+	}
+	index_test([]byte("abc"), 'x')
+	index_test([]byte("abc"), 'b')
+
 }
 
 func TestIntrinsics(t *testing.T) {
