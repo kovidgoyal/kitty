@@ -990,17 +990,6 @@ class TabManager:  # {{{
         if len(self.tabs) > 1:
             self.set_active_tab_idx((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
 
-    @ac('win', '''
-        Toggle to the tab matching the specified expression
-
-        Switches to the matching tab if another tab is current, otherwise
-        switches to the last used tab. Useful to easily switch to and back from a
-        tab using a single shortcut. Note that toggling works only between
-        tabs in the same OS window. See :ref:`search_syntax` for details
-        on the match expression. For example::
-
-            map f1 toggle_tab title:mytab
-        ''')
     def toggle_tab(self, match_expression: str) -> None:
         tabs = set(get_boss().match_tabs(match_expression)) & set(self)
         if not tabs:
