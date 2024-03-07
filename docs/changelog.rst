@@ -73,6 +73,8 @@ Detailed list of changes
 
 - icat kitten: Add a command line argument to override terminal window size detection (:iss:`7165`)
 
+- A new action :ac:`toggle_tab` to easily switch to and back from a tab with a single shortcut (:iss:`7203`)
+
 - When :ac:`clearing terminal <clear_terminal>` add a new type ``to_cursor_scroll`` which can be
   used to clear to prompt while moving cleared lines into the scrollback
 

@@ -7,6 +7,7 @@ import stat
 import weakref
 from collections import deque
 from contextlib import suppress
+from gettext import gettext as _
 from operator import attrgetter
 from time import monotonic
 from typing import (
@@ -870,7 +871,6 @@ class TabManager:  # {{{
         self.wm_class = wm_class
         self.recent_mouse_events: Deque[TabMouseEvent] = deque()
         self.wm_name = wm_name
-        self.last_active_tab_id = None
         self.args = args
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
         self.tabs: List[Tab] = []
@@ -989,6 +989,30 @@ class TabManager:  # {{{
     def next_tab(self, delta: int = 1) -> None:
         if len(self.tabs) > 1:
             self.set_active_tab_idx((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
+
+    @ac('win', '''
+        Toggle to the tab matching the specified expression
+
+        Switches to the matching tab if another tab is current, otherwise
+        switches to the last used tab. Useful to easily switch to and back from a
+        tab using a single shortcut. Note that toggling works only between
+        tabs in the same OS window. See :ref:`search_syntax` for details
+        on the match expression. For example::
+
+            map f1 toggle_tab title:mytab
+        ''')
+    def toggle_tab(self, match_expression: str) -> None:
+        tabs = set(get_boss().match_tabs(match_expression)) & set(self)
+        if not tabs:
+            get_boss().show_error(_('No matching tab'), _('No tab found matching the expression: {}').format(match_expression))
+            return
+        if self.active_tab and self.active_tab in tabs:
+            self.goto_tab(-1)
+        else:
+            for x in self:
+                if x in tabs:
+                    self.set_active_tab(x)
+                    break
 
     def tab_at_location(self, loc: str) -> Optional[Tab]:
         if loc == 'prev':
