@@ -92,6 +92,8 @@ Detailed list of changes
 
 - Ignore :opt:`startup_session` when kitty is invoked with command line options specifying a command to run (:pull:`7198`)
 
+- Box drawing: Specialize rendering for the Fira Code progress bar/spinner glyphs
+
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

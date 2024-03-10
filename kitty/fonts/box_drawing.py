@@ -443,6 +443,24 @@ def draw_parametrized_curve(
                         buf[pos] = min(255, buf[pos] + 255)
 
 
+def circle_equations(
+    origin_x: int = 0, origin_y: int = 0, radius: float = 10., # radius is in pixels as are origin co-ords
+    start_at: float = 0., end_at: float = 360.
+) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
+    conv = math.pi / 180.
+    start = start_at * conv
+    end = end_at * conv
+    amt = end - start
+
+    def x(t: float) -> float:
+        return origin_x + radius * math.cos(start + amt * t)
+
+    def y(t: float) -> float:
+        return origin_y + radius * math.sin(start + amt * t)
+
+    return x, y
+
+
 def rectircle_equations(
     cell_width: int, cell_height: int, supersample_factor: int,
     which: str = '╭'
@@ -520,6 +538,14 @@ def rounded_separator(buf: SSByteArray, width: int, height: int, level: int = 1,
             for src_x in range(width):
                 dest_x = width - 1 - src_x
                 buf[offset + dest_x] = mbuf[offset + src_x]
+
+
+@supersampled()
+def spinner(buf: SSByteArray, width: int, height: int, level: int = 1, start: float = 0, end: float = 360) -> None:
+    w, h = width // 2, height // 2
+    radius = min(w, h) - int(thickness(level) * buf.supersample_factor) // 2
+    arc_x, arc_y = circle_equations(w, h, radius, start_at=start, end_at=end)
+    draw_parametrized_curve(buf, width, height, level, arc_x, arc_y)
 
 
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
@@ -928,6 +954,12 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '': [p(progress_bar, which='l', filled=True)],
     '': [p(progress_bar, which='m', filled=True)],
     '': [p(progress_bar, which='r', filled=True)],
+    '': [p(spinner, start=235, end=305)],
+    '': [p(spinner, start=270, end=390)],
+    '': [p(spinner, start=315, end=470)],
+    '': [p(spinner, start=360, end=540)],
+    '': [p(spinner, start=80, end=220)],
+    '': [p(spinner, start=170, end=270)],
     '═': [dhline],
     '║': [dvline],
 
