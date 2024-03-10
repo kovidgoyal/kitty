@@ -222,7 +222,7 @@ def create_sessions(
                     session_data = f.read()
             yield from parse_session(session_data, opts, environ=environ)
             return
-    if default_session and default_session != 'none':
+    if default_session and default_session != 'none' and not getattr(args, 'args', None):
         try:
             with open(default_session) as f:
                 session_data = f.read()

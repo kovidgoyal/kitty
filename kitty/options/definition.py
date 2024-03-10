@@ -3057,8 +3057,8 @@ using the :option:`kitty --session` :code:`=none` command line option for indivi
 instances. See :ref:`sessions` in the kitty documentation for details. Note that
 relative paths are interpreted with respect to the kitty config directory.
 Environment variables in the path are expanded. Changing this option by
-reloading the config is not supported. Note that this prevents kitty from processing
-any command line arguments as a program to run.
+reloading the config is not supported. Note that if kitty is invoked with command line
+arguments specifying a command to run, this option is ignored.
 '''
     )
 

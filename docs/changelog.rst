@@ -90,6 +90,7 @@ Detailed list of changes
 
 - Keyboard protocol: Do not deliver a fake key release events on OS window focus out for engaged modifiers (:iss:`7196`)
 
+- Ignore :opt:`startup_session` when kitty is invoked with command line options specifying a command to run (:pull:`7198`)
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
