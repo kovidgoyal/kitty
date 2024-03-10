@@ -370,7 +370,7 @@ class GitHub:  # {{{
         if self.is_nightly:
             for fname in tuple(assets_by_fname):
                 self.info(f'Deleting {fname} from GitHub with id: {assets_by_fname[fname]["id"]}')
-                delete_asset(assets_by_fname.pop(fname), allow_not_found=False)
+                delete_asset(assets_by_fname.pop(fname))
         for path, desc in self.files.items():
             self.info('')
             upload_with_retries(path, desc)
