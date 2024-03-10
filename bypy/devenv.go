@@ -325,7 +325,7 @@ func dependencies(args []string) {
 	}); err != nil {
 		exit(err)
 	}
-	fmt.Println(`Dependencies downloaded. Now build kitty with: make develop`)
+	fmt.Println(`Dependencies downloaded. Now build kitty with: ./dev.sh build`)
 }
 
 // }}}
