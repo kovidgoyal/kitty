@@ -10,7 +10,7 @@ import math
 from functools import lru_cache, wraps
 from functools import partial as p
 from itertools import repeat
-from typing import Any, Callable, Dict, Iterable, Iterator, List, MutableSequence, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Literal, MutableSequence, Optional, Sequence, Tuple
 
 scale = (0.001, 1., 1.5, 2.)
 _dpi = 96.0
@@ -787,6 +787,57 @@ def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tu
         eight_bar(buf, width, height, level, x, horizontal)
 
 
+def frame(buf: BufType, width: int, height: int, edges: Tuple[Literal['l', 'r', 't', 'b'], ...] = ('l', 'r', 't', 'b'), level: int = 0) -> None:
+    h = thickness(level=level, horizontal=True)
+    v = thickness(level=level, horizontal=False)
+
+    def line(x1: int, x2: int, y1: int, y2: int) -> None:
+        for y in range(y1, y2):
+            offset = y * width
+            for x in range(x1, x2):
+                buf[x + offset] = 255
+
+    def hline(y1: int, y2: int) -> None:
+        line(0, width, y1, y2)
+
+    def vline(x1: int, x2: int) -> None:
+        line(x1, x2, 0, height)
+
+    if 't' in edges:
+        hline(0, h + 1)
+    if 'b' in edges:
+        hline(height - h - 1, height)
+    if 'l' in edges:
+        vline(0, v + 1)
+    if 'r' in edges:
+        vline(width - v - 1, width)
+
+
+def progress_bar(buf: BufType, width: int, height: int, which: Literal['l', 'm', 'r'] = 'l', filled: bool = False, level: int = 1, gap_factor: int = 3) -> None:
+    if which == 'l':
+        frame(buf, width, height, edges=('l', 't', 'b'), level=level)
+    elif which == 'm':
+        frame(buf, width, height, edges=('t', 'b'), level=level)
+    else:
+        frame(buf, width, height, edges=('r', 't', 'b'), level=level)
+    if not filled:
+        return
+    h = thickness(level=level, horizontal=True)
+    v = thickness(level=level, horizontal=False)
+    y1 = gap_factor * h
+    y2 = height - gap_factor*h
+    if which == 'l':
+        x1, x2 = gap_factor * v, width
+    elif which == 'm':
+        x1, x2 = 0, width
+    else:
+        x1, x2 = 0, width - gap_factor*v
+    for y in range(y1, y2):
+        offset = y * width
+        for x in range(x1, x2):
+            buf[x + offset] = 255
+
+
 @lru_cache(maxsize=64)
 def distribute_dots(available_space: int, num_of_dots: int) -> Tuple[Tuple[int, ...], int]:
     dot_size = max(1, available_space // (2 * num_of_dots))
@@ -871,6 +922,12 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '': [p(cross_line, left=False)],
     '': [p(corner_triangle, corner='top-right')],
     '': [cross_line],
+    '': [p(progress_bar, which='l')],
+    '': [p(progress_bar, which='m')],
+    '': [p(progress_bar, which='r')],
+    '': [p(progress_bar, which='l', filled=True)],
+    '': [p(progress_bar, which='m', filled=True)],
+    '': [p(progress_bar, which='r', filled=True)],
     '═': [dhline],
     '║': [dvline],
 
@@ -1101,12 +1158,7 @@ def render_box_char(ch: str, buf: BufType, width: int, height: int, dpi: float =
 
 
 def render_missing_glyph(buf: BufType, width: int, height: int) -> None:
-    hgap = thickness(level=0, horizontal=True) + 1
-    vgap = thickness(level=0, horizontal=False) + 1
-    draw_hline(buf, width, hgap, width - hgap + 1, vgap, 0)
-    draw_hline(buf, width, hgap, width - hgap + 1, height - vgap, 0)
-    draw_vline(buf, width, vgap, height - vgap + 1, hgap, 0)
-    draw_vline(buf, width, vgap, height - vgap + 1, width - hgap, 0)
+    frame(buf, width, height)
 
 
 def test_char(ch: str, sz: int = 48) -> None:
