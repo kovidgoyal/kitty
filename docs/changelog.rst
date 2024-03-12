@@ -47,7 +47,7 @@ rsync algorithm to speed up repeated transfers of large files.
 Detailed list of changes
 -------------------------------------
 
-0.33.0 [future]
+0.33.0 [2024-03-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :ref:`Cheetah speed <throughput>` with a redesigned render loop and a 2x faster escape code
