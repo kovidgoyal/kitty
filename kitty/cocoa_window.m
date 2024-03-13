@@ -441,7 +441,13 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 
 static void
 schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle) {
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    UNUserNotificationCenter *center = nil;
+    @try {
+        center = [UNUserNotificationCenter currentNotificationCenter];
+    } @catch (NSException *e) {
+        log_error("Failed to get current UNUserNotificationCenter object with error: %s (%s)",
+                            [[e name] UTF8String], [[e reason] UTF8String]);
+    }
     if (!center) return;
     // Configure the notification's payload.
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
@@ -503,7 +509,13 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL;
     if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &body, &subtitle)) return NULL;
 
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    UNUserNotificationCenter *center = nil;
+    @try {
+        center = [UNUserNotificationCenter currentNotificationCenter];
+    } @catch (NSException *e) {
+        log_error("Failed to get current UNUserNotificationCenter object with error: %s (%s)",
+                            [[e name] UTF8String], [[e reason] UTF8String]);
+    }
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
     queue_notification(identifier, title, body, subtitle);
