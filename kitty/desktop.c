@@ -194,7 +194,7 @@ queue_canberra_sound(const char *which_sound, const char *event_id, bool is_path
     current_sound.event_id = strdup(event_id);
     current_sound.media_role = strdup(media_role);
     current_sound.is_path = is_path;
-    current_sound.theme_name = strdup(theme_name);
+    current_sound.theme_name = theme_name ? strdup(theme_name) : NULL;
     pthread_mutex_unlock(&canberra_lock);
     while (true) {
         ssize_t ret = write(canberra_pipe_w, "w", 1);
