@@ -47,6 +47,11 @@ rsync algorithm to speed up repeated transfers of large files.
 Detailed list of changes
 -------------------------------------
 
+0.33.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a regression in the previous release that caused requesting data from the clipboard via OSC 52 to instead return data from the primary selection (:iss:`7213`)
+
 0.33.0 [2024-03-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

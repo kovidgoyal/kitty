@@ -406,7 +406,7 @@ class ClipboardRequestManager:
     def parse_osc_52(self, data: memoryview, is_partial: bool = False) -> None:
         idx = find_in_memoryview(data, ord(b';'))
         if idx > -1:
-            where = str(data[idx:], "utf-8", 'replace')
+            where = str(data[:idx], "utf-8", 'replace')
             data = data[idx+1:]
         else:
             where = str(data, "utf-8", 'replace')
