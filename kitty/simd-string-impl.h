@@ -20,7 +20,7 @@
 #define NOSIMD { fatal("No SIMD implementations for this CPU"); }
 bool FUNC(utf8_decode_to_esc)(UTF8Decoder *d UNUSED, const uint8_t *src UNUSED, size_t src_sz UNUSED) NOSIMD
 const uint8_t* FUNC(find_either_of_two_bytes)(const uint8_t *haystack UNUSED, const size_t sz UNUSED, const uint8_t a UNUSED, const uint8_t b UNUSED) NOSIMD
-void FUNC(xor_data64)(const uint8_t key[64], uint8_t* data, const size_t data_sz);
+void FUNC(xor_data64)(const uint8_t key[64] UNUSED, uint8_t* data UNUSED, const size_t data_sz UNUSED) NOSIMD
 #undef NOSIMD
 #else
 
