@@ -449,9 +449,6 @@ do not use them, if at all possible. kitty contains features that do all of what
 tmux does, but better, with the exception of remote persistence (:iss:`391`).
 If you still want to use tmux, read on.
 
-Image display will not work, see `tmux issue
-<https://github.com/tmux/tmux/issues/1391>`__.
-
 Using ancient versions of tmux such as 1.8 will cause gibberish on screen when
 pressing keys (:iss:`3541`).
 
@@ -459,6 +456,10 @@ If you are using tmux with multiple terminals or you start it under one terminal
 and then switch to another and these terminals have different :envvar:`TERM`
 variables, tmux will break. You will need to restart it as tmux does not support
 multiple terminfo definitions.
+
+Displaying images with inside programs such nvim or ranger may not work
+depending on whether those programs have adopted support for the unicode
+placeholders workaround that kitty created for tmux refusing to support images.
 
 If you use any of the advanced features that kitty has innovated, such as
 :doc:`styled underlines </underlines>`, :doc:`desktop notifications
