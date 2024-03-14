@@ -1069,6 +1069,8 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     env['ASAN_OPTIONS'] = 'detect_leaks=0'
     cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen/go_code.py')], stdout=subprocess.DEVNULL, env=env)
     if cp.returncode != 0:
+        if os.environ.get('CI') == 'true' and cp.returncode < 0 and shutil.which('coredumpctl'):
+            subprocess.run(['sh', '-c', 'echo bt | coredumpctl debug'])
         raise SystemExit(f'Generating go code failed with exit code: {cp.returncode}')
 
 
