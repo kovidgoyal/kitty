@@ -1068,7 +1068,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     env['ASAN_OPTIONS'] = 'detect_leaks=0'
     cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen/go_code.py')], stdout=subprocess.PIPE, env=env)
     if cp.returncode != 0:
-        raise SystemExit(cp.returncode)
+        raise SystemExit(f'Generating go code failed with exit code: {cp.returncode}')
 
 
 def parse_go_version(x: str) -> Tuple[int, int, int]:
