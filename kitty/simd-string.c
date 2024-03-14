@@ -217,9 +217,7 @@ init_simd(void *x) {
     // basic AVX2 and SSE4.2 intrinsics, so hopefully they work on ARM
     // ARM has only 128 bit registers buy using the avx2 code is still slightly faster
     has_sse4_2 = true; has_avx2 = true;
-#elif defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__) || defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_6J__) || defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)
-    // armv6 or armv7 have no __builtin_cpu_supports so assume no SIMD we dont really support these platforms anyway
-#else
+#elif !defined(KITTY_NO_SIMD)
     do_check();
 #endif
 #endif
