@@ -15,9 +15,8 @@
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
-typedef void (*send_sprite_to_gpu_func)(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
-send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
 static PyObject *python_send_to_gpu_impl = NULL;
+#define current_send_sprite_to_gpu(...) (python_send_to_gpu_impl ? python_send_to_gpu(__VA_ARGS__) : send_sprite_to_gpu(__VA_ARGS__))
 extern PyTypeObject Line_Type;
 
 enum {NO_FONT=-3, MISSING_FONT=-2, BLANK_FONT=-1, BOX_FONT=0};
@@ -1580,7 +1579,6 @@ set_send_sprite_to_gpu(PyObject UNUSED *self, PyObject *func) {
         python_send_to_gpu_impl = func;
         Py_INCREF(python_send_to_gpu_impl);
     }
-    current_send_sprite_to_gpu = python_send_to_gpu_impl ? python_send_to_gpu : send_sprite_to_gpu;
     Py_RETURN_NONE;
 }
 
@@ -1738,6 +1736,5 @@ init_fonts(PyObject *module) {
     create_feature("-calt", CALT_FEATURE);
 #undef create_feature
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-    current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;
 }

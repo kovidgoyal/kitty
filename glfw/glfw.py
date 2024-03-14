@@ -285,7 +285,7 @@ def generate_wrappers(glfw_header: str) -> None:
     int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int blur_radius)
     bool glfwSetX11WindowBlurred(GLFWwindow *w, bool enable_blur)
     void* glfwGetX11Display(void)
-    int32_t glfwGetX11Window(GLFWwindow* window)
+    unsigned long glfwGetX11Window(GLFWwindow* window)
     void glfwSetPrimarySelectionString(GLFWwindow* window, const char* string)
     void glfwCocoaSetWindowChrome(GLFWwindow* window, unsigned int color, bool use_system_color, unsigned int system_color,\
     int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable)

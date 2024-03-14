@@ -2258,7 +2258,7 @@ typedef void* (*glfwGetX11Display_func)(void);
 GFW_EXTERN glfwGetX11Display_func glfwGetX11Display_impl;
 #define glfwGetX11Display glfwGetX11Display_impl
 
-typedef int32_t (*glfwGetX11Window_func)(GLFWwindow*);
+typedef unsigned long (*glfwGetX11Window_func)(GLFWwindow*);
 GFW_EXTERN glfwGetX11Window_func glfwGetX11Window_impl;
 #define glfwGetX11Window glfwGetX11Window_impl
 

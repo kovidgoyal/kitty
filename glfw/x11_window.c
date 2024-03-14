@@ -41,7 +41,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
-#include <assert.h>
 
 // Action for EWMH client messages
 #define _NET_WM_STATE_REMOVE        0
@@ -3227,7 +3226,7 @@ GLFWAPI Display* glfwGetX11Display(void)
     return _glfw.x11.display;
 }
 
-GLFWAPI Window glfwGetX11Window(GLFWwindow* handle)
+GLFWAPI unsigned long glfwGetX11Window(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     _GLFW_REQUIRE_INIT_OR_RETURN(None);

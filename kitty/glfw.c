@@ -1044,7 +1044,7 @@ native_window_handle(GLFWwindow *w) {
     void *ans = glfwGetCocoaWindow(w);
     return PyLong_FromVoidPtr(ans);
 #endif
-    if (glfwGetX11Window) return PyLong_FromLong((long)glfwGetX11Window(w));
+    if (glfwGetX11Window) return PyLong_FromUnsignedLong(glfwGetX11Window(w));
     return Py_None;
 }
 
@@ -1768,7 +1768,7 @@ x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
     OSWindow *w = os_window_for_id(PyLong_AsUnsignedLongLong(os_wid));
     if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
     if (!glfwGetX11Window) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
-    return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
+    return PyLong_FromUnsignedLong(glfwGetX11Window(w->handle));
 }
 
 static PyObject*
