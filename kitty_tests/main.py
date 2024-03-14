@@ -265,6 +265,7 @@ def run_tests(report_env: bool = False) -> None:
     if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
         type_check()
     go_pkgs = reduce_go_pkgs(args.module, args.name)
+    os.environ['ASAN_OPTIONS'] = 'detect_leaks=0'  # ensure subprocesses dont fail because of leak detection
     if go_pkgs:
         go_proc: 'Optional[GoProc]' = run_go(go_pkgs, args.name)
     else:
