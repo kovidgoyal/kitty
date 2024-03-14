@@ -1168,14 +1168,12 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     libs: List[str] = []
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     if args.profile or args.sanitize:
+        cflags.append('-g3')
         if args.sanitize:
-            cflags.append('-g3')
             sanitize_args = get_sanitize_args(env.cc, env.ccver)
             cflags.extend(sanitize_args)
             ldflags.extend(sanitize_args)
             libs += ['-lasan'] if not is_macos and env.compiler_type is not CompilerType.clang else []
-        else:
-            cflags.append('-g')
         if args.profile:
             libs.append('-lprofiler')
     else:
