@@ -89,7 +89,7 @@ class Env:
 
     @property
     def is_clang(self) -> bool:
-        return 'clang' in self.cc_version_string.split(maxsplit=1)[0].lower()
+        return 'clang' in self.cc_version_string.split()
 
     def copy(self) -> 'Env':
         ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
