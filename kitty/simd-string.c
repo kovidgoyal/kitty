@@ -215,7 +215,7 @@ init_simd(void *x) {
 #ifdef __aarch64__
     // no idea how to probe ARM cpu for NEON support. This file uses pretty
     // basic AVX2 and SSE4.2 intrinsics, so hopefully they work on ARM
-    // ARM has only 128 bit registers buy using the avx2 code is still slightly faster
+    // ARM has only 128 bit registers but using the avx2 code is still slightly faster
     has_sse4_2 = true; has_avx2 = true;
 #elif !defined(KITTY_NO_SIMD)
     do_check();
