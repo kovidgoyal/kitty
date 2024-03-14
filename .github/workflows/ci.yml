@@ -2,7 +2,7 @@ name: CI
 on: [push, pull_request]
 env:
     CI: 'true'
-    ASAN_OPTIONS: leak_check_at_exit=0
+    ASAN_OPTIONS: detect_leaks=0
     LC_ALL: en_US.UTF-8
     LANG: en_US.UTF-8
 
