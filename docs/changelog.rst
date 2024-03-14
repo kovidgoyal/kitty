@@ -52,6 +52,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused requesting data from the clipboard via OSC 52 to instead return data from the primary selection (:iss:`7213`)
 
+- Splits layout: Allow resizing until one of the halves in a split is minimally sized (:iss:`7220`)
+
 0.33.0 [2024-03-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
