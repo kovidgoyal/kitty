@@ -67,13 +67,25 @@ def get_process_pool_executor(
 
 def test_spawn() -> None:
     monkey_patch_multiprocessing()
+    import shutil
+    import subprocess
+    from queue import Empty
     try:
         from multiprocessing import get_context
         ctx = get_context('spawn')
         q = ctx.Queue()
         p = ctx.Process(target=q.put, args=('hello',))
         p.start()
-        x = q.get(timeout=8)
+        try:
+            x = q.get(timeout=8)
+        except Empty:
+            p.join()
+            rc = p.exitcode
+            if rc == 0:
+                raise TimeoutError('Timed out waiting for response from spawned process')
+            if shutil.which('coredumpctl'):
+                subprocess.run(['sh', '-c', 'echo bt | coredumpctl debug'])
+            raise SystemExit(f'Spawned process exited with return code: {rc}')
         assert x == 'hello'
         p.join()
     finally:
