@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
 
 from glfw import glfw
-from glfw.glfw import ISA, BinaryArch, Command, CompileKey
+from glfw.glfw import ISA, BinaryArch, Command, CompileKey, CompilerType
 
 if sys.version_info[:2] < (3, 8):
     raise SystemExit('kitty requires python >= 3.8')
@@ -701,7 +701,7 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
             ans.append('-msse4.2' if '128' in src else '-mavx2')
             if '256' in src:
                 # We have manual vzeroupper so prevent compiler from emitting it causing duplicates
-                if env.is_clang:
+                if env.compiler_type is CompilerType.clang:
                     ans.append('-mllvm')
                     ans.append('-x86-use-vzeroupper=0')
                 else:
@@ -1170,7 +1170,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
             sanitize_args = get_sanitize_args(env.cc, env.ccver)
             cflags.extend(sanitize_args)
             ldflags.extend(sanitize_args)
-            libs += ['-lasan'] if not is_macos and not env.is_clang else []
+            libs += ['-lasan'] if not is_macos and env.compiler_type is not CompilerType.clang else []
         else:
             cflags.append('-g')
         if args.profile:

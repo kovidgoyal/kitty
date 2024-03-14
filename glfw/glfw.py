@@ -46,6 +46,12 @@ class BinaryArch(NamedTuple):
     isa: ISA = ISA.AMD64
 
 
+class CompilerType(Enum):
+    gcc = 'gcc'
+    clang = 'clang'
+    unknown = 'unknown'
+
+
 class Env:
 
     cc: List[str] = []
@@ -80,6 +86,7 @@ class Env:
         self.binary_arch = binary_arch
         self.native_optimizations = native_optimizations
         self._cc_version_string = ''
+        self._compiler_type: Optional[CompilerType] = None
 
     @property
     def cc_version_string(self) -> str:
@@ -88,8 +95,16 @@ class Env:
         return self._cc_version_string
 
     @property
-    def is_clang(self) -> bool:
-        return 'clang' in self.cc_version_string.split()
+    def compiler_type(self) -> CompilerType:
+        if self._compiler_type is None:
+            raw = self.cc_version_string
+            if 'Free Software Foundation' in raw:
+                self._compiler_type = CompilerType.gcc
+            elif 'clang' in raw.lower().split():
+                self._compiler_type = CompilerType.clang
+            else:
+                self._compiler_type = CompilerType.unknown
+        return self._compiler_type
 
     def copy(self) -> 'Env':
         ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
