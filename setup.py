@@ -701,11 +701,11 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
             ans.append('-msse4.2' if '128' in src else '-mavx2')
             if '256' in src:
                 # We have manual vzeroupper so prevent compiler from emitting it causing duplicates
-                if env.is_gcc:
-                    ans.append('-mno-vzeroupper')
-                else:
+                if env.is_clang:
                     ans.append('-mllvm')
                     ans.append('-x86-use-vzeroupper=0')
+                else:
+                    ans.append('-mno-vzeroupper')
         elif env.binary_arch.isa != ISA.ARM64:
             ans.append('-DKITTY_NO_SIMD')
     elif src.startswith('3rdparty/base64/lib/arch/'):
@@ -1170,7 +1170,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
             sanitize_args = get_sanitize_args(env.cc, env.ccver)
             cflags.extend(sanitize_args)
             ldflags.extend(sanitize_args)
-            libs += ['-lasan'] if not is_macos and env.is_gcc else []
+            libs += ['-lasan'] if not is_macos and not env.is_clang else []
         else:
             cflags.append('-g')
         if args.profile:

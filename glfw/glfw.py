@@ -46,7 +46,6 @@ class BinaryArch(NamedTuple):
     isa: ISA = ISA.AMD64
 
 
-
 class Env:
 
     cc: List[str] = []
@@ -89,8 +88,8 @@ class Env:
         return self._cc_version_string
 
     @property
-    def is_gcc(self) -> bool:
-        return 'gcc' in self.cc_version_string.split(maxsplit=1)[0].lower()
+    def is_clang(self) -> bool:
+        return 'clang' in self.cc_version_string.split(maxsplit=1)[0].lower()
 
     def copy(self) -> 'Env':
         ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
