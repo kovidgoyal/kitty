@@ -558,6 +558,7 @@ def init_env(
     )
     if verbose:
         print(ans.cc_version_string)
+        print('Detected:', ans.compiler_type)
     return ans
 
 
