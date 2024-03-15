@@ -1151,7 +1151,7 @@ func (s *Function) OutputASM(w io.Writer) {
 	}
 	fmt.Fprint(w, "// ")
 	s.print_signature(w)
-	fmt.Fprintf(w, "\nTEXT ·%s(SB), NOSPLIT, $0-%d\n", s.Name, s.Size)
+	fmt.Fprintf(w, "\nTEXT ·%s(SB), NOSPLIT|TOPFRAME|NOFRAME, $0-%d\n", s.Name, s.Size)
 
 	has_trailing_return := false
 	for _, i := range s.Instructions {
