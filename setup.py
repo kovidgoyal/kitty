@@ -536,6 +536,8 @@ def init_env(
         set_arches(ldflags, building_arch)
     ba = test_compile(cc, *(cppflags + cflags), ldflags=ldflags, get_output_arch=True)
     assert isinstance(ba, BinaryArch)
+    if ba.isa not in (ISA.AMD64, ISA.X86, ISA.ARM64):
+        cppflags.append('-DKITTY_NO_SIMD')
 
     control_flow_protection = ''
     if ba.isa == ISA.AMD64:
@@ -707,8 +709,6 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
                     ans.append('-x86-use-vzeroupper=0')
                 else:
                     ans.append('-mno-vzeroupper')
-        elif env.binary_arch.isa != ISA.ARM64:
-            ans.append('-DKITTY_NO_SIMD')
     elif src.startswith('3rdparty/base64/lib/arch/'):
         if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
             q = src.split(os.path.sep)
