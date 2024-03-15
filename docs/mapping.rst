@@ -81,7 +81,7 @@ control scripts. To run a kitten on a key press::
 
     map f1 kitten mykitten.py
 
-Many of kitty;s features are themselves implemented as kittens, for example,
+Many of kitty's features are themselves implemented as kittens, for example,
 :doc:`/kittens/unicode_input`, :doc:`/kittens/hints` and
 :doc:`/kittens/themes`. To learn about writing your own kittens, see
 :doc:`/kittens/custom`.
