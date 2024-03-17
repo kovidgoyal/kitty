@@ -141,7 +141,7 @@ The Splits Layout
 --------------------
 
 This is the most flexible layout. You can create any arrangement of windows
-by splitting exiting windows repeatedly. To best use this layout you should
+by splitting existing windows repeatedly. To best use this layout you should
 define a few extra key bindings in :file:`kitty.conf`::
 
     # Create a new window splitting the space used by the existing one so that

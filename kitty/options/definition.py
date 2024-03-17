@@ -58,7 +58,7 @@ opt('bold_italic_font', 'auto')
 
 opt('font_size', '11.0',
     option_type='to_font_size', ctype='double',
-    long_text='Font size (in pts)'
+    long_text='Font size (in pts).'
     )
 
 opt('force_ltr', 'no',
@@ -311,7 +311,7 @@ opt('cursor_text_color', '#111111',
     long_text='''
 The color of text under the cursor. If you want it rendered with the
 background color of the cell underneath instead, use the special keyword:
-background. Note that if :opt:`cursor` is set to :code:`none` then this option
+`background`. Note that if :opt:`cursor` is set to :code:`none` then this option
 is ignored. Note that some themes set this value, so if you want to override it,
 place your value after the lines where the theme file is included.
 '''
@@ -791,7 +791,7 @@ mma('Select line from point',
     'select_line_from_point ctrl+alt+left triplepress ungrabbed mouse_selection line_from_point',
     long_text='Select from the clicked point to the end of the line.'
     ' If you would like to select the word at the point and then extend to the rest of the line,'
-    ' change line_from_point to word_and_line_from_point.'
+    ' change `line_from_point` to `word_and_line_from_point`.'
     )
 
 mma('Extend the current selection',
@@ -830,7 +830,7 @@ mma('Select line from point even when grabbed',
     'select_line_from_point_grabbed ctrl+shift+alt+left triplepress ungrabbed,grabbed mouse_selection line_from_point',
     long_text='Select from the clicked point to the end of the line even when grabbed.'
     ' If you would like to select the word at the point and then extend to the rest of the line,'
-    ' change line_from_point to word_and_line_from_point.'
+    ' change `line_from_point` to `word_and_line_from_point`.'
     )
 
 mma('Extend the current selection even when grabbed',
@@ -915,7 +915,7 @@ opt('window_alert_on_bell', 'yes',
     option_type='to_bool', ctype='bool',
     long_text='''
 Request window attention on bell. Makes the dock icon bounce on macOS or the
-taskbar flash on linux.
+taskbar flash on Linux.
 '''
     )
 
@@ -948,7 +948,7 @@ opt('bell_path', 'none',
 Path to a sound file to play as the bell sound. If set to :code:`none`, the
 system default bell sound is used. Must be in a format supported by the
 operating systems sound API, such as WAV or OGA on Linux (libcanberra) or AIFF,
-MP3 or WAV on macOS (NSSound)
+MP3 or WAV on macOS (NSSound).
 '''
     )
 
