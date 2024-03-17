@@ -311,17 +311,15 @@ def half_cross_line(buf: SSByteArray, width: int, height: int, which: str = 'tl'
 
 @supersampled()
 def mid_lines(buf: SSByteArray, width: int, height: int, level: int = 1, pts: Iterable[str] = ('lt',)) -> None:
-    mid_x, mid_y = width // 2, height // 2
-
     def pt_to_coords(p: str) -> Tuple[int, int]:
         if p == 'l':
-            return 0, mid_y
+            return 0, height // 2
         if p == 't':
-            return mid_x, 0
+            return width // 2, height // 4
         if p == 'r':
-            return width - 1, mid_y
+            return width - 1, height // 2
         if p == 'b':
-            return mid_x, height - 1
+            return width // 2, 3 * height // 4
         raise KeyError(f'Unknown p: {p}')
 
     for x in pts:
