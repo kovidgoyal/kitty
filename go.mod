@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/ALTree/bigfloat v0.2.0
-	github.com/alecthomas/chroma/v2 v2.12.0
+	github.com/alecthomas/chroma/v2 v2.13.0
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/dlclark/regexp2 v1.11.0
