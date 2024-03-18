@@ -507,6 +507,9 @@ def init_env(
         cflags.append('-g3')
         ldflags.append('-lprofiler')
 
+    if debug or profile:
+        cflags.append('-fno-omit-frame-pointer')
+
     library_paths: Dict[str, List[str]] = {}
 
     def add_lpath(which: str, name: str, val: Optional[str]) -> None:
