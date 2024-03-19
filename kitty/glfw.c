@@ -1077,7 +1077,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         // Request SRGB output buffer
         // Prevents kitty from starting on Wayland + NVIDIA, sigh: https://github.com/kovidgoyal/kitty/issues/7021
         // Remove after https://github.com/NVIDIA/egl-wayland/issues/85 is fixed.
-        if (!global_state.is_wayland || !is_nvidia_gpu_driver()) glfwWindowHint(GLFW_SRGB_CAPABLE, true);
+        // Also apparently mesa has introduced a bug with sRGB surfaces and Wayland.
+        // Sigh. Wayland is such a pile of steaming crap.
+        // See https://github.com/kovidgoyal/kitty/issues/7174#issuecomment-2000033873
+        if (!global_state.is_wayland) glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
