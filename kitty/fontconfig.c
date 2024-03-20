@@ -5,13 +5,11 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "state.h"
 #include "cleanup.h"
 #include "lineops.h"
 #include "fonts.h"
 #include <fontconfig/fontconfig.h>
 #include <dlfcn.h>
-#include "emoji.h"
 #include "freetype_render_ui_text.h"
 #ifndef FC_COLOR
 #define FC_COLOR "color"
