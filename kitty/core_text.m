@@ -240,10 +240,9 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
         CTFontRef new_font = CTFontCreateForString(old_font, str, CFRangeMake(start, amt));
         if (amt == len && len != 1) amt = 1;
         else start++;
-        if (new_font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback CTFont"); return NULL; }
         if (new_font == old_font) { CFRelease(new_font); continue; }
-        if (is_last_resort_font(new_font)) {
-            CFRelease(new_font);
+        if (!new_font || is_last_resort_font(new_font)) {
+            if (new_font) CFRelease(new_font);
             if (is_private_use(cpu_cell->ch)) {
                 // CoreTexts fallback font mechanism does not work for private use characters
                 new_font = manually_search_fallback_fonts(old_font, cpu_cell);
