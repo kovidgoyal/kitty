@@ -197,32 +197,64 @@ is_last_resort_font(CTFontRef new_font) {
     return ans;
 }
 
+static CTFontDescriptorRef _nerd_font_descriptor = NULL;
+
+static CTFontRef nerd_font(CGFloat sz) {
+    static bool searched = false;
+    if (!searched) {
+        searched = true;
+        CFArrayRef fonts = CTFontCollectionCreateMatchingFontDescriptors(all_fonts_collection());
+        const CFIndex count = CFArrayGetCount(fonts);
+        for (CFIndex i = 0; i < count; i++) {
+            CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(fonts, i);
+            CFStringRef name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute);
+            bool is_nerd_font = cf_string_equals(name, CFSTR("SymbolsNFM"));
+            CFRelease(name);
+            if (is_nerd_font) {
+                _nerd_font_descriptor = CTFontDescriptorCreateCopyWithAttributes(descriptor, CTFontDescriptorCopyAttributes(descriptor));
+                break;
+            }
+        }
+        CFRelease(fonts);
+    }
+    return _nerd_font_descriptor ? CTFontCreateWithFontDescriptor(_nerd_font_descriptor, sz, NULL) : NULL;
+}
+
+static bool
+font_can_render_cell(CTFontRef font, CPUCell *cell) {
+    char_type ch = cell->ch ? cell->ch : ' ';
+    bool found = true;
+    if (!glyph_id_for_codepoint_ctfont(font, ch)) found = false;
+    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i] && found; i++) {
+        char_type cch = codepoint_for_mark(cell->cc_idx[i]);
+        if (!glyph_id_for_codepoint_ctfont(font, cch)) found = false;
+    }
+    return found;
+}
+
 static CTFontRef
 manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
+    char_type ch = cell->ch ? cell->ch : ' ';
+    const bool in_first_pua = 0xe000 <= ch && ch <= 0xf8ff;
+    // preferentially load from NERD fonts
+    if (in_first_pua) {
+        CTFontRef nf = nerd_font(CTFontGetSize(current_font));
+        if (nf) {
+            if (font_can_render_cell(nf, cell)) return nf;
+            CFRelease(nf);
+        }
+    }
     CFArrayRef fonts = CTFontCollectionCreateMatchingFontDescriptors(all_fonts_collection());
     CTFontRef ans = NULL;
     const CFIndex count = CFArrayGetCount(fonts);
-    char_type ch = cell->ch ? cell->ch : ' ';
-    bool in_first_pua = 0xe000 <= ch && ch <= 0xf8ff;
-    // preferentially load from NERD fonts
     for (CFIndex i = 0; i < count; i++) {
         CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(fonts, i);
-        CFStringRef name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute);
-        bool is_last_resort_font = cf_string_equals(name, CFSTR(LAST_RESORT_FONT_NAME));
-        bool is_nerd_font = cf_string_equals(name, CFSTR("SymbolsNFM"));
-        CFRelease(name);
-        if (is_last_resort_font) continue;
         CTFontRef new_font = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(current_font), NULL);
-        bool found = true;
-        if (!glyph_id_for_codepoint_ctfont(new_font, ch)) found = false;
-        for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i] && found; i++) {
-            char_type cch = codepoint_for_mark(cell->cc_idx[i]);
-            if (!glyph_id_for_codepoint_ctfont(new_font, cch)) found = false;
-        }
-        if (found) {
-            // preferentially use NERD font for glyphs in first PUA
-            if (!ans || is_nerd_font) { if (ans) CFRelease(ans); ans = new_font; CFRetain(ans); }
-            if (is_nerd_font || !in_first_pua) break;
+        if (!is_last_resort_font(new_font)) {
+            if (font_can_render_cell(new_font, cell)) {
+                ans = new_font;
+                break;
+            }
         }
         CFRelease(new_font);
     }
@@ -473,6 +505,7 @@ finalize(void) {
     if (all_fonts_collection_data) CFRelease(all_fonts_collection_data);
     if (window_title_font) CFRelease(window_title_font);
     window_title_font = nil;
+    if (_nerd_font_descriptor) CFRelease(_nerd_font_descriptor);
 }
 
 
