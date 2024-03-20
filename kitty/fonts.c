@@ -452,7 +452,7 @@ has_cell_text(Font *self, CPUCell *cell) {
 }
 
 static void
-output_cell_fallback_data(CPUCell *cell, bool bold, bool italic, bool emoji_presentation, PyObject *face, bool new_face) {
+output_cell_fallback_data(CPUCell *cell, bool bold, bool italic, bool emoji_presentation, PyObject *face) {
     printf("U+%x ", cell->ch);
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
         printf("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
@@ -460,8 +460,8 @@ output_cell_fallback_data(CPUCell *cell, bool bold, bool italic, bool emoji_pres
     if (bold) printf("bold ");
     if (italic) printf("italic ");
     if (emoji_presentation) printf("emoji_presentation ");
+    if (PyLong_Check(face)) printf("using previous fallback font at index: ");
     PyObject_Print(face, stdout, 0);
-    if (new_face) printf(" (new face)");
     printf("\n");
 }
 
@@ -487,7 +487,7 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
     PyObject *face = create_fallback_face(fg->fonts[f].face, cell, bold, italic, emoji_presentation, (FONTS_DATA_HANDLE)fg);
     if (face == NULL) { PyErr_Print(); return MISSING_FONT; }
     if (face == Py_None) { Py_DECREF(face); return MISSING_FONT; }
-    if (global_state.debug_font_fallback) output_cell_fallback_data(cell, bold, italic, emoji_presentation, face, true);
+    if (global_state.debug_font_fallback) output_cell_fallback_data(cell, bold, italic, emoji_presentation, face);
     if (PyLong_Check(face)) { ssize_t ans = fg->first_fallback_font_idx + PyLong_AsSsize_t(face); Py_DECREF(face); return ans; }
     set_size_for_face(face, fg->cell_height, true, (FONTS_DATA_HANDLE)fg);
 
