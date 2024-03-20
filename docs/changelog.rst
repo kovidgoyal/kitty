@@ -56,6 +56,9 @@ Detailed list of changes
 
 - macOS: Fix text rendered with fallback fonts not respecting bold/italic styling (:disc:`7241`)
 
+- macOS: When CoreText fails to find a fallback font for a character in the first Private Use Unicode Area, preferentially use the NERD font, if available, for it (:iss:`6043`)
+
+
 0.33.0 [2024-03-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
