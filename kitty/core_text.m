@@ -211,6 +211,7 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
                 }
                 if (found) {
                     ans = new_font;
+                    if (global_state.debug_font_fallback) fprintf(stderr, "Manually found fallback font.\n");
                     break;
                 }
             }
