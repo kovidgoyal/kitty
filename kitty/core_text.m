@@ -249,8 +249,26 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
     return NULL;
 }
 
+static CTFontRef
+apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool italic) {
+    if (!original_fallback_font || is_last_resort_font(original_fallback_font)) return original_fallback_font;
+    CTFontRef ans = nil;
+    CTFontDescriptorRef original_descriptor = CTFontCopyFontDescriptor(original_fallback_font);
+    CTFontSymbolicTraits traits = kCTFontTraitMonoSpace;
+    if (bold) traits |= kCTFontTraitBold;
+    if (italic) traits |= kCTFontTraitItalic;
+    CTFontDescriptorRef descriptor = CTFontDescriptorCreateCopyWithSymbolicTraits(original_descriptor, traits, traits);
+    CFRelease(original_descriptor);
+    if (descriptor) {
+        ans = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(original_fallback_font), NULL);
+        CFRelease(descriptor);
+    }
+    if (ans) { CFRelease(original_fallback_font); return ans; }
+    return original_fallback_font;
+}
+
 PyObject*
-create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
+create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)base_face;
     CTFontRef new_font;
 #define search_for_fallback() \
@@ -268,21 +286,19 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool 
             search_for_fallback();
         }
     }
-    else { search_for_fallback(); }
+    else { search_for_fallback(); new_font = apply_styles_to_fallback_font(new_font, bold, italic); }
     if (new_font == NULL) return NULL;
-    NSURL *url = (NSURL*)CTFontCopyAttribute(new_font, kCTFontURLAttribute);
-    const char *font_path = [[url path] UTF8String];
+    PyObject *postscript_name = Py_BuildValue("s", convert_cfstring(CTFontCopyPostScriptName(new_font), true));
     ssize_t idx = -1;
     PyObject *q, *ans = NULL;
     while ((q = iter_fallback_faces(fg, &idx))) {
         CTFace *qf = (CTFace*)q;
-        const char *qpath;
-        if (qf->path && (qpath = PyUnicode_AsUTF8(qf->path)) && strcmp(qpath, font_path) == 0) {
+        if (PyObject_RichCompareBool(postscript_name, qf->postscript_name, Py_EQ) == 1) {
             ans = PyLong_FromSsize_t(idx);
             break;
         }
     }
-    [url release];
+    Py_CLEAR(postscript_name);
     if (ans == NULL) return (PyObject*)ct_face(new_font, fg);
     CFRelease(new_font);
     return ans;

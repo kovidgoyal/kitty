@@ -54,6 +54,8 @@ Detailed list of changes
 
 - Splits layout: Allow resizing until one of the halves in a split is minimally sized (:iss:`7220`)
 
+- macOS: Fix text rendered with fallback fonts not respecting bold/italic styling (:disc:`7241`)
+
 0.33.0 [2024-03-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
