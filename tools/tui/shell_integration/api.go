@@ -23,6 +23,12 @@ var _ = fmt.Print
 
 type integration_setup_func = func(shell_integration_dir string, argv []string, env map[string]string) ([]string, map[string]string, error)
 
+func TerminfoData() string {
+	d := Data()
+	entry := d["terminfo/x/xterm-kitty"]
+	return utils.UnsafeBytesToString(entry.Data)
+}
+
 func extract_files(match, dest_dir string) (err error) {
 	d := Data()
 	for _, fname := range d.FilesMatching(match) {

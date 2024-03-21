@@ -29,7 +29,7 @@ func TestExtractShellIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(kzsh, []byte("changed"), 0o644)
+	_ = os.WriteFile(kzsh, []byte("changed"), 0o644)
 	if err := extract_shell_integration_for("zsh", tdir); err != nil {
 		t.Fatal(err)
 	}
@@ -47,4 +47,5 @@ func TestExtractShellIntegration(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(tdir, "terminfo", "78", kitty.DefaultTermName)); err != nil {
 		t.Fatal(err)
 	}
+	TerminfoData()
 }
