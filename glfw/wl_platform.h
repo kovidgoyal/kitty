@@ -174,7 +174,7 @@ typedef struct _GLFWwindowWayland
 
     // We need to track the monitors the window spans on to calculate the
     // optimal scaling factor.
-    int                         integer_scale;
+    struct { uint32_t deduced, preferred; } integer_scale;
     uint32_t                    fractional_scale;
     bool                        initial_scale_notified;
     _GLFWmonitor**              monitors;
@@ -343,6 +343,7 @@ typedef struct _GLFWlibraryWayland
     EventLoopData eventLoopData;
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
+    bool has_preferred_buffer_scale;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data
@@ -380,6 +381,7 @@ void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 float _glfwWaylandWindowScale(_GLFWwindow*);
+int _glfwWaylandIntegerWindowScale(_GLFWwindow*);
 void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape, struct wl_cursor_theme*);
 void destroy_data_offer(_GLFWWaylandDataOffer*);

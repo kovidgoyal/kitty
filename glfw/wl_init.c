@@ -132,7 +132,7 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
     struct wl_cursor* cursor;
     struct wl_cursor_image* image;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
-    const int scale = window->wl.integer_scale;
+    const int scale = _glfwWaylandIntegerWindowScale(window);
 
     struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
     if (!theme) return;
@@ -632,10 +632,13 @@ static void registryHandleGlobal(void* data UNUSED,
 #define is(x) strcmp(interface, x##_interface.name) == 0
     if (is(wl_compositor))
     {
+#ifdef WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION
+        _glfw.wl.compositorVersion = min(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION, version);
+        _glfw.wl.has_preferred_buffer_scale = _glfw.wl.compositorVersion >= WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION;
+#else
         _glfw.wl.compositorVersion = min(3, version);
-        _glfw.wl.compositor =
-            wl_registry_bind(registry, name, &wl_compositor_interface,
-                             _glfw.wl.compositorVersion);
+#endif
+        _glfw.wl.compositor = wl_registry_bind(registry, name, &wl_compositor_interface, _glfw.wl.compositorVersion);
     }
     else if (is(wl_subcompositor))
     {

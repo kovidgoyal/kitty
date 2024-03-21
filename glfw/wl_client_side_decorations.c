@@ -282,7 +282,7 @@ render_edges(_GLFWwindow *window) {
 
 static bool
 create_shm_buffers(_GLFWwindow* window) {
-    const unsigned scale = window->wl.integer_scale >= 1 ? window->wl.integer_scale : 1;
+    const unsigned scale = _glfwWaylandIntegerWindowScale(window);
 
     const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
     const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
@@ -371,7 +371,7 @@ ensure_csd_resources(_GLFWwindow *window) {
     const bool size_changed = (
         decs.for_window_state.width != window->wl.width ||
         decs.for_window_state.height != window->wl.height ||
-        decs.for_window_state.scale != window->wl.integer_scale ||
+        decs.for_window_state.scale != _glfwWaylandIntegerWindowScale(window) ||
         !decs.mapping.data
     );
     const bool needs_update = focus_changed || size_changed || !decs.left.surface || decs.buffer_destroyed;
@@ -384,7 +384,7 @@ ensure_csd_resources(_GLFWwindow *window) {
         decs.buffer_destroyed = false;
     }
 
-    int32_t x, y, scale = window->wl.integer_scale < 1 ? 1 : window->wl.integer_scale;
+    int32_t x, y, scale = _glfwWaylandIntegerWindowScale(window);
     x = 0; y = -decs.metrics.top;
     if (!decs.top.surface) create_csd_surfaces(window, &decs.top);
     position_csd_surface(&decs.top, x, y, scale);
@@ -409,7 +409,7 @@ ensure_csd_resources(_GLFWwindow *window) {
 
     decs.for_window_state.width = window->wl.width;
     decs.for_window_state.height = window->wl.height;
-    decs.for_window_state.scale = window->wl.integer_scale;
+    decs.for_window_state.scale = _glfwWaylandIntegerWindowScale(window);
     decs.for_window_state.focused = is_focused;
     return true;
 }

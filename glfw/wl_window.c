@@ -206,7 +206,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
     struct wl_cursor_image* image = NULL;
     struct wl_buffer* buffer = NULL;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
-    const int scale = window->wl.integer_scale;
+    const int scale = _glfwWaylandIntegerWindowScale(window);
     if (!_glfw.wl.pointer) return;
 
     if (cursorWayland->scale < 0) {
@@ -263,9 +263,9 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
 
 static bool
 checkScaleChange(_GLFWwindow* window) {
-    int scale = 1;
+    if (window->wl.fractional_scale || window->wl.integer_scale.preferred) return false;
+    unsigned int scale = 1, monitorScale;
     int i;
-    int monitorScale;
 
     // Check if we will be able to set the buffer scale or not.
     if (_glfw.wl.compositorVersion < 3)
@@ -281,14 +281,13 @@ checkScaleChange(_GLFWwindow* window) {
     if (window->wl.monitorsCount < 1 && _glfw.monitorCount > 0) {
         // The window has not yet been assigned to any monitors, use the primary monitor
         _GLFWmonitor *m = _glfw.monitors[0];
-        if (m && m->wl.scale > scale) scale = m->wl.scale;
+        if (m && m->wl.scale > (int)scale) scale = m->wl.scale;
     }
 
     // Only change the framebuffer size if the scale changed.
-    if (scale != window->wl.integer_scale && !window->wl.fractional_scale)
+    if (scale != window->wl.integer_scale.deduced && !window->wl.fractional_scale)
     {
-        window->wl.integer_scale = scale;
-        wl_surface_set_buffer_scale(window->wl.surface, scale);
+        window->wl.integer_scale.deduced = scale;
         setCursorImage(window, false);
         return true;
     }
@@ -323,9 +322,16 @@ static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
     wl_region_destroy(region);
 }
 
+int
+_glfwWaylandIntegerWindowScale(_GLFWwindow *window) {
+    int ans = (window->wl.integer_scale.preferred) ? window->wl.integer_scale.preferred : window->wl.integer_scale.deduced;
+    if (ans < 1) ans = 1;
+    return ans;
+}
+
 float
 _glfwWaylandWindowScale(_GLFWwindow *window) {
-    float ans = window->wl.integer_scale;
+    float ans = _glfwWaylandIntegerWindowScale(window);
     if (window->wl.fractional_scale) ans = window->wl.fractional_scale / 120.f;
     return ans;
 }
@@ -363,6 +369,16 @@ clipboard_mime(void) {
     return buf;
 }
 
+static void
+apply_scale_changes(_GLFWwindow *window, bool resize_framebuffer, bool update_csd) {
+    float scale = _glfwWaylandWindowScale(window);
+    if (resize_framebuffer) resizeFramebuffer(window);
+    _glfwInputWindowContentScale(window, scale, scale);
+    if (update_csd) ensure_csd_resources(window);
+    int buffer_scale = window->wl.fractional_scale ? 1 : (int)scale;
+    wl_surface_set_buffer_scale(window->wl.surface, buffer_scale);
+}
+
 static bool
 dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
     bool size_changed = width != window->wl.width || height != window->wl.height;
@@ -375,9 +391,8 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     }
 
     if (scale_changed) {
-        debug("Scale changed to %d in dispatchChangesAfterConfigure\n", window->wl.integer_scale);
-        if (!size_changed) resizeFramebuffer(window);
-        _glfwInputWindowContentScale(window, window->wl.integer_scale, window->wl.integer_scale);
+        debug("Scale changed to %.2f in dispatchChangesAfterConfigure\n", _glfwWaylandWindowScale(window));
+        apply_scale_changes(window, !size_changed, false);
     }
 
     _glfwInputWindowDamage(window);
@@ -429,10 +444,8 @@ static void surfaceHandleEnter(void *data,
     window->wl.monitors[window->wl.monitorsCount++] = monitor;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %d in surface enter event\n", window->wl.integer_scale);
-        resizeFramebuffer(window);
-        _glfwInputWindowContentScale(window, window->wl.integer_scale, window->wl.integer_scale);
-        ensure_csd_resources(window);
+        debug("Scale changed to %.2f in surfaceHandleEnter\n", _glfwWaylandWindowScale(window));
+        apply_scale_changes(window, true, true);
     }
 }
 
@@ -455,16 +468,35 @@ static void surfaceHandleLeave(void *data,
     window->wl.monitors[--window->wl.monitorsCount] = NULL;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %d in surface leave event\n", window->wl.integer_scale);
-        resizeFramebuffer(window);
-        _glfwInputWindowContentScale(window, window->wl.integer_scale, window->wl.integer_scale);
-        ensure_csd_resources(window);
+        debug("Scale changed to %.2f in surfaceHandleLeave\n", _glfwWaylandWindowScale(window));
+        apply_scale_changes(window, true, true);
     }
 }
 
+#ifdef WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION
+static void
+surface_preferred_buffer_scale(void *data, struct wl_surface *surface UNUSED, int32_t scale) {
+    _GLFWwindow* window = data;
+    if ((int)window->wl.integer_scale.preferred == scale) return;
+    debug("Preferred integer buffer scale changed to: %d\n", scale);
+    window->wl.integer_scale.preferred = scale;
+    if (!window->wl.fractional_scale) apply_scale_changes(window, true, true);
+}
+
+static void
+surface_preferred_buffer_transform(void *data, struct wl_surface *surface, uint32_t transform) {
+    (void)data; (void)surface; (void)transform;
+}
+#endif
+
+
 static const struct wl_surface_listener surfaceListener = {
-    surfaceHandleEnter,
-    surfaceHandleLeave
+    .enter = surfaceHandleEnter,
+    .leave = surfaceHandleLeave,
+#ifdef WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION
+    .preferred_buffer_scale = &surface_preferred_buffer_scale,
+    .preferred_buffer_transform = &surface_preferred_buffer_transform,
+#endif
 };
 
 static void
@@ -473,12 +505,7 @@ fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_f
     if (scale == window->wl.fractional_scale) return;
     debug("Fractional scale requested: %u/120 = %.2f\n", scale, scale / 120.);
     window->wl.fractional_scale = scale;
-    resizeFramebuffer(window);
-    inform_compositor_of_window_geometry(window, "FractionalScale");
-    wl_surface_set_buffer_scale(window->wl.surface, 1);
-    float fscale = scale / 120.f;
-    _glfwInputWindowContentScale(window, fscale, fscale);
-    ensure_csd_resources(window);
+    apply_scale_changes(window, true, true);
 }
 
 static const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
@@ -517,6 +544,9 @@ static bool createSurface(_GLFWwindow* window,
         wp_fractional_scale_v1_add_listener(window->wl.wp_fractional_scale_v1, &fractional_scale_listener, window);
     }
 
+    window->wl.integer_scale.deduced = scale;
+    if (_glfw.wl.has_preferred_buffer_scale) { scale = 1; window->wl.integer_scale.preferred = 1; }
+
     debug("Creating window at size: %dx%d and scale %d\n", wndconfig->width, wndconfig->height, scale);
     window->wl.native = wl_egl_window_create(window->wl.surface, wndconfig->width * scale, wndconfig->height * scale);
     if (!window->wl.native)
@@ -527,7 +557,6 @@ static bool createSurface(_GLFWwindow* window,
     window->wl.user_requested_content_size.width = wndconfig->width;
     window->wl.user_requested_content_size.height = wndconfig->height;
 
-    window->wl.integer_scale = scale;
 
     if (!window->wl.transparent)
         setOpaqueRegion(window, false);
