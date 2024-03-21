@@ -27,6 +27,7 @@ func default_shortcuts() *ShortcutMap {
 	if _default_shortcuts == nil {
 		sm := shortcuts.New[Action]()
 		sm.AddOrPanic(ActionBackspace, "backspace")
+		sm.AddOrPanic(ActionBackspace, "shift+backspace")
 		sm.AddOrPanic(ActionBackspace, "ctrl+h")
 		sm.AddOrPanic(ActionDelete, "delete")
 
