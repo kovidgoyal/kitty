@@ -261,8 +261,8 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
 }
 
 
-static bool checkScaleChange(_GLFWwindow* window)
-{
+static bool
+checkScaleChange(_GLFWwindow* window) {
     int scale = 1;
     int i;
     int monitorScale;
@@ -285,7 +285,7 @@ static bool checkScaleChange(_GLFWwindow* window)
     }
 
     // Only change the framebuffer size if the scale changed.
-    if (scale != window->wl.integer_scale)
+    if (scale != window->wl.integer_scale && !window->wl.fractional_scale)
     {
         window->wl.integer_scale = scale;
         wl_surface_set_buffer_scale(window->wl.surface, scale);
@@ -323,23 +323,30 @@ static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
     wl_region_destroy(region);
 }
 
+static float
+effective_window_scale(_GLFWwindow *window) {
+    float ans = window->wl.integer_scale;
+    if (window->wl.fractional_scale) ans = window->wl.fractional_scale / 120.f;
+    return ans;
+}
 
 static void
 resizeFramebuffer(_GLFWwindow* window) {
-    int scale = window->wl.integer_scale;
-    int scaledWidth = window->wl.width * scale;
-    int scaledHeight = window->wl.height * scale;
-    debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.width, window->wl.height, scale);
-    wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
+    float scale = effective_window_scale(window);
+    int scaled_width = (int)roundf(window->wl.width * scale);
+    int scaled_height = (int)roundf(window->wl.height * scale);
+    debug("Resizing framebuffer to: %dx%d window size: %dx%d at scale: %.2f\n",
+            scaled_width, scaled_height, window->wl.width, window->wl.height, scale);
+    wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0);
     if (!window->wl.transparent) setOpaqueRegion(window, false);
     window->wl.waiting_for_swap_to_commit = true;
-    _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
+    _glfwInputFramebufferSize(window, scaled_width, scaled_height);
 }
 
 void
 _glfwWaylandAfterBufferSwap(_GLFWwindow* window) {
     if (window->wl.waiting_for_swap_to_commit) {
-        debug("Waiting for swap to commit: swap has happened\n");
+        debug("Waiting for swap to commit: swap has happened, window surface committed\n");
         window->wl.waiting_for_swap_to_commit = false;
         // this is not really needed, since I think eglSwapBuffers() calls wl_surface_commit()
         // but lets be safe. See https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/egl/drivers/dri2/platform_wayland.c#L1510
@@ -381,8 +388,10 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
 static void
 inform_compositor_of_window_geometry(_GLFWwindow *window, const char *event) {
 #define geometry window->wl.decorations.geometry
-    debug("Setting window geometry in %s event: x=%d y=%d %dx%d\n", event, geometry.x, geometry.y, geometry.width, geometry.height);
+    debug("Setting window geometry in %s event: x=%d y=%d %dx%d viewport: %dx%d\n",
+            event, geometry.x, geometry.y, geometry.width, geometry.height, window->wl.width, window->wl.height);
     xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
+    if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
 #undef geometry
 }
 
@@ -463,6 +472,13 @@ fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_f
     _GLFWwindow *window = data;
     if (scale == window->wl.fractional_scale) return;
     debug("Fractional scale requested: %u/120 = %.2f\n", scale, scale / 120.);
+    window->wl.fractional_scale = scale;
+    resizeFramebuffer(window);
+    inform_compositor_of_window_geometry(window, "FractionalScale");
+    wl_surface_set_buffer_scale(window->wl.surface, 1);
+    float fscale = scale / 120.f;
+    _glfwInputWindowContentScale(window, fscale, fscale);
+    ensure_csd_resources(window);
 }
 
 static const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
@@ -497,6 +513,7 @@ static bool createSurface(_GLFWwindow* window,
     }
     if (_glfw.wl.wp_fractional_scale_manager_v1 && _glfw.wl.wp_viewporter) {
         window->wl.wp_fractional_scale_v1 = wp_fractional_scale_manager_v1_get_fractional_scale(_glfw.wl.wp_fractional_scale_manager_v1, window->wl.surface);
+        window->wl.wp_viewport = wp_viewporter_get_viewport(_glfw.wl.wp_viewporter, window->wl.surface);
         wp_fractional_scale_v1_add_listener(window->wl.wp_fractional_scale_v1, &fractional_scale_listener, window);
     }
 
@@ -1017,6 +1034,8 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
     if (window->wl.wp_fractional_scale_v1)
         wp_fractional_scale_v1_destroy(window->wl.wp_fractional_scale_v1);
+    if (window->wl.wp_viewport)
+        wp_viewport_destroy(window->wl.wp_viewport);
 
     if (window->context.destroy)
         window->context.destroy(window);
@@ -1143,10 +1162,11 @@ void _glfwPlatformGetFramebufferSize(_GLFWwindow* window,
                                      int* width, int* height)
 {
     _glfwPlatformGetWindowSize(window, width, height);
+    float fscale = effective_window_scale(window);
     if (width)
-        *width *= window->wl.integer_scale;
+        *width = (int)roundf(*width * fscale);
     if (height)
-        *height *= window->wl.integer_scale;
+        *height = (int)roundf(*height * fscale);
 }
 
 void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
@@ -1169,10 +1189,11 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
 void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
                                         float* xscale, float* yscale)
 {
+    float fscale = effective_window_scale(window);
     if (xscale)
-        *xscale = (float) window->wl.integer_scale;
+        *xscale = fscale;
     if (yscale)
-        *yscale = (float) window->wl.integer_scale;
+        *yscale = fscale;
 }
 
 monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)

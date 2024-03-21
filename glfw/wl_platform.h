@@ -164,6 +164,7 @@ typedef struct _GLFWwindowWayland
         struct zxdg_toplevel_decoration_v1* decoration;
     } xdg;
     struct wp_fractional_scale_v1 *wp_fractional_scale_v1;
+    struct wp_viewport *wp_viewport;
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
