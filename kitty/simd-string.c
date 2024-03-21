@@ -150,7 +150,7 @@ test_xor64(PyObject *self UNUSED, PyObject *args) {
     RAII_PY_BUFFER(key);
     int which_function = 0, align_offset = 0;
     void (*func)(const uint8_t key[64], uint8_t* data, const size_t data_sz) = xor_data64;
-    if (!PyArg_ParseTuple(args, "s*s*BB|ii", &key, &buf, &which_function, &align_offset)) return NULL;
+    if (!PyArg_ParseTuple(args, "s*s*|ii", &key, &buf, &which_function, &align_offset)) return NULL;
     switch (which_function) {
         case 1:
             func = xor_data64_scalar; break;
