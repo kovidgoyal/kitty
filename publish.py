@@ -351,7 +351,7 @@ class GitHub:  # {{{
                 success_codes.append(404)
             self.make_request_with_retries(
                 asset['url'], method='DELETE', num_tries=5, sleep_between_tries=2, success_codes=tuple(success_codes),
-                failure_msg=f'Failed to delete {fname} from GitHub')
+                failure_msg='Failed to delete asset from GitHub')
 
         def upload_with_retries(path: str, desc: str, num_tries: int = 8, sleep_time: float = 60.0) -> None:
             fname = os.path.basename(path)
