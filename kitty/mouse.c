@@ -821,7 +821,7 @@ mouse_event(const int button, int modifiers, int action) {
             }
         } else if (action == GLFW_RELEASE && button == GLFW_MOUSE_BUTTON_LEFT) {
             w = window_for_id(global_state.tracked_drag_in_window);
-            if (w && w->render_data.screen->modes.mouse_tracking_mode >= MOTION_MODE && w->render_data.screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
+            if (w && w->render_data.screen->modes.mouse_tracking_mode >= BUTTON_MODE && w->render_data.screen->modes.mouse_tracking_protocol >= SGR_PROTOCOL) {
                 global_state.tracked_drag_in_window = 0;
                 clamp_to_window = true;
                 Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
