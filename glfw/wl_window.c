@@ -206,7 +206,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
     struct wl_cursor_image* image = NULL;
     struct wl_buffer* buffer = NULL;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
-    const int scale = window->wl.scale;
+    const int scale = window->wl.integer_scale;
     if (!_glfw.wl.pointer) return;
 
     if (cursorWayland->scale < 0) {
@@ -285,9 +285,9 @@ static bool checkScaleChange(_GLFWwindow* window)
     }
 
     // Only change the framebuffer size if the scale changed.
-    if (scale != window->wl.scale)
+    if (scale != window->wl.integer_scale)
     {
-        window->wl.scale = scale;
+        window->wl.integer_scale = scale;
         wl_surface_set_buffer_scale(window->wl.surface, scale);
         setCursorImage(window, false);
         return true;
@@ -326,7 +326,7 @@ static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
 
 static void
 resizeFramebuffer(_GLFWwindow* window) {
-    int scale = window->wl.scale;
+    int scale = window->wl.integer_scale;
     int scaledWidth = window->wl.width * scale;
     int scaledHeight = window->wl.height * scale;
     debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.width, window->wl.height, scale);
@@ -368,9 +368,9 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     }
 
     if (scale_changed) {
-        debug("Scale changed to %d in dispatchChangesAfterConfigure\n", window->wl.scale);
+        debug("Scale changed to %d in dispatchChangesAfterConfigure\n", window->wl.integer_scale);
         if (!size_changed) resizeFramebuffer(window);
-        _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+        _glfwInputWindowContentScale(window, window->wl.integer_scale, window->wl.integer_scale);
     }
 
     _glfwInputWindowDamage(window);
@@ -420,9 +420,9 @@ static void surfaceHandleEnter(void *data,
     window->wl.monitors[window->wl.monitorsCount++] = monitor;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %d in surface enter event\n", window->wl.scale);
+        debug("Scale changed to %d in surface enter event\n", window->wl.integer_scale);
         resizeFramebuffer(window);
-        _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+        _glfwInputWindowContentScale(window, window->wl.integer_scale, window->wl.integer_scale);
         ensure_csd_resources(window);
     }
 }
@@ -446,9 +446,9 @@ static void surfaceHandleLeave(void *data,
     window->wl.monitors[--window->wl.monitorsCount] = NULL;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %d in surface leave event\n", window->wl.scale);
+        debug("Scale changed to %d in surface leave event\n", window->wl.integer_scale);
         resizeFramebuffer(window);
-        _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+        _glfwInputWindowContentScale(window, window->wl.integer_scale, window->wl.integer_scale);
         ensure_csd_resources(window);
     }
 }
@@ -495,7 +495,7 @@ static bool createSurface(_GLFWwindow* window,
     window->wl.user_requested_content_size.width = wndconfig->width;
     window->wl.user_requested_content_size.height = wndconfig->height;
 
-    window->wl.scale = scale;
+    window->wl.integer_scale = scale;
 
     if (!window->wl.transparent)
         setOpaqueRegion(window, false);
@@ -1126,9 +1126,9 @@ void _glfwPlatformGetFramebufferSize(_GLFWwindow* window,
 {
     _glfwPlatformGetWindowSize(window, width, height);
     if (width)
-        *width *= window->wl.scale;
+        *width *= window->wl.integer_scale;
     if (height)
-        *height *= window->wl.scale;
+        *height *= window->wl.integer_scale;
 }
 
 void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
@@ -1152,9 +1152,9 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
                                         float* xscale, float* yscale)
 {
     if (xscale)
-        *xscale = (float) window->wl.scale;
+        *xscale = (float) window->wl.integer_scale;
     if (yscale)
-        *yscale = (float) window->wl.scale;
+        *yscale = (float) window->wl.integer_scale;
 }
 
 monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)

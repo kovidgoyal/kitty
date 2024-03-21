@@ -132,7 +132,7 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
     struct wl_cursor* cursor;
     struct wl_cursor_image* image;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
-    const int scale = window->wl.scale;
+    const int scale = window->wl.integer_scale;
 
     struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
     if (!theme) return;
@@ -346,14 +346,14 @@ static void pointerHandleAxis(void* data UNUSED,
             window->wl.axis_discrete_count.x--;
             return;
         }
-        x = -wl_fixed_to_double(value) * (window->wl.scale);
+        x = -wl_fixed_to_double(value) * (window->wl.integer_scale);
     }
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
         if (window->wl.axis_discrete_count.y) {
             window->wl.axis_discrete_count.y--;
             return;
         }
-        y = -wl_fixed_to_double(value) * (window->wl.scale);
+        y = -wl_fixed_to_double(value) * (window->wl.integer_scale);
     }
 
     _glfwInputScroll(window, x, y, 1, _glfw.wl.xkb.states.modifiers);

@@ -171,7 +171,7 @@ typedef struct _GLFWwindowWayland
 
     // We need to track the monitors the window spans on to calculate the
     // optimal scaling factor.
-    int                         scale;
+    int                         integer_scale;
     bool                        initial_scale_notified;
     _GLFWmonitor**              monitors;
     int                         monitorsCount;

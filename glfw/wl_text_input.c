@@ -172,7 +172,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
             commit();
             break;
         case GLFW_IME_UPDATE_CURSOR_POSITION: {
-            const int scale = w->wl.scale;
+            const int scale = w->wl.integer_scale;
             const int left = ev->cursor.left / scale, top = ev->cursor.top / scale, width = ev->cursor.width / scale, height = ev->cursor.height / scale;
             if (left != last_cursor_left || top != last_cursor_top || width != last_cursor_width || height != last_cursor_height) {
                 last_cursor_left = left;
