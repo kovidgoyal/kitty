@@ -1294,6 +1294,14 @@ class Parser:
     def term(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['term'] = str(val)
 
+    def terminfo_type(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_terminfo_type:
+            raise ValueError(f"The value {val} is not a valid choice for terminfo_type")
+        ans["terminfo_type"] = val
+
+    choices_for_terminfo_type = frozenset(('path', 'direct', 'none'))
+
     def text_composition_strategy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['text_composition_strategy'] = str(val)
 

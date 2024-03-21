@@ -47,6 +47,11 @@ rsync algorithm to speed up repeated transfers of large files.
 Detailed list of changes
 -------------------------------------
 
+0.33.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- A new option :opt:`terminfo_type` to allow passing the terminfo database embedded into the :envvar:`TERMINFO` env var directly instead of via a file
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

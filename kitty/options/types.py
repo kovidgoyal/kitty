@@ -31,6 +31,7 @@ choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
 choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
 choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
 choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
+choices_for_terminfo_type = typing.Literal['path', 'direct', 'none']
 choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
 choices_for_underline_hyperlinks = typing.Literal['hover', 'always', 'never']
 choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
@@ -433,6 +434,7 @@ option_names = (  # {{{
  'tab_title_max_length',
  'tab_title_template',
  'term',
+ 'terminfo_type',
  'text_composition_strategy',
  'text_fg_override_threshold',
  'touch_scroll_multiplier',
@@ -591,6 +593,7 @@ class Options:
     tab_title_max_length: int = 0
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
+    terminfo_type: choices_for_terminfo_type = 'path'
     text_composition_strategy: str = 'platform'
     text_fg_override_threshold: float = 0.0
     touch_scroll_multiplier: float = 1.0

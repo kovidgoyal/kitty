@@ -164,7 +164,8 @@ Variables that kitty sets when running child programs
 
 .. envvar:: TERMINFO
 
-   Path to a directory containing the kitty terminfo database.
+   Path to a directory containing the kitty terminfo database. Or the terminfo
+   database itself encoded in base64. See :opt:`terminfo_type`.
 
 .. envvar:: KITTY_INSTALLATION_DIR
 

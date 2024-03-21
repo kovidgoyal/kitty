@@ -179,6 +179,11 @@ def getpid() -> str:
     return str(os.getpid())
 
 
+@run_once
+def base64_terminfo_data() -> str:
+    return (b'b64:' + fast_data_types.base64_encode(fast_data_types.terminfo_data(), True)).decode('ascii')
+
+
 class ProcessDesc(TypedDict):
     cwd: Optional[str]
     pid: int
@@ -242,9 +247,12 @@ class Child:
             # can use it to display the current directory name rather
             # than the resolved path
             env['PWD'] = self.cwd
-        tdir = checked_terminfo_dir()
-        if tdir:
-            env['TERMINFO'] = tdir
+        if opts.terminfo_type == 'path':
+            tdir = checked_terminfo_dir()
+            if tdir:
+                env['TERMINFO'] = tdir
+        elif opts.terminfo_type == 'direct':
+            env['TERMINFO'] = base64_terminfo_data()
         env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
         if opts.forward_stdio:
             env['KITTY_STDIO_FORWARDED'] = '3'

@@ -3221,6 +3221,18 @@ created windows.
 '''
     )
 
+opt('terminfo_type', 'path', choices=('path', 'direct', 'none'),
+    long_text='''
+The value of the :envvar:`TERMINFO` environment variable to set. This variable is
+used by programs running in the terminal to search for terminfo databases. The default value
+of :code:`path` causes kitty to set it to a filesystem location containing the
+kitty terminfo database. A value of :code:`direct` means put the entire database into
+the env var directly. This can be useful when connecting to containers, for example. But,
+note that not all software supports this. A value of :code:`none` means do not touch the variable.
+'''
+    )
+
+
 opt('forward_stdio', 'no', option_type='to_bool', long_text='''
 Forward STDOUT and STDERR of the kitty process to child processes
 as file descriptors 3 and 4. This is useful for debugging as it
