@@ -50,6 +50,10 @@ Detailed list of changes
 0.33.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: Support fractional scales so that there is no wasted drawing at larger scale followed by resizing in the compositor
+
+- Wayland: Support preferred integer scales
+
 - A new option :opt:`terminfo_type` to allow passing the terminfo database embedded into the :envvar:`TERMINFO` env var directly instead of via a file
 
 - Mouse reporting: Fix drag release event outside the window not being reported in legacy mouse reporting modes (:iss:`7244`)
