@@ -323,8 +323,8 @@ static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
     wl_region_destroy(region);
 }
 
-static float
-effective_window_scale(_GLFWwindow *window) {
+float
+_glfwWaylandWindowScale(_GLFWwindow *window) {
     float ans = window->wl.integer_scale;
     if (window->wl.fractional_scale) ans = window->wl.fractional_scale / 120.f;
     return ans;
@@ -332,7 +332,7 @@ effective_window_scale(_GLFWwindow *window) {
 
 static void
 resizeFramebuffer(_GLFWwindow* window) {
-    float scale = effective_window_scale(window);
+    float scale = _glfwWaylandWindowScale(window);
     int scaled_width = (int)roundf(window->wl.width * scale);
     int scaled_height = (int)roundf(window->wl.height * scale);
     debug("Resizing framebuffer to: %dx%d window size: %dx%d at scale: %.2f\n",
@@ -1162,7 +1162,7 @@ void _glfwPlatformGetFramebufferSize(_GLFWwindow* window,
                                      int* width, int* height)
 {
     _glfwPlatformGetWindowSize(window, width, height);
-    float fscale = effective_window_scale(window);
+    float fscale = _glfwWaylandWindowScale(window);
     if (width)
         *width = (int)roundf(*width * fscale);
     if (height)
@@ -1189,7 +1189,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
 void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
                                         float* xscale, float* yscale)
 {
-    float fscale = effective_window_scale(window);
+    float fscale = _glfwWaylandWindowScale(window);
     if (xscale)
         *xscale = fscale;
     if (yscale)

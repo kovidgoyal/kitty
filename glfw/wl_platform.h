@@ -379,6 +379,7 @@ void _glfwAddOutputWayland(uint32_t name, uint32_t version);
 void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
+float _glfwWaylandWindowScale(_GLFWwindow*);
 void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape, struct wl_cursor_theme*);
 void destroy_data_offer(_GLFWWaylandDataOffer*);

@@ -346,14 +346,14 @@ static void pointerHandleAxis(void* data UNUSED,
             window->wl.axis_discrete_count.x--;
             return;
         }
-        x = -wl_fixed_to_double(value) * (window->wl.integer_scale);
+        x = -wl_fixed_to_double(value) * _glfwWaylandWindowScale(window);
     }
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
         if (window->wl.axis_discrete_count.y) {
             window->wl.axis_discrete_count.y--;
             return;
         }
-        y = -wl_fixed_to_double(value) * (window->wl.integer_scale);
+        y = -wl_fixed_to_double(value) * _glfwWaylandWindowScale(window);
     }
 
     _glfwInputScroll(window, x, y, 1, _glfw.wl.xkb.states.modifiers);
