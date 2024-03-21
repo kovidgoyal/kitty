@@ -163,6 +163,7 @@ typedef struct _GLFWwindowWayland
         struct xdg_toplevel*    toplevel;
         struct zxdg_toplevel_decoration_v1* decoration;
     } xdg;
+    struct wp_fractional_scale_v1 *wp_fractional_scale_v1;
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
@@ -173,6 +174,7 @@ typedef struct _GLFWwindowWayland
     // We need to track the monitors the window spans on to calculate the
     // optimal scaling factor.
     int                         integer_scale;
+    uint32_t                    fractional_scale;
     bool                        initial_scale_notified;
     _GLFWmonitor**              monitors;
     int                         monitorsCount;

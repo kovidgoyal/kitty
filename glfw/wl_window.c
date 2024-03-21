@@ -458,6 +458,17 @@ static const struct wl_surface_listener surfaceListener = {
     surfaceHandleLeave
 };
 
+static void
+fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_fractional_scale_v1 UNUSED, uint32_t scale) {
+    _GLFWwindow *window = data;
+    if (scale == window->wl.fractional_scale) return;
+    debug("Fractional scale requested: %u/120 = %.2f\n", scale, scale / 120.);
+}
+
+static const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
+    .preferred_scale = &fractional_scale_preferred_scale,
+};
+
 static bool createSurface(_GLFWwindow* window,
                               const _GLFWwndconfig* wndconfig)
 {
@@ -483,6 +494,10 @@ static bool createSurface(_GLFWwindow* window,
         // see wl_monitor.c xscale is always == yscale
         if (xscale <= 0.0001 || xscale != xscale || xscale >= 24) xscale = 1.0;
         if (xscale > 1) scale = (int)xscale;
+    }
+    if (_glfw.wl.wp_fractional_scale_manager_v1 && _glfw.wl.wp_viewporter) {
+        window->wl.wp_fractional_scale_v1 = wp_fractional_scale_manager_v1_get_fractional_scale(_glfw.wl.wp_fractional_scale_manager_v1, window->wl.surface);
+        wp_fractional_scale_v1_add_listener(window->wl.wp_fractional_scale_v1, &fractional_scale_listener, window);
     }
 
     debug("Creating window at size: %dx%d and scale %d\n", wndconfig->width, wndconfig->height, scale);
@@ -999,6 +1014,9 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->id == _glfw.wl.keyRepeatInfo.keyboardFocusId) {
         _glfw.wl.keyRepeatInfo.keyboardFocusId = 0;
     }
+
+    if (window->wl.wp_fractional_scale_v1)
+        wp_fractional_scale_v1_destroy(window->wl.wp_fractional_scale_v1);
 
     if (window->context.destroy)
         window->context.destroy(window);
