@@ -27,6 +27,7 @@ def compile_terminfo(base):
         os.makedirs(odir, exist_ok=True)
         ofile = os.path.join(odir, xterm_kitty)
         shutil.move(tfile, ofile)
+    return ofile
 
 
 def generate_terminfo():
@@ -46,7 +47,14 @@ def generate_terminfo():
     with open('terminfo/kitty.termcap', 'w') as f:
         f.write(tcap)
 
-    compile_terminfo(os.path.join(base, 'terminfo'))
+    dbfile = compile_terminfo(os.path.join(base, 'terminfo'))
+    with open(dbfile, 'rb') as f:
+        data = f.read()
+    with open('kitty/terminfo.h', 'w') as f:
+        print(f'static const uint8_t terminfo_data[{len(data)}] = ''{', file=f)
+        for b in data:
+            print(b, end=', ', file=f)
+        print('};', file=f)
 
 
 if __name__ == '__main__':
