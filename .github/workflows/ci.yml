@@ -28,11 +28,11 @@ jobs:
 
                     - python: b
                       pyver: "3.11"
-                      sanitize: 0  # disabled because causes segfaults
+                      sanitize: 1
 
                     - python: c
                       pyver: "3.9"
-                      sanitize: 0 # disabled because causes segfaults
+                      sanitize: 1
 
 
                 exclude:
