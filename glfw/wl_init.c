@@ -31,10 +31,10 @@
 #include "backend_utils.h"
 #include "linux_desktop_settings.h"
 #include "../kitty/monotonic.h"
+#include "wl_text_input.h"
+#include "wayland-text-input-unstable-v3-client-protocol.h"
 
 #include <assert.h>
-#include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -629,7 +629,7 @@ static void registryHandleGlobal(void* data UNUSED,
                                  const char* interface,
                                  uint32_t version)
 {
-#define is(x) strcmp(interface, #x) == 0
+#define is(x) strcmp(interface, x##_interface.name) == 0
     if (is(wl_compositor))
     {
         _glfw.wl.compositorVersion = min(3, version);

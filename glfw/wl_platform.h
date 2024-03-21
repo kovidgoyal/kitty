@@ -58,7 +58,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
 #include "wayland-primary-selection-unstable-v1-client-protocol.h"
 #include "wayland-primary-selection-unstable-v1-client-protocol.h"
-#include "wl_text_input.h"
 #include "wayland-xdg-activation-v1-client-protocol.h"
 #include "wayland-cursor-shape-v1-client-protocol.h"
 
