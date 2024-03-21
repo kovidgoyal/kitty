@@ -61,6 +61,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-xdg-activation-v1-client-protocol.h"
 #include "wayland-cursor-shape-v1-client-protocol.h"
 #include "wayland-fractional-scale-v1-client-protocol.h"
+#include "wayland-viewporter-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -290,6 +291,7 @@ typedef struct _GLFWlibraryWayland
     struct wp_cursor_shape_manager_v1* wp_cursor_shape_manager_v1;
     struct wp_cursor_shape_device_v1* wp_cursor_shape_device_v1;
     struct wp_fractional_scale_manager_v1 *wp_fractional_scale_manager_v1;
+    struct wp_viewporter *wp_viewporter;
 
     int                         compositorVersion;
     int                         seatVersion;

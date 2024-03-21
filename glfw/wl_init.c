@@ -729,6 +729,9 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(wp_fractional_scale_manager_v1)) {
         _glfw.wl.wp_fractional_scale_manager_v1 = wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, 1);
     }
+    else if (is(wp_viewporter)) {
+        _glfw.wl.wp_viewporter = wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
+    }
 #undef is
 }
 
@@ -965,6 +968,8 @@ void _glfwPlatformTerminate(void)
         xdg_activation_v1_destroy(_glfw.wl.xdg_activation_v1);
     if (_glfw.wl.wp_cursor_shape_manager_v1)
         wp_cursor_shape_manager_v1_destroy(_glfw.wl.wp_cursor_shape_manager_v1);
+    if (_glfw.wl.wp_viewporter)
+        wp_viewporter_destroy(_glfw.wl.wp_viewporter);
     if (_glfw.wl.wp_fractional_scale_manager_v1)
         wp_fractional_scale_manager_v1_destroy(_glfw.wl.wp_fractional_scale_manager_v1);
 
