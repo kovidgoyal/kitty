@@ -22,6 +22,7 @@ import (
 	"kitty/tools/utils/shm"
 
 	"github.com/disintegration/imaging"
+	"github.com/edwvee/exiffix"
 	"golang.org/x/exp/slices"
 )
 
@@ -254,7 +255,7 @@ func OpenNativeImageFromReader(f io.ReadSeeker) (ans *ImageData, err error) {
 			return nil, err
 		}
 	} else {
-		img, err := imaging.Decode(f, imaging.AutoOrientation(true))
+		img, _, err := exiffix.Decode(f)
 		if err != nil {
 			return nil, err
 		}
