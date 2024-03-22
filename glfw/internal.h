@@ -310,16 +310,15 @@ struct _GLFWwndconfig
     bool          focusOnShow;
     bool          mousePassthrough;
     bool          scaleToMonitor;
+    int           blur_radius;
     struct {
         bool      retina;
         int       color_space;
-        int       blur_radius;
         char      frameName[256];
     } ns;
     struct {
         char      className[256];
         char      instanceName[256];
-        int       enable_blur;
     } x11;
     struct {
         char      appId[256];
@@ -865,6 +864,7 @@ void _glfwPlatformStopMainLoop(void);
 unsigned long long _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback);
 void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled);
 void _glfwPlatformRemoveTimer(unsigned long long timer_id);
+int _glfwPlatformSetWindowBlur(_GLFWwindow* handle, int value);
 
 char* _glfw_strdup(const char* source);
 

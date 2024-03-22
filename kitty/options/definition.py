@@ -1468,7 +1468,7 @@ control the :italic:`blur radius` (amount of blurring). Setting it to too high
 a value will cause severe performance issues and/or rendering artifacts.
 Usually, values up to 64 work well. Note that this might cause performance issues,
 depending on how the platform implements it, so use with care. Currently supported
-on macOS and KDE under X11.
+on macOS and KDE.
 ''')
 
 opt('background_image', 'none',

@@ -772,10 +772,10 @@ typedef enum {
     SRGB_COLORSPACE = 1,
     DISPLAY_P3_COLORSPACE = 2,
 } GlfwCocoaColorSpaces;
-/*! @brief macOS specific
- *  [window hint](@ref GLFW_COCOA_BLUR_RADIUS_hint).
+/*! @brief Blur Radius. On macOS the actual radius is used. On Linux it is treated as a bool.
+ *  [window hint](@ref GLFW_BLUR_RADIUS).
  */
-#define GLFW_COCOA_BLUR_RADIUS 0x00023005
+#define GLFW_BLUR_RADIUS       0x0002305
 
 /*! @brief X11 specific
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
@@ -785,7 +785,6 @@ typedef enum {
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
  */
 #define GLFW_X11_INSTANCE_NAME      0x00024002
-#define GLFW_X11_BLUR               0x00024003
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
 /*! @} */
@@ -1950,6 +1949,10 @@ typedef void (*glfwSetWindowAttrib_func)(GLFWwindow*, int, int);
 GFW_EXTERN glfwSetWindowAttrib_func glfwSetWindowAttrib_impl;
 #define glfwSetWindowAttrib glfwSetWindowAttrib_impl
 
+typedef int (*glfwSetWindowBlur_func)(GLFWwindow*, int);
+GFW_EXTERN glfwSetWindowBlur_func glfwSetWindowBlur_impl;
+#define glfwSetWindowBlur glfwSetWindowBlur_impl
+
 typedef void (*glfwSetWindowUserPointer_func)(GLFWwindow*, void*);
 GFW_EXTERN glfwSetWindowUserPointer_func glfwSetWindowUserPointer_impl;
 #define glfwSetWindowUserPointer glfwSetWindowUserPointer_impl
@@ -2245,14 +2248,6 @@ GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 typedef GLFWcocoarenderframefun (*glfwCocoaSetWindowResizeCallback_func)(GLFWwindow*, GLFWcocoarenderframefun);
 GFW_EXTERN glfwCocoaSetWindowResizeCallback_func glfwCocoaSetWindowResizeCallback_impl;
 #define glfwCocoaSetWindowResizeCallback glfwCocoaSetWindowResizeCallback_impl
-
-typedef int (*glfwCocoaSetBackgroundBlur_func)(GLFWwindow*, int);
-GFW_EXTERN glfwCocoaSetBackgroundBlur_func glfwCocoaSetBackgroundBlur_impl;
-#define glfwCocoaSetBackgroundBlur glfwCocoaSetBackgroundBlur_impl
-
-typedef bool (*glfwSetX11WindowBlurred_func)(GLFWwindow*, bool);
-GFW_EXTERN glfwSetX11WindowBlurred_func glfwSetX11WindowBlurred_impl;
-#define glfwSetX11WindowBlurred glfwSetX11WindowBlurred_impl
 
 typedef void* (*glfwGetX11Display_func)(void);
 GFW_EXTERN glfwGetX11Display_func glfwGetX11Display_impl;

@@ -1034,10 +1034,10 @@ typedef enum {
     SRGB_COLORSPACE = 1,
     DISPLAY_P3_COLORSPACE = 2,
 } GlfwCocoaColorSpaces;
-/*! @brief macOS specific
- *  [window hint](@ref GLFW_COCOA_BLUR_RADIUS_hint).
+/*! @brief Blur Radius. On macOS the actual radius is used. On Linux it is treated as a bool.
+ *  [window hint](@ref GLFW_BLUR_RADIUS).
  */
-#define GLFW_COCOA_BLUR_RADIUS 0x00023005
+#define GLFW_BLUR_RADIUS       0x0002305
 
 /*! @brief X11 specific
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
@@ -1047,7 +1047,6 @@ typedef enum {
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
  */
 #define GLFW_X11_INSTANCE_NAME      0x00024002
-#define GLFW_X11_BLUR               0x00024003
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
 /*! @} */
@@ -3800,6 +3799,7 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* window, int attrib);
  *  @ingroup window
  */
 GLFWAPI void glfwSetWindowAttrib(GLFWwindow* window, int attrib, int value);
+GLFWAPI int glfwSetWindowBlur(GLFWwindow* window, int value);
 
 /*! @brief Sets the user pointer of the specified window.
  *

@@ -1004,10 +1004,9 @@ apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width,
             glfwSetWindowAttrib(w, GLFW_DECORATED, !hide_window_decorations);
             glfwSetWindowSize(w, width, height);
         }
+        glfwSetWindowBlur(w, new_state.background_blur);
         if (global_state.is_wayland) {
             if (glfwWaylandSetTitlebarColor) glfwWaylandSetTitlebarColor(w, new_state.color, new_state.use_system_color);
-        } else {
-            glfwSetX11WindowBlurred(w, new_state.background_blur > 0);
         }
 #endif
 }
@@ -1091,15 +1090,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (OPT(hide_window_decorations) & 1) glfwWindowHint(GLFW_DECORATED, false);
 
     const bool set_blur = OPT(background_blur) > 0 && OPT(background_opacity) < 1.f;
+    glfwWindowHint(GLFW_BLUR_RADIUS, set_blur ? OPT(background_blur) : 0);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_COCOA_COLOR_SPACE, OPT(macos_colorspace));
-    if (set_blur) {
-        glfwWindowHint(GLFW_COCOA_BLUR_RADIUS, MIN(OPT(background_blur), 128));
-    } else {
-        glfwWindowHint(GLFW_COCOA_BLUR_RADIUS, 0);
-    }
 #else
-    if (!global_state.is_wayland) glfwWindowHint(GLFW_X11_BLUR, set_blur);
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
     glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
     glfwWindowHintString(GLFW_WAYLAND_APP_ID, wm_class_class);

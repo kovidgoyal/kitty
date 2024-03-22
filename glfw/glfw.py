@@ -204,9 +204,14 @@ def build_wayland_protocols(
 ) -> None:
     items = []
     for protocol in env.wayland_protocols:
-        src = os.path.join(env.wayland_packagedir, protocol)
-        if not os.path.exists(src):
-            raise SystemExit(f'The wayland-protocols package on your system is missing the {protocol} protocol definition file')
+        if '/' in protocol:
+            src = os.path.join(env.wayland_packagedir, protocol)
+            if not os.path.exists(src):
+                raise SystemExit(f'The wayland-protocols package on your system is missing the {protocol} protocol definition file')
+        else:
+            src = os.path.join(os.path.dirname(os.path.abspath(__file__)), protocol)
+            if not os.path.exists(src):
+                raise SystemExit(f'The local Wayland protocol {protocol} is missing from kitty sources')
         for ext in 'hc':
             dest = wayland_protocol_file_name(src, ext)
             dest = os.path.join(dest_dir, dest)
@@ -297,8 +302,6 @@ def generate_wrappers(glfw_header: str) -> None:
     uint32_t glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int* cocoa_mods)
     void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback)
     GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, GLFWcocoarenderframefun callback)
-    int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int blur_radius)
-    bool glfwSetX11WindowBlurred(GLFWwindow *w, bool enable_blur)
     void* glfwGetX11Display(void)
     unsigned long glfwGetX11Window(GLFWwindow* window)
     void glfwSetPrimarySelectionString(GLFWwindow* window, const char* string)

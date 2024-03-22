@@ -54,6 +54,8 @@ Detailed list of changes
 
 - Wayland: Support preferred integer scales
 
+- Wayland KDE: Support :opt:`background_blur`
+
 - A new option :opt:`terminfo_type` to allow passing the terminfo database embedded into the :envvar:`TERMINFO` env var directly instead of via a file
 
 - Mouse reporting: Fix drag release event outside the window not being reported in legacy mouse reporting modes (:iss:`7244`)

@@ -221,6 +221,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetWindowAttrib_impl) = dlsym(handle, "glfwSetWindowAttrib");
     if (glfwSetWindowAttrib_impl == NULL) fail("Failed to load glfw function glfwSetWindowAttrib with error: %s", dlerror());
 
+    *(void **) (&glfwSetWindowBlur_impl) = dlsym(handle, "glfwSetWindowBlur");
+    if (glfwSetWindowBlur_impl == NULL) fail("Failed to load glfw function glfwSetWindowBlur with error: %s", dlerror());
+
     *(void **) (&glfwSetWindowUserPointer_impl) = dlsym(handle, "glfwSetWindowUserPointer");
     if (glfwSetWindowUserPointer_impl == NULL) fail("Failed to load glfw function glfwSetWindowUserPointer with error: %s", dlerror());
 
@@ -442,12 +445,6 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwCocoaSetWindowResizeCallback_impl) = dlsym(handle, "glfwCocoaSetWindowResizeCallback");
     if (glfwCocoaSetWindowResizeCallback_impl == NULL) dlerror(); // clear error indicator
-
-    *(void **) (&glfwCocoaSetBackgroundBlur_impl) = dlsym(handle, "glfwCocoaSetBackgroundBlur");
-    if (glfwCocoaSetBackgroundBlur_impl == NULL) dlerror(); // clear error indicator
-
-    *(void **) (&glfwSetX11WindowBlurred_impl) = dlsym(handle, "glfwSetX11WindowBlurred");
-    if (glfwSetX11WindowBlurred_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetX11Display_impl) = dlsym(handle, "glfwGetX11Display");
     if (glfwGetX11Display_impl == NULL) dlerror(); // clear error indicator

@@ -80,7 +80,9 @@
       "staging/xdg-activation/xdg-activation-v1.xml",
       "unstable/tablet/tablet-unstable-v2.xml",
       "staging/cursor-shape/cursor-shape-v1.xml",
-      "staging/fractional-scale/fractional-scale-v1.xml"
+      "staging/fractional-scale/fractional-scale-v1.xml",
+
+      "kwin-blur-v1.xml"
     ],
     "sources": [
       "wl_init.c",

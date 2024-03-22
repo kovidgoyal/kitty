@@ -735,6 +735,9 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(wp_viewporter)) {
         _glfw.wl.wp_viewporter = wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
     }
+    else if (is(org_kde_kwin_blur_manager)) {
+        _glfw.wl.org_kde_kwin_blur_manager = wl_registry_bind(registry, name, &org_kde_kwin_blur_manager_interface, 1);
+    }
 #undef is
 }
 
@@ -975,6 +978,8 @@ void _glfwPlatformTerminate(void)
         wp_viewporter_destroy(_glfw.wl.wp_viewporter);
     if (_glfw.wl.wp_fractional_scale_manager_v1)
         wp_fractional_scale_manager_v1_destroy(_glfw.wl.wp_fractional_scale_manager_v1);
+    if (_glfw.wl.org_kde_kwin_blur_manager)
+        org_kde_kwin_blur_manager_destroy(_glfw.wl.org_kde_kwin_blur_manager);
 
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);

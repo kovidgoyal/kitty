@@ -307,18 +307,22 @@ commit_window_surface_if_safe(_GLFWwindow *window) {
     }
 }
 
-// Makes the surface considered as XRGB instead of ARGB.
-static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
-{
-    struct wl_region* region;
 
-    region = wl_compositor_create_region(_glfw.wl.compositor);
-    if (!region)
-        return;
-
+static void
+update_regions(_GLFWwindow* window) {
+    if (window->wl.transparent && !window->wl.org_kde_kwin_blur) return;
+    struct wl_region* region = wl_compositor_create_region(_glfw.wl.compositor);
+    if (!region) return;
     wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
-    wl_surface_set_opaque_region(window->wl.surface, region);
-    if (commit_surface) commit_window_surface_if_safe(window);
+    // Makes the surface considered as XRGB instead of ARGB.
+    if (!window->wl.transparent) wl_surface_set_opaque_region(window->wl.surface, region);
+
+    // Set blur region
+    if (window->wl.org_kde_kwin_blur) {
+        org_kde_kwin_blur_set_region(window->wl.org_kde_kwin_blur, window->wl.has_blur ? region: NULL);
+        org_kde_kwin_blur_commit(window->wl.org_kde_kwin_blur);
+    }
+
     wl_region_destroy(region);
 }
 
@@ -344,7 +348,7 @@ resizeFramebuffer(_GLFWwindow* window) {
     debug("Resizing framebuffer to: %dx%d window size: %dx%d at scale: %.2f\n",
             scaled_width, scaled_height, window->wl.width, window->wl.height, scale);
     wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0);
-    if (!window->wl.transparent) setOpaqueRegion(window, false);
+    update_regions(window);
     window->wl.waiting_for_swap_to_commit = true;
     _glfwInputFramebufferSize(window, scaled_width, scaled_height);
 }
@@ -543,6 +547,7 @@ static bool createSurface(_GLFWwindow* window,
         window->wl.wp_viewport = wp_viewporter_get_viewport(_glfw.wl.wp_viewporter, window->wl.surface);
         wp_fractional_scale_v1_add_listener(window->wl.wp_fractional_scale_v1, &fractional_scale_listener, window);
     }
+    if (_glfw.wl.org_kde_kwin_blur_manager && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 
     window->wl.integer_scale.deduced = scale;
     if (_glfw.wl.has_preferred_buffer_scale) { scale = 1; window->wl.integer_scale.preferred = 1; }
@@ -558,8 +563,7 @@ static bool createSurface(_GLFWwindow* window,
     window->wl.user_requested_content_size.height = wndconfig->height;
 
 
-    if (!window->wl.transparent)
-        setOpaqueRegion(window, false);
+    update_regions(window);
 
     wl_surface_set_buffer_scale(window->wl.surface, scale);
     return true;
@@ -1065,6 +1069,8 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         wp_fractional_scale_v1_destroy(window->wl.wp_fractional_scale_v1);
     if (window->wl.wp_viewport)
         wp_viewport_destroy(window->wl.wp_viewport);
+    if (window->wl.org_kde_kwin_blur)
+        org_kde_kwin_blur_release(window->wl.org_kde_kwin_blur);
 
     if (window->context.destroy)
         window->context.destroy(window);
@@ -2329,6 +2335,20 @@ _glfwPlatformChangeCursorTheme(void) {
         w = w->next;
     }
 
+}
+
+int
+_glfwPlatformSetWindowBlur(_GLFWwindow *window, int blur_radius) {
+    if (!window->wl.transparent) return 0;
+    bool has_blur = window->wl.has_blur;
+    bool new_has_blur = blur_radius > 0;
+    if (new_has_blur != has_blur) {
+        if (!window->wl.org_kde_kwin_blur)
+            window->wl.org_kde_kwin_blur = org_kde_kwin_blur_manager_create(_glfw.wl.org_kde_kwin_blur_manager, window->wl.surface);
+        window->wl.has_blur = new_has_blur;
+        update_regions(window);
+    }
+    return has_blur ? 1 : 0;
 }
 
 //////////////////////////////////////////////////////////////////////////

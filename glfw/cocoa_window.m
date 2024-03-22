@@ -38,8 +38,6 @@
 
 #define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
 
-GLFWAPI int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int radius);
-
 static const char*
 polymorphic_string_as_utf8(id string) {
     if (string == nil) return "(nil)";
@@ -1868,7 +1866,7 @@ static bool createNativeWindow(_GLFWwindow* window,
 
     _glfwPlatformGetWindowSize(window, &window->ns.width, &window->ns.height);
     _glfwPlatformGetFramebufferSize(window, &window->ns.fbWidth, &window->ns.fbHeight);
-    if (wndconfig->ns.blur_radius > 0) glfwCocoaSetBackgroundBlur((GLFWwindow*)window, wndconfig->ns.blur_radius);
+    if (wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 
     return true;
 }
@@ -2986,6 +2984,18 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
 #endif
 }
 
+int
+_glfwPlatformSetWindowBlur(_GLFWwindow *window, int radius) {
+    int orig = window->ns.blur_radius;
+    if (radius > -1 && radius != window->ns.blur_radius) {
+        extern OSStatus CGSSetWindowBackgroundBlurRadius(void* connection, NSInteger windowNumber, int radius);
+        extern void* CGSDefaultConnectionForThread(void);
+        CGSSetWindowBackgroundBlurRadius(CGSDefaultConnectionForThread(), [window->ns.object windowNumber], radius);
+        window->ns.blur_radius = radius;
+    }
+    return orig;
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW native API                       //////
@@ -3023,18 +3033,6 @@ GLFWAPI GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWw
 
 GLFWAPI void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback) {
     requestRenderFrame((_GLFWwindow*)w, callback);
-}
-
-GLFWAPI int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int radius) {
-    _GLFWwindow* window = (_GLFWwindow*)w;
-    int orig = window->ns.blur_radius;
-    if (radius > -1 && radius != window->ns.blur_radius) {
-        extern OSStatus CGSSetWindowBackgroundBlurRadius(void* connection, NSInteger windowNumber, int radius);
-        extern void* CGSDefaultConnectionForThread(void);
-        CGSSetWindowBackgroundBlurRadius(CGSDefaultConnectionForThread(), [window->ns.object windowNumber], radius);
-        window->ns.blur_radius = radius;
-    }
-    return orig;
 }
 
 GLFWAPI GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, GLFWcocoarenderframefun cb) {
@@ -3078,7 +3076,7 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     }
     [window->ns.object setBackgroundColor:background];
     [window->ns.object setAppearance:appearance];
-    glfwCocoaSetBackgroundBlur(w, background_blur);
+    _glfwPlatformSetWindowBlur(w, background_blur);
     bool has_shadow = false;
     const char *decorations_desc = "full";
     window->ns.titlebar_hidden = false;
