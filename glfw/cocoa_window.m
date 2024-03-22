@@ -3076,7 +3076,7 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     }
     [window->ns.object setBackgroundColor:background];
     [window->ns.object setAppearance:appearance];
-    _glfwPlatformSetWindowBlur(w, background_blur);
+    _glfwPlatformSetWindowBlur(window, background_blur);
     bool has_shadow = false;
     const char *decorations_desc = "full";
     window->ns.titlebar_hidden = false;
