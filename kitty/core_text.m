@@ -292,7 +292,6 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
 static CTFontRef
 apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool italic) {
     if (!original_fallback_font || is_last_resort_font(original_fallback_font)) return original_fallback_font;
-    CTFontRef ans = nil;
     CTFontDescriptorRef original_descriptor = CTFontCopyFontDescriptor(original_fallback_font);
     // We cannot set kCTFontTraitMonoSpace in traits as if the original
     // fallback font is Zapf Dingbats we get .AppleSystemUIFontMonospaced as
@@ -303,16 +302,17 @@ apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool 
     CTFontDescriptorRef descriptor = CTFontDescriptorCreateCopyWithSymbolicTraits(original_descriptor, traits, traits);
     CFRelease(original_descriptor);
     if (descriptor) {
-        ans = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(original_fallback_font), NULL);
+        CTFontRef ans = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(original_fallback_font), NULL);
         CFRelease(descriptor);
+        if (!ans) return original_fallback_font;
         CFStringRef new_name = CTFontCopyFamilyName(ans);
         CFStringRef old_name = CTFontCopyFamilyName(original_fallback_font);
         bool same_family = cf_string_equals(new_name, old_name);
         /* NSLog(@"old: %@ new: %@", old_name, new_name); */
         CFRelease(new_name); CFRelease(old_name);
-        if (!same_family) { CFRelease(ans); return original_fallback_font; }
+        if (same_family) { CFRelease(original_fallback_font); return ans; }
+        CFRelease(ans);
     }
-    if (ans) { CFRelease(original_fallback_font); return ans; }
     return original_fallback_font;
 }
 
