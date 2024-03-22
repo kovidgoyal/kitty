@@ -291,7 +291,7 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
 
 static CTFontRef
 apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool italic) {
-    if (!original_fallback_font || is_last_resort_font(original_fallback_font)) return original_fallback_font;
+    if (!original_fallback_font || (!bold && !italic) || is_last_resort_font(original_fallback_font)) return original_fallback_font;
     CTFontDescriptorRef original_descriptor = CTFontCopyFontDescriptor(original_fallback_font);
     // We cannot set kCTFontTraitMonoSpace in traits as if the original
     // fallback font is Zapf Dingbats we get .AppleSystemUIFontMonospaced as
