@@ -302,6 +302,11 @@ apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool 
     if (descriptor) {
         ans = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(original_fallback_font), NULL);
         CFRelease(descriptor);
+        CFStringRef new_name = CTFontCopyFamilyName(ans);
+        CFStringRef old_name = CTFontCopyFamilyName(original_fallback_font);
+        bool same_family = cf_string_equals(new_name, old_name);
+        CFRelease(new_name); CFRelease(old_name);
+        if (!same_family) { CFRelease(ans); return original_fallback_font; }
     }
     if (ans) { CFRelease(original_fallback_font); return ans; }
     return original_fallback_font;

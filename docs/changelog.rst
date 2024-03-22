@@ -60,6 +60,8 @@ Detailed list of changes
 
 - Mouse reporting: Fix drag release event outside the window not being reported in legacy mouse reporting modes (:iss:`7244`)
 
+- macOS: Fix a regression in the previous release that broke rendering of some symbols on some systems (:iss:`7249`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
