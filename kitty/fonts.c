@@ -504,7 +504,7 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
                 printf("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
             }
             printf("is ");
-            PyObject_Print(af->face, stdout, 0);
+            if (af->face) PyObject_Print(af->face, stdout, 0); else printf(" (null)");
             printf(" but it does not actually contain glyphs for that text\n");
         }
         del_font(af);
