@@ -27,7 +27,7 @@ func newScanner(img image.Image) *scanner {
 		h:     img.Bounds().Dy(),
 	}
 	if img, ok := img.(*image.Paletted); ok {
-		s.palette = make([]color.NRGBA, len(img.Palette))
+		s.palette = make([]color.NRGBA, max(256, len(img.Palette)))
 		for i := 0; i < len(img.Palette); i++ {
 			s.palette[i] = color.NRGBAModel.Convert(img.Palette[i]).(color.NRGBA)
 		}
