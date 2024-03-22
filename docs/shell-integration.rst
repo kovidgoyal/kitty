@@ -313,6 +313,10 @@ window, etc. Not all arguments are supported, see the discussion in the
 In order to avoid remote code execution, kitty will only execute the configured
 editor and pass the file path to edit to it.
 
+.. note:: To edit files using sudo the best method is to set the
+   :code:`SUDO_EDITOR` environment variable to ``kitten edit-in-kitty`` and
+   then edit the file using the ``sudoedit`` or ``sudo -e`` commands.
+
 
 .. _run_shell:
 
