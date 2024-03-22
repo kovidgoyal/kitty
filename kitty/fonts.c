@@ -430,8 +430,8 @@ has_emoji_presentation(CPUCell *cpu_cell, GPUCell *gpu_cell) {
 }
 
 static bool
-has_cell_text(Font *self, CPUCell *cell) {
-    if (!face_has_codepoint(self->face, cell->ch)) return false;
+has_cell_text(PyObject *face, CPUCell *cell) {
+    if (!face_has_codepoint(face, cell->ch)) return false;
     char_type combining_chars[arraysz(cell->cc_idx)];
     unsigned num_cc = 0;
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
@@ -440,13 +440,13 @@ has_cell_text(Font *self, CPUCell *cell) {
     }
     if (num_cc == 0) return true;
     if (num_cc == 1) {
-        if (face_has_codepoint(self->face, combining_chars[0])) return true;
+        if (face_has_codepoint(face, combining_chars[0])) return true;
         char_type ch = 0;
-        if (hb_unicode_compose(hb_unicode_funcs_get_default(), cell->ch, combining_chars[0], &ch) && face_has_codepoint(self->face, ch)) return true;
+        if (hb_unicode_compose(hb_unicode_funcs_get_default(), cell->ch, combining_chars[0], &ch) && face_has_codepoint(face, ch)) return true;
         return false;
     }
     for (unsigned i = 0; i < num_cc; i++) {
-        if (!face_has_codepoint(self->face, combining_chars[i])) return false;
+        if (!face_has_codepoint(face, combining_chars[i])) return false;
     }
     return true;
 }
@@ -496,7 +496,7 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
     Font *af = &fg->fonts[ans];
     if (!init_font(af, face, bold, italic, emoji_presentation)) fatal("Out of memory");
     Py_DECREF(face);
-    if (!has_cell_text(af, cell)) {
+    if (!has_cell_text(af->face, cell)) {
         if (global_state.debug_font_fallback) {
             printf("The font chosen by the OS for the text: ");
             printf("U+%x ", cell->ch);
@@ -594,7 +594,7 @@ START_ALLOW_CASE_RANGE
                     ans = fg->bi_font_idx; break;
             }
             if (ans < 0) ans = fg->medium_font_idx;
-            if (!*is_emoji_presentation && has_cell_text(fg->fonts + ans, cpu_cell)) { *is_main_font = true; return ans; }
+            if (!*is_emoji_presentation && has_cell_text((fg->fonts + ans)->face, cpu_cell)) { *is_main_font = true; return ans; }
             return fallback_font(fg, cpu_cell, gpu_cell);
     }
 END_ALLOW_CASE_RANGE
