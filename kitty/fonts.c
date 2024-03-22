@@ -15,6 +15,8 @@
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
+#define debug(...) if (global_state.debug_rendering) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+
 static PyObject *python_send_to_gpu_impl = NULL;
 #define current_send_sprite_to_gpu(...) (python_send_to_gpu_impl ? python_send_to_gpu(__VA_ARGS__) : send_sprite_to_gpu(__VA_ARGS__))
 extern PyTypeObject Line_Type;
@@ -498,14 +500,13 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
     Py_DECREF(face);
     if (!has_cell_text(af->face, cell)) {
         if (global_state.debug_font_fallback) {
-            printf("The font chosen by the OS for the text: ");
-            printf("U+%x ", cell->ch);
+            debug("The font chosen by the OS for the text: ");
+            debug("U+%x ", cell->ch);
             for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-                printf("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
+                debug("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
             }
-            printf("is ");
-            if (af->face) PyObject_Print(af->face, stdout, 0); else printf(" (null)");
-            printf(" but it does not actually contain glyphs for that text\n");
+            debug("is "); PyObject_Print(af->face, stderr, 0);
+            debug(" but it does not actually contain glyphs for that text\n");
         }
         del_font(af);
         return MISSING_FONT;
