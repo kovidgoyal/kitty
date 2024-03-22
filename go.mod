@@ -6,11 +6,11 @@ require (
 	github.com/ALTree/bigfloat v0.2.0
 	github.com/alecthomas/chroma/v2 v2.13.0
 	github.com/bmatcuk/doublestar/v4 v4.6.1
-	github.com/disintegration/imaging v1.6.2
 	github.com/dlclark/regexp2 v1.11.0
 	github.com/edwvee/exiffix v0.0.0-20240229113213-0dbb146775be
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
+	github.com/kovidgoyal/imaging v0.0.0-20240322050321-d7a0df91ac63
 	github.com/seancfoley/ipaddress-go v1.5.5
 	github.com/shirou/gopsutil/v3 v3.24.2
 	github.com/zeebo/xxh3 v1.0.2
@@ -21,6 +21,7 @@ require (
 )
 
 require (
+	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect

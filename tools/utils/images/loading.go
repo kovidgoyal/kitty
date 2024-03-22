@@ -21,8 +21,8 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
 
-	"github.com/disintegration/imaging"
 	"github.com/edwvee/exiffix"
+	"github.com/kovidgoyal/imaging"
 	"golang.org/x/exp/slices"
 )
 

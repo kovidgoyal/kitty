@@ -12,8 +12,8 @@ import (
 	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 
-	"github.com/disintegration/imaging"
 	"github.com/edwvee/exiffix"
+	"github.com/kovidgoyal/imaging"
 )
 
 var _ = fmt.Print
