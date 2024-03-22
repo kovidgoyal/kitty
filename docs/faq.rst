@@ -457,9 +457,10 @@ and then switch to another and these terminals have different :envvar:`TERM`
 variables, tmux will break. You will need to restart it as tmux does not support
 multiple terminfo definitions.
 
-Displaying images with inside programs such nvim or ranger may not work
-depending on whether those programs have adopted support for the unicode
-placeholders workaround that kitty created for tmux refusing to support images.
+Displaying images while inside programs such as nvim or ranger may not work
+depending on whether those programs have adopted support for the :ref:`unicode
+placeholders <graphics_unicode_placeholders>` workaround that kitty created
+for tmux refusing to support images.
 
 If you use any of the advanced features that kitty has innovated, such as
 :doc:`styled underlines </underlines>`, :doc:`desktop notifications
