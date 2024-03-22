@@ -10,33 +10,33 @@ import (
 var _ = fmt.Print
 
 func IsOpaque(img image.Image) bool {
-	switch img.(type) {
+	switch i := img.(type) {
 	case *image.RGBA:
-		return img.(*image.RGBA).Opaque()
+		return i.Opaque()
 	case *image.RGBA64:
-		return img.(*image.RGBA64).Opaque()
+		return i.Opaque()
 	case *image.NRGBA:
-		return img.(*image.NRGBA).Opaque()
+		return i.Opaque()
 	case *image.NRGBA64:
-		return img.(*image.NRGBA).Opaque()
+		return i.Opaque()
 	case *image.Alpha:
-		return img.(*image.Alpha).Opaque()
+		return i.Opaque()
 	case *image.Alpha16:
-		return img.(*image.Alpha16).Opaque()
+		return i.Opaque()
 	case *image.Gray:
-		return img.(*image.Gray).Opaque()
+		return i.Opaque()
 	case *image.Gray16:
-		return img.(*image.Gray16).Opaque()
+		return i.Opaque()
 	case *image.CMYK:
-		return img.(*image.CMYK).Opaque()
+		return i.Opaque()
 	case *image.Paletted:
-		return img.(*image.Paletted).Opaque()
+		return i.Opaque()
 	case *image.Uniform:
-		return img.(*image.Uniform).Opaque()
+		return i.Opaque()
 	case *image.YCbCr:
-		return img.(*image.YCbCr).Opaque()
+		return i.Opaque()
 	case *NRGB:
-		return img.(*NRGB).Opaque()
+		return i.Opaque()
 	}
 	return false
 }

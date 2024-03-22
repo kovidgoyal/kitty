@@ -360,11 +360,11 @@ func (self *Context) paste_nrgba_onto_opaque(background *image.NRGBA, img image.
 
 // Paste pastes the img image to the background image at the specified position. Optionally composing onto the specified opaque color.
 func (self *Context) Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *NRGBColor) {
-	switch background.(type) {
+	switch b := background.(type) {
 	case *image.NRGBA:
-		self.paste_nrgba_onto_opaque(background.(*image.NRGBA), img, pos, opaque_bg)
+		self.paste_nrgba_onto_opaque(b, img, pos, opaque_bg)
 	case *NRGB:
-		self.paste_nrgb_onto_opaque(background.(*NRGB), img, pos, opaque_bg)
+		self.paste_nrgb_onto_opaque(b, img, pos, opaque_bg)
 	default:
 		panic("Unsupported background image type")
 	}
