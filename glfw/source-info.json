@@ -82,7 +82,8 @@
       "staging/cursor-shape/cursor-shape-v1.xml",
       "staging/fractional-scale/fractional-scale-v1.xml",
 
-      "kwin-blur-v1.xml"
+      "kwin-blur-v1.xml",
+      "wlr-layer-shell-unstable-v1.xml"
     ],
     "sources": [
       "wl_init.c",
