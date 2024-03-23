@@ -419,6 +419,9 @@ class TestScreen(BaseTest):
             s.draw('*')
         s.cursor_position(2, 2)
         self.ae(str(s.line(0)), '\t*'*13)
+        s = self.create_screen(cols=4, lines=2)
+        s.draw('aaaX\tbbbb')
+        self.ae(str(s.line(0)) + str(s.line(1)), 'aaaXbbbb')
 
     def test_margins(self):
         # Taken from vttest/main.c

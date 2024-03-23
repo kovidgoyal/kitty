@@ -730,7 +730,18 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 case BS:
                     screen_backspace(self); break;
                 case HT:
-                    screen_tab(self); break;
+                    if (UNLIKELY(self->cursor->x >= self->columns)) {
+                        if (self->modes.mDECAWM) {
+                            // xterm discards the TAB in this case so match its behavior
+                            continue_to_next_line(self);
+                            init_text_loop_line(self, s);
+                        } else if (self->columns > 0){
+                            self->cursor->x = self->columns - 1;
+                            if (cursor_on_wide_char_trailer(self, s)) move_cursor_off_wide_char_trailer(self, s);
+                            screen_tab(self);
+                        }
+                    } else screen_tab(self);
+                    break;
                 case SI:
                     screen_change_charset(self, 0); break;
                 case SO:

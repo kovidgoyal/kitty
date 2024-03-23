@@ -62,6 +62,8 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that broke rendering of some symbols on some systems (:iss:`7249`)
 
+- Fix handling of tab character when cursor is at end of line and wrapping is enabled (:iss:`7250`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
