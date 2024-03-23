@@ -43,6 +43,8 @@
 
 #define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
 
+static GLFWLayerShellConfig layer_shell_config_for_next_window = {0};
+
 static void
 activation_token_done(void *data, struct xdg_activation_token_v1 *xdg_token, const char *token) {
     for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
@@ -2424,4 +2426,10 @@ GLFWAPI bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, boo
 GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     change_csd_title(window);
+}
+
+
+GLFWAPI GLFWLayerShellConfig* glfwWaylandSetupLayerShellForNextWindow(void) {
+    memset(&layer_shell_config_for_next_window, 0, sizeof(layer_shell_config_for_next_window));
+    return &layer_shell_config_for_next_window;
 }

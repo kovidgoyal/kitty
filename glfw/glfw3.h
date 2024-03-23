@@ -1292,6 +1292,14 @@ typedef struct GLFWkeyevent
     bool fake_event_on_focus_change;
 } GLFWkeyevent;
 
+typedef enum { GLFW_LAYER_SHELL_NONE, GLFW_LAYER_SHELL_BACKGROUND, GLFW_LAYER_SHELL_PANEL } GLFWLayerShellType;
+
+typedef struct GLFWLayerShellConfig {
+    GLFWLayerShellType type;
+    const char *output_name;
+    const char *edge;
+} GLFWLayerShellConfig;
+
 /*! @brief The function pointer type for error callbacks.
  *
  *  This is the function pointer type for error callbacks.  An error callback
