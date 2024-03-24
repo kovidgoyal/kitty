@@ -1116,7 +1116,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     static const char* kwlist[] = {"get_window_size", "pre_show_callback", "title", "wm_class_name", "wm_class_class", "window_state", "load_programs", "x", "y", "disallow_override_title", "layer_shell_config", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|OOOOpO", (char**)kwlist,
         &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &optional_window_state, &load_programs, &optional_x, &optional_y, &disallow_override_title, &layer_shell_config)) return NULL;
-    if (layer_shell_config && global_state.is_wayland) {
+    if (layer_shell_config && layer_shell_config != Py_None && global_state.is_wayland) {
         glfwWaylandSetupLayerShellForNextWindow(translate_layer_shell_config(layer_shell_config));
     } else {
         if (optional_window_state && optional_window_state != Py_None) { if (!PyLong_Check(optional_window_state)) { PyErr_SetString(PyExc_TypeError, "window_state must be an int"); return NULL; } window_state = (int) PyLong_AsLong(optional_window_state); }
