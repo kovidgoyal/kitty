@@ -305,6 +305,7 @@ class GitHub:  # {{{
         failure_callback: Callable[[HTTPResponse], None] = lambda r: None,
     ) -> Any:
         for i in range(num_tries):
+            is_last_try = i == num_tries - 1
             try:
                 if upload_path:
                     conn = self.make_request(url, method='POST', upload_data=ReadFileWithProgressReporting(upload_path), params=params)
@@ -314,7 +315,7 @@ class GitHub:  # {{{
                     r = conn.getresponse()
                     if r.status in success_codes:
                         return json.loads(r.read()) if return_data else None
-                    if i == num_tries -1 :
+                    if is_last_try:
                         self.fail(r, failure_msg)
                     else:
                         self.print_failed_response_details(r, failure_msg)
@@ -322,6 +323,8 @@ class GitHub:  # {{{
             except Exception as e:
                 self.error(failure_msg, 'with error:', e)
             self.error(f'Retrying after {sleep_between_tries} seconds')
+            if is_last_try:
+                break
             time.sleep(sleep_between_tries)
         raise SystemExit('All retries failed, giving up')
 
