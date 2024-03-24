@@ -30,7 +30,9 @@ activity, CPU load, date/time, etc.
 
 .. note::
 
-    This kitten currently only works on X11 desktops
+    This kitten currently only works on X11 desktops and Wayland compositors
+    that support the `wlr layer shell protocol
+    <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__
 
 Using this kitten is simple, for example::
 

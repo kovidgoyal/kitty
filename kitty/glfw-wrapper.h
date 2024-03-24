@@ -1041,7 +1041,8 @@ typedef struct GLFWLayerShellConfig {
     GLFWEdge edge;
     const char *output_name;
     GLFWFocusPolicy focus_policy;
-    void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, float scale, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
+    unsigned size_in_cells;
+    void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
 } GLFWLayerShellConfig;
 
 /*! @brief The function pointer type for error callbacks.

@@ -1047,14 +1047,63 @@ native_window_handle(GLFWwindow *w) {
     return Py_None;
 }
 
+static PyObject* edge_spacing_func = NULL;
+
+static double
+edge_spacing(GLFWEdge which) {
+    const char* edge = "top";
+    switch(which) {
+        case GLFW_EDGE_TOP: edge = "top"; break;
+        case GLFW_EDGE_BOTTOM: edge = "bottom"; break;
+        case GLFW_EDGE_LEFT: edge = "left"; break;
+        case GLFW_EDGE_RIGHT: edge = "right"; break;
+    }
+    if (!edge_spacing_func) {
+        log_error("Attempt to call edge_spacing() without first setting edge_spacing_func");
+        return 100;
+    }
+    RAII_PyObject(ret, PyObject_CallFunction(edge_spacing_func, "s", edge));
+    if (!ret) { PyErr_Print(); return 100; }
+    if (!PyFloat_Check(ret)) { log_error("edge_spacing_func() return something other than a float"); return 100; }
+    return PyFloat_AsDouble(ret);
+}
+
+static void
+calculate_layer_shell_window_size(
+    GLFWwindow *window UNUSED, const GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height) {
+    if (config->type == GLFW_LAYER_SHELL_BACKGROUND) {
+        if (!*width) *width = monitor_width;
+        if (!*height) *height = monitor_height;
+        return;
+    }
+    OSWindow *os_window = os_window_for_glfw_window(window);
+    if (!os_window) return;
+    float xscale, yscale;
+    glfwGetWindowContentScale(window, &xscale, &yscale);
+    if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
+        if (!*height) *height = monitor_height;
+        double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
+        spacing *= os_window->logical_dpi_x / 72.;
+        spacing += (os_window->fonts_data->cell_width * config->size_in_cells) / yscale;
+        *width = (uint32_t)(1. + spacing);
+    } else {
+        if (!*width) *width = monitor_width;
+        double spacing = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
+        spacing *= os_window->logical_dpi_y / 72.;
+        spacing += 1. + (os_window->fonts_data->cell_height * config->size_in_cells) / xscale;
+        *height = (uint32_t)(1. + spacing);
+    }
+}
+
 static GLFWLayerShellConfig
 translate_layer_shell_config(PyObject *p) {
-    GLFWLayerShellConfig ans = {0};
+    GLFWLayerShellConfig ans = {.size_callback=calculate_layer_shell_window_size};
 #define A(attr, type_check, convert) RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return ans; if (!type_check(attr)) { PyErr_SetString(PyExc_TypeError, #attr " not of the correct type"); return ans; }; ans.attr = convert(attr);
     A(output_name, PyUnicode_Check, PyUnicode_AsUTF8);
     A(type, PyLong_Check, PyLong_AsLong);
     A(edge, PyLong_Check, PyLong_AsLong);
     A(focus_policy, PyLong_Check, PyLong_AsLong);
+    A(size_in_cells, PyLong_Check, PyLong_AsLong);
 #undef A
     return ans;
 }
@@ -1370,7 +1419,10 @@ static PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
     int debug_keyboard = 0, debug_rendering = 0;
-    if (!PyArg_ParseTuple(args, "s|pp", &path, &debug_keyboard, &debug_rendering)) return NULL;
+    PyObject *edge_sf;
+    if (!PyArg_ParseTuple(args, "sO|pp", &path, &edge_sf, &debug_keyboard, &debug_rendering)) return NULL;
+    if (!PyCallable_Check(edge_sf)) { PyErr_SetString(PyExc_TypeError, "edge_spacing_func must be a callable"); return NULL; }
+    Py_CLEAR(edge_spacing_func);
 #ifdef __APPLE__
     cocoa_set_uncaught_exception_handler();
 #endif
@@ -1400,6 +1452,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         global_state.default_dpi.x = w.logical_dpi_x;
         global_state.default_dpi.y = w.logical_dpi_y;
     }
+    edge_spacing_func = edge_sf; Py_INCREF(edge_spacing_func);
     Py_INCREF(ans);
     return ans;
 }
@@ -1413,6 +1466,7 @@ glfw_terminate(PYNOARG) {
         }
     }
     glfwTerminate();
+    Py_CLEAR(edge_spacing_func);
     Py_RETURN_NONE;
 }
 
@@ -2183,6 +2237,7 @@ static PyMethodDef module_methods[] = {
 void cleanup_glfw(void) {
     if (logo.pixels) free(logo.pixels);
     logo.pixels = NULL;
+    Py_CLEAR(edge_spacing_func);
 #ifndef __APPLE__
     release_freetype_render_context(csd_title_render_ctx);
 #endif

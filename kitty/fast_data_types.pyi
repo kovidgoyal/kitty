@@ -8,6 +8,7 @@ from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.options.types import Options
 from kitty.types import LayerShellConfig, SignalInfo
+from kitty.typing import EdgeLiteral
 
 # Constants {{{
 GLFW_LAYER_SHELL_NONE: int
@@ -586,7 +587,7 @@ def glfw_terminate() -> None:
     pass
 
 
-def glfw_init(path: str, debug_keyboard: bool = False, debug_rendering: bool = False) -> bool:
+def glfw_init(path: str, edge_spacing_func: Callable[[EdgeLiteral], float], debug_keyboard: bool = False, debug_rendering: bool = False) -> bool:
     pass
 
 

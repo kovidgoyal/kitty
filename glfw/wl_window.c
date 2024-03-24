@@ -795,20 +795,17 @@ static void
 layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t width, uint32_t height) {
     debug("Layer shell configure event: width: %u height: %u\n", width, height);
     _GLFWwindow* window = data;
-    unsigned monitor_width = 0, monitor_height = 0;
-    if (window->wl.monitorsCount) {
-        _GLFWmonitor *m = window->wl.monitors[0];
-        monitor_width = m->currentMode.width; monitor_height = m->currentMode.height;
-    }
+    GLFWvidmode m = {0};
+    if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);
     window->wl.layer_shell.config.size_callback(
-            (GLFWwindow*)window, &window->wl.layer_shell.config, _glfwWaylandWindowScale(window), monitor_width, monitor_height,
-            &width, &height);
+            (GLFWwindow*)window, &window->wl.layer_shell.config, m.width, m.height, &width, &height);
     zwlr_layer_surface_v1_ack_configure(surface, serial);
     if ((int)width != window->wl.width || (int)height != window->wl.height) {
         debug("Layer shell size changed to %ux%u in layer_surface_handle_configure\n", width, height);
         _glfwInputWindowSize(window, width, height);
         window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
+        _glfwInputWindowDamage(window);
     }
     commit_window_surface_if_safe(window);
 }

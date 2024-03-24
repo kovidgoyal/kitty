@@ -47,7 +47,7 @@ from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
-from .os_window_size import initial_window_size_func
+from .os_window_size import edge_spacing, initial_window_size_func
 from .session import create_sessions, get_os_window_sizing_data
 from .shaders import CompileError, load_shader_programs
 from .types import LayerShellConfig, SingleInstanceData
@@ -135,7 +135,7 @@ def load_all_shaders(semi_transparent: bool = False) -> None:
 
 
 def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rendering: bool = False) -> None:
-    if not glfw_init(glfw_path(glfw_module), debug_keyboard, debug_rendering):
+    if not glfw_init(glfw_path(glfw_module), edge_spacing, debug_keyboard, debug_rendering):
         raise SystemExit('GLFW initialization failed')
 
 
@@ -539,15 +539,15 @@ def _main() -> None:
     with suppress(AttributeError):  # python compiled without threading
         sys.setswitchinterval(1000.0)  # we have only a single python thread
 
+    if cli_opts.watcher:
+        from .window import global_watchers
+        global_watchers.set_extra(cli_opts.watcher)
+        log_error('The --watcher command line option has been deprecated in favor of using the watcher option in kitty.conf')
     # mask the signals now as on some platforms the display backend starts
     # threads. These threads must not handle the masked signals, to ensure
     # kitty can handle them. See https://github.com/kovidgoyal/kitty/issues/4636
     mask_kitty_signals_process_wide()
     init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
-    if cli_opts.watcher:
-        from .window import global_watchers
-        global_watchers.set_extra(cli_opts.watcher)
-        log_error('The --watcher command line option has been deprecated in favor of using the watcher option in kitty.conf')
     try:
         with setup_profiling():
             # Avoid needing to launch threads to reap zombies
