@@ -322,6 +322,7 @@ update_regions(_GLFWwindow* window) {
             case GLFW_EDGE_LEFT: case GLFW_EDGE_RIGHT: exclusive_zone = window->wl.width; break;
         }
         zwlr_layer_surface_v1_set_exclusive_zone(window->wl.layer_shell.zwlr_layer_surface_v1, exclusive_zone);
+        debug("Layer shell exclusive_zone set to: %d\n", exclusive_zone);
     }
     if (window->wl.transparent && !window->wl.org_kde_kwin_blur) return;
     struct wl_region* region = wl_compositor_create_region(_glfw.wl.compositor);
