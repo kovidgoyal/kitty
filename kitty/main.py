@@ -50,7 +50,7 @@ from .options.utils import DELETE_ENV_VAR
 from .os_window_size import initial_window_size_func
 from .session import create_sessions, get_os_window_sizing_data
 from .shaders import CompileError, load_shader_programs
-from .types import SingleInstanceData
+from .types import LayerShellConfig, SingleInstanceData
 from .utils import (
     cleanup_ssh_control_masters,
     detach,
@@ -269,7 +269,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
                     pre_show_callback,
                     args.title or appname, args.name or args.cls or appname,
-                    wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title))
+                    wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config)
         boss = Boss(opts, args, cached_values, global_shortcuts)
         boss.start(window_id, startup_sessions)
         if bad_lines or boss.misc_config_errors:
@@ -286,6 +286,7 @@ class AppRunner:
     def __init__(self) -> None:
         self.cached_values_name = 'main'
         self.first_window_callback = lambda window_handle: None
+        self.layer_shell_config: Optional[LayerShellConfig] = None
         self.initial_window_size_func = initial_window_size_func
 
     def __call__(self, opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:

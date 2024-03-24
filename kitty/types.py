@@ -66,6 +66,13 @@ class SignalInfo(NamedTuple):
     sival_ptr: int
 
 
+class LayerShellConfig(NamedTuple):
+    type: int = 0
+    edge: int = 0
+    focus_policy: int = 0
+    output_name: Optional[str] = None
+
+
 def mod_to_names(mods: int, has_kitty_mod: bool = False, kitty_mod: int = 0) -> Iterator[str]:
     if has_kitty_mod:
         mods &= ~kitty_mod

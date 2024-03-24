@@ -7,9 +7,19 @@ from kitty.fonts import FontFeature
 from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.options.types import Options
-from kitty.types import SignalInfo
+from kitty.types import LayerShellConfig, SignalInfo
 
 # Constants {{{
+GLFW_LAYER_SHELL_NONE: int
+GLFW_LAYER_SHELL_PANEL: int
+GLFW_LAYER_SHELL_BACKGROUND: int
+GLFW_EDGE_TOP: int
+GLFW_EDGE_BOTTOM: int
+GLFW_EDGE_LEFT: int
+GLFW_EDGE_RIGHT: int
+GLFW_FOCUS_NOT_ALLOWED: int
+GLFW_FOCUS_EXCLUSIVE: int
+GLFW_FOCUS_ON_DEMAND: int
 IMAGE_PLACEHOLDER_CHAR: int
 GLFW_PRIMARY_SELECTION: int
 GLFW_CLIPBOARD: int
@@ -508,6 +518,7 @@ def create_os_window(
     x: Optional[int] = None,
     y: Optional[int] = None,
     disallow_override_title: bool = False,
+    layer_shell_config: Optional[LayerShellConfig] = None,
 ) -> int:
     pass
 
