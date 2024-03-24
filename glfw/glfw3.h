@@ -1294,10 +1294,16 @@ typedef struct GLFWkeyevent
 
 typedef enum { GLFW_LAYER_SHELL_NONE, GLFW_LAYER_SHELL_BACKGROUND, GLFW_LAYER_SHELL_PANEL } GLFWLayerShellType;
 
+typedef enum { GLFW_EDGE_TOP, GLFW_EDGE_BOTTOM, GLFW_EDGE_LEFT, GLFW_EDGE_RIGHT } GLFWEdge;
+
+typedef enum { GLFW_FOCUS_NOT_ALLOWED, GLFW_FOCUS_EXCLUSIVE, GLFW_FOCUS_ON_DEMAND} GLFWFocusPolicy;
+
 typedef struct GLFWLayerShellConfig {
     GLFWLayerShellType type;
+    GLFWEdge edge;
     const char *output_name;
-    const char *edge;
+    GLFWFocusPolicy focus_policy;
+    void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, float scale, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
 } GLFWLayerShellConfig;
 
 /*! @brief The function pointer type for error callbacks.

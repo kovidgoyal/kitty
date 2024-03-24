@@ -739,7 +739,7 @@ static void registryHandleGlobal(void* data UNUSED,
         _glfw.wl.org_kde_kwin_blur_manager = wl_registry_bind(registry, name, &org_kde_kwin_blur_manager_interface, 1);
     }
     else if (is(zwlr_layer_shell_v1)) {
-        if (version > 3) {
+        if (version >= 4) {
             _glfw.wl.zwlr_layer_shell_v1_version = version;
             _glfw.wl.zwlr_layer_shell_v1 = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version);
         }
@@ -986,6 +986,8 @@ void _glfwPlatformTerminate(void)
         wp_fractional_scale_manager_v1_destroy(_glfw.wl.wp_fractional_scale_manager_v1);
     if (_glfw.wl.org_kde_kwin_blur_manager)
         org_kde_kwin_blur_manager_destroy(_glfw.wl.org_kde_kwin_blur_manager);
+    if (_glfw.wl.zwlr_layer_shell_v1)
+        zwlr_layer_shell_v1_destroy(_glfw.wl.zwlr_layer_shell_v1);
 
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);

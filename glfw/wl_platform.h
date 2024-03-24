@@ -169,6 +169,10 @@ typedef struct _GLFWwindowWayland
     struct wp_viewport *wp_viewport;
     struct org_kde_kwin_blur *org_kde_kwin_blur;
     bool has_blur;
+    struct {
+        GLFWLayerShellConfig config;
+        struct zwlr_layer_surface_v1* zwlr_layer_surface_v1;
+    } layer_shell;
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
