@@ -146,7 +146,7 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]
 def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else GLFW_LAYER_SHELL_PANEL
     edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT}.get(opts.edge, GLFW_EDGE_TOP)
-    return LayerShellConfig(type=ltype, edge=edge, size_in_cells=max(1, opts.lines), output_name=opts.output_name or None)
+    return LayerShellConfig(type=ltype, edge=edge, size_in_cells=max(1, opts.lines), output_name=opts.output_name or '')
 
 
 def main(sys_args: List[str]) -> None:

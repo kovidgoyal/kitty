@@ -70,7 +70,7 @@ class LayerShellConfig(NamedTuple):
     type: int = 0
     edge: int = 0
     focus_policy: int = 0
-    output_name: Optional[str] = None
+    output_name: str = ''
     size_in_cells: int = 0
 
 

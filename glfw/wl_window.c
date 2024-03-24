@@ -2543,5 +2543,6 @@ GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
 GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(GLFWLayerShellConfig c) {
     if (layer_shell_config_for_next_window.output_name) free((void*)layer_shell_config_for_next_window.output_name);
     layer_shell_config_for_next_window = c;
+    if (layer_shell_config_for_next_window.output_name && !layer_shell_config_for_next_window.output_name[0]) layer_shell_config_for_next_window.output_name = NULL;
     if (layer_shell_config_for_next_window.output_name) layer_shell_config_for_next_window.output_name = strdup(layer_shell_config_for_next_window.output_name);
 }
