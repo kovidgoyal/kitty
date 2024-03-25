@@ -315,15 +315,6 @@ commit_window_surface_if_safe(_GLFWwindow *window) {
 
 static void
 update_regions(_GLFWwindow* window) {
-    if (is_layer_shell(window) && window->wl.layer_shell.config.type == GLFW_LAYER_SHELL_PANEL && window->wl.layer_shell.zwlr_layer_surface_v1) {
-        int32_t exclusive_zone = 1;
-        switch (window->wl.layer_shell.config.edge) {
-            case GLFW_EDGE_TOP: case GLFW_EDGE_BOTTOM: exclusive_zone = window->wl.height; break;
-            case GLFW_EDGE_LEFT: case GLFW_EDGE_RIGHT: exclusive_zone = window->wl.width; break;
-        }
-        zwlr_layer_surface_v1_set_exclusive_zone(window->wl.layer_shell.zwlr_layer_surface_v1, exclusive_zone);
-        debug("Layer shell exclusive_zone set to: %d\n", exclusive_zone);
-    }
     if (window->wl.transparent && !window->wl.org_kde_kwin_blur) return;
     struct wl_region* region = wl_compositor_create_region(_glfw.wl.compositor);
     if (!region) return;
@@ -793,6 +784,52 @@ find_output_by_name(const char* name) {
 }
 
 static void
+layer_set_properties(_GLFWwindow *window, struct zwlr_layer_surface_v1* surface) {
+    enum zwlr_layer_surface_v1_anchor which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+    int exclusive_zone = -1;
+    enum zwlr_layer_surface_v1_keyboard_interactivity focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
+    switch(window->wl.layer_shell.config.focus_policy) {
+        case GLFW_FOCUS_NOT_ALLOWED: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE; break;
+        case GLFW_FOCUS_EXCLUSIVE: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE; break;
+        case GLFW_FOCUS_ON_DEMAND: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND; break;
+    }
+    int panel_width = 0, panel_height = 0;
+    switch (window->wl.layer_shell.config.type) {
+        case GLFW_LAYER_SHELL_BACKGROUND: break; case GLFW_LAYER_SHELL_NONE: break;
+        case GLFW_LAYER_SHELL_PANEL:
+            switch (window->wl.layer_shell.config.edge) {
+                case GLFW_EDGE_TOP:
+                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+                    panel_height = window->wl.height;
+                    exclusive_zone = window->wl.height;
+                    break;
+                case GLFW_EDGE_BOTTOM:
+                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+                    panel_height = window->wl.height;
+                    exclusive_zone = window->wl.height;
+                    break;
+                case GLFW_EDGE_LEFT:
+                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+                    panel_width = window->wl.width;
+                    exclusive_zone = window->wl.width;
+                    break;
+                case GLFW_EDGE_RIGHT:
+                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+                    panel_width = window->wl.width;
+                    exclusive_zone = window->wl.width;
+                    break;
+            }
+    }
+    zwlr_layer_surface_v1_set_size(surface, panel_width, panel_height);
+    if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
+    debug("Compositor informed layer size: %dx%d viewport: %dx%d \n", panel_width, panel_height, window->wl.width, window->wl.height);
+    zwlr_layer_surface_v1_set_anchor(surface, which_anchor);
+    zwlr_layer_surface_v1_set_exclusive_zone(surface, exclusive_zone);
+    zwlr_layer_surface_v1_set_margin(surface, 0, 0, 0, 0);
+    zwlr_layer_surface_v1_set_keyboard_interactivity(surface, focus_policy);
+}
+
+static void
 layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t width, uint32_t height) {
     debug("Layer shell configure event: width: %u height: %u\n", width, height);
     _GLFWwindow* window = data;
@@ -811,8 +848,9 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
         _glfwInputWindowSize(window, width, height);
         window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
+        _glfwInputWindowDamage(window);
+        layer_set_properties(window, surface);
     }
-    _glfwInputWindowDamage(window);
     commit_window_surface_if_safe(window);
 }
 
@@ -836,29 +874,7 @@ create_layer_shell_surface(_GLFWwindow *window) {
     window->decorated = false;  // shell windows must not have decorations
     struct wl_output *wl_output = find_output_by_name(window->wl.layer_shell.config.output_name);
     enum zwlr_layer_shell_v1_layer which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND;
-    enum zwlr_layer_surface_v1_anchor which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-    int exclusive_zone = 0;
-    enum zwlr_layer_surface_v1_keyboard_interactivity focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
-    switch(window->wl.layer_shell.config.focus_policy) {
-        case GLFW_FOCUS_NOT_ALLOWED: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE; break;
-        case GLFW_FOCUS_EXCLUSIVE: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE; break;
-        case GLFW_FOCUS_ON_DEMAND: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND; break;
-    }
-    switch (window->wl.layer_shell.config.type) {
-        case GLFW_LAYER_SHELL_BACKGROUND:
-            exclusive_zone = -1;
-            which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND; break;
-        case GLFW_LAYER_SHELL_PANEL:
-            exclusive_zone = 1;  // we dont know height of window otherwise this should be height
-            which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM; break;
-            switch (window->wl.layer_shell.config.edge) {
-                case GLFW_EDGE_TOP: which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP; break;
-                case GLFW_EDGE_BOTTOM: which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM; break;
-                case GLFW_EDGE_LEFT: which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT; break;
-                case GLFW_EDGE_RIGHT: which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT; break;
-            }
-        case GLFW_LAYER_SHELL_NONE: break;
-    }
+    if (window->wl.layer_shell.config.type == GLFW_LAYER_SHELL_PANEL) which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
 #define ls window->wl.layer_shell.zwlr_layer_surface_v1
     ls = zwlr_layer_shell_v1_get_layer_surface(
             _glfw.wl.zwlr_layer_shell_v1, window->wl.surface, wl_output, which_layer, "kitty");
@@ -866,13 +882,7 @@ create_layer_shell_surface(_GLFWwindow *window) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: layer-surface creation failed");
         return false;
     }
-    zwlr_layer_surface_v1_set_size(ls, 0, 0);
-    zwlr_layer_surface_v1_set_anchor(ls, which_anchor);
-    zwlr_layer_surface_v1_set_exclusive_zone(ls, exclusive_zone);
-    zwlr_layer_surface_v1_set_margin(ls, 0, 0, 0, 0);
-    zwlr_layer_surface_v1_set_keyboard_interactivity(ls, focus_policy);
     zwlr_layer_surface_v1_add_listener(ls, &zwlr_layer_surface_v1_listener, window);
-
     wl_surface_commit(window->wl.surface);
     wl_display_roundtrip(_glfw.wl.display);
 #undef ls
