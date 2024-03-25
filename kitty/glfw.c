@@ -1084,15 +1084,10 @@ calculate_layer_shell_window_size(
     }
     float xscale, yscale;
     glfwGetWindowContentScale(window, &xscale, &yscale);
-    FONTS_DATA_HANDLE fonts_data;
+    double xdpi, ydpi;
+    dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
     OSWindow *os_window = os_window_for_glfw_window(window);
-    if (os_window) {
-        fonts_data = os_window->fonts_data;
-    } else {
-        double xdpi, ydpi;
-        dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
-        fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
-    }
+    FONTS_DATA_HANDLE fonts_data = load_fonts_data(os_window ? os_window->fonts_data->font_sz_in_pts : OPT(font_size), xdpi, ydpi);
     if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
         if (!*height) *height = monitor_height;
         double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
