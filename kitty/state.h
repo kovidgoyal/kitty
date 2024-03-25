@@ -230,7 +230,6 @@ typedef struct {
     bool is_focused;
     monotonic_t cursor_blink_zero_time, last_mouse_activity_at;
     double mouse_x, mouse_y;
-    double logical_dpi_x, logical_dpi_y, font_sz_in_pts;
     bool mouse_button_pressed[32];
     PyObject *window_title;
     bool disallow_title_changes, title_is_overriden;

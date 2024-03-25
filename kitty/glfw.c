@@ -137,10 +137,10 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h, fw, fh;
     glfwGetFramebufferSize(window->handle, &fw, &fh);
     glfwGetWindowSize(window->handle, &w, &h);
-    double xdpi = window->logical_dpi_x, ydpi = window->logical_dpi_y;
+    double xdpi = window->fonts_data->logical_dpi_x, ydpi = window->fonts_data->logical_dpi_y;
     set_os_window_dpi(window);
 
-    if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height && xdpi == window->logical_dpi_x && ydpi == window->logical_dpi_y) {
+    if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height && xdpi == window->fonts_data->logical_dpi_x && ydpi == window->fonts_data->logical_dpi_y) {
         return; // no change, ignore
     }
     int min_width, min_height; min_size_for_os_window(window, &min_width, &min_height);
@@ -163,7 +163,7 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = (double)window->viewport_width / (double)w;
     window->viewport_y_ratio = (double)window->viewport_height / (double)h;
-    bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->logical_dpi_x) || (ydpi != window->logical_dpi_y);
+    bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->fonts_data->logical_dpi_x) || (ydpi != window->fonts_data->logical_dpi_y);
 
     window->viewport_size_dirty = true;
     window->viewport_width = MAX(window->viewport_width, min_width);
@@ -678,7 +678,7 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     if (!ensure_csd_title_render_ctx()) return false;
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
-    unsigned px_sz = (unsigned)(global_state.callback_os_window->font_sz_in_pts * ydpi / 72.);
+    unsigned px_sz = (unsigned)(global_state.callback_os_window->fonts_data->font_sz_in_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
     static char title[2048];
     snprintf(title, sizeof(title), "🐱 %s", text);
@@ -854,7 +854,7 @@ get_os_window_content_scale(OSWindow *os_window, double *xdpi, double *ydpi, flo
 
 static void
 set_os_window_dpi(OSWindow *w) {
-    get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
+    get_window_dpi(w->handle, &w->fonts_data->logical_dpi_x, &w->fonts_data->logical_dpi_y);
 }
 
 static bool
@@ -1271,7 +1271,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
             q->is_focused = q == w ? true : false;
         }
     }
-    w->logical_dpi_x = xdpi; w->logical_dpi_y = ydpi;
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
@@ -1464,10 +1463,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 #else
         glfwSetDrawTextFunction(draw_text_callback);
 #endif
-        OSWindow w = {0};
-        set_os_window_dpi(&w);
-        global_state.default_dpi.x = w.logical_dpi_x;
-        global_state.default_dpi.y = w.logical_dpi_y;
+        get_window_dpi(NULL, &global_state.default_dpi.x, &global_state.default_dpi.y);
     }
     edge_spacing_func = edge_sf; Py_INCREF(edge_spacing_func);
     Py_INCREF(ans);

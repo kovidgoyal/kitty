@@ -63,7 +63,7 @@ GlobalState global_state = {{0}};
 
 static double
 dpi_for_os_window(OSWindow *os_window) {
-    double dpi = (os_window->logical_dpi_x + os_window->logical_dpi_y) / 2.;
+    double dpi = (os_window->fonts_data->logical_dpi_x + os_window->fonts_data->logical_dpi_y) / 2.;
     if (dpi == 0) dpi = (global_state.default_dpi.x + global_state.default_dpi.y) / 2.;
     return dpi;
 }
@@ -224,7 +224,6 @@ add_os_window(void) {
         }
     }
 
-    ans->font_sz_in_pts = OPT(font_size);
     END_WITH_OS_WINDOW_REFS
     return ans;
 }
@@ -1020,9 +1019,8 @@ PYWRAP1(os_window_font_size) {
     double new_sz = -1;
     PA("K|dp", &os_window_id, &new_sz, &force);
     WITH_OS_WINDOW(os_window_id)
-        if (new_sz > 0 && (force || new_sz != os_window->font_sz_in_pts)) {
-            os_window->font_sz_in_pts = new_sz;
-            os_window->fonts_data = load_fonts_data(os_window->font_sz_in_pts, os_window->logical_dpi_x, os_window->logical_dpi_y);
+        if (new_sz > 0 && (force || new_sz != os_window->fonts_data->font_sz_in_pts)) {
+            os_window->fonts_data = load_fonts_data(new_sz, os_window->fonts_data->logical_dpi_x, os_window->fonts_data->logical_dpi_y);
             send_prerendered_sprites_for_window(os_window);
             resize_screen(os_window, os_window->tab_bar_render_data.screen, false);
             for (size_t ti = 0; ti < os_window->num_tabs; ti++) {
@@ -1036,7 +1034,7 @@ PYWRAP1(os_window_font_size) {
             // On Wayland with CSD title needs to be re-rendered in a different font size
             if (os_window->window_title && global_state.is_wayland) set_os_window_title(os_window, NULL);
         }
-        return Py_BuildValue("d", os_window->font_sz_in_pts);
+        return Py_BuildValue("d", os_window->fonts_data->font_sz_in_pts);
     END_WITH_OS_WINDOW
     return Py_BuildValue("d", 0.0);
 }
