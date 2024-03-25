@@ -33,6 +33,7 @@ activity, CPU load, date/time, etc.
     This kitten currently only works on X11 desktops and Wayland compositors
     that support the `wlr layer shell protocol
     <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__
+    (which is almost all of them except the usually crippled GNOME).
 
 Using this kitten is simple, for example::
 
