@@ -1075,27 +1075,34 @@ edge_spacing(GLFWEdge which) {
 
 static void
 calculate_layer_shell_window_size(
-    GLFWwindow *window UNUSED, const GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height) {
+    GLFWwindow *window, const GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height) {
     if (config->type == GLFW_LAYER_SHELL_BACKGROUND) {
         if (!*width) *width = monitor_width;
         if (!*height) *height = monitor_height;
         return;
     }
-    OSWindow *os_window = os_window_for_glfw_window(window);
-    if (!os_window) return;
     float xscale, yscale;
     glfwGetWindowContentScale(window, &xscale, &yscale);
+    FONTS_DATA_HANDLE fonts_data;
+    OSWindow *os_window = os_window_for_glfw_window(window);
+    if (os_window) {
+        fonts_data = os_window->fonts_data;
+    } else {
+        double xdpi, ydpi;
+        dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
+        fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
+    }
     if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
         if (!*height) *height = monitor_height;
         double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
-        spacing *= os_window->logical_dpi_x / 72.;
-        spacing += (os_window->fonts_data->cell_width * config->size_in_cells) / xscale;
+        spacing *= fonts_data->logical_dpi_x / 72.;
+        spacing += (fonts_data->cell_width * config->size_in_cells) / xscale;
         *width = (uint32_t)(1. + spacing);
     } else {
         if (!*width) *width = monitor_width;
         double spacing = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
-        spacing *= os_window->logical_dpi_y / 72.;
-        spacing += 1. + (os_window->fonts_data->cell_height * config->size_in_cells) / yscale;
+        spacing *= fonts_data->logical_dpi_y / 72.;
+        spacing += 1. + (fonts_data->cell_height * config->size_in_cells) / yscale;
         *height = (uint32_t)(1. + spacing);
     }
 }

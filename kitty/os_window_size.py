@@ -47,7 +47,7 @@ def edge_spacing(which: EdgeLiteral, opts:Optional[Union[WindowSizeData, Options
     padding: float = getattr(opts.single_window_padding_width, which)
     if padding < 0:
         padding = getattr(opts.window_padding_width, which)
-    return padding + margin
+    return float(padding + margin)
 
 
 
