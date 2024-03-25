@@ -50,7 +50,7 @@ Detailed list of changes
 0.33.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Wayland: panel kitten: Add support for drawing desktop background and bars
+- Wayland: :doc:`panel kitten <kittens/panel>`: Add support for drawing desktop background and bars
   using the panel kitten for all compositors that support the requisite Wayland
   protocol which is practically speaking all of them but GNOME (:pull:`2590`)
 
