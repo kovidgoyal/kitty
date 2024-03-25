@@ -50,6 +50,10 @@ Detailed list of changes
 0.33.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: panel kitten: Add support for drawing desktop background and bars
+  using the panel kitten for all compositors that support the requisite Wayland
+  protocol which is practically speaking all of them but GNOME (:pull:`2590`)
+
 - Wayland: Support fractional scales so that there is no wasted drawing at larger scale followed by resizing in the compositor
 
 - Wayland: Support preferred integer scales
