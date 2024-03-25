@@ -1455,7 +1455,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
 
 int _glfwPlatformWindowFocused(_GLFWwindow* window)
 {
-    return _glfw.wl.keyboardFocusId = window ? window->id : 0;
+    return _glfw.wl.keyboardFocusId == (window ? window->id : 0);
 }
 
 int _glfwPlatformWindowOccluded(_GLFWwindow* window UNUSED)
