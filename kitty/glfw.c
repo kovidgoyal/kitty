@@ -1084,13 +1084,13 @@ calculate_layer_shell_window_size(
         if (!*height) *height = monitor_height;
         double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
         spacing *= os_window->logical_dpi_x / 72.;
-        spacing += (os_window->fonts_data->cell_width * config->size_in_cells) / yscale;
+        spacing += (os_window->fonts_data->cell_width * config->size_in_cells) / xscale;
         *width = (uint32_t)(1. + spacing);
     } else {
         if (!*width) *width = monitor_width;
         double spacing = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
         spacing *= os_window->logical_dpi_y / 72.;
-        spacing += 1. + (os_window->fonts_data->cell_height * config->size_in_cells) / xscale;
+        spacing += 1. + (os_window->fonts_data->cell_height * config->size_in_cells) / yscale;
         *height = (uint32_t)(1. + spacing);
     }
 }
