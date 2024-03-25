@@ -1020,7 +1020,9 @@ PYWRAP1(os_window_font_size) {
     PA("K|dp", &os_window_id, &new_sz, &force);
     WITH_OS_WINDOW(os_window_id)
         if (new_sz > 0 && (force || new_sz != os_window->fonts_data->font_sz_in_pts)) {
-            os_window->fonts_data = load_fonts_data(new_sz, os_window->fonts_data->logical_dpi_x, os_window->fonts_data->logical_dpi_y);
+            double xdpi, ydpi; float xscale, yscale;
+            get_os_window_content_scale(os_window, &xdpi, &ydpi, &xscale, &yscale);
+            os_window->fonts_data = load_fonts_data(new_sz, xdpi, ydpi);
             send_prerendered_sprites_for_window(os_window);
             resize_screen(os_window, os_window->tab_bar_render_data.screen, false);
             for (size_t ti = 0; ti < os_window->num_tabs; ti++) {

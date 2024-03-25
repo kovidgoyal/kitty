@@ -39,8 +39,6 @@ typedef struct mouse_cursor {
 
 static mouse_cursor cursors[GLFW_INVALID_CURSOR+1] = {0};
 
-static void set_os_window_dpi(OSWindow *w);
-
 static void
 apply_swap_interval(int val) {
     (void)val;
@@ -131,16 +129,17 @@ adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_wid
     }
 }
 
+static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h, fw, fh;
     glfwGetFramebufferSize(window->handle, &fw, &fh);
     glfwGetWindowSize(window->handle, &w, &h);
-    double xdpi = window->fonts_data->logical_dpi_x, ydpi = window->fonts_data->logical_dpi_y;
-    set_os_window_dpi(window);
+    double xdpi = window->fonts_data->logical_dpi_x, ydpi = window->fonts_data->logical_dpi_y, new_xdpi, new_ydpi;
+    get_window_dpi(window->handle, &new_xdpi, &new_ydpi);
 
-    if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height && xdpi == window->fonts_data->logical_dpi_x && ydpi == window->fonts_data->logical_dpi_y) {
+    if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height && xdpi == new_xdpi && ydpi == new_ydpi) {
         return; // no change, ignore
     }
     int min_width, min_height; min_size_for_os_window(window, &min_width, &min_height);
@@ -163,7 +162,7 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = (double)window->viewport_width / (double)w;
     window->viewport_y_ratio = (double)window->viewport_height / (double)h;
-    bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->fonts_data->logical_dpi_x) || (ydpi != window->fonts_data->logical_dpi_y);
+    bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != new_xdpi) || (ydpi != new_ydpi);
 
     window->viewport_size_dirty = true;
     window->viewport_width = MAX(window->viewport_width, min_width);
@@ -629,8 +628,6 @@ get_ime_cursor_position(GLFWwindow *glfw_window, GLFWIMEUpdateEvent *ev) {
 }
 
 
-static void get_window_dpi(GLFWwindow *w, double *x, double *y);
-
 #ifdef __APPLE__
 static bool
 apple_url_open_callback(const char* url) {
@@ -850,11 +847,6 @@ get_window_dpi(GLFWwindow *w, double *x, double *y) {
 void
 get_os_window_content_scale(OSWindow *os_window, double *xdpi, double *ydpi, float *xscale, float *yscale) {
     get_window_content_scale(os_window->handle, xscale, yscale, xdpi, ydpi);
-}
-
-static void
-set_os_window_dpi(OSWindow *w) {
-    get_window_dpi(w->handle, &w->fonts_data->logical_dpi_x, &w->fonts_data->logical_dpi_y);
 }
 
 static bool
@@ -1091,14 +1083,14 @@ calculate_layer_shell_window_size(
     if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
         if (!*height) *height = monitor_height;
         double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
-        spacing *= fonts_data->logical_dpi_x / 72.;
+        spacing *= xdpi / 72.;
         spacing += (fonts_data->cell_width * config->size_in_cells) / xscale;
         *width = (uint32_t)(1. + spacing);
     } else {
         if (!*width) *width = monitor_width;
         double spacing = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
-        spacing *= fonts_data->logical_dpi_y / 72.;
-        spacing += 1. + (fonts_data->cell_height * config->size_in_cells) / yscale;
+        spacing *= ydpi / 72.;
+        spacing += (fonts_data->cell_height * config->size_in_cells) / yscale;
         *height = (uint32_t)(1. + spacing);
     }
 }
