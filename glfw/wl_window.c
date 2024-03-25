@@ -784,7 +784,7 @@ find_output_by_name(const char* name) {
 }
 
 static void
-layer_set_properties(_GLFWwindow *window, struct zwlr_layer_surface_v1* surface) {
+layer_set_properties(_GLFWwindow *window) {
     enum zwlr_layer_surface_v1_anchor which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
     int exclusive_zone = -1;
     enum zwlr_layer_surface_v1_keyboard_interactivity focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
@@ -820,6 +820,7 @@ layer_set_properties(_GLFWwindow *window, struct zwlr_layer_surface_v1* surface)
                     break;
             }
     }
+#define surface window->wl.layer_shell.zwlr_layer_surface_v1
     zwlr_layer_surface_v1_set_size(surface, panel_width, panel_height);
     if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
     debug("Compositor informed layer size: %dx%d viewport: %dx%d \n", panel_width, panel_height, window->wl.width, window->wl.height);
@@ -827,6 +828,7 @@ layer_set_properties(_GLFWwindow *window, struct zwlr_layer_surface_v1* surface)
     zwlr_layer_surface_v1_set_exclusive_zone(surface, exclusive_zone);
     zwlr_layer_surface_v1_set_margin(surface, 0, 0, 0, 0);
     zwlr_layer_surface_v1_set_keyboard_interactivity(surface, focus_policy);
+#undef surface
 }
 
 static void
@@ -849,7 +851,7 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
         window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
         _glfwInputWindowDamage(window);
-        layer_set_properties(window, surface);
+        layer_set_properties(window);
     }
     commit_window_surface_if_safe(window);
 }
@@ -883,6 +885,7 @@ create_layer_shell_surface(_GLFWwindow *window) {
         return false;
     }
     zwlr_layer_surface_v1_add_listener(ls, &zwlr_layer_surface_v1_listener, window);
+    layer_set_properties(window);
     wl_surface_commit(window->wl.surface);
     wl_display_roundtrip(_glfw.wl.display);
 #undef ls
