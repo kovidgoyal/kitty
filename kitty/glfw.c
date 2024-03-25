@@ -816,6 +816,17 @@ set_os_window_pos(OSWindow *os_window, int x, int y) {
 }
 
 static void
+dpi_from_scale(float xscale, float yscale, double *xdpi, double *ydpi) {
+#ifdef __APPLE__
+    const double factor = 72.0;
+#else
+    const double factor = 96.0;
+#endif
+    *xdpi = xscale * factor;
+    *ydpi = yscale * factor;
+}
+
+static void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
     // if you change this function also change createSurface() in wl_window.c
     *xscale = 1; *yscale = 1;
@@ -827,13 +838,7 @@ get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xd
     // check for zero, negative, NaN or excessive values of xscale/yscale
     if (*xscale <= 0.0001 || *xscale != *xscale || *xscale >= 24) *xscale = 1.0;
     if (*yscale <= 0.0001 || *yscale != *yscale || *yscale >= 24) *yscale = 1.0;
-#ifdef __APPLE__
-    const double factor = 72.0;
-#else
-    const double factor = 96.0;
-#endif
-    *xdpi = *xscale * factor;
-    *ydpi = *yscale * factor;
+    dpi_from_scale(*xscale, *yscale, xdpi, ydpi);
 }
 
 static void
@@ -1184,20 +1189,23 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     }
     if (!common_context) common_context = apple_preserve_common_context;
 #endif
-    if (!global_state.is_wayland) {
-        // On Wayland windows dont get a content scale until they are shown anyway
-        // which won't happen until the event loop ticks, so using a temp window is useless.
-        // The glfw backend assigns new windows a scale of 1 and then waits for fractional scale
-        // or preferred integer scale events from the compositor. These arent received for not shown
-        // windows so we cannot use this trick.
-        // get_window_content_scale() when using a null window uses the scale from the primary monitor
-        // which will be correct some times at least.
-        temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
-        if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
-    }
     float xscale, yscale;
     double xdpi, ydpi;
-    get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
+    if (global_state.is_wayland) {
+        // Cannot use temp window on Wayland as scale is only sent by compositor after window is displayed
+        get_window_content_scale(NULL, &xscale, &yscale, &xdpi, &ydpi);
+        for (unsigned i = 0; i < global_state.num_os_windows; i++) {
+            OSWindow *osw = global_state.os_windows + i;
+            if (osw->handle && glfwGetWindowAttrib(osw->handle, GLFW_FOCUSED)) {
+                get_window_content_scale(osw->handle, &xscale, &yscale, &xdpi, &ydpi);
+                break;
+            }
+        }
+    } else {
+        temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
+        if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
+        get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
+    }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
     PyObject *ret = PyObject_CallFunction(get_window_size, "IIddff", fonts_data->cell_width, fonts_data->cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y, xscale, yscale);
     if (ret == NULL) return NULL;
