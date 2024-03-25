@@ -315,7 +315,7 @@ commit_window_surface_if_safe(_GLFWwindow *window) {
 
 static void
 update_regions(_GLFWwindow* window) {
-    if (is_layer_shell(window) && window->wl.layer_shell.config.type == GLFW_LAYER_SHELL_PANEL) {
+    if (is_layer_shell(window) && window->wl.layer_shell.config.type == GLFW_LAYER_SHELL_PANEL && window->wl.layer_shell.zwlr_layer_surface_v1) {
         int32_t exclusive_zone = 1;
         switch (window->wl.layer_shell.config.edge) {
             case GLFW_EDGE_TOP: case GLFW_EDGE_BOTTOM: exclusive_zone = window->wl.height; break;
