@@ -1116,8 +1116,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     static const char* kwlist[] = {"get_window_size", "pre_show_callback", "title", "wm_class_name", "wm_class_class", "window_state", "load_programs", "x", "y", "disallow_override_title", "layer_shell_config", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|OOOOpO", (char**)kwlist,
         &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &optional_window_state, &load_programs, &optional_x, &optional_y, &disallow_override_title, &layer_shell_config)) return NULL;
+    bool is_layer_shell = false;
     if (layer_shell_config && layer_shell_config != Py_None && global_state.is_wayland) {
-        glfwWaylandSetupLayerShellForNextWindow(translate_layer_shell_config(layer_shell_config));
+        is_layer_shell = true;
     } else {
         if (optional_window_state && optional_window_state != Py_None) { if (!PyLong_Check(optional_window_state)) { PyErr_SetString(PyExc_TypeError, "window_state must be an int"); return NULL; } window_state = (int) PyLong_AsLong(optional_window_state); }
         if (optional_x && optional_x != Py_None) { if (!PyLong_Check(optional_x)) { PyErr_SetString(PyExc_TypeError, "x must be an int"); return NULL;} x = (int)PyLong_AsLong(optional_x); }
@@ -1184,12 +1185,13 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (!common_context) common_context = apple_preserve_common_context;
 #endif
     if (!global_state.is_wayland) {
-        // On Wayland windows dont get a content scale until they receive an enterEvent anyway
+        // On Wayland windows dont get a content scale until they are shown anyway
         // which won't happen until the event loop ticks, so using a temp window is useless.
-        // The glfw backend assigns new windows a scale matching the primary monitor or 1 if
-        // no monitor has yet been reported. This is mimiced by get_window_content_scale() when
-        // using a null window, so we will match. Lets hope neither of these two change their algorithms
-        // in the future.
+        // The glfw backend assigns new windows a scale of 1 and then waits for fractional scale
+        // or preferred integer scale events from the compositor. These arent received for not shown
+        // windows so we cannot use this trick.
+        // get_window_content_scale() when using a null window uses the scale from the primary monitor
+        // which will be correct some times at least.
         temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
         if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
     }
@@ -1201,6 +1203,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
+    if (is_layer_shell) glfwWaylandSetupLayerShellForNextWindow(translate_layer_shell_config(layer_shell_config));
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context);
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
@@ -1250,10 +1253,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->handle = glfw_window;
     w->disallow_title_changes = disallow_override_title;
     update_os_window_references();
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        // On some platforms (macOS) newly created windows don't get the initial focus in event
-        OSWindow *q = global_state.os_windows + i;
-        q->is_focused = q == w ? true : false;
+    if (!is_layer_shell) {
+        for (size_t i = 0; i < global_state.num_os_windows; i++) {
+            // On some platforms (macOS) newly created windows don't get the initial focus in event
+            OSWindow *q = global_state.os_windows + i;
+            q->is_focused = q == w ? true : false;
+        }
     }
     w->logical_dpi_x = xdpi; w->logical_dpi_y = ydpi;
     w->fonts_data = fonts_data;
