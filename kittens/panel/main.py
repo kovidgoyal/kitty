@@ -65,6 +65,11 @@ Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it set
 --name
 condition=not is_macos
 Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
+
+
+--debug-rendering
+type=bool-set
+For internal debugging use.
 '''.format(appname=appname).format
 
 
@@ -157,6 +162,8 @@ def main(sys_args: List[str]) -> None:
     if not items:
         raise SystemExit('You must specify the program to run')
     sys.argv = ['kitty']
+    if args.debug_rendering:
+        sys.argv.append('--debug-rendering')
     for config in args.config:
         sys.argv.extend(('--config', config))
     sys.argv.extend(('--class', args.cls))
