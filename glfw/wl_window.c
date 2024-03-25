@@ -796,6 +796,11 @@ static void
 layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t width, uint32_t height) {
     debug("Layer shell configure event: width: %u height: %u\n", width, height);
     _GLFWwindow* window = data;
+    if (!window->wl.surface_configured_once) {
+        window->swaps_disallowed = false;
+        window->wl.waiting_for_swap_to_commit = true;
+        window->wl.surface_configured_once = true;
+    }
     GLFWvidmode m = {0};
     if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);
     window->wl.layer_shell.config.size_callback(
@@ -806,8 +811,8 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
         _glfwInputWindowSize(window, width, height);
         window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
-        _glfwInputWindowDamage(window);
     }
+    _glfwInputWindowDamage(window);
     commit_window_surface_if_safe(window);
 }
 

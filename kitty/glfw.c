@@ -1076,6 +1076,7 @@ edge_spacing(GLFWEdge which) {
 static void
 calculate_layer_shell_window_size(
     GLFWwindow *window, const GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height) {
+    request_tick_callback();
     if (config->type == GLFW_LAYER_SHELL_BACKGROUND) {
         if (!*width) *width = monitor_width;
         if (!*height) *height = monitor_height;
@@ -1332,6 +1333,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // macOS: Show the window after it is ready
     glfwShowWindow(glfw_window);
 #endif
+    w->is_damaged = true;
     return PyLong_FromUnsignedLongLong(w->id);
 }
 
