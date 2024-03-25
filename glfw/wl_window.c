@@ -823,7 +823,7 @@ layer_set_properties(_GLFWwindow *window) {
 #define surface window->wl.layer_shell.zwlr_layer_surface_v1
     zwlr_layer_surface_v1_set_size(surface, panel_width, panel_height);
     if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
-    debug("Compositor informed layer size: %dx%d viewport: %dx%d \n", panel_width, panel_height, window->wl.width, window->wl.height);
+    debug("Compositor will be informed that layer size: %dx%d viewport: %dx%d at next surface commit\n", panel_width, panel_height, window->wl.width, window->wl.height);
     zwlr_layer_surface_v1_set_anchor(surface, which_anchor);
     zwlr_layer_surface_v1_set_exclusive_zone(surface, exclusive_zone);
     zwlr_layer_surface_v1_set_margin(surface, 0, 0, 0, 0);
