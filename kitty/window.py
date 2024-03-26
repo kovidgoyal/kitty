@@ -4,6 +4,7 @@
 import json
 import os
 import re
+import sys
 import weakref
 from collections import deque
 from contextlib import contextmanager, suppress
@@ -833,7 +834,10 @@ class Window:
             max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
         update_ime_position = False
         if current_pty_size != self.last_reported_pty_size:
-            get_boss().child_monitor.resize_pty(self.id, *current_pty_size)
+            boss = get_boss()
+            boss.child_monitor.resize_pty(self.id, *current_pty_size)
+            if boss.args.debug_rendering:
+                print(f'SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
             self.last_resized_at = monotonic()
             if not self.pty_resized_once:
                 self.pty_resized_once = True
