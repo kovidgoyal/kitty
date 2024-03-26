@@ -780,7 +780,7 @@ attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
     else memset(shm_data, 0, size);
     if (!shm_data) {
         close(fd);
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to mmap anonymouse file");
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to mmap anonymous file");
         return false;
     }
     struct wl_shm_pool *pool = wl_shm_create_pool(_glfw.wl.shm, fd, size);

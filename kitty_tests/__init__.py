@@ -13,6 +13,7 @@ import sys
 import termios
 import time
 from contextlib import contextmanager
+from functools import wraps
 from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
 from unittest import TestCase
 
@@ -172,6 +173,22 @@ def filled_history_buf(ynum=5, xnum=5, cursor=Cursor()):
     for i in range(ynum):
         ans.push(lb.line(i))
     return ans
+
+
+def retry_on_failure(max_attempts=2, sleep_duration=2):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt < max_attempts - 1: # Don't sleep on the last attempt
+                        time.sleep(sleep_duration)
+                    else:
+                        raise e # Re-raise the last exception
+        return wrapper
+    return decorator
 
 
 class BaseTest(TestCase):
