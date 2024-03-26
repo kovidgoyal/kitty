@@ -14,9 +14,10 @@ from typing import IO, Callable, Dict, Iterator, Optional, Sequence, Set, TypeVa
 
 from kittens.tui.operations import colored, styled
 
+from .child import cmdline_of_pid
 from .cli import version
 from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
-from .fast_data_types import Color, SingleKey, num_users
+from .fast_data_types import Color, SingleKey, num_users, wayland_compositor_pid
 from .options.types import Options as KittyOpts
 from .options.types import defaults
 from .options.utils import KeyboardMode, KeyDefinition
@@ -193,6 +194,22 @@ def format_tty_name(raw: str) -> str:
     return re.sub(r'^/dev/([^/]+)/([^/]+)$', r'\1\2', raw)
 
 
+def compositor_name() -> str:
+    ans = 'X11'
+    if is_wayland():
+        ans = 'Wayland'
+        pid = wayland_compositor_pid()
+        if pid > -1:
+            with suppress(Exception):
+                cmdline = cmdline_of_pid(pid)
+                exe = cmdline[0]
+                with suppress(Exception):
+                    import subprocess
+                    exe = subprocess.check_output([exe, '--version']).decode().strip().splitlines()[0]
+                ans += f' ({exe})'
+    return ans
+
+
 def debug_config(opts: KittyOpts) -> str:
     from io import StringIO
     out = StringIO()
@@ -219,7 +236,7 @@ def debug_config(opts: KittyOpts) -> str:
         with open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
             p(f.read().strip())
     if not is_macos:
-        p('Running under:', green('Wayland' if is_wayland() else 'X11'))
+        p('Running under:', green(compositor_name()))
     p(green('Frozen:'), 'True' if getattr(sys, 'frozen', False) else 'False')
     p(green('Paths:'))
     p(yellow('  kitty:'), os.path.realpath(kitty_exe()))

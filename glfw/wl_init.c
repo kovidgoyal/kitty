@@ -41,6 +41,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <wayland-client.h>
 // Needed for the BTN_* defines
 #ifdef __has_include
@@ -813,6 +814,19 @@ glfwWaylandCheckForServerSideDecorations(void) {
 
 GLFWAPI int glfwGetCurrentSystemColorTheme(void) {
     return glfw_current_system_color_theme();
+}
+
+GLFWAPI pid_t glfwWaylandCompositorPID(void) {
+    if (!_glfw.wl.display) return -1;
+    int fd = wl_display_get_fd(_glfw.wl.display);
+    if (fd < 0) return -1;
+    struct ucred ucred;
+    socklen_t len = sizeof(struct ucred);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+        perror("getsockopt failed");
+        return -1;
+    }
+    return ucred.pid;
 }
 
 //////////////////////////////////////////////////////////////////////////

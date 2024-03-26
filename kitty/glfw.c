@@ -1837,6 +1837,16 @@ x11_display(PYNOARG) {
 }
 
 static PyObject*
+wayland_compositor_pid(PYNOARG) {
+    pid_t ans = -1;
+    if (global_state.is_wayland && glfwWaylandCompositorPID) {
+        ans = glfwWaylandCompositorPID();
+    }
+    long long x = ans;
+    return PyLong_FromLongLong(x);
+}
+
+static PyObject*
 x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
     OSWindow *w = os_window_for_id(PyLong_AsUnsignedLongLong(os_wid));
     if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
@@ -2216,6 +2226,7 @@ static PyMethodDef module_methods[] = {
     METHODB(change_os_window_state, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(x11_display, METH_NOARGS),
+    METHODB(wayland_compositor_pid, METH_NOARGS),
     METHODB(get_click_interval, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(make_x11_window_a_dock_window, METH_VARARGS),
