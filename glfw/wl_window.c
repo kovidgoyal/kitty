@@ -644,7 +644,7 @@ xdgToplevelHandleConfigure(void* data,
 
     wl_array_for_each(state, states) {
         switch (*state) {
-#define C(x) case XDG_##x: new_states |= x; fprintf(stderr, "%s ", #x); break
+#define C(x) case XDG_##x: new_states |= x; if (_glfw.hints.init.debugRendering) fprintf(stderr, "%s ", #x); break
             C(TOPLEVEL_STATE_RESIZING);
             C(TOPLEVEL_STATE_MAXIMIZED);
             C(TOPLEVEL_STATE_FULLSCREEN);
@@ -659,7 +659,7 @@ xdgToplevelHandleConfigure(void* data,
 #undef C
         }
     }
-    fprintf(stderr, "\n");
+    if (_glfw.hints.init.debugRendering) fprintf(stderr, "\n");
     if (new_states & TOPLEVEL_STATE_RESIZING) {
         if (width) window->wl.user_requested_content_size.width = width;
         if (height) window->wl.user_requested_content_size.height = height;
