@@ -31,6 +31,7 @@ extern void cocoa_update_menu_bar_title(PyObject*);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
 extern monotonic_t cocoa_cursor_blink_interval(void);
 
+#define debug(...) if (global_state.debug_rendering) { fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic())); fprintf(stderr, __VA_ARGS__); }
 
 typedef struct mouse_cursor {
     GLFWcursor *glfw;
@@ -1320,6 +1321,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwShowWindow(glfw_window);
 #endif
     w->is_damaged = true;
+    debug("OS Window created\n");
     return PyLong_FromUnsignedLongLong(w->id);
 }
 
