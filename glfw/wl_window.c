@@ -554,10 +554,16 @@ static bool createSurface(_GLFWwindow* window,
         if (xscale <= 0.0001 || xscale != xscale || xscale >= 24) xscale = 1.0;
         if (xscale > 1) scale = (int)xscale;
     }
+    window->wl.expect_scale_from_compositor = _glfw.wl.has_preferred_buffer_scale;
     if (_glfw.wl.wp_fractional_scale_manager_v1 && _glfw.wl.wp_viewporter) {
         window->wl.wp_fractional_scale_v1 = wp_fractional_scale_manager_v1_get_fractional_scale(_glfw.wl.wp_fractional_scale_manager_v1, window->wl.surface);
-        window->wl.wp_viewport = wp_viewporter_get_viewport(_glfw.wl.wp_viewporter, window->wl.surface);
-        wp_fractional_scale_v1_add_listener(window->wl.wp_fractional_scale_v1, &fractional_scale_listener, window);
+        if (window->wl.wp_fractional_scale_v1) {
+            window->wl.wp_viewport = wp_viewporter_get_viewport(_glfw.wl.wp_viewporter, window->wl.surface);
+            if (window->wl.wp_viewport) {
+                wp_fractional_scale_v1_add_listener(window->wl.wp_fractional_scale_v1, &fractional_scale_listener, window);
+                window->wl.expect_scale_from_compositor = true;
+            }
+        }
     }
     if (_glfw.wl.org_kde_kwin_blur_manager && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 

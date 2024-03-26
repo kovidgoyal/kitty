@@ -168,7 +168,7 @@ typedef struct _GLFWwindowWayland
     struct wp_fractional_scale_v1 *wp_fractional_scale_v1;
     struct wp_viewport *wp_viewport;
     struct org_kde_kwin_blur *org_kde_kwin_blur;
-    bool has_blur;
+    bool has_blur, expect_scale_from_compositor;
     struct {
         GLFWLayerShellConfig config;
         struct zwlr_layer_surface_v1* zwlr_layer_surface_v1;
