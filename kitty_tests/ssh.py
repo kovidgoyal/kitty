@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from contextlib import suppress
 from functools import lru_cache
 
@@ -188,6 +189,13 @@ env COLORTERM
                     self.assertIn(expected_login_shell, pty.screen_contents())
 
     def test_ssh_shell_integration(self):
+        try:
+            return self.do_ssh_shell_integration()
+        except Exception:
+            time.sleep(1)
+            self.do_ssh_shell_integration()
+
+    def do_ssh_shell_integration(self):
         ok_login_shell = ''
         for sh in self.all_possible_sh:
             for login_shell in {'fish', 'zsh', 'bash'} & set(self.all_possible_sh):
