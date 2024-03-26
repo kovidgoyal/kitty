@@ -847,7 +847,7 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional
 def options_spec() -> str:
     if not hasattr(options_spec, 'ans'):
         OPTIONS = '''
---class
+--class --app-id
 dest=cls
 default={appname}
 condition=not is_macos
