@@ -198,9 +198,9 @@ def compositor_name() -> str:
     ans = 'X11'
     if is_wayland():
         ans = 'Wayland'
-        pid = wayland_compositor_pid()
-        if pid > -1:
-            with suppress(Exception):
+        with suppress(Exception):
+            pid = wayland_compositor_pid()
+            if pid > -1:
                 cmdline = cmdline_of_pid(pid)
                 exe = cmdline[0]
                 with suppress(Exception):
