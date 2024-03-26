@@ -2208,6 +2208,16 @@ make_x11_window_a_dock_window(PyObject *self UNUSED, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+window_fully_created(PyObject *self UNUSED, PyObject *wid) {
+    // On Wayland a window does not receive its final size by the time glfwCreateWindow returns
+    if (!global_state.is_wayland) Py_RETURN_TRUE;
+    OSWindow *w = os_window_for_kitty_window(PyLong_AsUnsignedLongLong(wid));
+    if (!w || !w->handle) Py_RETURN_FALSE;
+    if (glfwWaylandWindowFullyCreated(w->handle)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -2227,6 +2237,7 @@ static PyMethodDef module_methods[] = {
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(x11_display, METH_NOARGS),
     METHODB(wayland_compositor_pid, METH_NOARGS),
+    METHODB(window_fully_created, METH_O),
     METHODB(get_click_interval, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(make_x11_window_a_dock_window, METH_VARARGS),

@@ -85,6 +85,7 @@ from .fast_data_types import (
     update_window_title,
     update_window_visibility,
     wakeup_main_loop,
+    window_fully_created,
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import (
@@ -554,7 +555,7 @@ class Window:
         self.actions_on_removal: List[Callable[['Window'], None]] = []
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
         self.kitten_result_processors: List[Callable[['Window', Any], None]] = []
-        self.pty_resized_once = False
+        self.child_is_launched = False
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self.needs_attention = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
@@ -836,13 +837,15 @@ class Window:
         if current_pty_size != self.last_reported_pty_size:
             boss = get_boss()
             boss.child_monitor.resize_pty(self.id, *current_pty_size)
-            if boss.args.debug_rendering:
-                print(f'SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
             self.last_resized_at = monotonic()
-            if not self.pty_resized_once:
-                self.pty_resized_once = True
+            if not self.child_is_launched and window_fully_created(self.id):
                 self.child.mark_terminal_ready()
+                self.child_is_launched = True
                 update_ime_position = True
+                if boss.args.debug_rendering:
+                    print(f'Child launched {monotonic() - self.started_at:.2f} seconds after window creation')
+            if boss.args.debug_rendering and self.child_is_launched:
+                print(f'SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
             self.last_reported_pty_size = current_pty_size
         else:
             mark_os_window_dirty(self.os_window_id)

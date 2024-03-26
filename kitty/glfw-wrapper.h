@@ -2316,6 +2316,10 @@ typedef pid_t (*glfwWaylandCompositorPID_func)(void);
 GFW_EXTERN glfwWaylandCompositorPID_func glfwWaylandCompositorPID_impl;
 #define glfwWaylandCompositorPID glfwWaylandCompositorPID_impl
 
+typedef bool (*glfwWaylandWindowFullyCreated_func)(GLFWwindow*);
+GFW_EXTERN glfwWaylandWindowFullyCreated_func glfwWaylandWindowFullyCreated_impl;
+#define glfwWaylandWindowFullyCreated glfwWaylandWindowFullyCreated_impl
+
 typedef unsigned long long (*glfwDBusUserNotify_func)(const char*, const char*, const char*, const char*, const char*, int32_t, GLFWDBusnotificationcreatedfun, void*);
 GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl

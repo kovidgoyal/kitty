@@ -285,7 +285,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
 
 static bool
 checkScaleChange(_GLFWwindow* window) {
-    if (window->wl.fractional_scale || window->wl.integer_scale.preferred) return false;
+    if (window->wl.expect_scale_from_compositor) return false;
     unsigned int scale = 1, monitorScale;
     int i;
 
@@ -493,9 +493,11 @@ static void surfaceHandleLeave(void *data,
 static void
 surface_preferred_buffer_scale(void *data, struct wl_surface *surface UNUSED, int32_t scale) {
     _GLFWwindow* window = data;
-    if ((int)window->wl.integer_scale.preferred == scale) return;
+    window->wl.once.preferred_scale_received = true;
+    if ((int)window->wl.integer_scale.preferred == scale && window->wl.window_fully_created) return;
     debug("Preferred integer buffer scale changed to: %d\n", scale);
     window->wl.integer_scale.preferred = scale;
+    window->wl.window_fully_created = true;
     if (!window->wl.fractional_scale) apply_scale_changes(window, true, true);
 }
 
@@ -518,9 +520,12 @@ static const struct wl_surface_listener surfaceListener = {
 static void
 fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_fractional_scale_v1 UNUSED, uint32_t scale) {
     _GLFWwindow *window = data;
-    if (scale == window->wl.fractional_scale) return;
+    window->wl.once.fractional_scale_received = true;
+    if (scale == window->wl.fractional_scale && window->wl.window_fully_created) return;
     debug("Fractional scale requested: %u/120 = %.2f\n", scale, scale / 120.);
     window->wl.fractional_scale = scale;
+    // Hyprland sends a fraction scale = 1 event before configuring the xdg surface and then another after with the correct scale
+    window->wl.window_fully_created = window->wl.once.surface_configured || scale != 120;
     apply_scale_changes(window, true, true);
 }
 
@@ -565,6 +570,7 @@ static bool createSurface(_GLFWwindow* window,
             }
         }
     }
+    window->wl.window_fully_created = !window->wl.expect_scale_from_compositor;
     if (_glfw.wl.org_kde_kwin_blur_manager && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 
     window->wl.integer_scale.deduced = scale;
@@ -699,10 +705,10 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
         uint32_t new_states = window->wl.pending.toplevel_states;
         int width = window->wl.pending.width;
         int height = window->wl.pending.height;
-        if (!window->wl.surface_configured_once) {
+        if (!window->wl.once.surface_configured) {
             window->swaps_disallowed = false;
             window->wl.waiting_for_swap_to_commit = true;
-            window->wl.surface_configured_once = true;
+            window->wl.once.surface_configured = true;
         }
 
         if (new_states != window->wl.current.toplevel_states ||
@@ -734,7 +740,7 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
         } else {
             ensure_csd_resources(window);
         }
-        debug("final window content size: %dx%d resized: %d\n", width, height, resized);
+        debug("Final window content size: %dx%d resized: %d\n", width, height, resized);
     }
 
     inform_compositor_of_window_geometry(window, "configure");
@@ -852,10 +858,10 @@ static void
 layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t width, uint32_t height) {
     debug("Layer shell configure event: width: %u height: %u\n", width, height);
     _GLFWwindow* window = data;
-    if (!window->wl.surface_configured_once) {
+    if (!window->wl.once.surface_configured) {
         window->swaps_disallowed = false;
         window->wl.waiting_for_swap_to_commit = true;
-        window->wl.surface_configured_once = true;
+        window->wl.once.surface_configured = true;
     }
     GLFWvidmode m = {0};
     if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);
@@ -1431,7 +1437,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
         xdg_surface_destroy(window->wl.xdg.surface);
         window->wl.xdg.toplevel = NULL;
         window->wl.xdg.surface = NULL;
-        window->wl.surface_configured_once = false;
+        window->wl.once.surface_configured = false;
         window->swaps_disallowed = true;
     }
     window->wl.visible = false;
@@ -2578,4 +2584,9 @@ GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(GLFWLayerShellConfig c) {
     layer_shell_config_for_next_window = c;
     if (layer_shell_config_for_next_window.output_name && !layer_shell_config_for_next_window.output_name[0]) layer_shell_config_for_next_window.output_name = NULL;
     if (layer_shell_config_for_next_window.output_name) layer_shell_config_for_next_window.output_name = strdup(layer_shell_config_for_next_window.output_name);
+}
+
+GLFWAPI bool glfwWaylandWindowFullyCreated(GLFWwindow *handle) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    return window->wl.window_fully_created;
 }
