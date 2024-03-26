@@ -367,16 +367,16 @@ resizeFramebuffer(_GLFWwindow* window) {
 
 void
 _glfwWaylandAfterBufferSwap(_GLFWwindow* window) {
+    if (window->wl.temp_buffer_used_during_window_creation) {
+        wl_buffer_destroy(window->wl.temp_buffer_used_during_window_creation);
+        window->wl.temp_buffer_used_during_window_creation = NULL;
+    }
     if (window->wl.waiting_for_swap_to_commit) {
         debug("Waiting for swap to commit: swap has happened, window surface committed\n");
         window->wl.waiting_for_swap_to_commit = false;
         // this is not really needed, since I think eglSwapBuffers() calls wl_surface_commit()
         // but lets be safe. See https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/egl/drivers/dri2/platform_wayland.c#L1510
         wl_surface_commit(window->wl.surface);
-        if (window->wl.temp_buffer_used_during_window_creation) {
-            wl_buffer_destroy(window->wl.temp_buffer_used_during_window_creation);
-            window->wl.temp_buffer_used_during_window_creation = NULL;
-        }
     }
 }
 
