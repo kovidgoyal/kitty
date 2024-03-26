@@ -695,6 +695,7 @@ static void xdgToplevelHandleClose(void* data,
                                    struct xdg_toplevel* toplevel UNUSED)
 {
     _GLFWwindow* window = data;
+    window->wl.window_fully_created = true;
     _glfwInputWindowCloseRequest(window);
 }
 
@@ -937,6 +938,7 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
 static void
 layer_surface_handle_close_requested(void* data, struct zwlr_layer_surface_v1* surface UNUSED) {
     _GLFWwindow* window = data;
+    window->wl.window_fully_created = true;
     _glfwInputWindowCloseRequest(window);
 }
 
