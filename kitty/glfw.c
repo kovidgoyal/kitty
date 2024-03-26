@@ -181,7 +181,7 @@ log_event(const char *format, ...) {
     {
         va_list vl;
 
-        fprintf(stderr, "[%.4f] ", monotonic_t_to_s_double(glfwGetTime()));
+        fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic()));
         va_start(vl, format);
         vfprintf(stderr, format, vl);
         va_end(vl);
