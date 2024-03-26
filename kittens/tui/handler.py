@@ -4,10 +4,10 @@
 
 from collections import deque
 from contextlib import suppress
-from time import monotonic
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, ContextManager, Deque, Dict, NamedTuple, Optional, Sequence, Type, Union, cast
 
+from kitty.fast_data_types import monotonic
 from kitty.types import DecoratedFunc, ParsedShortcut
 from kitty.typing import (
     AbstractEventLoop,

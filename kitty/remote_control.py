@@ -8,7 +8,7 @@ import re
 import sys
 from contextlib import suppress
 from functools import lru_cache, partial
-from time import monotonic, time_ns
+from time import time_ns
 from types import GeneratorType
 from typing import (
     TYPE_CHECKING,
@@ -34,6 +34,7 @@ from .fast_data_types import (
     EllipticCurveKey,
     get_boss,
     get_options,
+    monotonic,
     read_command_response,
     send_data_to_peer,
 )

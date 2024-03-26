@@ -11,7 +11,6 @@ import string
 import sys
 from contextlib import contextmanager, suppress
 from functools import lru_cache
-from time import monotonic
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -43,7 +42,7 @@ from .constants import (
     shell_path,
     ssh_control_master_template,
 )
-from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, Shlex, get_options, open_tty
+from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, Shlex, get_options, monotonic, open_tty
 from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx

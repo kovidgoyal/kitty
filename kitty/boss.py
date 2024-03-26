@@ -11,7 +11,7 @@ from contextlib import contextmanager, suppress
 from functools import partial
 from gettext import gettext as _
 from gettext import ngettext
-from time import monotonic, sleep
+from time import sleep
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -93,6 +93,7 @@ from .fast_data_types import (
     global_font_size,
     last_focused_os_window_id,
     mark_os_window_for_close,
+    monotonic,
     os_window_focus_counters,
     os_window_font_size,
     patch_global_colors,

@@ -16,11 +16,11 @@ from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
 from itertools import count
-from time import monotonic, time_ns
+from time import time_ns
 from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
-from kitty.fast_data_types import ESC_OSC, FILE_TRANSFER_CODE, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options
+from kitty.fast_data_types import ESC_OSC, FILE_TRANSFER_CODE, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options, monotonic
 from kitty.types import run_once
 
 from .utils import log_error

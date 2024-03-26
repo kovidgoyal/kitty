@@ -9,7 +9,6 @@ from collections import deque
 from contextlib import suppress
 from gettext import gettext as _
 from operator import attrgetter
-from time import monotonic
 from typing import (
     Any,
     Callable,
@@ -45,6 +44,7 @@ from .fast_data_types import (
     get_options,
     last_focused_os_window_id,
     mark_tab_bar_dirty,
+    monotonic,
     next_window_id,
     remove_tab,
     remove_window,

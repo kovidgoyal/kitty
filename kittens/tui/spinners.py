@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
-from time import monotonic
 from typing import Dict, Sequence
 
+from kitty.fast_data_types import monotonic
 from kitty.typing import TypedDict
 
 
