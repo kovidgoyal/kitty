@@ -558,6 +558,17 @@ class Splits(Layout):
             pair.neighbors_for_window(wg.id, ans, self, all_windows)
         return ans
 
+    def move_window(self, all_windows: WindowList, delta: int = 1) -> bool:
+        before = all_windows.active_group
+        if before is None:
+            return False
+        before_idx = all_windows.active_group_idx
+        moved = super().move_window(all_windows, delta)
+        after = all_windows.groups[before_idx]
+        if moved and before.id != after.id:
+            self.pairs_root.swap_windows(before.id, after.id)
+        return moved
+
     def move_window_to_group(self, all_windows: WindowList, group: int) -> bool:
         before = all_windows.active_group
         if before is None:

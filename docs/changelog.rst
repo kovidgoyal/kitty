@@ -68,6 +68,8 @@ Detailed list of changes
 
 - Fix handling of tab character when cursor is at end of line and wrapping is enabled (:iss:`7250`)
 
+- Splits layout: Fix :ac:`move_window_forward` not working (:iss:`7264`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
