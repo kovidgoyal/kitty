@@ -693,21 +693,8 @@ static const struct xdg_toplevel_listener xdgToplevelListener = {
     xdgToplevelHandleClose
 };
 
-static void xdgSurfaceHandleConfigure(void* data,
-                                      struct xdg_surface* surface,
-                                      uint32_t serial)
-{
-    // The poorly documented pattern Wayland requires is:
-    // 1) ack the configure,
-    // 2) set the window geometry
-    // 3) attach a new buffer of the correct size to the surface
-    // 4) only then commit the surface.
-    // buffer is attached only by eglSwapBuffers,
-    // so we set a flag to not commit the surface till the next swapbuffers. Note that
-    // wl_egl_window_resize() does not actually resize the buffer until the next draw call
-    // or buffer state query.
-    _GLFWwindow* window = data;
-    xdg_surface_ack_configure(surface, serial);
+static void
+apply_xdg_configure_changes(_GLFWwindow *window) {
     if (window->wl.pending_state & PENDING_STATE_TOPLEVEL) {
         uint32_t new_states = window->wl.pending.toplevel_states;
         int width = window->wl.pending.width;
@@ -753,6 +740,22 @@ static void xdgSurfaceHandleConfigure(void* data,
     inform_compositor_of_window_geometry(window, "configure");
     commit_window_surface_if_safe(window);
     window->wl.pending_state = 0;
+}
+
+static void
+xdgSurfaceHandleConfigure(void* data, struct xdg_surface* surface, uint32_t serial) {
+    // The poorly documented pattern Wayland requires is:
+    // 1) ack the configure,
+    // 2) set the window geometry
+    // 3) attach a new buffer of the correct size to the surface
+    // 4) only then commit the surface.
+    // buffer is attached only by eglSwapBuffers,
+    // so we set a flag to not commit the surface till the next swapbuffers. Note that
+    // wl_egl_window_resize() does not actually resize the buffer until the next draw call
+    // or buffer state query.
+    _GLFWwindow* window = data;
+    xdg_surface_ack_configure(surface, serial);
+    apply_xdg_configure_changes(window);
 }
 
 static const struct xdg_surface_listener xdgSurfaceListener = {
