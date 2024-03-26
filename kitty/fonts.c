@@ -15,7 +15,7 @@
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
-#define debug(...) if (global_state.debug_rendering) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+#define debug(...) if (global_state.debug_font_fallback) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
 
 static PyObject *python_send_to_gpu_impl = NULL;
 #define current_send_sprite_to_gpu(...) (python_send_to_gpu_impl ? python_send_to_gpu(__VA_ARGS__) : send_sprite_to_gpu(__VA_ARGS__))

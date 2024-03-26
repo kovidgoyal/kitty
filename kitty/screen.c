@@ -2301,7 +2301,6 @@ shell_prompt_marking(Screen *self, char *buf) {
                 break;
         }
     }
-    if (global_state.debug_rendering) fprintf(stderr, "prompt_marking: x=%d y=%d op=%s\n", self->cursor->x, self->cursor->y, buf);
 }
 
 static bool

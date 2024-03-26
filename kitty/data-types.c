@@ -411,6 +411,11 @@ py_terminfo_data(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyBytes_FromStringAndSize((const char*)terminfo_data, arraysz(terminfo_data));
 }
 
+static PyObject*
+py_monotonic(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyFloat_FromDouble(monotonic_t_to_s_double(monotonic()));
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
@@ -433,6 +438,7 @@ static PyMethodDef module_methods[] = {
     {"shm_unlink", (PyCFunction)py_shm_unlink, METH_VARARGS, ""},
     {"wrapped_kitten_names", (PyCFunction)wrapped_kittens, METH_NOARGS, ""},
     {"terminfo_data", (PyCFunction)py_terminfo_data, METH_NOARGS, ""},
+    {"monotonic", (PyCFunction)py_monotonic, METH_NOARGS, ""},
     {"find_in_memoryview", (PyCFunction)find_in_memoryview, METH_VARARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),

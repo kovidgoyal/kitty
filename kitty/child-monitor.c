@@ -819,9 +819,9 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
     bool ans = now - w->last_render_frame_received_at > max_wait;
     if (ans && global_state.debug_rendering) {
         if (global_state.is_wayland) {
-            log_error("No render frame received in %.2f seconds", monotonic_t_to_s_double(max_wait));
+            fprintf(stderr, "[%f] No render frame received in %.2f seconds", monotonic_t_to_s_double(now), monotonic_t_to_s_double(max_wait));
         } else  {
-            log_error("No render frame received in %.2f seconds, re-requesting at: %f", monotonic_t_to_s_double(max_wait), monotonic_t_to_s_double(now));
+            fprintf(stderr, "[%f] No render frame received in %.2f seconds, re-requesting", monotonic_t_to_s_double(now), monotonic_t_to_s_double(max_wait));
         }
     }
     return ans;

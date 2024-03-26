@@ -12,7 +12,7 @@ from enum import Enum, IntEnum, auto
 from functools import lru_cache, partial
 from gettext import gettext as _
 from itertools import chain
-from time import monotonic, time_ns
+from time import time_ns
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -72,6 +72,7 @@ from .fast_data_types import (
     is_css_pointer_name_valid,
     last_focused_os_window_id,
     mark_os_window_dirty,
+    monotonic,
     mouse_selection,
     move_cursor_to_mouse_if_in_prompt,
     pointer_name_to_css_name,
@@ -843,9 +844,10 @@ class Window:
                 self.child_is_launched = True
                 update_ime_position = True
                 if boss.args.debug_rendering:
-                    print(f'Child launched {monotonic() - self.started_at:.2f} seconds after window creation')
+                    now = monotonic()
+                    print(f'[{now:.3f}] Child launched {now - self.started_at:.2f} seconds after window creation', file=sys.stderr)
             if boss.args.debug_rendering and self.child_is_launched:
-                print(f'SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
+                print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
             self.last_reported_pty_size = current_pty_size
         else:
             mark_os_window_dirty(self.os_window_id)
