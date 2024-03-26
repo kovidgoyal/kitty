@@ -634,7 +634,7 @@ xdgToplevelHandleConfigure(void* data,
     float targetRatio;
     enum xdg_toplevel_state* state;
     uint32_t new_states = 0;
-    debug("top-level configure event: size: %dx%d states: ", width, height);
+    debug("XDG top-level configure event: size: %dx%d states: ", width, height);
 
     wl_array_for_each(state, states) {
         switch (*state) {
@@ -755,6 +755,7 @@ xdgSurfaceHandleConfigure(void* data, struct xdg_surface* surface, uint32_t seri
     // or buffer state query.
     _GLFWwindow* window = data;
     xdg_surface_ack_configure(surface, serial);
+    debug("XDG surface configure event received and acknowledged\n");
     apply_xdg_configure_changes(window);
 }
 
