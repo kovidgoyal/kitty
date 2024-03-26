@@ -53,17 +53,7 @@ log_error(const char *fmt, ...) {
     END_ALLOW_CASE_RANGE
 
     if (!use_os_log) {  // Apple's os_log already records timestamps
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        struct tm stack_tmp;
-        struct tm *tmp = localtime_r(&tv.tv_sec, &stack_tmp);
-        if (tmp) {
-            char tbuf[256] = {0}, buf[256] = {0};
-            if (strftime(buf, sizeof(buf), "%j %H:%M:%S.%%06u", tmp) != 0) {
-                snprintf(tbuf, sizeof(tbuf), buf, tv.tv_usec);
-                fprintf(stderr, "[%s] ", tbuf);
-            }
-        }
+        fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic()));
     }
 #ifdef __APPLE__
     if (use_os_log) os_log(OS_LOG_DEFAULT, "%{public}s", sanbuf);
