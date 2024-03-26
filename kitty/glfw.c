@@ -1173,6 +1173,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     }
     bool want_semi_transparent = (1.0 - OPT(background_opacity) >= 0.01) || OPT(dynamic_background_opacity);
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, want_semi_transparent);
+    uint32_t bgcolor = OPT(background);
+    uint32_t bgalpha = (uint32_t)((MAX(0.f, MIN((OPT(background_opacity) * 255), 255.f))));
+    glfwWindowHint(GLFW_WAYLAND_BGCOLOR, ((bgalpha & 0xff) << 24) | bgcolor);
     // We use a temp window to avoid the need to set the window size after
     // creation, which causes a resize event and all the associated processing.
     // The temp window is used to get the DPI.

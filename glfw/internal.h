@@ -322,6 +322,7 @@ struct _GLFWwndconfig
     } x11;
     struct {
         char      appId[256];
+        uint32_t  bgcolor;
     } wl;
 };
 

@@ -760,17 +760,37 @@ attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
     const size_t size = 4 * width * height;
     int fd = createAnonymousFile(size);
     if (fd < 0) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create anonymouse file");
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create anonymous file");
+        return false;
+    }
+    uint32_t *shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    union {
+        struct {
+            uint8_t blue, green, red, alpha;
+        };
+        uint32_t value;
+    } color;
+    color.value = _glfw.hints.window.wl.bgcolor;
+    int shm_format = WL_SHM_FORMAT_ARGB8888;
+    if (!window->wl.transparent) { color.alpha = 0xff; shm_format = WL_SHM_FORMAT_XRGB8888; }
+    else if (color.alpha == 0) color.value = 0;  // fully transparent blends best with black and we can use memset
+    // convert to pre-multiplied alpha
+    float alpha = color.alpha / 255.f; color.red = (uint8_t)(alpha * color.red); color.green = (uint8_t)(alpha * color.green); color.blue = (uint8_t)(alpha * color.blue);
+    if (color.value) for (size_t i = 0; i < size/4; i++) shm_data[i] = color.value;
+    else memset(shm_data, 0, size);
+    if (!shm_data) {
+        close(fd);
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to mmap anonymouse file");
         return false;
     }
     struct wl_shm_pool *pool = wl_shm_create_pool(_glfw.wl.shm, fd, size);
     if (!pool) {
-        close(fd);
+        close(fd); munmap(shm_data, size);
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create wl_shm_pool of size: %zu", size);
         return false;
     }
-    struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * 4, WL_SHM_FORMAT_ARGB8888);
-    wl_shm_pool_destroy(pool); close(fd);
+    struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * 4, shm_format);
+    wl_shm_pool_destroy(pool); munmap(shm_data, size); close(fd);
     if (!buffer) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create wl_buffer of size: %zu", size);
         return false;
