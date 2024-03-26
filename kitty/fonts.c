@@ -479,7 +479,7 @@ iter_fallback_faces(FONTS_DATA_HANDLE fgh, ssize_t *idx) {
 
 static ssize_t
 load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool emoji_presentation) {
-    if (fg->fallback_fonts_count > 100) { log_error("Too many fallback fonts"); return MISSING_FONT; }
+    if (fg->fallback_fonts_count > 256) { log_error("Too many fallback fonts"); return MISSING_FONT; }
     ssize_t f;
 
     if (bold) f = italic ? fg->bi_font_idx : fg->bold_font_idx;
