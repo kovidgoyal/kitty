@@ -373,6 +373,10 @@ _glfwWaylandAfterBufferSwap(_GLFWwindow* window) {
         // this is not really needed, since I think eglSwapBuffers() calls wl_surface_commit()
         // but lets be safe. See https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/egl/drivers/dri2/platform_wayland.c#L1510
         wl_surface_commit(window->wl.surface);
+        if (window->wl.temp_buffer_used_during_window_creation) {
+            wl_buffer_destroy(window->wl.temp_buffer_used_during_window_creation);
+            window->wl.temp_buffer_used_during_window_creation = NULL;
+        }
     }
 }
 
@@ -748,6 +752,51 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
     window->wl.pending_state = 0;
 }
 
+static bool
+attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
+    int width, height;
+    _glfwPlatformGetFramebufferSize(window, &width, &height);
+    const size_t size = 4 * width * height;
+    int fd = createAnonymousFile(size);
+    if (fd < 0) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create anonymouse file");
+        return false;
+    }
+    struct wl_shm_pool *pool = wl_shm_create_pool(_glfw.wl.shm, fd, size);
+    if (!pool) {
+        close(fd);
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create wl_shm_pool of size: %zu", size);
+        return false;
+    }
+    struct wl_buffer *buffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * 4, WL_SHM_FORMAT_ARGB8888);
+    wl_shm_pool_destroy(pool); close(fd);
+    if (!buffer) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create wl_buffer of size: %zu", size);
+        return false;
+    }
+    if (window->wl.temp_buffer_used_during_window_creation) wl_buffer_destroy(window->wl.temp_buffer_used_during_window_creation);
+    window->wl.temp_buffer_used_during_window_creation = buffer;
+    wl_surface_set_buffer_scale(window->wl.surface, window->wl.fractional_scale ? 1: _glfwWaylandIntegerWindowScale(window));
+    wl_surface_attach(window->wl.surface, buffer, 0, 0);
+    if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
+    wl_surface_commit(window->wl.surface);
+    debug("Attached temp buffer during window creation of size: %dx%d\n", width, height);
+    return true;
+}
+
+static void
+loop_till_window_fully_created(_GLFWwindow *window) {
+    if (!window->wl.window_fully_created) {
+        monotonic_t start = monotonic();
+        while (!window->wl.window_fully_created && monotonic() - start < ms_to_monotonic_t(300)) {
+            if (wl_display_roundtrip(_glfw.wl.display) == -1) {
+                window->wl.window_fully_created = true;
+            }
+        }
+        window->wl.window_fully_created = true;
+    }
+}
+
 static void
 xdgSurfaceHandleConfigure(void* data, struct xdg_surface* surface, uint32_t serial) {
     // The poorly documented pattern Wayland requires is:
@@ -763,6 +812,9 @@ xdgSurfaceHandleConfigure(void* data, struct xdg_surface* surface, uint32_t seri
     xdg_surface_ack_configure(surface, serial);
     debug("XDG surface configure event received and acknowledged\n");
     apply_xdg_configure_changes(window);
+    if (!window->wl.window_fully_created) {
+        if (!attach_temp_buffer_during_window_creation(window)) window->wl.window_fully_created = true;
+    }
 }
 
 static const struct xdg_surface_listener xdgSurfaceListener = {
@@ -877,6 +929,9 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
         layer_set_properties(window);
     }
     commit_window_surface_if_safe(window);
+    if (!window->wl.window_fully_created) {
+        if (!attach_temp_buffer_during_window_creation(window)) window->wl.window_fully_created = true;
+    }
 }
 
 static void
@@ -1200,7 +1255,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     window->wl.monitors = calloc(1, sizeof(_GLFWmonitor*));
     window->wl.monitorsCount = 0;
     window->wl.monitorsSize = 1;
-
+    if (window->wl.visible) loop_till_window_fully_created(window);
     return true;
 }
 
@@ -1219,6 +1274,9 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->id == _glfw.wl.keyRepeatInfo.keyboardFocusId) {
         _glfw.wl.keyRepeatInfo.keyboardFocusId = 0;
     }
+
+    if (window->wl.temp_buffer_used_during_window_creation)
+        wl_buffer_destroy(window->wl.temp_buffer_used_during_window_creation);
 
     if (window->wl.wp_fractional_scale_v1)
         wp_fractional_scale_v1_destroy(window->wl.wp_fractional_scale_v1);
@@ -1422,10 +1480,10 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
-    if (!window->wl.visible)
-    {
+    if (!window->wl.visible) {
         create_window_desktop_surface(window);
         window->wl.visible = true;
+        loop_till_window_fully_created(window);
     }
 }
 
@@ -2584,9 +2642,4 @@ GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(GLFWLayerShellConfig c) {
     layer_shell_config_for_next_window = c;
     if (layer_shell_config_for_next_window.output_name && !layer_shell_config_for_next_window.output_name[0]) layer_shell_config_for_next_window.output_name = NULL;
     if (layer_shell_config_for_next_window.output_name) layer_shell_config_for_next_window.output_name = strdup(layer_shell_config_for_next_window.output_name);
-}
-
-GLFWAPI bool glfwWaylandWindowFullyCreated(GLFWwindow *handle) {
-    _GLFWwindow* window = (_GLFWwindow*) handle;
-    return window->wl.window_fully_created;
 }

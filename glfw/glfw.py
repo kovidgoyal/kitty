@@ -316,7 +316,6 @@ def generate_wrappers(glfw_header: str) -> None:
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)
     void glfwWaylandSetupLayerShellForNextWindow(GLFWLayerShellConfig c)
     pid_t glfwWaylandCompositorPID(void)
-    bool glfwWaylandWindowFullyCreated(GLFWwindow *handle)
     unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, \
 const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)

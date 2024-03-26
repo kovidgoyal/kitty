@@ -86,7 +86,6 @@ from .fast_data_types import (
     update_window_title,
     update_window_visibility,
     wakeup_main_loop,
-    window_fully_created,
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import (
@@ -839,14 +838,14 @@ class Window:
             boss = get_boss()
             boss.child_monitor.resize_pty(self.id, *current_pty_size)
             self.last_resized_at = monotonic()
-            if not self.child_is_launched and window_fully_created(self.id):
+            if not self.child_is_launched:
                 self.child.mark_terminal_ready()
                 self.child_is_launched = True
                 update_ime_position = True
                 if boss.args.debug_rendering:
                     now = monotonic()
-                    print(f'[{now:.3f}] Child launched {now - self.started_at:.2f} seconds after window creation', file=sys.stderr)
-            if boss.args.debug_rendering and self.child_is_launched:
+                    print(f'[{now:.3f}] Child launched', file=sys.stderr)
+            elif boss.args.debug_rendering:
                 print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
             self.last_reported_pty_size = current_pty_size
         else:

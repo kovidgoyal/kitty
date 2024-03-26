@@ -172,6 +172,7 @@ typedef struct _GLFWwindowWayland
     struct {
         bool surface_configured, fractional_scale_received, preferred_scale_received;
     } once;
+    struct wl_buffer *temp_buffer_used_during_window_creation;
     struct {
         GLFWLayerShellConfig config;
         struct zwlr_layer_surface_v1* zwlr_layer_surface_v1;
