@@ -205,6 +205,13 @@ def compositor_name() -> str:
                 exe = cmdline[0]
                 with suppress(Exception):
                     import subprocess
+                    if exe.lower() == 'hyprland':
+                        raw = subprocess.check_output(['hyprctl', 'version']).decode().strip()
+                        m = re.search(r'^Tag:\s*(\S+)', raw, flags=re.M)
+                        if m is not None:
+                            exe = f'{exe} {m.group(1)}'
+                        else:
+                            exe = raw.splitlines()[0]
                     exe = subprocess.check_output([exe, '--version']).decode().strip().splitlines()[0]
                 ans += f' ({exe})'
     return ans
