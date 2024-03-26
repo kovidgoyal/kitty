@@ -60,6 +60,8 @@ Detailed list of changes
 
 - Wayland KDE: Support :opt:`background_blur`
 
+- Wayland KDE: Fix mouse cursor hiding not working in Plasma 6 (:iss:`7265`)
+
 - A new option :opt:`terminfo_type` to allow passing the terminfo database embedded into the :envvar:`TERMINFO` env var directly instead of via a file
 
 - Mouse reporting: Fix drag release event outside the window not being reported in legacy mouse reporting modes (:iss:`7244`)

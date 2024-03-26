@@ -198,6 +198,21 @@ glfw_cursor_shape_to_wayland_cursor_shape(GLFWCursorShape g) {
 }
 
 static void
+commit_window_surface_if_safe(_GLFWwindow *window) {
+    // we only commit if the buffer attached to the surface is the correct size,
+    // which means that at least one frame is drawn after resizeFramebuffer()
+    if (!window->wl.waiting_for_swap_to_commit) {
+        wl_surface_commit(window->wl.surface);
+    }
+}
+
+static void
+set_cursor_surface(struct wl_surface *surface, int hotspot_x, int hotspot_y, const char *from_where) {
+    debug("Calling wl_pointer_set_cursor in %s with surface: %p and serial: %u\n", from_where, (void*)surface, _glfw.wl.pointer_enter_serial);
+    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.pointer_enter_serial, surface, hotspot_x, hotspot_y);
+}
+
+static void
 setCursorImage(_GLFWwindow* window, bool on_theme_change) {
     _GLFWcursorWayland defaultCursor = {.shape = GLFW_DEFAULT_CURSOR};
     _GLFWcursorWayland* cursorWayland = window->cursor ? &window->cursor->wl : &defaultCursor;
@@ -253,11 +268,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
         cursorWayland->yhot = image->hotspot_y;
     }
 
-    debug("Calling wl_pointer_set_cursor in setCursorImage with surface: %p\n", (void*)surface);
-    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
-                          surface,
-                          cursorWayland->xhot / scale,
-                          cursorWayland->yhot / scale);
+    set_cursor_surface(surface, cursorWayland->xhot / scale, cursorWayland->yhot / scale, "setCursorImage");
     wl_surface_set_buffer_scale(surface, scale);
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_damage(surface, 0, 0,
@@ -302,16 +313,6 @@ checkScaleChange(_GLFWwindow* window) {
     }
     return false;
 }
-
-static void
-commit_window_surface_if_safe(_GLFWwindow *window) {
-    // we only commit if the buffer attached to the surface is the correct size,
-    // which means that at least one frame is drawn after resizeFramebuffer()
-    if (!window->wl.waiting_for_swap_to_commit) {
-        wl_surface_commit(window->wl.surface);
-    }
-}
-
 
 static void
 update_regions(_GLFWwindow* window) {
@@ -1763,9 +1764,7 @@ static void lockPointer(_GLFWwindow* window)
     window->wl.pointerLock.relativePointer = relativePointer;
     window->wl.pointerLock.lockedPointer = lockedPointer;
 
-    debug("Calling wl_pointer_set_cursor in lockPointer with surface: %p\n", NULL);
-    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
-                          NULL, 0, 0);
+    set_cursor_surface(NULL, 0, 0, "lockPointer");
 }
 
 static bool isPointerLocked(_GLFWwindow* window)
@@ -1800,8 +1799,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
     }
     else if (window->cursorMode == GLFW_CURSOR_HIDDEN)
     {
-        debug("Calling wl_pointer_set_cursor in _glfwPlatformSetCursor with surface: %p\n", NULL);
-        wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial, NULL, 0, 0);
+        set_cursor_surface(NULL, 0, 0, "_glfwPlatformSetCursor");
     }
 }
 
