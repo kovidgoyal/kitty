@@ -748,12 +748,14 @@ cocoa_create_global_menu(void) {
 
 void
 cocoa_update_menu_bar_title(PyObject *pytitle) {
+    if (!pytitle) return;
     NSString *title = nil;
     if (OPT(macos_menubar_title_max_length) > 0 && PyUnicode_GetLength(pytitle) > OPT(macos_menubar_title_max_length)) {
         static char fmt[64];
         snprintf(fmt, sizeof(fmt), "%%%ld.%ldU%%s", OPT(macos_menubar_title_max_length), OPT(macos_menubar_title_max_length));
         RAII_PyObject(st, PyUnicode_FromFormat(fmt, pytitle, "…"));
         if (st) title = @(PyUnicode_AsUTF8(st));
+        else PyErr_Print();
     } else {
         title = @(PyUnicode_AsUTF8(pytitle));
     }

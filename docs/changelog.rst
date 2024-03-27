@@ -72,6 +72,8 @@ Detailed list of changes
 
 - Splits layout: Fix :ac:`move_window_forward` not working (:iss:`7264`)
 
+- macOS: Fix an abort due to an assertion when a program tries to set an invalid window title (:iss:`7271`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

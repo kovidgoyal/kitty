@@ -98,7 +98,8 @@ update_menu_bar_title(PyObject *title UNUSED) {
     static char buf[2048];
     strip_csi_(PyUnicode_AsUTF8(title), buf, arraysz(buf));
     RAII_PyObject(stitle, PyUnicode_FromString(buf));
-    cocoa_update_menu_bar_title(stitle);
+    if (stitle) cocoa_update_menu_bar_title(stitle);
+    else PyErr_Print();
 #endif
 }
 
