@@ -16,6 +16,11 @@ disallow_incomplete_defs = true
 strict = true
 no_implicit_reexport = true
 
+[tool.pylsp-mypy]
+enabled = true
+dmypy = true
+report_progress = true
+
 [tool.ruff]
 line-length = 160
 target-version = 'py38'

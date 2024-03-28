@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+# Imports {{{
 import atexit
 import base64
 import json
@@ -154,6 +155,7 @@ from .window import CommandOutput, CwdRequest, Window
 
 if TYPE_CHECKING:
     from .rc.base import ResponseType
+# }}}
 
 RCResponse = Union[Dict[str, Any], None, AsyncResponse]
 
