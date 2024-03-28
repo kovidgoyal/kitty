@@ -491,25 +491,25 @@ func (self *handler) draw_theme_demo() {
 // accepting {{{
 
 func (self *handler) on_accepting_key_event(ev *loop.KeyEvent) error {
-	if ev.MatchesPressOrRepeat("q") || ev.MatchesPressOrRepeat("esc") {
+	if ev.MatchesPressOrRepeat("q") || ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("shift+q") {
 		ev.Handled = true
 		self.lp.Quit(0)
 		return nil
 	}
-	if ev.MatchesPressOrRepeat("a") {
+	if ev.MatchesPressOrRepeat("a") || ev.MatchesPressOrRepeat("shift+a") {
 		ev.Handled = true
 		self.state = BROWSING
 		self.draw_screen()
 		return nil
 	}
-	if ev.MatchesPressOrRepeat("p") {
+	if ev.MatchesPressOrRepeat("p") || ev.MatchesPressOrRepeat("shift+p") {
 		ev.Handled = true
 		self.themes_list.CurrentTheme().SaveInDir(utils.ConfigDir())
 		self.update_recent()
 		self.lp.Quit(0)
 		return nil
 	}
-	if ev.MatchesPressOrRepeat("m") {
+	if ev.MatchesPressOrRepeat("m") || ev.MatchesPressOrRepeat("shift+m") {
 		ev.Handled = true
 		self.themes_list.CurrentTheme().SaveInConf(utils.ConfigDir(), self.opts.ReloadIn, self.opts.ConfigFileName)
 		self.update_recent()
