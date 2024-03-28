@@ -54,12 +54,12 @@ the escape codes for image display, you need to pass it options to tell it the
 window dimensions, where to place the image in the window and the transfer mode
 to use. If you do that, it will not try to communicate with the TTY device at
 all. The requisite options are: :option:`--use-window-size`, :option:`--place`
-and :option:`--transfer-mode`. For example, to demonstrate usage without access
-to the TTY:
+and :option:`--transfer-mode`, :option:`--stdin=no`.
+For example, to demonstrate usage without access to the TTY:
 
 .. code:: sh
 
-   zsh -c 'setsid kitten icat --use-window-size $COLUMNS,$LINES,3000,2000 --transfer-mode=file myimage.png'
+   zsh -c 'setsid kitten icat --stdin=no --use-window-size $COLUMNS,$LINES,3000,2000 --transfer-mode=file myimage.png'
 
 Here, ``setsid`` ensures icat has no access to the TTY device.
 The values, 3000, 2000 are made up. They are the window width and height in
