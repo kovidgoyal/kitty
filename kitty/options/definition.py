@@ -374,6 +374,14 @@ is changed it will only affect newly created windows, not existing ones.
 '''
     )
 
+opt('scrollback_indicator_opacity', '0.0',
+    option_type='unit_float', ctype='float', long_text='''
+The opacity of the scrollback indicator which is a small colored rectangle that moves
+along the right hand side of the window as you scroll, indicating what fraction you
+have scrolled. The default is zero which means fully transparent, aka invisible.
+Set to a value between zero and one to see the indicator.''')
+
+
 opt('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER',
     option_type='to_cmdline',
     long_text='''

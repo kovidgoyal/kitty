@@ -1172,6 +1172,9 @@ class Parser:
     def scrollback_fill_enlarged_window(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['scrollback_fill_enlarged_window'] = to_bool(val)
 
+    def scrollback_indicator_opacity(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['scrollback_indicator_opacity'] = unit_float(val)
+
     def scrollback_lines(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['scrollback_lines'] = scrollback_lines(val)
 

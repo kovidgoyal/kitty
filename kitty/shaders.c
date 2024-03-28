@@ -594,6 +594,31 @@ draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
+static bool
+draw_scroll_indicator(bool premult, Screen *screen, const CellRenderData *crd) {
+    if (OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by) return false;
+    glEnable(GL_BLEND);
+    if (premult) { BLEND_PREMULT } else { BLEND_ONTO_OPAQUE }
+    bind_program(TINT_PROGRAM);
+    const color_type bar_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg).rgb;
+    GLfloat alpha = 0.8f;
+    float frac = (float)screen->scrolled_by / (float)screen->historybuf->count;
+    const GLfloat bar_height = crd->gl.dy;
+    GLfloat bottom = (crd->gl.ystart - crd->gl.height);
+    bottom += MAX(0, crd->gl.height - bar_height) * frac;
+#define C(shift) srgb_color((bar_color >> shift) & 0xFF) * premult_factor
+    GLfloat premult_factor = premult ? alpha : 1.0f;
+    glUniform4f(tint_program_layout.uniforms.tint_color, C(16), C(8), C(0), alpha);
+#undef C
+    GLfloat width = 0.5f * crd->gl.dx;
+    GLfloat left = (GLfloat)(crd->gl.xstart + (screen->columns * crd->gl.dx - width));
+    glUniform4f(tint_program_layout.uniforms.edges, left, bottom, left + width, bottom + bar_height);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDisable(GL_BLEND);
+    return true;
+}
+
+
 static float prev_inactive_text_alpha = -1;
 
 static void
@@ -972,14 +997,16 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
                 scale_rendered_graphic(grman->render_data.item + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
         }
     }
+    bool use_premult = false;
     has_underlying_image |= grman->num_of_below_refs > 0 || grman->num_of_negative_refs > 0;
     if (os_window->is_semi_transparent) {
-        if (has_underlying_image) draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, wl);
+        if (has_underlying_image) { draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, wl); use_premult = true; }
         else draw_cells_simple(vao_idx, screen, &crd, os_window->is_semi_transparent);
     } else {
         if (has_underlying_image) draw_cells_interleaved(vao_idx, screen, os_window, &crd, wl);
         else draw_cells_simple(vao_idx, screen, &crd, os_window->is_semi_transparent);
     }
+    draw_scroll_indicator(use_premult, screen, &crd);
 
     if (screen->start_visual_bell_at) {
         GLfloat intensity = get_visual_bell_intensity(screen);

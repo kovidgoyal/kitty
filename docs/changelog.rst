@@ -54,6 +54,8 @@ Detailed list of changes
   using the panel kitten for all compositors that support the requisite Wayland
   protocol which is practically speaking all of them but GNOME (:pull:`2590`)
 
+- A new option :opt:`scrollback_indicator_opacity` to show a small indicator on the right hand side of the screen of how much you have scrolled
+
 - Wayland: Support fractional scales so that there is no wasted drawing at larger scale followed by resizing in the compositor
 
 - Wayland: Support preferred integer scales

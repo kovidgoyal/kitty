@@ -402,6 +402,7 @@ option_names = (  # {{{
  'resize_debounce_time',
  'resize_in_steps',
  'scrollback_fill_enlarged_window',
+ 'scrollback_indicator_opacity',
  'scrollback_lines',
  'scrollback_pager',
  'scrollback_pager_history_size',
@@ -562,6 +563,7 @@ class Options:
     resize_debounce_time: typing.Tuple[float, float] = (0.1, 0.5)
     resize_in_steps: bool = False
     scrollback_fill_enlarged_window: bool = False
+    scrollback_indicator_opacity: float = 0
     scrollback_lines: int = 2000
     scrollback_pager: typing.List[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
