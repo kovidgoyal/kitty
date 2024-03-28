@@ -45,15 +45,29 @@ from inside other programs to display images. In particular, :option:`--place`,
 :option:`--detect-support` and :option:`--print-window-size`.
 
 If you are trying to integrate icat into a complex program like a file manager
-or editor, there are a few things to keep in mind. icat works by communicating
+or editor, there are a few things to keep in mind. icat normally works by communicating
 over the TTY device, it both writes to and reads from the TTY. So it is
 imperative that while it is running the host program does not do any TTY I/O.
 Any key presses or other input from the user on the TTY device will be
-discarded. At a minimum, you should use the :option:`--transfer-mode`
-command line arguments. To be really robust you should
-consider writing proper support for the :doc:`kitty graphics protocol
-</graphics-protocol>` in the program instead. Nowadays there are many libraries
-that have support for it.
+discarded. If you would instead like to use it just as a backend to generate
+the escape codes for image display, you need to pass it options to tell it the
+window dimensions, where to place the image in the window and the transfer mode
+to use. If you do that, it will not try to communicate with the TTY device at
+all. The requisite options are: :option:`--use-window-size`, :option:`--place`
+and :option:`--transfer-mode`. For example, to demonstrate usage without access
+to the TTY:
+
+.. code:: sh
+
+   zsh -c 'setsid kitten icat --use-window-size $COLUMNS,$LINES,3000,2000 --transfer-mode=file myimage.png'
+
+Here, ``setsid`` ensures icat has no access to the TTY device.
+The values, 3000, 2000 are made up. They are the window width and height in
+pixels, to obtain which access to the TTY is needed.
+
+To be really robust you should consider writing proper support for the
+:doc:`kitty graphics protocol </graphics-protocol>` in the program instead.
+Nowadays there are many libraries that have support for it.
 
 
 .. include:: /generated/cli-kitten-icat.rst
