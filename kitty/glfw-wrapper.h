@@ -54,6 +54,7 @@
 #define GLFW_HAT_RIGHT_DOWN         (GLFW_HAT_RIGHT | GLFW_HAT_DOWN)
 #define GLFW_HAT_LEFT_UP            (GLFW_HAT_LEFT  | GLFW_HAT_UP)
 #define GLFW_HAT_LEFT_DOWN          (GLFW_HAT_LEFT  | GLFW_HAT_DOWN)
+#define GLFW_WAYLAND_WHEEL_AXIS_UNIT 10
 /*! @} */
 
 /*! @defgroup keys Keyboard keys
