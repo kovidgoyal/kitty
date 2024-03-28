@@ -164,6 +164,12 @@ Add this to bashrc and then to plot a function, simply do:
 
     iplot 'sin(x*3)*exp(x*.2)'
 
+.. tool_tgutui:
+
+`tgutui <https://github.com/tgu-ltd/tgutui>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A Terminal Operating Test hardware equipment
+
 .. tool_onefetch:
 
 `onefetch <https://github.com/o2sh/onefetch>`_
