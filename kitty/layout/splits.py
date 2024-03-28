@@ -18,11 +18,11 @@ class Extent(NamedTuple):
 
 class Pair:
 
-    def __init__(self, horizontal: bool = True):
+    def __init__(self, horizontal: bool = True, bias: float = 0.5):
         self.horizontal = horizontal
         self.one: Optional[Union[Pair, int]] = None
         self.two: Optional[Union[Pair, int]] = None
-        self.bias = 0.5
+        self.bias = bias
         self.top = self.left = self.width = self.height = 0
         self.between_borders: List[Edges] = []
         self.first_extent = self.second_extent = Extent()
@@ -119,17 +119,17 @@ class Pair:
             q = self.one if one_count < two_count else self.two
             return q.balanced_add(window_id)
         if not isinstance(self.one, Pair) and not isinstance(self.two, Pair):
-            pair = Pair(horizontal=self.horizontal)
+            pair = Pair(horizontal=self.horizontal, bias=self.bias)
             pair.balanced_add(self.one)
             pair.balanced_add(self.two)
             self.one, self.two = pair, window_id
             return self
         if isinstance(self.one, Pair):
             window_to_be_split = self.two
-            self.two = pair = Pair(horizontal=self.horizontal)
+            self.two = pair = Pair(horizontal=self.horizontal, bias=self.bias)
         else:
             window_to_be_split = self.one
-            self.one = pair = Pair(horizontal=self.horizontal)
+            self.one = pair = Pair(horizontal=self.horizontal, bias=self.bias)
         assert isinstance(window_to_be_split, int)
         pair.balanced_add(window_to_be_split)
         pair.balanced_add(window_id)
@@ -142,7 +142,7 @@ class Pair:
             pair.horizontal = horizontal
             self.one, self.two = q
         else:
-            pair = Pair(horizontal=horizontal)
+            pair = Pair(horizontal=horizontal, bias=self.bias)
             if self.one == existing_window_id:
                 self.one = pair
             else:
@@ -298,6 +298,21 @@ class Pair:
             return parent.modify_size_of_child(which, increment, is_horizontal, layout_object)
         return False
 
+    def set_size_of_child(self, which: int, bias: float, is_horizontal: bool, layout_object: 'Splits') -> bool:
+        if is_horizontal == self.horizontal and not self.is_redundant:
+            if which == 2:
+                bias = 1 - bias
+            new_bias = max(0.1, min(bias, 0.9))
+            if new_bias != self.bias:
+                self.bias = new_bias
+                return True
+            return False
+        parent = self.parent(layout_object.pairs_root)
+        if parent is not None:
+            which = 1 if parent.one is self else 2
+            return parent.set_size_of_child(which, bias, is_horizontal, layout_object)
+        return False
+
     def borders_for_window(self, layout_object: 'Splits', window_id: int) -> Generator[Edges, None, None]:
         is_first = self.one == window_id
         if self.between_borders:
@@ -419,12 +434,17 @@ class Pair:
 class SplitsLayoutOpts(LayoutOpts):
 
     default_axis_is_horizontal: bool = True
+    bias: float = 0.5
 
     def __init__(self, data: Dict[str, str]):
         self.default_axis_is_horizontal = data.get('split_axis', 'horizontal') == 'horizontal'
+        self.bias = data.get('bias', 0.5)
 
     def serialized(self) -> Dict[str, Any]:
-        return {'default_axis_is_horizontal': self.default_axis_is_horizontal}
+        return {
+            'default_axis_is_horizontal': self.default_axis_is_horizontal,
+            'bias': self.bias,
+        }
 
 
 class Splits(Layout):
@@ -441,7 +461,7 @@ class Splits(Layout):
     def pairs_root(self) -> Pair:
         root: Optional[Pair] = getattr(self, '_pairs_root', None)
         if root is None:
-            self._pairs_root = root = Pair(horizontal=self.default_axis_is_horizontal)
+            self._pairs_root = root = Pair(horizontal=self.default_axis_is_horizontal, bias=self.layout_opts.bias)
         return root
 
     @pairs_root.setter
@@ -525,6 +545,22 @@ class Splits(Layout):
         which = 1 if pair.one == grp.id else 2
         return pair.modify_size_of_child(which, increment, is_horizontal, self)
 
+    def modify_size_of_window_abs(
+        self,
+        all_windows: WindowList,
+        window_id: int,
+        bias: float,
+        is_horizontal: bool = True
+    ) -> bool:
+        grp = all_windows.group_for_window(window_id)
+        if grp is None:
+            return False
+        pair = self.pairs_root.pair_for_window(grp.id)
+        if pair is None:
+            return False
+        which = 1 if pair.one == grp.id else 2
+        return pair.set_size_of_child(which, bias, is_horizontal, self)
+
     def remove_all_biases(self) -> bool:
         for pair in self.pairs_root.self_and_descendants():
             pair.bias = 0.5
@@ -580,6 +616,26 @@ class Splits(Layout):
             self.pairs_root.swap_windows(before.id, after.id)
         return moved
 
+    def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
+        for pair in self.pairs_root.self_and_descendants():
+            if pair.one == window_id:
+                pair.modify_size_of_child(1, increment, is_horizontal, self)
+                return True
+            elif pair.two == window_id:
+                pair.modify_size_of_child(2, increment, is_horizontal, self)
+                return True
+        return False
+
+    def apply_bias_abs(self, window_id: int, bias: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
+        for pair in self.pairs_root.self_and_descendants():
+            if pair.one == window_id:
+                pair.set_size_of_child(1, bias, is_horizontal, self)
+                return True
+            elif pair.two == window_id:
+                pair.set_size_of_child(2, bias, is_horizontal, self)
+                return True
+        return False
+
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         if action_name == 'rotate':
             args = args or ('90',)
@@ -607,7 +663,7 @@ class Splits(Layout):
             wg = all_windows.active_group
             if wg is not None:
                 self.remove_windows(wg.id)
-                new_root = Pair(horizontal)
+                new_root = Pair(horizontal, self.layout_opts.bias)
                 if which in ('left', 'top'):
                     new_root.balanced_add(wg.id)
                     new_root.two = self.pairs_root
@@ -616,6 +672,14 @@ class Splits(Layout):
                     new_root.two = wg.id
                 self.pairs_root = new_root
                 return True
+        if action_name == 'bias':
+            try:
+                bias = float(args[0]) / 100.0
+                for pair in self.pairs_root.self_and_descendants():
+                    pair.set_size_of_child(1, bias, pair.horizontal, self)
+                return True
+            except Exception:
+                return False
 
         return None
 
