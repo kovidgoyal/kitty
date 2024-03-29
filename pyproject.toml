@@ -1,3 +1,6 @@
+[project]
+requires-python = ">=3.8"
+
 [tool.mypy]
 files = 'kitty,kittens,glfw,*.py,docs/conf.py,gen'
 no_implicit_optional = true
@@ -23,7 +26,6 @@ report_progress = true
 
 [tool.ruff]
 line-length = 160
-target-version = 'py38'
 select = ['E', 'F', 'I', 'RUF100']
 
 [tool.ruff.per-file-ignores]

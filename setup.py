@@ -25,10 +25,25 @@ from typing import Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional
 from glfw import glfw
 from glfw.glfw import ISA, BinaryArch, Command, CompileKey, CompilerType
 
-if sys.version_info[:2] < (3, 8):
-    raise SystemExit('kitty requires python >= 3.8')
 src_base = os.path.dirname(os.path.abspath(__file__))
 
+def check_version_info() -> None:
+    import tomllib
+    with open(os.path.join(src_base, 'pyproject.toml'), 'rb') as f:
+        m = tomllib.load(f)
+    minver = m['project']['requires-python']
+    match = re.match(r'(>=?)(\d+)\.(\d+)', minver)
+    assert match is not None
+    q = int(match.group(2)), int(match.group(3))
+    if match.group(1) == '>=':
+        is_ok = sys.version_info >= q
+    else:
+        is_ok = sys.version_info > q
+    if not is_ok:
+        exit(f'calibre requires Python {minver}. Current Python version: {".".join(map(str, sys.version_info[:3]))}')
+
+
+check_version_info()
 verbose = False
 build_dir = 'build'
 constants = os.path.join('kitty', 'constants.py')
