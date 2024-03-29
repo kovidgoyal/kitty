@@ -2171,7 +2171,9 @@ class Boss:
     @ac('tab', '''
         Go to the specified tab, by number, starting with 1
 
-        Zero and negative numbers go to previously active tabs
+        Zero and negative numbers go to previously active tabs.
+        Use the :ac:`select_tab` action to interactively select a tab
+        to go to.
         ''')
     def goto_tab(self, tab_num: int) -> None:
         tm = self.active_tab_manager
