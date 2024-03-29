@@ -30,7 +30,5 @@ select = ['E', 'F', 'I', 'RUF100']
 "kitty/options/types.py" = ["E501"]
 "kitty/options/parse.py" = ["E501"]
 
-[tool.black]
-line-length = 160
-target-version = ['py38']
-skip-string-normalization = true
+[tool.ruff.format]
+quote-style = 'single'
