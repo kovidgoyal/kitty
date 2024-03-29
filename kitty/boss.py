@@ -1557,6 +1557,7 @@ class Boss:
         For example::
 
             map kitty_mod+e combine : new_window : next_layout
+            map kitty_mod+e combine | new_tab | goto_tab -1
         ''')
     def combine(self, action_definition: str, window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress', raise_error: bool = False) -> bool:
         consumed = False
