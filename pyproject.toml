@@ -26,11 +26,16 @@ report_progress = true
 
 [tool.ruff]
 line-length = 160
+
+[tool.ruff.lint]
 select = ['E', 'F', 'I', 'RUF100']
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "kitty/options/types.py" = ["E501"]
 "kitty/options/parse.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+detect-same-package = true
 
 [tool.ruff.format]
 quote-style = 'single'
