@@ -28,10 +28,11 @@ from glfw.glfw import ISA, BinaryArch, Command, CompileKey, CompilerType
 src_base = os.path.dirname(os.path.abspath(__file__))
 
 def check_version_info() -> None:
-    import tomllib
-    with open(os.path.join(src_base, 'pyproject.toml'), 'rb') as f:
-        m = tomllib.load(f)
-    minver = m['project']['requires-python']
+    with open(os.path.join(src_base, 'pyproject.toml')) as f:
+        raw = f.read()
+    m = re.search(r'''^requires-python\s*=\s*['"](.+?)['"]''', raw, flags=re.MULTILINE)
+    assert m is not None
+    minver = m.group(1)
     match = re.match(r'(>=?)(\d+)\.(\d+)', minver)
     assert match is not None
     q = int(match.group(2)), int(match.group(3))
