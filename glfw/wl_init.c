@@ -1116,8 +1116,12 @@ void _glfwPlatformTerminate(void)
     finalizePollData(&_glfw.wl.eventLoopData);
 }
 
+#define GLFW_LOOP_BACKEND wl
+#include "main_loop.h"
+
 const char* _glfwPlatformGetVersionString(void)
 {
+    (void)keep_going;
     return _GLFW_VERSION_NUMBER " Wayland EGL OSMesa"
 #if defined(_POSIX_TIMERS) && defined(_POSIX_MONOTONIC_CLOCK)
         " clock_gettime"
@@ -1130,6 +1134,3 @@ const char* _glfwPlatformGetVersionString(void)
 #endif
         ;
 }
-
-#define GLFW_LOOP_BACKEND wl
-#include "main_loop.h"
