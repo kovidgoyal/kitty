@@ -35,7 +35,9 @@ default=top
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
 The value :code:`background` means make the panel the "desktop wallpaper". This
-is only supported on Wayland, not X11.
+is only supported on Wayland, not X11 and note that when using sway if you set
+a background in your sway config it will cover the background drawn using this
+kitten.
 
 
 --config -c
