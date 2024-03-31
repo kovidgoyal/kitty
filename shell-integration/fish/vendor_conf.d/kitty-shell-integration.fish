@@ -95,12 +95,12 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         # Binding for special key to move cursor on mouse click without triggering any
         # autocompletion or other effects
         set --local suffix ''
-        if set -q fish_cursor_end_mode  # fish >= 3.8.0 has the -passive variants for cursor movement
+        if bind --function-names | string match -q forward-char-passive
             set suffix '-passive'
         end
-        for mode in 'insert' 'normal' 'visual' 'replace'
-            bind --preset -M $mode \e\[0u "forward-char$suffix"
-            bind --preset -M $mode \e\[0\;1u "backward-char$suffix"
+        for mode in (bind --list-modes | string match -v paste)  # bind in all modes except paste
+            bind --preset -M "$mode" \e\[0u "forward-char$suffix"
+            bind --preset -M "$mode" \e\[0\;1u "backward-char$suffix"
         end
     end
 
