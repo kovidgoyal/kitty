@@ -92,15 +92,15 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         # With prompt marking, kitty clears the current prompt on resize,
         # so we need fish to redraw it.
         set --global fish_handle_reflow 1
-        # Binding for special key to move cursor without triggering any
+        # Binding for special key to move cursor on mouse click without triggering any
         # autocompletion or other effects
         set --local suffix ''
         if set -q fish_cursor_end_mode  # fish >= 3.8.0 has the -passive variants for cursor movement
             set suffix '-passive'
         end
-        for i in 'insert' 'normal' 'visual' 'replace'
-            bind --preset -M $i \e\[0u "forward-char$suffix"
-            bind --preset -M $i \e\[0\;1u "backward-char$suffix"
+        for mode in 'insert' 'normal' 'visual' 'replace'
+            bind --preset -M $mode \e\[0u "forward-char$suffix"
+            bind --preset -M $mode \e\[0\;1u "backward-char$suffix"
         end
     end
 
