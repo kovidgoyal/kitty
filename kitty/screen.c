@@ -1806,11 +1806,17 @@ screen_fake_move_cursor_to_position(Screen *self, index_type start_x, index_type
         x = 0;
     }
     if (count) {
-        GLFWkeyevent ev = { .key = key, .action = GLFW_PRESS };
         char output[KEY_BUFFER_SIZE+1] = {0};
-        int num = encode_glfw_key_event(&ev, false, 0, output);
-        if (num != SEND_TEXT_TO_CHILD) {
+        if (self->prompt_settings.uses_special_keys_for_cursor_movement) {
+            const char *k = key == GLFW_FKEY_RIGHT ? "0" : "0;1";
+            int num = snprintf(output, KEY_BUFFER_SIZE, "\x1b[%su", k);
             for (unsigned i = 0; i < count; i++) write_to_child(self, output, num);
+        } else {
+            GLFWkeyevent ev = { .key = key, .action = GLFW_PRESS };
+            int num = encode_glfw_key_event(&ev, false, 0, output);
+            if (num != SEND_TEXT_TO_CHILD) {
+                for (unsigned i = 0; i < count; i++) write_to_child(self, output, num);
+            }
         }
     }
     return count > 0;
@@ -2279,6 +2285,7 @@ parse_prompt_mark(Screen *self, char *buf, PromptKind *pk) {
         if (token == NULL) return;
         if (strcmp(token, "k=s") == 0) *pk = SECONDARY_PROMPT;
         else if (strcmp(token, "redraw=0") == 0) self->prompt_settings.redraws_prompts_at_all = 0;
+        else if (strcmp(token, "special_key=1") == 0) self->prompt_settings.uses_special_keys_for_cursor_movement = 1;
     }
 }
 
@@ -2290,6 +2297,7 @@ shell_prompt_marking(Screen *self, char *buf) {
             case 'A': {
                 PromptKind pk = PROMPT_START;
                 self->prompt_settings.redraws_prompts_at_all = 1;
+                self->prompt_settings.uses_special_keys_for_cursor_movement = 0;
                 parse_prompt_mark(self, buf+1, &pk);
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = pk;
                 if (pk == PROMPT_START)

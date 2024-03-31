@@ -132,6 +132,7 @@ typedef struct {
     union {
         struct {
             unsigned int redraws_prompts_at_all: 1;
+            unsigned int uses_special_keys_for_cursor_movement: 1;
         };
         unsigned int val;
     } prompt_settings;
