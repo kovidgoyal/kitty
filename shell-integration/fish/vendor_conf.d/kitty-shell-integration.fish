@@ -70,13 +70,12 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     end
 
     # Enable prompt marking with OSC 133
-    if not contains "no-prompt-mark" $_ksi
-        and not set -q __ksi_prompt_state
+    if not contains "no-prompt-mark" $_ksi and not set -q __ksi_prompt_state
         function __ksi_mark_prompt_start --on-event fish_prompt --on-event fish_cancel --on-event fish_posterror
             test "$__ksi_prompt_state" != prompt-start
             and echo -en "\e]133;D\a"
             set --global __ksi_prompt_state prompt-start
-            echo -en "\e]133;A\a"
+            echo -en "\e]133;A;special_key=1\a"
         end
         __ksi_mark_prompt_start
 
@@ -93,6 +92,16 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         # With prompt marking, kitty clears the current prompt on resize,
         # so we need fish to redraw it.
         set --global fish_handle_reflow 1
+        # Binding for special key to move cursor without triggering any
+        # autocompletion or other effects
+        set --local suffix ''
+        if set -q fish_cursor_end_mode  # fish >= 3.8.0 has the -passive variants for cursor movement
+            set suffix '-passive'
+        end
+        for i in 'insert' 'normal' 'visual' 'replace'
+            bind --preset -M $i \e\[0u "forward-char$suffix"
+            bind --preset -M $i \e\[0\;1u "backward-char$suffix"
+        end
     end
 
     # Enable CWD reporting
@@ -112,12 +121,12 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     # for sudo it will be clobbered by us, so only install this if sudo is not already function
     if not contains "no-sudo" $_ksi
         and test -n "$TERMINFO" -a "file" = (type -t sudo 2> /dev/null || echo "x")
-        and not test -r "/usr/share/terminfo/x/xterm-kitty" -o -r "/usr/share/terminfo/78/xterm-kitty" 
+        and not test -r "/usr/share/terminfo/x/xterm-kitty" -o -r "/usr/share/terminfo/78/xterm-kitty"
         # Ensure terminfo is available in sudo
         function sudo
             set --local is_sudoedit "n"
             for arg in $argv
-                if string match -q -- "-e" "$arg" or string match -q -- "--edit" "$arg" 
+                if string match -q -- "-e" "$arg" or string match -q -- "--edit" "$arg"
                     set is_sudoedit "y"
                     break
                 end
@@ -145,8 +154,8 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
             and return 0
             return 1
         end
-        if _ksi_s_is_ok "venv" 
-            and test -n "$VIRTUAL_ENV" -a -r "$venv" 
+        if _ksi_s_is_ok "venv"
+            and test -n "$VIRTUAL_ENV" -a -r "$venv"
             set _ksi_sourced "y"
             set --erase VIRTUAL_ENV _OLD_FISH_PROMPT_OVERRIDE  # activate.fish stupidly exports _OLD_FISH_PROMPT_OVERRIDE
             source "$venv"

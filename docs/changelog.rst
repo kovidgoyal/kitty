@@ -78,6 +78,8 @@ Detailed list of changes
 
 - macOS: Fix an abort due to an assertion when a program tries to set an invalid window title (:iss:`7271`)
 
+- fish shell integration: Fix clicking at the prompt causing autosuggestions to be accepted, needs fish >= 3.8.0 (:iss:`7168`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
