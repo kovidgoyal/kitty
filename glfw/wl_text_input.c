@@ -89,11 +89,11 @@ text_input_delete_surrounding_text(
 static void
 text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, uint32_t serial) {
     debug("text-input: done event: serial: %u current_commit_serial: %u\n", serial, commit_serial);
-    if (serial != commit_serial) {
-        if (serial > commit_serial) _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: text_input_done serial mismatch, expected=%u got=%u\n", commit_serial, serial);
-        return;
-    }
-
+    const bool bad_event = serial != commit_serial;
+    // See https://wayland.app/protocols/text-input-unstable-v3#zwp_text_input_v3:event:done
+    // for handling of bad events. As best as I can tell spec says we perform all client side actions as usual
+    // but send nothing back to the compositor, aka no cursor position update.
+    // See https://github.com/kovidgoyal/kitty/pull/7283 for discussion
     if ((pending_pre_edit == NULL && current_pre_edit == NULL) ||
         (pending_pre_edit && current_pre_edit && strcmp(pending_pre_edit, current_pre_edit) == 0)) {
         free(pending_pre_edit); pending_pre_edit = NULL;
@@ -102,7 +102,7 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
         current_pre_edit = pending_pre_edit;
         pending_pre_edit = NULL;
         if (current_pre_edit) {
-            send_text(current_pre_edit, GLFW_IME_PREEDIT_CHANGED);
+            send_text(current_pre_edit, bad_event ? GLFW_IME_WAYLAND_DONE_EVENT : GLFW_IME_PREEDIT_CHANGED);
         } else {
             // Clear pre-edit text
             send_text(NULL, GLFW_IME_WAYLAND_DONE_EVENT);
