@@ -80,7 +80,7 @@ findWindowFromDecorationSurface(struct wl_surface* surface, _GLFWdecorationSideW
     return window;
 }
 
-static void pointer_handle_enter(void* data UNUSED,
+static void pointerHandleEnter(void* data UNUSED,
                                struct wl_pointer* pointer UNUSED,
                                uint32_t serial,
                                struct wl_surface* surface,
@@ -109,7 +109,7 @@ static void pointer_handle_enter(void* data UNUSED,
     _glfwInputCursorEnter(window, true);
 }
 
-static void pointer_handle_leave(void* data UNUSED,
+static void pointerHandleLeave(void* data UNUSED,
                                struct wl_pointer* pointer UNUSED,
                                uint32_t serial,
                                struct wl_surface* surface UNUSED)
@@ -171,7 +171,7 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
 
 #define x window->wl.allCursorPosX
 #define y window->wl.allCursorPosY
-static void pointer_handle_motion(void* data UNUSED,
+static void pointerHandleMotion(void* data UNUSED,
                                 struct wl_pointer* pointer UNUSED,
                                 uint32_t time UNUSED,
                                 wl_fixed_t sx,
@@ -229,7 +229,7 @@ static void pointer_handle_motion(void* data UNUSED,
         setCursor(cursorShape, window);
 }
 
-static void pointer_handle_button(void* data UNUSED,
+static void pointerHandleButton(void* data UNUSED,
                                 struct wl_pointer* pointer UNUSED,
                                 uint32_t serial,
                                 uint32_t time UNUSED,
@@ -328,200 +328,97 @@ static void pointer_handle_button(void* data UNUSED,
 #undef x
 #undef y
 
-static void
-pointer_handle_axis_common(enum _GLFWWaylandAxisEvent type, uint32_t axis, wl_fixed_t value) {
-    enum wl_pointer_axis a = axis;
+static void pointerHandleAxis(void* data UNUSED,
+                              struct wl_pointer* pointer UNUSED,
+                              uint32_t time UNUSED,
+                              uint32_t axis,
+                              wl_fixed_t value)
+{
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-#define input (&window->wl)
+    double x = 0.0, y = 0.0;
+    if (!window)
+        return;
 
-    if (window) {
-        switch (a) {
-        case WL_POINTER_AXIS_VERTICAL_SCROLL:
-            switch (type) {
-            case AXIS_EVENT_VALUE120:
-                /*
-                 * High resolution scroll event. The spec doesn't state that axis_value120
-                 * events are limited to one per frame, so the values are accumulated.
-                 */
-                if (input->pointer_curr_axis_info.y_axis_type != AXIS_EVENT_VALUE120) {
-                    input->pointer_curr_axis_info.y_axis_type = AXIS_EVENT_VALUE120;
-                    input->pointer_curr_axis_info.y = 0.0f;
-                }
-                input->pointer_curr_axis_info.y += 0 - (float)wl_fixed_to_double(value);
-                break;
-            case AXIS_EVENT_DISCRETE:
-                /*
-                 * This is a discrete axis event, so we process it and set the
-                 * flag to ignore future continuous axis events in this frame.
-                 */
-                if (input->pointer_curr_axis_info.y_axis_type != AXIS_EVENT_DISCRETE) {
-                    input->pointer_curr_axis_info.y_axis_type = AXIS_EVENT_DISCRETE;
-                    input->pointer_curr_axis_info.y = 0 - (float)wl_fixed_to_double(value);
-                }
-                break;
-            case AXIS_EVENT_CONTINUOUS:
-                /* Only process continuous events if no discrete events have been received. */
-                if (input->pointer_curr_axis_info.y_axis_type == AXIS_EVENT_CONTINUOUS) {
-                    input->pointer_curr_axis_info.y = 0 - (float)wl_fixed_to_double(value);
-                }
-                break;
-            }
-            break;
-        case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
-            switch (type) {
-            case AXIS_EVENT_VALUE120:
-                /*
-                 * High resolution scroll event. The spec doesn't state that axis_value120
-                 * events are limited to one per frame, so the values are accumulated.
-                 */
-                if (input->pointer_curr_axis_info.x_axis_type != AXIS_EVENT_VALUE120) {
-                    input->pointer_curr_axis_info.x_axis_type = AXIS_EVENT_VALUE120;
-                    input->pointer_curr_axis_info.x = 0.0f;
-                }
-                input->pointer_curr_axis_info.x += (float)wl_fixed_to_double(value);
-                break;
-            case AXIS_EVENT_DISCRETE:
-                /*
-                 * This is a discrete axis event, so we process it and set the
-                 * flag to ignore future continuous axis events in this frame.
-                 */
-                if (input->pointer_curr_axis_info.x_axis_type != AXIS_EVENT_DISCRETE) {
-                    input->pointer_curr_axis_info.x_axis_type = AXIS_EVENT_DISCRETE;
-                    input->pointer_curr_axis_info.x = (float)wl_fixed_to_double(value);
-                }
-                break;
-            case AXIS_EVENT_CONTINUOUS:
-                /* Only process continuous events if no discrete events have been received. */
-                if (input->pointer_curr_axis_info.x_axis_type == AXIS_EVENT_CONTINUOUS) {
-                    input->pointer_curr_axis_info.x = (float)wl_fixed_to_double(value);
-                }
-                break;
-            }
-            break;
-        }
-    }
-}
+    assert(axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL ||
+           axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
 
-static void
-pointer_handle_axis_common_v1(uint32_t time UNUSED, uint32_t axis, wl_fixed_t value) {
-    _GLFWwindow* window = _glfw.wl.pointerFocus;
-    enum wl_pointer_axis a = axis;
-    float x, y;
-
-    if (window) {
-        switch (a) {
-        case WL_POINTER_AXIS_VERTICAL_SCROLL:
-            x = 0;
-            y = 0 - (float)wl_fixed_to_double(value);
-            break;
-        case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
-            x = (float)wl_fixed_to_double(value);
-            y = 0;
-            break;
-        default:
+    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+        if (window->wl.axis_discrete_count.x) {
+            window->wl.axis_discrete_count.x--;
             return;
         }
-
-        x /= GLFW_WAYLAND_WHEEL_AXIS_UNIT;
-        y /= GLFW_WAYLAND_WHEEL_AXIS_UNIT;
-
-        _glfwInputScroll(window, x, y, 0, _glfw.wl.xkb.states.modifiers);
+        x = -wl_fixed_to_double(value) * _glfwWaylandWindowScale(window);
     }
+    else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
+        if (window->wl.axis_discrete_count.y) {
+            window->wl.axis_discrete_count.y--;
+            return;
+        }
+        y = -wl_fixed_to_double(value) * _glfwWaylandWindowScale(window);
+    }
+
+    _glfwInputScroll(window, x, y, 1, _glfw.wl.xkb.states.modifiers);
 }
 
-static void
-pointer_handle_axis(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t time, uint32_t axis, wl_fixed_t value) {
+static void pointerHandleFrame(void* data UNUSED,
+                               struct wl_pointer* pointer UNUSED)
+{
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-    if (!window) return;
-
-    if (_glfw.wl.seatVersion >= WL_POINTER_FRAME_SINCE_VERSION) {
-        if (!input->pointer_curr_axis_info.timestamp_ns) input->pointer_curr_axis_info.timestamp_ns = ms_to_monotonic_t(time);
-        pointer_handle_axis_common(AXIS_EVENT_CONTINUOUS, axis, value);
-    } else {
-        pointer_handle_axis_common_v1(time, axis, value);
+    if (window) {
+        window->wl.axis_discrete_count.x = 0;
+        window->wl.axis_discrete_count.y = 0;
     }
 }
 
+static void pointerHandleAxisSource(void* data UNUSED,
+                                    struct wl_pointer* pointer UNUSED,
+                                    uint32_t source UNUSED)
+{
+}
 
-static void
-pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
+static void pointerHandleAxisStop(void *data UNUSED,
+                  struct wl_pointer *wl_pointer UNUSED,
+                  uint32_t time UNUSED,
+                  uint32_t axis UNUSED)
+{
+}
+
+
+static void pointerHandleAxisDiscrete(void *data UNUSED,
+                  struct wl_pointer *wl_pointer UNUSED,
+                  uint32_t axis,
+                  int32_t discrete)
+{
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-    if (!window) return;
-    float x, y;
+    double x = 0.0, y = 0.0;
+    if (!window)
+        return;
 
-    switch (input->pointer_curr_axis_info.x_axis_type) {
-    case AXIS_EVENT_CONTINUOUS:
-        x = input->pointer_curr_axis_info.x;
-        break;
-    case AXIS_EVENT_DISCRETE:
-        x = input->pointer_curr_axis_info.x;
-        break;
-    case AXIS_EVENT_VALUE120:
-        x = input->pointer_curr_axis_info.x / 120.0f;
-        break;
-    default:
-        x = 0.0f;
-        break;
+    assert(axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL ||
+           axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
+
+    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+        x = -discrete;
+        window->wl.axis_discrete_count.x++;
+    }
+    else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
+        y = -discrete;
+        window->wl.axis_discrete_count.y++;
     }
 
-    switch (input->pointer_curr_axis_info.y_axis_type) {
-    case AXIS_EVENT_CONTINUOUS:
-        y = input->pointer_curr_axis_info.y;
-        break;
-    case AXIS_EVENT_DISCRETE:
-        y = input->pointer_curr_axis_info.y;
-        break;
-    case AXIS_EVENT_VALUE120:
-        y = input->pointer_curr_axis_info.y / 120.0f;
-        break;
-    default:
-        y = 0.0f;
-        break;
-    }
-
-    /* clear pointer_curr_axis_info for next frame */
-    memset(&input->pointer_curr_axis_info, 0, sizeof(input->pointer_curr_axis_info));
-
-    if (x != 0.0f || y != 0.0f) {
-        float scale = _glfwWaylandWindowScale(window);
-        y *= scale; x *= scale;
-        _glfwInputScroll(window, x, y, 1, _glfw.wl.xkb.states.modifiers);
-    }
+    _glfwInputScroll(window, x, y, 0, _glfw.wl.xkb.states.modifiers);
 }
 
-static void
-pointer_handle_axis_source(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t source UNUSED) { }
-
-static void
-pointer_handle_axis_stop(void *data UNUSED, struct wl_pointer *wl_pointer UNUSED, uint32_t time UNUSED, uint32_t axis UNUSED) { }
-
-
-static void
-pointer_handle_axis_discrete(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t axis, int32_t discrete) {
-    pointer_handle_axis_common(AXIS_EVENT_DISCRETE, axis, wl_fixed_from_int(discrete));
-}
-
-static void
-pointer_handle_axis_value120(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t axis, int32_t value120) {
-    pointer_handle_axis_common(AXIS_EVENT_VALUE120, axis, wl_fixed_from_int(value120));
-}
-
-static void
-pointer_handle_axis_relative_direction(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t axis UNUSED, uint32_t axis_relative_direction UNUSED) { }
-
-#undef input
-static const struct wl_pointer_listener pointer_listener = {
-    pointer_handle_enter,
-    pointer_handle_leave,
-    pointer_handle_motion,
-    pointer_handle_button,
-    pointer_handle_axis,
-    pointer_handle_frame,                  /* Version 5 */
-    pointer_handle_axis_source,            /* Version 5 */
-    pointer_handle_axis_stop,              /* Version 5 */
-    pointer_handle_axis_discrete,          /* Version 5 */
-    pointer_handle_axis_value120,          /* Version 8 */
-    pointer_handle_axis_relative_direction /* Version 9 */
+static const struct wl_pointer_listener pointerListener = {
+    pointerHandleEnter,
+    pointerHandleLeave,
+    pointerHandleMotion,
+    pointerHandleButton,
+    pointerHandleAxis,
+    pointerHandleFrame,
+    pointerHandleAxisSource,
+    pointerHandleAxisStop,
+    pointerHandleAxisDiscrete,
 };
 
 static void keyboardHandleKeymap(void* data UNUSED,
@@ -675,7 +572,7 @@ static void seatHandleCapabilities(void* data UNUSED,
     if ((caps & WL_SEAT_CAPABILITY_POINTER) && !_glfw.wl.pointer)
     {
         _glfw.wl.pointer = wl_seat_get_pointer(seat);
-        wl_pointer_add_listener(_glfw.wl.pointer, &pointer_listener, NULL);
+        wl_pointer_add_listener(_glfw.wl.pointer, &pointerListener, NULL);
         if (_glfw.wl.wp_cursor_shape_manager_v1) {
             if (_glfw.wl.wp_cursor_shape_device_v1) wp_cursor_shape_device_v1_destroy(_glfw.wl.wp_cursor_shape_device_v1);
             _glfw.wl.wp_cursor_shape_device_v1 = NULL;

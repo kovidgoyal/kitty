@@ -147,12 +147,6 @@ enum WaylandWindowPendingState {
     PENDING_STATE_DECORATION = 2
 };
 
-enum _GLFWWaylandAxisEvent {
-    AXIS_EVENT_CONTINUOUS = 0,
-    AXIS_EVENT_DISCRETE,
-    AXIS_EVENT_VALUE120
-};
-
 // Wayland-specific per-window data
 //
 typedef struct _GLFWwindowWayland
@@ -183,19 +177,6 @@ typedef struct _GLFWwindowWayland
         GLFWLayerShellConfig config;
         struct zwlr_layer_surface_v1* zwlr_layer_surface_v1;
     } layer_shell;
-
-    /* information about axis events on current frame */
-    struct
-    {
-        enum _GLFWWaylandAxisEvent x_axis_type;
-        float x;
-
-        enum _GLFWWaylandAxisEvent y_axis_type;
-        float y;
-
-        /* Event timestamp in nanoseconds */
-        monotonic_t timestamp_ns;
-    } pointer_curr_axis_info;
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
@@ -261,6 +242,11 @@ typedef struct _GLFWwindowWayland
     } user_requested_content_size;
 
     bool maximize_on_first_show;
+    // counters for ignoring axis events following axis_discrete events in the
+    // same frame along the same axis
+    struct {
+        unsigned int x, y;
+    } axis_discrete_count;
 
     uint32_t pending_state;
     struct {
