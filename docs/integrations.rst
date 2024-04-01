@@ -288,6 +288,14 @@ Allow using kitty as a drop-down terminal under the i3 window manager
 URL hints kitten for WeeChat that works without having to use WeeChat's
 raw-mode.
 
+.. tool_kitty_toggle_terminal:
+
+`kitty-toggle-terminal <https://github.com/shardulbee/kitty-toggle-terminal>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Add ability to quickly toggle a terminal window in the "fat" layout from
+within your editor.
+
+
 .. tool_glkitty:
 
 `glkitty <https://github.com/michaeljclark/glkitty>`_

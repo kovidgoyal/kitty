@@ -367,3 +367,7 @@ Kittens created by kitty users
 `weechat-hints <https://github.com/GermainZ/kitty-weechat-hints>`_
     URL hints kitten for WeeChat that works without having to use WeeChat's
     raw-mode.
+
+`kitty-toggle-terminal <https://github.com/shardulbee/kitty-toggle-terminal>`_
+    Add ability to quickly toggle a terminal window in the "fat" layout from
+    within your editor.
