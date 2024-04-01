@@ -240,6 +240,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int,
         max_title_length = min(max_title_length, draw_data.max_tab_title_length)
     ColorFormatter.draw_data = draw_data
     ColorFormatter.tab_data = tab
+    boss = get_boss()
     eval_locals = {
         'index': index,
         'layout_name': tab.layout_name,
@@ -253,6 +254,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int,
         'bell_symbol': draw_data.bell_on_tab if tab.needs_attention else '',
         'activity_symbol': draw_data.tab_activity_symbol if tab.has_activity_since_last_focus else '',
         'max_title_length': max_title_length,
+        'keyboard_mode': boss.mappings.current_keyboard_mode_name,
     }
     template = draw_data.title_template
     if tab.is_active and draw_data.active_title_template is not None:

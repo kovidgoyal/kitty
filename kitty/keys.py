@@ -67,6 +67,10 @@ class Mappings:
         self.keyboard_mode_stack: List[KeyboardMode] = []
         self.update_keymap(global_shortcuts)
 
+    @property
+    def current_keyboard_mode_name(self) -> str:
+        return self.keyboard_mode_stack[-1].name if self.keyboard_mode_stack else ''
+
     def update_keymap(self, global_shortcuts:Optional[Dict[str, SingleKey]] = None) -> None:
         if global_shortcuts is None:
             global_shortcuts = self.set_cocoa_global_shortcuts(self.get_options()) if is_macos else {}

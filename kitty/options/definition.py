@@ -1364,6 +1364,8 @@ use :code:`{sup.index}`. All data available is:
     :code:`active_oldest_exe` for the oldest foreground process.
 :code:`max_title_length`
     The maximum title length available.
+:code:`keyboard_mode`
+    The name of the current :ref:`keyboard mode <modal_mappings>` or the empty string if no keyboard mode is active.
 
 Note that formatting is done by Python's string formatting machinery, so you can
 use, for instance, :code:`{layout_name[:2].upper()}` to show only the first two
