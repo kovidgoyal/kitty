@@ -993,6 +993,9 @@ class Parser:
     def forward_stdio(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['forward_stdio'] = to_bool(val)
 
+    def fullscreen_on_startup(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['fullscreen_on_startup'] = to_bool(val)
+
     def hide_window_decorations(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['hide_window_decorations'] = hide_window_decorations(val)
 

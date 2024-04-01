@@ -351,6 +351,7 @@ option_names = (  # {{{
  'font_size',
  'force_ltr',
  'foreground',
+ 'fullscreen_on_startup',
  'forward_stdio',
  'hide_window_decorations',
  'inactive_border_color',
@@ -520,6 +521,7 @@ class Options:
     force_ltr: bool = False
     foreground: Color = Color(221, 221, 221)
     forward_stdio: bool = False
+    fullscreen_on_startup: bool = False
     hide_window_decorations: int = 0
     inactive_border_color: Color = Color(204, 204, 204)
     inactive_tab_background: Color = Color(153, 153, 153)

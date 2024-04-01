@@ -1210,6 +1210,14 @@ currently running. Note that if you want confirmation when closing individual
 windows, you can map the :ac:`close_window_with_confirmation` action.
 '''
     )
+
+opt('fullscreen_on_startup', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Whether to enable full screen mode automatically when kitty starts.
+'''
+    )
+
 egr()  # }}}
 
 

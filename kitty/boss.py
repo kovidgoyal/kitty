@@ -1147,6 +1147,9 @@ class Boss:
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
 
+        if get_options().fullscreen_on_startup:
+            self.toggle_fullscreen(first_os_window_id)
+
     def handle_click_on_tab(self, os_window_id: int, x: int, button: int, modifiers: int, action: int) -> None:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
