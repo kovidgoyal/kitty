@@ -27,6 +27,8 @@
 // It is fine to use C99 in this file because it will not be built with VS
 //========================================================================
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "internal.h"
 
 #include <sys/types.h>
@@ -39,6 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #ifndef SYN_DROPPED // < v2.6.39 kernel headers
 // Workaround for CentOS-6, which is supported till 2020-11-30, but still on v2.6.32
@@ -135,7 +138,7 @@ static bool openJoystickDevice(const char* path)
     }
 
     _GLFWjoystickLinux linjs = {0};
-    linjs.fd = open(path, O_RDONLY | O_NONBLOCK);
+    linjs.fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
     if (linjs.fd == -1)
         return false;
 
