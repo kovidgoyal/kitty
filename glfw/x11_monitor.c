@@ -494,8 +494,8 @@ GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
     return result;
 }
 
-void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
-{
+bool _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode) {
+    bool ok = false;
     if (_glfw.x11.randr.available && !_glfw.x11.randr.monitorBroken)
     {
         XRRScreenResources* sr =
@@ -505,8 +505,10 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
         if (ci)
         {
             const XRRModeInfo* mi = getModeInfo(sr, ci->mode);
-            if (mi)  // mi can be NULL if the monitor has been disconnected
+            if (mi) { // mi can be NULL if the monitor has been disconnected
                 *mode = vidmodeFromModeInfo(mi, ci);
+                ok = true;
+            }
 
             XRRFreeCrtcInfo(ci);
         }
@@ -515,6 +517,7 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
     }
     else
     {
+        ok = true;
         mode->width = DisplayWidth(_glfw.x11.display, _glfw.x11.screen);
         mode->height = DisplayHeight(_glfw.x11.display, _glfw.x11.screen);
         mode->refreshRate = 0;
@@ -522,6 +525,7 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
         _glfwSplitBPP(DefaultDepth(_glfw.x11.display, _glfw.x11.screen),
                       &mode->redBits, &mode->greenBits, &mode->blueBits);
     }
+    return ok;
 }
 
 bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)

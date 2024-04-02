@@ -445,7 +445,7 @@ GLFWAPI const GLFWvidmode* glfwGetVideoMode(GLFWmonitor* handle)
 
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
-    _glfwPlatformGetVideoMode(monitor, &monitor->currentMode);
+    if (!_glfwPlatformGetVideoMode(monitor, &monitor->currentMode)) return NULL;
     return &monitor->currentMode;
 }
 

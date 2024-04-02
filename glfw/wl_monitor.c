@@ -195,9 +195,13 @@ GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* found)
     return monitor->modes;
 }
 
-void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
+bool _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
 {
-    *mode = monitor->modes[monitor->wl.currentMode];
+    if (monitor->modeCount > monitor->wl.currentMode) {
+        *mode = monitor->modes[monitor->wl.currentMode];
+        return true;
+    }
+    return false;
 }
 
 bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor UNUSED, GLFWgammaramp* ramp UNUSED)
