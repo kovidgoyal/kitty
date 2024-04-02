@@ -1823,6 +1823,7 @@ static PyObject*
 primary_monitor_size(PYNOARG) {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    if (mode == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get video mode for primary monitor"); return NULL; }
     return Py_BuildValue("ii", mode->width, mode->height);
 }
 
