@@ -28,6 +28,7 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
+#include "wl_decor.h"
 #include "backend_utils.h"
 #include "linux_desktop_settings.h"
 #include "../kitty/monotonic.h"
@@ -862,6 +863,7 @@ int _glfwPlatformInit(void)
     glfw_dlsym(_glfw.wl.egl.window_create, _glfw.wl.egl.handle, "wl_egl_window_create");
     glfw_dlsym(_glfw.wl.egl.window_destroy, _glfw.wl.egl.handle, "wl_egl_window_destroy");
     glfw_dlsym(_glfw.wl.egl.window_resize, _glfw.wl.egl.handle, "wl_egl_window_resize");
+    glfw_wl_load_decorations_library();
 
     _glfw.wl.display = wl_display_connect(NULL);
     if (!_glfw.wl.display)
@@ -925,6 +927,7 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
+    glfw_wl_unload_decorations_library();
     if (_glfw.wl.activation_requests.array) {
         for (size_t i=0; i < _glfw.wl.activation_requests.sz; i++) {
             glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;

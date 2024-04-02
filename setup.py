@@ -198,6 +198,7 @@ class Options:
     startup_notification_library: Optional[str] = os.getenv('KITTY_STARTUP_NOTIFICATION_LIBRARY')
     canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
     fontconfig_library: Optional[str] = os.getenv('KITTY_FONTCONFIG_LIBRARY')
+    decor_library: Optional[str] = os.getenv('KITTY_DECOR_LIBRARY')
     building_arch: str = ''
 
     # Extras
@@ -451,6 +452,7 @@ def init_env(
     startup_notification_library: Optional[str] = None,
     canberra_library: Optional[str] = None,
     fontconfig_library: Optional[str] = None,
+    decor_library: Optional[str] = None,
     extra_logging: Iterable[str] = (),
     extra_include_dirs: Iterable[str] = (),
     ignore_compiler_warnings: bool = False,
@@ -535,6 +537,7 @@ def init_env(
             library_paths.setdefault(which, []).append(f'{name}="{val}"')
 
     add_lpath('glfw/egl_context.c', '_GLFW_EGL_LIBRARY', egl_library)
+    add_lpath('glfw/wl_decor.c', '_GLFW_DECOR_LIBRARY', decor_library)
     add_lpath('kitty/desktop.c', '_KITTY_STARTUP_NOTIFICATION_LIBRARY', startup_notification_library)
     add_lpath('kitty/desktop.c', '_KITTY_CANBERRA_LIBRARY', canberra_library)
     add_lpath('kitty/fontconfig.c', '_KITTY_FONTCONFIG_LIBRARY', fontconfig_library)
@@ -973,7 +976,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     global env
     env = init_env(
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
-        args.egl_library, args.startup_notification_library, args.canberra_library, args.fontconfig_library,
+        args.egl_library, args.startup_notification_library, args.canberra_library, args.fontconfig_library, args.decor_library,
         args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings,
         args.building_arch, args.extra_library_dirs, verbose=args.verbose > 0, vcs_rev=args.vcs_rev,
     )
@@ -1934,6 +1937,13 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         type=str,
         default=Options.fontconfig_library,
         help='The filename argument passed to dlopen for libfontconfig.'
+        ' This can be used to change the name of the loaded library or specify an absolute path.'
+    )
+    p.add_argument(
+        '--decor-library',
+        type=str,
+        default=Options.decor_library,
+        help='The filename argument passed to dlopen for libdecor.'
         ' This can be used to change the name of the loaded library or specify an absolute path.'
     )
     p.add_argument(
