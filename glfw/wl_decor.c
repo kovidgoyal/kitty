@@ -111,7 +111,8 @@ static struct libdecor_interface libdecor_interface = {
 };
 
 
-DECOR_LIB_HANDLE glfw_wl_load_decorations_library(struct wl_display *display) {
+DECOR_LIB_HANDLE
+glfw_wl_load_decorations_library(struct wl_display *display) {
     if (!glfw_wl_load_libdecor()) return NULL;
     DecorLibState *ans = calloc(1, sizeof(DecorLibState));
     if (!ans) { _glfwInputError(GLFW_PLATFORM_ERROR, "Out of memory"); return NULL; }
@@ -120,7 +121,8 @@ DECOR_LIB_HANDLE glfw_wl_load_decorations_library(struct wl_display *display) {
     return (DECOR_LIB_HANDLE) ans;
 }
 
-void glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE h_) {
+void
+glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE h_) {
     if (h_) {
         DecorLibState *h = (DecorLibState*)h_;
         if (h->libdecor) { libdecor_unref(h->libdecor); }
@@ -131,4 +133,8 @@ void glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE h_) {
     }
 }
 
+int
+glfw_wl_dispatch_decor_events(void) {
+    return libdecor_dispatch(((DecorLibState*)_glfw.wl.decor)->libdecor, 0);
+}
 

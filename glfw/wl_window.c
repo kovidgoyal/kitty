@@ -1141,6 +1141,13 @@ handleEvents(monotonic_t timeout) {
     }
     glfw_ibus_dispatch(&_glfw.wl.xkb.ibus);
     glfw_dbus_session_bus_dispatch();
+    // technically we should wait on the libdecor fd but
+    // for both cairo and gtk plugins the fd is just the wayland display fd so
+    // no need to wait on it
+    if (_glfw.wl.decor) {
+        int num = glfw_wl_dispatch_decor_events(); (void)num;
+        EVDBG("dispatched %d Wayland events", num);
+    }
     EVDBG("other dispatch done");
     if (_glfw.wl.eventLoopData.wakeup_fd_ready) check_for_wakeup_events(&_glfw.wl.eventLoopData);
 }
