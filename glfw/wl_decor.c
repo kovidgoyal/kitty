@@ -10,6 +10,7 @@
 #include "libdecor-0/libdecor.h"
 #include <dlfcn.h>
 #include <string.h>
+#include <stdlib.h>
 
 // Boilerplate to dynload libdecor {{{
 #define funcs F(libdecor_new); F(libdecor_unref); F(libdecor_get_fd); F(libdecor_dispatch); F(libdecor_decorate); F(libdecor_frame_unref); \
@@ -69,13 +70,6 @@ glfw_wl_load_libdecor(void) {
     return true;
 }
 
-void glfw_wl_load_decorations_library(void) { glfw_wl_load_libdecor(); }
-void glfw_wl_unload_decorations_library(void) {
-    if (libdecor_handle) {
-        dlclose(libdecor_handle); libdecor_handle = NULL;
-        memset(&libdecor_funcs, 0, sizeof(libdecor_funcs)); \
-    }
-}
 #define libdecor_new libdecor_funcs.libdecor_new
 #define libdecor_unref libdecor_funcs.libdecor_unref
 #define libdecor_get_fd libdecor_funcs.libdecor_get_fd
@@ -101,6 +95,40 @@ void glfw_wl_unload_decorations_library(void) {
 #define libdecor_configuration_get_window_state libdecor_funcs.libdecor_configuration_get_window_state
 #define libdecor_state_new libdecor_funcs.libdecor_state_new
 #define libdecor_state_free libdecor_funcs.libdecor_state_free
+
 // }}}
+
+typedef struct DecorLibState {
+    struct libdecor* libdecor;
+} DecorLibState;
+
+void handle_libdecor_error(struct libdecor* context UNUSED, enum libdecor_error error, const char* message) {
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: libdecor error %u: %s", error, message);
+}
+
+static struct libdecor_interface libdecor_interface = {
+    .error = handle_libdecor_error
+};
+
+
+DECOR_LIB_HANDLE glfw_wl_load_decorations_library(struct wl_display *display) {
+    if (!glfw_wl_load_libdecor()) return NULL;
+    DecorLibState *ans = calloc(1, sizeof(DecorLibState));
+    if (!ans) { _glfwInputError(GLFW_PLATFORM_ERROR, "Out of memory"); return NULL; }
+    ans->libdecor = libdecor_new(display, &libdecor_interface);
+    if (!ans->libdecor) _glfwInputError(GLFW_PLATFORM_ERROR, "libdecor_new() returned NULL");
+    return (DECOR_LIB_HANDLE) ans;
+}
+
+void glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE h_) {
+    if (h_) {
+        DecorLibState *h = (DecorLibState*)h_;
+        if (h->libdecor) { libdecor_unref(h->libdecor); }
+    }
+    if (libdecor_handle) {
+        dlclose(libdecor_handle); libdecor_handle = NULL;
+        memset(&libdecor_funcs, 0, sizeof(libdecor_funcs)); \
+    }
+}
 
 

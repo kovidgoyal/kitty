@@ -863,7 +863,6 @@ int _glfwPlatformInit(void)
     glfw_dlsym(_glfw.wl.egl.window_create, _glfw.wl.egl.handle, "wl_egl_window_create");
     glfw_dlsym(_glfw.wl.egl.window_destroy, _glfw.wl.egl.handle, "wl_egl_window_destroy");
     glfw_dlsym(_glfw.wl.egl.window_resize, _glfw.wl.egl.handle, "wl_egl_window_resize");
-    glfw_wl_load_decorations_library();
 
     _glfw.wl.display = wl_display_connect(NULL);
     if (!_glfw.wl.display)
@@ -885,6 +884,7 @@ int _glfwPlatformInit(void)
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);
 
     if (!glfw_xkb_create_context(&_glfw.wl.xkb)) return false;
+    if (!(_glfw.wl.decor = glfw_wl_load_decorations_library(_glfw.wl.display))) return false;
 
     // Sync so we got all registry objects
     wl_display_roundtrip(_glfw.wl.display);
@@ -927,7 +927,7 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
-    glfw_wl_unload_decorations_library();
+    glfw_wl_unload_decorations_library(_glfw.wl.decor);
     if (_glfw.wl.activation_requests.array) {
         for (size_t i=0; i < _glfw.wl.activation_requests.sz; i++) {
             glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;

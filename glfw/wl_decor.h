@@ -7,5 +7,8 @@
 
 #pragma once
 
-void glfw_wl_load_decorations_library(void);
-void glfw_wl_unload_decorations_library(void);
+#include <wayland-client.h>
+
+typedef struct {int x;} *DECOR_LIB_HANDLE;
+DECOR_LIB_HANDLE glfw_wl_load_decorations_library(struct wl_display*);
+void glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE);

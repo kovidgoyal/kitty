@@ -27,6 +27,7 @@
 #include <wayland-client.h>
 #include <dlfcn.h>
 #include <poll.h>
+#include "wl_decor.h"
 
 typedef VkFlags VkWaylandSurfaceCreateFlagsKHR;
 
@@ -357,6 +358,7 @@ typedef struct _GLFWlibraryWayland
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
     bool has_preferred_buffer_scale;
+    DECOR_LIB_HANDLE            decor;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data

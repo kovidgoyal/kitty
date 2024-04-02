@@ -1104,8 +1104,8 @@ wayland_read_events(int poll_result, int events, void *data UNUSED) {
     else wl_display_cancel_read(_glfw.wl.display);
 }
 
-static void handleEvents(monotonic_t timeout)
-{
+static void
+handleEvents(monotonic_t timeout) {
     struct wl_display* display = _glfw.wl.display;
     errno = 0;
     EVDBG("starting handleEvents(%.2f)", monotonic_t_to_s_double(timeout));
