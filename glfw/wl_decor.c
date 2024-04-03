@@ -7,7 +7,7 @@
 
 #define _POSIX_C_SOURCE  200809L
 #include "wl_decor.h"
-#include "internal.h"
+#include "wl_client_side_decorations.h"
 #include "libdecor-0/libdecor.h"
 #include <dlfcn.h>
 #include <string.h>
@@ -160,3 +160,24 @@ glfw_wl_dispatch_decor_events(void) {
     return libdecor_dispatch(((DecorLibState*)_glfw.wl.decor)->libdecor, 0);
 }
 
+typedef struct Frame {
+    struct libdecor_frame *libdecor;
+} Frame;
+
+
+void
+glfw_wl_set_fullscreen(_GLFWwindow *w, bool on, struct wl_output *monitor) {
+    Frame *d = (Frame*)w->wl.frame;
+    if (d && d->libdecor) {
+        if (on) libdecor_frame_set_fullscreen(d->libdecor, monitor);
+        else libdecor_frame_unset_fullscreen(d->libdecor);
+    } else if (w->wl.xdg.toplevel) {
+        if (on) {
+            xdg_toplevel_set_fullscreen(w->wl.xdg.toplevel, monitor);
+            if (!w->wl.decorations.serverSide) free_csd_surfaces(w);
+        } else {
+            xdg_toplevel_unset_fullscreen(w->wl.xdg.toplevel);
+            ensure_csd_resources(w);
+        }
+    }
+}

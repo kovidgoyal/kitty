@@ -27,7 +27,6 @@
 #include <wayland-client.h>
 #include <dlfcn.h>
 #include <poll.h>
-#include "wl_decor.h"
 
 typedef VkFlags VkWaylandSurfaceCreateFlagsKHR;
 
@@ -117,6 +116,9 @@ typedef struct _GLFWWaylandCSDEdge {
     _GLFWWaylandBufferPair buffer;
     int x, y;
 } _GLFWWaylandCSDEdge;
+
+typedef struct {int x;} *DECOR_LIB_HANDLE;
+typedef struct {int x;} *DECOR_FRAME_HANDLE;
 
 typedef enum WaylandWindowState {
 
@@ -255,6 +257,7 @@ typedef struct _GLFWwindowWayland
         uint32_t toplevel_states;
         uint32_t decoration_mode;
     } current, pending;
+    DECOR_FRAME_HANDLE frame;
 } _GLFWwindowWayland;
 
 typedef enum _GLFWWaylandOfferType

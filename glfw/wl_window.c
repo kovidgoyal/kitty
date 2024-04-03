@@ -28,7 +28,7 @@
 
 #define _GNU_SOURCE
 
-#include "internal.h"
+#include "wl_decor.h"
 #include "backend_utils.h"
 #include "linux_notify.h"
 #include "wl_client_side_decorations.h"
@@ -597,20 +597,8 @@ static bool createSurface(_GLFWwindow* window,
     return true;
 }
 
-static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
-{
-    if (window->wl.xdg.toplevel)
-    {
-        if (on) {
-            xdg_toplevel_set_fullscreen(
-                window->wl.xdg.toplevel,
-                monitor ? monitor->wl.output : NULL);
-            if (!window->wl.decorations.serverSide) free_csd_surfaces(window);
-        } else {
-            xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-            ensure_csd_resources(window);
-        }
-    }
+static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on) {
+    glfw_wl_set_fullscreen(window, on, monitor ? monitor->wl.output : NULL);
 }
 
 
@@ -1034,8 +1022,7 @@ create_window_desktop_surface(_GLFWwindow* window)
 
     if (window->monitor)
     {
-        xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel,
-                                    window->monitor->wl.output);
+        glfw_wl_set_fullscreen(window, true, window->monitor->wl.output);
     }
     else if (window->wl.maximize_on_first_show)
     {
@@ -1490,7 +1477,7 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
     if (window->wl.xdg.toplevel)
     {
         if (window->monitor)
-            xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
+            glfw_wl_set_fullscreen(window, false, window->monitor->wl.output);
         if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
             xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
         // There is no way to unset minimized, or even to know if we are
