@@ -1462,8 +1462,8 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         glfwSetDrawTextFunction(draw_text_callback);
 #endif
         get_window_dpi(NULL, &global_state.default_dpi.x, &global_state.default_dpi.y);
+        edge_spacing_func = edge_sf; Py_INCREF(edge_spacing_func);
     }
-    edge_spacing_func = edge_sf; Py_INCREF(edge_spacing_func);
     Py_INCREF(ans);
     return ans;
 }
