@@ -226,3 +226,21 @@ glfw_wl_set_app_id(_GLFWwindow *w, const char *appid) {
     if (d && d->libdecor) libdecor_frame_set_app_id(d->libdecor, appid);
     else if (w->wl.xdg.toplevel) xdg_toplevel_set_app_id(w->wl.xdg.toplevel, appid);
 }
+
+void
+glfw_wl_set_size_limits(_GLFWwindow *w, int minwidth, int minheight, int maxwidth, int maxheight) {
+    if (w->wl.xdg.toplevel) {
+        minwidth = minwidth == GLFW_DONT_CARE ? 0 : minwidth;
+        minheight = minheight == GLFW_DONT_CARE ? 0 : minheight;
+        maxwidth = maxwidth == GLFW_DONT_CARE ? 0 : maxwidth;
+        maxheight = maxheight == GLFW_DONT_CARE ? 0 : maxheight;
+        Frame *d = (Frame*)w->wl.frame;
+        if (d && d->libdecor) {
+            libdecor_frame_set_min_content_size(d->libdecor, minwidth, minheight);
+            libdecor_frame_set_max_content_size(d->libdecor, maxwidth, maxheight);
+        } else {
+            xdg_toplevel_set_min_size(w->wl.xdg.toplevel, minwidth, minheight);
+            xdg_toplevel_set_max_size(w->wl.xdg.toplevel, maxwidth, maxheight);
+        }
+    }
+}

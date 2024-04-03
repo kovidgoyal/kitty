@@ -19,3 +19,4 @@ void glfw_wl_set_maximized(_GLFWwindow *w, bool on);
 void glfw_wl_set_minimized(_GLFWwindow *w);
 void glfw_wl_set_title(_GLFWwindow *w, const char *title);
 void glfw_wl_set_app_id(_GLFWwindow *w, const char *appid);
+void glfw_wl_set_size_limits(_GLFWwindow *w, int minwidth, int minheight, int maxwidth, int maxheight);

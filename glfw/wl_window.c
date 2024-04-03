@@ -1010,13 +1010,7 @@ create_window_desktop_surface(_GLFWwindow* window)
                               &xdgToplevelListener,
                               window);
 
-    if (window->minwidth != GLFW_DONT_CARE && window->minheight != GLFW_DONT_CARE)
-        xdg_toplevel_set_min_size(window->wl.xdg.toplevel,
-                                  window->minwidth, window->minheight);
-    if (window->maxwidth != GLFW_DONT_CARE && window->maxheight != GLFW_DONT_CARE)
-        xdg_toplevel_set_max_size(window->wl.xdg.toplevel,
-                                  window->maxwidth, window->maxheight);
-
+    glfw_wl_set_size_limits(window, window->minwidth, window->minheight, window->maxwidth, window->maxheight);
     if (window->monitor)
     {
         glfw_wl_set_fullscreen(window, true, window->monitor->wl.output);
@@ -1373,20 +1367,9 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
     }
 }
 
-void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
-                                      int minwidth, int minheight,
-                                      int maxwidth, int maxheight)
-{
-    if (window->wl.xdg.toplevel)
-    {
-        if (minwidth == GLFW_DONT_CARE || minheight == GLFW_DONT_CARE)
-            minwidth = minheight = 0;
-        if (maxwidth == GLFW_DONT_CARE || maxheight == GLFW_DONT_CARE)
-            maxwidth = maxheight = 0;
-        xdg_toplevel_set_min_size(window->wl.xdg.toplevel, minwidth, minheight);
-        xdg_toplevel_set_max_size(window->wl.xdg.toplevel, maxwidth, maxheight);
-        commit_window_surface_if_safe(window);
-    }
+void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window, int minwidth, int minheight, int maxwidth, int maxheight) {
+    glfw_wl_set_size_limits(window, minwidth, minheight, maxwidth, maxheight);
+    commit_window_surface_if_safe(window);
 }
 
 void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window UNUSED,
