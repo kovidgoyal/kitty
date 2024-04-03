@@ -1010,9 +1010,6 @@ create_window_desktop_surface(_GLFWwindow* window)
                               &xdgToplevelListener,
                               window);
 
-    if (window->wl.title)
-        xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
-
     if (window->minwidth != GLFW_DONT_CARE && window->minheight != GLFW_DONT_CARE)
         xdg_toplevel_set_min_size(window->wl.xdg.toplevel,
                                   window->minwidth, window->minheight);
@@ -1030,8 +1027,9 @@ create_window_desktop_surface(_GLFWwindow* window)
         glfw_wl_set_maximized(window, true);
     }
     if (!window->monitor) setXdgDecorations(window);
-    if (strlen(window->wl.appId))
-        xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
+    glfw_wl_set_app_id(window, window->wl.appId);
+    if (window->wl.title)
+        glfw_wl_set_title(window, window->wl.title);
 
     wl_surface_commit(window->wl.surface);
     wl_display_roundtrip(_glfw.wl.display);
@@ -1323,19 +1321,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         wl_callback_destroy(window->wl.frameCallbackData.current_wl_callback);
 }
 
-void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
-{
-    if (window->wl.title) {
-        if (title && strcmp(title, window->wl.title) == 0) return;
-        free(window->wl.title);
-    } else if (!title) return;
-    // Wayland cannot handle requests larger than ~8200 bytes. Sending
-    // one causes an abort(). Since titles this large are meaningless anyway
-    // ensure they do not happen.
-    window->wl.title = utf_8_strndup(title, 2048);
-    if (window->wl.xdg.toplevel) xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
-    change_csd_title(window);
-}
+void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title) { glfw_wl_set_title(window, title); }
 
 void _glfwPlatformSetWindowIcon(_GLFWwindow* window UNUSED,
                                 int count UNUSED, const GLFWimage* images UNUSED)

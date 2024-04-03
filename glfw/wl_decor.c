@@ -200,3 +200,29 @@ glfw_wl_set_minimized(_GLFWwindow *w) {
     if (d && d->libdecor) libdecor_frame_set_minimized(d->libdecor);
     else if (w->wl.xdg.toplevel) xdg_toplevel_set_minimized(w->wl.xdg.toplevel);
 }
+
+void
+glfw_wl_set_title(_GLFWwindow *w, const char *title) {
+    // Wayland cannot handle requests larger than ~8200 bytes. Sending
+    // one causes an abort(). Since titles this large are meaningless anyway
+    // ensure they do not happen.
+    if (!title) title = "";
+    char *safe_title = utf_8_strndup(title, 2048);
+    if (!safe_title) return;
+    if (w->wl.title && strcmp(w->wl.title, safe_title) == 0) { free(safe_title); return; }
+    free(w->wl.title); w->wl.title = safe_title;
+    Frame *d = (Frame*)w->wl.frame;
+    if (d && d->libdecor) libdecor_frame_set_title(d->libdecor, w->wl.title);
+    else if (w->wl.xdg.toplevel) {
+        xdg_toplevel_set_title(w->wl.xdg.toplevel, w->wl.title);
+        change_csd_title(w);
+    }
+}
+
+void
+glfw_wl_set_app_id(_GLFWwindow *w, const char *appid) {
+    if (!appid || !appid[0]) return;
+    Frame *d = (Frame*)w->wl.frame;
+    if (d && d->libdecor) libdecor_frame_set_app_id(d->libdecor, appid);
+    else if (w->wl.xdg.toplevel) xdg_toplevel_set_app_id(w->wl.xdg.toplevel, appid);
+}
