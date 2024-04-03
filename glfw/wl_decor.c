@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define _POSIX_C_SOURCE  200809L
 #include "wl_decor.h"
 #include "internal.h"
 #include "libdecor-0/libdecor.h"
@@ -110,15 +111,30 @@ static struct libdecor_interface libdecor_interface = {
     .error = handle_libdecor_error
 };
 
-
-DECOR_LIB_HANDLE
-glfw_wl_load_decorations_library(struct wl_display *display) {
+static DECOR_LIB_HANDLE
+glfw_wl_load_decorations_library_(struct wl_display *display) {
     if (!glfw_wl_load_libdecor()) return NULL;
     DecorLibState *ans = calloc(1, sizeof(DecorLibState));
     if (!ans) { _glfwInputError(GLFW_PLATFORM_ERROR, "Out of memory"); return NULL; }
     ans->libdecor = libdecor_new(display, &libdecor_interface);
     if (!ans->libdecor) _glfwInputError(GLFW_PLATFORM_ERROR, "libdecor_new() returned NULL");
     return (DECOR_LIB_HANDLE) ans;
+}
+
+DECOR_LIB_HANDLE
+glfw_wl_load_decorations_library(struct wl_display *display) {
+    // See https://gitlab.freedesktop.org/libdecor/libdecor/-/issues/65 for why we need this nautanki with GDK_BACKEND
+    char *gdk_backend = getenv("GDK_BACKEND");
+    if (gdk_backend && strcmp(gdk_backend, "wayland") != 0) {
+        gdk_backend = strdup(gdk_backend);
+        setenv("GDK_BACKEND", "wayland", 1);
+    }
+    DECOR_LIB_HANDLE ans = glfw_wl_load_decorations_library_(display);
+    if (gdk_backend) {
+        setenv("GDK_BACKEND", gdk_backend, 1);
+        free(gdk_backend);
+    }
+    return ans;
 }
 
 void
