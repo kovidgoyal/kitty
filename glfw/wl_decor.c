@@ -181,3 +181,15 @@ glfw_wl_set_fullscreen(_GLFWwindow *w, bool on, struct wl_output *monitor) {
         }
     }
 }
+
+void
+glfw_wl_set_maximized(_GLFWwindow *w, bool on) {
+    Frame *d = (Frame*)w->wl.frame;
+    if (d && d->libdecor) {
+        if (on) libdecor_frame_set_maximized(d->libdecor);
+        else libdecor_frame_unset_maximized(d->libdecor);
+    } else if (w->wl.xdg.toplevel) {
+        if (on) xdg_toplevel_set_maximized(w->wl.xdg.toplevel);
+        else xdg_toplevel_unset_maximized(w->wl.xdg.toplevel);
+    }
+}

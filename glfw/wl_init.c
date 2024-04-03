@@ -255,10 +255,7 @@ static void pointerHandleButton(void* data UNUSED,
                     window->wl.decorations.last_click_on_top_decoration_at = monotonic();
                     if (window->wl.decorations.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
                         window->wl.decorations.last_click_on_top_decoration_at = 0;
-                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
-                            xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
-                        else
-                            xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+                        glfw_wl_set_maximized(window, !_glfwPlatformWindowMaximized(window));
                         return;
                     }
                 }

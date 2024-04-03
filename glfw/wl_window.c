@@ -1027,13 +1027,9 @@ create_window_desktop_surface(_GLFWwindow* window)
     else if (window->wl.maximize_on_first_show)
     {
         window->wl.maximize_on_first_show = false;
-        xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
-        setXdgDecorations(window);
+        glfw_wl_set_maximized(window, true);
     }
-    else
-    {
-        setXdgDecorations(window);
-    }
+    if (!window->monitor) setXdgDecorations(window);
     if (strlen(window->wl.appId))
         xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
 
@@ -1479,7 +1475,7 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
         if (window->monitor)
             glfw_wl_set_fullscreen(window, false, window->monitor->wl.output);
         if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
-            xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
+            glfw_wl_set_maximized(window, false);
         // There is no way to unset minimized, or even to know if we are
         // minimized, so there is nothing to do in this case.
     }
@@ -1490,7 +1486,7 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 {
     if (window->wl.xdg.toplevel)
     {
-        xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+        glfw_wl_set_maximized(window, true);
     }
 }
 
