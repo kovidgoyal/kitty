@@ -81,6 +81,8 @@ Detailed list of changes
 
 - fish shell integration: Fix clicking at the prompt causing autosuggestions to be accepted, needs fish >= 3.8.0 (:iss:`7168`)
 
+- Linux: Fix for a regression in 0.32.0 that caused some CJK fonts to not render glyphs (:iss:`7263`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
