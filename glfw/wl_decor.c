@@ -22,8 +22,8 @@
     F(libdecor_state_new); F(libdecor_state_free);
 
 #define F(name) __typeof__(name) (*name)
-static void* libdecor_handle = NULL;
 static struct {
+    void* libdecor_handle;
     funcs
 } libdecor_funcs = {0};
 #undef F
@@ -33,14 +33,14 @@ static struct {
     if (!libdecor_funcs.name) { \
         const char* error = dlerror(); \
         _glfwInputError(GLFW_PLATFORM_ERROR, "failed to load libdecor function %s with error: %s", #name, error ? error : "(null)"); \
-        memset(&libdecor_funcs, 0, sizeof(libdecor_funcs)); \
         dlclose(handle); handle = NULL; return false; \
+        memset(&libdecor_funcs, 0, sizeof(libdecor_funcs)); \
     } \
 }
 
 static bool
 glfw_wl_load_libdecor(void) {
-    if (libdecor_handle != NULL) return true;
+    if (libdecor_funcs.libdecor_handle != NULL) return true;
     const char* libnames[] = {
 #ifdef _GLFW_DECOR_LIBRARY
         _GLFW_DECOR_LIBRARY,
@@ -52,19 +52,19 @@ glfw_wl_load_libdecor(void) {
         NULL
     };
     for (int i = 0; libnames[i]; i++) {
-        libdecor_handle = _glfw_dlopen(libnames[i]);
-        if (libdecor_handle) break;
+        libdecor_funcs.libdecor_handle = _glfw_dlopen(libnames[i]);
+        if (libdecor_funcs.libdecor_handle) break;
     }
-    if (!libdecor_handle) {
-        libdecor_handle = _glfw_dlopen(libnames[0]);
-        if (!libdecor_handle) {
+    if (!libdecor_funcs.libdecor_handle) {
+        libdecor_funcs.libdecor_handle = _glfw_dlopen(libnames[0]);
+        if (!libdecor_funcs.libdecor_handle) {
             _glfwInputError(GLFW_PLATFORM_ERROR, "failed to dlopen %s with error: %s", libnames[0], dlerror());
             return false;
         }
     }
     dlerror();    /* Clear any existing error */
 
-#define F(name) LOAD_FUNC(libdecor_handle, name)
+#define F(name) LOAD_FUNC(libdecor_funcs.libdecor_handle, name)
     funcs
 #undef F
     return true;
@@ -127,14 +127,18 @@ glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE h_) {
         DecorLibState *h = (DecorLibState*)h_;
         if (h->libdecor) { libdecor_unref(h->libdecor); }
     }
-    if (libdecor_handle) {
-        dlclose(libdecor_handle); libdecor_handle = NULL;
-        memset(&libdecor_funcs, 0, sizeof(libdecor_funcs)); \
+    if (libdecor_funcs.libdecor_handle) {
+        dlclose(libdecor_funcs.libdecor_handle); libdecor_funcs.libdecor_handle = NULL;
+        memset(&libdecor_funcs, 0, sizeof(libdecor_funcs));
     }
 }
 
 int
 glfw_wl_dispatch_decor_events(void) {
+    // TODO: change this to just call while (g_main_context_iteration(NULL, FALSE)); when using the gtk plugin
+    // will require a patch to libdecor. The libdecor API currently has no way to either tell what plugin
+    // is being used or to just dispatch non-Wayland events.
+
     return libdecor_dispatch(((DecorLibState*)_glfw.wl.decor)->libdecor, 0);
 }
 
