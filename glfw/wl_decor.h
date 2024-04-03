@@ -16,3 +16,4 @@ void glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE);
 int glfw_wl_dispatch_decor_events(void);
 void glfw_wl_set_fullscreen(_GLFWwindow *w, bool on, struct wl_output *monitor);
 void glfw_wl_set_maximized(_GLFWwindow *w, bool on);
+void glfw_wl_set_minimized(_GLFWwindow *w);

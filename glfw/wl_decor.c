@@ -193,3 +193,10 @@ glfw_wl_set_maximized(_GLFWwindow *w, bool on) {
         else xdg_toplevel_unset_maximized(w->wl.xdg.toplevel);
     }
 }
+
+void
+glfw_wl_set_minimized(_GLFWwindow *w) {
+    Frame *d = (Frame*)w->wl.frame;
+    if (d && d->libdecor) libdecor_frame_set_minimized(d->libdecor);
+    else if (w->wl.xdg.toplevel) xdg_toplevel_set_minimized(w->wl.xdg.toplevel);
+}

@@ -1462,11 +1462,7 @@ monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
     return ms_to_monotonic_t(500ll);
 }
 
-void _glfwPlatformIconifyWindow(_GLFWwindow* window)
-{
-    if (window->wl.xdg.toplevel)
-        xdg_toplevel_set_minimized(window->wl.xdg.toplevel);
-}
+void _glfwPlatformIconifyWindow(_GLFWwindow* window) { glfw_wl_set_minimized(window); }
 
 void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 {
