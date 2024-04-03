@@ -142,6 +142,7 @@ glfw_wl_unload_decorations_library(DECOR_LIB_HANDLE h_) {
     if (h_) {
         DecorLibState *h = (DecorLibState*)h_;
         if (h->libdecor) { libdecor_unref(h->libdecor); }
+        free(h);
     }
     if (libdecor_funcs.libdecor_handle) {
         dlclose(libdecor_funcs.libdecor_handle); libdecor_funcs.libdecor_handle = NULL;
@@ -154,6 +155,7 @@ glfw_wl_dispatch_decor_events(void) {
     // TODO: change this to just call while (g_main_context_iteration(NULL, FALSE)); when using the gtk plugin
     // will require a patch to libdecor. The libdecor API currently has no way to either tell what plugin
     // is being used or to just dispatch non-Wayland events.
+    // https://gitlab.freedesktop.org/libdecor/libdecor/-/issues/70
 
     return libdecor_dispatch(((DecorLibState*)_glfw.wl.decor)->libdecor, 0);
 }
