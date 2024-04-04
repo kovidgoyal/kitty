@@ -176,7 +176,7 @@ CC=clang CFLAGS="--target=aarch64-linux-gnu -march=armv8-a" NEON64_CFLAGS=" " ma
 
 ### OpenMP
 
-To enable OpenMP on GCC you need to build with `-fopenmp`. This can be by setting the the `OPENMP` environment variable to `1`.
+To enable OpenMP on GCC you need to build with `-fopenmp`. This can be by setting the `OPENMP` environment variable to `1`.
 
 Example:
 
