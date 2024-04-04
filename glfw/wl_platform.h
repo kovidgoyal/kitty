@@ -107,13 +107,14 @@ typedef struct _GLFWWaylandBufferPair {
     struct wl_buffer *a, *b, *front, *back;
     struct { uint8_t *a, *b, *front, *back; } data;
     bool has_pending_update;
-    size_t size_in_bytes, width, height, stride;
+    size_t size_in_bytes, width, height, viewport_width, viewport_height, stride;
     bool a_needs_to_be_destroyed, b_needs_to_be_destroyed;
 } _GLFWWaylandBufferPair;
 
 typedef struct _GLFWWaylandCSDEdge {
     struct wl_surface *surface;
     struct wl_subsurface *subsurface;
+    struct wp_viewport *wp_viewport;
     _GLFWWaylandBufferPair buffer;
     int x, y;
 } _GLFWWaylandCSDEdge;
@@ -210,8 +211,9 @@ typedef struct _GLFWwindowWayland
         } mapping;
 
         struct {
-            int width, height, scale;
+            int width, height;
             bool focused;
+            float fscale;
         } for_window_state;
 
         struct {

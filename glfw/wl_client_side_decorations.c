@@ -93,10 +93,11 @@ swap_buffers(_GLFWWaylandBufferPair *pair) {
 }
 
 static size_t
-init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, unsigned scale) {
+init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, float scale) {
     memset(pair, 0, sizeof(_GLFWWaylandBufferPair));
-    pair->width = width * scale;
-    pair->height = height * scale;
+    pair->width = (int)roundf(width * scale);
+    pair->height = (int)roundf(height * scale);
+    pair->viewport_width = width; pair->viewport_height = height;
     pair->stride = 4 * pair->width;
     pair->size_in_bytes = pair->stride * pair->height;
     return 2 * pair->size_in_bytes;
@@ -282,7 +283,7 @@ render_edges(_GLFWwindow *window) {
 
 static bool
 create_shm_buffers(_GLFWwindow* window) {
-    const unsigned scale = _glfwWaylandIntegerWindowScale(window);
+    const float scale = _glfwWaylandWindowScale(window);
 
     const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
     const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
@@ -315,7 +316,7 @@ create_shm_buffers(_GLFWwindow* window) {
     create_shadow_tile(window);
     render_title_bar(window, true);
     render_edges(window);
-    debug("Created decoration buffers at scale: %u vertical_height: %zu horizontal_width: %zu\n", scale, vertical_height, horizontal_width);
+    debug("Created decoration buffers at scale: %f vertical_height: %zu horizontal_width: %zu\n", scale, vertical_height, horizontal_width);
     return true;
 }
 
@@ -326,6 +327,8 @@ free_csd_surfaces(_GLFWwindow *window) {
     decs.which.subsurface = NULL; \
     if (decs.which.surface) wl_surface_destroy(decs.which.surface); \
     decs.which.surface = NULL; \
+    if (decs.which.wp_viewport) wp_viewport_destroy(decs.which.wp_viewport); \
+    decs.which.wp_viewport = NULL; \
 }
     d(left); d(top); d(right); d(bottom);
 #undef d
@@ -345,8 +348,8 @@ free_csd_buffers(_GLFWwindow *window) {
 }
 
 static void
-position_csd_surface(_GLFWWaylandCSDEdge *s, int x, int y, int scale) {
-    wl_surface_set_buffer_scale(s->surface, scale);
+position_csd_surface(_GLFWWaylandCSDEdge *s, int x, int y) {
+    wl_surface_set_buffer_scale(s->surface, 1);
     s->x = x; s->y = y;
     wl_subsurface_set_position(s->subsurface, s->x, s->y);
 }
@@ -355,10 +358,12 @@ static void
 create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDEdge *s) {
     s->surface = wl_compositor_create_surface(_glfw.wl.compositor);
     s->subsurface = wl_subcompositor_get_subsurface(_glfw.wl.subcompositor, s->surface, window->wl.surface);
+    if (_glfw.wl.wp_viewporter) s->wp_viewport = wp_viewporter_get_viewport(_glfw.wl.wp_viewporter, s->surface);
 }
 
 #define damage_csd(which, xbuffer) \
     wl_surface_attach(decs.which.surface, (xbuffer), 0, 0); \
+    if (decs.which.wp_viewport) wp_viewport_set_destination(decs.which.wp_viewport, decs.which.buffer.viewport_width, decs.which.buffer.viewport_height); \
     wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height); \
     wl_surface_commit(decs.which.surface); \
     if (decs.which.buffer.a == (xbuffer)) { decs.which.buffer.a_needs_to_be_destroyed = false; } else { decs.which.buffer.b_needs_to_be_destroyed = false; }
@@ -371,7 +376,7 @@ ensure_csd_resources(_GLFWwindow *window) {
     const bool size_changed = (
         decs.for_window_state.width != window->wl.width ||
         decs.for_window_state.height != window->wl.height ||
-        decs.for_window_state.scale != _glfwWaylandIntegerWindowScale(window) ||
+        decs.for_window_state.fscale != _glfwWaylandWindowScale(window) ||
         !decs.mapping.data
     );
     const bool needs_update = focus_changed || size_changed || !decs.left.surface || decs.buffer_destroyed;
@@ -384,22 +389,22 @@ ensure_csd_resources(_GLFWwindow *window) {
         decs.buffer_destroyed = false;
     }
 
-    int32_t x, y, scale = _glfwWaylandIntegerWindowScale(window);
+    int32_t x, y;
     x = 0; y = -decs.metrics.top;
     if (!decs.top.surface) create_csd_surfaces(window, &decs.top);
-    position_csd_surface(&decs.top, x, y, scale);
+    position_csd_surface(&decs.top, x, y);
 
     x = -decs.metrics.width; y = -decs.metrics.top;
     if (!decs.left.surface) create_csd_surfaces(window, &decs.left);
-    position_csd_surface(&decs.left, x, y, scale);
+    position_csd_surface(&decs.left, x, y);
 
     x = -decs.metrics.width; y = window->wl.height;
     if (!decs.bottom.surface) create_csd_surfaces(window, &decs.bottom);
-    position_csd_surface(&decs.bottom, x, y, scale);
+    position_csd_surface(&decs.bottom, x, y);
 
     x = window->wl.width; y = -decs.metrics.top;
     if (!decs.right.surface) create_csd_surfaces(window, &decs.right);
-    position_csd_surface(&decs.right, x, y, scale);
+    position_csd_surface(&decs.right, x, y);
 
     if (focus_changed) update_title_bar(window);
     damage_csd(top, decs.top.buffer.front);
@@ -409,7 +414,7 @@ ensure_csd_resources(_GLFWwindow *window) {
 
     decs.for_window_state.width = window->wl.width;
     decs.for_window_state.height = window->wl.height;
-    decs.for_window_state.scale = _glfwWaylandIntegerWindowScale(window);
+    decs.for_window_state.fscale = _glfwWaylandWindowScale(window);
     decs.for_window_state.focused = is_focused;
     return true;
 }
