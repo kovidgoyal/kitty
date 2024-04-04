@@ -495,7 +495,7 @@ def init_env(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
             f' {werror} {optimize} {sanitize_flag} -fwrapv {stack_protector} {missing_braces}'
-            f' -pipe -fvisibility=hidden {fortify_source} -fno-plt'
+            f' -pipe -fvisibility=hidden -fno-plt'
         )
     )
     cflags = shlex.split(cflags_) + shlex.split(
@@ -509,6 +509,12 @@ def init_env(
     ldflags.append('-shared')
     cppflags += env_cppflags
     cflags += env_cflags
+    if fortify_source:
+        for x in cflags:
+            if '_FORTIFY_SOURCE' in x:
+                break
+        else:
+            cflags.append(fortify_source)
     ldflags += env_ldflags
     if not debug and not sanitize and not is_openbsd and link_time_optimization:
         # See https://github.com/google/sanitizers/issues/647
