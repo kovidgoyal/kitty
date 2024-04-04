@@ -960,7 +960,7 @@ get_visual_bell_intensity(Screen *screen) {
 }
 
 void
-draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
+draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
     float x_ratio = 1., y_ratio = 1.;
     if (os_window->live_resize.in_progress) {
         x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
@@ -978,7 +978,11 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);
 
-    float current_inactive_text_alpha = (!can_be_focused || screen->cursor_render_info.is_focused) && is_active_window ? 1.0f : (float)OPT(inactive_text_alpha);
+    // We draw with inactive text alpha if:
+    // - We're not drawing the tab bar
+    // - There's only a single window and the os window is not focused
+    // - There are multiple windows and the current window is not active
+    float current_inactive_text_alpha = is_tab_bar || (!is_single_window && is_active_window) || (is_single_window && screen->cursor_render_info.is_focused) ? 1.0f : (float)OPT(inactive_text_alpha);
     set_cell_uniforms(current_inactive_text_alpha, screen->reload_all_gpu_data);
     screen->reload_all_gpu_data = false;
     bool has_underlying_image = has_bgimage(os_window);
