@@ -2691,3 +2691,14 @@ GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(GLFWLayerShellConfig c) {
     if (layer_shell_config_for_next_window.output_name && !layer_shell_config_for_next_window.output_name[0]) layer_shell_config_for_next_window.output_name = NULL;
     if (layer_shell_config_for_next_window.output_name) layer_shell_config_for_next_window.output_name = strdup(layer_shell_config_for_next_window.output_name);
 }
+
+void
+_glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) {
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window) {
+        change_csd_title(window);
+        commit_window_surface_if_safe(window);
+
+        window = window->next;
+    }
+}

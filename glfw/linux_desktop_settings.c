@@ -20,10 +20,10 @@
 
 static char theme_name[128] = {0};
 static int theme_size = -1;
-static uint32_t appearance = 0;
+static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
 static bool cursor_theme_changed = false;
 
-int
+GLFWColorScheme
 glfw_current_system_color_theme(void) {
     return appearance;
 }
@@ -39,8 +39,10 @@ static void
 process_fdo_setting(const char *key, DBusMessageIter *value) {
     if (strcmp(key, FDO_APPEARANCE_KEY) == 0) {
         if (dbus_message_iter_get_arg_type(value) == DBUS_TYPE_UINT32) {
-            dbus_message_iter_get_basic(value, &appearance);
-            if (appearance > 2) appearance = 0;
+            uint32_t val;
+            dbus_message_iter_get_basic(value, &val);
+            if (val > 2) val = 0;
+            appearance = val;
         }
     }
 }
@@ -159,9 +161,7 @@ on_color_scheme_change(DBusMessage *message) {
                 if (val > 2) val = 0;
                 if (val != appearance) {
                     appearance = val;
-                    if (_glfw.callbacks.system_color_theme_change) {
-                        _glfw.callbacks.system_color_theme_change(appearance);
-                    }
+                    _glfwInputColorScheme(appearance);
                 }
             }
             break;

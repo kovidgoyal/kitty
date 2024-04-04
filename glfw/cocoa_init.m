@@ -1141,3 +1141,5 @@ void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval,
         }
     }
 }
+
+void _glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) { }

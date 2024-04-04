@@ -614,9 +614,11 @@ Cursor _glfwCreateCursorX11(const GLFWimage* image, int xhot, int yhot)
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-GLFWAPI int glfwGetCurrentSystemColorTheme(void) {
-    return 0;
+GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(void) {
+    return GLFW_COLOR_SCHEME_NO_PREFERENCE;
 }
+
+void _glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) { }
 
 int _glfwPlatformInit(void)
 {

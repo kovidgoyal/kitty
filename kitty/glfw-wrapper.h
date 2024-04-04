@@ -278,6 +278,12 @@ typedef enum GLFWMouseButton {
 } GLFWMouseButton;
 /*! @} */
 
+typedef enum GLFWColorScheme {
+    GLFW_COLOR_SCHEME_NO_PREFERENCE = 0,
+    GLFW_COLOR_SCHEME_DARK = 1,
+    GLFW_COLOR_SCHEME_LIGHT = 2
+} GLFWColorScheme;
+
 /*! @defgroup joysticks Joysticks
  *  @brief Joystick IDs.
  *
@@ -1164,7 +1170,7 @@ typedef void (* GLFWapplicationclosefun)(int);
  *
  *  @ingroup window
  */
-typedef void (* GLFWsystemcolorthemechangefun)(int);
+typedef void (* GLFWsystemcolorthemechangefun)(GLFWColorScheme);
 
 
 /*! @brief The function pointer type for window content refresh callbacks.
@@ -1997,7 +2003,7 @@ typedef GLFWsystemcolorthemechangefun (*glfwSetSystemColorThemeChangeCallback_fu
 GFW_EXTERN glfwSetSystemColorThemeChangeCallback_func glfwSetSystemColorThemeChangeCallback_impl;
 #define glfwSetSystemColorThemeChangeCallback glfwSetSystemColorThemeChangeCallback_impl
 
-typedef int (*glfwGetCurrentSystemColorTheme_func)(void);
+typedef GLFWColorScheme (*glfwGetCurrentSystemColorTheme_func)(void);
 GFW_EXTERN glfwGetCurrentSystemColorTheme_func glfwGetCurrentSystemColorTheme_impl;
 #define glfwGetCurrentSystemColorTheme glfwGetCurrentSystemColorTheme_impl
 

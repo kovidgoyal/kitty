@@ -3275,8 +3275,8 @@ agr('os', 'OS specific tweaks')
 opt('wayland_titlebar_color', 'system', option_type='titlebar_color', ctype='uint', long_text='''
 The color of the kitty window's titlebar on Wayland systems with client
 side window decorations such as GNOME. A value of :code:`system` means to use
-the default system color, a value of :code:`background` means to use the
-background color of the currently active window and finally you can use an
+the default system colors, a value of :code:`background` means to use the
+background color of the currently active kitty window and finally you can use an
 arbitrary color, such as :code:`#12af59` or :code:`red`.
 '''
     )

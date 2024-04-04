@@ -23,6 +23,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Literal,
     Optional,
     Sequence,
     Set,
@@ -2934,7 +2935,7 @@ class Boss:
     def sanitize_url_for_dispay_to_user(self, url: str) -> str:
         return sanitize_url_for_dispay_to_user(url)
 
-    def on_system_color_scheme_change(self, appearance: int) -> None:
+    def on_system_color_scheme_change(self, appearance: Literal['light', 'dark', 'no_preference']) -> None:
         log_error('system color theme changed:', appearance)
 
     @ac('win', '''

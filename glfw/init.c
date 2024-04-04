@@ -34,7 +34,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <assert.h>
 
 
 // The global variables below comprise all mutable global data in GLFW
@@ -382,7 +381,7 @@ GLFWAPI GLFWapplicationclosefun glfwSetApplicationCloseCallback(GLFWapplicationc
     return cbfun;
 }
 
-GLFWAPI GLFWapplicationclosefun glfwSetSystemColorThemeChangeCallback(GLFWsystemcolorthemechangefun cbfun)
+GLFWAPI GLFWsystemcolorthemechangefun glfwSetSystemColorThemeChangeCallback(GLFWsystemcolorthemechangefun cbfun)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     _GLFW_SWAP_POINTERS(_glfw.callbacks.system_color_theme_change, cbfun);

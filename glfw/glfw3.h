@@ -540,6 +540,12 @@ typedef enum GLFWMouseButton {
 } GLFWMouseButton;
 /*! @} */
 
+typedef enum GLFWColorScheme {
+    GLFW_COLOR_SCHEME_NO_PREFERENCE = 0,
+    GLFW_COLOR_SCHEME_DARK = 1,
+    GLFW_COLOR_SCHEME_LIGHT = 2
+} GLFWColorScheme;
+
 /*! @defgroup joysticks Joysticks
  *  @brief Joystick IDs.
  *
@@ -1426,7 +1432,7 @@ typedef void (* GLFWapplicationclosefun)(int);
  *
  *  @ingroup window
  */
-typedef void (* GLFWsystemcolorthemechangefun)(int);
+typedef void (* GLFWsystemcolorthemechangefun)(GLFWColorScheme);
 
 
 /*! @brief The function pointer type for window content refresh callbacks.
@@ -3969,7 +3975,7 @@ GLFWAPI GLFWwindowsizefun glfwSetWindowSizeCallback(GLFWwindow* window, GLFWwind
 GLFWAPI GLFWwindowclosefun glfwSetWindowCloseCallback(GLFWwindow* window, GLFWwindowclosefun callback);
 GLFWAPI GLFWapplicationclosefun glfwSetApplicationCloseCallback(GLFWapplicationclosefun callback);
 GLFWAPI GLFWsystemcolorthemechangefun glfwSetSystemColorThemeChangeCallback(GLFWsystemcolorthemechangefun callback);
-GLFWAPI int glfwGetCurrentSystemColorTheme(void);
+GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(void);
 
 /*! @brief Sets the refresh callback for the specified window.
  *

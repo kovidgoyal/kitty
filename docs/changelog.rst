@@ -59,9 +59,9 @@ Detailed list of changes
 
 - Wayland: Support fractional scales so that there is no wasted drawing at larger scale followed by resizing in the compositor
 
-- Wayland: Support preferred integer scales
-
 - Wayland KDE: Support :opt:`background_blur`
+
+- Wayland GNOME: The window titlebar color now follows the system light/dark color scheme preference, see :opt:`wayland_titlebar_color`
 
 - Wayland KDE: Fix mouse cursor hiding not working in Plasma 6 (:iss:`7265`)
 
@@ -82,6 +82,8 @@ Detailed list of changes
 - fish shell integration: Fix clicking at the prompt causing autosuggestions to be accepted, needs fish >= 3.8.0 (:iss:`7168`)
 
 - Linux: Fix for a regression in 0.32.0 that caused some CJK fonts to not render glyphs (:iss:`7263`)
+
+- Wayland: Support preferred integer scales
 
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

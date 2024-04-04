@@ -22,8 +22,6 @@
 #define B(x) ((x) & 0xff)
 #define SWAP(x, y) do { __typeof__(x) SWAP = x; x = y; y = SWAP; } while (0)
 
-static const uint32_t passive_bg_color = 0xffeeeeee;
-static const uint32_t active_bg_color = 0xffdddad6;
 typedef float kernel_type;
 
 static void
@@ -166,18 +164,19 @@ create_shadow_tile(_GLFWwindow *window) {
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
-    uint32_t bg_color = is_focused ? active_bg_color : passive_bg_color;
-    uint32_t fg_color = is_focused ? 0xff444444 : 0xff888888;
-    if (decs.use_custom_titlebar_color) {
+    uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
+    uint32_t dark_fg = is_focused ? 0xffffffff : 0xffcccccc, dark_bg = is_focused ? 0xff303030 : 0xff242424;
+    uint32_t bg_color = light_bg, fg_color = light_fg;
+    GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme();
+    if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
         bg_color = 0xff000000 | (decs.titlebar_color & 0xffffff);
         double red = ((bg_color >> 16) & 0xFF) / 255.0;
         double green = ((bg_color >> 8) & 0xFF) / 255.0;
         double blue = (bg_color & 0xFF) / 255.0;
         double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-        if (luma < 0.5) {
-            fg_color = is_focused ? 0xffeeeeee : 0xff888888;
-        }
-    }
+        if (luma < 0.5) fg_color = dark_fg;
+        if (!decs.use_custom_titlebar_color) bg_color = luma < 0.5 ? dark_bg : light_bg;
+    } else if (appearance == GLFW_COLOR_SCHEME_DARK) { bg_color = dark_bg; fg_color = dark_fg; }
     uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
 
     // render shadow part
@@ -456,9 +455,7 @@ set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
 void
 set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system_color) {
     bool use_custom_color = !use_system_color;
-    if (use_custom_color != decs.use_custom_titlebar_color || color != decs.titlebar_color) {
-        decs.use_custom_titlebar_color = use_custom_color;
-        decs.titlebar_color = color;
-    }
+    decs.use_custom_titlebar_color = use_custom_color;
+    decs.titlebar_color = color;
     change_csd_title(window);
 }
