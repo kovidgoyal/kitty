@@ -752,6 +752,7 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
     commit_window_surface_if_safe(window);
     window->wl.pending_state = 0;
 }
+
 typedef union pixel {
     struct {
         uint8_t blue, green, red, alpha;
@@ -761,6 +762,17 @@ typedef union pixel {
 
 static struct wl_buffer*
 create_single_color_buffer(int width, int height, pixel color) {
+    // convert to pre-multiplied alpha as that's what wayland wants
+    if (width == 1 && height == 1 && _glfw.wl.wp_single_pixel_buffer_manager_v1) {
+#define C(x) (uint32_t)(((double)((uint64_t)color.alpha * color.x * UINT32_MAX)) / (255 * 255))
+        struct wl_buffer *ans = wp_single_pixel_buffer_manager_v1_create_u32_rgba_buffer(
+            _glfw.wl.wp_single_pixel_buffer_manager_v1, C(red), C(green), C(blue), color.alpha * UINT32_MAX);
+#undef C
+        if (!ans) _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create single pixel buffer");
+        return ans;
+    }
+    float alpha = color.alpha / 255.f;
+    color.red = (uint8_t)(alpha * color.red); color.green = (uint8_t)(alpha * color.green); color.blue = (uint8_t)(alpha * color.blue);
     int shm_format = color.alpha == 0xff ? WL_SHM_FORMAT_XRGB8888 : WL_SHM_FORMAT_ARGB8888;
     const size_t size = 4 * width * height;
     int fd = createAnonymousFile(size);
@@ -769,8 +781,6 @@ create_single_color_buffer(int width, int height, pixel color) {
         return NULL;
     }
     uint32_t *shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    // convert to pre-multiplied alpha
-    float alpha = color.alpha / 255.f; color.red = (uint8_t)(alpha * color.red); color.green = (uint8_t)(alpha * color.green); color.blue = (uint8_t)(alpha * color.blue);
     if (color.value) for (size_t i = 0; i < size/4; i++) shm_data[i] = color.value;
     else memset(shm_data, 0, size);
     if (!shm_data) {
@@ -808,26 +818,17 @@ attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
     _glfwPlatformGetFramebufferSize(window, &width, &height);
 
     if (window->wl.wp_viewport) {
-        if (_glfw.wl.wp_single_pixel_buffer_manager_v1) {
-            window->wl.temp_buffer_used_during_window_creation = wp_single_pixel_buffer_manager_v1_create_u32_rgba_buffer(_glfw.wl.wp_single_pixel_buffer_manager_v1, color.red, color.green, color.blue, color.alpha);
-            if (!window->wl.temp_buffer_used_during_window_creation) {
-                _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create single pixel buffer");
-                return false;
-            }
-        } else {
-            window->wl.temp_buffer_used_during_window_creation = create_single_color_buffer(1, 1, color);
-            if (!window->wl.temp_buffer_used_during_window_creation) return false;
-        }
+        window->wl.temp_buffer_used_during_window_creation = create_single_color_buffer(1, 1, color);
         wl_surface_set_buffer_scale(window->wl.surface, 1);
         wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
     } else {
-        window->wl.temp_buffer_used_during_window_creation = create_single_color_buffer(1, 1, color);
-        if (!window->wl.temp_buffer_used_during_window_creation) return false;
+        window->wl.temp_buffer_used_during_window_creation = create_single_color_buffer(width, height, color);
         wl_surface_set_buffer_scale(window->wl.surface, window->wl.fractional_scale ? 1: _glfwWaylandIntegerWindowScale(window));
     }
+    if (!window->wl.temp_buffer_used_during_window_creation) return false;
     wl_surface_attach(window->wl.surface, window->wl.temp_buffer_used_during_window_creation, 0, 0);
     wl_surface_commit(window->wl.surface);
-    debug("Attached temp buffer during window creation of size: %dx%d\n", width, height);
+    debug("Attached temp buffer during window creation of size: %dx%d and rgba(%u, %u, %u, %u)\n", width, height, color.red, color.green, color.blue, color.alpha);
     return true;
 }
 
