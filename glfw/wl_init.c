@@ -55,7 +55,7 @@
 #endif
 
 
-#define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
+#define debug(...) if (_glfw.hints.init.debugRendering) { fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic())); fprintf(stderr, __VA_ARGS__); }
 
 static int min(int n1, int n2)
 {
@@ -782,39 +782,6 @@ static const struct wl_registry_listener registryListener = {
 };
 
 
-
-static void registry_handle_global(void* data,
-                                 struct wl_registry* registry UNUSED,
-                                 uint32_t name UNUSED,
-                                 const char* interface,
-                                 uint32_t version UNUSED) {
-    if (strcmp(interface, "zxdg_decoration_manager_v1") == 0) {
-        bool *has_ssd = (bool*)data;
-        if (has_ssd) *has_ssd = true;
-    }
-}
-
-static void registry_handle_global_remove(void *data UNUSED,
-                                       struct wl_registry *registry UNUSED,
-                                       uint32_t name UNUSED) {}
-GLFWAPI const char*
-glfwWaylandCheckForServerSideDecorations(void) {
-    struct wl_display *display = wl_display_connect(NULL);
-    if (!display) return "ERR: Failed to connect to Wayland display";
-    static const struct wl_registry_listener rl = {
-        registry_handle_global, registry_handle_global_remove
-    };
-    struct wl_registry *registry = wl_display_get_registry(display);
-    bool has_ssd = false;
-    wl_registry_add_listener(registry, &rl, &has_ssd);
-    wl_display_roundtrip(display);
-
-    wl_registry_destroy(registry);
-    wl_display_flush(display);
-    wl_display_flush(display);
-    return has_ssd ? "YES" : "NO";
-}
-
 GLFWAPI int glfwGetCurrentSystemColorTheme(void) {
     return glfw_current_system_color_theme();
 }
@@ -921,6 +888,15 @@ int _glfwPlatformInit(void)
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: Failed to find Wayland SHM");
         return false;
+    }
+    if (_glfw.hints.init.debugRendering) {
+        debug("Compositor capabilities:");
+#define C(title, name) fprintf(stderr, " %s=%d", #title, _glfw.wl.name != NULL);
+        C(viewporter, wp_viewporter); C(fractional_scale, wp_fractional_scale_manager_v1); C(blur, org_kde_kwin_blur_manager);
+        C(SSD, decorationManager); C(cursor_shape, wp_cursor_shape_manager_v1);
+        fprintf(stderr, " preferred_buffer_scale: %d", _glfw.wl.has_preferred_buffer_scale);
+#undef C
+        fprintf(stderr, "\n");
     }
 
     return true;
