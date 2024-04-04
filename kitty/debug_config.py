@@ -17,7 +17,7 @@ from kittens.tui.operations import colored, styled
 from .child import cmdline_of_pid
 from .cli import version
 from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
-from .fast_data_types import Color, SingleKey, num_users, wayland_compositor_pid
+from .fast_data_types import Color, SingleKey, num_users, wayland_compositor_data
 from .options.types import Options as KittyOpts
 from .options.types import defaults
 from .options.utils import KeyboardMode, KeyDefinition
@@ -199,7 +199,7 @@ def compositor_name() -> str:
     if is_wayland():
         ans = 'Wayland'
         with suppress(Exception):
-            pid = wayland_compositor_pid()
+            pid, missing_capabilities = wayland_compositor_data()
             if pid > -1:
                 cmdline = cmdline_of_pid(pid)
                 exe = cmdline[0]
@@ -214,6 +214,8 @@ def compositor_name() -> str:
                             exe = raw.splitlines()[0]
                     exe = subprocess.check_output([exe, '--version']).decode().strip().splitlines()[0]
                 ans += f' ({exe})'
+            if missing_capabilities:
+                ans += f' missing: {missing_capabilities}'
     return ans
 
 

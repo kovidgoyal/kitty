@@ -470,6 +470,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwWaylandActivateWindow_impl) = dlsym(handle, "glfwWaylandActivateWindow");
     if (glfwWaylandActivateWindow_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwWaylandMissingCapabilities_impl) = dlsym(handle, "glfwWaylandMissingCapabilities");
+    if (glfwWaylandMissingCapabilities_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwWaylandRunWithActivationToken_impl) = dlsym(handle, "glfwWaylandRunWithActivationToken");
     if (glfwWaylandRunWithActivationToken_impl == NULL) dlerror(); // clear error indicator
 

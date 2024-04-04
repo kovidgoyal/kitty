@@ -311,6 +311,7 @@ def generate_wrappers(glfw_header: str) -> None:
     int glfwGetNativeKeyForName(const char* key_name, int case_sensitive)
     void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
     void glfwWaylandActivateWindow(GLFWwindow *handle, const char *activation_token)
+    const char* glfwWaylandMissingCapabilities(void)
     void glfwWaylandRunWithActivationToken(GLFWwindow *handle, GLFWactivationcallback cb, void *cb_data)
     bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, bool use_system_color)
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)

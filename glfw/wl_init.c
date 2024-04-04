@@ -43,6 +43,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <wayland-client.h>
+#include <stdio.h>
 // Needed for the BTN_* defines
 #ifdef __has_include
 #if __has_include(<linux/input.h>)
@@ -803,6 +804,22 @@ GLFWAPI pid_t glfwWaylandCompositorPID(void) {
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+static const char*
+get_compositor_missing_capabilities(void) {
+#define C(title, x) if (!_glfw.wl.x) p += snprintf(buf, sizeof(buf) - (p - buf), "%s", #title);
+    static char buf[256];
+    char *p = buf;
+    *p = 0;
+    C(viewporter, wp_viewporter); C(fractional_scale, wp_fractional_scale_manager_v1);
+    C(blur, org_kde_kwin_blur_manager); C(server_side_decorations, decorationManager);
+    C(cursor_shape, wp_cursor_shape_manager_v1); C(layer_shell, zwlr_layer_shell_v1);
+    C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
+#undef C
+    return buf;
+}
+
+GLFWAPI const char* glfwWaylandMissingCapabilities(void) { return get_compositor_missing_capabilities(); }
+
 int _glfwPlatformInit(void)
 {
     int i;
@@ -890,13 +907,8 @@ int _glfwPlatformInit(void)
         return false;
     }
     if (_glfw.hints.init.debugRendering) {
-        debug("Compositor capabilities:");
-#define C(title, name) fprintf(stderr, " %s=%d", #title, _glfw.wl.name != NULL);
-        C(viewporter, wp_viewporter); C(fractional_scale, wp_fractional_scale_manager_v1); C(blur, org_kde_kwin_blur_manager);
-        C(SSD, decorationManager); C(cursor_shape, wp_cursor_shape_manager_v1);
-        fprintf(stderr, " preferred_buffer_scale: %d", _glfw.wl.has_preferred_buffer_scale);
-#undef C
-        fprintf(stderr, "\n");
+        const char *mc = get_compositor_missing_capabilities();
+        if (mc && mc[0]) debug("Compositor missing capabilities: %s\n", mc);
     }
 
     return true;

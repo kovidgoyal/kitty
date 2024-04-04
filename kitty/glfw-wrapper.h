@@ -2297,6 +2297,10 @@ typedef void (*glfwWaylandActivateWindow_func)(GLFWwindow*, const char*);
 GFW_EXTERN glfwWaylandActivateWindow_func glfwWaylandActivateWindow_impl;
 #define glfwWaylandActivateWindow glfwWaylandActivateWindow_impl
 
+typedef const char* (*glfwWaylandMissingCapabilities_func)(void);
+GFW_EXTERN glfwWaylandMissingCapabilities_func glfwWaylandMissingCapabilities_impl;
+#define glfwWaylandMissingCapabilities glfwWaylandMissingCapabilities_impl
+
 typedef void (*glfwWaylandRunWithActivationToken_func)(GLFWwindow*, GLFWactivationcallback, void*);
 GFW_EXTERN glfwWaylandRunWithActivationToken_func glfwWaylandRunWithActivationToken_impl;
 #define glfwWaylandRunWithActivationToken glfwWaylandRunWithActivationToken_impl
