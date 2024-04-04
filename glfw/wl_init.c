@@ -724,6 +724,9 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfwSetupWaylandPrimarySelectionDevice();
         }
     }
+    else if (is(wp_single_pixel_buffer_manager_v1)) {
+        _glfw.wl.wp_single_pixel_buffer_manager_v1 = wl_registry_bind(registry, name, &wp_single_pixel_buffer_manager_v1_interface, 1);
+    }
     else if (is(xdg_activation_v1)) {
         _glfw.wl.xdg_activation_v1 = wl_registry_bind(registry, name, &xdg_activation_v1_interface, 1);
     }
@@ -992,6 +995,8 @@ void _glfwPlatformTerminate(void)
         zwp_primary_selection_device_manager_v1_destroy(_glfw.wl.primarySelectionDeviceManager);
     if (_glfw.wl.xdg_activation_v1)
         xdg_activation_v1_destroy(_glfw.wl.xdg_activation_v1);
+    if (_glfw.wl.wp_single_pixel_buffer_manager_v1)
+        wp_single_pixel_buffer_manager_v1_destroy(_glfw.wl.wp_single_pixel_buffer_manager_v1);
     if (_glfw.wl.wp_cursor_shape_manager_v1)
         wp_cursor_shape_manager_v1_destroy(_glfw.wl.wp_cursor_shape_manager_v1);
     if (_glfw.wl.wp_viewporter)
