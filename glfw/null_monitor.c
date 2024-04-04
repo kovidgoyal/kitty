@@ -33,7 +33,7 @@
 #include <string.h>
 #include <math.h>
 
-// The the sole (fake) video mode of our (sole) fake monitor
+// The sole (fake) video mode of our (sole) fake monitor
 //
 static GLFWvidmode getVideoMode(void)
 {
