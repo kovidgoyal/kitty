@@ -627,6 +627,7 @@ bool _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode *mode)
     }
     *mode = vidmodeFromCGDisplayMode(native, monitor->ns.fallbackRefreshRate);
     CGDisplayModeRelease(native);
+    return true;
 }
 
 bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
