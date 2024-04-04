@@ -984,11 +984,8 @@ kitten_alias = action_alias
 def symbol_map_parser(val: str, min_size: int = 2) -> Iterable[Tuple[Tuple[int, int], str]]:
     parts = val.split()
 
-    def abort() -> None:
-        log_error(f'Symbol map: {val} is invalid, ignoring')
-
     if len(parts) < min_size:
-        return abort()
+        raise ValueError('must have codepoints AND font name')
     family = ' '.join(parts[1:])
 
     def to_chr(x: str) -> int:
@@ -999,12 +996,9 @@ def symbol_map_parser(val: str, min_size: int = 2) -> Iterable[Tuple[Tuple[int, 
     for x in parts[0].split(','):
         a_, b_ = x.replace('–', '-').partition('-')[::2]
         b_ = b_ or a_
-        try:
-            a, b = map(to_chr, (a_, b_))
-        except Exception:
-            return abort()
+        a, b = map(to_chr, (a_, b_))
         if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
-            return abort()
+            raise ValueError(f'Invalid range: {a:x} - {b:x}')
         yield (a, b), family
 
 
