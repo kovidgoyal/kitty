@@ -141,9 +141,9 @@ void
 initialize_csd_metrics(_GLFWwindow *window) {
     decs.metrics.width = 12;
     decs.metrics.top = 36;
-    decs.metrics.visible_titlebar_height = window->wl.decorations.metrics.top - window->wl.decorations.metrics.width;
-    decs.metrics.horizontal = 2 * window->wl.decorations.metrics.width;
-    decs.metrics.vertical = window->wl.decorations.metrics.width + window->wl.decorations.metrics.top;
+    decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
+    decs.metrics.horizontal = 2 * decs.metrics.width;
+    decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
 }
 
 static size_t
