@@ -13,7 +13,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
 #define decs window->wl.decorations
 
 #define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))

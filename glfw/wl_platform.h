@@ -402,3 +402,4 @@ int _glfwWaylandIntegerWindowScale(_GLFWwindow*);
 void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape, struct wl_cursor_theme*);
 void destroy_data_offer(_GLFWWaylandDataOffer*);
+#define debug(...) if (_glfw.hints.init.debugRendering) { fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic())); fprintf(stderr, __VA_ARGS__); }

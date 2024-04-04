@@ -41,7 +41,6 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#define debug(...) if (_glfw.hints.init.debugRendering) { fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic())); fprintf(stderr, __VA_ARGS__); }
 
 static GLFWLayerShellConfig layer_shell_config_for_next_window = {0};
 

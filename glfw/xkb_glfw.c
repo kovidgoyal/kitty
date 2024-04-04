@@ -33,6 +33,7 @@
 #include <X11/XKBlib.h>
 #endif
 
+#undef debug
 #define debug(...) if (_glfw.hints.init.debugKeyboard) fprintf(stderr, __VA_ARGS__);
 
 #ifdef XKB_HAS_NO_UTF32
