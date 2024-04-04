@@ -116,21 +116,6 @@ min_size_for_os_window(OSWindow *window, int *min_width, int *min_height) {
 }
 
 
-void
-adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height) {
-    *adjusted_width = width; *adjusted_height = height;
-    if (global_state.is_wayland) {
-        int left = -1, top, right, bottom;
-        glfwGetWindowFrameSize(w->handle, &left, &top, &right, &bottom);
-        if (left > -1) {
-            *adjusted_width -= left + right;
-            *adjusted_height -= top + bottom;
-            *adjusted_width = MAX(0, *adjusted_width);
-            *adjusted_height = MAX(0, *adjusted_height);
-        }
-    }
-}
-
 static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 
 void
@@ -171,7 +156,6 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     window->viewport_height = MAX(window->viewport_height, min_height);
     window->window_width = MAX(w, min_width);
     window->window_height = MAX(h, min_height);
-    adjust_window_size_for_csd(window, window->window_width, window->window_height, &window->content_area_width, &window->content_area_height);
     if (notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
     }
@@ -853,14 +837,13 @@ get_os_window_content_scale(OSWindow *os_window, double *xdpi, double *ydpi, flo
 
 static bool
 do_toggle_fullscreen(OSWindow *w, unsigned int flags, bool restore_sizes) {
-    int width, height, x, y, content_area_width, content_area_height;
+    int width, height, x, y;
     glfwGetWindowSize(w->handle, &width, &height);
     glfwGetWindowPos(w->handle, &x, &y);
-    adjust_window_size_for_csd(w, width, height, &content_area_width, &content_area_height);
     bool was_maximized = glfwGetWindowAttrib(w->handle, GLFW_MAXIMIZED);
     if (glfwToggleFullscreen(w->handle, flags)) {
         w->before_fullscreen.is_set = true;
-        w->before_fullscreen.w = content_area_width; w->before_fullscreen.h = content_area_height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
+        w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
         w->before_fullscreen.was_maximized = was_maximized;
         return true;
     }

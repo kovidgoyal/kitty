@@ -216,7 +216,7 @@ typedef struct {
         int x, y, w, h;
         bool is_set, was_maximized;
     } before_fullscreen;
-    int viewport_width, viewport_height, window_width, window_height, content_area_width, content_area_height;
+    int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
     BackgroundImage *bgimage;
