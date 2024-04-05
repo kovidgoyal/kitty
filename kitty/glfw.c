@@ -671,7 +671,7 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     unsigned px_sz = (unsigned)(global_state.callback_os_window->fonts_data->font_sz_in_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
     static char title[2048];
-    snprintf(title, sizeof(title), "🐱 %s", text);
+    snprintf(title, sizeof(title), " ❭ %s", text);
     bool ok = render_single_line(csd_title_render_ctx, title, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin);
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
