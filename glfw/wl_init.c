@@ -430,13 +430,15 @@ static void keyboardHandleKeymap(void* data UNUSED,
 
     if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1)
     {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Unknown keymap format: %u", format);
         close(fd);
         return;
     }
 
-    mapStr = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    mapStr = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (mapStr == MAP_FAILED) {
         close(fd);
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Mapping of keymap file descriptor failed: %u", format);
         return;
     }
     glfw_xkb_compile_keymap(&_glfw.wl.xkb, mapStr);
