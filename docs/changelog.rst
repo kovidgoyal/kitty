@@ -87,6 +87,8 @@ Detailed list of changes
 
 - Wayland: A new option :opt:`wayland_enable_ime` to turn off Input Method Extensions which add latency and create bugs
 
+- Wayland: Fix :opt:`hide_window_decorations` not working on non GNOME desktops
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
