@@ -248,7 +248,7 @@ add_hole(DiskCache *self, off_t pos, off_t size) {
             }
         }
     }
-    ensure_space_for(&self->holes, items, Hole, 1, capacity, 64, false);
+    ensure_space_for(&self->holes, items, Hole, self->holes.count + 16, capacity, 64, false);
     h = &self->holes.items[self->holes.count++];
     h->pos = pos; h->size = size;
     self->holes.largest_hole_size = MAX(self->holes.largest_hole_size, h->size);
