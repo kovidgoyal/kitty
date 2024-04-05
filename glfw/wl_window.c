@@ -834,6 +834,7 @@ attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
 static void
 loop_till_window_fully_created(_GLFWwindow *window) {
     if (!window->wl.window_fully_created) {
+        debug("Waiting for compositor to send fractional scale for window\n");
         monotonic_t start = monotonic();
         while (!window->wl.window_fully_created && monotonic() - start < ms_to_monotonic_t(300)) {
             if (wl_display_roundtrip(_glfw.wl.display) == -1) {
