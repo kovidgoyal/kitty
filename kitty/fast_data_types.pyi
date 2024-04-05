@@ -587,7 +587,10 @@ def glfw_terminate() -> None:
     pass
 
 
-def glfw_init(path: str, edge_spacing_func: Callable[[EdgeLiteral], float], debug_keyboard: bool = False, debug_rendering: bool = False) -> bool:
+def glfw_init(
+    path: str, edge_spacing_func: Callable[[EdgeLiteral], float], debug_keyboard: bool = False, debug_rendering: bool = False,
+    wayland_enable_ime: bool = True
+) -> bool:
     pass
 
 

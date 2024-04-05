@@ -671,7 +671,6 @@ static void registryHandleGlobal(void* data UNUSED,
             if (_glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
                 _glfwSetupWaylandPrimarySelectionDevice();
             }
-            _glfwWaylandInitTextInput();
         }
     }
     else if (is(xdg_wm_base))
@@ -703,7 +702,6 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(zwp_text_input_manager_v3))
     {
         _glfwWaylandBindTextInput(registry, name);
-        _glfwWaylandInitTextInput();
     }
     else if (is(wl_data_device_manager))
     {
@@ -873,6 +871,7 @@ int _glfwPlatformInit(void)
 
     // Sync so we got all registry objects
     wl_display_roundtrip(_glfw.wl.display);
+    _glfwWaylandInitTextInput();
 
     // Sync so we got all initial output events
     wl_display_roundtrip(_glfw.wl.display);

@@ -906,6 +906,7 @@ typedef enum {
  *  macOS specific [init hint](@ref GLFW_COCOA_MENUBAR_hint).
  */
 #define GLFW_COCOA_MENUBAR          0x00051002
+#define GLFW_WAYLAND_IME            0x00051003
 /*! @} */
 
 #define GLFW_DONT_CARE              -1

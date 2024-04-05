@@ -286,6 +286,9 @@ struct _GLFWinitconfig
         bool      menubar;
         bool      chdir;
     } ns;
+    struct {
+        bool ime;
+    } wl;
 };
 
 // Window configuration

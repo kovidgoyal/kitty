@@ -450,6 +450,7 @@ option_names = (  # {{{
  'visual_bell_duration',
  'visual_window_select_characters',
  'watcher',
+ 'wayland_enable_ime',
  'wayland_titlebar_color',
  'wheel_scroll_min_lines',
  'wheel_scroll_multiplier',
@@ -609,6 +610,7 @@ class Options:
     visual_bell_color: typing.Optional[kitty.fast_data_types.Color] = None
     visual_bell_duration: float = 0
     visual_window_select_characters: str = '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    wayland_enable_ime: bool = True
     wayland_titlebar_color: int = 0
     wheel_scroll_min_lines: int = 1
     wheel_scroll_multiplier: float = 5.0

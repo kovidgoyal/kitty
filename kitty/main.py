@@ -134,14 +134,14 @@ def load_all_shaders(semi_transparent: bool = False) -> None:
         raise SystemExit(err)
 
 
-def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rendering: bool = False) -> None:
-    if not glfw_init(glfw_path(glfw_module), edge_spacing, debug_keyboard, debug_rendering):
+def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rendering: bool = False, wayland_enable_ime: bool = True) -> None:
+    if not glfw_init(glfw_path(glfw_module), edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime):
         raise SystemExit('GLFW initialization failed')
 
 
 def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool = False) -> str:
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
-    init_glfw_module(glfw_module, debug_keyboard, debug_rendering)
+    init_glfw_module(glfw_module, debug_keyboard, debug_rendering, wayland_enable_ime=opts.wayland_enable_ime)
     return glfw_module
 
 

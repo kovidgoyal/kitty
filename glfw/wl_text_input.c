@@ -117,7 +117,7 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
 
 void
 _glfwWaylandBindTextInput(struct wl_registry* registry, uint32_t name) {
-    if (!text_input_manager) text_input_manager = wl_registry_bind(registry, name, &zwp_text_input_manager_v3_interface, 1);
+    if (!text_input_manager && _glfw.hints.init.wl.ime) text_input_manager = wl_registry_bind(registry, name, &zwp_text_input_manager_v3_interface, 1);
 }
 
 void
@@ -130,12 +130,9 @@ _glfwWaylandInitTextInput(void) {
         .delete_surrounding_text = text_input_delete_surrounding_text,
         .done = text_input_done,
     };
-    if (!text_input) {
-        if (text_input_manager && _glfw.wl.seat) {
-            text_input = zwp_text_input_manager_v3_get_text_input(
-                    text_input_manager, _glfw.wl.seat);
-            if (text_input) zwp_text_input_v3_add_listener(text_input, &text_input_listener, NULL);
-        }
+    if (_glfw.hints.init.wl.ime && !text_input && text_input_manager && _glfw.wl.seat) {
+        text_input = zwp_text_input_manager_v3_get_text_input(text_input_manager, _glfw.wl.seat);
+        if (text_input) zwp_text_input_v3_add_listener(text_input, &text_input_listener, NULL);
     }
 }
 

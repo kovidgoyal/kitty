@@ -101,6 +101,7 @@ typedef struct {
     long macos_titlebar_color;
     unsigned long wayland_titlebar_color;
     struct { struct MenuItem *entries; size_t count; } global_menu;
+    bool wayland_enable_ime;
 } Options;
 
 typedef struct WindowLogoRenderData {

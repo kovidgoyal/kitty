@@ -85,6 +85,8 @@ Detailed list of changes
 
 - Wayland: Support preferred integer scales
 
+- Wayland: A new option :opt:`wayland_enable_ime` to turn off Input Method Extensions which add latency and create bugs
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -3411,6 +3411,14 @@ based on the system state is chosen automatically. Set it to :code:`x11` or
 config is not supported.
 '''
     )
+
+opt('wayland_enable_ime', 'yes', option_type='to_bool', ctype='bool', long_text='''
+Enable Input Method Extension on Wayland. This is typically used for
+inputting text in East Asian languages. However, its implementation in
+Wayland is often buggy and introduces latency into the input loop,
+so disable this if you know you dont need it. Changing this option
+by reloading the config is not supported, it will not have any effect.
+''')
 egr()  # }}}
 
 

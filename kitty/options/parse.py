@@ -1358,6 +1358,9 @@ class Parser:
         for k, v in store_multiple(val, ans["watcher"]):
             ans["watcher"][k] = v
 
+    def wayland_enable_ime(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['wayland_enable_ime'] = to_bool(val)
+
     def wayland_titlebar_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['wayland_titlebar_color'] = titlebar_color(val)
 
