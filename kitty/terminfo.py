@@ -181,6 +181,10 @@ string_capabilities = {
     'kbs': r'\177',
     # Mouse event has occurred
     'kmous': r'\E[M',
+    # Turn on mouse reporting
+    'XM': '\E[?1006;1004;1000%?%p1%{1}%=%th%el%;',
+    # Expected format for mouse reporting escape codes
+    'xm': r'\E[<%i%p3%d;%p1%d;%p2%d;%?%p4%tM%em%;',
     # Scroll backwards (reverse index)
     'kri': r'\E[1;2A',
     # scroll forwards (index)
@@ -481,7 +485,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'XR Ms RV kxIN kxOUT Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG fe fd XF'.split() + [
+    'XR XM xm Ms RV kxIN kxOUT Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG fe fd XF'.split() + [
         f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
