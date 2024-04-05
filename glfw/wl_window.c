@@ -1050,6 +1050,9 @@ create_window_desktop_surface(_GLFWwindow* window)
         zxdg_toplevel_decoration_v1_add_listener(window->wl.xdg.decoration, &xdgDecorationListener, window);
     }
 
+    if (strlen(window->wl.appId))
+        xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
+
     if (window->wl.title)
         xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
 
@@ -1060,23 +1063,16 @@ create_window_desktop_surface(_GLFWwindow* window)
         xdg_toplevel_set_max_size(window->wl.xdg.toplevel,
                                   window->maxwidth, window->maxheight);
 
-    if (window->monitor)
-    {
+    if (window->monitor) {
         xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel,
                                     window->monitor->wl.output);
-    }
-    else if (window->wl.maximize_on_first_show)
-    {
-        window->wl.maximize_on_first_show = false;
-        xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+    } else {
+        if (window->wl.maximize_on_first_show) {
+            window->wl.maximize_on_first_show = false;
+            xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+        }
         setXdgDecorations(window);
     }
-    else
-    {
-        setXdgDecorations(window);
-    }
-    if (strlen(window->wl.appId))
-        xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
 
     wl_surface_commit(window->wl.surface);
     wl_display_roundtrip(_glfw.wl.display);
