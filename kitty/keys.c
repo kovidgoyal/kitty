@@ -152,10 +152,16 @@ on_key_input(GLFWkeyevent *ev) {
     const uint32_t key = ev->key, native_key = ev->native_key;
     const char *text = ev->text ? ev->text : "";
 
-    debug("\x1b[33mon_key_input\x1b[m: glfw key: 0x%x native_code: 0x%x action: %s %stext: '%s' state: %d ",
-            key, native_key,
-            (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
-            format_mods(mods), text, ev->ime_state);
+    if (OPT(debug_keyboard)) {
+        if (!key && !native_key && text[0]) {
+            debug("\x1b[33mon_IME_input\x1b[m: text: %s ", text);
+        } else {
+            debug("\x1b[33mon_key_input\x1b[m: glfw key: 0x%x native_code: 0x%x action: %s %stext: '%s' state: %d ",
+                    key, native_key,
+                    (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
+                    format_mods(mods), text, ev->ime_state);
+        }
+    }
     if (!w) { debug("no active window, ignoring\n"); return; }
     if (OPT(mouse_hide_wait) < 0 && !is_modifier_key(key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
