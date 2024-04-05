@@ -318,7 +318,7 @@ create_shm_buffers(_GLFWwindow* window) {
     return true;
 }
 
-void
+static void
 free_csd_surfaces(_GLFWwindow *window) {
 #define d(which) {\
     if (decs.which.subsurface) wl_subsurface_destroy(decs.which.subsurface); \
@@ -366,7 +366,7 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDEdge *s) {
     wl_surface_commit(decs.which.surface); \
     if (decs.which.buffer.a == (xbuffer)) { decs.which.buffer.a_needs_to_be_destroyed = false; } else { decs.which.buffer.b_needs_to_be_destroyed = false; }
 
-bool
+static bool
 ensure_csd_resources(_GLFWwindow *window) {
     if (!window->decorated || window->wl.decorations.serverSide) return false;
     const bool is_focused = window->id == _glfw.focusedWindowId;
@@ -415,6 +415,14 @@ ensure_csd_resources(_GLFWwindow *window) {
     decs.for_window_state.fscale = _glfwWaylandWindowScale(window);
     decs.for_window_state.focused = is_focused;
     return true;
+}
+
+void
+csd_set_visible(_GLFWwindow *window, bool visible) {
+    // When setting to visible will only take effect if window currently has
+    // CSD and will also ensure CSD is of correct size for current window size.
+    // When hiding CSD simply destroys all CSD surfaces.
+    if (visible) ensure_csd_resources(window); else free_csd_surfaces(window);
 }
 
 void

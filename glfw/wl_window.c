@@ -393,7 +393,7 @@ apply_scale_changes(_GLFWwindow *window, bool resize_framebuffer, bool update_cs
     float scale = _glfwWaylandWindowScale(window);
     if (resize_framebuffer) resizeFramebuffer(window);
     _glfwInputWindowContentScale(window, scale, scale);
-    if (update_csd) ensure_csd_resources(window);
+    if (update_csd) csd_set_visible(window, true);  // resize the csd iff the window currently has CSD
     int buffer_scale = window->wl.fractional_scale ? 1 : (int)scale;
     wl_surface_set_buffer_scale(window->wl.surface, buffer_scale);
 }
@@ -601,13 +601,11 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
     if (window->wl.xdg.toplevel)
     {
         if (on) {
-            xdg_toplevel_set_fullscreen(
-                window->wl.xdg.toplevel,
-                monitor ? monitor->wl.output : NULL);
-            if (!window->wl.decorations.serverSide) free_csd_surfaces(window);
+            xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel, monitor ? monitor->wl.output : NULL);
+            csd_set_visible(window, false);
         } else {
             xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-            ensure_csd_resources(window);
+            csd_set_visible(window, true);
         }
     }
 }
@@ -739,11 +737,7 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
         int width = window->wl.pending.width, height = window->wl.pending.height;
         set_csd_window_geometry(window, &width, &height);
         bool resized = dispatchChangesAfterConfigure(window, width, height);
-        if (window->wl.decorations.serverSide || window->monitor || window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN) {
-            free_csd_surfaces(window);
-        } else {
-            ensure_csd_resources(window);
-        }
+        csd_set_visible(window, !(window->wl.decorations.serverSide || window->monitor || window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN));
         debug("Final window content size: %dx%d resized: %d\n", width, height, resized);
     }
 
@@ -877,13 +871,12 @@ setXdgDecorations(_GLFWwindow* window)
         zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, window->decorated ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE: ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
     } else {
         window->wl.decorations.serverSide = false;
-        ensure_csd_resources(window);
+        csd_set_visible(window, window->decorated);
     }
 }
 
 void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled UNUSED) {
     setXdgDecorations(window);
-    if (window->decorated) ensure_csd_resources(window); else free_csd_surfaces(window);
     inform_compositor_of_window_geometry(window, "SetWindowDecorated");
     commit_window_surface_if_safe(window);
 }
@@ -1416,7 +1409,7 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
         set_csd_window_geometry(window, &w, &h);
         window->wl.width = w; window->wl.height = h;
         resizeFramebuffer(window);
-        ensure_csd_resources(window);
+        csd_set_visible(window, true);  // resizes the csd iff the window currently has csd
         commit_window_surface_if_safe(window);
         inform_compositor_of_window_geometry(window, "SetWindowSize");
     }
