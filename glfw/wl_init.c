@@ -28,7 +28,6 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
-#include "wl_client_side_decorations.h"
 #include "backend_utils.h"
 #include "linux_desktop_settings.h"
 #include "../kitty/monotonic.h"
