@@ -177,7 +177,7 @@ on_key_input(GLFWkeyevent *ev) {
         case GLFW_IME_COMMIT_TEXT:
             if (*text) {
                 schedule_write_to_child(w->id, 1, text, strlen(text));
-                debug("committed pre-edit text: %s\n", text);
+                debug("committed pre-edit text: %s sent to child as text.\n", text);
             } else debug("committed pre-edit text: (null)\n");
             screen_update_overlay_text(screen, NULL);
             return;
