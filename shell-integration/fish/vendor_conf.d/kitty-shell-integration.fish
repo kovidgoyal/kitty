@@ -99,8 +99,8 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
             set suffix '-passive'
         end
         for mode in (bind --list-modes | string match -v paste)  # bind in all modes except paste
-            bind --preset -M "$mode" \e\[0u "forward-char$suffix"
-            bind --preset -M "$mode" \e\[0\;1u "backward-char$suffix"
+            bind --preset -M "$mode" \e\[1u "forward-char$suffix"
+            bind --preset -M "$mode" \e\[1\;1u "backward-char$suffix"
         end
     end
 
