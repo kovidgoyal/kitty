@@ -71,27 +71,32 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
     # Enable prompt marking with OSC 133
     if not contains "no-prompt-mark" $_ksi and not set -q __ksi_prompt_state
-        function __ksi_mark_prompt_start --on-event fish_prompt --on-event fish_cancel --on-event fish_posterror
-            test "$__ksi_prompt_state" != prompt-start
-            and echo -en "\e]133;D\a"
-            set --global __ksi_prompt_state prompt-start
-            echo -en "\e]133;A;special_key=1\a"
-        end
-        __ksi_mark_prompt_start
+        # fish 3.8 emits prompt markers, so we don't need to.
+        # Cheesily detect that version by probing for another feature.
+        if not bind --function-names | string match -q forward-char-passive
+            function __ksi_mark_prompt_start --on-event fish_prompt --on-event fish_cancel --on-event fish_posterror
+                test "$__ksi_prompt_state" != prompt-start
+                and echo -en "\e]133;D\a"
+                set --global __ksi_prompt_state prompt-start
+                echo -en "\e]133;A;special_key=1\a"
+            end
+            __ksi_mark_prompt_start
 
-        function __ksi_mark_output_start --on-event fish_preexec
-            set --global __ksi_prompt_state pre-exec
-            echo -en "\e]133;C\a"
+            function __ksi_mark_output_start --on-event fish_preexec
+                set --global __ksi_prompt_state pre-exec
+                echo -en "\e]133;C\a"
+            end
+
+            function __ksi_mark_output_end --on-event fish_postexec
+                set --global __ksi_prompt_state post-exec
+                echo -en "\e]133;D;$status\a"
+            end
+
+            # With prompt marking, kitty clears the current prompt on resize,
+            # so we need fish to redraw it.
+            set --global fish_handle_reflow 1
         end
 
-        function __ksi_mark_output_end --on-event fish_postexec
-            set --global __ksi_prompt_state post-exec
-            echo -en "\e]133;D;$status\a"
-        end
-
-        # With prompt marking, kitty clears the current prompt on resize,
-        # so we need fish to redraw it.
-        set --global fish_handle_reflow 1
         # Binding for special key to move cursor on mouse click without triggering any
         # autocompletion or other effects
         set --local suffix ''
