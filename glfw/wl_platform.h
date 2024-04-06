@@ -307,6 +307,7 @@ typedef struct _GLFWlibraryWayland
     struct wl_data_device_manager*          dataDeviceManager;
     struct wl_data_device*      dataDevice;
     struct xdg_wm_base*         wmBase;
+    int xdg_wm_base_version;
     struct zxdg_decoration_manager_v1*      decorationManager;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
