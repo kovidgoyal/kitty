@@ -34,6 +34,14 @@ This is measured either with dedicated hardware, or software such as `Typometer
 kitty with other terminal emulators on various systems show kitty has best in
 class keyboard to screen latency.
 
+Note that to minimize latency at the expense of more energy usage, use the
+following settings in kitty.conf::
+
+    input_delay 0
+    repaint_delay 2
+    sync_to_monitor no
+    wayland_enable_ime no
+
 `Hardware based measurement on macOS
 <https://thume.ca/2020/05/20/making-a-latency-tester/>`__ show that kitty and
 Apple's Terminal.app share the crown for best latency. These
