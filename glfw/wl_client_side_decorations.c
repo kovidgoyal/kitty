@@ -469,6 +469,8 @@ set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
     if (!size_specified_by_compositor) {
         *width = window->wl.user_requested_content_size.width;
         *height = window->wl.user_requested_content_size.height;
+        if (window->wl.xdg.top_level_bounds.width > 0) *width = MIN(*width, window->wl.xdg.top_level_bounds.width);
+        if (window->wl.xdg.top_level_bounds.height > 0) *height = MIN(*height, window->wl.xdg.top_level_bounds.height);
         if (has_csd) *height += decs.metrics.visible_titlebar_height;
     }
     decs.geometry.x = 0; decs.geometry.y = 0;

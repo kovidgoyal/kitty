@@ -719,6 +719,7 @@ xdg_toplevel_configure_bounds(void *data, struct xdg_toplevel *xdg_toplevel UNUS
     _GLFWwindow *window = data;
     window->wl.xdg.top_level_bounds.width = width;
     window->wl.xdg.top_level_bounds.height = height;
+    debug("Compositor set top-level bounds of: %dx%d\n", width, height);
 }
 
 static const struct xdg_toplevel_listener xdgToplevelListener = {

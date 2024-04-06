@@ -111,6 +111,13 @@ typedef void (* _GLFWdestroycontextfun)(_GLFWwindow*);
 #define GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH 0x82fc
 #define GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR 0x00000008
 
+#define MAX(x, y) __extension__ ({ \
+    __typeof__ (x) a = (x); __typeof__ (y) b = (y); \
+        a > b ? a : b;})
+#define MIN(x, y) __extension__ ({ \
+    __typeof__ (x) a = (x); __typeof__ (y) b = (y); \
+        a < b ? a : b;})
+
 typedef int GLint;
 typedef unsigned int GLuint;
 typedef unsigned int GLenum;
@@ -875,3 +882,4 @@ int _glfwPlatformSetWindowBlur(_GLFWwindow* handle, int value);
 char* _glfw_strdup(const char* source);
 
 void _glfw_free_clipboard_data(_GLFWClipboardData *cd);
+
