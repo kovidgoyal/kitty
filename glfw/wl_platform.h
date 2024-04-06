@@ -202,7 +202,7 @@ typedef struct _GLFWwindowWayland
     } pointerLock;
 
     struct {
-        bool serverSide, buffer_destroyed;
+        bool serverSide, buffer_destroyed, titlebar_needs_update;
         _GLFWdecorationSideWayland focus;
         _GLFWWaylandCSDEdge top, left, right, bottom;
 
@@ -229,6 +229,7 @@ typedef struct _GLFWwindowWayland
             bool hovered;
             int width, left;
         } minimize, maximize, close;
+
         struct {
             uint32_t *data;
             size_t for_decoration_size, stride, segments, corner_size;

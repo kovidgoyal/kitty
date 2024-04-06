@@ -538,10 +538,39 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
 }
 
 
+static bool
+update_hovered_button(_GLFWwindow *window) {
+    bool has_hovered_button = false;
+    if (y >= decs.metrics.width) {
+        int scaled_x = (int)round(decs.for_window_state.fscale * x);
+#define c(which) \
+        if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) { \
+            has_hovered_button = true; \
+            if (!decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = true; } \
+        } else if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
+
+        c(minimize); c(maximize); c(close);
+#undef c
+    }
+    update_title_bar(window);
+    return has_hovered_button;
+}
+
+static bool
+has_hovered_button(_GLFWwindow *window) {
+    return decs.minimize.hovered || decs.maximize.hovered || decs.close.hovered;
+}
+
 static void
 handle_pointer_leave(_GLFWwindow *window) {
-    (void)window;
+#define c(which) if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
+    if (window->wl.decorations.focus == TOP_DECORATION) {
+        c(minimize); c(maximize); c(close);
+    }
+#undef c
+    window->wl.decorations.focus = CENTRAL_WINDOW;
 }
+
 
 static void
 handle_pointer_move(_GLFWwindow *window) {
@@ -550,27 +579,26 @@ handle_pointer_move(_GLFWwindow *window) {
     {
         case CENTRAL_WINDOW: break;
         case TOP_DECORATION:
-            if (y < window->wl.decorations.metrics.width)
-                cursorShape = GLFW_N_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_DEFAULT_CURSOR;
+            if (update_hovered_button(window)) {
+                cursorShape = GLFW_POINTER_CURSOR;
+            } else if (y < decs.metrics.width) cursorShape = GLFW_N_RESIZE_CURSOR;
             break;
         case LEFT_DECORATION:
-            if (y < window->wl.decorations.metrics.width)
+            if (y < decs.metrics.width)
                 cursorShape = GLFW_NW_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_W_RESIZE_CURSOR;
             break;
         case RIGHT_DECORATION:
-            if (y < window->wl.decorations.metrics.width)
+            if (y < decs.metrics.width)
                 cursorShape = GLFW_NE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_E_RESIZE_CURSOR;
             break;
         case BOTTOM_DECORATION:
-            if (x < window->wl.decorations.metrics.width)
+            if (x < decs.metrics.width)
                 cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (x > window->wl.width + window->wl.decorations.metrics.width)
+            else if (x > window->wl.width + decs.metrics.width)
                 cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_S_RESIZE_CURSOR;
@@ -587,33 +615,36 @@ handle_pointer_enter(_GLFWwindow *window) {
 static void
 handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
     uint32_t edges = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
-
-    if (button == BTN_LEFT)
-    {
-        switch (window->wl.decorations.focus)
-        {
-            case CENTRAL_WINDOW:
-                break;
+    if (button == BTN_LEFT) {
+        switch (window->wl.decorations.focus) {
+            case CENTRAL_WINDOW: break;
             case TOP_DECORATION:
                 if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
                     monotonic_t last_click_at = window->wl.decorations.last_click_on_top_decoration_at;
                     window->wl.decorations.last_click_on_top_decoration_at = monotonic();
                     if (window->wl.decorations.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
                         window->wl.decorations.last_click_on_top_decoration_at = 0;
-                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
-                            xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
-                        else
-                            xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
+                        else _glfwPlatformMaximizeWindow(window);
                         return;
                     }
+                } else {
+                    if (decs.minimize.hovered) _glfwPlatformIconifyWindow(window);
+                    else if (decs.maximize.hovered) {
+                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
+                        else _glfwPlatformMaximizeWindow(window);
+                        // hack otherwise on GNOME maximize button remains hovered sometimes
+                        decs.maximize.hovered = false; decs.titlebar_needs_update = true;
+                    } else if (decs.close.hovered) _glfwInputWindowCloseRequest(window);
                 }
-                if (y < window->wl.decorations.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-                else {
-                    if (window->wl.xdg.toplevel)
-                        xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
+                if (!has_hovered_button(window)) {
+                    if (y < window->wl.decorations.metrics.width)
+                        edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
+                    else {
+                        if (window->wl.xdg.toplevel)
+                            xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
+                    }
                 }
-
                 break;
             case LEFT_DECORATION:
                 if (y < window->wl.decorations.metrics.width)
@@ -653,11 +684,16 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
 
 void
 csd_handle_pointer_event(_GLFWwindow *window, int button, int state) {
+    decs.titlebar_needs_update = false;
     switch (button) {
         case -1: handle_pointer_move(window); break;
         case -2: handle_pointer_enter(window); break;
         case -3: handle_pointer_leave(window); break;
         default: handle_pointer_button(window, button, state); break;
+    }
+    if (decs.titlebar_needs_update) {
+        change_csd_title(window);
+        if (!window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
     }
 }
 #undef x
