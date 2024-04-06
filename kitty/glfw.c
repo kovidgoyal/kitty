@@ -663,7 +663,7 @@ ensure_csd_title_render_ctx(void) {
 }
 
 static bool
-draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin) {
+draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin, bool is_single_glyph) {
     if (!set_callback_window(window)) return false;
     if (!ensure_csd_title_render_ctx()) return false;
     double xdpi, ydpi;
@@ -671,8 +671,11 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     unsigned px_sz = (unsigned)(global_state.callback_os_window->fonts_data->font_sz_in_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
     static char title[2048];
-    snprintf(title, sizeof(title), " ❭ %s", text);
-    bool ok = render_single_line(csd_title_render_ctx, title, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin);
+    if (!is_single_glyph) {
+        snprintf(title, sizeof(title), " ❭ %s", text);
+        text = title;
+    }
+    bool ok = render_single_line(csd_title_render_ctx, text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin, is_single_glyph);
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
 }
@@ -685,7 +688,7 @@ draw_window_title(OSWindow *window, const char *text, color_type fg, color_type 
     unsigned px_sz = (unsigned)(window->fonts_data->font_sz_in_pts * window->fonts_data->logical_dpi_y / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
 #define RGB2BGR(x) (x & 0xFF000000) | ((x & 0xFF0000) >> 16) | (x & 0x00FF00) | ((x & 0x0000FF) << 16)
-    bool ok = render_single_line(csd_title_render_ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0);
+    bool ok = render_single_line(csd_title_render_ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0, false);
 #undef RGB2BGR
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;

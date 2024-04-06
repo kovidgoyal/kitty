@@ -164,9 +164,10 @@ create_shadow_tile(_GLFWwindow *window) {
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
-    uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
-    uint32_t dark_fg = is_focused ? 0xffffffff : 0xffcccccc, dark_bg = is_focused ? 0xff303030 : 0xff242424;
-    uint32_t bg_color = light_bg, fg_color = light_fg;
+    const uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
+    const uint32_t dark_fg = is_focused ? 0xffffffff : 0xffcccccc, dark_bg = is_focused ? 0xff303030 : 0xff242424;
+    static const uint32_t hover_dark_bg = 0xff444444, hover_light_bg = 0xffcccccc;
+    uint32_t bg_color = light_bg, fg_color = light_fg, hover_bg = hover_light_bg;
     GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme();
     if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
         bg_color = 0xff000000 | (decs.titlebar_color & 0xffffff);
@@ -174,7 +175,7 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
         double green = ((bg_color >> 8) & 0xFF) / 255.0;
         double blue = (bg_color & 0xFF) / 255.0;
         double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-        if (luma < 0.5) fg_color = dark_fg;
+        if (luma < 0.5) { fg_color = dark_fg; hover_bg = hover_dark_bg; }
         if (!decs.use_custom_titlebar_color) bg_color = luma < 0.5 ? dark_bg : light_bg;
     } else if (appearance == GLFW_COLOR_SCHEME_DARK) { bg_color = dark_bg; fg_color = dark_fg; }
     uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
@@ -198,12 +199,30 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     }
 
     // render text part
+    int button_size = (int)roundf(decs.metrics.visible_titlebar_height * decs.for_window_state.fscale);
+    int num_buttons = 1;
+    if (window->wl.wm_capabilities.maximize) num_buttons++;
+    if (window->wl.wm_capabilities.minimize) num_buttons++;
     output += decs.top.buffer.stride * margin;
     if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height - margin, 0, 0, 0)) return;
+        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height - margin, 0, 0, num_buttons * button_size, false)) goto render_buttons;
     }
     // rendering of text failed, blank the buffer
     for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) *px = bg_color;
+
+render_buttons:
+    decs.maximize.width = 0; decs.minimize.width = 0; decs.close.width = 0;
+    if (!button_size) return;
+    int left = decs.top.buffer.width - num_buttons * button_size;
+#define draw(which, text, hover_bg) { \
+    _glfw.callbacks.draw_text((GLFWwindow*)window, text, fg_color, decs.which.hovered ? hover_bg : bg_color, output, decs.top.buffer.width, \
+            decs.top.buffer.height - margin, /*x=*/left, /*y=*/0, /*right_margin=*/decs.top.buffer.width - left - button_size, true); \
+    decs.which.left = left; decs.which.width = button_size; left += button_size; \
+}
+    if (window->wl.wm_capabilities.minimize) draw(minimize, "🗕", hover_bg);
+    if (window->wl.wm_capabilities.maximize) draw(maximize, "🗖", hover_bg);
+    draw(close, "🗙", 0xffff0000);
+#undef draw
 }
 
 static void

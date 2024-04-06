@@ -675,8 +675,10 @@ static void registryHandleGlobal(void* data UNUSED,
     }
     else if (is(xdg_wm_base))
     {
-        _glfw.wl.wmBase =
-            wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
+#ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
+        version = min(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION, version);
+#endif
+        _glfw.wl.wmBase = wl_registry_bind(registry, name, &xdg_wm_base_interface, version);
         xdg_wm_base_add_listener(_glfw.wl.wmBase, &wmBaseListener, NULL);
     }
     else if (is(zxdg_decoration_manager_v1))

@@ -696,9 +696,42 @@ static void xdgToplevelHandleClose(void* data,
     _glfwInputWindowCloseRequest(window);
 }
 
+#if defined(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION)
+static void
+xdg_toplevel_wm_capabilities(void *data, struct xdg_toplevel *xdg_toplevel UNUSED, struct wl_array *caps) {
+    _GLFWwindow *window = data;
+#define c (window->wl.wm_capabilities)
+    memset(&c, 0, sizeof(c));
+
+    enum xdg_toplevel_wm_capabilities *cap;
+    wl_array_for_each(cap, caps) {
+        switch (*cap) {
+        case XDG_TOPLEVEL_WM_CAPABILITIES_MAXIMIZE: c.maximize = true; break;
+        case XDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE: c.minimize = true; break;
+        case XDG_TOPLEVEL_WM_CAPABILITIES_WINDOW_MENU: c.window_menu = true; break;
+        case XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN: c.fullscreen = true; break;
+        }
+    }
+    debug("Compositor top-level capabilities: maximize=%d minimize=%d window_menu=%d fullscreen=%d\n",
+            c.maximize, c.minimize, c.window_menu, c.fullscreen);
+#undef c
+}
+#endif
+
+static void
+xdg_toplevel_configure_bounds(void *data, struct xdg_toplevel *xdg_toplevel UNUSED, int32_t width, int32_t height) {
+    _GLFWwindow *window = data;
+    window->wl.xdg.top_level_bounds.width = width;
+    window->wl.xdg.top_level_bounds.height = height;
+}
+
 static const struct xdg_toplevel_listener xdgToplevelListener = {
-    xdgToplevelHandleConfigure,
-    xdgToplevelHandleClose
+    .configure = xdgToplevelHandleConfigure,
+    .close = xdgToplevelHandleClose,
+#ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
+    .configure_bounds = xdg_toplevel_configure_bounds,
+    .wm_capabilities = xdg_toplevel_wm_capabilities,
+#endif
 };
 
 static void

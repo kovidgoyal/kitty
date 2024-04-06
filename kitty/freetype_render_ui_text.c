@@ -148,11 +148,12 @@ typedef struct RenderState {
     pixel *output;
     size_t output_width, output_height, stride;
     Face *current_face;
-    float x, y;
+    float x, y, start_pos_for_current_run;
     int y_offset;
     Region src, dest;
     unsigned sz_px;
     bool truncated;
+    bool horizontally_center;
 } RenderState;
 
 static void
@@ -162,6 +163,10 @@ setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
     int xoff = (int)(rs->x + bm->bitmap_left);
     if (xoff < 0) rs->src.left += -xoff;
     else rs->dest.left = xoff;
+    if (rs->horizontally_center) {
+        int run_width = (int)(rs->output_width - rs->start_pos_for_current_run);
+        rs->dest.left = (int)rs->start_pos_for_current_run + (run_width > (int)bm->width ? (run_width - bm->width)/2 : 0);
+    }
     int yoff = (int)(rs->y + bm->bitmap_top);
     if ((yoff > 0 && yoff > baseline)) {
         rs->dest.top = 0;
@@ -325,6 +330,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
         rs->truncated = true;
     }
 
+    rs->start_pos_for_current_run = rs->x;
     for (unsigned int i = 0; i < limit; i++) {
         rs->x += (float)positions[i].x_offset / 64.0f;
         rs->y += (float)positions[i].y_offset / 64.0f;
@@ -427,7 +433,7 @@ process_codepoint(RenderCtx *ctx, RenderState *rs, char_type codep, char_type ne
 }
 
 bool
-render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin) {
+render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin, bool horizontally_center_runs) {
     RenderCtx *ctx = (RenderCtx*)ctx_;
     if (!ctx->created) return false;
     size_t output_width = right_margin <= width ? width - right_margin : 0;
@@ -449,7 +455,7 @@ render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pix
     set_pixel_size(ctx, &main_face, sz_px, true);
     unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
     RenderState rs = {
-        .current_face = &main_face, .fg = fg, .bg = bg,
+        .current_face = &main_face, .fg = fg, .bg = bg, .horizontally_center = horizontally_center_runs,
         .output_width = output_width, .output_height = height, .stride = width,
         .output = (pixel*)output_buf, .x = x_offset, .y = y_offset, .sz_px = sz_px
     };
@@ -584,7 +590,7 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     uint8_t *buffer = (uint8_t*) PyBytes_AS_STRING(ans);
     RenderCtx *ctx = (RenderCtx*)create_freetype_render_context(family, bold, italic);
     if (!ctx) return NULL;
-    if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset, right_margin)) {
+    if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset, right_margin, false)) {
         Py_CLEAR(ans);
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unknown error while rendering text");
         ans = NULL;

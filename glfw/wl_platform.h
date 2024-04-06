@@ -166,6 +166,7 @@ typedef struct _GLFWwindowWayland
         struct xdg_surface*     surface;
         struct xdg_toplevel*    toplevel;
         struct zxdg_toplevel_decoration_v1* decoration;
+        struct { int width, height; } top_level_bounds;
     } xdg;
     struct wp_fractional_scale_v1 *wp_fractional_scale_v1;
     struct wp_viewport *wp_viewport;
@@ -225,6 +226,10 @@ typedef struct _GLFWwindowWayland
         } geometry;
 
         struct {
+            bool hovered;
+            int width, left;
+        } minimize, maximize, close;
+        struct {
             uint32_t *data;
             size_t for_decoration_size, stride, segments, corner_size;
         } shadow_tile;
@@ -243,6 +248,11 @@ typedef struct _GLFWwindowWayland
     struct {
         int32_t width, height;
     } user_requested_content_size;
+
+    struct {
+        bool minimize, maximize, fullscreen, window_menu;
+    } wm_capabilities;
+
 
     bool maximize_on_first_show;
     // counters for ignoring axis events following axis_discrete events in the
