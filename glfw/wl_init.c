@@ -302,7 +302,10 @@ static void pointerHandleButton(void* data UNUSED,
     {
         if (window->wl.decorations.focus != CENTRAL_WINDOW && window->wl.xdg.toplevel)
         {
-            xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - window->wl.decorations.metrics.top);
+            if (window->wl.wm_capabilities.window_menu) xdg_toplevel_show_window_menu(
+                    window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - window->wl.decorations.metrics.top);
+            else
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing wndow menu");
             return;
         }
     }

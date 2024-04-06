@@ -596,17 +596,19 @@ static bool createSurface(_GLFWwindow* window,
     return true;
 }
 
-static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
-{
-    if (window->wl.xdg.toplevel)
-    {
-        if (on) {
-            xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel, monitor ? monitor->wl.output : NULL);
-            csd_set_visible(window, false);
-        } else {
-            xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-            csd_set_visible(window, true);
-        }
+static void
+setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on) {
+    if (!window->wl.xdg.toplevel) return;
+    if (!window->wl.wm_capabilities.fullscreen) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support fullscreen");
+        return;
+    }
+    if (on) {
+        xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel, monitor ? monitor->wl.output : NULL);
+        csd_set_visible(window, false);
+    } else {
+        xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
+        csd_set_visible(window, true);
     }
 }
 
@@ -1093,8 +1095,10 @@ create_window_desktop_surface(_GLFWwindow* window)
                                   window->maxwidth, window->maxheight);
 
     if (window->monitor) {
-        xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel,
-                                    window->monitor->wl.output);
+        if (window->wl.wm_capabilities.fullscreen)
+            xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel, window->monitor->wl.output);
+        else
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support fullscreen");
     } else {
         if (window->wl.maximize_on_first_show) {
             window->wl.maximize_on_first_show = false;
@@ -1527,8 +1531,10 @@ monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
-    if (window->wl.xdg.toplevel)
-        xdg_toplevel_set_minimized(window->wl.xdg.toplevel);
+    if (window->wl.xdg.toplevel) {
+        if (window->wl.wm_capabilities.minimize) xdg_toplevel_set_minimized(window->wl.xdg.toplevel);
+        else _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support minimizing windows");
+    }
 }
 
 void _glfwPlatformRestoreWindow(_GLFWwindow* window)
@@ -1547,9 +1553,9 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 {
-    if (window->wl.xdg.toplevel)
-    {
-        xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+    if (window->wl.xdg.toplevel) {
+        if (window->wl.wm_capabilities.maximize) xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+        else _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support maximizing windows");
     }
 }
 
