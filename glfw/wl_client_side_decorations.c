@@ -539,11 +539,6 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
 
 
 static void
-handle_pointer_enter(_GLFWwindow *window) {
-    (void)window;
-}
-
-static void
 handle_pointer_leave(_GLFWwindow *window) {
     (void)window;
 }
@@ -584,7 +579,12 @@ handle_pointer_move(_GLFWwindow *window) {
     if (_glfw.wl.cursorPreviousShape != cursorShape) set_cursor(cursorShape, window);
 }
 
-void
+static void
+handle_pointer_enter(_GLFWwindow *window) {
+    handle_pointer_move(window); // enter is also a move
+}
+
+static void
 handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
     uint32_t edges = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
 

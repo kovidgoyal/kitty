@@ -127,7 +127,8 @@ pointerHandleLeave(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_
     } else csd_handle_pointer_event(window, -3, -3);
 }
 
-static void pointerHandleMotion(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t time UNUSED, wl_fixed_t sx, wl_fixed_t sy) {
+static void
+pointerHandleMotion(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t time UNUSED, wl_fixed_t sx, wl_fixed_t sy) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     if (window->cursorMode == GLFW_CURSOR_DISABLED) return;
