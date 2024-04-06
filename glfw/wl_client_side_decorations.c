@@ -166,18 +166,19 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
     const uint32_t dark_fg = is_focused ? 0xffffffff : 0xffcccccc, dark_bg = is_focused ? 0xff303030 : 0xff242424;
-    static const uint32_t hover_dark_bg = 0xff444444, hover_light_bg = 0xffcccccc;
+    static const uint32_t hover_dark_bg = 0xff444444, hover_light_bg = 0xffbbbbbb;
     uint32_t bg_color = light_bg, fg_color = light_fg, hover_bg = hover_light_bg;
     GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme();
+    bool is_dark = false;
     if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
         bg_color = 0xff000000 | (decs.titlebar_color & 0xffffff);
         double red = ((bg_color >> 16) & 0xFF) / 255.0;
         double green = ((bg_color >> 8) & 0xFF) / 255.0;
         double blue = (bg_color & 0xFF) / 255.0;
         double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-        if (luma < 0.5) { fg_color = dark_fg; hover_bg = hover_dark_bg; }
+        if (luma < 0.5) { fg_color = dark_fg; hover_bg = hover_dark_bg; is_dark = true; }
         if (!decs.use_custom_titlebar_color) bg_color = luma < 0.5 ? dark_bg : light_bg;
-    } else if (appearance == GLFW_COLOR_SCHEME_DARK) { bg_color = dark_bg; fg_color = dark_fg; }
+    } else if (appearance == GLFW_COLOR_SCHEME_DARK) { bg_color = dark_bg; fg_color = dark_fg; hover_bg = hover_dark_bg; is_dark = true; }
     uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
 
     // render shadow part
@@ -221,7 +222,7 @@ render_buttons:
 }
     if (window->wl.wm_capabilities.minimize) draw(minimize, "🗕", hover_bg);
     if (window->wl.wm_capabilities.maximize) draw(maximize, "🗖", hover_bg);
-    draw(close, "🗙", 0xffff0000);
+    draw(close, "🗙", is_dark ? 0xff880000: 0xffc80000);
 #undef draw
 }
 
