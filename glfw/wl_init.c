@@ -29,6 +29,7 @@
 #define _GNU_SOURCE
 #include "internal.h"
 #include "backend_utils.h"
+#include "wl_client_side_decorations.h"
 #include "linux_desktop_settings.h"
 #include "../kitty/monotonic.h"
 #include "wl_text_input.h"
@@ -79,153 +80,68 @@ findWindowFromDecorationSurface(struct wl_surface* surface, _GLFWdecorationSideW
     return window;
 }
 
-static void pointerHandleEnter(void* data UNUSED,
-                               struct wl_pointer* pointer UNUSED,
-                               uint32_t serial,
-                               struct wl_surface* surface,
-                               wl_fixed_t sx UNUSED,
-                               wl_fixed_t sy UNUSED)
-{
-    // Happens in the case we just destroyed the surface.
-    if (!surface)
-        return;
+#define x window->wl.allCursorPosX
+#define y window->wl.allCursorPosY
+
+static void
+pointerHandleEnter(
+        void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t serial, struct wl_surface* surface,
+        wl_fixed_t sx, wl_fixed_t sy
+) {
+    // Happens in case we just destroyed the surface.
+    if (!surface) return;
 
     _GLFWdecorationSideWayland focus = CENTRAL_WINDOW;
     _GLFWwindow* window = wl_surface_get_user_data(surface);
-    if (!window)
-    {
+    if (!window) {
         window = findWindowFromDecorationSurface(surface, &focus);
-        if (!window)
-            return;
+        if (!window) return;
     }
     window->wl.decorations.focus = focus;
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial; _glfw.wl.pointer_enter_serial = serial;
     _glfw.wl.pointerFocus = window;
-
-    window->wl.hovered = true;
-
-    _glfwPlatformSetCursor(window, window->wl.currentCursor);
-    _glfwInputCursorEnter(window, true);
-}
-
-static void pointerHandleLeave(void* data UNUSED,
-                               struct wl_pointer* pointer UNUSED,
-                               uint32_t serial,
-                               struct wl_surface* surface UNUSED)
-{
-    _GLFWwindow* window = _glfw.wl.pointerFocus;
-
-    if (!window)
-        return;
-
-    window->wl.hovered = false;
-
-    _glfw.wl.serial = serial;
-    _glfw.wl.pointerFocus = NULL;
-    _glfwInputCursorEnter(window, false);
-    _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
-}
-
-static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
-{
-    struct wl_buffer* buffer;
-    struct wl_cursor* cursor;
-    struct wl_cursor_image* image;
-    struct wl_surface* surface = _glfw.wl.cursorSurface;
-    const int scale = _glfwWaylandIntegerWindowScale(window);
-
-    struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
-    if (!theme) return;
-    cursor = _glfwLoadCursor(shape, theme);
-    if (!cursor) return;
-    // TODO: handle animated cursors too.
-    image = cursor->images[0];
-
-    if (!image)
-        return;
-    if (image->width % scale || image->height % scale) {
-        static uint32_t warned_width = 0, warned_height = 0;
-        if (warned_width != image->width || warned_height != image->height) {
-            _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Cursor image size: %dx%d is not a multiple of window scale: %d. This will"
-                    " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/kitty/issues/4878", image->width, image->height, scale);
-            warned_width = image->width; warned_height = image->height;
-        }
-    }
-
-    buffer = wl_cursor_image_get_buffer(image);
-    if (!buffer)
-        return;
-    debug("Calling wl_pointer_set_cursor in setCursor with surface: %p\n", (void*)surface);
-    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
-                          surface,
-                          image->hotspot_x / scale,
-                          image->hotspot_y / scale);
-    wl_surface_set_buffer_scale(surface, scale);
-    wl_surface_attach(surface, buffer, 0, 0);
-    wl_surface_damage(surface, 0, 0,
-                      image->width, image->height);
-    wl_surface_commit(surface);
-    _glfw.wl.cursorPreviousShape = shape;
-}
-
-#define x window->wl.allCursorPosX
-#define y window->wl.allCursorPosY
-static void pointerHandleMotion(void* data UNUSED,
-                                struct wl_pointer* pointer UNUSED,
-                                uint32_t time UNUSED,
-                                wl_fixed_t sx,
-                                wl_fixed_t sy)
-{
-    _GLFWwindow* window = _glfw.wl.pointerFocus;
-    GLFWCursorShape cursorShape = GLFW_DEFAULT_CURSOR;
-
-    if (!window)
-        return;
-
-    if (window->cursorMode == GLFW_CURSOR_DISABLED)
-        return;
     window->wl.allCursorPosX = wl_fixed_to_double(sx);
     window->wl.allCursorPosY = wl_fixed_to_double(sy);
+    if (focus != CENTRAL_WINDOW) csd_handle_pointer_event(window, -2, -2);
+    else {
+        window->wl.hovered = true;
+        window->wl.cursorPosX = x;
+        window->wl.cursorPosY = y;
 
-    switch (window->wl.decorations.focus)
-    {
-        case CENTRAL_WINDOW:
-            window->wl.cursorPosX = x;
-            window->wl.cursorPosY = y;
-            _glfwInputCursorPos(window, x, y);
-            _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
-            return;
-        case TOP_DECORATION:
-            if (y < window->wl.decorations.metrics.width)
-                cursorShape = GLFW_N_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_DEFAULT_CURSOR;
-            break;
-        case LEFT_DECORATION:
-            if (y < window->wl.decorations.metrics.width)
-                cursorShape = GLFW_NW_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_W_RESIZE_CURSOR;
-            break;
-        case RIGHT_DECORATION:
-            if (y < window->wl.decorations.metrics.width)
-                cursorShape = GLFW_NE_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_E_RESIZE_CURSOR;
-            break;
-        case BOTTOM_DECORATION:
-            if (x < window->wl.decorations.metrics.width)
-                cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (x > window->wl.width + window->wl.decorations.metrics.width)
-                cursorShape = GLFW_SE_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_S_RESIZE_CURSOR;
-            break;
-        default:
-            assert(0);
+        _glfwPlatformSetCursor(window, window->wl.currentCursor);
+        _glfwInputCursorEnter(window, true);
     }
-    if (_glfw.wl.cursorPreviousShape != cursorShape)
-        setCursor(cursorShape, window);
+}
+
+static void
+pointerHandleLeave(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t serial, struct wl_surface* surface UNUSED) {
+    _GLFWwindow* window = _glfw.wl.pointerFocus;
+    if (!window) return;
+    _glfw.wl.serial = serial;
+    _glfw.wl.pointerFocus = NULL;
+    if (window->wl.decorations.focus == CENTRAL_WINDOW) {
+        window->wl.hovered = false;
+
+        _glfwInputCursorEnter(window, false);
+        _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
+    } else csd_handle_pointer_event(window, -3, -3);
+}
+
+static void pointerHandleMotion(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t time UNUSED, wl_fixed_t sx, wl_fixed_t sy) {
+    _GLFWwindow* window = _glfw.wl.pointerFocus;
+    if (!window) return;
+    if (window->cursorMode == GLFW_CURSOR_DISABLED) return;
+    window->wl.allCursorPosX = wl_fixed_to_double(sx);
+    window->wl.allCursorPosY = wl_fixed_to_double(sy);
+    if (window->wl.decorations.focus != CENTRAL_WINDOW) {
+        csd_handle_pointer_event(window, -1, -1);
+        return;
+    }
+    window->wl.cursorPosX = x;
+    window->wl.cursorPosY = y;
+    _glfwInputCursorPos(window, x, y);
+    _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
+
 }
 
 static void pointerHandleButton(void* data UNUSED,
@@ -235,97 +151,19 @@ static void pointerHandleButton(void* data UNUSED,
                                 uint32_t button,
                                 uint32_t state)
 {
-    _GLFWwindow* window = _glfw.wl.pointerFocus;
-    int glfwButton;
-    uint32_t edges = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
-
-    if (!window)
-        return;
-    if (button == BTN_LEFT)
-    {
-        switch (window->wl.decorations.focus)
-        {
-            case CENTRAL_WINDOW:
-                break;
-            case TOP_DECORATION:
-                if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
-                    monotonic_t last_click_at = window->wl.decorations.last_click_on_top_decoration_at;
-                    window->wl.decorations.last_click_on_top_decoration_at = monotonic();
-                    if (window->wl.decorations.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
-                        window->wl.decorations.last_click_on_top_decoration_at = 0;
-                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
-                            xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
-                        else
-                            xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
-                        return;
-                    }
-                }
-                if (y < window->wl.decorations.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-                else
-                {
-                    if (window->wl.xdg.toplevel)
-                        xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, serial);
-                }
-
-                break;
-            case LEFT_DECORATION:
-                if (y < window->wl.decorations.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
-                else
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
-                break;
-            case RIGHT_DECORATION:
-                if (y < window->wl.decorations.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
-                else
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
-                break;
-            case BOTTOM_DECORATION:
-                if (x < window->wl.decorations.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (x > window->wl.width + window->wl.decorations.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
-                else
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
-                break;
-            default:
-                assert(0);
-        }
-        if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE)
-        {
-            xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat,
-                                serial, edges);
-        }
-    }
-    else if (button == BTN_RIGHT)
-    {
-        if (window->wl.decorations.focus != CENTRAL_WINDOW && window->wl.xdg.toplevel)
-        {
-            if (window->wl.wm_capabilities.window_menu) xdg_toplevel_show_window_menu(
-                    window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - window->wl.decorations.metrics.top);
-            else
-                _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing wndow menu");
-            return;
-        }
-    }
-
-    // Don’t pass the button to the user if it was related to a decoration.
-    if (window->wl.decorations.focus != CENTRAL_WINDOW)
-        return;
-
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial;
 
+    _GLFWwindow* window = _glfw.wl.pointerFocus;
+    if (!window) return;
+    if (window->wl.decorations.focus != CENTRAL_WINDOW) {
+        csd_handle_pointer_event(window, button, state);
+        return;
+    }
     /* Makes left, right and middle 0, 1 and 2. Overall order follows evdev
      * codes. */
-    glfwButton = button - BTN_LEFT;
-
-    _glfwInputMouseClick(window,
-                         glfwButton,
-                         state == WL_POINTER_BUTTON_STATE_PRESSED
-                                ? GLFW_PRESS
-                                : GLFW_RELEASE,
-                         _glfw.wl.xkb.states.modifiers);
+    int glfwButton = button - BTN_LEFT;
+    _glfwInputMouseClick(
+            window, glfwButton, state == WL_POINTER_BUTTON_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE, _glfw.wl.xkb.states.modifiers);
 }
 #undef x
 #undef y
@@ -338,8 +176,7 @@ static void pointerHandleAxis(void* data UNUSED,
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     double x = 0.0, y = 0.0;
-    if (!window)
-        return;
+    if (!window || window->wl.decorations.focus != CENTRAL_WINDOW) return;
 
     assert(axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL ||
            axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
@@ -366,10 +203,9 @@ static void pointerHandleFrame(void* data UNUSED,
                                struct wl_pointer* pointer UNUSED)
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-    if (window) {
-        window->wl.axis_discrete_count.x = 0;
-        window->wl.axis_discrete_count.y = 0;
-    }
+    if (!window || window->wl.decorations.focus != CENTRAL_WINDOW) return;
+    window->wl.axis_discrete_count.x = 0;
+    window->wl.axis_discrete_count.y = 0;
 }
 
 static void pointerHandleAxisSource(void* data UNUSED,
@@ -393,8 +229,7 @@ static void pointerHandleAxisDiscrete(void *data UNUSED,
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     double x = 0.0, y = 0.0;
-    if (!window)
-        return;
+    if (!window || window->wl.decorations.focus != CENTRAL_WINDOW) return;
 
     assert(axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL ||
            axis == WL_POINTER_AXIS_VERTICAL_SCROLL);

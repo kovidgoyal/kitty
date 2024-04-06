@@ -485,3 +485,180 @@ set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system_color) {
     decs.titlebar_color = color;
     change_csd_title(window);
 }
+
+#define x window->wl.allCursorPosX
+#define y window->wl.allCursorPosY
+
+static void
+set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
+{
+    if (_glfw.wl.wp_cursor_shape_device_v1) {
+        wayland_cursor_shape s = glfw_cursor_shape_to_wayland_cursor_shape(shape);
+        if (s.which > -1) {
+            debug("Changing cursor shape to: %s with serial: %u\n", s.name, _glfw.wl.pointer_enter_serial);
+            wp_cursor_shape_device_v1_set_shape(_glfw.wl.wp_cursor_shape_device_v1, _glfw.wl.pointer_enter_serial, (uint32_t)s.which);
+            return;
+        }
+    }
+
+    struct wl_buffer* buffer;
+    struct wl_cursor* cursor;
+    struct wl_cursor_image* image;
+    struct wl_surface* surface = _glfw.wl.cursorSurface;
+    const int scale = _glfwWaylandIntegerWindowScale(window);
+
+    struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
+    if (!theme) return;
+    cursor = _glfwLoadCursor(shape, theme);
+    if (!cursor) return;
+    image = cursor->images[0];
+    if (!image) return;
+    if (image->width % scale || image->height % scale) {
+        static uint32_t warned_width = 0, warned_height = 0;
+        if (warned_width != image->width || warned_height != image->height) {
+            _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Cursor image size: %dx%d is not a multiple of window scale: %d. This will"
+                    " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/kitty/issues/4878", image->width, image->height, scale);
+            warned_width = image->width; warned_height = image->height;
+        }
+    }
+
+    buffer = wl_cursor_image_get_buffer(image);
+    if (!buffer) return;
+    debug("Calling wl_pointer_set_cursor in set_cursor with surface: %p\n", (void*)surface);
+    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
+                          surface,
+                          image->hotspot_x / scale,
+                          image->hotspot_y / scale);
+    wl_surface_set_buffer_scale(surface, scale);
+    wl_surface_attach(surface, buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0,
+                      image->width, image->height);
+    wl_surface_commit(surface);
+    _glfw.wl.cursorPreviousShape = shape;
+}
+
+
+static void
+handle_pointer_enter(_GLFWwindow *window) {
+    (void)window;
+}
+
+static void
+handle_pointer_leave(_GLFWwindow *window) {
+    (void)window;
+}
+
+static void
+handle_pointer_move(_GLFWwindow *window) {
+    GLFWCursorShape cursorShape = GLFW_DEFAULT_CURSOR;
+    switch (window->wl.decorations.focus)
+    {
+        case CENTRAL_WINDOW: break;
+        case TOP_DECORATION:
+            if (y < window->wl.decorations.metrics.width)
+                cursorShape = GLFW_N_RESIZE_CURSOR;
+            else
+                cursorShape = GLFW_DEFAULT_CURSOR;
+            break;
+        case LEFT_DECORATION:
+            if (y < window->wl.decorations.metrics.width)
+                cursorShape = GLFW_NW_RESIZE_CURSOR;
+            else
+                cursorShape = GLFW_W_RESIZE_CURSOR;
+            break;
+        case RIGHT_DECORATION:
+            if (y < window->wl.decorations.metrics.width)
+                cursorShape = GLFW_NE_RESIZE_CURSOR;
+            else
+                cursorShape = GLFW_E_RESIZE_CURSOR;
+            break;
+        case BOTTOM_DECORATION:
+            if (x < window->wl.decorations.metrics.width)
+                cursorShape = GLFW_SW_RESIZE_CURSOR;
+            else if (x > window->wl.width + window->wl.decorations.metrics.width)
+                cursorShape = GLFW_SE_RESIZE_CURSOR;
+            else
+                cursorShape = GLFW_S_RESIZE_CURSOR;
+            break;
+    }
+    if (_glfw.wl.cursorPreviousShape != cursorShape) set_cursor(cursorShape, window);
+}
+
+void
+handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
+    uint32_t edges = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+
+    if (button == BTN_LEFT)
+    {
+        switch (window->wl.decorations.focus)
+        {
+            case CENTRAL_WINDOW:
+                break;
+            case TOP_DECORATION:
+                if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+                    monotonic_t last_click_at = window->wl.decorations.last_click_on_top_decoration_at;
+                    window->wl.decorations.last_click_on_top_decoration_at = monotonic();
+                    if (window->wl.decorations.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
+                        window->wl.decorations.last_click_on_top_decoration_at = 0;
+                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
+                            xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
+                        else
+                            xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+                        return;
+                    }
+                }
+                if (y < window->wl.decorations.metrics.width)
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
+                else {
+                    if (window->wl.xdg.toplevel)
+                        xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
+                }
+
+                break;
+            case LEFT_DECORATION:
+                if (y < window->wl.decorations.metrics.width)
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
+                else
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
+                break;
+            case RIGHT_DECORATION:
+                if (y < window->wl.decorations.metrics.width)
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
+                else
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
+                break;
+            case BOTTOM_DECORATION:
+                if (x < window->wl.decorations.metrics.width)
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
+                else if (x > window->wl.width + window->wl.decorations.metrics.width)
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
+                else
+                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
+                break;
+        }
+        if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, edges);
+    }
+    else if (button == BTN_RIGHT) {
+        if (window->wl.decorations.focus != CENTRAL_WINDOW && window->wl.xdg.toplevel)
+        {
+            if (window->wl.wm_capabilities.window_menu) xdg_toplevel_show_window_menu(
+                    window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - window->wl.decorations.metrics.top);
+            else
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing wndow menu");
+            return;
+        }
+    }
+}
+
+
+void
+csd_handle_pointer_event(_GLFWwindow *window, int button, int state) {
+    switch (button) {
+        case -1: handle_pointer_move(window); break;
+        case -2: handle_pointer_enter(window); break;
+        case -3: handle_pointer_leave(window); break;
+        default: handle_pointer_button(window, button, state); break;
+    }
+}
+#undef x
+#undef y

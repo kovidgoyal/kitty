@@ -155,11 +155,7 @@ static struct wl_buffer* createShmBuffer(const GLFWimage* image, bool is_opaque,
     return buffer;
 }
 
-typedef struct wayland_cursor_shape {
-    int which; const char *name;
-} wayland_cursor_shape;
-
-static wayland_cursor_shape
+wayland_cursor_shape
 glfw_cursor_shape_to_wayland_cursor_shape(GLFWCursorShape g) {
     wayland_cursor_shape ans = {-1, ""};
 #define C(g, w) case g: ans.which = w; ans.name = #w; return ans;
