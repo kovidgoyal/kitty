@@ -386,8 +386,13 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDEdge *s) {
     if (decs.which.buffer.a == (xbuffer)) { decs.which.buffer.a_needs_to_be_destroyed = false; } else { decs.which.buffer.b_needs_to_be_destroyed = false; }
 
 static bool
+window_is_csd_capable(_GLFWwindow *window) {
+    return window->decorated && !decs.serverSide && window->wl.xdg.toplevel;
+}
+
+static bool
 ensure_csd_resources(_GLFWwindow *window) {
-    if (!window->decorated || window->wl.decorations.serverSide) return false;
+    if (!window_is_csd_capable(window)) return false;
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool focus_changed = is_focused != decs.for_window_state.focused;
     const bool size_changed = (
@@ -454,7 +459,7 @@ free_all_csd_resources(_GLFWwindow *window) {
 
 void
 change_csd_title(_GLFWwindow *window) {
-    if (!window->decorated || window->wl.decorations.serverSide) return;
+    if (!window_is_csd_capable(window)) return;
     if (ensure_csd_resources(window)) return;  // CSD were re-rendered for other reasons
     if (decs.top.surface) {
         update_title_bar(window);
@@ -464,7 +469,7 @@ change_csd_title(_GLFWwindow *window) {
 
 void
 set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
-    bool has_csd = window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.left.surface && !(window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN);
+    bool has_csd = window_is_csd_capable(window) && decs.top.surface && !(window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN);
     bool size_specified_by_compositor = *width > 0 && *height > 0;
     if (!size_specified_by_compositor) {
         *width = window->wl.user_requested_content_size.width;
@@ -567,18 +572,18 @@ has_hovered_button(_GLFWwindow *window) {
 static void
 handle_pointer_leave(_GLFWwindow *window) {
 #define c(which) if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
-    if (window->wl.decorations.focus == TOP_DECORATION) {
+    if (decs.focus == TOP_DECORATION) {
         c(minimize); c(maximize); c(close);
     }
 #undef c
-    window->wl.decorations.focus = CENTRAL_WINDOW;
+    decs.focus = CENTRAL_WINDOW;
 }
 
 
 static void
 handle_pointer_move(_GLFWwindow *window) {
     GLFWCursorShape cursorShape = GLFW_DEFAULT_CURSOR;
-    switch (window->wl.decorations.focus)
+    switch (decs.focus)
     {
         case CENTRAL_WINDOW: break;
         case TOP_DECORATION:
@@ -619,14 +624,14 @@ static void
 handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
     uint32_t edges = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
     if (button == BTN_LEFT) {
-        switch (window->wl.decorations.focus) {
+        switch (decs.focus) {
             case CENTRAL_WINDOW: break;
             case TOP_DECORATION:
                 if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
-                    monotonic_t last_click_at = window->wl.decorations.last_click_on_top_decoration_at;
-                    window->wl.decorations.last_click_on_top_decoration_at = monotonic();
-                    if (window->wl.decorations.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
-                        window->wl.decorations.last_click_on_top_decoration_at = 0;
+                    monotonic_t last_click_at = decs.last_click_on_top_decoration_at;
+                    decs.last_click_on_top_decoration_at = monotonic();
+                    if (decs.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
+                        decs.last_click_on_top_decoration_at = 0;
                         if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
                         else _glfwPlatformMaximizeWindow(window);
                         return;
@@ -641,7 +646,7 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                     } else if (decs.close.hovered) _glfwInputWindowCloseRequest(window);
                 }
                 if (!has_hovered_button(window)) {
-                    if (y < window->wl.decorations.metrics.width)
+                    if (y < decs.metrics.width)
                         edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
                     else {
                         if (window->wl.xdg.toplevel)
@@ -650,21 +655,21 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                 }
                 break;
             case LEFT_DECORATION:
-                if (y < window->wl.decorations.metrics.width)
+                if (y < decs.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
                 break;
             case RIGHT_DECORATION:
-                if (y < window->wl.decorations.metrics.width)
+                if (y < decs.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
                 break;
             case BOTTOM_DECORATION:
-                if (x < window->wl.decorations.metrics.width)
+                if (x < decs.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (x > window->wl.width + window->wl.decorations.metrics.width)
+                else if (x > window->wl.width + decs.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
@@ -673,10 +678,10 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
         if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, edges);
     }
     else if (button == BTN_RIGHT) {
-        if (window->wl.decorations.focus != CENTRAL_WINDOW && window->wl.xdg.toplevel)
+        if (decs.focus != CENTRAL_WINDOW && window->wl.xdg.toplevel)
         {
             if (window->wl.wm_capabilities.window_menu) xdg_toplevel_show_window_menu(
-                    window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - window->wl.decorations.metrics.top);
+                    window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - decs.metrics.top);
             else
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing wndow menu");
             return;
@@ -687,6 +692,7 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
 
 void
 csd_handle_pointer_event(_GLFWwindow *window, int button, int state) {
+    if (!window_is_csd_capable(window)) return;
     decs.titlebar_needs_update = false;
     switch (button) {
         case -1: handle_pointer_move(window); break;
