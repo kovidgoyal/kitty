@@ -136,7 +136,7 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
 #define st decs.shadow_tile
 
 void
-initialize_csd_metrics(_GLFWwindow *window) {
+csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.width = 12;
     decs.metrics.top = 36;
     decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
@@ -450,25 +450,27 @@ csd_set_visible(_GLFWwindow *window, bool visible) {
 }
 
 void
-free_all_csd_resources(_GLFWwindow *window) {
+csd_free_all_resources(_GLFWwindow *window) {
     free_csd_surfaces(window);
     free_csd_buffers(window);
     if (decs.shadow_tile.data) free(decs.shadow_tile.data);
     decs.shadow_tile.data = NULL;
 }
 
-void
-change_csd_title(_GLFWwindow *window) {
-    if (!window_is_csd_capable(window)) return;
-    if (ensure_csd_resources(window)) return;  // CSD were re-rendered for other reasons
+bool
+csd_change_title(_GLFWwindow *window) {
+    if (!window_is_csd_capable(window)) return false;
+    if (ensure_csd_resources(window)) return true;  // CSD were re-rendered for other reasons
     if (decs.top.surface) {
         update_title_bar(window);
         damage_csd(top, decs.top.buffer.front);
+        return true;
     }
+    return false;
 }
 
 void
-set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
+csd_set_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
     bool has_csd = window_is_csd_capable(window) && decs.top.surface && !(window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN);
     bool size_specified_by_compositor = *width > 0 && *height > 0;
     if (!size_specified_by_compositor) {
@@ -486,12 +488,12 @@ set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
     }
 }
 
-void
-set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system_color) {
+bool
+csd_set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system_color) {
     bool use_custom_color = !use_system_color;
     decs.use_custom_titlebar_color = use_custom_color;
     decs.titlebar_color = color;
-    change_csd_title(window);
+    return csd_change_title(window);
 }
 
 #define x window->wl.allCursorPosX
@@ -701,7 +703,7 @@ csd_handle_pointer_event(_GLFWwindow *window, int button, int state) {
         default: handle_pointer_button(window, button, state); break;
     }
     if (decs.titlebar_needs_update) {
-        change_csd_title(window);
+        csd_change_title(window);
         if (!window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
     }
 }

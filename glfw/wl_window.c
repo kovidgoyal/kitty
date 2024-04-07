@@ -765,7 +765,7 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
 
     if (window->wl.pending_state) {
         int width = window->wl.pending.width, height = window->wl.pending.height;
-        set_csd_window_geometry(window, &width, &height);
+        csd_set_window_geometry(window, &width, &height);
         bool resized = dispatchChangesAfterConfigure(window, width, height);
         csd_set_visible(window, !(window->wl.decorations.serverSide || window->monitor || window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN));
         debug("Final window content size: %dx%d resized: %d\n", width, height, resized);
@@ -1277,7 +1277,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 {
     window->wl.layer_shell.config = layer_shell_config_for_next_window;
     memset(&layer_shell_config_for_next_window, 0, sizeof(layer_shell_config_for_next_window));
-    initialize_csd_metrics(window);
+    csd_initialize_metrics(window);
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
     window->swaps_disallowed = true;
@@ -1363,7 +1363,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->context.destroy)
         window->context.destroy(window);
 
-    free_all_csd_resources(window);
+    csd_free_all_resources(window);
     if (window->wl.xdg.decoration)
         zxdg_toplevel_decoration_v1_destroy(window->wl.xdg.decoration);
 
@@ -1395,8 +1395,11 @@ void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
     // one causes an abort(). Since titles this large are meaningless anyway
     // ensure they do not happen.
     window->wl.title = utf_8_strndup(title, 2048);
-    if (window->wl.xdg.toplevel) xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
-    change_csd_title(window);
+    if (window->wl.xdg.toplevel) {
+        xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
+        csd_change_title(window);
+        commit_window_surface_if_safe(window);
+    }
 }
 
 void _glfwPlatformSetWindowIcon(_GLFWwindow* window UNUSED,
@@ -1440,7 +1443,7 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
         window->wl.user_requested_content_size.width = width;
         window->wl.user_requested_content_size.height = height;
         int32_t w = 0, h = 0;
-        set_csd_window_geometry(window, &w, &h);
+        csd_set_window_geometry(window, &w, &h);
         window->wl.width = w; window->wl.height = h;
         resizeFramebuffer(window);
         csd_set_visible(window, true);  // resizes the csd iff the window currently has csd
@@ -2691,7 +2694,7 @@ GLFWAPI void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun
 GLFWAPI bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, bool use_system_color) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     if (!window->wl.decorations.serverSide) {
-        set_titlebar_color(window, color, use_system_color);
+        csd_set_titlebar_color(window, color, use_system_color);
         return true;
     }
     return false;
@@ -2699,7 +2702,7 @@ GLFWAPI bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, boo
 
 GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
-    change_csd_title(window);
+    if (csd_change_title(window)) commit_window_surface_if_safe(window);
 }
 
 GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(GLFWLayerShellConfig c) {
@@ -2713,9 +2716,7 @@ void
 _glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) {
     _GLFWwindow* window = _glfw.windowListHead;
     while (window) {
-        change_csd_title(window);
-        commit_window_surface_if_safe(window);
-
+        glfwWaylandRedrawCSDWindowTitle((GLFWwindow*)window);
         window = window->next;
     }
 }
