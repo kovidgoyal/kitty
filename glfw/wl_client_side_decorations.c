@@ -22,6 +22,7 @@
 #define B(x) ((x) & 0xff)
 #define SWAP(x, y) do { __typeof__(x) SWAP = x; x = y; y = SWAP; } while (0)
 
+// shadow tile  {{{
 typedef float kernel_type;
 
 static void
@@ -83,6 +84,27 @@ create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_siz
     return mask;
 }
 
+#define st decs.shadow_tile
+
+static size_t
+create_shadow_tile(_GLFWwindow *window) {
+    const size_t margin = (size_t)roundf(decs.metrics.width * decs.for_window_state.fscale);
+    if (st.data && st.for_decoration_size == margin) return margin;
+    st.for_decoration_size = margin;
+    free(st.data);
+    st.segments = 7;
+    st.stride = st.segments * margin;
+    st.corner_size = margin * (st.segments - 1) / 2;
+    kernel_type* mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.7, 32 * margin);
+    st.data = malloc(sizeof(uint32_t) * st.stride * st.stride);
+    if (st.data) for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = ((uint8_t)(mask[i] * 255)) << 24;
+    free(mask);
+    return margin;
+}
+
+
+// }}}
+
 static void
 swap_buffers(_GLFWWaylandBufferPair *pair) {
     SWAP(pair->front, pair->back);
@@ -100,10 +122,14 @@ init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, floa
     return 2 * pair->size_in_bytes;
 }
 
+#define all_shadow_surfaces(Q) Q(shadow_left); Q(shadow_top); Q(shadow_right); Q(shadow_bottom); \
+    Q(shadow_upper_left); Q(shadow_upper_right); Q(shadow_lower_left); Q(shadow_lower_right);
+#define all_surfaces(Q) Q(titlebar); all_shadow_surfaces(Q);
+
 static bool
 window_has_buffer(_GLFWwindow *window, struct wl_buffer *q) {
 #define Q(which) if (decs.which.buffer.a == q) { decs.which.buffer.a_needs_to_be_destroyed = false; return true; } if (decs.which.buffer.b == q) { decs.which.buffer.b_needs_to_be_destroyed = false; return true; }
-    Q(left); Q(top); Q(right); Q(bottom);
+    all_surfaces(Q);
 #undef Q
     return false;
 }
@@ -133,8 +159,6 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
     pair->data.front = pair->data.a; pair->data.back = pair->data.b;
 }
 
-#define st decs.shadow_tile
-
 void
 csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.width = 12;
@@ -142,22 +166,6 @@ csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
     decs.metrics.horizontal = 2 * decs.metrics.width;
     decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
-}
-
-static size_t
-create_shadow_tile(_GLFWwindow *window) {
-    const size_t margin = decs.bottom.buffer.height;
-    if (st.data && st.for_decoration_size == margin) return margin;
-    st.for_decoration_size = margin;
-    free(st.data);
-    st.segments = 7;
-    st.stride = st.segments * margin;
-    st.corner_size = margin * (st.segments - 1) / 2;
-    kernel_type* mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.7, 32 * margin);
-    st.data = malloc(sizeof(uint32_t) * st.stride * st.stride);
-    if (st.data) for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = ((uint8_t)(mask[i] * 255)) << 24;
-    free(mask);
-    return margin;
 }
 
 
@@ -179,45 +187,26 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
         if (luma < 0.5) { fg_color = dark_fg; hover_bg = hover_dark_bg; is_dark = true; }
         if (!decs.use_custom_titlebar_color) bg_color = luma < 0.5 ? dark_bg : light_bg;
     } else if (appearance == GLFW_COLOR_SCHEME_DARK) { bg_color = dark_bg; fg_color = dark_fg; hover_bg = hover_dark_bg; is_dark = true; }
-    uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
-
-    // render shadow part
-    const size_t margin = create_shadow_tile(window);
-    const size_t edge_segment_size = st.corner_size - margin;
-    const uint8_t divisor = is_focused ? 1 : 2;
-    for (size_t y = 0; y < margin; y++) {
-        // left segment
-        uint32_t *s = st.data + y * st.stride + margin;
-        uint32_t *d = (uint32_t*)(output + y * decs.top.buffer.stride);
-        for (size_t x = 0; x < edge_segment_size; x++) d[x] = (A(s[x]) / divisor) << 24;
-        // middle segment
-        s += edge_segment_size;
-        size_t limit = decs.top.buffer.width > edge_segment_size ? decs.top.buffer.width - edge_segment_size : 0;
-        for (size_t x = edge_segment_size, sx = 0; x < limit; x++, sx = (sx + 1) % margin) d[x] = (A(s[sx]) / divisor) << 24;
-        // right segment
-        s += margin;
-        for (size_t x = limit; x < decs.top.buffer.width; x++, s++) d[x] = (A(*s) / divisor) << 24;
-    }
+    uint8_t *output = to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back;
 
     // render text part
     int button_size = (int)roundf(decs.metrics.visible_titlebar_height * decs.for_window_state.fscale);
     int num_buttons = 1;
     if (window->wl.wm_capabilities.maximize) num_buttons++;
     if (window->wl.wm_capabilities.minimize) num_buttons++;
-    output += decs.top.buffer.stride * margin;
     if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height - margin, 0, 0, num_buttons * button_size, false)) goto render_buttons;
+        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.titlebar.buffer.width, decs.titlebar.buffer.height, 0, 0, num_buttons * button_size, false)) goto render_buttons;
     }
     // rendering of text failed, blank the buffer
-    for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) *px = bg_color;
+    for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.titlebar.buffer.size_in_bytes); px < end; px++) *px = bg_color;
 
 render_buttons:
     decs.maximize.width = 0; decs.minimize.width = 0; decs.close.width = 0;
     if (!button_size) return;
-    int left = decs.top.buffer.width - num_buttons * button_size;
+    int left = decs.titlebar.buffer.width - num_buttons * button_size;
 #define draw(which, text, hover_bg) { \
-    _glfw.callbacks.draw_text((GLFWwindow*)window, text, fg_color, decs.which.hovered ? hover_bg : bg_color, output, decs.top.buffer.width, \
-            decs.top.buffer.height - margin, /*x=*/left, /*y=*/0, /*right_margin=*/decs.top.buffer.width - left - button_size, true); \
+    _glfw.callbacks.draw_text((GLFWwindow*)window, text, fg_color, decs.which.hovered ? hover_bg : bg_color, output, decs.titlebar.buffer.width, \
+            decs.titlebar.buffer.height, /*x=*/left, /*y=*/0, /*right_margin=*/decs.titlebar.buffer.width - left - button_size, true); \
     decs.which.left = left; decs.which.width = button_size; left += button_size; \
 }
     if (window->wl.wm_capabilities.minimize) draw(minimize, "🗕", hover_bg);
@@ -229,70 +218,88 @@ render_buttons:
 static void
 update_title_bar(_GLFWwindow *window) {
     render_title_bar(window, false);
-    swap_buffers(&decs.top.buffer);
+    swap_buffers(&decs.titlebar.buffer);
 }
 
 static void
-render_edges(_GLFWwindow *window) {
-    const size_t margin = create_shadow_tile(window);
-    if (!st.data) return;  // out of memory
+render_horizontal_shadow(_GLFWwindow *window, ssize_t scaled_shadow_size, ssize_t src_y_offset, ssize_t y, _GLFWWaylandBufferPair *buf) {
+    // left region
+    ssize_t src_y = src_y_offset + y;
+    const ssize_t src_leftover_corner = st.corner_size - scaled_shadow_size;
+    uint32_t *src = st.data + st.stride * src_y + scaled_shadow_size;
+    uint32_t *d_start = (uint32_t*)(buf->data.front + y * buf->stride);
+    uint32_t *d_end = (uint32_t*)(buf->data.front + (y+1) * buf->stride);
+    uint32_t *left_region_end = d_start + MIN(d_end - d_start, src_leftover_corner);
+    memcpy(d_start, src, sizeof(uint32_t) * (left_region_end - d_start));
+    // right region
+    uint32_t *right_region_start = MAX(d_start, d_end - src_leftover_corner);
+    src = st.data + st.stride * (src_y+1) - st.corner_size;
+    memcpy(right_region_start, src, sizeof(uint32_t) * MIN(src_leftover_corner, d_end - right_region_start));
+    src = st.data + st.stride * src_y + st.corner_size;
+    // middle region
+    for (uint32_t *d = left_region_end; d < right_region_start; d += scaled_shadow_size)
+        memcpy(d, src, sizeof(uint32_t) * MIN(right_region_start - d, scaled_shadow_size));
+}
 
-    // bottom edge
-    uint32_t *src = st.data + (st.segments - 1) * margin * st.stride;
-    for (size_t y = 0; y < margin; y++) {
-        uint32_t *d = (uint32_t*)(decs.bottom.buffer.data.front + y * decs.bottom.buffer.stride);
-        uint32_t *s = src + st.stride * y;
-        // left corner
-        for (size_t x = 0; x < st.corner_size && x < decs.bottom.buffer.width; x++) d[x] = s[x];
-        // middle
-        size_t pos = st.corner_size, limit = decs.bottom.buffer.width > st.corner_size ? decs.bottom.buffer.width - st.corner_size : 0;
-        s += st.corner_size;
-        while (pos < limit) {
-            uint32_t *p = d + pos;
-            for (size_t x = 0; x < margin && pos + x < limit; x++) p[x] = s[x];
-            pos += margin;
-        }
-        // right corner
-        s += margin;
-        for (size_t x = 0; x < st.corner_size && limit + x < decs.bottom.buffer.width; x++) d[limit + x] = s[x];
-    }
+static void
+copy_vertical_region(
+    _GLFWwindow *window, ssize_t src_y_start, ssize_t src_y_limit,
+    ssize_t y_start, ssize_t y_limit, ssize_t src_x_offset, _GLFWWaylandBufferPair *buf
+) {
+    for (ssize_t dy = y_start, sy = src_y_start; dy < y_limit && sy < src_y_limit; dy++, sy++)
+        memcpy(buf->data.front + dy * buf->stride, st.data + sy * st.stride + src_x_offset, sizeof(uint32_t) * buf->width);
+}
 
-    // upper corners
-    for (size_t y = 0; y < st.corner_size && y < decs.left.buffer.height; y++) {
-        uint32_t *left_src = st.data + st.stride * y;
-        uint32_t *left_dest = (uint32_t*)(decs.left.buffer.data.front + y * decs.left.buffer.stride);
-        memcpy(left_dest, left_src, margin * sizeof(uint32_t));
-        uint32_t *right_src = left_src + 2 * st.corner_size;
-        uint32_t *right_dest = (uint32_t*)(decs.right.buffer.data.front + y * decs.right.buffer.stride);
-        memcpy(right_dest, right_src, margin * sizeof(uint32_t));
-    }
+static void
+render_shadows(_GLFWwindow *window) {
+    const ssize_t scaled_shadow_size = create_shadow_tile(window);
+    if (!st.data || !scaled_shadow_size) return;  // out of memory
+    // upper and lower shadows
+    for (ssize_t y = 0; y < scaled_shadow_size; y++) {
+        _GLFWWaylandBufferPair *buf = &decs.shadow_upper_left.buffer;
+        uint32_t *src = st.data + st.stride * y;
+        uint32_t *d = (uint32_t*)(buf->data.front + y * buf->stride);
+        memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
 
-    // lower corners
-    size_t src_height = st.corner_size - margin;
-    size_t dest_top = decs.left.buffer.height > src_height ? decs.left.buffer.height - src_height : 0;
-    size_t src_top = st.corner_size + margin;
-    for (size_t src_y = src_top, dest_y = dest_top; src_y < src_top + src_height && dest_y < decs.left.buffer.height; src_y++, dest_y++) {
-        uint32_t *s = st.data + st.stride * src_y;
-        uint32_t *d = (uint32_t*)(decs.left.buffer.data.front + dest_y * decs.left.buffer.stride);
-        memcpy(d, s, margin * sizeof(uint32_t));
-        s += 2 * st.corner_size;
-        d = (uint32_t*)(decs.right.buffer.data.front + dest_y * decs.left.buffer.stride);
-        memcpy(d, s, margin * sizeof(uint32_t));
-    }
+        buf = &decs.shadow_upper_right.buffer;
+        src += st.stride - scaled_shadow_size;
+        d = (uint32_t*)(buf->data.front + y * buf->stride);
+        memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
 
-    // sides
-    size_t limit = decs.left.buffer.height > src_height ? decs.left.buffer.height - src_height : 0;
-    for (size_t dest_y = st.corner_size, src_y = 0; dest_y < limit; dest_y++, src_y = (src_y + 1) % margin) {
-        uint32_t *src = st.data + (st.corner_size + src_y) * st.stride;
-        uint32_t *left_dest = (uint32_t*)(decs.left.buffer.data.front + dest_y * decs.left.buffer.stride);
-        memcpy(left_dest, src, margin * sizeof(uint32_t));
-        src += 2 * st.corner_size;
-        uint32_t *right_dest = (uint32_t*)(decs.right.buffer.data.front + dest_y * decs.right.buffer.stride);
-        memcpy(right_dest, src, margin * sizeof(uint32_t));
+        const size_t tile_bottom_start = st.stride - scaled_shadow_size;
+        buf = &decs.shadow_lower_left.buffer;
+        src = st.data + (tile_bottom_start + y) * st.stride;
+        d = (uint32_t*)(buf->data.front + y * buf->stride);
+        memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
+
+        buf = &decs.shadow_lower_right.buffer;
+        src += st.stride - scaled_shadow_size;
+        d = (uint32_t*)(buf->data.front + y * buf->stride);
+        memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
+
+        render_horizontal_shadow(window, scaled_shadow_size, 0, y, &decs.shadow_top.buffer);
+        render_horizontal_shadow(window, scaled_shadow_size, st.stride - scaled_shadow_size, y, &decs.shadow_bottom.buffer);
     }
+    // side shadows
+    // top region
+    const ssize_t src_leftover_corner = st.corner_size - scaled_shadow_size;
+    ssize_t y_start = 0, y_end = decs.shadow_left.buffer.height, top_end = MIN(y_end, src_leftover_corner);
+    ssize_t right_src_start = st.stride - scaled_shadow_size;
+#define c(src_y_start, src_y_limit, dest_y_start, dest_y_limit) { \
+    copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, 0, &decs.shadow_left.buffer); \
+    copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, right_src_start, &decs.shadow_right.buffer); \
+}
+    c(scaled_shadow_size, st.corner_size, y_start, top_end);
+    // bottom region
+    ssize_t bottom_start = MAX(0, y_end - src_leftover_corner);
+    c(st.stride - st.corner_size, st.stride - scaled_shadow_size, bottom_start, y_end);
+    // middle region
+    for (ssize_t dest_y = top_end; dest_y < bottom_start; dest_y += scaled_shadow_size)
+        c(st.corner_size, st.corner_size + scaled_shadow_size, dest_y, MIN(dest_y + scaled_shadow_size, bottom_start));
+#undef c
 
 #define copy(which) for (uint32_t *src = (uint32_t*)decs.which.buffer.data.front, *dest = (uint32_t*)decs.which.buffer.data.back; src < (uint32_t*)(decs.which.buffer.data.front + decs.which.buffer.size_in_bytes); src++, dest++) *dest = (A(*src) / 2 ) << 24;
-    copy(left); copy(bottom); copy(right);
+    all_shadow_surfaces(copy);
 #undef copy
 
 }
@@ -302,14 +309,18 @@ static bool
 create_shm_buffers(_GLFWwindow* window) {
     const float scale = _glfwWaylandWindowScale(window);
 
-    const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
-    const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
-
     decs.mapping.size = 0;
-    decs.mapping.size += init_buffer_pair(&decs.top.buffer, window->wl.width, decs.metrics.top, scale);
-    decs.mapping.size += init_buffer_pair(&decs.left.buffer, vertical_width, vertical_height, scale);
-    decs.mapping.size += init_buffer_pair(&decs.bottom.buffer, horizontal_width, horizontal_height, scale);
-    decs.mapping.size += init_buffer_pair(&decs.right.buffer, vertical_width, vertical_height, scale);
+#define bp(which, width, height) decs.mapping.size += init_buffer_pair(&decs.which.buffer, width, height, scale);
+    bp(titlebar, window->wl.width, decs.metrics.visible_titlebar_height);
+    bp(shadow_top, window->wl.width, decs.metrics.width);
+    bp(shadow_bottom, window->wl.width, decs.metrics.width);
+    bp(shadow_left, decs.metrics.width, window->wl.height + decs.metrics.visible_titlebar_height);
+    bp(shadow_right, decs.metrics.width, window->wl.height + decs.metrics.visible_titlebar_height);
+    bp(shadow_upper_left, decs.metrics.width, decs.metrics.width);
+    bp(shadow_upper_right, decs.metrics.width, decs.metrics.width);
+    bp(shadow_lower_left, decs.metrics.width, decs.metrics.width);
+    bp(shadow_lower_right, decs.metrics.width, decs.metrics.width);
+#undef bp
 
     int fd = createAnonymousFile(decs.mapping.size);
     if (fd < 0) {
@@ -326,20 +337,20 @@ create_shm_buffers(_GLFWwindow* window) {
     struct wl_shm_pool* pool = wl_shm_create_pool(_glfw.wl.shm, fd, decs.mapping.size);
     close(fd);
     size_t offset = 0;
-#define a(which) alloc_buffer_pair(window->id, &decs.which.buffer, pool, decs.mapping.data, &offset)
-    a(top); a(left); a(bottom); a(right);
-#undef a
+#define Q(which) alloc_buffer_pair(window->id, &decs.which.buffer, pool, decs.mapping.data, &offset)
+    all_surfaces(Q);
+#undef Q
     wl_shm_pool_destroy(pool);
     create_shadow_tile(window);
     render_title_bar(window, true);
-    render_edges(window);
-    debug("Created decoration buffers at scale: %f vertical_height: %zu horizontal_width: %zu\n", scale, vertical_height, horizontal_width);
+    render_shadows(window);
+    debug("Created decoration buffers at scale: %f\n", scale);
     return true;
 }
 
 static void
 free_csd_surfaces(_GLFWwindow *window) {
-#define d(which) {\
+#define Q(which) {\
     if (decs.which.subsurface) wl_subsurface_destroy(decs.which.subsurface); \
     decs.which.subsurface = NULL; \
     if (decs.which.surface) wl_surface_destroy(decs.which.surface); \
@@ -347,33 +358,34 @@ free_csd_surfaces(_GLFWwindow *window) {
     if (decs.which.wp_viewport) wp_viewport_destroy(decs.which.wp_viewport); \
     decs.which.wp_viewport = NULL; \
 }
-    d(left); d(top); d(right); d(bottom);
-#undef d
+    all_surfaces(Q);
+#undef Q
 }
 
 static void
 free_csd_buffers(_GLFWwindow *window) {
-#define d(which) { \
+#define Q(which) { \
     if (decs.which.buffer.a_needs_to_be_destroyed && decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a); \
     if (decs.which.buffer.b_needs_to_be_destroyed && decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b); \
     memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair)); \
 }
-    d(left); d(top); d(right); d(bottom);
-#undef d
+    all_surfaces(Q);
+#undef Q
     if (decs.mapping.data) munmap(decs.mapping.data, decs.mapping.size);
     decs.mapping.data = NULL; decs.mapping.size = 0;
 }
 
 static void
-position_csd_surface(_GLFWWaylandCSDEdge *s, int x, int y) {
+position_csd_surface(_GLFWWaylandCSDSurface *s, int x, int y) {
     wl_surface_set_buffer_scale(s->surface, 1);
     s->x = x; s->y = y;
     wl_subsurface_set_position(s->subsurface, s->x, s->y);
 }
 
 static void
-create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDEdge *s) {
+create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDSurface *s) {
     s->surface = wl_compositor_create_surface(_glfw.wl.compositor);
+    wl_surface_set_user_data(s->surface, window);
     s->subsurface = wl_subcompositor_get_subsurface(_glfw.wl.subcompositor, s->surface, window->wl.surface);
     if (_glfw.wl.wp_viewporter) s->wp_viewport = wp_viewporter_get_viewport(_glfw.wl.wp_viewporter, s->surface);
 }
@@ -401,7 +413,7 @@ ensure_csd_resources(_GLFWwindow *window) {
         decs.for_window_state.fscale != _glfwWaylandWindowScale(window) ||
         !decs.mapping.data
     );
-    const bool needs_update = focus_changed || size_changed || !decs.left.surface || decs.buffer_destroyed;
+    const bool needs_update = focus_changed || size_changed || !decs.titlebar.surface || decs.buffer_destroyed;
     debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d buffer_destroyed: %d\n",
             decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update, size_changed, decs.buffer_destroyed);
     if (!needs_update) return false;
@@ -411,28 +423,26 @@ ensure_csd_resources(_GLFWwindow *window) {
         decs.buffer_destroyed = false;
     }
 
-    int32_t x, y;
-    x = 0; y = -decs.metrics.top;
-    if (!decs.top.surface) create_csd_surfaces(window, &decs.top);
-    position_csd_surface(&decs.top, x, y);
+#define setup_surface(which, x, y) \
+    if (!decs.which.surface) create_csd_surfaces(window, &decs.which); \
+        position_csd_surface(&decs.which, x, y);
 
-    x = -decs.metrics.width; y = -decs.metrics.top;
-    if (!decs.left.surface) create_csd_surfaces(window, &decs.left);
-    position_csd_surface(&decs.left, x, y);
-
-    x = -decs.metrics.width; y = window->wl.height;
-    if (!decs.bottom.surface) create_csd_surfaces(window, &decs.bottom);
-    position_csd_surface(&decs.bottom, x, y);
-
-    x = window->wl.width; y = -decs.metrics.top;
-    if (!decs.right.surface) create_csd_surfaces(window, &decs.right);
-    position_csd_surface(&decs.right, x, y);
+    setup_surface(titlebar, 0, -decs.metrics.visible_titlebar_height);
+    setup_surface(shadow_top, decs.titlebar.x, decs.titlebar.y - decs.metrics.width);
+    setup_surface(shadow_bottom, decs.titlebar.x, window->wl.height);
+    setup_surface(shadow_left, -decs.metrics.width, decs.titlebar.y);
+    setup_surface(shadow_right, window->wl.width, decs.shadow_left.y);
+    setup_surface(shadow_upper_left, decs.shadow_left.x, decs.shadow_top.y);
+    setup_surface(shadow_upper_right, decs.shadow_right.x, decs.shadow_top.y);
+    setup_surface(shadow_lower_left, decs.shadow_left.x, decs.shadow_bottom.y);
+    setup_surface(shadow_lower_right, decs.shadow_right.x, decs.shadow_bottom.y);
 
     if (focus_changed) update_title_bar(window);
-    damage_csd(top, decs.top.buffer.front);
-    damage_csd(left, is_focused ? decs.left.buffer.front : decs.left.buffer.back);
-    damage_csd(bottom, is_focused ? decs.bottom.buffer.front : decs.bottom.buffer.back);
-    damage_csd(right, is_focused ? decs.right.buffer.front : decs.right.buffer.back);
+    damage_csd(titlebar, decs.titlebar.buffer.front);
+#define d(which) damage_csd(which, is_focused ? decs.which.buffer.front : decs.which.buffer.back);
+    d(shadow_left); d(shadow_right); d(shadow_top); d(shadow_bottom);
+    d(shadow_upper_left); d(shadow_upper_right); d(shadow_lower_left); d(shadow_lower_right);
+#undef d
 
     decs.for_window_state.width = window->wl.width;
     decs.for_window_state.height = window->wl.height;
@@ -461,9 +471,9 @@ bool
 csd_change_title(_GLFWwindow *window) {
     if (!window_is_csd_capable(window)) return false;
     if (ensure_csd_resources(window)) return true;  // CSD were re-rendered for other reasons
-    if (decs.top.surface) {
+    if (decs.titlebar.surface) {
         update_title_bar(window);
-        damage_csd(top, decs.top.buffer.front);
+        damage_csd(titlebar, decs.titlebar.buffer.front);
         return true;
     }
     return false;
@@ -471,7 +481,7 @@ csd_change_title(_GLFWwindow *window) {
 
 void
 csd_set_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
-    bool has_csd = window_is_csd_capable(window) && decs.top.surface && !(window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN);
+    bool has_csd = window_is_csd_capable(window) && decs.titlebar.surface && !(window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN);
     bool size_specified_by_compositor = *width > 0 && *height > 0;
     if (!size_specified_by_compositor) {
         *width = window->wl.user_requested_content_size.width;
@@ -551,17 +561,15 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
 static bool
 update_hovered_button(_GLFWwindow *window) {
     bool has_hovered_button = false;
-    if (y >= decs.metrics.width) {
-        int scaled_x = (int)round(decs.for_window_state.fscale * x);
+    int scaled_x = (int)round(decs.for_window_state.fscale * x);
 #define c(which) \
-        if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) { \
-            has_hovered_button = true; \
-            if (!decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = true; } \
-        } else if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
+    if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) { \
+        has_hovered_button = true; \
+        if (!decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = true; } \
+    } else if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
 
-        c(minimize); c(maximize); c(close);
+    c(minimize); c(maximize); c(close);
 #undef c
-    }
     update_title_bar(window);
     return has_hovered_button;
 }
@@ -572,9 +580,9 @@ has_hovered_button(_GLFWwindow *window) {
 }
 
 static void
-handle_pointer_leave(_GLFWwindow *window) {
+handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
 #define c(which) if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
-    if (decs.focus == TOP_DECORATION) {
+    if (surface == decs.titlebar.surface) {
         c(minimize); c(maximize); c(close);
     }
 #undef c
@@ -588,38 +596,27 @@ handle_pointer_move(_GLFWwindow *window) {
     switch (decs.focus)
     {
         case CENTRAL_WINDOW: break;
-        case TOP_DECORATION:
-            if (update_hovered_button(window)) {
-                cursorShape = GLFW_POINTER_CURSOR;
-            } else if (y < decs.metrics.width) cursorShape = GLFW_N_RESIZE_CURSOR;
-            break;
-        case LEFT_DECORATION:
-            if (y < decs.metrics.width)
-                cursorShape = GLFW_NW_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_W_RESIZE_CURSOR;
-            break;
-        case RIGHT_DECORATION:
-            if (y < decs.metrics.width)
-                cursorShape = GLFW_NE_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_E_RESIZE_CURSOR;
-            break;
-        case BOTTOM_DECORATION:
-            if (x < decs.metrics.width)
-                cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (x > window->wl.width + decs.metrics.width)
-                cursorShape = GLFW_SE_RESIZE_CURSOR;
-            else
-                cursorShape = GLFW_S_RESIZE_CURSOR;
-            break;
+        case CSD_titlebar: if (update_hovered_button(window)) cursorShape = GLFW_POINTER_CURSOR; break;
+        case CSD_shadow_top: cursorShape = GLFW_N_RESIZE_CURSOR; break;
+        case CSD_shadow_bottom: cursorShape = GLFW_S_RESIZE_CURSOR; break;
+        case CSD_shadow_left: cursorShape = GLFW_W_RESIZE_CURSOR; break;
+        case CSD_shadow_right: cursorShape = GLFW_E_RESIZE_CURSOR; break;
+        case CSD_shadow_upper_left: cursorShape = GLFW_NW_RESIZE_CURSOR; break;
+        case CSD_shadow_upper_right: cursorShape = GLFW_NE_RESIZE_CURSOR; break;
+        case CSD_shadow_lower_left: cursorShape = GLFW_SW_RESIZE_CURSOR; break;
+        case CSD_shadow_lower_right: cursorShape = GLFW_SE_RESIZE_CURSOR; break;
     }
     if (_glfw.wl.cursorPreviousShape != cursorShape) set_cursor(cursorShape, window);
 }
 
 static void
-handle_pointer_enter(_GLFWwindow *window) {
-    handle_pointer_move(window); // enter is also a move
+handle_pointer_enter(_GLFWwindow *window, struct wl_surface *surface) {
+#define Q(which) if (decs.which.surface == surface) { \
+    decs.focus = CSD_##which; handle_pointer_move(window); return; } // enter is also a move
+
+    all_surfaces(Q)
+#undef Q
+    decs.focus = CENTRAL_WINDOW;
 }
 
 static void
@@ -628,7 +625,7 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
     if (button == BTN_LEFT) {
         switch (decs.focus) {
             case CENTRAL_WINDOW: break;
-            case TOP_DECORATION:
+            case CSD_titlebar:
                 if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
                     monotonic_t last_click_at = decs.last_click_on_top_decoration_at;
                     decs.last_click_on_top_decoration_at = monotonic();
@@ -648,39 +645,22 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                     } else if (decs.close.hovered) _glfwInputWindowCloseRequest(window);
                 }
                 if (!has_hovered_button(window)) {
-                    if (y < decs.metrics.width)
-                        edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-                    else {
-                        if (window->wl.xdg.toplevel)
-                            xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
-                    }
+                    if (window->wl.xdg.toplevel) xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
                 }
                 break;
-            case LEFT_DECORATION:
-                if (y < decs.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
-                else
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
-                break;
-            case RIGHT_DECORATION:
-                if (y < decs.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
-                else
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
-                break;
-            case BOTTOM_DECORATION:
-                if (x < decs.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (x > window->wl.width + decs.metrics.width)
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
-                else
-                    edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
-                break;
+            case CSD_shadow_left: edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT; break;
+            case CSD_shadow_upper_left: edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT; break;
+            case CSD_shadow_right: edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT; break;
+            case CSD_shadow_upper_right: edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT; break;
+            case CSD_shadow_top: edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP; break;
+            case CSD_shadow_lower_left: edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT; break;
+            case CSD_shadow_bottom: edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM; break;
+            case CSD_shadow_lower_right: edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT; break;
         }
         if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, edges);
     }
     else if (button == BTN_RIGHT) {
-        if (decs.focus != CENTRAL_WINDOW && window->wl.xdg.toplevel)
+        if (decs.focus == CSD_titlebar && window->wl.xdg.toplevel)
         {
             if (window->wl.wm_capabilities.window_menu) xdg_toplevel_show_window_menu(
                     window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - decs.metrics.top);
@@ -693,13 +673,13 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
 
 
 void
-csd_handle_pointer_event(_GLFWwindow *window, int button, int state) {
+csd_handle_pointer_event(_GLFWwindow *window, int button, int state, struct wl_surface *surface) {
     if (!window_is_csd_capable(window)) return;
     decs.titlebar_needs_update = false;
     switch (button) {
         case -1: handle_pointer_move(window); break;
-        case -2: handle_pointer_enter(window); break;
-        case -3: handle_pointer_leave(window); break;
+        case -2: handle_pointer_enter(window, surface); break;
+        case -3: handle_pointer_leave(window, surface); break;
         default: handle_pointer_button(window, button, state); break;
     }
     if (decs.titlebar_needs_update) {

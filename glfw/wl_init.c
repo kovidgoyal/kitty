@@ -62,48 +62,38 @@ static int min(int n1, int n2)
     return n1 < n2 ? n1 : n2;
 }
 
-static _GLFWwindow*
-findWindowFromDecorationSurface(struct wl_surface* surface, _GLFWdecorationSideWayland* which)
-{
-    _GLFWdecorationSideWayland focus;
-    if (!which) which = &focus;
-    _GLFWwindow* window = _glfw.windowListHead;
-#define q(edge, result) if (surface == window->wl.decorations.edge.surface) { *which = result; break; }
-    while (window) {
-        q(top, TOP_DECORATION);
-        q(left, LEFT_DECORATION);
-        q(right, RIGHT_DECORATION);
-        q(bottom, BOTTOM_DECORATION);
-        window = window->next;
-    }
-#undef q
-    return window;
-}
-
 #define x window->wl.allCursorPosX
 #define y window->wl.allCursorPosY
+
+static _GLFWwindow*
+get_window_from_surface(struct wl_surface* surface) {
+    if (!surface) return NULL;
+    _GLFWwindow *ans = wl_surface_get_user_data(surface);
+    if (ans) {
+        const _GLFWwindow *w = _glfw.windowListHead;
+        while (w) {
+            if (w == ans) return ans;
+            w = w->next;
+        }
+    }
+    return NULL;
+}
 
 static void
 pointerHandleEnter(
         void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t serial, struct wl_surface* surface,
         wl_fixed_t sx, wl_fixed_t sy
 ) {
-    // Happens in case we just destroyed the surface.
-    if (!surface) return;
-
-    _GLFWdecorationSideWayland focus = CENTRAL_WINDOW;
-    _GLFWwindow* window = wl_surface_get_user_data(surface);
-    if (!window) {
-        window = findWindowFromDecorationSurface(surface, &focus);
-        if (!window) return;
-    }
-    window->wl.decorations.focus = focus;
+    _GLFWwindow* window = get_window_from_surface(surface);
+    if (!window) return;
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial; _glfw.wl.pointer_enter_serial = serial;
     _glfw.wl.pointerFocus = window;
     window->wl.allCursorPosX = wl_fixed_to_double(sx);
     window->wl.allCursorPosY = wl_fixed_to_double(sy);
-    if (focus != CENTRAL_WINDOW) csd_handle_pointer_event(window, -2, -2);
-    else {
+    if (surface != window->wl.surface) {
+        csd_handle_pointer_event(window, -2, -2, surface);
+    } else {
+        window->wl.decorations.focus = CENTRAL_WINDOW;
         window->wl.hovered = true;
         window->wl.cursorPosX = x;
         window->wl.cursorPosY = y;
@@ -114,35 +104,32 @@ pointerHandleEnter(
 }
 
 static void
-pointerHandleLeave(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t serial, struct wl_surface* surface UNUSED) {
+pointerHandleLeave(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t serial, struct wl_surface* surface) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     _glfw.wl.serial = serial;
     _glfw.wl.pointerFocus = NULL;
-    if (window->wl.decorations.focus == CENTRAL_WINDOW) {
+    if (window->wl.surface == surface) {
         window->wl.hovered = false;
-
         _glfwInputCursorEnter(window, false);
         _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
-    } else csd_handle_pointer_event(window, -3, -3);
+    } else csd_handle_pointer_event(window, -3, -3, surface);
 }
 
 static void
 pointerHandleMotion(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t time UNUSED, wl_fixed_t sx, wl_fixed_t sy) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-    if (!window) return;
-    if (window->cursorMode == GLFW_CURSOR_DISABLED) return;
+    if (!window || window->cursorMode == GLFW_CURSOR_DISABLED) return;
     window->wl.allCursorPosX = wl_fixed_to_double(sx);
     window->wl.allCursorPosY = wl_fixed_to_double(sy);
     if (window->wl.decorations.focus != CENTRAL_WINDOW) {
-        csd_handle_pointer_event(window, -1, -1);
-        return;
+        csd_handle_pointer_event(window, -1, -1, NULL);
+    } else {
+        window->wl.cursorPosX = x;
+        window->wl.cursorPosY = y;
+        _glfwInputCursorPos(window, x, y);
+        _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
     }
-    window->wl.cursorPosX = x;
-    window->wl.cursorPosY = y;
-    _glfwInputCursorPos(window, x, y);
-    _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
-
 }
 
 static void pointerHandleButton(void* data UNUSED,
@@ -157,7 +144,7 @@ static void pointerHandleButton(void* data UNUSED,
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     if (window->wl.decorations.focus != CENTRAL_WINDOW) {
-        csd_handle_pointer_event(window, button, state);
+        csd_handle_pointer_event(window, button, state, NULL);
         return;
     }
     /* Makes left, right and middle 0, 1 and 2. Overall order follows evdev
@@ -292,17 +279,8 @@ static void keyboardHandleEnter(void* data UNUSED,
                                 struct wl_surface* surface,
                                 struct wl_array* keys)
 {
-    // Happens in the case we just destroyed the surface.
-    if (!surface)
-        return;
-
-    _GLFWwindow* window = wl_surface_get_user_data(surface);
-    if (!window)
-    {
-        window = findWindowFromDecorationSurface(surface, NULL);
-        if (!window)
-            return;
-    }
+    _GLFWwindow* window = get_window_from_surface(surface);
+    if (!window) return;
 
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.keyboard_enter_serial = serial;
     _glfw.wl.keyboardFocusId = window->id;

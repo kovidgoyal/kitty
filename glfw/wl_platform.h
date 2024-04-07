@@ -94,14 +94,11 @@ typedef void (* PFN_wl_egl_window_resize)(struct wl_egl_window*, int, int, int, 
 #define wl_egl_window_destroy _glfw.wl.egl.window_destroy
 #define wl_egl_window_resize _glfw.wl.egl.window_resize
 
-typedef enum _GLFWdecorationSideWayland
+typedef enum _GLFWCSDSurface
 {
-    CENTRAL_WINDOW,
-    TOP_DECORATION,
-    LEFT_DECORATION,
-    RIGHT_DECORATION,
-    BOTTOM_DECORATION,
-} _GLFWdecorationSideWayland;
+    CENTRAL_WINDOW, CSD_titlebar, CSD_shadow_top, CSD_shadow_left, CSD_shadow_bottom, CSD_shadow_right,
+    CSD_shadow_upper_left, CSD_shadow_upper_right, CSD_shadow_lower_left, CSD_shadow_lower_right,
+} _GLFWCSDSurface;
 
 typedef struct _GLFWWaylandBufferPair {
     struct wl_buffer *a, *b, *front, *back;
@@ -111,13 +108,13 @@ typedef struct _GLFWWaylandBufferPair {
     bool a_needs_to_be_destroyed, b_needs_to_be_destroyed;
 } _GLFWWaylandBufferPair;
 
-typedef struct _GLFWWaylandCSDEdge {
+typedef struct _GLFWWaylandCSDSurface {
     struct wl_surface *surface;
     struct wl_subsurface *subsurface;
     struct wp_viewport *wp_viewport;
     _GLFWWaylandBufferPair buffer;
     int x, y;
-} _GLFWWaylandCSDEdge;
+} _GLFWWaylandCSDSurface;
 
 typedef enum WaylandWindowState {
 
@@ -203,8 +200,9 @@ typedef struct _GLFWwindowWayland
 
     struct {
         bool serverSide, buffer_destroyed, titlebar_needs_update;
-        _GLFWdecorationSideWayland focus;
-        _GLFWWaylandCSDEdge top, left, right, bottom;
+        _GLFWCSDSurface focus;
+
+        _GLFWWaylandCSDSurface titlebar, shadow_left, shadow_right, shadow_top, shadow_bottom, shadow_upper_left, shadow_upper_right, shadow_lower_left, shadow_lower_right;
 
         struct {
             uint8_t *data;
