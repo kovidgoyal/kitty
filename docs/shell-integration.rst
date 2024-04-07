@@ -435,3 +435,17 @@ Here ``<OSC>`` is the bytes ``0x1b 0x5d`` and ``<ST>`` is the bytes ``0x1b
 0x5c``. This is exactly what is needed for shell integration in kitty. For the
 full protocol, that also marks the command region, see `the iTerm2 docs
 <https://iterm2.com/documentation-escape-codes.html>`_.
+
+kitty additionally supports several extra fields for the ``<OSC>133;A`` command
+to control its behavior, separated by semi-colons. They are::
+
+    redraw=0 - this tells kitty that the shell will not redraw the prompt on
+    resize so it should not erase it
+
+    special_key=1 - this tells kitty to use a special key instead of arrow keys
+    to move the cursor on mouse click. Useful if arrow keys have side-effects
+    like triggering auto complete. The shell integration script then binds the
+    special key, as needed.
+
+    k=s - this tells kitty that the secondary (PS2) prompt is starting at the
+    current line.
