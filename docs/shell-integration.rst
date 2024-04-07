@@ -85,6 +85,8 @@ no-cwd
 no-prompt-mark
     Turn off marking of prompts. This disables jumping to prompt, browsing
     output of last command and click to move cursor functionality.
+    Note that for the fish shell this does not take effect, since fish always
+    marks prompts.
 
 no-complete
     Turn off completion for the kitty command.
