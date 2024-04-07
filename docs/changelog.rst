@@ -61,6 +61,8 @@ Detailed list of changes
 
 - Wayland KDE: Support :opt:`background_blur`
 
+- Wayland GNOME: The window titlebar now has buttons to minimize/maximize/close the window
+
 - Wayland GNOME: The window titlebar color now follows the system light/dark color scheme preference, see :opt:`wayland_titlebar_color`
 
 - Wayland KDE: Fix mouse cursor hiding not working in Plasma 6 (:iss:`7265`)
