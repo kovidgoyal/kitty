@@ -71,9 +71,13 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
     # Enable prompt marking with OSC 133
     if not contains "no-prompt-mark" $_ksi and not set -q __ksi_prompt_state
-        # fish 3.8 emits prompt markers, so we don't need to.
-        # Cheesily detect that version by probing for another feature.
-        if not bind --function-names | string match -q forward-char-passive
+        set --local suffix ''
+        if bind --function-names | string match -q forward-char-passive
+            set suffix '-passive'
+        end
+        # fish 3.8 emits prompt markers, so we don't need to. It also is the
+        # first version to define forward-char-passive so use that as a test to detect it
+        if test "$suffix" = ""
             function __ksi_mark_prompt_start --on-event fish_prompt --on-event fish_cancel --on-event fish_posterror
                 test "$__ksi_prompt_state" != prompt-start
                 and echo -en "\e]133;D\a"
@@ -99,10 +103,6 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
         # Binding for special key to move cursor on mouse click without triggering any
         # autocompletion or other effects
-        set --local suffix ''
-        if bind --function-names | string match -q forward-char-passive
-            set suffix '-passive'
-        end
         for mode in (bind --list-modes | string match -v paste)  # bind in all modes except paste
             bind --preset -M "$mode" \e\[1u "forward-char$suffix"
             bind --preset -M "$mode" \e\[1\;1u "backward-char$suffix"
