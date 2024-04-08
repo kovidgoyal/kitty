@@ -479,7 +479,7 @@ ensure_csd_resources(_GLFWwindow *window) {
 void
 csd_set_visible(_GLFWwindow *window, bool visible) {
     // When setting to visible will only take effect if window currently has
-    // CSD and will also ensure CSD is of correct size for current window size.
+    // CSD and will also ensure CSD is of correct size and type for current window.
     // When hiding CSD simply destroys all CSD surfaces.
     if (visible) ensure_csd_resources(window); else free_csd_surfaces(window);
 }
