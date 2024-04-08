@@ -172,6 +172,7 @@ csd_initialize_metrics(_GLFWwindow *window) {
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
+    const bool is_maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
     const uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
     const uint32_t dark_fg = is_focused ? 0xffffffff : 0xffcccccc, dark_bg = is_focused ? 0xff303030 : 0xff242424;
     static const uint32_t hover_dark_bg = 0xff444444, hover_light_bg = 0xffbbbbbb;
@@ -210,7 +211,7 @@ render_buttons:
     decs.which.left = left; decs.which.width = button_size; left += button_size; \
 }
     if (window->wl.wm_capabilities.minimize) draw(minimize, "🗕", hover_bg);
-    if (window->wl.wm_capabilities.maximize) draw(maximize, "🗖", hover_bg);
+    if (window->wl.wm_capabilities.maximize) draw(maximize, is_maximized ? "🗗" : "🗖", hover_bg);
     draw(close, "🗙", is_dark ? 0xff880000: 0xffc80000);
 #undef draw
 }
@@ -413,9 +414,10 @@ ensure_csd_resources(_GLFWwindow *window) {
         decs.for_window_state.fscale != _glfwWaylandWindowScale(window) ||
         !decs.mapping.data
     );
-    const bool needs_update = focus_changed || size_changed || !decs.titlebar.surface || decs.buffer_destroyed;
-    debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d buffer_destroyed: %d\n",
-            decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update, size_changed, decs.buffer_destroyed);
+    const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
+    const bool needs_update = focus_changed || size_changed || !decs.titlebar.surface || decs.buffer_destroyed || state_changed;
+    debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d buffer_destroyed: %d\n",
+            decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update, size_changed, state_changed, decs.buffer_destroyed);
     if (!needs_update) return false;
     if (size_changed || decs.buffer_destroyed) {
         free_csd_buffers(window);
@@ -437,7 +439,7 @@ ensure_csd_resources(_GLFWwindow *window) {
     setup_surface(shadow_lower_left, decs.shadow_left.x, decs.shadow_bottom.y);
     setup_surface(shadow_lower_right, decs.shadow_right.x, decs.shadow_bottom.y);
 
-    if (focus_changed) update_title_bar(window);
+    if (focus_changed || state_changed) update_title_bar(window);
     damage_csd(titlebar, decs.titlebar.buffer.front);
 #define d(which) damage_csd(which, is_focused ? decs.which.buffer.front : decs.which.buffer.back);
     d(shadow_left); d(shadow_right); d(shadow_top); d(shadow_bottom);
@@ -448,6 +450,7 @@ ensure_csd_resources(_GLFWwindow *window) {
     decs.for_window_state.height = window->wl.height;
     decs.for_window_state.fscale = _glfwWaylandWindowScale(window);
     decs.for_window_state.focused = is_focused;
+    decs.for_window_state.toplevel_states = window->wl.current.toplevel_states;
     return true;
 }
 

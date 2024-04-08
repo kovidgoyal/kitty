@@ -213,6 +213,7 @@ typedef struct _GLFWwindowWayland
             int width, height;
             bool focused;
             float fscale;
+            WaylandWindowState toplevel_states;
         } for_window_state;
 
         struct {
@@ -263,7 +264,7 @@ typedef struct _GLFWwindowWayland
     uint32_t pending_state;
     struct {
         int width, height;
-        uint32_t toplevel_states;
+        WaylandWindowState toplevel_states;
         uint32_t decoration_mode;
     } current, pending;
 } _GLFWwindowWayland;
