@@ -58,11 +58,6 @@
 
 #define debug debug_rendering
 
-static int min(int n1, int n2)
-{
-    return n1 < n2 ? n1 : n2;
-}
-
 #define x window->wl.allCursorPosX
 #define y window->wl.allCursorPosY
 
@@ -453,10 +448,10 @@ static void registryHandleGlobal(void* data UNUSED,
     if (is(wl_compositor))
     {
 #ifdef WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION
-        _glfw.wl.compositorVersion = min(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION, version);
+        _glfw.wl.compositorVersion = MIN(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION, (int)version);
         _glfw.wl.has_preferred_buffer_scale = _glfw.wl.compositorVersion >= WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION;
 #else
-        _glfw.wl.compositorVersion = min(3, version);
+        _glfw.wl.compositorVersion = MIN(3, (int)version);
 #endif
         _glfw.wl.compositor = wl_registry_bind(registry, name, &wl_compositor_interface, _glfw.wl.compositorVersion);
     }
@@ -478,7 +473,7 @@ static void registryHandleGlobal(void* data UNUSED,
     {
         if (!_glfw.wl.seat)
         {
-            _glfw.wl.seatVersion = min(5, version);
+            _glfw.wl.seatVersion = MIN(5u, version);
             _glfw.wl.seat =
                 wl_registry_bind(registry, name, &wl_seat_interface,
                                  _glfw.wl.seatVersion);
@@ -495,7 +490,7 @@ static void registryHandleGlobal(void* data UNUSED,
     {
         _glfw.wl.xdg_wm_base_version = 1;
 #ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
-        _glfw.wl.xdg_wm_base_version = min(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION, version);
+        _glfw.wl.xdg_wm_base_version = MIN(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION, (int)version);
 #endif
         _glfw.wl.wmBase = wl_registry_bind(registry, name, &xdg_wm_base_interface, _glfw.wl.xdg_wm_base_version);
         xdg_wm_base_add_listener(_glfw.wl.wmBase, &wmBaseListener, NULL);
