@@ -211,7 +211,7 @@ typedef struct _GLFWwindowWayland
 
         struct {
             int width, height;
-            bool focused;
+            bool focused, needs_shadow;
             float fscale;
             WaylandWindowState toplevel_states;
         } for_window_state;

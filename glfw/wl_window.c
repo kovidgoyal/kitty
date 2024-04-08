@@ -597,13 +597,8 @@ setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support fullscreen");
         return;
     }
-    if (on) {
-        xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel, monitor ? monitor->wl.output : NULL);
-        csd_set_visible(window, false);
-    } else {
-        xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-        csd_set_visible(window, true);
-    }
+    if (on) xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel, monitor ? monitor->wl.output : NULL);
+    else xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
 }
 
 
