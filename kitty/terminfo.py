@@ -181,11 +181,14 @@ string_capabilities = {
     'kbs': r'\177',
     # Mouse event has occurred
     'kmous': r'\E[M',
+
+    # These break mouse events in htop so they are disabled
     # Turn on mouse reporting
-    'XM': '\E[?1006;1004;1000%?%p1%{1}%=%th%el%;',
+    # 'XM': '\E[?1006;1004;1000%?%p1%{1}%=%th%el%;',
     # Expected format for mouse reporting escape codes
-    'xm': r'\E[<%i%p3%d;%p1%d;%p2%d;%?%p4%tM%em%;',
+    # 'xm': r'\E[<%i%p3%d;%p1%d;%p2%d;%?%p4%tM%em%;',
     # Scroll backwards (reverse index)
+
     'kri': r'\E[1;2A',
     # scroll forwards (index)
     'kind': r'\E[1;2B',
