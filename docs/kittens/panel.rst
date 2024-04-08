@@ -28,6 +28,9 @@ The screenshot above shows a sample panel that displays the current desktop and
 window title as well as miscellaneous system information such as network
 activity, CPU load, date/time, etc.
 
+.. versionadded:: 0.34.0
+   Support for Wayland
+
 .. note::
 
     This kitten currently only works on X11 desktops and Wayland compositors
