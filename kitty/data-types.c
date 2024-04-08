@@ -416,6 +416,17 @@ py_monotonic(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyFloat_FromDouble(monotonic_t_to_s_double(monotonic()));
 }
 
+static PyObject*
+py_timed_debug_print(PyObject *self UNUSED, PyObject *args) {
+    const char *payload; Py_ssize_t sz;
+    if (!PyArg_ParseTuple(args, "s#", &payload, &sz)) return NULL;
+    const char *fmt = "%.*s";
+    if (sz && payload[sz-1] == '\n') { fmt = "%.*s\n"; sz--; }
+    timed_debug_print(fmt, sz, payload);
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef module_methods[] = {
     METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
@@ -439,6 +450,7 @@ static PyMethodDef module_methods[] = {
     {"wrapped_kitten_names", (PyCFunction)wrapped_kittens, METH_NOARGS, ""},
     {"terminfo_data", (PyCFunction)py_terminfo_data, METH_NOARGS, ""},
     {"monotonic", (PyCFunction)py_monotonic, METH_NOARGS, ""},
+    {"timed_debug_print", (PyCFunction)py_timed_debug_print, METH_VARARGS, ""},
     {"find_in_memoryview", (PyCFunction)find_in_memoryview, METH_VARARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),

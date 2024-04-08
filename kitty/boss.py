@@ -150,6 +150,7 @@ from .utils import (
     sanitize_url_for_dispay_to_user,
     single_instance,
     startup_notification_handler,
+    timed_debug_print,
     which,
 )
 from .window import CommandOutput, CwdRequest, Window
@@ -1518,7 +1519,7 @@ class Boss:
             if self.args.debug_keyboard:
                 prefix = '\n' if dispatch_type == 'KeyPress' else ''
                 end = ', ' if dispatch_type == 'KeyPress' else '\n'
-                print(f'{prefix}\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), end=end, flush=True)
+                timed_debug_print(f'{prefix}\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), end=end)
 
         if key_action is not None:
             f = getattr(self, key_action.func, None)

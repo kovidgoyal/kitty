@@ -10,8 +10,7 @@
 #include "wayland-text-input-unstable-v3-client-protocol.h"
 #include <stdlib.h>
 #include <string.h>
-#undef debug
-#define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
+#define debug debug_input
 
 static struct zwp_text_input_v3*                  text_input;
 static struct zwp_text_input_manager_v3*          text_input_manager;

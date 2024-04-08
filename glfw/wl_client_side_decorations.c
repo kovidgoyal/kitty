@@ -14,6 +14,7 @@
 #include <stdlib.h>
 
 #define decs window->wl.decorations
+#define debug debug_rendering
 
 #define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define A(x) (((x) >> 24) & 0xff)

@@ -41,6 +41,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+#define debug debug_rendering
 
 static GLFWLayerShellConfig layer_shell_config_for_next_window = {0};
 
@@ -636,7 +637,7 @@ xdgToplevelHandleConfigure(void* data,
 
     wl_array_for_each(state, states) {
         switch (*state) {
-#define C(x) case XDG_##x: new_states |= x; if (_glfw.hints.init.debugRendering) fprintf(stderr, "%s ", #x); break
+#define C(x) case XDG_##x: new_states |= x; debug("%s ", #x); break
             C(TOPLEVEL_STATE_RESIZING);
             C(TOPLEVEL_STATE_MAXIMIZED);
             C(TOPLEVEL_STATE_FULLSCREEN);
@@ -651,7 +652,7 @@ xdgToplevelHandleConfigure(void* data,
 #undef C
         }
     }
-    if (_glfw.hints.init.debugRendering) fprintf(stderr, "\n");
+    debug("\n");
     if (new_states & TOPLEVEL_STATE_RESIZING) {
         if (width) window->wl.user_requested_content_size.width = width;
         if (height) window->wl.user_requested_content_size.height = height;

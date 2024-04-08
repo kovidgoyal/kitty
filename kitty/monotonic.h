@@ -67,8 +67,14 @@ init_monotonic(void) {
     monotonic_start_time = monotonic_();
 }
 
+extern int timed_debug_print(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
 #ifdef MONOTONIC_IMPLEMENTATION
 #include <time.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
 monotonic_t monotonic_start_time = 0;
 
 static inline monotonic_t
@@ -87,5 +93,18 @@ monotonic_(void) {
     clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
     return calc_nano_time(ts);
+}
+
+int
+timed_debug_print(const char *fmt, ...) {
+    int result;
+    static int starting_print = 1;
+    if (starting_print) fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic()));
+    va_list args;
+    va_start(args, fmt);
+    result = vfprintf(stderr, fmt, args);
+    va_end(args);
+    starting_print = fmt && strchr(fmt, '\n') != NULL;
+    return result;
 }
 #endif

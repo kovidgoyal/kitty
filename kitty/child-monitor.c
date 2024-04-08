@@ -27,7 +27,7 @@ extern PyTypeObject Screen_Type;
 #endif
 
 #ifdef DEBUG_EVENT_LOOP
-#define EVDBG(...) log_event(__VA_ARGS__)
+#define EVDBG(...) timed_debug_print(__VA_ARGS__)
 #else
 #define EVDBG(...)
 #endif

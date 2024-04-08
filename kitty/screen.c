@@ -1168,9 +1168,7 @@ screen_current_key_encoding_flags(Screen *self) {
 void
 screen_report_key_encoding_flags(Screen *self) {
     char buf[16] = {0};
-    if (OPT(debug_keyboard)) {
-        debug("\x1b[35mReporting key encoding flags: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
-    }
+    debug_input("\x1b[35mReporting key encoding flags: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
     snprintf(buf, sizeof(buf), "?%uu", screen_current_key_encoding_flags(self));
     write_escape_code_to_child(self, ESC_CSI, buf);
 }
@@ -1186,9 +1184,7 @@ screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how) {
     else if (how == 2) self->key_encoding_flags[idx] |= q;
     else if (how == 3) self->key_encoding_flags[idx] &= ~q;
     self->key_encoding_flags[idx] |= 0x80;
-    if (OPT(debug_keyboard)) {
-        debug("\x1b[35mSet key encoding flags to: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
-    }
+    debug_input("\x1b[35mSet key encoding flags to: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
 }
 
 void
@@ -1202,9 +1198,7 @@ screen_push_key_encoding_flags(Screen *self, uint32_t val) {
     if (current_idx == sz - 1) memmove(self->key_encoding_flags, self->key_encoding_flags + 1, (sz - 1) * sizeof(self->main_key_encoding_flags[0]));
     else self->key_encoding_flags[current_idx++] |= 0x80;
     self->key_encoding_flags[current_idx] = 0x80 | q;
-    if (OPT(debug_keyboard)) {
-        debug("\x1b[35mPushed key encoding flags to: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
-    }
+    debug_input("\x1b[35mPushed key encoding flags to: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
 }
 
 void
@@ -1212,9 +1206,7 @@ screen_pop_key_encoding_flags(Screen *self, uint32_t num) {
     for (unsigned i = arraysz(self->main_key_encoding_flags); num && i-- > 0; ) {
         if (self->key_encoding_flags[i] & 0x80) { num--; self->key_encoding_flags[i] = 0; }
     }
-    if (OPT(debug_keyboard)) {
-        debug("\x1b[35mPopped key encoding flags to: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
-    }
+    debug_input("\x1b[35mPopped key encoding flags to: %u\x1b[39m\n", screen_current_key_encoding_flags(self));
 }
 
 // }}}

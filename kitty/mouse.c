@@ -18,7 +18,7 @@ extern PyTypeObject Screen_Type;
 
 static MouseShape mouse_cursor_shape = TEXT_POINTER;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
-#define debug(...) if (OPT(debug_keyboard)) printf(__VA_ARGS__);
+#define debug debug_input
 
 // Encoding of mouse events {{{
 #define SHIFT_INDICATOR  (1 << 2)

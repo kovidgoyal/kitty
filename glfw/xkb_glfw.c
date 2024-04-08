@@ -33,8 +33,7 @@
 #include <X11/XKBlib.h>
 #endif
 
-#undef debug
-#define debug(...) if (_glfw.hints.init.debugKeyboard) fprintf(stderr, __VA_ARGS__);
+#define debug debug_input
 
 #ifdef XKB_HAS_NO_UTF32
 #include "xkb-compat-shim.h"
@@ -940,7 +939,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         glfw_ev.alternate_key = glfw_key_for_sym(alternate_xkb_sym);
         if (glfw_ev.alternate_key) debug(" alternate_key: %d (%s)", glfw_ev.alternate_key, _glfwGetKeyName(glfw_ev.alternate_key))
     }
-    debug("%s", "\n");
+    debug("\n");
 
     // NOTE: On linux, the reported native key identifier is the XKB keysym value.
     // Do not confuse `native_key` with `xkb_keycode` (the native keycode reported for the

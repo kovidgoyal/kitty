@@ -43,6 +43,7 @@ from .constants import (
     ssh_control_master_template,
 )
 from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, Shlex, get_options, monotonic, open_tty
+from .fast_data_types import timed_debug_print as _timed_debug_print
 from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
@@ -1236,3 +1237,7 @@ def shlex_split_with_positions(text: str) -> Iterator[Tuple[int, str]]:
     s = Shlex(text)
     while (q := s.next_word())[0] > -1:
         yield q
+
+
+def timed_debug_print(*a: Any, sep: str = ' ', end: str = '\n') -> None:
+    _timed_debug_print(sep.join(map(str, a)) + end)

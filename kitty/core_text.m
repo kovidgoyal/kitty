@@ -21,7 +21,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
 
-#define debug(...) if (global_state.debug_font_fallback) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+#define debug debug_fonts
 
 typedef struct {
     PyObject_HEAD

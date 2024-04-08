@@ -883,3 +883,5 @@ char* _glfw_strdup(const char* source);
 
 void _glfw_free_clipboard_data(_GLFWClipboardData *cd);
 
+#define debug_rendering(...) if (_glfw.hints.init.debugRendering) { timed_debug_print(__VA_ARGS__); }
+#define debug_input(...) if (_glfw.hints.init.debugKeyboard) { timed_debug_print(__VA_ARGS__); }

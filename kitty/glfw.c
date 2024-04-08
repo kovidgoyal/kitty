@@ -31,7 +31,7 @@ extern void cocoa_update_menu_bar_title(PyObject*);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
 extern monotonic_t cocoa_cursor_blink_interval(void);
 
-#define debug(...) if (global_state.debug_rendering) { fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic())); fprintf(stderr, __VA_ARGS__); }
+#define debug debug_rendering
 
 typedef struct mouse_cursor {
     GLFWcursor *glfw;
@@ -167,22 +167,6 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
     }
 }
-
-void
-log_event(const char *format, ...) {
-    if (format)
-    {
-        va_list vl;
-
-        fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic()));
-        va_start(vl, format);
-        vfprintf(stderr, format, vl);
-        va_end(vl);
-        fprintf(stderr, "\n");
-    }
-
-}
-
 
 // callbacks {{{
 
@@ -512,9 +496,7 @@ static id_type focus_counter = 0;
 static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
-    if (OPT(debug_keyboard)) {
-        fprintf(stderr, "\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", global_state.callback_os_window->id, focused);
-    }
+    debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", global_state.callback_os_window->id, focused);
     // There exist some numbnut Wayland compositors, like kwin, that send mouse
     // press events before focus gained events. So only clear the active drag
     // window if it is not the focused window. See https://github.com/kovidgoyal/kitty/issues/6095

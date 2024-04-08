@@ -15,7 +15,7 @@
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
-#define debug(...) if (global_state.debug_font_fallback) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+#define debug debug_fonts
 
 static PyObject *python_send_to_gpu_impl = NULL;
 #define current_send_sprite_to_gpu(...) (python_send_to_gpu_impl ? python_send_to_gpu(__VA_ARGS__) : send_sprite_to_gpu(__VA_ARGS__))
@@ -455,16 +455,16 @@ has_cell_text(PyObject *face, CPUCell *cell) {
 
 static void
 output_cell_fallback_data(CPUCell *cell, bool bold, bool italic, bool emoji_presentation, PyObject *face) {
-    printf("U+%x ", cell->ch);
+    debug("U+%x ", cell->ch);
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-        printf("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
+        debug("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
     }
-    if (bold) printf("bold ");
-    if (italic) printf("italic ");
-    if (emoji_presentation) printf("emoji_presentation ");
-    if (PyLong_Check(face)) printf("using previous fallback font at index: ");
-    PyObject_Print(face, stdout, 0);
-    printf("\n");
+    if (bold) debug("bold ");
+    if (italic) debug("italic ");
+    if (emoji_presentation) debug("emoji_presentation ");
+    if (PyLong_Check(face)) debug("using previous fallback font at index: ");
+    PyObject_Print(face, stderr, 0);
+    debug("\n");
 }
 
 PyObject*

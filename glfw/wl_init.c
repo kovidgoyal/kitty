@@ -56,6 +56,7 @@
 #include <linux/input.h>
 #endif
 
+#define debug debug_rendering
 
 static int min(int n1, int n2)
 {

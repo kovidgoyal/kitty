@@ -36,7 +36,7 @@
 #include <float.h>
 #include <string.h>
 
-#define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
+#define debug debug_rendering
 
 static const char*
 polymorphic_string_as_utf8(id string) {
