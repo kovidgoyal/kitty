@@ -47,7 +47,7 @@ rsync algorithm to speed up repeated transfers of large files.
 Detailed list of changes
 -------------------------------------
 
-0.33.2 [future]
+0.34.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Wayland: :doc:`panel kitten <kittens/panel>`: Add support for drawing desktop background and bars
