@@ -1340,7 +1340,7 @@ def create_linux_bundle_gunk(ddir: str, args: Options) -> None:
         shutil.copy2(f'logo/kitty.{ext}', icdir)
     deskdir = os.path.join(ddir, 'share', 'applications')
     safe_makedirs(deskdir)
-    with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
+    with open(os.path.join(deskdir, 'kitty-terminal.desktop'), 'w') as f:
         f.write(
             '''\
 [Desktop Entry]
@@ -1350,11 +1350,11 @@ Name=kitty
 GenericName=Terminal emulator
 Comment=Fast, feature-rich, GPU based terminal
 TryExec=kitty
+StartupNotify=true
 Exec=kitty
 Icon=kitty
 Categories=System;TerminalEmulator;
-'''
-            )
+''')
     with open(os.path.join(deskdir, 'kitty-open.desktop'), 'w') as f:
         f.write(
             '''\
@@ -1364,14 +1364,14 @@ Type=Application
 Name=kitty URL Launcher
 GenericName=Terminal emulator
 Comment=Open URLs with kitty
+StartupNotify=true
 TryExec=kitty
 Exec=kitty +open %U
 Icon=kitty
 Categories=System;TerminalEmulator;
 NoDisplay=true
 MimeType=image/*;application/x-sh;application/x-shellscript;inode/directory;text/*;x-scheme-handler/kitty;x-scheme-handler/ssh;
-'''
-            )
+''')
 
     if os.path.exists(in_src_launcher):
         os.remove(in_src_launcher)

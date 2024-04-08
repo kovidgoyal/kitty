@@ -41,7 +41,7 @@ Desktop integration on Linux
 --------------------------------
 
 If you want the kitty icon to appear in the taskbar and an entry for it to be
-present in the menus, you will need to install the :file:`kitty.desktop` file.
+present in the menus, you will need to install the :file:`kitty-terminal.desktop` file.
 The details of the following procedure may need to be adjusted for your
 particular desktop, but it should work for most major desktop environments.
 
@@ -50,18 +50,18 @@ particular desktop, but it should work for most major desktop environments.
     # Create symbolic links to add kitty and kitten to PATH (assuming ~/.local/bin is in
     # your system-wide PATH)
     ln -sf ~/.local/kitty.app/bin/kitty ~/.local/kitty.app/bin/kitten ~/.local/bin/
-    # Place the kitty.desktop file somewhere it can be found by the OS
-    cp ~/.local/kitty.app/share/applications/kitty.desktop ~/.local/share/applications/
+    # Place the kitty-terminal.desktop file somewhere it can be found by the OS
+    cp ~/.local/kitty.app/share/applications/kitty-terminal.desktop ~/.local/share/applications/
     # If you want to open text files and images in kitty via your file manager also add the kitty-open.desktop file
     cp ~/.local/kitty.app/share/applications/kitty-open.desktop ~/.local/share/applications/
-    # Update the paths to the kitty and its icon in the kitty.desktop file(s)
+    # Update the paths to the kitty and its icon in the kitty desktop file(s)
     sed -i "s|Icon=kitty|Icon=/home/$USER/.local/kitty.app/share/icons/hicolor/256x256/apps/kitty.png|g" ~/.local/share/applications/kitty*.desktop
     sed -i "s|Exec=kitty|Exec=/home/$USER/.local/kitty.app/bin/kitty|g" ~/.local/share/applications/kitty*.desktop
 
 .. note::
     In :file:`kitty-open.desktop`, kitty is registered to handle some supported
     MIME types. This will cause kitty to take precedence on some systems where
-    the default apps are not explicitly set. For example, you expect to use
+    the default apps are not explicitly set. For example, if you expect to use
     other GUI file managers to open dir paths when using commands such as
     :program:`xdg-open`, you should configure the default opener for the MIME
     type ``inode/directory``::
