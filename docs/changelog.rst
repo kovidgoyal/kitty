@@ -23,7 +23,7 @@ quality-of-life improvements:
   using a custom KDE specific protocol
 
 * The kitty window decorations in GNOME are now fully functional with buttons
-  and everything
+  and they follow system dark/light mode automatically
 
 * kitty now supports fractional scaling in Wayland which means pixel perfect
   rendering when you use a fractional scale with no wasted performance on
