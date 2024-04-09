@@ -9,31 +9,31 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
-Wayland goodies
+Wayland goodies [0.34]
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Wayland users should rejoice as kitty now comes with major Wayland
 quality-of-life improvements:
 
-  * Draw GPU accelerated :doc:`desktop panels and background </kittens/panel>`
-    running arbitrary terminal programs. For example, run `btop
-    <https://github.com/aristocratos/btop/>`__ as your desktop background
+* Draw GPU accelerated :doc:`desktop panels and background </kittens/panel>`
+  running arbitrary terminal programs. For example, run `btop
+  <https://github.com/aristocratos/btop/>`__ as your desktop background
 
-  * Background blur for transparent windows is now supported under KDE
-    using a custom KDE specific protocol
+* Background blur for transparent windows is now supported under KDE
+  using a custom KDE specific protocol
 
-  * The kitty window decorations in GNOME are now fully functional with buttons
-    and everything
+* The kitty window decorations in GNOME are now fully functional with buttons
+  and everything
 
-  * kitty now supports fractional scaling in Wayland which means pixel perfect
-    rendering when you use a fractional scale with no wasted performance on
-    resizing an overdrawn pixmap in the compositor
+* kitty now supports fractional scaling in Wayland which means pixel perfect
+  rendering when you use a fractional scale with no wasted performance on
+  resizing an overdrawn pixmap in the compositor
 
-With this release kitty's Wayland support is now on par with X11, at least,
-for decent compositors.
+With this release kitty's Wayland support is now on par with X11, provided
+you use a decent compositor.
 
-Cheetah speed 🐆
-~~~~~~~~~~~~~~~~~~~~~~
+Cheetah speed 🐆 [0.33]
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 kitty has grown up and become a cheetah. It now parses data it receives in
 parallel :iss:`using SIMD vector CPU instructions <7005>` for a 2x speedup in
