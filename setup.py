@@ -1351,6 +1351,7 @@ GenericName=Terminal emulator
 Comment=Fast, feature-rich, GPU based terminal
 TryExec=kitty
 StartupNotify=true
+StartupWMClass=kitty
 Exec=kitty
 Icon=kitty
 Categories=System;TerminalEmulator;
