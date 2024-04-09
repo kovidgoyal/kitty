@@ -1340,7 +1340,7 @@ def create_linux_bundle_gunk(ddir: str, args: Options) -> None:
         shutil.copy2(f'logo/kitty.{ext}', icdir)
     deskdir = os.path.join(ddir, 'share', 'applications')
     safe_makedirs(deskdir)
-    with open(os.path.join(deskdir, 'kitty-terminal.desktop'), 'w') as f:
+    with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
         f.write(
             '''\
 [Desktop Entry]
