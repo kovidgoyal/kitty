@@ -184,7 +184,7 @@ typedef struct _GLFWlibraryNS
     id                  nibObjects;
 
     char                keyName[64];
-    char                text[256];
+    char                text[512];
     CGPoint             cascadePoint;
     // Where to place the cursor when re-enabled
     double              restoreCursorPosX, restoreCursorPosY;

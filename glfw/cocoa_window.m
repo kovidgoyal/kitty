@@ -1541,16 +1541,20 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         }
     }
     // insertText can be called multiple times for a single key event
-    char *s = _glfw.ns.text + strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
-    snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
-    _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
-    if ((!in_key_handler || in_key_handler == 2) && _glfw.ns.text[0]) {
-        if (!is_ascii_control_char(_glfw.ns.text[0])) {
-            debug_key("Sending text to kitty from insertText called from %s: %s\n", in_key_handler ? "flagsChanged" : "event loop", _glfw.ns.text);
-            GLFWkeyevent glfw_keyevent = {.text=_glfw.ns.text, .ime_state=GLFW_IME_COMMIT_TEXT};
-            _glfwInputKeyboard(window, &glfw_keyevent);
+    size_t existing_length = strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
+    size_t required_length = strlen(utf8) + 1;
+    size_t available_length = sizeof(_glfw.ns.text) - existing_length;
+    if (available_length >= required_length) {
+        memcpy(_glfw.ns.text + existing_length, utf8, required_length); // copies the null terminator from utf8 as well
+        _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
+        if ((!in_key_handler || in_key_handler == 2) && _glfw.ns.text[0]) {
+            if (!is_ascii_control_char(_glfw.ns.text[0])) {
+                debug_key("Sending text to kitty from insertText called from %s: %s\n", in_key_handler ? "flagsChanged" : "event loop", _glfw.ns.text);
+                GLFWkeyevent glfw_keyevent = {.text=_glfw.ns.text, .ime_state=GLFW_IME_COMMIT_TEXT};
+                _glfwInputKeyboard(window, &glfw_keyevent);
+            }
+            _glfw.ns.text[0] = 0;
         }
-        _glfw.ns.text[0] = 0;
     }
 }
 
