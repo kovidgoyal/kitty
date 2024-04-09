@@ -10,9 +10,11 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"time"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -309,4 +311,17 @@ func FunctionName(a any) string {
 		return f.Name()
 	}
 	return ""
+}
+
+func MonotonicRaw() (time.Time, error) {
+	ts := unix.Timespec{}
+	var clock_id int32 = unix.CLOCK_MONOTONIC
+	if runtime.GOOS == "linux" {
+		clock_id = unix.CLOCK_MONOTONIC_RAW
+	}
+	if err := unix.ClockGettime(clock_id, &ts); err != nil {
+		return time.Time{}, err
+	}
+	s, ns := ts.Unix()
+	return time.Unix(s, ns), nil
 }
