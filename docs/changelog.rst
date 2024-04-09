@@ -9,6 +9,29 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Wayland goodies
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Wayland users should rejoice as kitty now comes with major Wayland
+quality-of-life improvements:
+
+  * Draw GPU accelerated :doc:`desktop panels and background </kittens/panel>`
+    running arbitrary terminal programs. For example, run `btop
+    <https://github.com/aristocratos/btop/>`__ as your desktop background
+
+  * Background blur for transparent windows is now supported under KDE
+    using a custom KDE specific protocol
+
+  * The kitty window decorations in GNOME are now fully functional with buttons
+    and everything
+
+  * kitty now supports fractional scaling in Wayland which means pixel perfect
+    rendering when you use a fractional scale with no wasted performance on
+    resizing an overdrawn pixmap in the compositor
+
+With this release kitty's Wayland support is now on par with X11, at least,
+for decent compositors.
+
 Cheetah speed 🐆
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -21,26 +44,6 @@ much faster than other terminal emulators based on the benchmark kitten. While
 kitty was already so fast that its performance was never a bottleneck, this
 improvement makes it even faster and more importantly reduces the energy
 consumption to do the same tasks.
-
-
-File transfer over the tty device
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Transfer files to and from remote computers over the ``TTY`` device itself.
-This means that file transfer works over nested SSH sessions, serial links,
-etc. Anywhere you have a terminal device, you can transfer files.
-
-Simply ssh into a remote computer using the :doc:`ssh kitten </kittens/ssh>`
-and run the :doc:`transfer kitten </kittens/transfer>` (which the ssh kitten
-makes available for you on the remote computer automatically). For example, to
-copy a file from a remote computer::
-
-    <local computer>  $ kitten ssh my-remote-computer
-    <remote computer> $ kitten transfer some-file /path/on/local/computer
-
-The kitten can transfer files to and from the remote computer. It supports
-recursive transfer of directories, symlinks and hardlinks. It can even use the
-rsync algorithm to speed up repeated transfers of large files.
 
 .. }}}
 
