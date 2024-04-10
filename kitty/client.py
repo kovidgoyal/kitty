@@ -150,6 +150,10 @@ def screen_erase_in_line(how: int, private: bool) -> None:
     write(f'{CSI}{"?" if private else ""}{how}K')
 
 
+def screen_erase_characters(num: int) -> None:
+    write(f'{CSI}{num}X')
+
+
 def screen_delete_lines(num: int) -> None:
     write(f'{CSI}{num}M')
 
