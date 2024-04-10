@@ -220,7 +220,7 @@ def report_device_attributes(mode: int, char: int) -> None:
         x += chr(char)
     if mode:
         x += str(mode)
-    write(f'{CSI}{x}c')
+    write(f'{x}c')
 
 
 def screen_decsace(mode: int) -> None:
