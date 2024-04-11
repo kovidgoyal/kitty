@@ -937,7 +937,9 @@ class Boss:
         if not ignore_shell or window.has_running_program:
             msg = _('Are you sure you want to close this window?')
             if window.has_running_program:
-                msg += ' ' + _('It is running a program.')
+                msg += ' ' + _('It is running: {}').format((window.child.foreground_cmdline or [''])[0])
+            else:
+                msg += ' ' + _('It is running a shell')
             self.confirm(msg, self.handle_close_window_confirmation, window.id, window=window, title=_('Close window?'))
         else:
             self.mark_window_for_close(window)
@@ -1079,11 +1081,23 @@ class Boss:
             if w in tab:
                 tab.set_active_window(w)
                 return
-        w = self.confirm(ngettext('Are you sure you want to close this tab, it has one window running?',
-                              'Are you sure you want to close this tab, it has {} windows running?', num).format(num),
-            self.handle_close_tab_confirmation, tab.id,
-            window=tab.active_window, title=_('Close tab?'),
-        )
+        program = active_program = ''
+        active_window = tab.active_window
+        num = -1
+        for w in tab:
+            if w.has_running_program:
+                program = os.path.basename((w.child.foreground_cmdline or ('',))[0])
+                num += 1
+                if w is active_window:
+                    active_program = program
+        if num > 0:
+            msg = ngettext(
+                    'Are you sure you want to close this tab? It is running the {} program and one other program.',
+                    'Are you sure you want to close this tab? It is running the {} program and {} other programs.', num)
+        else:
+            msg = _('Are you sure you want to close this tab? It is running the {} program')
+        msg = msg.format(active_program or program or 'shell', num)
+        w = self.confirm(msg, self.handle_close_tab_confirmation, tab.id, window=tab.active_window, title=_('Close tab?'))
         tab.confirm_close_window_id = w.id
 
     def handle_close_tab_confirmation(self, confirmed: bool, tab_id: int) -> None:
@@ -1668,21 +1682,34 @@ class Boss:
         if not needs_confirmation:
             self.mark_os_window_for_close(os_window_id)
             return
-        if tm is not None:
-            if tm.confirm_close_window_id and tm.confirm_close_window_id in self.window_id_map:
-                cw = self.window_id_map[tm.confirm_close_window_id]
-                ctab = cw.tabref()
-                if ctab is not None and ctab in tm and cw in ctab:
-                    tm.set_active_tab(ctab)
-                    ctab.set_active_window(cw)
-                    return
-            w = self.confirm(
-                ngettext('Are you sure you want to close this OS window, it has one window running?',
-                         'Are you sure you want to close this OS window, it has {} windows running', num).format(num),
-                self.handle_close_os_window_confirmation, os_window_id,
-                window=tm.active_window, title=_('Close OS window'),
-            )
-            tm.confirm_close_window_id = w.id
+        if tm is None:
+            return
+        if tm.confirm_close_window_id and tm.confirm_close_window_id in self.window_id_map:
+            cw = self.window_id_map[tm.confirm_close_window_id]
+            ctab = cw.tabref()
+            if ctab is not None and ctab in tm and cw in ctab:
+                tm.set_active_tab(ctab)
+                ctab.set_active_window(cw)
+                return
+        program = active_program = ''
+        active_window = tm.active_window
+        num = -1
+        for tab in tm:
+            for w in tab:
+                if w.has_running_program:
+                    num += 1
+                    program = os.path.basename((w.child.foreground_cmdline or ('',))[0])
+                    if w is active_window:
+                        active_program = program
+        if num > 0:
+            msg = ngettext(
+                    'Are you sure you want to close this OS window? It is running the {} program and one other program.',
+                    'Are you sure you want to close this OS window? It is running the {} program and {} other programs.', num)
+        else:
+            msg = _('Are you sure you want to close this OS window? It is running the {} program')
+        msg = msg.format(active_program or program or 'shell', num)
+        w = self.confirm(msg, self.handle_close_os_window_confirmation, os_window_id, window=tm.active_window, title=_('Close OS window'))
+        tm.confirm_close_window_id = w.id
 
     def handle_close_os_window_confirmation(self, confirmed: bool, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
@@ -1732,12 +1759,23 @@ class Boss:
                         return
             return
         assert tm is not None
-        w = self.confirm(
-            ngettext('Are you sure you want to quit kitty, it has one window running?',
-                     'Are you sure you want to quit kitty, it has {} windows running?', num).format(num),
-            self.handle_quit_confirmation,
-            window=tm.active_window, title=_('Quit kitty?'),
-        )
+        program = active_program = ''
+        active_window = self.active_window
+        num = -1
+        for w in self.all_windows:
+            if w.has_running_program:
+                program = os.path.basename((w.child.foreground_cmdline or ('',))[0])
+                num += 1
+                if w is active_window:
+                    active_program = program
+        if num > 0:
+            msg = ngettext(
+                    'Are you sure you want to quit kitty? It is running the {} program and one other program.',
+                    'Are you sure you want to quit kitty? It is running the {} program and {} other programs.', num)
+        else:
+            msg = _('Are you sure you want to quit kitty? It is running the {} program')
+        msg = msg.format(active_program or program or 'shell', num)
+        w = self.confirm(msg, self.handle_quit_confirmation, window=tm.active_window, title=_('Quit kitty?'))
         self.quit_confirmation_window_id = w.id
         set_application_quit_request(CLOSE_BEING_CONFIRMED)
 

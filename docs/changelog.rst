@@ -94,6 +94,8 @@ Detailed list of changes
 
 - Wayland: Fix :opt:`hide_window_decorations` not working on non GNOME desktops
 
+- When asking for quit confirmation because of a running program, mention the program name (:iss:`7331`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
