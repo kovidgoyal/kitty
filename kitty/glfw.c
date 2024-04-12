@@ -1208,19 +1208,21 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (pret == NULL) return NULL;
     Py_DECREF(pret);
     if (x != INT_MIN && y != INT_MIN) glfwSetWindowPos(glfw_window, x, y);
+    bool is_apple = true;
 #ifndef __APPLE__
+    is_apple = false;
     glfwShowWindow(glfw_window);
 #endif
-#ifdef __APPLE__
-    float n_xscale, n_yscale;
-    double n_xdpi, n_ydpi;
-    get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
-    if (n_xdpi != xdpi || n_ydpi != ydpi) {
-        // this can happen if the window is moved by the OS to a different monitor when shown
-        xdpi = n_xdpi; ydpi = n_ydpi;
-        fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
+    if (global_state.is_wayland || is_apple) {
+        float n_xscale, n_yscale;
+        double n_xdpi, n_ydpi;
+        get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
+        if (n_xdpi != xdpi || n_ydpi != ydpi) {
+            // this can happen if the window is moved by the OS to a different monitor when shown or with fractional scales on Wayland
+            xdpi = n_xdpi; ydpi = n_ydpi;
+            fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
+        }
     }
-#endif
     if (is_first_window) {
         PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
         if (ret == NULL) return NULL;
