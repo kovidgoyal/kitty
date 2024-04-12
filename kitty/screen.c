@@ -4384,6 +4384,15 @@ toggle_alt_screen(Screen *self, PyObject *a UNUSED) {
 }
 
 static PyObject*
+pause_rendering(Screen *self, PyObject *args) {
+    int msec = 100;
+    int pause = 1;
+    if (!PyArg_ParseTuple(args, "|pi", &msec)) return NULL;
+    if (screen_pause_rendering(self, pause, msec)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
 send_escape_code_to_child(Screen *self, PyObject *args) {
     int code;
     PyObject *O;
@@ -4774,6 +4783,7 @@ static PyMethodDef methods[] = {
     MND(scroll, METH_VARARGS)
     MND(scroll_to_prompt, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)
+    MND(pause_rendering, METH_VARARGS)
     MND(hyperlink_at, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
