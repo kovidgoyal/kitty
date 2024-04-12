@@ -22,6 +22,7 @@ no_implicit_reexport = true
 [tool.pylsp-mypy]
 enabled = true
 dmypy = true
+exclude = ['kitty_tests/*']
 report_progress = true
 
 [tool.ruff]
