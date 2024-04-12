@@ -54,8 +54,8 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Wayland: :doc:`panel kitten <kittens/panel>`: Add support for drawing desktop background and bars
-  using the panel kitten for all compositors that support the requisite Wayland
-  protocol which is practically speaking all of them but GNOME (:pull:`2590`)
+  using the panel kitten for all compositors that support the `requisite Wayland
+  protocol <https://wayland.app/protocols/wlr-layer-shell-unstable-v1>`__ which is practically speaking all of them but GNOME (:pull:`2590`)
 
 - Show a small :opt:`scrollback indicator <scrollback_indicator_opacity>` along the right window edge when viewing
   the scrollback to keep track of scroll position (:iss:`2502`)
