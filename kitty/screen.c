@@ -299,9 +299,10 @@ index_selection(const Screen *self, Selections *selections, bool up) {
     index_selection(self, &self->selections, false);
 
 
-static void
-prevent_current_prompt_from_rewrapping(Screen *self) {
-    if (!self->prompt_settings.redraws_prompts_at_all) return;
+static index_type
+prevent_current_prompt_from_rewrapping(Screen *self, LineBuf *prompt_copy, index_type *num_of_prompt_lines_above_cursor) {
+    index_type num_of_prompt_lines = 0; *num_of_prompt_lines_above_cursor = 0;
+    if (!self->prompt_settings.redraws_prompts_at_all) return num_of_prompt_lines;
     int y = self->cursor->y;
     while (y >= 0) {
         linebuf_init_line(self->main_linebuf, y);
@@ -314,12 +315,12 @@ prevent_current_prompt_from_rewrapping(Screen *self) {
                 goto found;
                 break;
             case OUTPUT_START:
-                return;
+                return num_of_prompt_lines;
         }
         y--;
     }
 found:
-    if (y < 0) return;
+    if (y < 0) return num_of_prompt_lines;
     // we have identified a prompt at which the cursor is present, the shell
     // will redraw this prompt. However when doing so it gets confused if the
     // cursor vertical position relative to the first prompt line changes. This
@@ -327,16 +328,18 @@ found:
     // so when resizing, simply blank all lines after the current
     // prompt and trust the shell to redraw them.
     for (; y < (int)self->main_linebuf->ynum; y++) {
-        linebuf_clear_line(self->main_linebuf, y, false);
         linebuf_init_line(self->main_linebuf, y);
+        linebuf_copy_line_to(prompt_copy, self->main_linebuf->line, num_of_prompt_lines++);
+        linebuf_clear_line(self->main_linebuf, y, false);
         if (y <= (int)self->cursor->y) {
+            linebuf_init_line(self->main_linebuf, y);
             // this is needed because screen_resize() checks to see if the cursor is beyond the content,
             // so insert some fake content
-            Line *line = self->linebuf->line;
-            // we use a space as readline does not erase to bottom of screen so we fake it with spaces
-            line->cpu_cells[0].ch = ' ';
+            self->main_linebuf->line->cpu_cells[0].ch = ' ';
+            if (y < (int)self->cursor->y) (*num_of_prompt_lines_above_cursor)++;
         }
     }
+    return num_of_prompt_lines;
 }
 
 static bool
@@ -372,7 +375,12 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
-    if (is_main) prevent_current_prompt_from_rewrapping(self);
+    RAII_PyObject(prompt_copy, NULL);
+    index_type num_of_prompt_lines = 0, num_of_prompt_lines_above_cursor = 0;
+    if (is_main) {
+        prompt_copy = (PyObject*)alloc_linebuf(self->lines, self->columns);
+        num_of_prompt_lines = prevent_current_prompt_from_rewrapping(self, (LineBuf*)prompt_copy, &num_of_prompt_lines_above_cursor);
+    }
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
@@ -432,6 +440,24 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         self->linebuf->line->cpu_cells[0].ch = 0;
         self->cursor->x = 0;
+    }
+    if (num_of_prompt_lines) {
+        // Copy the old prompt lines without any reflow this prevents
+        // flickering of prompt during resize. THe flicker is caused by the
+        // prompt being first cleared by kitty then sometime later redrawn by
+        // the shell.
+        LineBuf *src = (LineBuf*)prompt_copy;
+        for (index_type
+                src_line = 0,
+                y = num_of_prompt_lines_above_cursor <= self->cursor->y ? self->cursor->y - num_of_prompt_lines_above_cursor : 0;
+
+                src_line < num_of_prompt_lines && y < self->lines;
+
+                y++, src_line++
+        ) {
+            linebuf_init_line(src, src_line);
+            linebuf_copy_line_to(self->main_linebuf, src->line, y);
+        }
     }
     return true;
 }

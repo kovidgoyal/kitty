@@ -96,6 +96,8 @@ Detailed list of changes
 
 - When asking for quit confirmation because of a running program, mention the program name (:iss:`7331`)
 
+- Fix flickering of prompt during window resize (:iss:`7324`)
+
 0.33.1 [2024-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
