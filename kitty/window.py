@@ -1772,28 +1772,28 @@ class Window:
     def clear_selection(self) -> None:
         self.screen.clear_selection()
 
-    @ac('sc', 'Scroll up by one line when in main screen')
+    @ac('sc', 'Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_line_up(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, True)
             return None
         return True
 
-    @ac('sc', 'Scroll down by one line when in main screen')
+    @ac('sc', 'Scroll down by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_line_down(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, False)
             return None
         return True
 
-    @ac('sc', 'Scroll up by one page when in main screen')
+    @ac('sc', 'Scroll up by one page when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_page_up(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, True)
             return None
         return True
 
-    @ac('sc', 'Scroll down by one page when in main screen')
+    @ac('sc', 'Scroll down by one page when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_page_down(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, False)
