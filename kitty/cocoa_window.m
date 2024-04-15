@@ -438,9 +438,12 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     }
 @end
 
-
-static void
-schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle) {
+static UNUserNotificationCenter*
+get_notification_center_safely(void) {
+    NSBundle *b = [NSBundle mainBundle];
+    // when bundleIdentifier is nil currentNotificationCenter crashes instead
+    // of returning nil. Apple...purveyor of shiny TOYS
+    if (!b || !b.bundleIdentifier) return nil;
     UNUserNotificationCenter *center = nil;
     @try {
         center = [UNUserNotificationCenter currentNotificationCenter];
@@ -448,6 +451,12 @@ schedule_notification(const char *identifier, const char *title, const char *bod
         log_error("Failed to get current UNUserNotificationCenter object with error: %s (%s)",
                             [[e name] UTF8String], [[e reason] UTF8String]);
     }
+    return center;
+}
+
+static void
+schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle) {
+    UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
@@ -509,13 +518,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL;
     if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &body, &subtitle)) return NULL;
 
-    UNUserNotificationCenter *center = nil;
-    @try {
-        center = [UNUserNotificationCenter currentNotificationCenter];
-    } @catch (NSException *e) {
-        log_error("Failed to get current UNUserNotificationCenter object with error: %s (%s)",
-                            [[e name] UTF8String], [[e reason] UTF8String]);
-    }
+    UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
     queue_notification(identifier, title, body, subtitle);
