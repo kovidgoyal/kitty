@@ -633,10 +633,9 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(void) {
     return glfw_current_system_color_theme();
 }
 
-GLFWAPI pid_t glfwWaylandCompositorPID(void) {
-    if (!_glfw.wl.display) return -1;
-    int fd = wl_display_get_fd(_glfw.wl.display);
-    if (fd < 0) return -1;
+#ifdef __linux__
+static pid_t
+get_socket_peer_pid(int fd) {
     struct ucred ucred;
     socklen_t len = sizeof(struct ucred);
     if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
@@ -644,6 +643,17 @@ GLFWAPI pid_t glfwWaylandCompositorPID(void) {
         return -1;
     }
     return ucred.pid;
+}
+#else
+static pid_t
+get_socket_peer_pid(int fd) { return -1; }
+#endif
+
+GLFWAPI pid_t glfwWaylandCompositorPID(void) {
+    if (!_glfw.wl.display) return -1;
+    int fd = wl_display_get_fd(_glfw.wl.display);
+    if (fd < 0) return -1;
+    return get_socket_peer_pid(fd);
 }
 
 //////////////////////////////////////////////////////////////////////////
