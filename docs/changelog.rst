@@ -30,7 +30,7 @@ quality-of-life improvements:
   resizing an overdrawn pixmap in the compositor
 
 With this release kitty's Wayland support is now on par with X11, provided
-you use a decent compositor.
+you use a decent Wayland compositor.
 
 Cheetah speed 🐆 [0.33]
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,7 +50,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.34.0 [future]
+0.34.0 [2024-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Wayland: :doc:`panel kitten <kittens/panel>`: Add support for drawing desktop background and bars
