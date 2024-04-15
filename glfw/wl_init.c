@@ -633,21 +633,25 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(void) {
     return glfw_current_system_color_theme();
 }
 
-#ifdef __linux__
 static pid_t
 get_socket_peer_pid(int fd) {
+#ifdef __linux__
     struct ucred ucred;
     socklen_t len = sizeof(struct ucred);
-    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-        perror("getsockopt failed");
-        return -1;
-    }
-    return ucred.pid;
-}
+    return (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) ? -1 : ucred.pid;
+#elif defined(LOCAL_PEERCRED) && defined(XUCRED_VERSION)
+    struct xucred peercred;
+	socklen_t peercredlen = sizeof(peercred);
+    return (getsockopt(c->fd, LOCAL_PEERCRED, 1, (void *)&peercred, &peercredlen) == 0 && peercred.cr_version == XUCRED_VERSION) ? peercred.cr_pid : -1;
+#elif defined(LOCAL_PEERPID)
+    pid_t pid;
+    socklen_t pid_size = sizeof(pid);
+    return getsockopt(client, SOL_LOCAL, LOCAL_PEERPID, &pid, &pid_size) == -1 ? -1 : pid;
 #else
-static pid_t
-get_socket_peer_pid(int fd) { return -1; }
+    errno = ENOSYS;
+    return -1;
 #endif
+}
 
 GLFWAPI pid_t glfwWaylandCompositorPID(void) {
     if (!_glfw.wl.display) return -1;
