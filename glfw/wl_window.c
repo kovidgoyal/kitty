@@ -316,7 +316,6 @@ checkScaleChange(_GLFWwindow* window) {
 
 static void
 update_regions(_GLFWwindow* window) {
-    if (window->wl.transparent && !window->wl.org_kde_kwin_blur) return;
     struct wl_region* region = wl_compositor_create_region(_glfw.wl.compositor);
     if (!region) return;
     wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
@@ -324,9 +323,18 @@ update_regions(_GLFWwindow* window) {
     if (!window->wl.transparent) wl_surface_set_opaque_region(window->wl.surface, region);
 
     // Set blur region
-    if (window->wl.org_kde_kwin_blur) {
-        org_kde_kwin_blur_set_region(window->wl.org_kde_kwin_blur, window->wl.has_blur ? region: NULL);
-        org_kde_kwin_blur_commit(window->wl.org_kde_kwin_blur);
+    if (_glfw.wl.org_kde_kwin_blur_manager) {
+        // NULL means entire window
+        if (window->wl.has_blur) {
+            if (!window->wl.org_kde_kwin_blur)
+                window->wl.org_kde_kwin_blur = org_kde_kwin_blur_manager_create(_glfw.wl.org_kde_kwin_blur_manager, window->wl.surface);
+            if (window->wl.org_kde_kwin_blur)
+                org_kde_kwin_blur_set_region(window->wl.org_kde_kwin_blur, NULL);
+            org_kde_kwin_blur_commit(window->wl.org_kde_kwin_blur);
+        } else {
+            org_kde_kwin_blur_manager_unset(_glfw.wl.org_kde_kwin_blur_manager, window->wl.surface);
+            if (window->wl.org_kde_kwin_blur) { org_kde_kwin_blur_release(window->wl.org_kde_kwin_blur); window->wl.org_kde_kwin_blur = NULL; }
+        }
     }
 
     wl_region_destroy(region);
@@ -2618,8 +2626,6 @@ _glfwPlatformSetWindowBlur(_GLFWwindow *window, int blur_radius) {
     bool has_blur = window->wl.has_blur;
     bool new_has_blur = blur_radius > 0;
     if (new_has_blur != has_blur) {
-        if (!window->wl.org_kde_kwin_blur)
-            window->wl.org_kde_kwin_blur = org_kde_kwin_blur_manager_create(_glfw.wl.org_kde_kwin_blur_manager, window->wl.surface);
         window->wl.has_blur = new_has_blur;
         update_regions(window);
     }

@@ -50,6 +50,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.34.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Wayland KDE: Fix window background blur not adapting when window is grown. Also fix turning it on and off not working. (:iss:`7351`)
+
 0.34.0 [2024-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
