@@ -171,6 +171,153 @@ csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
 }
 
+static void
+patch_titlebar_with_alpha_mask(uint32_t *dest, uint8_t *src, unsigned height, unsigned dest_stride, unsigned src_width, unsigned dest_left, uint32_t bg, uint32_t fg) {
+    for (unsigned y = 0; y < height; y++, src += src_width, dest += dest_stride) {
+        uint32_t *d = dest + dest_left;
+        for (unsigned i = 0; i < src_width; i++) {
+            const uint8_t alpha = src[i], calpha = 255 - alpha;
+            // Blend the red and blue components
+            uint32_t ans = ((bg & 0xff00ff) * calpha + (fg & 0xff00ff) * alpha) & 0xff00ff00;
+            // Blend the green component
+            ans += ((bg & 0xff00) * calpha + (fg & 0xff00) * alpha) & 0xff0000;
+            ans >>= 8;
+            d[i] = ans | 0xff000000;
+        }
+    }
+}
+
+static void
+render_hline(uint8_t *out, unsigned width, unsigned thickness, unsigned bottom, unsigned left, unsigned right) {
+    for (unsigned y = bottom - thickness; y < bottom; y++) {
+        uint8_t *dest = out + width * y;
+        for (unsigned x = left; x < right; x++) dest[x] = 255;
+    }
+}
+
+static void
+render_vline(uint8_t *out, unsigned width, unsigned thickness, unsigned left, unsigned top, unsigned bottom) {
+    for (unsigned y = top; y < bottom; y++) {
+        uint8_t *dest = out + width * y;
+        for (unsigned x = left; x < left + thickness; x++) dest[x] = 255;
+    }
+}
+
+static int
+scale(unsigned thickness, float factor) {
+    return (unsigned)(roundf(thickness * factor));
+}
+
+static void
+render_minimize(uint8_t *out, unsigned width, unsigned height) {
+    memset(out, 0, width * height);
+    unsigned thickness = height / 12;
+    unsigned baseline = height - thickness * 2;
+    unsigned side_margin = (int)roundf(thickness * 3.8f);
+    if (!thickness || width <= side_margin || height < baseline + 2 * thickness) return;
+    render_hline(out, width, thickness, baseline, side_margin, width - side_margin);
+}
+
+static void
+render_maximize(uint8_t *out, unsigned width, unsigned height) {
+    memset(out, 0, width * height);
+    unsigned thickness = height / 12, half_thickness = thickness / 2;
+    unsigned baseline = height - thickness * 2;
+    unsigned side_margin = scale(thickness, 3.0f);
+    unsigned top = 4 * thickness;
+    if (!half_thickness || width <= side_margin || height < baseline + 2 * thickness || top >= baseline) return;
+    render_hline(out, width, half_thickness, baseline, side_margin, width - side_margin);
+    render_hline(out, width, thickness, top + thickness, side_margin, width - side_margin);
+    render_vline(out, width, half_thickness, side_margin, top, baseline);
+    render_vline(out, width, half_thickness, width - side_margin, top, baseline);
+}
+
+static void
+render_restore(uint8_t *out, unsigned width, unsigned height) {
+    memset(out, 0, width * height);
+    unsigned thickness = height / 12, half_thickness = thickness / 2;
+    unsigned baseline = height - thickness * 2;
+    unsigned side_margin = scale(thickness, 3.0f);
+    unsigned top = 4 * thickness;
+    if (!half_thickness || width <= side_margin || height < baseline + 2 * thickness || top >= baseline) return;
+    unsigned box_height = ((baseline - top) * 3) / 4;
+    if (box_height < 2*thickness) return;
+    unsigned box_width = ((width - 2 * side_margin) * 3) / 4;
+    // bottom box
+    unsigned box_top = baseline - box_height, left = side_margin, right = side_margin + box_width, bottom = baseline;
+    render_hline(out, width, thickness, box_top + thickness, left, right);
+    render_hline(out, width, half_thickness, bottom, left, right);
+    render_vline(out, width, half_thickness, left, box_top, bottom);
+    render_vline(out, width, half_thickness, side_margin + box_width, baseline - box_height, baseline);
+    // top box
+    unsigned box_x_shift = 2 * thickness, box_y_shift = 2 * thickness;
+    box_x_shift = MIN(width - right, box_x_shift);
+    box_y_shift = MIN(box_top, box_y_shift);
+    unsigned left2 = left + box_x_shift, right2 = right + box_x_shift, top2 = box_top - box_y_shift, bottom2 = bottom - box_y_shift;
+    render_hline(out, width, thickness, top2 + thickness, left2, right2);
+    render_vline(out, width, half_thickness, right2, top2, bottom2);
+    render_hline(out, width, half_thickness, bottom2, right, right2);
+    render_vline(out, width, half_thickness, left2, top2, box_top);
+}
+
+static void
+render_line(uint8_t *buf, unsigned width, unsigned height, unsigned thickness, int x1, int y1, int x2, int y2) {
+    float m = (y2 - y1) / (float)(x2 - x1);
+    float c = y1 - m * x1;
+    unsigned delta = thickness / 2, extra = thickness % 2;
+    for (int x = MAX(0, MIN(x1, x2)); x < MIN((int)width, MAX(x1, x2)); x++) {
+        float ly = m * x + c;
+        for (int y = MAX(0, (int)(ly - delta)); y < MIN((int)height, (int)(ly + delta + extra)); y++) buf[x + y * width] = 255;
+    }
+}
+
+static void
+render_close(uint8_t *out, unsigned width, unsigned height) {
+    memset(out, 0, width * height);
+    unsigned thickness = height / 12;
+    unsigned baseline = height - thickness * 2;
+    unsigned side_margin = scale(thickness, 3.3f);
+    int top = baseline - (width - 2 * side_margin);
+    if (top <= 0) return;
+    render_line(out, width, height, scale(thickness, 1.5f), side_margin, top, width - side_margin, baseline);
+    render_line(out, width, height, scale(thickness, 1.5f), side_margin, baseline, width - side_margin, top);
+}
+
+static uint32_t
+average_intensity_in_src(uint8_t *src, unsigned src_width, unsigned src_x, unsigned src_y, unsigned factor) {
+    uint32_t ans = 0;
+    for (unsigned y = src_y; y < src_y + factor; y++) {
+        uint8_t *s = src + src_width * y;
+        for (unsigned x = src_x; x < src_x + factor; x++) ans += s[x];
+    }
+    return ans / (factor * factor);
+}
+
+static void
+downsample(uint8_t *dest, uint8_t *src, unsigned dest_width, unsigned dest_height, unsigned factor) {
+    unsigned src_width = factor * dest_width;
+    for (unsigned y = 0; y < dest_height; y++) {
+        uint8_t *d = dest + dest_width * y;
+        for (unsigned x = 0; x < dest_width; x++) {
+            d[x] = MIN(255u, (uint32_t)d[x] + average_intensity_in_src(src, src_width, x * factor, y * factor, factor));
+        }
+    }
+}
+
+static void
+render_button(void(*which)(uint8_t *, unsigned, unsigned), bool antialias, uint32_t *dest, uint8_t *src, unsigned height, unsigned dest_stride, unsigned src_width, unsigned dest_left, uint32_t bg, uint32_t fg) {
+    if (antialias) {
+        static const unsigned factor = 4;
+        uint8_t *big_src = malloc(factor * factor * height * src_width);
+        if (big_src) {
+            which(big_src, src_width * factor, height * factor);
+            memset(src, 0, src_width * height);
+            downsample(src, big_src, src_width, height, factor);
+            free(big_src);
+        } else which(src, src_width, height);
+    } else which(src, src_width, height);
+    patch_titlebar_with_alpha_mask(dest, src, height, dest_stride, src_width, dest_left, bg, fg);
+}
 
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
@@ -194,7 +341,7 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     uint8_t *output = to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back;
 
     // render text part
-    int button_size = (int)roundf(decs.metrics.visible_titlebar_height * decs.for_window_state.fscale);
+    int button_size = decs.titlebar.buffer.height;
     int num_buttons = 1;
     if (window->wl.wm_capabilities.maximize) num_buttons++;
     if (window->wl.wm_capabilities.minimize) num_buttons++;
@@ -207,16 +354,20 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
 render_buttons:
     decs.maximize.width = 0; decs.minimize.width = 0; decs.close.width = 0;
     if (!button_size) return;
+
+    uint8_t *alpha_mask = malloc(button_size * button_size);
     int left = decs.titlebar.buffer.width - num_buttons * button_size;
-#define draw(which, text, hover_bg) { \
-    _glfw.callbacks.draw_text((GLFWwindow*)window, text, fg_color, decs.which.hovered ? hover_bg : bg_color, output, decs.titlebar.buffer.width, \
-            decs.titlebar.buffer.height, /*x=*/left, /*y=*/0, /*right_margin=*/decs.titlebar.buffer.width - left - button_size, true); \
-    decs.which.left = left; decs.which.width = button_size; left += button_size; \
-}
-    if (window->wl.wm_capabilities.minimize) draw(minimize, "🗕", hover_bg);
-    if (window->wl.wm_capabilities.maximize) draw(maximize, is_maximized ? "🗗" : "🗖", hover_bg);
-    draw(close, "🗙", is_dark ? 0xff880000: 0xffc80000);
-#undef draw
+    if (!alpha_mask || left <= 0) return;
+#define drawb(which, antialias, func, hover_bg) { \
+    render_button(func, antialias, (uint32_t*)output, alpha_mask, button_size, decs.titlebar.buffer.width, button_size, left, decs.which.hovered ? hover_bg : bg_color, fg_color); decs.which.left = left; decs.which.width = button_size; left += button_size; }
+
+    if (window->wl.wm_capabilities.minimize) drawb(minimize, false, render_minimize, hover_bg);
+    if (window->wl.wm_capabilities.maximize) {
+        if (is_maximized) { drawb(maximize, false, render_restore, hover_bg); } else { drawb(maximize, false, render_maximize, hover_bg); }
+    }
+    drawb(close, true, render_close, is_dark ? 0xff880000: 0xffc80000);
+    free(alpha_mask);
+#undef drawb
 }
 
 static void

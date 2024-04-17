@@ -144,7 +144,7 @@ def cross(buf: BufType, width: int, height: int, a: int = 1, b: int = 1, c: int 
 
 
 def downsample(src: BufType, dest: BufType, dest_width: int, dest_height: int, factor: int = 4) -> None:
-    src_width = 4 * dest_width
+    src_width = factor * dest_width
 
     def average_intensity_in_src(dest_x: int, dest_y: int) -> int:
         src_y = dest_y * factor

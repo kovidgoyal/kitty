@@ -55,6 +55,8 @@ Detailed list of changes
 
 - Wayland KDE: Fix window background blur not adapting when window is grown. Also fix turning it on and off not working. (:iss:`7351`)
 
+- Wayland GNOME: Draw the titlebar buttons without using a font (:iss:`7349`)
+
 0.34.0 [2024-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
