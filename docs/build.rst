@@ -116,7 +116,7 @@ Build-time dependencies:
   - ``libssl-dev``
   - ``libpython3-dev``
   - ``libxxhash-dev``
-  - ``libsmide-dev``
+  - ``libsimde-dev``
 
 
 Build and run from source with Nix
