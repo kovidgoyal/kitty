@@ -265,9 +265,13 @@ render_line(uint8_t *buf, unsigned width, unsigned height, unsigned thickness, i
     float m = (y2 - y1) / (float)(x2 - x1);
     float c = y1 - m * x1;
     unsigned delta = thickness / 2, extra = thickness % 2;
-    for (int x = MAX(0, MIN(x1, x2)); x < MIN((int)width, MAX(x1, x2)); x++) {
+    for (int x = MAX(0, MIN(x1, x2)); x < MIN((int)width, MAX(x1, x2) + 1); x++) {
         float ly = m * x + c;
-        for (int y = MAX(0, (int)(ly - delta)); y < MIN((int)height, (int)(ly + delta + extra)); y++) buf[x + y * width] = 255;
+        for (int y = MAX(0, (int)(ly - delta)); y < MIN((int)height, (int)(ly + delta + extra + 1)); y++) buf[x + y * width] = 255;
+    }
+    for (int y = MAX(0, MIN(y1, y2)); y < MIN((int)height, MAX(y1, y2) + 1); y++) {
+        float lx = (y - c) / m;
+        for (int x = MAX(0, (int)(lx - delta)); x < MIN((int)width, (int)(lx + delta + extra + 1)); x++) buf[x + y * width] = 255;
     }
 }
 
@@ -279,8 +283,9 @@ render_close(uint8_t *out, unsigned width, unsigned height) {
     unsigned side_margin = scale(thickness, 3.3f);
     int top = baseline - (width - 2 * side_margin);
     if (top <= 0) return;
-    render_line(out, width, height, scale(thickness, 1.5f), side_margin, top, width - side_margin, baseline);
-    render_line(out, width, height, scale(thickness, 1.5f), side_margin, baseline, width - side_margin, top);
+    unsigned line_thickness = scale(thickness, 1.5f);
+    render_line(out, width, height, line_thickness, side_margin, top, width - side_margin, baseline);
+    render_line(out, width, height, line_thickness, side_margin, baseline, width - side_margin, top);
 }
 
 static uint32_t
