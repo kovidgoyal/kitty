@@ -147,8 +147,6 @@ pyspacing(int val) {
 #undef S
 }
 
-static PyObject*
-pyindex(long x) { return PyLong_FromLong(x & 0xffff); }
 
 static PyObject*
 pattern_as_dict(FcPattern *pat) {
@@ -192,7 +190,7 @@ pattern_as_dict(FcPattern *pat) {
     I(FC_WIDTH, width)
     I(FC_SLANT, slant);
     I(FC_HINT_STYLE, hint_style);
-    G(int, FcPatternGetInteger, FC_INDEX, pyindex, index);
+    I(FC_INDEX, index);
     I(FC_RGBA, subpixel);
     I(FC_LCD_FILTER, lcdfilter);
     B(FC_HINTING, hinting);
@@ -313,7 +311,6 @@ _native_fc_match(FcPattern *pat, FontConfigFace *ans) {
 #undef g
     ans->path = strdup((char*)out);
     if (!ans->path) { PyErr_NoMemory(); goto end; }
-    ans->index &= 0xffff;
     ok = true;
 end:
     if (match != NULL) FcPatternDestroy(match);
@@ -406,7 +403,7 @@ specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
     if (pat == NULL) return PyErr_NoMemory();
     long face_idx = MAX(0, PyLong_AsLong(idx));
     AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
-    AP(FcPatternAddInteger, FC_INDEX, face_idx & 0xffff, "index");
+    AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
     AP(FcPatternAddDouble, FC_SIZE, fg->font_sz_in_pts, "size");
     AP(FcPatternAddDouble, FC_DPI, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
