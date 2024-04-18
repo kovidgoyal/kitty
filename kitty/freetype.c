@@ -19,13 +19,23 @@
 
 #include FT_BITMAP_H
 #include FT_TRUETYPE_TABLES_H
+
+typedef union FaceIndex {
+    struct {
+        FT_Long ttc_index : 16;
+        FT_Long instance_index : 16;
+    };
+    FT_Long val;
+} FaceIndex;
+
 typedef struct {
     PyObject_HEAD
 
     FT_Face face;
     unsigned int units_per_EM;
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
-    int hinting, hintstyle, index;
+    int hinting, hintstyle;
+    FaceIndex instance;
     bool is_scalable, has_color;
     float size_in_pts;
     FT_F26Dot6 char_width, char_height;
@@ -205,7 +215,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
 
     self->path = path;
     Py_INCREF(self->path);
-    self->index = self->face->face_index & 0xFFFF;
+    self->instance.val = self->face->face_index;
     self->space_glyph_id = glyph_id_for_codepoint((PyObject*)self, ' ');
     return true;
 }
@@ -225,7 +235,7 @@ face_equals_descriptor(PyObject *face_, PyObject *descriptor) {
     if (!t) return false;
     if (PyObject_RichCompareBool(face->path, t, Py_EQ) != 1) return false;
     t = PyDict_GetItemString(descriptor, "index");
-    if (t && PyLong_AsLong(t) != face->index) return false;
+    if (t && PyLong_AsLong(t) != face->instance.val) return false;
     return true;
 }
 
@@ -288,10 +298,10 @@ static PyObject *
 repr(Face *self) {
     const char *ps_name = FT_Get_Postscript_Name(self->face);
     return PyUnicode_FromFormat(
-        "Face(family=%s, style=%s, ps_name=%s, path=%S, index=%d, is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i, strikethrough_position=%i, strikethrough_thickness=%i)",
+        "Face(family=%s, style=%s, ps_name=%s, path=%S, ttc_index=%d, instance_index=0x%x is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i, strikethrough_position=%i, strikethrough_thickness=%i)",
         self->face->family_name ? self->face->family_name : "", self->face->style_name ? self->face->style_name : "",
         ps_name ? ps_name: "",
-        self->path, self->index, self->is_scalable ? Py_True : Py_False, self->has_color ? Py_True : Py_False,
+        self->path, self->instance.ttc_index, self->instance.instance_index, self->is_scalable ? Py_True : Py_False, self->has_color ? Py_True : Py_False,
         self->ascender, self->descender, self->height, self->underline_position, self->underline_thickness, self->strikethrough_position, self->strikethrough_thickness
     );
 }
