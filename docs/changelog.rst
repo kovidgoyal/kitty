@@ -57,6 +57,8 @@ Detailed list of changes
 
 - Wayland GNOME: Draw the titlebar buttons without using a font (:iss:`7349`)
 
+- Fix a regression in the previous release that caused incorrect font selection when using variable fonts on Linux (:iss:`7361`)
+
 0.34.0 [2024-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
