@@ -23,7 +23,7 @@
 typedef union FaceIndex {
     struct {
         FT_Long ttc_index : 16;
-        FT_Long instance_index : 16;
+        FT_Long variation_index : 16;
     };
     FT_Long val;
 } FaceIndex;
@@ -298,10 +298,10 @@ static PyObject *
 repr(Face *self) {
     const char *ps_name = FT_Get_Postscript_Name(self->face);
     return PyUnicode_FromFormat(
-        "Face(family=%s, style=%s, ps_name=%s, path=%S, ttc_index=%d, instance_index=0x%x is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i, strikethrough_position=%i, strikethrough_thickness=%i)",
+        "Face(family=%s, style=%s, ps_name=%s, path=%S, ttc_index=%d, variation_index=0x%x is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i, strikethrough_position=%i, strikethrough_thickness=%i)",
         self->face->family_name ? self->face->family_name : "", self->face->style_name ? self->face->style_name : "",
         ps_name ? ps_name: "",
-        self->path, self->instance.ttc_index, self->instance.instance_index, self->is_scalable ? Py_True : Py_False, self->has_color ? Py_True : Py_False,
+        self->path, self->instance.ttc_index, self->instance.variation_index, self->is_scalable ? Py_True : Py_False, self->has_color ? Py_True : Py_False,
         self->ascender, self->descender, self->height, self->underline_position, self->underline_thickness, self->strikethrough_position, self->strikethrough_thickness
     );
 }
