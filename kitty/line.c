@@ -899,7 +899,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
 // Boilerplate {{{
 static PyObject*
 copy_char(Line* self, PyObject *args);
-#define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to to the character dest in the line `to`"
+#define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to the character dest in the line `to`"
 
 #define hyperlink_ids_doc "hyperlink_ids() -> Tuple of hyper link ids at every cell"
 static PyObject*

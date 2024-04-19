@@ -126,7 +126,7 @@ receiving::
     ...
 
 The client must then wait for responses from the terminal emulator. It
-is an error to send anymore commands to to the terminal until an ``OK``
+is an error to send anymore commands to the terminal until an ``OK``
 response is received from the terminal. The terminal wait for the user to accept
 the request. If accepted, it sends::
 

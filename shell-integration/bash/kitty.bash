@@ -60,7 +60,7 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
         else
             if [[ "$kitty_bash_inject" != *"no-rc"* ]]; then
                 # Linux distros build bash with -DSYS_BASHRC. Unfortunately, there is
-                # no way to to probe bash for it and different distros use different files
+                # no way to probe bash for it and different distros use different files
                 # Arch, Debian, Ubuntu use /etc/bash.bashrc
                 # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
                 # Void Linux uses /etc/bash/bashrc
