@@ -1270,7 +1270,7 @@ Detailed list of changes
 - macOS: Fix keyboard input not working after toggling fullscreen till the
   window is clicked in
 
-- A new mappable action ``nth_os_window`` to to focus the specified nth OS
+- A new mappable action ``nth_os_window`` to focus the specified nth OS
   window. (:pull:`4316`)
 
 - macOS: The kitty window can be scrolled by the mouse wheel when OS window not

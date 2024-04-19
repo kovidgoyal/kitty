@@ -921,7 +921,7 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font) {
         }
     }
 
-    // If spacer_strategy is still default, check ### glyph to to confirm strategy
+    // If spacer_strategy is still default, check ### glyph to confirm strategy
     // https://github.com/kovidgoyal/kitty/issues/4721
     if (font->spacer_strategy == SPACERS_BEFORE) {
         cpu_cells[0].ch = '#'; cpu_cells[1].ch = '#'; cpu_cells[2].ch = '#';
