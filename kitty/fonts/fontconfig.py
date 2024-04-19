@@ -17,7 +17,7 @@ from kitty.fast_data_types import (
     fc_match_postscript_name,
     parse_font_feature,
 )
-from kitty.fast_data_types import fc_match as fc_match_impl
+from kitty.fast_data_types import fc_match as fc_match_impl, Face
 from kitty.options.types import Options
 from kitty.typing import FontConfigPattern
 from kitty.utils import log_error
@@ -58,8 +58,8 @@ def all_fonts_map(monospaced: bool = True) -> FontMap:
     return create_font_map(ans)
 
 
-def list_fonts() -> Generator[ListedFont, None, None]:
-    for fd in fc_list():
+def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]:
+    for fd in fc_list(only_variable=only_variable):
         f = fd.get('family')
         if f and isinstance(f, str):
             fn_ = fd.get('full_name')
@@ -68,7 +68,10 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             else:
                 fn = f'{f} {fd.get("style", "")}'.strip()
             is_mono = fd.get('spacing') in ('MONO', 'DUAL')
-            yield {'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')), 'is_monospace': is_mono}
+            yield {
+                'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')),
+                'is_monospace': is_mono, 'descriptor': fd, 'is_variable': fd.get('variable', False),
+            }
 
 
 def family_name_to_key(family: str) -> str:
@@ -171,3 +174,8 @@ def get_font_files(opts: Options) -> Dict[str, FontConfigPattern]:
 def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
     ans = find_best_match(family, monospaced=False)
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
+
+
+def get_variable_data_for_descriptor(fd: FontConfigPattern) -> None:
+    f = Face(descriptor=fd)
+    print(f)

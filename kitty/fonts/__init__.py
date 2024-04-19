@@ -1,8 +1,5 @@
-try:
-    from typing import NamedTuple, TypedDict
-except ImportError:
-    TypedDict = dict
 from enum import Enum, IntEnum, auto
+from typing import Any, NamedTuple, TypedDict
 
 
 class ListedFont(TypedDict):
@@ -10,6 +7,8 @@ class ListedFont(TypedDict):
     full_name: str
     postscript_name: str
     is_monospace: bool
+    is_variable: bool
+    descriptor: Any
 
 
 class FontFeature:

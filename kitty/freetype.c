@@ -36,7 +36,7 @@ typedef struct {
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     int hinting, hintstyle;
     FaceIndex instance;
-    bool is_scalable, has_color;
+    bool is_scalable, has_color, is_variable, has_svg;
     float size_in_pts;
     FT_F26Dot6 char_width, char_height;
     FT_UInt xdpi, ydpi;
@@ -201,8 +201,10 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
 #undef CPY
     self->is_scalable = FT_IS_SCALABLE(self->face);
     self->has_color = FT_HAS_COLOR(self->face);
+    self->is_variable = FT_HAS_MULTIPLE_MASTERS(self->face);
+    self->has_svg = FT_HAS_SVG(self->face);
     self->hinting = hinting; self->hintstyle = hintstyle;
-    if (!set_size_for_face((PyObject*)self, 0, false, fg)) return false;
+    if (fg && !set_size_for_face((PyObject*)self, 0, false, fg)) return false;
     self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
     if (self->harfbuzz_font == NULL) { PyErr_NoMemory(); return false; }
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
@@ -263,6 +265,20 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
         if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, fg)) { Py_CLEAR(self); return NULL; }
     }
     return (PyObject*)self;
+}
+
+static PyObject*
+new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
+    const char *path = NULL;
+    long index = 0;
+    PyObject *descriptor = NULL;
+
+    static char *kwds[] = {"descriptor", "path", "index", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Osi", kwds, &descriptor, &path, &index)) return NULL;
+    if (descriptor) return face_from_descriptor(descriptor, NULL);
+    if (path) return face_from_path(path, index, NULL);
+    PyErr_SetString(PyExc_TypeError, "Must specify either path or descriptor");
+    return NULL;
 }
 
 FT_Face
@@ -733,6 +749,9 @@ static PyMemberDef members[] = {
     MEM(strikethrough_position, T_INT),
     MEM(strikethrough_thickness, T_INT),
     MEM(is_scalable, T_BOOL),
+    MEM(is_variable, T_BOOL),
+    MEM(has_svg, T_BOOL),
+    MEM(has_color, T_BOOL),
     MEM(path, T_OBJECT_EX),
     {NULL}  /* Sentinel */
 };
@@ -746,6 +765,7 @@ static PyMethodDef methods[] = {
 PyTypeObject Face_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Face",
+    .tp_new = new,
     .tp_basicsize = sizeof(Face),
     .tp_dealloc = (destructor)dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
