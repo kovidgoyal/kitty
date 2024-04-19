@@ -246,12 +246,8 @@ fc_list(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         AP(FcPatternAddBool, FC_SCALABLE, FcTrue, "scalable");
     }
     if (spacing > -1) AP(FcPatternAddInteger, FC_SPACING, spacing, "spacing");
-#define basic_properties FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING
-    if (only_variable) {
-        AP(FcPatternAddBool, FC_VARIABLE, FcTrue, "variable");
-        os = FcObjectSetBuild(basic_properties, FC_VARIABLE, FC_FONT_VARIATIONS, NULL);
-    } else os = FcObjectSetBuild(basic_properties, NULL);
-#undef basic_properties
+    if (only_variable) AP(FcPatternAddBool, FC_VARIABLE, FcTrue, "variable");
+    os = FcObjectSetBuild(FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING, FC_VARIABLE, NULL);
     if (!os) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig object set"); goto end; }
     fs = FcFontList(NULL, pat, os);
     if (!fs) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig font set"); goto end; }

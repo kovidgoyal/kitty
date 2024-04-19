@@ -4,6 +4,7 @@
 import sys
 from typing import Dict, List, Sequence
 
+from kittens.tui.operations import styled
 from kitty.constants import is_macos
 
 from . import ListedFont
@@ -11,7 +12,19 @@ from . import ListedFont
 if is_macos:
     from .core_text import list_fonts
 else:
-    from .fontconfig import list_fonts
+    from .fontconfig import get_variable_data_for_descriptor, list_fonts
+
+
+def title(x: str) -> str:
+    if sys.stdout.isatty():
+        return styled(x, fg='green', bold=True)
+    return x
+
+
+def italic(x: str) -> str:
+    if sys.stdout.isatty():
+        return styled(x, italic=True)
+    return x
 
 
 def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]:
@@ -22,19 +35,20 @@ def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]
     return g
 
 
+def show_variable(f: ListedFont, psnames: bool) -> None:
+    get_variable_data_for_descriptor(f['descriptor'])
+
+
 def main(argv: Sequence[str]) -> None:
     psnames = '--psnames' in argv
-    isatty = sys.stdout.isatty()
     groups = create_family_groups()
     for k in sorted(groups, key=lambda x: x.lower()):
-        if isatty:
-            print(f'\033[1;32m{k}\033[m')
-        else:
-            print(k)
+        print(title(k))
         for f in sorted(groups[k], key=lambda x: x['full_name'].lower()):
-            p = f['full_name']
-            if isatty:
-                p = f'\033[3m{p}\033[m'
+            if f['is_variable']:
+                show_variable(f, psnames)
+                continue
+            p = italic(f['full_name'])
             if psnames:
                 p += ' ({})'.format(f['postscript_name'])
             print('   ', p)

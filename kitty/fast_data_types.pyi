@@ -416,6 +416,10 @@ def fc_match_postscript_name(
     pass
 
 
+class Face:
+    def __init__(self, descriptor: Optional[FontConfigPattern] = None, path: str = '', index: int = 0): ...
+
+
 class CoreTextFont(TypedDict):
     path: str
     postscript_name: str
