@@ -19,6 +19,8 @@
 
 #include FT_BITMAP_H
 #include FT_TRUETYPE_TABLES_H
+#include FT_MULTIPLE_MASTERS_H
+#include FT_SFNT_NAMES_H
 
 typedef union FaceIndex {
     struct {
@@ -46,6 +48,7 @@ typedef struct {
     void *extra_data;
     free_extra_data_func free_extra_data;
     float apple_leading;
+    PyObject *name_lookup_table;
 } Face;
 PyTypeObject Face_Type;
 
@@ -307,6 +310,7 @@ dealloc(Face* self) {
     if (self->face) FT_Done_Face(self->face);
     if (self->extra_data && self->free_extra_data) self->free_extra_data(self->extra_data);
     Py_CLEAR(self->path);
+    Py_CLEAR(self->name_lookup_table);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -696,6 +700,151 @@ extra_data(PyObject *self, PyObject *a UNUSED) {
     return PyLong_FromVoidPtr(((Face*)self)->extra_data);
 }
 
+// NAME table {{{
+static PyObject*
+decode_name_record(PyObject *namerec) {
+#define d(x) PyLong_AsUnsignedLong(PyTuple_GET_ITEM(namerec, x))
+    unsigned long platform_id = d(0), encoding_id = d(1), language_id = d(2);
+#undef d
+    const char *encoding = "unicode_escape";
+    if ((platform_id == 3 && encoding_id == 1) || platform_id == 0) encoding = "utf-16-be";
+    else if (platform_id == 1 && encoding_id == 0 && language_id == 0) encoding = "mac-roman";
+    PyObject *b = PyTuple_GET_ITEM(namerec, 3);
+    return PyUnicode_Decode(PyBytes_AS_STRING(b), PyBytes_GET_SIZE(b), encoding, "replace");
+}
+
+static bool
+ensure_name_table(Face *self) {
+    if (self->name_lookup_table) return true;
+    RAII_PyObject(ans, PyDict_New());
+    if (!ans) return false;
+    FT_SfntName temp;
+    for (FT_UInt i = 0; i < FT_Get_Sfnt_Name_Count(self->face); i++) {
+        FT_Error err = FT_Get_Sfnt_Name(self->face, i, &temp);
+        if (err != 0) continue;
+        RAII_PyObject(key, PyLong_FromUnsignedLong((unsigned long)temp.name_id));
+        if (!key) return false;
+        RAII_PyObject(list, PyDict_GetItem(ans, key));
+        if (list == NULL) {
+            list = PyList_New(0);
+            if (!list) return false;
+            if (PyDict_SetItem(ans, key, list) != 0) return false;
+        } else Py_INCREF(list);
+        RAII_PyObject(value, Py_BuildValue("(H H H y#)", temp.platform_id, temp.encoding_id, temp.language_id, temp.string, (Py_ssize_t)temp.string_len));
+        if (!value) return false;
+        if (PyList_Append(list, value) != 0) return false;
+    }
+    self->name_lookup_table = ans; Py_INCREF(ans);
+    return true;
+}
+
+static bool
+namerec_matches(PyObject *namerec, unsigned platform_id, unsigned encoding_id, unsigned language_id) {
+#define d(x) PyLong_AsUnsignedLong(PyTuple_GET_ITEM(namerec, x))
+    return d(0) == platform_id && d(1) == encoding_id && d(2) == language_id;
+#undef d
+}
+
+static PyObject*
+find_matching_namerec(PyObject *namerecs, unsigned platform_id, unsigned encoding_id, unsigned language_id) {
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(namerecs); i++) {
+        PyObject *namerec = PyList_GET_ITEM(namerecs, i);
+        if (namerec_matches(namerec, platform_id, encoding_id, language_id)) return decode_name_record(namerec);
+    }
+    return NULL;
+}
+
+static PyObject*
+get_best_name(Face *self, PyObject *nameid) {
+    if (!ensure_name_table(self)) return NULL;
+    PyObject *namerecs = PyDict_GetItem(self->name_lookup_table, nameid);
+    if (namerecs == NULL) return PyUnicode_FromString("");
+    if (PyList_GET_SIZE(namerecs) == 1) return decode_name_record(PyList_GET_ITEM(namerecs, 0));
+#define d(...) { PyObject *ans = find_matching_namerec(namerecs, __VA_ARGS__); if (ans != NULL || PyErr_Occurred()) return ans; }
+    d(3, 1, 1033);  // Microsoft/Windows/US English
+    d(1, 0, 0);     // Mac/Roman/English
+    d(0, 6, 0);     // Unicode/SMP/*
+    d(0, 4, 0);     // Unicode/SMP/*
+    d(0, 3, 0);     // Unicode/BMP/*
+    d(0, 2, 0);     // Unicode/10646-BMP/*
+    d(0, 1, 0);     // Unicode/1.1/*
+#undef d
+    return PyUnicode_FromString("");
+}
+
+static PyObject*
+_get_best_name(Face *self, unsigned long nameid) {
+    RAII_PyObject(key, PyLong_FromUnsignedLong(nameid));
+    return key ? get_best_name(self, key) : NULL;
+}
+// }}}
+
+static inline void cleanup_ftmm(FT_MM_Var **p) { if (*p) FT_Done_MM_Var(library, *p); *p = NULL; }
+
+#define RAII_FTMMVar(name) __attribute__((cleanup(cleanup_ftmm))) FT_MM_Var *name = NULL
+
+static PyObject*
+convert_named_style_to_python(Face *face, const FT_Var_Named_Style *src, unsigned num_of_axes) {
+    RAII_PyObject(axis_values, PyTuple_New(num_of_axes));
+    if (!axis_values) return NULL;
+    for (FT_UInt i = 0; i < num_of_axes; i++) {
+        double val = src->coords[i] / 65536.0;
+        PyObject *pval = PyFloat_FromDouble(val);
+        if (!pval) return NULL;
+        PyTuple_SET_ITEM(axis_values, i, pval);
+    }
+    RAII_PyObject(name, _get_best_name(face, src->strid));
+    if (!name) PyErr_Clear();
+    RAII_PyObject(psname, src->psid == 0xffff ? NULL : _get_best_name(face, src->psid));
+    if (!psname) PyErr_Clear();
+    return Py_BuildValue("{sO sO sO}", "axis_values", axis_values, "name", name ? name : Py_None, "psname", psname ? psname : Py_None);
+}
+
+static PyObject*
+tag_to_string(uint32_t tag) {
+    unsigned char bytes[5] = {0};
+    bytes[0] = (tag >> 24) & 0xff;
+    bytes[1] = (tag >> 16) & 0xff;
+    bytes[2] = (tag >> 8) & 0xff;
+    bytes[3] = (tag) & 0xff;
+    return PyUnicode_DecodeASCII((const char*)bytes, 4, "replace");
+}
+
+static PyObject*
+convert_axis_to_python(Face *face, const FT_Var_Axis *src, FT_UInt flags) {
+    RAII_PyObject(strid, _get_best_name(face, src->strid));
+    if (!strid) PyErr_Clear();
+    return Py_BuildValue("{sd sd sd sO ss sN sO}",
+        "minimum", src->minimum / 65536.0, "maximum", src->maximum / 65536.0, "default", src->def / 65536.0,
+        "hidden", flags & FT_VAR_AXIS_FLAG_HIDDEN ? Py_True : Py_False, "name", src->name, "tag", tag_to_string(src->tag),
+        "strid", strid ? strid : Py_None
+    );
+}
+
+static PyObject*
+get_variable_data(Face *self, PyObject *a UNUSED) {
+    RAII_FTMMVar(mm);
+    FT_Error err = FT_Get_MM_Var(self->face, &mm);
+    if (err) { set_freetype_error("Failed to get variable axis data from font with error:", err); return NULL; }
+    RAII_PyObject(axes, PyTuple_New(mm->num_axis));
+    RAII_PyObject(named_styles, PyTuple_New(mm->num_namedstyles));
+    if (!axes || !named_styles) return NULL;
+    for (FT_UInt i = 0; i < mm->num_namedstyles; i++) {
+        PyObject *s = convert_named_style_to_python(self, mm->namedstyle + i, mm->num_axis);
+        if (!s) return NULL;
+        PyTuple_SET_ITEM(named_styles, i, s);
+    }
+
+    for (FT_UInt i = 0; i < mm->num_axis; i++) {
+        FT_UInt flags;
+        FT_Get_Var_Axis_Flags(mm, i, &flags);
+        PyObject *s = convert_axis_to_python(self, mm->axis + i, flags);
+
+        if (!s) return NULL;
+        PyTuple_SET_ITEM(axes, i, s);
+    }
+    return Py_BuildValue("{sO sO}", "axes", axes, "named_styles", named_styles);
+}
 
 StringCanvas
 render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
@@ -759,6 +908,8 @@ static PyMemberDef members[] = {
 static PyMethodDef methods[] = {
     METHODB(display_name, METH_NOARGS),
     METHODB(extra_data, METH_NOARGS),
+    METHODB(get_variable_data, METH_NOARGS),
+    METHODB(get_best_name, METH_O),
     {NULL}  /* Sentinel */
 };
 

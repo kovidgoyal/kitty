@@ -178,4 +178,4 @@ def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
 
 def get_variable_data_for_descriptor(fd: FontConfigPattern) -> None:
     f = Face(descriptor=fd)
-    print(f)
+    print(f.get_variable_axes())
