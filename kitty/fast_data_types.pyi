@@ -416,8 +416,29 @@ def fc_match_postscript_name(
     pass
 
 
+class VariableAxis(TypedDict):
+    minimum: float
+    maximum: float
+    default: float
+    hidden: bool
+    tag: str
+    strid: Optional[str]
+
+
+class NamedStyle(TypedDict):
+    axis_values: Tuple[float, ...]
+    name: Optional[str]
+    psname: Optional[str]
+
+
+class VariableData(TypedDict):
+    axes: Tuple[VariableAxis, ...]
+    named_styles: Tuple[NamedStyle, ...]
+
+
 class Face:
     def __init__(self, descriptor: Optional[FontConfigPattern] = None, path: str = '', index: int = 0): ...
+    def get_variable_data(self) -> VariableData: ...
 
 
 class CoreTextFont(TypedDict):
