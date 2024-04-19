@@ -549,7 +549,7 @@ func mark(r *regexp2.Regexp, post_processors []PostProcessorFunc, group_processo
 	return
 }
 
-type ErrNoMatches struct{ Type string }
+type ErrNoMatches struct{ Type, Pattern string }
 
 func is_word_char(ch rune, current_chars []rune) bool {
 	return unicode.IsLetter(ch) || unicode.IsNumber(ch) || (unicode.IsMark(ch) && len(current_chars) > 0 && unicode.IsLetter(current_chars[len(current_chars)-1]))
@@ -641,11 +641,15 @@ func (self *ErrNoMatches) Error() string {
 	case "hyperlinks":
 		none_of = "hyperlinks"
 	}
+	if self.Pattern != "" {
+		return fmt.Sprintf("No %s found with pattern: %s", none_of, self.Pattern)
+	}
 	return fmt.Sprintf("No %s found", none_of)
 }
 
 func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text string, ans []Mark, index_map map[int]*Mark, err error) {
 	sanitized_text, hyperlinks := process_escape_codes(text)
+	used_pattern := ""
 
 	run_basic_matching := func() error {
 		pattern, post_processors, group_processors, err := functions_for(opts)
@@ -657,6 +661,7 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 			return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
 		}
 		ans = mark(r, post_processors, group_processors, sanitized_text, opts)
+		used_pattern = pattern
 		return nil
 	}
 
@@ -699,7 +704,7 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 	}
 process_answer:
 	if len(ans) == 0 {
-		return "", nil, nil, &ErrNoMatches{Type: opts.Type}
+		return "", nil, nil, &ErrNoMatches{Type: opts.Type, Pattern: used_pattern}
 	}
 	largest_index := ans[len(ans)-1].Index
 	offset := max(0, opts.HintsOffset)
