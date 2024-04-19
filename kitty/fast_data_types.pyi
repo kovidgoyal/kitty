@@ -391,12 +391,10 @@ class FontConfigPattern(TypedDict):
     scalable: bool
     outline: bool
     color: bool
+    variable: bool
 
 
-def fc_list(
-    spacing: int = -1,
-    allow_bitmapped_fonts: bool = False
-) -> Tuple[FontConfigPattern, ...]:
+def fc_list(spacing: int = -1, allow_bitmapped_fonts: bool = False, only_variable: bool = False) -> Tuple[FontConfigPattern, ...]:
     pass
 
 
