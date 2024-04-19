@@ -169,8 +169,8 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
             commit();
             break;
         case GLFW_IME_UPDATE_CURSOR_POSITION: {
-            const float scale = _glfwWaylandWindowScale(w);
-#define s(x) (int)roundf((x) / scale)
+            const double scale = _glfwWaylandWindowScale(w);
+#define s(x) (int)round((x) / scale)
             const int left = s(ev->cursor.left), top = s(ev->cursor.top), width = s(ev->cursor.width), height = s(ev->cursor.height);
 #undef s
             if (left != last_cursor_left || top != last_cursor_top || width != last_cursor_width || height != last_cursor_height) {

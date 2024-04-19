@@ -89,7 +89,7 @@ create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_siz
 
 static size_t
 create_shadow_tile(_GLFWwindow *window) {
-    const size_t margin = (size_t)roundf(decs.metrics.width * decs.for_window_state.fscale);
+    const size_t margin = (size_t)round(decs.metrics.width * decs.for_window_state.fscale);
     if (st.data && st.for_decoration_size == margin) return margin;
     st.for_decoration_size = margin;
     free(st.data);
@@ -115,10 +115,10 @@ swap_buffers(_GLFWWaylandBufferPair *pair) {
 }
 
 static size_t
-init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, float scale) {
+init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, double scale) {
     memset(pair, 0, sizeof(_GLFWWaylandBufferPair));
-    pair->width = (int)roundf(width * scale);
-    pair->height = (int)roundf(height * scale);
+    pair->width = (int)round(width * scale);
+    pair->height = (int)round(height * scale);
     pair->viewport_width = width; pair->viewport_height = height;
     pair->stride = 4 * pair->width;
     pair->size_in_bytes = pair->stride * pair->height;
@@ -213,7 +213,7 @@ render_minimize(uint8_t *out, unsigned width, unsigned height) {
     memset(out, 0, width * height);
     unsigned thickness = height / 12;
     unsigned baseline = height - thickness * 2;
-    unsigned side_margin = (int)roundf(thickness * 3.8f);
+    unsigned side_margin = scale(thickness, 3.8f);
     if (!thickness || width <= side_margin || height < baseline + 2 * thickness) return;
     render_hline(out, width, thickness, baseline, side_margin, width - side_margin);
 }
@@ -468,7 +468,7 @@ render_shadows(_GLFWwindow *window) {
 
 static bool
 create_shm_buffers(_GLFWwindow* window) {
-    const float scale = _glfwWaylandWindowScale(window);
+    const double scale = _glfwWaylandWindowScale(window);
 
     decs.mapping.size = 0;
 #define bp(which, width, height) decs.mapping.size += init_buffer_pair(&decs.which.buffer, width, height, scale);

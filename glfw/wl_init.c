@@ -222,7 +222,7 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     memset(&info, 0, sizeof(info));
 
     if (x != 0.0f || y != 0.0f) {
-        float scale = _glfwWaylandWindowScale(window);
+        float scale = (float)_glfwWaylandWindowScale(window);
         y *= scale; x *= scale;
         _glfwInputScroll(window, x, y, highres, _glfw.wl.xkb.states.modifiers);
     }

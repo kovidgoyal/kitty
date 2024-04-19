@@ -349,19 +349,19 @@ _glfwWaylandIntegerWindowScale(_GLFWwindow *window) {
     return ans;
 }
 
-float
+double
 _glfwWaylandWindowScale(_GLFWwindow *window) {
-    float ans = _glfwWaylandIntegerWindowScale(window);
-    if (window->wl.fractional_scale) ans = window->wl.fractional_scale / 120.f;
+    double ans = _glfwWaylandIntegerWindowScale(window);
+    if (window->wl.fractional_scale) ans = window->wl.fractional_scale / 120.;
     return ans;
 }
 
 static void
 resizeFramebuffer(_GLFWwindow* window) {
-    float scale = _glfwWaylandWindowScale(window);
-    int scaled_width = (int)roundf(window->wl.width * scale);
-    int scaled_height = (int)roundf(window->wl.height * scale);
-    debug("Resizing framebuffer to: %dx%d window size: %dx%d at scale: %.2f\n",
+    double scale = _glfwWaylandWindowScale(window);
+    int scaled_width = (int)round(window->wl.width * scale);
+    int scaled_height = (int)round(window->wl.height * scale);
+    debug("Resizing framebuffer to: %dx%d window size: %dx%d at scale: %.3f\n",
             scaled_width, scaled_height, window->wl.width, window->wl.height, scale);
     wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0);
     update_regions(window);
@@ -395,9 +395,9 @@ clipboard_mime(void) {
 
 static void
 apply_scale_changes(_GLFWwindow *window, bool resize_framebuffer, bool update_csd) {
-    float scale = _glfwWaylandWindowScale(window);
+    double scale = _glfwWaylandWindowScale(window);
     if (resize_framebuffer) resizeFramebuffer(window);
-    _glfwInputWindowContentScale(window, scale, scale);
+    _glfwInputWindowContentScale(window, (float)scale, (float)scale);
     if (update_csd) csd_set_visible(window, true);  // resize the csd iff the window currently has CSD
     int buffer_scale = window->wl.fractional_scale ? 1 : (int)scale;
     wl_surface_set_buffer_scale(window->wl.surface, buffer_scale);
@@ -415,7 +415,7 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     }
 
     if (scale_changed) {
-        debug("Scale changed to %.2f in dispatchChangesAfterConfigure\n", _glfwWaylandWindowScale(window));
+        debug("Scale changed to %.3f in dispatchChangesAfterConfigure\n", _glfwWaylandWindowScale(window));
         apply_scale_changes(window, !size_changed, false);
     }
 
@@ -468,7 +468,7 @@ static void surfaceHandleEnter(void *data,
     window->wl.monitors[window->wl.monitorsCount++] = monitor;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %.2f in surfaceHandleEnter\n", _glfwWaylandWindowScale(window));
+        debug("Scale changed to %.3f in surfaceHandleEnter\n", _glfwWaylandWindowScale(window));
         apply_scale_changes(window, true, true);
     }
 }
@@ -492,7 +492,7 @@ static void surfaceHandleLeave(void *data,
     window->wl.monitors[--window->wl.monitorsCount] = NULL;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %.2f in surfaceHandleLeave\n", _glfwWaylandWindowScale(window));
+        debug("Scale changed to %.3f in surfaceHandleLeave\n", _glfwWaylandWindowScale(window));
         apply_scale_changes(window, true, true);
     }
 }
@@ -1494,11 +1494,11 @@ void _glfwPlatformGetFramebufferSize(_GLFWwindow* window,
                                      int* width, int* height)
 {
     _glfwPlatformGetWindowSize(window, width, height);
-    float fscale = _glfwWaylandWindowScale(window);
+    double fscale = _glfwWaylandWindowScale(window);
     if (width)
-        *width = (int)roundf(*width * fscale);
+        *width = (int)round(*width * fscale);
     if (height)
-        *height = (int)roundf(*height * fscale);
+        *height = (int)round(*height * fscale);
 }
 
 void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
@@ -1521,7 +1521,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
 void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
                                         float* xscale, float* yscale)
 {
-    float fscale = _glfwWaylandWindowScale(window);
+    float fscale = (float)_glfwWaylandWindowScale(window);
     if (xscale)
         *xscale = fscale;
     if (yscale)
