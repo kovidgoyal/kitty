@@ -11,7 +11,7 @@ from kitty.types import run_once
 from . import ListedFont
 
 if is_macos:
-    from .core_text import list_fonts
+    from .core_text import get_variable_data_for_descriptor, list_fonts
 else:
     from .fontconfig import get_variable_data_for_descriptor, list_fonts
 
@@ -58,7 +58,7 @@ def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]
 
 
 def show_variable(f: ListedFont, psnames: bool) -> None:
-    vd = get_variable_data_for_descriptor(f['descriptor'])
+    vd = get_variable_data_for_descriptor(f)
     p = f"{italic(f['full_name'])} {variable_font_label('Variable font')}"
     print(indented(p))
     print(indented(variable_font_label('Axes of variation'), level=2))

@@ -98,8 +98,10 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     unsigned int straits = [traits[(id)kCTFontSymbolicTrait] unsignedIntValue];
     float weightVal = [traits[(id)kCTFontWeightTrait] floatValue];
     float widthVal = [traits[(id)kCTFontWidthTrait] floatValue];
+    NSDictionary *variation = (NSDictionary *)CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute);
 
-    PyObject *ans = Py_BuildValue("{ssssssss sOsOsOsOsOsO sfsfsI}",
+    PyObject *ans = Py_BuildValue("{ssssssssss sOsOsOsOsOsOsO sfsfsI}",
+            "descriptor_type", "core_text",
             "path", [[url path] UTF8String],
             "postscript_name", [psName UTF8String],
             "family", [family UTF8String],
@@ -111,6 +113,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
             "expanded", (straits & kCTFontExpandedTrait) != 0 ? Py_True : Py_False,
             "condensed", (straits & kCTFontCondensedTrait) != 0 ? Py_True : Py_False,
             "color_glyphs", (straits & kCTFontColorGlyphsTrait) != 0 ? Py_True : Py_False,
+            "variable", variation ? Py_True : Py_False,
 
             "weight", weightVal,
             "width", widthVal,
@@ -121,6 +124,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     [family release];
     [style release];
     [traits release];
+    if (variation) [variation release];
     return ans;
 }
 

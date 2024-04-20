@@ -177,5 +177,7 @@ def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
 
 
-def get_variable_data_for_descriptor(fd: FontConfigPattern) -> VariableData:
-    return Face(descriptor=fd).get_variable_data()
+def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
+    d = f['descriptor']
+    assert d['descriptor_type'] == 'fontconfig'
+    return Face(descriptor=d).get_variable_data()

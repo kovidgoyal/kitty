@@ -150,7 +150,7 @@ pyspacing(int val) {
 
 static PyObject*
 pattern_as_dict(FcPattern *pat) {
-    PyObject *ans = PyDict_New(), *p = NULL, *list = NULL;
+    PyObject *ans = Py_BuildValue("{ss}", "descriptor_type", "fontconfig"), *p = NULL, *list = NULL;
     if (ans == NULL) return NULL;
 
 #define PS(x) PyUnicode_Decode((const char*)x, strlen((const char*)x), "UTF-8", "replace")
