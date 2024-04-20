@@ -205,7 +205,11 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
     self->is_scalable = FT_IS_SCALABLE(self->face);
     self->has_color = FT_HAS_COLOR(self->face);
     self->is_variable = FT_HAS_MULTIPLE_MASTERS(self->face);
+#ifdef FT_HAS_SVG
     self->has_svg = FT_HAS_SVG(self->face);
+#else
+    self->has_svg = false;
+#endif
     self->hinting = hinting; self->hintstyle = hintstyle;
     if (fg && !set_size_for_face((PyObject*)self, 0, false, fg)) return false;
     self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
