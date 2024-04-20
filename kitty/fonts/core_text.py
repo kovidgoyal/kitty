@@ -5,7 +5,7 @@ import re
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import coretext_all_fonts
-from kitty.fonts import FontFeature
+from kitty.fonts import FontFeature, VariableData
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
@@ -47,7 +47,8 @@ def list_fonts() -> Generator[ListedFont, None, None]:
         if f:
             fn = f'{f} {fd.get("style", "")}'.strip()
             is_mono = bool(fd['monospace'])
-            yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono}
+            yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono,
+                   'is_variable': fd['variable'], 'descriptor': fd}
 
 
 def find_font_features(postscript_name: str) -> Tuple[FontFeature, ...]:
@@ -114,3 +115,9 @@ def get_font_files(opts: Options) -> Dict[str, CoreTextFont]:
 def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
     ans = find_best_match(resolve_family(family, getattr(get_font_files, 'medium_family')))
     return ans, ans['bold'], ans['italic']
+
+
+def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
+    d = f['descriptor']
+    assert d['descriptor_type'] == 'core_text'
+    return d['variable_data']

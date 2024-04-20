@@ -1,5 +1,7 @@
 from enum import Enum, IntEnum, auto
-from typing import Any, NamedTuple, Optional, Tuple, TypedDict
+from typing import NamedTuple, Optional, Tuple, TypedDict, Union
+
+from kitty.typing import CoreTextFont, FontConfigPattern
 
 
 class ListedFont(TypedDict):
@@ -8,7 +10,7 @@ class ListedFont(TypedDict):
     postscript_name: str
     is_monospace: bool
     is_variable: bool
-    descriptor: Any
+    descriptor: Union[FontConfigPattern, CoreTextFont]
 
 
 class VariableAxis(TypedDict):

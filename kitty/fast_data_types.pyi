@@ -1,6 +1,6 @@
 import termios
 from ctypes import Array, c_ubyte
-from typing import Any, Callable, Dict, Iterator, List, NewType, Optional, Tuple, TypedDict, Union, overload
+from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
 from kitty.fonts import FontFeature, VariableData
@@ -373,6 +373,7 @@ def default_color_table() -> Tuple[int, ...]:
 
 
 class FontConfigPattern(TypedDict):
+    descriptor_type: Literal['fontconfig']
     path: str
     index: int
     family: str
@@ -422,6 +423,7 @@ class Face:
 
 
 class CoreTextFont(TypedDict):
+    descriptor_type: Literal['core_text']
     path: str
     postscript_name: str
     family: str
@@ -432,6 +434,7 @@ class CoreTextFont(TypedDict):
     condensed: bool
     color_glyphs: bool
     monospace: bool
+    variable: bool
     weight: float
     width: float
     traits: int
