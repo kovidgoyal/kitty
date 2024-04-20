@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum, auto
-from typing import Any, NamedTuple, TypedDict
+from typing import Any, NamedTuple, Optional, Tuple, TypedDict
 
 
 class ListedFont(TypedDict):
@@ -9,6 +9,27 @@ class ListedFont(TypedDict):
     is_monospace: bool
     is_variable: bool
     descriptor: Any
+
+
+class VariableAxis(TypedDict):
+    minimum: float
+    maximum: float
+    default: float
+    hidden: bool
+    tag: str
+    strid: Optional[str]
+
+
+class NamedStyle(TypedDict):
+    axis_values: Tuple[float, ...]
+    name: Optional[str]
+    psname: Optional[str]
+
+
+class VariableData(TypedDict):
+    axes: Tuple[VariableAxis, ...]
+    named_styles: Tuple[NamedStyle, ...]
+
 
 
 class FontFeature:
