@@ -802,6 +802,7 @@ convert_named_style_to_python(Face *face, const FT_Var_Named_Style *src, unsigne
 
 static PyObject*
 tag_to_string(uint32_t tag) {
+    if (!tag) return PyUnicode_FromString("");
     unsigned char bytes[5] = {0};
     bytes[0] = (tag >> 24) & 0xff;
     bytes[1] = (tag >> 16) & 0xff;

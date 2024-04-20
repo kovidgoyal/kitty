@@ -13,16 +13,17 @@ from kitty.fast_data_types import (
     FC_WEIGHT_BOLD,
     FC_WEIGHT_REGULAR,
     FC_WIDTH_NORMAL,
+    Face,
     fc_list,
     fc_match_postscript_name,
     parse_font_feature,
 )
-from kitty.fast_data_types import fc_match as fc_match_impl, Face
+from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.options.types import Options
 from kitty.typing import FontConfigPattern
 from kitty.utils import log_error
 
-from . import FontFeature, ListedFont
+from . import FontFeature, ListedFont, VariableData
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -176,6 +177,5 @@ def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
 
 
-def get_variable_data_for_descriptor(fd: FontConfigPattern) -> None:
-    f = Face(descriptor=fd)
-    print(f.get_variable_axes())
+def get_variable_data_for_descriptor(fd: FontConfigPattern) -> VariableData:
+    return Face(descriptor=fd).get_variable_data()

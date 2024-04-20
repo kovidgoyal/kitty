@@ -3,7 +3,7 @@ from ctypes import Array, c_ubyte
 from typing import Any, Callable, Dict, Iterator, List, NewType, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
-from kitty.fonts import FontFeature
+from kitty.fonts import FontFeature, VariableData
 from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.options.types import Options
@@ -414,26 +414,6 @@ def fc_match_postscript_name(
     postscript_name: str
 ) -> FontConfigPattern:
     pass
-
-
-class VariableAxis(TypedDict):
-    minimum: float
-    maximum: float
-    default: float
-    hidden: bool
-    tag: str
-    strid: Optional[str]
-
-
-class NamedStyle(TypedDict):
-    axis_values: Tuple[float, ...]
-    name: Optional[str]
-    psname: Optional[str]
-
-
-class VariableData(TypedDict):
-    axes: Tuple[VariableAxis, ...]
-    named_styles: Tuple[NamedStyle, ...]
 
 
 class Face:
