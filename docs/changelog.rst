@@ -50,6 +50,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.35.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- :opt:`paste_actions`: Fix ``replace-newline`` not working with ``confirm`` (:iss:`7374`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

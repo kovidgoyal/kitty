@@ -1608,19 +1608,24 @@ class Window:
                     text = shlex.quote(text)
         if 'replace-dangerous-control-codes' in opts.paste_actions:
             text = replace_c0_codes_except_nl_space_tab(text)
-        if 'replace-newline' in opts.paste_actions:
+        if 'replace-newline' in opts.paste_actions and 'confirm' not in opts.paste_actions:
             text = text.replace('\n', '\x1bE')
         btext = text.encode('utf-8')
         if 'confirm' in opts.paste_actions:
             sanitized = replace_c0_codes_except_nl_space_tab(btext)
+            replaced_c0_control_codes = sanitized != btext
+            if 'replace-newline' in opts.paste_actions:
+                sanitized = sanitized.replace(b'\n', b'\x1bE')
             if not self.screen.in_bracketed_paste_mode:
                 # \n is converted to \r and \r is interpreted as the enter key
                 # by legacy programs that dont support the full kitty keyboard protocol,
                 # which in the case of shells can lead to command execution, so
                 # replace with <ESC>E (NEL) which has the newline visual effect \r\n but
                 # isnt interpreted as Enter.
-                sanitized = sanitized.replace(b'\n', b'\x1bE')
-            if sanitized != btext:
+                t = sanitized.replace(b'\n', b'\x1bE')
+                replaced_newlines = t != sanitized
+                sanitized = t
+            if replaced_c0_control_codes or replaced_newlines:
                 msg = _('The text to be pasted contains terminal control codes.\n\nIf the terminal program you are pasting into does not properly'
                         ' sanitize pasted text, this can lead to \x1b[31mcode execution vulnerabilities\x1b[39m.\n\nHow would you like to proceed?')
                 get_boss().choose(
