@@ -1616,6 +1616,7 @@ class Window:
             replaced_c0_control_codes = sanitized != btext
             if 'replace-newline' in opts.paste_actions:
                 sanitized = sanitized.replace(b'\n', b'\x1bE')
+            replaced_newlines = False
             if not self.screen.in_bracketed_paste_mode:
                 # \n is converted to \r and \r is interpreted as the enter key
                 # by legacy programs that dont support the full kitty keyboard protocol,
