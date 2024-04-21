@@ -13,11 +13,11 @@ kitty.conf
 |kitty| is highly customizable, everything from keyboard shortcuts, to rendering
 frames-per-second. See below for an overview of all customization possibilities.
 
-You can open the config file within kitty by pressing :sc:`edit_config_file`
+You can open the config file within |kitty| by pressing :sc:`edit_config_file`
 (:kbd:`⌘+,` on macOS). A :file:`kitty.conf` with commented default
 configurations and descriptions will be created if the file does not exist.
-You can reload the config file within kitty by pressing
-:sc:`reload_config_file` (:kbd:`⌃+⌘+,` on macOS) or sending kitty the
+You can reload the config file within |kitty| by pressing
+:sc:`reload_config_file` (:kbd:`⌃+⌘+,` on macOS) or sending |kitty| the
 ``SIGUSR1`` signal with ``kill -SIGUSR1 $KITTY_PID``. You can also display the
 current configuration by pressing :sc:`debug_config` (:kbd:`⌥+⌘+,` on macOS).
 
@@ -28,16 +28,16 @@ current configuration by pressing :sc:`debug_config` (:kbd:`⌥+⌘+,` on macOS)
 :option:`kitty --config` option or use the :envvar:`KITTY_CONFIG_DIRECTORY`
 environment variable. See :option:`kitty --config` for full details.
 
-Comments can be added to the config file as lines starting with the ``#``
+**Comments** can be added to the config file as lines starting with the ``#``
 character. This works only if the ``#`` character is the first character in the
 line.
 
-Lines can be split by starting the next line with the ``\`` character.
+**Lines can be split** by starting the next line with the ``\`` character.
 All leading whitespace and the ``\`` character are removed.
 
 .. _include:
 
-You can include secondary config files via the :code:`include` directive. If
+You can **include secondary config files** via the :code:`include` directive. If
 you use a relative path for :code:`include`, it is resolved with respect to the
 location of the current config file. Note that environment variables are
 expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
