@@ -76,8 +76,8 @@ def show_variable(f: ListedFont, psnames: bool) -> None:
             if psnames:
                 name += f' ({ns["psname"] or ""})'
             axes = []
-            for axis, val in zip(vd['axes'], ns['axis_values']):
-                axes.append(f'{axis["tag"]}={val:g}')
+            for axis_tag, val in ns['axis_values'].items():
+                axes.append(f'{axis_tag}={val:g}')
             p = name + ': ' + ' '.join(axes)
             print(indented(p, level=3))
 
