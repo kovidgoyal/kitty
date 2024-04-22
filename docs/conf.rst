@@ -87,7 +87,7 @@ This will print the commented out default config file to :file:`STDOUT`.
 All mappable actions
 ------------------------
 
-See the :doc:`list of all the things you can make kitty can do </actions>`.
+See the :doc:`list of all the things you can make |kitty| can do </actions>`.
 
 .. toctree::
    :hidden:
