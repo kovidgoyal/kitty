@@ -11,9 +11,9 @@ from kitty.types import run_once
 from . import ListedFont
 
 if is_macos:
-    from .core_text import get_variable_data_for_descriptor, list_fonts
+    from .core_text import get_variable_data_for_descriptor, list_fonts, prune_family_group
 else:
-    from .fontconfig import get_variable_data_for_descriptor, list_fonts
+    from .fontconfig import get_variable_data_for_descriptor, list_fonts, prune_family_group
 
 
 @run_once
@@ -54,14 +54,12 @@ def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]
     for f in list_fonts():
         if not monospaced or f['is_monospace']:
             g.setdefault(f['family'], []).append(f)
-    return g
+    return {k: prune_family_group(v) for k, v in g.items()}
 
 
 def show_variable(f: ListedFont, psnames: bool) -> None:
     vd = get_variable_data_for_descriptor(f)
-    p = italic(f['full_name'])
-    if psnames and f['postscript_name']:
-        p += f' ({f["postscript_name"]})'
+    p = italic(f['family'])
     p = f"{p} {variable_font_label('Variable font')}"
     print(indented(p))
     print(indented(variable_font_label('Axes of variation'), level=2))

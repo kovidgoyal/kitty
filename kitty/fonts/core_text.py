@@ -118,6 +118,26 @@ def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
 
 
 def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
+    return CTFace(descriptor=descriptor(f)).get_variable_data()
+
+
+def descriptor(f: ListedFont) -> CoreTextFont:
     d = f['descriptor']
     assert d['descriptor_type'] == 'core_text'
-    return CTFace(descriptor=d).get_variable_data()
+    return d
+
+
+def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
+    # CoreText returns a separate font for every style in the variable font, so
+    # merge them.
+    variable_paths = {descriptor(f)['path']: False for f in g if f['is_variable']}
+    if not variable_paths:
+        return g
+    def is_ok(d: CoreTextFont) -> bool:
+        if d['path'] not in variable_paths:
+            return True
+        if not variable_paths[d['path']]:
+            variable_paths[d['path']] = True
+            return True
+        return False
+    return [x for x in g if is_ok(descriptor(x))]

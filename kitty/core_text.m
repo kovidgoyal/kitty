@@ -845,10 +845,13 @@ get_variable_data(CTFace *self) {
     RAII_CoreFoundation(CFArrayRef, descriptors, CTFontCollectionCreateMatchingFontDescriptors(collection));
     RAII_PyObject(named_styles, PyTuple_New(CFArrayGetCount(descriptors)));
     Py_ssize_t actual_num = 0;
+    RAII_CoreFoundation(CFURLRef, url, CTFontCopyAttribute(self->ct_font, kCTFontURLAttribute));
     for (CFIndex i = 0; i < CFArrayGetCount(descriptors); i++) {
         CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(descriptors, i);
         RAII_CoreFoundation(CFDictionaryRef, variation, CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute));
         if (!variation) continue;
+        RAII_CoreFoundation(CFURLRef, candidate_url, CTFontDescriptorCopyAttribute(descriptor, kCTFontURLAttribute));
+        if (!CFEqual(url, candidate_url)) continue;
         RAII_CoreFoundation(CFStringRef, style, CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute));
         RAII_CoreFoundation(CFStringRef, psname, CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute));
         RAII_PyObject(axis_values, PyDict_New());
