@@ -177,7 +177,22 @@ def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
 
 
-def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
+def descriptor(f: ListedFont) -> FontConfigPattern:
     d = f['descriptor']
     assert d['descriptor_type'] == 'fontconfig'
-    return Face(descriptor=d).get_variable_data()
+    return d
+
+
+def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
+    return Face(descriptor=descriptor(f)).get_variable_data()
+
+
+def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
+    # fontconfig creates dummy entries for named styles in variable fonts, prune them
+    variable_paths = {descriptor(f)['path'] for f in g if f['is_variable']}
+    if not variable_paths:
+        return g
+    def is_ok(d: FontConfigPattern) -> bool:
+        return d['variable'] or d['path'] not in variable_paths
+
+    return [x for x in g if is_ok(descriptor(x))]
