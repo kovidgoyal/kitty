@@ -356,6 +356,14 @@ _glfwWaylandWindowScale(_GLFWwindow *window) {
     return ans;
 }
 
+#define run_with_context(window, expression) { \
+    const _GLFWwindow *current_context = (_GLFWwindow*)glfwGetCurrentContext(); \
+    const bool needs_swap = window != current_context; \
+    if (needs_swap) glfwMakeContextCurrent((GLFWwindow*)window); \
+    expression; \
+    if (needs_swap) glfwMakeContextCurrent((GLFWwindow*)current_context); \
+}
+
 static void
 resizeFramebuffer(_GLFWwindow* window) {
     double scale = _glfwWaylandWindowScale(window);
@@ -363,7 +371,7 @@ resizeFramebuffer(_GLFWwindow* window) {
     int scaled_height = (int)round(window->wl.height * scale);
     debug("Resizing framebuffer of window: %llu to: %dx%d window size: %dx%d at scale: %.3f\n",
             window->id, scaled_width, scaled_height, window->wl.width, window->wl.height, scale);
-    wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0);
+    run_with_context(window, wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0));
     update_regions(window);
     window->wl.waiting_for_swap_to_commit = true;
     _glfwInputFramebufferSize(window, scaled_width, scaled_height);
