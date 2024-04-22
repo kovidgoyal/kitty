@@ -426,6 +426,7 @@ class CoreTextFont(TypedDict):
     descriptor_type: Literal['core_text']
     path: str
     postscript_name: str
+    display_name: str
     family: str
     style: str
     bold: bool

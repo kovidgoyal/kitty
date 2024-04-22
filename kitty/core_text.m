@@ -116,6 +116,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     RAII_PyObject(ps_name, convert_cfstring(CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute), true));
     RAII_PyObject(family, convert_cfstring(CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute), true));
     RAII_PyObject(style, convert_cfstring(CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute), true));
+    RAII_PyObject(display_name, convert_cfstring(CTFontDescriptorCopyAttribute(descriptor, kCTFontDisplayNameAttribute), true));
     RAII_CoreFoundation(CFDictionaryRef, traits, CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute));
     unsigned long symbolic_traits = 0; float weight = 0, width = 0, slant = 0;
 #define get_number(d, key, output, type_) { \
@@ -128,10 +129,10 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     RAII_CoreFoundation(CFDictionaryRef, variation, CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute));
 #undef get_number
 
-    PyObject *ans = Py_BuildValue("{ss sOsOsOsO sOsOsOsOsOsOsO sfsfsfsk}",
+    PyObject *ans = Py_BuildValue("{ss sOsOsOsOsO sOsOsOsOsOsOsO sfsfsfsk}",
             "descriptor_type", "core_text",
 
-            "path", path, "postscript_name", ps_name, "family", family, "style", style,
+            "path", path, "postscript_name", ps_name, "family", family, "style", style, "display_name", display_name,
 
             "bold", (symbolic_traits & kCTFontBoldTrait) != 0 ? Py_True : Py_False,
             "italic", (symbolic_traits & kCTFontItalicTrait) != 0 ? Py_True : Py_False,
@@ -814,6 +815,7 @@ static PyObject*
 get_variable_data(CTFace *self) {
     uint8_t tag_buf[5] = {0};
     RAII_CoreFoundation(CFArrayRef, cfaxes, CTFontCopyVariationAxes(self->ct_font));
+    if (!cfaxes) return Py_BuildValue("{sN sN}", "axes", PyTuple_New(0), "named_styles", PyDict_New()); //, "named_styles", named_styles);
     RAII_PyObject(axes, PyTuple_New(CFArrayGetCount(cfaxes)));
     for (CFIndex i = 0; i < CFArrayGetCount(cfaxes); i++) {
         CFDictionaryRef a = (CFDictionaryRef)CFArrayGetValueAtIndex(cfaxes, i);
