@@ -56,7 +56,7 @@ init_face(CTFace *self, CTFontRef font) {
     if (self->hb_font) hb_font_destroy(self->hb_font);
     self->hb_font = NULL;
     if (self->ct_font) CFRelease(self->ct_font);
-    self->ct_font = font;
+    self->ct_font = font; CFRetain(font);
     self->units_per_em = CTFontGetUnitsPerEm(self->ct_font);
     self->ascent = CTFontGetAscent(self->ct_font);
     self->descent = CTFontGetDescent(self->ct_font);
@@ -66,6 +66,26 @@ init_face(CTFace *self, CTFontRef font) {
     self->scaled_point_sz = CTFontGetSize(self->ct_font);
 }
 
+static PyObject*
+convert_url_to_filesystem_path(CFURLRef url) {
+    uint8_t buf[4096];
+    if (url && CFURLGetFileSystemRepresentation(url, true, buf, sizeof(buf))) return PyUnicode_FromString((const char*)buf);
+    return PyUnicode_FromString("");
+}
+
+static PyObject*
+get_path_for_font(CTFontRef font) {
+    RAII_CoreFoundation(CFURLRef, url, CTFontCopyAttribute(font, kCTFontURLAttribute));
+    return convert_url_to_filesystem_path(url);
+}
+
+static PyObject*
+get_path_for_font_descriptor(CTFontDescriptorRef font) {
+    RAII_CoreFoundation(CFURLRef, url, CTFontDescriptorCopyAttribute(font, kCTFontURLAttribute));
+    return convert_url_to_filesystem_path(url);
+}
+
+
 static CTFace*
 ct_face(CTFontRef font) {
     CTFace *self = (CTFace *)CTFace_Type.tp_alloc(&CTFace_Type, 0);
@@ -74,9 +94,7 @@ ct_face(CTFontRef font) {
         self->family_name = convert_cfstring(CTFontCopyFamilyName(self->ct_font), true);
         self->full_name = convert_cfstring(CTFontCopyFullName(self->ct_font), true);
         self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->ct_font), true);
-        NSURL *url = (NSURL*)CTFontCopyAttribute(self->ct_font, kCTFontURLAttribute);
-        self->path = PyUnicode_FromString([[url path] UTF8String]);
-        [url release];
+        self->path = get_path_for_font(self->ct_font);
         if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL || self->path == NULL) { Py_CLEAR(self); }
     }
     return self;
@@ -94,41 +112,37 @@ dealloc(CTFace* self) {
 
 static PyObject*
 font_descriptor_to_python(CTFontDescriptorRef descriptor) {
-    NSURL *url = (NSURL *) CTFontDescriptorCopyAttribute(descriptor, kCTFontURLAttribute);
-    NSString *psName = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute);
-    NSString *family = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute);
-    NSString *style = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute);
-    NSDictionary *traits = (NSDictionary *) CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute);
-    unsigned int straits = [traits[(id)kCTFontSymbolicTrait] unsignedIntValue];
-    float weightVal = [traits[(id)kCTFontWeightTrait] floatValue];
-    float widthVal = [traits[(id)kCTFontWidthTrait] floatValue];
-    NSDictionary *variation = (NSDictionary *)CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute);
+    RAII_PyObject(path, get_path_for_font_descriptor(descriptor));
+    RAII_PyObject(ps_name, convert_cfstring(CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute), true));
+    RAII_PyObject(family, convert_cfstring(CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute), true));
+    RAII_PyObject(style, convert_cfstring(CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute), true));
+    RAII_CoreFoundation(CFDictionaryRef, traits, CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute));
+    unsigned long symbolic_traits = 0; float weight = 0, width = 0, slant = 0;
+#define get_number(d, key, output, type_) { \
+            CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(d, key); \
+            if (value) CFNumberGetValue(value, type_, &output); }
+    get_number(traits, kCTFontSymbolicTrait, symbolic_traits, kCFNumberLongType);
+    get_number(traits, kCTFontWeightTrait, weight, kCFNumberFloatType);
+    get_number(traits, kCTFontWidthTrait, width, kCFNumberFloatType);
+    get_number(traits, kCTFontSlantTrait, slant, kCFNumberFloatType);
+    RAII_CoreFoundation(CFDictionaryRef, variation, CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute));
+#undef get_number
 
-    PyObject *ans = Py_BuildValue("{ssssssssss sOsOsOsOsOsOsO sfsfsI}",
+    PyObject *ans = Py_BuildValue("{ss sOsOsOsO sOsOsOsOsOsOsO sfsfsfsk}",
             "descriptor_type", "core_text",
-            "path", [[url path] UTF8String],
-            "postscript_name", [psName UTF8String],
-            "family", [family UTF8String],
-            "style", [style UTF8String],
 
-            "bold", (straits & kCTFontBoldTrait) != 0 ? Py_True : Py_False,
-            "italic", (straits & kCTFontItalicTrait) != 0 ? Py_True : Py_False,
-            "monospace", (straits & kCTFontMonoSpaceTrait) != 0 ? Py_True : Py_False,
-            "expanded", (straits & kCTFontExpandedTrait) != 0 ? Py_True : Py_False,
-            "condensed", (straits & kCTFontCondensedTrait) != 0 ? Py_True : Py_False,
-            "color_glyphs", (straits & kCTFontColorGlyphsTrait) != 0 ? Py_True : Py_False,
+            "path", path, "postscript_name", ps_name, "family", family, "style", style,
+
+            "bold", (symbolic_traits & kCTFontBoldTrait) != 0 ? Py_True : Py_False,
+            "italic", (symbolic_traits & kCTFontItalicTrait) != 0 ? Py_True : Py_False,
+            "monospace", (symbolic_traits & kCTFontMonoSpaceTrait) != 0 ? Py_True : Py_False,
+            "expanded", (symbolic_traits & kCTFontExpandedTrait) != 0 ? Py_True : Py_False,
+            "condensed", (symbolic_traits & kCTFontCondensedTrait) != 0 ? Py_True : Py_False,
+            "color_glyphs", (symbolic_traits & kCTFontColorGlyphsTrait) != 0 ? Py_True : Py_False,
             "variable", variation ? Py_True : Py_False,
 
-            "weight", weightVal,
-            "width", widthVal,
-            "traits", straits
+            "weight", weight, "width", width, "slant", slant, "traits", symbolic_traits
     );
-    [url release];
-    [psName release];
-    [family release];
-    [style release];
-    [traits release];
-    if (variation) [variation release];
     return ans;
 }
 
@@ -393,7 +407,7 @@ set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force, F
     CTFace *self = (CTFace*)s;
     float sz = scaled_point_sz(fg);
     if (!force && self->scaled_point_sz == sz) return true;
-    CTFontRef new_font = CTFontCreateCopyWithAttributes(self->ct_font, sz, NULL, NULL);
+    RAII_CoreFoundation(CTFontRef, new_font, CTFontCreateCopyWithAttributes(self->ct_font, sz, NULL, NULL));
     if (new_font == NULL) fatal("Out of memory");
     init_face(self, new_font);
     return true;
@@ -479,22 +493,20 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
 
 PyObject*
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
-    CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
+    RAII_CoreFoundation(CTFontDescriptorRef, desc, font_descriptor_from_python(descriptor));
     if (!desc) return NULL;
-    CTFontRef font = CTFontCreateWithFontDescriptor(desc, fg ? scaled_point_sz(fg) : 12, NULL);
-    CFRelease(desc); desc = NULL;
+    RAII_CoreFoundation(CTFontRef, font, CTFontCreateWithFontDescriptor(desc, fg ? scaled_point_sz(fg) : 12, NULL));
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
     return (PyObject*) ct_face(font);
 }
 
 PyObject*
 face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg UNUSED) {
-    CFStringRef s = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
-    CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, s, kCFURLPOSIXPathStyle, false);
-    CGDataProviderRef dp = CGDataProviderCreateWithURL(url);
-    CGFontRef cg_font = CGFontCreateWithDataProvider(dp);
-    CTFontRef ct_font = CTFontCreateWithGraphicsFont(cg_font, 0.0, NULL, NULL);
-    CFRelease(cg_font); CFRelease(dp); CFRelease(url); CFRelease(s);
+    RAII_CoreFoundation(CFStringRef, s, CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8));
+    RAII_CoreFoundation(CFURLRef, url, CFURLCreateWithFileSystemPath(kCFAllocatorDefault, s, kCFURLPOSIXPathStyle, false));
+    RAII_CoreFoundation(CGDataProviderRef, dp, CGDataProviderCreateWithURL(url));
+    RAII_CoreFoundation(CGFontRef, cg_font, CGFontCreateWithDataProvider(dp));
+    RAII_CoreFoundation(CTFontRef, ct_font, CTFontCreateWithGraphicsFont(cg_font, 0.0, NULL, NULL));
     return (PyObject*) ct_face(ct_font);
 }
 

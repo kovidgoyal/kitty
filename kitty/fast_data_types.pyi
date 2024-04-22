@@ -437,6 +437,7 @@ class CoreTextFont(TypedDict):
     variable: bool
     weight: float
     width: float
+    slant: float
     traits: int
 
 
