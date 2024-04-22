@@ -22,6 +22,8 @@
 #import <Foundation/NSDictionary.h>
 
 #define debug debug_fonts
+static inline void cleanup_cfrelease(void *__p) { CFTypeRef *tp = (CFTypeRef *)__p; CFTypeRef cf = *tp; if (cf) { CFRelease(cf); } }
+#define RAII_CoreFoundation(type, name, initializer) __attribute__((cleanup(cleanup_cfrelease))) type name = initializer
 
 typedef struct {
     PyObject_HEAD
@@ -35,20 +37,22 @@ typedef struct {
 PyTypeObject CTFace_Type;
 static CTFontRef window_title_font = nil;
 
-static char*
+static PyObject*
 convert_cfstring(CFStringRef src, int free_src) {
-#define SZ 4094
-    static char buf[SZ+2] = {0};
-    bool ok = false;
-    if(!CFStringGetCString(src, buf, SZ, kCFStringEncodingUTF8)) PyErr_SetString(PyExc_ValueError, "Failed to convert CFString");
-    else ok = true;
-    if (free_src) CFRelease(src);
-    return ok ? buf : NULL;
+    RAII_CoreFoundation(CFStringRef, releaseme, free_src ? src : nil);
+    (void)releaseme;
+    if (!src) return PyUnicode_FromString("");
+    const char *fast = CFStringGetCStringPtr(src, kCFStringEncodingUTF8);
+    if (fast) return PyUnicode_FromString(fast);
+#define SZ 4096
+    char buf[SZ];
+    if(!CFStringGetCString(src, buf, SZ, kCFStringEncodingUTF8)) { PyErr_SetString(PyExc_ValueError, "Failed to convert CFString"); return NULL; }
+    return PyUnicode_FromString(buf);
 #undef SZ
 }
 
 static void
-init_face(CTFace *self, CTFontRef font, FONTS_DATA_HANDLE fg UNUSED) {
+init_face(CTFace *self, CTFontRef font) {
     if (self->hb_font) hb_font_destroy(self->hb_font);
     self->hb_font = NULL;
     if (self->ct_font) CFRelease(self->ct_font);
@@ -63,15 +67,15 @@ init_face(CTFace *self, CTFontRef font, FONTS_DATA_HANDLE fg UNUSED) {
 }
 
 static CTFace*
-ct_face(CTFontRef font, FONTS_DATA_HANDLE fg) {
+ct_face(CTFontRef font) {
     CTFace *self = (CTFace *)CTFace_Type.tp_alloc(&CTFace_Type, 0);
     if (self) {
-        init_face(self, font, fg);
-        self->family_name = Py_BuildValue("s", convert_cfstring(CTFontCopyFamilyName(self->ct_font), true));
-        self->full_name = Py_BuildValue("s", convert_cfstring(CTFontCopyFullName(self->ct_font), true));
-        self->postscript_name = Py_BuildValue("s", convert_cfstring(CTFontCopyPostScriptName(self->ct_font), true));
+        init_face(self, font);
+        self->family_name = convert_cfstring(CTFontCopyFamilyName(self->ct_font), true);
+        self->full_name = convert_cfstring(CTFontCopyFullName(self->ct_font), true);
+        self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->ct_font), true);
         NSURL *url = (NSURL*)CTFontCopyAttribute(self->ct_font, kCTFontURLAttribute);
-        self->path = Py_BuildValue("s", [[url path] UTF8String]);
+        self->path = PyUnicode_FromString([[url path] UTF8String]);
         [url release];
         if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL || self->path == NULL) { Py_CLEAR(self); }
     }
@@ -323,7 +327,7 @@ apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool 
 PyObject*
 create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)base_face;
-    CTFontRef new_font;
+    RAII_CoreFoundation(CTFontRef, new_font, NULL);
 #define search_for_fallback() \
         char text[64] = {0}; \
         cell_as_utf8_for_fallback(cell, text); \
@@ -341,7 +345,8 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
     }
     else { search_for_fallback(); new_font = apply_styles_to_fallback_font(new_font, bold, italic); }
     if (new_font == NULL) return NULL;
-    PyObject *postscript_name = Py_BuildValue("s", convert_cfstring(CTFontCopyPostScriptName(new_font), true));
+    RAII_PyObject(postscript_name, convert_cfstring(CTFontCopyPostScriptName(new_font), true));
+    if (!postscript_name) return NULL;
     ssize_t idx = -1;
     PyObject *q, *ans = NULL;
     while ((q = iter_fallback_faces(fg, &idx))) {
@@ -351,10 +356,7 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
             break;
         }
     }
-    Py_CLEAR(postscript_name);
-    if (ans == NULL) return (PyObject*)ct_face(new_font, fg);
-    CFRelease(new_font);
-    return ans;
+    return ans ? ans : (PyObject*)ct_face(new_font);
 }
 
 unsigned int
@@ -393,7 +395,7 @@ set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force, F
     if (!force && self->scaled_point_sz == sz) return true;
     CTFontRef new_font = CTFontCreateCopyWithAttributes(self->ct_font, sz, NULL, NULL);
     if (new_font == NULL) fatal("Out of memory");
-    init_face(self, new_font, fg);
+    init_face(self, new_font);
     return true;
 }
 
@@ -479,21 +481,34 @@ PyObject*
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
     if (!desc) return NULL;
-    CTFontRef font = CTFontCreateWithFontDescriptor(desc, scaled_point_sz(fg), NULL);
+    CTFontRef font = CTFontCreateWithFontDescriptor(desc, fg ? scaled_point_sz(fg) : 12, NULL);
     CFRelease(desc); desc = NULL;
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
-    return (PyObject*) ct_face(font, fg);
+    return (PyObject*) ct_face(font);
 }
 
 PyObject*
-face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg) {
+face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg UNUSED) {
     CFStringRef s = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
     CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, s, kCFURLPOSIXPathStyle, false);
     CGDataProviderRef dp = CGDataProviderCreateWithURL(url);
     CGFontRef cg_font = CGFontCreateWithDataProvider(dp);
     CTFontRef ct_font = CTFontCreateWithGraphicsFont(cg_font, 0.0, NULL, NULL);
     CFRelease(cg_font); CFRelease(dp); CFRelease(url); CFRelease(s);
-    return (PyObject*) ct_face(ct_font, fg);
+    return (PyObject*) ct_face(ct_font);
+}
+
+static PyObject*
+new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
+    const char *path = NULL;
+    PyObject *descriptor = NULL;
+
+    static char *kwds[] = {"descriptor", "path", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Os", kwds, &descriptor, &path)) return NULL;
+    if (descriptor) return face_from_descriptor(descriptor, NULL);
+    if (path) return face_from_path(path, 0, NULL);
+    PyErr_SetString(PyExc_TypeError, "Must specify either path or descriptor");
+    return NULL;
 }
 
 PyObject*
@@ -760,12 +775,84 @@ render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *inf
 static PyObject*
 display_name(CTFace *self) {
     CFStringRef dn = CTFontCopyDisplayName(self->ct_font);
-    const char *d = convert_cfstring(dn, true);
-    return Py_BuildValue("s", d);
+    return convert_cfstring(dn, true);
+}
+
+static const char*
+tag_to_string(uint32_t tag, uint8_t bytes[5]) {
+    bytes[0] = (tag >> 24) & 0xff;
+    bytes[1] = (tag >> 16) & 0xff;
+    bytes[2] = (tag >> 8) & 0xff;
+    bytes[3] = (tag) & 0xff;
+    bytes[4] = 0;
+    return (const char*)bytes;
+}
+
+static void
+convert_variation_to_python(const void *key, const void *value_, void *axis_values) {
+    unsigned long tag; float value;
+    CFNumberGetValue(key, kCFNumberLongType, &tag);
+    CFNumberGetValue(value_, kCFNumberFloatType, &value);
+    uint8_t tag_buf[5] = {0};
+    RAII_PyObject(val, PyFloat_FromDouble((double)value));
+    if (val) PyDict_SetItemString(axis_values, tag_to_string(tag, tag_buf), val);
+}
+
+static PyObject*
+get_variable_data(CTFace *self) {
+    uint8_t tag_buf[5] = {0};
+    RAII_CoreFoundation(CFArrayRef, cfaxes, CTFontCopyVariationAxes(self->ct_font));
+    RAII_PyObject(axes, PyTuple_New(CFArrayGetCount(cfaxes)));
+    for (CFIndex i = 0; i < CFArrayGetCount(cfaxes); i++) {
+        CFDictionaryRef a = (CFDictionaryRef)CFArrayGetValueAtIndex(cfaxes, i);
+#define get_number(key, output, type, optional) { \
+            CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(a, key); \
+            if (value) CFNumberGetValue(value, type, &output); \
+            else if (!optional) { PyErr_Format(PyExc_RuntimeError, "The %s key was not present in the varioation axis dictionary", #key); return NULL; } \
+}
+        float minimum = 0, maximum = 0, def = 0; unsigned long tag = 0, hidden = 0;
+        get_number(kCTFontVariationAxisDefaultValueKey, def, kCFNumberFloatType, false);
+        get_number(kCTFontVariationAxisMaximumValueKey, maximum, kCFNumberFloatType, false);
+        get_number(kCTFontVariationAxisMinimumValueKey, minimum, kCFNumberFloatType, false);
+        get_number(kCTFontVariationAxisIdentifierKey, tag, kCFNumberLongType, false);
+        get_number(kCTFontVariationAxisHiddenKey, hidden, kCFNumberLongType, true);
+#undef get_number
+        CFStringRef n = (CFStringRef)CFDictionaryGetValue(a, kCTFontVariationAxisNameKey);
+        PyObject *axis = Py_BuildValue("{sd sd sd ss sO sO}",
+            "minimum", minimum, "maximum", maximum, "default", def, "tag", tag_to_string(tag, tag_buf),
+            "hidden", hidden ? Py_True : Py_False, "strid", convert_cfstring(n, false)
+        );
+        if (!axis) return NULL;
+        PyTuple_SET_ITEM(axes, i, axis);
+    }
+    RAII_CoreFoundation(CFStringRef, font_family_name, CTFontCopyFamilyName(self->ct_font));
+    RAII_CoreFoundation(CTFontDescriptorRef, descriptor,
+            CTFontDescriptorCreateWithAttributes((__bridge CFDictionaryRef)@{(id)kCTFontFamilyNameAttribute: (__bridge NSString*)font_family_name}));
+    RAII_CoreFoundation(CTFontCollectionRef, collection,
+            CTFontCollectionCreateWithFontDescriptors((__bridge CFArrayRef)@[(__bridge id)descriptor], NULL));
+    RAII_CoreFoundation(CFArrayRef, descriptors, CTFontCollectionCreateMatchingFontDescriptors(collection));
+    RAII_PyObject(named_styles, PyTuple_New(CFArrayGetCount(descriptors)));
+    Py_ssize_t actual_num = 0;
+    for (CFIndex i = 0; i < CFArrayGetCount(descriptors); i++) {
+        CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(descriptors, i);
+        RAII_CoreFoundation(CFDictionaryRef, variation, CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute));
+        if (!variation) continue;
+        RAII_CoreFoundation(CFStringRef, style, CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute));
+        RAII_CoreFoundation(CFStringRef, psname, CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute));
+        RAII_PyObject(axis_values, PyDict_New());
+        if (!axis_values) return NULL;
+        CFDictionaryApplyFunction(variation, convert_variation_to_python, axis_values);
+        PyObject *ns = Py_BuildValue("{sO sN sN}", "axis_values", axis_values, "name", convert_cfstring(style, false), "psname", convert_cfstring(psname, false));
+        if (!ns) return NULL;
+        PyTuple_SET_ITEM(named_styles, actual_num, ns); actual_num++;
+    }
+    _PyTuple_Resize(&named_styles, actual_num);
+    return Py_BuildValue("{sO sO}", "axes", axes, "named_styles", named_styles); //, "named_styles", named_styles);
 }
 
 static PyMethodDef methods[] = {
     METHODB(display_name, METH_NOARGS),
+    METHODB(get_variable_data, METH_NOARGS),
     {NULL}  /* Sentinel */
 };
 
@@ -813,6 +900,7 @@ static PyMemberDef members[] = {
 PyTypeObject CTFace_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.CTFace",
+    .tp_new = new,
     .tp_basicsize = sizeof(CTFace),
     .tp_dealloc = (destructor)dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,

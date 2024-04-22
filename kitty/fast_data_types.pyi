@@ -440,6 +440,11 @@ class CoreTextFont(TypedDict):
     traits: int
 
 
+class CTFace:
+    def __init__(self, descriptor: Optional[CoreTextFont] = None, path: str = ''): ...
+    def get_variable_data(self) -> VariableData: ...
+
+
 def coretext_all_fonts() -> Tuple[CoreTextFont, ...]:
     pass
 

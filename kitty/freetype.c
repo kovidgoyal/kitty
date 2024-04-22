@@ -787,15 +787,26 @@ static inline void cleanup_ftmm(FT_MM_Var **p) { if (*p) FT_Done_MM_Var(library,
 
 #define RAII_FTMMVar(name) __attribute__((cleanup(cleanup_ftmm))) FT_MM_Var *name = NULL
 
+static const char*
+tag_to_string(uint32_t tag, uint8_t bytes[5]) {
+    bytes[0] = (tag >> 24) & 0xff;
+    bytes[1] = (tag >> 16) & 0xff;
+    bytes[2] = (tag >> 8) & 0xff;
+    bytes[3] = (tag) & 0xff;
+    bytes[4] = 0;
+    return (const char*)bytes;
+}
+
 static PyObject*
-convert_named_style_to_python(Face *face, const FT_Var_Named_Style *src, unsigned num_of_axes) {
-    RAII_PyObject(axis_values, PyTuple_New(num_of_axes));
+convert_named_style_to_python(Face *face, const FT_Var_Named_Style *src, FT_Var_Axis *axes, unsigned num_of_axes) {
+    RAII_PyObject(axis_values, PyDict_New());
     if (!axis_values) return NULL;
+    uint8_t tag_buf[5] = {0};
     for (FT_UInt i = 0; i < num_of_axes; i++) {
         double val = src->coords[i] / 65536.0;
-        PyObject *pval = PyFloat_FromDouble(val);
+        RAII_PyObject(pval, PyFloat_FromDouble(val));
         if (!pval) return NULL;
-        PyTuple_SET_ITEM(axis_values, i, pval);
+        if (PyDict_SetItemString(axis_values, tag_to_string(axes[i].tag, tag_buf), pval) != 0) return NULL;
     }
     RAII_PyObject(name, _get_best_name(face, src->strid));
     if (!name) PyErr_Clear();
@@ -805,24 +816,14 @@ convert_named_style_to_python(Face *face, const FT_Var_Named_Style *src, unsigne
 }
 
 static PyObject*
-tag_to_string(uint32_t tag) {
-    if (!tag) return PyUnicode_FromString("");
-    unsigned char bytes[5] = {0};
-    bytes[0] = (tag >> 24) & 0xff;
-    bytes[1] = (tag >> 16) & 0xff;
-    bytes[2] = (tag >> 8) & 0xff;
-    bytes[3] = (tag) & 0xff;
-    return PyUnicode_DecodeASCII((const char*)bytes, 4, "replace");
-}
-
-static PyObject*
 convert_axis_to_python(Face *face, const FT_Var_Axis *src, FT_UInt flags) {
-    RAII_PyObject(strid, _get_best_name(face, src->strid));
-    if (!strid) PyErr_Clear();
-    return Py_BuildValue("{sd sd sd sO ss sN sO}",
+    PyObject *strid = _get_best_name(face, src->strid);
+    if (!strid) { PyErr_Clear(); strid = PyUnicode_FromString(""); }
+    uint8_t tag_buf[5] = {0};
+    return Py_BuildValue("{sd sd sd sO ss ss sN}",
         "minimum", src->minimum / 65536.0, "maximum", src->maximum / 65536.0, "default", src->def / 65536.0,
-        "hidden", flags & FT_VAR_AXIS_FLAG_HIDDEN ? Py_True : Py_False, "name", src->name, "tag", tag_to_string(src->tag),
-        "strid", strid ? strid : Py_None
+        "hidden", flags & FT_VAR_AXIS_FLAG_HIDDEN ? Py_True : Py_False, "name", src->name, "tag", tag_to_string(src->tag, tag_buf),
+        "strid", strid
     );
 }
 
@@ -835,7 +836,7 @@ get_variable_data(Face *self, PyObject *a UNUSED) {
     RAII_PyObject(named_styles, PyTuple_New(mm->num_namedstyles));
     if (!axes || !named_styles) return NULL;
     for (FT_UInt i = 0; i < mm->num_namedstyles; i++) {
-        PyObject *s = convert_named_style_to_python(self, mm->namedstyle + i, mm->num_axis);
+        PyObject *s = convert_named_style_to_python(self, mm->namedstyle + i, mm->axis, mm->num_axis);
         if (!s) return NULL;
         PyTuple_SET_ITEM(named_styles, i, s);
     }

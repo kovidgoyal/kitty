@@ -4,7 +4,7 @@
 import re
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
-from kitty.fast_data_types import coretext_all_fonts
+from kitty.fast_data_types import CTFace, coretext_all_fonts
 from kitty.fonts import FontFeature, VariableData
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
@@ -120,4 +120,4 @@ def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
 def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
     d = f['descriptor']
     assert d['descriptor_type'] == 'core_text'
-    return d['variable_data']
+    return CTFace(descriptor=d).get_variable_data()
