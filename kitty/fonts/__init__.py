@@ -31,7 +31,7 @@ class NamedStyle(TypedDict):
 class VariableData(TypedDict):
     axes: Tuple[VariableAxis, ...]
     named_styles: Tuple[NamedStyle, ...]
-
+    variations_postscript_name_prefix: str
 
 
 class FontFeature:

@@ -849,7 +849,7 @@ get_variable_data(Face *self, PyObject *a UNUSED) {
         if (!s) return NULL;
         PyTuple_SET_ITEM(axes, i, s);
     }
-    return Py_BuildValue("{sO sO}", "axes", axes, "named_styles", named_styles);
+    return Py_BuildValue("{sO sO sN}", "axes", axes, "named_styles", named_styles, "variations_postscript_name_prefix", _get_best_name(self, 25));
 }
 
 StringCanvas
