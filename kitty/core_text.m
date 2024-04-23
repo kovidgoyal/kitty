@@ -32,7 +32,7 @@ typedef struct {
     float ascent, descent, leading, underline_position, underline_thickness, point_sz, scaled_point_sz;
     CTFontRef ct_font;
     hb_font_t *hb_font;
-    PyObject *family_name, *full_name, *postscript_name, *path;
+    PyObject *family_name, *full_name, *postscript_name, *path, *name_lookup_table;
 } CTFace;
 PyTypeObject CTFace_Type;
 static CTFontRef window_title_font = nil;
@@ -107,6 +107,7 @@ dealloc(CTFace* self) {
     self->hb_font = NULL;
     self->ct_font = NULL;
     Py_CLEAR(self->family_name); Py_CLEAR(self->full_name); Py_CLEAR(self->postscript_name); Py_CLEAR(self->path);
+    Py_CLEAR(self->name_lookup_table);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -781,15 +782,56 @@ render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *inf
     return do_render(self->ct_font, self->units_per_em, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg, center_glyph);
 }
 
+// Name table
 
+static uint16_t byteswap(uint16_t x) { return (x << 8) | (x >> 8); }
 
-// Boilerplate {{{
+static bool
+ensure_name_table(CTFace *self) {
+    if (self->name_lookup_table) return true;
+    RAII_CoreFoundation(CFDataRef, cftable, CTFontCopyTable(self->ct_font, kCTFontTableName, kCTFontTableOptionNoOptions));
+    const uint8_t *table = cftable ? CFDataGetBytePtr(cftable) : NULL;
+    size_t table_len = 0;
+    if (!table || (table_len = CFDataGetLength(cftable)) < 9 * sizeof(uint16_t)) {
+        self->name_lookup_table = PyDict_New();
+        return true;
+    }
+    RAII_PyObject(ans, PyDict_New());
+    // OpenType tables are big-endian for god knows what reason so need to byteswap
+#define next byteswap(*(p++))
+    uint16_t *p = (uint16_t*)table; p++;
+    uint16_t num_of_name_records = next, storage_offset = next;
+    const uint8_t *storage = table + storage_offset, *slimit = table + table_len;
+    if (storage >= slimit) {
+        self->name_lookup_table = PyDict_New();
+        return true;
+    }
+    for (; num_of_name_records > 0 && p + 6 <= (uint16_t*)slimit; num_of_name_records--) {
+        uint16_t platform_id = next, encoding_id = next, language_id = next, name_id = next, length = next, offset = next;
+        const uint8_t *s = storage + offset;
+        if (s + length <= slimit && !add_font_name_record(
+            ans, platform_id, encoding_id, language_id, name_id, (const char*)(s), length)) return NULL;
+    }
+    self->name_lookup_table = ans; Py_INCREF(ans);
+    return true;
+#undef next
+}
 
 static PyObject*
-display_name(CTFace *self) {
-    CFStringRef dn = CTFontCopyDisplayName(self->ct_font);
-    return convert_cfstring(dn, true);
+get_best_name(CTFace *self, PyObject *nameid) {
+    if (!ensure_name_table(self)) return NULL;
+    return get_best_name_from_name_table(self->name_lookup_table, nameid);
 }
+
+static PyObject*
+_get_best_name(CTFace *self, unsigned long nameid) {
+    RAII_PyObject(key, PyLong_FromUnsignedLong(nameid));
+    return key ? get_best_name(self, key) : NULL;
+}
+
+// }}}
+
+// Variations {{{
 
 static const char*
 tag_to_string(uint32_t tag, uint8_t bytes[5]) {
@@ -864,12 +906,23 @@ get_variable_data(CTFace *self) {
         PyTuple_SET_ITEM(named_styles, actual_num, ns); actual_num++;
     }
     _PyTuple_Resize(&named_styles, actual_num);
-    return Py_BuildValue("{sO sO}", "axes", axes, "named_styles", named_styles); //, "named_styles", named_styles);
+    return Py_BuildValue("{sO sO sN}", "axes", axes, "named_styles", named_styles, "variations_postscript_name_prefix", _get_best_name(self, 25));
+}
+// }}}
+
+
+// Boilerplate {{{
+
+static PyObject*
+display_name(CTFace *self) {
+    CFStringRef dn = CTFontCopyDisplayName(self->ct_font);
+    return convert_cfstring(dn, true);
 }
 
 static PyMethodDef methods[] = {
     METHODB(display_name, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
+    METHODB(get_best_name, METH_O),
     {NULL}  /* Sentinel */
 };
 
