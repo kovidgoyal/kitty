@@ -42,6 +42,11 @@ typedef void (*free_extra_data_func)(void*);
 StringCanvas render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline);
 StringCanvas render_simple_text(FONTS_DATA_HANDLE fg_, const char *text);
 
+bool
+add_font_name_record(PyObject *table, uint16_t platform_id, uint16_t encoding_id, uint16_t language_id, uint16_t name_id, const char *string, uint16_t string_len);
+PyObject*
+get_best_name_from_name_table(PyObject *table, PyObject *name_id);
+
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
     pixel *src;
