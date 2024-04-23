@@ -51,11 +51,11 @@ def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
 @lru_cache()
 def all_fonts_map(monospaced: bool = True) -> FontMap:
     if monospaced:
-        ans = fc_list(FC_DUAL) + fc_list(FC_MONO)
+        ans = fc_list(spacing=FC_DUAL) + fc_list(spacing=FC_MONO)
     else:
         # allow non-monospaced and bitmapped fonts as these are used for
         # symbol_map
-        ans = fc_list(-1, True)
+        ans = fc_list(allow_bitmapped_fonts=True)
     return create_font_map(ans)
 
 

@@ -59,7 +59,7 @@ def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]
 
 def show_variable(f: ListedFont, psnames: bool) -> None:
     vd = get_variable_data_for_descriptor(f)
-    p = italic(f['family'])
+    p = italic(vd['variations_postscript_name_prefix'] or f['family'])
     p = f"{p} {variable_font_label('Variable font')}"
     print(indented(p))
     print(indented(variable_font_label('Axes of variation'), level=2))
