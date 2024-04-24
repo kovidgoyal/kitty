@@ -808,6 +808,13 @@ get_variable_data(CTFace *self) {
     size_t table_len = cftable ? CFDataGetLength(cftable) : 0;
     return read_fvar_font_table(table, table_len, self->name_lookup_table);
 }
+
+static PyObject*
+identify_for_debug(CTFace *self) {
+    return PyUnicode_FromFormat("%V: %V", self->postscript_name, "[psname]", self->path, "[path]");
+}
+
+
 // }}}
 
 
@@ -822,6 +829,7 @@ display_name(CTFace *self) {
 static PyMethodDef methods[] = {
     METHODB(display_name, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
+    METHODB(identify_for_debug, METH_NOARGS),
     METHODB(get_best_name, METH_O),
     {NULL}  /* Sentinel */
 };

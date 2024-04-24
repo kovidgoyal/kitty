@@ -691,12 +691,18 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
 }
 
 static PyObject*
-display_name(PyObject *s, PyObject *a UNUSED) {
+postscript_name(PyObject *s, PyObject *a UNUSED) {
     Face *self = (Face*)s;
     const char *psname = FT_Get_Postscript_Name(self->face);
     if (psname) return Py_BuildValue("s", psname);
     Py_INCREF(self->path);
     return self->path;
+}
+
+static PyObject*
+identify_for_debug(PyObject *s, PyObject *a UNUSED) {
+    Face *self = (Face*)s;
+    return PyUnicode_FromFormat("%s: %V:%d", FT_Get_Postscript_Name(self->face), self->path, "[path]", self->instance.val);
 }
 
 static PyObject*
@@ -862,7 +868,8 @@ static PyMemberDef members[] = {
 };
 
 static PyMethodDef methods[] = {
-    METHODB(display_name, METH_NOARGS),
+    METHODB(postscript_name, METH_NOARGS),
+    METHODB(identify_for_debug, METH_NOARGS),
     METHODB(extra_data, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
     METHODB(get_best_name, METH_O),

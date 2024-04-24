@@ -17,7 +17,7 @@ from kittens.tui.operations import colored, styled
 from .child import cmdline_of_pid
 from .cli import version
 from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
-from .fast_data_types import Color, SingleKey, num_users, opengl_version_string, wayland_compositor_data
+from .fast_data_types import Color, SingleKey, current_fonts, num_users, opengl_version_string, wayland_compositor_data
 from .options.types import Options as KittyOpts
 from .options.types import defaults
 from .options.utils import KeyboardMode, KeyDefinition
@@ -257,6 +257,10 @@ def debug_config(opts: KittyOpts) -> str:
         p('Running under:', green(compositor_name()))
     p(green('OpenGL:'), opengl_version_string())
     p(green('Frozen:'), 'True' if getattr(sys, 'frozen', False) else 'False')
+    p(green('Fonts:'))
+    for k, font in current_fonts().items():
+        if hasattr(font, 'identify_for_debug'):
+            p(yellow(f'  {k}:'), font.identify_for_debug())
     p(green('Paths:'))
     p(yellow('  kitty:'), os.path.realpath(kitty_exe()))
     p(yellow('  base dir:'), kitty_base_dir)
