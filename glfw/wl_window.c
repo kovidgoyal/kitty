@@ -199,10 +199,16 @@ glfw_cursor_shape_to_wayland_cursor_shape(GLFWCursorShape g) {
 }
 
 static void
+commit_window_surface(_GLFWwindow *window) {
+    // debug("Window %llu surface committed\n", window->id); dont log as every frame request causes a surface commit
+    wl_surface_commit(window->wl.surface);
+}
+
+static void
 commit_window_surface_if_safe(_GLFWwindow *window) {
     // we only commit if the buffer attached to the surface is the correct size,
     // which means that at least one frame is drawn after resizeFramebuffer()
-    if (!window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
+    if (!window->wl.waiting_for_swap_to_commit) commit_window_surface(window);
 }
 
 static void
@@ -357,6 +363,12 @@ _glfwWaylandWindowScale(_GLFWwindow *window) {
 }
 
 static void
+wait_for_swap_to_commit(_GLFWwindow *window) {
+    window->wl.waiting_for_swap_to_commit = true;
+    debug("Waiting for swap to commit Wayland surface for window: %llu\n", window->id);
+}
+
+static void
 resizeFramebuffer(_GLFWwindow* window) {
     double scale = _glfwWaylandWindowScale(window);
     int scaled_width = (int)round(window->wl.width * scale);
@@ -364,7 +376,7 @@ resizeFramebuffer(_GLFWwindow* window) {
     debug("Resizing framebuffer of window: %llu to: %dx%d window size: %dx%d at scale: %.3f\n",
             window->id, scaled_width, scaled_height, window->wl.width, window->wl.height, scale);
     update_regions(window);
-    window->wl.waiting_for_swap_to_commit = true;
+    wait_for_swap_to_commit(window);
     window->wl.framebuffer_size_at_last_resize.width = scaled_width;
     window->wl.framebuffer_size_at_last_resize.height = scaled_height;
     _glfwInputFramebufferSize(window, scaled_width, scaled_height);
@@ -382,11 +394,11 @@ _glfwWaylandAfterBufferSwap(_GLFWwindow* window) {
         window->wl.temp_buffer_used_during_window_creation = NULL;
     }
     if (window->wl.waiting_for_swap_to_commit) {
-        debug("Waiting for swap to commit window %llu: swap has happened, window surface committed\n", window->id);
+        debug("Window %llu swapped committing surface\n", window->id);
         window->wl.waiting_for_swap_to_commit = false;
         // this is not really needed, since I think eglSwapBuffers() calls wl_surface_commit()
         // but lets be safe. See https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/egl/drivers/dri2/platform_wayland.c#L1510
-        wl_surface_commit(window->wl.surface);
+        commit_window_surface(window);
     }
 }
 
@@ -751,7 +763,7 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
         int height = window->wl.pending.height;
         if (!window->wl.once.surface_configured) {
             window->swaps_disallowed = false;
-            window->wl.waiting_for_swap_to_commit = true;
+            wait_for_swap_to_commit(window);
             window->wl.once.surface_configured = true;
         }
 
@@ -862,8 +874,8 @@ attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
     }
     if (!window->wl.temp_buffer_used_during_window_creation) return false;
     wl_surface_attach(window->wl.surface, window->wl.temp_buffer_used_during_window_creation, 0, 0);
-    wl_surface_commit(window->wl.surface);
     debug("Attached temp buffer during window %llu creation of size: %dx%d and rgba(%u, %u, %u, %u)\n", window->id, width, height, color.red, color.green, color.blue, color.alpha);
+    commit_window_surface(window);
     return true;
 }
 
@@ -992,7 +1004,7 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
     _GLFWwindow* window = data;
     if (!window->wl.once.surface_configured) {
         window->swaps_disallowed = false;
-        window->wl.waiting_for_swap_to_commit = true;
+        wait_for_swap_to_commit(window);
         window->wl.once.surface_configured = true;
     }
     GLFWvidmode m = {0};
@@ -1045,7 +1057,7 @@ create_layer_shell_surface(_GLFWwindow *window) {
     }
     zwlr_layer_surface_v1_add_listener(ls, &zwlr_layer_surface_v1_listener, window);
     layer_set_properties(window);
-    wl_surface_commit(window->wl.surface);
+    commit_window_surface(window);
     wl_display_roundtrip(_glfw.wl.display);
 #undef ls
     return true;
@@ -1114,7 +1126,7 @@ create_window_desktop_surface(_GLFWwindow* window)
         setXdgDecorations(window);
     }
 
-    wl_surface_commit(window->wl.surface);
+    commit_window_surface(window);
     wl_display_roundtrip(_glfw.wl.display);
 
     return true;
