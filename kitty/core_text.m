@@ -782,39 +782,16 @@ render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *inf
     return do_render(self->ct_font, self->units_per_em, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg, center_glyph);
 }
 
-// Name table
-
-static uint16_t byteswap(uint16_t x) { return (x << 8) | (x >> 8); }
+// Font tables {{{
 
 static bool
 ensure_name_table(CTFace *self) {
     if (self->name_lookup_table) return true;
     RAII_CoreFoundation(CFDataRef, cftable, CTFontCopyTable(self->ct_font, kCTFontTableName, kCTFontTableOptionNoOptions));
     const uint8_t *table = cftable ? CFDataGetBytePtr(cftable) : NULL;
-    size_t table_len = 0;
-    if (!table || (table_len = CFDataGetLength(cftable)) < 9 * sizeof(uint16_t)) {
-        self->name_lookup_table = PyDict_New();
-        return true;
-    }
-    RAII_PyObject(ans, PyDict_New());
-    // OpenType tables are big-endian for god knows what reason so need to byteswap
-#define next byteswap(*(p++))
-    uint16_t *p = (uint16_t*)table; p++;
-    uint16_t num_of_name_records = next, storage_offset = next;
-    const uint8_t *storage = table + storage_offset, *slimit = table + table_len;
-    if (storage >= slimit) {
-        self->name_lookup_table = PyDict_New();
-        return true;
-    }
-    for (; num_of_name_records > 0 && p + 6 <= (uint16_t*)slimit; num_of_name_records--) {
-        uint16_t platform_id = next, encoding_id = next, language_id = next, name_id = next, length = next, offset = next;
-        const uint8_t *s = storage + offset;
-        if (s + length <= slimit && !add_font_name_record(
-            ans, platform_id, encoding_id, language_id, name_id, (const char*)(s), length)) return NULL;
-    }
-    self->name_lookup_table = ans; Py_INCREF(ans);
-    return true;
-#undef next
+    size_t table_len = cftable ? CFDataGetLength(cftable) : 0;
+    self->name_lookup_table = read_name_font_table(table, table_len);
+    return !!self->name_lookup_table;
 }
 
 static PyObject*
@@ -824,89 +801,12 @@ get_best_name(CTFace *self, PyObject *nameid) {
 }
 
 static PyObject*
-_get_best_name(CTFace *self, unsigned long nameid) {
-    RAII_PyObject(key, PyLong_FromUnsignedLong(nameid));
-    return key ? get_best_name(self, key) : NULL;
-}
-
-// }}}
-
-// Variations {{{
-
-static const char*
-tag_to_string(uint32_t tag, uint8_t bytes[5]) {
-    bytes[0] = (tag >> 24) & 0xff;
-    bytes[1] = (tag >> 16) & 0xff;
-    bytes[2] = (tag >> 8) & 0xff;
-    bytes[3] = (tag) & 0xff;
-    bytes[4] = 0;
-    return (const char*)bytes;
-}
-
-static void
-convert_variation_to_python(const void *key, const void *value_, void *axis_values) {
-    unsigned long tag; float value;
-    CFNumberGetValue(key, kCFNumberLongType, &tag);
-    CFNumberGetValue(value_, kCFNumberFloatType, &value);
-    uint8_t tag_buf[5] = {0};
-    RAII_PyObject(val, PyFloat_FromDouble((double)value));
-    if (val) PyDict_SetItemString(axis_values, tag_to_string(tag, tag_buf), val);
-}
-
-static PyObject*
 get_variable_data(CTFace *self) {
-    uint8_t tag_buf[5] = {0};
-    RAII_CoreFoundation(CFArrayRef, cfaxes, CTFontCopyVariationAxes(self->ct_font));
-    if (!cfaxes) return Py_BuildValue("{sN sN}", "axes", PyTuple_New(0), "named_styles", PyDict_New()); //, "named_styles", named_styles);
-    RAII_PyObject(axes, PyTuple_New(CFArrayGetCount(cfaxes)));
-    for (CFIndex i = 0; i < CFArrayGetCount(cfaxes); i++) {
-        CFDictionaryRef a = (CFDictionaryRef)CFArrayGetValueAtIndex(cfaxes, i);
-#define get_number(key, output, type, optional) { \
-            CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(a, key); \
-            if (value) CFNumberGetValue(value, type, &output); \
-            else if (!optional) { PyErr_Format(PyExc_RuntimeError, "The %s key was not present in the varioation axis dictionary", #key); return NULL; } \
-}
-        float minimum = 0, maximum = 0, def = 0; unsigned long tag = 0, hidden = 0;
-        get_number(kCTFontVariationAxisDefaultValueKey, def, kCFNumberFloatType, false);
-        get_number(kCTFontVariationAxisMaximumValueKey, maximum, kCFNumberFloatType, false);
-        get_number(kCTFontVariationAxisMinimumValueKey, minimum, kCFNumberFloatType, false);
-        get_number(kCTFontVariationAxisIdentifierKey, tag, kCFNumberLongType, false);
-        get_number(kCTFontVariationAxisHiddenKey, hidden, kCFNumberLongType, true);
-#undef get_number
-        CFStringRef n = (CFStringRef)CFDictionaryGetValue(a, kCTFontVariationAxisNameKey);
-        PyObject *axis = Py_BuildValue("{sd sd sd ss sO sO}",
-            "minimum", minimum, "maximum", maximum, "default", def, "tag", tag_to_string(tag, tag_buf),
-            "hidden", hidden ? Py_True : Py_False, "strid", convert_cfstring(n, false)
-        );
-        if (!axis) return NULL;
-        PyTuple_SET_ITEM(axes, i, axis);
-    }
-    RAII_CoreFoundation(CFStringRef, font_family_name, CTFontCopyFamilyName(self->ct_font));
-    RAII_CoreFoundation(CTFontDescriptorRef, descriptor,
-            CTFontDescriptorCreateWithAttributes((__bridge CFDictionaryRef)@{(id)kCTFontFamilyNameAttribute: (__bridge NSString*)font_family_name}));
-    RAII_CoreFoundation(CTFontCollectionRef, collection,
-            CTFontCollectionCreateWithFontDescriptors((__bridge CFArrayRef)@[(__bridge id)descriptor], NULL));
-    RAII_CoreFoundation(CFArrayRef, descriptors, CTFontCollectionCreateMatchingFontDescriptors(collection));
-    RAII_PyObject(named_styles, PyTuple_New(CFArrayGetCount(descriptors)));
-    Py_ssize_t actual_num = 0;
-    RAII_CoreFoundation(CFURLRef, url, CTFontCopyAttribute(self->ct_font, kCTFontURLAttribute));
-    for (CFIndex i = 0; i < CFArrayGetCount(descriptors); i++) {
-        CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(descriptors, i);
-        RAII_CoreFoundation(CFDictionaryRef, variation, CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute));
-        if (!variation) continue;
-        RAII_CoreFoundation(CFURLRef, candidate_url, CTFontDescriptorCopyAttribute(descriptor, kCTFontURLAttribute));
-        if (!CFEqual(url, candidate_url)) continue;
-        RAII_CoreFoundation(CFStringRef, style, CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute));
-        RAII_CoreFoundation(CFStringRef, psname, CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute));
-        RAII_PyObject(axis_values, PyDict_New());
-        if (!axis_values) return NULL;
-        CFDictionaryApplyFunction(variation, convert_variation_to_python, axis_values);
-        PyObject *ns = Py_BuildValue("{sO sN sN}", "axis_values", axis_values, "name", convert_cfstring(style, false), "psname", convert_cfstring(psname, false));
-        if (!ns) return NULL;
-        PyTuple_SET_ITEM(named_styles, actual_num, ns); actual_num++;
-    }
-    _PyTuple_Resize(&named_styles, actual_num);
-    return Py_BuildValue("{sO sO sN}", "axes", axes, "named_styles", named_styles, "variations_postscript_name_prefix", _get_best_name(self, 25));
+    if (!ensure_name_table(self)) return NULL;
+    RAII_CoreFoundation(CFDataRef, cftable, CTFontCopyTable(self->ct_font, kCTFontTableFvar, kCTFontTableOptionNoOptions));
+    const uint8_t *table = cftable ? CFDataGetBytePtr(cftable) : NULL;
+    size_t table_len = cftable ? CFDataGetLength(cftable) : 0;
+    return read_fvar_font_table(table, table_len, self->name_lookup_table);
 }
 // }}}
 
