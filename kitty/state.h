@@ -274,6 +274,7 @@ typedef struct {
     CloseRequest quit_request;
     bool redirect_mouse_handling;
     WindowLogoTable *all_window_logos;
+    int gl_version;
 } GlobalState;
 
 extern GlobalState global_state;
