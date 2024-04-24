@@ -356,22 +356,19 @@ _glfwWaylandWindowScale(_GLFWwindow *window) {
     return ans;
 }
 
-#define run_with_context(window, expression) { \
-    const _GLFWwindow *current_context = (_GLFWwindow*)glfwGetCurrentContext(); \
-    const bool needs_swap = window != current_context; \
-    if (needs_swap) glfwMakeContextCurrent((GLFWwindow*)window); \
-    expression; \
-    if (needs_swap) glfwMakeContextCurrent((GLFWwindow*)current_context); \
-}
+typedef struct with_context { _GLFWwindow *current, *new; } with_context;
+static inline void with_context_release(with_context *c) { if (c->current != c->new) glfwMakeContextCurrent((GLFWwindow*)c->current); }
+#define RAII_window_context(window) with_context __wc __attribute__((cleanup(with_context_release))) = { .current=(_GLFWwindow*)glfwGetCurrentContext(), .new=window }; if (__wc.current != __wc.new) glfwMakeContextCurrent((GLFWwindow*)__wc.new);
 
 static void
 resizeFramebuffer(_GLFWwindow* window) {
+    RAII_window_context(window);  // ensure wl_egl_window_resize called with correct context
     double scale = _glfwWaylandWindowScale(window);
     int scaled_width = (int)round(window->wl.width * scale);
     int scaled_height = (int)round(window->wl.height * scale);
     debug("Resizing framebuffer of window: %llu to: %dx%d window size: %dx%d at scale: %.3f\n",
             window->id, scaled_width, scaled_height, window->wl.width, window->wl.height, scale);
-    run_with_context(window, wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0));
+    wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0);
     update_regions(window);
     window->wl.waiting_for_swap_to_commit = true;
     _glfwInputFramebufferSize(window, scaled_width, scaled_height);
