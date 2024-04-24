@@ -185,6 +185,9 @@ typedef struct _GLFWwindowWayland
         struct zwlr_layer_surface_v1* zwlr_layer_surface_v1;
     } layer_shell;
 
+    struct {
+        int width, height;
+    } framebuffer_size_at_last_resize;
     /* information about axis events on current frame */
     struct
     {
@@ -420,6 +423,7 @@ typedef struct _GLFWcursorWayland
 
 
 void _glfwAddOutputWayland(uint32_t name, uint32_t version);
+void _glfwWaylandBeforeBufferSwap(_GLFWwindow *window);
 void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);

@@ -1191,9 +1191,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     glfwMakeContextCurrent(glfw_window);
-    if (is_first_window) {
-        gl_init();
-    }
+    if (is_first_window) gl_init();
     // Will make the GPU automatically apply SRGB gamma curve on the resulting framebuffer
     glEnable(GL_FRAMEBUFFER_SRGB);
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);

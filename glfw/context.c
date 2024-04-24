@@ -476,6 +476,9 @@ GLFWAPI void glfwSwapBuffers(GLFWwindow* handle)
         return;
     }
 
+#ifdef _GLFW_WAYLAND
+    _glfwWaylandBeforeBufferSwap(window);
+#endif
     window->context.swapBuffers(window);
 #ifdef _GLFW_WAYLAND
     _glfwWaylandAfterBufferSwap(window);
