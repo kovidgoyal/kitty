@@ -379,12 +379,16 @@ resizeFramebuffer(_GLFWwindow* window) {
     wait_for_swap_to_commit(window);
     window->wl.framebuffer_size_at_last_resize.width = scaled_width;
     window->wl.framebuffer_size_at_last_resize.height = scaled_height;
+    window->wl.framebuffer_size_at_last_resize.dirty = true;
     _glfwInputFramebufferSize(window, scaled_width, scaled_height);
 }
 
 void
 _glfwWaylandBeforeBufferSwap(_GLFWwindow* window) {
-    wl_egl_window_resize(window->wl.native, window->wl.framebuffer_size_at_last_resize.width, window->wl.framebuffer_size_at_last_resize.height, 0, 0);
+    if (window->wl.framebuffer_size_at_last_resize.dirty) {
+        wl_egl_window_resize(window->wl.native, window->wl.framebuffer_size_at_last_resize.width, window->wl.framebuffer_size_at_last_resize.height, 0, 0);
+        window->wl.framebuffer_size_at_last_resize.dirty = false;
+    }
 }
 
 void

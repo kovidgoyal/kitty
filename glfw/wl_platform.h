@@ -186,7 +186,7 @@ typedef struct _GLFWwindowWayland
     } layer_shell;
 
     struct {
-        int width, height;
+        int width, height, dirty;
     } framebuffer_size_at_last_resize;
     /* information about axis events on current frame */
     struct
