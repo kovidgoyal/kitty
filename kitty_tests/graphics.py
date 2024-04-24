@@ -555,17 +555,21 @@ class TestGraphics(BaseTest):
         rect_eq(l0[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
         self.ae(l0[0]['group_count'], 1)
         self.ae(s.cursor.x, 1), self.ae(s.cursor.y, 0)
-        iid, (code, idstr) = put_ref(s, num_cols=s.columns, x_off=2, y_off=1, width=3, height=5, cell_x_off=3, cell_y_off=1, z=-1, placement_id=17)
+        src_width, src_height = 3, 5
+        iid, (code, idstr) = put_ref(s, num_cols=s.columns, x_off=2, y_off=1, width=src_width, height=src_height,
+                                     cell_x_off=3, cell_y_off=1, z=-1, placement_id=17)
         self.ae(idstr, f'i={iid},p=17')
         l2 = layers(s)
         self.ae(len(l2), 2)
+        self.ae(l2[1], l0[0])
         rect_eq(l2[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5)/20)
-        left, top = -1 + dx + 3 * dx / cw, 1 - 1 * dy / ch
-        rect_eq(l2[0]['dest_rect'], left, top, -1 + (1 + s.columns) * dx, top - dy * 5 / ch)
-        rect_eq(l2[1]['src_rect'], 0, 0, 1, 1)
-        rect_eq(l2[1]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
         self.ae(l2[0]['group_count'], 2)
-        self.ae(l2[1]['group_count'], 1)
+        left, top = -1 + dx + 3 * dx / cw, 1 - 1 * dy / ch
+        right = -1 + (1 + s.columns) * dx
+        width_px = ((right - left) / 2) * (cw * s.columns)
+        height_px = width_px * (src_height / src_width)
+        bottom = top - (height_px / (ch * s.lines)) * 2
+        rect_eq(l2[0]['dest_rect'], left, top, right, bottom)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         self.ae(put_image(s, 10, 20, cursor_movement=1)[1], 'OK')
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)

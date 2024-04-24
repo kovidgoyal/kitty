@@ -55,6 +55,9 @@ Detailed list of changes
 
 - :opt:`paste_actions`: Fix ``replace-newline`` not working with ``confirm`` (:iss:`7374`)
 
+- Graphics: Fix aspect ratio of images not being preserved when only a single
+  dimension of the destination rectangle is specified (:iss:`7380`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

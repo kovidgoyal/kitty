@@ -1220,13 +1220,26 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
                 }
             }
             r.top = y0 - start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
-            if (ref->num_rows > 0) r.bottom = y0 - (start_row + (int32_t)ref->num_rows) * dy;
-            else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
-            if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
-
             r.left = screen_left + start_column * dx + dx * (float)ref->cell_x_offset / (float) cell.width;
-            if (ref->num_cols > 0) r.right = screen_left + (start_column + (int32_t)ref->num_cols) * dx;
-            else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
+
+            int32_t nr = ref->num_rows, nc = ref->num_cols;
+            if (nr) {
+                r.bottom = y0 - (start_row + nr) * dy;
+                if (nc) r.right = screen_left + (start_column + nc) * dx;
+                else {
+                    double height_px = ((r.top - r.bottom) / screen_height) * screen_height_px;
+                    double width_px = height_px * ref->src_width / (double) ref->src_height;
+                    r.right = r.left + (float)((width_px / screen_width_px) * screen_width);
+                }
+            } else {
+                if (nc) r.right = screen_left + (start_column + nc) * dx;
+                else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
+                double width_px = ((r.right - r.left) / screen_width) * screen_width_px;
+                double height_px = width_px * ref->src_height / (double)ref->src_width;
+                r.bottom = r.top - (float)((height_px / screen_height_px) * screen_height);
+            }
+
+            if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
 
             if (ref->z_index < ((int32_t)INT32_MIN/2))
                 self->num_of_below_refs++;
