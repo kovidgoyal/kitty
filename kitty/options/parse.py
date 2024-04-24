@@ -13,13 +13,12 @@ from kitty.options.utils import (
     deprecated_hide_window_decorations_aliases, deprecated_macos_show_window_title_in_menubar_alias,
     deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
     macos_option_as_alt, macos_titlebar_color, menu_map, modify_font, narrow_symbols,
-    notify_on_cmd_finish, optional_edge_width, parse_map, parse_mouse_map, paste_actions,
-    remote_control_password, resize_debounce_time, scrollback_lines, scrollback_pager_history_size,
-    shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
-    tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
-    tab_title_template, titlebar_color, to_cursor_shape, to_cursor_unfocused_shape, to_font_size,
-    to_layout_names, to_modifiers, url_prefixes, url_style, visual_window_select_characters,
-    window_border_width, window_logo_scale, window_size
+    notify_on_cmd_finish, optional_edge_width, parse_font_spec, parse_map, parse_mouse_map,
+    paste_actions, remote_control_password, resize_debounce_time, scrollback_lines,
+    scrollback_pager_history_size, shell_integration, store_multiple, symbol_map, tab_activity_symbol,
+    tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    tab_title_template, titlebar_color, to_cursor_shape, to_font_size, to_layout_names, to_modifiers,
+    url_prefixes, url_style, visual_window_select_characters, window_border_width, window_size
 )
 
 
@@ -102,10 +101,10 @@ class Parser:
         ans['bell_path'] = config_or_absolute_path(val)
 
     def bold_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['bold_font'] = str(val)
+        ans['bold_font'] = parse_font_spec(val)
 
     def bold_italic_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['bold_italic_font'] = str(val)
+        ans['bold_italic_font'] = parse_font_spec(val)
 
     def box_drawing_scale(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['box_drawing_scale'] = box_drawing_scale(val)
@@ -979,7 +978,7 @@ class Parser:
         ans['focus_follows_mouse'] = to_bool(val)
 
     def font_family(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['font_family'] = str(val)
+        ans['font_family'] = parse_font_spec(val)
 
     def font_features(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in font_features(val):
@@ -1025,7 +1024,7 @@ class Parser:
         ans['input_delay'] = positive_int(val)
 
     def italic_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['italic_font'] = str(val)
+        ans['italic_font'] = parse_font_spec(val)
 
     def kitten_alias(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in action_alias(val):

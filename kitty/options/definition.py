@@ -32,15 +32,15 @@ kitty has very powerful font management. You can configure individual font faces
 and even specify special fonts for particular characters.
 ''')
 
-opt('font_family', 'monospace',
+opt('font_family', 'monospace', option_type='parse_font_spec',
     long_text='''
 You can specify different fonts for the bold/italic/bold-italic variants.
 To get a full list of supported fonts use the ``kitty +list-fonts`` command.
-By default they are derived automatically, by the OSes font system. When
-:opt:`bold_font` or :opt:`bold_italic_font` is set to :code:`auto` on macOS, the
-priority of bold fonts is semi-bold, bold, heavy. Setting them manually is
-useful for font families that have many weight variants like Book, Medium,
-Thick, etc.
+By default, they are derived automatically, via the Operating System's font
+management. When :opt:`bold_font` or :opt:`bold_italic_font` is set to
+:code:`auto` on macOS, the priority of bold fonts is semi-bold, bold, heavy.
+Setting them manually is useful for font families that have many weight variants
+like Book, Medium, Thick, etc.
 For example::
 
     font_family      Operator Mono Book
@@ -50,11 +50,11 @@ For example::
 '''
     )
 
-opt('bold_font', 'auto')
+opt('bold_font', 'auto', option_type='parse_font_spec')
 
-opt('italic_font', 'auto')
+opt('italic_font', 'auto', option_type='parse_font_spec')
 
-opt('bold_italic_font', 'auto')
+opt('bold_italic_font', 'auto', option_type='parse_font_spec')
 
 opt('font_size', '11.0',
     option_type='to_font_size', ctype='double',
