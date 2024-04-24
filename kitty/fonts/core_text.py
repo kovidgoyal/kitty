@@ -5,7 +5,7 @@ import re
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import CTFace, coretext_all_fonts
-from kitty.fonts import FontFeature, VariableData
+from kitty.fonts import FontFeature, FontSpec, VariableData
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
@@ -89,32 +89,38 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, ignor
     return sorted(candidates, key=score)[-1]
 
 
-def resolve_family(f: str, main_family: str, bold: bool = False, italic: bool = False) -> str:
-    if (bold or italic) and f == 'auto':
-        f = main_family
-    if f.lower() == 'monospace':
-        f = 'Menlo'
-    return f
+def get_font_from_spec(
+    spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
+    resolved_medium_font: Optional[CoreTextFont] = None
+) -> CoreTextFont:
+    if not spec.is_system:
+        raise NotImplementedError('TODO: Implement me')
+    family = spec.system
+    if family == 'auto' and (bold or italic):
+        assert resolved_medium_font is not None
+        family = resolved_medium_font['family']
+    return find_best_match(family, bold, italic, ignore_face=resolved_medium_font)
 
 
 def get_font_files(opts: Options) -> Dict[str, CoreTextFont]:
+    medium_font = get_font_from_spec(opts.font_family)
     ans: Dict[str, CoreTextFont] = {}
+    kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
     for (bold, italic) in sorted(attr_map):
         attr = attr_map[(bold, italic)]
-        key = {(False, False): 'medium',
-               (True, False): 'bold',
-               (False, True): 'italic',
-               (True, True): 'bi'}[(bold, italic)]
-        ignore_face = None if key == 'medium' else ans['medium']
-        face = find_best_match(resolve_family(getattr(opts, attr), opts.font_family, bold, italic), bold, italic, ignore_face=ignore_face)
-        ans[key] = face
+        key = kd[(bold, italic)]
+        if bold or italic:
+            font = get_font_from_spec(getattr(opts, attr), bold, italic, medium_font_spec=opts.font_family, resolved_medium_font=medium_font)
+        else:
+            font = medium_font
+        ans[key] = font
         if key == 'medium':
-            setattr(get_font_files, 'medium_family', face['family'])
+            setattr(get_font_files, 'medium_family', font['family'])
     return ans
 
 
 def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
-    ans = find_best_match(resolve_family(family, getattr(get_font_files, 'medium_family')))
+    ans = find_best_match(family)
     return ans, ans['bold'], ans['italic']
 
 

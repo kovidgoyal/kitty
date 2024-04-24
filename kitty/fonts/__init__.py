@@ -80,3 +80,22 @@ class FontModification(NamedTuple):
     def __repr__(self) -> str:
         fn = f' {self.font_name}' if self.font_name else ''
         return f'{self.mod_type.name}{fn} {self.mod_value}'
+
+
+class FontSpec(NamedTuple):
+    family: str = ''
+    style: str = ''
+    postscript_name: str = ''
+    full_name: str = ''
+    system: str = ''
+    axes: Tuple[Tuple[str, float], ...] = ()
+
+    @property
+    def is_system(self) -> bool:
+        return bool(self.system)
+
+    @property
+    def is_auto(self) -> bool:
+        return self.system == 'auto'
+
+

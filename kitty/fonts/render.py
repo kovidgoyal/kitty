@@ -23,6 +23,7 @@ from kitty.fast_data_types import (
 )
 from kitty.fonts.box_drawing import BufType, distribute_dots, render_box_char, render_missing_glyph
 from kitty.options.types import Options, defaults
+from kitty.options.utils import parse_font_spec
 from kitty.types import _T
 from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
@@ -431,7 +432,7 @@ class setup_for_testing:
         self.family, self.size, self.dpi = family, size, dpi
 
     def __enter__(self) -> Tuple[Dict[Tuple[int, int, int], bytes], int, int]:
-        opts = defaults._replace(font_family=self.family, font_size=self.size)
+        opts = defaults._replace(font_family=parse_font_spec(self.family), font_size=self.size)
         set_options(opts)
         sprites = {}
 

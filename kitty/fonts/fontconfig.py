@@ -23,7 +23,7 @@ from kitty.options.types import Options
 from kitty.typing import FontConfigPattern
 from kitty.utils import log_error
 
-from . import FontFeature, ListedFont, VariableData
+from . import FontFeature, FontSpec, ListedFont, VariableData
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -153,21 +153,29 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, monos
     return fc_match(family, bold, italic)
 
 
-def resolve_family(f: str, main_family: str, bold: bool, italic: bool) -> str:
-    if (bold or italic) and f == 'auto':
-        f = main_family
-    return f
+def get_font_from_spec(
+    spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
+    resolved_medium_font: Optional[FontConfigPattern] = None
+) -> FontConfigPattern:
+    if not spec.is_system:
+        raise NotImplementedError('TODO: Implement me')
+    family = spec.system
+    if family == 'auto' and (bold or italic):
+        assert resolved_medium_font is not None
+        family = resolved_medium_font['family']
+    return find_best_match(family, bold, italic)
 
 
 def get_font_files(opts: Options) -> Dict[str, FontConfigPattern]:
     ans: Dict[str, FontConfigPattern] = {}
+    medium_font = get_font_from_spec(opts.font_family)
+    kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
     for (bold, italic), attr in attr_map.items():
-        rf = resolve_family(getattr(opts, attr), opts.font_family, bold, italic)
-        font = find_best_match(rf, bold, italic)
-        key = {(False, False): 'medium',
-               (True, False): 'bold',
-               (False, True): 'italic',
-               (True, True): 'bi'}[(bold, italic)]
+        if bold or italic:
+            font = get_font_from_spec(getattr(opts, attr), bold, italic, medium_font_spec=opts.font_family, resolved_medium_font=medium_font)
+        else:
+            font = medium_font
+        key = kd[(bold, italic)]
         ans[key] = font
     return ans
 

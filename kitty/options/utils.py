@@ -45,7 +45,7 @@ from kitty.conf.utils import (
 )
 from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, NO_CURSOR_SHAPE, Color, Shlex, SingleKey
-from kitty.fonts import FontFeature, FontModification, ModificationType, ModificationUnit, ModificationValue
+from kitty.fonts import FontFeature, FontModification, FontSpec, ModificationType, ModificationUnit, ModificationValue
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases, get_key_name_lookup
 from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent
@@ -1390,6 +1390,26 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         yield MouseMapping(button, mods, count, mode == 'grabbed', definition=action)
 
 
+def parse_font_spec(spec: str) -> FontSpec:
+    if spec == 'auto':
+        return FontSpec(system='auto')
+    items = tuple(shlex_split(spec))
+    if '=' not in items[0]:
+        return FontSpec(system=spec)
+    axes = {}
+    defined = {}
+    for item in items:
+        k, sep, v = item.partition('=')
+        if sep != '=':
+            raise ValueError(f'The font specification: {spec} is not valid as {item} does not contain an =')
+        if k in ('family', 'style', 'full_name', 'postscript_name'):
+            defined[k] = v
+        else:
+            try:
+                axes[k] = float(v)
+            except Exception:
+                raise ValueError(f'The font specification: {spec} is not valid as {v} is not a number')
+    return FontSpec(axes=tuple(axes.items()), **defined)
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(deprecated_hide_window_decorations_aliases, key):
         setattr(deprecated_hide_window_decorations_aliases, key, True)
