@@ -44,7 +44,7 @@ from .fast_data_types import (
     set_options,
 )
 from .fonts.box_drawing import set_scale
-from .fonts.render import set_font_family
+from .fonts.render import dump_font_debug, set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
@@ -272,6 +272,8 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
                     wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config)
         boss = Boss(opts, args, cached_values, global_shortcuts)
         boss.start(window_id, startup_sessions)
+        if args.debug_font_fallback:
+            dump_font_debug()
         if bad_lines or boss.misc_config_errors:
             boss.show_bad_config_lines(bad_lines, boss.misc_config_errors)
             boss.misc_config_errors = []
@@ -293,7 +295,7 @@ class AppRunner:
         set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
         try:
-            set_font_family(opts, debug_font_matching=args.debug_font_fallback)
+            set_font_family(opts)
             _run_app(opts, args, bad_lines)
         finally:
             set_options(None)

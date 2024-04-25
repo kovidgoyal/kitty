@@ -395,25 +395,40 @@ end:
 PyObject*
 specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
     ensure_initialized();
-    PyObject *p = PyDict_GetItemString(base_descriptor, "path"), *ans = NULL;
+    PyObject *p = PyDict_GetItemString(base_descriptor, "path");
     PyObject *idx = PyDict_GetItemString(base_descriptor, "index");
     if (p == NULL) { PyErr_SetString(PyExc_ValueError, "Base descriptor has no path"); return NULL; }
     if (idx == NULL) { PyErr_SetString(PyExc_ValueError, "Base descriptor has no index"); return NULL; }
+    unsigned long face_idx = PyLong_AsUnsignedLong(idx);
+    if (PyErr_Occurred()) return NULL;
+
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
-    long face_idx = MAX(0, PyLong_AsLong(idx));
+    RAII_PyObject(ans, NULL);
     AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
     AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
     AP(FcPatternAddDouble, FC_SIZE, fg->font_sz_in_pts, "size");
     AP(FcPatternAddDouble, FC_DPI, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
+    FcPatternDestroy(pat); pat = NULL;
+
     if (face_idx > 0) {
         // For some reason FcFontMatch sets the index to zero, so manually restore it.
-        PyDict_SetItemString(ans, "index", idx);
+        if (PyDict_SetItemString(ans, "index", idx) != 0) return NULL;
     }
-end:
-    if (pat != NULL) FcPatternDestroy(pat);
+    PyObject *named_style = PyDict_GetItemString(base_descriptor, "named_style");
+    if (named_style) {
+        if (PyDict_SetItemString(ans, "named_style", named_style) != 0) return NULL;
+    }
+    PyObject *axes = PyDict_GetItemString(base_descriptor, "axes");
+    if (axes) {
+        if (PyDict_SetItemString(ans, "axes", axes) != 0) return NULL;
+    }
+    Py_INCREF(ans);
     return ans;
+end:
+    if (pat) FcPatternDestroy(pat);
+    return NULL;
 }
 
 bool
