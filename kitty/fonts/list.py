@@ -9,11 +9,12 @@ from kitty.constants import is_macos
 from kitty.types import run_once
 
 from . import ListedFont
+from .common import get_variable_data_for_descriptor
 
 if is_macos:
-    from .core_text import get_variable_data_for_descriptor, list_fonts, prune_family_group
+    from .core_text import list_fonts, prune_family_group
 else:
-    from .fontconfig import get_variable_data_for_descriptor, list_fonts, prune_family_group
+    from .fontconfig import list_fonts, prune_family_group
 
 
 @run_once
@@ -58,7 +59,7 @@ def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]
 
 
 def show_variable(f: ListedFont, psnames: bool) -> None:
-    vd = get_variable_data_for_descriptor(f)
+    vd = get_variable_data_for_descriptor(f['descriptor'])
     p = italic(vd['variations_postscript_name_prefix'] or f['family'])
     p = f"{p} {variable_font_label('Variable font')}"
     print(indented(p))
