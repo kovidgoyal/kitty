@@ -5,7 +5,7 @@ import re
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import CTFace, coretext_all_fonts
-from kitty.fonts import FontFeature, FontSpec, VariableData
+from kitty.fonts import FontSpec, VariableData
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
@@ -50,11 +50,6 @@ def list_fonts() -> Generator[ListedFont, None, None]:
                 fn = f'{f} {fd["style"]}'.strip()
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': fd['monospace'],
                    'is_variable': fd['variable'], 'descriptor': fd}
-
-
-def find_font_features(postscript_name: str) -> Tuple[FontFeature, ...]:
-    """Not Implemented"""
-    return ()
 
 
 def find_best_match(family: str, bold: bool = False, italic: bool = False, ignore_face: Optional[CoreTextFont] = None) -> CoreTextFont:
@@ -124,8 +119,17 @@ def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
     return ans, ans['bold'], ans['italic']
 
 
+cache_for_variable_data_by_path: Dict[str, VariableData] = {}
+
+
 def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
-    return CTFace(descriptor=descriptor(f)).get_variable_data()
+    d = descriptor(f)
+    if not d['path']:
+        return CTFace(descriptor=d).get_variable_data()
+    ans = cache_for_variable_data_by_path.get(d['path'])
+    if ans is None:
+        ans = cache_for_variable_data_by_path[d['path']] = CTFace(descriptor=d).get_variable_data()
+    return ans
 
 
 def descriptor(f: ListedFont) -> CoreTextFont:

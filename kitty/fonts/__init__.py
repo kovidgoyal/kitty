@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum, auto
-from typing import Dict, NamedTuple, Optional, Tuple, TypedDict, Union
+from typing import Dict, NamedTuple, Tuple, TypedDict, Union
 
 from kitty.typing import CoreTextFont, FontConfigPattern
 
@@ -24,8 +24,8 @@ class VariableAxis(TypedDict):
 
 class NamedStyle(TypedDict):
     axis_values: Dict[str, float]
-    name: Optional[str]
-    psname: Optional[str]
+    name: str
+    psname: str  # can be empty string when not present
 
 
 class VariableData(TypedDict):

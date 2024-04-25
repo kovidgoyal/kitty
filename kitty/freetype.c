@@ -265,13 +265,32 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     D(hinting, PyObject_IsTrue, true);
     D(hint_style, PyLong_AsLong, true);
 #undef D
-    Face *self = (Face *)Face_Type.tp_alloc(&Face_Type, 0);
-    if (self != NULL) {
-        int error = FT_New_Face(library, path, index, &(self->face));
-        if(error) { Py_CLEAR(self); return set_load_error(path, error); }
-        if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, fg)) { Py_CLEAR(self); return NULL; }
+    RAII_PyObject(retval, Face_Type.tp_alloc(&Face_Type, 0));
+    if (retval != NULL) {
+        Face *self = (Face *)retval;
+        int error;
+        if ((error = FT_New_Face(library, path, index, &(self->face)))) { self->face = NULL; set_load_error(path, error); }
+        if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, fg)) return NULL;
+        PyObject *ns = PyDict_GetItemString(descriptor, "named_style");
+        if (ns) {
+            unsigned long index = PyLong_AsUnsignedLong(ns);
+            if (PyErr_Occurred()) return NULL;
+            if ((error = FT_Set_Named_Instance(self->face, index + 1))) return set_load_error(path, error);
+        }
+        PyObject *axes = PyDict_GetItemString(descriptor, "axes");
+        if (axes) {
+            RAII_ALLOC(FT_Fixed, coords, malloc(sizeof(FT_Fixed) * PyList_GET_SIZE(axes)));
+            for (Py_ssize_t i = 0; i < PyList_GET_SIZE(axes); i++) {
+                PyObject *t = PyList_GET_ITEM(axes, i);
+                double val = PyFloat_AsDouble(t);
+                if (PyErr_Occurred()) return NULL;
+                coords[i] = (FT_Fixed)(val * 65536.0);
+            }
+            if ((error = FT_Set_Var_Design_Coordinates(self->face, PyList_GET_SIZE(axes), coords))) return set_load_error(path, error);
+        }
     }
-    return (PyObject*)self;
+    Py_XINCREF(retval);
+    return retval;
 }
 
 static PyObject*
@@ -768,7 +787,7 @@ convert_named_style_to_python(Face *face, const FT_Var_Named_Style *src, FT_Var_
     if (!name) PyErr_Clear();
     RAII_PyObject(psname, src->psid == 0xffff ? NULL : _get_best_name(face, src->psid));
     if (!psname) PyErr_Clear();
-    return Py_BuildValue("{sO sO sO}", "axis_values", axis_values, "name", name ? name : Py_None, "psname", psname ? psname : Py_None);
+    return Py_BuildValue("{sO sO sO}", "axis_values", axis_values, "name", name ? name : PyUnicode_FromString(""), "psname", psname ? psname : PyUnicode_FromString(""));
 }
 
 static PyObject*

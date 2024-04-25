@@ -1635,25 +1635,31 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 current_fonts(PYNOARG) {
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create font group first"); return NULL; }
-    PyObject *ans = PyDict_New();
+    RAII_PyObject(ans, PyDict_New());
     if (!ans) return NULL;
     FontGroup *fg = font_groups;
-#define SET(key, val) {if (PyDict_SetItemString(ans, #key, fg->fonts[val].face) != 0) { goto error; }}
+#define SET(key, val) {if (PyDict_SetItemString(ans, #key, fg->fonts[val].face) != 0) { return NULL; }}
     SET(medium, fg->medium_font_idx);
     if (fg->bold_font_idx > 0) SET(bold, fg->bold_font_idx);
     if (fg->italic_font_idx > 0) SET(italic, fg->italic_font_idx);
     if (fg->bi_font_idx > 0) SET(bi, fg->bi_font_idx);
-    PyObject *ff = PyTuple_New(fg->fallback_fonts_count);
-    if (!ff) goto error;
+    unsigned num_symbol_fonts = fg->first_fallback_font_idx - fg->first_symbol_font_idx;
+    RAII_PyObject(ss, PyTuple_New(num_symbol_fonts));
+    if (!ss) return NULL;
+    for (size_t i = 0; i < num_symbol_fonts; i++) {
+        Py_INCREF(fg->fonts[fg->first_symbol_font_idx + i].face);
+        PyTuple_SET_ITEM(ss, i, fg->fonts[fg->first_symbol_font_idx + i].face);
+    }
+    if (PyDict_SetItemString(ans, "symbol", ss) != 0) return NULL;
+    RAII_PyObject(ff, PyTuple_New(fg->fallback_fonts_count));
+    if (!ff) return NULL;
     for (size_t i = 0; i < fg->fallback_fonts_count; i++) {
         Py_INCREF(fg->fonts[fg->first_fallback_font_idx + i].face);
         PyTuple_SET_ITEM(ff, i, fg->fonts[fg->first_fallback_font_idx + i].face);
     }
-    PyDict_SetItemString(ans, "fallback", ff);
-    Py_CLEAR(ff);
+    if (PyDict_SetItemString(ans, "fallback", ff) != 0) return NULL;
+    Py_INCREF(ans);
     return ans;
-error:
-    Py_CLEAR(ans); return NULL;
 #undef SET
 }
 

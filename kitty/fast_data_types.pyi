@@ -1,6 +1,6 @@
 import termios
 from ctypes import Array, c_ubyte
-from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload
+from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, NotRequired, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
 from kitty.fonts import FontFeature, VariableData
@@ -394,6 +394,10 @@ class FontConfigPattern(TypedDict):
     color: bool
     variable: bool
 
+    # The following two are used by C code to get a face from the pattern
+    named_style: NotRequired[int]
+    axes: NotRequired[List[float]]
+
 
 def fc_list(spacing: int = -1, allow_bitmapped_fonts: bool = False, only_variable: bool = False) -> Tuple[FontConfigPattern, ...]:
     pass
@@ -421,6 +425,7 @@ class Face:
     def __init__(self, descriptor: Optional[FontConfigPattern] = None, path: str = '', index: int = 0): ...
     def get_variable_data(self) -> VariableData: ...
     def identify_for_debug(self) -> str: ...
+    def display_name(self) -> str: ...
 
 
 class CoreTextFont(TypedDict):
@@ -447,6 +452,7 @@ class CTFace:
     def __init__(self, descriptor: Optional[CoreTextFont] = None, path: str = ''): ...
     def get_variable_data(self) -> VariableData: ...
     def identify_for_debug(self) -> str: ...
+    def display_name(self) -> str: ...
 
 
 def coretext_all_fonts() -> Tuple[CoreTextFont, ...]:
@@ -903,8 +909,18 @@ def concat_cells(cell_width: int, cell_height: int, is_32_bit: bool, cells: Tupl
     pass
 
 
-def current_fonts() -> Dict[str, Any]:
-    pass
+FontFace = Union[Face, CTFace]
+
+class CurrentFonts(TypedDict):
+    medium: FontFace
+    bold: FontFace
+    italic: FontFace
+    bi: FontFace
+    symbol: Tuple[FontFace, ...]
+    fallback: Tuple[FontFace, ...]
+
+
+def current_fonts() -> CurrentFonts: ...
 
 
 def remove_window(os_window_id: int, tab_id: int, window_id: int) -> None:
