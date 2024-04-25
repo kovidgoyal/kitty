@@ -227,13 +227,14 @@ consistent set of hotkeys.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Allows easily running tests in a terminal window
 
-.. tool_hologram:
+.. tool_nvim_image_viewers:
 
-`hologram.nvim <https://github.com/edluffy/hologram.nvim>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Terminal image viewer for Neovim. For a bit of fun, you can even have `cats
-running around inside nvim <https://github.com/giusgad/pets.nvim>`__.
+Various image viewing plugins for editors
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+* `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
+* `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
+* `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
 
 Scrollback manipulation
 -------------------------
