@@ -11,7 +11,7 @@ from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
 
-from . import ListedFont
+from . import Descriptor, ListedFont, Score, Scorer
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -50,13 +50,11 @@ def list_fonts() -> Generator[ListedFont, None, None]:
                    'is_variable': fd['variable'], 'descriptor': fd}
 
 
-def find_best_match(
-    family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[CoreTextFont] = None
-) -> CoreTextFont:
-    q = re.sub(r'\s+', ' ', family.lower())
-    font_map = all_fonts_map(monospaced)
+def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:
 
-    def score(candidate: CoreTextFont) -> Tuple[int, int, int, float]:
+    def score(candidate: Descriptor) -> Score:
+        assert candidate['descriptor_type'] == 'core_text'
+        variable_score = 0 if prefer_variable and candidate['variable'] else 1
         style_match = 1 if candidate['bold'] == bold and candidate[
             'italic'
         ] == italic else 0
@@ -65,13 +63,30 @@ def find_best_match(
         # prefer semi-bold to bold to heavy, less bold means less chance of
         # overflow
         weight_distance_from_medium = abs(candidate['weight'])
-        return style_match, monospace_match, 1 if is_regular_width else 0, 1 - weight_distance_from_medium
+        return Score(variable_score, 1 - style_match, 1 - monospace_match, 1 - is_regular_width, weight_distance_from_medium)
+
+    return score
+
+
+def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> CoreTextFont:
+    font_map = all_fonts_map(monospaced)
+    candidates = font_map['family_map']['menlo']
+    scorer = create_scorer(bold, italic, monospaced)
+    return sorted(candidates, key=scorer)[0]
+
+
+def find_best_match(
+    family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[CoreTextFont] = None
+) -> CoreTextFont:
+    q = re.sub(r'\s+', ' ', family.lower())
+    font_map = all_fonts_map(monospaced)
+    scorer = create_scorer(bold, italic, monospaced)
 
     # First look for an exact match
     for selector in ('ps_map', 'full_map'):
         candidates = font_map[selector].get(q)
         if candidates:
-            possible = sorted(candidates, key=score)[-1]
+            possible = sorted(candidates, key=scorer)[0]
             if possible != ignore_face:
                 return possible
 
@@ -81,7 +96,7 @@ def find_best_match(
         log_error(f'The font {family} was not found, falling back to Menlo')
         q = 'menlo'
     candidates = font_map['family_map'][q]
-    return sorted(candidates, key=score)[-1]
+    return sorted(candidates, key=scorer)[0]
 
 
 def get_font_from_spec(

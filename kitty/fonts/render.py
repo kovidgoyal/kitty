@@ -29,21 +29,15 @@ from kitty.types import _T
 from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
+from .common import get_font_files
+
 if is_macos:
     from .core_text import font_for_family as font_for_family_macos
-    from .core_text import get_font_files as get_font_files_coretext
 else:
     from .fontconfig import font_for_family as font_for_family_fontconfig
-    from .fontconfig import get_font_files as get_font_files_fontconfig
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: List[Tuple[FontObject, bool, bool]] = []
-
-
-def get_font_files(opts: Options) -> Dict[str, Any]:
-    if is_macos:
-        return get_font_files_coretext(opts)
-    return get_font_files_fontconfig(opts)
 
 
 def font_for_family(family: str) -> Tuple[FontObject, bool, bool]:

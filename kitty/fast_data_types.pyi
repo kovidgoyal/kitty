@@ -1,6 +1,6 @@
 import termios
 from ctypes import Array, c_ubyte
-from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, NotRequired, Optional, Tuple, TypedDict, Union, overload
+from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
 from kitty.fonts import FontFeature, VariableData
@@ -8,7 +8,7 @@ from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.options.types import Options
 from kitty.types import LayerShellConfig, SignalInfo
-from kitty.typing import EdgeLiteral
+from kitty.typing import EdgeLiteral, NotRequired
 
 # Constants {{{
 GLFW_LAYER_SHELL_NONE: int
@@ -446,6 +446,10 @@ class CoreTextFont(TypedDict):
     width: float
     slant: float
     traits: int
+
+    # The following two are used by C code to get a face from the pattern
+    named_style: NotRequired[int]
+    axes: NotRequired[List[float]]
 
 
 class CTFace:

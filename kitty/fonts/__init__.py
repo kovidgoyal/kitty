@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum, auto
-from typing import Dict, NamedTuple, Tuple, TypedDict, Union
+from typing import Callable, Dict, NamedTuple, Tuple, TypedDict, Union
 
 from kitty.typing import CoreTextFont, FontConfigPattern
 
@@ -99,3 +99,18 @@ class FontSpec(NamedTuple):
         return self.system == 'auto'
 
 
+class Score(NamedTuple):
+    variable_score: int
+    style_score: int
+    monospace_score: int
+    width_score: int
+    weight_distance_from_medium: float = 0
+
+
+Descriptor = Union[FontConfigPattern, CoreTextFont]
+Scorer = Callable[[Descriptor], Score]
+
+
+def family_name_to_key(family: str) -> str:
+    import re
+    return re.sub(r'\s+', ' ', family.lower())
