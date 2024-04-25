@@ -27,7 +27,7 @@ jobs:
                       sanitize: 0
 
                     - python: b
-                      pyver: "3.11"
+                      pyver: "3.10"
                       sanitize: 1
 
                     - python: c
@@ -82,7 +82,7 @@ jobs:
           - name: Set up Python
             uses: actions/setup-python@v4
             with:
-              python-version: "3.10"
+              python-version: "3.11"
 
           - name: Install Go
             uses: actions/setup-go@v4
