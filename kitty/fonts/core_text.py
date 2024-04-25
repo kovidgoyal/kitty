@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+from functools import lru_cache
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import coretext_all_fonts
@@ -33,16 +34,13 @@ def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
     return ans
 
 
-def all_fonts_map() -> FontMap:
-    ans: Optional[FontMap] = getattr(all_fonts_map, 'ans', None)
-    if ans is None:
-        ans = create_font_map(coretext_all_fonts())
-        setattr(all_fonts_map, 'ans', ans)
-    return ans
+@lru_cache(maxsize=2)
+def all_fonts_map(monospaced: bool = True) -> FontMap:
+    return create_font_map(coretext_all_fonts(monospaced))
 
 
 def list_fonts() -> Generator[ListedFont, None, None]:
-    for fd in coretext_all_fonts():
+    for fd in coretext_all_fonts(False):
         f = fd['family']
         if f:
             fn = fd['display_name']
@@ -52,9 +50,11 @@ def list_fonts() -> Generator[ListedFont, None, None]:
                    'is_variable': fd['variable'], 'descriptor': fd}
 
 
-def find_best_match(family: str, bold: bool = False, italic: bool = False, ignore_face: Optional[CoreTextFont] = None) -> CoreTextFont:
+def find_best_match(
+    family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[CoreTextFont] = None
+) -> CoreTextFont:
     q = re.sub(r'\s+', ' ', family.lower())
-    font_map = all_fonts_map()
+    font_map = all_fonts_map(monospaced)
 
     def score(candidate: CoreTextFont) -> Tuple[int, int, int, float]:
         style_match = 1 if candidate['bold'] == bold and candidate[
@@ -115,7 +115,7 @@ def get_font_files(opts: Options) -> Dict[str, CoreTextFont]:
 
 
 def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
-    ans = find_best_match(family)
+    ans = find_best_match(family, monospaced=False)
     return ans, ans['bold'], ans['italic']
 
 

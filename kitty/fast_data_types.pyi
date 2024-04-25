@@ -455,7 +455,7 @@ class CTFace:
     def display_name(self) -> str: ...
 
 
-def coretext_all_fonts() -> Tuple[CoreTextFont, ...]:
+def coretext_all_fonts(monospaced_only: bool) -> Tuple[CoreTextFont, ...]:
     pass
 
 

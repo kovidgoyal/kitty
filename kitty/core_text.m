@@ -137,7 +137,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
 
             "bold", (symbolic_traits & kCTFontBoldTrait) != 0 ? Py_True : Py_False,
             "italic", (symbolic_traits & kCTFontItalicTrait) != 0 ? Py_True : Py_False,
-            "monospace", (symbolic_traits & kCTFontMonoSpaceTrait) != 0 ? Py_True : Py_False,
+            "monospace", (symbolic_traits & kCTFontTraitMonoSpace) != 0 ? Py_True : Py_False,
             "expanded", (symbolic_traits & kCTFontExpandedTrait) != 0 ? Py_True : Py_False,
             "condensed", (symbolic_traits & kCTFontCondensedTrait) != 0 ? Py_True : Py_False,
             "color_glyphs", (symbolic_traits & kCTFontColorGlyphsTrait) != 0 ? Py_True : Py_False,
@@ -185,17 +185,33 @@ all_fonts_collection(void) {
 }
 
 static PyObject*
-coretext_all_fonts(PyObject UNUSED *_self) {
-    CFArrayRef matches = CTFontCollectionCreateMatchingFontDescriptors(all_fonts_collection());
+coretext_all_fonts(PyObject UNUSED *_self, PyObject *monospaced_only_) {
+    int monospaced_only = PyObject_IsTrue(monospaced_only_);
+    RAII_CoreFoundation(CFArrayRef, matches, CTFontCollectionCreateMatchingFontDescriptors(all_fonts_collection()));
     const CFIndex count = CFArrayGetCount(matches);
-    PyObject *ans = PyTuple_New(count), *temp;
-    if (ans == NULL) { CFRelease(matches); return PyErr_NoMemory(); }
+    RAII_PyObject(ans, PyTuple_New(count));
+    if (ans == NULL) return NULL;
+    PyObject *temp;
+    Py_ssize_t num = 0;
     for (CFIndex i = 0; i < count; i++) {
-        temp = font_descriptor_to_python((CTFontDescriptorRef) CFArrayGetValueAtIndex(matches, i));
-        if (temp == NULL) { CFRelease(matches); Py_DECREF(ans); return NULL; }
-        PyTuple_SET_ITEM(ans, i, temp); temp = NULL;
+        CTFontDescriptorRef desc = (CTFontDescriptorRef) CFArrayGetValueAtIndex(matches, i);
+        if (monospaced_only) {
+            RAII_CoreFoundation(CFDictionaryRef, traits, CTFontDescriptorCopyAttribute(desc, kCTFontTraitsAttribute));
+            if (traits) {
+                unsigned long symbolic_traits;
+                CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(traits, kCTFontSymbolicTrait);
+                if (value) {
+                    CFNumberGetValue(value, kCFNumberLongType, &symbolic_traits);
+                    if (!(symbolic_traits & kCTFontTraitMonoSpace)) continue;
+                }
+            }
+        }
+        temp = font_descriptor_to_python(desc);
+        if (temp == NULL) return NULL;
+        PyTuple_SET_ITEM(ans, num++, temp); temp = NULL;
     }
-    CFRelease(matches);
+    if (_PyTuple_Resize(&ans, num) == -1) return NULL;
+    Py_INCREF(ans);
     return ans;
 }
 
@@ -855,7 +871,7 @@ repr(CTFace *self) {
 
 
 static PyMethodDef module_methods[] = {
-    METHODB(coretext_all_fonts, METH_NOARGS),
+    METHODB(coretext_all_fonts, METH_O),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
