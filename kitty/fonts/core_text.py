@@ -4,8 +4,8 @@
 import re
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
-from kitty.fast_data_types import CTFace, coretext_all_fonts
-from kitty.fonts import FontSpec, VariableData
+from kitty.fast_data_types import coretext_all_fonts
+from kitty.fonts import FontSpec
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
@@ -117,19 +117,6 @@ def get_font_files(opts: Options) -> Dict[str, CoreTextFont]:
 def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
     ans = find_best_match(family)
     return ans, ans['bold'], ans['italic']
-
-
-cache_for_variable_data_by_path: Dict[str, VariableData] = {}
-
-
-def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
-    d = descriptor(f)
-    if not d['path']:
-        return CTFace(descriptor=d).get_variable_data()
-    ans = cache_for_variable_data_by_path.get(d['path'])
-    if ans is None:
-        ans = cache_for_variable_data_by_path[d['path']] = CTFace(descriptor=d).get_variable_data()
-    return ans
 
 
 def descriptor(f: ListedFont) -> CoreTextFont:

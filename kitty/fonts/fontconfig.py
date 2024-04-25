@@ -20,7 +20,7 @@ from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.options.types import Options
 from kitty.typing import FontConfigPattern
 
-from . import FontSpec, ListedFont, VariableData
+from . import FontSpec, ListedFont
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -166,8 +166,11 @@ def get_fine_grained_font(
     resolved_medium_font: Optional[FontConfigPattern] = None, monospaced: bool = True
 ) -> FontConfigPattern:
     font_map = all_fonts_map(monospaced)
-    scorer = create_scorer(bold, italic, monospaced, prefer_variable=bool(spec.axes) or bool(spec.style))
-    is_medium_face = not bold and not italic
+    is_medium_face = resolved_medium_font is None
+    prefer_variable = bool(spec.axes) or bool(spec.style)
+    if resolved_medium_font and resolved_medium_font['variable']:
+        prefer_variable = True
+    scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
     if spec.postscript_name:
         q = find_best_match_in_candidates(font_map['ps_map'].get(family_name_to_key(spec.postscript_name), []), scorer, is_medium_face)
         if q:
@@ -261,19 +264,6 @@ def descriptor(f: ListedFont) -> FontConfigPattern:
     d = f['descriptor']
     assert d['descriptor_type'] == 'fontconfig'
     return d
-
-
-cache_for_variable_data_by_path: Dict[str, VariableData] = {}
-
-
-def get_variable_data_for_descriptor(f: ListedFont) -> VariableData:
-    d = descriptor(f)
-    if not d['path']:
-        return Face(descriptor=d).get_variable_data()
-    ans = cache_for_variable_data_by_path.get(d['path'])
-    if ans is None:
-        ans = cache_for_variable_data_by_path[d['path']] = Face(descriptor=d).get_variable_data()
-    return ans
 
 
 def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
