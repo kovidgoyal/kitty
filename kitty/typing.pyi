@@ -4,6 +4,7 @@ from socket import socket as Socket
 from subprocess import CompletedProcess as CompletedProcess
 from subprocess import Popen as PopenType
 from typing import Literal
+from typing import NotRequired as NotRequired
 from typing import Protocol as Protocol
 from typing import TypedDict as TypedDict
 
@@ -61,7 +62,7 @@ __all__ = (
     'EdgeLiteral', 'MatchType', 'GRT_a', 'GRT_f', 'GRT_t', 'GRT_o', 'GRT_m', 'GRT_d',
     'GraphicsCommandType', 'HandlerType', 'AbstractEventLoop', 'AddressFamily', 'Socket', 'CompletedProcess',
     'PopenType', 'Protocol', 'TypedDict', 'MarkType', 'ImageManagerType', 'Debug', 'LoopType', 'MouseEvent',
-    'TermManagerType', 'BossType', 'ChildType', 'BadLineType', 'MouseButton',
+    'TermManagerType', 'BossType', 'ChildType', 'BadLineType', 'MouseButton', 'NotRequired',
     'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'AliasMap', 'CoreTextFont', 'WindowSystemMouseEvent',
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType', 'PowerlineStyle',
     'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType'

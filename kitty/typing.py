@@ -21,3 +21,4 @@ PowerlineStyle = str
 MatchType = str
 Protocol = object
 OptionsProtocol = object
+NotRequired = object

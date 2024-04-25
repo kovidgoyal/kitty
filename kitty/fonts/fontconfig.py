@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import re
 from functools import lru_cache
-from typing import Callable, Dict, Generator, List, Literal, NamedTuple, Optional, Tuple, cast
+from typing import Dict, Generator, List, Literal, Optional, Tuple, cast
 
 from kitty.fast_data_types import (
     FC_DUAL,
@@ -13,20 +12,12 @@ from kitty.fast_data_types import (
     FC_WEIGHT_BOLD,
     FC_WEIGHT_REGULAR,
     FC_WIDTH_NORMAL,
-    Face,
     fc_list,
 )
 from kitty.fast_data_types import fc_match as fc_match_impl
-from kitty.options.types import Options
 from kitty.typing import FontConfigPattern
 
-from . import FontSpec, ListedFont
-
-attr_map = {(False, False): 'font_family',
-            (True, False): 'bold_font',
-            (False, True): 'italic_font',
-            (True, True): 'bold_italic_font'}
-
+from . import Descriptor, ListedFont, Score, Scorer, family_name_to_key
 
 FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map']
 FontMap = Dict[FontCollectionMapType, Dict[str, List[FontConfigPattern]]]
@@ -46,7 +37,7 @@ def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
     return ans
 
 
-@lru_cache()
+@lru_cache(maxsize=2)
 def all_fonts_map(monospaced: bool = True) -> FontMap:
     if monospaced:
         ans = fc_list(spacing=FC_DUAL) + fc_list(spacing=FC_MONO)
@@ -73,64 +64,50 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
             }
 
 
-def family_name_to_key(family: str) -> str:
-    return re.sub(r'\s+', ' ', family.lower())
-
-
 @lru_cache()
 def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> FontConfigPattern:
     return fc_match_impl(family, bold, italic, spacing)
 
 
-class Score(NamedTuple):
-    variable_score: int
-    style_score: int
-    monospace_score: int
-    width_score: int
-
-Scorer = Callable[[FontConfigPattern], Score]
-
 def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:
 
-    def score(candidate: FontConfigPattern) -> Score:
+    def score(candidate: Descriptor) -> Score:
+        assert candidate['descriptor_type'] == 'fontconfig'
         variable_score = 0 if prefer_variable and candidate['variable'] else 1
-        bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate.get('weight', 0))
-        italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate.get('slant', 0))
+        bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate['weight'])
+        italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate['slant'])
         monospace_match = 0
         if monospaced:
             monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1
-        width_score = abs(candidate.get('width', FC_WIDTH_NORMAL) - FC_WIDTH_NORMAL)
-
+        width_score = abs(candidate['width'] - FC_WIDTH_NORMAL)
         return Score(variable_score, bold_score + italic_score, monospace_match, width_score)
 
     return score
 
 
-def find_best_match_in_candidates(
-    candidates: List[FontConfigPattern], scorer: Scorer, is_medium_face: bool
-) -> Optional[FontConfigPattern]:
-    if not candidates:
-        return None
-    if len(candidates) == 1 and not is_medium_face and candidates[0].get('family') == candidates[0].get('full_name'):
-        # IBM Plex Mono does this, where the full name of the regular font
-        # face is the same as its family name
-        return None
-    candidates.sort(key=scorer)
-    return candidates[0]
+def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> FontConfigPattern:
+    # Use fc-match with a generic family
+    family = 'monospace' if monospaced else 'sans-serif'
+    return fc_match(family, bold, italic)
 
 
-def find_best_match(family: str, bold: bool = False, italic: bool = False, monospaced: bool = True) -> FontConfigPattern:
+def find_best_match(
+        family: str, bold: bool = False, italic: bool = False, monospaced: bool = True,
+        ignore_face: Optional[FontConfigPattern] = None
+) -> FontConfigPattern:
+    from .common import find_best_match_in_candidates
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
     scorer = create_scorer(bold, italic, monospaced)
     is_medium_face = not bold and not italic
     # First look for an exact match
     exact_match = (
-        find_best_match_in_candidates(font_map['ps_map'].get(q, []), scorer, is_medium_face) or
-        find_best_match_in_candidates(font_map['full_map'].get(q, []), scorer, is_medium_face) or
-        find_best_match_in_candidates(font_map['family_map'].get(q, []), scorer, is_medium_face)
+        find_best_match_in_candidates(font_map['ps_map'].get(q, []), scorer, is_medium_face, ignore_face=ignore_face) or
+        find_best_match_in_candidates(font_map['full_map'].get(q, []), scorer, is_medium_face, ignore_face=ignore_face) or
+        find_best_match_in_candidates(font_map['family_map'].get(q, []), scorer, is_medium_face, ignore_face=ignore_face)
     )
     if exact_match:
+        assert exact_match['descriptor_type'] == 'fontconfig'
         return exact_match
 
     # Use fc-match to see if we can find a monospaced font that matches family
@@ -155,104 +132,7 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, monos
                         if family_name_candidates and len(family_name_candidates) > 1:
                             candidates = family_name_candidates
                     return sorted(candidates, key=scorer)[0]
-
-    # Use fc-match with a generic family
-    family = 'monospace' if monospaced else 'sans-serif'
-    return fc_match(family, bold, italic)
-
-
-def get_fine_grained_font(
-    spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
-    resolved_medium_font: Optional[FontConfigPattern] = None, monospaced: bool = True
-) -> FontConfigPattern:
-    font_map = all_fonts_map(monospaced)
-    is_medium_face = resolved_medium_font is None
-    prefer_variable = bool(spec.axes) or bool(spec.style)
-    if resolved_medium_font and resolved_medium_font['variable']:
-        prefer_variable = True
-    scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
-    if spec.postscript_name:
-        q = find_best_match_in_candidates(font_map['ps_map'].get(family_name_to_key(spec.postscript_name), []), scorer, is_medium_face)
-        if q:
-            return q
-    if spec.full_name:
-        q = find_best_match_in_candidates(font_map['full_map'].get(family_name_to_key(spec.full_name), []), scorer, is_medium_face)
-        if q:
-            return q
-    if spec.family:
-        candidates = font_map['family_map'].get(family_name_to_key(spec.family), [])
-        if spec.style:
-            qs = spec.style.lower()
-            candidates = [x for x in candidates if x['style'].lower() == qs]
-        q = find_best_match_in_candidates(candidates, scorer, is_medium_face)
-        if q:
-            return q
-    # Use fc-match with a generic family
-    family = 'monospace' if monospaced else 'sans-serif'
-    return fc_match(family, bold, italic)
-
-
-def apply_variation_to_pattern(pat: FontConfigPattern, spec: FontSpec) -> FontConfigPattern:
-    if not pat['variable']:
-        return pat
-
-    vd = Face(descriptor=pat).get_variable_data()
-    if spec.style:
-        q = spec.style.lower()
-        for i, ns in enumerate(vd['named_styles']):
-            if ns.get('psname') and ns['psname'].lower() == q:
-                pat['named_style'] = i
-                break
-        else:
-            for i, ns in enumerate(vd['named_styles']):
-                if ns['name'].lower() == q:
-                    pat['named_style'] = i
-                    break
-    tag_map, name_map = {}, {}
-    axes = [ax['default'] for ax in vd['axes']]
-    for i, ax in enumerate(vd['axes']):
-        tag_map[ax['tag']] = i
-        if ax['strid']:
-            name_map[ax['strid'].lower()] = i
-    changed = False
-    for axspec in spec.axes:
-        qname = axspec[0]
-        axis = tag_map.get(qname)
-        if axis is None:
-            axis = name_map.get(qname.lower())
-        if axis is not None:
-            axes[axis] = axspec[1]
-            changed = True
-    if changed:
-        pat['axes'] = axes
-    return pat
-
-
-def get_font_from_spec(
-    spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
-    resolved_medium_font: Optional[FontConfigPattern] = None
-) -> FontConfigPattern:
-    if not spec.is_system:
-        return apply_variation_to_pattern(get_fine_grained_font(spec, bold, italic, medium_font_spec, resolved_medium_font), spec)
-    family = spec.system
-    if family == 'auto' and (bold or italic):
-        assert resolved_medium_font is not None
-        family = resolved_medium_font['family']
-    return find_best_match(family, bold, italic)
-
-
-def get_font_files(opts: Options) -> Dict[str, FontConfigPattern]:
-    ans: Dict[str, FontConfigPattern] = {}
-    medium_font = get_font_from_spec(opts.font_family)
-    kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
-    for (bold, italic), attr in attr_map.items():
-        if bold or italic:
-            font = get_font_from_spec(getattr(opts, attr), bold, italic, medium_font_spec=opts.font_family, resolved_medium_font=medium_font)
-        else:
-            font = medium_font
-        key = kd[(bold, italic)]
-        ans[key] = font
-    return ans
+    return find_last_resort_text_font(bold, italic, monospaced)
 
 
 def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
