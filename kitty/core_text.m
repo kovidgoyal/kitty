@@ -819,10 +819,17 @@ get_best_name(CTFace *self, PyObject *nameid) {
 static PyObject*
 get_variable_data(CTFace *self) {
     if (!ensure_name_table(self)) return NULL;
+    RAII_PyObject(output, PyDict_New());
+    if (!output) return NULL;
     RAII_CoreFoundation(CFDataRef, cftable, CTFontCopyTable(self->ct_font, kCTFontTableFvar, kCTFontTableOptionNoOptions));
     const uint8_t *table = cftable ? CFDataGetBytePtr(cftable) : NULL;
     size_t table_len = cftable ? CFDataGetLength(cftable) : 0;
-    return read_fvar_font_table(table, table_len, self->name_lookup_table);
+    if (!read_fvar_font_table(table, table_len, self->name_lookup_table, output)) return NULL;
+    RAII_CoreFoundation(CFDataRef, stable, CTFontCopyTable(self->ct_font, kCTFontTableSTAT, kCTFontTableOptionNoOptions));
+    table = stable ? CFDataGetBytePtr(stable) : NULL;
+    table_len = stable ? CFDataGetLength(stable) : 0;
+    if (!read_STAT_font_table(table, table_len, self->name_lookup_table, output)) return NULL;
+    Py_INCREF(output); return output;
 }
 
 static PyObject*
