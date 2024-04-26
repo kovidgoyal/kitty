@@ -1425,16 +1425,20 @@ class Boss:
 
     def visual_window_select_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
         tab = self.active_tab
+        def trigger(window_id: int = 0) -> None:
+            self.visual_window_select_action_trigger(window_id)
+            self.mappings.pop_keyboard_mode_if_is('__visual_select__')
+
         if ev.button == GLFW_MOUSE_BUTTON_LEFT and ev.action == GLFW_PRESS and ev.window_id:
             w = self.window_id_map.get(ev.window_id)
             if w is not None and tab is not None and w in tab:
                 if self.current_visual_select and self.current_visual_select.tab_id == tab.id:
-                    self.visual_window_select_action_trigger(w.id)
+                    trigger(w.id)
                 else:
-                    self.visual_window_select_action_trigger()
+                    trigger()
                 return
         if ev.button > -1 and tab is not None:
-            self.visual_window_select_action_trigger()
+            trigger()
 
     def mouse_event(
         self, in_tab_bar: bool, window_id: int, action: int, modifiers: int, button: int,

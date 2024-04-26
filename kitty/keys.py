@@ -95,6 +95,11 @@ class Mappings:
             passthrough = False
         return passthrough
 
+    def pop_keyboard_mode_if_is(self, name: str) -> bool:
+        if self.keyboard_mode_stack and self.keyboard_mode_stack[-1].name == name:
+            return self.pop_keyboard_mode()
+        return False
+
     def _push_keyboard_mode(self, mode: KeyboardMode) -> None:
         self.keyboard_mode_stack.append(mode)
         self.set_ignore_os_keyboard_processing(True)

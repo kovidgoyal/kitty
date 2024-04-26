@@ -58,6 +58,8 @@ Detailed list of changes
 - Graphics: Fix aspect ratio of images not being preserved when only a single
   dimension of the destination rectangle is specified (:iss:`7380`)
 
+- :ac:`focus_visible_window`: Fix selecting with mouse click leaving keyboard in unusable state (:iss:`7390`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
