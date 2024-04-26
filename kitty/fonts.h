@@ -48,8 +48,10 @@ PyObject*
 get_best_name_from_name_table(PyObject *table, PyObject *name_id);
 PyObject*
 read_name_font_table(const uint8_t *table, size_t table_len);
-PyObject*
-read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table);
+bool
+read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output);
+bool
+read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output);
 
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {

@@ -804,27 +804,45 @@ convert_axis_to_python(Face *face, const FT_Var_Axis *src, FT_UInt flags) {
 
 static PyObject*
 get_variable_data(Face *self, PyObject *a UNUSED) {
-    RAII_FTMMVar(mm);
-    FT_Error err = FT_Get_MM_Var(self->face, &mm);
-    if (err) { set_freetype_error("Failed to get variable axis data from font with error:", err); return NULL; }
-    RAII_PyObject(axes, PyTuple_New(mm->num_axis));
-    RAII_PyObject(named_styles, PyTuple_New(mm->num_namedstyles));
+    if (!ensure_name_table(self)) return NULL;
+    RAII_PyObject(output, PyDict_New()); if (!output) return NULL;
+    RAII_PyObject(axes, PyTuple_New(0));
+    RAII_PyObject(named_styles, PyTuple_New(0));
     if (!axes || !named_styles) return NULL;
-    for (FT_UInt i = 0; i < mm->num_namedstyles; i++) {
-        PyObject *s = convert_named_style_to_python(self, mm->namedstyle + i, mm->axis, mm->num_axis);
-        if (!s) return NULL;
-        PyTuple_SET_ITEM(named_styles, i, s);
-    }
+    FT_Error err;
+    FT_ULong length = 0;
+    if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('S', 'T', 'A', 'T'), 0, NULL, &length)) == 0) {
+        RAII_ALLOC(uint8_t, table, malloc(length));
+        if (!table) return PyErr_NoMemory();
+        if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('S', 'T', 'A', 'T'), 0, table, &length))) {
+            set_freetype_error("Failed to load the STAT table from font with error:", err); return NULL;
+        }
+        if (!read_STAT_font_table(table, length, self->name_lookup_table, output)) return NULL;
+    } else if (!read_STAT_font_table(NULL, 0, self->name_lookup_table, output)) return NULL;
+    if (self->is_variable) {
+        RAII_FTMMVar(mm);
+        if ((err = FT_Get_MM_Var(self->face, &mm))) { set_freetype_error("Failed to get variable axis data from font with error:", err); return NULL; }
+        if (_PyTuple_Resize(&axes, mm->num_axis) == -1) return NULL;
+        if (_PyTuple_Resize(&named_styles, mm->num_namedstyles) == -1) return NULL;
+        for (FT_UInt i = 0; i < mm->num_namedstyles; i++) {
+            PyObject *s = convert_named_style_to_python(self, mm->namedstyle + i, mm->axis, mm->num_axis);
+            if (!s) return NULL;
+            PyTuple_SET_ITEM(named_styles, i, s);
+        }
 
-    for (FT_UInt i = 0; i < mm->num_axis; i++) {
-        FT_UInt flags;
-        FT_Get_Var_Axis_Flags(mm, i, &flags);
-        PyObject *s = convert_axis_to_python(self, mm->axis + i, flags);
+        for (FT_UInt i = 0; i < mm->num_axis; i++) {
+            FT_UInt flags;
+            FT_Get_Var_Axis_Flags(mm, i, &flags);
+            PyObject *s = convert_axis_to_python(self, mm->axis + i, flags);
 
-        if (!s) return NULL;
-        PyTuple_SET_ITEM(axes, i, s);
+            if (!s) return NULL;
+            PyTuple_SET_ITEM(axes, i, s);
+        }
     }
-    return Py_BuildValue("{sO sO sN}", "axes", axes, "named_styles", named_styles, "variations_postscript_name_prefix", _get_best_name(self, 25));
+    if (PyDict_SetItemString(output, "variations_postscript_name_prefix", _get_best_name(self, 25)) != 0) return NULL;
+    if (PyDict_SetItemString(output, "axes", axes) != 0) return NULL;
+    if (PyDict_SetItemString(output, "named_styles", named_styles) != 0) return NULL;
+    Py_INCREF(output); return output;
 }
 
 StringCanvas
