@@ -60,6 +60,8 @@ Detailed list of changes
 
 - :ac:`focus_visible_window`: Fix selecting with mouse click leaving keyboard in unusable state (:iss:`7390`)
 
+- Wayland: Fix infinite loop causing bad performance when using IME via fcitx5 due to a change in fcitx5 (:iss:`7396`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

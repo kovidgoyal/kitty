@@ -17,6 +17,7 @@ static struct zwp_text_input_manager_v3*          text_input_manager;
 static char *pending_pre_edit = NULL;
 static char *current_pre_edit = NULL;
 static char *pending_commit   = NULL;
+static bool ime_focused = false;
 static int last_cursor_left = 0, last_cursor_top = 0, last_cursor_width = 0, last_cursor_height = 0;
 uint32_t commit_serial = 0;
 
@@ -31,6 +32,7 @@ static void
 text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *txt_input, struct wl_surface *surface UNUSED) {
     debug("text-input: enter event\n");
     if (txt_input) {
+        ime_focused = true;
         zwp_text_input_v3_enable(txt_input);
         zwp_text_input_v3_set_content_type(txt_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
         commit();
@@ -41,6 +43,7 @@ static void
 text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *txt_input, struct wl_surface *surface UNUSED) {
     debug("text-input: leave event\n");
     if (txt_input) {
+        ime_focused = false;
         zwp_text_input_v3_disable(txt_input);
         commit();
     }
@@ -150,8 +153,8 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     if (!text_input) return;
     switch(ev->type) {
         case GLFW_IME_UPDATE_FOCUS:
-            debug("\ntext-input: updating IME focus state, focused: %d\n", ev->focused);
-            if (ev->focused) {
+            debug("\ntext-input: updating IME focus state, ime_focused: %d ev->focused: %d\n", ime_focused, ev->focused);
+            if (ime_focused) {
                 zwp_text_input_v3_enable(text_input);
                 zwp_text_input_v3_set_content_type(text_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
             } else {
