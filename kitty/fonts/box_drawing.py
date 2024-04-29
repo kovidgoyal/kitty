@@ -651,33 +651,109 @@ def inner_corner(buf: BufType, width: int, height: int, which: str = 'tl', level
 
 def shade(
     buf: BufType, width: int, height: int, light: bool = False, invert: bool = False, which_half: str = '', fill_blank: bool = False,
-    xnum: int = 12, ynum: int = 0,
+    xnum: int = 12, ynum: int = 0
 ) -> None:
+
     square_width = max(1, width // xnum)
     square_height = max(1, (height // ynum) if ynum else square_width)
     number_of_rows = height // square_height
     number_of_cols = width // square_width
+
+    # Make sure the parity is correct
+    # (except when that would cause division by zero)
+    if number_of_cols > 1 and number_of_cols % 2 != xnum % 2: number_of_cols -= 1; 
+    if number_of_rows > 1 and number_of_rows % 2 != ynum % 2: number_of_rows -= 1; 
+
+    # Calculate how much space remains unused, and how frequently
+    # to insert an extra column/row to fill all of it
+    excess_cols = width - (square_width * number_of_cols)
+    square_width_extension = excess_cols / number_of_cols
+    
+    excess_rows = height - (square_height * number_of_rows)
+    square_height_extension = excess_rows / number_of_rows
+
     rows = range(number_of_rows)
     cols = range(number_of_cols)
     if which_half == 'top':
-        rows = range(number_of_rows//2)
+        rows = range(number_of_rows // 2)
+        square_height_extension *= 2   # this is to remove gaps between half-filled characters
     elif which_half == 'bottom':
-        rows = range(number_of_rows//2, number_of_rows)
+        rows = range(number_of_rows // 2, number_of_rows)
+        square_height_extension *= 2
     elif which_half == 'left':
         cols = range(number_of_cols // 2)
+        square_width_extension *= 2
     elif which_half == 'right':
         cols = range(number_of_cols // 2, number_of_cols)
+        square_width_extension *= 2
+
+    extra_row = False
+    ey, old_ey, drawn_rows = 0, 0, 0
 
     for r in rows:
+        # Keep track of how much extra height has accumulated,
+        # and add an extra row at every passed integer, including 0
+        old_ey = ey
+        ey = math.ceil(drawn_rows * square_height_extension)
+        extra_row = ey != old_ey
+
+        drawn_rows += 1
+        
+        extra_col = False
+        ex, old_ex, drawn_cols = 0, 0, 0
+
         for c in cols:
-            if invert ^ ((r % 2 != c % 2) or (light and r % 2 == 1)):
-                continue
-            for yr in range(square_height):
-                y = r * square_height + yr
+            old_ex = ex
+            ex = math.ceil(drawn_cols * square_width_extension)
+            extra_col = ex != old_ex
+
+            drawn_cols += 1
+
+            # Fill extra rows with semi-transparent pixels that match the pattern
+            if (extra_row):
+                y = r * square_height + old_ey
                 offset = width * y
                 for xc in range(square_width):
-                    x = c * square_width + xc
+                    x = c * square_width + xc + ex
+                    if light:
+                        if invert:
+                            buf[offset + x] = 255 if c % 2 else 70
+                        else:
+                            buf[offset + x] = 0 if c % 2 else 70
+                    else:
+                        buf[offset + x] = 120 if c % 2 == invert else 30
+            # Do the same for the extra columns
+            if (extra_col):
+                x = c * square_width + old_ex
+                for yr in range(square_height):
+                    y = r * square_height + yr + ey
+                    offset = width * y
+                    if light:
+                        if invert:
+                            buf[offset + x] = 255 if r % 2 else 70
+                        else:
+                            buf[offset + x] = 0 if r % 2 else 70
+                    else:
+                        buf[offset + x] = 120 if r % 2 == invert else 30
+            # And in case they intersect, set the corner pixel too
+            if (extra_row and extra_col):
+                x = c * square_width + old_ex
+                y = r * square_height + old_ey
+                offset = width * y
+                buf[offset + x] = 50
+
+            # Blank space
+            if invert ^ ((r % 2 != c % 2) or (light and r % 2 == 1)):
+                continue
+            
+            # Fill the square
+            for yr in range(square_height):
+                y = r * square_height + yr + ey
+                offset = width * y
+                for xc in range(square_width):
+                    x = c * square_width + xc + ex
                     buf[offset + x] = 255
+
     if not fill_blank:
         return
     if which_half == 'bottom':
