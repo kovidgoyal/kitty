@@ -267,11 +267,15 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
                 openssl_dirs = glob.glob(f'/opt/homebrew/{q}') + glob.glob(f'/usr/local/{q}')
                 if openssl_dirs:
                     break
-            if not openssl_dirs:
+            else:
                 raise SystemExit(f'Failed to find OpenSSL version {v[0]}.{v[1]} on your system')
             extra_pc_dir = os.pathsep.join(openssl_dirs)
         cflags = pkg_config('libcrypto', '--cflags-only-I', extra_pc_dir=extra_pc_dir)
-    return cflags, pkg_config('libcrypto', '--libs', extra_pc_dir=extra_pc_dir)
+    ldflags = pkg_config('libcrypto', '--libs', extra_pc_dir=extra_pc_dir)
+    # Workaround bug in homebrew openssl package. This bug appears in CI only
+    if is_macos and ldflags and 'homebrew/Cellar' in ldflags[0] and not ldflags[0].endswith('/lib'):
+        ldflags.insert(0, ldflags[0] + '/lib')
+    return cflags, ldflags
 
 
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
@@ -593,16 +597,20 @@ def kitty_env(args: Options) -> Env:
     ans = env.copy()
     cflags = ans.cflags
     cflags.append('-pthread')
+    cppflags = ans.cppflags
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
-    libcrypto_cflags, libcrypto_ldflags = libcrypto_flags()
-    cppflags = ans.cppflags
     cppflags.append(f'-DPRIMARY_VERSION={version[0] + 4000}')
     cppflags.append(f'-DSECONDARY_VERSION={version[1]}')
     cppflags.append('-DXT_VERSION="{}"'.format('.'.join(map(str, version))))
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
+    # simde doesnt come with pkg-config files but some Linux distros add
+    # them and on macOS when building with homebrew it is required
+    with suppress(SystemExit, subprocess.CalledProcessError):
+        cflags.extend(pkg_config('simde', '--cflags-only-I', fatal=False))
+    libcrypto_cflags, libcrypto_ldflags = libcrypto_flags()
     cflags.extend(libcrypto_cflags)
     if is_macos:
         platform_libs = [
@@ -969,7 +977,7 @@ def compile_kittens(args: Options) -> None:
         files('transfer', 'rsync', libraries=pkg_config('libxxhash', '--libs'), includes=pkg_config('libxxhash', '--cflags-only-I')),
     ):
         final_env = kenv.copy()
-        final_env.cflags.extend(f'-I{x}' for x in includes)
+        final_env.cflags.extend(includes)
         final_env.ldpaths[:0] = list(libraries)
         compile_c_extension(
             final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'], build_dsym=args.build_dsym)
