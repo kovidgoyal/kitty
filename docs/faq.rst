@@ -151,7 +151,7 @@ I cannot use the key combination X in program Y?
 
 First, run::
 
-    kitten show_key -m kitty
+    kitten show-key -m kitty
 
 Press the key combination X. If the kitten reports the key press
 that means kitty is correctly sending the key press to terminal programs.
