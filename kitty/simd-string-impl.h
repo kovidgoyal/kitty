@@ -28,6 +28,7 @@ void FUNC(xor_data64)(const uint8_t key[64] UNUSED, uint8_t* data UNUSED, const 
 
 // Boilerplate {{{
 START_IGNORE_DIAGNOSTIC("-Wfloat-conversion")
+START_IGNORE_DIAGNOSTIC("-Wpedantic")
 #if  defined(__clang__) && __clang_major__ > 12
 _Pragma("clang diagnostic push")
 _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
@@ -37,6 +38,7 @@ _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #if  defined(__clang__) && __clang_major__ > 12
 _Pragma("clang diagnostic pop")
 #endif
+END_IGNORE_DIAGNOSTIC
 END_IGNORE_DIAGNOSTIC
 
 
