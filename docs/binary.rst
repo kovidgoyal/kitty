@@ -57,6 +57,8 @@ particular desktop, but it should work for most major desktop environments.
     # Update the paths to the kitty and its icon in the kitty desktop file(s)
     sed -i "s|Icon=kitty|Icon=/home/$USER/.local/kitty.app/share/icons/hicolor/256x256/apps/kitty.png|g" ~/.local/share/applications/kitty*.desktop
     sed -i "s|Exec=kitty|Exec=/home/$USER/.local/kitty.app/bin/kitty|g" ~/.local/share/applications/kitty*.desktop
+    # Make xdg-terminal-exec (and hence desktop environments that support it use kitty)
+    echo 'kitty.desktop' > ~/.config/xdg-terminals.list
 
 .. note::
     In :file:`kitty-open.desktop`, kitty is registered to handle some supported
