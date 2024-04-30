@@ -252,10 +252,11 @@
 
     {
         "name": "simde",
+        "comment": "Cannot update till https://github.com/simd-everywhere/simde/issues/1146 is released",
         "unix": {
-            "filename": "simde-amalgamated-0.8.0.tar.xz",
-            "hash": "sha256:7c8dd4d613b18724b7ef3dcd1d58739a91501ed80ace916cbca9b8c13e5b92bb",
-            "urls": ["https://github.com/simd-everywhere/simde/releases/download/v0.8.0/{filename}"]
+            "filename": "simde-amalgamated-0.7.6.tar.xz",
+            "hash": "sha256:703eac1f2af7de1f7e4aea2286130b98e1addcc0559426e78304c92e2b4eb5e1",
+            "urls": ["https://github.com/simd-everywhere/simde/releases/download/v0.7.6/{filename}"]
         }
     },
 
