@@ -661,14 +661,16 @@ def shade(
 
     # Make sure the parity is correct
     # (except when that would cause division by zero)
-    if number_of_cols > 1 and number_of_cols % 2 != xnum % 2: number_of_cols -= 1; 
-    if number_of_rows > 1 and number_of_rows % 2 != ynum % 2: number_of_rows -= 1; 
+    if number_of_cols > 1 and number_of_cols % 2 != xnum % 2:
+        number_of_cols -= 1
+    if number_of_rows > 1 and number_of_rows % 2 != ynum % 2:
+        number_of_rows -= 1
 
     # Calculate how much space remains unused, and how frequently
     # to insert an extra column/row to fill all of it
     excess_cols = width - (square_width * number_of_cols)
     square_width_extension = excess_cols / number_of_cols
-    
+
     excess_rows = height - (square_height * number_of_rows)
     square_height_extension = excess_rows / number_of_rows
 
@@ -698,7 +700,7 @@ def shade(
         extra_row = ey != old_ey
 
         drawn_rows += 1
-        
+
         extra_col = False
         ex, old_ex, drawn_cols = 0, 0, 0
 
@@ -710,7 +712,7 @@ def shade(
             drawn_cols += 1
 
             # Fill extra rows with semi-transparent pixels that match the pattern
-            if (extra_row):
+            if extra_row:
                 y = r * square_height + old_ey
                 offset = width * y
                 for xc in range(square_width):
@@ -723,7 +725,7 @@ def shade(
                     else:
                         buf[offset + x] = 120 if c % 2 == invert else 30
             # Do the same for the extra columns
-            if (extra_col):
+            if extra_col:
                 x = c * square_width + old_ex
                 for yr in range(square_height):
                     y = r * square_height + yr + ey
@@ -736,7 +738,7 @@ def shade(
                     else:
                         buf[offset + x] = 120 if r % 2 == invert else 30
             # And in case they intersect, set the corner pixel too
-            if (extra_row and extra_col):
+            if extra_row and extra_col:
                 x = c * square_width + old_ex
                 y = r * square_height + old_ey
                 offset = width * y
@@ -745,7 +747,7 @@ def shade(
             # Blank space
             if invert ^ ((r % 2 != c % 2) or (light and r % 2 == 1)):
                 continue
-            
+
             # Fill the square
             for yr in range(square_height):
                 y = r * square_height + yr + ey

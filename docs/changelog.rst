@@ -62,6 +62,8 @@ Detailed list of changes
 
 - Wayland: Fix infinite loop causing bad performance when using IME via fcitx5 due to a change in fcitx5 (:iss:`7396`)
 
+- Improve rendering of Unicode shade character to avoid Moire patterns (:pull:`7401`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
