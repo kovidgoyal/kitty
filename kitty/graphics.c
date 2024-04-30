@@ -1227,14 +1227,14 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
                 r.bottom = y0 - (start_row + nr) * dy;
                 if (nc) r.right = screen_left + (start_column + nc) * dx;
                 else {
-                    double height_px = ((r.top - r.bottom) / screen_height) * screen_height_px;
+                    double height_px = (((double)r.top - r.bottom) / screen_height) * screen_height_px;
                     double width_px = height_px * ref->src_width / (double) ref->src_height;
                     r.right = r.left + (float)((width_px / screen_width_px) * screen_width);
                 }
             } else {
                 if (nc) r.right = screen_left + (start_column + nc) * dx;
                 else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
-                double width_px = ((r.right - r.left) / screen_width) * screen_width_px;
+                double width_px = (((double)r.right - r.left) / screen_width) * screen_width_px;
                 double height_px = width_px * ref->src_height / (double)ref->src_width;
                 r.bottom = r.top - (float)((height_px / screen_height_px) * screen_height);
             }
