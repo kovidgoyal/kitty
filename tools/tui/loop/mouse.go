@@ -212,7 +212,10 @@ func (e MouseEvent) String() string {
 
 func pixel_to_cell(px, length, cell_length int) int {
 	px = max(0, min(px, length-1))
-	return px / cell_length
+	if cell_length > 0 {
+		return px / cell_length
+	}
+	return 0
 }
 
 func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
