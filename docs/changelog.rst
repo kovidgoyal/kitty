@@ -64,6 +64,8 @@ Detailed list of changes
 
 - Improve rendering of Unicode shade character to avoid Moire patterns (:pull:`7401`)
 
+- kitten @ send-key: Fix some keys being sent in kitty keyboard protocol encoding when not using socket for remote control
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

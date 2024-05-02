@@ -12,12 +12,14 @@ import (
 type KeyboardStateBits uint8
 
 const (
-	DISAMBIGUATE_KEYS KeyboardStateBits = 1 << iota
-	REPORT_KEY_EVENT_TYPES
-	REPORT_ALTERNATE_KEYS
-	REPORT_ALL_KEYS_AS_ESCAPE_CODES
-	REPORT_TEXT_WITH_KEYS
-	FULL_KEYBOARD_PROTOCOL = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS | REPORT_KEY_EVENT_TYPES
+	LEGACY_KEYS                     KeyboardStateBits = 0
+	DISAMBIGUATE_KEYS                                 = 1
+	REPORT_KEY_EVENT_TYPES                            = 2
+	REPORT_ALTERNATE_KEYS                             = 4
+	REPORT_ALL_KEYS_AS_ESCAPE_CODES                   = 8
+	REPORT_TEXT_WITH_KEYS                             = 16
+	FULL_KEYBOARD_PROTOCOL                            = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS | REPORT_KEY_EVENT_TYPES
+	NO_KEYBOARD_STATE_CHANGE                          = 32
 )
 
 const (
@@ -130,10 +132,12 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 		set_modes(&sb, ALTERNATE_SCREEN)
 		sb.WriteString(CLEAR_SCREEN)
 	}
-	if self.kitty_keyboard_mode > 0 {
-		sb.WriteString(fmt.Sprintf("\033[>%du", self.kitty_keyboard_mode))
-	} else {
+	switch self.kitty_keyboard_mode {
+	case LEGACY_KEYS:
 		sb.WriteString("\033[>u")
+	case NO_KEYBOARD_STATE_CHANGE:
+	default:
+		sb.WriteString(fmt.Sprintf("\033[>%du", self.kitty_keyboard_mode))
 	}
 	if self.mouse_tracking != NO_MOUSE_TRACKING {
 		sb.WriteString(MOUSE_SGR_PIXEL_MODE.EscapeCodeToSet())
@@ -152,7 +156,9 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 	var sb strings.Builder
 	sb.Grow(64)
-	sb.WriteString("\033[<u")
+	if self.kitty_keyboard_mode != NO_KEYBOARD_STATE_CHANGE {
+		sb.WriteString("\033[<u")
+	}
 	if self.Alternate_screen {
 		sb.WriteString(ALTERNATE_SCREEN.EscapeCodeToReset())
 	} else {

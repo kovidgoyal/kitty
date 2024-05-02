@@ -146,6 +146,15 @@ func OnlyDisambiguateKeys(self *Loop) {
 	self.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS
 }
 
+func (self *Loop) NoKeyboardStateChange() *Loop {
+	self.terminal_options.kitty_keyboard_mode = NO_KEYBOARD_STATE_CHANGE
+	return self
+}
+
+func NoKeyboardStateChange(self *Loop) {
+	self.terminal_options.kitty_keyboard_mode = NO_KEYBOARD_STATE_CHANGE
+}
+
 func (self *Loop) FullKeyboardProtocol() *Loop {
 	self.terminal_options.kitty_keyboard_mode = FULL_KEYBOARD_PROTOCOL
 	return self
