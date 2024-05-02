@@ -542,6 +542,23 @@ selection_has_screen_line(const Selections *selections, const int y) {
     return false;
 }
 
+static bool
+selection_intersects_screen_lines(const Selections *selections, int a, int b) {
+    if (a > b) SWAP(a, b);
+    for (size_t i = 0; i < selections->count; i++) {
+        const Selection *s = selections->items + i;
+        if (!is_selection_empty(s)) {
+            int start = (int)s->start.y - s->start_scrolled_by;
+            int end = (int)s->end.y - s->end_scrolled_by;
+            int top = MIN(start, end);
+            int bottom = MAX(start, end);
+            if ((top <= a && bottom >= a) || (top >= a && top <= b)) return true;
+        }
+    }
+    return false;
+}
+
+
 static void
 init_text_loop_line(Screen *self, text_loop_state *s) {
     if (self->modes.mIRM) {
@@ -1968,7 +1985,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             }
         } else linebuf_clear_lines(self->linebuf, self->cursor, a, b);
         self->is_dirty = true;
-        clear_selection(&self->selections);
+        if (selection_intersects_screen_lines(&self->selections, a, b)) clear_selection(&self->selections);
     }
     if (how < 2) {
         screen_erase_in_line(self, how, private);

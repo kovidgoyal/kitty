@@ -66,6 +66,8 @@ Detailed list of changes
 
 - kitten @ send-key: Fix some keys being sent in kitty keyboard protocol encoding when not using socket for remote control
 
+- Dont clear selections on erase in screen commands unless the erased region intersects a selection (:iss:`7408`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
