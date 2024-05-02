@@ -43,8 +43,8 @@ func (self *ThemesList) Next(delta int, allow_wrapping bool) bool {
 }
 
 func limit_lengths(text string) string {
-	t, x := wcswidth.TruncateToVisualLengthWithWidth(text, 31)
-	if x >= len(text) {
+	t, _ := wcswidth.TruncateToVisualLengthWithWidth(text, 31)
+	if len(t) >= len(text) {
 		return text
 	}
 	return t + "…"

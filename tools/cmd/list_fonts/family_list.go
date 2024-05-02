@@ -37,8 +37,8 @@ func (self *FamilyList) Next(delta int, allow_wrapping bool) bool {
 }
 
 func limit_lengths(text string) string {
-	t, x := wcswidth.TruncateToVisualLengthWithWidth(text, 31)
-	if x >= len(text) {
+	t, _ := wcswidth.TruncateToVisualLengthWithWidth(text, 31)
+	if len(t) >= len(text) {
 		return text
 	}
 	return t + "…"
@@ -83,9 +83,9 @@ func apply_search(families []string, expression string, marks ...string) []strin
 }
 
 func (self *FamilyList) UpdateFamilies(families []string) {
-	self.families, self.families = families, families
+	self.families, self.all_families = families, families
 	if self.current_search != "" {
-		self.display_strings = utils.Map(limit_lengths, apply_search(self.families, self.current_search))
+		self.display_strings = utils.Map(limit_lengths, apply_search(self.all_families, self.current_search))
 	} else {
 		self.display_strings = utils.Map(limit_lengths, families)
 	}
