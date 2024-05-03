@@ -84,7 +84,7 @@ def run_build(args: Any) -> None:
             time.sleep(25)
             call(cmd, echo=True)
 
-    for x in ('64', '32', 'arm64'):
+    for x in ('64', 'arm64'):
         prefix = f'python ../bypy linux --arch {x} '
         run_with_retry(prefix + f'program --non-interactive --extra-program-data "{vcs_rev}"')
         call(prefix + 'shutdown', echo=True)
