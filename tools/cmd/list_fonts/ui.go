@@ -3,6 +3,7 @@ package list_fonts
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
@@ -16,18 +17,33 @@ var _ = fmt.Print
 type State int
 
 const (
-	LISTING_FAMILIES State = iota
+	SCANNING_FAMILIES State = iota
+	LISTING_FAMILIES
 	CHOOSING_FACES
 )
 
 type handler struct {
-	lp    *loop.Loop
-	fonts map[string][]ListedFont
-	state State
+	lp                   *loop.Loop
+	fonts                map[string][]ListedFont
+	state                State
+	err_mutex            sync.Mutex
+	err_in_worker_thread error
 
 	// Listing
 	rl          *readline.Readline
 	family_list FamilyList
+}
+
+func (h *handler) set_worker_error(err error) {
+	h.err_mutex.Lock()
+	defer h.err_mutex.Unlock()
+	h.err_in_worker_thread = err
+}
+
+func (h *handler) get_worker_error() error {
+	h.err_mutex.Lock()
+	defer h.err_mutex.Unlock()
+	return h.err_in_worker_thread
 }
 
 // Listing families {{{
@@ -103,9 +119,15 @@ func (h *handler) next(delta int, allow_wrapping bool) {
 }
 
 func (h *handler) handle_listing_key_event(event *loop.KeyEvent) (err error) {
-	if event.MatchesPressOrRepeat("ctrl+c") || event.MatchesPressOrRepeat("esc") {
-		h.lp.Quit(1)
+	if event.MatchesPressOrRepeat("esc") {
 		event.Handled = true
+		if h.rl.AllText() != "" {
+			h.rl.ResetText()
+			h.update_family_search()
+			h.draw_screen()
+		} else {
+			h.lp.Quit(1)
+		}
 		return
 	}
 	ev := event
@@ -162,9 +184,12 @@ func (h *handler) handle_listing_text(text string, from_key_event bool, in_brack
 // Events {{{
 func (h *handler) initialize() {
 	h.lp.SetCursorVisible(false)
-	h.family_list.UpdateFamilies(utils.StableSortWithKey(maps.Keys(h.fonts), strings.ToLower))
 	h.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
 	h.draw_screen()
+	go func() {
+		h.set_worker_error(json_decoder.Decode(&h.fonts))
+		h.lp.WakeupMainThread()
+	}()
 }
 
 func (h *handler) finalize() {
@@ -178,6 +203,9 @@ func (h *handler) draw_screen() (err error) {
 	h.lp.ClearScreen()
 	h.lp.AllowLineWrapping(false)
 	switch h.state {
+	case SCANNING_FAMILIES:
+		h.lp.Println("Scanning system for fonts, please wait...")
+		return nil
 	case LISTING_FAMILIES:
 		return h.draw_listing_screen()
 	}
@@ -185,10 +213,24 @@ func (h *handler) draw_screen() (err error) {
 }
 
 func (h *handler) on_wakeup() (err error) {
+	if err = h.get_worker_error(); err != nil {
+		return
+	}
+	switch h.state {
+	case SCANNING_FAMILIES:
+		h.state = LISTING_FAMILIES
+		h.family_list.UpdateFamilies(utils.StableSortWithKey(maps.Keys(h.fonts), strings.ToLower))
+		return h.draw_screen()
+	}
 	return
 }
 
 func (h *handler) on_key_event(event *loop.KeyEvent) (err error) {
+	if event.MatchesPressOrRepeat("ctrl+c") {
+		event.Handled = true
+		h.lp.Quit(1)
+		return nil
+	}
 	switch h.state {
 	case LISTING_FAMILIES:
 		return h.handle_listing_key_event(event)

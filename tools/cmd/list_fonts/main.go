@@ -12,18 +12,15 @@ import (
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
+var json_decoder *json.Decoder
 
 func main() (rc int, err error) {
-	d := json.NewDecoder(os.Stdin)
-	var fonts map[string][]ListedFont
-	if err = d.Decode(&fonts); err != nil {
-		return 1, err
-	}
+	json_decoder = json.NewDecoder(os.Stdin)
 	lp, err := loop.New()
 	if err != nil {
 		return 1, err
 	}
-	h := &handler{lp: lp, fonts: fonts}
+	h := &handler{lp: lp}
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(`Choose a font for kitty`)
