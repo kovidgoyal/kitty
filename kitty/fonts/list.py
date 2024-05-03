@@ -40,10 +40,10 @@ def handle_io(from_kitten: BinaryIO, to_kitten: BinaryIO) -> None:
     def send_to_kitten(x: Any) -> None:
         to_kitten.write(json.dumps(x).encode())
         to_kitten.write(b'\n')
+        to_kitten.flush()
 
     try:
         send_to_kitten(create_family_groups(add_variable_data=True))
-        to_kitten.write(as_json().encode())
         for line in from_kitten:
             cmd = json.loads(line)
             action = cmd['action']
@@ -54,6 +54,7 @@ def handle_io(from_kitten: BinaryIO, to_kitten: BinaryIO) -> None:
 
 
 def main(argv: Sequence[str]) -> None:
+    import os
     import subprocess
     import sys
     from threading import Thread
@@ -62,7 +63,10 @@ def main(argv: Sequence[str]) -> None:
     argv = list(argv)
     if '--psnames' in argv:
         argv.remove('--psnames')
-    p = subprocess.Popen([kitten_exe(), '__list_fonts__'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    pass_fds = []
+    if os.environ.get('KITTY_STDIO_FORWARDED'):
+        pass_fds.append(int(os.environ['KITTY_STDIO_FORWARDED']))
+    p = subprocess.Popen([kitten_exe(), '__list_fonts__'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=pass_fds)
     Thread(target=handle_io, args=(p.stdout, p.stdin), daemon=True).start()
     try:
         raise SystemExit(p.wait())

@@ -187,7 +187,7 @@ func (h *handler) initialize() {
 	h.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
 	h.draw_screen()
 	go func() {
-		h.set_worker_error(json_decoder.Decode(&h.fonts))
+		h.set_worker_error(json_decode(&h.fonts))
 		h.lp.WakeupMainThread()
 	}()
 }
