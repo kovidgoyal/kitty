@@ -6,6 +6,7 @@ from kitty.typing import CoreTextFont, FontConfigPattern
 
 class ListedFont(TypedDict):
     family: str
+    style: str
     full_name: str
     postscript_name: str
     is_monospace: bool

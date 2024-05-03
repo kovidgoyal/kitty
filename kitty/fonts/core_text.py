@@ -47,7 +47,7 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             if not fn:
                 fn = f'{f} {fd["style"]}'.strip()
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': fd['monospace'],
-                   'is_variable': fd['variable'], 'descriptor': fd}
+                   'is_variable': fd['variable'], 'descriptor': fd, 'style': fd['style']}
 
 
 def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:

@@ -61,6 +61,7 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
             yield {
                 'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')),
                 'is_monospace': is_mono, 'descriptor': fd, 'is_variable': fd.get('variable', False),
+                'style': fd['style'],
             }
 
 
