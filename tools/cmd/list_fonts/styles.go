@@ -7,29 +7,44 @@ import (
 
 var _ = fmt.Print
 
-func styles_in_family(family string, fonts []ListedFont) (ans []string, is_variable bool) {
-	has_style_attribute_data := false
+type family_style_data struct {
+	styles                   []string
+	has_variable_faces       bool
+	has_style_attribute_data bool
+}
+
+func styles_in_family(family string, fonts []ListedFont) (ans *family_style_data) {
+	_ = family
+	ans = &family_style_data{styles: make([]string, 0)}
 	for _, f := range fonts {
 		vd := variable_data_for(f)
 		if len(vd.Design_axes) > 0 {
-			has_style_attribute_data = true
-			break
+			ans.has_style_attribute_data = true
+		}
+		if len(vd.Axes) > 0 {
+			ans.has_variable_faces = true
 		}
 	}
-	ans = make([]string, 0)
 	seen := utils.NewSet[string]()
 	add := func(x string) {
 		if !seen.Has(x) {
 			seen.Add(x)
-			ans = append(ans, x)
+			ans.styles = append(ans.styles, x)
 		}
 	}
-	if has_style_attribute_data {
+	if ans.has_style_attribute_data {
+		for _, f := range fonts {
+			vd := variable_data_for(f)
+			for _, ax := range vd.Design_axes {
+				for _, v := range ax.Values {
+					add(v.Name)
+				}
+			}
+		}
 	} else {
 		for _, f := range fonts {
 			add(f.Style)
 		}
 	}
-	debugprintln(111111111, family, has_style_attribute_data, ans)
 	return
 }

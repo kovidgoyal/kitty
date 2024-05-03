@@ -63,13 +63,14 @@ const (
 	MARK_AFTER  = "\033[39m"
 )
 
-func apply_search(families []string, expression string, marks ...string) []string {
+func apply_search(families []string, expression string, marks ...string) (matched_families []string, display_strings []string) {
 	mark_before, mark_after := MARK_BEFORE, MARK_AFTER
 	if len(marks) == 2 {
 		mark_before, mark_after = marks[0], marks[1]
 	}
 	results := utils.Filter(match(expression, families), func(x *subseq.Match) bool { return x.Score > 0 })
-	ans := make([]string, 0, len(results))
+	matched_families = make([]string, 0, len(results))
+	display_strings = make([]string, 0, len(results))
 	for _, m := range results {
 		text := m.Text
 		positions := m.Positions
@@ -77,15 +78,17 @@ func apply_search(families []string, expression string, marks ...string) []strin
 			p := positions[i]
 			text = text[:p] + mark_before + text[p:p+1] + mark_after + text[p+1:]
 		}
-		ans = append(ans, text)
+		display_strings = append(display_strings, text)
+		matched_families = append(matched_families, m.Text)
 	}
-	return ans
+	return
 }
 
 func (self *FamilyList) UpdateFamilies(families []string) {
 	self.families, self.all_families = families, families
 	if self.current_search != "" {
-		self.display_strings = utils.Map(limit_lengths, apply_search(self.all_families, self.current_search))
+		self.families, self.display_strings = apply_search(self.all_families, self.current_search)
+		self.display_strings = utils.Map(limit_lengths, self.display_strings)
 	} else {
 		self.display_strings = utils.Map(limit_lengths, families)
 	}
