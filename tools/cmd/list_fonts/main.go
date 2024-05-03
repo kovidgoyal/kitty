@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
@@ -34,6 +35,20 @@ func to_kitty(v any) error {
 		return fmt.Errorf("Failed to send message to kitty with I/O error: %w", err)
 	}
 	return nil
+}
+
+var query_kitty_lock sync.Mutex
+
+func query_kitty(action string, cmd map[string]any, result any) error {
+	query_kitty_lock.Lock()
+	defer query_kitty_lock.Unlock()
+	if action != "" {
+		cmd["action"] = action
+		if err := to_kitty(cmd); err != nil {
+			return err
+		}
+	}
+	return json_decode(result)
 }
 
 func main() (rc int, err error) {
