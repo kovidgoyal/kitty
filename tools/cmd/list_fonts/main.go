@@ -22,6 +22,20 @@ func json_decode(v any) error {
 	return nil
 }
 
+func to_kitty(v any) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("Could not encode message to kitty with error: %w", err)
+	}
+	if _, err = os.Stdout.Write(data); err != nil {
+		return fmt.Errorf("Failed to send message to kitty with I/O error: %w", err)
+	}
+	if _, err = os.Stdout.WriteString("\n"); err != nil {
+		return fmt.Errorf("Failed to send message to kitty with I/O error: %w", err)
+	}
+	return nil
+}
+
 func main() (rc int, err error) {
 	json_decoder = json.NewDecoder(os.Stdin)
 	lp, err := loop.New()
