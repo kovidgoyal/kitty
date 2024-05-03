@@ -31,8 +31,9 @@ type handler struct {
 	err_in_worker_thread error
 
 	// Listing
-	rl          *readline.Readline
-	family_list FamilyList
+	rl                          *readline.Readline
+	family_list                 FamilyList
+	variable_data_requested_for *utils.Set[string]
 }
 
 func (h *handler) set_worker_error(err error) {
@@ -77,6 +78,22 @@ func (h *handler) draw_family_summary(start_x int, sz loop.ScreenSize) (err erro
 		h.lp.SprintStyled("fg=green bold", center_string(family, int(sz.WidthCells)-start_x)),
 		"",
 	}
+	fonts := h.fonts[family]
+	if len(fonts) == 0 {
+		return fmt.Errorf("The family: %s has no fonts", family)
+	}
+	if has_variable_data_for_font(fonts[0]) {
+	} else {
+		lines = append(lines, "Reading font data, please wait…")
+		key := fonts[0].cache_key()
+		if !h.variable_data_requested_for.Has(key) {
+			h.variable_data_requested_for.Add(key)
+			go func() {
+				h.set_worker_error(ensure_variable_data_for_fonts(fonts...))
+				h.lp.WakeupMainThread()
+			}()
+		}
+	}
 
 	for i, line := range lines {
 		if i >= int(sz.HeightCells)-1 {
@@ -115,7 +132,7 @@ func (h *handler) draw_listing_screen() (err error) {
 		h.lp.Println(SEPARATOR)
 	}
 	if h.family_list.Len() > 0 {
-		if err = h.draw_family_summary(mw+2, sz); err != nil {
+		if err = h.draw_family_summary(mw+3, sz); err != nil {
 			return err
 		}
 	}
@@ -207,9 +224,11 @@ func (h *handler) handle_listing_text(text string, from_key_event bool, in_brack
 func (h *handler) initialize() {
 	h.lp.SetCursorVisible(false)
 	h.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
+	h.variable_data_requested_for = utils.NewSet[string](256)
 	h.draw_screen()
+	initialize_variable_data_cache()
 	go func() {
-		h.set_worker_error(json_decode(&h.fonts))
+		h.set_worker_error(query_kitty("", nil, &h.fonts))
 		h.lp.WakeupMainThread()
 	}()
 }
@@ -242,6 +261,8 @@ func (h *handler) on_wakeup() (err error) {
 	case SCANNING_FAMILIES:
 		h.state = LISTING_FAMILIES
 		h.family_list.UpdateFamilies(utils.StableSortWithKey(maps.Keys(h.fonts), strings.ToLower))
+		return h.draw_screen()
+	case LISTING_FAMILIES:
 		return h.draw_screen()
 	}
 	return
