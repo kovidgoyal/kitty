@@ -12,7 +12,15 @@ import (
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
+
 var json_decoder *json.Decoder
+
+func json_decode(v any) error {
+	if err := json_decoder.Decode(v); err != nil {
+		return fmt.Errorf("Failed to decode JSON from kitty with error: %w", err)
+	}
+	return nil
+}
 
 func main() (rc int, err error) {
 	json_decoder = json.NewDecoder(os.Stdin)
