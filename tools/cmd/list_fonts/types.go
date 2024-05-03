@@ -45,6 +45,7 @@ type MultiAxisStyle struct {
 
 type ListedFont struct {
 	Family          string         `json:"family"`
+	Style           string         `json:"style"`
 	Fullname        string         `json:"full_name"`
 	Postscript_name string         `json:"postscript_name"`
 	Is_monospace    bool           `json:"is_monospace"`

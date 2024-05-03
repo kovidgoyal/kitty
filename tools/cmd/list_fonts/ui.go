@@ -83,6 +83,7 @@ func (h *handler) draw_family_summary(start_x int, sz loop.ScreenSize) (err erro
 		return fmt.Errorf("The family: %s has no fonts", family)
 	}
 	if has_variable_data_for_font(fonts[0]) {
+		styles_in_family(family, fonts)
 	} else {
 		lines = append(lines, "Reading font data, please wait…")
 		key := fonts[0].cache_key()
@@ -261,11 +262,9 @@ func (h *handler) on_wakeup() (err error) {
 	case SCANNING_FAMILIES:
 		h.state = LISTING_FAMILIES
 		h.family_list.UpdateFamilies(utils.StableSortWithKey(maps.Keys(h.fonts), strings.ToLower))
-		return h.draw_screen()
 	case LISTING_FAMILIES:
-		return h.draw_screen()
 	}
-	return
+	return h.draw_screen()
 }
 
 func (h *handler) on_key_event(event *loop.KeyEvent) (err error) {
