@@ -2022,7 +2022,7 @@ def build_dep() -> None:
     p.add_argument(
         '--platform',
         default=Options.platform,
-        choices='all macos linux linux-32 linux-arm64 linux-64'.split(),
+        choices='all macos linux linux-arm64 linux-64'.split(),
         help='Platforms to build the dep for'
     )
     p.add_argument(
@@ -2034,7 +2034,6 @@ def build_dep() -> None:
     args = p.parse_args(sys.argv[2:], namespace=Options())
     linux_platforms = [
         ['linux', '--arch=64'],
-        ['linux', '--arch=32'],
         ['linux', '--arch=arm64'],
     ]
     if args.platform == 'all':

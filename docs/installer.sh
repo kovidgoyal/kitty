@@ -49,9 +49,7 @@ detect_os() {
                 amd64|x86_64) arch="x86_64";;
                 aarch64*) arch="arm64";;
                 armv8*) arch="arm64";;
-                i386) arch="i686";;
-                i686) arch="i686";;
-                *) die "Unknown CPU architecture $(command uname -m)";;
+                *) die "kitty binaries not available for architecture $(command uname -m)";;
             esac
             ;;
         *) die "kitty binaries are not available for $(command uname)"
