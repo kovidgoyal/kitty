@@ -327,6 +327,11 @@ func (self *handler) draw_browsing_screen() {
 		}
 		self.lp.MoveCursorHorizontally(mw - l.width)
 		self.lp.Println(SEPARATOR)
+		num_rows--
+	}
+	for ; num_rows > 0; num_rows-- {
+		self.lp.MoveCursorHorizontally(mw + 1)
+		self.lp.Println(SEPARATOR)
 	}
 	if self.themes_list != nil && self.themes_list.Len() > 0 {
 		self.draw_theme_demo()

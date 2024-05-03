@@ -94,12 +94,48 @@ func (h *handler) update_family_search() {
 	}
 }
 
+func (h *handler) next(delta int, allow_wrapping bool) {
+	if h.family_list.Next(delta, allow_wrapping) {
+		h.draw_screen()
+	} else {
+		h.lp.Beep()
+	}
+}
+
 func (h *handler) handle_listing_key_event(event *loop.KeyEvent) (err error) {
 	if event.MatchesPressOrRepeat("ctrl+c") || event.MatchesPressOrRepeat("esc") {
 		h.lp.Quit(1)
 		event.Handled = true
 		return
 	}
+	ev := event
+	if ev.MatchesPressOrRepeat("down") {
+		h.next(1, true)
+		ev.Handled = true
+		return nil
+	}
+	if ev.MatchesPressOrRepeat("up") {
+		h.next(-1, true)
+		ev.Handled = true
+		return nil
+	}
+	if ev.MatchesPressOrRepeat("page_down") {
+		ev.Handled = true
+		sz, err := h.lp.ScreenSize()
+		if err == nil {
+			h.next(int(sz.HeightCells)-3, false)
+		}
+		return nil
+	}
+	if ev.MatchesPressOrRepeat("page_up") {
+		ev.Handled = true
+		sz, err := h.lp.ScreenSize()
+		if err == nil {
+			h.next(3-int(sz.HeightCells), false)
+		}
+		return nil
+	}
+
 	if err = h.rl.OnKeyEvent(event); err != nil {
 		if err == readline.ErrAcceptInput {
 			return nil
