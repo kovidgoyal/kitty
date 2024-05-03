@@ -733,6 +733,8 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     ans = list(env.cflags)
     # SIMD specific flags
     if src in ('kitty/simd-string-128.c', 'kitty/simd-string-256.c'):
+        # simde recommends these are used for best performance
+        ans.extend(('-fopenmp-simd', '-DSIMDE_ENABLE_OPENMP'))
         if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
             ans.append('-msse4.2' if '128' in src else '-mavx2')
             if '256' in src:
