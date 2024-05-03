@@ -8,6 +8,7 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 
 	"golang.org/x/exp/maps"
 )
@@ -61,8 +62,29 @@ func (h *handler) draw_search_bar() {
 
 const SEPARATOR = "║"
 
-func (h *handler) draw_family_summary() (err error) {
-	// TODO: Implement me
+func center_string(x string, width int) string {
+	l := wcswidth.Stringwidth(x)
+	spaces := int(float64(width-l) / 2)
+	return strings.Repeat(" ", utils.Max(0, spaces)) + x
+}
+
+func (h *handler) draw_family_summary(start_x int, sz loop.ScreenSize) (err error) {
+	family := h.family_list.CurrentFamily()
+	if family == "" || int(sz.WidthCells) < start_x+2 {
+		return nil
+	}
+	lines := []string{
+		h.lp.SprintStyled("fg=green bold", center_string(family, int(sz.WidthCells)-start_x)),
+		"",
+	}
+
+	for i, line := range lines {
+		if i >= int(sz.HeightCells)-1 {
+			break
+		}
+		h.lp.MoveCursorTo(start_x+1, i+1)
+		h.lp.QueueWriteString(line)
+	}
 	return
 }
 
@@ -93,7 +115,7 @@ func (h *handler) draw_listing_screen() (err error) {
 		h.lp.Println(SEPARATOR)
 	}
 	if h.family_list.Len() > 0 {
-		if err = h.draw_family_summary(); err != nil {
+		if err = h.draw_family_summary(mw+2, sz); err != nil {
 			return err
 		}
 	}
