@@ -25,6 +25,9 @@ def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]
 def as_json(indent: Optional[int] = None) -> str:
     import json
     groups = create_family_groups()
+    for v in groups.values():
+        for f in v:
+            f['variable_data'] = get_variable_data_for_descriptor(f['descriptor'])  # type: ignore
     return json.dumps(groups, indent=indent)
 
 

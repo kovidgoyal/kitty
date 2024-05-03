@@ -8,6 +8,7 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
+	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
 
 	"golang.org/x/exp/maps"
@@ -78,12 +79,20 @@ func (h *handler) draw_family_summary(start_x int, sz loop.ScreenSize) (err erro
 		h.lp.SprintStyled("fg=green bold", center_string(family, int(sz.WidthCells)-start_x)),
 		"",
 	}
+	width := int(sz.WidthCells) - start_x - 1
+	add_line := func(x string) {
+		lines = append(lines, style.WrapTextAsLines(x, width, style.WrapOptions{})...)
+	}
 	fonts := h.fonts[family]
 	if len(fonts) == 0 {
 		return fmt.Errorf("The family: %s has no fonts", family)
 	}
 	if has_variable_data_for_font(fonts[0]) {
-		styles_in_family(family, fonts)
+		s := styles_in_family(family, fonts)
+		styles := "Styles: " + strings.Join(s.styles, ", ")
+		add_line(styles)
+		add_line("")
+		add_line(fmt.Sprintf("Press the %s key to choose this family", h.lp.SprintStyled("fg=yellow", "Enter")))
 	} else {
 		lines = append(lines, "Reading font data, please wait…")
 		key := fonts[0].cache_key()

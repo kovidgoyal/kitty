@@ -22,7 +22,7 @@ type NamedStyle struct {
 	Postscript_name string             `json:"psname"`
 }
 
-type DesignAxis struct {
+type DesignAxisValue struct {
 	Format       int     `json:"format"`
 	Flags        int     `json:"flags"`
 	Name         string  `json:"name"`
@@ -30,6 +30,13 @@ type DesignAxis struct {
 	Minimum      float64 `json:"minimum"`
 	Maximum      float64 `json:"maximum"`
 	Linked_value float64 `json:"linked_value"`
+}
+
+type DesignAxis struct {
+	Tag      string            `json:"tag"`
+	Name     string            `json:"name"`
+	Ordering int               `json:"ordering"`
+	Values   []DesignAxisValue `json:"values"`
 }
 
 type AxisValue struct {
