@@ -70,6 +70,7 @@ func main() (rc int, err error) {
 		lp.SetCursorVisible(true)
 		return ``
 	}
+	lp.OnMouseEvent = h.on_mouse_event
 	lp.OnResize = func(_, _ loop.ScreenSize) error {
 		return h.draw_screen()
 	}
