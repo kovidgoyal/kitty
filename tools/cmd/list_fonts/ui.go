@@ -89,9 +89,11 @@ func (h *handler) draw_family_summary(start_x int, sz loop.ScreenSize) (err erro
 	}
 	if has_variable_data_for_font(fonts[0]) {
 		s := styles_in_family(family, fonts)
-		styles := "Styles: " + strings.Join(s.styles, ", ")
-		add_line(styles)
-		add_line("")
+		for _, sg := range s.style_groups {
+			styles := sg.name + ": " + strings.Join(sg.styles, ", ")
+			add_line(styles)
+			add_line("")
+		}
 		add_line(fmt.Sprintf("Press the %s key to choose this family", h.lp.SprintStyled("fg=yellow", "Enter")))
 	} else {
 		lines = append(lines, "Reading font data, please wait…")
