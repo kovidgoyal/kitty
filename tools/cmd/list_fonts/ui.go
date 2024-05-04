@@ -32,6 +32,7 @@ type handler struct {
 	err_mutex            sync.Mutex
 	err_in_worker_thread error
 	mouse_state          tui.MouseState
+	render_lines         tui.RenderLines
 
 	// Listing
 	rl                          *readline.Readline
@@ -127,24 +128,24 @@ func (h *handler) draw_listing_screen() (err error) {
 	num_rows := max(0, int(sz.HeightCells)-1)
 	mw := h.family_list.max_width + 1
 	green_fg, _, _ := strings.Cut(h.lp.SprintStyled("fg=green", "|"), "|")
+	lines := make([]string, 0, num_rows)
 	for _, l := range h.family_list.Lines(num_rows) {
 		line := l.text
 		if l.is_current {
 			line = strings.ReplaceAll(line, MARK_AFTER, green_fg)
-			h.lp.PrintStyled("fg=green", ">")
-			h.lp.PrintStyled("fg=green bold", line)
+			line = h.lp.SprintStyled("fg=green", ">") + h.lp.SprintStyled("fg=green bold", line)
 		} else {
-			h.lp.PrintStyled("fg=green", " ")
-			h.lp.QueueWriteString(line)
+			line = " " + line
 		}
-		h.lp.MoveCursorHorizontally(mw - l.width)
-		h.lp.Println(SEPARATOR)
-		num_rows--
+		lines = append(lines, line)
 	}
-	for ; num_rows > 0; num_rows-- {
-		h.lp.MoveCursorHorizontally(mw + 1)
-		h.lp.Println(SEPARATOR)
-	}
+	_, _, str := h.render_lines.InRectangle(lines, 0, 0, 0, num_rows, &h.mouse_state)
+	h.lp.QueueWriteString(str)
+	seps := strings.Repeat(SEPARATOR, num_rows)
+	seps = strings.TrimSpace(seps)
+	_, _, str = h.render_lines.InRectangle(strings.Split(seps, ""), mw+1, 0, 0, num_rows, &h.mouse_state)
+	h.lp.QueueWriteString(str)
+
 	if h.family_list.Len() > 0 {
 		if err = h.draw_family_summary(mw+3, sz); err != nil {
 			return err

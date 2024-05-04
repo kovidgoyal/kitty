@@ -235,6 +235,9 @@ type MouseState struct {
 func (m *MouseState) AddCellRegion(id string, start_x, start_y, end_x, end_y int, on_click ...func(id string) error) *CellRegion {
 	cr := CellRegion{TopLeft: struct{ X, Y int }{start_x, start_y}, BottomRight: struct{ X, Y int }{end_x, end_y}, Id: id, OnClick: on_click}
 	m.regions = append(m.regions, &cr)
+	if m.region_id_map == nil {
+		m.region_id_map = make(map[string][]*CellRegion)
+	}
 	m.region_id_map[id] = append(m.region_id_map[id], &cr)
 	return &cr
 }

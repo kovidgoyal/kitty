@@ -33,10 +33,10 @@ var hyperlink_pat = sync.OnceValue(func() *regexp.Regexp {
 // MouseState.
 func (r RenderLines) InRectangle(
 	lines []string, start_x, start_y, width, height int, mouse_state *MouseState,
-) (all_rendered bool, final_y int, ans string) {
+) (all_rendered bool, y_after_last_line int, ans string) {
 	end_y := start_y + height - 1
 	if end_y < start_y {
-		return len(lines) == 0, start_y, ""
+		return len(lines) == 0, start_y + 1, ""
 	}
 	x, y := start_x, start_y
 	buf := strings.Builder{}
@@ -100,18 +100,18 @@ func (r RenderLines) InRectangle(
 
 	all_rendered = true
 	for _, line := range lines {
-		lines := []string{line}
+		wrapped_lines := []string{line}
 		if width > 0 {
-			lines = style.WrapTextAsLines(line, width, r.WrapOptions)
+			wrapped_lines = style.WrapTextAsLines(line, width, r.WrapOptions)
 		}
-		for _, line := range lines {
+		for _, line := range wrapped_lines {
+			move_cursor(start_x, y)
+			add_line(line)
+			y += 1
 			if y > end_y {
 				all_rendered = false
 				goto end
 			}
-			move_cursor(start_x, y)
-			add_line(line)
-			y += 1
 		}
 	}
 end:
