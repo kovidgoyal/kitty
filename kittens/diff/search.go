@@ -5,6 +5,7 @@ package diff
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -12,8 +13,6 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/images"
 	"kitty/tools/wcswidth"
-
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print

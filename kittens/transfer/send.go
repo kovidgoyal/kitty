@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -18,7 +19,6 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/exp/constraints"
-	"golang.org/x/exp/slices"
 
 	"kitty"
 	"kitty/tools/cli/markup"

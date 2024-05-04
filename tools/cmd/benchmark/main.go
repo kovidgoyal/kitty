@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 
-	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 

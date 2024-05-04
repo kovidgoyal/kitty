@@ -6,13 +6,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 
 	"kitty"
 	"kitty/tools/tty"

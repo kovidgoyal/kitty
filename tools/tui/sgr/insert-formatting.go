@@ -4,6 +4,7 @@ package sgr
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -11,8 +12,6 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
-
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print

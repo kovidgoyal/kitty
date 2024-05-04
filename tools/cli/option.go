@@ -4,10 +4,9 @@ package cli
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print

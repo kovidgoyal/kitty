@@ -4,9 +4,8 @@ package loop
 
 import (
 	"fmt"
+	"slices"
 	"time"
-
-	"golang.org/x/exp/slices"
 
 	"kitty/tools/tty"
 	"kitty/tools/utils"

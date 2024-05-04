@@ -8,8 +8,6 @@ import (
 
 	"kitty/tools/cli/markup"
 	"kitty/tools/utils"
-
-	"golang.org/x/exp/maps"
 )
 
 var _ = fmt.Print
@@ -23,7 +21,7 @@ func fish_completion_script(commands []string) (string, error) {
 		"kitten":         true,
 	}
 	if len(commands) == 0 {
-		commands = append(commands, maps.Keys(all_commands)...)
+		commands = append(commands, utils.Keys(all_commands)...)
 	}
 	script := strings.Builder{}
 	script.WriteString(`function __ksi_completions

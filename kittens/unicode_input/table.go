@@ -4,6 +4,7 @@ package unicode_input
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -11,8 +12,6 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
-
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print

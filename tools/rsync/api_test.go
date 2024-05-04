@@ -7,12 +7,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"golang.org/x/exp/slices"
 
 	"kitty/tools/utils"
 )

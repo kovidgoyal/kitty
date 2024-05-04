@@ -11,8 +11,6 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
-
-	"golang.org/x/exp/maps"
 )
 
 var _ = fmt.Print
@@ -277,7 +275,7 @@ func (h *handler) on_wakeup() (err error) {
 	switch h.state {
 	case SCANNING_FAMILIES:
 		h.state = LISTING_FAMILIES
-		h.family_list.UpdateFamilies(utils.StableSortWithKey(maps.Keys(h.fonts), strings.ToLower))
+		h.family_list.UpdateFamilies(utils.StableSortWithKey(utils.Keys(h.fonts), strings.ToLower))
 	case LISTING_FAMILIES:
 	}
 	return h.draw_screen()

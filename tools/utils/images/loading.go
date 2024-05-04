@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/edwvee/exiffix"
 	"github.com/kovidgoyal/imaging"
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print

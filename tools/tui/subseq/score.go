@@ -4,12 +4,11 @@ package subseq
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"kitty/tools/utils"
 	"kitty/tools/utils/images"
-
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
