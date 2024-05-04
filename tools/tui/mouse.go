@@ -201,3 +201,79 @@ func (ms *MouseSelection) DragScroll(ev *loop.MouseEvent, lp *loop.Loop, callbac
 	}
 	ms.drag_scroll.mouse_event = *ev
 }
+
+type CellRegion struct {
+	TopLeft, BottomRight struct{ X, Y int }
+	Hovered              bool
+	Id                   string
+	OnClick              []func(id string) error
+}
+
+func (c CellRegion) Contains(x, y int) bool { // 0-based
+	if c.TopLeft.Y > y || c.BottomRight.Y < y {
+		return false
+	}
+	return (y > c.TopLeft.Y || (y == c.TopLeft.Y && x >= c.TopLeft.X)) && (y < c.BottomRight.Y || (y == c.BottomRight.Y && x <= c.BottomRight.X))
+}
+
+type MouseState struct {
+	Cell, Pixel struct{ X, Y int }
+	Pressed     struct{ Left, Right, Middle, Fourth, Fifth, Sixth, Seventh bool }
+
+	regions []*CellRegion
+}
+
+func (m *MouseState) AddCellRegion(id string, start_x, start_y, end_x, end_y int, on_click ...func(id string) error) *CellRegion {
+	cr := CellRegion{TopLeft: struct{ X, Y int }{start_x, start_y}, BottomRight: struct{ X, Y int }{end_x, end_y}, Id: id, OnClick: on_click}
+	m.regions = append(m.regions, &cr)
+	cr.Hovered = cr.Contains(m.Cell.X, m.Cell.Y)
+	return &cr
+}
+
+func (m *MouseState) ClearCellRegions() {
+	m.regions = nil
+}
+
+func (m *MouseState) UpdateState(ev *loop.MouseEvent) error {
+	m.Cell = ev.Cell
+	m.Pixel = ev.Pixel
+	if ev.Event_type == loop.MOUSE_PRESS || ev.Event_type == loop.MOUSE_RELEASE {
+		pressed := ev.Event_type == loop.MOUSE_PRESS
+		if ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
+			m.Pressed.Left = pressed
+		}
+		if ev.Buttons&loop.RIGHT_MOUSE_BUTTON != 0 {
+			m.Pressed.Right = pressed
+		}
+		if ev.Buttons&loop.MIDDLE_MOUSE_BUTTON != 0 {
+			m.Pressed.Middle = pressed
+		}
+		if ev.Buttons&loop.FOURTH_MOUSE_BUTTON != 0 {
+			m.Pressed.Fourth = pressed
+		}
+		if ev.Buttons&loop.FIFTH_MOUSE_BUTTON != 0 {
+			m.Pressed.Fifth = pressed
+		}
+		if ev.Buttons&loop.SIXTH_MOUSE_BUTTON != 0 {
+			m.Pressed.Sixth = pressed
+		}
+		if ev.Buttons&loop.SEVENTH_MOUSE_BUTTON != 0 {
+			m.Pressed.Seventh = pressed
+		}
+	}
+	for _, r := range m.regions {
+		if r.Contains(m.Cell.X, m.Cell.Y) {
+			r.Hovered = true
+			if ev.Event_type == loop.MOUSE_CLICK {
+				for _, f := range r.OnClick {
+					if err := f(r.Id); err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			r.Hovered = false
+		}
+	}
+	return nil
+}

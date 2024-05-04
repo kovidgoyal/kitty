@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
@@ -30,6 +31,7 @@ type handler struct {
 	state                State
 	err_mutex            sync.Mutex
 	err_in_worker_thread error
+	mouse_state          tui.MouseState
 
 	// Listing
 	rl                          *readline.Readline
@@ -276,6 +278,10 @@ func (h *handler) on_wakeup() (err error) {
 	case LISTING_FAMILIES:
 	}
 	return h.draw_screen()
+}
+
+func (h *handler) on_mouse_event(event *loop.MouseEvent) (err error) {
+	return h.mouse_state.UpdateState(event)
 }
 
 func (h *handler) on_key_event(event *loop.KeyEvent) (err error) {
