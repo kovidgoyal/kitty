@@ -57,6 +57,7 @@ func main() (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 	h := &handler{lp: lp}
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)

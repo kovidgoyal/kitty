@@ -254,13 +254,15 @@ func (h *handler) finalize() {
 
 func (h *handler) draw_screen() (err error) {
 	h.lp.StartAtomicUpdate()
+	defer h.mouse_state.UpdateHoveredIds()
+	defer h.mouse_state.ApplyHoverStyles(h.lp)
 	defer h.lp.EndAtomicUpdate()
 	h.lp.ClearScreen()
 	h.lp.AllowLineWrapping(false)
+	h.mouse_state.ClearCellRegions()
 	switch h.state {
 	case SCANNING_FAMILIES:
 		h.lp.Println("Scanning system for fonts, please wait...")
-		return nil
 	case LISTING_FAMILIES:
 		return h.draw_listing_screen()
 	}
@@ -281,7 +283,9 @@ func (h *handler) on_wakeup() (err error) {
 }
 
 func (h *handler) on_mouse_event(event *loop.MouseEvent) (err error) {
-	return h.mouse_state.UpdateState(event)
+	err = h.mouse_state.UpdateState(event)
+	h.mouse_state.ApplyHoverStyles(h.lp)
+	return
 }
 
 func (h *handler) on_key_event(event *loop.KeyEvent) (err error) {
