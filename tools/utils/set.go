@@ -41,6 +41,10 @@ func (self *Set[T]) Has(val T) bool {
 	return ok
 }
 
+func (self *Set[T]) Clear() {
+	clear(self.items)
+}
+
 func (self *Set[T]) Len() int {
 	return len(self.items)
 }

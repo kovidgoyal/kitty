@@ -4,9 +4,13 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
+	"kitty"
+	"kitty/tools/config"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -204,7 +208,6 @@ func (ms *MouseSelection) DragScroll(ev *loop.MouseEvent, lp *loop.Loop, callbac
 
 type CellRegion struct {
 	TopLeft, BottomRight struct{ X, Y int }
-	Hovered              bool
 	Id                   string
 	OnClick              []func(id string) error
 }
@@ -220,18 +223,75 @@ type MouseState struct {
 	Cell, Pixel struct{ X, Y int }
 	Pressed     struct{ Left, Right, Middle, Fourth, Fifth, Sixth, Seventh bool }
 
-	regions []*CellRegion
+	regions           []*CellRegion
+	region_id_map     map[string][]*CellRegion
+	hovered_ids       *utils.Set[string]
+	default_url_style struct {
+		value  string
+		loaded bool
+	}
 }
 
 func (m *MouseState) AddCellRegion(id string, start_x, start_y, end_x, end_y int, on_click ...func(id string) error) *CellRegion {
 	cr := CellRegion{TopLeft: struct{ X, Y int }{start_x, start_y}, BottomRight: struct{ X, Y int }{end_x, end_y}, Id: id, OnClick: on_click}
 	m.regions = append(m.regions, &cr)
-	cr.Hovered = cr.Contains(m.Cell.X, m.Cell.Y)
+	m.region_id_map[id] = append(m.region_id_map[id], &cr)
 	return &cr
 }
 
 func (m *MouseState) ClearCellRegions() {
 	m.regions = nil
+	m.region_id_map = nil
+	m.hovered_ids = nil
+}
+
+func (m *MouseState) UpdateHoveredIds() {
+	if m.hovered_ids == nil {
+		m.hovered_ids = utils.NewSet[string]()
+	} else {
+		m.hovered_ids.Clear()
+	}
+	for _, r := range m.regions {
+		if r.Contains(m.Cell.X, m.Cell.Y) {
+			m.hovered_ids.Add(r.Id)
+		}
+	}
+}
+
+func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
+	if m.hovered_ids == nil {
+		return
+	}
+	hs := ""
+	if len(style) == 0 {
+		if !m.default_url_style.loaded {
+			m.default_url_style.loaded = true
+			conf := filepath.Join(utils.ConfigDir(), "kitty.conf")
+			color, style := kitty.DefaultUrlColor, kitty.DefaultUrlStyle
+			cp := config.ConfigParser{LineHandler: func(key, val string) error {
+				switch key {
+				case "url_color":
+					color = val
+				case "url_style":
+					style = val
+				}
+				return nil
+			},
+			}
+			_ = cp.ParseFiles(conf) // ignore errors and use defaults
+			if style != "none" && style != "" {
+				m.default_url_style.value = fmt.Sprintf("u=%s uc=%s", style, color)
+			}
+		}
+		hs = m.default_url_style.value
+	} else {
+		hs = style[0]
+	}
+	for id := range m.hovered_ids.Iterable() {
+		for _, r := range m.region_id_map[id] {
+			lp.StyleRegion(hs, r.TopLeft.X, r.TopLeft.Y, r.BottomRight.X, r.BottomRight.Y)
+		}
+	}
 }
 
 func (m *MouseState) UpdateState(ev *loop.MouseEvent) error {
@@ -261,19 +321,6 @@ func (m *MouseState) UpdateState(ev *loop.MouseEvent) error {
 			m.Pressed.Seventh = pressed
 		}
 	}
-	for _, r := range m.regions {
-		if r.Contains(m.Cell.X, m.Cell.Y) {
-			r.Hovered = true
-			if ev.Event_type == loop.MOUSE_CLICK {
-				for _, f := range r.OnClick {
-					if err := f(r.Id); err != nil {
-						return err
-					}
-				}
-			}
-		} else {
-			r.Hovered = false
-		}
-	}
+	m.UpdateHoveredIds()
 	return nil
 }

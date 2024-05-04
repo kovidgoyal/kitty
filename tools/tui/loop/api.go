@@ -217,6 +217,24 @@ func (self *Loop) Println(args ...any) {
 	self.QueueWriteString("\r")
 }
 
+func (self *Loop) style_region(style string, start_x, start_y, end_x, end_y int) string {
+	sgr := self.SprintStyled(style, "|")[2:]
+	sgr = sgr[:strings.IndexByte(sgr, 'm')]
+	return fmt.Sprintf("\x1b[%d;%d;%d;%d%s$r", start_y+1, start_x+1, end_y+1, end_x+1, sgr)
+}
+
+// Apply the specified style to the specified region of the screen (0-based
+// indexing). The region is all cells from the start cell to the end cell. See
+// StyleRectangle to apply style to a rectangular area.
+func (self *Loop) StyleRegion(style string, start_x, start_y, end_x, end_y int) IdType {
+	return self.QueueWriteString(self.style_region(style, start_x, start_y, end_x, end_y))
+}
+
+// Apply the specified style to the specified rectangle of the screen (0-based indexing).
+func (self *Loop) StyleRectangle(style string, start_x, start_y, end_x, end_y int) IdType {
+	return self.QueueWriteString("\x1b[2*x" + self.style_region(style, start_x, start_y, end_x, end_y) + "\x1b[*x")
+}
+
 func (self *Loop) SprintStyled(style string, args ...any) string {
 	f := self.style_cache[style]
 	if f == nil {
