@@ -15,10 +15,10 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"slices"
 	"strconv"
 
 	"github.com/zeebo/xxh3"
-	"golang.org/x/exp/slices"
 )
 
 // If no BlockSize is specified in the rsync instance, this value is used.

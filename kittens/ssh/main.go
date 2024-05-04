@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 	"kitty"
+	"maps"
 	"net/url"
 	"os"
 	"os/exec"
@@ -21,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -36,8 +38,6 @@ import (
 	"kitty/tools/utils/shlex"
 	"kitty/tools/utils/shm"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 
@@ -411,7 +411,7 @@ func prepare_script(script string, replacements map[string]string) string {
 	if _, found := replacements["EXPORT_HOME_CMD"]; !found {
 		replacements["EXPORT_HOME_CMD"] = ""
 	}
-	keys := maps.Keys(replacements)
+	keys := utils.Keys(replacements)
 	for i, key := range keys {
 		keys[i] = "\\b" + key + "\\b"
 	}

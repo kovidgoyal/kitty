@@ -5,8 +5,10 @@ package themes
 import (
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,9 +18,6 @@ import (
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
-
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print

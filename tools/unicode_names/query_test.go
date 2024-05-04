@@ -5,10 +5,10 @@ package unicode_names
 import (
 	"fmt"
 	"kitty/tools/utils"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print

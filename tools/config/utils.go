@@ -7,12 +7,10 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
-
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -309,5 +307,5 @@ func ResolveShortcuts(actions []*KeyAction) []*KeyAction {
 			action_map[key] = ac
 		}
 	}
-	return maps.Values(action_map)
+	return utils.Values(action_map)
 }

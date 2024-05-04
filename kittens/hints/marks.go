@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/dlclark/regexp2"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
-	"golang.org/x/exp/slices"
 
 	"kitty"
 	"kitty/tools/config"

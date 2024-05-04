@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -17,9 +18,6 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/utils/images"
-
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -365,7 +363,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 					}
 				}
 				if len(requested_mimes) > 0 {
-					lp.QueueWriteString(encode(basic_metadata, strings.Join(maps.Keys(requested_mimes), " ")))
+					lp.QueueWriteString(encode(basic_metadata, strings.Join(utils.Keys(requested_mimes), " ")))
 				} else {
 					lp.Quit(0)
 				}

@@ -15,8 +15,6 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
-
-	"golang.org/x/exp/maps"
 )
 
 var _ = fmt.Print
@@ -137,7 +135,7 @@ func (self *ImageCollection) ResizeForPageSize(width, height int) {
 	defer self.mutex.Unlock()
 
 	ctx := images.Context{}
-	keys := maps.Keys(self.images)
+	keys := utils.Keys(self.images)
 	ctx.Parallel(0, len(keys), func(nums <-chan int) {
 		for i := range nums {
 			img := self.images[keys[i]]
@@ -295,7 +293,7 @@ func (self *ImageCollection) LoadAll() {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 	ctx := images.Context{}
-	all := maps.Values(self.images)
+	all := utils.Values(self.images)
 	ctx.Parallel(0, len(self.images), func(nums <-chan int) {
 		for i := range nums {
 			img := all[i]

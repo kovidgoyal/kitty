@@ -4,11 +4,25 @@ package utils
 
 import (
 	"fmt"
-
-	"golang.org/x/exp/maps"
 )
 
 var _ = fmt.Print
+
+func Keys[M ~map[K]V, K comparable, V any](m M) []K {
+	r := make([]K, 0, len(m))
+	for k := range m {
+		r = append(r, k)
+	}
+	return r
+}
+
+func Values[M ~map[K]V, K comparable, V any](m M) []V {
+	r := make([]V, 0, len(m))
+	for _, k := range m {
+		r = append(r, k)
+	}
+	return r
+}
 
 type Set[T comparable] struct {
 	items map[T]struct{}
@@ -25,7 +39,7 @@ func (self *Set[T]) AddItems(val ...T) {
 }
 
 func (self *Set[T]) String() string {
-	return fmt.Sprintf("%#v", maps.Keys(self.items))
+	return fmt.Sprintf("%#v", Keys(self.items))
 }
 
 func (self *Set[T]) Remove(val T) {
@@ -60,7 +74,7 @@ func (self *Set[T]) Iterable() map[T]struct{} {
 }
 
 func (self *Set[T]) AsSlice() []T {
-	return maps.Keys(self.items)
+	return Keys(self.items)
 }
 
 func (self *Set[T]) Intersect(other *Set[T]) (ans *Set[T]) {

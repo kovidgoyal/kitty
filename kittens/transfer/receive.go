@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -25,7 +26,6 @@ import (
 	"kitty/tools/utils/humanize"
 	"kitty/tools/wcswidth"
 
-	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 

@@ -10,11 +10,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,8 +30,6 @@ import (
 	"kitty/tools/utils/style"
 
 	"github.com/shirou/gopsutil/v3/process"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 
@@ -594,7 +594,7 @@ func patch_conf(text, theme_name string) string {
 		}
 		ntext = text + addition
 	}
-	pat = utils.MustCompile(fmt.Sprintf(`(?m)^\s*(%s)\b`, strings.Join(maps.Keys(AllColorSettingNames), "|")))
+	pat = utils.MustCompile(fmt.Sprintf(`(?m)^\s*(%s)\b`, strings.Join(utils.Keys(AllColorSettingNames), "|")))
 	return pat.ReplaceAllString(ntext, `# $1`)
 }
 func is_kitty_gui_cmdline(cmd ...string) bool {
@@ -809,12 +809,12 @@ func (self *Themes) At(x int) *Theme {
 func (self *Themes) Names() []string { return self.index_map }
 
 func (self *Themes) create_index_map() {
-	self.index_map = maps.Keys(self.name_map)
+	self.index_map = utils.Keys(self.name_map)
 	self.index_map = utils.StableSortWithKey(self.index_map, strings.ToLower)
 }
 
 func (self *Themes) Filtered(is_ok func(*Theme) bool) *Themes {
-	themes := utils.Filter(maps.Values(self.name_map), is_ok)
+	themes := utils.Filter(utils.Values(self.name_map), is_ok)
 	ans := Themes{name_map: make(map[string]*Theme, len(themes))}
 	for _, theme := range themes {
 		ans.name_map[theme.metadata.Name] = theme
