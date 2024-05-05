@@ -337,7 +337,7 @@ class PTY:
         self.write_to_child(cmd + '\r', flush=flush)
 
     def process_input_from_child(self, timeout=10):
-        rd, wd, err = select.select([self.master_fd], [self.master_fd] if self.write_buf else [], [], timeout)
+        rd, wd, _ = select.select([self.master_fd], [self.master_fd] if self.write_buf else [], [], max(0, timeout))
         while wd:
             try:
                 n = os.write(self.master_fd, self.write_buf)
@@ -363,7 +363,7 @@ class PTY:
     def wait_till(self, q, timeout=10):
         end_time = time.monotonic() + timeout
         while not q() and time.monotonic() <= end_time:
-            self.process_input_from_child(timeout=max(0, end_time - time.monotonic()))
+            self.process_input_from_child(timeout=end_time - time.monotonic())
         if not q():
             raise TimeoutError(f'The condition was not met. Screen contents: \n {repr(self.screen_contents())}')
 
