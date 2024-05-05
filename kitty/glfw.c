@@ -256,7 +256,7 @@ window_close_callback(GLFWwindow* window) {
 static void
 window_occlusion_callback(GLFWwindow *window, bool occluded) {
     if (!set_callback_window(window)) return;
-    debug("Window %llu occlusion state changed, occluded: %d\n", global_state.callback_os_window->id, occluded);
+    debug("OSWindow %llu occlusion state changed, occluded: %d\n", global_state.callback_os_window->id, occluded);
     if (!occluded) global_state.check_for_active_animated_images = true;
     request_tick_callback();
     global_state.callback_os_window = NULL;
