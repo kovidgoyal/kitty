@@ -809,7 +809,6 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
     window->wl.pending_state = 0;
 #ifdef XDG_TOPLEVEL_STATE_SUSPENDED_SINCE_VERSION
     if (suspended_changed) {
-        debug("Window occlusion state changed, occluded: %d\n", (window->wl.current.toplevel_states & TOPLEVEL_STATE_SUSPENDED) != 0);
         _glfwInputWindowOcclusion(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_SUSPENDED);
     }
 #endif
