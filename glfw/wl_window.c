@@ -761,6 +761,7 @@ static const struct xdg_toplevel_listener xdgToplevelListener = {
 
 static void
 apply_xdg_configure_changes(_GLFWwindow *window) {
+    bool suspended_changed = false;
     if (window->wl.pending_state & PENDING_STATE_TOPLEVEL) {
         uint32_t new_states = window->wl.pending.toplevel_states;
         int width = window->wl.pending.width;
@@ -770,6 +771,10 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
             wait_for_swap_to_commit(window);
             window->wl.once.surface_configured = true;
         }
+
+#ifdef XDG_TOPLEVEL_STATE_SUSPENDED_SINCE_VERSION
+        suspended_changed = ((new_states & TOPLEVEL_STATE_SUSPENDED) != (window->wl.current.toplevel_states & TOPLEVEL_STATE_SUSPENDED));
+#endif
 
         if (new_states != window->wl.current.toplevel_states ||
                 width != window->wl.current.width ||
@@ -802,6 +807,12 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
     inform_compositor_of_window_geometry(window, "configure");
     commit_window_surface_if_safe(window);
     window->wl.pending_state = 0;
+#ifdef XDG_TOPLEVEL_STATE_SUSPENDED_SINCE_VERSION
+    if (suspended_changed) {
+        debug("Window occlusion state changed, occluded: %d\n", (window->wl.current.toplevel_states & TOPLEVEL_STATE_SUSPENDED) != 0);
+        _glfwInputWindowOcclusion(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_SUSPENDED);
+    }
+#endif
 }
 
 typedef union pixel {
@@ -1666,6 +1677,9 @@ int _glfwPlatformWindowFocused(_GLFWwindow* window)
 
 int _glfwPlatformWindowOccluded(_GLFWwindow* window UNUSED)
 {
+#ifdef XDG_TOPLEVEL_STATE_SUSPENDED_SINCE_VERSION
+    return (window->wl.current.toplevel_states & TOPLEVEL_STATE_SUSPENDED) != 0;
+#endif
     return false;
 }
 

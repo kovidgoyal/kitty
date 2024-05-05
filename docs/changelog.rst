@@ -68,6 +68,8 @@ Detailed list of changes
 
 - Dont clear selections on erase in screen commands unless the erased region intersects a selection (:iss:`7408`)
 
+- Wayland: save energy by not rendering "suspended" windows on compositors that support that
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
