@@ -1,4 +1,4 @@
-package list_fonts
+package choose_fonts
 
 import (
 	"fmt"

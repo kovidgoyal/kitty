@@ -1,4 +1,4 @@
-package list_fonts
+package choose_fonts
 
 import (
 	"fmt"
@@ -241,7 +241,7 @@ func (h *handler) initialize() {
 	h.draw_screen()
 	initialize_variable_data_cache()
 	go func() {
-		h.set_worker_error(query_kitty("", nil, &h.fonts))
+		h.set_worker_error(kitty_font_backend.query("list_all_fonts", nil, &h.fonts))
 		h.lp.WakeupMainThread()
 	}()
 }

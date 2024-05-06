@@ -1,4 +1,4 @@
-package list_fonts
+package choose_fonts
 
 import (
 	"fmt"
@@ -95,7 +95,7 @@ func ensure_variable_data_for_fonts(fonts ...ListedFont) error {
 	}
 	variable_data_cache_mutex.Unlock()
 	var data []VariableData
-	if err := query_kitty("read_variable_data", map[string]any{"descriptors": descriptors}, &data); err != nil {
+	if err := kitty_font_backend.query("read_variable_data", map[string]any{"descriptors": descriptors}, &data); err != nil {
 		return err
 	}
 	variable_data_cache_mutex.Lock()
