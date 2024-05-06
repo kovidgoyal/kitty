@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"kitty/kittens/ask"
+	"kitty/kittens/choose_fonts"
 	"kitty/kittens/clipboard"
 	"kitty/kittens/diff"
 	"kitty/kittens/hints"
@@ -20,7 +21,6 @@ import (
 	"kitty/tools/cmd/at"
 	"kitty/tools/cmd/benchmark"
 	"kitty/tools/cmd/edit_in_kitty"
-	"kitty/tools/cmd/list_fonts"
 	"kitty/tools/cmd/mouse_demo"
 	"kitty/tools/cmd/pytest"
 	"kitty/tools/cmd/run_shell"
@@ -77,10 +77,10 @@ func KittyToolEntryPoints(root *cli.Command) {
 	run_shell.EntryPoint(root)
 	// show_error
 	show_error.EntryPoint(root)
+	// choose-fonts
+	choose_fonts.EntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
-	// __list_fonts__
-	list_fonts.EntryPoint(root)
 	// __hold_till_enter__
 	root.AddSubCommand(&cli.Command{
 		Name:            "__hold_till_enter__",
