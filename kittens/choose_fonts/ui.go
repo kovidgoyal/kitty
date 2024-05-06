@@ -178,7 +178,7 @@ func (h *handler) handle_listing_key_event(event *loop.KeyEvent) (err error) {
 			h.update_family_search()
 			h.draw_screen()
 		} else {
-			h.lp.Quit(1)
+			return fmt.Errorf("canceled by user")
 		}
 		return
 	}
@@ -241,7 +241,7 @@ func (h *handler) initialize() {
 	h.draw_screen()
 	initialize_variable_data_cache()
 	go func() {
-		h.set_worker_error(kitty_font_backend.query("list_all_fonts", nil, &h.fonts))
+		h.set_worker_error(kitty_font_backend.query("list_monospaced_fonts", nil, &h.fonts))
 		h.lp.WakeupMainThread()
 	}()
 }
@@ -290,8 +290,7 @@ func (h *handler) on_mouse_event(event *loop.MouseEvent) (err error) {
 func (h *handler) on_key_event(event *loop.KeyEvent) (err error) {
 	if event.MatchesPressOrRepeat("ctrl+c") {
 		event.Handled = true
-		h.lp.Quit(1)
-		return nil
+		return fmt.Errorf("canceled by user")
 	}
 	switch h.state {
 	case LISTING_FAMILIES:
