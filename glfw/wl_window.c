@@ -1620,7 +1620,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
 
 static void
 request_attention(GLFWwindow *window, const char *token, void *data UNUSED) {
-    if (window && token && token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);
+    if (window && token && token[0] && _glfw.wl.xdg_activation_v1) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);
 }
 
 static bool
@@ -1645,9 +1645,9 @@ int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
 static void
 focus_window(GLFWwindow *window, const char *token, void *data UNUSED) {
     if (!window) return;
-    if (token && token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);
+    if (token && token[0] && _glfw.wl.xdg_activation_v1) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);
     else {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Window focus request via xdg-activation protocol was denied by the compositor. Use a better compositor.");
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Window focus request via xdg-activation protocol was denied or is unsupported by the compositor. Use a better compositor.");
     }
 }
 
@@ -2689,7 +2689,7 @@ GLFWAPI struct wl_surface* glfwGetWaylandWindow(GLFWwindow* handle)
 GLFWAPI void glfwWaylandActivateWindow(GLFWwindow* handle, const char *activation_token) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     _GLFW_REQUIRE_INIT();
-    if (activation_token && activation_token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, activation_token, window->wl.surface);
+    if (activation_token && activation_token[0] && _glfw.wl.xdg_activation_v1) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, activation_token, window->wl.surface);
 }
 
 GLFWAPI void glfwWaylandRunWithActivationToken(GLFWwindow *handle, GLFWactivationcallback cb, void *cb_data) {
