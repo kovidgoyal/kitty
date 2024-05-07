@@ -504,6 +504,15 @@ def safe_read(path: str) -> str:
     return ''
 
 
+def remove_pycache_only_folders():
+    folders_to_remove = []
+    for dirpath, folders, files in os.walk('.'):
+        if not files and folders == ['__pycache__']:
+            folders_to_remove.append(dirpath)
+    for x in folders_to_remove:
+        shutil.rmtree(x)
+
+
 @contextmanager
 def change_to_git_master() -> Generator[None, None, None]:
     stash_ref_before = safe_read('.git/refs/stash')
@@ -512,6 +521,7 @@ def change_to_git_master() -> Generator[None, None, None]:
         branch_before = current_branch()
         if branch_before != 'master':
             subprocess.check_call(['git', 'switch', 'master'])
+            remove_pycache_only_folders()
             subprocess.check_call(['make', 'debug'])
         try:
             yield
