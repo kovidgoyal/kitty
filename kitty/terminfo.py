@@ -517,7 +517,7 @@ def key_as_bytes(name: str) -> bytes:
     return ans.encode('ascii')
 
 
-def get_capabilities(query_string: str, opts: 'Options', window_id: int, os_window_id: int) -> Generator[str, None, None]:
+def get_capabilities(query_string: str, opts: 'Options', window_id: int = 0, os_window_id: int = 0) -> Generator[str, None, None]:
     from .fast_data_types import ERROR_PREFIX
 
     def result(encoded_query_name: str, x: Optional[str] = None) -> str:

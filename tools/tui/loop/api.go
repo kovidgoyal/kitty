@@ -4,6 +4,7 @@ package loop
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"runtime"
@@ -88,6 +89,9 @@ type Loop struct {
 
 	// Called when a response to an rc command is received
 	OnRCResponse func(data []byte) error
+
+	// Called when a response to a query command is received
+	OnQueryResponse func(key, val string, valid bool) error
 
 	// Called when any input from tty is received
 	OnReceivedData func(data []byte) error
@@ -479,6 +483,17 @@ func (self *Loop) CopyTextToPrimarySelection(text string) {
 
 func (self *Loop) CopyTextToClipboard(text string) {
 	self.copy_text_to(text, "c")
+}
+
+func (self *Loop) QueryTerminal(fields ...string) IdType {
+	if len(fields) == 0 {
+		return 0
+	}
+	q := make([]string, len(fields))
+	for i, x := range fields {
+		q[i] = hex.EncodeToString(utils.UnsafeStringToBytes("kitty-query-" + x))
+	}
+	return self.QueueWriteString(fmt.Sprintf("\x1bP+q%s\a", strings.Join(q, ";")))
 }
 
 func (self *Loop) PushPointerShape(s PointerShape) {

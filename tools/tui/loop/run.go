@@ -4,6 +4,7 @@ package loop
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -171,6 +172,24 @@ func (self *Loop) handle_osc(raw []byte) error {
 func (self *Loop) handle_dcs(raw []byte) error {
 	if self.OnRCResponse != nil && bytes.HasPrefix(raw, utils.UnsafeStringToBytes("@kitty-cmd")) {
 		return self.OnRCResponse(raw[len("@kitty-cmd"):])
+	}
+	if self.OnQueryResponse != nil && (bytes.HasPrefix(raw, utils.UnsafeStringToBytes("1+r")) || bytes.HasPrefix(raw, utils.UnsafeStringToBytes("0+r"))) {
+		valid := raw[0] == '1'
+		s := utils.NewSeparatorScanner(utils.UnsafeBytesToString(raw[3:]), ";")
+		for s.Scan() {
+			key, val, _ := strings.Cut(s.Text(), "=")
+			if k, err := hex.DecodeString(key); err == nil {
+				if bytes.HasPrefix(k, utils.UnsafeStringToBytes("kitty-query-")) {
+					k = k[len("kitty-query-"):]
+					if v, err := hex.DecodeString(val); err == nil {
+						if err = self.OnQueryResponse(string(k), string(v), valid); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+		return nil
 	}
 	if self.OnEscapeCode != nil {
 		return self.OnEscapeCode(DCS, raw)

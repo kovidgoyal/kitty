@@ -2,6 +2,7 @@ package choose_fonts
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -24,14 +25,16 @@ const (
 )
 
 type handler struct {
-	lp                   *loop.Loop
-	fonts                map[string][]ListedFont
-	state                State
-	err_mutex            sync.Mutex
-	err_in_worker_thread error
-	mouse_state          tui.MouseState
-	render_count         uint
-	render_lines         tui.RenderLines
+	lp                           *loop.Loop
+	fonts                        map[string][]ListedFont
+	state                        State
+	err_mutex                    sync.Mutex
+	err_in_worker_thread         error
+	mouse_state                  tui.MouseState
+	render_count                 uint
+	render_lines                 tui.RenderLines
+	font_sz_in_pts               float64
+	logical_dpi_x, logical_dpi_y float64
 
 	// Listing
 	rl                          *readline.Readline
@@ -259,6 +262,8 @@ func (h *handler) handle_listing_text(text string, from_key_event bool, in_brack
 // Events {{{
 func (h *handler) initialize() {
 	h.lp.SetCursorVisible(false)
+	h.lp.OnQueryResponse = h.on_query_response
+	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y")
 	h.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
 	h.variable_data_requested_for = utils.NewSet[string](256)
 	h.draw_screen()
@@ -272,6 +277,35 @@ func (h *handler) initialize() {
 func (h *handler) finalize() {
 	h.lp.SetCursorVisible(true)
 	h.lp.SetCursorShape(loop.BLOCK_CURSOR, true)
+}
+
+func (h *handler) on_query_response(key, val string, valid bool) error {
+	if !valid {
+		return fmt.Errorf("Terminal does not support querying the: %s", key)
+	}
+	set_float := func(k, v string, dest *float64) error {
+		if fs, err := strconv.ParseFloat(v, 64); err == nil {
+			*dest = fs
+		} else {
+			return fmt.Errorf("Invalid response from terminal to %s query: %#v", k, v)
+		}
+		return nil
+	}
+	switch key {
+	case "font_size":
+		if err := set_float(key, val, &h.font_sz_in_pts); err != nil {
+			return err
+		}
+	case "logical_dpi_x":
+		if err := set_float(key, val, &h.logical_dpi_x); err != nil {
+			return err
+		}
+	case "logical_dpi_y":
+		if err := set_float(key, val, &h.logical_dpi_y); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (h *handler) draw_screen() (err error) {

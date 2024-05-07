@@ -150,7 +150,29 @@ class FontSize(Query):
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
         cf = current_fonts(os_window_id)
-        return f'{cf['font_sz_in_pts']:g}'
+        return f'{cf["font_sz_in_pts"]:g}'
+
+@query
+class DpiX(Query):
+    name: str = 'dpi_x'
+    help_text: str = 'The current DPI on the x-axis'
+
+    @staticmethod
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
+        from kitty.fast_data_types import current_fonts
+        cf = current_fonts(os_window_id)
+        return f'{cf["logical_dpi_x"]:g}'
+
+@query
+class DpiY(Query):
+    name: str = 'dpi_y'
+    help_text: str = 'The current DPI on the y-axis'
+
+    @staticmethod
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
+        from kitty.fast_data_types import current_fonts
+        cf = current_fonts(os_window_id)
+        return f'{cf["logical_dpi_y"]:g}'
 
 
 @query
