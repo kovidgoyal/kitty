@@ -30,6 +30,7 @@ type handler struct {
 	err_mutex            sync.Mutex
 	err_in_worker_thread error
 	mouse_state          tui.MouseState
+	render_count         uint
 	render_lines         tui.RenderLines
 
 	// Listing
@@ -271,10 +272,13 @@ func (h *handler) finalize() {
 }
 
 func (h *handler) draw_screen() (err error) {
+	h.render_count++
 	h.lp.StartAtomicUpdate()
-	defer h.mouse_state.UpdateHoveredIds()
-	defer h.mouse_state.ApplyHoverStyles(h.lp)
-	defer h.lp.EndAtomicUpdate()
+	defer func() {
+		h.mouse_state.UpdateHoveredIds()
+		h.mouse_state.ApplyHoverStyles(h.lp)
+		h.lp.EndAtomicUpdate()
+	}()
 	h.lp.ClearScreen()
 	h.lp.AllowLineWrapping(false)
 	h.mouse_state.ClearCellRegions()
@@ -301,8 +305,19 @@ func (h *handler) on_wakeup() (err error) {
 }
 
 func (h *handler) on_mouse_event(event *loop.MouseEvent) (err error) {
-	err = h.mouse_state.UpdateState(event)
-	h.mouse_state.ApplyHoverStyles(h.lp)
+	rc := h.render_count
+	redraw_needed := false
+	if h.mouse_state.UpdateState(event) {
+		redraw_needed = true
+	}
+	if event.Event_type == loop.MOUSE_CLICK && event.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
+		if err = h.mouse_state.ClickHoveredRegions(); err != nil {
+			return
+		}
+	}
+	if redraw_needed && rc == h.render_count {
+		err = h.draw_screen()
+	}
 	return
 }
 

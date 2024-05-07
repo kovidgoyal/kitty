@@ -248,17 +248,16 @@ func (m *MouseState) ClearCellRegions() {
 	m.hovered_ids = nil
 }
 
-func (m *MouseState) UpdateHoveredIds() {
-	if m.hovered_ids == nil {
-		m.hovered_ids = utils.NewSet[string]()
-	} else {
-		m.hovered_ids.Clear()
-	}
+func (m *MouseState) UpdateHoveredIds() (changed bool) {
+	h := utils.NewSet[string]()
 	for _, r := range m.regions {
 		if r.Contains(m.Cell.X, m.Cell.Y) {
-			m.hovered_ids.Add(r.Id)
+			h.Add(r.Id)
 		}
 	}
+	changed = !h.Equal(m.hovered_ids)
+	m.hovered_ids = h
+	return
 }
 
 func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
@@ -297,7 +296,25 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 	}
 }
 
-func (m *MouseState) UpdateState(ev *loop.MouseEvent) error {
+func (m *MouseState) ClickHoveredRegions() error {
+	seen := utils.NewSet[string]()
+	for id := range m.hovered_ids.Iterable() {
+		for _, r := range m.region_id_map[id] {
+			if seen.Has(r.Id) {
+				continue
+			}
+			seen.Add(r.Id)
+			for _, f := range r.OnClick {
+				if err := f(r.Id); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (m *MouseState) UpdateState(ev *loop.MouseEvent) (hovered_ids_changed bool) {
 	m.Cell = ev.Cell
 	m.Pixel = ev.Pixel
 	if ev.Event_type == loop.MOUSE_PRESS || ev.Event_type == loop.MOUSE_RELEASE {
@@ -324,6 +341,5 @@ func (m *MouseState) UpdateState(ev *loop.MouseEvent) error {
 			m.Pressed.Seventh = pressed
 		}
 	}
-	m.UpdateHoveredIds()
-	return nil
+	return m.UpdateHoveredIds()
 }
