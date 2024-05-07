@@ -63,7 +63,10 @@ func (r RenderLines) InRectangle(
 		if hyperlink_state.action == "" {
 			return false
 		}
-		mouse_state.AddCellRegion(hyperlink_state.action, hyperlink_state.start_x, hyperlink_state.start_y, x, y, on_click...)
+		if y == hyperlink_state.start_y && x <= hyperlink_state.start_x {
+			return false
+		}
+		mouse_state.AddCellRegion(hyperlink_state.action, hyperlink_state.start_x, hyperlink_state.start_y, max(0, x-1), y, on_click...)
 		hyperlink_state.action = ``
 		return true
 	}
