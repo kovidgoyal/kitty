@@ -220,7 +220,7 @@ func (self *Loop) Println(args ...any) {
 func (self *Loop) style_region(style string, start_x, start_y, end_x, end_y int) string {
 	sgr := self.SprintStyled(style, "|")[2:]
 	sgr = sgr[:strings.IndexByte(sgr, 'm')]
-	return fmt.Sprintf("\x1b[%d;%d;%d;%d%s$r", start_y+1, start_x+1, end_y+1, end_x+1, sgr)
+	return fmt.Sprintf("\x1b[%d;%d;%d;%d;%s$r", start_y+1, start_x+1, end_y+1, end_x+1, sgr)
 }
 
 // Apply the specified style to the specified region of the screen (0-based

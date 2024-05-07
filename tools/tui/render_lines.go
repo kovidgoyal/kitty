@@ -24,7 +24,7 @@ type RenderLines struct {
 }
 
 var hyperlink_pat = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile("\x1b]8;([^;]*);.*?(\x1b\\\\|\a)")
+	return regexp.MustCompile("\x1b]8;([^;]*);(.*?)(?:\x1b\\\\|\a)")
 })
 
 // Render lines in the specified rectangle. If width > 0 then lines are wrapped
@@ -32,7 +32,7 @@ var hyperlink_pat = sync.OnceValue(func() *regexp.Regexp {
 // move cursor is returned. Any internal hyperlinks are added to the
 // MouseState.
 func (r RenderLines) InRectangle(
-	lines []string, start_x, start_y, width, height int, mouse_state *MouseState,
+	lines []string, start_x, start_y, width, height int, mouse_state *MouseState, on_click ...func(id string) error,
 ) (all_rendered bool, y_after_last_line int, ans string) {
 	end_y := start_y + height - 1
 	if end_y < start_y {
@@ -59,23 +59,23 @@ func (r RenderLines) InRectangle(
 		}
 	}
 
-	commit_hyperlink := func() {
-		mouse_state.AddCellRegion(hyperlink_state.action, hyperlink_state.start_x, hyperlink_state.start_y, x, y)
+	commit_hyperlink := func() bool {
+		if hyperlink_state.action == "" {
+			return false
+		}
+		mouse_state.AddCellRegion(hyperlink_state.action, hyperlink_state.start_x, hyperlink_state.start_y, x, y, on_click...)
 		hyperlink_state.action = ``
+		return true
 	}
 
 	add_hyperlink := func(id, url string) {
 		is_closer := id == "" && url == ""
 		if is_closer {
-			if hyperlink_state.action != "" {
-				commit_hyperlink()
-			} else {
+			if !commit_hyperlink() {
 				buf.WriteString("\x1b]8;;\x1b\\")
 			}
 		} else {
-			if hyperlink_state.action != "" {
-				commit_hyperlink()
-			}
+			commit_hyperlink()
 			if strings.HasPrefix(url, KittyInternalHyperlinkProtocol+":") {
 				start_hyperlink(url[len(KittyInternalHyperlinkProtocol)+1:])
 			} else {
