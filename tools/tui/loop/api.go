@@ -493,6 +493,8 @@ func (self *Loop) PopPointerShape() {
 	}
 }
 
+// Remove all pointer shapes from the shape stack resetting to default pointer
+// shape. This is called automatically on loop termination.
 func (self *Loop) ClearPointerShapes() (ans []PointerShape) {
 	ans = self.pointer_shapes
 	for i := len(self.pointer_shapes) - 1; i >= 0; i-- {
