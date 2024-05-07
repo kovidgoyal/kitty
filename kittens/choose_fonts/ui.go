@@ -96,6 +96,9 @@ func (h *handler) draw_family_summary(start_x int, sz loop.ScreenSize) (err erro
 			add_line(styles)
 			add_line("")
 		}
+		if s.has_variable_faces {
+			add_line(fmt.Sprintf("This font is %s allowing for finer style control", h.lp.SprintStyled("fg=magenta", "variable")))
+		}
 		add_line(fmt.Sprintf("Press the %s key to choose this family", h.lp.SprintStyled("fg=yellow", "Enter")))
 	} else {
 		lines = append(lines, "Reading font data, please wait…")
