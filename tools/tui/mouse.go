@@ -289,10 +289,19 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 	} else {
 		hs = style[0]
 	}
+	is_hovered := false
 	for id := range m.hovered_ids.Iterable() {
 		for _, r := range m.region_id_map[id] {
 			lp.StyleRegion(hs, r.TopLeft.X, r.TopLeft.Y, r.BottomRight.X, r.BottomRight.Y)
+			is_hovered = true
 		}
+	}
+	if is_hovered {
+		if s, has := lp.CurrentPointerShape(); !has || s != loop.POINTER_POINTER {
+			lp.PushPointerShape(loop.POINTER_POINTER)
+		}
+	} else {
+		lp.ClearPointerShapes()
 	}
 }
 
