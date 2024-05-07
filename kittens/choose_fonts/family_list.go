@@ -96,7 +96,8 @@ func apply_search(families []string, expression string, marks ...string) (matche
 }
 
 func make_family_names_clickable(family string) string {
-	return tui.InternalHyperlink(family, "family-chosen:"+family)
+	id := wcswidth.StripEscapeCodes(family)
+	return tui.InternalHyperlink(family, "family-chosen:"+id)
 }
 
 func (self *FamilyList) UpdateFamilies(families []string) {

@@ -121,6 +121,22 @@ func (self *Set[T]) IsSubsetOf(other *Set[T]) bool {
 	return true
 }
 
+func (self *Set[T]) Equal(other *Set[T]) bool {
+	l := self.Len()
+	if other == nil {
+		return l == 0
+	}
+	if l != other.Len() {
+		return false
+	}
+	for x := range self.items {
+		if !other.Has(x) {
+			return false
+		}
+	}
+	return true
+}
+
 func NewSet[T comparable](capacity ...int) (ans *Set[T]) {
 	if len(capacity) == 0 {
 		ans = &Set[T]{items: make(map[T]struct{}, 8)}
