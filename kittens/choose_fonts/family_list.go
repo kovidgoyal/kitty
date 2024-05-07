@@ -2,6 +2,7 @@ package choose_fonts
 
 import (
 	"fmt"
+	"kitty/tools/tui"
 	"kitty/tools/tui/subseq"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
@@ -19,6 +20,16 @@ type FamilyList struct {
 
 func (self *FamilyList) Len() int {
 	return len(self.families)
+}
+
+func (self *FamilyList) Select(family string) bool {
+	for idx, q := range self.families {
+		if q == family {
+			self.current_idx = idx
+			return true
+		}
+	}
+	return false
 }
 
 func (self *FamilyList) Next(delta int, allow_wrapping bool) bool {
@@ -84,6 +95,10 @@ func apply_search(families []string, expression string, marks ...string) (matche
 	return
 }
 
+func make_family_names_clickable(family string) string {
+	return tui.InternalHyperlink(family, "family-chosen:"+family)
+}
+
 func (self *FamilyList) UpdateFamilies(families []string) {
 	self.families, self.all_families = families, families
 	if self.current_search != "" {
@@ -92,6 +107,7 @@ func (self *FamilyList) UpdateFamilies(families []string) {
 	} else {
 		self.display_strings = utils.Map(limit_lengths, families)
 	}
+	self.display_strings = utils.Map(make_family_names_clickable, self.display_strings)
 	self.widths = utils.Map(wcswidth.Stringwidth, self.display_strings)
 	self.max_width = utils.Max(0, self.widths...)
 	self.current_idx = 0

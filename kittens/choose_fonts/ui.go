@@ -137,7 +137,7 @@ func (h *handler) draw_listing_screen() (err error) {
 		}
 		lines = append(lines, line)
 	}
-	_, _, str := h.render_lines.InRectangle(lines, 0, 0, 0, num_rows, &h.mouse_state)
+	_, _, str := h.render_lines.InRectangle(lines, 0, 0, 0, num_rows, &h.mouse_state, h.handle_click)
 	h.lp.QueueWriteString(str)
 	seps := strings.Repeat(SEPARATOR, num_rows)
 	seps = strings.TrimSpace(seps)
@@ -151,6 +151,25 @@ func (h *handler) draw_listing_screen() (err error) {
 	}
 	h.draw_search_bar()
 	return
+}
+
+func (h *handler) handle_click(id string) error {
+	which, data, found := strings.Cut(id, ":")
+	if !found {
+		return fmt.Errorf("Not a valid click id: %s", id)
+	}
+	switch which {
+	case "family-chosen":
+		if h.state == LISTING_FAMILIES {
+			if h.family_list.Select(data) {
+				h.draw_screen()
+			} else {
+				h.lp.Beep()
+			}
+
+		}
+	}
+	return nil
 }
 
 func (h *handler) update_family_search() {
