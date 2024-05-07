@@ -1273,7 +1273,7 @@ class Window:
             self.refresh()
 
     def request_capabilities(self, q: str) -> None:
-        for result in get_capabilities(q, get_options()):
+        for result in get_capabilities(q, get_options(), self.id, self.os_window_id):
             self.screen.send_escape_code_to_child(ESC_DCS, result)
 
     def handle_remote_cmd(self, cmd: memoryview) -> None:

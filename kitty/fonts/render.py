@@ -497,8 +497,8 @@ def test_render_string(
     cell_width, cell_height, cells = render_string(text, family, size, dpi)
     rgb_data = concat_cells(cell_width, cell_height, True, tuple(cells))
     cf = current_fonts()
-    fonts = [cf['medium'].display_name()]
-    fonts.extend(f.display_name() for f in cf['fallback'])
+    fonts = [cf['medium'].postscript_name()]
+    fonts.extend(f.postscript_name() for f in cf['fallback'])
     msg = 'Rendered string {} below, with fonts: {}\n'.format(text, ', '.join(fonts))
     try:
         print(msg)

@@ -50,7 +50,7 @@ class Query:
         return self.ans
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         raise NotImplementedError()
 
 
@@ -69,7 +69,7 @@ class TerminalName(Query):
     help_text: str = f'Terminal name (e.g. :code:`{names[0]}`)'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         return appname
 
 
@@ -79,7 +79,7 @@ class TerminalVersion(Query):
     help_text: str = f'Terminal version (e.g. :code:`{str_version}`)'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         return str_version
 
 
@@ -89,7 +89,7 @@ class AllowHyperlinks(Query):
     help_text: str = 'The config option :opt:`allow_hyperlinks` in :file:`kitty.conf` for allowing hyperlinks can be :code:`yes`, :code:`no` or :code:`ask`'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         return 'ask' if opts.allow_hyperlinks == 0b11 else ('yes' if opts.allow_hyperlinks else 'no')
 
 
@@ -99,10 +99,10 @@ class FontFamily(Query):
     help_text: str = 'The current font\'s PostScript name'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
-        cf = current_fonts()
-        return str(cf['medium'].display_name())
+        cf = current_fonts(os_window_id)
+        return cf['medium'].postscript_name()
 
 
 @query
@@ -111,10 +111,10 @@ class BoldFont(Query):
     help_text: str = 'The current bold font\'s PostScript name'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
-        cf = current_fonts()
-        return str(cf['bold'].display_name())
+        cf = current_fonts(os_window_id)
+        return cf['bold'].postscript_name()
 
 
 @query
@@ -123,10 +123,10 @@ class ItalicFont(Query):
     help_text: str = 'The current italic font\'s PostScript name'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
-        cf = current_fonts()
-        return str(cf['italic'].display_name())
+        cf = current_fonts(os_window_id)
+        return cf['italic'].postscript_name()
 
 
 @query
@@ -135,20 +135,22 @@ class BiFont(Query):
     help_text: str = 'The current bold-italic font\'s PostScript name'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
-        cf = current_fonts()
-        return str(cf['bi'].display_name())
+        cf = current_fonts(os_window_id)
+        return cf['bi'].postscript_name()
 
 
 @query
 class FontSize(Query):
     name: str = 'font_size'
-    help_text: str = 'The current overall font size (individual windows can have different per window font sizes)'
+    help_text: str = 'The current font size in pts'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
-        return f'{opts.font_size:g}'
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
+        from kitty.fast_data_types import current_fonts
+        cf = current_fonts(os_window_id)
+        return f'{cf['font_sz_in_pts']:g}'
 
 
 @query
@@ -157,16 +159,16 @@ class ClipboardControl(Query):
     help_text: str = 'The config option :opt:`clipboard_control` in :file:`kitty.conf` for allowing reads/writes to/from the clipboard'
 
     @staticmethod
-    def get_result(opts: Options) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         return ' '.join(opts.clipboard_control)
 
 
-def get_result(name: str) -> Optional[str]:
+def get_result(name: str, window_id: int, os_window_id: int) -> Optional[str]:
     from kitty.fast_data_types import get_options
     q = all_queries.get(name)
     if q is None:
         return None
-    return q.get_result(get_options())
+    return q.get_result(get_options(), window_id, os_window_id)
 
 
 def do_queries(queries: Iterable[str], cli_opts: QueryTerminalCLIOptions) -> Dict[str, str]:

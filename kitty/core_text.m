@@ -849,8 +849,15 @@ display_name(CTFace *self) {
     return convert_cfstring(dn, true);
 }
 
+static PyObject*
+postscript_name(CTFace *self) {
+    return self->postscript_name ? Py_BuildValue("O", self->postscript_name) : PyUnicode_FromString("");
+}
+
+
 static PyMethodDef methods[] = {
     METHODB(display_name, METH_NOARGS),
+    METHODB(postscript_name, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(get_best_name, METH_O),
@@ -894,7 +901,6 @@ static PyMemberDef members[] = {
     MEM(family_name, T_OBJECT),
     MEM(path, T_OBJECT),
     MEM(full_name, T_OBJECT),
-    MEM(postscript_name, T_OBJECT),
     {NULL}  /* Sentinel */
 };
 
