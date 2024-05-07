@@ -504,7 +504,7 @@ def safe_read(path: str) -> str:
     return ''
 
 
-def remove_pycache_only_folders():
+def remove_pycache_only_folders() -> None:
     folders_to_remove = []
     for dirpath, folders, files in os.walk('.'):
         if not files and folders == ['__pycache__']:
