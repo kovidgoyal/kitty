@@ -1633,11 +1633,18 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-current_fonts(PYNOARG) {
+current_fonts(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id = 0;
+    if (!PyArg_ParseTuple(args, "|K", &os_window_id)) return NULL;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create font group first"); return NULL; }
+    FontGroup *fg = font_groups;
+    if (os_window_id) {
+        OSWindow *os_window = os_window_for_id(os_window_id);
+        if (!os_window) { PyErr_SetString(PyExc_KeyError, "no oswindow with the specified id exists"); return NULL; }
+        fg = (FontGroup*)os_window->fonts_data;
+    }
     RAII_PyObject(ans, PyDict_New());
     if (!ans) return NULL;
-    FontGroup *fg = font_groups;
 #define SET(key, val) {if (PyDict_SetItemString(ans, #key, fg->fonts[val].face) != 0) { return NULL; }}
     SET(medium, fg->medium_font_idx);
     if (fg->bold_font_idx > 0) SET(bold, fg->bold_font_idx);
@@ -1658,6 +1665,9 @@ current_fonts(PYNOARG) {
         PyTuple_SET_ITEM(ff, i, fg->fonts[fg->first_fallback_font_idx + i].face);
     }
     if (PyDict_SetItemString(ans, "fallback", ff) != 0) return NULL;
+#define p(x) { RAII_PyObject(t, PyFloat_FromDouble(fg->x)); if (!t) return NULL; if (PyDict_SetItemString(ans, #x, t) != 0) return NULL; }
+    p(font_sz_in_pts); p(logical_dpi_x); p(logical_dpi_y);
+#undef p
     Py_INCREF(ans);
     return ans;
 #undef SET
@@ -1725,7 +1735,7 @@ static PyMethodDef module_methods[] = {
     METHODB(concat_cells, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),
     METHODB(test_shape, METH_VARARGS),
-    METHODB(current_fonts, METH_NOARGS),
+    METHODB(current_fonts, METH_VARARGS),
     METHODB(test_render_line, METH_VARARGS),
     METHODB(get_fallback_font, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */

@@ -517,7 +517,7 @@ def key_as_bytes(name: str) -> bytes:
     return ans.encode('ascii')
 
 
-def get_capabilities(query_string: str, opts: 'Options') -> Generator[str, None, None]:
+def get_capabilities(query_string: str, opts: 'Options', window_id: int, os_window_id: int) -> Generator[str, None, None]:
     from .fast_data_types import ERROR_PREFIX
 
     def result(encoded_query_name: str, x: Optional[str] = None) -> str:
@@ -533,7 +533,7 @@ def get_capabilities(query_string: str, opts: 'Options') -> Generator[str, None,
         elif name.startswith('kitty-query-'):
             from kittens.query_terminal.main import get_result
             name = name[len('kitty-query-'):]
-            rval = get_result(name)
+            rval = get_result(name, window_id, os_window_id)
             if rval is None:
                 from .utils import log_error
                 log_error('Unknown kitty terminfo query:', name)
