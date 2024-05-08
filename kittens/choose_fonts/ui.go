@@ -25,16 +25,18 @@ const (
 )
 
 type handler struct {
-	lp                           *loop.Loop
-	fonts                        map[string][]ListedFont
-	state                        State
-	err_mutex                    sync.Mutex
-	err_in_worker_thread         error
-	mouse_state                  tui.MouseState
-	render_count                 uint
-	render_lines                 tui.RenderLines
-	font_sz_in_pts               float64
-	logical_dpi_x, logical_dpi_y float64
+	lp                   *loop.Loop
+	fonts                map[string][]ListedFont
+	state                State
+	err_mutex            sync.Mutex
+	err_in_worker_thread error
+	mouse_state          tui.MouseState
+	render_count         uint
+	render_lines         tui.RenderLines
+	text_style           struct {
+		font_sz, dpi_x, dpi_y  float64
+		foreground, background string
+	}
 
 	// Listing
 	rl                          *readline.Readline
@@ -263,7 +265,7 @@ func (h *handler) handle_listing_text(text string, from_key_event bool, in_brack
 func (h *handler) initialize() {
 	h.lp.SetCursorVisible(false)
 	h.lp.OnQueryResponse = h.on_query_response
-	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y")
+	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y", "foreground", "background")
 	h.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
 	h.variable_data_requested_for = utils.NewSet[string](256)
 	h.draw_screen()
@@ -293,17 +295,21 @@ func (h *handler) on_query_response(key, val string, valid bool) error {
 	}
 	switch key {
 	case "font_size":
-		if err := set_float(key, val, &h.font_sz_in_pts); err != nil {
+		if err := set_float(key, val, &h.text_style.font_sz); err != nil {
 			return err
 		}
-	case "logical_dpi_x":
-		if err := set_float(key, val, &h.logical_dpi_x); err != nil {
+	case "dpi_x":
+		if err := set_float(key, val, &h.text_style.dpi_x); err != nil {
 			return err
 		}
-	case "logical_dpi_y":
-		if err := set_float(key, val, &h.logical_dpi_y); err != nil {
+	case "dpi_y":
+		if err := set_float(key, val, &h.text_style.dpi_y); err != nil {
 			return err
 		}
+	case "foreground":
+		h.text_style.foreground = val
+	case "background":
+		h.text_style.background = val
 	}
 	return nil
 }

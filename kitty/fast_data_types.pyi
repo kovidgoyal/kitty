@@ -728,6 +728,7 @@ class Color:
 
 class ColorProfile:
 
+    default_fg: int
     default_bg: int
 
     def as_dict(self) -> Dict[str, Optional[int]]:
