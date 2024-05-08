@@ -16,7 +16,7 @@ func csi(csi string) string {
 	return "CSI " + strings.NewReplacer(":", " : ", ";", " ; ").Replace(csi[:len(csi)-1]) + " " + csi[len(csi)-1:]
 }
 
-func run_kitty_loop(opts *Options) (err error) {
+func run_kitty_loop(_ *Options) (err error) {
 	lp, err := loop.New(loop.FullKeyboardProtocol)
 	if err != nil {
 		return err

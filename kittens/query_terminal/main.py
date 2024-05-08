@@ -5,14 +5,11 @@ import re
 import sys
 from binascii import hexlify, unhexlify
 from contextlib import suppress
-from typing import Dict, Iterable, List, Optional, Type
+from typing import Dict, Optional, Type
 
-from kitty.cli import parse_args
-from kitty.cli_stub import QueryTerminalCLIOptions
 from kitty.constants import appname, str_version
 from kitty.options.types import Options
 from kitty.terminfo import names
-from kitty.utils import TTYIO
 
 
 class Query:
@@ -228,31 +225,6 @@ def get_result(name: str, window_id: int, os_window_id: int) -> Optional[str]:
     return q.get_result(get_options(), window_id, os_window_id)
 
 
-def do_queries(queries: Iterable[str], cli_opts: QueryTerminalCLIOptions) -> Dict[str, str]:
-    actions = tuple(all_queries[x]() for x in queries)
-    qstring = ''.join(a.query_code() for a in actions)
-    received = b''
-    pat = re.compile(rb'\x1b\[\?.+?c')
-
-    def more_needed(data: bytes) -> bool:
-        nonlocal received
-        received += data
-        has_da1_response = pat.search(received) is not None
-        if has_da1_response:
-            return False
-        for a in actions:
-            if a.more_needed(received):
-                return True
-        return has_da1_response
-
-    with TTYIO() as ttyio:
-        ttyio.send(qstring)
-        ttyio.send('\x1b[c')  # DA1 query https://vt100.net/docs/vt510-rm/DA1.html
-        ttyio.recv(more_needed, timeout=cli_opts.wait_for)
-
-    return {a.name: a.output_line() for a in actions}
-
-
 def options_spec() -> str:
     return '''\
 --wait-for
@@ -289,29 +261,8 @@ Available queries are:
 usage = '[query1 query2 ...]'
 
 
-def main(args: List[str] = sys.argv) -> None:
-    cli_opts, items_ = parse_args(
-        args[1:],
-        options_spec,
-        usage,
-        help_text,
-        f'{appname} +kitten query_terminal',
-        result_class=QueryTerminalCLIOptions
-    )
-    queries: List[str] = list(items_)
-    if 'all' in queries or not queries:
-        queries = sorted(all_queries)
-    else:
-        extra = frozenset(queries) - frozenset(all_queries)
-        if extra:
-            raise SystemExit(f'Unknown queries: {", ".join(extra)}')
-
-    for key, val in do_queries(queries, cli_opts).items():
-        print(f'{key}:', val)
-
-
 if __name__ == '__main__':
-    main()
+    raise SystemExit('Should be run as kitten hints')
 elif __name__ == '__doc__':
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
