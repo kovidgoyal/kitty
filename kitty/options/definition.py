@@ -4279,7 +4279,7 @@ This will send "Special text" when you press the :kbd:`Ctrl+Alt+A` key
 combination. The text to be sent decodes :link:`ANSI C escapes <https://www.gnu.org/software/bash/manual/html_node/ANSI_002dC-Quoting.html>`
 so you can use escapes like :code:`\\\\e` to send control codes or :code:`\\\\u21fb` to send
 Unicode characters (or you can just input the Unicode characters directly as
-UTF-8 text). You can use ``kitten show_key`` to get the key escape
+UTF-8 text). You can use ``kitten show-key`` to get the key escape
 codes you want to emulate.
 
 The first argument to :code:`send_text` is the keyboard modes in which to
