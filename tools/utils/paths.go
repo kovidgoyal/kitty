@@ -19,6 +19,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
 )
 
@@ -66,8 +67,16 @@ func Abspath(path string) string {
 }
 
 var KittyExe = sync.OnceValue(func() string {
-	exe, err := os.Executable()
-	if err == nil {
+	if kitty_pid := os.Getenv("KITTY_PID"); kitty_pid != "" {
+		if kp, err := strconv.Atoi(kitty_pid); err == nil {
+			if p, err := process.NewProcess(int32(kp)); err == nil {
+				if exe, err := p.Exe(); err == nil && filepath.IsAbs(exe) && filepath.Base(exe) == "kitty" {
+					return exe
+				}
+			}
+		}
+	}
+	if exe, err := os.Executable(); err == nil {
 		ans := filepath.Join(filepath.Dir(exe), "kitty")
 		if s, err := os.Stat(ans); err == nil && !s.IsDir() {
 			return ans
