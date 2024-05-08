@@ -1079,13 +1079,16 @@ bottom and left.
     )
 
 opt('placement_strategy', 'center',
-    choices=('center', 'top-left'),
+    choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'),
     long_text='''
 When the window size is not an exact multiple of the cell size, the cell area of
 the terminal window will have some extra padding on the sides. You can control
 how that padding is distributed with this option. Using a value of
 :code:`center` means the cell area will be placed centrally. A value of
 :code:`top-left` means the padding will be only at the bottom and right edges.
+The value can be one of: :code:`top-left`, :code:`top`, :code:`top-right`,
+:code:`left`, :code:`center`, :code:`right`, :code:`bottom-left`,
+:code:`bottom`, :code:`bottom-right`.
 '''
     )
 
