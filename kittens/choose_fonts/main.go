@@ -38,6 +38,7 @@ func main() (rc int, err error) {
 		return "", nil
 	}
 	lp.OnWakeup = h.on_wakeup
+	lp.OnEscapeCode = h.on_escape_code
 	lp.OnFinalize = func() string {
 		h.finalize()
 		lp.SetCursorVisible(true)
