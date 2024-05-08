@@ -492,7 +492,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CFAttributedStringReplaceString(test_string, CFRangeMake(0, 0), ts);
     CFAttributedStringSetAttribute(test_string, CFRangeMake(0, CFStringGetLength(ts)), kCTFontAttributeName, self->ct_font);
     CGMutablePathRef path = CGPathCreateMutable();
-    CGPathAddRect(path, NULL, CGRectMake(10, 10, 200, 200));
+    CGPathAddRect(path, NULL, CGRectMake(10, 10, 200, 8000));
     CTFramesetterRef framesetter = CTFramesetterCreateWithAttributedString(test_string);
     CFRelease(test_string);
     CTFrameRef test_frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, NULL);
@@ -501,6 +501,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CTFrameGetLineOrigins(test_frame, CFRangeMake(1, 1), &origin2);
     CGFloat line_height = origin1.y - origin2.y;
     CFArrayRef lines = CTFrameGetLines(test_frame);
+    if (!CFArrayGetCount(lines)) fatal("Failed to typeset test line to calculate cell metrics");
     CTLineRef line = CFArrayGetValueAtIndex(lines, 0);
     CGRect bounds = CTLineGetBoundsWithOptions(line, 0);
     CGRect bounds_without_leading = CTLineGetBoundsWithOptions(line, kCTLineBoundsExcludeTypographicLeading);
