@@ -522,13 +522,13 @@ def change_to_git_master() -> Generator[None, None, None]:
         if branch_before != 'master':
             subprocess.check_call(['git', 'switch', 'master'])
             remove_pycache_only_folders()
-            subprocess.check_call(['make', 'debug'])
+            subprocess.check_call(['make', 'clean', 'debug'])
         try:
             yield
         finally:
             if branch_before != 'master':
                 subprocess.check_call(['git', 'switch', branch_before])
-                subprocess.check_call(['make', 'debug'])
+                subprocess.check_call(['make', 'clean', 'debug'])
     finally:
         if stash_ref_before != safe_read('.git/refs/stash'):
             subprocess.check_call(['git', 'stash', 'pop'])
@@ -572,7 +572,7 @@ def main() -> None:
         with change_to_git_master():
             building_nightly = True
             exec_actions(NIGHTLY_ACTIONS, args)
-            subprocess.run(['make', 'debug'])
+            subprocess.run(['make', 'clean', 'debug'])
         return
     require_git_master()
     if args.action == 'all':
