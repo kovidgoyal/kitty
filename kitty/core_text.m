@@ -678,6 +678,54 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     return ans;
 }
 
+static PyObject*
+render_sample_text(CTFace *self, PyObject *args) {
+    unsigned long canvas_width, canvas_height;
+    unsigned long fg = 0xffffff;
+    CTFontRef font = self->ct_font;
+    PyObject *ptext;
+    if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
+    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
+    if (!pbuf) return NULL;
+    unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
+    cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
+    size_t num_chars = PyUnicode_GET_LENGTH(ptext);
+    RAII_ALLOC(unichar, chars, calloc(sizeof(unichar), num_chars));
+    if (!chars) return PyErr_NoMemory();
+    for (size_t i = 0; i < num_chars; i++) chars[i] = PyUnicode_READ_CHAR(ptext, i);
+    RAII_ALLOC(CGSize, local_advances, calloc(sizeof(CGSize), num_chars));
+    if (!local_advances) return PyErr_NoMemory();
+    ensure_render_space(0, 0, num_chars);
+    CTFontGetGlyphsForCharacters(font, chars, buffers.glyphs, num_chars);
+    CTFontGetAdvancesForGlyphs(font, kCTFontOrientationDefault, buffers.glyphs, local_advances, num_chars);
+    CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, buffers.glyphs, buffers.boxes, num_chars);
+    CGFloat x = 0, y = 0;
+    if (cell_width > canvas_width) goto end;
+    for (size_t i = 0; i < num_chars; i++) {
+        if (local_advances[i].width + x > canvas_width) {
+            x = 0;
+            y += cell_height;
+        }
+        if (y + cell_height > canvas_height) {
+            num_chars = i - 1;
+            break;
+        }
+        buffers.positions[i] = CGPointMake(x, -y);
+        x += cell_width;
+    }
+    unsigned long height = MIN((int)ceil(y) + cell_height, canvas_height);
+    ensure_render_space(canvas_width, height, num_chars);
+    render_glyphs(font, canvas_width, height, baseline, num_chars);
+    uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
+    for (uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf), *s = buffers.render_buf; p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * height; p += 4, s++) {
+        p[0] = r; p[1] = g; p[2] = b; p[3] = s[0];
+    }
+end:
+    Py_INCREF(pbuf);
+    return pbuf;
+
+}
+
 static bool
 ensure_ui_font(size_t in_height) {
     static size_t for_height = 0;
@@ -879,6 +927,7 @@ static PyMethodDef methods[] = {
     METHODB(get_variable_data, METH_NOARGS),
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(set_size, METH_VARARGS),
+    METHODB(render_sample_text, METH_VARARGS),
     METHODB(get_best_name, METH_O),
     {NULL}  /* Sentinel */
 };

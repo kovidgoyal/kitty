@@ -461,29 +461,30 @@ def shape_string(
         return test_shape(line, path)
 
 
-def show(outfile: str, width: int, height: int, fmt: int) -> None:
-    import os
+def show(rgba_data: bytes, width: int, height: int, fmt: int = 32) -> None:
     from base64 import standard_b64encode
 
     from kittens.tui.images import GraphicsCommand
+
+    data = memoryview(standard_b64encode(rgba_data))
     cmd = GraphicsCommand()
     cmd.a = 'T'
     cmd.f = fmt
     cmd.s = width
     cmd.v = height
-    cmd.t = 't'
+
+    while data:
+        chunk, data = data[:4096], data[4096:]
+        cmd.m = 1 if data else 0
+        sys.stdout.buffer.write(cmd.serialize(chunk))
+        cmd.clear()
     sys.stdout.flush()
-    sys.stdout.buffer.write(cmd.serialize(standard_b64encode(os.path.abspath(outfile).encode())))
     sys.stdout.buffer.flush()
 
 
 def display_bitmap(rgb_data: bytes, width: int, height: int) -> None:
-    from tempfile import NamedTemporaryFile
-    setattr(display_bitmap, 'detected', True)
-    with NamedTemporaryFile(suffix='.rgba', delete=False) as f:
-        f.write(rgb_data)
     assert len(rgb_data) == 4 * width * height
-    show(f.name, width, height, 32)
+    show(rgb_data, width, height)
 
 
 def test_render_string(
