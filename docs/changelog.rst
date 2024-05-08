@@ -70,6 +70,8 @@ Detailed list of changes
 
 - Wayland: save energy by not rendering "suspended" windows on compositors that support that
 
+- Allow more type of alignment for :opt:`placement_strategy` (:pull:`7419`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
