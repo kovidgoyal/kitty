@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"kitty/tools/tui"
+	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
@@ -42,6 +43,7 @@ type handler struct {
 	render_count         uint
 	render_lines         tui.RenderLines
 	text_style           TextStyle
+	graphics_manager     graphics_manager
 
 	// Listing
 	rl                          *readline.Readline
@@ -275,6 +277,7 @@ func (h *handler) initialize() {
 	h.variable_data_requested_for = utils.NewSet[string](256)
 	h.draw_screen()
 	initialize_variable_data_cache()
+	h.graphics_manager.initialize(h.lp)
 	go func() {
 		h.set_worker_error(kitty_font_backend.query("list_monospaced_fonts", nil, &h.fonts))
 		h.lp.WakeupMainThread()
@@ -284,6 +287,7 @@ func (h *handler) initialize() {
 func (h *handler) finalize() {
 	h.lp.SetCursorVisible(true)
 	h.lp.SetCursorShape(loop.BLOCK_CURSOR, true)
+	h.graphics_manager.finalize(h.lp)
 }
 
 func (h *handler) on_query_response(key, val string, valid bool) error {
@@ -387,6 +391,17 @@ func (h *handler) on_text(text string, from_key_event bool, in_bracketed_paste b
 		return h.handle_listing_text(text, from_key_event, in_bracketed_paste)
 	}
 	return
+}
+
+func (h *handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
+	switch etype {
+	case loop.APC:
+		gc := graphics.GraphicsCommandFromAPC(payload)
+		if gc != nil {
+			return h.graphics_manager.on_response(gc)
+		}
+	}
+	return nil
 }
 
 // }}}
