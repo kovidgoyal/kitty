@@ -5,7 +5,7 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Literal, Optional, Tuple, Union, cast
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
@@ -176,7 +176,7 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     sz = override_font_size or opts.font_size
     font_map = get_font_files(opts)
     current_faces = [(font_map['medium'], False, False)]
-    ftypes = 'bold italic bi'.split()
+    ftypes: List[Literal['bold', 'italic', 'bi']] = ['bold', 'italic', 'bi']
     indices = {k: 0 for k in ftypes}
     for k in ftypes:
         if k in font_map:

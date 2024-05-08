@@ -24,6 +24,14 @@ const (
 	CHOOSING_FACES
 )
 
+type TextStyle struct {
+	Font_sz    float64 `json:"font_size"`
+	Dpi_x      float64 `json:"dpi_x"`
+	Dpi_y      float64 `json:"dpi_y"`
+	Foreground string  `json:"foreground"`
+	Background string  `json:"background"`
+}
+
 type handler struct {
 	lp                   *loop.Loop
 	fonts                map[string][]ListedFont
@@ -33,10 +41,7 @@ type handler struct {
 	mouse_state          tui.MouseState
 	render_count         uint
 	render_lines         tui.RenderLines
-	text_style           struct {
-		font_sz, dpi_x, dpi_y  float64
-		foreground, background string
-	}
+	text_style           TextStyle
 
 	// Listing
 	rl                          *readline.Readline
@@ -295,21 +300,21 @@ func (h *handler) on_query_response(key, val string, valid bool) error {
 	}
 	switch key {
 	case "font_size":
-		if err := set_float(key, val, &h.text_style.font_sz); err != nil {
+		if err := set_float(key, val, &h.text_style.Font_sz); err != nil {
 			return err
 		}
 	case "dpi_x":
-		if err := set_float(key, val, &h.text_style.dpi_x); err != nil {
+		if err := set_float(key, val, &h.text_style.Dpi_x); err != nil {
 			return err
 		}
 	case "dpi_y":
-		if err := set_float(key, val, &h.text_style.dpi_y); err != nil {
+		if err := set_float(key, val, &h.text_style.Dpi_y); err != nil {
 			return err
 		}
 	case "foreground":
-		h.text_style.foreground = val
+		h.text_style.Foreground = val
 	case "background":
-		h.text_style.background = val
+		h.text_style.Background = val
 	}
 	return nil
 }
