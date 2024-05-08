@@ -416,19 +416,37 @@ get_glyph_width(PyObject *s, glyph_index g) {
 }
 
 static float
-scaled_point_sz(FONTS_DATA_HANDLE fg) {
-    return ((fg->logical_dpi_x + fg->logical_dpi_y) / 144.0) * fg->font_sz_in_pts;
+_scaled_point_sz(double font_sz_in_pts, double dpi_x, double dpi_y) {
+    return ((dpi_x + dpi_y) / 144.0) * font_sz_in_pts;
 }
 
-bool
-set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force, FONTS_DATA_HANDLE fg) {
-    CTFace *self = (CTFace*)s;
-    float sz = scaled_point_sz(fg);
+static float
+scaled_point_sz(FONTS_DATA_HANDLE fg) {
+    return _scaled_point_sz(fg->font_sz_in_pts, fg->logical_dpi_x, fg->logical_dpi_y);
+}
+
+static bool
+_set_size_for_face(CTFace *self, bool force, double font_sz_in_pts, double dpi_x, double dpi_y) {
+    float sz = _scaled_point_sz(font_sz_in_pts, dpi_x, dpi_y);
     if (!force && self->scaled_point_sz == sz) return true;
     RAII_CoreFoundation(CTFontRef, new_font, CTFontCreateCopyWithAttributes(self->ct_font, sz, NULL, NULL));
     if (new_font == NULL) fatal("Out of memory");
     init_face(self, new_font);
     return true;
+}
+
+bool
+set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force, FONTS_DATA_HANDLE fg) {
+    CTFace *self = (CTFace*)s;
+    return _set_size_for_face(self, force, fg->font_sz_in_pts, fg->logical_dpi_x, fg->logical_dpi_y);
+}
+
+static PyObject*
+set_size(CTFace *self, PyObject *args) {
+    double font_sz_in_pts, dpi_x, dpi_y;
+    if (!PyArg_ParseTuple(args, "ddd", &font_sz_in_pts, &dpi_x, &dpi_y)) return NULL;
+    if (!_set_size_for_face(self, false, font_sz_in_pts, dpi_x, dpi_y)) return NULL;
+    Py_RETURN_NONE;
 }
 
 hb_font_t*
@@ -777,7 +795,7 @@ do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, 
     } else {
         render_glyphs(ct_font, canvas_width, cell_height, baseline, num_glyphs);
         Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.bottom=cell_height, .right=canvas_width};
-        render_alpha_mask(buffers.render_buf, canvas, &src, &dest, canvas_width, canvas_width);
+        render_alpha_mask(buffers.render_buf, canvas, &src, &dest, canvas_width, canvas_width, 0xffffff);
     }
     if (num_cells && (center_glyph || (num_cells == 2 && *was_colored))) {
         if (debug_rendering) printf("centering glyphs: center_glyph: %d\n", center_glyph);
@@ -860,6 +878,7 @@ static PyMethodDef methods[] = {
     METHODB(postscript_name, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
     METHODB(identify_for_debug, METH_NOARGS),
+    METHODB(set_size, METH_VARARGS),
     METHODB(get_best_name, METH_O),
     {NULL}  /* Sentinel */
 };

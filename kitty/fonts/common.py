@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Sequence, TypedDict, Union
 
 from kitty.constants import is_macos
 from kitty.options.types import Options
@@ -14,14 +14,14 @@ if TYPE_CHECKING:
 
     FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map']
     FontMap = Dict[FontCollectionMapType, Dict[str, List[Descriptor]]]
-    def Face(descriptor: Descriptor) -> Union[FT_Face, CTFace]:
-        pass
+    Face = Union[FT_Face, CTFace]
     def all_fonts_map(monospaced: bool) -> FontMap: ...
     def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer: ...
     def find_best_match(
         family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[Descriptor] = None
         ) -> Descriptor: ...
     def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> Descriptor: ...
+    def face_from_descriptor(descriptor: Descriptor) -> Face: ...
 else:
     FontCollectionMapType = FontMap = None
     if is_macos:
@@ -32,6 +32,7 @@ else:
         from kitty.fast_data_types import Face
 
         from .fontconfig import all_fonts_map, create_scorer, find_best_match, find_last_resort_text_font
+    def face_from_descriptor(descriptor: Descriptor) -> Face: return Face(descriptor=descriptor)
 
 
 cache_for_variable_data_by_path: Dict[str, VariableData] = {}
@@ -40,10 +41,10 @@ attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, T
 
 def get_variable_data_for_descriptor(d: Descriptor) -> VariableData:
     if not d['path']:
-        return Face(descriptor=d).get_variable_data()
+        return face_from_descriptor(d).get_variable_data()
     ans = cache_for_variable_data_by_path.get(d['path'])
     if ans is None:
-        ans = cache_for_variable_data_by_path[d['path']] = Face(descriptor=d).get_variable_data()
+        ans = cache_for_variable_data_by_path[d['path']] = face_from_descriptor(d).get_variable_data()
     return ans
 
 
@@ -92,7 +93,7 @@ def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> Descriptor:
     if not pat['variable']:
         return pat
 
-    vd = Face(descriptor=pat).get_variable_data()
+    vd = face_from_descriptor(pat).get_variable_data()
     if spec.style:
         q = spec.style.lower()
         for i, ns in enumerate(vd['named_styles']):
@@ -148,7 +149,14 @@ def get_font_from_spec(
     return find_best_match(family, bold, italic, ignore_face=resolved_medium_font)
 
 
-def get_font_files(opts: Options) -> Dict[str, Descriptor]:
+class FontFiles(TypedDict):
+    medium: Descriptor
+    bold: Descriptor
+    italic: Descriptor
+    bi: Descriptor
+
+
+def get_font_files(opts: Options) -> FontFiles:
     ans: Dict[str, Descriptor] = {}
     medium_font = get_font_from_spec(opts.font_family)
     kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
@@ -159,4 +167,4 @@ def get_font_files(opts: Options) -> Dict[str, Descriptor]:
             font = medium_font
         key = kd[(bold, italic)]
         ans[key] = font
-    return ans
+    return {'medium': ans['medium'], 'bold': ans['bold'], 'italic': ans['italic'], 'bi': ans['bi']}

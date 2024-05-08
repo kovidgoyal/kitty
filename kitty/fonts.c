@@ -631,14 +631,15 @@ END_ALLOW_CASE_RANGE
 static PyObject* box_drawing_function = NULL, *prerender_function = NULL, *descriptor_for_idx = NULL;
 
 void
-render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
+render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride, pixel color_rgb) {
+    const pixel col = color_rgb << 8;
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
         pixel *d = dest + dest_stride * dr;
         const uint8_t *s = alpha_mask + src_stride * sr;
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             uint8_t src_alpha = d[dc] & 0xff;
             uint8_t alpha = s[sc];
-            d[dc] = 0xffffff00 | MAX(alpha, src_alpha);
+            d[dc] = col | MAX(alpha, src_alpha);
         }
     }
 }
@@ -662,7 +663,7 @@ render_box_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
     ensure_canvas_can_fit(fg, 1);
     Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
-    render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width);
+    render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width, 0xffffff);
     current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp->x, sp->y, sp->z, fg->canvas.buf);
     Py_DECREF(ret);
 }
@@ -1465,7 +1466,7 @@ send_prerendered_sprites(FontGroup *fg) {
         uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(cell_addresses, i));
         ensure_canvas_can_fit(fg, 1);  // clear canvas
         Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
-        render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width);
+        render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width, 0xffffff);
         current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
     }
     Py_CLEAR(args);

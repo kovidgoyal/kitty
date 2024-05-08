@@ -197,6 +197,18 @@ set_size_for_face(PyObject *s, unsigned int desired_height, bool force, FONTS_DA
     return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->cell_height);
 }
 
+static PyObject*
+set_size(Face *self, PyObject *args) {
+    double font_sz_in_pts, dpi_x, dpi_y;
+    if (!PyArg_ParseTuple(args, "ddd", &font_sz_in_pts, &dpi_x, &dpi_y)) return NULL;
+    FT_F26Dot6 w = (FT_F26Dot6)(ceil(font_sz_in_pts * 64.0));
+    FT_UInt xdpi = (FT_UInt)dpi_x, ydpi = (FT_UInt)dpi_y;
+    if (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi) { Py_RETURN_NONE; }
+    self->size_in_pts = (float)font_sz_in_pts;
+    if (!set_font_size(self, w, w, xdpi, ydpi, 0, 0)) return NULL;
+    Py_RETURN_NONE;
+}
+
 static bool
 init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_HANDLE fg) {
 #define CPY(n) self->n = self->face->n;
@@ -621,7 +633,7 @@ copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect
 static const bool debug_placement = false;
 
 static void
-place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline, unsigned int glyph_num) {
+place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline, unsigned int glyph_num, pixel fg_rgb) {
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.
 
@@ -650,7 +662,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 
     if (bm->pixel_mode == FT_PIXEL_MODE_BGRA) {
         copy_color_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width);
-    } else render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width);
+    } else render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width, fg_rgb);
 }
 
 static const ProcessedBitmap EMPTY_PBM = {.factor = 1};
@@ -686,7 +698,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         y = (float)positions[i].y_offset / 64.0f;
         if (debug_placement) printf("%d: x=%f canvas: %u", i, x_offset, canvas_width);
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {
-            place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline, i);
+            place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline, i, 0xffffff);
         }
         if (debug_placement) printf(" adv: %f\n", (float)positions[i].x_advance / 64.0f);
         // the roundf() below is needed for infinite length ligatures, for a test case
@@ -866,7 +878,7 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
         pbm = EMPTY_PBM;
         populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
-        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, pen_x, 0, baseline, n);
+        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, pen_x, 0, baseline, n, 0xffffff);
         pen_x += self->face->glyph->advance.x >> 6;
     }
     ans.width = pen_x; ans.height = canvas_height;
@@ -881,6 +893,44 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     free(canvas);
     return ans;
 }
+
+static PyObject*
+render_sample_text(Face *self, PyObject *args) {
+    unsigned long canvas_width, canvas_height, pen_x = 0, pen_y = 0;
+    unsigned long fg = 0xffffff;
+    PyObject *ptext;
+    if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
+    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
+    if (!pbuf) return NULL;
+    unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
+    cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
+    pixel *canvas = (pixel*)PyBytes_AS_STRING(pbuf);
+    if (cell_width > canvas_width) goto end;
+
+    for (ssize_t n = 0; n < PyUnicode_GET_LENGTH(ptext); n++) {
+        if (pen_x + cell_width > canvas_width) {
+            pen_y += cell_height;
+            pen_x = 0;
+        }
+        if (pen_y + cell_height > canvas_height) break;
+        Py_UCS4 ch = PyUnicode_READ_CHAR(ptext, n);
+        FT_UInt glyph_index = FT_Get_Char_Index(self->face, ch);
+        if (!glyph_index) continue;
+        int error = FT_Load_Glyph(self->face, glyph_index, FT_LOAD_DEFAULT);
+        if (error) continue;
+        error = FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL);
+        if (error) continue;
+        FT_Bitmap *bitmap = &self->face->glyph->bitmap;
+        ProcessedBitmap pbm = EMPTY_PBM;
+        populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
+        place_bitmap_in_canvas(canvas, &pbm, cell_width, cell_height, pen_x, pen_y, baseline, 0, fg);
+        pen_x += self->face->glyph->advance.x >> 6;
+    }
+end:
+    Py_INCREF(pbuf);
+    return pbuf;
+}
+
 
 // Boilerplate {{{
 
@@ -910,6 +960,8 @@ static PyMethodDef methods[] = {
     METHODB(extra_data, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
     METHODB(get_best_name, METH_O),
+    METHODB(set_size, METH_VARARGS),
+    METHODB(render_sample_text, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
 
