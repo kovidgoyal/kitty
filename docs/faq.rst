@@ -350,6 +350,10 @@ homepage:
    :target: https://github.com/eccentric-j/eccentric-icons
    :width: 256
 
+.. image:: https://github.com/sodapopcan/kitty-icon/raw/main/kitty.app.png
+   :target: https://github.com/sodapopcan/kitty-icon
+   :width: 256
+
 On macOS and X11 you can put :file:`kitty.app.icns` (macOS only) or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
 automatically at startup. On X11, this will set the icon for kitty windows.
