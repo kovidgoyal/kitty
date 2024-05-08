@@ -1135,7 +1135,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for placement_strategy")
         ans["placement_strategy"] = val
 
-    choices_for_placement_strategy = frozenset(('center', 'top-left'))
+    choices_for_placement_strategy = frozenset(('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'))
 
     def pointer_shape_when_dragging(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()

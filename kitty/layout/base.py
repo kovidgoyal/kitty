@@ -50,7 +50,8 @@ class NeighborsMap(TypedDict):
 class LayoutGlobalData:
     draw_minimal_borders: bool = True
     draw_active_borders: bool = True
-    align_top_left: bool = False
+    alignment_x: int = 0
+    alignment_y: int = 0
 
     central: Region = Region((0, 0, 199, 199, 200, 200))
     cell_width: int = 20
@@ -70,7 +71,8 @@ def idx_for_id(win_id: int, windows: Iterable[WindowType]) -> Optional[int]:
 def set_layout_options(opts: Options) -> None:
     lgd.draw_minimal_borders = opts.draw_minimal_borders and sum(opts.window_margin_width) == 0
     lgd.draw_active_borders = opts.active_border_color is not None
-    lgd.align_top_left = opts.placement_strategy == 'top-left'
+    lgd.alignment_x = -1 if opts.placement_strategy.endswith('left') else 1 if opts.placement_strategy.endswith('right') else 0
+    lgd.alignment_y = -1 if opts.placement_strategy.startswith('top') else 1 if opts.placement_strategy.startswith('bottom') else 0
 
 
 def convert_bias_map(bias: Dict[int, float], number_of_windows: int, number_of_cells: int) -> Sequence[float]:
@@ -107,7 +109,7 @@ def calculate_cells_map(
 def layout_dimension(
     start_at: int, length: int, cell_length: int,
     decoration_pairs: DecorationPairs,
-    left_align: bool = False,
+    alignment: int = 0,
     bias: Union[None, Sequence[float], Dict[int, float]] = None
 ) -> LayoutDimension:
     number_of_windows = len(decoration_pairs)
@@ -122,8 +124,10 @@ def layout_dimension(
     assert sum(cells_map) == number_of_cells
 
     extra = length - number_of_cells * cell_length - space_needed_for_decorations
-    pos = start_at
-    if not left_align:
+    pos = start_at  # start
+    if alignment > 0:  # end
+        pos += extra
+    elif alignment == 0:  # center
         pos += extra // 2
     last_i = len(cells_map) - 1
 
@@ -175,9 +179,14 @@ def window_geometry_from_layouts(x: LayoutData, y: LayoutData) -> WindowGeometry
     return window_geometry(x.content_pos, x.cells_per_window, y.content_pos, y.cells_per_window, x.space_before, y.space_before, x.space_after, y.space_after)
 
 
-def layout_single_window(xdecoration_pairs: DecorationPairs, ydecoration_pairs: DecorationPairs, left_align: bool = False) -> WindowGeometry:
-    x = next(layout_dimension(lgd.central.left, lgd.central.width, lgd.cell_width, xdecoration_pairs, left_align=lgd.align_top_left))
-    y = next(layout_dimension(lgd.central.top, lgd.central.height, lgd.cell_height, ydecoration_pairs, left_align=lgd.align_top_left))
+def layout_single_window(
+    xdecoration_pairs: DecorationPairs,
+    ydecoration_pairs: DecorationPairs,
+    xalignment: int = 0,
+    yalignment: int = 0,
+) -> WindowGeometry:
+    x = next(layout_dimension(lgd.central.left, lgd.central.width, lgd.cell_width, xdecoration_pairs, alignment=xalignment))
+    y = next(layout_dimension(lgd.central.top, lgd.central.height, lgd.cell_height, ydecoration_pairs, alignment=yalignment))
     return window_geometry_from_layouts(x, y)
 
 
@@ -333,7 +342,7 @@ class Layout:
             wg.decoration('top', border_mult=bw, is_single_window=True),
             wg.decoration('bottom', border_mult=bw, is_single_window=True),
         ),)
-        geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, left_align=lgd.align_top_left)
+        geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y)
         wg.set_geometry(geom)
         if add_blank_rects and wg:
             self.blank_rects.extend(blank_rects_for_window(geom))
@@ -355,7 +364,7 @@ class Layout:
             start = lgd.central.left
         if size is None:
             size = lgd.central.width
-        return layout_dimension(start, size, lgd.cell_width, decoration_pairs, bias=bias, left_align=lgd.align_top_left)
+        return layout_dimension(start, size, lgd.cell_width, decoration_pairs, bias=bias, alignment=lgd.alignment_x)
 
     def ylayout(
         self,
@@ -374,7 +383,7 @@ class Layout:
             start = lgd.central.top
         if size is None:
             size = lgd.central.height
-        return layout_dimension(start, size, lgd.cell_height, decoration_pairs, bias=bias, left_align=lgd.align_top_left)
+        return layout_dimension(start, size, lgd.cell_height, decoration_pairs, bias=bias, alignment=lgd.alignment_y)
 
     def set_window_group_geometry(self, wg: WindowGroup, xl: LayoutData, yl: LayoutData) -> WindowGeometry:
         geom = window_geometry_from_layouts(xl, yl)
