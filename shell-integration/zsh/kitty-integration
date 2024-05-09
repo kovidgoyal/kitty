@@ -215,9 +215,7 @@ _ksi_deferred_init() {
             # its preexec hook before us, we'll incorrectly mark its output as
             # belonging to the command (as if the user typed it into zle) rather
             # than command output.
-            builtin print -nu "$_ksi_fd" '\e]133;C;cmdline='
-            for (( i=0; i<${#1}; i++ )); do builtin print -nu "$_ksi_fd" -f '%x ' "'${1:$i:1}"; done
-            builtin print -nu "$_ksi_fd" '\a'
+            builtin print -nu "$_ksi_fd" -f '\e]133;C;cmdline=%q\a' "$1"
             (( _ksi_state = 1 ))
         }
 

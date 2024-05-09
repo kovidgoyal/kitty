@@ -115,6 +115,7 @@ from .utils import (
     sanitize_for_bracketed_paste,
     sanitize_title,
     sanitize_url_for_dispay_to_user,
+    shlex_split,
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -220,7 +221,7 @@ def compile_match_query(exp: str, is_simple: bool = True) -> MatchPatternType:
 def decode_cmdline(x: str) -> str:
     ctype, sep, val = x.partition('=')
     if ctype == 'cmdline':
-        return ''.join(chr(int(x, 16)) for x in val.split())
+        return next(shlex_split(val, True))
     if ctype == 'cmdline_url':
         from urllib.parse import unquote
         return unquote(val)

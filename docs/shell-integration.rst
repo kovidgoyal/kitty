@@ -458,10 +458,10 @@ to control its behavior, separated by semi-colons. They are::
 
 kitty also optionally supports sending the cmdline going to be executed with ``<OSC>133;C`` as::
 
-    <OSC>133;C;cmdline=cmdline as space separated hex encoded text<ST>
+    <OSC>133;C;cmdline=cmdline encoded by %q<ST>
     or
-    <OSC>133;C;cmdline_url=cmdline as UTF-8 URL escaped text<ST>
+    <OSC>133;C;cmdline_url=cmdline as UTF-8 URL %-escaped text<ST>
 
 
-Here, *space separated hex encoded text* means every unicode codepoint of the
-command line is encoded as 2-8 hex digits separated by spaces.
+Here, *encoded by %q* means the encoding produced by the %q format to printf in
+bash and similar shells.

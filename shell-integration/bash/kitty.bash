@@ -204,9 +204,7 @@ _ksi_main() {
             builtin printf "\e]2;%s%s\a" "${_ksi_prompt[hostname_prefix]@P}" "${_ksi_prompt[last_cmd]//[[:cntrl:]]}"  # remove any control characters
         fi
         if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
-            builtin printf "\e]133;C;cmdline="
-            for (( i=0; i<${#last_cmd}; i++ )); do builtin printf '%x ' "'${last_cmd:$i:1}"; done
-            builtin printf "\a"
+            builtin printf "\e]133;C;cmdline=%q\a" "$last_cmd"
         fi
     }
     if [[ "${_ksi_prompt[title]}" == "y" ||  "${_ksi_prompt[mark]}" ]]; then _ksi_prompt[ps0]+='$(_ksi_get_current_command)'; fi
