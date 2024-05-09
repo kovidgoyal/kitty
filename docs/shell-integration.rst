@@ -464,4 +464,7 @@ kitty also optionally supports sending the cmdline going to be executed with ``<
 
 
 Here, *encoded by %q* means the encoding produced by the %q format to printf in
-bash and similar shells.
+bash and similar shells. Which is basically shell escaping with the addition of
+using `ANSI C quoting
+<https://www.gnu.org/software/bash/manual/html_node/ANSI_002dC-Quoting.html#ANSI_002dC-Quoting>`__
+for control characters (``$''`` quoting).

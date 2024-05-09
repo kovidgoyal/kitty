@@ -195,19 +195,21 @@ _ksi_main() {
         _ksi_prompt[ps0_suffix]+="\[\e[0 q\]"  # blinking default cursor
     fi
 
-    _ksi_get_current_command() {
-        builtin local last_cmd
-        last_cmd=$(HISTTIMEFORMAT= builtin history 1)
-        last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
-        last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
-        if [[ "${_ksi_prompt[title]}" == "y" ]]; then
-            builtin printf "\e]2;%s%s\a" "${_ksi_prompt[hostname_prefix]@P}" "${_ksi_prompt[last_cmd]//[[:cntrl:]]}"  # remove any control characters
-        fi
-        if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
-            builtin printf "\e]133;C;cmdline=%q\a" "$last_cmd"
-        fi
-    }
-    if [[ "${_ksi_prompt[title]}" == "y" ||  "${_ksi_prompt[mark]}" ]]; then _ksi_prompt[ps0]+='$(_ksi_get_current_command)'; fi
+    if [[ "${_ksi_prompt[title]}" == "y" ||  "${_ksi_prompt[mark]}" ]]; then
+        _ksi_get_current_command() {
+            builtin local last_cmd
+            last_cmd=$(HISTTIMEFORMAT= builtin history 1)
+            last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
+            last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
+            if [[ "${_ksi_prompt[title]}" == "y" ]]; then
+                builtin printf "\e]2;%s%s\a" "${_ksi_prompt[hostname_prefix]@P}" "${last_cmd//[[:cntrl:]]}" # removes any control characters
+            fi
+            if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
+                builtin printf "\e]133;C;cmdline=%q\a" "$last_cmd"
+            fi
+        }
+        _ksi_prompt[ps0]+='$(_ksi_get_current_command > /dev/tty)';
+    fi
 
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then
         if [[ -z "$KITTY_PID" ]]; then
