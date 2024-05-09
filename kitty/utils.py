@@ -1227,14 +1227,14 @@ def key_val_matcher(items: Iterable[Tuple[str, str]], key_pat: 're.Pattern[str]'
     return False
 
 
-def shlex_split(text: str) -> Iterator[str]:
-    s = Shlex(text)
+def shlex_split(text: str, allow_ansi_quoted_strings: bool = False) -> Iterator[str]:
+    s = Shlex(text, allow_ansi_quoted_strings)
     while (q := s.next_word())[0] > -1:
         yield q[1]
 
 
-def shlex_split_with_positions(text: str) -> Iterator[Tuple[int, str]]:
-    s = Shlex(text)
+def shlex_split_with_positions(text: str, allow_ansi_quoted_strings: bool = False) -> Iterator[Tuple[int, str]]:
+    s = Shlex(text, allow_ansi_quoted_strings)
     while (q := s.next_word())[0] > -1:
         yield q
 

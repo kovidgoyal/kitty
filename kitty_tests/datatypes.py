@@ -629,7 +629,7 @@ class TestDataTypes(BaseTest):
 
     def test_shlex_split(self):
         for bad in (
-            'abc\\', '\\', "'abc", "'", '"', 'asd' + '\\',
+            'abc\\', '\\', "'abc", "'", '"', 'asd' + '\\', r'"a\"', '"a\\',
         ):
             with self.assertRaises(ValueError, msg=f'Failed to raise exception for {bad!r}'):
                 tuple(shlex_split_with_positions(bad))
@@ -640,6 +640,24 @@ class TestDataTypes(BaseTest):
             r'''x'y"\z'1''': ((0, 'xy"\\z1'),),
             r'\abc\ d': ((0, 'abc d'),),
             '': (), '   ': (), ' \tabc\n\t\r ': ((2, 'abc'),),
+            "$'ab'": ((0, '$ab'),),
         }.items():
             actual = tuple(shlex_split_with_positions(q))
+            self.ae(expected, actual, f'Failed for text: {q!r}')
+
+        for q, expected in {
+            "$'ab'": ((0, 'ab'),),
+            "1$'ab'": ((0, '1ab'),),
+            '''"1$'ab'"''': ((0, "1$'ab'"),),
+            r"$'a\123b'": ((0, 'a\123b'),),
+            r"$'a\1b'": ((0, 'a\001b'),),
+            r"$'a\12b'": ((0, 'a\012b'),),
+            r"$'a\db'": ((0, 'adb'),),
+            r"$'a\x1bb'": ((0, 'a\x1bb'),),
+            r"$'\u123z'": ((0, '\u0123z'),),
+            r"$'\U0001F1E8'": ((0, '\U0001F1E8'),),
+            r"$'\U1F1E8'": ((0, '\U0001F1E8'),),
+            r"$'a\U1F1E8'b": ((0, 'a\U0001F1E8b'),),
+        }.items():
+            actual = tuple(shlex_split_with_positions(q, True))
             self.ae(expected, actual, f'Failed for text: {q!r}')

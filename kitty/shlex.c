@@ -7,13 +7,13 @@
 
 #include "data-types.h"
 
-typedef enum { NORMAL, WORD, STRING_WITHOUT_ESCAPES, STRING_WITH_ESCAPES, } State;
+typedef enum { NORMAL, WORD, STRING_WITHOUT_ESCAPES, STRING_WITH_ESCAPES, ANSI_C_QUOTED } State;
 typedef struct {
     PyObject_HEAD
 
     PyObject *src, *buf;
     Py_ssize_t src_sz, src_pos, word_start, buf_pos;
-    int kind; void *src_data, *buf_data;
+    int kind, support_ansi_c_quoting, output_kind; void *src_data, *buf_data;
     State state;
 } Shlex;
 
@@ -24,15 +24,17 @@ new_shlex_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self = (Shlex *)type->tp_alloc(type, 0);
     if (self) {
         PyObject *src;
-        if (!PyArg_ParseTuple(args, "U", &src)) return NULL;
+        self->support_ansi_c_quoting = 0;
+        if (!PyArg_ParseTuple(args, "U|p", &src, &self->support_ansi_c_quoting)) return NULL;
         self->src_sz = PyUnicode_GET_LENGTH(src);
-        self->buf = PyUnicode_New(self->src_sz, PyUnicode_MAX_CHAR_VALUE(src));
+        self->buf = PyUnicode_New(self->src_sz, self->support_ansi_c_quoting ? 1114111 : PyUnicode_MAX_CHAR_VALUE(src));
         if (self->buf) {
             self->src = src;
             Py_INCREF(src);
             self->kind = PyUnicode_KIND(src);
             self->src_data = PyUnicode_DATA(src);
             self->buf_data = PyUnicode_DATA(self->buf);
+            self->output_kind = PyUnicode_KIND(self->buf);
         } else Py_CLEAR(self);
     }
     return (PyObject*) self;
@@ -57,7 +59,7 @@ start_word(Shlex *self) {
 
 static void
 write_ch(Shlex *self, Py_UCS4 ch) {
-    PyUnicode_WRITE(self->kind, self->buf_data, self->buf_pos, ch); self->buf_pos++;
+    PyUnicode_WRITE(self->output_kind, self->buf_data, self->buf_pos, ch); self->buf_pos++;
 }
 
 static PyObject*
@@ -66,14 +68,91 @@ get_word(Shlex *self) {
     return Py_BuildValue("nN", self->word_start, PyUnicode_Substring(self->buf, 0, pos));
 }
 
+static Py_UCS4
+read_ch(Shlex *self) {
+    Py_UCS4 nch = PyUnicode_READ(self->kind, self->src_data, self->src_pos); self->src_pos++;
+    return nch;
+}
+
 static bool
 write_escape_ch(Shlex *self) {
     if (self->src_pos < self->src_sz) {
-        Py_UCS4 nch = PyUnicode_READ(self->kind, self->src_data, self->src_pos); self->src_pos++;
+        Py_UCS4 nch = read_ch(self);
         write_ch(self, nch);
         return true;
     }
     return false;
+}
+
+static bool
+write_control_ch(Shlex *self) {
+    if (self->src_pos >= self->src_sz) { PyErr_SetString(PyExc_ValueError, "Trailing \\c escape at end of input data"); return false; }
+    Py_UCS4 ch = read_ch(self);
+    write_ch(self, ch & 31);
+    return true;
+}
+
+static void
+read_valid_digits(Shlex *self, int max, char *output, bool(*is_valid)(Py_UCS4 ch)) {
+    for (int i = 0; i < max && self->src_pos < self->src_sz; i++) {
+        Py_UCS4 ch = PyUnicode_READ(self->kind, self->src_data, self->src_pos);
+        if (!is_valid(ch)) break;
+        output[0] = ch;
+        self->src_pos++; output++;
+    }
+}
+
+static bool
+is_octal_digit(Py_UCS4 ch) { return '0' <= ch && ch <= '7'; }
+
+static bool
+is_hex_digit(Py_UCS4 ch) { return ('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'f') || ('A' <= ch && ch <= 'F'); }
+
+static void
+write_octal_ch(Shlex *self, Py_UCS4 ch) {
+    char chars[4] = {ch, 0, 0, 0};
+    read_valid_digits(self, 2, chars + 1, is_octal_digit);
+    write_ch(self, strtol(chars, NULL, 8));
+}
+
+static bool
+write_unicode_ch(Shlex *self, int max) {
+    char chars[16] = {0};
+    read_valid_digits(self, max, chars, is_hex_digit);
+    if (!chars[0]) { PyErr_SetString(PyExc_ValueError, "Trailing unicode escape at end of input data"); return false; }
+    write_ch(self, strtol(chars, NULL, 16));
+    return true;
+}
+
+static bool
+write_ansi_escape_ch(Shlex *self) {
+    if (self->src_pos >= self->src_sz) { PyErr_SetString(PyExc_ValueError, "Trailing backslash at end of input data"); return false; }
+    Py_UCS4 ch = read_ch(self);
+    switch(ch) {
+        case 'a': write_ch(self, '\a'); return true;
+        case 'b': write_ch(self, '\b'); return true;
+        case 'e': case 'E': write_ch(self, 0x1b); return true;
+        case 'f': write_ch(self, '\f'); return true;
+        case 'n': write_ch(self, '\n'); return true;
+        case 'r': write_ch(self, '\r'); return true;
+        case 't': write_ch(self, '\t'); return true;
+        case 'v': write_ch(self, '\v'); return true;
+        case '\\': write_ch(self, '\\'); return true;
+        case '\'': write_ch(self, '\''); return true;
+        case '\"': write_ch(self, '\"'); return true;
+        case '\?': write_ch(self, '\?'); return true;
+
+        case 'c': return write_control_ch(self);
+        case 'x': return write_unicode_ch(self, 2);
+        case 'u': return write_unicode_ch(self, 4);
+        case 'U': return write_unicode_ch(self, 8);
+START_ALLOW_CASE_RANGE
+        case '0' ... '7': write_octal_ch(self, ch); return true;
+END_ALLOW_CASE_RANGE
+
+        default:
+            write_ch(self, ch); return true;
+    }
 }
 
 static void
@@ -85,8 +164,9 @@ static PyObject*
 next_word(Shlex *self, PyObject *args UNUSED) {
 #define write_escaped_or_fail() if (!write_escape_ch(self)) { PyErr_SetString(PyExc_ValueError, "Trailing backslash at end of input data"); return NULL; }
 
+    Py_UCS4 prev_word_ch = 0;
     while (self->src_pos < self->src_sz) {
-        Py_UCS4 ch = PyUnicode_READ(self->kind, self->src_data, self->src_pos); self->src_pos++;
+        Py_UCS4 ch = read_ch(self);
         switch(self->state) {
             case NORMAL:
                 switch(ch) {
@@ -94,32 +174,35 @@ next_word(Shlex *self, PyObject *args UNUSED) {
                     case STRING_WITH_ESCAPES_DELIM: set_state(self, STRING_WITH_ESCAPES); start_word(self); break;
                     case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, STRING_WITHOUT_ESCAPES); start_word(self); break;
                     case ESCAPE_CHAR: start_word(self); write_escaped_or_fail(); set_state(self, WORD); break;
-                    default: set_state(self, WORD); start_word(self); write_ch(self, ch); break;
+                    default: set_state(self, WORD); start_word(self); write_ch(self, ch); prev_word_ch = ch; break;
                 }
                 break;
             case WORD:
                 switch(ch) {
                     case WHITESPACE: set_state(self, NORMAL); if (self->buf_pos) return get_word(self); break;
                     case STRING_WITH_ESCAPES_DELIM: set_state(self, STRING_WITH_ESCAPES); break;
-                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, STRING_WITHOUT_ESCAPES); break;
+                    case STRING_WITHOUT_ESCAPES_DELIM:
+                        if (self->support_ansi_c_quoting && prev_word_ch == '$') { self->buf_pos--; set_state(self, ANSI_C_QUOTED); }
+                        else set_state(self, STRING_WITHOUT_ESCAPES);
+                        break;
                     case ESCAPE_CHAR: write_escaped_or_fail(); break;
-                    default: write_ch(self, ch); break;
+                    default: write_ch(self, ch); prev_word_ch = ch; break;
                 } break;
             case STRING_WITHOUT_ESCAPES:
                 switch(ch) {
-                    case STRING_WITHOUT_ESCAPES_DELIM:
-                        set_state(self, WORD);
-                        break;
+                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); break;
                     default: write_ch(self, ch); break;
                 } break;
             case STRING_WITH_ESCAPES:
                 switch(ch) {
-                    case STRING_WITH_ESCAPES_DELIM:
-                        set_state(self, WORD);
-                        break;
-                    case ESCAPE_CHAR:
-                        write_escape_ch(self);
-                        break;
+                    case STRING_WITH_ESCAPES_DELIM: set_state(self, WORD); break;
+                    case ESCAPE_CHAR: write_escaped_or_fail(); break;
+                    default: write_ch(self, ch); break;
+                } break;
+            case ANSI_C_QUOTED:
+                switch(ch) {
+                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); break;
+                    case ESCAPE_CHAR: if (!write_ansi_escape_ch(self)) return NULL; break;
                     default: write_ch(self, ch); break;
                 } break;
         }
@@ -129,7 +212,7 @@ next_word(Shlex *self, PyObject *args UNUSED) {
             self->state = NORMAL;
             if (self->buf_pos) return get_word(self);
             break;
-        case STRING_WITH_ESCAPES: case STRING_WITHOUT_ESCAPES:
+        case STRING_WITH_ESCAPES: case STRING_WITHOUT_ESCAPES: case ANSI_C_QUOTED:
             PyErr_SetString(PyExc_ValueError, "Unterminated string at the end of input");
             self->state = NORMAL;
             return NULL;
