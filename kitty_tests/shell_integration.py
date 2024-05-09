@@ -382,6 +382,7 @@ PS1="{ps1}"
             env = pty.callbacks.clone_cmds[0].env
             self.ae(env.get('ES'), 'a\n `b` c\n$d', f'Screen contents: {pty.screen_contents()!r}')
             self.ae(env.get('ES2'), 'XXX', f'Screen contents: {pty.screen_contents()!r}')
+
         for q, e in {
             'a': 'a',
             r'a\ab': 'a\ab',
@@ -390,8 +391,7 @@ PS1="{ps1}"
             r'a\U1f345x': 'a🍅x',
             r'a\c b': 'a\0b',
         }.items():
-            q = q + "'"
-            self.ae(decode_ansi_c_quoted_string(q, 0)[0], e, f'Failed to decode: {q!r}')
+            self.ae(decode_ansi_c_quoted_string(f"$'{q}'"), e, f'Failed to decode: {q!r}')
 
 
 class ShellIntegrationWithKitten(ShellIntegration):
