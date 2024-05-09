@@ -86,7 +86,7 @@ static bool
 write_control_ch(Shlex *self) {
     if (self->src_pos >= self->src_sz) { PyErr_SetString(PyExc_ValueError, "Trailing \\c escape at end of input data"); return false; }
     Py_UCS4 ch = read_ch(self);
-    write_ch(self, ch & 31);
+    write_ch(self, ch & 0x1f);
     return true;
 }
 
