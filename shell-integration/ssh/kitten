@@ -72,6 +72,7 @@ case "$(command uname -m)" in
     amd64|x86_64) arch="amd64";;
     aarch64*) arch="arm64";;
     armv8*) arch="arm64";;
+    arm64) arch="arm64";;
     arm|armv7l) arch="arm";;
     i386) arch="386";;
     i686) arch="386";;
