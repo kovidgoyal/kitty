@@ -195,6 +195,22 @@ _ksi_main() {
         _ksi_prompt[ps0_suffix]+="\[\e[0 q\]"  # blinking default cursor
     fi
 
+    _ksi_get_current_command() {
+        builtin local last_cmd
+        last_cmd=$(HISTTIMEFORMAT= builtin history 1)
+        last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
+        last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
+        if [[ "${_ksi_prompt[title]}" == "y" ]]; then
+            builtin printf "\e]2;%s%s\a" "${_ksi_prompt[hostname_prefix]@P}" "${_ksi_prompt[last_cmd]//[[:cntrl:]]}"  # remove any control characters
+        fi
+        if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
+            builtin printf "\e]133;C;cmdline="
+            for (( i=0; i<${#last_cmd}; i++ )); do builtin printf '%x ' "'${last_cmd:$i:1}"; done
+            builtin printf "\a"
+        fi
+    }
+    if [[ "${_ksi_prompt[title]}" == "y" ||  "${_ksi_prompt[mark]}" ]]; then _ksi_prompt[ps0]+='$(_ksi_get_current_command)'; fi
+
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then
         if [[ -z "$KITTY_PID" ]]; then
             if [[ -n "$SSH_TTY" || -n "$SSH2_TTY$KITTY_WINDOW_ID" ]]; then
@@ -212,22 +228,16 @@ _ksi_main() {
         # we use suffix here because some distros add title setting to their bashrc files by default
         _ksi_prompt[ps1_suffix]+="\[\e]2;${_ksi_prompt[hostname_prefix]}\w\a\]"
         if [[ "$HISTCONTROL" == *"ignoreboth"* ]] || [[ "$HISTCONTROL" == *"ignorespace"* ]]; then
-            _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command in window title will not be robust"
+            _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command will not be robust"
         fi
-        _ksi_get_current_command() {
-            builtin local last_cmd
-            last_cmd=$(HISTTIMEFORMAT= builtin history 1)
-            last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
-            last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
-            builtin printf "\e]2;%s%s\a" "${_ksi_prompt[hostname_prefix]@P}" "${last_cmd//[[:cntrl:]]}"  # remove any control characters
-        }
-        _ksi_prompt[ps0_suffix]+='$(_ksi_get_current_command)'
     fi
 
     if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
-        _ksi_prompt[ps1]+="\[\e]133;A\a\]"
+        # this can result in multiple D prompt marks or ones that dont
+        # correspond to a cmd but kitty handles this gracefully, only
+        # taking into account the first D after a C.
+        _ksi_prompt[ps1]+="\[\e]133;D;\$?\a\e]133;A\a\]"
         _ksi_prompt[ps2]+="\[\e]133;A;k=s\a\]"
-        _ksi_prompt[ps0]+="\[\e]133;C\a\]"
     fi
 
     builtin alias edit-in-kitty="kitten edit-in-kitty"

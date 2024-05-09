@@ -2335,13 +2335,20 @@ shell_prompt_marking(Screen *self, char *buf) {
                 self->prompt_settings.uses_special_keys_for_cursor_movement = 0;
                 parse_prompt_mark(self, buf+1, &pk);
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = pk;
-                if (pk == PROMPT_START)
-                    CALLBACK("cmd_output_marking", "O", Py_False);
+                if (pk == PROMPT_START) CALLBACK("cmd_output_marking", "O", Py_False);
             } break;
-            case 'C':
+            case 'C': {
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = OUTPUT_START;
-                CALLBACK("cmd_output_marking", "O", Py_True);
-                break;
+                const char *cmdline = "";
+                if (strstr(buf + 1, ";cmdline") == buf + 1) {
+                    cmdline = buf + 2;
+                }
+                CALLBACK("cmd_output_marking", "Os", Py_True, cmdline);
+            } break;
+            case 'D': {
+                const char *exit_status = buf[1] == ';' ? buf + 2 : "";
+                CALLBACK("cmd_output_marking", "Os", Py_None, exit_status);
+            } break;
         }
     }
 }

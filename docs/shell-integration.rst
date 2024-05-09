@@ -433,6 +433,10 @@ Just before running a command/program, send the escape code::
 
     <OSC>133;C<ST>
 
+Optionally, when a command is finished its "exit status" can be reported as::
+
+    <OSC>133;D;exit status as base 10 integer<ST>
+
 Here ``<OSC>`` is the bytes ``0x1b 0x5d`` and ``<ST>`` is the bytes ``0x1b
 0x5c``. This is exactly what is needed for shell integration in kitty. For the
 full protocol, that also marks the command region, see `the iTerm2 docs
@@ -451,3 +455,13 @@ to control its behavior, separated by semi-colons. They are::
 
     k=s - this tells kitty that the secondary (PS2) prompt is starting at the
     current line.
+
+kitty also optionally supports sending the cmdline going to be executed with ``<OSC>133;C`` as::
+
+    <OSC>133;C;cmdline=cmdline as space separated hex encoded text<ST>
+    or
+    <OSC>133;C;cmdline_url=cmdline as UTF-8 URL escaped text<ST>
+
+
+Here, *space separated hex encoded text* means every unicode codepoint of the
+command line is encoded as 2-8 hex digits separated by spaces.

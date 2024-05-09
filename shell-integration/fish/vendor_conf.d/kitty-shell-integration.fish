@@ -88,7 +88,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
             function __ksi_mark_output_start --on-event fish_preexec
                 set --global __ksi_prompt_state pre-exec
-                echo -en "\e]133;C\a"
+                printf '\e]133;C;cmdline_url=%s\a' (string escape --style=url -- "$argv")
             end
 
             function __ksi_mark_output_end --on-event fish_postexec

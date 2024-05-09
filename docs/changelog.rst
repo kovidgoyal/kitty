@@ -53,6 +53,10 @@ Detailed list of changes
 0.35.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :opt:`notify_on_cmd_finish`: Show the actual command that was finished (:iss:`7420`)
+
+- Shell integration: Make the currently executing cmdline available as a window variable in kitty
+
 - :opt:`paste_actions`: Fix ``replace-newline`` not working with ``confirm`` (:iss:`7374`)
 
 - Graphics: Fix aspect ratio of images not being preserved when only a single

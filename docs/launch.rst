@@ -147,7 +147,7 @@ functions for the events you are interested in, for example:
 
     def on_cmd_startstop(boss: Boss, window: Window, data: Dict[str, Any]) -> None:
         # called when the shell starts/stops executing a command. Here
-        # data will contain is_start and time.
+        # data will contain is_start, cmdline and time.
 
 Every callback is passed a reference to the global ``Boss`` object as well as
 the ``Window`` object the action is occurring on. The ``data`` object is a dict

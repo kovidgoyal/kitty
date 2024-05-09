@@ -217,6 +217,16 @@ def compile_match_query(exp: str, is_simple: bool = True) -> MatchPatternType:
     return pat
 
 
+def decode_cmdline(x: str) -> str:
+    ctype, sep, val = x.partition('=')
+    if ctype == 'cmdline':
+        return ''.join(chr(int(x, 16)) for x in val.split())
+    if ctype == 'cmdline_url':
+        from urllib.parse import unquote
+        return unquote(val)
+    return ''
+
+
 class WindowDict(TypedDict):
     id: int
     is_focused: bool
@@ -225,6 +235,8 @@ class WindowDict(TypedDict):
     pid: Optional[int]
     cwd: str
     cmdline: List[str]
+    last_reported_cmdline: str
+    last_cmd_exit_status: int
     env: Dict[str, str]
     foreground_processes: List[ProcessDesc]
     is_self: bool
@@ -550,6 +562,8 @@ class Window:
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
         self.last_cmd_output_start_time = 0.
+        self.last_cmd_cmdline = ''
+        self.last_cmd_exit_status = 0
         self.actions_on_close: List[Callable[['Window'], None]] = []
         self.actions_on_focus_change: List[Callable[['Window', bool], None]] = []
         self.actions_on_removal: List[Callable[['Window'], None]] = []
@@ -680,6 +694,8 @@ class Window:
             'pid': self.child.pid,
             'cwd': self.child.current_cwd or self.child.cwd,
             'cmdline': self.child.cmdline,
+            'last_reported_cmdline': self.last_cmd_cmdline,
+            'last_cmd_exit_status': self.last_cmd_exit_status,
             'env': self.child.environ or self.child.final_env,
             'foreground_processes': self.child.foreground_processes,
             'is_self': is_self,
@@ -703,6 +719,8 @@ class Window:
             'cwd': self.child.current_cwd or self.child.cwd,
             'env': self.child.environ,
             'cmdline': self.child.cmdline,
+            'last_reported_cmdline': self.last_cmd_cmdline,
+            'last_cmd_exit_status': self.last_cmd_exit_status,
             'margin': self.margin.serialize(),
             'user_vars': self.user_vars,
             'padding': self.padding.serialize(),
@@ -1374,41 +1392,52 @@ class Window:
                 if self.child_title:
                     self.title_stack.append(self.child_title)
 
-    def cmd_output_marking(self, is_start: bool) -> None:
+    def handle_cmd_end(self, exit_status: str = '') -> None:
+        if self.last_cmd_output_start_time == 0.:
+            return
+        self.last_cmd_output_start_time = 0.
+        try:
+            self.last_cmd_exit_status = int(exit_status)
+        except Exception:
+            self.last_cmd_exit_status = 0
+        end_time = monotonic()
+        last_cmd_output_duration = end_time - self.last_cmd_output_start_time
+
+        self.call_watchers(self.watchers.on_cmd_startstop, {
+            "is_start": False, "time": end_time, 'cmdline': self.last_cmd_cmdline, 'exit_status': self.last_cmd_exit_status})
+
+        opts = get_options()
+        when, duration, action, notify_cmdline = opts.notify_on_cmd_finish
+
+        if last_cmd_output_duration >= duration and when != 'never':
+            cmd = NotificationCommand()
+            cmd.title = 'kitty'
+            s = self.last_cmd_cmdline.replace('\\\n', ' ')
+            cmd.body = f'Command {s} finished with status: {exit_status}.\nClick to focus.'
+            cmd.actions = 'focus'
+            cmd.only_when = OnlyWhen(when)
+            if action == 'notify':
+                notify_with_command(cmd, self.id)
+            elif action == 'bell':
+                def bell(title: str, body: str, identifier: str) -> None:
+                    self.screen.bell()
+                notify_with_command(cmd, self.id, notify_implementation=bell)
+            elif action == 'command':
+                def run_command(title: str, body: str, identifier: str) -> None:
+                    open_cmd([x.replace('%c', self.last_cmd_cmdline).replace('%s', exit_status) for x in notify_cmdline])
+                notify_with_command(cmd, self.id, notify_implementation=run_command)
+            else:
+                raise ValueError(f'Unknown action in option `notify_on_cmd_finish`: {action}')
+
+    def cmd_output_marking(self, is_start: Optional[bool], cmdline: str = '') -> None:
         if is_start:
             start_time = monotonic()
             self.last_cmd_output_start_time = start_time
-
-            self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": True, "time": start_time})
+            cmdline = decode_cmdline(cmdline) if cmdline else ''
+            self.last_cmd_cmdline = cmdline
+            self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": True, "time": start_time, 'cmdline': cmdline, 'exit_status': 0})
         else:
-            if self.last_cmd_output_start_time > 0.:
-                end_time = monotonic()
-                last_cmd_output_duration = end_time - self.last_cmd_output_start_time
-                self.last_cmd_output_start_time = 0.
-
-                self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": False, "time": end_time})
-
-                opts = get_options()
-                when, duration, action, cmdline = opts.notify_on_cmd_finish
-
-                if last_cmd_output_duration >= duration and when != 'never':
-                    cmd = NotificationCommand()
-                    cmd.title = 'kitty'
-                    cmd.body = 'Command finished in a background window.\nClick to focus.'
-                    cmd.actions = 'focus'
-                    cmd.only_when = OnlyWhen(when)
-                    if action == 'notify':
-                        notify_with_command(cmd, self.id)
-                    elif action == 'bell':
-                        def bell(title: str, body: str, identifier: str) -> None:
-                            self.screen.bell()
-                        notify_with_command(cmd, self.id, notify_implementation=bell)
-                    elif action == 'command':
-                        def run_command(title: str, body: str, identifier: str) -> None:
-                            open_cmd(cmdline)
-                        notify_with_command(cmd, self.id, notify_implementation=run_command)
-                    else:
-                        raise ValueError(f'Unknown action in option `notify_on_cmd_finish`: {action}')
+            self.handle_cmd_end(cmdline)
     # }}}
 
     # mouse actions {{{

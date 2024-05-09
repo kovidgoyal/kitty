@@ -3216,7 +3216,8 @@ Some more examples::
     # Ring a bell when a command takes more than 10 seconds in a invisible window
     notify_on_cmd_finish invisible 10.0 bell
     # Run 'notify-send' when a command takes more than 10 seconds in a invisible window
-    notify_on_cmd_finish invisible 10.0 command notify-send job finished
+    # Here %c is replaced by the current command line and %s by the job exit code
+    notify_on_cmd_finish invisible 10.0 command notify-send "job finished with status: %s" %c
 '''
     )
 
