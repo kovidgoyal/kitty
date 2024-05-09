@@ -11,9 +11,10 @@ typedef enum { NORMAL, WORD, STRING_WITHOUT_ESCAPES, STRING_WITH_ESCAPES, ANSI_C
 typedef struct {
     PyObject_HEAD
 
-    PyObject *src, *buf;
+    PyObject *src;
+    Py_UCS4 *buf;
     Py_ssize_t src_sz, src_pos, word_start, buf_pos;
-    int kind, support_ansi_c_quoting, output_kind; void *src_data, *buf_data;
+    int kind, support_ansi_c_quoting; void *src_data;
     State state;
 } Shlex;
 
@@ -24,25 +25,22 @@ new_shlex_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self = (Shlex *)type->tp_alloc(type, 0);
     if (self) {
         PyObject *src;
-        self->support_ansi_c_quoting = 0;
         if (!PyArg_ParseTuple(args, "U|p", &src, &self->support_ansi_c_quoting)) return NULL;
         self->src_sz = PyUnicode_GET_LENGTH(src);
-        self->buf = PyUnicode_New(self->src_sz, self->support_ansi_c_quoting ? 1114111 : PyUnicode_MAX_CHAR_VALUE(src));
+        self->buf = malloc(sizeof(Py_UCS4) * self->src_sz);
         if (self->buf) {
             self->src = src;
             Py_INCREF(src);
             self->kind = PyUnicode_KIND(src);
             self->src_data = PyUnicode_DATA(src);
-            self->buf_data = PyUnicode_DATA(self->buf);
-            self->output_kind = PyUnicode_KIND(self->buf);
-        } else Py_CLEAR(self);
+        } else { Py_CLEAR(self); PyErr_NoMemory(); }
     }
     return (PyObject*) self;
 }
 
 static void
 dealloc(Shlex* self) {
-    Py_CLEAR(self->src); Py_CLEAR(self->buf);
+    Py_CLEAR(self->src); free(self->buf);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -59,13 +57,13 @@ start_word(Shlex *self) {
 
 static void
 write_ch(Shlex *self, Py_UCS4 ch) {
-    PyUnicode_WRITE(self->output_kind, self->buf_data, self->buf_pos, ch); self->buf_pos++;
+    self->buf[self->buf_pos++] = ch;
 }
 
 static PyObject*
 get_word(Shlex *self) {
     Py_ssize_t pos = self->buf_pos; self->buf_pos = 0;
-    return Py_BuildValue("nN", self->word_start, PyUnicode_Substring(self->buf, 0, pos));
+    return Py_BuildValue("nN", self->word_start, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, self->buf, pos));
 }
 
 static Py_UCS4
