@@ -19,12 +19,12 @@ from typing import Optional
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
-from kitty.fast_data_types import Cursor, HistoryBuf, LineBuf, Screen, get_options, set_options
+from kitty.fast_data_types import Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.types import MouseEvent
 from kitty.utils import read_screen_size
-from kitty.window import process_remote_print, process_title_from_child
+from kitty.window import decode_cmdline, process_remote_print, process_title_from_child
 
 
 def parse_bytes(screen, data, dump_callback=None):
@@ -43,6 +43,9 @@ class Callbacks:
         self.pty = pty
         self.ftc = None
         self.set_pointer_shape = lambda data: None
+        self.last_cmd_at = 0
+        self.last_cmd_cmdline = ''
+        self.last_cmd_exit_status = sys.maxsize
 
     def write(self, data) -> None:
         self.wtcbuf += bytes(data)
@@ -66,7 +69,13 @@ class Callbacks:
         pass
 
     def cmd_output_marking(self, is_start: Optional[bool], data: str = '') -> None:
-        pass
+        if is_start:
+            self.last_cmd_at = monotonic()
+            self.last_cmd_cmdline = decode_cmdline(data) if data else data
+        else:
+            if self.last_cmd_at != 0:
+                self.last_cmd_at = 0
+                self.last_cmd_exit_status = int(data)
 
     def request_capabilities(self, q) -> None:
         from kitty.terminfo import get_capabilities
@@ -93,6 +102,9 @@ class Callbacks:
         self.bell_count = 0
         self.clone_cmds = []
         self.current_clone_data = ''
+        self.last_cmd_exit_status = sys.maxsize
+        self.last_cmd_cmdline = ''
+        self.last_cmd_at = 0
 
     def on_bell(self) -> None:
         self.bell_count += 1
@@ -335,6 +347,8 @@ class PTY:
             self.process_input_from_child(0)
 
     def send_cmd_to_child(self, cmd, flush=False):
+        self.callbacks.last_cmd_exit_status = sys.maxsize
+        self.last_cmd = cmd
         self.write_to_child(cmd + '\r', flush=flush)
 
     def process_input_from_child(self, timeout=10):
