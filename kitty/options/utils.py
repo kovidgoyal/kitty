@@ -1402,7 +1402,7 @@ def parse_font_spec(spec: str) -> FontSpec:
         k, sep, v = item.partition('=')
         if sep != '=':
             raise ValueError(f'The font specification: {spec} is not valid as {item} does not contain an =')
-        if k in ('family', 'style', 'full_name', 'postscript_name'):
+        if k in ('family', 'style', 'full_name', 'postscript_name', 'variable_name'):
             defined[k] = v
         else:
             try:

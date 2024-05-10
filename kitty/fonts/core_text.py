@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import itertools
+import operator
 import re
+from collections import defaultdict
 from functools import lru_cache
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
@@ -11,7 +14,7 @@ from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
 
-from . import Descriptor, ListedFont, Score, Scorer
+from . import Descriptor, ListedFont, Score, Scorer, VariableData
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -24,6 +27,7 @@ FontMap = Dict[str, Dict[str, List[CoreTextFont]]]
 
 def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
     ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}, 'variable_map': {}}
+    vmap: Dict[str, List[CoreTextFont]] = defaultdict(list)
     for x in all_fonts:
         f = (x['family'] or '').lower()
         s = (x['style'] or '').lower()
@@ -31,8 +35,19 @@ def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
         ans['family_map'].setdefault(f, []).append(x)
         ans['ps_map'].setdefault(ps, []).append(x)
         ans['full_map'].setdefault(f'{f} {s}', []).append(x)
-        if x['variable']:
-            ans['variable_map'].setdefault(f, []).append(x)
+        if x['variation'] is not None:
+            vmap[f].append(x)
+    # CoreText makes a separate descriptor for each named style in each
+    # variable font file. Keep only the default style descriptor, which has an
+    # empty variation dictionary. If no default exists, pick the one with the
+    # smallest variation dictionary size.
+    keyfunc = operator.itemgetter('path')
+    for k, v in vmap.items():
+        v.sort(key=keyfunc)
+        uniq_per_path = []
+        for _, g in itertools.groupby(v, keyfunc):
+            uniq_per_path.append(sorted(g, key=lambda x: len(x['variation'] or ()))[0])
+        ans['variable_map'][k] = uniq_per_path
     return ans
 
 
@@ -45,6 +60,10 @@ def is_monospace(descriptor: CoreTextFont) -> bool:
     return descriptor['monospace']
 
 
+def is_variable(descriptor: CoreTextFont) -> bool:
+    return descriptor['variation'] is not None
+
+
 def list_fonts() -> Generator[ListedFont, None, None]:
     for fd in coretext_all_fonts(False):
         f = fd['family']
@@ -53,14 +72,14 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             if not fn:
                 fn = f'{f} {fd["style"]}'.strip()
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': fd['monospace'],
-                   'is_variable': fd['variable'], 'descriptor': fd, 'style': fd['style']}
+                   'is_variable': is_variable(fd), 'descriptor': fd, 'style': fd['style']}
 
 
 def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:
 
     def score(candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'core_text'
-        variable_score = 0 if prefer_variable and candidate['variable'] else 1
+        variable_score = 0 if prefer_variable and candidate['variation'] is not None else 1
         style_match = 1 if candidate['bold'] == bold and candidate[
             'italic'
         ] == italic else 0
@@ -161,3 +180,26 @@ def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
             return True
         return False
     return [x for x in g if is_ok(descriptor(x))]
+
+
+def set_axis_values(tag_map: Dict[str, float], font: CoreTextFont, vd: VariableData) -> bool:
+    known_axes = {ax['tag'] for ax in vd['axes']}
+    previous = font.get('axis_map', {})
+    new = previous.copy()
+    for tag in known_axes:
+        val = tag_map.get(tag)
+        if val is not None:
+            new[tag] = val
+    font['axis_map'] = new
+    return new != previous
+
+
+def set_named_style(name: str, font: CoreTextFont, vd: VariableData) -> bool:
+    q = name.lower()
+    for i, ns in enumerate(vd['named_styles']):
+        if ns['psname'].lower() == q:
+            return set_axis_values(ns['axis_values'], font, vd)
+    for i, ns in enumerate(vd['named_styles']):
+        if ns['name'].lower() == q:
+            return set_axis_values(ns['axis_values'], font, vd)
+    return False

@@ -288,15 +288,16 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
             if ((error = FT_Set_Named_Instance(self->face, index + 1))) return set_load_error(path, error);
         }
         PyObject *axes = PyDict_GetItemString(descriptor, "axes");
-        if (axes && PyList_GET_SIZE(axes)) {
-            RAII_ALLOC(FT_Fixed, coords, malloc(sizeof(FT_Fixed) * PyList_GET_SIZE(axes)));
-            for (Py_ssize_t i = 0; i < PyList_GET_SIZE(axes); i++) {
-                PyObject *t = PyList_GET_ITEM(axes, i);
+        Py_ssize_t sz;
+        if (axes && (sz = PyTuple_GET_SIZE(axes))) {
+            RAII_ALLOC(FT_Fixed, coords, malloc(sizeof(FT_Fixed) * sz));
+            for (Py_ssize_t i = 0; i < sz; i++) {
+                PyObject *t = PyTuple_GET_ITEM(axes, i);
                 double val = PyFloat_AsDouble(t);
                 if (PyErr_Occurred()) return NULL;
                 coords[i] = (FT_Fixed)(val * 65536.0);
             }
-            if ((error = FT_Set_Var_Design_Coordinates(self->face, PyList_GET_SIZE(axes), coords))) return set_load_error(path, error);
+            if ((error = FT_Set_Var_Design_Coordinates(self->face, sz, coords))) return set_load_error(path, error);
         }
     }
     Py_XINCREF(retval);

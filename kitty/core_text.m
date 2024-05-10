@@ -111,6 +111,45 @@ dealloc(CTFace* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+static const char*
+tag_to_string(uint32_t tag, uint8_t bytes[5]) {
+    bytes[0] = (tag >> 24) & 0xff;
+    bytes[1] = (tag >> 16) & 0xff;
+    bytes[2] = (tag >> 8) & 0xff;
+    bytes[3] = (tag) & 0xff;
+    bytes[4] = 0;
+    return (const char*)bytes;
+}
+
+static uint32_t
+string_to_tag(const uint8_t *bytes) {
+    return (((uint32_t)bytes[0]) << 24) | (((uint32_t)bytes[1]) << 16) | (((uint32_t)bytes[2]) << 8) | bytes[3];
+}
+
+
+static void
+add_variation_pair(const void *key_, const void *value_, void *ctx) {
+    PyObject *ans = ctx;
+    CFNumberRef key = key_, value = value_;
+    uint32_t tag; double val;
+    if (!CFNumberGetValue(key, kCFNumberSInt32Type, &tag)) return;
+    if (!CFNumberGetValue(value, kCFNumberDoubleType, &val)) return;
+    uint8_t tag_string[5];
+    tag_to_string(tag, tag_string);
+    RAII_PyObject(pyval, PyFloat_FromDouble(val));
+    if (pyval) PyDict_SetItemString(ans, (const char*)tag_string, pyval);
+}
+
+static PyObject*
+variation_to_python(CFDictionaryRef v) {
+    if (!v) { Py_RETURN_NONE; }
+    RAII_PyObject(ans, PyDict_New());
+    if (!ans) return NULL;
+    CFDictionaryApplyFunction(v, add_variation_pair, ans);
+    if (PyErr_Occurred()) return NULL;
+    Py_INCREF(ans); return ans;
+}
+
 static PyObject*
 font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     RAII_PyObject(path, get_path_for_font_descriptor(descriptor));
@@ -127,8 +166,11 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     get_number(traits, kCTFontWeightTrait, weight, kCFNumberFloatType);
     get_number(traits, kCTFontWidthTrait, width, kCFNumberFloatType);
     get_number(traits, kCTFontSlantTrait, slant, kCFNumberFloatType);
-    RAII_CoreFoundation(CFDictionaryRef, variation, CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute));
+    RAII_CoreFoundation(CFDictionaryRef, cf_variation, CTFontDescriptorCopyAttribute(descriptor, kCTFontVariationAttribute));
+    RAII_PyObject(variation, variation_to_python(cf_variation));
+    if (!variation) return NULL;
 #undef get_number
+
 
     PyObject *ans = Py_BuildValue("{ss sOsOsOsOsO sOsOsOsOsOsOsO sfsfsfsk}",
             "descriptor_type", "core_text",
@@ -141,7 +183,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
             "expanded", (symbolic_traits & kCTFontExpandedTrait) != 0 ? Py_True : Py_False,
             "condensed", (symbolic_traits & kCTFontCondensedTrait) != 0 ? Py_True : Py_False,
             "color_glyphs", (symbolic_traits & kCTFontColorGlyphsTrait) != 0 ? Py_True : Py_False,
-            "variable", variation ? Py_True : Py_False,
+            "variation", variation,
 
             "weight", weight, "width", width, "slant", slant, "traits", symbolic_traits
     );
@@ -151,7 +193,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
 static CTFontDescriptorRef
 font_descriptor_from_python(PyObject *src) {
     CTFontSymbolicTraits symbolic_traits = 0;
-    NSMutableDictionary *attrs = [NSMutableDictionary dictionary];
+    RAII_CoreFoundation(CFMutableDictionaryRef, ans, CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     PyObject *t = PyDict_GetItemString(src, "traits");
     if (t == NULL) {
         symbolic_traits = (
@@ -161,19 +203,33 @@ font_descriptor_from_python(PyObject *src) {
     } else {
         symbolic_traits = PyLong_AsUnsignedLong(t);
     }
-    NSDictionary *traits = @{(id)kCTFontSymbolicTrait:[NSNumber numberWithUnsignedInt:symbolic_traits]};
-    attrs[(id)kCTFontTraitsAttribute] = traits;
+    RAII_CoreFoundation(CFNumberRef, cf_symbolic_traits, CFNumberCreate(NULL, kCFNumberSInt32Type, &symbolic_traits));
+    CFTypeRef keys[] = { kCTFontSymbolicTrait };
+    CFTypeRef values[] = { cf_symbolic_traits };
+    RAII_CoreFoundation(CFDictionaryRef, traits, CFDictionaryCreate(NULL, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    CFDictionaryAddValue(ans, kCTFontTraitsAttribute, traits);
 
-#define SET(x, attr) \
-    t = PyDict_GetItemString(src, #x); \
-    if (t) attrs[(id)attr] = @(PyUnicode_AsUTF8(t));
+#define SET(x, attr) if ((t = PyDict_GetItemString(src, #x))) { \
+    RAII_CoreFoundation(CFStringRef, cs, CFStringCreateWithCString(NULL, PyUnicode_AsUTF8(t), kCFStringEncodingUTF8)); \
+    CFDictionaryAddValue(ans, attr, cs); }
 
     SET(family, kCTFontFamilyNameAttribute);
     SET(style, kCTFontStyleNameAttribute);
     SET(postscript_name, kCTFontNameAttribute);
 #undef SET
-
-    return CTFontDescriptorCreateWithAttributes((CFDictionaryRef) attrs);
+    if ((t = PyDict_GetItemString(src, "axis_map"))) {
+        RAII_CoreFoundation(CFMutableDictionaryRef, axis_map, CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+        PyObject *key, *value; Py_ssize_t pos = 0;
+        while (PyDict_Next(t, &pos, &key, &value)) {
+            double val = PyFloat_AS_DOUBLE(value);
+            uint32_t tag = string_to_tag((const uint8_t*)PyUnicode_AsUTF8(key));
+            RAII_CoreFoundation(CFNumberRef, cf_tag, CFNumberCreate(NULL, kCFNumberSInt32Type, &tag));
+            RAII_CoreFoundation(CFNumberRef, cf_val, CFNumberCreate(NULL, kCFNumberDoubleType, &val));
+            CFDictionaryAddValue(axis_map, cf_tag, cf_val);
+        }
+        CFDictionaryAddValue(ans, kCTFontVariationAttribute, axis_map);
+    }
+    return CTFontDescriptorCreateWithAttributes(ans);
 }
 
 static CTFontCollectionRef all_fonts_collection_data = NULL;

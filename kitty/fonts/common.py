@@ -23,14 +23,35 @@ if TYPE_CHECKING:
     def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> Descriptor: ...
     def face_from_descriptor(descriptor: Descriptor) -> Face: ...
     def is_monospace(descriptor: Descriptor) -> bool: ...
+    def is_variable(descriptor: Descriptor) -> bool: ...
+    def set_named_style(name: str, font: Descriptor, vd: VariableData) -> bool: ...
+    def set_axis_values(tag_map: Dict[str, float], font: Descriptor, vd: VariableData) -> bool: ...
 else:
     FontCollectionMapType = FontMap = None
     if is_macos:
         from kitty.fast_data_types import CTFace as Face
-        from kitty.fonts.core_text import all_fonts_map, create_scorer, find_best_match, find_last_resort_text_font, is_monospace
+        from kitty.fonts.core_text import (
+            all_fonts_map,
+            create_scorer,
+            find_best_match,
+            find_last_resort_text_font,
+            is_monospace,
+            is_variable,
+            set_axis_values,
+            set_named_style,
+        )
     else:
         from kitty.fast_data_types import Face
-        from kitty.fonts.fontconfig import all_fonts_map, create_scorer, find_best_match, find_last_resort_text_font, is_monospace
+        from kitty.fonts.fontconfig import (
+            all_fonts_map,
+            create_scorer,
+            find_best_match,
+            find_last_resort_text_font,
+            is_monospace,
+            is_variable,
+            set_axis_values,
+            set_named_style,
+        )
     def face_from_descriptor(descriptor: Descriptor) -> Face: return Face(descriptor=descriptor)
 
 
@@ -70,9 +91,9 @@ def find_medium_variant(font: Descriptor) -> Descriptor:
     vd = get_variable_data_for_descriptor(font)
     for i, ns in enumerate(vd['named_styles']):
         if ns['name'] == 'Regular':
-            font['named_style'] = i
+            set_named_style(ns['psname'], font, vd)
             return font
-    font['axes'] = axes = [ax['default'] for ax in vd['axes']]
+    axis_values = {}
     for i, ax in enumerate(vd['axes']):
         tag = ax['tag']
         for dax in vd['design_axes']:
@@ -80,8 +101,10 @@ def find_medium_variant(font: Descriptor) -> Descriptor:
                 for x in dax['values']:
                     if x['format'] in (1, 2):
                         if x['name'] == 'Regular':
-                            axes[i] = x['value']
+                            axis_values[tag] = x['value']
                             break
+    if axis_values:
+        set_axis_values(axis_values, font, vd)
     return font
 
 
@@ -100,26 +123,49 @@ def get_design_value_for(dax: DesignAxis, default: float, bold: bool, italic: bo
 
 
 def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool) -> Descriptor:
-    key = family_name_to_key(medium['family'])
-    monospaced = is_monospace(medium)
     # we first pick the best font file for bold/italic if there are more than
     # one. For example SourceCodeVF has Italic and Upright faces with variable
     # weights in each, so we rely on the OS font matcher to give us the best
     # font file.
-    fonts = all_fonts_map(monospaced)['variable_map'][key]
+    monospaced = is_monospace(medium)
+    fonts = all_fonts_map(monospaced)['variable_map'][family_name_to_key(medium['family'])]
     scorer = create_scorer(bold, italic, monospaced)
     fonts.sort(key=scorer)
+    vd = get_variable_data_for_descriptor(fonts[0])
     ans = fonts[0].copy()
     # now we need to specialise all axes in ans
-    vd = get_variable_data_for_descriptor(ans)
-    ans['axes'] = axes = [ax['default'] for ax in vd['axes']]
+    axis_values = {}
     for i, ax in enumerate(vd['axes']):
         tag = ax['tag']
         for dax in vd['design_axes']:
             if dax['tag'] == tag:
-                axes[i] = get_design_value_for(dax, axes[i], bold, italic)
+                axis_values[tag] = get_design_value_for(dax, ax['default'], bold, italic)
                 break
+    if axis_values:
+        set_axis_values(axis_values, ans, vd)
     return ans
+
+
+def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced: bool, candidates: List[Descriptor]) -> Descriptor:
+    if spec.variable_name:
+        q = spec.variable_name.lower()
+        for font in candidates:
+            vd = get_variable_data_for_descriptor(font)
+            if vd['variations_postscript_name_prefix'].lower() == q:
+                return font
+    if spec.style:
+        q = spec.style.lower()
+        for font in candidates:
+            vd = get_variable_data_for_descriptor(font)
+            for x in vd['named_styles']:
+                if x['psname'].lower() == q:
+                    return font
+            for x in vd['named_styles']:
+                if x['name'].lower() == q:
+                    return font
+    scorer = create_scorer(bold, italic, monospaced)
+    candidates.sort(key=scorer)
+    return candidates[0]
 
 
 def get_fine_grained_font(
@@ -142,8 +188,7 @@ def get_fine_grained_font(
         # First look for a variable font
         candidates = font_map['variable_map'].get(key, [])
         if candidates:
-            candidates.sort(key=scorer)
-            q = candidates[0]
+            q = candidates[0] if len(candidates) == 1 else find_best_variable_face(spec, bold, italic, monospaced, candidates)
             q, applied = apply_variation_to_pattern(q, spec)
             if applied:
                 return q
@@ -162,42 +207,26 @@ def get_fine_grained_font(
 
 
 def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> Tuple[Descriptor, bool]:
-    if not pat['variable']:
-        return pat, False
-
     vd = face_from_descriptor(pat).get_variable_data()
+    pat = pat.copy()
     if spec.style:
-        q = spec.style.lower()
-        for i, ns in enumerate(vd['named_styles']):
-            if ns['psname'].lower() == q:
-                pat = pat.copy()
-                pat['named_style'] = i
-                return pat, True
-        else:
-            for i, ns in enumerate(vd['named_styles']):
-                if ns['name'].lower() == q:
-                    pat = pat.copy()
-                    pat['named_style'] = i
-                    return pat, True
+        if set_named_style(spec.style, pat, vd):
+            return pat, True
     tag_map, name_map = {}, {}
-    axes = [ax['default'] for ax in vd['axes']]
     for i, ax in enumerate(vd['axes']):
         tag_map[ax['tag']] = i
         if ax['strid']:
-            name_map[ax['strid'].lower()] = i
-    changed = False
+            name_map[ax['strid'].lower()] = ax['tag']
+    axis_values = {}
     for axspec in spec.axes:
         qname = axspec[0]
-        axis = tag_map.get(qname)
-        if axis is None:
-            axis = name_map.get(qname.lower())
-        if axis is not None:
-            axes[axis] = axspec[1]
-            changed = True
-    if changed:
-        pat = pat.copy()
-        pat['axes'] = axes
-    return pat, changed
+        if qname in tag_map:
+            axis_values[qname] = axspec[1]
+            continue
+        tag = name_map.get(qname.lower())
+        if tag:
+            axis_values[tag] = axspec[1]
+    return pat, set_axis_values(axis_values, pat, vd)
 
 
 def get_font_from_spec(
@@ -211,7 +240,7 @@ def get_font_from_spec(
         if bold or italic:
             assert resolved_medium_font is not None
             family = resolved_medium_font['family']
-            if resolved_medium_font['variable']:
+            if is_variable(resolved_medium_font):
                 v = find_bold_italic_variant(resolved_medium_font, bold, italic)
                 if v is not None:
                     return v
