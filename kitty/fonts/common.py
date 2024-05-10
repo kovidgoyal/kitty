@@ -299,13 +299,21 @@ def develop(family: str = '') -> None:
     print('Bold-Italic:', s(ff['bi']))
 
 
+def axis_values_are_equal(defaults: Dict[str, float], a: Dict[str, float], b: Dict[str, float]) -> bool:
+    ad, bd = defaults.copy(), defaults.copy()
+    ad.update(a)
+    bd.update(b)
+    return ad == bd
+
+
 def get_named_style(face: Face) -> Optional[NamedStyle]:
     axis_map = face.get_variation()
     if axis_map is None:
         return None
     vd = get_variable_data_for_face(face)
+    defaults = {ax['tag']: ax['default'] for ax in vd['axes']}
     for ns in vd['named_styles']:
-        if ns['axis_values'] == axis_map:
+        if axis_values_are_equal(defaults, ns['axis_values'], axis_map):
             return ns
     return None
 
