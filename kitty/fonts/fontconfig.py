@@ -19,12 +19,12 @@ from kitty.typing import FontConfigPattern
 
 from . import Descriptor, ListedFont, Score, Scorer, family_name_to_key
 
-FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map']
+FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
 FontMap = Dict[FontCollectionMapType, Dict[str, List[FontConfigPattern]]]
 
 
 def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
-    ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
+    ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}, 'variable_map': {}}
     for x in all_fonts:
         if not x.get('path'):
             continue
@@ -34,6 +34,8 @@ def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
         ans['family_map'].setdefault(f, []).append(x)
         ans['ps_map'].setdefault(ps, []).append(x)
         ans['full_map'].setdefault(full, []).append(x)
+        if x['variable']:
+            ans['variable_map'].setdefault(f, []).append(x)
     return ans
 
 
@@ -48,6 +50,10 @@ def all_fonts_map(monospaced: bool = True) -> FontMap:
     return create_font_map(ans)
 
 
+def is_monospace(descriptor: FontConfigPattern) -> bool:
+    return descriptor['spacing'] in ('MONO', 'DUAL')
+
+
 def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]:
     for fd in fc_list(only_variable=only_variable):
         f = fd.get('family')
@@ -57,10 +63,9 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
                 fn = str(fn_)
             else:
                 fn = f'{f} {fd.get("style", "")}'.strip()
-            is_mono = fd.get('spacing') in ('MONO', 'DUAL')
             yield {
                 'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')),
-                'is_monospace': is_mono, 'descriptor': fd, 'is_variable': fd.get('variable', False),
+                'is_monospace': is_monospace(fd), 'descriptor': fd, 'is_variable': fd.get('variable', False),
                 'style': fd['style'],
             }
 
@@ -94,12 +99,12 @@ def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospa
 
 def find_best_match(
         family: str, bold: bool = False, italic: bool = False, monospaced: bool = True,
-        ignore_face: Optional[FontConfigPattern] = None
+        ignore_face: Optional[FontConfigPattern] = None, prefer_variable: bool = False,
 ) -> FontConfigPattern:
     from .common import find_best_match_in_candidates
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
-    scorer = create_scorer(bold, italic, monospaced)
+    scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
     is_medium_face = not bold and not italic
     # First look for an exact match
     exact_match = (

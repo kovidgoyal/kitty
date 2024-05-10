@@ -23,7 +23,7 @@ FontMap = Dict[str, Dict[str, List[CoreTextFont]]]
 
 
 def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
-    ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
+    ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}, 'variable_map': {}}
     for x in all_fonts:
         f = (x['family'] or '').lower()
         s = (x['style'] or '').lower()
@@ -31,12 +31,18 @@ def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
         ans['family_map'].setdefault(f, []).append(x)
         ans['ps_map'].setdefault(ps, []).append(x)
         ans['full_map'].setdefault(f'{f} {s}', []).append(x)
+        if x['variable']:
+            ans['variable_map'].setdefault(f, []).append(x)
     return ans
 
 
 @lru_cache(maxsize=2)
 def all_fonts_map(monospaced: bool = True) -> FontMap:
     return create_font_map(coretext_all_fonts(monospaced))
+
+
+def is_monospace(descriptor: CoreTextFont) -> bool:
+    return descriptor['monospace']
 
 
 def list_fonts() -> Generator[ListedFont, None, None]:
@@ -76,11 +82,12 @@ def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospa
 
 
 def find_best_match(
-    family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[CoreTextFont] = None
+    family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[CoreTextFont] = None,
+    prefer_variable: bool = False
 ) -> CoreTextFont:
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map(monospaced)
-    scorer = create_scorer(bold, italic, monospaced)
+    scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
 
     # First look for an exact match
     for selector in ('ps_map', 'full_map'):
