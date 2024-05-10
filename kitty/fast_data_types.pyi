@@ -393,6 +393,7 @@ class FontConfigPattern(TypedDict):
     outline: bool
     color: bool
     variable: bool
+    named_instance: bool
 
     # The following two are used by C code to get a face from the pattern
     named_style: NotRequired[int]

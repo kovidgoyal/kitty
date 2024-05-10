@@ -178,7 +178,7 @@ pattern_as_dict(FcPattern *pat) {
 #define S(which, key) G(FcChar8*, FcPatternGetString, which, PS, key, PyUnicode_FromString(""))
 #define LS(which, key) L(FcChar8*, FcPatternGetString, which, PS, key)
 #define I(which, key) G(int, FcPatternGetInteger, which, PyLong_FromLong, key, PyLong_FromUnsignedLong(0))
-#define B(which, key) G(int, FcPatternGetBool, which, pybool, key, increment_and_return(Py_False))
+#define B(which, key) G(FcBool, FcPatternGetBool, which, pybool, key, increment_and_return(Py_False))
 #define E(which, key, conv) G(int, FcPatternGetInteger, which, conv, key, PyLong_FromUnsignedLong(0))
     S(FC_FILE, path);
     S(FC_FAMILY, family);
@@ -187,6 +187,7 @@ pattern_as_dict(FcPattern *pat) {
     S(FC_POSTSCRIPT_NAME, postscript_name);
     LS(FC_FONT_FEATURES, fontfeatures);
     B(FC_VARIABLE, variable);
+    B(FC_NAMED_INSTANCE, named_instance);
     I(FC_WEIGHT, weight);
     I(FC_WIDTH, width)
     I(FC_SLANT, slant);
@@ -244,7 +245,7 @@ fc_list(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     }
     if (spacing > -1) AP(FcPatternAddInteger, FC_SPACING, spacing, "spacing");
     if (only_variable) AP(FcPatternAddBool, FC_VARIABLE, FcTrue, "variable");
-    os = FcObjectSetBuild(FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING, FC_VARIABLE, NULL);
+    os = FcObjectSetBuild(FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING, FC_VARIABLE, FC_NAMED_INSTANCE, NULL);
     if (!os) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig object set"); goto end; }
     fs = FcFontList(NULL, pat, os);
     if (!fs) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig font set"); goto end; }
