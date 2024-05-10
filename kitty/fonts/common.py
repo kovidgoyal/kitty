@@ -68,6 +68,16 @@ def get_variable_data_for_descriptor(d: Descriptor) -> VariableData:
     return ans
 
 
+def get_variable_data_for_face(d: Face) -> VariableData:
+    path = d.path
+    if not path:
+        return d.get_variable_data()
+    ans = cache_for_variable_data_by_path.get(path)
+    if ans is None:
+        ans = cache_for_variable_data_by_path[path] = d.get_variable_data()
+    return ans
+
+
 def find_best_match_in_candidates(
     candidates: Sequence[Descriptor], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[Descriptor] = None
 ) -> Optional[Descriptor]:
@@ -293,7 +303,7 @@ def get_named_style(face: Face) -> Optional[NamedStyle]:
     axis_map = face.get_variation()
     if axis_map is None:
         return None
-    vd = face.get_variable_data()
+    vd = get_variable_data_for_face(face)
     for ns in vd['named_styles']:
         if ns['axis_values'] == axis_map:
             return ns
