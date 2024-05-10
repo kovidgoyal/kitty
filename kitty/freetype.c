@@ -37,7 +37,6 @@ typedef struct {
     unsigned int units_per_EM;
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     int hinting, hintstyle;
-    FaceIndex instance;
     bool is_scalable, has_color, is_variable, has_svg;
     float size_in_pts;
     FT_F26Dot6 char_width, char_height;
@@ -236,7 +235,6 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
 
     self->path = path;
     Py_INCREF(self->path);
-    self->instance.val = self->face->face_index;
     self->space_glyph_id = glyph_id_for_codepoint((PyObject*)self, ' ');
     return true;
 }
@@ -256,7 +254,7 @@ face_equals_descriptor(PyObject *face_, PyObject *descriptor) {
     if (!t) return false;
     if (PyObject_RichCompareBool(face->path, t, Py_EQ) != 1) return false;
     t = PyDict_GetItemString(descriptor, "index");
-    if (t && PyLong_AsLong(t) != face->instance.val) return false;
+    if (t && PyLong_AsLong(t) != face->face->face_index) return false;
     return true;
 }
 
@@ -290,7 +288,7 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
             if ((error = FT_Set_Named_Instance(self->face, index + 1))) return set_load_error(path, error);
         }
         PyObject *axes = PyDict_GetItemString(descriptor, "axes");
-        if (axes) {
+        if (axes && PyList_GET_SIZE(axes)) {
             RAII_ALLOC(FT_Fixed, coords, malloc(sizeof(FT_Fixed) * PyList_GET_SIZE(axes)));
             for (Py_ssize_t i = 0; i < PyList_GET_SIZE(axes); i++) {
                 PyObject *t = PyList_GET_ITEM(axes, i);
@@ -352,13 +350,16 @@ dealloc(Face* self) {
 static PyObject *
 repr(Face *self) {
     const char *ps_name = FT_Get_Postscript_Name(self->face);
+#define B(x) ((x) ? Py_True : Py_False)
+    FaceIndex instance;
+    instance.val = self->face->face_index;
     return PyUnicode_FromFormat(
-        "Face(family=%s, style=%s, ps_name=%s, path=%S, ttc_index=%d, variation_index=0x%x is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i, strikethrough_position=%i, strikethrough_thickness=%i)",
+        "Face(family=%s style=%s ps_name=%s path=%S ttc_index=%d variant=%S named_instance=%S scalable=%S color=%S)",
         self->face->family_name ? self->face->family_name : "", self->face->style_name ? self->face->style_name : "",
-        ps_name ? ps_name: "",
-        self->path, self->instance.ttc_index, self->instance.variation_index, self->is_scalable ? Py_True : Py_False, self->has_color ? Py_True : Py_False,
-        self->ascender, self->descender, self->height, self->underline_position, self->underline_thickness, self->strikethrough_position, self->strikethrough_thickness
+        ps_name ? ps_name: "", self->path, instance.ttc_index,
+        B(FT_IS_VARIATION(self->face)), B(FT_IS_NAMED_INSTANCE(self->face)), B(self->is_scalable), B(self->has_color)
     );
+#undef B
 }
 
 const char*
@@ -735,7 +736,9 @@ postscript_name(PyObject *s, PyObject *a UNUSED) {
 static PyObject*
 identify_for_debug(PyObject *s, PyObject *a UNUSED) {
     Face *self = (Face*)s;
-    return PyUnicode_FromFormat("%s: %V:%d", FT_Get_Postscript_Name(self->face), self->path, "[path]", self->instance.val);
+    FaceIndex instance;
+    instance.val = self->face->face_index;
+    return PyUnicode_FromFormat("%s: %V:%d", FT_Get_Postscript_Name(self->face), self->path, "[path]", instance.val);
 }
 
 static PyObject*

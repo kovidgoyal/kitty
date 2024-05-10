@@ -252,8 +252,11 @@ def develop(family: str = '') -> None:
         return str(face_from_descriptor(d))
 
     print('Medium     :', s(ff['medium']))
+    print()
     print('Bold       :', s(ff['bold']))
+    print()
     print('Italic     :', s(ff['italic']))
+    print()
     print('Bold-Italic:', s(ff['bi']))
 
 
