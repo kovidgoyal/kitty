@@ -17,7 +17,7 @@ from kitty.fast_data_types import (
 from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.typing import FontConfigPattern
 
-from . import Descriptor, ListedFont, Score, Scorer, family_name_to_key
+from . import Descriptor, ListedFont, Score, Scorer, VariableData, family_name_to_key
 
 FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
 FontMap = Dict[FontCollectionMapType, Dict[str, List[FontConfigPattern]]]
@@ -54,6 +54,10 @@ def is_monospace(descriptor: FontConfigPattern) -> bool:
     return descriptor['spacing'] in ('MONO', 'DUAL')
 
 
+def is_variable(descriptor: FontConfigPattern) -> bool:
+    return descriptor['variable']
+
+
 def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]:
     for fd in fc_list(only_variable=only_variable):
         f = fd.get('family')
@@ -65,7 +69,7 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
                 fn = f'{f} {fd.get("style", "")}'.strip()
             yield {
                 'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')),
-                'is_monospace': is_monospace(fd), 'descriptor': fd, 'is_variable': fd.get('variable', False),
+                'is_monospace': is_monospace(fd), 'descriptor': fd, 'is_variable': is_variable(fd),
                 'style': fd['style'],
             }
 
@@ -161,3 +165,29 @@ def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
         return d['variable'] or d['path'] not in variable_paths
 
     return [x for x in g if is_ok(descriptor(x))]
+
+
+def set_named_style(name: str, font: FontConfigPattern, vd: VariableData) -> bool:
+    q = name.lower()
+    for i, ns in enumerate(vd['named_styles']):
+        if ns['psname'].lower() == q:
+            font['named_style'] = i
+            return True
+    for i, ns in enumerate(vd['named_styles']):
+        if ns['name'].lower() == q:
+            font['named_style'] = i
+            return True
+    return False
+
+
+def set_axis_values(tag_map: Dict[str, float], font: FontConfigPattern, vd: VariableData) -> bool:
+    axes = list(font.get('axes', ())) or [ax['default'] for ax in vd['axes']]
+    changed = False
+    for i, ax in enumerate(vd['axes']):
+        val = tag_map.get(ax['tag'])
+        if val is not None:
+            changed = True
+            axes[i] = val
+    if changed:
+        font['axes'] = tuple(axes)
+    return changed

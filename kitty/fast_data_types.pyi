@@ -397,7 +397,7 @@ class FontConfigPattern(TypedDict):
 
     # The following two are used by C code to get a face from the pattern
     named_style: NotRequired[int]
-    axes: NotRequired[List[float]]
+    axes: NotRequired[Tuple[float, ...]]
 
 
 def fc_list(spacing: int = -1, allow_bitmapped_fonts: bool = False, only_variable: bool = False) -> Tuple[FontConfigPattern, ...]:
@@ -444,15 +444,14 @@ class CoreTextFont(TypedDict):
     condensed: bool
     color_glyphs: bool
     monospace: bool
-    variable: bool
+    variation: Optional[Dict[str, float]]
     weight: float
     width: float
     slant: float
     traits: int
 
-    # The following two are used by C code to get a face from the pattern
-    named_style: NotRequired[int]
-    axes: NotRequired[List[float]]
+    # The following is used by C code to get a face from the pattern
+    axis_map: NotRequired[Dict[str, float]]
 
 
 class CTFace:
