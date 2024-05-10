@@ -821,6 +821,28 @@ convert_axis_to_python(Face *face, const FT_Var_Axis *src, FT_UInt flags) {
 }
 
 static PyObject*
+get_variation(Face *self, PyObject *a UNUSED) {
+    RAII_FTMMVar(mm);
+    FT_Error err;
+    if ((err = FT_Get_MM_Var(self->face, &mm))) { Py_RETURN_NONE; }
+    RAII_ALLOC(FT_Fixed, coords, malloc(mm->num_axis * sizeof(FT_Fixed)));
+    if (!coords) return PyErr_NoMemory();
+    if ((err = FT_Get_Var_Design_Coordinates(self->face, mm->num_axis, coords))) {
+        set_freetype_error("Failed to load the variation data from font with error:", err); return NULL;
+    }
+    RAII_PyObject(ans, PyDict_New()); if (!ans) return NULL;
+    uint8_t tag[5];
+    for (FT_UInt i = 0; i < mm->num_axis; i++) {
+        double val = coords[i] / 65536.0;
+        tag_to_string(mm->axis[i].tag, tag);
+        RAII_PyObject(pval, PyFloat_FromDouble(val));
+        if (!pval) return NULL;
+        if (PyDict_SetItemString(ans, (const char*)tag, pval) != 0) return NULL;
+    }
+    Py_INCREF(ans); return ans;
+}
+
+static PyObject*
 get_variable_data(Face *self, PyObject *a UNUSED) {
     if (!ensure_name_table(self)) return NULL;
     RAII_PyObject(output, PyDict_New()); if (!output) return NULL;
@@ -969,6 +991,7 @@ static PyMethodDef methods[] = {
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(extra_data, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
+    METHODB(get_variation, METH_NOARGS),
     METHODB(get_best_name, METH_O),
     METHODB(set_size, METH_VARARGS),
     METHODB(render_sample_text, METH_VARARGS),

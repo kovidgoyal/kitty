@@ -4,7 +4,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Sequence, Tuple, TypedDict, Union
 
 from kitty.constants import is_macos
-from kitty.fonts import Descriptor, DesignAxis, FontSpec, Scorer, VariableData, family_name_to_key
+from kitty.fonts import Descriptor, DesignAxis, FontSpec, NamedStyle, Scorer, VariableData, family_name_to_key
 from kitty.options.types import Options
 
 if TYPE_CHECKING:
@@ -287,6 +287,17 @@ def develop(family: str = '') -> None:
     print('Italic     :', s(ff['italic']))
     print()
     print('Bold-Italic:', s(ff['bi']))
+
+
+def get_named_style(face: Face) -> Optional[NamedStyle]:
+    axis_map = face.get_variation()
+    if axis_map is None:
+        return None
+    vd = face.get_variable_data()
+    for ns in vd['named_styles']:
+        if ns['axis_values'] == axis_map:
+            return ns
+    return None
 
 
 if __name__ == '__main__':
