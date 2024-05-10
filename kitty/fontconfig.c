@@ -187,7 +187,11 @@ pattern_as_dict(FcPattern *pat) {
     S(FC_POSTSCRIPT_NAME, postscript_name);
     LS(FC_FONT_FEATURES, fontfeatures);
     B(FC_VARIABLE, variable);
+#ifdef FC_NAMED_INSTANCE
     B(FC_NAMED_INSTANCE, named_instance);
+#else
+    PyDict_SetItemString(ans, "named_instance", Py_False);
+#endif
     I(FC_WEIGHT, weight);
     I(FC_WIDTH, width)
     I(FC_SLANT, slant);
@@ -245,7 +249,11 @@ fc_list(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     }
     if (spacing > -1) AP(FcPatternAddInteger, FC_SPACING, spacing, "spacing");
     if (only_variable) AP(FcPatternAddBool, FC_VARIABLE, FcTrue, "variable");
-    os = FcObjectSetBuild(FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING, FC_VARIABLE, FC_NAMED_INSTANCE, NULL);
+    os = FcObjectSetBuild(FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING, FC_VARIABLE,
+#ifdef FC_NAMED_INSTANCE
+    FC_NAMED_INSTANCE,
+#endif
+    NULL);
     if (!os) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig object set"); goto end; }
     fs = FcFontList(NULL, pat, os);
     if (!fs) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig font set"); goto end; }
