@@ -12,7 +12,7 @@ import struct
 import sys
 import termios
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from functools import wraps
 from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
 from typing import Optional
@@ -75,7 +75,8 @@ class Callbacks:
         else:
             if self.last_cmd_at != 0:
                 self.last_cmd_at = 0
-                self.last_cmd_exit_status = int(data)
+                with suppress(Exception):
+                    self.last_cmd_exit_status = int(data)
 
     def request_capabilities(self, q) -> None:
         from kitty.terminfo import get_capabilities
