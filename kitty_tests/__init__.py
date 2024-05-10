@@ -354,23 +354,13 @@ class PTY:
 
     def process_input_from_child(self, timeout=10):
         rd, wd, _ = select.select([self.master_fd], [self.master_fd] if self.write_buf else [], [], max(0, timeout))
-        while wd:
-            try:
-                n = os.write(self.master_fd, self.write_buf)
-            except (BlockingIOError, OSError):
-                n = 0
-            if not n:
-                break
+        if wd:
+            n = os.write(self.master_fd, self.write_buf)
             self.write_buf = self.write_buf[n:]
 
         bytes_read = 0
-        while rd:
-            try:
-                data = os.read(self.master_fd, io.DEFAULT_BUFFER_SIZE)
-            except (BlockingIOError, OSError):
-                data = b''
-            if not data:
-                break
+        if rd:
+            data = os.read(self.master_fd, io.DEFAULT_BUFFER_SIZE)
             bytes_read += len(data)
             self.received_bytes += data
             parse_bytes(self.screen, data)
@@ -395,7 +385,8 @@ class PTY:
                         f'Child exited with exit status: {status} code: {ec} != {require_exit_code}.'
                         f' Screen contents:\n{self.screen_contents()}')
                 return status
-            self.process_input_from_child(timeout=0.02)
+            with suppress(OSError):
+                self.process_input_from_child(timeout=0.02)
         raise AssertionError(f'Child did not exit in {timeout} seconds. Screen contents:\n{self.screen_contents()}')
 
     def set_window_size(self, rows=25, columns=80, send_signal=True):
