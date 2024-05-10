@@ -940,6 +940,12 @@ get_best_name(CTFace *self, PyObject *nameid) {
 }
 
 static PyObject*
+get_variation(CTFace *self) {
+    RAII_CoreFoundation(CFDictionaryRef, src, CTFontCopyVariation(self->ct_font));
+    return variation_to_python(src);
+}
+
+static PyObject*
 get_variable_data(CTFace *self) {
     if (!ensure_name_table(self)) return NULL;
     RAII_PyObject(output, PyDict_New());
@@ -982,6 +988,7 @@ static PyMethodDef methods[] = {
     METHODB(display_name, METH_NOARGS),
     METHODB(postscript_name, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
+    METHODB(get_variation, METH_NOARGS),
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(set_size, METH_VARARGS),
     METHODB(render_sample_text, METH_VARARGS),
