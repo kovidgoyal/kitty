@@ -2343,7 +2343,9 @@ shell_prompt_marking(Screen *self, char *buf) {
                 if (strstr(buf + 1, ";cmdline") == buf + 1) {
                     cmdline = buf + 2;
                 }
-                CALLBACK("cmd_output_marking", "Os", Py_True, cmdline);
+                RAII_PyObject(c, PyUnicode_DecodeUTF8(cmdline, strlen(cmdline), "replace"));
+                if (c) { CALLBACK("cmd_output_marking", "OO", Py_True, c); }
+                else PyErr_Print();
             } break;
             case 'D': {
                 const char *exit_status = buf[1] == ';' ? buf + 2 : "";
