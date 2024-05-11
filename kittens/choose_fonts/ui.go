@@ -35,7 +35,6 @@ type TextStyle struct {
 
 type handler struct {
 	lp                   *loop.Loop
-	fonts                map[string][]ListedFont
 	state                State
 	err_mutex            sync.Mutex
 	err_in_worker_thread error
@@ -46,9 +45,11 @@ type handler struct {
 	graphics_manager     graphics_manager
 
 	// Listing
-	rl                          *readline.Readline
-	family_list                 FamilyList
-	variable_data_requested_for *utils.Set[string]
+	rl                             *readline.Readline
+	family_list                    FamilyList
+	variable_data_requested_for    *utils.Set[string]
+	fonts                          map[string][]ListedFont
+	resolved_faces_from_kitty_conf ResolvedFaces
 }
 
 func (h *handler) set_worker_error(err error) {
@@ -279,7 +280,10 @@ func (h *handler) initialize() {
 	initialize_variable_data_cache()
 	h.graphics_manager.initialize(h.lp)
 	go func() {
-		h.set_worker_error(kitty_font_backend.query("list_monospaced_fonts", nil, &h.fonts))
+		var r ListResult
+		h.set_worker_error(kitty_font_backend.query("list_monospaced_fonts", nil, &r))
+		h.fonts = r.Fonts
+		h.resolved_faces_from_kitty_conf = r.Resolved_faces
 		h.lp.WakeupMainThread()
 	}()
 }
@@ -351,7 +355,7 @@ func (h *handler) on_wakeup() (err error) {
 	case SCANNING_FAMILIES:
 		h.state = LISTING_FAMILIES
 		h.family_list.UpdateFamilies(utils.StableSortWithKey(utils.Keys(h.fonts), strings.ToLower))
-	case LISTING_FAMILIES:
+		h.family_list.SelectFamily(h.resolved_faces_from_kitty_conf.Font_family.Family)
 	}
 	return h.draw_screen()
 }

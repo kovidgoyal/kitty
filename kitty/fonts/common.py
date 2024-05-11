@@ -306,16 +306,80 @@ def axis_values_are_equal(defaults: Dict[str, float], a: Dict[str, float], b: Di
     return ad == bd
 
 
-def get_named_style(face: Face) -> Optional[NamedStyle]:
-    axis_map = face.get_variation()
-    if axis_map is None:
-        return None
-    vd = get_variable_data_for_face(face)
+def _get_named_style(axis_map: Dict[str, float], vd: VariableData) -> Optional[NamedStyle]:
     defaults = {ax['tag']: ax['default'] for ax in vd['axes']}
     for ns in vd['named_styles']:
         if axis_values_are_equal(defaults, ns['axis_values'], axis_map):
             return ns
     return None
+
+
+def get_named_style(face_or_descriptor: Union[Face, Descriptor]) -> Optional[NamedStyle]:
+    if isinstance(face_or_descriptor, dict):
+        d: Descriptor = face_or_descriptor
+        vd = get_variable_data_for_descriptor(d)
+        if d['descriptor_type'] == 'fontconfig':
+            ns = d.get('named_instance', -1)
+            if ns > -1 and ns < len(vd['named_styles']):
+                return vd['named_styles'][ns]
+            axis_map = {}
+            axes = vd['axes']
+            for i, val in enumerate(d.get('axes', ())):
+                if i < len(axes):
+                    axis_map[axes[i]['tag']] = val
+        else:
+            axis_map = d.get('axis_map', {}).copy()
+    else:
+        face: Face = face_or_descriptor
+        q = face.get_variation()
+        if q is None:
+            return None
+        axis_map = q
+    return _get_named_style(axis_map, vd)
+
+
+def get_axis_map(face_or_descriptor: Union[Face, Descriptor]) -> Dict[str, float]:
+    base_axis_map = {}
+    axis_map: Dict[str, float] = {}
+    if isinstance(face_or_descriptor, dict):
+        d: Descriptor = face_or_descriptor
+        vd = get_variable_data_for_descriptor(d)
+        if d['descriptor_type'] == 'fontconfig':
+            ns = d.get('named_instance', -1)
+            if ns > -1 and ns < len(vd['named_styles']):
+                base_axis_map = vd['named_styles'][ns]['axis_values'].copy()
+            axis_map = {}
+            axes = vd['axes']
+            for i, val in enumerate(d.get('axes', ())):
+                if i < len(axes):
+                    axis_map[axes[i]['tag']] = val
+
+        else:
+            axis_map = d.get('axis_map', {}).copy()
+    else:
+        face: Face = face_or_descriptor
+        q = face.get_variation()
+        if q is not None:
+            axis_map = q
+    base_axis_map.update(axis_map)
+    return base_axis_map
+
+
+def spec_for_descriptor(descriptor: Descriptor) -> str:
+    from shlex import quote as q
+    if is_variable(descriptor):
+        vd = get_variable_data_for_descriptor(descriptor)
+        spec = f'family={q(descriptor["family"])}'
+        if vd['variations_postscript_name_prefix']:
+            spec += f' variable_name={q(vd["variations_postscript_name_prefix"])}'
+        ns = get_named_style(descriptor)
+        if ns is None:
+            for key, val in get_axis_map(descriptor).items():
+                spec += f' {key}={val:g}'
+        else:
+            spec = f'{spec} style={q(ns["psname"])}'
+        return spec
+    return descriptor['postscript_name']
 
 
 if __name__ == '__main__':
