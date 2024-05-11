@@ -69,6 +69,23 @@ type VariableData struct {
 	Multi_axis_styles                 []MultiAxisStyle `json:"multi_axis_styles"`
 }
 
+type ResolvedFace struct {
+	Family string `json:"family"`
+	Spec   string `json:"spec"`
+}
+
+type ResolvedFaces struct {
+	Font_family      ResolvedFace `json:"font_family"`
+	Bold_font        ResolvedFace `json:"bold_font"`
+	Italic_font      ResolvedFace `json:"italic_font"`
+	Bold_italic_font ResolvedFace `json:"bold_italic_font"`
+}
+
+type ListResult struct {
+	Fonts          map[string][]ListedFont `json:"fonts"`
+	Resolved_faces ResolvedFaces           `json:"resolved_faces"`
+}
+
 var variable_data_cache map[string]VariableData
 var variable_data_cache_mutex sync.Mutex
 

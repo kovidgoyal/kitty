@@ -142,6 +142,16 @@ func (self *FamilyList) Lines(num_rows int) []Line {
 	return ans
 }
 
+func (self *FamilyList) SelectFamily(family string) bool {
+	for i, f := range self.families {
+		if f == family {
+			self.current_idx = i
+			return true
+		}
+	}
+	return false
+}
+
 func (self *FamilyList) CurrentFamily() string {
 	if self.current_idx >= 0 && self.current_idx < len(self.families) {
 		return self.families[self.current_idx]

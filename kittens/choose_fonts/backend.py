@@ -5,12 +5,13 @@ import json
 import string
 import sys
 import tempfile
-from typing import Any, Dict, Tuple, TypedDict
+from typing import Any, Dict, Literal, Tuple, TypedDict
 
+from kitty.cli import create_default_opts
 from kitty.conf.utils import to_color
 from kitty.constants import kitten_exe
 from kitty.fonts import Descriptor
-from kitty.fonts.common import face_from_descriptor, get_font_files, get_variable_data_for_descriptor
+from kitty.fonts.common import face_from_descriptor, get_font_files, get_variable_data_for_descriptor, spec_for_descriptor
 from kitty.fonts.list import create_family_groups
 from kitty.fonts.render import display_bitmap
 from kitty.options.types import Options
@@ -95,13 +96,31 @@ def render_family_sample(
     return ans
 
 
+OptNames = Literal['font_family', 'bold_font', 'italic_font', 'bold_italic_font']
+ResolvedFace = Dict[Literal['family', 'spec'], str]
+
+
+def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:
+    font_files = get_font_files(opts)
+    ans: Dict[OptNames, ResolvedFace] = {}
+    def d(key: Literal['medium', 'bold', 'italic', 'bi'], opt_name: OptNames) -> None:
+        descriptor = font_files[key]
+        ans[opt_name] = {'family': descriptor['family'], 'spec': spec_for_descriptor(descriptor)}
+    d('medium', 'font_family')
+    d('bold', 'bold_font')
+    d('italic', 'italic_font')
+    d('bi', 'bold_italic_font')
+    return ans
+
+
 def main() -> None:
     cache: Dict[FaceKey, str] = {}
     for line in sys.stdin.buffer:
         cmd = json.loads(line)
         action = cmd.get('action', '')
         if action == 'list_monospaced_fonts':
-            send_to_kitten(create_family_groups())
+            opts = create_default_opts()
+            send_to_kitten({'fonts': create_family_groups(), 'resolved_faces': resolved_faces(opts)})
         elif action == 'read_variable_data':
             ans = []
             for descriptor in cmd['descriptors']:
