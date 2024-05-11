@@ -366,12 +366,15 @@ class PTY:
             parse_bytes(self.screen, data)
         return bytes_read
 
-    def wait_till(self, q, timeout=10):
+    def wait_till(self, q, timeout=10, timeout_msg=None):
         end_time = time.monotonic() + timeout
         while not q() and time.monotonic() <= end_time:
             self.process_input_from_child(timeout=end_time - time.monotonic())
         if not q():
-            raise TimeoutError(f'The condition was not met. Screen contents: \n {repr(self.screen_contents())}')
+            msg = 'The condition was not met'
+            if timeout_msg is not None:
+                msg = timeout_msg()
+            raise TimeoutError(f'Timed out: {msg}. Screen contents: \n {repr(self.screen_contents())}')
 
     def wait_till_child_exits(self, timeout=30 if BaseTest.is_ci else 10, require_exit_code=None):
         end_time = time.monotonic() + timeout
