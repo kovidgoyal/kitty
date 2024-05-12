@@ -7,10 +7,17 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
+	"math"
 	"strings"
+	"sync"
 )
 
 var _ = fmt.Print
+
+type preview_cache_key struct {
+	family        string
+	width, height int
+}
 
 type FontList struct {
 	rl                             *readline.Readline
@@ -19,10 +26,13 @@ type FontList struct {
 	resolved_faces_from_kitty_conf ResolvedFaces
 	handler                        *handler
 	variable_data_requested_for    *utils.Set[string]
+	preview_cache                  map[preview_cache_key]string
+	preview_cache_mutex            sync.Mutex
 }
 
 func (self *FontList) initialize(h *handler) {
 	self.handler = h
+	self.preview_cache = make(map[preview_cache_key]string)
 	self.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
 	self.variable_data_requested_for = utils.NewSet[string](256)
 }
@@ -89,13 +99,61 @@ func (self *FontList) draw_family_summary(start_x int, sz loop.ScreenSize) (err 
 		}
 	}
 
-	for i, line := range lines {
-		if i >= int(sz.HeightCells)-1 {
+	y := 0
+	for _, line := range lines {
+		if y >= int(sz.HeightCells)-1 {
 			break
 		}
-		lp.MoveCursorTo(start_x+1, i+1)
+		lp.MoveCursorTo(start_x+1, y+1)
 		lp.QueueWriteString(line)
+		y++
 	}
+	if self.handler.text_style.Background != "" {
+		return self.draw_preview(start_x, y, sz)
+	}
+	return
+}
+
+func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
+	width_cells, height_cells := int(sz.WidthCells)-x-1, int(sz.HeightCells)-y
+	if height_cells < 3 {
+		return
+	}
+	y++
+	self.handler.lp.MoveCursorTo(x+1, y+1)
+	self.handler.lp.QueueWriteString("Preview:")
+	y++
+	height_cells -= 2
+	height_cells = min(height_cells, int(math.Ceil(100./float64(width_cells))))
+	self.handler.lp.MoveCursorTo(x+1, y+1)
+	key := preview_cache_key{
+		family: self.family_list.CurrentFamily(), width: int(sz.CellWidth) * width_cells, height: int(sz.CellHeight) * height_cells,
+	}
+	if key.family == "" {
+		return
+	}
+	self.preview_cache_mutex.Lock()
+	defer self.preview_cache_mutex.Unlock()
+	img_path := self.preview_cache[key]
+	switch img_path {
+	case "":
+		self.preview_cache[key] = "requested"
+		go func() {
+			var r map[string]string
+			self.handler.set_worker_error(kitty_font_backend.query("render_family_samples", map[string]any{
+				"text_style": self.handler.text_style, "font_family": key.family, "width": key.width, "height": key.height,
+				"output_dir": self.handler.temp_dir,
+			}, &r))
+			self.preview_cache_mutex.Lock()
+			defer self.preview_cache_mutex.Unlock()
+			self.preview_cache[key] = r["font_family"]
+			self.handler.lp.WakeupMainThread()
+		}()
+		return
+	case "requested":
+		return
+	}
+	self.handler.graphics_manager.display_image(0, img_path, key.width, key.height)
 	return
 }
 
