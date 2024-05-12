@@ -1,0 +1,238 @@
+package choose_fonts
+
+import (
+	"fmt"
+	"kitty/tools/tui/loop"
+	"kitty/tools/tui/readline"
+	"kitty/tools/utils"
+	"kitty/tools/utils/style"
+	"kitty/tools/wcswidth"
+	"strings"
+)
+
+var _ = fmt.Print
+
+type FontList struct {
+	rl                             *readline.Readline
+	family_list                    FamilyList
+	fonts                          map[string][]ListedFont
+	resolved_faces_from_kitty_conf ResolvedFaces
+	handler                        *handler
+	variable_data_requested_for    *utils.Set[string]
+}
+
+func (self *FontList) initialize(h *handler) {
+	self.handler = h
+	self.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
+	self.variable_data_requested_for = utils.NewSet[string](256)
+}
+
+func (self *FontList) draw_search_bar() {
+	lp := self.handler.lp
+	lp.SetCursorVisible(true)
+	lp.SetCursorShape(loop.BAR_CURSOR, true)
+	sz, err := lp.ScreenSize()
+	if err != nil {
+		return
+	}
+	lp.MoveCursorTo(1, int(sz.HeightCells))
+	lp.ClearToEndOfLine()
+	self.rl.RedrawNonAtomic()
+}
+
+const SEPARATOR = "║"
+
+func center_string(x string, width int) string {
+	l := wcswidth.Stringwidth(x)
+	spaces := int(float64(width-l) / 2)
+	return strings.Repeat(" ", utils.Max(0, spaces)) + x
+}
+
+func (self *FontList) draw_family_summary(start_x int, sz loop.ScreenSize) (err error) {
+	lp := self.handler.lp
+	family := self.family_list.CurrentFamily()
+	if family == "" || int(sz.WidthCells) < start_x+2 {
+		return nil
+	}
+	lines := []string{
+		lp.SprintStyled("fg=green bold", center_string(family, int(sz.WidthCells)-start_x)),
+		"",
+	}
+	width := int(sz.WidthCells) - start_x - 1
+	add_line := func(x string) {
+		lines = append(lines, style.WrapTextAsLines(x, width, style.WrapOptions{})...)
+	}
+	fonts := self.fonts[family]
+	if len(fonts) == 0 {
+		return fmt.Errorf("The family: %s has no fonts", family)
+	}
+	if has_variable_data_for_font(fonts[0]) {
+		s := styles_in_family(family, fonts)
+		for _, sg := range s.style_groups {
+			styles := sg.name + ": " + strings.Join(sg.styles, ", ")
+			add_line(styles)
+			add_line("")
+		}
+		if s.has_variable_faces {
+			add_line(fmt.Sprintf("This font is %s allowing for finer style control", lp.SprintStyled("fg=magenta", "variable")))
+		}
+		add_line(fmt.Sprintf("Press the %s key to choose this family", lp.SprintStyled("fg=yellow", "Enter")))
+	} else {
+		lines = append(lines, "Reading font data, please wait…")
+		key := fonts[0].cache_key()
+		if !self.variable_data_requested_for.Has(key) {
+			self.variable_data_requested_for.Add(key)
+			go func() {
+				self.handler.set_worker_error(ensure_variable_data_for_fonts(fonts...))
+				lp.WakeupMainThread()
+			}()
+		}
+	}
+
+	for i, line := range lines {
+		if i >= int(sz.HeightCells)-1 {
+			break
+		}
+		lp.MoveCursorTo(start_x+1, i+1)
+		lp.QueueWriteString(line)
+	}
+	return
+}
+
+func (self *FontList) on_wakeup() {
+	self.family_list.UpdateFamilies(utils.StableSortWithKey(utils.Keys(self.fonts), strings.ToLower))
+	self.family_list.SelectFamily(self.resolved_faces_from_kitty_conf.Font_family.Family)
+}
+
+func (self *FontList) draw_screen() (err error) {
+	lp := self.handler.lp
+	sz, err := lp.ScreenSize()
+	if err != nil {
+		return err
+	}
+	num_rows := max(0, int(sz.HeightCells)-1)
+	mw := self.family_list.max_width + 1
+	green_fg, _, _ := strings.Cut(lp.SprintStyled("fg=green", "|"), "|")
+	lines := make([]string, 0, num_rows)
+	for _, l := range self.family_list.Lines(num_rows) {
+		line := l.text
+		if l.is_current {
+			line = strings.ReplaceAll(line, MARK_AFTER, green_fg)
+			line = lp.SprintStyled("fg=green", ">") + lp.SprintStyled("fg=green bold", line)
+		} else {
+			line = " " + line
+		}
+		lines = append(lines, line)
+	}
+	_, _, str := self.handler.render_lines.InRectangle(lines, 0, 0, 0, num_rows, &self.handler.mouse_state, self.on_click)
+	lp.QueueWriteString(str)
+	seps := strings.Repeat(SEPARATOR, num_rows)
+	seps = strings.TrimSpace(seps)
+	_, _, str = self.handler.render_lines.InRectangle(strings.Split(seps, ""), mw+1, 0, 0, num_rows, &self.handler.mouse_state)
+	lp.QueueWriteString(str)
+
+	if self.family_list.Len() > 0 {
+		if err = self.draw_family_summary(mw+3, sz); err != nil {
+			return err
+		}
+	}
+	self.draw_search_bar()
+	return
+}
+
+func (self *FontList) on_click(id string) error {
+	which, data, found := strings.Cut(id, ":")
+	if !found {
+		return fmt.Errorf("Not a valid click id: %s", id)
+	}
+	switch which {
+	case "family-chosen":
+		if self.handler.state == LISTING_FAMILIES {
+			if self.family_list.Select(data) {
+				self.handler.draw_screen()
+			} else {
+				self.handler.lp.Beep()
+			}
+
+		}
+	}
+	return nil
+}
+
+func (self *FontList) update_family_search() {
+	text := self.rl.AllText()
+	if self.family_list.UpdateSearch(text) {
+		self.handler.draw_screen()
+	} else {
+		self.draw_search_bar()
+	}
+}
+
+func (self *FontList) next(delta int, allow_wrapping bool) {
+	if self.family_list.Next(delta, allow_wrapping) {
+		self.handler.draw_screen()
+	} else {
+		self.handler.lp.Beep()
+	}
+}
+
+func (self *FontList) on_key_event(event *loop.KeyEvent) (err error) {
+	if event.MatchesPressOrRepeat("esc") {
+		event.Handled = true
+		if self.rl.AllText() != "" {
+			self.rl.ResetText()
+			self.update_family_search()
+			self.handler.draw_screen()
+		} else {
+			return fmt.Errorf("canceled by user")
+		}
+		return
+	}
+	ev := event
+	if ev.MatchesPressOrRepeat("down") {
+		self.next(1, true)
+		ev.Handled = true
+		return nil
+	}
+	if ev.MatchesPressOrRepeat("up") {
+		self.next(-1, true)
+		ev.Handled = true
+		return nil
+	}
+	if ev.MatchesPressOrRepeat("page_down") {
+		ev.Handled = true
+		sz, err := self.handler.lp.ScreenSize()
+		if err == nil {
+			self.next(int(sz.HeightCells)-3, false)
+		}
+		return nil
+	}
+	if ev.MatchesPressOrRepeat("page_up") {
+		ev.Handled = true
+		sz, err := self.handler.lp.ScreenSize()
+		if err == nil {
+			self.next(3-int(sz.HeightCells), false)
+		}
+		return nil
+	}
+
+	if err = self.rl.OnKeyEvent(event); err != nil {
+		if err == readline.ErrAcceptInput {
+			return nil
+		}
+		return err
+	}
+	if event.Handled {
+		self.update_family_search()
+	}
+	self.draw_search_bar()
+	return
+}
+
+func (self *FontList) on_text(text string, from_key_event bool, in_bracketed_paste bool) (err error) {
+	if err = self.rl.OnText(text, from_key_event, in_bracketed_paste); err != nil {
+		return err
+	}
+	self.update_family_search()
+	return
+}
