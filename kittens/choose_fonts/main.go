@@ -34,8 +34,7 @@ func main() (rc int, err error) {
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(`Choose a font for kitty`)
-		h.initialize()
-		return "", nil
+		return "", h.initialize()
 	}
 	lp.OnWakeup = h.on_wakeup
 	lp.OnEscapeCode = h.on_escape_code

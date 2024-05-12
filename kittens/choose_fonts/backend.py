@@ -33,7 +33,13 @@ class TextStyle(TypedDict):
     background: str
 
 
-FamilyKey = Tuple[str, ...]
+def print(*a: Any) -> None:
+    import builtins
+    builtins.print(*a, file=sys.stderr)
+
+
+OptNames = Literal['font_family', 'bold_font', 'italic_font', 'bold_italic_font']
+FamilyKey = Tuple[OptNames, ...]
 
 
 def opts_from_cmd(cmd: Dict[str, Any]) -> Tuple[Options, FamilyKey, float, float]:
@@ -43,18 +49,14 @@ def opts_from_cmd(cmd: Dict[str, Any]) -> Tuple[Options, FamilyKey, float, float
     opts.foreground = to_color(ts['foreground'])
     opts.background = to_color(ts['background'])
     family_key = []
-    if 'font_family' in cmd:
-        opts.font_family = parse_font_spec(cmd['font_family'])
-        family_key.append(cmd['font_family'])
-    if 'bold_font' in cmd:
-        opts.bold_font = parse_font_spec(cmd['bold_font'])
-        family_key.append(cmd['bold_font'])
-    if 'italic_font' in cmd:
-        opts.italic_font = parse_font_spec(cmd['italic_font'])
-        family_key.append(cmd['italic_font'])
-    if 'bold_italic_font' in cmd:
-        opts.bold_italic_font = parse_font_spec(cmd['bold_italic_font'])
-        family_key.append(cmd['bold_italic_font'])
+    def d(k: OptNames) -> None:
+        if k in cmd:
+            opts.font_family = parse_font_spec(cmd[k])
+            family_key.append(k)
+    d('font_family')
+    d('bold_font')
+    d('italic_font')
+    d('bold_italic_font')
     return opts, tuple(family_key), ts['dpi_x'], ts['dpi_y']
 
 
@@ -91,12 +93,12 @@ def render_family_sample(
             ans[x] = cached
         else:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.rgba', dir=output_dir) as tf:
-                tf.write(render_face_sample(desc, opts, dpi_x, dpi_y, width, height))
+                bitmap = render_face_sample(desc, opts, dpi_x, dpi_y, width, height)
+                tf.write(bitmap)
             cache[key] = ans[x] = tf.name
     return ans
 
 
-OptNames = Literal['font_family', 'bold_font', 'italic_font', 'bold_italic_font']
 ResolvedFace = Dict[Literal['family', 'spec'], str]
 
 

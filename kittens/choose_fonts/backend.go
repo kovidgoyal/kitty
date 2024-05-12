@@ -160,8 +160,6 @@ func (k *kitty_font_backend_type) release() (err error) {
 			err = fmt.Errorf("Timed out waiting for kitty font backend to exit for %v", timeout)
 		}
 	}
-	if k.failed {
-		os.Stderr.WriteString(k.stderr.String())
-	}
+	os.Stderr.WriteString(k.stderr.String())
 	return
 }

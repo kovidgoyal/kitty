@@ -2,6 +2,7 @@ package choose_fonts
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"sync"
 
@@ -38,6 +39,7 @@ type handler struct {
 	render_lines         tui.RenderLines
 	text_style           TextStyle
 	graphics_manager     graphics_manager
+	temp_dir             string
 
 	listing FontList
 }
@@ -55,12 +57,14 @@ func (h *handler) get_worker_error() error {
 }
 
 // Events {{{
-func (h *handler) initialize() {
+func (h *handler) initialize() (err error) {
 	h.lp.SetCursorVisible(false)
 	h.lp.OnQueryResponse = h.on_query_response
 	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y", "foreground", "background")
 	h.listing.initialize(h)
-	h.draw_screen()
+	if h.temp_dir, err = os.MkdirTemp("", "kitten-choose-fonts-*"); err != nil {
+		return
+	}
 	initialize_variable_data_cache()
 	h.graphics_manager.initialize(h.lp)
 	go func() {
@@ -70,12 +74,18 @@ func (h *handler) initialize() {
 		h.listing.resolved_faces_from_kitty_conf = r.Resolved_faces
 		h.lp.WakeupMainThread()
 	}()
+	h.draw_screen()
+	return
 }
 
 func (h *handler) finalize() {
+	if h.temp_dir != "" {
+		os.RemoveAll(h.temp_dir)
+		h.temp_dir = ""
+	}
 	h.lp.SetCursorVisible(true)
 	h.lp.SetCursorShape(loop.BLOCK_CURSOR, true)
-	h.graphics_manager.finalize(h.lp)
+	h.graphics_manager.finalize()
 }
 
 func (h *handler) on_query_response(key, val string, valid bool) error {
@@ -107,6 +117,7 @@ func (h *handler) on_query_response(key, val string, valid bool) error {
 		h.text_style.Foreground = val
 	case "background":
 		h.text_style.Background = val
+		return h.draw_screen()
 	}
 	return nil
 }
@@ -119,6 +130,7 @@ func (h *handler) draw_screen() (err error) {
 		h.mouse_state.ApplyHoverStyles(h.lp)
 		h.lp.EndAtomicUpdate()
 	}()
+	h.graphics_manager.clear_placements()
 	h.lp.ClearScreen()
 	h.lp.AllowLineWrapping(false)
 	h.mouse_state.ClearCellRegions()
