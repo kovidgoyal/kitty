@@ -757,6 +757,7 @@ render_sample_text(CTFace *self, PyObject *args) {
     CTFontGetAdvancesForGlyphs(font, kCTFontOrientationDefault, buffers.glyphs, local_advances, num_chars);
     CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, buffers.glyphs, buffers.boxes, num_chars);
     CGFloat x = 0, y = 0;
+    memset(PyByteArray_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
     if (cell_width > canvas_width) goto end;
     for (size_t i = 0; i < num_chars; i++) {
         if (local_advances[i].width + x > canvas_width) {

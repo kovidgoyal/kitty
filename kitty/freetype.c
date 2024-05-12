@@ -933,6 +933,7 @@ render_sample_text(Face *self, PyObject *args) {
     unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
     pixel *canvas = (pixel*)PyBytes_AS_STRING(pbuf);
+    memset(canvas, 0, PyBytes_GET_SIZE(pbuf));
     if (cell_width > canvas_width) goto end;
 
     for (ssize_t n = 0; n < PyUnicode_GET_LENGTH(ptext); n++) {
