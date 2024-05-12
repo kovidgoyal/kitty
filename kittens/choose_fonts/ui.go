@@ -9,6 +9,7 @@ import (
 	"kitty/tools/tui"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -62,7 +63,8 @@ func (h *handler) initialize() (err error) {
 	h.lp.OnQueryResponse = h.on_query_response
 	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y", "foreground", "background")
 	h.listing.initialize(h)
-	if h.temp_dir, err = os.MkdirTemp("", "kitten-choose-fonts-*"); err != nil {
+	// dont use /tmp as it may be mounted in RAM, Le Sigh
+	if h.temp_dir, err = os.MkdirTemp(utils.CacheDir(), "kitten-choose-fonts-*"); err != nil {
 		return
 	}
 	initialize_variable_data_cache()
@@ -131,7 +133,7 @@ func (h *handler) draw_screen() (err error) {
 		h.lp.EndAtomicUpdate()
 	}()
 	h.graphics_manager.clear_placements()
-	h.lp.ClearScreen()
+	h.lp.ClearScreenButNotGraphics()
 	h.lp.AllowLineWrapping(false)
 	h.mouse_state.ClearCellRegions()
 	switch h.state {

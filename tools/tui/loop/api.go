@@ -448,6 +448,10 @@ func (self *Loop) ClearScreen() {
 	self.QueueWriteString("\x1b[H\x1b[2J")
 }
 
+func (self *Loop) ClearScreenButNotGraphics() {
+	self.QueueWriteString("\x1b[H\x1b[J")
+}
+
 func (self *Loop) SendOverlayReady() {
 	self.QueueWriteString("\x1bP@kitty-overlay-ready|\x1b\\")
 }
