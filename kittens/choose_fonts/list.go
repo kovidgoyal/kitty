@@ -115,7 +115,7 @@ func (self *FontList) draw_family_summary(start_x int, sz loop.ScreenSize) (err 
 }
 
 func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
-	width_cells, height_cells := int(sz.WidthCells)-x-1, int(sz.HeightCells)-y
+	width_cells, height_cells := int(sz.WidthCells)-x, int(sz.HeightCells)-y
 	if height_cells < 3 {
 		return
 	}
