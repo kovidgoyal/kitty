@@ -6,17 +6,17 @@ import (
 
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
 
 type image struct {
 	id, image_number uint32
-	placement_id     uint32
 	current_file     string
 }
 
-func (i image) graphics_command() *graphics.GraphicsCommand {
+func (i image) new_graphics_command() *graphics.GraphicsCommand {
 	gc := &graphics.GraphicsCommand{}
 	if i.id > 0 {
 		gc.SetImageId(i.id)
@@ -55,19 +55,28 @@ func (g *graphics_manager) initialize(lp *loop.Loop) {
 }
 
 func (g *graphics_manager) clear_placements() {
-	gc := graphics.GraphicsCommand{}
-	gc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_delete_visible)
-	gc.WriteWithPayloadToLoop(g.lp, nil)
+	buf := strings.Builder{}
+	for _, img := range g.images {
+		if img.current_file == "" {
+			continue
+		}
+		gc := img.new_graphics_command()
+		gc.SetAction(graphics.GRT_action_delete)
+		gc.SetDelete(utils.IfElse(img.id > 0, graphics.GRT_delete_by_id, graphics.GRT_delete_by_number))
+		gc.WriteWithPayloadTo(&buf, nil)
+	}
+	g.lp.QueueWriteString(buf.String())
 }
 
 func (g *graphics_manager) display_image(slot int, path string, img_width, img_height int) {
 	img := g.images[slot]
 	if img.current_file != path {
-		gc := img.graphics_command()
-		gc.SetAction(graphics.GRT_action_transmit).SetFormat(graphics.GRT_format_rgba).SetDataWidth(uint64(img_width)).SetDataHeight(uint64(img_height)).SetTransmission(graphics.GRT_transmission_file)
+		gc := img.new_graphics_command()
+		gc.SetAction(graphics.GRT_action_transmit).SetDataWidth(uint64(img_width)).SetDataHeight(uint64(img_height)).SetTransmission(graphics.GRT_transmission_file)
 		gc.WriteWithPayloadToLoop(g.lp, []byte(path))
+		img.current_file = path
 	}
-	gc := img.graphics_command()
+	gc := img.new_graphics_command()
 	gc.SetAction(graphics.GRT_action_display).SetCursorMovement(graphics.GRT_cursor_static)
 	gc.WriteWithPayloadToLoop(g.lp, nil)
 }
@@ -87,16 +96,11 @@ func (g *graphics_manager) on_response(gc *graphics.GraphicsCommand) (err error)
 
 func (g *graphics_manager) finalize() {
 	buf := strings.Builder{}
-	gc := &graphics.GraphicsCommand{}
-	gc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_by_number)
-	d := func(n uint32) {
-		gc.SetImageNumber(n)
+	for _, img := range g.images {
+		gc := img.new_graphics_command()
+		gc.SetAction(graphics.GRT_action_delete)
+		gc.SetDelete(utils.IfElse(img.id > 0, graphics.GRT_free_by_id, graphics.GRT_free_by_number))
 		gc.WriteWithPayloadTo(&buf, nil)
 	}
-	d(g.main.image_number)
-	d(g.bold.image_number)
-	d(g.italic.image_number)
-	d(g.bi.image_number)
-	d(g.extra.image_number)
 	g.lp.QueueWriteString(buf.String())
 }

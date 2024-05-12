@@ -20,9 +20,12 @@ from kitty.utils import screen_size_function
 
 
 def send_to_kitten(x: Any) -> None:
-    sys.stdout.buffer.write(json.dumps(x).encode())
-    sys.stdout.buffer.write(b'\n')
-    sys.stdout.buffer.flush()
+    try:
+        sys.stdout.buffer.write(json.dumps(x).encode())
+        sys.stdout.buffer.write(b'\n')
+        sys.stdout.buffer.flush()
+    except BrokenPipeError:
+        raise SystemExit('Pipe to kitten was broken while sending data to it')
 
 
 class TextStyle(TypedDict):
