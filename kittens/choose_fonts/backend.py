@@ -11,7 +11,16 @@ from kitty.cli import create_default_opts
 from kitty.conf.utils import to_color
 from kitty.constants import kitten_exe
 from kitty.fonts import Descriptor
-from kitty.fonts.common import face_from_descriptor, get_font_files, get_variable_data_for_descriptor, spec_for_descriptor
+from kitty.fonts.common import (
+    face_from_descriptor,
+    get_axis_map,
+    get_font_files,
+    get_named_style,
+    get_variable_data_for_descriptor,
+    get_variable_data_for_face,
+    is_variable,
+    spec_for_descriptor,
+)
 from kitty.fonts.list import create_family_groups
 from kitty.fonts.render import display_bitmap
 from kitty.options.types import Options
@@ -65,21 +74,32 @@ def opts_from_cmd(cmd: Dict[str, Any]) -> Tuple[Options, FamilyKey, float, float
 
 BaseKey = Tuple[FamilyKey, int, int]
 FaceKey = Tuple[str, BaseKey]
+RenderedSample = Tuple[bytes, Dict[str, Any]]
+RenderedSampleTransmit = Dict[str, Any]
 SAMPLE_TEXT = string.ascii_lowercase + ' ' + string.digits + ' ' + string.ascii_uppercase + ' ' + string.punctuation
 
 
-def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: float, width: int, height: int) -> bytes:
+def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: float, width: int, height: int) -> RenderedSample:
     face = face_from_descriptor(font)
     face.set_size(opts.font_size, dpi_x, dpi_y)
-    return face.render_sample_text(SAMPLE_TEXT, width, height, opts.foreground.rgb)
+    metadata = {
+        'variable_data': get_variable_data_for_face(face),
+        'style': font['style'],
+    }
+    if is_variable(font):
+        ns = get_named_style(face)
+        if ns:
+            metadata['variable_named_style'] = ns
+        metadata['variable_axis_map'] = get_axis_map(face)
+    return face.render_sample_text(SAMPLE_TEXT, width, height, opts.foreground.rgb), metadata
 
 
 def render_family_sample(
     opts: Options, family_key: FamilyKey, dpi_x: float, dpi_y: float, width: int, height: int, output_dir: str,
-    cache: Dict[FaceKey, str]
-) -> Dict[str, str]:
+    cache: Dict[FaceKey, RenderedSampleTransmit]
+) -> Dict[str, RenderedSampleTransmit]:
     base_key: BaseKey = family_key, width, height
-    ans: Dict[str, str] = {}
+    ans: Dict[str, RenderedSampleTransmit] = {}
     font_files = get_font_files(opts)
     for x in family_key:
         key: FaceKey = getattr(opts, x).created_from_string, base_key
@@ -96,9 +116,10 @@ def render_family_sample(
             ans[x] = cached
         else:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.rgba', dir=output_dir) as tf:
-                bitmap = render_face_sample(desc, opts, dpi_x, dpi_y, width, height)
+                bitmap, metadata = render_face_sample(desc, opts, dpi_x, dpi_y, width, height)
                 tf.write(bitmap)
-            cache[key] = ans[x] = tf.name
+            metadata['path'] = tf.name
+            cache[key] = ans[x] = metadata
     return ans
 
 
@@ -119,7 +140,7 @@ def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:
 
 
 def main() -> None:
-    cache: Dict[FaceKey, str] = {}
+    cache: Dict[FaceKey, RenderedSampleTransmit] = {}
     for line in sys.stdin.buffer:
         cmd = json.loads(line)
         action = cmd.get('action', '')
@@ -160,5 +181,5 @@ def showcase(family: str) -> None:
     ss = screen_size_function()()
     width = ss.cell_width * ss.cols
     height = 5 * ss.cell_height
-    bitmap = render_face_sample(desc, opts, float(q['dpi_x']), float(q['dpi_y']), width, height)
+    bitmap = render_face_sample(desc, opts, float(q['dpi_x']), float(q['dpi_y']), width, height)[0]
     display_bitmap(bitmap, width, height)

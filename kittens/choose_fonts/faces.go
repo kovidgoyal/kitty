@@ -25,7 +25,7 @@ type faces struct {
 
 	family              string
 	settings            faces_settings
-	preview_cache       map[faces_preview_key]map[string]string
+	preview_cache       map[faces_preview_key]map[string]RenderedSampleTransmit
 	preview_cache_mutex sync.Mutex
 }
 
@@ -48,12 +48,11 @@ func (self *faces) draw_screen() (err error) {
 	key := faces_preview_key{settings: self.settings, width: int(sz.WidthCells * sz.CellWidth), height: int(sz.CellHeight) * num_lines}
 	self.preview_cache_mutex.Lock()
 	defer self.preview_cache_mutex.Unlock()
-	previews := self.preview_cache[key]
-	if previews == nil {
-		self.preview_cache[key] = make(map[string]string)
-		self.preview_cache[key]["in_flight"] = "yes"
+	previews, found := self.preview_cache[key]
+	if !found {
+		self.preview_cache[key] = make(map[string]RenderedSampleTransmit)
 		go func() {
-			var r map[string]string
+			var r map[string]RenderedSampleTransmit
 			s := key.settings
 			self.handler.set_worker_error(kitty_font_backend.query("render_family_samples", map[string]any{
 				"text_style": self.handler.text_style, "font_family": s.font_family,
@@ -62,13 +61,12 @@ func (self *faces) draw_screen() (err error) {
 			}, &r))
 			self.preview_cache_mutex.Lock()
 			defer self.preview_cache_mutex.Unlock()
-			r["in_flight"] = "no"
 			self.preview_cache[key] = r
 			self.handler.lp.WakeupMainThread()
 		}()
 		return
 	}
-	if previews["in_flight"] == "yes" {
+	if len(previews) < 4 {
 		return
 	}
 
@@ -82,7 +80,7 @@ func (self *faces) draw_screen() (err error) {
 		lp.QueueWriteString(str)
 		if y+num_lines < int(sz.HeightCells) {
 			lp.MoveCursorTo(1, y+1)
-			self.handler.graphics_manager.display_image(slot, previews[setting], key.width, key.height)
+			self.handler.graphics_manager.display_image(slot, previews[setting].Path, key.width, key.height)
 			slot++
 			y += num_lines + 1
 		}
@@ -97,7 +95,7 @@ func (self *faces) draw_screen() (err error) {
 
 func (self *faces) initialize(h *handler) (err error) {
 	self.handler = h
-	self.preview_cache = make(map[faces_preview_key]map[string]string)
+	self.preview_cache = make(map[faces_preview_key]map[string]RenderedSampleTransmit)
 	return
 }
 
