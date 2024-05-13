@@ -225,7 +225,7 @@ Patcher_dealloc(PyObject *self) {
 static PyObject*
 signature_header(Patcher *self, PyObject *a2) {
     RAII_PY_BUFFER(dest);
-    if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITE) == -1) return NULL;
+    if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITEABLE) == -1) return NULL;
     static const ssize_t header_size = 12;
     if (dest.len < header_size) {
         PyErr_SetString(RsyncError, "Output buffer is too small");
@@ -245,7 +245,7 @@ sign_block(Patcher *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "OO", &a1, &a2)) return NULL;
     RAII_PY_BUFFER(src); RAII_PY_BUFFER(dest);
     if (PyObject_GetBuffer(a1, &src, PyBUF_SIMPLE) == -1) return NULL;
-    if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITE) == -1) return NULL;
+    if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITEABLE) == -1) return NULL;
     if (dest.len < (ssize_t)signature_block_size) {
         PyErr_SetString(RsyncError, "Output buffer is too small");
     }
