@@ -1392,10 +1392,10 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
 
 def parse_font_spec(spec: str) -> FontSpec:
     if spec == 'auto':
-        return FontSpec(system='auto')
+        return FontSpec(system='auto', created_from_string=spec)
     items = tuple(shlex_split(spec))
     if '=' not in items[0]:
-        return FontSpec(system=spec)
+        return FontSpec(system=spec, created_from_string=spec)
     axes = {}
     defined = {}
     for item in items:
@@ -1409,7 +1409,9 @@ def parse_font_spec(spec: str) -> FontSpec:
                 axes[k] = float(v)
             except Exception:
                 raise ValueError(f'The font specification: {spec} is not valid as {v} is not a number')
-    return FontSpec(axes=tuple(axes.items()), **defined)
+    return FontSpec(axes=tuple(axes.items()), created_from_string=spec, **defined)
+
+
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(deprecated_hide_window_decorations_aliases, key):
         setattr(deprecated_hide_window_decorations_aliases, key, True)
