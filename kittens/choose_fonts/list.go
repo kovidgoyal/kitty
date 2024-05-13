@@ -142,14 +142,14 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 	case "":
 		self.preview_cache[key] = "requested"
 		go func() {
-			var r map[string]string
+			var r map[string]RenderedSampleTransmit
 			self.handler.set_worker_error(kitty_font_backend.query("render_family_samples", map[string]any{
 				"text_style": self.handler.text_style, "font_family": key.family, "width": key.width, "height": key.height,
 				"output_dir": self.handler.temp_dir,
 			}, &r))
 			self.preview_cache_mutex.Lock()
 			defer self.preview_cache_mutex.Unlock()
-			self.preview_cache[key] = r["font_family"]
+			self.preview_cache[key] = r["font_family"].Path
 			self.handler.lp.WakeupMainThread()
 		}()
 		return
