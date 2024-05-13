@@ -30,6 +30,15 @@ type TextStyle struct {
 	Background string  `json:"background"`
 }
 
+type pane interface {
+	initialize(*handler) error
+	draw_screen() error
+	on_wakeup() error
+	on_key_event(event *loop.KeyEvent) error
+	on_text(text string, from_key_event bool, in_bracketed_paste bool) error
+	on_click(id string) error
+}
+
 type handler struct {
 	lp                   *loop.Loop
 	state                State
@@ -43,6 +52,10 @@ type handler struct {
 	temp_dir             string
 
 	listing FontList
+	faces   faces
+
+	panes        []pane
+	current_pane pane
 }
 
 func (h *handler) set_worker_error(err error) {
@@ -62,7 +75,12 @@ func (h *handler) initialize() (err error) {
 	h.lp.SetCursorVisible(false)
 	h.lp.OnQueryResponse = h.on_query_response
 	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y", "foreground", "background")
-	h.listing.initialize(h)
+	h.panes = []pane{&h.listing, &h.faces}
+	for _, pane := range h.panes {
+		if err = pane.initialize(h); err != nil {
+			return err
+		}
+	}
 	// dont use /tmp as it may be mounted in RAM, Le Sigh
 	if h.temp_dir, err = os.MkdirTemp(utils.CacheDir(), "kitten-choose-fonts-*"); err != nil {
 		return
@@ -136,11 +154,10 @@ func (h *handler) draw_screen() (err error) {
 	h.lp.ClearScreenButNotGraphics()
 	h.lp.AllowLineWrapping(false)
 	h.mouse_state.ClearCellRegions()
-	switch h.state {
-	case SCANNING_FAMILIES:
+	if h.current_pane == nil {
 		h.lp.Println("Scanning system for fonts, please wait...")
-	case LISTING_FAMILIES:
-		return h.listing.draw_screen()
+	} else {
+		return h.current_pane.draw_screen()
 	}
 	return
 }
@@ -149,12 +166,10 @@ func (h *handler) on_wakeup() (err error) {
 	if err = h.get_worker_error(); err != nil {
 		return
 	}
-	switch h.state {
-	case SCANNING_FAMILIES:
-		h.state = LISTING_FAMILIES
-		h.listing.on_wakeup()
+	if h.current_pane == nil {
+		h.current_pane = &h.listing
 	}
-	return h.draw_screen()
+	return h.listing.on_wakeup()
 }
 
 func (h *handler) on_mouse_event(event *loop.MouseEvent) (err error) {
@@ -179,17 +194,15 @@ func (h *handler) on_key_event(event *loop.KeyEvent) (err error) {
 		event.Handled = true
 		return fmt.Errorf("canceled by user")
 	}
-	switch h.state {
-	case LISTING_FAMILIES:
-		return h.listing.on_key_event(event)
+	if h.current_pane != nil {
+		err = h.current_pane.on_key_event(event)
 	}
 	return
 }
 
 func (h *handler) on_text(text string, from_key_event bool, in_bracketed_paste bool) (err error) {
-	switch h.state {
-	case LISTING_FAMILIES:
-		return h.listing.on_text(text, from_key_event, in_bracketed_paste)
+	if h.current_pane != nil {
+		err = h.current_pane.on_text(text, from_key_event, in_bracketed_paste)
 	}
 	return
 }
