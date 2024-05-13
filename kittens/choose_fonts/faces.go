@@ -2,10 +2,11 @@ package choose_fonts
 
 import (
 	"fmt"
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
 	"math"
 	"sync"
+
+	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -35,7 +36,7 @@ func (self *faces) draw_screen() (err error) {
 	styled := lp.SprintStyled
 	lines := []string{
 		self.handler.format_title(self.family, 0), "",
-		fmt.Sprintf("Press %s to select this font, %s to go back to the font list or any of the highlighted keys below to fine-tune the appearance of the individual font styles.", styled("fg=green", "Enter"), styled("fg=red", "Esc")), "",
+		fmt.Sprintf("Press %s to select this font, %s to go back to the font list or any of the %s keys below to fine-tune the appearance of the individual font styles.", styled("fg=green", "Enter"), styled("fg=red", "Esc"), styled("fg=magenta bold", "highlighted")), "",
 	}
 	_, y, str := self.handler.render_lines.InRectangle(lines, 0, 0, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
 
@@ -77,12 +78,14 @@ func (self *faces) draw_screen() (err error) {
 			return
 		}
 		lp.MoveCursorTo(1, y+1)
-		lp.QueueWriteString(title + fmt.Sprintf(" (%s %s)", setting, setting_val))
-		y += 1
-		lp.MoveCursorTo(1, y+1)
-		self.handler.graphics_manager.display_image(slot, previews[setting], key.width, key.height)
-		slot++
-		y += num_lines + 1
+		_, y, str = self.handler.render_lines.InRectangle([]string{title + fmt.Sprintf(" (%s %s)", setting, setting_val)}, 0, y, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
+		lp.QueueWriteString(str)
+		if y+num_lines < int(sz.HeightCells) {
+			lp.MoveCursorTo(1, y+1)
+			self.handler.graphics_manager.display_image(slot, previews[setting], key.width, key.height)
+			slot++
+			y += num_lines + 1
+		}
 	}
 	d(`font_family`, styled("fg=magenta bold", "R")+`egular`, key.settings.font_family)
 	d(`bold_font`, styled("fg=magenta bold", "B")+`old`, key.settings.bold_font)

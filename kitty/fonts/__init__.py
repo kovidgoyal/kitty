@@ -139,6 +139,7 @@ class FontSpec(NamedTuple):
     system: str = ''
     axes: Tuple[Tuple[str, float], ...] = ()
     variable_name: str = ''
+    created_from_string: str = ''
 
     @property
     def is_system(self) -> bool:

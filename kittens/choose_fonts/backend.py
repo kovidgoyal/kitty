@@ -54,7 +54,7 @@ def opts_from_cmd(cmd: Dict[str, Any]) -> Tuple[Options, FamilyKey, float, float
     family_key = []
     def d(k: OptNames) -> None:
         if k in cmd:
-            opts.font_family = parse_font_spec(cmd[k])
+            setattr(opts, k, parse_font_spec(cmd[k]))
             family_key.append(k)
     d('font_family')
     d('bold_font')
@@ -82,7 +82,7 @@ def render_family_sample(
     ans: Dict[str, str] = {}
     font_files = get_font_files(opts)
     for x in family_key:
-        key: FaceKey = x, base_key
+        key: FaceKey = getattr(opts, x).created_from_string, base_key
         if x == 'font_family':
             desc = font_files['medium']
         elif x == 'bold_font':
