@@ -167,3 +167,5 @@ func RuneOffsetsToByteOffsets(text string) func(int) int {
 		return self.byte_offset
 	}
 }
+
+func Repr(x any) string { return fmt.Sprintf("%#v", x) }

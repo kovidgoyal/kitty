@@ -30,11 +30,12 @@ type FontList struct {
 	preview_cache_mutex            sync.Mutex
 }
 
-func (self *FontList) initialize(h *handler) {
+func (self *FontList) initialize(h *handler) error {
 	self.handler = h
 	self.preview_cache = make(map[preview_cache_key]string)
 	self.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
 	self.variable_data_requested_for = utils.NewSet[string](256)
+	return nil
 }
 
 func (self *FontList) draw_search_bar() {
@@ -58,16 +59,18 @@ func center_string(x string, width int) string {
 	return strings.Repeat(" ", utils.Max(0, spaces)) + x
 }
 
+func (self *handler) format_title(title string, start_x int) string {
+	sz, _ := self.lp.ScreenSize()
+	return self.lp.SprintStyled("fg=green bold", center_string(title, int(sz.WidthCells)-start_x))
+}
+
 func (self *FontList) draw_family_summary(start_x int, sz loop.ScreenSize) (err error) {
 	lp := self.handler.lp
 	family := self.family_list.CurrentFamily()
 	if family == "" || int(sz.WidthCells) < start_x+2 {
 		return nil
 	}
-	lines := []string{
-		lp.SprintStyled("fg=green bold", center_string(family, int(sz.WidthCells)-start_x)),
-		"",
-	}
+	lines := []string{self.handler.format_title(family, start_x), ""}
 	width := int(sz.WidthCells) - start_x - 1
 	add_line := func(x string) {
 		lines = append(lines, style.WrapTextAsLines(x, width, style.WrapOptions{})...)
@@ -157,9 +160,10 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 	return
 }
 
-func (self *FontList) on_wakeup() {
+func (self *FontList) on_wakeup() error {
 	self.family_list.UpdateFamilies(utils.StableSortWithKey(utils.Keys(self.fonts), strings.ToLower))
 	self.family_list.SelectFamily(self.resolved_faces_from_kitty_conf.Font_family.Family)
+	return self.handler.draw_screen()
 }
 
 func (self *FontList) draw_screen() (err error) {
@@ -235,6 +239,14 @@ func (self *FontList) next(delta int, allow_wrapping bool) {
 }
 
 func (self *FontList) on_key_event(event *loop.KeyEvent) (err error) {
+	if event.MatchesPressOrRepeat("enter") {
+		event.Handled = true
+		if family := self.family_list.CurrentFamily(); family != "" {
+			return self.handler.faces.on_enter(family)
+		}
+		self.handler.lp.Beep()
+		return
+	}
 	if event.MatchesPressOrRepeat("esc") {
 		event.Handled = true
 		if self.rl.AllText() != "" {
