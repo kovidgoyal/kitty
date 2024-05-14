@@ -81,6 +81,8 @@ def get_variable_data_for_face(d: Face) -> VariableData:
 def find_best_match_in_candidates(
     candidates: Sequence[Descriptor], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[Descriptor] = None
 ) -> Optional[Descriptor]:
+    if not candidates:
+        return None
     if len(candidates) == 1 and not is_medium_face and candidates[0].get('family') == candidates[0].get('full_name'):
         # IBM Plex Mono does this, where the full name of the regular font
         # face is the same as its family name
@@ -266,9 +268,21 @@ class FontFiles(TypedDict):
     bi: Descriptor
 
 
+def is_actually_variable_despite_fontconfigs_lies(d: Descriptor) -> bool:
+    if d['descriptor_type'] != 'fontconfig':
+        return False
+    m = all_fonts_map(is_monospace(d))['variable_map']
+    for x in m.get(family_name_to_key(d['family']), ()):
+        if x['path'] == d['path']:
+            return True
+    return False
+
+
 def get_font_files(opts: Options) -> FontFiles:
     ans: Dict[str, Descriptor] = {}
     medium_font = get_font_from_spec(opts.font_family)
+    if is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font):
+        medium_font = find_medium_variant(medium_font)
     kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
     for (bold, italic), attr in attr_map.items():
         if bold or italic:
