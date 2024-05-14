@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 type stream_response struct {
@@ -111,7 +112,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 			return err
 		}
 		if len(chunk) == 0 {
-			state = WAITING_FOR_RESPONSE
+			state = utils.IfElse(state == BEFORE_FIRST_ESCAPE_CODE_SENT && wants_streaming, WAITING_FOR_STREAMING_RESPONSE, WAITING_FOR_STREAMING_RESPONSE)
 			transition_to_read()
 		} else {
 			queue_escape_code(chunk)
