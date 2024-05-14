@@ -462,6 +462,17 @@ force_window_launch = ForceWindowLaunch()
 non_window_launch_types = 'background', 'clipboard', 'primary'
 
 
+def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequence[str]) -> Optional[Dict[str, Sequence[str]]]:
+    remote_control_restrictions: Optional[Dict[str, Sequence[str]]] = None
+    if allow_remote_control and passwords:
+        from kitty.options.utils import remote_control_password
+        remote_control_restrictions = {}
+        for rcp in passwords:
+            for pw, rcp_items in remote_control_password(rcp, {}):
+                remote_control_restrictions[pw] = rcp_items
+    return remote_control_restrictions
+
+
 def _launch(
     boss: Boss,
     opts: LaunchCLIOptions,
@@ -487,16 +498,9 @@ def _launch(
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
     env = get_env(opts, active_child, base_env)
-    remote_control_restrictions: Optional[Dict[str, Sequence[str]]] = None
-    if opts.allow_remote_control and opts.remote_control_password:
-        from kitty.options.utils import remote_control_password
-        remote_control_restrictions = {}
-        for rcp in opts.remote_control_password:
-            for pw, rcp_items in remote_control_password(rcp, {}):
-                remote_control_restrictions[pw] = rcp_items
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,
-        'remote_control_passwords': remote_control_restrictions,
+        'remote_control_passwords': parse_remote_control_passwords(opts.allow_remote_control, opts.remote_control_password),
         'cwd_from': None,
         'cwd': None,
         'location': None,
