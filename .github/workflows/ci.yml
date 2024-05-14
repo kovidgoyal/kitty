@@ -104,7 +104,7 @@ jobs:
             run: python -m pip install -r docs/requirements.txt ruff mypy types-requests types-docutils
 
           - name: Run ruff
-            run: ruff .
+            run: ruff check .
 
           - name: Run gofmt
             run: go version && python .github/workflows/ci.py gofmt
