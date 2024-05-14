@@ -28,9 +28,9 @@ def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
     for x in all_fonts:
         if not x.get('path'):
             continue
-        f = (x.get('family') or '').lower()
-        full = (x.get('full_name') or '').lower()
-        ps = (x.get('postscript_name') or '').lower()
+        f = family_name_to_key(x['family'])
+        full = family_name_to_key(x['full_name'])
+        ps = family_name_to_key(x['postscript_name'])
         ans['family_map'].setdefault(f, []).append(x)
         ans['ps_map'].setdefault(ps, []).append(x)
         ans['full_map'].setdefault(full, []).append(x)

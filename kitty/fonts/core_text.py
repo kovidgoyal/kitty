@@ -3,13 +3,12 @@
 
 import itertools
 import operator
-import re
 from collections import defaultdict
 from functools import lru_cache
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import coretext_all_fonts
-from kitty.fonts import FontSpec
+from kitty.fonts import FontSpec, family_name_to_key
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
@@ -29,9 +28,9 @@ def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
     ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}, 'variable_map': {}}
     vmap: Dict[str, List[CoreTextFont]] = defaultdict(list)
     for x in all_fonts:
-        f = (x['family'] or '').lower()
-        s = (x['style'] or '').lower()
-        ps = (x['postscript_name'] or '').lower()
+        f = family_name_to_key(x['family'])
+        s = family_name_to_key(x['style'])
+        ps = family_name_to_key(x['postscript_name'])
         ans['family_map'].setdefault(f, []).append(x)
         ans['ps_map'].setdefault(ps, []).append(x)
         ans['full_map'].setdefault(f'{f} {s}', []).append(x)
@@ -104,7 +103,7 @@ def find_best_match(
     family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[CoreTextFont] = None,
     prefer_variable: bool = False
 ) -> CoreTextFont:
-    q = re.sub(r'\s+', ' ', family.lower())
+    q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
     scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
 
