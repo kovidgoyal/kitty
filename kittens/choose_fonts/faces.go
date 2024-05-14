@@ -76,7 +76,7 @@ func (self *faces) draw_screen() (err error) {
 			return
 		}
 		lp.MoveCursorTo(1, y+1)
-		_, y, str = self.handler.render_lines.InRectangle([]string{title + " - " + previews[setting].Psname}, 0, y, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
+		_, y, str = self.handler.render_lines.InRectangle([]string{title + ": " + previews[setting].Psname}, 0, y, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
 		lp.QueueWriteString(str)
 		if y+num_lines < int(sz.HeightCells) {
 			lp.MoveCursorTo(1, y+1)
