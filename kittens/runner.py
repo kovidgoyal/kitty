@@ -59,7 +59,10 @@ def import_kitten_main_module(config_dir: str, kitten: str) -> Dict[str, Any]:
 
     kitten = resolved_kitten(kitten)
     m = importlib.import_module(f'kittens.{kitten}.main')
-    return {'start': getattr(m, 'main'), 'end': getattr(m, 'handle_result', lambda *a, **k: None)}
+    return {
+        'start': getattr(m, 'main'),
+        'end': getattr(m, 'handle_result', lambda *a, **k: None),
+    }
 
 
 def create_kitten_handler(kitten: str, orig_args: List[str]) -> Any:
@@ -70,6 +73,7 @@ def create_kitten_handler(kitten: str, orig_args: List[str]) -> Any:
     setattr(ans, 'type_of_input', getattr(m['end'], 'type_of_input', None))
     setattr(ans, 'no_ui', getattr(m['end'], 'no_ui', False))
     setattr(ans, 'has_ready_notification', getattr(m['end'], 'has_ready_notification', False))
+    setattr(ans, 'open_url_handler', getattr(m['end'], 'open_url_handler', None))
     return ans
 
 

@@ -51,6 +51,9 @@ You can also :doc:`customize what actions are taken for different types of URLs
    select that hint or press :kbd:`Enter` or :kbd:`Space` to select the empty
    hint.
 
+For mouse lovers, the hints kitten also allows you to click on any matched text to
+select it instead of typing the hint character.
+
 The hints kitten is very powerful to see more detailed help on its various
 options and modes of operation, see below. You can use these options to
 create mappings in :file:`kitty.conf` to select various different text

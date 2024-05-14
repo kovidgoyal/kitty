@@ -57,6 +57,8 @@ Detailed list of changes
 
 - :opt:`notify_on_cmd_finish`: Show the actual command that was finished (:iss:`7420`)
 
+- hints kitten: Allow clicking on matched text to select it in addition to typing the hint
+
 - Shell integration: Make the currently executing cmdline available as a window variable in kitty
 
 - :opt:`paste_actions`: Fix ``replace-newline`` not working with ``confirm`` (:iss:`7374`)

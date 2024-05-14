@@ -122,6 +122,8 @@ MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]
 
 
 if TYPE_CHECKING:
+    from kittens.tui.handler import OpenUrlHandler
+
     from .file_transmission import FileTransmission
 
 
@@ -563,6 +565,7 @@ class Window:
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
         self.last_cmd_output_start_time = 0.
+        self.open_url_handler: 'OpenUrlHandler' = None
         self.last_cmd_cmdline = ''
         self.last_cmd_exit_status = 0
         self.actions_on_close: List[Callable[['Window'], None]] = []
@@ -1043,6 +1046,13 @@ class Window:
         return get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
 
     def open_url(self, url: str, hyperlink_id: int, cwd: Optional[str] = None) -> None:
+        boss = get_boss()
+        try:
+            if self.open_url_handler and self.open_url_handler(boss, self, url, hyperlink_id, cwd or ''):
+                return
+        except Exception:
+            import traceback
+            traceback.print_exc()
         opts = get_options()
         if hyperlink_id:
             if not opts.allow_hyperlinks:
@@ -1063,14 +1073,14 @@ class Window:
                     url = urlunparse(purl._replace(netloc=''))
             if opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
-                get_boss().choose(
+                boss.choose(
                     'What would you like to do with this URL:\n' + styled(sanitize_url_for_dispay_to_user(url), fg='yellow'),
                     partial(self.hyperlink_open_confirmed, url, cwd),
                     'o:Open', 'c:Copy to clipboard', 'n;red:Nothing', default='o',
                     window=self, title=_('Hyperlink activated'),
                 )
                 return
-        get_boss().open_url(url, cwd=cwd)
+        boss.open_url(url, cwd=cwd)
 
     def hyperlink_open_confirmed(self, url: str, cwd: Optional[str], q: str) -> None:
         if q == 'o':

@@ -1919,6 +1919,7 @@ class Boss:
             )
             wid = w.id
             overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten, default_data=default_data))
+            overlay_window.open_url_handler = end_kitten.open_url_handler
             if action_on_removal is not None:
 
                 def callback_wrapper(*a: Any) -> None:

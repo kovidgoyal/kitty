@@ -9,7 +9,7 @@ from kitty.cli_stub import HintsCLIOptions
 from kitty.clipboard import set_clipboard_string, set_primary_selection
 from kitty.constants import website_url
 from kitty.fast_data_types import get_options
-from kitty.typing import BossType
+from kitty.typing import BossType, WindowType
 from kitty.utils import get_editor, resolve_custom_file
 
 from ..tui.handler import result_handler
@@ -312,7 +312,14 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
             }[action])(*cmd)
 
 
-@result_handler(type_of_input='screen-ansi', has_ready_notification=True)
+def on_mark_clicked(boss: BossType, window: WindowType, url: str, hyperlink_id: int, cwd: str) -> bool:
+    if url.startswith('mark:'):
+        window.send_cmd_response({'Type': 'mark_activated', 'Mark': int(url[5:])})
+        return True
+    return False
+
+
+@result_handler(type_of_input='screen-ansi', has_ready_notification=True, open_url_handler=on_mark_clicked)
 def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
     cp = data['customize_processing']
     if data['type'] == 'linenum':
