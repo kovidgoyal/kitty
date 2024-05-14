@@ -189,6 +189,7 @@ type rc_io_data struct {
 	serializer                 serializer_func
 	on_key_event               func(lp *loop.Loop, ke *loop.KeyEvent) error
 	string_response_is_err     bool
+	handle_response            func(data []byte) error
 	timeout                    time.Duration
 	multiple_payload_generator func(io_data *rc_io_data) (bool, error)
 
@@ -260,25 +261,18 @@ func send_rc_command(io_data *rc_io_data) (err error) {
 		return
 	}
 	var response *Response
-	if global_options.to_network == "" {
-		response, err = get_response(do_tty_io, io_data)
-		if err != nil {
-			return
-		}
-	} else {
-		response, err = get_response(do_socket_io, io_data)
-		if err != nil {
-			return
-		}
-	}
+	response, err = get_response(utils.IfElse(global_options.to_network == "", do_tty_io, do_socket_io), io_data)
 	if err != nil || response == nil {
-		return err
+		return
 	}
 	if !response.Ok {
 		if response.Traceback != "" {
 			fmt.Fprintln(os.Stderr, response.Traceback)
 		}
 		return fmt.Errorf("%s", response.Error)
+	}
+	if io_data.handle_response != nil {
+		return io_data.handle_response(utils.UnsafeStringToBytes(response.Data.as_str))
 	}
 	if response.Data.is_string && io_data.string_response_is_err {
 		return fmt.Errorf("%s", response.Data.as_str)
