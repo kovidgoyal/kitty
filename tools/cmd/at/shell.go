@@ -203,6 +203,7 @@ func shell_main(cmd *cli.Command, args []string) (int, error) {
 	if err != nil {
 		return 1, err
 	}
+	running_shell = true
 	formatter = markup.New(true)
 	fmt.Println("Welcome to the kitty shell!")
 	fmt.Println("Use", formatter.Green("help"), "for assistance or", formatter.Green("exit"), "to quit.")

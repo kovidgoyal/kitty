@@ -90,6 +90,9 @@ func run_CMD_NAME(cmd *cli.Command, args []string) (return_code int, err error) 
 	}
 
 	err = send_rc_command(&io_data)
+	if ee, ok := err.(*exit_error); ok && !running_shell {
+		return ee.exit_code, nil
+	}
 	return
 }
 

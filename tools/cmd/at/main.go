@@ -247,6 +247,16 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 	return
 }
 
+var running_shell = false
+
+type exit_error struct {
+	exit_code int
+}
+
+func (m *exit_error) Error() string {
+	return fmt.Sprintf("Subprocess exit with code: %d", m.exit_code)
+}
+
 func send_rc_command(io_data *rc_io_data) (err error) {
 	err = setup_global_options(io_data.cmd)
 	if err != nil {
