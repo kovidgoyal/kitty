@@ -251,7 +251,10 @@ class ArgsHandling:
                 elif self.special_parse.startswith('+'):
                     fields, sp = self.special_parse[1:].split(':', 1)
                     handled_fields.update(set(fields.split(',')))
-                    yield f'err = {sp}'
+                    if sp.startswith('!'):
+                        yield f'io_data.multiple_payload_generator, err = {sp[1:]}'
+                    else:
+                        yield f'err = {sp}'
                 else:
                     yield f'{dest}, err = {self.special_parse}'
                 yield 'if err != nil { return err }'
