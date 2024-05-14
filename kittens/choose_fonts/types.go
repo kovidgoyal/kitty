@@ -90,6 +90,7 @@ type RenderedSampleTransmit struct {
 	Path                 string             `json:"path"`
 	Variable_data        VariableData       `json:"variable_data"`
 	Style                string             `json:"style"`
+	Psname               string             `json:"psname"`
 	Variable_named_style NamedStyle         `json:"variable_named_style"`
 	Variable_axis_map    map[string]float64 `json:"variable_axis_map"`
 }
