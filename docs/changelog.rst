@@ -53,6 +53,8 @@ Detailed list of changes
 0.35.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- kitten @ run: A new remote control command to run a process on the machine kitty is running on and get its output (:iss:`7429`)
+
 - :opt:`notify_on_cmd_finish`: Show the actual command that was finished (:iss:`7420`)
 
 - Shell integration: Make the currently executing cmdline available as a window variable in kitty

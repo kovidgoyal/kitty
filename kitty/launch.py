@@ -30,9 +30,30 @@ class LaunchSpec(NamedTuple):
     args: List[str]
 
 
+remote_control_password_docs = '''\
+type=list
+Restrict the actions remote control is allowed to take. This works like
+:opt:`remote_control_password`. You can specify a password and list of actions
+just as for :opt:`remote_control_password`. For example::
+
+    --remote-control-password '"my passphrase" get-* set-colors'
+
+This password will be in effect for this window only.
+Note that any passwords you have defined for :opt:`remote_control_password`
+in :file:`kitty.conf` are also in effect. You can override them by using the same password here.
+You can also disable all :opt:`remote_control_password` global passwords for this window, by using::
+
+    --remote-control-password '!'
+
+This option only takes effect if :option:`--allow-remote-control`
+is also specified. Can be specified multiple times to create multiple passwords.
+This option was added to kitty in version 0.26.0
+'''
+
+
 @run_once
 def options_spec() -> str:
-    return '''
+    return f'''
 --window-title --title
 The title to set for the new window. By default, title is controlled by the
 child process. The special value :code:`current` will copy the title from the
@@ -171,24 +192,7 @@ remote control.
 
 
 --remote-control-password
-type=list
-Restrict the actions remote control is allowed to take. This works like
-:opt:`remote_control_password`. You can specify a password and list of actions
-just as for :opt:`remote_control_password`. For example::
-
-    --remote-control-password '"my passphrase" get-* set-colors'
-
-This password will be in effect for this window only.
-Note that any passwords you have defined for :opt:`remote_control_password`
-in :file:`kitty.conf` are also in effect. You can override them by using the same password here.
-You can also disable all :opt:`remote_control_password` global passwords for this window, by using::
-
-    --remote-control-password '!'
-
-This option only takes effect if :option:`--allow-remote-control`
-is also specified. Can be specified multiple times to create multiple passwords.
-This option was added to kitty in version 0.26.0
-
+{remote_control_password_docs}
 
 --stdin-source
 type=choices
