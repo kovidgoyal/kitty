@@ -143,7 +143,7 @@ func (self *faces) on_enter(family string) error {
 		d := func(conf ResolvedFace, setting *string, defval string) {
 			*setting = utils.IfElse(family == conf.Family, conf.Spec, defval)
 		}
-		d(r.Font_family, &self.settings.font_family, family)
+		d(r.Font_family, &self.settings.font_family, fmt.Sprintf(`family="%s"`, family))
 		d(r.Bold_font, &self.settings.bold_font, "auto")
 		d(r.Italic_font, &self.settings.italic_font, "auto")
 		d(r.Bold_italic_font, &self.settings.bold_italic_font, "auto")

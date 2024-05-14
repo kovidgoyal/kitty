@@ -47,7 +47,13 @@ class TextStyle(TypedDict):
 
 def print(*a: Any) -> None:
     import builtins
-    builtins.print(*a, file=sys.stderr)
+    import os
+    if 'KITTY_STDIO_FORWARDED' in os.environ:
+        fd = int(os.environ['KITTY_STDIO_FORWARDED'])
+        with open(fd, 'w', closefd=False) as f:
+            builtins.print(*a, file=f)
+    else:
+        builtins.print(*a, file=sys.stderr)
 
 
 OptNames = Literal['font_family', 'bold_font', 'italic_font', 'bold_italic_font']
@@ -72,7 +78,7 @@ def opts_from_cmd(cmd: Dict[str, Any]) -> Tuple[Options, FamilyKey, float, float
     return opts, tuple(family_key), ts['dpi_x'], ts['dpi_y']
 
 
-BaseKey = Tuple[FamilyKey, int, int]
+BaseKey = Tuple[str, int, int]
 FaceKey = Tuple[str, BaseKey]
 RenderedSample = Tuple[bytes, Dict[str, Any]]
 RenderedSampleTransmit = Dict[str, Any]
@@ -99,11 +105,11 @@ def render_family_sample(
     opts: Options, family_key: FamilyKey, dpi_x: float, dpi_y: float, width: int, height: int, output_dir: str,
     cache: Dict[FaceKey, RenderedSampleTransmit]
 ) -> Dict[str, RenderedSampleTransmit]:
-    base_key: BaseKey = family_key, width, height
+    base_key: BaseKey = opts.font_family.created_from_string, width, height
     ans: Dict[str, RenderedSampleTransmit] = {}
     font_files = get_font_files(opts)
     for x in family_key:
-        key: FaceKey = getattr(opts, x).created_from_string, base_key
+        key: FaceKey = x + ': ' + getattr(opts, x).created_from_string, base_key
         if x == 'font_family':
             desc = font_files['medium']
         elif x == 'bold_font':
