@@ -1,7 +1,11 @@
 from enum import Enum, IntEnum, auto
-from typing import Callable, Dict, List, Literal, NamedTuple, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Literal, NamedTuple, Tuple, TypedDict, Union
 
+from kitty.types import run_once
 from kitty.typing import CoreTextFont, FontConfigPattern
+
+if TYPE_CHECKING:
+    import re
 
 
 class ListedFont(TypedDict):
@@ -162,6 +166,11 @@ Descriptor = Union[FontConfigPattern, CoreTextFont]
 Scorer = Callable[[Descriptor], Score]
 
 
-def family_name_to_key(family: str) -> str:
+@run_once
+def fnname_pat() -> 're.Pattern[str]':
     import re
-    return re.sub(r'\s+', ' ', family.lower())
+    return re.compile(r'\s+')
+
+
+def family_name_to_key(family: str) -> str:
+    return fnname_pat().sub(' ', family).strip().lower()
