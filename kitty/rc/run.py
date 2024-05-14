@@ -37,7 +37,7 @@ class Run(RemoteCommand):
     desc = (
         'Run the specified program on the computer in which kitty is running. When STDIN is not a TTY it is forwarded'
         ' to the program as its STDIN. STDOUT and STDERR from the the program are forwarded here. The exit status of this'
-        ' invocation will be the exit status of the executed program. If you wish to just run a program without wiating for a response, '
+        ' invocation will be the exit status of the executed program. If you wish to just run a program without waiting for a response, '
         ' use @ launch --type=background instead.'
     )
 
