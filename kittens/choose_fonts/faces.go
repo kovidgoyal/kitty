@@ -71,12 +71,12 @@ func (self *faces) draw_screen() (err error) {
 	}
 
 	slot := 0
-	d := func(setting, title, setting_val string) {
+	d := func(setting, title string) {
 		if int(sz.HeightCells)-y < num_lines+1 {
 			return
 		}
 		lp.MoveCursorTo(1, y+1)
-		_, y, str = self.handler.render_lines.InRectangle([]string{title + fmt.Sprintf(" (%s %s)", setting, setting_val)}, 0, y, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
+		_, y, str = self.handler.render_lines.InRectangle([]string{title + " - " + previews[setting].Psname}, 0, y, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
 		lp.QueueWriteString(str)
 		if y+num_lines < int(sz.HeightCells) {
 			lp.MoveCursorTo(1, y+1)
@@ -85,10 +85,10 @@ func (self *faces) draw_screen() (err error) {
 			y += num_lines + 1
 		}
 	}
-	d(`font_family`, styled("fg=magenta bold", "R")+`egular`, key.settings.font_family)
-	d(`bold_font`, styled("fg=magenta bold", "B")+`old`, key.settings.bold_font)
-	d(`italic_font`, styled("fg=magenta bold", "I")+`talic`, key.settings.italic_font)
-	d(`bold_italic_font`, "B"+styled("fg=magenta bold", "o")+`ld-Italic`, key.settings.bold_italic_font)
+	d(`font_family`, styled("fg=magenta bold", "R")+`egular`)
+	d(`bold_font`, styled("fg=magenta bold", "B")+`old`)
+	d(`italic_font`, styled("fg=magenta bold", "I")+`talic`)
+	d(`bold_italic_font`, "B"+styled("fg=magenta bold", "o")+`ld-Italic`)
 
 	return
 }
