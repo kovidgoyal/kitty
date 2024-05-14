@@ -30,6 +30,15 @@ class LaunchSpec(NamedTuple):
     args: List[str]
 
 
+env_docs = '''\
+type=list
+Environment variables to set in the child process. Can be specified multiple
+times to set different environment variables. Syntax: :code:`name=value`. Using
+:code:`name=` will set to empty string and just :code:`name` will remove the
+environment variable.
+'''
+
+
 remote_control_password_docs = '''\
 type=list
 Restrict the actions remote control is allowed to take. This works like
@@ -124,11 +133,7 @@ refers to the process that was originally started when the window was created.
 
 
 --env
-type=list
-Environment variables to set in the child process. Can be specified multiple
-times to set different environment variables. Syntax: :code:`name=value`. Using
-:code:`name=` will set to empty string and just :code:`name` will remove the
-environment variable.
+{env_docs}
 
 
 --var
