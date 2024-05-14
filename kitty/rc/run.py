@@ -3,10 +3,11 @@
 
 import sys
 from base64 import standard_b64decode, standard_b64encode
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Dict
 
-from kitty.launch import remote_control_password_docs
+from kitty.launch import env_docs, remote_control_password_docs
 from kitty.types import AsyncResponse
+from kitty.options.utils import env as parse_env
 
 from .base import (
     ArgsType,
@@ -29,6 +30,7 @@ class Run(RemoteCommand):
     protocol_spec = __doc__ = '''
     data+/str: Chunk of STDIN data, base64 encoded no more than 4096 bytes. Must send an empty chunk to indicate end of data.
     cmdline+/list.str: The command line to run
+    env/list.str: List of environment variables of the form NAME=VALUE
     allow_remote_control/bool: A boolean indicating whether to allow remote control
     remote_control_password/list.str: A list of remote control passwords
     '''
@@ -42,6 +44,10 @@ class Run(RemoteCommand):
     )
 
     options_spec = f'''\n
+--env
+{env_docs}
+
+
 --allow-remote-control
 type=bool-set
 The executed program will have privileges to run remote control commands in kitty.
@@ -64,6 +70,7 @@ The executed program will have privileges to run remote control commands in kitt
         ret = {
             'stream_id': secrets.token_urlsafe(),
             'cmdline': args,
+            'env': opts.env,
             'allow_remote_control': opts.allow_remote_control,
             'remote_control_password': opts.remote_control_password,
             'data': '',
@@ -113,9 +120,14 @@ The executed program will have privileges to run remote control commands in kitt
                         'exit_code': exit_code, 'exit_status': exit_status,
                     })
 
+        env: Dict[str, str] = {}
+        for x in payload_get('env'):
+            for k, v in parse_env(x, env):
+                env[k] = v
+
         boss.run_background_process(
-            cmdline, stdin=stdin_data, stdout=stdout.fileno(), stderr=stderr.fileno(), notify_on_death=on_death,
-            remote_control_passwords=rcp, allow_remote_control=allow_remote_control
+            cmdline, env=env, stdin=stdin_data, stdout=stdout.fileno(), stderr=stderr.fileno(),
+            notify_on_death=on_death, remote_control_passwords=rcp, allow_remote_control=allow_remote_control
         )
         return AsyncResponse()
 
