@@ -948,14 +948,17 @@ monitor_pid(PyObject *self UNUSED, PyObject *args) {
 
 static void
 report_reaped_pids(void) {
+    static ReapedPID pids[64];
+    size_t i = 0;
     children_mutex(lock);
     if (reaped_pids_count) {
-        for (size_t i = 0; i < reaped_pids_count; i++) {
-            call_boss(on_monitored_pid_death, "ii", (int)reaped_pids[i].pid, reaped_pids[i].status);
+        for (; i < reaped_pids_count && i < arraysz(pids); i++) {
+            pids[i] = reaped_pids[i];
         }
         reaped_pids_count = 0;
     }
     children_mutex(unlock);
+    for (size_t n = 0; n < i; n++) { call_boss(on_monitored_pid_death, "li", (long)pids[n].pid, pids[n].status); }
 }
 
 static void*
