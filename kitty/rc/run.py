@@ -3,11 +3,11 @@
 
 import sys
 from base64 import standard_b64decode, standard_b64encode
-from typing import TYPE_CHECKING, Optional, Dict
+from typing import TYPE_CHECKING, Dict, Optional
 
 from kitty.launch import env_docs, remote_control_password_docs
-from kitty.types import AsyncResponse
 from kitty.options.utils import env as parse_env
+from kitty.types import AsyncResponse
 
 from .base import (
     ArgsType,
@@ -121,7 +121,7 @@ The executed program will have privileges to run remote control commands in kitt
                     })
 
         env: Dict[str, str] = {}
-        for x in payload_get('env'):
+        for x in payload_get('env') or ():
             for k, v in parse_env(x, env):
                 env[k] = v
 
