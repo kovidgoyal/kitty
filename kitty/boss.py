@@ -335,7 +335,7 @@ class Boss:
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
         self.peer_data_map: Dict[int, Optional[Dict[str, Sequence[str]]]] = {}
-        self.background_process_death_notify_map: Dict[int, Callable[[Optional[int]], None]] = {}
+        self.background_process_death_notify_map: Dict[int, Callable[[int, Optional[Exception]], None]] = {}
         self.encryption_key = EllipticCurveKey()
         self.encryption_public_key = f'{RC_ENCRYPTION_PROTOCOL_VERSION}:{base64.b85encode(self.encryption_key.public).decode("ascii")}'
         self.clipboard_buffers: Dict[str, str] = {}
@@ -2308,7 +2308,7 @@ class Boss:
         cwd_from: Optional[CwdRequest] = None,
         allow_remote_control: bool = False,
         remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
-        notify_on_death: Optional[Callable[[Optional[int]], None]] = None,
+        notify_on_death: Optional[Callable[[int, Optional[Exception]], None]] = None,
         stdout: Optional[int] = None, stderr: Optional[int] = None,
     ) -> None:
         import subprocess
@@ -2367,7 +2367,7 @@ class Boss:
                             os.close(fd)
                     if notify_on_death:
                         try:
-                            notify_on_death(None)
+                            notify_on_death(-1, err)
                         except Exception:
                             import traceback
                             traceback.print_exc()
@@ -2668,7 +2668,7 @@ class Boss:
         callback = self.background_process_death_notify_map.pop(pid, None)
         if callback is not None:
             try:
-                callback(exit_status)
+                callback(exit_status, None)
             except Exception:
                 import traceback
                 traceback.print_exc()
