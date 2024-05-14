@@ -331,6 +331,7 @@ def get_named_style(face_or_descriptor: Union[Face, Descriptor]) -> Optional[Nam
             axis_map = d.get('axis_map', {}).copy()
     else:
         face: Face = face_or_descriptor
+        vd = get_variable_data_for_face(face)
         q = face.get_variation()
         if q is None:
             return None
