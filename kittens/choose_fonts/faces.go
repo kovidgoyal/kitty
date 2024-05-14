@@ -117,6 +117,22 @@ func (self *faces) on_key_event(event *loop.KeyEvent) (err error) {
 }
 
 func (self *faces) on_text(text string, from_key_event bool, in_bracketed_paste bool) (err error) {
+	if from_key_event {
+		which := ""
+		switch text {
+		case "r", "R":
+			which = "font_family"
+		case "b", "B":
+			which = "bold_font"
+		case "i", "I":
+			which = "italic_font"
+		case "o", "O":
+			which = "bold_italic_font"
+		}
+		if which != "" {
+			return self.handler.face_pane.on_enter(self.family, which, self.settings)
+		}
+	}
 	return
 }
 
