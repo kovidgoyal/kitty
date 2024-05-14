@@ -116,7 +116,7 @@ def update_check() -> bool:
             kitty_exe(), '+runpy',
             'from kitty.update_check import run_worker; run_worker()'
         ], stdout=subprocess.PIPE, preexec_fn=clear_handled_signals)
-    except OSError as e:
+    except Exception as e:
         log_error(f'Failed to run kitty for update check, with error: {e}')
         return False
     monitor_pid(p.pid)

@@ -95,6 +95,7 @@ from .fast_data_types import (
     global_font_size,
     last_focused_os_window_id,
     mark_os_window_for_close,
+    monitor_pid,
     monotonic,
     os_window_focus_counters,
     os_window_font_size,
@@ -334,6 +335,7 @@ class Boss:
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
         self.peer_data_map: Dict[int, Optional[Dict[str, Sequence[str]]]] = {}
+        self.background_process_death_notify_map: Dict[int, Callable[[Optional[int]], None]] = {}
         self.encryption_key = EllipticCurveKey()
         self.encryption_public_key = f'{RC_ENCRYPTION_PROTOCOL_VERSION}:{base64.b85encode(self.encryption_key.public).decode("ascii")}'
         self.clipboard_buffers: Dict[str, str] = {}
@@ -2306,6 +2308,8 @@ class Boss:
         cwd_from: Optional[CwdRequest] = None,
         allow_remote_control: bool = False,
         remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
+        notify_on_death: Optional[Callable[[Optional[int]], None]] = None,
+        stdout: Optional[int] = None, stderr: Optional[int] = None,
     ) -> None:
         import subprocess
         env = env or None
@@ -2325,7 +2329,8 @@ class Boss:
 
         def doit(activation_token: str = '') -> None:
             nonlocal env
-            pass_fds: Tuple[int, ...] = ()
+            pass_fds: List[int] = []
+            fds_to_close_on_launch_failure: List[int] = []
             if allow_remote_control:
                 import socket
                 local, remote = socket.socketpair()
@@ -2338,35 +2343,56 @@ class Boss:
                     os.close(lfd)
                     remote.close()
                     raise
-                pass_fds = (remote.fileno(),)
+                pass_fds.append(remote.fileno())
                 add_env('KITTY_LISTEN_ON', f'fd:{remote.fileno()}')
                 self.peer_data_map[peer_id] = remote_control_passwords
             if activation_token:
                 add_env('XDG_ACTIVATION_TOKEN', activation_token)
-            try:
-                if stdin:
-                    r, w = safe_pipe(False)
-                    try:
-                        subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd, preexec_fn=clear_handled_signals, pass_fds=pass_fds, close_fds=True)
-                    except Exception:
-                        os.close(w)
+            fds_to_close_on_launch_failure = list(pass_fds)
+            if stdout is not None and stdout > -1:
+                pass_fds.append(stdout)
+            if stderr is not None and stderr > -1 and stderr not in pass_fds:
+                pass_fds.append(stderr)
+
+            def run(stdin: Optional[int], stdout: Optional[int], stderr: Optional[int]) -> None:
+                try:
+                    p = subprocess.Popen(
+                        cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals, pass_fds=pass_fds, stdin=stdin, stdout=stdout, stderr=stderr)
+                    if notify_on_death:
+                        self.background_process_death_notify_map[p.pid] = notify_on_death
+                        monitor_pid(p.pid)
+                except Exception as err:
+                    for fd in fds_to_close_on_launch_failure:
+                        with suppress(OSError):
+                            os.close(fd)
+                    if notify_on_death:
+                        try:
+                            notify_on_death(None)
+                        except Exception:
+                            import traceback
+                            traceback.print_exc()
                     else:
-                        thread_write(w, stdin)
-                    finally:
-                        os.close(r)
-                else:
-                    subprocess.Popen(cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals, pass_fds=pass_fds, close_fds=True)
+                        self.show_error(_('Failed to run background process'), _('Failed to run background process with error: {}').format(err))
+
+            r = subprocess.DEVNULL
+            if stdin:
+                r, w = safe_pipe(False)
+                fds_to_close_on_launch_failure.append(w)
+                pass_fds.append(r)
+            try:
+                run(r, stdout, stderr)
+                if stdin:
+                    thread_write(w, stdin)
             finally:
+                if stdin:
+                    os.close(r)
                 if allow_remote_control:
                     remote.close()
 
-        try:
-            if is_wayland():
-                run_with_activation_token(doit)
-            else:
-                doit()
-        except Exception as err:
-            self.show_error(_('Failed to run background process'), _('Failed to run background process with error: {}').format(err))
+        if is_wayland():
+            run_with_activation_token(doit)
+        else:
+            doit()
 
     def pipe(self, source: str, dest: str, exe: str, *args: str) -> Optional[Window]:
         cmd = [exe] + list(args)
@@ -2639,6 +2665,15 @@ class Boss:
         self.update_check_process = process
 
     def on_monitored_pid_death(self, pid: int, exit_status: int) -> None:
+        callback = self.background_process_death_notify_map.pop(pid, None)
+        if callback is not None:
+            try:
+                callback(exit_status)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+            return
+
         update_check_process = self.update_check_process
         if update_check_process is not None and pid == update_check_process.pid:
             self.update_check_process = None
