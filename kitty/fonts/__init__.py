@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum, auto
-from typing import TYPE_CHECKING, Callable, Dict, List, Literal, NamedTuple, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, NamedTuple, Sequence, Tuple, TypedDict, TypeVar, Union
 
 from kitty.types import run_once
 from kitty.typing import CoreTextFont, FontConfigPattern
@@ -154,15 +154,23 @@ class FontSpec(NamedTuple):
         return self.system == 'auto'
 
 
-class Score(NamedTuple):
-    variable_score: int
-    style_score: Union[int, float]
-    monospace_score: int
-    width_score: int
-
-
 Descriptor = Union[FontConfigPattern, CoreTextFont]
-Scorer = Callable[[Descriptor], Score]
+DescriptorVar = TypeVar('DescriptorVar', FontConfigPattern, CoreTextFont, Descriptor)
+
+class Scorer:
+
+    def __init__(self, bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> None:
+        self.bold = bold
+        self.italic = italic
+        self.monospaced = monospaced
+        self.prefer_variable = prefer_variable
+
+    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+        raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(bold={self.bold}, italic={self.italic}, monospaced={self.monospaced}, prefer_variable={self.prefer_variable})'
+    __str__ = __repr__
 
 
 @run_once

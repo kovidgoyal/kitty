@@ -2,7 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import lru_cache
-from typing import Dict, Generator, List, Literal, Optional, Tuple, cast
+from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Sequence, Tuple, cast
 
 from kitty.fast_data_types import (
     FC_DUAL,
@@ -19,7 +19,7 @@ from kitty.fast_data_types import (
 from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.typing import FontConfigPattern
 
-from . import Descriptor, ListedFont, Score, Scorer, VariableData, family_name_to_key
+from . import Descriptor, DescriptorVar, ListedFont, Scorer, VariableData, family_name_to_key
 
 FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
 FontMap = Dict[FontCollectionMapType, Dict[str, List[FontConfigPattern]]]
@@ -81,28 +81,43 @@ def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> F
     return fc_match_impl(family, bold, italic, spacing)
 
 
-def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:
+class Score(NamedTuple):
+    variable_score: int
+    style_score: int
+    monospace_score: int
+    width_score: int
 
-    def score(candidate: Descriptor) -> Score:
+
+
+class FCScorer(Scorer):
+
+    medium_weight: int = FC_WEIGHT_REGULAR
+    bold_weight: int = FC_WEIGHT_BOLD
+
+    def score(self, candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'fontconfig'
-        variable_score = 0 if prefer_variable and candidate['variable'] else 1
-        bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate['weight'])
-        italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate['slant'])
+        variable_score = 0 if self.prefer_variable and candidate['variable'] else 1
+        bold_score = abs((self.bold_weight if self.bold else self.medium_weight) - candidate['weight'])
+        italic_score = abs((FC_SLANT_ITALIC if self.italic else FC_SLANT_ROMAN) - candidate['slant'])
         monospace_match = 0
-        if monospaced:
+        if self.monospaced:
             monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1
         width_score = abs(candidate['width'] - FC_WIDTH_NORMAL)
         return Score(variable_score, bold_score + italic_score, monospace_match, width_score)
 
-    return score
+    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+        candidates = sorted(candidates, key=self.score)
+        if dump:
+            print(self)
+            for x in candidates:
+                assert x['descriptor_type'] == 'fontconfig'
+                print(x['postscript_name'], f'weight={x["weight"]}', f'slant={x["slant"]}')
+            print()
+        return candidates
 
 
-def dump_sorted_candidates(bold: bool, italic: bool, candidates: List[FontConfigPattern], scorer: Scorer) -> None:
-    print(f'{bold=} {italic=}')
-    for x in candidates:
-        print(x['postscript_name'], f'weight={x["weight"]}', f'slant={x["slant"]}')
-        print(scorer(x))
-    print()
+def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:
+    return FCScorer(bold, italic, monospaced, prefer_variable)
 
 
 def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> FontConfigPattern:
@@ -121,14 +136,16 @@ def find_best_match(
     scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
     is_medium_face = not bold and not italic
     # First look for an exact match
-    exact_match = (
-        find_best_match_in_candidates(font_map['ps_map'].get(q, []), scorer, is_medium_face, ignore_face=ignore_face) or
-        find_best_match_in_candidates(font_map['full_map'].get(q, []), scorer, is_medium_face, ignore_face=ignore_face) or
-        find_best_match_in_candidates(font_map['family_map'].get(q, []), scorer, is_medium_face, ignore_face=ignore_face)
-    )
-    if exact_match:
-        assert exact_match['descriptor_type'] == 'fontconfig'
-        return exact_match
+    groups: Tuple[FontCollectionMapType, ...] = ('ps_map', 'full_map', 'family_map')
+    for which in groups:
+        m = font_map[which]
+        cq = m.get(q, [])
+        if cq:
+            exact_match = find_best_match_in_candidates(cq, scorer, is_medium_face, ignore_face=ignore_face)
+            if exact_match:
+                # dump_sorted_candidates(bold, italic, cq, scorer)
+                assert exact_match['descriptor_type'] == 'fontconfig'
+                return exact_match
 
     # Use fc-match to see if we can find a monospaced font that matches family
     # When aliases are defined, spacing can cause the incorrect font to be
@@ -151,7 +168,7 @@ def find_best_match(
                         family_name_candidates = font_map['family_map'].get(family_name_to_key(candidates[0]['family']))
                         if family_name_candidates and len(family_name_candidates) > 1:
                             candidates = family_name_candidates
-                    return sorted(candidates, key=scorer)[0]
+                    return scorer.sorted_candidates(candidates)[0]
     return find_last_resort_text_font(bold, italic, monospaced)
 
 

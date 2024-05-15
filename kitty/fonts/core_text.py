@@ -5,7 +5,7 @@ import itertools
 import operator
 from collections import defaultdict
 from functools import lru_cache
-from typing import Dict, Generator, Iterable, List, Optional, Tuple
+from typing import Dict, Generator, Iterable, List, NamedTuple, Optional, Sequence, Tuple
 
 from kitty.fast_data_types import coretext_all_fonts
 from kitty.fonts import FontSpec, family_name_to_key
@@ -13,7 +13,7 @@ from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
 
-from . import Descriptor, ListedFont, Score, Scorer, VariableData
+from . import Descriptor, DescriptorVar, ListedFont, Scorer, VariableData
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -74,20 +74,30 @@ def list_fonts() -> Generator[ListedFont, None, None]:
                    'is_variable': is_variable(fd), 'descriptor': fd, 'style': fd['style']}
 
 
-def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:
+class Score(NamedTuple):
+    variable_score: int
+    style_score: float
+    monospace_score: int
+    width_score: int
 
-    def score(candidate: Descriptor) -> Score:
+
+
+class CTScorer(Scorer):
+    medium_weight: float = 0.
+    bold_weight: float = 0.3
+
+    def score(self, candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'core_text'
-        variable_score = 0 if prefer_variable and candidate['variation'] is not None else 1
+        variable_score = 0 if self.prefer_variable and candidate['variation'] is not None else 1
         bold_score = candidate['weight']  # -1 to 1 with 0 being normal
         if bold_score < 0:  # thinner than normal, reject
             bold_score = 2.0
         else:
-            if bold:
+            if self.bold:
                 # prefer semibold=0.3 to full bold = 0.4
                 bold_score = abs(bold_score - 0.3)
         italic_score = candidate['slant'] # -1 to 1 with 0 being upright < 0 being backward slant, abs(slant) == 1 implies 30 deg rotation
-        if italic:
+        if self.italic:
             if italic_score < 0:
                 italic_score = 2.0
             else:
@@ -96,22 +106,27 @@ def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = T
         is_regular_width = not candidate['expanded'] and not candidate['condensed']
         return Score(variable_score, bold_score + italic_score, monospace_match, 0 if is_regular_width else 1)
 
-    return score
+    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+        candidates = sorted(candidates, key=self.score)
+        if dump:
+            print(self)
+            for x in candidates:
+                assert x['descriptor_type'] == 'core_text'
+                print(x['postscript_name'], f'bold={x["bold"]}', f'italic={x["italic"]}', f'weight={x["weight"]:.2f}', f'slant={x["slant"]:.2f}')
+                print(self.score(x))
+            print()
+        self.medium_weight, self.bold_weight = CTScorer.medium_weight, CTScorer.bold_weight
+        return candidates
+
+
+def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer:
+    return CTScorer(bold, italic, monospaced, prefer_variable)
 
 
 def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> CoreTextFont:
     font_map = all_fonts_map(monospaced)
     candidates = font_map['family_map']['menlo']
-    scorer = create_scorer(bold, italic, monospaced)
-    return sorted(candidates, key=scorer)[0]
-
-
-def dump_sorted_candidates(bold: bool, italic: bool, candidates: List[CoreTextFont], scorer: Scorer) -> None:
-    print(f'{bold=} {italic=}')
-    for x in candidates:
-        print(x['postscript_name'], f'bold={x["bold"]}', f'italic={x["italic"]}', f'weight={x["weight"]:.2f}', f'slant={x["slant"]:.2f}')
-        print(scorer(x))
-    print()
+    return create_scorer(bold, italic, monospaced).sorted_candidates(candidates)[0]
 
 
 def find_best_match(
@@ -126,7 +141,8 @@ def find_best_match(
     for selector in ('ps_map', 'full_map'):
         candidates = font_map[selector].get(q)
         if candidates:
-            possible = sorted(candidates, key=scorer)[0]
+            candidates = scorer.sorted_candidates(candidates)
+            possible = candidates[0]
             if possible != ignore_face:
                 return possible
 
@@ -135,8 +151,7 @@ def find_best_match(
     if q not in font_map['family_map']:
         log_error(f'The font {family} was not found, falling back to Menlo')
         q = 'menlo'
-    candidates = font_map['family_map'][q]
-    candidates.sort(key=scorer)
+    candidates = scorer.sorted_candidates(font_map['family_map'][q])
     return candidates[0]
 
 

@@ -31,6 +31,7 @@ class Selection(BaseTest):
         has_source_code_vf = has('sourcecodeVf')
         has_fira_code = has('Fira Code')
         has_hack = has('Hack')
+        has_operator_mono = has('Operator Mono')
         del fonts_map, has
 
         def s(family: str, *expected: str) -> None:
@@ -52,6 +53,8 @@ class Selection(BaseTest):
             both('fira code', 'FiraCodeRoman-Regular', 'FiraCodeRoman-SemiBold', 'FiraCodeRoman-Regular', 'FiraCodeRoman-SemiBold')
         if has_hack:
             both('hack', 'Hack-Regular', 'Hack-Bold', 'Hack-Italic', 'Hack-BoldItalic')
+        if has_operator_mono:
+            both('operator mono', 'Hack-Regular', 'Hack-Bold', 'Hack-Italic', 'Hack-BoldItalic')
 
 
 class Rendering(BaseTest):

@@ -308,9 +308,14 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
         print('Python:', python_for_type_check())
         from kitty.fast_data_types import has_avx2, has_sse4_2
         print(f'Intrinsics: {has_avx2=} {has_sse4_2=}')
+    # we need fonts installed in the user home directory as well, so initialize
+    # fontconfig before nuking $HOME and friends
+    from kitty.fonts.common import all_fonts_map
+    all_fonts_map(True)
 
     with TemporaryDirectory() as tdir, env_vars(
         HOME=tdir,
+        KT_ORIGINAL_HOME=os.path.expanduser('~'),
         USERPROFILE=tdir,
         PATH=path,
         TERM='xterm-kitty',
