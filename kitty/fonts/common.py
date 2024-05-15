@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Sequence, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
 
 from kitty.constants import is_macos
-from kitty.fonts import Descriptor, DesignAxis, FontSpec, NamedStyle, Scorer, VariableData, family_name_to_key
+from kitty.fonts import Descriptor, DescriptorVar, DesignAxis, FontSpec, NamedStyle, Scorer, VariableData, family_name_to_key
 from kitty.options.types import Options
 
 if TYPE_CHECKING:
@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     def is_variable(descriptor: Descriptor) -> bool: ...
     def set_named_style(name: str, font: Descriptor, vd: VariableData) -> bool: ...
     def set_axis_values(tag_map: Dict[str, float], font: Descriptor, vd: VariableData) -> bool: ...
-    def dump_sorted_candidates(bold: bool, italic: bool, candidates: List[Descriptor], scorer: Scorer) -> None: ...
 else:
     FontCollectionMapType = FontMap = None
     if is_macos:
@@ -34,7 +33,6 @@ else:
         from kitty.fonts.core_text import (
             all_fonts_map,
             create_scorer,
-            dump_sorted_candidates,
             find_best_match,
             find_last_resort_text_font,
             is_monospace,
@@ -47,7 +45,6 @@ else:
         from kitty.fonts.fontconfig import (
             all_fonts_map,
             create_scorer,
-            dump_sorted_candidates,
             find_best_match,
             find_last_resort_text_font,
             is_monospace,
@@ -58,7 +55,6 @@ else:
     def face_from_descriptor(descriptor: Descriptor) -> Face: return Face(descriptor=descriptor)
 
 
-dump_sorted_candidates
 cache_for_variable_data_by_path: Dict[str, VariableData] = {}
 attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, True): 'italic_font', (True, True): 'bold_italic_font'}
 
@@ -83,16 +79,15 @@ def get_variable_data_for_face(d: Face) -> VariableData:
 
 
 def find_best_match_in_candidates(
-    candidates: Sequence[Descriptor], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[Descriptor] = None
-) -> Optional[Descriptor]:
+    candidates: List[DescriptorVar], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[DescriptorVar] = None
+) -> Optional[DescriptorVar]:
     if not candidates:
         return None
     if len(candidates) == 1 and not is_medium_face and candidates[0].get('family') == candidates[0].get('full_name'):
         # IBM Plex Mono does this, where the full name of the regular font
         # face is the same as its family name
         return None
-    candidates = sorted(candidates, key=scorer)
-    for x in candidates:
+    for x in scorer.sorted_candidates(candidates):
         if ignore_face is None or x != ignore_face:
             return x
     return None
@@ -144,9 +139,8 @@ def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool) -> De
     # weights in each, so we rely on the OS font matcher to give us the best
     # font file.
     monospaced = is_monospace(medium)
-    fonts = all_fonts_map(monospaced)['variable_map'][family_name_to_key(medium['family'])]
-    scorer = create_scorer(bold, italic, monospaced)
-    fonts.sort(key=scorer)
+    unsorted = all_fonts_map(monospaced)['variable_map'][family_name_to_key(medium['family'])]
+    fonts = create_scorer(bold, italic, monospaced).sorted_candidates(unsorted)
     vd = get_variable_data_for_descriptor(fonts[0])
     ans = fonts[0].copy()
     # now we need to specialise all axes in ans
@@ -179,9 +173,7 @@ def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced
             for x in vd['named_styles']:
                 if x['name'].lower() == q:
                     return font
-    scorer = create_scorer(bold, italic, monospaced)
-    candidates.sort(key=scorer)
-    return candidates[0]
+    return create_scorer(bold, italic, monospaced).sorted_candidates(candidates)[0]
 
 
 def get_fine_grained_font(
