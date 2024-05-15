@@ -9,10 +9,35 @@ from functools import partial
 
 from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import DECAWM, get_fallback_font, sprite_map_set_layout, sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
+from kitty.fonts import family_name_to_key
 from kitty.fonts.box_drawing import box_chars
+from kitty.fonts.common import all_fonts_map, face_from_descriptor, get_font_files
 from kitty.fonts.render import coalesce_symbol_maps, render_string, setup_for_testing, shape_string
+from kitty.options.types import Options
+from kitty.options.utils import parse_font_spec
 
 from . import BaseTest
+
+
+class Selection(BaseTest):
+
+    def test_font_selection(self):
+        opts = Options()
+        fonts_map = all_fonts_map(monospaced=True)
+        family_map = fonts_map['family_map']
+        variable_map = fonts_map['variable_map']
+        def a(family: str, *expected: str) -> None:
+            opts.font_family = parse_font_spec(family)
+            ff = get_font_files(opts)
+            actual = tuple(face_from_descriptor(ff[x]).postscript_name() for x in ('medium', 'bold', 'italic', 'bi'))  # type: ignore
+            self.assertEqual(expected, actual)
+        def t(family: str, *expected: str) -> None:
+            a(family, *expected)
+            a(f'family="{family}"', *expected)
+        if family_name_to_key('Source Code Pro') in family_map:
+            t('Source Code Pro', 'SourceCodePro-Regular', 'SourceCodePro-Bold', 'SourceCodePro-It', 'SourceCodePro-BoldIt')
+        if family_name_to_key('sourcecodeVf') in variable_map:
+            a('sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Bold', 'SourceCodeVF-Italic', 'SourceCodeVF-BoldItalic')
 
 
 class Rendering(BaseTest):
