@@ -256,7 +256,7 @@ def get_font_from_spec(
         if bold or italic:
             assert resolved_medium_font is not None
             family = resolved_medium_font['family']
-            if is_variable(resolved_medium_font):
+            if is_variable(resolved_medium_font) or is_actually_variable_despite_fontconfigs_lies(resolved_medium_font):
                 v = find_bold_italic_variant(resolved_medium_font, bold, italic)
                 if v is not None:
                     return v
