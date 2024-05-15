@@ -8,12 +8,11 @@ from functools import lru_cache
 from typing import Dict, Generator, Iterable, List, NamedTuple, Optional, Sequence, Tuple
 
 from kitty.fast_data_types import CTFace, coretext_all_fonts
-from kitty.fonts import FontSpec, family_name_to_key
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
 
-from . import Descriptor, DescriptorVar, ListedFont, Scorer, VariableData
+from . import Descriptor, DescriptorVar, FontSpec, ListedFont, Score, Scorer, VariableData, family_name_to_key
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -72,13 +71,6 @@ def list_fonts() -> Generator[ListedFont, None, None]:
                 fn = f'{f} {fd["style"]}'.strip()
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': fd['monospace'],
                    'is_variable': is_variable(fd), 'descriptor': fd, 'style': fd['style']}
-
-
-class Score(NamedTuple):
-    variable_score: int
-    style_score: float
-    monospace_score: int
-    width_score: int
 
 
 class WeightRange(NamedTuple):

@@ -157,6 +157,14 @@ class FontSpec(NamedTuple):
 Descriptor = Union[FontConfigPattern, CoreTextFont]
 DescriptorVar = TypeVar('DescriptorVar', FontConfigPattern, CoreTextFont, Descriptor)
 
+
+class Score(NamedTuple):
+    variable_score: int
+    style_score: float
+    monospace_score: int
+    width_score: int
+
+
 class Scorer:
 
     def __init__(self, bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> None:

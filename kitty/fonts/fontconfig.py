@@ -21,7 +21,7 @@ from kitty.fast_data_types import (
 from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.typing import FontConfigPattern
 
-from . import Descriptor, DescriptorVar, ListedFont, Scorer, VariableData, family_name_to_key
+from . import Descriptor, DescriptorVar, ListedFont, Score, Scorer, VariableData, family_name_to_key
 
 FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
 FontMap = Dict[FontCollectionMapType, Dict[str, List[FontConfigPattern]]]
@@ -81,13 +81,6 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
 @lru_cache()
 def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> FontConfigPattern:
     return fc_match_impl(family, bold, italic, spacing)
-
-
-class Score(NamedTuple):
-    variable_score: int
-    style_score: float
-    monospace_score: int
-    width_score: int
 
 
 class WeightRange(NamedTuple):
