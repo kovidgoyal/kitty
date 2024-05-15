@@ -12,6 +12,7 @@ from kitty.fast_data_types import (
     FC_SLANT_ROMAN,
     FC_WEIGHT_REGULAR,
     FC_WIDTH_NORMAL,
+    Face,
     fc_list,
 )
 from kitty.fast_data_types import (
@@ -117,9 +118,9 @@ def weight_range_for_family(family: str) -> WeightRange:
             bold = w
         elif s == 'bold' and bold == wr.bold:
             bold = w
-        elif s == 'medium':
+        elif s == 'regular':
             medium = w
-        elif s == 'regular' and medium == wr.medium:
+        elif s == 'medium' and medium == wr.medium:
             medium = w
     return WeightRange(mini, maxi, medium, bold)
 
@@ -148,15 +149,17 @@ class FCScorer(Scorer):
         families = {x['family'] for x in candidates}
         if len(families) == 1:
             wr = weight_range_for_family(next(iter(families)))
-            if wr.is_valid and wr.maximum < 100:  # Operator Mono is an example of this craziness
+            if wr.is_valid and wr.medium < 100:  # Operator Mono and Cascadia Code are examples
                 self.weight_range = wr
         candidates = sorted(candidates, key=self.score)
         if dump:
             print(self)
+            if self.weight_range:
+                print(self.weight_range)
             for x in candidates:
                 assert x['descriptor_type'] == 'fontconfig'
-                print(x['postscript_name'], f'weight={x["weight"]}', f'slant={x["slant"]}')
-                print(self.score(x))
+                print(Face(descriptor=x).postscript_name(), f'weight={x["weight"]}', f'slant={x["slant"]}')
+                print(' ', self.score(x))
             print()
         return candidates
 

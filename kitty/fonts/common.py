@@ -102,7 +102,7 @@ def find_medium_variant(font: Descriptor) -> Descriptor:
     vd = get_variable_data_for_descriptor(font)
     for i, ns in enumerate(vd['named_styles']):
         if ns['name'] == 'Regular':
-            set_named_style(ns['psname'], font, vd)
+            set_named_style(ns['psname'] or ns['name'], font, vd)
             return font
     axis_values = {}
     for i, ax in enumerate(vd['axes']):
