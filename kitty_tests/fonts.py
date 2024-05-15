@@ -54,7 +54,7 @@ class Selection(BaseTest):
         if has_hack:
             both('hack', 'Hack-Regular', 'Hack-Bold', 'Hack-Italic', 'Hack-BoldItalic')
         if has_operator_mono:
-            both('operator mono', 'Hack-Regular', 'Hack-Bold', 'Hack-Italic', 'Hack-BoldItalic')
+            both('operator mono', 'OperatorMono-Medium', 'OperatorMono-Bold', 'OperatorMono-MediumItalic', 'OperatorMono-BoldItalic')
 
 
 class Rendering(BaseTest):
