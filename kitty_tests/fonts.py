@@ -25,19 +25,13 @@ class Selection(BaseTest):
         opts = Options()
         fonts_map = all_fonts_map(True)
         names = set(fonts_map['family_map']) | set(fonts_map['variable_map'])
-        def has(x: str) -> bool:
-            return family_name_to_key(x) in names
-        has_source_code_pro = has('Source Code Pro')
-        has_source_code_vf = has('sourcecodeVf')
-        has_fira_code = has('Fira Code')
-        has_hack = has('Hack')
-        has_operator_mono = has('Operator Mono')
-        del fonts_map, has
+        del fonts_map
 
         def s(family: str, *expected: str) -> None:
             opts.font_family = parse_font_spec(family)
             ff = get_font_files(opts)
             actual = tuple(face_from_descriptor(ff[x]).postscript_name() for x in ('medium', 'bold', 'italic', 'bi'))  # type: ignore
+            del ff
             with self.subTest(spec=family):
                 self.ae(expected, actual)
 
@@ -45,15 +39,34 @@ class Selection(BaseTest):
             for family in (family, f'family="{family}"'):
                 s(family, *expected)
 
-        if has_source_code_pro:
-            both('Source Code Pro', 'SourceCodePro-Regular', 'SourceCodePro-Semibold', 'SourceCodePro-It', 'SourceCodePro-SemiboldIt')
-        if has_source_code_vf:
-            both('sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Semibold', 'SourceCodeVF-Italic', 'SourceCodeVF-SemiboldItalic')
-        if has_fira_code:
-            both('fira code', 'FiraCodeRoman-Regular', 'FiraCodeRoman-SemiBold', 'FiraCodeRoman-Regular', 'FiraCodeRoman-SemiBold')
-        if has_hack:
-            both('hack', 'Hack-Regular', 'Hack-Bold', 'Hack-Italic', 'Hack-BoldItalic')
-        if has_operator_mono:
+        def has(family):
+            return family_name_to_key(family) in names
+
+        def t(family, psprefix, bold='Bold', italic='Italic', bi='', reg='Regular'):
+            if has(family):
+                bi = bi or bold + italic
+                if reg:
+                    reg = '-' + reg
+                both(family, f'{psprefix}{reg}', f'{psprefix}-{bold}', f'{psprefix}-{italic}', f'{psprefix}-{bi}')
+
+        t('Source Code Pro', 'SourceCodePro', 'Semibold', 'It')
+        t('sourcecodeVf', 'SourceCodeVF', 'Semibold')
+        t('fira code', 'FiraCodeRoman', 'SemiBold', 'Regular', 'SemiBold')
+        t('hack', 'Hack')
+        t('fantasque sans mono', 'FantasqueSansMono')
+        t('jetbrains mono', 'JetBrainsMono', 'SemiBold')
+        t('consolas', 'Consolas', reg='')
+        if has('cascadia code'):
+            if is_macos:
+                both('cascadia code', 'CascadiaCode-Regular', 'CascadiaCode-Regular_SemiBold', 'CascadiaCode-Italic', 'CascadiaCode-Italic_SemiBold-Italic')
+            else:
+                both('cascadia code', 'CascadiaCodeRoman-Regular', 'CascadiaCodeRoman-SemiBold', 'CascadiaCode-Italic', 'CascadiaCode-SemiBoldItalic')
+        if has('cascadia mono'):
+            if is_macos:
+                both('cascadia mono', 'CascadiaMono-Regular', 'CascadiaMono-Regular_SemiBold', 'CascadiaMono-Italic', 'CascadiaMono-Italic_SemiBold-Italic')
+            else:
+                both('cascadia mono', 'CascadiaMonoRoman-Regular', 'CascadiaMonoRoman-SemiBold', 'CascadiaMono-Italic', 'CascadiaMono-SemiBoldItalic')
+        if has('operator mono'):
             both('operator mono', 'OperatorMono-Medium', 'OperatorMono-Bold', 'OperatorMono-MediumItalic', 'OperatorMono-BoldItalic')
 
 

@@ -7,7 +7,7 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import Dict, Generator, Iterable, List, NamedTuple, Optional, Sequence, Tuple
 
-from kitty.fast_data_types import coretext_all_fonts
+from kitty.fast_data_types import CTFace, coretext_all_fonts
 from kitty.fonts import FontSpec, family_name_to_key
 from kitty.options.types import Options
 from kitty.typing import CoreTextFont
@@ -109,9 +109,9 @@ def weight_range_for_family(family: str) -> WeightRange:
             bold = w
         elif s == 'bold' and bold == wr.bold:
             bold = w
-        elif s == 'medium':
+        elif s == 'regular':
             medium = w
-        elif s == 'regular' and medium == wr.medium:
+        elif s == 'medium' and medium == wr.medium:
             medium = w
     return WeightRange(mini, maxi, medium, bold)
 
@@ -148,15 +148,18 @@ class CTScorer(Scorer):
         families = {x['family'] for x in candidates}
         if len(families) == 1:
             wr = weight_range_for_family(next(iter(families)))
-            if wr.is_valid and wr.minimum < 0 and wr.maximum <= 0:  # Operator Mono is an example of this craziness
+            if wr.is_valid and wr.medium < 0:  # Operator Mono is an example of this craziness
                 self.weight_range = wr
         candidates = sorted(candidates, key=self.score)
         if dump:
             print(self)
+            if self.weight_range:
+                print(self.weight_range)
             for x in candidates:
                 assert x['descriptor_type'] == 'core_text'
-                print(x['postscript_name'], f'bold={x["bold"]}', f'italic={x["italic"]}', f'weight={x["weight"]:.2f}', f'slant={x["slant"]:.2f}')
-                print(self.score(x))
+                print(CTFace(descriptor=x).postscript_name(),
+                      f'bold={x["bold"]}', f'italic={x["italic"]}', f'weight={x["weight"]:.2f}', f'slant={x["slant"]:.2f}')
+                print(' ', self.score(x))
             print()
         return candidates
 
