@@ -79,15 +79,22 @@ def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = T
     def score(candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'core_text'
         variable_score = 0 if prefer_variable and candidate['variation'] is not None else 1
-        style_match = 1 if candidate['bold'] == bold and candidate[
-            'italic'
-        ] == italic else 0
-        monospace_match = 1 if candidate['monospace'] else 0
+        bold_score = candidate['weight']  # -1 to 1 with 0 being normal
+        if bold_score < 0:  # thinner than normal, reject
+            bold_score = 2.0
+        else:
+            if bold:
+                # prefer semibold=0.3 to full bold = 0.4
+                bold_score = abs(bold_score - 0.3)
+        italic_score = candidate['slant'] # -1 to 1 with 0 being upright < 0 being backward slant, abs(slant) == 1 implies 30 deg rotation
+        if italic:
+            if italic_score < 0:
+                italic_score = 2.0
+            else:
+                italic_score = abs(1 - italic_score)
+        monospace_match = 0 if candidate['monospace'] else 1
         is_regular_width = not candidate['expanded'] and not candidate['condensed']
-        # prefer semi-bold to bold to heavy, less bold means less chance of
-        # overflow
-        weight_distance_from_medium = abs(candidate['weight'])
-        return Score(variable_score, 1 - style_match, 1 - monospace_match, 1 - is_regular_width, weight_distance_from_medium)
+        return Score(variable_score, bold_score + italic_score, monospace_match, 0 if is_regular_width else 1)
 
     return score
 
@@ -97,6 +104,14 @@ def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospa
     candidates = font_map['family_map']['menlo']
     scorer = create_scorer(bold, italic, monospaced)
     return sorted(candidates, key=scorer)[0]
+
+
+def dump_sorted_candidates(bold: bool, italic: bool, candidates: List[CoreTextFont], scorer: Scorer) -> None:
+    print(f'{bold=} {italic=}')
+    for x in candidates:
+        print(x['postscript_name'], f'bold={x["bold"]}', f'italic={x["italic"]}', f'weight={x["weight"]:.2f}', f'slant={x["slant"]:.2f}')
+        print(scorer(x))
+    print()
 
 
 def find_best_match(
@@ -121,7 +136,8 @@ def find_best_match(
         log_error(f'The font {family} was not found, falling back to Menlo')
         q = 'menlo'
     candidates = font_map['family_map'][q]
-    return sorted(candidates, key=scorer)[0]
+    candidates.sort(key=scorer)
+    return candidates[0]
 
 
 def get_font_from_spec(

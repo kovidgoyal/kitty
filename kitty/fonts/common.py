@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     def is_variable(descriptor: Descriptor) -> bool: ...
     def set_named_style(name: str, font: Descriptor, vd: VariableData) -> bool: ...
     def set_axis_values(tag_map: Dict[str, float], font: Descriptor, vd: VariableData) -> bool: ...
+    def dump_sorted_candidates(bold: bool, italic: bool, candidates: List[Descriptor], scorer: Scorer) -> None: ...
 else:
     FontCollectionMapType = FontMap = None
     if is_macos:
@@ -33,6 +34,7 @@ else:
         from kitty.fonts.core_text import (
             all_fonts_map,
             create_scorer,
+            dump_sorted_candidates,
             find_best_match,
             find_last_resort_text_font,
             is_monospace,
@@ -45,6 +47,7 @@ else:
         from kitty.fonts.fontconfig import (
             all_fonts_map,
             create_scorer,
+            dump_sorted_candidates,
             find_best_match,
             find_last_resort_text_font,
             is_monospace,
@@ -55,6 +58,7 @@ else:
     def face_from_descriptor(descriptor: Descriptor) -> Face: return Face(descriptor=descriptor)
 
 
+dump_sorted_candidates
 cache_for_variable_data_by_path: Dict[str, VariableData] = {}
 attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, True): 'italic_font', (True, True): 'bold_italic_font'}
 
