@@ -575,6 +575,9 @@ START_ALLOW_CASE_RANGE
             return BLANK_FONT;
         case 0x2500 ... 0x2573:
         case 0x2574 ... 0x259f:
+        case 0x25d6 ... 0x25d7:
+        case 0x25cb:
+        case 0x25dc ... 0x25e5:
         case 0x2800 ... 0x28ff:
         case 0xe0b0 ... 0xe0bf:    // powerline box drawing
         case 0xee00 ... 0xee0b:    // fira code progress bar/spinner
@@ -611,14 +614,14 @@ static glyph_index
 box_glyph_id(char_type ch) {
 START_ALLOW_CASE_RANGE
     switch(ch) {
-        case 0x2500 ... 0x259f:
-            return ch - 0x2500; // IDs from 0x00 to 0x9f
+        case 0x2500 ... 0x25ff:
+            return ch - 0x2500; // IDs from 0x00 to 0xff
         case 0xe0b0 ... 0xee0b:
-            return 0xa0 + ch - 0xe0b0;   // IDs from 0xa0 to 0xd58
+            return 0x100 + ch - 0xe0b0;   // IDs from 0x100 to 0xe5b
         case 0x2800 ... 0x28ff:
-            return 0xe00 + ch - 0x2800; // IDs from 0xe00 to 0xeff
+            return 0xf00 + ch - 0x2800; // IDs from 0xf00 to 0xfff
         case 0x1fb00 ... 0x1fbae:
-            return 0xf00 + ch - 0x1fb00; // IDs from 0xf00 to 0xfae
+            return 0x1000 + ch - 0x1fb00; // IDs from 0x1000 to 0x10ae
         default:
             return 0xffff;
     }

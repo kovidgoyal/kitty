@@ -80,6 +80,8 @@ Detailed list of changes
 
 - Allow more types of alignment for :opt:`placement_strategy` (:pull:`7419`)
 
+- Add some more box-drawing characters from the "Geometric shapes" Unicode block (:iss:`7433`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

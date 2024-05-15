@@ -1015,16 +1015,22 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '': [p(triangle, left=False)],
     '': [p(half_cross_line, which='tr'), p(half_cross_line, which='br')],
     '': [D],
+    '◗': [D],
     '': [rounded_separator],
     '': [p(D, left=False)],
+    '◖': [p(D, left=False)],
     '': [p(rounded_separator, left=False)],
     '': [p(corner_triangle, corner='bottom-left')],
+    '◣': [p(corner_triangle, corner='bottom-left')],
     '': [cross_line],
     '': [p(corner_triangle, corner='bottom-right')],
+    '◢': [p(corner_triangle, corner='bottom-right')],
     '': [p(cross_line, left=False)],
     '': [p(corner_triangle, corner='top-left')],
+    '◤': [p(corner_triangle, corner='top-left')],
     '': [p(cross_line, left=False)],
     '': [p(corner_triangle, corner='top-right')],
+    '◥': [p(corner_triangle, corner='top-right')],
     '': [cross_line],
     '': [p(progress_bar, which='l')],
     '': [p(progress_bar, which='m')],
@@ -1038,6 +1044,13 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '': [p(spinner, start=360, end=540)],
     '': [p(spinner, start=80, end=220)],
     '': [p(spinner, start=170, end=270)],
+    '○': [p(spinner, start=0, end=360)],    # circle
+    '◜': [p(spinner, start=180, end=270)],  # upper-left
+    '◝': [p(spinner, start=270, end=360)],  # upper-right
+    '◞': [p(spinner, start=360, end=450)],  # lower-right
+    '◟': [p(spinner, start=450, end=540)],  # lower-left
+    '◠': [p(spinner, start=180, end=360)],  # upper-half
+    '◡': [p(spinner, start=0, end=180)],    # lower-half
     '═': [dhline],
     '║': [dvline],
 
