@@ -23,12 +23,15 @@ class Selection(BaseTest):
 
     def test_font_selection(self):
         opts = Options()
-        fonts_map = all_fonts_map(monospaced=True)
-        family_map = fonts_map['family_map']
-        variable_map = fonts_map['variable_map']
-        has_source_code_pro = family_name_to_key('Source Code Pro') in family_map
-        has_source_code_vf = family_name_to_key('sourcecodeVf') in variable_map
-        del fonts_map, family_map, variable_map
+        fonts_map = all_fonts_map(True)
+        names = set(fonts_map['family_map']) | set(fonts_map['variable_map'])
+        def has(x: str) -> bool:
+            return family_name_to_key(x) in names
+        has_source_code_pro = has('Source Code Pro')
+        has_source_code_vf = has('sourcecodeVf')
+        has_fira_code = has('Fira Code')
+        has_hack = has('Hack')
+        del fonts_map, has
 
         def s(family: str, *expected: str) -> None:
             opts.font_family = parse_font_spec(family)
@@ -45,6 +48,10 @@ class Selection(BaseTest):
             both('Source Code Pro', 'SourceCodePro-Regular', 'SourceCodePro-Semibold', 'SourceCodePro-It', 'SourceCodePro-SemiboldIt')
         if has_source_code_vf:
             both('sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Semibold', 'SourceCodeVF-Italic', 'SourceCodeVF-SemiboldItalic')
+        if has_fira_code:
+            both('fira code', 'FiraCodeRoman-Regular', 'FiraCodeRoman-SemiBold', 'FiraCodeRoman-Regular', 'FiraCodeRoman-SemiBold')
+        if has_hack:
+            both('hack', 'Hack-Regular', 'Hack-Bold', 'Hack-Italic', 'Hack-BoldItalic')
 
 
 class Rendering(BaseTest):
