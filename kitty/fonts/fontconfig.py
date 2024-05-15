@@ -9,10 +9,12 @@ from kitty.fast_data_types import (
     FC_MONO,
     FC_SLANT_ITALIC,
     FC_SLANT_ROMAN,
-    FC_WEIGHT_BOLD,
     FC_WEIGHT_REGULAR,
     FC_WIDTH_NORMAL,
     fc_list,
+)
+from kitty.fast_data_types import (
+    FC_WEIGHT_SEMIBOLD as FC_WEIGHT_BOLD,
 )
 from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.typing import FontConfigPattern

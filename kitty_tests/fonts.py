@@ -42,10 +42,9 @@ class Selection(BaseTest):
                 s(family, *expected)
 
         if has_source_code_pro:
-            both('Source Code Pro', 'SourceCodePro-Regular', 'SourceCodePro-Bold', 'SourceCodePro-It', 'SourceCodePro-BoldIt')
+            both('Source Code Pro', 'SourceCodePro-Regular', 'SourceCodePro-Semibold', 'SourceCodePro-It', 'SourceCodePro-SemiboldIt')
         if has_source_code_vf:
-            s('sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Bold', 'SourceCodeVF-Italic', 'SourceCodeVF-BoldItalic')
-            s('family=sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Semibold', 'SourceCodeVF-Italic', 'SourceCodeVF-SemiboldItalic')
+            both('sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Semibold', 'SourceCodeVF-Italic', 'SourceCodeVF-SemiboldItalic')
 
 
 class Rendering(BaseTest):
