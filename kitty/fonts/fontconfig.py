@@ -97,6 +97,14 @@ def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = T
     return score
 
 
+def dump_sorted_candidates(bold: bool, italic: bool, candidates: List[FontConfigPattern], scorer: Scorer) -> None:
+    print(f'{bold=} {italic=}')
+    for x in candidates:
+        print(x['postscript_name'], f'weight={x["weight"]}', f'slant={x["slant"]}')
+        print(scorer(x))
+    print()
+
+
 def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> FontConfigPattern:
     # Use fc-match with a generic family
     family = 'monospace' if monospaced else 'sans-serif'

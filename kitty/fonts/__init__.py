@@ -156,10 +156,9 @@ class FontSpec(NamedTuple):
 
 class Score(NamedTuple):
     variable_score: int
-    style_score: int
+    style_score: Union[int, float]
     monospace_score: int
     width_score: int
-    weight_distance_from_medium: float = 0
 
 
 Descriptor = Union[FontConfigPattern, CoreTextFont]
