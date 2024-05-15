@@ -26,18 +26,26 @@ class Selection(BaseTest):
         fonts_map = all_fonts_map(monospaced=True)
         family_map = fonts_map['family_map']
         variable_map = fonts_map['variable_map']
-        def a(family: str, *expected: str) -> None:
+        has_source_code_pro = family_name_to_key('Source Code Pro') in family_map
+        has_source_code_vf = family_name_to_key('sourcecodeVf') in variable_map
+        del fonts_map, family_map, variable_map
+
+        def s(family: str, *expected: str) -> None:
             opts.font_family = parse_font_spec(family)
             ff = get_font_files(opts)
             actual = tuple(face_from_descriptor(ff[x]).postscript_name() for x in ('medium', 'bold', 'italic', 'bi'))  # type: ignore
-            self.assertEqual(expected, actual)
-        def t(family: str, *expected: str) -> None:
-            a(family, *expected)
-            a(f'family="{family}"', *expected)
-        if family_name_to_key('Source Code Pro') in family_map:
-            t('Source Code Pro', 'SourceCodePro-Regular', 'SourceCodePro-Bold', 'SourceCodePro-It', 'SourceCodePro-BoldIt')
-        if family_name_to_key('sourcecodeVf') in variable_map:
-            a('sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Bold', 'SourceCodeVF-Italic', 'SourceCodeVF-BoldItalic')
+            with self.subTest(spec=family):
+                self.ae(expected, actual)
+
+        def both(family: str, *expected: str) -> None:
+            for family in (family, f'family="{family}"'):
+                s(family, *expected)
+
+        if has_source_code_pro:
+            both('Source Code Pro', 'SourceCodePro-Regular', 'SourceCodePro-Bold', 'SourceCodePro-It', 'SourceCodePro-BoldIt')
+        if has_source_code_vf:
+            s('sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Bold', 'SourceCodeVF-Italic', 'SourceCodeVF-BoldItalic')
+            s('family=sourcecodeVf', 'SourceCodeVF-Regular', 'SourceCodeVF-Semibold', 'SourceCodeVF-Italic', 'SourceCodeVF-SemiboldItalic')
 
 
 class Rendering(BaseTest):

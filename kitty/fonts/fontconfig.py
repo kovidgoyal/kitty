@@ -180,6 +180,17 @@ def set_named_style(name: str, font: FontConfigPattern, vd: VariableData) -> boo
     return False
 
 
+def lift_axes_to_named_style_if_possible(font: FontConfigPattern, vd: VariableData) -> bool:
+    axes = font.get('axes', tuple(ax['default'] for ax in vd['axes']))
+    q = {vd['axes'][i]['tag']: val for i, val in enumerate(axes)}
+    for i, ns in enumerate(vd['named_styles']):
+        if ns['axis_values'] == q:
+            font.pop('axes', None)
+            font['named_style'] = i
+            return True
+    return False
+
+
 def set_axis_values(tag_map: Dict[str, float], font: FontConfigPattern, vd: VariableData) -> bool:
     axes = list(font.get('axes', ())) or [ax['default'] for ax in vd['axes']]
     changed = False
@@ -190,4 +201,5 @@ def set_axis_values(tag_map: Dict[str, float], font: FontConfigPattern, vd: Vari
             axes[i] = val
     if changed:
         font['axes'] = tuple(axes)
+        lift_axes_to_named_style_if_possible(font, vd)
     return changed
