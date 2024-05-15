@@ -81,21 +81,58 @@ class Score(NamedTuple):
     width_score: int
 
 
+class WeightRange(NamedTuple):
+    minimum: float = 99999
+    maximum: float = -99999
+    medium: float = -99999
+    bold: float = -99999
+
+    @property
+    def is_valid(self) -> bool:
+        return self.minimum != wr.minimum and self.maximum != wr.maximum and self.medium != wr.medium and self.bold != wr.bold
+
+wr = WeightRange()
+
+
+@lru_cache()
+def weight_range_for_family(family: str) -> WeightRange:
+    faces = all_fonts_map(True)['family_map'].get(family_name_to_key(family), ())
+    mini, maxi, medium, bold = wr.minimum, wr.maximum, wr.medium, wr.bold
+    for face in faces:
+        w = face['weight']
+        mini, maxi = min(w, mini), max(w, maxi)
+        s = face['style'].lower()
+        if not s:
+            continue
+        s = s.split()[0]
+        if s == 'semibold':
+            bold = w
+        elif s == 'bold' and bold == wr.bold:
+            bold = w
+        elif s == 'medium':
+            medium = w
+        elif s == 'regular' and medium == wr.medium:
+            medium = w
+    return WeightRange(mini, maxi, medium, bold)
+
 
 class CTScorer(Scorer):
-    medium_weight: float = 0.
-    bold_weight: float = 0.3
+    weight_range: Optional[WeightRange] = None
 
     def score(self, candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'core_text'
         variable_score = 0 if self.prefer_variable and candidate['variation'] is not None else 1
         bold_score = candidate['weight']  # -1 to 1 with 0 being normal
-        if bold_score < 0:  # thinner than normal, reject
-            bold_score = 2.0
+        if self.weight_range is None:
+            if bold_score < 0:  # thinner than normal, reject
+                bold_score = 2.0
+            else:
+                if self.bold:
+                    # prefer semibold=0.3 to full bold = 0.4
+                    bold_score = abs(bold_score - 0.3)
         else:
-            if self.bold:
-                # prefer semibold=0.3 to full bold = 0.4
-                bold_score = abs(bold_score - 0.3)
+            anchor = self.weight_range.bold if self.bold else self.weight_range.medium
+            bold_score = abs(bold_score - anchor)
         italic_score = candidate['slant'] # -1 to 1 with 0 being upright < 0 being backward slant, abs(slant) == 1 implies 30 deg rotation
         if self.italic:
             if italic_score < 0:
@@ -107,6 +144,12 @@ class CTScorer(Scorer):
         return Score(variable_score, bold_score + italic_score, monospace_match, 0 if is_regular_width else 1)
 
     def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+        self.weight_range = None
+        families = {x['family'] for x in candidates}
+        if len(families) == 1:
+            wr = weight_range_for_family(next(iter(families)))
+            if wr.is_valid and wr.minimum < 0 and wr.maximum <= 0:  # Operator Mono is an example of this craziness
+                self.weight_range = wr
         candidates = sorted(candidates, key=self.score)
         if dump:
             print(self)
@@ -115,7 +158,6 @@ class CTScorer(Scorer):
                 print(x['postscript_name'], f'bold={x["bold"]}', f'italic={x["italic"]}', f'weight={x["weight"]:.2f}', f'slant={x["slant"]:.2f}')
                 print(self.score(x))
             print()
-        self.medium_weight, self.bold_weight = CTScorer.medium_weight, CTScorer.bold_weight
         return candidates
 
 

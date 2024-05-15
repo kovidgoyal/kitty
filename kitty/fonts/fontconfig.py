@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import sys
 from functools import lru_cache
 from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Sequence, Tuple, cast
 
@@ -83,35 +84,79 @@ def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> F
 
 class Score(NamedTuple):
     variable_score: int
-    style_score: int
+    style_score: float
     monospace_score: int
     width_score: int
+
+
+class WeightRange(NamedTuple):
+    minimum: int = sys.maxsize
+    maximum: int = -1
+    medium: int = -1
+    bold: int = -1
+
+    @property
+    def is_valid(self) -> bool:
+        return self.minimum != wr.minimum and self.maximum != wr.maximum and self.medium != wr.medium and self.bold != wr.bold
+
+wr = WeightRange()
+
+
+@lru_cache()
+def weight_range_for_family(family: str) -> WeightRange:
+    faces = all_fonts_map(True)['family_map'].get(family_name_to_key(family), ())
+    mini, maxi, medium, bold = wr.minimum, wr.maximum, wr.medium, wr.bold
+    for face in faces:
+        w = face['weight']
+        mini, maxi = min(w, mini), max(w, maxi)
+        s = face['style'].lower()
+        if not s:
+            continue
+        s = s.split()[0]
+        if s == 'semibold':
+            bold = w
+        elif s == 'bold' and bold == wr.bold:
+            bold = w
+        elif s == 'medium':
+            medium = w
+        elif s == 'regular' and medium == wr.medium:
+            medium = w
+    return WeightRange(mini, maxi, medium, bold)
 
 
 
 class FCScorer(Scorer):
 
-    medium_weight: int = FC_WEIGHT_REGULAR
-    bold_weight: int = FC_WEIGHT_BOLD
+    weight_range: Optional[WeightRange] = None
 
     def score(self, candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'fontconfig'
         variable_score = 0 if self.prefer_variable and candidate['variable'] else 1
-        bold_score = abs((self.bold_weight if self.bold else self.medium_weight) - candidate['weight'])
+        if self.weight_range is None:
+            bold_score = abs((FC_WEIGHT_BOLD if self.bold else FC_WEIGHT_REGULAR) - candidate['weight'])
+        else:
+            bold_score = abs((self.weight_range.bold if self.bold else self.weight_range.medium) - candidate['weight'])
         italic_score = abs((FC_SLANT_ITALIC if self.italic else FC_SLANT_ROMAN) - candidate['slant'])
         monospace_match = 0
         if self.monospaced:
             monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1
         width_score = abs(candidate['width'] - FC_WIDTH_NORMAL)
-        return Score(variable_score, bold_score + italic_score, monospace_match, width_score)
+        return Score(variable_score, bold_score / 1000 + italic_score / 110, monospace_match, width_score)
 
     def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+        self.weight_range = None
+        families = {x['family'] for x in candidates}
+        if len(families) == 1:
+            wr = weight_range_for_family(next(iter(families)))
+            if wr.is_valid and wr.maximum < 100:  # Operator Mono is an example of this craziness
+                self.weight_range = wr
         candidates = sorted(candidates, key=self.score)
         if dump:
             print(self)
             for x in candidates:
                 assert x['descriptor_type'] == 'fontconfig'
                 print(x['postscript_name'], f'weight={x["weight"]}', f'slant={x["slant"]}')
+                print(self.score(x))
             print()
         return candidates
 
