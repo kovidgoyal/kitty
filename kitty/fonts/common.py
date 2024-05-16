@@ -81,15 +81,10 @@ def get_variable_data_for_face(d: Face) -> VariableData:
 def find_best_match_in_candidates(
     candidates: List[DescriptorVar], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[DescriptorVar] = None
 ) -> Optional[DescriptorVar]:
-    if not candidates:
-        return None
-    if len(candidates) == 1 and not is_medium_face and candidates[0].get('family') == candidates[0].get('full_name'):
-        # IBM Plex Mono does this, where the full name of the regular font
-        # face is the same as its family name
-        return None
-    for x in scorer.sorted_candidates(candidates):
-        if ignore_face is None or x != ignore_face:
-            return x
+    if candidates:
+        for x in scorer.sorted_candidates(candidates):
+            if ignore_face is None or x != ignore_face:
+                return x
     return None
 
 def pprint(*a: Any) -> None:
