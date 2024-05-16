@@ -75,7 +75,7 @@ def install_deps():
         run('sudo apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates'
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh'
             ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev'
-            ' libsimde-dev zsh bash dash systemd-coredump gdb')
+            ' libsimde-dev libsystemd-dev zsh bash dash systemd-coredump gdb')
         # for some reason these directories are world writable which causes zsh
         # compinit to break
         run('sudo chmod -R og-w /usr/share/zsh')
