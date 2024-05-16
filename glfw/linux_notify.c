@@ -13,6 +13,11 @@
 #define NOTIFICATIONS_PATH "/org/freedesktop/Notifications"
 #define NOTIFICATIONS_IFACE "org.freedesktop.Notifications"
 
+static inline void cleanup_free(void *p) { free(*(void**)p); }
+#define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
+static inline void cleanup_msg(void *p) { dbus_message_unref(*(DBusMessage**)p); *(DBusMessage**)p = NULL; }
+#define RAII_MSG(name, initializer) __attribute__((cleanup(cleanup_msg))) DBusMessage *name = initializer
+
 static notification_id_type notification_id = 0;
 
 typedef struct {
@@ -61,7 +66,7 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
 }
 
 notification_id_type
-glfw_dbus_send_user_notification(const char *app_name, const char* icon, const char *summary, const char *body, const char* action_name, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *user_data) {
+glfw_dbus_send_user_notification(const char *app_name, const char* icon, const char *summary, const char *body, const char* action_name, int32_t timeout, int urgency, GLFWDBusnotificationcreatedfun callback, void *user_data) {
     DBusConnection *session_bus = glfw_dbus_session_bus();
     static DBusConnection *added_signal_match = NULL;
     if (!session_bus) return 0;
@@ -70,36 +75,47 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
         dbus_connection_add_filter(session_bus, message_handler, NULL, NULL);
         added_signal_match = session_bus;
     }
-    NotificationCreatedData *data = malloc(sizeof(NotificationCreatedData));
+    RAII_ALLOC(NotificationCreatedData, data, malloc(sizeof(NotificationCreatedData)));
     if (!data) return 0;
     data->next_id = ++notification_id;
     data->callback = callback; data->data = user_data;
     if (!data->next_id) data->next_id = ++notification_id;
     uint32_t replaces_id = 0;
 
-    DBusMessage *msg = dbus_message_new_method_call(NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "Notify");
-    if (!msg) { free(data); return 0; }
-    DBusMessageIter args, array;
+    RAII_MSG(msg, dbus_message_new_method_call(NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "Notify"));
+    if (!msg) { return 0; }
+    DBusMessageIter args, array, variant, dict;
     dbus_message_iter_init_append(msg, &args);
-#define OOMMSG { free(data); data = NULL; dbus_message_unref(msg); _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
-#define APPEND(type, val) { if (!dbus_message_iter_append_basic(&args, type, val)) OOMMSG }
-    APPEND(DBUS_TYPE_STRING, &app_name)
-    APPEND(DBUS_TYPE_UINT32, &replaces_id)
-    APPEND(DBUS_TYPE_STRING, &icon)
-    APPEND(DBUS_TYPE_STRING, &summary)
-    APPEND(DBUS_TYPE_STRING, &body)
-    if (!dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "s", &array)) OOMMSG;
+#define check_call(func, ...) if (!func(__VA_ARGS__)) { _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
+#define APPEND(to, type, val) check_call(dbus_message_iter_append_basic, &to, type, &val);
+    APPEND(args, DBUS_TYPE_STRING, app_name)
+    APPEND(args, DBUS_TYPE_UINT32, replaces_id)
+    APPEND(args, DBUS_TYPE_STRING, icon)
+    APPEND(args, DBUS_TYPE_STRING, summary)
+    APPEND(args, DBUS_TYPE_STRING, body)
+    check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "s", &array);
     if (action_name) {
         static const char* default_action = "default";
-        dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &default_action);
-        dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &action_name);
+        APPEND(array, DBUS_TYPE_STRING, default_action);
+        APPEND(array, DBUS_TYPE_STRING, action_name);
     }
-    if (!dbus_message_iter_close_container(&args, &array)) OOMMSG;
-    if (!dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "{sv}", &array)) OOMMSG;
-    if (!dbus_message_iter_close_container(&args, &array)) OOMMSG;
-    APPEND(DBUS_TYPE_INT32, &timeout)
-#undef OOMMSG
+    check_call(dbus_message_iter_close_container, &args, &array);
+    check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "{sv}", &array);
+
+    check_call(dbus_message_iter_open_container, &array, DBUS_TYPE_DICT_ENTRY, NULL, &dict);
+    static const char* urgency_key = "urgency";
+    APPEND(dict, DBUS_TYPE_STRING, urgency_key);
+    check_call(dbus_message_iter_open_container, &dict, DBUS_TYPE_VARIANT, DBUS_TYPE_BYTE_AS_STRING, &variant);
+    uint8_t urgencyb = urgency & 3;
+    APPEND(variant, DBUS_TYPE_BYTE, urgencyb);
+    check_call(dbus_message_iter_close_container, &dict, &variant);
+    check_call(dbus_message_iter_close_container, &array, &dict);
+    check_call(dbus_message_iter_close_container, &args, &array);
+    APPEND(args, DBUS_TYPE_INT32, timeout)
+#undef check_call
 #undef APPEND
     if (!call_method_with_msg(session_bus, msg, 5000, notification_created, data)) return 0;
-    return data->next_id;
+    notification_id_type ans = data->next_id;
+    data = NULL;
+    return ans;
 }

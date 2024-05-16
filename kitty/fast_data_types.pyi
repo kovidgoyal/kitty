@@ -493,7 +493,8 @@ def dbus_send_notification(
     summary: str,
     body: str,
     action_name: str,
-    timeout: int = -1
+    timeout: int = -1,
+    urgency: int = 1,
 ) -> int:
     pass
 

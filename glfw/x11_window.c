@@ -3253,8 +3253,8 @@ GLFWAPI int glfwGetNativeKeyForName(const char* keyName, bool caseSensitive) {
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
 }
 
-GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, const char *action_name, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data) {
-    return glfw_dbus_send_user_notification(app_name, icon, summary, body, action_name, timeout, callback, data);
+GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, const char *action_name, int32_t timeout, int urgency,GLFWDBusnotificationcreatedfun callback, void *data) {
+    return glfw_dbus_send_user_notification(app_name, icon, summary, body, action_name, timeout, urgency, callback, data);
 }
 
 GLFWAPI void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {

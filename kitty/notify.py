@@ -14,7 +14,12 @@ from .fast_data_types import current_focused_os_window_id, get_boss
 from .types import run_once
 from .utils import get_custom_window_icon, log_error
 
-NotifyImplementation = Callable[[str, str, str], None]
+
+class Urgency(Enum):
+    Low: int = 0
+    Normal: int = 1
+    Critical: int = 2
+
 
 if is_macos:
     from .fast_data_types import cocoa_send_notification
@@ -27,6 +32,7 @@ if is_macos:
         icon: bool = True,
         identifier: Optional[str] = None,
         subtitle: Optional[str] = None,
+        urgency: Urgency = Urgency.Normal,
     ) -> None:
         cocoa_send_notification(identifier, title, body, subtitle)
 
@@ -56,17 +62,20 @@ else:
         icon: bool = True,
         identifier: Optional[str] = None,
         subtitle: Optional[str] = None,
+        urgency: Urgency = Urgency.Normal,
     ) -> None:
         icf = ''
         if icon is True:
             icf = get_custom_window_icon()[1] or logo_png_file
-        alloc_id = dbus_send_notification(application, icf, title, body, 'Click to see changes', timeout)
+        alloc_id = dbus_send_notification(application, icf, title, body, 'Click to see changes', timeout, urgency.value)
         if alloc_id and identifier is not None:
             alloc_map[alloc_id] = identifier
 
+class NotifyImplementation:
+    def __call__(self, title: str, body: str, identifier: str, urgency: Urgency = Urgency.Normal) -> None:
+        notify(title, body, identifier=identifier, urgency=urgency)
 
-def notify_implementation(title: str, body: str, identifier: str) -> None:
-    notify(title, body, identifier=identifier)
+notify_implementation = NotifyImplementation()
 
 
 class OnlyWhen(Enum):

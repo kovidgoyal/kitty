@@ -90,7 +90,9 @@ from .fast_data_types import (
 from .keys import keyboard_mode_name, mod_mask
 from .notify import (
     NotificationCommand,
+    NotifyImplementation,
     OnlyWhen,
+    Urgency,
     handle_notification_cmd,
     notify_with_command,
     sanitize_identifier_pat,
@@ -1430,13 +1432,21 @@ class Window:
             if action == 'notify':
                 notify_with_command(cmd, self.id)
             elif action == 'bell':
-                def bell(title: str, body: str, identifier: str) -> None:
-                    self.screen.bell()
-                notify_with_command(cmd, self.id, notify_implementation=bell)
+                class Bell(NotifyImplementation):
+                    def __init__(self, window_id: int):
+                        self.window_id = window_id
+                    def __call__(self, title: str, body: str, identifier: str, urgency: Urgency = Urgency.Normal) -> None:
+                        w = get_boss().window_id_map.get(self.window_id)
+                        if w:
+                            w.screen.bell()
+                notify_with_command(cmd, self.id, notify_implementation=Bell(self.id))
             elif action == 'command':
-                def run_command(title: str, body: str, identifier: str) -> None:
-                    open_cmd([x.replace('%c', self.last_cmd_cmdline).replace('%s', exit_status) for x in notify_cmdline])
-                notify_with_command(cmd, self.id, notify_implementation=run_command)
+                class Run(NotifyImplementation):
+                    def __init__(self, last_cmd_cmdline: str):
+                        self.last_cmd_cmdline = last_cmd_cmdline
+                    def __call__(self, title: str, body: str, identifier: str, urgency: Urgency = Urgency.Normal) -> None:
+                        open_cmd([x.replace('%c', self.last_cmd_cmdline).replace('%s', exit_status) for x in notify_cmdline])
+                notify_with_command(cmd, self.id, notify_implementation=Run(self.last_cmd_cmdline))
             else:
                 raise ValueError(f'Unknown action in option `notify_on_cmd_finish`: {action}')
 
