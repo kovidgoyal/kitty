@@ -15,8 +15,6 @@
 
 static inline void cleanup_free(void *p) { free(*(void**)p); }
 #define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
-static inline void cleanup_msg(void *p) { dbus_message_unref(*(DBusMessage**)p); *(DBusMessage**)p = NULL; }
-#define RAII_MSG(name, initializer) __attribute__((cleanup(cleanup_msg))) DBusMessage *name = initializer
 
 static notification_id_type notification_id = 0;
 

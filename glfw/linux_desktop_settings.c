@@ -118,14 +118,13 @@ HANDLER(process_desktop_settings)
 
 static bool
 read_desktop_settings(DBusConnection *session_bus) {
-    DBusMessage *msg = dbus_message_new_method_call(DESKTOP_SERVICE, DESKTOP_PATH, DESKTOP_INTERFACE, "ReadAll");
+    RAII_MSG(msg, dbus_message_new_method_call(DESKTOP_SERVICE, DESKTOP_PATH, DESKTOP_INTERFACE, "ReadAll"));
     if (!msg) return false;
     DBusMessageIter iter, array_iter;
     dbus_message_iter_init_append(msg, &iter);
-    if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &array_iter)) { dbus_message_unref(msg); return false; }
-    if (!dbus_message_iter_close_container(&iter, &array_iter)) { dbus_message_unref(msg); return false; }
+    if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &array_iter)) { return false; }
+    if (!dbus_message_iter_close_container(&iter, &array_iter)) { return false; }
     bool ok = call_method_with_msg(session_bus, msg, DBUS_TIMEOUT_USE_DEFAULT, process_desktop_settings, NULL);
-    dbus_message_unref(msg);
     return ok;
 }
 

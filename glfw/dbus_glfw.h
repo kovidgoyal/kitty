@@ -30,6 +30,9 @@
 #include <dbus/dbus.h>
 #include "backend_utils.h"
 
+static inline void cleanup_msg(void *p) { DBusMessage *m = *(DBusMessage**)p; if (m) dbus_message_unref(m); m = NULL; }
+#define RAII_MSG(name, initializer) __attribute__((cleanup(cleanup_msg))) DBusMessage *name = initializer
+
 typedef void(*dbus_pending_callback)(DBusMessage *msg, const char* err, void* data);
 
 typedef struct {

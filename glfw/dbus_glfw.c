@@ -224,13 +224,12 @@ format_message_error(DBusError *err) {
 static void
 method_reply_received(DBusPendingCall *pending, void *user_data) {
     MethodResponse *res = (MethodResponse*)user_data;
-    DBusMessage *msg = dbus_pending_call_steal_reply(pending);
+    RAII_MSG(msg, dbus_pending_call_steal_reply(pending));
     if (msg) {
         DBusError err;
         dbus_error_init(&err);
         if (dbus_set_error_from_message(&err, msg)) res->callback(NULL, format_message_error(&err), res->user_data);
         else res->callback(msg, NULL, res->user_data);
-        dbus_message_unref(msg);
     }
 }
 
@@ -264,7 +263,7 @@ call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_p
 static bool
 call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout, dbus_pending_callback callback, void *user_data, va_list ap) {
     if (!conn || !path) return false;
-    DBusMessage *msg = dbus_message_new_method_call(node, path, interface, method);
+    RAII_MSG(msg, dbus_message_new_method_call(node, path, interface, method));
     if (!msg) return false;
     bool retval = false;
 
@@ -274,7 +273,6 @@ call_method(DBusConnection *conn, const char *node, const char *path, const char
     } else {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to call DBUS method: %s on node: %s and interface: %s could not add arguments", method, node, interface);
     }
-    dbus_message_unref(msg);
 
     return retval;
 }
