@@ -39,11 +39,14 @@ class Selection(BaseTest):
             for family in (family, f'family="{family}"'):
                 s(family, *expected)
 
-        def has(family):
-            return family_name_to_key(family) in names
+        def has(family, allow_missing_in_ci=False):
+            ans = family_name_to_key(family) in names
+            if self.is_ci and not allow_missing_in_ci and not ans:
+                raise AssertionError(f'The family: {family} is not available')
+            return ans
 
-        def t(family, psprefix, bold='Bold', italic='Italic', bi='', reg='Regular'):
-            if has(family):
+        def t(family, psprefix, bold='Bold', italic='Italic', bi='', reg='Regular', allow_missing_in_ci=False):
+            if has(family, allow_missing_in_ci=allow_missing_in_ci):
                 bi = bi or bold + italic
                 if reg:
                     reg = '-' + reg
@@ -53,9 +56,14 @@ class Selection(BaseTest):
         t('sourcecodeVf', 'SourceCodeVF', 'Semibold')
         t('fira code', 'FiraCodeRoman', 'SemiBold', 'Regular', 'SemiBold')
         t('hack', 'Hack')
+        t('ubuntu mono', 'UbuntuMono')
+        t('liberation mono', 'LiberationMono', reg='')
+        t('ibm plex mono', 'IBMPlexMono', 'SmBld', reg='')
+        t('iosevka fixed', 'Iosevka-Fixed', 'Semibold', reg='', bi='Semibold-Italic', allow_missing_in_ci=True)
+        t('iosevka term', 'Iosevka-Term', 'Semibold', reg='', bi='Semibold-Italic', allow_missing_in_ci=True)
         t('fantasque sans mono', 'FantasqueSansMono')
         t('jetbrains mono', 'JetBrainsMono', 'SemiBold')
-        t('consolas', 'Consolas', reg='')
+        t('consolas', 'Consolas', reg='', allow_missing_in_ci=True)
         if has('cascadia code'):
             if is_macos:
                 both('cascadia code', 'CascadiaCode-Regular', 'CascadiaCode-Regular_SemiBold', 'CascadiaCode-Italic', 'CascadiaCode-Italic_SemiBold-Italic')
@@ -66,7 +74,7 @@ class Selection(BaseTest):
                 both('cascadia mono', 'CascadiaMono-Regular', 'CascadiaMono-Regular_SemiBold', 'CascadiaMono-Italic', 'CascadiaMono-Italic_SemiBold-Italic')
             else:
                 both('cascadia mono', 'CascadiaMonoRoman-Regular', 'CascadiaMonoRoman-SemiBold', 'CascadiaMono-Italic', 'CascadiaMono-SemiBoldItalic')
-        if has('operator mono'):
+        if has('operator mono', allow_missing_in_ci=True):
             both('operator mono', 'OperatorMono-Medium', 'OperatorMono-Bold', 'OperatorMono-MediumItalic', 'OperatorMono-BoldItalic')
 
 

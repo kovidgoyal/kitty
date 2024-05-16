@@ -182,10 +182,10 @@ def find_best_match(
         m = font_map[which]
         cq = m.get(q, [])
         if cq:
+            if which == 'full_map' and cq[0]['family'] == cq[0]['full_name']:
+                continue  # IBM Plex Mono has fullname of regular face == family_name under fontconfig
             exact_match = find_best_match_in_candidates(cq, scorer, is_medium_face, ignore_face=ignore_face)
             if exact_match:
-                # dump_sorted_candidates(bold, italic, cq, scorer)
-                assert exact_match['descriptor_type'] == 'fontconfig'
                 return exact_match
 
     # Use fc-match to see if we can find a monospaced font that matches family
