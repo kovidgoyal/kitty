@@ -610,7 +610,6 @@ def kitty_env(args: Options) -> Env:
     # them and on macOS when building with homebrew it is required
     with suppress(SystemExit, subprocess.CalledProcessError):
         cflags.extend(pkg_config('simde', '--cflags-only-I', fatal=False))
-    has_systemd = 0
     libcrypto_cflags, libcrypto_ldflags = libcrypto_flags()
     cflags.extend(libcrypto_cflags)
     if is_macos:
@@ -635,8 +634,7 @@ def kitty_env(args: Options) -> Env:
             cflags.extend(pkg_config('libsystemd', '--cflags-only-I', fatal=False))
             systemd_libs = pkg_config('libsystemd', '--libs')
             platform_libs.extend(systemd_libs)
-            has_systemd = bool(systemd_libs)
-    cppflags.append(f'-DKITTY_HAS_SYSTEMD={has_systemd}')
+            cppflags.append('-DKITTY_HAS_SYSTEMD')
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(args, cflags)
