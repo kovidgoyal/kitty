@@ -82,6 +82,8 @@ Detailed list of changes
 
 - Add some more box-drawing characters from the "Geometric shapes" Unicode block (:iss:`7433`)
 
+- Linux: Run all child processes in their own systemd scope to prevent the OOM killer from harvesting kitty when a child process misbehaves (:iss:`7427`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

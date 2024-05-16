@@ -5,6 +5,7 @@ import os
 import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
+from itertools import count
 from typing import TYPE_CHECKING, DefaultDict, Dict, Generator, List, Optional, Sequence, Tuple
 
 import kitty.fast_data_types as fast_data_types
@@ -190,6 +191,9 @@ class ProcessDesc(TypedDict):
     cmdline: Optional[Sequence[str]]
 
 
+child_counter = count()
+
+
 class Child:
 
     child_fd: Optional[int] = None
@@ -208,6 +212,7 @@ class Child:
         hold: bool = False,
     ):
         self.is_clone_launch = is_clone_launch
+        self.id = next(child_counter)
         self.add_listen_on_env_var = add_listen_on_env_var
         self.argv = list(argv)
         if cwd_from:
@@ -338,6 +343,14 @@ class Child:
         self.terminal_ready_fd = ready_write_fd
         if self.child_fd is not None:
             os.set_blocking(self.child_fd, False)
+        if not is_macos:
+            ppid = getpid()
+            try:
+                fast_data_types.systemd_move_pid_into_new_scope(pid, f'kitty-{ppid}-{self.id}.scope', f'kitty child process: {pid} launched by: {ppid}')
+            except NotImplementedError:
+                pass
+            except (RuntimeError, OSError) as err:
+                log_error("Could not move child process into a systemd scope: " + str(err))
         return pid
 
     def __del__(self) -> None:
