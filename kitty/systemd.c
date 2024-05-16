@@ -196,6 +196,7 @@ systemd_move_pid_into_new_scope(PyObject *self UNUSED, PyObject *args) {
     long pid; const char *scope_name, *description;
     if (!PyArg_ParseTuple(args, "lss", &pid, &scope_name, &description)) return NULL;
 #ifdef __APPLE__
+    (void)ensure_initialized_and_useable; (void)move_pid_into_new_scope;
     PyErr_SetString(PyExc_NotImplementedError, "not supported on this platform");
 #else
     if (!ensure_initialized_and_useable()) return NULL;
