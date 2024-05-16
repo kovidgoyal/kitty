@@ -93,9 +93,12 @@ class NotificationCommand:
     body: str = ''
     actions: str = ''
     only_when: OnlyWhen = OnlyWhen.unset
+    urgency: Optional[Urgency] = None
 
     def __repr__(self) -> str:
-        return f'NotificationCommand(identifier={self.identifier!r}, title={self.title!r}, body={self.body!r}, actions={self.actions!r}, done={self.done!r})'
+        return (
+            f'NotificationCommand(identifier={self.identifier!r}, title={self.title!r}, body={self.body!r},'
+            f'actions={self.actions!r}, done={self.done!r}, urgency={self.urgency})')
 
 
 def parse_osc_9(raw: str) -> NotificationCommand:
@@ -147,6 +150,9 @@ def parse_osc_99(raw: str) -> NotificationCommand:
             elif k == 'o':
                 with suppress(ValueError):
                     cmd.only_when = OnlyWhen(v)
+            elif k == 'u':
+                with suppress(Exception):
+                    cmd.urgency = Urgency(int(v))
     if payload_type not in ('body', 'title'):
         log_error(f'Malformed OSC 99: unknown payload type: {payload_type}')
         return NotificationCommand()
@@ -177,6 +183,8 @@ def merge_osc_99(prev: NotificationCommand, cmd: NotificationCommand) -> Notific
     cmd.body = limit_size(prev.body + cmd.body)
     if cmd.only_when is OnlyWhen.unset:
         cmd.only_when = prev.only_when
+    if cmd.urgency is None:
+        cmd.urgency = prev.urgency
     return cmd
 
 
@@ -234,6 +242,7 @@ def notify_with_command(cmd: NotificationCommand, window_id: int, notify_impleme
     body = cmd.body if cmd.title else ''
     if not title:
         return
+    urgency = Urgency.Normal if cmd.urgency is None else cmd.urgency
     if cmd.only_when is not OnlyWhen.always and cmd.only_when is not OnlyWhen.unset:
         w = get_boss().window_id_map.get(window_id)
         if w is None:
@@ -247,7 +256,7 @@ def notify_with_command(cmd: NotificationCommand, window_id: int, notify_impleme
                 return  # window is in the active OS window and the active tab and is visible in the tab layout
     if title:
         identifier = f'i{next(id_counter)}'
-        notify_implementation(title, body, identifier)
+        notify_implementation(title, body, identifier, urgency)
         register_identifier(identifier, cmd, window_id)
 
 

@@ -70,6 +70,8 @@ Detailed list of changes
 
 - Wayland: Fix infinite loop causing bad performance when using IME via fcitx5 due to a change in fcitx5 (:iss:`7396`)
 
+- Desktop notifications protocol: Add support for specifying urgency
+
 - Improve rendering of Unicode shade character to avoid Moire patterns (:pull:`7401`)
 
 - kitten @ send-key: Fix some keys being sent in kitty keyboard protocol encoding when not using socket for remote control

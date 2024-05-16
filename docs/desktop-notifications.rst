@@ -120,12 +120,16 @@ Key      Value                 Default    Description
                                           and not visible to the user, for example, because it is in an inactive tab or
                                           its OS window is not currently active.
                                           ``always`` is the default and always honors the request.
+``u``    ``0, 1 or 2``         ``unset``  The *urgency* of the notification. ``0`` is low, ``1`` is normal and ``2`` is critical.
+                                          If not specified normal is used.
 =======  ====================  ========== =================
 
 
-.. note::
+.. versionadded:: 0.35.0
+   Support for the ``u`` key to specify urgency
+
+.. versionadded:: 0.31.0
    Support for the ``o`` key to prevent notifications from focused windows
-   was added in kitty version 0.31.0
 
 
 .. note::
