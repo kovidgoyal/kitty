@@ -183,6 +183,15 @@ def find_best_match(
             if possible != ignore_face:
                 return possible
 
+    # See if we have a variable font
+    if not bold and not italic and font_map['variable_map'].get(q):
+        candidates = font_map['variable_map'][q]
+        candidates = scorer.sorted_candidates(candidates)
+        possible = candidates[0]
+        if possible != ignore_face:
+            from .common import find_medium_variant
+            return find_medium_variant(possible)
+
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
     if q not in font_map['family_map']:

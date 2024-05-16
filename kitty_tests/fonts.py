@@ -27,7 +27,7 @@ class Selection(BaseTest):
         names = set(fonts_map['family_map']) | set(fonts_map['variable_map'])
         del fonts_map
 
-        def s(family: str, *expected: str) -> None:
+        def s(family: str, *expected: str, alternate=None) -> None:
             opts.font_family = parse_font_spec(family)
             ff = get_font_files(opts)
             actual = tuple(face_from_descriptor(ff[x]).postscript_name() for x in ('medium', 'bold', 'italic', 'bi'))  # type: ignore
@@ -36,11 +36,17 @@ class Selection(BaseTest):
                 if '/' in x:  # Old FreeType failed to generate postscript name for a variable font probably
                     return
             with self.subTest(spec=family):
-                self.ae(expected, actual)
+                try:
+                    self.ae(expected, actual)
+                except AssertionError:
+                    if alternate:
+                        self.ae(tuple(map(alternate, expected)), actual)
+                    else:
+                        raise
 
-        def both(family: str, *expected: str) -> None:
+        def both(family: str, *expected: str, alternate=None) -> None:
             for family in (family, f'family="{family}"'):
-                s(family, *expected)
+                s(family, *expected, alternate=alternate)
 
         def has(family, allow_missing_in_ci=False):
             ans = family_name_to_key(family) in names
@@ -48,12 +54,12 @@ class Selection(BaseTest):
                 raise AssertionError(f'The family: {family} is not available')
             return ans
 
-        def t(family, psprefix, bold='Bold', italic='Italic', bi='', reg='Regular', allow_missing_in_ci=False):
+        def t(family, psprefix, bold='Bold', italic='Italic', bi='', reg='Regular', allow_missing_in_ci=False, alternate=None):
             if has(family, allow_missing_in_ci=allow_missing_in_ci):
                 bi = bi or bold + italic
                 if reg:
                     reg = '-' + reg
-                both(family, f'{psprefix}{reg}', f'{psprefix}-{bold}', f'{psprefix}-{italic}', f'{psprefix}-{bi}')
+                both(family, f'{psprefix}{reg}', f'{psprefix}-{bold}', f'{psprefix}-{italic}', f'{psprefix}-{bi}', alternate=alternate)
 
         t('Source Code Pro', 'SourceCodePro', 'Semibold', 'It')
         t('sourcecodeVf', 'SourceCodeVF', 'Semibold')

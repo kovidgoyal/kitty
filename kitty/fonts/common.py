@@ -92,7 +92,7 @@ def pprint(*a: Any) -> None:
     pprint(*a)
 
 
-def find_medium_variant(font: Descriptor) -> Descriptor:
+def find_medium_variant(font: DescriptorVar) -> DescriptorVar:
     font = font.copy()
     vd = get_variable_data_for_descriptor(font)
     for i, ns in enumerate(vd['named_styles']):
