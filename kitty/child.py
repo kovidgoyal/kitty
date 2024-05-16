@@ -349,7 +349,7 @@ class Child:
                 fast_data_types.systemd_move_pid_into_new_scope(pid, f'kitty-{ppid}-{self.id}.scope', f'kitty child process: {pid} launched by: {ppid}')
             except NotImplementedError:
                 pass
-            except (RuntimeError, OSError) as err:
+            except OSError as err:
                 log_error("Could not move child process into a systemd scope: " + str(err))
         return pid
 

@@ -197,6 +197,7 @@ class Options:
     egl_library: Optional[str] = os.getenv('KITTY_EGL_LIBRARY')
     startup_notification_library: Optional[str] = os.getenv('KITTY_STARTUP_NOTIFICATION_LIBRARY')
     canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
+    systemd_library: Optional[str] = os.getenv('KITTY_SYSTEMD_LIBRARY')
     fontconfig_library: Optional[str] = os.getenv('KITTY_FONTCONFIG_LIBRARY')
     building_arch: str = ''
 
@@ -454,6 +455,7 @@ def init_env(
     egl_library: Optional[str] = None,
     startup_notification_library: Optional[str] = None,
     canberra_library: Optional[str] = None,
+    systemd_library: Optional[str] = None,
     fontconfig_library: Optional[str] = None,
     extra_logging: Iterable[str] = (),
     extra_include_dirs: Iterable[str] = (),
@@ -545,6 +547,7 @@ def init_env(
     add_lpath('glfw/egl_context.c', '_GLFW_EGL_LIBRARY', egl_library)
     add_lpath('kitty/desktop.c', '_KITTY_STARTUP_NOTIFICATION_LIBRARY', startup_notification_library)
     add_lpath('kitty/desktop.c', '_KITTY_CANBERRA_LIBRARY', canberra_library)
+    add_lpath('kitty/systemd.c', '_KITTY_SYSTEMD_LIBRARY', systemd_library)
     add_lpath('kitty/fontconfig.c', '_KITTY_FONTCONFIG_LIBRARY', fontconfig_library)
 
     for path in extra_include_dirs:
@@ -630,11 +633,6 @@ def kitty_env(args: Options) -> Env:
     else:
         cflags.extend(pkg_config('fontconfig', '--cflags-only-I'))
         platform_libs = []
-        with suppress(SystemExit, subprocess.CalledProcessError):
-            cflags.extend(pkg_config('libsystemd', '--cflags-only-I', fatal=False))
-            systemd_libs = pkg_config('libsystemd', '--libs')
-            platform_libs.extend(systemd_libs)
-            ans.has_systemd = True
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(args, cflags)
@@ -730,8 +728,6 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
         return src, ['3rdparty/base64',], base64_defines(env.binary_arch.isa)
     if src == 'kitty/screen.c':
         return src, [], [f'PRIMARY_VERSION={env.primary_version}', f'SECONDARY_VERSION={env.secondary_version}', f'XT_VERSION="{env.xt_version}"']
-    if src == 'kitty/systemd.c':
-        return src, [], (['KITTY_HAS_SYSTEMD'] if env.has_systemd else None)
     if src == 'kitty/fast-file-copy.c':
         return src, [], (['HAS_COPY_FILE_RANGE'] if env.has_copy_file_range else None)
     try:
@@ -1000,7 +996,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     global env
     env = init_env(
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
-        args.egl_library, args.startup_notification_library, args.canberra_library, args.fontconfig_library,
+        args.egl_library, args.startup_notification_library, args.canberra_library, args.systemd_library, args.fontconfig_library,
         args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings,
         args.building_arch, args.extra_library_dirs, verbose=args.verbose > 0, vcs_rev=args.vcs_rev,
     )
@@ -1954,6 +1950,13 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         type=str,
         default=Options.canberra_library,
         help='The filename argument passed to dlopen for libcanberra.'
+        ' This can be used to change the name of the loaded library or specify an absolute path.'
+    )
+    p.add_argument(
+        '--systemd-library',
+        type=str,
+        default=Options.systemd_library,
+        help='The filename argument passed to dlopen for libsystemd.'
         ' This can be used to change the name of the loaded library or specify an absolute path.'
     )
     p.add_argument(

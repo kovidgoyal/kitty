@@ -7,27 +7,90 @@
 
 #include "data-types.h"
 #include "cleanup.h"
+#include <dlfcn.h>
 
-#ifdef KITTY_HAS_SYSTEMD
-#include <systemd/sd-login.h>
-#include <systemd/sd-bus.h>
+#define FUNC(name, restype, ...) typedef restype (*name##_func)(__VA_ARGS__); static name##_func name = NULL
+#define LOAD_FUNC(name) {\
+    *(void **) (&name) = dlsym(systemd.lib, #name); \
+    if (!name) { \
+        const char* error = dlerror(); \
+        if (error != NULL) { \
+            log_error("Failed to load the function %s with error: %s", #name, error); return; \
+        } \
+    } \
+}
+
+typedef struct sd_bus sd_bus;
 
 static struct {
+    void *lib;
     sd_bus *user_bus;
-    bool initialized;
+    bool initialized, functions_loaded, ok;
 } systemd = {0};
+
+typedef struct {
+    const char *name;
+    const char *message;
+    int _need_free;
+} sd_bus_error;
+typedef struct sd_bus_message sd_bus_message;
+
+FUNC(sd_bus_default_user, int, sd_bus**);
+FUNC(sd_bus_message_unref, sd_bus_message*, sd_bus_message*);
+FUNC(sd_bus_error_free, void, sd_bus_error*);
+FUNC(sd_bus_unref, sd_bus*, sd_bus*);
+FUNC(sd_bus_message_new_method_call, int, sd_bus *, sd_bus_message **m, const char *destination, const char *path, const char *interface, const char *member);
+FUNC(sd_bus_message_append, int, sd_bus_message *m, const char *types, ...);
+FUNC(sd_bus_message_open_container, int, sd_bus_message *m, char type, const char *contents);
+FUNC(sd_bus_message_close_container, int, sd_bus_message *m);
+FUNC(sd_pid_get_user_slice, int, pid_t pid, char **slice);
+FUNC(sd_bus_call, int, sd_bus *bus, sd_bus_message *m, uint64_t usec, sd_bus_error *ret_error, sd_bus_message **reply);
 
 static void
 ensure_initialized(void) {
-    if (!systemd.initialized) {
-        systemd.initialized = true;
-        int ret = sd_bus_default_user(&systemd.user_bus);
-        if (ret < 0) { log_error("Failed to open systemd user bus with error: %s", strerror(-ret)); }
+    if (systemd.initialized) return;
+    systemd.initialized = true;
+
+    const char* libnames[] = {
+#if defined(_KITTY_SYSTEMD_LIBRARY)
+        _KITTY_SYSTEMD_LIBRARY,
+#else
+        "libsystemd.so",
+        // some installs are missing the .so symlink, so try the full name
+        "libsystemd.so.0",
+        "libsystemd.so.0.38.0",
+#endif
+        NULL
+    };
+    for (int i = 0; libnames[i]; i++) {
+        systemd.lib = dlopen(libnames[i], RTLD_LAZY);
+        if (systemd.lib) break;
     }
+    if (systemd.lib == NULL) {
+        log_error("Failed to load %s with error: %s\n", libnames[0], dlerror());
+        return;
+    }
+    LOAD_FUNC(sd_bus_default_user);
+    LOAD_FUNC(sd_bus_message_unref);
+    LOAD_FUNC(sd_bus_error_free);
+    LOAD_FUNC(sd_bus_unref);
+    LOAD_FUNC(sd_bus_message_new_method_call);
+    LOAD_FUNC(sd_bus_message_append);
+    LOAD_FUNC(sd_bus_message_open_container);
+    LOAD_FUNC(sd_bus_message_close_container);
+    LOAD_FUNC(sd_pid_get_user_slice);
+    LOAD_FUNC(sd_bus_call);
+    systemd.functions_loaded = true;
+
+    int ret = sd_bus_default_user(&systemd.user_bus);
+    if (ret < 0) { log_error("Failed to open systemd user bus with error: %s", strerror(-ret)); return; }
+    systemd.ok = true;
 }
 
-#define RAII_bus_error(name) __attribute__((cleanup(sd_bus_error_free))) sd_bus_error name = SD_BUS_ERROR_NULL;
-#define RAII_message(name) __attribute__((cleanup(sd_bus_message_unrefp))) sd_bus_message *name = NULL;
+static inline void err_cleanup(sd_bus_error *p) { sd_bus_error_free(p); }
+#define RAII_bus_error(name) __attribute__((cleanup(err_cleanup))) sd_bus_error name = {0};
+static inline void msg_cleanup(sd_bus_message **p) { sd_bus_message_unref(*p); }
+#define RAII_message(name) __attribute__((cleanup(msg_cleanup))) sd_bus_message *name = NULL;
 
 #define SYSTEMD_DESTINATION "org.freedesktop.systemd1"
 #define SYSTEMD_PATH "/org/freedesktop/systemd1"
@@ -55,11 +118,6 @@ set_reply_error(const char* func_name, int r, const sd_bus_error *err) {
 
 static bool
 move_pid_into_new_scope(pid_t pid, const char* scope_name, const char *description) {
-    ensure_initialized();
-    if (!systemd.user_bus) {
-        PyErr_SetString(PyExc_RuntimeError, "Could not connect to systemd user bus");
-        return false;
-    }
     pid_t parent_pid = getpid();
     RAII_bus_error(err); RAII_message(m); RAII_message(reply);
     int r;
@@ -115,22 +173,32 @@ move_pid_into_new_scope(pid_t pid, const char* scope_name, const char *descripti
 
 static void
 finalize(void) {
-    if (systemd.user_bus) {
-        sd_bus_unref(systemd.user_bus);
-    }
+    if (systemd.user_bus) sd_bus_unref(systemd.user_bus);
+    if (systemd.lib) dlclose(systemd.lib);
     memset(&systemd, 0, sizeof(systemd));
 }
 
-#endif
+static bool
+ensure_initialized_and_useable(void) {
+    ensure_initialized();
+    if (!systemd.ok) {
+        if (!systemd.lib) PyErr_SetString(PyExc_NotImplementedError, "Could not load libsystemd");
+        else if (!systemd.functions_loaded) PyErr_SetString(PyExc_NotImplementedError, "Could not load libsystemd functions");
+        else PyErr_SetString(PyExc_NotImplementedError, "Could not connect to systemd user bus");
+        return false;
+    }
+    return true;
+}
 
 static PyObject*
 systemd_move_pid_into_new_scope(PyObject *self UNUSED, PyObject *args) {
     long pid; const char *scope_name, *description;
     if (!PyArg_ParseTuple(args, "lss", &pid, &scope_name, &description)) return NULL;
-#ifdef KITTY_HAS_SYSTEMD
-    move_pid_into_new_scope(pid, scope_name, description);
-#else
+#ifdef __APPLE__
     PyErr_SetString(PyExc_NotImplementedError, "not supported on this platform");
+#else
+    if (!ensure_initialized_and_useable()) return NULL;
+    move_pid_into_new_scope(pid, scope_name, description);
 #endif
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
@@ -145,9 +213,7 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_systemd_module(PyObject *module) {
-#ifdef KITTY_HAS_SYSTEMD
     register_at_exit_cleanup_func(SYSTEMD_CLEANUP_FUNC, finalize);
-#endif
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 
     return true;
