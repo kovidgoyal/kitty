@@ -14,12 +14,13 @@ import time
 from urllib.request import urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
+FONTS_URL = 'https://download.calibre-ebook.com/ci/fonts.tar.xz'
 is_bundle = os.environ.get('KITTY_BUNDLE') == '1'
 is_macos = 'darwin' in sys.platform.lower()
-SW = None
+SW = ''
 
 
-def do_print_crash_reports():
+def do_print_crash_reports() -> None:
     print('Printing available crash reports...')
     if is_macos:
         end_time = time.monotonic() + 90
@@ -38,9 +39,9 @@ def do_print_crash_reports():
     print(flush=True)
 
 
-def run(*a, print_crash_reports=False):
+def run(*a: str, print_crash_reports: bool = False) -> None:
     if len(a) == 1:
-        a = shlex.split(a[0])
+        a = tuple(shlex.split(a[0]))
     cmd = ' '.join(map(shlex.quote, a))
     print(cmd)
     sys.stdout.flush()
@@ -59,7 +60,16 @@ def run(*a, print_crash_reports=False):
         raise SystemExit(f'The following process failed with exit code: {ret}:\n{cmd}')
 
 
-def install_deps():
+def install_fonts() -> None:
+    with urlopen(FONTS_URL) as f:
+        data = f.read()
+    fonts_dir = os.path.expanduser('~/Library/Fonts' if is_macos else '~/.local/share/fonts')
+    os.makedirs(fonts_dir, exist_ok=True)
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
+        tf.extractall(fonts_dir)
+
+
+def install_deps() -> None:
     print('Installing kitty dependencies...')
     sys.stdout.flush()
     if is_macos:
@@ -86,9 +96,10 @@ def install_deps():
         if sys.version_info[:2] < (3, 7):
             cmd += ' importlib-resources dataclasses'
         run(cmd)
+    install_fonts()
 
 
-def build_kitty():
+def build_kitty() -> None:
     python = shutil.which('python3') if is_bundle else sys.executable
     cmd = f'{python} setup.py build --verbose'
     if is_macos:
@@ -98,14 +109,14 @@ def build_kitty():
     run(cmd)
 
 
-def test_kitty():
+def test_kitty() -> None:
     if is_macos:
         run('ulimit -c unlimited')
         run('sudo chmod -R 777 /cores')
     run('./test.py', print_crash_reports=True)
 
 
-def package_kitty():
+def package_kitty() -> None:
     python = 'python3' if is_macos else 'python'
     run(f'{python} setup.py linux-package --update-check-interval=0 --verbose')
     if is_macos:
@@ -113,14 +124,14 @@ def package_kitty():
         run('kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"')
 
 
-def replace_in_file(path, src, dest):
+def replace_in_file(path: str, src: str, dest: str) -> None:
     with open(path, 'r+') as f:
         n = f.read().replace(src, dest)
         f.seek(0), f.truncate()
         f.write(n)
 
 
-def setup_bundle_env():
+def setup_bundle_env() -> None:
     global SW
     os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
     os.environ['PKG_CONFIG_PATH'] = os.path.join(SW, 'lib', 'pkgconfig')
@@ -132,7 +143,7 @@ def setup_bundle_env():
     os.environ['PATH'] = '{}:{}'.format(os.path.join(SW, 'bin'), os.environ['PATH'])
 
 
-def install_bundle():
+def install_bundle() -> None:
     cwd = os.getcwd()
     os.makedirs(SW)
     os.chdir(SW)
@@ -152,7 +163,7 @@ def install_bundle():
     os.chdir(cwd)
 
 
-def main():
+def main() -> None:
     if is_bundle:
         setup_bundle_env()
     else:
@@ -168,9 +179,9 @@ def main():
     elif action == 'test':
         test_kitty()
     elif action == 'gofmt':
-        q = subprocess.check_output('gofmt -s -l tools'.split())
+        q = subprocess.check_output('gofmt -s -l tools'.split()).decode()
         if q.strip():
-            q = '\n'.join(filter(lambda x: not x.rstrip().endswith('_generated.go'), q.decode().strip().splitlines())).strip()
+            q = '\n'.join(filter(lambda x: not x.rstrip().endswith('_generated.go'), q.strip().splitlines())).strip()
             if q:
                 raise SystemExit(q)
     else:
