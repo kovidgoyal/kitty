@@ -32,6 +32,7 @@ typedef struct {
     const char *name;
     const char *message;
     int _need_free;
+    int64_t filler;  // just in case systemd ever increases the size of this struct
 } sd_bus_error;
 typedef struct sd_bus_message sd_bus_message;
 
