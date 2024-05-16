@@ -64,6 +64,11 @@ class Env:
     vcs_rev: str = ''
     binary_arch: BinaryArch = BinaryArch()
     native_optimizations: bool = False
+    has_systemd: bool = False
+    primary_version: int = 0
+    secondary_version: int = 0
+    xt_version: str = ''
+    has_copy_file_range: bool = False
 
     # glfw stuff
     all_headers: List[str] = []
@@ -118,6 +123,11 @@ class Env:
         ans.vcs_rev = self.vcs_rev
         ans.binary_arch = self.binary_arch
         ans.native_optimizations = self.native_optimizations
+        ans.has_systemd = self.has_systemd
+        ans.primary_version = self.primary_version
+        ans.secondary_version = self.secondary_version
+        ans.xt_version = self.xt_version
+        ans.has_copy_file_range = self.has_copy_file_range
         return ans
 
 

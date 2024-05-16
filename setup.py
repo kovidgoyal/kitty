@@ -486,8 +486,6 @@ def init_env(
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
     has_copy_file_range = test_compile(cc, src='#define _GNU_SOURCE 1\n#include <unistd.h>\nint main() { copy_file_range(1, NULL, 2, NULL, 0, 0); return 0; }')
-    if has_copy_file_range:
-        cppflags.append('-DHAS_COPY_FILE_RANGE')
     werror = '' if ignore_compiler_warnings else '-pedantic-errors -Werror'
     std = '' if is_openbsd else '-std=c11'
     sanitize_flag = ' '.join(sanitize_args)
@@ -587,6 +585,7 @@ def init_env(
         cc, cppflags, cflags, ldflags, library_paths, binary_arch=ba, native_optimizations=native_optimizations,
         ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev,
     )
+    ans.has_copy_file_range = bool(has_copy_file_range)
     if verbose:
         print(ans.cc_version_string.strip())
         print('Detected:', ans.compiler_type)
@@ -600,9 +599,10 @@ def kitty_env(args: Options) -> Env:
     cppflags = ans.cppflags
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
-    cppflags.append(f'-DPRIMARY_VERSION={version[0] + 4000}')
-    cppflags.append(f'-DSECONDARY_VERSION={version[1]}')
-    cppflags.append('-DXT_VERSION="{}"'.format('.'.join(map(str, version))))
+    ans.primary_version = version[0] + 4000
+    ans.secondary_version = version[1]
+    ans.xt_version = '.'.join(map(str, version))
+
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
@@ -634,7 +634,7 @@ def kitty_env(args: Options) -> Env:
             cflags.extend(pkg_config('libsystemd', '--cflags-only-I', fatal=False))
             systemd_libs = pkg_config('libsystemd', '--libs')
             platform_libs.extend(systemd_libs)
-            cppflags.append('-DKITTY_HAS_SYSTEMD')
+            ans.has_systemd = True
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(args, cflags)
@@ -728,6 +728,12 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
         return src, [], [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
     if src.startswith('3rdparty/base64/'):
         return src, ['3rdparty/base64',], base64_defines(env.binary_arch.isa)
+    if src == 'kitty/screen.c':
+        return src, [], [f'PRIMARY_VERSION={env.primary_version}', f'SECONDARY_VERSION={env.secondary_version}', f'XT_VERSION="{env.xt_version}"']
+    if src == 'kitty/systemd.c':
+        return src, [], (['KITTY_HAS_SYSTEMD'] if env.has_systemd else None)
+    if src == 'kitty/fast-file-copy.c':
+        return src, [], (['HAS_COPY_FILE_RANGE'] if env.has_copy_file_range else None)
     try:
         return src, [], env.library_paths[src]
     except KeyError:
