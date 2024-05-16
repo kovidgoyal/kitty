@@ -32,6 +32,9 @@ class Selection(BaseTest):
             ff = get_font_files(opts)
             actual = tuple(face_from_descriptor(ff[x]).postscript_name() for x in ('medium', 'bold', 'italic', 'bi'))  # type: ignore
             del ff
+            for x in actual:
+                if '/' in x:  # Old FreeType failed to generate postscript name for a variable font probably
+                    return
             with self.subTest(spec=family):
                 self.ae(expected, actual)
 
