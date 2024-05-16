@@ -34,7 +34,7 @@ if is_macos:
         subtitle: Optional[str] = None,
         urgency: Urgency = Urgency.Normal,
     ) -> None:
-        cocoa_send_notification(identifier, title, body, subtitle)
+        cocoa_send_notification(identifier, title, body, subtitle, urgency.value)
 
 else:
 

@@ -504,6 +504,7 @@ def cocoa_send_notification(
     title: str,
     body: Optional[str],
     subtitle: Optional[str],
+    urgency: int = 1,
 ) -> None:
     pass
 

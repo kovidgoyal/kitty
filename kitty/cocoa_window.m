@@ -391,8 +391,8 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *identifier = NULL, *title = NULL, *informativeText = NULL, *subtitle = NULL;
-    if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &informativeText, &subtitle)) return NULL;
+    char *identifier = NULL, *title = NULL, *informativeText = NULL, *subtitle = NULL; int urgency = 1;
+    if (!PyArg_ParseTuple(args, "zsz|zi", &identifier, &title, &informativeText, &subtitle, &urgency)) return NULL;
     NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
     if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
@@ -455,7 +455,7 @@ get_notification_center_safely(void) {
 }
 
 static void
-schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle) {
+schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle, int urgency) {
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
@@ -464,6 +464,14 @@ schedule_notification(const char *identifier, const char *title, const char *bod
     if (body) content.body = @(body);
     if (subtitle) content.subtitle = @(subtitle);
     content.sound = [UNNotificationSound defaultSound];
+    switch (urgency) {
+        case 0:
+            content.interruptionLevel = UNNotificationInterruptionLevelPassive;
+        case 2:
+            content.interruptionLevel = UNNotificationInterruptionLevelCritical;
+        default:
+            content.interruptionLevel = UNNotificationInterruptionLevelActive;
+    }
     // Deliver the notification
     static unsigned long counter = 1;
     UNNotificationRequest* request = [
@@ -480,6 +488,7 @@ schedule_notification(const char *identifier, const char *title, const char *bod
 
 typedef struct {
     char *identifier, *title, *body, *subtitle;
+    int urgency;
 } QueuedNotification;
 
 typedef struct {
@@ -489,13 +498,14 @@ typedef struct {
 static NotificationQueue notification_queue = {0};
 
 static void
-queue_notification(const char *identifier, const char *title, const char* body, const char* subtitle) {
+queue_notification(const char *identifier, const char *title, const char* body, const char* subtitle, int urgency) {
     ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
     QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
     n->identifier = identifier ? strdup(identifier) : NULL;
     n->title = title ? strdup(title) : NULL;
     n->body = body ? strdup(body) : NULL;
     n->subtitle = subtitle ? strdup(subtitle) : NULL;
+    n->urgency = urgency;
 }
 
 static void
@@ -503,25 +513,25 @@ drain_pending_notifications(BOOL granted) {
     if (granted) {
         for (size_t i = 0; i < notification_queue.count; i++) {
             QueuedNotification *n = notification_queue.notifications + i;
-            schedule_notification(n->identifier, n->title, n->body, n->subtitle);
+            schedule_notification(n->identifier, n->title, n->body, n->subtitle, n->urgency);
         }
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
         free(n->identifier); free(n->title); free(n->body); free(n->subtitle);
-        n->identifier = NULL; n->title = NULL; n->body = NULL; n->subtitle = NULL;
+        memset(n, 0, sizeof(QueuedNotification));
     }
 }
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL;
-    if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &body, &subtitle)) return NULL;
+    char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL; int urgency = 1;
+    if (!PyArg_ParseTuple(args, "zsz|zi", &identifier, &title, &body, &subtitle, &urgency)) return NULL;
 
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
-    queue_notification(identifier, title, body, subtitle);
+    queue_notification(identifier, title, body, subtitle, urgency);
 
     // The badge permission needs to be requested as well, even though it is not used,
     // otherwise macOS refuses to show the preference checkbox for enable/disable notification sound.
