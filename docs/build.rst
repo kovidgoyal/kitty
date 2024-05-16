@@ -90,6 +90,7 @@ Run-time dependencies:
 * ``freetype`` (not needed on macOS)
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
+* ``libsystemd`` (optional, not needed on non systemd systems)
 * ``ImageMagick`` (optional, needed to display uncommon image formats in the terminal)
 
 

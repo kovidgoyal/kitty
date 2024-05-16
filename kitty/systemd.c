@@ -5,7 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define _GNU_SOURCE
 #include "data-types.h"
 #include "cleanup.h"
 

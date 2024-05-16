@@ -633,8 +633,9 @@ def kitty_env(args: Options) -> Env:
         platform_libs = []
         with suppress(SystemExit, subprocess.CalledProcessError):
             cflags.extend(pkg_config('libsystemd', '--cflags-only-I', fatal=False))
-            has_systemd = 1
-            platform_libs.extend(pkg_config('libsystemd', '--libs'))
+            systemd_libs = pkg_config('libsystemd', '--libs')
+            platform_libs.extend(systemd_libs)
+            has_systemd = bool(systemd_libs)
     cppflags.append(f'-DKITTY_HAS_SYSTEMD={has_systemd}')
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
