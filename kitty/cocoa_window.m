@@ -9,6 +9,7 @@
 #include "state.h"
 #include "cleanup.h"
 #include "monotonic.h"
+#include <Availability.h>
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
 #ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
@@ -464,6 +465,7 @@ schedule_notification(const char *identifier, const char *title, const char *bod
     if (body) content.body = @(body);
     if (subtitle) content.subtitle = @(subtitle);
     content.sound = [UNNotificationSound defaultSound];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
     switch (urgency) {
         case 0:
             content.interruptionLevel = UNNotificationInterruptionLevelPassive;
@@ -472,6 +474,13 @@ schedule_notification(const char *identifier, const char *title, const char *bod
         default:
             content.interruptionLevel = UNNotificationInterruptionLevelActive;
     }
+#else
+    if ([content respondsToSelector:@selector(interruptionLevel)]) {
+        NSUInteger level = 1;
+        if (urgency == 0) level = 0; else if (urgency == 2) level = 3;
+        [content setValue:@(level) forKey:@"interruptionLevel"];
+    }
+#endif
     // Deliver the notification
     static unsigned long counter = 1;
     UNNotificationRequest* request = [
