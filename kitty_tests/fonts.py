@@ -11,7 +11,7 @@ from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import DECAWM, get_fallback_font, sprite_map_set_layout, sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
 from kitty.fonts import family_name_to_key
 from kitty.fonts.box_drawing import box_chars
-from kitty.fonts.common import all_fonts_map, face_from_descriptor, get_font_files
+from kitty.fonts.common import all_fonts_map, face_from_descriptor, get_font_files, get_named_style
 from kitty.fonts.render import coalesce_symbol_maps, render_string, setup_for_testing, shape_string
 from kitty.options.types import Options
 from kitty.options.utils import parse_font_spec
@@ -86,6 +86,13 @@ class Selection(BaseTest):
                 both('cascadia mono', 'CascadiaMonoRoman-Regular', 'CascadiaMonoRoman-SemiBold', 'CascadiaMono-Italic', 'CascadiaMono-SemiBoldItalic')
         if has('operator mono', allow_missing_in_ci=True):
             both('operator mono', 'OperatorMono-Medium', 'OperatorMono-Bold', 'OperatorMono-MediumItalic', 'OperatorMono-BoldItalic')
+
+        if has('SourceCodeVF'):
+            opts = Options()
+            opts.font_family = parse_font_spec('family="SourceCodeVF" variable_name="SourceCodeUpright" style="Black"')
+            d = get_font_files(opts)['medium']
+            face = face_from_descriptor(d)
+            self.ae(get_named_style(face)['name'], 'Black')
 
 
 class Rendering(BaseTest):
