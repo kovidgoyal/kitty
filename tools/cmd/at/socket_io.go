@@ -44,17 +44,21 @@ func write_many_to_conn(conn *net.Conn, datums ...[]byte) error {
 	return nil
 }
 
-func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_response []byte, err error) {
-	p := wcswidth.EscapeCodeParser{}
+type response_reader struct {
+	parser  wcswidth.EscapeCodeParser
+	storage [utils.DEFAULT_IO_BUFFER_SIZE]byte
+}
+
+func (r *response_reader) read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_response []byte, err error) {
 	keep_going := true
-	p.HandleDCS = func(data []byte) error {
+	r.parser.HandleDCS = func(data []byte) error {
 		if bytes.HasPrefix(data, []byte("@kitty-cmd")) {
 			serialized_response = data[len("@kitty-cmd"):]
 			keep_going = false
 		}
 		return nil
 	}
-	buf := make([]byte, utils.DEFAULT_IO_BUFFER_SIZE)
+	buf := r.storage[:]
 	for keep_going {
 		var n int
 		(*conn).SetDeadline(time.Now().Add(timeout))
@@ -63,7 +67,7 @@ func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_
 			keep_going = false
 			break
 		}
-		p.Parse(buf[:n])
+		r.parser.Parse(buf[:n])
 	}
 	return
 }
@@ -107,6 +111,7 @@ func run_stdin_echo_loop(conn *net.Conn, io_data *rc_io_data) (err error) {
 }
 
 func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response []byte, err error) {
+	r := response_reader{}
 	first_escape_code_sent := false
 	wants_streaming := io_data.rc.Stream
 	for {
@@ -130,7 +135,7 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 			first_escape_code_sent = true
 			if wants_streaming {
 				var streaming_response []byte
-				streaming_response, err = read_response_from_conn(conn, io_data.timeout)
+				streaming_response, err = r.read_response_from_conn(conn, io_data.timeout)
 				if err != nil {
 					return
 				}
@@ -144,7 +149,7 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 	if io_data.rc.NoResponse {
 		return
 	}
-	return read_response_from_conn(conn, io_data.timeout)
+	return r.read_response_from_conn(conn, io_data.timeout)
 }
 
 func do_socket_io(io_data *rc_io_data) (serialized_response []byte, err error) {
