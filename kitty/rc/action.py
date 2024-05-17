@@ -12,11 +12,9 @@ from .base import (
     PayloadType,
     RCOptions,
     RemoteCommand,
+    RemoteControlErrorWithoutTraceback,
     ResponseType,
     Window,
-)
-from .base import (
-    RemoteControlErrorWithoutTraceback as RemoteControlError,
 )
 
 if TYPE_CHECKING:
@@ -65,15 +63,15 @@ using this option means that you will not be notified of failures.
             window = w[0]
         ac = payload_get('action')
         if not ac:
-            raise RemoteControlError('Must specify an action')
+            raise RemoteControlErrorWithoutTraceback('Must specify an action')
 
         try:
             consumed = boss.combine(str(ac), window, raise_error=True)
         except (Exception, SystemExit) as e:
-            raise RemoteControlError(str(e))
+            raise RemoteControlErrorWithoutTraceback(str(e))
 
         if not consumed:
-            raise RemoteControlError(f'Unknown action: {ac}')
+            raise RemoteControlErrorWithoutTraceback(f'Unknown action: {ac}')
         return None
 
 
