@@ -107,12 +107,7 @@ func run_stdin_echo_loop(conn *net.Conn, io_data *rc_io_data) (err error) {
 }
 
 func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response []byte, err error) {
-	const (
-		BEFORE_FIRST_ESCAPE_CODE_SENT = iota
-		SENDING
-	)
-	state := BEFORE_FIRST_ESCAPE_CODE_SENT
-
+	first_escape_code_sent := false
 	wants_streaming := io_data.rc.Stream
 	for {
 		var chunk []byte
@@ -131,7 +126,8 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 		if err != nil {
 			return
 		}
-		if state == BEFORE_FIRST_ESCAPE_CODE_SENT {
+		if !first_escape_code_sent {
+			first_escape_code_sent = true
 			if wants_streaming {
 				var streaming_response []byte
 				streaming_response, err = read_response_from_conn(conn, io_data.timeout)
@@ -143,7 +139,6 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 					return
 				}
 			}
-			state = SENDING
 		}
 	}
 	if io_data.rc.NoResponse {
