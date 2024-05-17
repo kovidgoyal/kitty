@@ -59,6 +59,10 @@ cache_for_variable_data_by_path: Dict[str, VariableData] = {}
 attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, True): 'italic_font', (True, True): 'bold_italic_font'}
 
 
+class Event:
+    is_set: bool = False
+
+
 def get_variable_data_for_descriptor(d: Descriptor) -> VariableData:
     if not d['path']:
         return face_from_descriptor(d).get_variable_data()
@@ -87,9 +91,10 @@ def find_best_match_in_candidates(
                 return x
     return None
 
-def pprint(*a: Any) -> None:
+
+def pprint(*a: Any, **kw: Any) -> None:
     from pprint import pprint
-    pprint(*a)
+    pprint(*a, **kw)
 
 
 def find_medium_variant(font: DescriptorVar) -> DescriptorVar:
@@ -173,7 +178,7 @@ def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced
 
 def get_fine_grained_font(
     spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
-    resolved_medium_font: Optional[Descriptor] = None, monospaced: bool = True
+    resolved_medium_font: Optional[Descriptor] = None, monospaced: bool = True, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     font_map = all_fonts_map(monospaced)
     is_medium_face = resolved_medium_font is None
@@ -181,10 +186,12 @@ def get_fine_grained_font(
     if spec.postscript_name:
         q = find_best_match_in_candidates(font_map['ps_map'].get(family_name_to_key(spec.postscript_name), []), scorer, is_medium_face)
         if q:
+            match_is_more_specific_than_family.is_set = True
             return q
     if spec.full_name:
         q = find_best_match_in_candidates(font_map['full_map'].get(family_name_to_key(spec.full_name), []), scorer, is_medium_face)
         if q:
+            match_is_more_specific_than_family.is_set = True
             return q
     if spec.family:
         key = family_name_to_key(spec.family)
@@ -194,6 +201,7 @@ def get_fine_grained_font(
             q = candidates[0] if len(candidates) == 1 else find_best_variable_face(spec, bold, italic, monospaced, candidates)
             q, applied = apply_variation_to_pattern(q, spec)
             if applied:
+                match_is_more_specific_than_family.is_set = True
                 return q
             return find_medium_variant(q) if resolved_medium_font is None else find_bold_italic_variant(resolved_medium_font, bold, italic)
         # Now look for any font
@@ -234,10 +242,11 @@ def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> Tuple[Descrip
 
 def get_font_from_spec(
     spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
-    resolved_medium_font: Optional[Descriptor] = None
+    resolved_medium_font: Optional[Descriptor] = None, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     if not spec.is_system:
-        return get_fine_grained_font(spec, bold, italic, medium_font_spec, resolved_medium_font)
+        return get_fine_grained_font(spec, bold, italic, medium_font_spec, resolved_medium_font,
+                                     match_is_more_specific_than_family=match_is_more_specific_than_family)
     family = spec.system
     if family == 'auto':
         if bold or italic:
@@ -271,8 +280,10 @@ def is_actually_variable_despite_fontconfigs_lies(d: Descriptor) -> bool:
 
 def get_font_files(opts: Options) -> FontFiles:
     ans: Dict[str, Descriptor] = {}
-    medium_font = get_font_from_spec(opts.font_family)
-    if is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font):
+    match_is_more_specific_than_family = Event()
+    medium_font = get_font_from_spec(opts.font_family, match_is_more_specific_than_family=match_is_more_specific_than_family)
+    if not match_is_more_specific_than_family.is_set and (
+            is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font)):
         medium_font = find_medium_variant(medium_font)
     kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
     for (bold, italic), attr in attr_map.items():
