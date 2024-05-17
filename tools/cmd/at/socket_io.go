@@ -52,23 +52,25 @@ type response_reader struct {
 
 func (r *response_reader) read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_response []byte, err error) {
 	keep_going := true
-	r.parser.HandleDCS = func(data []byte) error {
-		if bytes.HasPrefix(data, []byte("@kitty-cmd")) {
-			r.pending_responses = append(r.pending_responses, append([]byte{}, data[len("@kitty-cmd"):]...))
-			keep_going = false
+	if len(r.pending_responses) == 0 {
+		r.parser.HandleDCS = func(data []byte) error {
+			if bytes.HasPrefix(data, []byte("@kitty-cmd")) {
+				r.pending_responses = append(r.pending_responses, append([]byte{}, data[len("@kitty-cmd"):]...))
+				keep_going = false
+			}
+			return nil
 		}
-		return nil
-	}
-	buf := r.storage[:]
-	for keep_going {
-		var n int
-		(*conn).SetDeadline(time.Now().Add(timeout))
-		n, err = (*conn).Read(buf)
-		if err != nil {
-			keep_going = false
-			break
+		buf := r.storage[:]
+		for keep_going {
+			var n int
+			(*conn).SetDeadline(time.Now().Add(timeout))
+			n, err = (*conn).Read(buf)
+			if err != nil {
+				keep_going = false
+				break
+			}
+			r.parser.Parse(buf[:n])
 		}
-		r.parser.Parse(buf[:n])
 	}
 	if len(r.pending_responses) > 0 {
 		serialized_response = r.pending_responses[0]
