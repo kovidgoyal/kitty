@@ -47,14 +47,14 @@ func write_many_to_conn(conn *net.Conn, datums ...[]byte) error {
 type response_reader struct {
 	parser            wcswidth.EscapeCodeParser
 	storage           [utils.DEFAULT_IO_BUFFER_SIZE]byte
-	pending_responses []string
+	pending_responses [][]byte
 }
 
 func (r *response_reader) read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_response []byte, err error) {
 	keep_going := true
 	r.parser.HandleDCS = func(data []byte) error {
 		if bytes.HasPrefix(data, []byte("@kitty-cmd")) {
-			r.pending_responses = append(r.pending_responses, string(data[len("@kitty-cmd"):]))
+			r.pending_responses = append(r.pending_responses, append([]byte{}, data[len("@kitty-cmd"):]...))
 			keep_going = false
 		}
 		return nil
@@ -71,7 +71,7 @@ func (r *response_reader) read_response_from_conn(conn *net.Conn, timeout time.D
 		r.parser.Parse(buf[:n])
 	}
 	if len(r.pending_responses) > 0 {
-		serialized_response = utils.UnsafeStringToBytes(r.pending_responses[0])
+		serialized_response = r.pending_responses[0]
 		r.pending_responses = r.pending_responses[1:]
 	}
 	return
