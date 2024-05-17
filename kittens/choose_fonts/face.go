@@ -2,6 +2,7 @@ package choose_fonts
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"strings"
 	"sync"
@@ -20,6 +21,23 @@ type face_panel struct {
 	current_preview     *RenderedSampleTransmit
 	preview_cache       map[faces_preview_key]map[string]RenderedSampleTransmit
 	preview_cache_mutex sync.Mutex
+}
+
+func (self *face_panel) variable_spec(named_style string, axis_overrides map[string]float64) string {
+	ans := fmt.Sprintf(`family="%s" variable_name="%s"`, self.family, self.current_preview.Variable_data.Variations_postscript_name_prefix)
+	if axis_overrides != nil {
+		axis_values := self.current_preview.current_axis_values()
+		maps.Copy(axis_values, axis_overrides)
+		default_axis_values := self.current_preview.default_axis_values()
+		for tag, val := range axis_values {
+			if default_axis_values[tag] != val {
+				ans += fmt.Sprintf(" %s=%g", tag, val)
+			}
+		}
+	} else if named_style != "" {
+		ans += fmt.Sprintf(" style=\"%s\"", named_style)
+	}
+	return ans
 }
 
 func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
@@ -175,8 +193,7 @@ func (self *face_panel) on_click(id string) (err error) {
 	case "style":
 		self.set(fmt.Sprintf(`family="%s" style="%s"`, self.family, val))
 	case "variable_style":
-		self.set(fmt.Sprintf(`family="%s" variable_name="%s" style="%s"`, self.family,
-			self.current_preview.Variable_data.Variations_postscript_name_prefix, val))
+		self.set(self.variable_spec(val, nil))
 	}
 	return self.handler.draw_screen()
 }

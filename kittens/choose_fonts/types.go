@@ -2,6 +2,7 @@ package choose_fonts
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -93,6 +94,28 @@ type RenderedSampleTransmit struct {
 	Psname               string             `json:"psname"`
 	Variable_named_style NamedStyle         `json:"variable_named_style"`
 	Variable_axis_map    map[string]float64 `json:"variable_axis_map"`
+}
+
+func (self RenderedSampleTransmit) default_axis_values() (ans map[string]float64) {
+	ans = make(map[string]float64)
+	for _, ax := range self.Variable_data.Axes {
+		ans[ax.Tag] = ax.Default
+	}
+	return
+}
+
+func (self RenderedSampleTransmit) current_axis_values() (ans map[string]float64) {
+	ans = make(map[string]float64)
+	if self.Variable_named_style.Name != "" {
+		maps.Copy(ans, self.Variable_named_style.Axis_values)
+	} else {
+		ans := make(map[string]float64)
+		for _, ax := range self.Variable_data.Axes {
+			ans[ax.Tag] = ax.Default
+		}
+		maps.Copy(ans, self.Variable_axis_map)
+	}
+	return
 }
 
 var variable_data_cache map[string]VariableData
