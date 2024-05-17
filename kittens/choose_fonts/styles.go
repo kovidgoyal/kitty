@@ -3,6 +3,7 @@ package choose_fonts
 import (
 	"fmt"
 	"kitty/tools/utils"
+	"slices"
 )
 
 var _ = fmt.Print
@@ -79,6 +80,9 @@ func styles_in_family(family string, fonts []ListedFont) (ans *family_style_data
 				sg.styles = append(sg.styles, f.Style)
 			}
 		}
+	}
+	for _, sg := range ans.style_groups {
+		slices.Sort(sg.styles)
 	}
 	return
 }
