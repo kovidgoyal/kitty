@@ -125,10 +125,14 @@ The executed program will have privileges to run remote control commands in kitt
             for k, v in parse_env(x, env):
                 env[k] = v
 
-        boss.run_background_process(
-            cmdline, env=env, stdin=stdin_data, stdout=stdout.fileno(), stderr=stderr.fileno(),
-            notify_on_death=on_death, remote_control_passwords=rcp, allow_remote_control=allow_remote_control
-        )
+        def callback(timer_id: Optional[int]) -> None:
+            boss.run_background_process(
+                cmdline, env=env, stdin=stdin_data, stdout=stdout.fileno(), stderr=stderr.fileno(),
+                notify_on_death=on_death, remote_control_passwords=rcp, allow_remote_control=allow_remote_control
+            )
+        # Ensure that AsyncResponse is queued before the background process response
+        from kitty.fast_data_types import add_timer
+        add_timer(callback, 0, False)
         return AsyncResponse()
 
 
