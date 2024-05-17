@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 import string
 import sys
 import tempfile
@@ -28,11 +29,22 @@ from kitty.options.utils import parse_font_spec
 from kitty.utils import screen_size_function
 
 
+def setup_debug_print() -> bool:
+    if 'KITTY_STDIO_FORWARDED' in os.environ:
+        try:
+            fd = int(os.environ['KITTY_STDIO_FORWARDED'])
+        except Exception:
+            return False
+        sys.stdout = open(fd, 'w', closefd=False)
+        return True
+    return False
+
+
 def send_to_kitten(x: Any) -> None:
     try:
-        sys.stdout.buffer.write(json.dumps(x).encode())
-        sys.stdout.buffer.write(b'\n')
-        sys.stdout.buffer.flush()
+        sys.__stdout__.buffer.write(json.dumps(x).encode())
+        sys.__stdout__.buffer.write(b'\n')
+        sys.__stdout__.buffer.flush()
     except BrokenPipeError:
         raise SystemExit('Pipe to kitten was broken while sending data to it')
 
@@ -43,17 +55,6 @@ class TextStyle(TypedDict):
     dpi_y: float
     foreground: str
     background: str
-
-
-def print(*a: Any) -> None:
-    import builtins
-    import os
-    if 'KITTY_STDIO_FORWARDED' in os.environ:
-        fd = int(os.environ['KITTY_STDIO_FORWARDED'])
-        with open(fd, 'w', closefd=False) as f:
-            builtins.print(*a, file=f)
-    else:
-        builtins.print(*a, file=sys.stderr)
 
 
 OptNames = Literal['font_family', 'bold_font', 'italic_font', 'bold_italic_font']
@@ -147,6 +148,7 @@ def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:
 
 
 def main() -> None:
+    setup_debug_print()
     cache: Dict[FaceKey, RenderedSampleTransmit] = {}
     for line in sys.stdin.buffer:
         cmd = json.loads(line)
