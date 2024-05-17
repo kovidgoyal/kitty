@@ -9,6 +9,8 @@ import (
 
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -40,9 +42,43 @@ func (self *face_panel) variable_spec(named_style string, axis_overrides map[str
 	return ans
 }
 
+func (self *face_panel) render_lines(start_y int, lines ...string) (y int, str string) {
+	sz, _ := self.handler.lp.ScreenSize()
+	_, y, str = self.handler.render_lines.InRectangle(lines, 0, start_y, int(sz.WidthCells), int(sz.HeightCells)-y, &self.handler.mouse_state, self.on_click)
+	return
+}
+
+const current_val_style = "fg=cyan bold"
+const control_name_style = "fg=yellow bright bold"
+
+func (self *face_panel) draw_axis(sz loop.ScreenSize, y int, ax VariableAxis, axis_value float64) int {
+	lp := self.handler.lp
+	buf := strings.Builder{}
+	buf.WriteString(fmt.Sprintf("%s: ", lp.SprintStyled(control_name_style, utils.IfElse(ax.Strid != "", ax.Strid, ax.Tag))))
+	num_of_cells := int(sz.WidthCells) - wcswidth.Stringwidth(buf.String())
+	if num_of_cells < 5 {
+		return y
+	}
+	frac := axis_value / (ax.Maximum - ax.Minimum)
+	current_cell := int(math.Floor(frac * float64(num_of_cells-1)))
+	for i := 0; i < num_of_cells; i++ {
+		text := "•"
+		if i == current_cell {
+			text = lp.SprintStyled(current_val_style, text)
+		} else {
+			text = tui.InternalHyperlink(text, fmt.Sprintf("axis:%d/%d:%s", i, num_of_cells-1, ax.Tag))
+		}
+		buf.WriteString(text)
+	}
+	lp.MoveCursorTo(1, y+1)
+	lp.QueueWriteString(buf.String())
+	return y + 1
+}
+
 func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
 	s := styles_for_variable_data(preview.Variable_data)
 	lines := []string{}
+	lp := self.handler.lp
 	for _, sg := range s.style_groups {
 		if len(sg.styles) < 2 {
 			continue
@@ -50,36 +86,50 @@ func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int,
 		formatted := make([]string, len(sg.styles))
 		for i, style_name := range sg.styles {
 			if style_name == preview.Variable_named_style.Name {
-				formatted[i] = self.handler.lp.SprintStyled("fg=cyan bold", style_name)
+				formatted[i] = self.handler.lp.SprintStyled(current_val_style, style_name)
 			} else {
 				formatted[i] = tui.InternalHyperlink(style_name, "variable_style:"+style_name)
 			}
 		}
-		line := sg.name + ": " + strings.Join(formatted, ", ")
+		line := lp.SprintStyled(control_name_style, sg.name) + ": " + strings.Join(formatted, ", ")
 		lines = append(lines, line)
 	}
-	_, y, str := self.handler.render_lines.InRectangle(lines, 0, start_y, int(sz.WidthCells), int(sz.HeightCells)-start_y, &self.handler.mouse_state, self.on_click)
-	self.handler.lp.QueueWriteString(str)
+	y, str := self.render_lines(start_y, lines...)
+	lp.QueueWriteString(str)
+	sub_title := "Fine tune the appearance by clicking in the variable axes below:"
+	axis_values := self.current_preview.current_axis_values()
+	for _, ax := range self.current_preview.Variable_data.Axes {
+		if ax.Hidden {
+			continue
+		}
+		if sub_title != "" {
+			y, str = self.render_lines(y+1, sub_title, "")
+			sub_title = ``
+			lp.QueueWriteString(str)
+		}
+		y = self.draw_axis(sz, y, ax, axis_values[ax.Tag])
+	}
 	return y, nil
 }
 
-func (self *face_panel) draw_family_style_select(sz loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
+func (self *face_panel) draw_family_style_select(_ loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
+	lp := self.handler.lp
 	s := styles_in_family(self.family, self.handler.listing.fonts[self.family])
 	lines := []string{}
 	for _, sg := range s.style_groups {
 		formatted := make([]string, len(sg.styles))
 		for i, style_name := range sg.styles {
 			if style_name == preview.Style {
-				formatted[i] = self.handler.lp.SprintStyled("fg=cyan bold", style_name)
+				formatted[i] = lp.SprintStyled(current_val_style, style_name)
 			} else {
 				formatted[i] = tui.InternalHyperlink(style_name, "style:"+style_name)
 			}
 		}
-		line := sg.name + ": " + strings.Join(formatted, ", ")
+		line := lp.SprintStyled(control_name_style, sg.name) + ": " + strings.Join(formatted, ", ")
 		lines = append(lines, line)
 	}
-	_, y, str := self.handler.render_lines.InRectangle(lines, 0, start_y, int(sz.WidthCells), int(sz.HeightCells)-start_y, &self.handler.mouse_state, self.on_click)
-	self.handler.lp.QueueWriteString(str)
+	y, str := self.render_lines(start_y, lines...)
+	lp.QueueWriteString(str)
 	return y, nil
 }
 
@@ -104,7 +154,7 @@ func (self *face_panel) draw_screen() (err error) {
 		fmt.Sprintf("Press %s to accept any changes or %s to cancel. Click on a style name below to switch to it.", styled("fg=green", "Enter"), styled("fg=red", "Esc")), "",
 		fmt.Sprintf("Current setting: %s", self.get()), "",
 	}
-	_, y, str := self.handler.render_lines.InRectangle(lines, 0, 2, int(sz.WidthCells), int(sz.HeightCells)-2, &self.handler.mouse_state, self.on_click)
+	y, str := self.render_lines(2, lines...)
 	lp.QueueWriteString(str)
 
 	num_lines_per_font := (int(sz.HeightCells) - y - 1) - 2
@@ -145,8 +195,14 @@ func (self *face_panel) draw_screen() (err error) {
 		return err
 	}
 
-	lp.MoveCursorTo(1, y+2)
-	self.handler.graphics_manager.display_image(0, preview.Path, key.width, key.height)
+	if int(sz.HeightCells)-y >= num_lines+2 {
+		y += 1
+		lp.MoveCursorTo(1, y+1)
+		lp.QueueWriteString(lp.SprintStyled(control_name_style, "Preview") + ":")
+		y++
+		lp.MoveCursorTo(1, y+1)
+		self.handler.graphics_manager.display_image(0, preview.Path, key.width, key.height)
+	}
 	return
 }
 

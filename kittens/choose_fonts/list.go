@@ -82,7 +82,7 @@ func (self *FontList) draw_family_summary(start_x int, sz loop.ScreenSize) (err 
 	if has_variable_data_for_font(fonts[0]) {
 		s := styles_in_family(family, fonts)
 		for _, sg := range s.style_groups {
-			styles := sg.name + ": " + strings.Join(sg.styles, ", ")
+			styles := lp.SprintStyled(control_name_style, sg.name) + ": " + strings.Join(sg.styles, ", ")
 			add_line(styles)
 			add_line("")
 		}
@@ -124,7 +124,7 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 	}
 	y++
 	self.handler.lp.MoveCursorTo(x+1, y+1)
-	self.handler.lp.QueueWriteString("Preview:")
+	self.handler.lp.QueueWriteString(self.handler.lp.SprintStyled(control_name_style, "Preview") + ":")
 	y++
 	height_cells -= 2
 	height_cells = min(height_cells, int(math.Ceil(100./float64(width_cells))))
