@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
@@ -59,11 +60,16 @@ func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_
 		var n int
 		(*conn).SetDeadline(time.Now().Add(timeout))
 		n, err = (*conn).Read(buf)
+		if err == unix.EAGAIN || err == unix.EINTR {
+			err = nil
+		}
 		if err != nil {
 			keep_going = false
 			break
 		}
-		p.Parse(buf[:n])
+		if n > 0 {
+			p.Parse(buf[:n])
+		}
 	}
 	return
 }
@@ -132,18 +138,16 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 			return
 		}
 		if state == BEFORE_FIRST_ESCAPE_CODE_SENT {
+			state = SENDING
 			if wants_streaming {
-				var streaming_response []byte
-				streaming_response, err = read_response_from_conn(conn, io_data.timeout)
+				serialized_response, err = read_response_from_conn(conn, io_data.timeout)
 				if err != nil {
 					return
 				}
-				if !is_stream_response(streaming_response) {
-					err = fmt.Errorf("Did not receive expected streaming response")
+				if !is_stream_response(serialized_response) {
 					return
 				}
 			}
-			state = SENDING
 		}
 	}
 	if io_data.rc.NoResponse {
