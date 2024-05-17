@@ -86,6 +86,8 @@ Detailed list of changes
 
 - Linux: Run all child processes in their own systemd scope to prevent the OOM killer from harvesting kitty when a child process misbehaves (:iss:`7427`)
 
+- Mouse reporting: Fix horizontal scroll events inverted (:iss:`7439`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
