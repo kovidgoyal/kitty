@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -66,7 +67,7 @@ func (self *face_panel) draw_axis(sz loop.ScreenSize, y int, ax VariableAxis, ax
 		if i == current_cell {
 			text = lp.SprintStyled(current_val_style, text)
 		} else {
-			text = tui.InternalHyperlink(text, fmt.Sprintf("axis:%d/%d:%s", i, num_of_cells-1, ax.Tag))
+			text = tui.InternalHyperlink(text, fmt.Sprintf("axis:%d/%d;%s", i, num_of_cells-1, ax.Tag))
 		}
 		buf.WriteString(text)
 	}
@@ -131,6 +132,13 @@ func (self *face_panel) draw_family_style_select(_ loop.ScreenSize, start_y int,
 	y, str := self.render_lines(start_y, lines...)
 	lp.QueueWriteString(str)
 	return y, nil
+}
+
+func (self *handler) draw_preview_header(x int) {
+	sz, _ := self.lp.ScreenSize()
+	width := int(sz.WidthCells) - x
+	p := center_string(self.lp.SprintStyled("italic", " preview "), width, "─")
+	self.lp.QueueWriteString(self.lp.SprintStyled("dim", p))
 }
 
 func (self *face_panel) draw_screen() (err error) {
@@ -198,7 +206,7 @@ func (self *face_panel) draw_screen() (err error) {
 	if int(sz.HeightCells)-y >= num_lines+2 {
 		y += 1
 		lp.MoveCursorTo(1, y+1)
-		lp.QueueWriteString(lp.SprintStyled(control_name_style, "Preview") + ":")
+		self.handler.draw_preview_header(0)
 		y++
 		lp.MoveCursorTo(1, y+1)
 		self.handler.graphics_manager.display_image(0, preview.Path, key.width, key.height)
@@ -250,6 +258,19 @@ func (self *face_panel) on_click(id string) (err error) {
 		self.set(fmt.Sprintf(`family="%s" style="%s"`, self.family, val))
 	case "variable_style":
 		self.set(self.variable_spec(val, nil))
+	case "axis":
+		p, tag, _ := strings.Cut(val, ";")
+		num, den, _ := strings.Cut(p, "/")
+		n, _ := strconv.Atoi(num)
+		d, _ := strconv.Atoi(den)
+		frac := float64(n) / float64(d)
+		for _, ax := range self.current_preview.Variable_data.Axes {
+			if ax.Tag == tag {
+				axval := ax.Minimum + (ax.Maximum-ax.Minimum)*frac
+				self.set(self.variable_spec("", map[string]float64{tag: axval}))
+				break
+			}
+		}
 	}
 	return self.handler.draw_screen()
 }
