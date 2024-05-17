@@ -53,10 +53,15 @@ func (self *FontList) draw_search_bar() {
 
 const SEPARATOR = "║"
 
-func center_string(x string, width int) string {
+func center_string(x string, width int, filler ...string) string {
+	space := " "
+	if len(filler) > 0 {
+		space = filler[0]
+	}
 	l := wcswidth.Stringwidth(x)
 	spaces := int(float64(width-l) / 2)
-	return strings.Repeat(" ", utils.Max(0, spaces)) + x
+	space = strings.Repeat(space, utils.Max(0, spaces))
+	return space + x + space
 }
 
 func (self *handler) format_title(title string, start_x int) string {
@@ -124,7 +129,7 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 	}
 	y++
 	self.handler.lp.MoveCursorTo(x+1, y+1)
-	self.handler.lp.QueueWriteString(self.handler.lp.SprintStyled(control_name_style, "Preview") + ":")
+	self.handler.draw_preview_header(x)
 	y++
 	height_cells -= 2
 	height_cells = min(height_cells, int(math.Ceil(100./float64(width_cells))))
