@@ -17,22 +17,45 @@ type face_panel struct {
 
 	family, which       string
 	settings            faces_settings
+	current_preview     *RenderedSampleTransmit
 	preview_cache       map[faces_preview_key]map[string]RenderedSampleTransmit
 	preview_cache_mutex sync.Mutex
 }
 
 func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
-	y = start_y
-	return
+	s := styles_for_variable_data(preview.Variable_data)
+	lines := []string{}
+	for _, sg := range s.style_groups {
+		if len(sg.styles) < 2 {
+			continue
+		}
+		formatted := make([]string, len(sg.styles))
+		for i, style_name := range sg.styles {
+			if style_name == preview.Variable_named_style.Name {
+				formatted[i] = self.handler.lp.SprintStyled("fg=cyan bold", style_name)
+			} else {
+				formatted[i] = tui.InternalHyperlink(style_name, "variable_style:"+style_name)
+			}
+		}
+		line := sg.name + ": " + strings.Join(formatted, ", ")
+		lines = append(lines, line)
+	}
+	_, y, str := self.handler.render_lines.InRectangle(lines, 0, start_y, int(sz.WidthCells), int(sz.HeightCells)-start_y, &self.handler.mouse_state, self.on_click)
+	self.handler.lp.QueueWriteString(str)
+	return y, nil
 }
 
-func (self *face_panel) draw_family_style_select(sz loop.ScreenSize, start_y int) (y int, err error) {
+func (self *face_panel) draw_family_style_select(sz loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
 	s := styles_in_family(self.family, self.handler.listing.fonts[self.family])
 	lines := []string{}
 	for _, sg := range s.style_groups {
 		formatted := make([]string, len(sg.styles))
 		for i, style_name := range sg.styles {
-			formatted[i] = tui.InternalHyperlink(style_name, "style:"+style_name)
+			if style_name == preview.Style {
+				formatted[i] = self.handler.lp.SprintStyled("fg=cyan bold", style_name)
+			} else {
+				formatted[i] = tui.InternalHyperlink(style_name, "style:"+style_name)
+			}
 		}
 		line := sg.name + ": " + strings.Join(formatted, ", ")
 		lines = append(lines, line)
@@ -94,10 +117,11 @@ func (self *face_panel) draw_screen() (err error) {
 		return
 	}
 	preview := previews[self.which]
+	self.current_preview = &preview
 	if len(preview.Variable_data.Axes) > 0 {
 		y, err = self.draw_variable_fine_tune(sz, y, preview)
 	} else {
-		y, err = self.draw_family_style_select(sz, y)
+		y, err = self.draw_family_style_select(sz, y, preview)
 	}
 	if err != nil {
 		return err
@@ -150,6 +174,9 @@ func (self *face_panel) on_click(id string) (err error) {
 	switch scheme {
 	case "style":
 		self.set(fmt.Sprintf(`family="%s" style="%s"`, self.family, val))
+	case "variable_style":
+		self.set(fmt.Sprintf(`family="%s" variable_name="%s" style="%s"`, self.family,
+			self.current_preview.Variable_data.Variations_postscript_name_prefix, val))
 	}
 	return self.handler.draw_screen()
 }
