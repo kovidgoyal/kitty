@@ -2431,7 +2431,8 @@ class Boss:
                     remote.close()
 
         if is_wayland():
-            run_with_activation_token(doit)
+            if not run_with_activation_token(doit):
+                doit()
         else:
             doit()
 

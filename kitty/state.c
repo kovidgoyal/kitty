@@ -871,10 +871,22 @@ PYWRAP1(run_with_activation_token) {
         OSWindow *os_window = global_state.os_windows + o;
         if (os_window->is_focused) {
             run_with_activation_token_in_os_window(os_window, args);
-            break;
+            Py_RETURN_TRUE;
         }
     }
-    Py_RETURN_NONE;
+    id_type os_window_id = last_focused_os_window_id();
+    if (!os_window_id) {
+        if (!global_state.num_os_windows) Py_RETURN_FALSE;
+        os_window_id = global_state.os_windows[0].id;
+    }
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *os_window = global_state.os_windows + o;
+        if (os_window->id == os_window_id) {
+            run_with_activation_token_in_os_window(os_window, args);
+            Py_RETURN_TRUE;
+        }
+    }
+    Py_RETURN_FALSE;
 }
 
 PYWRAP1(set_os_window_chrome) {
