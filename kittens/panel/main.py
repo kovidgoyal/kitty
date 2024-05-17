@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 import sys
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -158,8 +157,8 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
 
 def main(sys_args: List[str]) -> None:
     global args
-    if is_macos or not (os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')):
-        raise SystemExit('Currently the panel kitten is supported only on X11 or Wayland desktops')
+    if is_macos:
+        raise SystemExit('Currently the panel kitten is not supported on macOS')
     args, items = parse_panel_args(sys_args[1:])
     if not items:
         raise SystemExit('You must specify the program to run')
