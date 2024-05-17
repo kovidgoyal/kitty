@@ -521,8 +521,9 @@ def get_capabilities(query_string: str, opts: 'Options') -> Generator[str, None,
     from .fast_data_types import ERROR_PREFIX
 
     def result(encoded_query_name: str, x: Optional[str] = None) -> str:
-        if x is None:
-            return f'0+r{encoded_query_name}'
+        if not x:
+            valid = 0 if x is None else 1
+            return f'{valid}+r{encoded_query_name}'
         return f'1+r{encoded_query_name}={hexlify(str(x).encode("utf-8")).decode("ascii")}'
 
     for encoded_query_name in query_string.split(';'):
@@ -540,6 +541,9 @@ def get_capabilities(query_string: str, opts: 'Options') -> Generator[str, None,
             else:
                 yield result(encoded_query_name, rval)
         else:
+            if name in bool_capabilities:
+                yield result(encoded_query_name, '')
+                continue
             try:
                 val = queryable_capabilities[name]
             except KeyError:
