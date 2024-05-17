@@ -34,11 +34,11 @@ func (self *faces) draw_screen() (err error) {
 	lp.SetCursorVisible(false)
 	sz, _ := lp.ScreenSize()
 	styled := lp.SprintStyled
+	lp.QueueWriteString(self.handler.format_title(self.family, 0))
 	lines := []string{
-		self.handler.format_title(self.family, 0), "",
 		fmt.Sprintf("Press %s to select this font, %s to go back to the font list or any of the %s keys below to fine-tune the appearance of the individual font styles.", styled("fg=green", "Enter"), styled("fg=red", "Esc"), styled("fg=magenta bold", "highlighted")), "",
 	}
-	_, y, str := self.handler.render_lines.InRectangle(lines, 0, 0, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
+	_, y, str := self.handler.render_lines.InRectangle(lines, 0, 2, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
 
 	lp.QueueWriteString(str)
 

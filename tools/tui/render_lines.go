@@ -20,7 +20,6 @@ func InternalHyperlink(text, id string) string {
 }
 
 type RenderLines struct {
-	WrapOptions style.WrapOptions
 }
 
 var hyperlink_pat = sync.OnceValue(func() *regexp.Regexp {
@@ -102,10 +101,11 @@ func (r RenderLines) InRectangle(
 	}
 
 	all_rendered = true
+	wo := style.WrapOptions{Trim_whitespace: true}
 	for _, line := range lines {
 		wrapped_lines := []string{line}
 		if width > 0 {
-			wrapped_lines = style.WrapTextAsLines(line, width, r.WrapOptions)
+			wrapped_lines = style.WrapTextAsLines(line, width, wo)
 		}
 		for _, line := range wrapped_lines {
 			move_cursor(start_x, y)
