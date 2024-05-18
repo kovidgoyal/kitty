@@ -11,6 +11,7 @@ import (
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/shlex"
 	"kitty/tools/wcswidth"
 )
 
@@ -28,7 +29,8 @@ type face_panel struct {
 }
 
 func (self *face_panel) variable_spec(named_style string, axis_overrides map[string]float64) string {
-	ans := fmt.Sprintf(`family="%s" variable_name="%s"`, self.family, self.current_preview.Variable_data.Variations_postscript_name_prefix)
+	vname := self.current_preview.Variable_data.Variations_postscript_name_prefix
+	ans := fmt.Sprintf(`family=%s variable_name=%s`, shlex.Quote(self.family), shlex.Quote(vname))
 	if axis_overrides != nil {
 		axis_values := self.current_preview.current_axis_values()
 		maps.Copy(axis_values, axis_overrides)
@@ -36,7 +38,7 @@ func (self *face_panel) variable_spec(named_style string, axis_overrides map[str
 			ans += fmt.Sprintf(" %s=%g", tag, val)
 		}
 	} else if named_style != "" {
-		ans += fmt.Sprintf(" style=\"%s\"", named_style)
+		ans += fmt.Sprintf(" style=%s", shlex.Quote(named_style))
 	}
 	return ans
 }

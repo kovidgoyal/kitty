@@ -8,11 +8,10 @@ from functools import lru_cache
 from typing import Dict, Generator, Iterable, List, NamedTuple, Optional, Sequence, Tuple
 
 from kitty.fast_data_types import CTFace, coretext_all_fonts
-from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
 
-from . import Descriptor, DescriptorVar, FontSpec, ListedFont, Score, Scorer, VariableData, family_name_to_key
+from . import Descriptor, DescriptorVar, ListedFont, Score, Scorer, VariableData, family_name_to_key
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -200,36 +199,6 @@ def find_best_match(
         q = 'menlo'
     candidates = scorer.sorted_candidates(font_map['family_map'][q])
     return candidates[0]
-
-
-def get_font_from_spec(
-    spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
-    resolved_medium_font: Optional[CoreTextFont] = None
-) -> CoreTextFont:
-    if not spec.is_system:
-        raise NotImplementedError('TODO: Implement me')
-    family = spec.system
-    if family == 'auto' and (bold or italic):
-        assert resolved_medium_font is not None
-        family = resolved_medium_font['family']
-    return find_best_match(family, bold, italic, ignore_face=resolved_medium_font)
-
-
-def get_font_files(opts: Options) -> Dict[str, CoreTextFont]:
-    medium_font = get_font_from_spec(opts.font_family)
-    ans: Dict[str, CoreTextFont] = {}
-    kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
-    for (bold, italic) in sorted(attr_map):
-        attr = attr_map[(bold, italic)]
-        key = kd[(bold, italic)]
-        if bold or italic:
-            font = get_font_from_spec(getattr(opts, attr), bold, italic, medium_font_spec=opts.font_family, resolved_medium_font=medium_font)
-        else:
-            font = medium_font
-        ans[key] = font
-        if key == 'medium':
-            setattr(get_font_files, 'medium_family', font['family'])
-    return ans
 
 
 def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:

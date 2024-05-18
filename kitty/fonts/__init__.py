@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum, auto
-from typing import TYPE_CHECKING, Dict, List, Literal, NamedTuple, Sequence, Tuple, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypedDict, TypeVar, Union
 
 from kitty.types import run_once
 from kitty.typing import CoreTextFont, FontConfigPattern
@@ -136,13 +136,13 @@ class FontModification(NamedTuple):
 
 
 class FontSpec(NamedTuple):
-    family: str = ''
-    style: str = ''
-    postscript_name: str = ''
-    full_name: str = ''
-    system: str = ''
+    family: Optional[str] = None
+    style: Optional[str] = None
+    postscript_name: Optional[str] = None
+    full_name: Optional[str] = None
+    system: Optional[str] = None
     axes: Tuple[Tuple[str, float], ...] = ()
-    variable_name: str = ''
+    variable_name: Optional[str] = None
     created_from_string: str = ''
 
     @property
@@ -152,6 +152,33 @@ class FontSpec(NamedTuple):
     @property
     def is_auto(self) -> bool:
         return self.system == 'auto'
+
+    @property
+    def as_setting(self) -> str:
+        if self.created_from_string:
+            return self.created_from_string
+        if self.system:
+            return self.system
+        ans = []
+        from shlex import quote
+        def a(key: str, val: str) -> None:
+            ans.append(f'{key}={quote(val)}')
+
+        if self.family is not None:
+            a('family', self.family)
+        if self.postscript_name is not None:
+            a('postscript_name', self.postscript_name)
+        if self.full_name is not None:
+            a('full_name', self.full_name)
+        if self.variable_name is not None:
+            a('variable_name', self.variable_name)
+        if self.style is not None:
+            a('style', self.style)
+        if self.axes:
+            for (key, val) in self.axes:
+                a(key, f'{val:g}')
+        return ' '.join(ans)
+
 
 
 Descriptor = Union[FontConfigPattern, CoreTextFont]

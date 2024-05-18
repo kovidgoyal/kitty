@@ -17,6 +17,7 @@ package shlex
 
 import (
 	"fmt"
+	"kitty/tools/utils"
 	"strings"
 	"unicode/utf8"
 )
@@ -180,6 +181,16 @@ func Split(s string) (ans []string, err error) {
 		ans = append(ans, word.Value)
 	}
 	return
+}
+
+func Quote(s string) string {
+	if s == "" {
+		return s
+	}
+	if utils.MustCompile(`[^\w@%+=:,./-]`).MatchString(s) {
+		return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	}
+	return s
 }
 
 // SplitForCompletion partitions a string into a slice of strings. It differs from Split in being
