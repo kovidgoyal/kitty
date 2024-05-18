@@ -2349,7 +2349,7 @@ class Boss:
         cwd_from: Optional[CwdRequest] = None,
         allow_remote_control: bool = False,
         remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
-        notify_on_death: Optional[Callable[[int, Optional[Exception]], None]] = None,
+        notify_on_death: Optional[Callable[[int, Optional[Exception]], None]] = None,  # guaranteed to be called only after event loop tick
         stdout: Optional[int] = None, stderr: Optional[int] = None,
     ) -> None:
         import subprocess
@@ -2407,11 +2407,9 @@ class Boss:
                         with suppress(OSError):
                             os.close(fd)
                     if notify_on_death:
-                        try:
+                        def callback(err: Exception, timer_id: Optional[int]) -> None:
                             notify_on_death(-1, err)
-                        except Exception:
-                            import traceback
-                            traceback.print_exc()
+                        add_timer(partial(callback, err), 0, False)
                     else:
                         self.show_error(_('Failed to run background process'), _('Failed to run background process with error: {}').format(err))
 

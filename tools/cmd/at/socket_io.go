@@ -119,6 +119,7 @@ func run_stdin_echo_loop(conn *net.Conn, io_data *rc_io_data) (err error) {
 
 func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response []byte, err error) {
 	r := response_reader{}
+	r.pending_responses = make([][]byte, 0, 2)  // we read at most two responses
 	first_escape_code_sent := false
 	wants_streaming := io_data.rc.Stream
 	for {
