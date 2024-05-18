@@ -31,11 +31,8 @@ func (self *face_panel) variable_spec(named_style string, axis_overrides map[str
 	if axis_overrides != nil {
 		axis_values := self.current_preview.current_axis_values()
 		maps.Copy(axis_values, axis_overrides)
-		default_axis_values := self.current_preview.default_axis_values()
 		for tag, val := range axis_values {
-			if default_axis_values[tag] != val {
-				ans += fmt.Sprintf(" %s=%g", tag, val)
-			}
+			ans += fmt.Sprintf(" %s=%g", tag, val)
 		}
 	} else if named_style != "" {
 		ans += fmt.Sprintf(" style=\"%s\"", named_style)
@@ -43,9 +40,10 @@ func (self *face_panel) variable_spec(named_style string, axis_overrides map[str
 	return ans
 }
 
-func (self *face_panel) render_lines(start_y int, lines ...string) (y int, str string) {
+func (self *face_panel) render_lines(start_y int, lines ...string) (y int) {
 	sz, _ := self.handler.lp.ScreenSize()
-	_, y, str = self.handler.render_lines.InRectangle(lines, 0, start_y, int(sz.WidthCells), int(sz.HeightCells)-y, &self.handler.mouse_state, self.on_click)
+	_, y, str := self.handler.render_lines.InRectangle(lines, 0, start_y, int(sz.WidthCells), int(sz.HeightCells)-y, &self.handler.mouse_state, self.on_click)
+	self.handler.lp.QueueWriteString(str)
 	return
 }
 
@@ -60,20 +58,13 @@ func (self *face_panel) draw_axis(sz loop.ScreenSize, y int, ax VariableAxis, ax
 	if num_of_cells < 5 {
 		return y
 	}
-	frac := axis_value / (ax.Maximum - ax.Minimum)
+	frac := (min(axis_value, ax.Maximum) - ax.Minimum) / (ax.Maximum - ax.Minimum)
 	current_cell := int(math.Floor(frac * float64(num_of_cells-1)))
 	for i := 0; i < num_of_cells; i++ {
-		text := "•"
-		if i == current_cell {
-			text = lp.SprintStyled(current_val_style, text)
-		} else {
-			text = tui.InternalHyperlink(text, fmt.Sprintf("axis:%d/%d;%s", i, num_of_cells-1, ax.Tag))
-		}
-		buf.WriteString(text)
+		buf.WriteString(utils.IfElse(i == current_cell, lp.SprintStyled(current_val_style, `⬤`),
+			tui.InternalHyperlink("•", fmt.Sprintf("axis:%d/%d:%s", i, num_of_cells-1, ax.Tag))))
 	}
-	lp.MoveCursorTo(1, y+1)
-	lp.QueueWriteString(buf.String())
-	return y + 1
+	return self.render_lines(y, buf.String())
 }
 
 func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
@@ -95,8 +86,7 @@ func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int,
 		line := lp.SprintStyled(control_name_style, sg.name) + ": " + strings.Join(formatted, ", ")
 		lines = append(lines, line)
 	}
-	y, str := self.render_lines(start_y, lines...)
-	lp.QueueWriteString(str)
+	y = self.render_lines(start_y, lines...)
 	sub_title := "Fine tune the appearance by clicking in the variable axes below:"
 	axis_values := self.current_preview.current_axis_values()
 	for _, ax := range self.current_preview.Variable_data.Axes {
@@ -104,9 +94,8 @@ func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int,
 			continue
 		}
 		if sub_title != "" {
-			y, str = self.render_lines(y+1, sub_title, "")
+			y = self.render_lines(y+1, sub_title, "")
 			sub_title = ``
-			lp.QueueWriteString(str)
 		}
 		y = self.draw_axis(sz, y, ax, axis_values[ax.Tag])
 	}
@@ -129,8 +118,7 @@ func (self *face_panel) draw_family_style_select(_ loop.ScreenSize, start_y int,
 		line := lp.SprintStyled(control_name_style, sg.name) + ": " + strings.Join(formatted, ", ")
 		lines = append(lines, line)
 	}
-	y, str := self.render_lines(start_y, lines...)
-	lp.QueueWriteString(str)
+	y = self.render_lines(start_y, lines...)
 	return y, nil
 }
 
@@ -162,8 +150,7 @@ func (self *face_panel) draw_screen() (err error) {
 		fmt.Sprintf("Press %s to accept any changes or %s to cancel. Click on a style name below to switch to it.", styled("fg=green", "Enter"), styled("fg=red", "Esc")), "",
 		fmt.Sprintf("Current setting: %s", self.get()), "",
 	}
-	y, str := self.render_lines(2, lines...)
-	lp.QueueWriteString(str)
+	y := self.render_lines(2, lines...)
 
 	num_lines_per_font := (int(sz.HeightCells) - y - 1) - 2
 	num_lines_needed := int(math.Ceil(100. / float64(sz.WidthCells)))
@@ -259,7 +246,7 @@ func (self *face_panel) on_click(id string) (err error) {
 	case "variable_style":
 		self.set(self.variable_spec(val, nil))
 	case "axis":
-		p, tag, _ := strings.Cut(val, ";")
+		p, tag, _ := strings.Cut(val, ":")
 		num, den, _ := strings.Cut(p, "/")
 		n, _ := strconv.Atoi(num)
 		d, _ := strconv.Atoi(den)

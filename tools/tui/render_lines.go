@@ -7,11 +7,13 @@ import (
 	"sync"
 
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
+var _ = utils.Repr
 
 const KittyInternalHyperlinkProtocol = "kitty-ih"
 
