@@ -12,10 +12,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
 	"kitty/tools/utils"
+
+	"github.com/shirou/gopsutil/v3/process"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -273,4 +277,95 @@ func (self *ConfigParser) ParseOverrides(overrides ...string) error {
 	}, overrides)}
 	self.seen_includes = make(map[string]bool)
 	return self.parse(&s, "<overrides>", utils.ConfigDir(), 0)
+}
+
+func is_kitty_gui_cmdline(cmd ...string) bool {
+	if len(cmd) == 0 {
+		return false
+	}
+	if filepath.Base(cmd[0]) != "kitty" {
+		return false
+	}
+	if len(cmd) == 1 {
+		return true
+	}
+	s := cmd[1][:1]
+	switch s {
+	case `@`:
+		return false
+	case `+`:
+		if cmd[1] == `+` {
+			return len(cmd) > 2 && cmd[2] == `open`
+		}
+		return cmd[1] == `+open`
+	}
+	return true
+}
+
+type Patcher struct {
+	Write_backup bool
+	Mode         fs.FileMode
+}
+
+func (self Patcher) Patch(path, sentinel, content string, settings_to_comment_out ...string) (updated bool, err error) {
+	if self.Mode == 0 {
+		self.Mode = 0o644
+	}
+	backup_path := path
+	if q, err := filepath.EvalSymlinks(path); err == nil {
+		path = q
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return false, err
+	}
+	if raw == nil {
+		raw = []byte{}
+	}
+	pat := utils.MustCompile(fmt.Sprintf(`(?m)^\s*(%s)\b`, strings.Join(settings_to_comment_out, "|")))
+	text := pat.ReplaceAllString(utils.UnsafeBytesToString(raw), `# $1`)
+
+	pat = utils.MustCompile(fmt.Sprintf(`(?ms)^# BEGIN_%s.+?# END_%s`, sentinel, sentinel))
+	replaced := false
+	addition := fmt.Sprintf("# BEGIN_%s\n%s\n# END_%s", sentinel, content, sentinel)
+	ntext := pat.ReplaceAllStringFunc(text, func(string) string {
+		replaced = true
+		return addition
+	})
+	if !replaced {
+		if text != "" {
+			text += "\n\n"
+		}
+		ntext = text + addition
+	}
+	nraw := utils.UnsafeStringToBytes(ntext)
+	if !bytes.Equal(raw, nraw) {
+		if len(raw) > 0 && self.Write_backup {
+			_ = os.WriteFile(backup_path+".bak", raw, self.Mode)
+		}
+
+		return true, utils.AtomicUpdateFile(path, nraw, self.Mode)
+	}
+	return false, nil
+}
+
+func ReloadConfigInKitty(in_parent_only bool) error {
+	if in_parent_only {
+		if pid, err := strconv.Atoi(os.Getenv("KITTY_PID")); err == nil {
+			if p, err := process.NewProcess(int32(pid)); err == nil {
+				if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(c...) {
+					return p.SendSignal(unix.SIGUSR1)
+				}
+			}
+		}
+		return nil
+	}
+	if all, err := process.Processes(); err == nil {
+		for _, p := range all {
+			if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(c...) {
+				_ = p.SendSignal(unix.SIGUSR1)
+			}
+		}
+	}
+	return nil
 }
