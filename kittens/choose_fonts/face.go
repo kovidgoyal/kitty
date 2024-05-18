@@ -22,6 +22,7 @@ type face_panel struct {
 	family, which       string
 	settings            faces_settings
 	current_preview     *RenderedSampleTransmit
+	current_preview_key faces_preview_key
 	preview_cache       map[faces_preview_key]map[string]RenderedSampleTransmit
 	preview_cache_mutex sync.Mutex
 }
@@ -129,6 +130,19 @@ func (self *handler) draw_preview_header(x int) {
 	self.lp.QueueWriteString(self.lp.SprintStyled("dim", p))
 }
 
+func (self *face_panel) render_preview(key faces_preview_key) {
+	var r map[string]RenderedSampleTransmit
+	s := key.settings
+	self.handler.set_worker_error(kitty_font_backend.query("render_family_samples", map[string]any{
+		"text_style": self.handler.text_style, "font_family": s.font_family,
+		"bold_font": s.bold_font, "italic_font": s.italic_font, "bold_italic_font": s.bold_italic_font,
+		"width": key.width, "height": key.height, "output_dir": self.handler.temp_dir,
+	}, &r))
+	self.preview_cache_mutex.Lock()
+	defer self.preview_cache_mutex.Unlock()
+	self.preview_cache[key] = r
+}
+
 func (self *face_panel) draw_screen() (err error) {
 	lp := self.handler.lp
 	lp.SetCursorVisible(false)
@@ -156,22 +170,14 @@ func (self *face_panel) draw_screen() (err error) {
 	num_lines_needed := int(math.Ceil(100. / float64(sz.WidthCells)))
 	num_lines := max(1, min(num_lines_per_font, num_lines_needed))
 	key := faces_preview_key{settings: self.settings, width: int(sz.WidthCells * sz.CellWidth), height: int(sz.CellHeight) * num_lines}
+	self.current_preview_key = key
 	self.preview_cache_mutex.Lock()
 	defer self.preview_cache_mutex.Unlock()
 	previews, found := self.preview_cache[key]
 	if !found {
 		self.preview_cache[key] = make(map[string]RenderedSampleTransmit)
 		go func() {
-			var r map[string]RenderedSampleTransmit
-			s := key.settings
-			self.handler.set_worker_error(kitty_font_backend.query("render_family_samples", map[string]any{
-				"text_style": self.handler.text_style, "font_family": s.font_family,
-				"bold_font": s.bold_font, "italic_font": s.italic_font, "bold_italic_font": s.bold_italic_font,
-				"width": key.width, "height": key.height, "output_dir": self.handler.temp_dir,
-			}, &r))
-			self.preview_cache_mutex.Lock()
-			defer self.preview_cache_mutex.Unlock()
-			self.preview_cache[key] = r
+			self.render_preview(key)
 			self.handler.lp.WakeupMainThread()
 		}()
 		return
@@ -258,6 +264,15 @@ func (self *face_panel) on_click(id string) (err error) {
 				break
 			}
 		}
+	}
+	// Render preview synchronously to void flashing
+	key := self.current_preview_key
+	key.settings = self.settings
+	self.preview_cache_mutex.Lock()
+	previews := self.preview_cache[key]
+	self.preview_cache_mutex.Unlock()
+	if len(previews) < 4 {
+		self.render_preview(key)
 	}
 	return self.handler.draw_screen()
 }
