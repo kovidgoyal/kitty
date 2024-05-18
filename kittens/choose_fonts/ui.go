@@ -40,6 +40,7 @@ type pane interface {
 }
 
 type handler struct {
+	opts                 *Options
 	lp                   *loop.Loop
 	state                State
 	err_mutex            sync.Mutex
