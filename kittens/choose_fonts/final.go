@@ -2,9 +2,12 @@ package choose_fonts
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
+	"kitty/tools/config"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -71,6 +74,26 @@ func (self *final_pane) on_key_event(event *loop.KeyEvent) (err error) {
 		event.Handled = true
 		self.handler.current_pane = &self.handler.faces
 		return self.handler.draw_screen()
+	}
+	if event.MatchesPressOrRepeat("enter") {
+		event.Handled = true
+		patcher := config.Patcher{Write_backup: true}
+		path := filepath.Join(utils.ConfigDir(), "kitty.conf")
+		updated, err := patcher.Patch(path, "KITTY_FONTS", self.settings.serialized(), "font_family", "bold_font", "italic_font", "bold_italic_font")
+		if err != nil {
+			return err
+		}
+		if updated {
+			switch self.handler.opts.Reload_in {
+			case "parent":
+				config.ReloadConfigInKitty(true)
+			case "all":
+				config.ReloadConfigInKitty(false)
+			}
+		}
+		self.lp.Quit(0)
+		return nil
+
 	}
 	return
 }

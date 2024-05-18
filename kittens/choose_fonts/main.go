@@ -13,7 +13,7 @@ var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
 var output_on_exit string
 
-func main() (rc int, err error) {
+func main(opts *Options) (rc int, err error) {
 	if err = kitty_font_backend.start(); err != nil {
 		return 1, err
 	}
@@ -32,7 +32,7 @@ func main() (rc int, err error) {
 		return 1, err
 	}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
-	h := &handler{lp: lp}
+	h := &handler{lp: lp, opts: opts}
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(`Choose a font for kitty`)
@@ -67,12 +67,31 @@ func main() (rc int, err error) {
 	return lp.ExitCode(), nil
 }
 
+type Options struct {
+	Reload_in string
+}
+
 func EntryPoint(root *cli.Command) {
 	ans := root.AddSubCommand(&cli.Command{
-		Name: "choose-fonts",
+		Name:             "choose-fonts",
+		ShortDescription: "Choose the fonts used in kitty",
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
-			return main()
+			opts := Options{}
+			if err = cmd.GetOptionValues(&opts); err != nil {
+				return 1, err
+			}
+			return main(&opts)
 		},
+	})
+	ans.Add(cli.OptionSpec{
+		Name:    "--reload-in",
+		Dest:    "Reload_in",
+		Type:    "choices",
+		Choices: "parent, all, none",
+		Default: "parent",
+		Help: `By default, this kitten will signal only the parent kitty instance it is
+running in to reload its config, after making changes. Use this option to
+instead either not reload the config at all or in all running kitty instances.`,
 	})
 	clone := root.AddClone(ans.Group, ans)
 	clone.Hidden = false
