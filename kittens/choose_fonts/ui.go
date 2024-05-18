@@ -51,9 +51,10 @@ type handler struct {
 	graphics_manager     graphics_manager
 	temp_dir             string
 
-	listing   FontList
-	faces     faces
-	face_pane face_panel
+	listing    FontList
+	faces      faces
+	face_pane  face_panel
+	final_pane final_pane
 
 	panes        []pane
 	current_pane pane
@@ -76,7 +77,7 @@ func (h *handler) initialize() (err error) {
 	h.lp.SetCursorVisible(false)
 	h.lp.OnQueryResponse = h.on_query_response
 	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y", "foreground", "background")
-	h.panes = []pane{&h.listing, &h.faces, &h.face_pane}
+	h.panes = []pane{&h.listing, &h.faces, &h.face_pane, &h.final_pane}
 	for _, pane := range h.panes {
 		if err = pane.initialize(h); err != nil {
 			return err
