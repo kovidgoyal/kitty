@@ -20,7 +20,7 @@ from kitty.fonts.common import (
     get_variable_data_for_descriptor,
     get_variable_data_for_face,
     is_variable,
-    spec_for_descriptor,
+    spec_for_face,
 )
 from kitty.fonts.list import create_family_groups
 from kitty.fonts.render import display_bitmap
@@ -132,6 +132,11 @@ def render_family_sample(
 
 
 ResolvedFace = Dict[Literal['family', 'spec'], str]
+
+
+def spec_for_descriptor(d: Descriptor) -> str:
+    face = face_from_descriptor(d)
+    return spec_for_face(d['family'], face).as_setting
 
 
 def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:

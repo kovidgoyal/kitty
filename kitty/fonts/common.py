@@ -157,7 +157,7 @@ def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool) -> De
 
 
 def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced: bool, candidates: List[Descriptor]) -> Descriptor:
-    if spec.variable_name:
+    if spec.variable_name is not None:
         q = spec.variable_name.lower()
         for font in candidates:
             vd = get_variable_data_for_descriptor(font)
@@ -177,7 +177,7 @@ def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced
 
 
 def get_fine_grained_font(
-    spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
+    spec: FontSpec, bold: bool = False, italic: bool = False,
     resolved_medium_font: Optional[Descriptor] = None, monospaced: bool = True, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     font_map = all_fonts_map(monospaced)
@@ -241,13 +241,13 @@ def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> Tuple[Descrip
 
 
 def get_font_from_spec(
-    spec: FontSpec, bold: bool = False, italic: bool = False, medium_font_spec: FontSpec = FontSpec(),
+    spec: FontSpec, bold: bool = False, italic: bool = False,
     resolved_medium_font: Optional[Descriptor] = None, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     if not spec.is_system:
-        return get_fine_grained_font(spec, bold, italic, medium_font_spec, resolved_medium_font,
+        return get_fine_grained_font(spec, bold, italic, resolved_medium_font,
                                      match_is_more_specific_than_family=match_is_more_specific_than_family)
-    family = spec.system
+    family = spec.system or ''
     if family == 'auto':
         if bold or italic:
             assert resolved_medium_font is not None
@@ -288,7 +288,7 @@ def get_font_files(opts: Options) -> FontFiles:
     kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
     for (bold, italic), attr in attr_map.items():
         if bold or italic:
-            font = get_font_from_spec(getattr(opts, attr), bold, italic, medium_font_spec=opts.font_family, resolved_medium_font=medium_font)
+            font = get_font_from_spec(getattr(opts, attr), bold, italic, resolved_medium_font=medium_font)
         else:
             font = medium_font
         key = kd[(bold, italic)]
@@ -382,21 +382,19 @@ def get_axis_map(face_or_descriptor: Union[Face, Descriptor]) -> Dict[str, float
     return base_axis_map
 
 
-def spec_for_descriptor(descriptor: Descriptor) -> str:
-    from shlex import quote as q
-    if is_variable(descriptor):
-        vd = get_variable_data_for_descriptor(descriptor)
-        spec = f'family={q(descriptor["family"])}'
-        if vd['variations_postscript_name_prefix']:
-            spec += f' variable_name={q(vd["variations_postscript_name_prefix"])}'
-        ns = get_named_style(descriptor)
-        if ns is None:
-            for key, val in get_axis_map(descriptor).items():
-                spec += f' {key}={val:g}'
-        else:
-            spec = f'{spec} style={q(ns["psname"])}'
-        return spec
-    return descriptor['postscript_name']
+def spec_for_face(family: str, face: Face) -> FontSpec:
+    v = face.get_variation()
+    if v is None:
+        return FontSpec(family=family, postscript_name=face.postscript_name())
+    vd = face.get_variable_data()
+    varname = vd['variations_postscript_name_prefix']
+    ns = get_named_style(face)
+    if ns is None:
+        axes = []
+        for key, val in get_axis_map(face).items():
+            axes.append((key, val))
+        return FontSpec(family=family, variable_name=varname, axes=tuple(axes))
+    return FontSpec(family=family, variable_name=varname, style=ns['psname'] or ns['name'])
 
 
 if __name__ == '__main__':
