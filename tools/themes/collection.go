@@ -28,9 +28,6 @@ import (
 	"kitty/tools/tui/subseq"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
-
-	"github.com/shirou/gopsutil/v3/process"
-	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -580,76 +577,6 @@ func (self *Theme) Code() (string, error) {
 	return self.load_code()
 }
 
-func patch_conf(text, theme_name string) string {
-	addition := fmt.Sprintf("# BEGIN_KITTY_THEME\n# %s\ninclude current-theme.conf\n# END_KITTY_THEME", theme_name)
-	pat := utils.MustCompile(`(?ms)^# BEGIN_KITTY_THEME.+?# END_KITTY_THEME`)
-	replaced := false
-	ntext := pat.ReplaceAllStringFunc(text, func(string) string {
-		replaced = true
-		return addition
-	})
-	if !replaced {
-		if text != "" {
-			text += "\n\n"
-		}
-		ntext = text + addition
-	}
-	pat = utils.MustCompile(fmt.Sprintf(`(?m)^\s*(%s)\b`, strings.Join(utils.Keys(AllColorSettingNames), "|")))
-	return pat.ReplaceAllString(ntext, `# $1`)
-}
-func is_kitty_gui_cmdline(cmd ...string) bool {
-	if len(cmd) == 0 {
-		return false
-	}
-	if filepath.Base(cmd[0]) != "kitty" {
-		return false
-	}
-	if len(cmd) == 1 {
-		return true
-	}
-	s := cmd[1][:1]
-	switch s {
-	case `@`:
-		return false
-	case `+`:
-		if cmd[1] == `+` {
-			return len(cmd) > 2 && cmd[2] == `open`
-		}
-		return cmd[1] == `+open`
-	}
-	return true
-}
-
-type ReloadDestination string
-
-const (
-	RELOAD_IN_PARENT ReloadDestination = "parent"
-	RELOAD_IN_ALL    ReloadDestination = "all"
-)
-
-func reload_config(reload_in ReloadDestination) bool {
-	switch reload_in {
-	case RELOAD_IN_PARENT:
-		if pid, err := strconv.Atoi(os.Getenv("KITTY_PID")); err == nil {
-			if p, err := process.NewProcess(int32(pid)); err == nil {
-				if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(c...) {
-					return p.SendSignal(unix.SIGUSR1) == nil
-				}
-			}
-		}
-	case RELOAD_IN_ALL:
-		if all, err := process.Processes(); err == nil {
-			for _, p := range all {
-				if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(c...) {
-					_ = p.SendSignal(unix.SIGUSR1)
-				}
-			}
-			return true
-		}
-	}
-	return false
-}
-
 func (self *Theme) SaveInDir(dirpath string) (err error) {
 	path := filepath.Join(dirpath, self.Name()+".conf")
 	code, err := self.Code()
@@ -674,22 +601,18 @@ func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (e
 	if !filepath.IsAbs(config_file_name) {
 		confpath = filepath.Join(config_dir, config_file_name)
 	}
-	if q, err := filepath.EvalSymlinks(confpath); err == nil {
-		confpath = q
+	patcher := config.Patcher{Write_backup: true}
+	if _, err = patcher.Patch(
+		confpath, "KITTY_THEME", fmt.Sprintf("# %s\ninclude current-theme.conf", self.metadata.Name),
+		utils.Keys(AllColorSettingNames)...); err != nil {
+		return
 	}
-	raw, err := os.ReadFile(confpath)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
+	switch reload_in {
+	case "parent":
+		config.ReloadConfigInKitty(true)
+	case "all":
+		config.ReloadConfigInKitty(false)
 	}
-	nraw := patch_conf(utils.UnsafeBytesToString(raw), self.metadata.Name)
-	if len(raw) > 0 {
-		_ = os.WriteFile(confpath+".bak", raw, 0o600)
-	}
-	err = utils.AtomicUpdateFile(confpath, utils.UnsafeStringToBytes(nraw), 0o600)
-	if err != nil {
-		return err
-	}
-	reload_config(ReloadDestination(reload_in))
 	return
 }
 
