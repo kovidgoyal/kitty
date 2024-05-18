@@ -2,6 +2,7 @@ package choose_fonts
 
 import (
 	"fmt"
+	"os"
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
@@ -10,6 +11,7 @@ import (
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
+var output_on_exit string
 
 func main() (rc int, err error) {
 	if err = kitty_font_backend.start(); err != nil {
@@ -58,6 +60,9 @@ func main() (rc int, err error) {
 		fmt.Println("Killed by signal: ", ds)
 		lp.KillIfSignalled()
 		return 1, nil
+	}
+	if output_on_exit != "" {
+		os.Stdout.WriteString(output_on_exit)
 	}
 	return lp.ExitCode(), nil
 }

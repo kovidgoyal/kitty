@@ -29,6 +29,8 @@ type faces struct {
 	preview_cache_mutex sync.Mutex
 }
 
+const highlight_key_style = "fg=magenta bold"
+
 func (self *faces) draw_screen() (err error) {
 	lp := self.handler.lp
 	lp.SetCursorVisible(false)
@@ -36,7 +38,7 @@ func (self *faces) draw_screen() (err error) {
 	styled := lp.SprintStyled
 	lp.QueueWriteString(self.handler.format_title(self.family, 0))
 	lines := []string{
-		fmt.Sprintf("Press %s to select this font, %s to go back to the font list or any of the %s keys below to fine-tune the appearance of the individual font styles.", styled("fg=green", "Enter"), styled("fg=red", "Esc"), styled("fg=magenta bold", "highlighted")), "",
+		fmt.Sprintf("Press %s to select this font, %s to go back to the font list or any of the %s keys below to fine-tune the appearance of the individual font styles.", styled("fg=green", "Enter"), styled("fg=red", "Esc"), styled(highlight_key_style, "highlighted")), "",
 	}
 	_, y, str := self.handler.render_lines.InRectangle(lines, 0, 2, int(sz.WidthCells), int(sz.HeightCells), &self.handler.mouse_state, self.on_click)
 
@@ -85,10 +87,10 @@ func (self *faces) draw_screen() (err error) {
 			y += num_lines + 1
 		}
 	}
-	d(`font_family`, styled("fg=magenta bold", "R")+`egular`)
-	d(`bold_font`, styled("fg=magenta bold", "B")+`old`)
-	d(`italic_font`, styled("fg=magenta bold", "I")+`talic`)
-	d(`bold_italic_font`, "B"+styled("fg=magenta bold", "o")+`ld-Italic`)
+	d(`font_family`, styled(highlight_key_style, "R")+`egular`)
+	d(`bold_font`, styled(highlight_key_style, "B")+`old`)
+	d(`italic_font`, styled(highlight_key_style, "I")+`talic`)
+	d(`bold_italic_font`, "B"+styled(highlight_key_style, "o")+`ld-Italic`)
 
 	return
 }
@@ -112,6 +114,10 @@ func (self *faces) on_key_event(event *loop.KeyEvent) (err error) {
 		event.Handled = true
 		self.handler.current_pane = &self.handler.listing
 		return self.handler.draw_screen()
+	}
+	if event.MatchesPressOrRepeat("enter") {
+		event.Handled = true
+		return self.handler.final_pane.on_enter(self.family, self.settings)
 	}
 	return
 }
