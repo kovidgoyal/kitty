@@ -22,9 +22,12 @@ from kitty.fonts.box_drawing import box_chars
 from kitty.fonts.common import FontSpec, all_fonts_map, face_from_descriptor, get_font_files, get_named_style, spec_for_face
 from kitty.fonts.render import coalesce_symbol_maps, render_string, setup_for_testing, shape_string
 from kitty.options.types import Options
-from kitty.options.utils import parse_font_spec
 
 from . import BaseTest
+
+
+def parse_font_spec(spec):
+    return FontSpec.from_setting(spec)
 
 
 class Selection(BaseTest):
@@ -116,11 +119,26 @@ class Selection(BaseTest):
             ff = get_font_files(opts)
 
             def t(x, **kw):
-                kw['family'] = 'Cascadia Code'
+                if 'spec' in kw:
+                    fs = FontSpec.from_setting('family="Cascadia Code" ' + kw['spec'])._replace(created_from_string='')
+                else:
+                    kw['family'] = 'Cascadia Code'
+                    fs = FontSpec(**kw)
                 face = face_from_descriptor(ff[x])
-                self.ae(FontSpec(**kw).as_setting, spec_for_face('Cascadia Code', face).as_setting)
+                self.ae(fs.as_setting, spec_for_face('Cascadia Code', face).as_setting)
+
             t('medium', variable_name='CascadiaCodeRoman', style='Regular')
             t('italic', variable_name='', style='Light Italic')
+
+            opts = Options()
+            opts.font_family = parse_font_spec('family="cascadia code" variable_name=CascadiaCodeRoman wght=455')
+            opts.italic_font = parse_font_spec('family="cascadia code" variable_name= wght=405')
+            opts.bold_font = parse_font_spec('family="cascadia code" variable_name=CascadiaCodeRoman wght=603')
+            ff = get_font_files(opts)
+            t('medium', spec='variable_name=CascadiaCodeRoman wght=455')
+            t('italic', spec='variable_name= wght=405')
+            t('bold', spec='variable_name=CascadiaCodeRoman wght=603')
+            t('bi', spec='variable_name= wght=603')
 
 
 class Rendering(BaseTest):
