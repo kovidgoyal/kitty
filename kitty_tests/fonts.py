@@ -99,11 +99,15 @@ class Selection(BaseTest):
 
         if has('SourceCodeVF'):
             opts = Options()
-            opts.font_family = parse_font_spec('family="SourceCodeVF" variable_name="SourceCodeUpright" style="Black"')
+            opts.font_family = parse_font_spec('family="SourceCodeVF" variable_name="SourceCodeUpright" style="Bold"')
             ff = get_font_files(opts)
             face = face_from_descriptor(ff['medium'])
-            self.ae(get_named_style(face)['name'], 'Black')
+            self.ae(get_named_style(face)['name'], 'Bold')
             face = face_from_descriptor(ff['italic'])
+            self.ae(get_named_style(face)['name'], 'Bold Italic')
+            face = face_from_descriptor(ff['bold'])
+            self.ae(get_named_style(face)['name'], 'Black')
+            face = face_from_descriptor(ff['bi'])
             self.ae(get_named_style(face)['name'], 'Black Italic')
         if has('cascadia code'):
             opts = Options()

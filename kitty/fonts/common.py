@@ -163,6 +163,18 @@ def find_medium_variant(font: DescriptorVar) -> DescriptorVar:
     return font
 
 
+def get_bold_design_weight(dax: DesignAxis, ax: VariableAxis, regular_weight: float) -> float:
+    ans = regular_weight
+    candidates = []
+    for x in dax['values']:
+        if x['format'] in (1, 2):
+            if x['value'] > regular_weight:
+                candidates.append(x['value'])
+    if candidates:
+        ans = min(candidates)
+    return ans
+
+
 def get_design_value_for(dax: DesignAxis, ax: VariableAxis, bold: bool, italic: bool, family_axis_values: FamilyAxisValues) -> float:
     family_val = family_axis_values.get(ax['tag'], bold, italic)
     if family_val is not None and ax['minimum'] <= family_val <= ax['maximum']:
@@ -174,11 +186,21 @@ def get_design_value_for(dax: DesignAxis, ax: VariableAxis, bold: bool, italic: 
         keys = ('italic', 'oblique', 'slanted', 'slant') if italic else ('regular', 'normal', 'medium', 'upright')
     else:
         return default
+    priorities = {}
     for x in dax['values']:
         if x['format'] in (1, 2):
-            if x['name'].lower() in keys:
-                return x['value']
-    return default
+            q = x['name'].lower()
+            try:
+                idx = keys.index(q)
+            except ValueError:
+                continue
+            priorities[x['value']] = idx
+    ans = default
+    if priorities:
+        ans = sorted(priorities, key=priorities.__getitem__)[0]
+    if bold and ax['tag'] == 'wght' and family_axis_values.regular_weight is not None and ans <= family_axis_values.regular_weight:
+        ans = get_bold_design_weight(dax, ax, family_axis_values.regular_weight)
+    return ans
 
 
 def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool, family_axis_values: FamilyAxisValues) -> Descriptor:
