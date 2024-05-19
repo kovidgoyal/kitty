@@ -4,7 +4,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
 
 from kitty.constants import is_macos
-from kitty.fonts import Descriptor, DescriptorVar, DesignAxis, FontSpec, NamedStyle, Scorer, VariableData, family_name_to_key
+from kitty.fonts import Descriptor, DescriptorVar, DesignAxis, FontSpec, NamedStyle, Scorer, VariableAxis, VariableData, family_name_to_key
 from kitty.options.types import Options
 
 if TYPE_CHECKING:
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     def is_variable(descriptor: Descriptor) -> bool: ...
     def set_named_style(name: str, font: Descriptor, vd: VariableData) -> bool: ...
     def set_axis_values(tag_map: Dict[str, float], font: Descriptor, vd: VariableData) -> bool: ...
+    def get_axis_values(font: Descriptor, vd: VariableData) -> Dict[str, float]: ...
 else:
     FontCollectionMapType = FontMap = None
     if is_macos:
@@ -35,6 +36,7 @@ else:
             create_scorer,
             find_best_match,
             find_last_resort_text_font,
+            get_axis_values,
             is_monospace,
             is_variable,
             set_axis_values,
@@ -47,6 +49,7 @@ else:
             create_scorer,
             find_best_match,
             find_last_resort_text_font,
+            get_axis_values,
             is_monospace,
             is_variable,
             set_axis_values,
@@ -61,6 +64,47 @@ attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, T
 
 class Event:
     is_set: bool = False
+
+
+class FamilyAxisValues:
+    regular_weight: Optional[float] = None
+    regular_slant: Optional[float] = None
+    regular_ital: Optional[float] = None
+    regular_width: Optional[float] = None
+
+    bold_weight: Optional[float] = None
+
+    italic_slant: Optional[float] = None
+    italic_ital: Optional[float] = None
+
+    def get_wght(self, bold: bool, italic: bool) -> Optional[float]:
+        return self.bold_weight if bold else self.regular_weight
+
+    def get_ital(self, bold: bool, italic: bool) -> Optional[float]:
+        return self.italic_ital if italic else self.regular_ital
+
+    def get_slnt(self, bold: bool, italic: bool) -> Optional[float]:
+        return self.italic_slant if italic else self.regular_slant
+
+    def get_wdth(self, bold: bool, italic: bool) -> Optional[float]:
+        return self.regular_width
+
+    def get(self, tag: str, bold: bool, italic: bool) -> Optional[float]:
+        f = getattr(self, f'get_{tag}', None)
+        return None if f is None else f(bold, italic)
+
+    def set_regular_values(self, axis_values: Dict[str, float]) -> None:
+        self.regular_weight = axis_values.get('wght')
+        self.regular_width = axis_values.get('wdth')
+        self.regular_ital = axis_values.get('ital')
+        self.regular_slant = axis_values.get('slnt')
+
+    def set_bold_values(self, axis_values: Dict[str, float]) -> None:
+        self.bold_weight = axis_values.get('wght')
+
+    def set_italic_values(self, axis_values: Dict[str, float]) -> None:
+        self.italic_ital = axis_values.get('ital')
+        self.italic_slant = axis_values.get('slnt')
 
 
 def get_variable_data_for_descriptor(d: Descriptor) -> VariableData:
@@ -119,7 +163,11 @@ def find_medium_variant(font: DescriptorVar) -> DescriptorVar:
     return font
 
 
-def get_design_value_for(dax: DesignAxis, default: float, bold: bool, italic: bool) -> float:
+def get_design_value_for(dax: DesignAxis, ax: VariableAxis, bold: bool, italic: bool, family_axis_values: FamilyAxisValues) -> float:
+    family_val = family_axis_values.get(ax['tag'], bold, italic)
+    if family_val is not None and ax['minimum'] <= family_val <= ax['maximum']:
+        return family_val
+    default = ax['default']
     if dax['tag'] == 'wght':
         keys = ('semibold', 'bold', 'heavy', 'black') if bold else ('regular', 'medium')
     elif dax['tag'] in ('ital', 'slnt'):
@@ -133,7 +181,7 @@ def get_design_value_for(dax: DesignAxis, default: float, bold: bool, italic: bo
     return default
 
 
-def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool) -> Descriptor:
+def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool, family_axis_values: FamilyAxisValues) -> Descriptor:
     # we first pick the best font file for bold/italic if there are more than
     # one. For example SourceCodeVF has Italic and Upright faces with variable
     # weights in each, so we rely on the OS font matcher to give us the best
@@ -149,7 +197,7 @@ def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool) -> De
         tag = ax['tag']
         for dax in vd['design_axes']:
             if dax['tag'] == tag:
-                axis_values[tag] = get_design_value_for(dax, ax['default'], bold, italic)
+                axis_values[tag] = get_design_value_for(dax, ax, bold, italic, family_axis_values)
                 break
     if axis_values:
         set_axis_values(axis_values, ans, vd)
@@ -177,7 +225,7 @@ def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced
 
 
 def get_fine_grained_font(
-    spec: FontSpec, bold: bool = False, italic: bool = False,
+    spec: FontSpec, bold: bool = False, italic: bool = False, family_axis_values: FamilyAxisValues = FamilyAxisValues(),
     resolved_medium_font: Optional[Descriptor] = None, monospaced: bool = True, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     font_map = all_fonts_map(monospaced)
@@ -203,7 +251,7 @@ def get_fine_grained_font(
             if applied:
                 match_is_more_specific_than_family.is_set = True
                 return q
-            return find_medium_variant(q) if resolved_medium_font is None else find_bold_italic_variant(resolved_medium_font, bold, italic)
+            return find_medium_variant(q) if resolved_medium_font is None else find_bold_italic_variant(resolved_medium_font, bold, italic, family_axis_values)
         # Now look for any font
         candidates = font_map['family_map'].get(key, [])
         if candidates:
@@ -241,11 +289,11 @@ def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> Tuple[Descrip
 
 
 def get_font_from_spec(
-    spec: FontSpec, bold: bool = False, italic: bool = False,
+    spec: FontSpec, bold: bool = False, italic: bool = False, family_axis_values: FamilyAxisValues = FamilyAxisValues(),
     resolved_medium_font: Optional[Descriptor] = None, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     if not spec.is_system:
-        return get_fine_grained_font(spec, bold, italic, resolved_medium_font,
+        return get_fine_grained_font(spec, bold, italic, resolved_medium_font=resolved_medium_font, family_axis_values=family_axis_values,
                                      match_is_more_specific_than_family=match_is_more_specific_than_family)
     family = spec.system or ''
     if family == 'auto':
@@ -253,7 +301,7 @@ def get_font_from_spec(
             assert resolved_medium_font is not None
             family = resolved_medium_font['family']
             if is_variable(resolved_medium_font) or is_actually_variable_despite_fontconfigs_lies(resolved_medium_font):
-                v = find_bold_italic_variant(resolved_medium_font, bold, italic)
+                v = find_bold_italic_variant(resolved_medium_font, bold, italic, family_axis_values=family_axis_values)
                 if v is not None:
                     return v
         else:
@@ -268,13 +316,22 @@ class FontFiles(TypedDict):
     bi: Descriptor
 
 
+actually_variable_cache: Dict[str, bool] = {}
+
+
 def is_actually_variable_despite_fontconfigs_lies(d: Descriptor) -> bool:
     if d['descriptor_type'] != 'fontconfig':
         return False
+    path = d['path']
+    ans = actually_variable_cache.get(path)
+    if ans is not None:
+        return ans
     m = all_fonts_map(is_monospace(d))['variable_map']
     for x in m.get(family_name_to_key(d['family']), ()):
-        if x['path'] == d['path']:
+        if x['path'] == path:
+            actually_variable_cache[path] = True
             return True
+    actually_variable_cache[path] = False
     return False
 
 
@@ -282,37 +339,24 @@ def get_font_files(opts: Options) -> FontFiles:
     ans: Dict[str, Descriptor] = {}
     match_is_more_specific_than_family = Event()
     medium_font = get_font_from_spec(opts.font_family, match_is_more_specific_than_family=match_is_more_specific_than_family)
-    if not match_is_more_specific_than_family.is_set and (
-            is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font)):
+    medium_font_is_variable = is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font)
+    if not match_is_more_specific_than_family.is_set and medium_font_is_variable:
         medium_font = find_medium_variant(medium_font)
+    family_axis_values = FamilyAxisValues()
+    if medium_font_is_variable:
+        family_axis_values.set_regular_values(get_axis_values(medium_font, get_variable_data_for_descriptor(medium_font)))
     kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
     for (bold, italic), attr in attr_map.items():
         if bold or italic:
-            font = get_font_from_spec(getattr(opts, attr), bold, italic, resolved_medium_font=medium_font)
+            font = get_font_from_spec(getattr(opts, attr), bold, italic, resolved_medium_font=medium_font, family_axis_values=family_axis_values)
+            if not (bold and italic) and (is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font)):
+                av = get_axis_values(font, get_variable_data_for_descriptor(font))
+                (family_axis_values.set_italic_values if italic else family_axis_values.set_bold_values)(av)
         else:
             font = medium_font
         key = kd[(bold, italic)]
         ans[key] = font
     return {'medium': ans['medium'], 'bold': ans['bold'], 'italic': ans['italic'], 'bi': ans['bi']}
-
-
-def develop(family: str = '') -> None:
-    import sys
-    family = family or sys.argv[-1]
-    from kitty.options.utils import parse_font_spec
-    opts = Options()
-    opts.font_family = parse_font_spec(family)
-    ff = get_font_files(opts)
-    def s(d: Descriptor) -> str:
-        return str(face_from_descriptor(d))
-
-    print('Medium     :', s(ff['medium']))
-    print()
-    print('Bold       :', s(ff['bold']))
-    print()
-    print('Italic     :', s(ff['italic']))
-    print()
-    print('Bold-Italic:', s(ff['bi']))
 
 
 def axis_values_are_equal(defaults: Dict[str, float], a: Dict[str, float], b: Dict[str, float]) -> bool:
@@ -395,6 +439,25 @@ def spec_for_face(family: str, face: Face) -> FontSpec:
             axes.append((key, val))
         return FontSpec(family=family, variable_name=varname, axes=tuple(axes))
     return FontSpec(family=family, variable_name=varname, style=ns['psname'] or ns['name'])
+
+
+def develop(family: str = '') -> None:
+    import sys
+    family = family or sys.argv[-1]
+    from kitty.options.utils import parse_font_spec
+    opts = Options()
+    opts.font_family = parse_font_spec(family)
+    ff = get_font_files(opts)
+    def s(d: Descriptor) -> str:
+        return str(face_from_descriptor(d))
+
+    print('Medium     :', s(ff['medium']))
+    print()
+    print('Bold       :', s(ff['bold']))
+    print()
+    print('Italic     :', s(ff['italic']))
+    print()
+    print('Bold-Italic:', s(ff['bi']))
 
 
 if __name__ == '__main__':

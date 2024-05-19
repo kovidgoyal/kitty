@@ -271,3 +271,21 @@ def set_axis_values(tag_map: Dict[str, float], font: FontConfigPattern, vd: Vari
         font['axes'] = tuple(axes)
         lift_axes_to_named_style_if_possible(font, vd)
     return changed
+
+
+def get_axis_values(font: FontConfigPattern, vd: VariableData) -> Dict[str, float]:
+    ans: Dict[str, float] = {}
+    ns = font.get('named_style')
+    if ns is not None:
+        if ns > -1 and ns < len(vd['named_styles']):
+            ans = vd['named_styles'][ns]['axis_values']
+
+    axis_values = font.get('axes', ())
+    for i, ax in enumerate(vd['axes']):
+        tag = ax['tag']
+        if i < len(axis_values):
+            ans[tag] = axis_values[i]
+        else:
+            if tag not in ans:
+                ans[tag] = ax['default']
+    return ans
