@@ -215,12 +215,12 @@ def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool, famil
     ans = fonts[0].copy()
     # now we need to specialise all axes in ans
     axis_values = {}
-    for i, ax in enumerate(vd['axes']):
+    dax_map = {dax['tag']: dax for dax in vd['design_axes']}
+    for ax in vd['axes']:
         tag = ax['tag']
-        for dax in vd['design_axes']:
-            if dax['tag'] == tag:
-                axis_values[tag] = get_design_value_for(dax, ax, bold, italic, family_axis_values)
-                break
+        dax = dax_map.get(tag)
+        if dax is not None:
+            axis_values[tag] = get_design_value_for(dax, ax, bold, italic, family_axis_values)
     if axis_values:
         set_axis_values(axis_values, ans, vd)
     return ans
