@@ -96,6 +96,8 @@ Detailed list of changes
 
 - launch --hold: Fix hold not working if kernel signals process group with SIGINT (:iss:`7466`)
 
+- macOS: Fix --start-as=fullscreen not working when another window is already fullscreen (:iss:`7448`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

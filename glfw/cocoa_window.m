@@ -2647,6 +2647,20 @@ bool _glfwPlatformIsFullscreen(_GLFWwindow* w, unsigned int flags) {
     return sm & NSWindowStyleMaskFullScreen;
 }
 
+static void
+make_window_fullscreen_after_show(unsigned long long timer_id, void* data) {
+    (void)timer_id;
+    unsigned long long window_id = (uintptr_t)data;
+    for (_GLFWwindow *w = _glfw.windowListHead;  w;  w = w->next) {
+        if (w->id == window_id) {
+            NSWindow *window = w->ns.object;
+            [window toggleFullScreen: nil];
+            update_titlebar_button_visibility_after_fullscreen_transition(w, false, true);
+            break;
+        }
+    }
+}
+
 bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool made_fullscreen = true;
@@ -2688,6 +2702,13 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
         [w->ns.delegate performSelector:@selector(windowDidResize:) withObject:notification afterDelay:0];
     } else {
         bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
+        if (!in_fullscreen && !_glfwPlatformWindowVisible(w)) {
+            // Bug in Apple's fullscreen implementation causes fullscreen to
+            // not work before window is shown (at creation) if another window
+            // is already fullscreen. Le sigh. https://github.com/kovidgoyal/kitty/issues/7448
+            _glfwPlatformAddTimer(0, false, make_window_fullscreen_after_show, (void*)(uintptr_t)(w->id), NULL);
+            return made_fullscreen;
+        }
         if (in_fullscreen) made_fullscreen = false;
         [window toggleFullScreen: nil];
     }
