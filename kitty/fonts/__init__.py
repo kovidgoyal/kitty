@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Dict, List, Literal, NamedTuple, Optional, Seq
 
 from kitty.types import run_once
 from kitty.typing import CoreTextFont, FontConfigPattern
+from kitty.utils import shlex_split
 
 if TYPE_CHECKING:
     import re
@@ -144,6 +145,29 @@ class FontSpec(NamedTuple):
     axes: Tuple[Tuple[str, float], ...] = ()
     variable_name: Optional[str] = None
     created_from_string: str = ''
+
+    @classmethod
+    def from_setting(cls, spec: str) -> 'FontSpec':
+        if spec == 'auto':
+            return FontSpec(system='auto', created_from_string=spec)
+        items = tuple(shlex_split(spec))
+        if '=' not in items[0]:
+            return FontSpec(system=spec, created_from_string=spec)
+        axes = {}
+        defined = {}
+        for item in items:
+            k, sep, v = item.partition('=')
+            if sep != '=':
+                raise ValueError(f'The font specification: {spec} is not valid as {item} does not contain an =')
+            if k in ('family', 'style', 'full_name', 'postscript_name', 'variable_name'):
+                defined[k] = v
+            else:
+                try:
+                    axes[k] = float(v)
+                except Exception:
+                    raise ValueError(f'The font specification: {spec} is not valid as {v} is not a number')
+        return FontSpec(axes=tuple(axes.items()), created_from_string=spec, **defined)
+
 
     @property
     def is_system(self) -> bool:
