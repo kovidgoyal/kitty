@@ -249,3 +249,7 @@ def set_named_style(name: str, font: CoreTextFont, vd: VariableData) -> bool:
         if ns['name'].lower() == q:
             return set_axis_values(ns['axis_values'], font, vd)
     return False
+
+
+def get_axis_values(font: CoreTextFont, vd: VariableData) -> Dict[str, float]:
+    return font.get('axis_map', {})

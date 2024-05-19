@@ -95,12 +95,16 @@ class Selection(BaseTest):
         if has('operator mono', allow_missing_in_ci=True):
             both('operator mono', 'OperatorMono-Medium', 'OperatorMono-Bold', 'OperatorMono-MediumItalic', 'OperatorMono-BoldItalic')
 
+        # Test variable font selection
+
         if has('SourceCodeVF'):
             opts = Options()
             opts.font_family = parse_font_spec('family="SourceCodeVF" variable_name="SourceCodeUpright" style="Black"')
-            d = get_font_files(opts)['medium']
-            face = face_from_descriptor(d)
+            ff = get_font_files(opts)
+            face = face_from_descriptor(ff['medium'])
             self.ae(get_named_style(face)['name'], 'Black')
+            face = face_from_descriptor(ff['italic'])
+            self.ae(get_named_style(face)['name'], 'Black Italic')
         if has('cascadia code'):
             opts = Options()
             opts.font_family = parse_font_spec('family="cascadia code"')
