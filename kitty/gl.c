@@ -71,7 +71,7 @@ gl_init(void) {
         int gl_minor = GLAD_VERSION_MINOR(global_state.gl_version);
         if (global_state.debug_rendering) printf("[%.3f] GL version string: %s\n", monotonic_t_to_s_double(monotonic()), gl_version_string());
         if (gl_major < OPENGL_REQUIRED_VERSION_MAJOR || (gl_major == OPENGL_REQUIRED_VERSION_MAJOR && gl_minor < OPENGL_REQUIRED_VERSION_MINOR)) {
-            fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", gl_major, gl_minor);
+            fatal("OpenGL version is %d.%d, version >= %d.%d required for kitty", gl_major, gl_minor, OPENGL_REQUIRED_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MINOR);
         }
     }
 }
