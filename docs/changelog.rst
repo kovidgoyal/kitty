@@ -90,6 +90,8 @@ Detailed list of changes
 
 - Remote control: @ action: Fix some actions being performed on the active window instead of the matched window (:iss:`7438`)
 
+- Scrolling with mouse wheel when a selection is active should update the selection (:iss:`7453`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -961,7 +961,10 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
                     }
                 }
             } else {
-                if (screen->linebuf == screen->main_linebuf) screen_history_scroll(screen, abs(s), upwards);
+                if (screen->linebuf == screen->main_linebuf) {
+                    screen_history_scroll(screen, abs(s), upwards);
+                    if (screen->selections.in_progress) update_drag(w);
+                }
                 else fake_scroll(w, abs(s), upwards);
             }
         }
