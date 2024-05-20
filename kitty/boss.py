@@ -1378,17 +1378,29 @@ class Boss:
         t = self.active_tab
         return None if t is None else t.active_window
 
+    def refresh_active_tab_bar(self) -> bool:
+        tm = self.active_tab_manager
+        if tm:
+            tm.update_tab_bar_data()
+            tm.mark_tab_bar_dirty()
+            return True
+        return False
+
     @ac('misc', '''
     End the current keyboard mode switching to the previous mode.
     ''')
     def pop_keyboard_mode(self) -> bool:
-        return self.mappings.pop_keyboard_mode()
+        try:
+            return self.mappings.pop_keyboard_mode()
+        finally:
+            self.refresh_active_tab_bar()
 
     @ac('misc', '''
     Switch to the specified keyboard mode, pushing it onto the stack of keyboard modes.
     ''')
     def push_keyboard_mode(self, new_mode: str) -> None:
         self.mappings.push_keyboard_mode(new_mode)
+        self.refresh_active_tab_bar()
 
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
         return self.mappings.dispatch_possible_special_key(ev)
@@ -1441,6 +1453,7 @@ class Boss:
             self.mappings._push_keyboard_mode(km)
             redirect_mouse_handling(True)
             self.mouse_handler = self.visual_window_select_mouse_handler
+            self.refresh_active_tab_bar()
         else:
             self.visual_window_select_action_trigger(self.current_visual_select.window_ids[0] if self.current_visual_select.window_ids else 0)
             if get_options().enable_audio_bell:
@@ -1456,6 +1469,7 @@ class Boss:
         def trigger(window_id: int = 0) -> None:
             self.visual_window_select_action_trigger(window_id)
             self.mappings.pop_keyboard_mode_if_is('__visual_select__')
+            self.refresh_active_tab_bar()
 
         if ev.button == GLFW_MOUSE_BUTTON_LEFT and ev.action == GLFW_PRESS and ev.window_id:
             w = self.window_id_map.get(ev.window_id)
