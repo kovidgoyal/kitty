@@ -91,8 +91,8 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 
 #define REPORT_DRAW(chars, num) { \
     for (unsigned i = 0; i < (num); i++) { \
-        uint32_t ch = (chars)[i]; \
-        switch(ch) { \
+        uint32_t rd_ch = (chars)[i]; \
+        switch(rd_ch) { \
             case BEL: REPORT_COMMAND(screen_bell); break; \
             case BS: REPORT_COMMAND(screen_backspace); break; \
             case HT: REPORT_COMMAND(screen_tab); break; \
@@ -101,8 +101,8 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
             case LF: case VT: case FF: REPORT_COMMAND(screen_linefeed); break; \
             case CR: REPORT_COMMAND(screen_carriage_return); break; \
             default: \
-                if (ch >= ' ') { \
-                    RAII_PyObject(t, PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", ch)); \
+                if (rd_ch >= ' ') { \
+                    RAII_PyObject(t, PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", rd_ch)); \
                     if (t == NULL) PyErr_Clear(); \
                 } \
         } \
