@@ -283,7 +283,7 @@ string_capabilities = {
     'Cr': r'\E]112\007',
     # Indicates support for styled and colored underlines (non-standard) as
     # described at: https://sw.kovidgoyal.net/kitty/underlines/
-    # 'Setulc' is quivalent to the 'Su' boolean capability. Until
+    # 'Setulc' is equivalent to the 'Su' boolean capability. Until
     # standardized, specify both for application compatibility.
     'Setulc': r'\E[58:2:%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%d%;m',
 
