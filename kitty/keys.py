@@ -2,7 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from gettext import gettext as _
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Iterator, List, Optional
 
 from .constants import is_macos
 from .fast_data_types import (
@@ -63,9 +63,10 @@ class Mappings:
 
     ' Manage all keyboard mappings '
 
-    def __init__(self, global_shortcuts:Optional[Dict[str, SingleKey]] = None) -> None:
+    def __init__(self, global_shortcuts:Optional[Dict[str, SingleKey]] = None, callback_on_mode_change: Callable[[], Any] = lambda: None) -> None:
         self.keyboard_mode_stack: List[KeyboardMode] = []
         self.update_keymap(global_shortcuts)
+        self.callback_on_mode_change = callback_on_mode_change
 
     @property
     def current_keyboard_mode_name(self) -> str:
@@ -83,8 +84,11 @@ class Mappings:
             km.pop(sc, None)
 
     def clear_keyboard_modes(self) -> None:
+        had_mode = bool(self.keyboard_mode_stack)
         self.keyboard_mode_stack = []
         self.set_ignore_os_keyboard_processing(False)
+        if had_mode:
+            self.callback_on_mode_change()
 
     def pop_keyboard_mode(self) -> bool:
         passthrough = True
@@ -93,6 +97,7 @@ class Mappings:
             if not self.keyboard_mode_stack:
                 self.set_ignore_os_keyboard_processing(False)
             passthrough = False
+            self.callback_on_mode_change()
         return passthrough
 
     def pop_keyboard_mode_if_is(self, name: str) -> bool:
@@ -103,6 +108,7 @@ class Mappings:
     def _push_keyboard_mode(self, mode: KeyboardMode) -> None:
         self.keyboard_mode_stack.append(mode)
         self.set_ignore_os_keyboard_processing(True)
+        self.callback_on_mode_change()
 
     def push_keyboard_mode(self, new_mode: str) -> None:
         mode = self.keyboard_modes[new_mode]
@@ -204,6 +210,7 @@ class Mappings:
                 if consumed and not is_root_mode and mode.on_action == 'end':
                     if mode_pos < len(self.keyboard_mode_stack) and self.keyboard_mode_stack[mode_pos] is mode:
                         del self.keyboard_mode_stack[mode_pos]
+                        self.callback_on_mode_change()
                         if not self.keyboard_mode_stack:
                             self.set_ignore_os_keyboard_processing(False)
                 return consumed
