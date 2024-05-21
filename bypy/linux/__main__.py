@@ -28,8 +28,8 @@ kitty_constants = iv['kitty_constants']
 
 def binary_includes():
     return tuple(map(get_dll_path, (
-            'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'crypt',
-            'iconv', 'pcre', 'graphite2', 'glib-2.0', 'freetype', 'xxhash',
+            'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'ssl', 'crypto', 'crypt',
+            'iconv', 'pcre2-8', 'graphite2', 'glib-2.0', 'freetype', 'xxhash',
             'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
             # fontconfig is not bundled because in typical brain dead Linux
             # distro fashion, different distros use different default config
@@ -37,7 +37,7 @@ def binary_includes():
             'ncursesw', 'readline', 'brotlicommon', 'brotlienc', 'brotlidec',
             'wayland-client', 'wayland-cursor',
         ))) + (
-                get_dll_path('bz2', 2), get_dll_path('ssl', 2), get_dll_path('crypto', 2),
+                get_dll_path('bz2', 2),
                 get_dll_path(f'python{py_ver}', 2),
         )
 

@@ -2,8 +2,8 @@
     {
         "name": "zlib",
         "unix": {
-            "filename": "zlib-1.2.13.tar.xz",
-            "hash": "sha256:d14c38e313afc35a9a8760dadf26042f51ea0f5d154b0630a31da0540107fb98",
+            "filename": "zlib-1.3.1.tar.xz",
+            "hash": "sha256:38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
             "urls": ["https://zlib.net/{filename}"]
         }
     },
@@ -31,8 +31,8 @@
     {
         "name": "openssl",
         "unix": {
-            "filename": "openssl-1.1.1i.tar.gz",
-            "hash": "sha256:e8be6a35fe41d10603c3cc635e93289ed00bf34b79671a3a4de64fcee00d5242",
+            "filename": "openssl-3.3.0.tar.gz",
+            "hash": "sha256:53e66b043322a606abf0087e7699a0e033a37fa13feb9742df35c3a33b18fb02",
             "urls": ["https://www.openssl.org/source/{filename}"]
         }
     },
@@ -41,28 +41,27 @@
         "name": "cmake",
         "os": "macos",
         "unix": {
-            "filename": "cmake-3.19.4.tar.gz",
-            "hash": "sha256:7d0232b9f1c57e8de81f38071ef8203e6820fe7eec8ae46a1df125d88dbcc2e1",
+            "filename": "cmake-3.29.3.tar.gz",
+            "hash": "sha256:252aee1448d49caa04954fd5e27d189dd51570557313e7b281636716a238bccb",
             "urls": ["https://cmake.org/files/v3.19/{filename}"]
         }
     },
 
-
     {
         "name": "expat",
         "unix": {
-            "filename": "expat-2.2.10.tar.bz2",
-            "hash": "sha256:b2c160f1b60e92da69de8e12333096aeb0c3bf692d41c60794de278af72135a5",
-            "urls": ["https://github.com/libexpat/libexpat/releases/download/R_2_2_10/{filename}"]
+            "filename": "expat-2.6.2.tar.xz",
+            "hash": "sha256:ee14b4c5d8908b1bec37ad937607eab183d4d9806a08adee472c3c3121d27364",
+            "urls": ["https://github.com/libexpat/libexpat/releases/download/R_2_6_2/{filename}"]
         }
     },
 
     {
         "name": "libxml2",
         "unix": {
-            "filename": "libxml2-2.9.12.tar.gz",
-            "hash": "sha256:c8d6681e38c56f172892c85ddc0852e1fd4b53b4209e7f4ebf17f7e2eae71d92",
-            "urls": ["ftp://xmlsoft.org/libxml2/{filename}"]
+            "filename": "libxml2-2.12.7.tar.xz",
+            "hash": "sha256:24ae78ff1363a973e6d8beba941a7945da2ac056e19b53956aeb6927fd6cfb56",
+            "urls": ["https://download.gnome.org/sources/libxml2/2.12/{filename}"]
         }
     },
 
@@ -70,8 +69,8 @@
         "name": "xkbcommon",
         "os": "linux",
         "unix": {
-            "filename": "libxkbcommon-1.0.3.tar.xz",
-            "hash": "sha256:a2202f851e072b84e64a395212cbd976ee18a8ee602008b0bad02a13247dbc52",
+            "filename": "libxkbcommon-1.7.0.tar.xz",
+            "hash": "sha256:65782f0a10a4b455af9c6baab7040e2f537520caa2ec2092805cdfd36863b247",
             "urls": ["https://xkbcommon.org/download/{filename}"]
         }
     },
@@ -79,20 +78,19 @@
     {
         "name": "sqlite",
         "unix": {
-            "filename": "sqlite-autoconf-3340100.tar.gz",
-            "hash": "sha256:2a3bca581117b3b88e5361d0ef3803ba6d8da604b1c1a47d902ef785c1b53e89",
-            "urls": ["https://www.sqlite.org/2021/{filename}"]
+            "filename": "sqlite-autoconf-3450300.tar.gz",
+            "hash": "sha256:b2809ca53124c19c60f42bf627736eae011afdcc205bb48270a5ee9a38191531",
+            "urls": ["https://www.sqlite.org/2024/{filename}"]
         }
     },
-
 
     {
         "name": "libffi",
         "os": "linux",
         "unix": {
-            "filename": "libffi-3.3.0.tar.gz",
-            "hash": "sha256:72fba7922703ddfa7a028d513ac15a85c8d54c8d67f55fa5a4802885dc652056",
-            "urls": ["https://github.com/libffi/libffi/releases/download/v3.3/libffi-3.3.tar.gz"]
+            "filename": "libffi-3.4.6.tar.gz",
+            "hash": "sha256:b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e",
+            "urls": ["https://github.com/libffi/libffi/releases/download/v3.4.6/{filename}"]
         }
     },
 
@@ -100,9 +98,9 @@
         "name": "ncurses",
         "os": "linux",
         "unix": {
-            "filename": "ncurses-6.2.tar.gz",
-            "hash": "sha256:30306e0c76e0f9f1f0de987cf1c82a5c21e1ce6568b9227f7da5b71cbea86c9d",
-            "urls": ["https://invisible-mirror.net/archives/ncurses/{filename}"]
+            "filename": "ncurses-6.5.tar.gz",
+            "hash": "sha256:136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6",
+            "urls": ["https://ftp.gnu.org/gnu/ncurses/{filename}"]
         }
     },
 
@@ -110,8 +108,8 @@
         "name": "readline",
         "os": "linux",
         "unix": {
-            "filename": "readline-8.1.tar.gz",
-            "hash": "sha256:f8ceb4ee131e3232226a17f51b164afc46cd0b9e6cef344be87c65962cb82b02",
+            "filename": "readline-8.2.tar.gz",
+            "hash": "sha256:3feb7171f16a84ee82ca18a36d7b9be109a52c04f492a053331d7d1095007c35",
             "urls": ["https://ftp.gnu.org/gnu/readline/{filename}"]
         }
     },
@@ -138,26 +136,26 @@
         "name": "xcrypt",
         "os": "linux",
         "unix": {
-            "filename": "xcrypt-4.4.17.tar.gz",
-            "hash": "sha256:7665168d0409574a03f7b484682e68334764c29c21ca5df438955a381384ca07",
-            "urls": ["https://github.com/besser82/libxcrypt/archive/v4.4.17.tar.gz"]
+            "filename": "xcrypt-4.4.36.tar.gz",
+            "hash": "sha256:b979838d5f1f238869d467484793b72b8bca64c4eae696fdbba0a9e0b6c28453",
+            "urls": ["https://github.com/besser82/libxcrypt/archive/v4.4.36.tar.gz"]
         }
     },
 
     {
         "name": "python",
         "unix": {
-            "filename": "Python-3.11.6.tar.xz",
-            "hash": "sha256:0fab78fa7f133f4f38210c6260d90d7c0d5c7198446419ce057ec7ac2e6f5f38",
-            "urls": ["https://www.python.org/ftp/python/3.11.6/{filename}"]
+            "filename": "Python-3.12.3.tar.xz",
+            "hash": "sha256:56bfef1fdfc1221ce6720e43a661e3eb41785dd914ce99698d8c7896af4bdaa1",
+            "urls": ["https://www.python.org/ftp/python/3.12.3/{filename}"]
         }
     },
 
     {
         "name": "libpng",
         "unix": {
-            "filename": "libpng-1.6.37.tar.xz",
-            "hash": "sha256:505e70834d35383537b6491e7ae8641f1a4bed1876dbfe361201fc80868d88ca",
+            "filename": "libpng-1.6.43.tar.xz",
+            "hash": "sha256:6a5ca0652392a2d7c9db2ae5b40210843c0bbc081cbd410825ab00cc59f14a6c",
             "urls": ["https://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
         }
     },
@@ -165,9 +163,9 @@
     {
         "name": "lcms2",
         "unix": {
-            "filename": "lcms2-2.12.tar.gz",
-            "hash": "sha256:e501f1482fc424550ef3abbf86bf1c66090e1661249e89552d39ed5bf935df66",
-            "urls": ["https://github.com/mm2/Little-CMS/archive/2.12/{filename}"]
+            "filename": "lcms2-2.16.tar.gz",
+            "hash": "sha256:d873d34ad8b9b4cea010631f1a6228d2087475e4dc5e763eb81acc23d9d45a51",
+            "urls": ["https://github.com/mm2/Little-CMS/archive/2.16/{filename}"]
         }
     },
 
@@ -185,9 +183,9 @@
         "name": "pcre",
         "os": "linux",
         "unix": {
-            "filename": "pcre-8.44.tar.bz2",
-            "hash": "sha256:19108658b23b3ec5058edc9f66ac545ea19f9537234be1ec62b714c84399366d",
-            "urls": ["https://ftp.pcre.org/pub/pcre/{filename}"]
+            "filename": "pcre2-10.43.tar.bz2",
+            "hash": "sha256:e2a53984ff0b07dfdb5ae4486bbb9b21cca8e7df2434096cc9bf1b728c350bcb",
+            "urls": ["https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.43/{filename}"]
         }
     },
 
@@ -195,9 +193,29 @@
         "name": "iconv",
         "os": "linux",
         "unix": {
-            "filename": "libiconv-1.16.tar.gz",
-            "hash": "sha256:e6a1b1b589654277ee790cce3734f07876ac4ccfaecbee8afa0b649cf529cc04",
+            "filename": "libiconv-1.17.tar.gz",
+            "hash": "sha256:8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313",
             "urls": ["https://ftp.gnu.org/pub/gnu/libiconv/{filename}"]
+        }
+    },
+
+    {
+        "name": "installer",
+        "comment": "Needed infrastructure for installing pure python packages (wheels)",
+        "unix": {
+            "filename": "installer-0.7.0-py3-none-any.whl",
+            "hash": "sha256:05d1933f0a5ba7d8d6296bb6d5018e7c94fa473ceb10cf198a92ccea19c27b53",
+            "urls": ["pypi"]
+        }
+    },
+
+    {
+        "name": "packaging",
+		"comment": "Needed for glib for some absurd reason",
+        "unix": {
+            "filename": "packaging-23.1-py3-none-any.whl",
+            "hash": "sha256:994793af429502c4ea2ebf6bf664629d07c1a9fe974af92966e4b8d2df7edc61",
+            "urls": ["pypi"]
         }
     },
 
@@ -205,9 +223,9 @@
         "name": "glib",
         "os": "linux",
         "unix": {
-            "filename": "glib-2.66.6.tar.xz",
-            "hash": "sha256:80fff9c63d2725834328071c42003c311f77f91caf2285195c587c62f5638329",
-            "urls": ["https://ftp.gnome.org/pub/GNOME/sources/glib/2.66/{filename}"]
+            "filename": "glib-2.80.2.tar.xz",
+            "hash": "sha256:b9cfb6f7a5bd5b31238fd5d56df226b2dda5ea37611475bf89f6a0f9400fe8bd",
+            "urls": ["https://download.gnome.org/sources/glib/2.80/{filename}"]
         }
     },
 
@@ -215,9 +233,9 @@
         "name": "brotli",
         "os": "linux",
         "unix": {
-            "filename": "brotli-1.0.9.tar.gz",
-            "hash": "sha256:f9e8d81d0405ba66d181529af42a3354f838c939095ff99930da6aa9cdf6fe46",
-            "urls": ["https://github.com/google/brotli/archive/v1.0.9/{filename}"]
+            "filename": "brotli-1.1.0.tar.gz",
+            "hash": "sha256:e720a6ca29428b803f4ad165371771f5398faba397edf6778837a18599ea13ff",
+            "urls": ["https://github.com/google/brotli/archive/v1.1.0/{filename}"]
         }
     },
 
@@ -225,8 +243,8 @@
         "name": "freetype",
         "os": "linux",
         "unix": {
-            "filename": "freetype-2.10.4.tar.xz",
-            "hash": "sha256:86a854d8905b19698bbc8f23b860bc104246ce4854dcea8e3b0fb21284f75784",
+            "filename": "freetype-2.13.2.tar.xz",
+            "hash": "sha256:12991c4e55c506dd7f9b765933e62fd2be2e06d421505d7950a132e4f1bb484d",
             "urls": ["https://download.savannah.gnu.org/releases/freetype/{filename}"]
         }
     },
@@ -244,15 +262,15 @@
     {
         "name": "harfbuzz",
         "unix": {
-            "filename": "harfbuzz-8.2.2.tar.xz",
-            "hash": "sha256:e433ad85fbdf57f680be29479b3f964577379aaf319f557eb76569f0ecbc90f3",
-            "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/8.2.2/{filename}"]
+            "filename": "harfbuzz-8.5.0.tar.xz",
+            "hash": "sha256:77e4f7f98f3d86bf8788b53e6832fb96279956e1c3961988ea3d4b7ca41ddc27",
+            "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/8.5.0/{filename}"]
         }
     },
 
     {
         "name": "simde",
-        "comment": "Cannot update till https://github.com/simd-everywhere/simde/issues/1146 is released",
+        "comment": "Cannot update till gcc in the build VM is updated as simde 8 requires newer gcc",
         "unix": {
             "filename": "simde-amalgamated-0.7.6.tar.xz",
             "hash": "sha256:703eac1f2af7de1f7e4aea2286130b98e1addcc0559426e78304c92e2b4eb5e1",
@@ -274,9 +292,9 @@
         "name": "wayland-protocols",
         "os": "linux",
         "unix": {
-            "filename": "wayland-protocols-1.32.tar.xz",
-            "hash": "sha256:7459799d340c8296b695ef857c07ddef24c5a09b09ab6a74f7b92640d2b1ba11",
-            "urls": ["https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.32/downloads/{filename}"]
+            "filename": "wayland-protocols-1.36.tar.xz",
+            "hash": "sha256:71fd4de05e79f9a1ca559fac30c1f8365fa10346422f9fe795f74d77b9ef7e92",
+            "urls": ["https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.36/downloads/{filename}"]
         }
     }
 
