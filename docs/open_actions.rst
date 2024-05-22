@@ -64,6 +64,9 @@ some special variables, documented below:
 ``FRAGMENT``
     The fragment (unquoted), if any of the URL or the empty string.
 
+``NETLOC``
+    The net location aka hostname (unquoted), if any of the URL or the empty string.
+
 ``URL_PATH``
     The path, query and fragment portions of the URL, without any
     unquoting.

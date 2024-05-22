@@ -69,7 +69,7 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         entries.append((tuple(match_criteria), tuple(raw_actions)))
 
     with to_cmdline_implementation.filter_env_vars(
-        'URL', 'FILE_PATH', 'FILE', 'FRAGMENT', 'URL_PATH',
+        'URL', 'FILE_PATH', 'FILE', 'FRAGMENT', 'URL_PATH', 'NETLOC',
         EDITOR=shlex.join(get_editor()),
         SHELL=resolved_shell(get_options())[0]
     ):
@@ -164,6 +164,7 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
         return
     path = unquote(purl.path)
     up = purl.path
+    netloc = unquote(purl.netloc) if purl.netloc else ''
     frag = ''
     if purl.query:
         up += f'?{purl.query}'
@@ -181,6 +182,7 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
         'URL_PATH': up,
         'FILE': posixpath.basename(path),
         'FRAGMENT': frag,
+        'NETLOC': netloc,
     }
 
     def expand(x: Any) -> Any:
@@ -236,7 +238,7 @@ def default_open_actions() -> Tuple[OpenAction, ...]:
 # Open kitty HTML docs links
 protocol kitty+doc
 action show_kitty_doc $URL_PATH
-    '''.splitlines()))
+'''.splitlines()))
 
 
 @run_once
