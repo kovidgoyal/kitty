@@ -1073,6 +1073,11 @@ class Window:
                         self.handle_remote_file(purl.netloc, unquote(purl.path))
                         return
                     url = urlunparse(purl._replace(netloc=''))
+            if purl.fragment and purl.fragment.startswith('-'):
+                # Dont allow fragments that startwith - as that can lead to arg
+                # injection
+                log_error('Ignoring fragment that starts with - in URL:', url)
+                url = urlunparse(purl._replace(fragment=''))
             if opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
                 boss.choose(

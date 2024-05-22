@@ -164,9 +164,16 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
         return
     path = unquote(purl.path)
     up = purl.path
+    frag = ''
     if purl.query:
         up += f'?{purl.query}'
     if purl.fragment:
+        frag = unquote(purl.fragment)
+        if frag.startswith('-'):
+            # Dont allow fragments that startwith - as that can lead to arg
+            # injection
+            log_error('Ignoring fragment that starts with - in URL:', url)
+            frag = ''
         up += f'#{purl.fragment}'
 
     env = {
@@ -174,7 +181,7 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
         'FILE_PATH': path,
         'URL_PATH': up,
         'FILE': posixpath.basename(path),
-        'FRAGMENT': unquote(purl.fragment)
+        'FRAGMENT': frag,
     }
 
     def expand(x: Any) -> Any:
