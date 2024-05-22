@@ -219,7 +219,7 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 	}
 	func() {
 		if err = c.Start(); err != nil {
-			fmt.Fprintln(os.Stderr, cmd[0], "failed with error:", err)
+			fmt.Fprintln(os.Stderr, cmd[0], "failed to start with error:", err)
 			return
 		}
 		signal.Ignore(os.Interrupt)
