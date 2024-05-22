@@ -15,7 +15,7 @@ clicked. Let us illustrate with some examples, first. Create the file
     # Open any image in the full kitty window by clicking on it
     protocol file
     mime image/*
-    action launch --type=overlay kitten icat --hold ${FILE_PATH}
+    action launch --type=overlay kitten icat --hold -- ${FILE_PATH}
 
 Now, run ``ls --hyperlink=auto`` in kitty and click on the filename of an
 image, holding down :kbd:`ctrl+shift`. It will be opened over the current
@@ -44,7 +44,7 @@ action per entry if you like, for example:
     # Tail a log file (*.log) in a new OS Window and reduce its font size
     protocol file
     ext log
-    action launch --title ${FILE} --type=os-window tail -f ${FILE_PATH}
+    action launch --title ${FILE} --type=os-window tail -f -- ${FILE_PATH}
     action change_font_size current -2
 
 
