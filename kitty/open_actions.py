@@ -165,15 +165,10 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
     path = unquote(purl.path)
     up = purl.path
     netloc = unquote(purl.netloc) if purl.netloc else ''
-    frag = ''
     if purl.query:
         up += f'?{purl.query}'
-    if purl.fragment:
-        frag = unquote(purl.fragment)
-        if frag.startswith('-') or frag.startswith(' '):
-            # Dont allow fragments that start with - as that can lead to arg injection
-            log_error(f'Ignoring fragment that starts with illegal character {frag[0]:!r} in URL:', url)
-            frag = ''
+    frag = unquote(purl.fragment) if purl.fragment else ''
+    if frag:
         up += f'#{purl.fragment}'
 
     env = {
