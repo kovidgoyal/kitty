@@ -94,6 +94,8 @@ Detailed list of changes
 
 - Fix kitten @ set-background-opacity limited to min opacity of 0.1 instead of 0 (:iss:`7463`)
 
+- launch --hold: Fix hold not working if kernel signals process group with SIGINT (:iss:`7466`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

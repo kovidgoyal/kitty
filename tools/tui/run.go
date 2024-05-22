@@ -7,6 +7,7 @@ import (
 	"kitty"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -216,7 +217,15 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 			defer term.Close()
 		}
 	}
-	err = c.Run()
+	func() {
+		if err = c.Start(); err != nil {
+			fmt.Fprintln(os.Stderr, cmd[0], "failed with error:", err)
+			return
+		}
+		signal.Ignore(os.Interrupt)
+		defer signal.Reset(os.Interrupt)
+		err = c.Wait()
+	}()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, cmd[0], "failed with error:", err)
 	}
