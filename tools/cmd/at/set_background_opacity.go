@@ -9,11 +9,5 @@ func parse_opacity(arg string) (float64, error) {
 	if err != nil {
 		return 0, nil
 	}
-	if ans < 0.1 {
-		ans = 0.1
-	}
-	if ans > 1 {
-		ans = 1
-	}
-	return ans, nil
+	return max(0, min(ans, 1)), nil
 }
