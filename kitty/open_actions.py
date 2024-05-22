@@ -259,7 +259,7 @@ action launch --hold --type=os-window -- $FILE_PATH
 # Open text files without fragments in the editor
 protocol file
 mime text/*
-action launch --type=os-window $EDITOR -- $FILE_PATH
+action launch --type=os-window -- $EDITOR -- $FILE_PATH
 
 # Open image files with icat
 protocol file
