@@ -169,10 +169,9 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
         up += f'?{purl.query}'
     if purl.fragment:
         frag = unquote(purl.fragment)
-        if frag.startswith('-'):
-            # Dont allow fragments that startwith - as that can lead to arg
-            # injection
-            log_error('Ignoring fragment that starts with - in URL:', url)
+        if frag.startswith('-') or frag.startswith(' '):
+            # Dont allow fragments that start with - as that can lead to arg injection
+            log_error(f'Ignoring fragment that starts with illegal character {frag[0]:!r} in URL:', url)
             frag = ''
         up += f'#{purl.fragment}'
 
