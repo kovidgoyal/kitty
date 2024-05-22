@@ -92,6 +92,8 @@ Detailed list of changes
 
 - Scrolling with mouse wheel when a selection is active should update the selection (:iss:`7453`)
 
+- Fix kitten @ set-background-opacity limited to min opacity of 0.1 instead of 0 (:iss:`7463`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
