@@ -5,6 +5,7 @@ package ssh
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -18,6 +19,11 @@ var _ = fmt.Print
 func TestGetSSHOptions(t *testing.T) {
 	m := SSHOptions()
 	if m["w"] != "local_tun[:remote_tun]" {
+
+		cmd := exec.Command(SSHExe())
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
 		t.Fatalf("Unexpected set of SSH options: %#v", m)
 	}
 }

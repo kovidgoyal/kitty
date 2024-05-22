@@ -41,7 +41,7 @@ var SSHOptions = sync.OnceValue(func() (ssh_options map[string]string) {
 	if err != nil {
 		return
 	}
-	if err := cmd.Start(); err != nil {
+	if err = cmd.Start(); err != nil {
 		return
 	}
 	raw, err := io.ReadAll(stderr)
