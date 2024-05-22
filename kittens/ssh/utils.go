@@ -5,15 +5,16 @@ package ssh
 import (
 	"fmt"
 	"io"
-	"kitty"
-	"kitty/tools/config"
-	"kitty/tools/utils"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+
+	"kitty"
+	"kitty/tools/config"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -49,6 +50,10 @@ var SSHOptions = sync.OnceValue(func() (ssh_options map[string]string) {
 		return
 	}
 	text := utils.UnsafeBytesToString(raw)
+	if strings.Contains(text, "OpenSSL version mismatch.") {
+		// https://bugzilla.mindrot.org/show_bug.cgi?id=3548
+		return
+	}
 	ssh_options = make(map[string]string, 32)
 	for {
 		pos := strings.IndexByte(text, '[')
