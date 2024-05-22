@@ -249,26 +249,26 @@ action launch --hold --type=os-window kitty +shebang $FILE_PATH __ext__
 # Open directories
 protocol file
 mime inode/directory
-action launch --type=os-window --cwd $FILE_PATH
+action launch --type=os-window --cwd -- $FILE_PATH
 
 # Open executable file
 protocol file
 mime inode/executable,application/vnd.microsoft.portable-executable
-action launch --hold --type=os-window $FILE_PATH
+action launch --hold --type=os-window -- $FILE_PATH
 
 # Open text files without fragments in the editor
 protocol file
 mime text/*
-action launch --type=os-window $EDITOR $FILE_PATH
+action launch --type=os-window $EDITOR -- $FILE_PATH
 
 # Open image files with icat
 protocol file
 mime image/*
-action launch --type=os-window kitten icat --hold $FILE_PATH
+action launch --type=os-window kitten icat --hold -- $FILE_PATH
 
 # Open ssh URLs with ssh command
 protocol ssh
-action launch --type=os-window ssh $URL
+action launch --type=os-window ssh -- $URL
 '''.splitlines()))
 
 
