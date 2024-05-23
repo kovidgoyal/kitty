@@ -8,17 +8,17 @@ import sys
 import _sitebuiltins
 
 
-def set_quit():
+def set_quit() -> None:
     eof = 'Ctrl-D (i.e. EOF)'
     builtins.quit = _sitebuiltins.Quitter('quit', eof)
     builtins.exit = _sitebuiltins.Quitter('exit', eof)
 
 
-def set_helper():
+def set_helper() -> None:
     builtins.help = _sitebuiltins._Helper()
 
 
-def main():
+def main() -> None:
     sys.argv[0] = sys.calibre_basename
     set_helper()
     set_quit()
