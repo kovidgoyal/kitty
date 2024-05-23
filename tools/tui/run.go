@@ -222,6 +222,8 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 			fmt.Fprintln(os.Stderr, cmd[0], "failed to start with error:", err)
 			return
 		}
+		// Ignore SIGINT as the kernel tends to send it to us as well as the
+		// subprocess on Ctrl+C
 		signal.Ignore(os.Interrupt)
 		defer signal.Reset(os.Interrupt)
 		err = c.Wait()
