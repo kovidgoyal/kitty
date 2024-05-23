@@ -15,6 +15,7 @@ class DetachWindow(RemoteCommand):
     match/str: Which window to detach
     target_tab/str: Which tab to move the detached window to
     self/bool: Boolean indicating whether to detach the window the command is run in
+    stay_in_tab/bool: Boolean indicating focus should remain in the active tab after windows are moved
     '''
 
     short_desc = 'Detach the specified windows and place them in a different/new tab'
@@ -31,10 +32,15 @@ class DetachWindow(RemoteCommand):
 --self
 type=bool-set
 Detach the window this command is run in, rather than the active window.
+
+
+--stay-in-tab
+type=bool-set
+Keep the focus on a window in the currently focused tab after moving the specified windows.
 ''')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self}
+        return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self, 'stay_in_tab': opts.stay_in_tab}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_match_payload(boss, window, payload_get)
@@ -50,9 +56,12 @@ Detach the window this command is run in, rather than the active window.
                     raise MatchError(match, 'tabs')
                 target_tab_id = tabs[0].id
         kwargs = {'target_os_window_id': newval} if target_tab_id is None else {'target_tab_id': target_tab_id}
+        tab = boss.active_tab
         for window in windows:
             if window:
                 boss._move_window_to(window=window, **kwargs)
+        if payload_get('stay_in_tab') and tab is not None:
+            tab.make_active()
         return None
 
 

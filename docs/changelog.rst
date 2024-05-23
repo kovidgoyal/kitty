@@ -98,6 +98,8 @@ Detailed list of changes
 
 - macOS: Fix --start-as=fullscreen not working when another window is already fullscreen (:iss:`7448`)
 
+- Add option :option:`kitten @ detach-window --stay-in-tab` to keep focus in the currently active tab when moving windows (:iss:`7468`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
