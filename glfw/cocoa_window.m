@@ -3161,7 +3161,11 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     // event. See https://github.com/kovidgoyal/kitty/issues/7106
     NSWindowStyleMask fsmask = current_style_mask & NSWindowStyleMaskFullScreen;
     window->ns.pre_full_screen_style_mask = getStyleMask(window);
-    [window->ns.object setStyleMask:window->ns.pre_full_screen_style_mask | fsmask];
+    if (in_fullscreen && window->ns.in_traditional_fullscreen) {
+        [window->ns.object setStyleMask:NSWindowStyleMaskBorderless];
+    } else {
+        [window->ns.object setStyleMask:window->ns.pre_full_screen_style_mask | fsmask];
+    }
     // HACK: Changing the style mask can cause the first responder to be cleared
     [window->ns.object makeFirstResponder:window->ns.view];
 }}

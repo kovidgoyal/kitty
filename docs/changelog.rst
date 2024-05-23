@@ -100,6 +100,8 @@ Detailed list of changes
 
 - Add option :option:`kitten @ detach-window --stay-in-tab` to keep focus in the currently active tab when moving windows (:iss:`7468`)
 
+- macOS: Fix changing window chrome/colors while in traditional fullscreen causing the titlebar to become visible (:iss:`7469`)
+
 0.34.1 [2024-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
