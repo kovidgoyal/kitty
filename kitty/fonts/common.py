@@ -470,16 +470,19 @@ def develop(family: str = '') -> None:
     opts = Options()
     opts.font_family = parse_font_spec(family)
     ff = get_font_files(opts)
-    def s(d: Descriptor) -> str:
-        return str(face_from_descriptor(d))
+    def s(name: str, d: Descriptor) -> None:
+        f = face_from_descriptor(d)
+        print(name, str(f))
+        features = f.get_features()
+        print('  Features :', ' '.join(sorted(features)))
 
-    print('Medium     :', s(ff['medium']))
+    s('Medium     :', ff['medium'])
     print()
-    print('Bold       :', s(ff['bold']))
+    s('Bold       :', ff['bold'])
     print()
-    print('Italic     :', s(ff['italic']))
+    s('Italic     :', ff['italic'])
     print()
-    print('Bold-Italic:', s(ff['bi']))
+    s('Bold-Italic:', ff['bi'])
 
 
 if __name__ == '__main__':

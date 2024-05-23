@@ -843,6 +843,31 @@ get_variation(Face *self, PyObject *a UNUSED) {
 }
 
 static PyObject*
+get_features(Face *self, PyObject *a UNUSED) {
+    FT_Error err;
+    FT_ULong length = 0;
+    RAII_PyObject(output, PyFrozenSet_New(NULL)); if (!output) return NULL;
+    if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'S', 'U', 'B'), 0, NULL, &length)) == 0) {
+        RAII_ALLOC(uint8_t, table, malloc(length));
+        if (!table) return PyErr_NoMemory();
+        if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'S', 'U', 'B'), 0, table, &length))) {
+            set_freetype_error("Failed to load the GSUB table from font with error:", err); return NULL;
+        }
+        if (!read_features_from_font_table(table, length, output)) return NULL;
+    }
+    length = 0;
+    if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'P', 'O', 'S'), 0, NULL, &length)) == 0) {
+        RAII_ALLOC(uint8_t, table, malloc(length));
+        if (!table) return PyErr_NoMemory();
+        if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'P', 'O', 'S'), 0, table, &length))) {
+            set_freetype_error("Failed to load the GSUB table from font with error:", err); return NULL;
+        }
+        if (!read_features_from_font_table(table, length, output)) return NULL;
+    }
+    Py_INCREF(output); return output;
+}
+
+static PyObject*
 get_variable_data(Face *self, PyObject *a UNUSED) {
     if (!ensure_name_table(self)) return NULL;
     RAII_PyObject(output, PyDict_New()); if (!output) return NULL;
@@ -992,6 +1017,7 @@ static PyMethodDef methods[] = {
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(extra_data, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
+    METHODB(get_features, METH_NOARGS),
     METHODB(get_variation, METH_NOARGS),
     METHODB(get_best_name, METH_O),
     METHODB(set_size, METH_VARARGS),
