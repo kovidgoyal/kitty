@@ -120,6 +120,28 @@ read_name_font_table(const uint8_t *table, size_t table_len) {
 }
 
 bool
+read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *output) {
+    if (table_len < 20) return true;
+    const uint16_t *p = (uint16_t*)table;
+    const uint8_t *limit = table + table_len;
+    uint16_t major_version = next, minor_version = next, script_list_offset = next, feature_list_offset = next;
+    (void)major_version; (void)minor_version; (void)script_list_offset;
+    const uint8_t *feature_list_table = table + feature_list_offset;
+    char tag_buf[5] = {0};
+    if (feature_list_table + 2 >= limit) return true;
+    p = (uint16_t*)feature_list_table;
+    uint16_t feature_count = next;
+    const uint8_t *pos = (uint8_t*)p;
+    for (uint16_t i = 0; i < feature_count && pos + 4 < limit; pos += 6, i++) {
+        memcpy(tag_buf, pos, 4);
+        RAII_PyObject(tag, PyUnicode_FromString(tag_buf));
+        if (!tag) return false;
+        if (PySet_Add(output, tag) != 0) return false;
+    }
+    return true;
+}
+
+bool
 read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output) {
     RAII_PyObject(design_axes, PyTuple_New(0));
     RAII_PyObject(multi_axis_styles, PyTuple_New(0));

@@ -947,6 +947,21 @@ get_variation(CTFace *self) {
 }
 
 static PyObject*
+get_features(CTFace *self, PyObject *a UNUSED) {
+    RAII_PyObject(output, PyFrozenSet_New(NULL)); if (!output) return NULL;
+    RAII_CoreFoundation(CFDataRef, cftable, CTFontCopyTable(self->ct_font, kCTFontTableGSUB, kCTFontTableOptionNoOptions));
+    const uint8_t *table = cftable ? CFDataGetBytePtr(cftable) : NULL;
+    size_t table_len = cftable ? CFDataGetLength(cftable) : 0;
+    if (!read_features_from_font_table(table, table_len, output)) return NULL;
+    RAII_CoreFoundation(CFDataRef, cfpostable, CTFontCopyTable(self->ct_font, kCTFontTableGPOS, kCTFontTableOptionNoOptions));
+    table = cfpostable ? CFDataGetBytePtr(cfpostable) : NULL;
+    table_len = cfpostable ? CFDataGetLength(cfpostable) : 0;
+    if (!read_features_from_font_table(table, table_len, output)) return NULL;
+    Py_INCREF(output); return output;
+}
+
+
+static PyObject*
 get_variable_data(CTFace *self) {
     if (!ensure_name_table(self)) return NULL;
     RAII_PyObject(output, PyDict_New());
@@ -989,6 +1004,7 @@ static PyMethodDef methods[] = {
     METHODB(display_name, METH_NOARGS),
     METHODB(postscript_name, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
+    METHODB(get_features, METH_NOARGS),
     METHODB(get_variation, METH_NOARGS),
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(set_size, METH_VARARGS),
