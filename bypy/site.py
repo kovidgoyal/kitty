@@ -2,10 +2,9 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
+import _sitebuiltins
 import builtins
 import sys
-
-import _sitebuiltins
 
 
 def set_quit() -> None:
