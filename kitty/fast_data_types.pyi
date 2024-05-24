@@ -3,7 +3,7 @@ from ctypes import Array, c_ubyte
 from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
-from kitty.fonts import FontFeature, VariableData
+from kitty.fonts import VariableData
 from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.options.types import Options
@@ -400,6 +400,7 @@ class FontConfigPattern(TypedDict):
     # The following two are used by C code to get a face from the pattern
     named_style: NotRequired[int]
     axes: NotRequired[Tuple[float, ...]]
+    features: NotRequired[Tuple[ParsedFontFeature, ...]]
 
 
 def fc_list(spacing: int = -1, allow_bitmapped_fonts: bool = False, only_variable: bool = False) -> Tuple[FontConfigPattern, ...]:
@@ -464,6 +465,7 @@ class CoreTextFont(TypedDict):
 
     # The following is used by C code to get a face from the pattern
     axis_map: NotRequired[Dict[str, float]]
+    features: NotRequired[Tuple[ParsedFontFeature, ...]]
 
 
 class CTFace:
@@ -480,6 +482,10 @@ class CTFace:
 
 def coretext_all_fonts(monospaced_only: bool) -> Tuple[CoreTextFont, ...]:
     pass
+
+
+class ParsedFontFeature:
+    def __init__(self, s: str): ...
 
 
 def add_timer(
@@ -597,10 +603,6 @@ def set_options(
 
 
 def get_options() -> Options:
-    pass
-
-
-def parse_font_feature(ff: str) -> bytes:
     pass
 
 
@@ -1071,7 +1073,6 @@ def set_font_data(
     descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
-    font_feature_settings: Dict[str, Tuple[FontFeature, ...]],
     narrow_symbols: Tuple[Tuple[int, int, int], ...],
 ) -> None:
     pass

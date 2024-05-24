@@ -33,6 +33,7 @@ typedef struct {
     CTFontRef ct_font;
     hb_font_t *hb_font;
     PyObject *family_name, *full_name, *postscript_name, *path, *name_lookup_table;
+    FontFeatures font_features;
 } CTFace;
 PyTypeObject CTFace_Type;
 static CTFontRef window_title_font = nil;
@@ -87,7 +88,7 @@ get_path_for_font_descriptor(CTFontDescriptorRef font) {
 
 
 static CTFace*
-ct_face(CTFontRef font) {
+ct_face(CTFontRef font, PyObject *features) {
     CTFace *self = (CTFace *)CTFace_Type.tp_alloc(&CTFace_Type, 0);
     if (self) {
         init_face(self, font);
@@ -96,6 +97,9 @@ ct_face(CTFontRef font) {
         self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->ct_font), true);
         self->path = get_path_for_font(self->ct_font);
         if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL || self->path == NULL) { Py_CLEAR(self); }
+        else {
+            if (!create_features_for_face(postscript_name_for_face((PyObject*)self), features, &self->font_features)) { Py_CLEAR(self); }
+        }
     }
     return self;
 }
@@ -106,6 +110,7 @@ dealloc(CTFace* self) {
     if (self->ct_font) CFRelease(self->ct_font);
     self->hb_font = NULL;
     self->ct_font = NULL;
+    free(self->font_features.features);
     Py_CLEAR(self->family_name); Py_CLEAR(self->full_name); Py_CLEAR(self->postscript_name); Py_CLEAR(self->path);
     Py_CLEAR(self->name_lookup_table);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -126,6 +131,8 @@ string_to_tag(const uint8_t *bytes) {
     return (((uint32_t)bytes[0]) << 24) | (((uint32_t)bytes[1]) << 16) | (((uint32_t)bytes[2]) << 8) | bytes[3];
 }
 
+FontFeatures*
+features_for_face(PyObject *s) { return &((CTFace*)s)->font_features; }
 
 static void
 add_variation_pair(const void *key_, const void *value_, void *ctx) {
@@ -444,7 +451,7 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
             break;
         }
     }
-    return ans ? ans : (PyObject*)ct_face(new_font);
+    return ans ? ans : (PyObject*)ct_face(new_font, NULL);
 }
 
 unsigned int
@@ -590,7 +597,7 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     if (!desc) return NULL;
     RAII_CoreFoundation(CTFontRef, font, CTFontCreateWithFontDescriptor(desc, fg ? scaled_point_sz(fg) : 12, NULL));
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
-    return (PyObject*) ct_face(font);
+    return (PyObject*) ct_face(font, PyDict_GetItemString(descriptor, "features"));
 }
 
 PyObject*
@@ -600,7 +607,7 @@ face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg UNUSED) 
     RAII_CoreFoundation(CGDataProviderRef, dp, CGDataProviderCreateWithURL(url));
     RAII_CoreFoundation(CGFontRef, cg_font, CGFontCreateWithDataProvider(dp));
     RAII_CoreFoundation(CTFontRef, ct_font, CTFontCreateWithGraphicsFont(cg_font, 0.0, NULL, NULL));
-    return (PyObject*) ct_face(ct_font);
+    return (PyObject*) ct_face(ct_font, NULL);
 }
 
 static PyObject*

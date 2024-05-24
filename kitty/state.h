@@ -9,6 +9,10 @@
 #include "screen.h"
 #include "monotonic.h"
 #include "window_logo.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <hb.h>
+#pragma GCC diagnostic pop
 
 #define OPT(name) global_state.opts.name
 #define debug_rendering(...) if (global_state.debug_rendering) { timed_debug_print(__VA_ARGS__); }
@@ -106,6 +110,14 @@ typedef struct {
     unsigned long wayland_titlebar_color;
     struct { struct MenuItem *entries; size_t count; } global_menu;
     bool wayland_enable_ime;
+    struct {
+        size_t num;
+        struct {
+            const char *psname;
+            size_t num;
+            hb_feature_t *features;
+        } *entries;
+    } font_features;
 } Options;
 
 typedef struct WindowLogoRenderData {
