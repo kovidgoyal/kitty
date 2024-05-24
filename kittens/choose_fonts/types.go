@@ -87,13 +87,21 @@ type ListResult struct {
 	Resolved_faces ResolvedFaces           `json:"resolved_faces"`
 }
 
+type FeatureData struct {
+	Name    string   `json:"name"`
+	Tooltip string   `json:"tooltip"`
+	Sample  string   `json:"sample"`
+	Params  []string `json:"params"`
+}
+
 type RenderedSampleTransmit struct {
-	Path                 string             `json:"path"`
-	Variable_data        VariableData       `json:"variable_data"`
-	Style                string             `json:"style"`
-	Psname               string             `json:"psname"`
-	Variable_named_style NamedStyle         `json:"variable_named_style"`
-	Variable_axis_map    map[string]float64 `json:"variable_axis_map"`
+	Path                 string                 `json:"path"`
+	Variable_data        VariableData           `json:"variable_data"`
+	Style                string                 `json:"style"`
+	Psname               string                 `json:"psname"`
+	Features             map[string]FeatureData `json:"features"`
+	Variable_named_style NamedStyle             `json:"variable_named_style"`
+	Variable_axis_map    map[string]float64     `json:"variable_axis_map"`
 }
 
 func (self RenderedSampleTransmit) default_axis_values() (ans map[string]float64) {

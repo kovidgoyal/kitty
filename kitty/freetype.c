@@ -846,14 +846,15 @@ static PyObject*
 get_features(Face *self, PyObject *a UNUSED) {
     FT_Error err;
     FT_ULong length = 0;
-    RAII_PyObject(output, PyFrozenSet_New(NULL)); if (!output) return NULL;
+    if (!ensure_name_table(self)) return NULL;
+    RAII_PyObject(output, PyDict_New()); if (!output) return NULL;
     if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'S', 'U', 'B'), 0, NULL, &length)) == 0) {
         RAII_ALLOC(uint8_t, table, malloc(length));
         if (!table) return PyErr_NoMemory();
         if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'S', 'U', 'B'), 0, table, &length))) {
             set_freetype_error("Failed to load the GSUB table from font with error:", err); return NULL;
         }
-        if (!read_features_from_font_table(table, length, output)) return NULL;
+        if (!read_features_from_font_table(table, length, self->name_lookup_table, output)) return NULL;
     }
     length = 0;
     if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'P', 'O', 'S'), 0, NULL, &length)) == 0) {
@@ -862,7 +863,7 @@ get_features(Face *self, PyObject *a UNUSED) {
         if ((err = FT_Load_Sfnt_Table(self->face, FT_MAKE_TAG('G', 'P', 'O', 'S'), 0, table, &length))) {
             set_freetype_error("Failed to load the GSUB table from font with error:", err); return NULL;
         }
-        if (!read_features_from_font_table(table, length, output)) return NULL;
+        if (!read_features_from_font_table(table, length, self->name_lookup_table, output)) return NULL;
     }
     Py_INCREF(output); return output;
 }

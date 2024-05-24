@@ -474,7 +474,7 @@ def develop(family: str = '') -> None:
         f = face_from_descriptor(d)
         print(name, str(f))
         features = f.get_features()
-        print('  Features :', ' '.join(sorted(features)))
+        print('  Features :', features)
 
     s('Medium     :', ff['medium'])
     print()

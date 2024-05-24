@@ -119,8 +119,53 @@ read_name_font_table(const uint8_t *table, size_t table_len) {
 
 }
 
+static bool is_digit(char x) { return '0' <= x && x <= '9'; }
+
+static PyObject*
+read_cv_feature_table(const uint8_t *table, const uint8_t *limit, PyObject *name_lookup_table) {
+    RAII_PyObject(ans, PyDict_New()); if (!ans) return NULL;
+    if (limit - table >= 12) {
+        uint16_t *p = (uint16_t*)(table + 2);
+        uint16_t name_id = next, tooltip_id = next, sample_id = next, num_params = next, first_value_id = next;
+        if (name_id) {
+            RAII_PyObject(name, get_best_name(name_lookup_table, name_id)); if (!name) return NULL;
+            if (PyDict_SetItemString(ans, "name", name) != 0) return NULL;
+        }
+        if (tooltip_id) {
+            RAII_PyObject(tooltip, get_best_name(name_lookup_table, tooltip_id)); if (!tooltip) return NULL;
+            if (PyDict_SetItemString(ans, "tooltip", tooltip) != 0) return NULL;
+        }
+        if (sample_id) {
+            RAII_PyObject(sample, get_best_name(name_lookup_table, sample_id)); if (!sample) return NULL;
+            if (PyDict_SetItemString(ans, "sample", sample) != 0) return NULL;
+        }
+        if (num_params && first_value_id) {
+            RAII_PyObject(params, PyTuple_New(num_params)); if (!params) return NULL;
+            for (uint16_t i = 0; i < num_params; i++) {
+                PyObject *pval = get_best_name(name_lookup_table, first_value_id + i); if (!pval) return NULL;
+                PyTuple_SET_ITEM(params, i, pval);
+            }
+            if (PyDict_SetItemString(ans, "params", params) != 0) return NULL;
+        }
+    }
+    Py_INCREF(ans); return ans;
+}
+
+static PyObject*
+read_ss_feature_table(const uint8_t *table, const uint8_t *limit, PyObject *name_lookup_table) {
+    RAII_PyObject(ans, PyDict_New()); if (!ans) return NULL;
+    if (limit - table < 4) { Py_INCREF(ans); return ans; }
+    uint16_t *p = (uint16_t*)(table + 2);
+    uint16_t name_id = next;
+    if (name_id) {
+        RAII_PyObject(name, get_best_name(name_lookup_table, name_id)); if (!name) return NULL;
+        if (PyDict_SetItemString(ans, "name", name) != 0) return NULL;
+    }
+    Py_INCREF(ans); return ans;
+}
+
 bool
-read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *output) {
+read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output) {
     if (table_len < 20) return true;
     const uint16_t *p = (uint16_t*)table;
     const uint8_t *limit = table + table_len;
@@ -132,11 +177,29 @@ read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *
     p = (uint16_t*)feature_list_table;
     uint16_t feature_count = next;
     const uint8_t *pos = (uint8_t*)p;
-    for (uint16_t i = 0; i < feature_count && pos + 4 < limit; pos += 6, i++) {
+    for (uint16_t i = 0; i < feature_count && pos + 6 <= limit; pos += 6, i++) {
         memcpy(tag_buf, pos, 4);
         RAII_PyObject(tag, PyUnicode_FromString(tag_buf));
         if (!tag) return false;
-        if (PySet_Add(output, tag) != 0) return false;
+        if (PyDict_Contains(output, tag) == 1) continue;
+        if (PyDict_SetItem(output, tag, Py_None) != 0) return false;
+        p = (uint16_t*)(pos + 4); uint16_t offset_to_feature_table = next;
+        const uint8_t *feature_table = feature_list_table + offset_to_feature_table;
+        if (feature_table + 2 > limit) continue;
+        p = (uint16_t*)(feature_table); uint16_t offset_to_feature_params_table = next;
+        if (tag_buf[0] == 'c' && tag_buf[1] == 'v' && is_digit(tag_buf[2]) && is_digit(tag_buf[3])) {
+            if (offset_to_feature_params_table) {
+                RAII_PyObject(cv, read_cv_feature_table(feature_table + offset_to_feature_params_table, limit, name_lookup_table));
+                if (!cv) return false;
+                if (PyDict_SetItem(output, tag, cv) != 0) return false;
+            }
+        } else if (tag_buf[0] == 's' && tag_buf[1] == 's' && '0' <= tag_buf[2] && tag_buf[2] <= '2' && is_digit(tag_buf[3])) {
+            if (offset_to_feature_params_table) {
+                RAII_PyObject(ss, read_ss_feature_table(feature_table + offset_to_feature_params_table, limit, name_lookup_table));
+                if (!ss) return false;
+                if (PyDict_SetItem(output, tag, ss) != 0) return false;
+            }
+        }
     }
     return true;
 }

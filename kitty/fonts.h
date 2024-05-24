@@ -53,7 +53,7 @@ read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
 bool
 read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output);
 bool
-read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *output);
+read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output);
 
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
