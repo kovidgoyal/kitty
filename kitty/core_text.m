@@ -948,15 +948,16 @@ get_variation(CTFace *self) {
 
 static PyObject*
 get_features(CTFace *self, PyObject *a UNUSED) {
-    RAII_PyObject(output, PyFrozenSet_New(NULL)); if (!output) return NULL;
+    if (!ensure_name_table(self)) return NULL;
+    RAII_PyObject(output, PyDict_New()); if (!output) return NULL;
     RAII_CoreFoundation(CFDataRef, cftable, CTFontCopyTable(self->ct_font, kCTFontTableGSUB, kCTFontTableOptionNoOptions));
     const uint8_t *table = cftable ? CFDataGetBytePtr(cftable) : NULL;
     size_t table_len = cftable ? CFDataGetLength(cftable) : 0;
-    if (!read_features_from_font_table(table, table_len, output)) return NULL;
+    if (!read_features_from_font_table(table, table_len, self->name_lookup_table, output)) return NULL;
     RAII_CoreFoundation(CFDataRef, cfpostable, CTFontCopyTable(self->ct_font, kCTFontTableGPOS, kCTFontTableOptionNoOptions));
     table = cfpostable ? CFDataGetBytePtr(cfpostable) : NULL;
     table_len = cfpostable ? CFDataGetLength(cfpostable) : 0;
-    if (!read_features_from_font_table(table, table_len, output)) return NULL;
+    if (!read_features_from_font_table(table, table_len, self->name_lookup_table, output)) return NULL;
     Py_INCREF(output); return output;
 }
 

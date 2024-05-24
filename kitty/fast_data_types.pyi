@@ -1,6 +1,6 @@
 import termios
 from ctypes import Array, c_ubyte
-from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload, FrozenSet
+from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
 from kitty.fonts import FontFeature, VariableData
@@ -424,6 +424,13 @@ def fc_match_postscript_name(
     pass
 
 
+class FeatureData(TypedDict):
+    name: NotRequired[str]
+    tooltip: NotRequired[str]
+    sample: NotRequired[str]
+    params: NotRequired[Tuple[str, ...]]
+
+
 class Face:
     path: Optional[str]
     def __init__(self, descriptor: Optional[FontConfigPattern] = None, path: str = '', index: int = 0): ...
@@ -433,7 +440,7 @@ class Face:
     def set_size(self, sz_in_pts: float, dpi_x: float, dpi_y: float) -> None: ...
     def render_sample_text(self, text: str, width: int, height: int, fg_color: int = 0xffffff) -> bytes: ...
     def get_variation(self) -> Optional[Dict[str, float]]: ...
-    def get_features(self) -> FrozenSet[str]: ...
+    def get_features(self) -> Dict[str, Optional[FeatureData]]: ...
 
 
 class CoreTextFont(TypedDict):
@@ -468,7 +475,7 @@ class CTFace:
     def set_size(self, sz_in_pts: float, dpi_x: float, dpi_y: float) -> None: ...
     def render_sample_text(self, text: str, width: int, height: int, fg_color: int = 0xffffff) -> bytes: ...
     def get_variation(self) -> Optional[Dict[str, float]]: ...
-    def get_features(self) -> FrozenSet[str]: ...
+    def get_features(self) -> Dict[str, Optional[FeatureData]]: ...
 
 
 def coretext_all_fonts(monospaced_only: bool) -> Tuple[CoreTextFont, ...]:

@@ -6,7 +6,7 @@ import os
 import string
 import sys
 import tempfile
-from typing import Any, Dict, Literal, Tuple, TypedDict
+from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple, TypedDict
 
 from kitty.cli import create_default_opts
 from kitty.conf.utils import to_color
@@ -22,12 +22,16 @@ from kitty.fonts.common import (
     is_variable,
     spec_for_face,
 )
+from kitty.fonts.features import Type, known_features
 from kitty.fonts.list import create_family_groups
 from kitty.fonts.render import display_bitmap
 from kitty.options.types import Options
 from kitty.options.utils import parse_font_spec
+from kitty.typing import NotRequired
 from kitty.utils import screen_size_function
 
+if TYPE_CHECKING:
+    from kitty.fast_data_types import FeatureData
 
 def setup_debug_print() -> bool:
     if 'KITTY_STDIO_FORWARDED' in os.environ:
@@ -86,6 +90,35 @@ RenderedSampleTransmit = Dict[str, Any]
 SAMPLE_TEXT = string.ascii_lowercase + ' ' + string.digits + ' ' + string.ascii_uppercase + ' ' + string.punctuation
 
 
+class FD(TypedDict):
+    is_index: bool
+    name: NotRequired[str]
+    tooltip: NotRequired[str]
+    sample: NotRequired[str]
+    params: NotRequired[Tuple[str, ...]]
+
+
+
+def get_features(features: Dict[str, Optional['FeatureData']]) -> Dict[str, FD]:
+    ans = {}
+    for tag, data in features.items():
+        kf = known_features.get(tag)
+        if kf is None or kf.type is Type.hidden:
+            continue
+        fd: FD = {'is_index': kf.type is Type.index}
+        ans[tag] = fd
+        if data is not None:
+            if n := data.get('name'):
+                fd['name'] = n
+            if n := data.get('tooltip'):
+                fd['tooltip'] = n
+            if n := data.get('sample'):
+                fd['sample'] = n
+            if p := data.get('params'):
+                fd['params'] = p
+    return ans
+
+
 def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: float, width: int, height: int) -> RenderedSample:
     face = face_from_descriptor(font)
     face.set_size(opts.font_size, dpi_x, dpi_y)
@@ -93,6 +126,7 @@ def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: flo
         'variable_data': get_variable_data_for_face(face),
         'style': font['style'],
         'psname': face.postscript_name(),
+        'features': get_features(face.get_features()),
     }
     if is_variable(font):
         ns = get_named_style(face)
