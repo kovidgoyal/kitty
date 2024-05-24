@@ -1,6 +1,7 @@
 from enum import Enum, IntEnum, auto
 from typing import TYPE_CHECKING, Dict, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypedDict, TypeVar, Union
 
+from kitty.fast_data_types import ParsedFontFeature
 from kitty.types import run_once
 from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import shlex_split
@@ -88,18 +89,6 @@ class VariableData(TypedDict):
     multi_axis_styles: Tuple[MultiAxisStyle, ...]
 
 
-class FontFeature:
-
-    __slots__ = 'name', 'parsed'
-
-    def __init__(self, name: str, parsed: bytes):
-        self.name = name
-        self.parsed = parsed
-
-    def __repr__(self) -> str:
-        return repr(self.name)
-
-
 class ModificationType(Enum):
     underline_position = auto()
     underline_thickness = auto()
@@ -144,6 +133,7 @@ class FontSpec(NamedTuple):
     system: Optional[str] = None
     axes: Tuple[Tuple[str, float], ...] = ()
     variable_name: Optional[str] = None
+    features: Tuple[ParsedFontFeature, ...] = ()
     created_from_string: str = ''
 
     @classmethod
@@ -155,19 +145,21 @@ class FontSpec(NamedTuple):
             return FontSpec(system=spec, created_from_string=spec)
         axes = {}
         defined = {}
+        features: Tuple[ParsedFontFeature, ...] = ()
         for item in items:
             k, sep, v = item.partition('=')
             if sep != '=':
                 raise ValueError(f'The font specification: {spec} is not valid as {item} does not contain an =')
             if k in ('family', 'style', 'full_name', 'postscript_name', 'variable_name'):
                 defined[k] = v
+            elif k == 'features':
+                features += tuple(ParsedFontFeature(x) for x in v.split())
             else:
                 try:
                     axes[k] = float(v)
                 except Exception:
                     raise ValueError(f'The font specification: {spec} is not valid as {v} is not a number')
-        return FontSpec(axes=tuple(axes.items()), created_from_string=spec, **defined)
-
+        return FontSpec(axes=tuple(axes.items()), created_from_string=spec, features=features, **defined)
 
     @property
     def is_system(self) -> bool:
@@ -198,6 +190,8 @@ class FontSpec(NamedTuple):
             a('variable_name', self.variable_name)
         if self.style is not None:
             a('style', self.style)
+        if self.features:
+            a('features', ' '.join(str(f) for f in self.features))
         if self.axes:
             for (key, val) in self.axes:
                 a(key, f'{val:g}')

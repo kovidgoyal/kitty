@@ -189,7 +189,7 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     set_font_data(
         render_box_drawing, prerender_function, descriptor_for_idx,
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
-        sm, sz, opts.font_features.copy(), ns
+        sm, sz, ns
     )
 
 

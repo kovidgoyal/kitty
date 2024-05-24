@@ -488,8 +488,8 @@ class Options:
     bell_border_color: Color = Color(255, 90, 0)
     bell_on_tab: str = '🔔 '
     bell_path: typing.Optional[str] = None
-    bold_font: FontSpec = FontSpec(family='', style='', postscript_name='', full_name='', system='auto', axes=())
-    bold_italic_font: FontSpec = FontSpec(family='', style='', postscript_name='', full_name='', system='auto', axes=())
+    bold_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
+    bold_italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     box_drawing_scale: typing.Tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False
@@ -520,7 +520,7 @@ class Options:
     enabled_layouts: typing.List[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
     file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False
-    font_family: FontSpec = FontSpec(family='', style='', postscript_name='', full_name='', system='monospace', axes=())
+    font_family: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='monospace', axes=(), variable_name=None, features=(), created_from_string='monospace')
     font_size: float = 11.0
     force_ltr: bool = False
     foreground: Color = Color(221, 221, 221)
@@ -534,7 +534,7 @@ class Options:
     initial_window_height: typing.Tuple[int, str] = (400, 'px')
     initial_window_width: typing.Tuple[int, str] = (640, 'px')
     input_delay: int = 3
-    italic_font: FontSpec = FontSpec(family='', style='', postscript_name='', full_name='', system='auto', axes=())
+    italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     kitty_mod: int = 5
     linux_bell_theme: str = '__custom'
     linux_display_server: choices_for_linux_display_server = 'auto'
@@ -631,7 +631,7 @@ class Options:
     action_alias: typing.Dict[str, str] = {}
     env: typing.Dict[str, str] = {}
     exe_search_path: typing.Dict[str, str] = {}
-    font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
+    font_features: typing.Dict[str, typing.Tuple[kitty.fast_data_types.ParsedFontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, str] = {}
     menu_map: typing.Dict[typing.Tuple[str, ...], str] = {}
     modify_font: typing.Dict[str, kitty.fonts.FontModification] = {}

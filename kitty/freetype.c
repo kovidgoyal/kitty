@@ -48,6 +48,7 @@ typedef struct {
     free_extra_data_func free_extra_data;
     float apple_leading;
     PyObject *name_lookup_table;
+    FontFeatures font_features;
 } Face;
 PyTypeObject Face_Type;
 
@@ -233,8 +234,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
       self->strikethrough_thickness = os2->yStrikeoutSize;
     }
 
-    self->path = path;
-    Py_INCREF(self->path);
+    self->path = path; Py_INCREF(self->path);
     self->space_glyph_id = glyph_id_for_codepoint((PyObject*)self, ' ');
     return true;
 }
@@ -299,10 +299,14 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
             }
             if ((error = FT_Set_Var_Design_Coordinates(self->face, sz, coords))) return set_load_error(path, error);
         }
+        if (!create_features_for_face(postscript_name_for_face((PyObject*)self), PyDict_GetItemString(descriptor, "features"), &self->font_features)) return NULL;
     }
     Py_XINCREF(retval);
     return retval;
 }
+
+FontFeatures*
+features_for_face(PyObject *s) { return &((Face*)s)->font_features; }
 
 static PyObject*
 new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
@@ -343,6 +347,7 @@ dealloc(Face* self) {
     if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
     if (self->face) FT_Done_Face(self->face);
     if (self->extra_data && self->free_extra_data) self->free_extra_data(self->extra_data);
+    free(self->font_features.features);
     Py_CLEAR(self->path);
     Py_CLEAR(self->name_lookup_table);
     Py_TYPE(self)->tp_free((PyObject*)self);

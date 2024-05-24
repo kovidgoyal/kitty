@@ -18,6 +18,20 @@ typedef struct {
     size_t width, height;
 } StringCanvas;
 
+typedef struct FontFeatures {
+    size_t count;
+    hb_feature_t *features;
+} FontFeatures;
+
+typedef struct ParsedFontFeature {
+    PyObject_HEAD
+
+    hb_feature_t feature;
+    Py_hash_t hashval;
+    bool hash_computed;
+} ParsedFontFeature;
+
+
 // API that font backends need to implement
 unsigned int glyph_id_for_codepoint(PyObject *, char_type);
 int get_glyph_width(PyObject *, glyph_index);
@@ -54,6 +68,8 @@ bool
 read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output);
 bool
 read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output);
+FontFeatures* features_for_face(PyObject *);
+bool create_features_for_face(const char* psname, PyObject *features, FontFeatures* output);
 
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
