@@ -50,7 +50,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.35.0 [future]
+0.35.0 [2024-05-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - kitten @ run: A new remote control command to run a process on the machine kitty is running on and get its output (:iss:`7429`)
