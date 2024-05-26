@@ -10,6 +10,7 @@ from functools import partial
 from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import (
     DECAWM,
+    ParsedFontFeature,
     get_fallback_font,
     sprite_map_set_layout,
     sprite_map_set_limits,
@@ -33,6 +34,7 @@ def parse_font_spec(spec):
 class Selection(BaseTest):
 
     def test_font_selection(self):
+        self.set_options({'font_features': {'LiberationMono': (ParsedFontFeature('-dlig'),)}})
         opts = Options()
         fonts_map = all_fonts_map(True)
         names = set(fonts_map['family_map']) | set(fonts_map['variable_map'])
@@ -139,6 +141,17 @@ class Selection(BaseTest):
             t('italic', spec='variable_name= wght=405')
             t('bold', spec='variable_name=CascadiaCodeRoman wght=603')
             t('bi', spec='variable_name= wght=603')
+
+        # Test font features
+        if has('liberation mono'):
+            opts = Options()
+            opts.font_family = parse_font_spec('family="liberation mono"')
+            ff = get_font_files(opts)
+            self.ae(face_from_descriptor(ff['medium']).applied_features(), ('-dlig',))
+            self.ae(face_from_descriptor(ff['bold']).applied_features(), ())
+            opts.font_family = parse_font_spec('family="liberation mono" features="dlig test"')
+            ff = get_font_files(opts)
+            self.ae(face_from_descriptor(ff['medium']).applied_features(), ('dlig', 'test'))
 
 
 class Rendering(BaseTest):

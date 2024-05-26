@@ -848,6 +848,20 @@ get_variation(Face *self, PyObject *a UNUSED) {
 }
 
 static PyObject*
+applied_features(Face *self, PyObject *a UNUSED) {
+    RAII_PyObject(ans, PyTuple_New(self->font_features.count));
+    if (!ans) return NULL;
+    char buf[256];
+    for (size_t i = 0; i < self->font_features.count; i++) {
+        hb_feature_to_string(&self->font_features.features[i], buf, arraysz(buf));
+        PyObject *t = PyUnicode_FromString(buf);
+        if (!t) return NULL;
+        PyTuple_SET_ITEM(ans, i, t);
+    }
+    Py_INCREF(ans); return ans;
+}
+
+static PyObject*
 get_features(Face *self, PyObject *a UNUSED) {
     FT_Error err;
     FT_ULong length = 0;
@@ -1023,6 +1037,7 @@ static PyMethodDef methods[] = {
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(extra_data, METH_NOARGS),
     METHODB(get_variable_data, METH_NOARGS),
+    METHODB(applied_features, METH_NOARGS),
     METHODB(get_features, METH_NOARGS),
     METHODB(get_variation, METH_NOARGS),
     METHODB(get_best_name, METH_O),
