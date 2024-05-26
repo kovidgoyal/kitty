@@ -290,6 +290,17 @@ desc_to_face(PyObject *desc, FONTS_DATA_HANDLE fg) {
     return ans;
 }
 
+static void
+add_feature(FontFeatures *output, const hb_feature_t *feature) {
+    for (size_t i = 0; i < output->count; i++) {
+        if (output->features[i].tag == feature->tag) {
+            output->features[i] = *feature;
+            return;
+        }
+    }
+    output->features[output->count++] = *feature;
+}
+
 bool
 create_features_for_face(const char *psname, PyObject *features, FontFeatures *output) {
     size_t count_from_descriptor = features ? PyTuple_GET_SIZE(features): 0;
@@ -304,16 +315,16 @@ create_features_for_face(const char *psname, PyObject *features, FontFeatures *o
     output->features = calloc(MAX(2u, count_from_opts + count_from_descriptor), sizeof(output->features[0]));
     if (!output->features) { PyErr_NoMemory(); return false; }
     for (size_t i = 0; i < count_from_opts; i++) {
-        output->features[output->count++] = from_opts->features[i];
+        add_feature(output, &from_opts->features[i]);
     }
     for (size_t i = 0; i < count_from_descriptor; i++) {
         ParsedFontFeature *f = (ParsedFontFeature*)PyTuple_GET_ITEM(features, i);
-        output->features[output->count++] = f->feature;
+        add_feature(output, &f->feature);
     }
     if (!output->count) {
         if (strstr(psname, "NimbusMonoPS-") == psname) {
-            output->features[output->count++] = hb_features[LIGA_FEATURE];
-            output->features[output->count++] = hb_features[DLIG_FEATURE];
+            add_feature(output, &hb_features[LIGA_FEATURE]);
+            add_feature(output, &hb_features[DLIG_FEATURE]);
         }
     }
     return true;
