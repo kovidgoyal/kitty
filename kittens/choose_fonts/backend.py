@@ -218,7 +218,7 @@ def query_kitty() -> Dict[str, str]:
     return ans
 
 
-def showcase(family: str) -> None:
+def showcase(family: str = 'family="Fira Code"') -> None:
     q = query_kitty()
     opts = Options()
     opts.foreground = to_color(q['foreground'])
@@ -231,4 +231,14 @@ def showcase(family: str) -> None:
     width = ss.cell_width * ss.cols
     height = 5 * ss.cell_height
     bitmap = render_face_sample(desc, opts, float(q['dpi_x']), float(q['dpi_y']), width, height)[0]
+    display_bitmap(bitmap, width, height)
+
+
+def test_render(spec: str = 'family="Fira Code"', width: int = 1560, height: int = 116, font_size: float = 12, dpi: float = 288) -> None:
+    opts = Options()
+    opts.font_family = parse_font_spec(spec)
+    opts.font_size = font_size
+    opts.foreground = to_color('white')
+    desc = get_font_files(opts)['medium']
+    bitmap = render_face_sample(desc, opts, float(dpi), float(dpi), width, height)[0]
     display_bitmap(bitmap, width, height)
