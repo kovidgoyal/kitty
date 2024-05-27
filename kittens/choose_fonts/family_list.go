@@ -33,17 +33,18 @@ func (self *FamilyList) Select(family string) bool {
 }
 
 func (self *FamilyList) Next(delta int, allow_wrapping bool) bool {
-	if len(self.display_strings) == 0 {
+	l := func() int { return self.Len() }
+	if l() == 0 {
 		return false
 	}
 	idx := self.current_idx + delta
-	if !allow_wrapping && (idx < 0 || idx > self.Len()) {
+	if !allow_wrapping && (idx < 0 || idx > l()) {
 		return false
 	}
 	for idx < 0 {
-		idx += self.Len()
+		idx += l()
 	}
-	self.current_idx = idx % self.Len()
+	self.current_idx = idx % l()
 	return true
 }
 
