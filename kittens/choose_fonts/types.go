@@ -103,6 +103,10 @@ type RenderedSampleTransmit struct {
 	Applied_features     map[string]string      `json:"applied_features"`
 	Variable_named_style NamedStyle             `json:"variable_named_style"`
 	Variable_axis_map    map[string]float64     `json:"variable_axis_map"`
+	Cell_width           int                    `json:"cell_width"`
+	Cell_height          int                    `json:"cell_height"`
+	Canvas_width         int                    `json:"canvas_width"`
+	Canvas_height        int                    `json:"canvas_height"`
 }
 
 func (self RenderedSampleTransmit) default_axis_values() (ans map[string]float64) {

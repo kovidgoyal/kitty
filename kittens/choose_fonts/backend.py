@@ -128,13 +128,18 @@ def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: flo
         'psname': face.postscript_name(),
         'features': get_features(face.get_features()),
         'applied_features': face.applied_features(),
+        'cell_width': 0, 'cell_height': 0, 'canvas_height': 0, 'canvas_width': width,
     }
     if is_variable(font):
         ns = get_named_style(face)
         if ns:
             metadata['variable_named_style'] = ns
         metadata['variable_axis_map'] = get_axis_map(face)
-    return face.render_sample_text(SAMPLE_TEXT, width, height, opts.foreground.rgb), metadata
+    bitmap, cell_width, cell_height = face.render_sample_text(SAMPLE_TEXT, width, height, opts.foreground.rgb)
+    metadata['cell_width'] = cell_width
+    metadata['cell_height'] = cell_height
+    metadata['canvas_height'] = len(bitmap) // (4 *width)
+    return bitmap, metadata
 
 
 def render_family_sample(
@@ -230,8 +235,8 @@ def showcase(family: str = 'family="Fira Code"') -> None:
     ss = screen_size_function()()
     width = ss.cell_width * ss.cols
     height = 5 * ss.cell_height
-    bitmap = render_face_sample(desc, opts, float(q['dpi_x']), float(q['dpi_y']), width, height)[0]
-    display_bitmap(bitmap, width, height)
+    bitmap, m = render_face_sample(desc, opts, float(q['dpi_x']), float(q['dpi_y']), width, height)
+    display_bitmap(bitmap, m['canvas_width'], m['canvas_height'])
 
 
 def test_render(spec: str = 'family="Fira Code"', width: int = 1560, height: int = 116, font_size: float = 12, dpi: float = 288) -> None:
@@ -240,5 +245,5 @@ def test_render(spec: str = 'family="Fira Code"', width: int = 1560, height: int
     opts.font_size = font_size
     opts.foreground = to_color('white')
     desc = get_font_files(opts)['medium']
-    bitmap = render_face_sample(desc, opts, float(dpi), float(dpi), width, height)[0]
-    display_bitmap(bitmap, width, height)
+    bitmap, m = render_face_sample(desc, opts, float(dpi), float(dpi), width, height)
+    display_bitmap(bitmap, m['canvas_width'], m['canvas_height'])

@@ -749,11 +749,13 @@ render_sample_text(CTFace *self, PyObject *args) {
     CTFontRef font = self->ct_font;
     PyObject *ptext;
     if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
-    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
-    if (!pbuf) return NULL;
     unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
     size_t num_chars = PyUnicode_GET_LENGTH(ptext);
+    int num_chars_per_line = canvas_width / cell_width, num_of_lines = (int)ceil((float)num_chars / (float)num_chars_per_line);
+    canvas_height = MIN(canvas_height, num_of_lines * cell_height);
+    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
+    if (!pbuf) return NULL;
     RAII_ALLOC(unichar, chars, calloc(sizeof(unichar), num_chars));
     if (!chars) return PyErr_NoMemory();
     for (size_t i = 0; i < num_chars; i++) chars[i] = PyUnicode_READ_CHAR(ptext, i);
@@ -786,8 +788,7 @@ render_sample_text(CTFace *self, PyObject *args) {
         p[0] = r; p[1] = g; p[2] = b; p[3] = s[0];
     }
 end:
-    Py_INCREF(pbuf);
-    return pbuf;
+    return Py_BuildValue("OII", pbuf, cell_width, cell_height);
 
 }
 

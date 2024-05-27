@@ -2,20 +2,25 @@ package choose_fonts
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
-	"math"
-	"strings"
-	"sync"
 )
 
 var _ = fmt.Print
 
 type preview_cache_key struct {
 	family        string
+	width, height int
+}
+
+type preview_cache_value struct {
+	path          string
 	width, height int
 }
 
@@ -27,13 +32,13 @@ type FontList struct {
 	resolved_faces_from_kitty_conf ResolvedFaces
 	handler                        *handler
 	variable_data_requested_for    *utils.Set[string]
-	preview_cache                  map[preview_cache_key]string
+	preview_cache                  map[preview_cache_key]preview_cache_value
 	preview_cache_mutex            sync.Mutex
 }
 
 func (self *FontList) initialize(h *handler) error {
 	self.handler = h
-	self.preview_cache = make(map[preview_cache_key]string)
+	self.preview_cache = make(map[preview_cache_key]preview_cache_value)
 	self.rl = readline.New(h.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "Family: "})
 	self.variable_data_requested_for = utils.NewSet[string](256)
 	return nil
@@ -133,7 +138,6 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 	self.handler.draw_preview_header(x)
 	y++
 	height_cells -= 2
-	height_cells = min(height_cells, int(math.Ceil(100./float64(width_cells))))
 	self.handler.lp.MoveCursorTo(x+1, y+1)
 	key := preview_cache_key{
 		family: self.family_list.CurrentFamily(), width: int(sz.CellWidth) * width_cells, height: int(sz.CellHeight) * height_cells,
@@ -143,10 +147,10 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 	}
 	self.preview_cache_mutex.Lock()
 	defer self.preview_cache_mutex.Unlock()
-	img_path := self.preview_cache[key]
-	switch img_path {
+	cc := self.preview_cache[key]
+	switch cc.path {
 	case "":
-		self.preview_cache[key] = "requested"
+		self.preview_cache[key] = preview_cache_value{path: "requested"}
 		go func() {
 			var r map[string]RenderedSampleTransmit
 			self.handler.set_worker_error(kitty_font_backend.query("render_family_samples", map[string]any{
@@ -155,14 +159,14 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 			}, &r))
 			self.preview_cache_mutex.Lock()
 			defer self.preview_cache_mutex.Unlock()
-			self.preview_cache[key] = r["font_family"].Path
+			self.preview_cache[key] = preview_cache_value{path: r["font_family"].Path, width: r["font_family"].Canvas_width, height: r["font_family"].Canvas_height}
 			self.handler.lp.WakeupMainThread()
 		}()
 		return
 	case "requested":
 		return
 	}
-	self.handler.graphics_manager.display_image(0, img_path, key.width, key.height)
+	self.handler.graphics_manager.display_image(0, cc.path, cc.width, cc.height)
 	return
 }
 

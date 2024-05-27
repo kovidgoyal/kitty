@@ -200,8 +200,7 @@ func (self *face_panel) draw_screen() (err error) {
 	y := self.render_lines(2, lines...)
 
 	num_lines_per_font := (int(sz.HeightCells) - y - 1) - 2
-	num_lines_needed := int(math.Ceil(100. / float64(sz.WidthCells)))
-	num_lines := max(1, min(num_lines_per_font, num_lines_needed))
+	num_lines := max(1, num_lines_per_font)
 	key := faces_preview_key{settings: self.settings, width: int(sz.WidthCells * sz.CellWidth), height: int(sz.CellHeight) * num_lines}
 	self.current_preview_key = key
 	self.preview_cache_mutex.Lock()
@@ -232,13 +231,14 @@ func (self *face_panel) draw_screen() (err error) {
 		return err
 	}
 
+	num_lines = int(math.Ceil(float64(preview.Canvas_height) / float64(sz.CellHeight)))
 	if int(sz.HeightCells)-y >= num_lines+2 {
-		y += 1
+		y++
 		lp.MoveCursorTo(1, y+1)
 		self.handler.draw_preview_header(0)
 		y++
 		lp.MoveCursorTo(1, y+1)
-		self.handler.graphics_manager.display_image(0, preview.Path, key.width, key.height)
+		self.handler.graphics_manager.display_image(0, preview.Path, preview.Canvas_width, preview.Canvas_height)
 	}
 	return
 }
