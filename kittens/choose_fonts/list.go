@@ -23,6 +23,7 @@ type FontList struct {
 	rl                             *readline.Readline
 	family_list                    FamilyList
 	fonts                          map[string][]ListedFont
+	family_list_updated            bool
 	resolved_faces_from_kitty_conf ResolvedFaces
 	handler                        *handler
 	variable_data_requested_for    *utils.Set[string]
@@ -166,8 +167,11 @@ func (self *FontList) draw_preview(x, y int, sz loop.ScreenSize) (err error) {
 }
 
 func (self *FontList) on_wakeup() error {
-	self.family_list.UpdateFamilies(utils.StableSortWithKey(utils.Keys(self.fonts), strings.ToLower))
-	self.family_list.SelectFamily(self.resolved_faces_from_kitty_conf.Font_family.Family)
+	if !self.family_list_updated {
+		self.family_list_updated = true
+		self.family_list.UpdateFamilies(utils.StableSortWithKey(utils.Keys(self.fonts), strings.ToLower))
+		self.family_list.SelectFamily(self.resolved_faces_from_kitty_conf.Font_family.Family)
+	}
 	return self.handler.draw_screen()
 }
 
@@ -235,12 +239,12 @@ func (self *FontList) update_family_search() {
 	}
 }
 
-func (self *FontList) next(delta int, allow_wrapping bool) {
+func (self *FontList) next(delta int, allow_wrapping bool) error {
 	if self.family_list.Next(delta, allow_wrapping) {
-		self.handler.draw_screen()
-	} else {
-		self.handler.lp.Beep()
+		return self.handler.draw_screen()
 	}
+	self.handler.lp.Beep()
+	return nil
 }
 
 func (self *FontList) on_key_event(event *loop.KeyEvent) (err error) {
@@ -265,30 +269,28 @@ func (self *FontList) on_key_event(event *loop.KeyEvent) (err error) {
 	}
 	ev := event
 	if ev.MatchesPressOrRepeat("down") {
-		self.next(1, true)
 		ev.Handled = true
-		return nil
+		return self.next(1, true)
 	}
 	if ev.MatchesPressOrRepeat("up") {
-		self.next(-1, true)
 		ev.Handled = true
-		return nil
+		return self.next(-1, true)
 	}
 	if ev.MatchesPressOrRepeat("page_down") {
 		ev.Handled = true
 		sz, err := self.handler.lp.ScreenSize()
 		if err == nil {
-			self.next(int(sz.HeightCells)-3, false)
+			err = self.next(int(sz.HeightCells)-3, false)
 		}
-		return nil
+		return err
 	}
 	if ev.MatchesPressOrRepeat("page_up") {
 		ev.Handled = true
 		sz, err := self.handler.lp.ScreenSize()
 		if err == nil {
-			self.next(3-int(sz.HeightCells), false)
+			err = self.next(3-int(sz.HeightCells), false)
 		}
-		return nil
+		return err
 	}
 
 	if err = self.rl.OnKeyEvent(event); err != nil {
