@@ -977,7 +977,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
                 int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, modifiers);
 #else
                 int sz = encode_mouse_scroll(w, s < 0 ? 6 : 7, modifiers);
-#endfi
+#endif
                 if (sz > 0) {
                     mouse_event_buf[sz] = 0;
                     for (s = abs(s); s > 0; s--) {
