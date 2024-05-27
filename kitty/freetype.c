@@ -964,10 +964,12 @@ render_sample_text(Face *self, PyObject *args) {
     unsigned long fg = 0xffffff;
     PyObject *ptext;
     if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
-    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
-    if (!pbuf) return NULL;
     unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
+    int num_chars_per_line = canvas_width / cell_width, num_of_lines = (int)ceil((float)PyUnicode_GET_LENGTH(ptext) / (float)num_chars_per_line);
+    canvas_height = MIN(canvas_height, num_of_lines * cell_height);
+    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
+    if (!pbuf) return NULL;
     pixel *canvas = (pixel*)PyBytes_AS_STRING(pbuf);
     memset(canvas, 0, PyBytes_GET_SIZE(pbuf));
     if (cell_width > canvas_width) goto end;
@@ -996,8 +998,7 @@ render_sample_text(Face *self, PyObject *args) {
         p[0] = r; p[1] = g; p[2] = b; p[3] = a;
     }
 end:
-    Py_INCREF(pbuf);
-    return pbuf;
+    return Py_BuildValue("OII", pbuf, cell_width, cell_height);
 }
 
 

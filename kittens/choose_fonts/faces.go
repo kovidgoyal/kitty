@@ -45,8 +45,7 @@ func (self *faces) draw_screen() (err error) {
 	lp.QueueWriteString(str)
 
 	num_lines_per_font := ((int(sz.HeightCells) - y - 1) / 4) - 2
-	num_lines_needed := int(math.Ceil(100. / float64(sz.WidthCells)))
-	num_lines := max(1, min(num_lines_per_font, num_lines_needed))
+	num_lines := max(1, num_lines_per_font)
 	key := faces_preview_key{settings: self.settings, width: int(sz.WidthCells * sz.CellWidth), height: int(sz.CellHeight) * num_lines}
 	self.preview_cache_mutex.Lock()
 	defer self.preview_cache_mutex.Unlock()
@@ -74,6 +73,8 @@ func (self *faces) draw_screen() (err error) {
 
 	slot := 0
 	d := func(setting, title string) {
+		r := previews[setting]
+		num_lines := int(math.Ceil(float64(r.Canvas_height) / float64(sz.CellHeight)))
 		if int(sz.HeightCells)-y < num_lines+1 {
 			return
 		}
@@ -82,7 +83,7 @@ func (self *faces) draw_screen() (err error) {
 		lp.QueueWriteString(str)
 		if y+num_lines < int(sz.HeightCells) {
 			lp.MoveCursorTo(1, y+1)
-			self.handler.graphics_manager.display_image(slot, previews[setting].Path, key.width, key.height)
+			self.handler.graphics_manager.display_image(slot, r.Path, r.Canvas_width, r.Canvas_height)
 			slot++
 			y += num_lines + 1
 		}
