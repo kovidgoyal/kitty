@@ -70,6 +70,8 @@ bool
 read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output);
 FontFeatures* features_for_face(PyObject *);
 bool create_features_for_face(const char* psname, PyObject *features, FontFeatures* output);
+PyObject*
+font_features_as_dict(const FontFeatures *font_features);
 
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {

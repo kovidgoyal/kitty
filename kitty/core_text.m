@@ -955,16 +955,7 @@ get_variation(CTFace *self) {
 
 static PyObject*
 applied_features(CTFace *self, PyObject *a UNUSED) {
-    RAII_PyObject(ans, PyTuple_New(self->font_features.count));
-    if (!ans) return NULL;
-    char buf[256];
-    for (size_t i = 0; i < self->font_features.count; i++) {
-        hb_feature_to_string(&self->font_features.features[i], buf, arraysz(buf));
-        PyObject *t = PyUnicode_FromString(buf);
-        if (!t) return NULL;
-        PyTuple_SET_ITEM(ans, i, t);
-    }
-    Py_INCREF(ans); return ans;
+    return font_features_as_dict(&self->font_features);
 }
 
 static PyObject*

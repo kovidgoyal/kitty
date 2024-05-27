@@ -125,6 +125,37 @@ func (self *face_panel) draw_family_style_select(_ loop.ScreenSize, start_y int,
 	return y, nil
 }
 
+func (self *face_panel) draw_font_features(_ loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
+	lp := self.handler.lp
+	y = start_y
+	if len(preview.Features) == 0 {
+		return
+	}
+	formatted := make([]string, 0, len(preview.Features))
+	for feat_tag, data := range preview.Features {
+		var text string
+		if preview.Applied_features[feat_tag] != "" {
+			text = preview.Applied_features[feat_tag]
+			text = strings.Replace(text, "+", lp.SprintStyled("fg=green", "+"), 1)
+			text = strings.Replace(text, "-", lp.SprintStyled("fg=red", "-"), 1)
+			text = strings.Replace(text, "=", lp.SprintStyled("fg=cyan", "="), 1)
+			if data.Name != "" {
+				text = fmt.Sprintf("%s: %s", data.Name, text)
+			}
+		} else {
+			text = utils.IfElse(data.Name == "", feat_tag, data.Name)
+			text = lp.SprintStyled("dim", text)
+		}
+		formatted = append(formatted, tui.InternalHyperlink(text, "feature:"+feat_tag))
+	}
+	utils.SortWithKey(formatted, func(a string) string {
+		return strings.ToLower(wcswidth.StripEscapeCodes(a))
+	})
+	line := lp.SprintStyled(control_name_style, `Features`) + ": " + strings.Join(formatted, ", ")
+	y = self.render_lines(start_y, ``, line)
+	return
+}
+
 func (self *handler) draw_preview_header(x int) {
 	sz, _ := self.lp.ScreenSize()
 	width := int(sz.WidthCells) - x
@@ -195,6 +226,9 @@ func (self *face_panel) draw_screen() (err error) {
 		y, err = self.draw_family_style_select(sz, y, preview)
 	}
 	if err != nil {
+		return err
+	}
+	if y, err = self.draw_font_features(sz, y, preview); err != nil {
 		return err
 	}
 

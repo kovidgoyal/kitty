@@ -147,11 +147,11 @@ class Selection(BaseTest):
             opts = Options()
             opts.font_family = parse_font_spec('family="liberation mono"')
             ff = get_font_files(opts)
-            self.ae(face_from_descriptor(ff['medium']).applied_features(), ('-dlig',))
-            self.ae(face_from_descriptor(ff['bold']).applied_features(), ())
-            opts.font_family = parse_font_spec('family="liberation mono" features="dlig test"')
+            self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': '-dlig'})
+            self.ae(face_from_descriptor(ff['bold']).applied_features(), {})
+            opts.font_family = parse_font_spec('family="liberation mono" features="dlig test=3"')
             ff = get_font_files(opts)
-            self.ae(face_from_descriptor(ff['medium']).applied_features(), ('dlig', 'test'))
+            self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
 
 class Rendering(BaseTest):
