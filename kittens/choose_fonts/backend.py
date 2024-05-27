@@ -127,6 +127,7 @@ def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: flo
         'style': font['style'],
         'psname': face.postscript_name(),
         'features': get_features(face.get_features()),
+        'applied_features': face.applied_features(),
     }
     if is_variable(font):
         ns = get_named_style(face)

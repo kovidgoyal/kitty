@@ -301,6 +301,32 @@ add_feature(FontFeatures *output, const hb_feature_t *feature) {
     output->features[output->count++] = *feature;
 }
 
+static const char*
+tag_to_string(uint32_t tag, uint8_t bytes[5]) {
+    bytes[0] = (tag >> 24) & 0xff;
+    bytes[1] = (tag >> 16) & 0xff;
+    bytes[2] = (tag >> 8) & 0xff;
+    bytes[3] = (tag) & 0xff;
+    bytes[4] = 0;
+    return (const char*)bytes;
+}
+
+PyObject*
+font_features_as_dict(const FontFeatures *font_features) {
+    RAII_PyObject(ans, PyDict_New());
+    if (!ans) return NULL;
+    char buf[256];
+    char tag[5] = {0};
+    for (size_t i = 0; i < font_features->count; i++) {
+        tag_to_string(font_features->features[i].tag, (unsigned char*)tag);
+        hb_feature_to_string(&font_features->features[i], buf, arraysz(buf));
+        PyObject *t = PyUnicode_FromString(buf);
+        if (!t) return NULL;
+        if (PyDict_SetItemString(ans, tag, t) != 0) return NULL;
+    }
+    Py_INCREF(ans); return ans;
+}
+
 bool
 create_features_for_face(const char *psname, PyObject *features, FontFeatures *output) {
     size_t count_from_descriptor = features ? PyTuple_GET_SIZE(features): 0;

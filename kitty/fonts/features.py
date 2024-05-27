@@ -141,9 +141,9 @@ known_features: Dict[str, FeatureDefinition] = {  # {{{
     'zero':	FeatureDefinition('Slashed Zero', Type.boolean),
 }
 for i in range(1, 100):
-    known_features[f'cv{i:2d}'] = FeatureDefinition(f'Character Variant {i}', Type.index)
+    known_features[f'cv{i:02d}'] = FeatureDefinition(f'Character Variant {i}', Type.index)
 for i in range(1, 20):
-    known_features[f'ss{i:2d}'] = FeatureDefinition(f'Stylistic Set {i}', Type.boolean)
+    known_features[f'ss{i:02d}'] = FeatureDefinition(f'Stylistic Set {i}', Type.boolean)
 # }}}
 
 
