@@ -973,7 +973,11 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
         s = scale_scroll(screen->modes.mouse_tracking_mode, xoffset, is_high_resolution, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->cell_width);
         if (s) {
             if (screen->modes.mouse_tracking_mode) {
+#ifdef __APPLE__
+                int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, modifiers);
+#else
                 int sz = encode_mouse_scroll(w, s < 0 ? 6 : 7, modifiers);
+#endfi
                 if (sz > 0) {
                     mouse_event_buf[sz] = 0;
                     for (s = abs(s); s > 0; s--) {
