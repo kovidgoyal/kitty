@@ -1226,8 +1226,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #ifndef __APPLE__
     is_apple = false;
     glfwShowWindow(glfw_window);
-    // On Wayland glfwShowWindow spins the event loop, which could include resize events for other OS Windows causing the context to change
-    if (glfwGetCurrentContext() != glfw_window) glfwMakeContextCurrent(glfw_window);
 #endif
     if (global_state.is_wayland || is_apple) {
         float n_xscale, n_yscale;

@@ -896,6 +896,7 @@ attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
 static void
 loop_till_window_fully_created(_GLFWwindow *window) {
     if (!window->wl.window_fully_created) {
+        GLFWwindow *ctx = glfwGetCurrentContext();
         debug("Waiting for compositor to send fractional scale for window %llu\n", window->id);
         monotonic_t start = monotonic();
         while (!window->wl.window_fully_created && monotonic() - start < ms_to_monotonic_t(300)) {
@@ -904,6 +905,9 @@ loop_till_window_fully_created(_GLFWwindow *window) {
             }
         }
         window->wl.window_fully_created = true;
+        // If other OS windows were resized when this window is shown, the ctx might have been changed by
+        // user code, restore it to whatever it was at the start.
+        if (glfwGetCurrentContext() != ctx) glfwMakeContextCurrent(ctx);
     }
 }
 
