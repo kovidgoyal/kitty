@@ -433,6 +433,10 @@ specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
     if (axes) {
         if (PyDict_SetItemString(ans, "axes", axes) != 0) return NULL;
     }
+    PyObject *features = PyDict_GetItemString(base_descriptor, "features");
+    if (features) {
+        if (PyDict_SetItemString(ans, "features", features) != 0) return NULL;
+    }
     Py_INCREF(ans);
     return ans;
 end:
