@@ -57,6 +57,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused horizontal scrolling via touchpad in fullscreen applications to be reversed on non-Wayland platforms (:iss:`7475`, :iss:`7481`)
 
+- Fix a regression in the previous release causing an error when setting background_opacity to zero (:iss:`7483`)
+
 
 0.35.0 [2024-05-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

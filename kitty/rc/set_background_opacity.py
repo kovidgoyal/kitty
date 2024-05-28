@@ -67,7 +67,7 @@ equal to the specified value, otherwise it will be set to the specified value.
             raise OpacityError('You must turn on the dynamic_background_opacity option in kitty.conf to be able to set background opacity')
         windows = self.windows_for_payload(boss, window, payload_get)
         for os_window_id in {w.os_window_id for w in windows if w}:
-            val: float = payload_get('opacity')
+            val: float = payload_get('opacity') or 0.
             if payload_get('toggle'):
                 current = background_opacity_of(os_window_id)
                 if current == val:

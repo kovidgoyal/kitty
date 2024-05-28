@@ -1325,7 +1325,7 @@ class Boss:
                 tm.resize()
 
     def _set_os_window_background_opacity(self, os_window_id: int, opacity: float) -> None:
-        change_background_opacity(os_window_id, max(0.1, min(opacity, 1.0)))
+        change_background_opacity(os_window_id, max(0.0, min(opacity, 1.0)))
 
     @ac('win', '''
         Set the background opacity for the active OS Window
