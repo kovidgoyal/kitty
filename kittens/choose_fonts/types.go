@@ -3,7 +3,12 @@ package choose_fonts
 import (
 	"fmt"
 	"maps"
+	"strconv"
+	"strings"
 	"sync"
+
+	"kitty/tools/utils"
+	"kitty/tools/utils/shlex"
 )
 
 var _ = fmt.Print
@@ -195,4 +200,129 @@ func variable_data_for(f ListedFont) VariableData {
 func has_variable_data_for_font(font ListedFont) bool {
 	_, found := _cached_vd(font.cache_key())
 	return found
+}
+
+type ParsedFontFeature struct {
+	tag     string
+	val     uint
+	is_bool bool
+}
+
+func (self ParsedFontFeature) String() string {
+	if self.is_bool {
+		return utils.IfElse(self.val == 0, "-", "+") + self.tag
+	}
+	return fmt.Sprintf("%s=%d", self.tag, self.val)
+}
+
+type settable_string struct {
+	val    string
+	is_set bool
+}
+
+type FontSpec struct {
+	family, style, postscript_name, full_name, system, variable_name settable_string
+	axes                                                             map[string]float64
+	features                                                         []*ParsedFontFeature
+}
+
+func (self FontSpec) String() string {
+	if self.system.val != "" {
+		return self.system.val
+	}
+	ans := strings.Builder{}
+	a := func(k string, v settable_string) {
+		if v.is_set {
+			ans.WriteString(fmt.Sprintf(" %s=%s", k, shlex.Quote(v.val)))
+		}
+	}
+	a(`family`, self.family)
+	a(`style`, self.style)
+	a(`postscript_name`, self.postscript_name)
+	a(`full_name`, self.full_name)
+	a(`variable_name`, self.variable_name)
+	for name, val := range self.axes {
+		a(name, settable_string{strconv.FormatFloat(val, 'f', -1, 64), true})
+	}
+	if len(self.features) > 0 {
+		buf := strings.Builder{}
+		for _, f := range self.features {
+			buf.WriteString(f.String())
+			buf.WriteString(" ")
+		}
+		a(`features`, settable_string{strings.TrimSpace(buf.String()), true})
+	}
+	return strings.TrimSpace(ans.String())
+}
+
+func NewParsedFontFeature(x string, features map[string]FeatureData) (ans ParsedFontFeature, err error) {
+	if x != "" {
+		if x[0] == '+' || x[0] == '-' {
+			return ParsedFontFeature{x[1:], utils.IfElse(x[0] == '+', uint(1), uint(0)), true}, nil
+		} else {
+			tag, val, found := strings.Cut(x, "=")
+			fd, defn_found := features[tag]
+			if defn_found && !fd.Is_index {
+				return ParsedFontFeature{tag, 1, true}, nil
+			}
+			pff := ParsedFontFeature{tag: tag}
+			if found {
+				v, err := strconv.ParseUint(val, 10, 0)
+				if err != nil {
+					return ans, err
+				}
+				pff.val = uint(v)
+			}
+			return pff, nil
+		}
+	}
+	return
+}
+
+func NewFontSpec(spec string, features map[string]FeatureData) (ans FontSpec, err error) {
+	if spec == "" || spec == "auto" {
+		ans.system = settable_string{"auto", true}
+		return
+	}
+	parts, err := shlex.Split(spec)
+	if err != nil {
+		return
+	}
+	if !strings.Contains(parts[0], "=") {
+		ans.system = settable_string{spec, true}
+		return
+	}
+	for _, item := range parts {
+		k, v, found := strings.Cut(item, "=")
+		if !found {
+			return ans, fmt.Errorf(fmt.Sprintf("The font specification %s is invalid as %s does not contain an =", spec, item))
+		}
+		switch k {
+		case "family":
+			ans.family = settable_string{v, true}
+		case "style":
+			ans.style = settable_string{v, true}
+		case "full_name":
+			ans.full_name = settable_string{v, true}
+		case "postscript_name":
+			ans.postscript_name = settable_string{v, true}
+		case "variable_name":
+			ans.variable_name = settable_string{v, true}
+		case "features":
+			for _, x := range utils.NewSeparatorScanner(v, " ").Split(v) {
+				pff, err := NewParsedFontFeature(x, features)
+				if err != nil {
+					return ans, err
+				}
+				ans.features = append(ans.features, &pff)
+			}
+		default:
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return ans, err
+			}
+			ans.axes[k] = f
+		}
+	}
+	return
 }
