@@ -55,7 +55,7 @@ Detailed list of changes
 
 - Wayland: Fix a regression in 0.34 that caused the tab bar to not render in second and subsequent OS Windows under Hyprland (:iss:`7413`)
 
-- macOS: Fix a regression in the previous release that caused horizontal scrolling via touchpad in fullscreen applications to be reversed (:iss:`7475`)
+- Fix a regression in the previous release that caused horizontal scrolling via touchpad in fullscreen applications to be reversed on non-Wayland platforms (:iss:`7475`, :iss:`7481`)
 
 
 0.35.0 [2024-05-25]
