@@ -280,6 +280,169 @@ func (self *face_panel) set(setting string) {
 	}
 }
 
+type ParsedFontFeature struct {
+	tag     string
+	val     uint
+	is_bool bool
+}
+
+func (self ParsedFontFeature) String() string {
+	if self.is_bool {
+		return utils.IfElse(self.val == 0, "-", "+") + self.tag
+	}
+	return fmt.Sprintf("%s=%d", self.tag, self.val)
+}
+
+type settable_string struct {
+	val    string
+	is_set bool
+}
+
+type FontSpec struct {
+	family, style, postscript_name, full_name, system, variable_name settable_string
+	axes                                                             map[string]float64
+	features                                                         []ParsedFontFeature
+}
+
+func (self FontSpec) String() string {
+	if self.system.val != "" {
+		return self.system.val
+	}
+	ans := strings.Builder{}
+	a := func(k string, v settable_string) {
+		if v.is_set {
+			ans.WriteString(fmt.Sprintf(" %s=%s", k, shlex.Quote(v.val)))
+		}
+	}
+	a(`family`, self.family)
+	a(`style`, self.style)
+	a(`postscript_name`, self.postscript_name)
+	a(`full_name`, self.full_name)
+	a(`variable_name`, self.variable_name)
+	for name, val := range self.axes {
+		a(name, settable_string{strconv.FormatFloat(val, 'f', -1, 64), true})
+	}
+	if len(self.features) > 0 {
+		buf := strings.Builder{}
+		for _, f := range self.features {
+			buf.WriteString(f.String())
+			buf.WriteString(" ")
+		}
+		a(`features`, settable_string{strings.TrimSpace(buf.String()), true})
+	}
+	return strings.TrimSpace(ans.String())
+}
+
+func NewParsedFontFeature(x string) (ans ParsedFontFeature, err error) {
+	if x != "" {
+		if x[0] == '+' || x[1] == '-' {
+			return ParsedFontFeature{x[1:], utils.IfElse(x[0] == '+', uint(1), uint(0)), true}, nil
+		} else {
+			tag, val, found := strings.Cut(x, "=")
+			pff := ParsedFontFeature{tag: tag}
+			if found {
+				v, err := strconv.ParseUint(val, 10, 0)
+				if err != nil {
+					return ans, err
+				}
+				pff.val = uint(v)
+			}
+			return pff, nil
+		}
+	}
+	return
+}
+
+func NewFontSpec(spec string) (ans FontSpec, err error) {
+	if spec == "" || spec == "auto" {
+		ans.system = settable_string{"auto", true}
+		return
+	}
+	parts, err := shlex.Split(spec)
+	if err != nil {
+		return
+	}
+	if !strings.Contains(parts[0], "=") {
+		ans.system = settable_string{spec, true}
+		return
+	}
+	for _, item := range parts {
+		k, v, found := strings.Cut(item, "=")
+		if !found {
+			return ans, fmt.Errorf(fmt.Sprintf("The font specification %s is invalid as %s does not contain an =", spec, item))
+		}
+		switch k {
+		case "family":
+			ans.family = settable_string{v, true}
+		case "style":
+			ans.style = settable_string{v, true}
+		case "full_name":
+			ans.full_name = settable_string{v, true}
+		case "postscript_name":
+			ans.postscript_name = settable_string{v, true}
+		case "variable_name":
+			ans.variable_name = settable_string{v, true}
+		case "features":
+			for _, x := range utils.NewSeparatorScanner(v, " ").Split(v) {
+				pff, err := NewParsedFontFeature(x)
+				if err != nil {
+					return ans, err
+				}
+				ans.features = append(ans.features, pff)
+			}
+		default:
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return ans, err
+			}
+			ans.axes[k] = f
+		}
+	}
+	return
+}
+
+func (self *face_panel) update_feature_in_setting(value string) error {
+	fs, err := NewFontSpec(self.get())
+	if err != nil {
+		return err
+	}
+	pff, err := NewParsedFontFeature(value)
+	if err != nil {
+		return err
+	}
+	found := false
+	for _, f := range fs.features {
+		if f.tag == pff.tag {
+			f.val = pff.val
+			found = true
+			break
+		}
+	}
+	if !found {
+		fs.features = append(fs.features, pff)
+	}
+	self.set(fs.String())
+	return nil
+}
+
+func (self *face_panel) handle_click_on_feature(feat_tag string) error {
+	d := self.current_preview.Features[feat_tag]
+	if d.Is_index {
+	} else {
+		for q, serialized := range self.current_preview.Applied_features {
+			if q == feat_tag {
+				if serialized != "" && (serialized[0] == '+' || strings.HasSuffix(serialized, "=1")) {
+					return self.update_feature_in_setting("-" + feat_tag)
+				} else {
+					return self.update_feature_in_setting("+" + feat_tag)
+				}
+			}
+		}
+		return self.update_feature_in_setting("+" + feat_tag)
+	}
+	return nil
+}
+
 func (self *face_panel) on_click(id string) (err error) {
 	scheme, val, _ := strings.Cut(id, ":")
 	switch scheme {
@@ -287,6 +450,10 @@ func (self *face_panel) on_click(id string) (err error) {
 		self.set(fmt.Sprintf(`family="%s" style="%s"`, self.family, val))
 	case "variable_style":
 		self.set(self.variable_spec(val, nil))
+	case "feature":
+		if err = self.handle_click_on_feature(val); err != nil {
+			return err
+		}
 	case "axis":
 		p, tag, _ := strings.Cut(val, ":")
 		num, den, _ := strings.Cut(p, "/")
