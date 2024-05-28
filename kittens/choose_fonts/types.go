@@ -88,10 +88,11 @@ type ListResult struct {
 }
 
 type FeatureData struct {
-	Name    string   `json:"name"`
-	Tooltip string   `json:"tooltip"`
-	Sample  string   `json:"sample"`
-	Params  []string `json:"params"`
+	Is_index bool     `json:"is_index"`
+	Name     string   `json:"name"`
+	Tooltip  string   `json:"tooltip"`
+	Sample   string   `json:"sample"`
+	Params   []string `json:"params"`
 }
 
 type RenderedSampleTransmit struct {
