@@ -548,7 +548,7 @@ class TestGraphics(BaseTest):
     def test_image_put(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
-        self.ae(put_image(s, 10, 20)[1], 'OK')
+        self.ae(put_image(s, cw, ch)[1], 'OK')
         l0 = layers(s)
         self.ae(len(l0), 1)
         rect_eq(l0[0]['src_rect'], 0, 0, 1, 1)
@@ -556,7 +556,7 @@ class TestGraphics(BaseTest):
         self.ae(l0[0]['group_count'], 1)
         self.ae(s.cursor.x, 1), self.ae(s.cursor.y, 0)
         src_width, src_height = 3, 5
-        iid, (code, idstr) = put_ref(s, num_cols=s.columns, x_off=2, y_off=1, width=src_width, height=src_height,
+        iid, (code, idstr) = put_ref(s, num_cols=s.columns, num_lines=1, x_off=2, y_off=1, width=src_width, height=src_height,
                                      cell_x_off=3, cell_y_off=1, z=-1, placement_id=17)
         self.ae(idstr, f'i={iid},p=17')
         l2 = layers(s)
@@ -566,15 +566,16 @@ class TestGraphics(BaseTest):
         self.ae(l2[0]['group_count'], 2)
         left, top = -1 + dx + 3 * dx / cw, 1 - 1 * dy / ch
         right = -1 + (1 + s.columns) * dx
-        width_px = ((right - left) / 2) * (cw * s.columns)
-        height_px = width_px * (src_height / src_width)
-        bottom = top - (height_px / (ch * s.lines)) * 2
+        bottom = 1 - dy
         rect_eq(l2[0]['dest_rect'], left, top, right, bottom)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         self.ae(put_image(s, 10, 20, cursor_movement=1)[1], 'OK')
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         s.reset()
         self.assertEqual(s.grman.disk_cache.total_size, 0)
+        self.ae(put_image(s, 2*cw, 2*ch, num_cols=3)[1], 'OK')
+        self.ae((s.cursor.x, s.cursor.y), (3, 2))
+        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + 3 * dx, 1 - 3*dy)
 
     def test_image_layer_grouping(self):
         cw, ch = 10, 20

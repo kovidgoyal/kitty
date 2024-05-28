@@ -798,14 +798,26 @@ static void
 update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelSize cell) {
     uint32_t t;
     if (num_cols == 0) {
-        t = (uint32_t)(ref->src_width + ref->cell_x_offset);
-        num_cols = t / cell.width;
-        if (t > num_cols * cell.width) num_cols += 1;
+        if (num_rows == 0) {
+            t = (uint32_t)(ref->src_width + ref->cell_x_offset);
+            num_cols = t / cell.width;
+            if (t > num_cols * cell.width) num_cols += 1;
+        } else {
+            double height_px = cell.height * num_rows + ref->cell_y_offset;
+            double width_px = height_px * ref->src_width / (double) ref->src_height;
+            num_cols = (uint32_t)ceil(width_px / cell.width);
+        }
     }
     if (num_rows == 0) {
-        t = (uint32_t)(ref->src_height + ref->cell_y_offset);
-        num_rows = t / cell.height;
-        if (t > num_rows * cell.height) num_rows += 1;
+        if (num_cols == 0) {
+            t = (uint32_t)(ref->src_height + ref->cell_y_offset);
+            num_rows = t / cell.height;
+            if (t > num_rows * cell.height) num_rows += 1;
+        } else {
+            double width_px = cell.width * num_cols + ref->cell_x_offset;
+            double height_px = width_px * ref->src_height / (double)ref->src_width;
+            num_rows = (uint32_t)ceil(height_px / cell.height);
+        }
     }
     ref->effective_num_rows = num_rows;
     ref->effective_num_cols = num_cols;

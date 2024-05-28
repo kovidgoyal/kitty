@@ -59,6 +59,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release causing an error when setting background_opacity to zero (:iss:`7483`)
 
+- Image display: Fix cursor movement and image hit region incorrect for image placements that specify only a number of rows or columns to display in (:iss:`7479`)
+
 
 0.35.0 [2024-05-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
