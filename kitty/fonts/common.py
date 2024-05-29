@@ -323,6 +323,7 @@ def get_font_from_spec(
         ans = get_fine_grained_font(spec, bold, italic, resolved_medium_font=resolved_medium_font, family_axis_values=family_axis_values,
                                      match_is_more_specific_than_family=match_is_more_specific_than_family)
         if spec.features:
+            ans = ans.copy()
             ans['features'] = spec.features
         return ans
     family = spec.system or ''
