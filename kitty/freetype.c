@@ -316,7 +316,9 @@ new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
 
     static char *kwds[] = {"descriptor", "path", "index", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|Osi", kwds, &descriptor, &path, &index)) return NULL;
-    if (descriptor) return face_from_descriptor(descriptor, NULL);
+    if (descriptor) {
+        return face_from_descriptor(descriptor, NULL);
+    }
     if (path) return face_from_path(path, index, NULL);
     PyErr_SetString(PyExc_TypeError, "Must specify either path or descriptor");
     return NULL;
@@ -958,9 +960,11 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     return ans;
 }
 
+static void destroy_hb_buffer(hb_buffer_t **x) { if (*x) hb_buffer_destroy(*x); }
+
 static PyObject*
 render_sample_text(Face *self, PyObject *args) {
-    unsigned long canvas_width, canvas_height, pen_x = 0, pen_y = 0;
+    unsigned long canvas_width, canvas_height;
     unsigned long fg = 0xffffff;
     PyObject *ptext;
     if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
@@ -970,30 +974,46 @@ render_sample_text(Face *self, PyObject *args) {
     canvas_height = MIN(canvas_height, num_of_lines * cell_height);
     RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
     if (!pbuf) return NULL;
-    pixel *canvas = (pixel*)PyBytes_AS_STRING(pbuf);
-    memset(canvas, 0, PyBytes_GET_SIZE(pbuf));
-    if (cell_width > canvas_width) goto end;
+    memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
 
+    __attribute__((cleanup(destroy_hb_buffer))) hb_buffer_t *hb_buffer = hb_buffer_create();
+    if (!hb_buffer_pre_allocate(hb_buffer, 4*PyUnicode_GET_LENGTH(ptext))) { PyErr_NoMemory(); return NULL; }
     for (ssize_t n = 0; n < PyUnicode_GET_LENGTH(ptext); n++) {
-        if (pen_x + cell_width > canvas_width) {
+        Py_UCS4 codep = PyUnicode_READ_CHAR(ptext, n);
+        hb_buffer_add_utf32(hb_buffer, &codep, 1, 0, 1);
+    }
+    hb_buffer_guess_segment_properties(hb_buffer);
+    if (!HB_DIRECTION_IS_HORIZONTAL(hb_buffer_get_direction(hb_buffer))) goto end;
+    hb_shape(harfbuzz_font_for_face((PyObject*)self), hb_buffer, self->font_features.features, self->font_features.count);
+    unsigned int len = hb_buffer_get_length(hb_buffer);
+    hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
+    hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+
+    if (cell_width > canvas_width) goto end;
+    pixel *canvas = (pixel*)PyBytes_AS_STRING(pbuf);
+    int load_flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
+    int error;
+
+    float pen_x = 0, pen_y = 0;
+    for (unsigned int i = 0; i < len; i++) {
+        float advance = (float)positions[i].x_advance / 64.0f;
+        if (pen_x + advance > canvas_width) {
             pen_y += cell_height;
             pen_x = 0;
+            if (pen_y >= canvas_height) break;
         }
-        if (pen_y + cell_height > canvas_height) break;
-        Py_UCS4 ch = PyUnicode_READ_CHAR(ptext, n);
-        FT_UInt glyph_index = FT_Get_Char_Index(self->face, ch);
-        if (!glyph_index) continue;
-        int error = FT_Load_Glyph(self->face, glyph_index, FT_LOAD_DEFAULT);
-        if (error) continue;
-        error = FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL);
-        if (error) continue;
+        size_t x = (size_t)round(pen_x + (float)positions[i].x_offset / 64.0f);
+        size_t y = (size_t)round(pen_y + (float)positions[i].y_offset / 64.0f);
+        pen_x += advance;
+        if ((error = FT_Load_Glyph(self->face, info[i].codepoint, load_flags))) continue;
+        if ((error = FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL))) continue;
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
         ProcessedBitmap pbm = EMPTY_PBM;
         populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
-        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, 0, 0, baseline, 99999, fg, pen_x, pen_y);
-        pen_x += self->face->glyph->advance.x >> 6;
+        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, 0, 0, baseline, 99999, fg, x, y);
     }
-    for (uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf); p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * (MIN(canvas_height, pen_y + cell_height)); p += 4) {
+
+    for (uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf); p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * canvas_height; p += 4) {
         uint8_t a = p[0], b = p[1], g = p[2], r = p[3];
         p[0] = r; p[1] = g; p[2] = b; p[3] = a;
     }

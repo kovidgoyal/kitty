@@ -283,7 +283,7 @@ sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_wi
 
 static PyObject*
 desc_to_face(PyObject *desc, FONTS_DATA_HANDLE fg) {
-    PyObject *d = specialize_font_descriptor(desc, fg);
+    PyObject *d = specialize_font_descriptor(desc, fg->font_sz_in_pts, fg->logical_dpi_x, fg->logical_dpi_y);
     if (d == NULL) return NULL;
     PyObject *ans = face_from_descriptor(d, fg);
     Py_DECREF(d);
@@ -1829,7 +1829,12 @@ PyTypeObject ParsedFontFeature_Type = {
     .tp_call = parsed_font_feature_call,
 };
 
-
+static PyObject*
+pyspecialize_font_descriptor(PyObject *self UNUSED, PyObject *args) {
+    PyObject *desc; double font_sz, dpi_x, dpi_y;
+    if (!PyArg_ParseTuple(args, "Offf", &desc, &font_sz, &dpi_x, &dpi_y)) return NULL;
+    return specialize_font_descriptor(desc, font_sz, dpi_x, dpi_y);
+}
 
 static PyMethodDef module_methods[] = {
     METHODB(set_font_data, METH_VARARGS),
@@ -1843,6 +1848,7 @@ static PyMethodDef module_methods[] = {
     METHODB(current_fonts, METH_VARARGS),
     METHODB(test_render_line, METH_VARARGS),
     METHODB(get_fallback_font, METH_VARARGS),
+    {"specialize_font_descriptor", (PyCFunction)pyspecialize_font_descriptor, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
