@@ -624,7 +624,7 @@ new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
 }
 
 PyObject*
-specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg UNUSED) {
+specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts UNUSED, double dpi_x UNUSED, double dpi_y UNUSED) {
     Py_INCREF(base_descriptor);
     return base_descriptor;
 }
@@ -742,6 +742,8 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     return ans;
 }
 
+static void destroy_hb_buffer(hb_buffer_t **x) { if (*x) hb_buffer_destroy(*x); }
+
 static PyObject*
 render_sample_text(CTFace *self, PyObject *args) {
     unsigned long canvas_width, canvas_height;
@@ -756,35 +758,48 @@ render_sample_text(CTFace *self, PyObject *args) {
     canvas_height = MIN(canvas_height, num_of_lines * cell_height);
     RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
     if (!pbuf) return NULL;
-    RAII_ALLOC(unichar, chars, calloc(sizeof(unichar), num_chars));
-    if (!chars) return PyErr_NoMemory();
-    for (size_t i = 0; i < num_chars; i++) chars[i] = PyUnicode_READ_CHAR(ptext, i);
-    RAII_ALLOC(CGSize, local_advances, calloc(sizeof(CGSize), num_chars));
-    if (!local_advances) return PyErr_NoMemory();
-    ensure_render_space(0, 0, num_chars);
-    CTFontGetGlyphsForCharacters(font, chars, buffers.glyphs, num_chars);
-    CTFontGetAdvancesForGlyphs(font, kCTFontOrientationDefault, buffers.glyphs, local_advances, num_chars);
-    CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, buffers.glyphs, buffers.boxes, num_chars);
-    CGFloat x = 0, y = 0;
-    memset(PyByteArray_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
-    if (cell_width > canvas_width) goto end;
-    for (size_t i = 0; i < num_chars; i++) {
-        if (local_advances[i].width + x > canvas_width) {
-            x = 0;
-            y += cell_height;
-        }
-        if (y + cell_height > canvas_height) {
-            num_chars = i - 1;
-            break;
-        }
-        buffers.positions[i] = CGPointMake(x, -y);
-        x += cell_width;
+
+    __attribute__((cleanup(destroy_hb_buffer))) hb_buffer_t *hb_buffer = hb_buffer_create();
+    if (!hb_buffer_pre_allocate(hb_buffer, 4*num_chars)) { PyErr_NoMemory(); return NULL; }
+    for (size_t n = 0; n < num_chars; n++) {
+        Py_UCS4 codep = PyUnicode_READ_CHAR(ptext, n);
+        hb_buffer_add_utf32(hb_buffer, &codep, 1, 0, 1);
     }
-    unsigned long height = MIN((int)ceil(y) + cell_height, canvas_height);
-    ensure_render_space(canvas_width, height, num_chars);
-    render_glyphs(font, canvas_width, height, baseline, num_chars);
+    hb_buffer_guess_segment_properties(hb_buffer);
+    if (!HB_DIRECTION_IS_HORIZONTAL(hb_buffer_get_direction(hb_buffer))) goto end;
+    hb_shape(harfbuzz_font_for_face((PyObject*)self), hb_buffer, self->font_features.features, self->font_features.count);
+    unsigned int len = hb_buffer_get_length(hb_buffer);
+    hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
+    hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+
+    memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
+    if (cell_width > canvas_width) goto end;
+
+    ensure_render_space(canvas_width, canvas_height, len);
+    float pen_x = 0, pen_y = 0;
+    unsigned num_glyphs = 0;
+    CGFloat scale = CTFontGetSize(self->ct_font) / CTFontGetUnitsPerEm(self->ct_font);
+    for (unsigned int i = 0; i < len; i++) {
+        float advance = (float)positions[i].x_advance * scale;
+        if (pen_x + advance > canvas_width) {
+            pen_y += cell_height;
+            pen_x = 0;
+            if (pen_y >= canvas_height) break;
+        }
+        double x = pen_x + (double)positions[i].x_offset * scale;
+        double y = pen_y + (double)positions[i].y_offset * scale;
+        pen_x += advance;
+        buffers.positions[i] = CGPointMake(x, -y);
+        buffers.glyphs[i] = info[i].codepoint;
+        num_glyphs++;
+    }
+    render_glyphs(font, canvas_width, canvas_height, baseline, num_glyphs);
     uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
-    for (uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf), *s = buffers.render_buf; p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * height; p += 4, s++) {
+    for (
+        uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf), *s = buffers.render_buf;
+        p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * canvas_height;
+        p += 4, s++
+    ) {
         p[0] = r; p[1] = g; p[2] = b; p[3] = s[0];
     }
 end:

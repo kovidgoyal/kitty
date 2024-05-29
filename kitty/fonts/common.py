@@ -21,7 +21,8 @@ if TYPE_CHECKING:
         prefer_variable: bool = False,
         ) -> Descriptor: ...
     def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> Descriptor: ...
-    def face_from_descriptor(descriptor: Descriptor) -> Face: ...
+    def face_from_descriptor(descriptor: Descriptor, font_sz_in_pts: Optional[float] = None, dpi_x: Optional[float] = None, dpi_y: Optional[float] = None
+                             ) -> Face: ...
     def is_monospace(descriptor: Descriptor) -> bool: ...
     def is_variable(descriptor: Descriptor) -> bool: ...
     def set_named_style(name: str, font: Descriptor, vd: VariableData) -> bool: ...
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     def get_axis_values(font: Descriptor, vd: VariableData) -> Dict[str, float]: ...
 else:
     FontCollectionMapType = FontMap = None
+    from kitty.fast_data_types import specialize_font_descriptor
     if is_macos:
         from kitty.fast_data_types import CTFace as Face
         from kitty.fonts.core_text import (
@@ -55,7 +57,10 @@ else:
             set_axis_values,
             set_named_style,
         )
-    def face_from_descriptor(descriptor: Descriptor) -> Face: return Face(descriptor=descriptor)
+    def face_from_descriptor(descriptor, font_sz_in_pts = None, dpi_x = None, dpi_y = None):
+        if font_sz_in_pts is not None:
+            descriptor = specialize_font_descriptor(descriptor, font_sz_in_pts, dpi_x, dpi_y)
+        return Face(descriptor=descriptor)
 
 
 cache_for_variable_data_by_path: Dict[str, VariableData] = {}

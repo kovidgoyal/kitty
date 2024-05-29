@@ -402,7 +402,7 @@ end:
 }
 
 PyObject*
-specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
+specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts, double dpi_x, double dpi_y) {
     ensure_initialized();
     PyObject *p = PyDict_GetItemString(base_descriptor, "path");
     PyObject *idx = PyDict_GetItemString(base_descriptor, "index");
@@ -416,8 +416,8 @@ specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
     RAII_PyObject(ans, NULL);
     AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
     AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
-    AP(FcPatternAddDouble, FC_SIZE, fg->font_sz_in_pts, "size");
-    AP(FcPatternAddDouble, FC_DPI, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0, "dpi");
+    AP(FcPatternAddDouble, FC_SIZE, font_sz_in_pts, "size");
+    AP(FcPatternAddDouble, FC_DPI, (dpi_x + dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
     FcPatternDestroy(pat); pat = NULL;
 
