@@ -120,7 +120,7 @@ def get_features(features: Dict[str, Optional['FeatureData']]) -> Dict[str, FD]:
 
 
 def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: float, width: int, height: int) -> RenderedSample:
-    face = face_from_descriptor(font)
+    face = face_from_descriptor(font, opts.font_size, dpi_x, dpi_y)
     face.set_size(opts.font_size, dpi_x, dpi_y)
     metadata = {
         'variable_data': get_variable_data_for_face(face),
@@ -150,7 +150,7 @@ def render_family_sample(
     ans: Dict[str, RenderedSampleTransmit] = {}
     font_files = get_font_files(opts)
     for x in family_key:
-        key: FaceKey = x + ': ' + getattr(opts, x).created_from_string, base_key
+        key: FaceKey = x + ': ' + str(getattr(opts, x)), base_key
         if x == 'font_family':
             desc = font_files['medium']
         elif x == 'bold_font':
@@ -174,8 +174,8 @@ def render_family_sample(
 ResolvedFace = Dict[Literal['family', 'spec'], str]
 
 
-def spec_for_descriptor(d: Descriptor) -> str:
-    face = face_from_descriptor(d)
+def spec_for_descriptor(d: Descriptor, font_size: float) -> str:
+    face = face_from_descriptor(d, font_size, 288, 288)
     return spec_for_face(d['family'], face).as_setting
 
 
@@ -184,7 +184,7 @@ def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:
     ans: Dict[OptNames, ResolvedFace] = {}
     def d(key: Literal['medium', 'bold', 'italic', 'bi'], opt_name: OptNames) -> None:
         descriptor = font_files[key]
-        ans[opt_name] = {'family': descriptor['family'], 'spec': spec_for_descriptor(descriptor)}
+        ans[opt_name] = {'family': descriptor['family'], 'spec': spec_for_descriptor(descriptor, opts.font_size)}
     d('medium', 'font_family')
     d('bold', 'bold_font')
     d('italic', 'italic_font')

@@ -197,6 +197,12 @@ class FontSpec(NamedTuple):
                 a(key, f'{val:g}')
         return ' '.join(ans)
 
+    def __str__(self) -> str:
+        return self.as_setting
+
+    def __repr__(self) -> str:
+        return repr(str(self))
+
 
 
 Descriptor = Union[FontConfigPattern, CoreTextFont]
