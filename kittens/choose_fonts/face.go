@@ -150,7 +150,11 @@ func (self *face_panel) draw_font_features(_ loop.ScreenSize, start_y int, previ
 		formatted = append(formatted, tui.InternalHyperlink(text, "feature:"+feat_tag))
 	}
 	utils.SortWithKey(formatted, func(a string) string {
-		return strings.ToLower(wcswidth.StripEscapeCodes(a))
+		ans := strings.ToLower(wcswidth.StripEscapeCodes(a))
+		if ans[0] == '-' || ans[0] == '+' {
+			ans = ans[1:]
+		}
+		return ans
 	})
 	line := lp.SprintStyled(control_name_style, `Features`) + ": " + strings.Join(formatted, ", ")
 	y = self.render_lines(start_y, ``, line)
@@ -315,15 +319,34 @@ func (self *face_panel) remove_feature_in_setting(tag string) error {
 	return nil
 }
 
+func (self *face_panel) change_feature_value(tag string, val uint, remove bool) error {
+	if remove {
+		return self.remove_feature_in_setting(tag)
+	}
+	pff := ParsedFontFeature{tag: tag, val: val}
+	return self.update_feature_in_setting(pff)
+}
+
 func (self *face_panel) handle_click_on_feature(feat_tag string) error {
 	d := self.current_preview.Features[feat_tag]
 	if d.Is_index {
+		var current_val uint
+		for q, serialized := range self.current_preview.Applied_features {
+			if q == feat_tag && serialized != "" {
+				if _, num, found := strings.Cut(serialized, "="); found {
+					if v, err := strconv.ParseUint(num, 10, 0); err == nil {
+						current_val = uint(v)
+					}
+				} else {
+					current_val = utils.IfElse(serialized[0] == '-', uint(0), uint(1))
+				}
+				return self.handler.if_pane.on_enter(self.family, self.which, self.settings, feat_tag, d, current_val)
+			}
+		}
+		return self.handler.if_pane.on_enter(self.family, self.which, self.settings, feat_tag, d, current_val)
 	} else {
 		for q, serialized := range self.current_preview.Applied_features {
-			if q == feat_tag {
-				if serialized == "" {
-					continue
-				}
+			if q == feat_tag && serialized != "" {
 				if serialized[0] == '-' {
 					return self.remove_feature_in_setting(feat_tag)
 				}
@@ -332,7 +355,6 @@ func (self *face_panel) handle_click_on_feature(feat_tag string) error {
 		}
 		return self.update_feature_in_setting(ParsedFontFeature{tag: feat_tag, is_bool: true, val: 1})
 	}
-	return nil
 }
 
 func (self *face_panel) on_click(id string) (err error) {
