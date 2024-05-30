@@ -152,6 +152,7 @@ class Selection(BaseTest):
             opts.font_family = parse_font_spec('family="liberation mono" features="dlig test=3"')
             ff = get_font_files(opts)
             self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
+            self.ae(face_from_descriptor(ff['bold']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
 
 class Rendering(BaseTest):
