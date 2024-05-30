@@ -20,6 +20,12 @@ images and other types of documents directly in your terminal, even over SSH.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A terminal PDF/DJVU/CBR viewer
 
+.. _tool_tdf:
+
+`tdf <https://github.com/itsjunetime/tdf>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal PDF viewer
+
 .. _tool_mdcat:
 
 `mdcat <https://github.com/lunaryorn/mdcat>`_
