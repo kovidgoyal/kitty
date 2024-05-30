@@ -133,29 +133,33 @@ func (self *face_panel) draw_font_features(_ loop.ScreenSize, start_y int, previ
 		return
 	}
 	formatted := make([]string, 0, len(preview.Features))
+	sort_keys := make(map[string]string)
 	for feat_tag, data := range preview.Features {
-		var text string
+		var text, sort_key string
+
 		if preview.Applied_features[feat_tag] != "" {
 			text = preview.Applied_features[feat_tag]
+			sort_key = text
+			if sort_key[0] == '-' || sort_key[1] == '+' {
+				sort_key = sort_key[1:]
+			}
 			text = strings.Replace(text, "+", lp.SprintStyled("fg=green", "+"), 1)
 			text = strings.Replace(text, "-", lp.SprintStyled("fg=red", "-"), 1)
 			text = strings.Replace(text, "=", lp.SprintStyled("fg=cyan", "="), 1)
 			if data.Name != "" {
-				text = fmt.Sprintf("%s: %s", data.Name, text)
+				text = data.Name + ": " + text
+				sort_key = data.Name
 			}
 		} else {
 			text = utils.IfElse(data.Name == "", feat_tag, data.Name)
+			sort_key = text
 			text = lp.SprintStyled("dim", text)
 		}
-		formatted = append(formatted, tui.InternalHyperlink(text, "feature:"+feat_tag))
+		f := tui.InternalHyperlink(text, "feature:"+feat_tag)
+		sort_keys[f] = strings.ToLower(sort_key)
+		formatted = append(formatted, f)
 	}
-	utils.SortWithKey(formatted, func(a string) string {
-		ans := strings.ToLower(wcswidth.StripEscapeCodes(a))
-		if ans[0] == '-' || ans[0] == '+' {
-			ans = ans[1:]
-		}
-		return ans
-	})
+	utils.SortWithKey(formatted, func(a string) string { return sort_keys[a] })
 	line := lp.SprintStyled(control_name_style, `Features`) + ": " + strings.Join(formatted, ", ")
 	y = self.render_lines(start_y, ``, line)
 	return

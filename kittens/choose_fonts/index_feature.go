@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
@@ -49,6 +50,15 @@ func (self *if_panel) draw_screen() (err error) {
 	}
 	lines = append(lines, "")
 	cursor_y := self.render_lines(2, lines...)
+	if len(self.feature_data.Params) > 0 {
+		lp.MoveCursorTo(1, cursor_y+3)
+		num := 1
+		strings.Join(utils.Map(func(x string) string {
+			ans := tui.InternalHyperlink(x, fmt.Sprintf("fval:%d", num))
+			num++
+			return ans
+		}, self.feature_data.Params), ", ")
+	}
 	lp.MoveCursorTo(1, cursor_y+1)
 	lp.ClearToEndOfLine()
 	self.rl.RedrawNonAtomic()
@@ -67,7 +77,17 @@ func (self *if_panel) on_wakeup() error {
 }
 
 func (self *if_panel) on_click(id string) (err error) {
-	return
+	scheme, val, _ := strings.Cut(id, ":")
+	if scheme != "fval" {
+		return
+	}
+	v, _ := strconv.ParseUint(val, 10, 64)
+
+	if err = self.handler.face_pane.change_feature_value(self.feat_tag, uint(v), false); err != nil {
+		return err
+	}
+	self.handler.current_pane = &self.handler.face_pane
+	return self.handler.draw_screen()
 }
 
 func (self *if_panel) on_key_event(event *loop.KeyEvent) (err error) {
