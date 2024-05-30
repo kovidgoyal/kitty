@@ -379,10 +379,16 @@ def get_font_files(opts: Options) -> FontFiles:
     kd = {(False, False): 'medium', (True, False): 'bold', (False, True): 'italic', (True, True): 'bi'}
     for (bold, italic), attr in attr_map.items():
         if bold or italic:
-            font = get_font_from_spec(getattr(opts, attr), bold, italic, resolved_medium_font=medium_font, family_axis_values=family_axis_values)
+            spec: FontSpec = getattr(opts, attr)
+            font = get_font_from_spec(spec, bold, italic, resolved_medium_font=medium_font, family_axis_values=family_axis_values)
+            # Set family axis values based on the values in font
             if not (bold and italic) and (is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font)):
                 av = get_axis_values(font, get_variable_data_for_descriptor(font))
                 (family_axis_values.set_italic_values if italic else family_axis_values.set_bold_values)(av)
+            if spec.is_auto and not font.get('features') and medium_font.get('features'):
+                # Set font features based on medium face features
+                font = font.copy()
+                font['features'] = medium_font['features']
         else:
             font = medium_font
         key = kd[(bold, italic)]
