@@ -50,7 +50,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.35.1 [future]
+0.35.1 [2024-05-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Wayland: Fix a regression in 0.34 that caused the tab bar to not render in second and subsequent OS Windows under Hyprland (:iss:`7413`)
