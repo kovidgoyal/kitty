@@ -45,6 +45,7 @@ in
           openssl
           xxHash
           dbus
+          simde
         ]
         ++ checkInputs;
 
