@@ -76,8 +76,9 @@ type VariableData struct {
 }
 
 type ResolvedFace struct {
-	Family string `json:"family"`
-	Spec   string `json:"spec"`
+	Family  string `json:"family"`
+	Spec    string `json:"spec"`
+	Setting string `json:"setting"`
 }
 
 type ResolvedFaces struct {

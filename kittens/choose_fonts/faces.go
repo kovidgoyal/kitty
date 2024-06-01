@@ -148,7 +148,8 @@ func (self *faces) on_enter(family string) error {
 		self.family = family
 		r := self.handler.listing.resolved_faces_from_kitty_conf
 		d := func(conf ResolvedFace, setting *string, defval string) {
-			*setting = utils.IfElse(family == conf.Family, conf.Spec, defval)
+			s := utils.IfElse(conf.Setting == "auto", "auto", conf.Spec)
+			*setting = utils.IfElse(family == conf.Family, s, defval)
 		}
 		d(r.Font_family, &self.settings.font_family, fmt.Sprintf(`family="%s"`, family))
 		d(r.Bold_font, &self.settings.bold_font, "auto")
