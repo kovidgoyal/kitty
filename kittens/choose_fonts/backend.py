@@ -174,7 +174,7 @@ def render_family_sample(
     return ans
 
 
-ResolvedFace = Dict[Literal['family', 'spec'], str]
+ResolvedFace = Dict[Literal['family', 'spec', 'setting'], str]
 
 
 def spec_for_descriptor(d: Descriptor, font_size: float) -> str:
@@ -187,7 +187,10 @@ def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:
     ans: Dict[OptNames, ResolvedFace] = {}
     def d(key: Literal['medium', 'bold', 'italic', 'bi'], opt_name: OptNames) -> None:
         descriptor = font_files[key]
-        ans[opt_name] = {'family': descriptor['family'], 'spec': spec_for_descriptor(descriptor, opts.font_size)}
+        ans[opt_name] = {
+                'family': descriptor['family'], 'spec': spec_for_descriptor(descriptor, opts.font_size),
+                'setting': getattr(opts, opt_name).created_from_string
+        }
     d('medium', 'font_family')
     d('bold', 'bold_font')
     d('italic', 'italic_font')
