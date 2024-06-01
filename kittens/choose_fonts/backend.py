@@ -39,8 +39,11 @@ def setup_debug_print() -> bool:
             fd = int(os.environ['KITTY_STDIO_FORWARDED'])
         except Exception:
             return False
-        sys.stdout = open(fd, 'w', closefd=False)
-        return True
+        try:
+            sys.stdout = open(fd, 'w', closefd=False)
+            return True
+        except OSError:
+            return False
     return False
 
 
