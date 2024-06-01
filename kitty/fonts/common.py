@@ -4,6 +4,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
 
 from kitty.constants import is_macos
+from kitty.fast_data_types import ParsedFontFeature
 from kitty.fonts import Descriptor, DescriptorVar, DesignAxis, FontSpec, NamedStyle, Scorer, VariableAxis, VariableData, family_name_to_key
 from kitty.options.types import Options
 
@@ -465,8 +466,9 @@ def get_axis_map(face_or_descriptor: Union[Face, Descriptor]) -> Dict[str, float
 
 def spec_for_face(family: str, face: Face) -> FontSpec:
     v = face.get_variation()
+    features = tuple(map(ParsedFontFeature, face.applied_features().values()))
     if v is None:
-        return FontSpec(family=family, postscript_name=face.postscript_name())
+        return FontSpec(family=family, postscript_name=face.postscript_name(), features=features)
     vd = face.get_variable_data()
     varname = vd['variations_postscript_name_prefix']
     ns = get_named_style(face)
@@ -474,8 +476,8 @@ def spec_for_face(family: str, face: Face) -> FontSpec:
         axes = []
         for key, val in get_axis_map(face).items():
             axes.append((key, val))
-        return FontSpec(family=family, variable_name=varname, axes=tuple(axes))
-    return FontSpec(family=family, variable_name=varname, style=ns['psname'] or ns['name'])
+        return FontSpec(family=family, variable_name=varname, axes=tuple(axes), features=features)
+    return FontSpec(family=family, variable_name=varname, style=ns['psname'] or ns['name'], features=features)
 
 
 def develop(family: str = '') -> None:
