@@ -106,6 +106,7 @@ type RenderedSampleTransmit struct {
 	Variable_data        VariableData           `json:"variable_data"`
 	Style                string                 `json:"style"`
 	Psname               string                 `json:"psname"`
+	Spec                 string                 `json:"spec"`
 	Features             map[string]FeatureData `json:"features"`
 	Applied_features     map[string]string      `json:"applied_features"`
 	Variable_named_style NamedStyle             `json:"variable_named_style"`
