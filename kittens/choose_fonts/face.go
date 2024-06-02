@@ -28,6 +28,8 @@ type face_panel struct {
 	preview_cache_mutex sync.Mutex
 }
 
+// Create a new FontSpec that keeps features and axis values and named styles
+// same as the current setting. Names are all reset apart from style name.
 func (self *face_panel) new_font_spec() (*FontSpec, error) {
 	fs, err := NewFontSpec(self.get(), self.current_preview.Features)
 	if err != nil {
@@ -38,9 +40,14 @@ func (self *face_panel) new_font_spec() (*FontSpec, error) {
 			return nil, err
 		}
 	}
+	// reset these selectors as we will be using some style/axis based selector instead
 	fs.family = settable_string{self.family, true}
+	fs.postscript_name = settable_string{}
+	fs.full_name = settable_string{}
 	if len(self.current_preview.Variable_data.Axes) > 0 {
 		fs.variable_name = settable_string{self.current_preview.Variable_data.Variations_postscript_name_prefix, true}
+	} else {
+		fs.variable_name = settable_string{}
 	}
 	return &fs, nil
 }
@@ -101,6 +108,22 @@ func (self *face_panel) draw_axis(sz loop.ScreenSize, y int, ax VariableAxis, ax
 	return self.render_lines(y, buf.String())
 }
 
+func is_current_named_style(style_group_name, style_name string, vd VariableData, ns NamedStyle) bool {
+	for _, dax := range vd.Design_axes {
+		if dax.Name == style_group_name {
+			if val, found := ns.Axis_values[dax.Tag]; found {
+				for _, v := range dax.Values {
+					if v.Value == val {
+						return v.Name == style_name
+					}
+				}
+			}
+			break
+		}
+	}
+	return false
+}
+
 func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int, preview RenderedSampleTransmit) (y int, err error) {
 	s := styles_for_variable_data(preview.Variable_data)
 	lines := []string{}
@@ -111,7 +134,7 @@ func (self *face_panel) draw_variable_fine_tune(sz loop.ScreenSize, start_y int,
 		}
 		formatted := make([]string, len(sg.styles))
 		for i, style_name := range sg.styles {
-			if style_name == preview.Variable_named_style.Name {
+			if is_current_named_style(sg.name, style_name, preview.Variable_data, preview.Variable_named_style) {
 				formatted[i] = self.handler.lp.SprintStyled(current_val_style, style_name)
 			} else {
 				formatted[i] = tui.InternalHyperlink(style_name, "variable_style:"+style_name)
@@ -400,7 +423,7 @@ func (self *face_panel) on_click(id string) (err error) {
 	scheme, val, _ := strings.Cut(id, ":")
 	switch scheme {
 	case "style":
-		if err = self.set_style(fmt.Sprintf(`family="%s" style="%s"`, self.family, val)); err != nil {
+		if err = self.set_style(val); err != nil {
 			return err
 		}
 	case "variable_style":
