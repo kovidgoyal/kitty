@@ -42,6 +42,10 @@ Some prominent kittens:
     Preview and quick switch between over three hundred color themes.
 
 
+:doc:`Fonts <kittens/fonts>`
+    Preview, fine-tune and quick switch the fonts used by kitty.
+
+
 :doc:`Hints <kittens/hints>`
     Select and open/paste/insert arbitrary text snippets such as URLs,
     filenames, words, lines, etc. from the terminal screen.

@@ -39,3 +39,13 @@ for that family. You can choose to fine tune any of the faces. Start with
 fine-tuning the regular face by pressing the :kbd:`R` key. The other styles
 will be automatically adjusted based on what you select for the regular face.
 
+.. image:: ../screenshots/font-fine-tune.png
+   :alt: Fine tune a font by choosing a precise weight and features
+   :width: 600
+
+You can choose a specific style or font feature by clicking on it. A precise
+value for any variable axes can be selected using the slider, in the screenshot
+above the font supports precise weight adjustment. If you are lucky the font
+designer has included descriptive names for font features, which will be
+displayed, if not, consult the documentation of the font to see what each feature does.
+
