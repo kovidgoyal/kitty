@@ -11,6 +11,7 @@ Extend with kittens
    kittens/diff
    kittens/unicode_input
    kittens/themes
+   kittens/choose-fonts
    kittens/hints
    kittens/remote_file
    kittens/hyperlinked_grep
