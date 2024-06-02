@@ -33,8 +33,15 @@ func (self *face_panel) new_font_spec() (*FontSpec, error) {
 	if err != nil {
 		return nil, err
 	}
+	if fs.system.val == "auto" {
+		if fs, err = NewFontSpec(self.current_preview.Spec, self.current_preview.Features); err != nil {
+			return nil, err
+		}
+	}
 	fs.family = settable_string{self.family, true}
-	fs.variable_name = settable_string{self.current_preview.Variable_data.Variations_postscript_name_prefix, true}
+	if len(self.current_preview.Variable_data.Axes) > 0 {
+		fs.variable_name = settable_string{self.current_preview.Variable_data.Variations_postscript_name_prefix, true}
+	}
 	return &fs, nil
 }
 
