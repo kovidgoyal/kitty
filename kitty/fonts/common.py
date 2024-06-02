@@ -417,7 +417,7 @@ def get_named_style(face_or_descriptor: Union[Face, Descriptor]) -> Optional[Nam
         d: Descriptor = face_or_descriptor
         vd = get_variable_data_for_descriptor(d)
         if d['descriptor_type'] == 'fontconfig':
-            ns = d.get('named_instance', -1)
+            ns = d.get('named_style', -1)
             if ns > -1 and ns < len(vd['named_styles']):
                 return vd['named_styles'][ns]
             axis_map = {}
@@ -444,7 +444,7 @@ def get_axis_map(face_or_descriptor: Union[Face, Descriptor]) -> Dict[str, float
         d: Descriptor = face_or_descriptor
         vd = get_variable_data_for_descriptor(d)
         if d['descriptor_type'] == 'fontconfig':
-            ns = d.get('named_instance', -1)
+            ns = d.get('named_style', -1)
             if ns > -1 and ns < len(vd['named_styles']):
                 base_axis_map = vd['named_styles'][ns]['axis_values'].copy()
             axis_map = {}

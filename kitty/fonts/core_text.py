@@ -248,6 +248,11 @@ def set_named_style(name: str, font: CoreTextFont, vd: VariableData) -> bool:
     for i, ns in enumerate(vd['named_styles']):
         if ns['name'].lower() == q:
             return set_axis_values(ns['axis_values'], font, vd)
+    if vd['elided_fallback_name']:
+        for i, ns in enumerate(vd['named_styles']):
+            eq = ' '.join(ns['name'].replace(vd['elided_fallback_name'], '').strip().split()).lower()
+            if q == eq:
+                return set_axis_values(ns['axis_values'], font, vd)
     return False
 
 
