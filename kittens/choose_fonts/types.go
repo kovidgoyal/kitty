@@ -318,6 +318,9 @@ func NewFontSpec(spec string, features map[string]FeatureData) (ans FontSpec, er
 				ans.features = append(ans.features, &pff)
 			}
 		default:
+			if ans.axes == nil {
+				ans.axes = make(map[string]float64)
+			}
 			f, err := strconv.ParseFloat(v, 64)
 			if err != nil {
 				return ans, err
