@@ -370,25 +370,19 @@ wait_for_swap_to_commit(_GLFWwindow *window) {
 
 static void
 resizeFramebuffer(_GLFWwindow* window) {
+    GLFWwindow *ctx = glfwGetCurrentContext();
+    const bool ctx_changed = ctx != (GLFWwindow*)window;
+    if (ctx_changed) glfwMakeContextCurrent((GLFWwindow*)window);
     double scale = _glfwWaylandWindowScale(window);
     int scaled_width = (int)round(window->wl.width * scale);
     int scaled_height = (int)round(window->wl.height * scale);
     debug("Resizing framebuffer of window: %llu to: %dx%d window size: %dx%d at scale: %.3f\n",
             window->id, scaled_width, scaled_height, window->wl.width, window->wl.height, scale);
+    wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0);
     update_regions(window);
     wait_for_swap_to_commit(window);
-    window->wl.framebuffer_size_at_last_resize.width = scaled_width;
-    window->wl.framebuffer_size_at_last_resize.height = scaled_height;
-    window->wl.framebuffer_size_at_last_resize.dirty = true;
+    if (ctx_changed) glfwMakeContextCurrent(ctx);
     _glfwInputFramebufferSize(window, scaled_width, scaled_height);
-}
-
-void
-_glfwWaylandBeforeBufferSwap(_GLFWwindow* window) {
-    if (window->wl.framebuffer_size_at_last_resize.dirty) {
-        wl_egl_window_resize(window->wl.native, window->wl.framebuffer_size_at_last_resize.width, window->wl.framebuffer_size_at_last_resize.height, 0, 0);
-        window->wl.framebuffer_size_at_last_resize.dirty = false;
-    }
 }
 
 void

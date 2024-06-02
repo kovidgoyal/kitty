@@ -185,9 +185,6 @@ typedef struct _GLFWwindowWayland
         struct zwlr_layer_surface_v1* zwlr_layer_surface_v1;
     } layer_shell;
 
-    struct {
-        int width, height, dirty;
-    } framebuffer_size_at_last_resize;
     /* information about axis events on current frame */
     struct
     {
