@@ -245,6 +245,12 @@ def set_named_style(name: str, font: FontConfigPattern, vd: VariableData) -> boo
         if ns['name'].lower() == q:
             font['named_style'] = i
             return True
+    if vd['elided_fallback_name']:
+        for i, ns in enumerate(vd['named_styles']):
+            eq = ' '.join(ns['name'].replace(vd['elided_fallback_name'], '').strip().split()).lower()
+            if q == eq:
+                font['named_style'] = i
+                return True
     return False
 
 

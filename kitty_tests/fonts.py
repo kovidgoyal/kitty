@@ -114,6 +114,11 @@ class Selection(BaseTest):
             self.ae(get_named_style(face)['name'], 'Black')
             face = face_from_descriptor(ff['bi'])
             self.ae(get_named_style(face)['name'], 'Black Italic')
+            opts.font_family = parse_font_spec('family=SourceCodeVF variable_name=SourceCodeUpright wght=470')
+            opts.italic_font = parse_font_spec('family=SourceCodeVF variable_name=SourceCodeItalic style=Black')
+            ff = get_font_files(opts)
+            self.assertFalse(get_named_style(ff['medium']))
+            self.ae(get_named_style(ff['italic'])['name'], 'Black Italic')
         if has('cascadia code'):
             opts = Options()
             opts.font_family = parse_font_spec('family="cascadia code"')
