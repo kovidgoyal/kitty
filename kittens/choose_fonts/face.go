@@ -12,7 +12,6 @@ import (
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
-	"kitty/tools/utils/shlex"
 	"kitty/tools/wcswidth"
 )
 
@@ -29,19 +28,43 @@ type face_panel struct {
 	preview_cache_mutex sync.Mutex
 }
 
-func (self *face_panel) variable_spec(named_style string, axis_overrides map[string]float64) string {
-	vname := self.current_preview.Variable_data.Variations_postscript_name_prefix
-	ans := fmt.Sprintf(`family=%s variable_name=%s`, shlex.Quote(self.family), shlex.Quote(vname))
+func (self *face_panel) new_font_spec() (*FontSpec, error) {
+	fs, err := NewFontSpec(self.get(), self.current_preview.Features)
+	if err != nil {
+		return nil, err
+	}
+	fs.family = settable_string{self.family, true}
+	fs.variable_name = settable_string{self.current_preview.Variable_data.Variations_postscript_name_prefix, true}
+	return &fs, nil
+}
+
+func (self *face_panel) set_variable_spec(named_style string, axis_overrides map[string]float64) error {
+	fs, err := self.new_font_spec()
+	if err != nil {
+		return err
+	}
+
 	if axis_overrides != nil {
 		axis_values := self.current_preview.current_axis_values()
 		maps.Copy(axis_values, axis_overrides)
-		for tag, val := range axis_values {
-			ans += fmt.Sprintf(" %s=%g", tag, val)
-		}
+		fs.axes = axis_values
+		fs.style = settable_string{"", false}
 	} else if named_style != "" {
-		ans += fmt.Sprintf(" style=%s", shlex.Quote(named_style))
+		fs.style = settable_string{named_style, true}
+		fs.axes = nil
 	}
-	return ans
+	self.set(fs.String())
+	return nil
+}
+
+func (self *face_panel) set_style(named_style string) error {
+	fs, err := self.new_font_spec()
+	if err != nil {
+		return err
+	}
+	fs.style = settable_string{named_style, true}
+	self.set(fs.String())
+	return nil
 }
 
 func (self *face_panel) render_lines(start_y int, lines ...string) (y int) {
@@ -151,15 +174,20 @@ func (self *face_panel) draw_font_features(_ loop.ScreenSize, start_y int, previ
 				sort_key = data.Name
 			}
 		} else {
-			text = utils.IfElse(data.Name == "", feat_tag, data.Name)
-			sort_key = text
+			if data.Name != "" {
+				text = data.Name
+				sort_key = data.Name + ": " + text
+			} else {
+				text = feat_tag
+				sort_key = text
+			}
 			text = lp.SprintStyled("dim", text)
 		}
 		f := tui.InternalHyperlink(text, "feature:"+feat_tag)
 		sort_keys[f] = strings.ToLower(sort_key)
 		formatted = append(formatted, f)
 	}
-	utils.SortWithKey(formatted, func(a string) string { return sort_keys[a] })
+	utils.StableSortWithKey(formatted, func(a string) string { return sort_keys[a] })
 	line := lp.SprintStyled(control_name_style, `Features`) + ": " + strings.Join(formatted, ", ")
 	y = self.render_lines(start_y, ``, line)
 	return
@@ -290,7 +318,7 @@ func (self *face_panel) set(setting string) {
 }
 
 func (self *face_panel) update_feature_in_setting(pff ParsedFontFeature) error {
-	fs, err := NewFontSpec(self.get(), self.current_preview.Features)
+	fs, err := self.new_font_spec()
 	if err != nil {
 		return err
 	}
@@ -310,7 +338,7 @@ func (self *face_panel) update_feature_in_setting(pff ParsedFontFeature) error {
 }
 
 func (self *face_panel) remove_feature_in_setting(tag string) error {
-	fs, err := NewFontSpec(self.get(), self.current_preview.Features)
+	fs, err := self.new_font_spec()
 	if err != nil {
 		return err
 	}
@@ -365,9 +393,13 @@ func (self *face_panel) on_click(id string) (err error) {
 	scheme, val, _ := strings.Cut(id, ":")
 	switch scheme {
 	case "style":
-		self.set(fmt.Sprintf(`family="%s" style="%s"`, self.family, val))
+		if err = self.set_style(fmt.Sprintf(`family="%s" style="%s"`, self.family, val)); err != nil {
+			return err
+		}
 	case "variable_style":
-		self.set(self.variable_spec(val, nil))
+		if err = self.set_variable_spec(val, nil); err != nil {
+			return err
+		}
 	case "feature":
 		if err = self.handle_click_on_feature(val); err != nil {
 			return err
@@ -381,7 +413,9 @@ func (self *face_panel) on_click(id string) (err error) {
 		for _, ax := range self.current_preview.Variable_data.Axes {
 			if ax.Tag == tag {
 				axval := ax.Minimum + (ax.Maximum-ax.Minimum)*frac
-				self.set(self.variable_spec("", map[string]float64{tag: axval}))
+				if err = self.set_variable_spec("", map[string]float64{tag: axval}); err != nil {
+					return err
+				}
 				break
 			}
 		}
