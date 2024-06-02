@@ -42,7 +42,7 @@ Some prominent kittens:
     Preview and quick switch between over three hundred color themes.
 
 
-:doc:`Fonts <kittens/fonts>`
+:doc:`Fonts <kittens/choose-fonts>`
     Preview, fine-tune and quick switch the fonts used by kitty.
 
 
