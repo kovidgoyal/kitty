@@ -46,6 +46,13 @@ graphics protocol.
 Another terminal file manager, with previews of file contents powered by kitty's
 graphics protocol.
 
+.. _tool_yazi:
+
+`Yazi <https://github.com/sxyazi/yazi>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Blazing fast terminal file manager, with built-in kitty graphics protocol support
+(implemented both Classic protocol and Unicode placeholders).
+
 .. _tool_hunter:
 
 `hunter <https://github.com/rabite0/hunter>`_
