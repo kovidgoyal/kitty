@@ -188,7 +188,7 @@ func run_set_loop(opts *Options, args []string) (err error) {
 	to_process := make([]*Input, len(args))
 	defer func() {
 		for _, i := range inputs {
-			if i.src != nil {
+			if i != nil && i.src != nil {
 				rc, ok := i.src.(io.Closer)
 				if ok {
 					rc.Close()
