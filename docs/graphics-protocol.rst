@@ -29,6 +29,7 @@ Some programs and libraries that use the kitty graphics protocol:
 
 * `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
 * `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with image previews
+* `Yazi <https://github.com/sxyazi/yazi>`_ - Blazing fast terminal file manager written in Rust, based on async I/O
 * :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
 * `tpix <https://github.com/jesvedberg/tpix>`_ - a statically compiled binary that can be used to display images and easily installed on remote servers without root access
 * `mpv <https://github.com/mpv-player/mpv/commit/874e28f4a41a916bb567a882063dd2589e9234e1>`_ - A video player that can play videos in the terminal
