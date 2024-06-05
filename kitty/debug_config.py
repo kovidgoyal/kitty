@@ -21,7 +21,7 @@ from .fast_data_types import Color, SingleKey, num_users, opengl_version_string,
 from .options.types import Options as KittyOpts
 from .options.types import defaults
 from .options.utils import KeyboardMode, KeyDefinition
-from .rgb import color_as_sharp
+from .rgb import color_as_sharp, color_from_int
 from .types import MouseEvent, Shortcut, mod_to_names
 
 AnyEvent = TypeVar('AnyEvent', MouseEvent, Shortcut)
@@ -101,6 +101,15 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
             else:
                 if f == 'kitty_mod':
                     print(fmt.format(f), '+'.join(mod_to_names(getattr(opts, f))))
+                elif f in ('wayland_titlebar_color', 'macos_titlebar_color'):
+                    if val == 0:
+                        cval = 'system'
+                    elif val == 1:
+                        cval = 'background'
+                    else:
+                        col = color_from_int(val >> 8)
+                        cval = color_as_sharp(col) + ' ' + styled('  ', bg=col)
+                    colors.append(fmt.format(f) + ' ' + cval)
                 else:
                     print(fmt.format(f), str(getattr(opts, f)))
 
