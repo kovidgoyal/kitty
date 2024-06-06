@@ -119,7 +119,7 @@ func (self *ErrInvalidSSHArgs) Error() string {
 }
 
 func PassthroughArgs() map[string]bool {
-	return map[string]bool{"-N": true, "-n": true, "-f": true, "-G": true, "-T": true}
+	return map[string]bool{"-N": true, "-n": true, "-f": true, "-G": true, "-T": true, "-V": true}
 }
 
 func ParseSSHArgs(args []string, extra_args ...string) (ssh_args []string, server_args []string, passthrough bool, found_extra_args []string, err error) {
