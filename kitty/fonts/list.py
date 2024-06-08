@@ -23,6 +23,10 @@ def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]
 
 
 def main(argv: Sequence[str]) -> None:
+    if '--help' in argv or '-h' in argv:
+        print("Usage: kitty +list-fonts [--psnames]")
+        sys.exit(2)
+
     psnames = '--psnames' in argv
     isatty = sys.stdout.isatty()
     groups = create_family_groups()
