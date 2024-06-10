@@ -53,6 +53,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `awrit web browser <https://github.com/chase/awrit>`__
 * The `nushell shell <https://github.com/nushell/nushell/pull/10540>`__
 * The `fish shell <https://github.com/fish-shell/fish-shell/commit/8bf8b10f685d964101f491b9cc3da04117a308b4>`__
+* The `textual library <https://github.com/Textualize/textual/pull/4631>`__
 
 .. versionadded:: 0.20.0
 
