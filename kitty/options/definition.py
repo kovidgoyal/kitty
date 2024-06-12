@@ -1160,6 +1160,13 @@ faded and one being fully opaque.
 '''
     )
 
+opt('window_logo_scale', '0',
+    option_type='int', ctype='int',
+    long_text='''
+The percentage [1-100] of the window which the logo should scale to.
+0 to disable.
+'''
+    )
 
 opt('resize_debounce_time', '0.1 0.5',
     option_type='resize_debounce_time', ctype='!resize_debounce_time',

@@ -732,6 +732,26 @@ draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderDat
     BLEND_PREMULT;
     GLfloat logo_width_gl = gl_size(wl->instance->width, os_window->viewport_width);
     GLfloat logo_height_gl = gl_size(wl->instance->height, os_window->viewport_height);
+
+    if (OPT(window_logo_scale) != 0) {
+        unsigned int scaled_wl_width;
+        unsigned int scaled_wl_height;
+
+        if (os_window->viewport_height < os_window->viewport_width) {
+            scaled_wl_height = os_window->viewport_height * OPT(window_logo_scale) / 100;
+            scaled_wl_width = wl->instance->width * scaled_wl_height / wl->instance->height;
+        } else {
+            scaled_wl_width = os_window->viewport_width * OPT(window_logo_scale) / 100;
+            scaled_wl_height = wl->instance->height * scaled_wl_width / wl->instance->width;
+        }
+
+        logo_height_gl = gl_size(scaled_wl_height, os_window->viewport_height);
+        logo_width_gl = gl_size(scaled_wl_width, os_window->viewport_width);
+    } else {
+        logo_height_gl = 0;
+        logo_width_gl = 0;
+    }
+
     GLfloat logo_left_gl = clamp_position_to_nearest_pixel(
             crd->gl.xstart + crd->gl.width * wl->position.canvas_x - logo_width_gl * wl->position.image_x, os_window->viewport_width);
     GLfloat logo_top_gl = clamp_position_to_nearest_pixel(

@@ -34,7 +34,7 @@ choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'ri
 choices_for_terminfo_type = typing.Literal['path', 'direct', 'none']
 choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
 choices_for_underline_hyperlinks = typing.Literal['hover', 'always', 'never']
-choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
+choices_for_window_logo_position = choices_for_placement_strategy
 
 option_names = (  # {{{
  'action_alias',
@@ -459,6 +459,7 @@ option_names = (  # {{{
  'window_logo_alpha',
  'window_logo_path',
  'window_logo_position',
+ 'window_logo_scale',
  'window_margin_width',
  'window_padding_width',
  'window_resize_step_cells',
@@ -619,6 +620,7 @@ class Options:
     window_logo_alpha: float = 0.5
     window_logo_path: typing.Optional[str] = None
     window_logo_position: choices_for_window_logo_position = 'bottom-right'
+    window_logo_scale: int = 0
     window_margin_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2
