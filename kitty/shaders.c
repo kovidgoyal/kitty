@@ -747,9 +747,6 @@ draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderDat
 
         logo_height_gl = gl_size(scaled_wl_height, os_window->viewport_height);
         logo_width_gl = gl_size(scaled_wl_width, os_window->viewport_width);
-    } else {
-        logo_height_gl = 0;
-        logo_width_gl = 0;
     }
 
     GLfloat logo_left_gl = clamp_position_to_nearest_pixel(
