@@ -620,7 +620,7 @@ class Options:
     window_logo_alpha: float = 0.5
     window_logo_path: typing.Optional[str] = None
     window_logo_position: choices_for_window_logo_position = 'bottom-right'
-    window_logo_scale: int = 0
+    window_logo_scale: typing.Tuple[float, float] = (0, -1.0)
     window_margin_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2

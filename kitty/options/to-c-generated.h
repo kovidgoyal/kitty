@@ -618,7 +618,7 @@ convert_from_opts_window_logo_alpha(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_window_logo_scale(PyObject *val, Options *opts) {
-    opts->window_logo_scale = PyLong_AsLong(val);
+    window_logo_scale(val, opts);
 }
 
 static void

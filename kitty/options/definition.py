@@ -1160,11 +1160,12 @@ faded and one being fully opaque.
 '''
     )
 
-opt('window_logo_scale', '0',
-    option_type='int', ctype='int',
+opt('window_logo_scale', '0.0 -1.0',
+    option_type='window_logo_scale', ctype='!window_logo_scale',
     long_text='''
-The percentage [1-100] of the window which the logo should scale to.
-0 to disable.
+The percentage [1-100] of the window which the logo should scale to. 
+Optionally setting 2 seperate values allows individual Width/Height scaling.
+Value of 0 in a given dimension disables scaling in that direction, single 0 to disable scaling.
 '''
     )
 
