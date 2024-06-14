@@ -1160,14 +1160,17 @@ faded and one being fully opaque.
 '''
     )
 
-opt('window_logo_scale', '0.0 -1.0',
-    option_type='window_logo_scale', ctype='!window_logo_scale',
-    long_text='''
-The percentage [1-100] of the window which the logo should scale to. 
-Optionally setting 2 seperate values allows individual Width/Height scaling.
-Value of 0 in a given dimension disables scaling in that direction, single 0 to disable scaling.
-'''
-    )
+opt('window_logo_scale', '0', option_type='window_logo_scale', ctype='!window_logo_scale', long_text='''
+The percentage (0-100] of the window size to which the logo should scale. Using a single
+number means the logo is scaled to that percentage of the shortest window dimension, while preseving
+aspect ratio of the logo image.
+
+Using two numbers means the width and height of the logo are scaled to the respective
+percentage of the window's width and height.
+
+Using zero as the percentage disables scaling in that dimension. A single zero (the default)
+disables all scaling of the window logo.
+''')
 
 opt('resize_debounce_time', '0.1 0.5',
     option_type='resize_debounce_time', ctype='!resize_debounce_time',
