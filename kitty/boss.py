@@ -382,6 +382,9 @@ class Boss:
             from .fast_data_types import cocoa_set_notification_activated_callback
             cocoa_set_notification_activated_callback(notification_activated)
 
+        self.green = '\033[92m'
+        self.endc = '\033[0m'
+
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
         focused_os_window = wid = 0
@@ -1106,10 +1109,10 @@ class Boss:
                     active_program = program
         if num > 0:
             msg = ngettext(
-                    'Are you sure you want to close this tab? It is running the {} program and one other program.',
-                    'Are you sure you want to close this tab? It is running the {} program and {} other programs.', num)
+                    'Are you sure you want to close this tab? It is running the ' + self.green + '{}' + self.endc + ' program and one other program.',
+                    'Are you sure you want to close this tab? It is running the ' + self.green + '{}' + self.endc + ' program and {} other programs.', num)
         else:
-            msg = _('Are you sure you want to close this tab? It is running the {} program')
+            msg = _('Are you sure you want to close this tab? It is running the ' + self.green + '{}' + self.endc + ' program')
         msg = msg.format(active_program or program or 'shell', num)
         w = self.confirm(msg, self.handle_close_tab_confirmation, tab.id, window=tab.active_window, title=_('Close tab?'))
         tab.confirm_close_window_id = w.id
@@ -1748,10 +1751,10 @@ class Boss:
                         active_program = program
         if num > 0:
             msg = ngettext(
-                    'Are you sure you want to close this OS window? It is running the {} program and one other program.',
-                    'Are you sure you want to close this OS window? It is running the {} program and {} other programs.', num)
+                    'Are you sure you want to close this OS window? It is running the ' + self.green + '{}' + self.endc + ' program and one other program.',
+                    'Are you sure you want to close this OS window? It is running the ' + self.green + '{}' + self.endc + ' program and {} o0her programs.', num)
         else:
-            msg = _('Are you sure you want to close this OS window? It is running the {} program')
+            msg = _('Are you sure you want to close this OS window? It is running the ' + self.green + '{}' + self.endc + ' program')
         msg = msg.format(active_program or program or 'shell', num)
         w = self.confirm(msg, self.handle_close_os_window_confirmation, os_window_id, window=tm.active_window, title=_('Close OS window'))
         tm.confirm_close_window_id = w.id
@@ -1815,10 +1818,10 @@ class Boss:
                     active_program = program
         if num > 0:
             msg = ngettext(
-                    'Are you sure you want to quit kitty? It is running the {} program and one other program.',
-                    'Are you sure you want to quit kitty? It is running the {} program and {} other programs.', num)
+                    'Are you sure you want to quit kitty? It is running the ' + self.green + '{}' + self.endc + ' program and one other program.',
+                    'Are you sure you want to quit kitty? It is running the ' + self.green + '{}' + self.endc + ' program and {} other programs.', num)
         else:
-            msg = _('Are you sure you want to quit kitty? It is running the {} program')
+            msg = _('Are you sure you want to quit kitty? It is running the ' + self.green + '{}' + self.endc + ' program')
         msg = msg.format(active_program or program or 'shell', num)
         w = self.confirm(msg, self.handle_quit_confirmation, window=tm.active_window, title=_('Quit kitty?'))
         self.quit_confirmation_window_id = w.id
