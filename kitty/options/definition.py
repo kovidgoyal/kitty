@@ -356,6 +356,15 @@ Stop blinking cursor after the specified number of seconds of keyboard
 inactivity. Set to zero to never stop blinking.
 '''
     )
+
+opt('cursor_unfocused_shape', 'hollow',
+    option_type='to_cursor_unfocused_shape', ctype='int',
+    long_text='''
+Defines the cursor shape when the terminal window is not focused. The unfocused
+cursor shape can be one of :code:`block`, :code:`beam`, :code:`underline`,
+:code:`hollow`.
+'''
+    )
 egr()  # }}}
 
 
