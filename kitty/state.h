@@ -65,6 +65,7 @@ typedef struct {
     ImageAnchorPosition window_logo_position;
     bool background_image_linear;
     float background_tint, background_tint_gaps, window_logo_alpha;
+    struct { float width, height; } window_logo_scale;
 
     bool dynamic_background_opacity;
     float inactive_text_alpha;

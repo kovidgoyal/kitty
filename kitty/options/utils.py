@@ -646,6 +646,13 @@ def resize_draw_strategy(x: str) -> int:
     return cmap.get(x.lower(), 0)
 
 
+def window_logo_scale(x: str) -> Tuple[float, float]:
+    parts = x.split(maxsplit=1)
+    if len(parts) == 1:
+        return positive_float(parts[0]), -1.0
+    return positive_float(parts[0]), positive_float(parts[1])
+
+
 def resize_debounce_time(x: str) -> Tuple[float, float]:
     parts = x.split(maxsplit=1)
     if len(parts) == 1:

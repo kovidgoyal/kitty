@@ -18,7 +18,8 @@ from kitty.options.utils import (
     shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
     tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
     tab_title_template, titlebar_color, to_cursor_shape, to_font_size, to_layout_names, to_modifiers,
-    url_prefixes, url_style, visual_window_select_characters, window_border_width, window_size
+    url_prefixes, url_style, visual_window_select_characters, window_border_width, window_logo_scale,
+    window_size
 )
 
 
@@ -1388,7 +1389,10 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for window_logo_position")
         ans["window_logo_position"] = val
 
-    choices_for_window_logo_position = frozenset(('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'))
+    choices_for_window_logo_position = choices_for_placement_strategy
+
+    def window_logo_scale(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['window_logo_scale'] = window_logo_scale(val)
 
     def window_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['window_margin_width'] = edge_width(val)

@@ -732,6 +732,41 @@ draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderDat
     BLEND_PREMULT;
     GLfloat logo_width_gl = gl_size(wl->instance->width, os_window->viewport_width);
     GLfloat logo_height_gl = gl_size(wl->instance->height, os_window->viewport_height);
+
+    if (OPT(window_logo_scale.width) > 0 || OPT(window_logo_scale.height) > 0) {
+        unsigned int scaled_wl_width = os_window->viewport_width;
+        unsigned int scaled_wl_height = os_window->viewport_height;
+
+        // [sx] Scales logo to sx % of the viewports shortest dimension, preserving aspect ratio
+        if (OPT(window_logo_scale.height) < 0) {
+            if (os_window->viewport_height < os_window->viewport_width) {
+                scaled_wl_height = (int)(os_window->viewport_height * OPT(window_logo_scale.width) / 100);
+                scaled_wl_width = wl->instance->width * scaled_wl_height / wl->instance->height;
+            } else {
+                scaled_wl_width = (int)(os_window->viewport_width * OPT(window_logo_scale.width) / 100);
+                scaled_wl_height = wl->instance->height * scaled_wl_width / wl->instance->width;
+            }
+        }
+        // [0 sy] Scales logo's y dimension to sy % of viewporty keeping original x dimension
+        else if (OPT(window_logo_scale.width) == 0.0) {
+            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
+            scaled_wl_width = wl->instance->width;
+        }
+        // [sx 0] Scales logo's x dimension to sx % of viewportx keeping original y dimension
+        else if (OPT(window_logo_scale.height) == 0.0) {
+            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
+            scaled_wl_height = wl->instance->height;
+        }
+        // [sx sy] Scales logo's x and y dimension to sx and sy % of viewportx and viewporty respectively
+        else {
+            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
+            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
+        }
+
+        logo_height_gl = gl_size(scaled_wl_height, os_window->viewport_height);
+        logo_width_gl = gl_size(scaled_wl_width, os_window->viewport_width);
+    }
+
     GLfloat logo_left_gl = clamp_position_to_nearest_pixel(
             crd->gl.xstart + crd->gl.width * wl->position.canvas_x - logo_width_gl * wl->position.image_x, os_window->viewport_width);
     GLfloat logo_top_gl = clamp_position_to_nearest_pixel(
