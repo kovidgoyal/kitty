@@ -276,7 +276,8 @@ they will only work if this process is run within a kitty window.
 --password
 A password to use when contacting kitty. This will cause kitty to ask the user
 for permission to perform the specified action, unless the password has been
-accepted before or is pre-configured in :file:`kitty.conf`.
+accepted before or is pre-configured in :file:`kitty.conf`. To use a blank password
+specify :option:`kitten @ --use-password` as :code:`always`.
 
 
 --password-file
@@ -300,7 +301,7 @@ default=if-available
 choices=if-available,never,always
 If no password is available, kitty will usually just send the remote control command
 without a password. This option can be used to force it to :code:`always` or :code:`never` use
-the supplied password.
+the supplied password. If set to always and no password is provided, the blank password is used.
 '''.format, appname=appname)
 
 

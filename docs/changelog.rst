@@ -57,6 +57,8 @@ Detailed list of changes
 
 - A new option, :opt:`cursor_shape_unfocused` to specify the shape of the text cursor in unfocused OS windows (:pull:`7544`)
 
+- Remote control: Fix empty password not working (:iss:`7538`)
+
 0.35.1 [2024-05-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

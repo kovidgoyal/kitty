@@ -32,10 +32,16 @@ const lowerhex = "0123456789abcdef"
 
 var ProtocolVersion [3]int = [3]int{0, 26, 0}
 
+type password struct {
+	val    string
+	is_set bool
+}
+
 type GlobalOptions struct {
-	to_network, to_address, password string
-	to_address_is_from_env_var       bool
-	already_setup                    bool
+	to_network, to_address     string
+	password                   password
+	to_address_is_from_env_var bool
+	already_setup              bool
 }
 
 var global_options GlobalOptions
@@ -135,15 +141,15 @@ func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 
 type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
 
-func create_serializer(password string, encoded_pubkey string, io_data *rc_io_data) (err error) {
+func create_serializer(password password, encoded_pubkey string, io_data *rc_io_data) (err error) {
 	io_data.serializer = simple_serializer
-	if password != "" {
+	if password.is_set {
 		encryption_version, pubkey, err := get_pubkey(encoded_pubkey)
 		if err != nil {
 			return err
 		}
 		io_data.serializer = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
-			ec, err := crypto.Encrypt_cmd(rc, global_options.password, pubkey, encryption_version)
+			ec, err := crypto.Encrypt_cmd(rc, global_options.password.val, pubkey, encryption_version)
 			if err != nil {
 				return
 			}
@@ -293,25 +299,26 @@ func send_rc_command(io_data *rc_io_data) (err error) {
 	return
 }
 
-func get_password(password string, password_file string, password_env string, use_password string) (ans string, err error) {
+func get_password(password string, password_file string, password_env string, use_password string) (ans password, err error) {
 	if use_password == "never" {
 		return
 	}
 	if password != "" {
-		ans = password
+		ans.is_set, ans.val = true, password
 	}
-	if ans == "" && password_file != "" {
+	if !ans.is_set && password_file != "" {
 		if password_file == "-" {
 			if tty.IsTerminal(os.Stdin.Fd()) {
-				ans, err = tui.ReadPassword("Password: ", true)
+				p, err := tui.ReadPassword("Password: ", true)
 				if err != nil {
-					return
+					return ans, err
 				}
+				ans.is_set, ans.val = true, p
 			} else {
 				var q []byte
 				q, err = io.ReadAll(os.Stdin)
 				if err == nil {
-					ans = strings.TrimRight(string(q), " \n\t")
+					ans.is_set, ans.val = true, strings.TrimRight(string(q), " \n\t")
 				}
 				ttyf, err := os.Open(tty.Ctermid())
 				if err == nil {
@@ -323,7 +330,7 @@ func get_password(password string, password_file string, password_env string, us
 			var q []byte
 			q, err = os.ReadFile(password_file)
 			if err == nil {
-				ans = strings.TrimRight(string(q), " \n\t")
+				ans.is_set, ans.val = true, strings.TrimRight(string(q), " \n\t")
 			} else {
 				if errors.Is(err, os.ErrNotExist) {
 					err = nil
@@ -334,13 +341,14 @@ func get_password(password string, password_file string, password_env string, us
 			return
 		}
 	}
-	if ans == "" && password_env != "" {
-		ans = os.Getenv(password_env)
+	if !ans.is_set && password_env != "" {
+		ans.val, ans.is_set = os.LookupEnv(password_env)
 	}
-	if ans == "" && use_password == "always" {
-		return ans, fmt.Errorf("No password was found")
+	if !ans.is_set && use_password == "always" {
+		ans.is_set = true
+		return ans, nil
 	}
-	if len(ans) > 1024 {
+	if len(ans.val) > 1024 {
 		return ans, fmt.Errorf("Specified password is too long")
 	}
 	return ans, nil
