@@ -33,7 +33,7 @@ from typing import (
 from weakref import WeakValueDictionary
 
 from .child import cached_process_data, default_env, set_default_env
-from .cli import create_opts, parse_args
+from .cli import create_opts, green, parse_args
 from .cli_stub import CLIOptions
 from .clipboard import (
     Clipboard,
@@ -1110,7 +1110,7 @@ class Boss:
                     'Are you sure you want to close this tab? It is running the {} program and {} other programs.', num)
         else:
             msg = _('Are you sure you want to close this tab? It is running the {} program')
-        msg = msg.format(active_program or program or 'shell', num)
+        msg = msg.format(green(active_program or program or 'shell'), num)
         w = self.confirm(msg, self.handle_close_tab_confirmation, tab.id, window=tab.active_window, title=_('Close tab?'))
         tab.confirm_close_window_id = w.id
 
@@ -1752,7 +1752,7 @@ class Boss:
                     'Are you sure you want to close this OS window? It is running the {} program and {} other programs.', num)
         else:
             msg = _('Are you sure you want to close this OS window? It is running the {} program')
-        msg = msg.format(active_program or program or 'shell', num)
+        msg = msg.format(green(active_program or program or 'shell'), num)
         w = self.confirm(msg, self.handle_close_os_window_confirmation, os_window_id, window=tm.active_window, title=_('Close OS window'))
         tm.confirm_close_window_id = w.id
 
@@ -1819,7 +1819,7 @@ class Boss:
                     'Are you sure you want to quit kitty? It is running the {} program and {} other programs.', num)
         else:
             msg = _('Are you sure you want to quit kitty? It is running the {} program')
-        msg = msg.format(active_program or program or 'shell', num)
+        msg = msg.format(green(active_program or program or 'shell'), num)
         w = self.confirm(msg, self.handle_quit_confirmation, window=tm.active_window, title=_('Quit kitty?'))
         self.quit_confirmation_window_id = w.id
         set_application_quit_request(CLOSE_BEING_CONFIRMED)
