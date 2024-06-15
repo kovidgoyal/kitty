@@ -84,6 +84,19 @@ convert_from_opts_cursor_shape(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_cursor_shape_unfocused(PyObject *val, Options *opts) {
+    opts->cursor_shape_unfocused = PyLong_AsLong(val);
+}
+
+static void
+convert_from_opts_cursor_shape_unfocused(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_shape_unfocused");
+    if (ret == NULL) return;
+    convert_from_python_cursor_shape_unfocused(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_cursor_beam_thickness(PyObject *val, Options *opts) {
     opts->cursor_beam_thickness = PyFloat_AsFloat(val);
 }
@@ -132,19 +145,6 @@ convert_from_opts_cursor_stop_blinking_after(PyObject *py_opts, Options *opts) {
     PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_stop_blinking_after");
     if (ret == NULL) return;
     convert_from_python_cursor_stop_blinking_after(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_cursor_unfocused_shape(PyObject *val, Options *opts) {
-    opts->cursor_unfocused_shape = PyLong_AsLong(val);
-}
-
-static void
-convert_from_opts_cursor_unfocused_shape(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_unfocused_shape");
-    if (ret == NULL) return;
-    convert_from_python_cursor_unfocused_shape(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1176,6 +1176,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_shape(py_opts, opts);
     if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_shape_unfocused(py_opts, opts);
+    if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_beam_thickness(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_underline_thickness(py_opts, opts);
@@ -1183,8 +1185,6 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_cursor_blink_interval(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_stop_blinking_after(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_cursor_unfocused_shape(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollback_indicator_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;

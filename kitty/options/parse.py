@@ -920,6 +920,9 @@ class Parser:
     def cursor_shape(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_shape'] = to_cursor_shape(val)
 
+    def cursor_shape_unfocused(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['cursor_shape_unfocused'] = to_cursor_unfocused_shape(val)
+
     def cursor_stop_blinking_after(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_stop_blinking_after'] = positive_float(val)
 
@@ -928,9 +931,6 @@ class Parser:
 
     def cursor_underline_thickness(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_underline_thickness'] = positive_float(val)
-
-    def cursor_unfocused_shape(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['cursor_unfocused_shape'] = to_cursor_unfocused_shape(val)
 
     def default_pointer_shape(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()

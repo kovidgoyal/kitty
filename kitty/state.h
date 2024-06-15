@@ -38,8 +38,7 @@ typedef struct {
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     int wheel_scroll_min_lines;
     bool enable_audio_bell;
-    CursorShape cursor_shape;
-    CursorShape cursor_unfocused_shape;
+    CursorShape cursor_shape, cursor_shape_unfocused;
     float cursor_beam_thickness;
     float cursor_underline_thickness;
     unsigned int url_style;

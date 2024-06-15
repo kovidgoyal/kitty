@@ -55,6 +55,8 @@ Detailed list of changes
 
 - A new option, :opt:`window_logo_scale` to specify how window logo are scaled with respect to the size of the window containing the logo (:pull:`7534`)
 
+- A new option, :opt:`cursor_shape_unfocused` to specify the shape of the text cursor in unfocused OS windows (:pull:`7544`)
+
 0.35.1 [2024-05-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

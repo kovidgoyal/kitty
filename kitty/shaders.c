@@ -334,7 +334,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
                     rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
             }
         } else {
-            switch(OPT(cursor_unfocused_shape)) {
+            switch(OPT(cursor_shape_unfocused)) {
                 default:
                     rd->cursor_fg_sprite_idx = UNFOCUSED_IDX; break;
                 case CURSOR_BEAM:

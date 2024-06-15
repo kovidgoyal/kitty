@@ -524,6 +524,13 @@ cshapes = {
     'beam': CURSOR_BEAM,
     'underline': CURSOR_UNDERLINE
 }
+cshapes_unfocused = {
+    'block': CURSOR_BLOCK,
+    'beam': CURSOR_BEAM,
+    'underline': CURSOR_UNDERLINE,
+    'hollow': NO_CURSOR_SHAPE
+}
+
 
 def to_cursor_shape(x: str) -> int:
     try:
@@ -536,19 +543,12 @@ def to_cursor_shape(x: str) -> int:
         )
 
 
-cshapes_unfocused = {
-    'block': CURSOR_BLOCK,
-    'beam': CURSOR_BEAM,
-    'underline': CURSOR_UNDERLINE,
-    'hollow': NO_CURSOR_SHAPE
-}
-
 def to_cursor_unfocused_shape(x: str) -> int:
     try:
         return cshapes_unfocused[x.lower()]
     except KeyError:
         raise ValueError(
-            'Invalid inactive cursor shape: {} allowed values are {}'.format(
+            'Invalid unfocused cursor shape: {} allowed values are {}'.format(
                 x, ', '.join(cshapes_unfocused)
             )
         )
