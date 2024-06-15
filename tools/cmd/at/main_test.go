@@ -58,7 +58,7 @@ func TestCommandToJSON(t *testing.T) {
 
 func TestRCSerialization(t *testing.T) {
 	io_data := rc_io_data{}
-	err := create_serializer("", "", &io_data)
+	err := create_serializer(password{"", false}, "", &io_data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestRCSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = create_serializer("tpw", pubkey, &io_data)
+	err = create_serializer(password{"tpw", true}, pubkey, &io_data)
 	if err != nil {
 		t.Fatal(err)
 	}
