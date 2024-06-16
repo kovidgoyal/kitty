@@ -1106,7 +1106,7 @@ create_window_desktop_surface(_GLFWwindow* window)
 
 #ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
     if (_glfw.wl.xdg_wm_base_version < XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION)
-        memset(&window->wl.wm_capabilities, 0xff, sizeof(window->wl.wm_capabilities));
+        memset(&window->wl.wm_capabilities, 0x00, sizeof(window->wl.wm_capabilities));
 #endif
     xdg_toplevel_add_listener(window->wl.xdg.toplevel, &xdgToplevelListener, window);
     if (_glfw.wl.decorationManager) {
