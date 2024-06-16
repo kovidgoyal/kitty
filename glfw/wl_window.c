@@ -549,7 +549,10 @@ fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_f
     debug("Fractional scale requested: %u/120 = %.2f for window %llu\n", scale, scale / 120., window->id);
     window->wl.fractional_scale = scale;
     // Hyprland sends a fraction scale = 1 event before configuring the xdg surface and then another after with the correct scale
-    window->wl.window_fully_created = window->wl.once.surface_configured || scale != 120;
+    // labwc doesnt support preferred buffer scale, so we assume it's done fucking around with scales even if the scale is 120
+    // As far as I can tell from googling labwc has no way to specify scales other
+    // than 1 anyway, so no way to test what it will do in such cases. Sigh, more half baked Wayland shit.
+    window->wl.window_fully_created = window->wl.once.surface_configured || scale != 120 || !_glfw.wl.has_preferred_buffer_scale;
     apply_scale_changes(window, true, true);
 }
 
