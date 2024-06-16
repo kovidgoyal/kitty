@@ -59,6 +59,8 @@ Detailed list of changes
 
 - Remote control: Fix empty password not working (:iss:`7538`)
 
+- Wayland: Fix regression in 0.34.0 causing flickering on window resize on NVIDIA drivers (:iss:`7493`)
+
 0.35.1 [2024-05-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
