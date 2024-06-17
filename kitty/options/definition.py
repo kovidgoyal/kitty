@@ -2920,9 +2920,9 @@ doesn't work, kitty will cycle through various known editors (:program:`vim`,
 opt('close_on_child_death', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''
-Close the window when the child process (shell) exits. With the default value
+Close the window when the child process (usually the shell) exits. With the default value
 :code:`no`, the terminal will remain open when the child exits as long as there
-are still processes outputting to the terminal (for example disowned or
+are still other processes outputting to the terminal (for example disowned or
 backgrounded processes). When enabled with :code:`yes`, the window will close as
 soon as the child process exits. Note that setting it to :code:`yes` means that
 any background processes still using the terminal can fail silently because
