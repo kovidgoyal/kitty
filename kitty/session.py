@@ -39,6 +39,11 @@ class WindowSpec:
     def __init__(self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance']):
         self.launch_spec = launch_spec
         self.resize_spec: Optional[ResizeSpec] = None
+        self.is_background_process = False
+        if hasattr(launch_spec, 'opts'):  # LaunchSpec
+            from .launch import LaunchSpec
+            assert isinstance(launch_spec, LaunchSpec)
+            self.is_background_process = launch_spec.opts.type == 'background'
 
 
 class Tab:
@@ -53,6 +58,13 @@ class Tab:
         self.cwd: Optional[str] = None
         self.next_title: Optional[str] = None
 
+    @property
+    def has_non_background_processes(self) -> bool:
+        for w in self.windows:
+            if not w.is_background_process:
+                return True
+        return False
+
 
 class Session:
 
@@ -64,6 +76,13 @@ class Session:
         self.os_window_class: Optional[str] = None
         self.os_window_state: Optional[str] = None
         self.focus_os_window: bool = False
+
+    @property
+    def has_non_background_processes(self) -> bool:
+        for t in self.tabs:
+            if t.has_non_background_processes:
+                return True
+        return False
 
     def add_tab(self, opts: Options, name: str = '') -> None:
         if self.tabs and not self.tabs[-1].windows:

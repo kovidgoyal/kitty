@@ -822,6 +822,15 @@ class Boss:
                 args.directory = os.path.join(data['cwd'], args.directory)
             focused_os_window = os_window_id = 0
             for session in create_sessions(opts, args, respect_cwd=True):
+                if not session.has_non_background_processes:
+                    # background only do not create and OS Window
+                    from .launch import LaunchSpec, launch
+                    for tab in session.tabs:
+                        for window in tab.windows:
+                            if window.is_background_process:
+                                assert isinstance(window.launch_spec, LaunchSpec)
+                                launch(get_boss(), window.launch_spec.opts, window.launch_spec.args)
+                    continue
                 os_window_id = self.add_os_window(
                     session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id,
                     override_title=args.title or None)
