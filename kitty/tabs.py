@@ -221,7 +221,8 @@ class Tab:  # {{{
             if window.resize_spec is not None:
                 self.resize_window(*window.resize_spec)
 
-        self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
+        with suppress(IndexError):
+            self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
 
     def serialize_state(self) -> Dict[str, Any]:
         return {
