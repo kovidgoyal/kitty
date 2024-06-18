@@ -11,6 +11,10 @@
 #include "glfw-wrapper.h"
 #include <structmember.h>
 
+#ifndef __APPLE__
+#include <xkbcommon/xkbcommon.h>
+#endif
+
 // python KeyEvent object {{{
 typedef struct {
     PyObject_HEAD
@@ -42,6 +46,19 @@ is_modifier_key(const uint32_t key) {
             return false;
     }
     END_ALLOW_CASE_RANGE
+}
+
+static bool
+is_no_action_key(const uint32_t key, const uint32_t native_key) {
+    switch (native_key) {
+#ifndef __APPLE__
+        case XKB_KEY_XF86Fn:
+        case XKB_KEY_XF86WakeUp:
+            return true;
+#endif
+        default:
+            return is_modifier_key(key);
+    }
 }
 
 static void
@@ -163,7 +180,7 @@ on_key_input(GLFWkeyevent *ev) {
         }
     }
     if (!w) { debug("no active window, ignoring\n"); return; }
-    if (OPT(mouse_hide_wait) < 0 && !is_modifier_key(key)) hide_mouse(global_state.callback_os_window);
+    if (OPT(mouse_hide_wait) < 0 && !is_no_action_key(key, native_key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
     id_type active_window_id = w->id;
 
@@ -227,7 +244,7 @@ on_key_input(GLFWkeyevent *ev) {
         debug("discarding repeat key event as DECARM is off\n");
         return;
     }
-    if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
+    if (screen->scrolled_by && action == GLFW_PRESS && !is_no_action_key(key, native_key)) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
     char encoded_key[KEY_BUFFER_SIZE] = {0};
