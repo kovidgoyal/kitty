@@ -595,10 +595,8 @@ func patch_conf(text, theme_name string, theme *Theme) string {
 		ntext = text + addition
 	}
 	pat = utils.MustCompile(fmt.Sprintf(`(?m)^\s*(%s)\b`, strings.Join(maps.Keys(AllColorSettingNames), "|")))
-
 	return pat.ReplaceAllStringFunc(ntext, func(color_name string) string {
 		_, sets_color := theme.settings[color_name]
-
 		if (sets_color) {
 			return fmt.Sprintf("# %s", color_name);
 		} else {
