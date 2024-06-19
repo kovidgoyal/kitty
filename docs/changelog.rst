@@ -63,6 +63,8 @@ Detailed list of changes
 
 - Wayland labwc: Fix kitty timing out waiting for compositor to quit fucking around with scales on labwc (:iss:`7540`)
 
+- Fix :opt:`scrollback_indicator_opacity` not actually controlling the opacity (:iss:`7557`)
+
 0.35.1 [2024-05-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
