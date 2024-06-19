@@ -580,7 +580,7 @@ func (self *Theme) Code() (string, error) {
 	return self.load_code()
 }
 
-func patch_conf(text, theme_name string) string {
+func patch_conf(text, theme_name string, theme *Theme) string {
 	addition := fmt.Sprintf("# BEGIN_KITTY_THEME\n# %s\ninclude current-theme.conf\n# END_KITTY_THEME", theme_name)
 	pat := utils.MustCompile(`(?ms)^# BEGIN_KITTY_THEME.+?# END_KITTY_THEME`)
 	replaced := false
@@ -595,7 +595,16 @@ func patch_conf(text, theme_name string) string {
 		ntext = text + addition
 	}
 	pat = utils.MustCompile(fmt.Sprintf(`(?m)^\s*(%s)\b`, strings.Join(maps.Keys(AllColorSettingNames), "|")))
-	return pat.ReplaceAllString(ntext, `# $1`)
+
+	return pat.ReplaceAllStringFunc(ntext, func(color_name string) string {
+		_, sets_color := theme.settings[color_name]
+
+		if (sets_color) {
+			return fmt.Sprintf("# %s", color_name);
+		} else {
+			return color_name;
+		}
+	})
 }
 func is_kitty_gui_cmdline(cmd ...string) bool {
 	if len(cmd) == 0 {
@@ -681,7 +690,7 @@ func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (e
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	nraw := patch_conf(utils.UnsafeBytesToString(raw), self.metadata.Name)
+	nraw := patch_conf(utils.UnsafeBytesToString(raw), self.metadata.Name, self)
 	if len(raw) > 0 {
 		_ = os.WriteFile(confpath+".bak", raw, 0o600)
 	}
