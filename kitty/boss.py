@@ -733,7 +733,7 @@ class Boss:
 
         For example::
 
-            map f1 remote_control_script arg1 arg2 ...
+            map f1 remote_control_script /path/to/script arg1 arg2 ...
 
         See :ref:`rc_mapping` for details.
         ''')
