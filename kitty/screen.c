@@ -3189,25 +3189,35 @@ screen_open_url(Screen *self) {
 
 // URLs {{{
 static void
-extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel, bool newlines_allowed) {
+extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel, bool newlines_allowed, index_type last_hostname_char_pos) {
     unsigned int count = 0;
     bool has_newline = false;
     index_type orig_y = *y;
     while(count++ < 10) {
+        bool in_hostname = last_hostname_char_pos >= line->xnum;
         has_newline = !line->gpu_cells[line->xnum-1].attrs.next_char_was_wrapped;
         if (*x != line->xnum - 1 || (!newlines_allowed && has_newline)) break;
         bool next_line_starts_with_url_chars = false;
         line = screen_visual_line(screen, *y + 2);
         if (line) {
-            next_line_starts_with_url_chars = line_startswith_url_chars(line);
+            next_line_starts_with_url_chars = line_startswith_url_chars(line, in_hostname);
             has_newline = !line->attrs.is_continued;
             if (next_line_starts_with_url_chars && has_newline && !newlines_allowed) next_line_starts_with_url_chars = false;
             if (sentinel && next_line_starts_with_url_chars && line->cpu_cells[0].ch == sentinel) next_line_starts_with_url_chars = false;
         }
         line = screen_visual_line(screen, *y + 1);
         if (!line) break;
-        index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars);
-        if (!new_x && !line_startswith_url_chars(line)) break;
+        if (in_hostname) {
+            for (last_hostname_char_pos = 0; last_hostname_char_pos < line->xnum; last_hostname_char_pos++) {
+                if (line->cpu_cells[last_hostname_char_pos].ch == '/') {
+                    if (last_hostname_char_pos > 0) last_hostname_char_pos--;
+                    else { in_hostname = false; last_hostname_char_pos = line->xnum; }
+                    break;
+                }
+            }
+        }
+        index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars, in_hostname, last_hostname_char_pos);
+        if (!new_x && !line_startswith_url_chars(line, in_hostname)) break;
         *y += 1; *x = new_x;
     }
     if (sentinel && *x == 0 && *y > orig_y) {
@@ -3254,24 +3264,30 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
     }
     char_type sentinel = 0;
     bool newlines_allowed = !is_excluded_from_url('\n');
+    index_type last_hostname_char_pos = screen->columns;
     if (line) {
         url_start = line_url_start_at(line, x);
         if (url_start < line->xnum) {
             bool next_line_starts_with_url_chars = false;
             if (y < screen->lines - 1) {
                 line = screen_visual_line(screen, y+1);
-                next_line_starts_with_url_chars = line_startswith_url_chars(line);
+                next_line_starts_with_url_chars = line_startswith_url_chars(line, last_hostname_char_pos >= line->xnum);
                 if (next_line_starts_with_url_chars && !newlines_allowed && !line->attrs.is_continued) next_line_starts_with_url_chars = false;
                 line = screen_visual_line(screen, y);
             }
             sentinel = get_url_sentinel(line, url_start);
-            url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars);
+            index_type slash_count = 0;
+            for (index_type i = url_start; i < line->xnum; i++) {
+                const char_type ch = line->cpu_cells[i].ch;
+                if (ch == '/' && ++slash_count > 2) { last_hostname_char_pos = i - 1; break; }
+            }
+            url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars, x <= last_hostname_char_pos, last_hostname_char_pos);
         }
         has_url = url_end > url_start;
     }
     if (has_url) {
         index_type y_extended = y;
-        extend_url(screen, line, &url_end, &y_extended, sentinel, newlines_allowed);
+        extend_url(screen, line, &url_end, &y_extended, sentinel, newlines_allowed, last_hostname_char_pos);
         screen_mark_url(screen, url_start, y, url_end, y_extended);
     } else {
         screen_mark_url(screen, 0, 0, 0, 0);

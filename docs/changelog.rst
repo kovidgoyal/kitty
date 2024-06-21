@@ -65,6 +65,8 @@ Detailed list of changes
 
 - Fix :opt:`scrollback_indicator_opacity` not actually controlling the opacity (:iss:`7557`)
 
+- URL detection: Fix IPv6 hostnames breaking URL detection (:iss:`7565`)
+
 0.35.1 [2024-05-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

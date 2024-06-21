@@ -1028,12 +1028,12 @@ class TestScreen(BaseTest):
             url = ''.join(s.text_for_marked_url())
             self.assertEqual(expected, url)
 
-        def t(url, x=0, y=0, before='', after=''):
+        def t(url, x=0, y=0, before='', after='', expected=''):
             s.reset()
             s.cursor.x = x
             s.cursor.y = y
             s.draw(before + url + after)
-            ae(url, x=x + 1 + len(before), y=y)
+            ae(expected or url, x=x + 1 + len(before), y=y)
 
 
         t('http://moo.com')
@@ -1043,10 +1043,15 @@ class TestScreen(BaseTest):
             t('http://moo.com', before=st, after=e)
         for trailer in ')-=':
             t('http://moo.com' + trailer)
-        for trailer in '{([]}<>':
+        for trailer in '{}([<>':
             t('http://moo.com', after=trailer)
         t('http://moo.com', x=s.columns - 9)
         t('https://wraps-by-one-char.com', before='[', after=']')
+        t('http://[::1]:8080')
+        t('https://wr[aps-by-one-ch]ar.com')
+        t('http://[::1]:8080/x', after='[')
+        t('http://[::1]:8080/x]y34', expected='http://[::1]:8080/x')
+        t('https://wraps-by-one-char.com[]/x', after='[')
 
     def test_prompt_marking(self):
         s = self.create_screen()

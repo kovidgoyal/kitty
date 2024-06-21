@@ -50,6 +50,11 @@ cell_text(CPUCell *cell) {
 
 // URL detection {{{
 
+static bool
+is_hostname_char(char_type ch) {
+    return ch == '[' || ch == ']' || is_url_char(ch);
+}
+
 static index_type
 find_colon_slash(Line *self, index_type x, index_type limit) {
     // Find :// at or before x
@@ -60,7 +65,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
     if (pos < limit) return 0;
     do {
         char_type ch = self->cpu_cells[pos].ch;
-        if (!is_url_char(ch)) return false;
+        if (!is_hostname_char(ch)) return false;
         if (pos == x) {
             if (ch == ':') {
                 if (pos + 2 < self->xnum && self->cpu_cells[pos+1].ch == '/' && self->cpu_cells[pos + 2].ch == '/') state = SECOND_SLASH;
@@ -108,9 +113,15 @@ has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_ty
 #define MIN_URL_LEN 5
 
 static bool
-has_url_beyond(Line *self, index_type x) {
+has_url_beyond_colon_slash(Line *self, index_type x) {
+    unsigned num_of_slashes = 0;
     for (index_type i = x; i < MIN(x + MIN_URL_LEN + 3, self->xnum); i++) {
-        if (!is_url_char(self->cpu_cells[i].ch)) return false;
+        const char_type ch = self->cpu_cells[i].ch;
+        if (num_of_slashes < 3) {
+            if (!is_hostname_char(ch)) return false;
+            if (ch == '/') num_of_slashes++;
+        }
+        else { if (!is_url_char(ch)) return false; }
     }
     return true;
 }
@@ -123,30 +134,40 @@ line_url_start_at(Line *self, index_type x) {
     index_type ds_pos = 0, t;
     // First look for :// ahead of x
     ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2);
-    if (ds_pos != 0 && has_url_beyond(self, ds_pos)) {
+    if (ds_pos != 0 && has_url_beyond_colon_slash(self, ds_pos)) {
         if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t)) return t;
     }
     ds_pos = find_colon_slash(self, x, 0);
-    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond(self, ds_pos)) return self->xnum;
+    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond_colon_slash(self, ds_pos)) return self->xnum;
     if (has_url_prefix_at(self, ds_pos, 0, &t)) return t;
     return self->xnum;
 }
 
+static bool
+is_pos_ok_for_url(Line *self, index_type x, bool in_hostname, index_type last_hostname_char_pos) {
+    if (x >= self->xnum) return false;
+    if (in_hostname && x <= last_hostname_char_pos) return is_hostname_char(self->cpu_cells[x].ch);
+    return is_url_char(self->cpu_cells[x].ch);
+}
+
 index_type
-line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel, bool next_line_starts_with_url_chars) {
+line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel, bool next_line_starts_with_url_chars, bool in_hostname, index_type last_hostname_char_pos) {
     index_type ans = x;
     if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3)) return 0;
-    if (sentinel) { while (ans < self->xnum && self->cpu_cells[ans].ch != sentinel && is_url_char(self->cpu_cells[ans].ch)) ans++; }
-    else { while (ans < self->xnum && is_url_char(self->cpu_cells[ans].ch)) ans++; }
+#define pos_ok(x) is_pos_ok_for_url(self, x, in_hostname, last_hostname_char_pos)
+    if (sentinel) { while (ans < self->xnum && self->cpu_cells[ans].ch != sentinel && pos_ok(ans)) ans++; }
+    else { while (ans < self->xnum && pos_ok(ans)) ans++; }
     if (ans) ans--;
     if (ans < self->xnum - 1 || !next_line_starts_with_url_chars) {
         while (ans > x && can_strip_from_end_of_url(self->cpu_cells[ans].ch)) ans--;
     }
+#undef pos_ok
     return ans;
 }
 
 bool
-line_startswith_url_chars(Line *self) {
+line_startswith_url_chars(Line *self, bool in_hostname) {
+    if (in_hostname) return is_hostname_char(self->cpu_cells[0].ch);
     return is_url_char(self->cpu_cells[0].ch);
 }
 
@@ -163,7 +184,7 @@ url_end_at(Line *self, PyObject *args) {
     unsigned int x, sentinel = 0;
     int next_line_starts_with_url_chars = 0;
     if (!PyArg_ParseTuple(args, "I|Ip", &x, &sentinel, &next_line_starts_with_url_chars)) return NULL;
-    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, x, true, sentinel, next_line_starts_with_url_chars));
+    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, x, true, sentinel, next_line_starts_with_url_chars, false, self->xnum));
 }
 
 // }}}
