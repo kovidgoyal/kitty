@@ -50,7 +50,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.36.0 [future]
+0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new option, :opt:`window_logo_scale` to specify how window logos are scaled with respect to the size of the window containing the logo (:pull:`7534`)
