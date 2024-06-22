@@ -200,9 +200,7 @@ class FontSpec(NamedTuple):
     def __str__(self) -> str:
         return self.as_setting
 
-    def __repr__(self) -> str:
-        return repr(str(self))
-
+    # Cannot change __repr__ as it will break config generation
 
 
 Descriptor = Union[FontConfigPattern, CoreTextFont]
