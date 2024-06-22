@@ -249,7 +249,7 @@ get_docs_ref_map(PyObject *self UNUSED, PyObject *args UNUSED) {
 
 static PyObject*
 wrapped_kittens(PyObject *self UNUSED, PyObject *args UNUSED) {
-    const char *wrapped_kitten_names = WRAPPED_KITTENS;
+    static const char *wrapped_kitten_names = WRAPPED_KITTENS;
     PyObject *ans = PyUnicode_FromString(wrapped_kitten_names);
     if (ans == NULL) return NULL;
     PyObject *s = PyUnicode_Split(ans, NULL, -1);

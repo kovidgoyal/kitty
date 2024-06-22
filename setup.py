@@ -1203,6 +1203,30 @@ def build_static_binaries(args: Options, launcher_dir: str) -> None:
             build_static_kittens(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
 
 
+@lru_cache(2)
+def kitty_cli_boolean_options() -> Tuple[str, ...]:
+    with open(os.path.join(src_base, 'kitty/cli.py')) as f:
+        raw = f.read()
+    m = re.search(r"^\s*OPTIONS = '''(.+?)'''", raw, flags=re.MULTILINE | re.DOTALL)
+    assert m is not None
+    ans: List[str] = []
+    in_option: List[str] = []
+    prev_line_was_blank = False
+    for line in m.group(1).splitlines():
+        if in_option:
+            is_blank = not line.strip()
+            if is_blank:
+                if prev_line_was_blank:
+                    in_option = []
+            prev_line_was_blank = is_blank
+            if line.startswith('type=bool-'):
+                ans.extend(x.lstrip('-') for x in in_option)
+        else:
+            if line.startswith('-'):
+                in_option = line.strip().split()
+    return tuple(ans)
+
+
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
     werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
     cflags = f'-Wall {werror} -fpie'.split()
@@ -1260,6 +1284,8 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(launcher_dir, exist_ok=True)
     os.makedirs(build_dir, exist_ok=True)
     objects = []
+    cppflags.append('-DKITTY_CLI_BOOL_OPTIONS=" ' + ' '.join(kitty_cli_boolean_options()) + ' "')
+    cppflags.append('-DKITTY_VERSION="' + '.'.join(map(str, version)) + '"')
     for src in ('kitty/launcher/main.c',):
         obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)

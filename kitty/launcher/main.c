@@ -356,6 +356,57 @@ delegate_to_kitten_if_possible(int argc, char *argv[], char* exe_dir) {
     if (argc > 3 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "kitten") == 0 && is_wrapped_kitten(argv[3])) exec_kitten(argc - 2, argv + 2, exe_dir);
 }
 
+static bool
+is_boolean_flag(const char *x) {
+    static const char *all_boolean_options = KITTY_CLI_BOOL_OPTIONS;
+    char buf[128];
+    snprintf(buf, sizeof(buf), " %s ", x);
+    return strstr(all_boolean_options, buf) != NULL;
+}
+
+static void
+handle_fast_commandline(int argc, char *argv[]) {
+    char current_option_expecting_argument[128] = {0};
+    bool version_requested = false;
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
+        if (current_option_expecting_argument[0]) {
+            current_option_expecting_argument[0] = 0;
+        } else {
+            if (!arg || !arg[0] || !arg[1] || arg[0] != '-' || strcmp(arg, "--") == 0) break;
+            if (arg[1] == '-') {  // long opt
+                const char *equal = strchr(arg, '=');
+                if (equal == NULL) {
+                    if (strcmp(arg+2, "version") == 0) {
+                        version_requested = true;
+                    } else if (!is_boolean_flag(arg+2)) {
+                        strncpy(current_option_expecting_argument, arg+2, sizeof(current_option_expecting_argument)-1);
+                    }
+                }
+            } else {
+                char buf[2] = {0};
+                for (int i = 1; arg[i] != 0; i++) {
+                    switch(arg[i]) {
+                        case 'v': version_requested = true; break;
+                        default:
+                            buf[0] = arg[i]; buf[1] = 0;
+                            if (!is_boolean_flag(buf)) { current_option_expecting_argument[0] = arg[i]; current_option_expecting_argument[1] = 0; }
+                    }
+                }
+            }
+        }
+    }
+
+    if (version_requested) {
+        if (isatty(STDOUT_FILENO)) {
+            printf("\x1b[3mkitty\x1b[23m \x1b[32m%s\x1b[39m created by \x1b[1;34mKovid Goyal\x1b[22;39m\n", KITTY_VERSION);
+        } else {
+            printf("kitty %s created by Kovid Goyal\n", KITTY_VERSION);
+        }
+        exit(0);
+    }
+}
+
 int main(int argc, char *argv[], char* envp[]) {
     if (argc < 1 || !argv) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
     if (!ensure_working_stdio()) return 1;
@@ -370,6 +421,7 @@ int main(int argc, char *argv[], char* envp[]) {
     strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
     char *exe_dir = dirname(exe_dir_buf);
     delegate_to_kitten_if_possible(argc, argv, exe_dir);
+    handle_fast_commandline(argc, argv);
     int num, ret=0;
     char lib[PATH_MAX+1] = {0};
     if (KITTY_LIB_PATH[0] == '/') {
