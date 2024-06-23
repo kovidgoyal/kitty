@@ -1286,7 +1286,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     objects = []
     cppflags.append('-DKITTY_CLI_BOOL_OPTIONS=" ' + ' '.join(kitty_cli_boolean_options()) + ' "')
     cppflags.append('-DKITTY_VERSION="' + '.'.join(map(str, version)) + '"')
-    for src in ('kitty/launcher/main.c',):
+    for src in ('kitty/launcher/main.c', 'kitty/launcher/single-instance.c'):
         obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)
         cmd = env.cc + cppflags + cflags + ['-c', src, '-o', obj]

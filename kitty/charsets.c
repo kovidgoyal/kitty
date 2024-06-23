@@ -9,6 +9,7 @@
 
 #include "data-types.h"
 
+#ifndef NO_SINGLE_BYTE_CHARSETS
 static uint32_t charset_translations[4][256] = {
   /* VT100 graphics mapped to Unicode */
   {
@@ -167,7 +168,7 @@ translation_table(uint32_t which) {
             return charset_translations[3];
     }
 }
-
+#endif
 
 // UTF-8 decode taken from: https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
 
@@ -188,7 +189,11 @@ static const uint8_t utf8_data[] = {
   1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
 };
 
-uint32_t
+#ifndef CHARSETS_STORAGE
+#define CHARSETS_STORAGE
+#endif
+
+CHARSETS_STORAGE uint32_t
 decode_utf8(UTF8State* state, uint32_t* codep, uint8_t byte) {
   uint32_t type = utf8_data[byte];
 
@@ -200,7 +205,7 @@ decode_utf8(UTF8State* state, uint32_t* codep, uint8_t byte) {
   return *state;
 }
 
-size_t
+CHARSETS_STORAGE size_t
 decode_utf8_string(const char *src, size_t sz, uint32_t *dest) {
     // dest must be a zeroed array of size at least sz
     uint32_t codep = 0;
@@ -221,7 +226,7 @@ decode_utf8_string(const char *src, size_t sz, uint32_t *dest) {
     return d;
 }
 
-unsigned int
+CHARSETS_STORAGE unsigned int
 encode_utf8(uint32_t ch, char* dest) {
     if (ch < 0x80) { // only lower 7 bits can be 1
         dest[0] = (char)ch;  // 0xxxxxxx

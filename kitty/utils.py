@@ -394,6 +394,9 @@ def unix_socket_directories() -> Iterator[str]:
     if is_macos:
         from .fast_data_types import user_cache_dir
         candidates = [user_cache_dir(), '/Library/Caches']
+    else:
+        if os.environ.get('XDG_RUNTIME_DIR'):
+            candidates.insert(0, os.environ['XDG_RUNTIME_DIR'])
     for loc in candidates:
         if os.access(loc, os.W_OK | os.R_OK | os.X_OK):
             yield loc

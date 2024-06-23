@@ -149,7 +149,6 @@ from .utils import (
     remove_socket_file,
     safe_print,
     sanitize_url_for_dispay_to_user,
-    single_instance,
     startup_notification_handler,
     timed_debug_print,
     which,
@@ -329,6 +328,7 @@ class Boss:
         args: CLIOptions,
         cached_values: Dict[str, Any],
         global_shortcuts: Dict[str, SingleKey],
+        talk_fd: int = -1,
     ):
         set_layout_options(opts)
         self.clipboard = Clipboard()
@@ -352,9 +352,6 @@ class Boss:
         self.cursor_blinking = True
         self.shutting_down = False
         self.misc_config_errors: List[str] = []
-        talk_fd = getattr(single_instance, 'socket', None)
-        talk_fd = -1 if talk_fd is None else talk_fd.fileno()
-        listen_fd = -1
         # we dont allow reloading the config file to change
         # allow_remote_control
         self.allow_remote_control = opts.allow_remote_control
@@ -363,6 +360,7 @@ class Boss:
         elif self.allow_remote_control in ('n', 'no', 'false'):
             self.allow_remote_control = 'n'
         self.listening_on = ''
+        listen_fd = -1
         if args.listen_on and self.allow_remote_control in ('y', 'socket', 'socket-only', 'password'):
             try:
                 listen_fd, self.listening_on = listen_on(args.listen_on)
