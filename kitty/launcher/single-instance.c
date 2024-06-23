@@ -39,6 +39,7 @@ log_error(const char *fmt, ...) {
     va_end(ar);
 }
 
+#ifndef __APPLE__
 static bool
 is_ok_tmpdir(const char *x) {
     if (!x || !x[0]) return false;
@@ -52,12 +53,13 @@ is_ok_tmpdir(const char *x) {
     }
     return false;
 }
+#endif
 
 static void
 get_socket_dir(char *output, size_t output_capacity) {
 #define ret_if_ok(x) if (is_ok_tmpdir(x)) { if (snprintf(output, output_capacity, "%s", x) < output_capacity-1); return; }
 #ifdef __APPLE__
-    if (confstr(_CS_DARWIN_USER_CACHE_DIR, output, output_capacity)) return output;
+    if (confstr(_CS_DARWIN_USER_CACHE_DIR, output, output_capacity)) return;
     snprintf(output, output_capacity, "%s", "/Library/Caches");
 #else
 #define test_env(x) { const char *e = getenv(#x); ret_if_ok(e); }
@@ -242,9 +244,10 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
 
     w("}");
 #undef w
-    size_t addr_len = strlen(server_addr->sun_path);
-    if (!addr_len) addr_len = strlen(server_addr->sun_path + 1) + 1;
-    if (safe_connect(s, (struct sockaddr*)server_addr, sizeof(sa_family_t) + addr_len) != 0) {
+    size_t addr_len = sizeof(sa_family_t);
+    if (!server_addr->sun_path[0]) addr_len += 1 + strlen(server_addr->sun_path + 1);
+    else addr_len = sizeof(*server_addr);
+    if (safe_connect(s, (struct sockaddr*)server_addr, addr_len) != 0) {
         fail_on_errno("Failed to connect to single instance socket");
     }
     size_t pos = 0;
