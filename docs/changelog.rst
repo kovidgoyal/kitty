@@ -50,6 +50,12 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.36.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Wayland: Allow fractional scales less than one (:pull:`7549`)
+
+
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

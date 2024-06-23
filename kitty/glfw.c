@@ -124,6 +124,7 @@ min_size_for_os_window(OSWindow *window, int *min_width, int *min_height) {
 
 
 static void get_window_dpi(GLFWwindow *w, double *x, double *y);
+static void get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi);
 
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
@@ -131,15 +132,16 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     glfwGetFramebufferSize(window->handle, &fw, &fh);
     glfwGetWindowSize(window->handle, &w, &h);
     double xdpi = window->fonts_data->logical_dpi_x, ydpi = window->fonts_data->logical_dpi_y, new_xdpi, new_ydpi;
-    get_window_dpi(window->handle, &new_xdpi, &new_ydpi);
+    float xscale, yscale;
+    get_window_content_scale(window->handle, &xscale, &yscale, &new_xdpi, &new_ydpi);
 
     if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height && xdpi == new_xdpi && ydpi == new_ydpi) {
         return; // no change, ignore
     }
     int min_width, min_height; min_size_for_os_window(window, &min_width, &min_height);
     window->viewport_resized_at = monotonic();
-    if (w <= 0 || h <= 0 || fw < min_width || fh < min_height || (!global_state.is_wayland && (fw < w || fh < h))) {
-        log_error("Invalid geometry ignored: framebuffer: %dx%d window: %dx%d\n", fw, fh, w, h);
+    if (w <= 0 || h <= 0 || fw < min_width || fh < min_height || (xscale >=1 && fw < w) || (yscale >= 1 && fh < h)) {
+        log_error("Invalid geometry ignored: framebuffer: %dx%d window: %dx%d scale: %f %f\n", fw, fh, w, h, xscale, yscale);
         if (!window->viewport_updated_at_least_once) {
             window->viewport_width = min_width; window->viewport_height = min_height;
             window->window_width = min_width; window->window_height = min_height;
