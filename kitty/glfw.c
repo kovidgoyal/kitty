@@ -138,7 +138,7 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     }
     int min_width, min_height; min_size_for_os_window(window, &min_width, &min_height);
     window->viewport_resized_at = monotonic();
-    if (w <= 0 || h <= 0 || fw < min_width || fh < min_height || fw < w || fh < h) {
+    if (w <= 0 || h <= 0 || fw < min_width || fh < min_height || (!global_state.is_wayland && (fw < w || fh < h))) {
         log_error("Invalid geometry ignored: framebuffer: %dx%d window: %dx%d\n", fw, fh, w, h);
         if (!window->viewport_updated_at_least_once) {
             window->viewport_width = min_width; window->viewport_height = min_height;
