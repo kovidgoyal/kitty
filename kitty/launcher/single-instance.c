@@ -226,7 +226,9 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     }
     w("}");
 
-    w(",\"cmdline_args_for_open\":[]");
+    w(",\"cmdline_args_for_open\":");
+    if (opts->open_url_count) write_json_string_array(&output, opts->open_url_count, opts->open_urls);
+    else w("[]");
 
     w(",\"notify_on_os_window_death\":");
     int notify_socket = -1;

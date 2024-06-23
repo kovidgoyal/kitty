@@ -369,7 +369,13 @@ static void
 handle_fast_commandline(int argc, char *argv[]) {
     char current_option_expecting_argument[128] = {0};
     CLIOptions opts = {0};
-    for (int i = 1; i < argc; i++) {
+    int first_arg = 1;
+    if (argc > 1 && strcmp(argv[1], "+open") == 0) {
+        first_arg = 2;
+    } else if (argc > 2 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "open") == 0) {
+        first_arg = 3;
+    }
+    for (int i = first_arg; i < argc; i++) {
         const char *arg = argv[i];
         if (current_option_expecting_argument[0]) {
 handle_option_value:
@@ -380,7 +386,13 @@ handle_option_value:
             }
             current_option_expecting_argument[0] = 0;
         } else {
-            if (!arg || !arg[0] || !arg[1] || arg[0] != '-' || strcmp(arg, "--") == 0) break;
+            if (!arg || !arg[0] || !arg[1] || arg[0] != '-' || strcmp(arg, "--") == 0) {
+                if (first_arg > 1) {
+                    opts.open_urls = argv + i;
+                    opts.open_url_count = argc - i;
+                }
+                break;
+            }
             if (arg[1] == '-') {  // long opt
                 const char *equal = strchr(arg, '=');
                 if (equal == NULL) {
