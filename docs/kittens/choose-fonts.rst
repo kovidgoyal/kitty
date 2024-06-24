@@ -120,6 +120,6 @@ that is, they are used to set the variable value for some font characteristic.
     other keys. Is the same as specifying just the font name without any keys.
 
 
-In addition to these keys, and four letter key is treated as the name of a
+In addition to these keys, any four letter key is treated as the name of a
 variable characteristic of the font. It's value is used to set the value for
 the name.
