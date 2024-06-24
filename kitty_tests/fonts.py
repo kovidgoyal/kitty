@@ -78,7 +78,9 @@ class Selection(BaseTest):
         t('sourcecodeVf', 'SourceCodeVF', 'Semibold')
         t('fira code', 'FiraCodeRoman', 'SemiBold', 'Regular', 'SemiBold')
         t('hack', 'Hack')
-        t('DejaVu Sans Mono', 'DejaVuSansMono', reg='', italic='Oblique')
+        # some ubuntu systems (such as the build VM) have only the regular and
+        # bold faces of DejaVu Sans Mono installed.
+        # t('DejaVu Sans Mono', 'DejaVuSansMono', reg='', italic='Oblique')
         t('ubuntu mono', 'UbuntuMono')
         t('liberation mono', 'LiberationMono', reg='')
         t('ibm plex mono', 'IBMPlexMono', 'SmBld', reg='')
