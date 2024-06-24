@@ -112,7 +112,9 @@ that is, they are used to set the variable value for some font characteristic.
 ``features``
     A space separated list of OpenType font features to enable/disable or
     select a value of, for this font. Consult the documentation for the font
-    family to see what features it supports and their effects.
+    family to see what features it supports and their effects. The exact syntax
+    for specifying features is `documented by HarfBuzz
+    <https://harfbuzz.github.io/harfbuzz-hb-common.html#hb-feature-from-string>`__
 
 ``system``
     This can be used to pass an arbitrary string, usuall a family or full name
