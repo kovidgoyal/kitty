@@ -154,7 +154,8 @@ read_till_eof(FILE *f, membuf *m) {
         m->used += fread(m->data, 1, m->capacity - m->used, f);
         if (ferror(f)) { fclose(f); fail_on_errno("Failed to read from session file"); }
     }
-    write_to_membuf(m, "\0", 1);
+    // ensure NULL termination
+    write_to_membuf(m, "\0", 1); m->used--;
     fclose(f);
 }
 
@@ -196,7 +197,7 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     if (opts->session && opts->session[0]) {
         if (strcmp(opts->session, "none") == 0) {
             session_data.data = "none"; session_data.used = 4;
-        } else if (strcmp(opts->session, "-")) {
+        } else if (strcmp(opts->session, "-") == 0) {
             read_till_eof(stdin, &session_data);
         } else {
             FILE *f = safe_fopen(opts->session, "r");
