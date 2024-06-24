@@ -271,7 +271,7 @@ fonts to be freely resizable, so it does not support bitmapped fonts.
    <https://en.wikipedia.org/wiki/Private_Use_Areas>`__ are
    not included.
 
-If your font is not listed in ``kitty +list-fonts`` it means that it is not
+If your font is not listed in ``kitten choose-fonts`` it means that it is not
 monospace or is a bitmapped font. On Linux you can list all monospace fonts
 with::
 
@@ -300,7 +300,7 @@ command to rebuild your fontconfig cache::
 
     fc-cache -r
 
-Then, the font will be available in ``kitty +list-fonts``.
+Then, the font will be available in ``kitten choose-fonts``.
 
 
 How can I assign a single global shortcut to bring up the kitty terminal?
