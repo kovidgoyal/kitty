@@ -49,6 +49,7 @@ above the font supports precise weight adjustment. If you are lucky the font
 designer has included descriptive names for font features, which will be
 displayed, if not, consult the documentation of the font to see what each feature does.
 
+.. _font_spec_syntax:
 
 The font specification syntax
 --------------------------------

@@ -35,18 +35,10 @@ and even specify special fonts for particular characters.
 opt('font_family', 'monospace', option_type='parse_font_spec',
     long_text='''
 You can specify different fonts for the bold/italic/bold-italic variants.
-To get a full list of supported fonts use the ``kitty +list-fonts`` command.
-By default, they are derived automatically, via the Operating System's font
-management. When :opt:`bold_font` or :opt:`bold_italic_font` is set to
-:code:`auto` on macOS, the priority of bold fonts is semi-bold, bold, heavy.
-Setting them manually is useful for font families that have many weight variants
-like Book, Medium, Thick, etc.
-For example::
-
-    font_family      Operator Mono Book
-    bold_font        Operator Mono Medium
-    italic_font      Operator Mono Book Italic
-    bold_italic_font Operator Mono Medium Italic
+The easiest way to select fonts is to run the ``kitten choose-fonts`` command
+which will present a nice UI for you to select the fonts you want with previews
+and support for selecting variable fonts and font features. If you want to learn
+to select fonts manually, read the :ref:`font specification syntax <font_spec_syntax>`.
 '''
     )
 
