@@ -44,6 +44,8 @@
 #include <sys/socket.h>
 #include <wayland-client.h>
 #include <stdio.h>
+// errno.h needed for BSD code paths
+#include <errno.h>
 // Needed for the BTN_* defines
 #ifdef __has_include
 #if __has_include(<linux/input.h>)
@@ -637,6 +639,7 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(void) {
 
 static pid_t
 get_socket_peer_pid(int fd) {
+    (void)fd;
 #ifdef __linux__
     struct ucred ucred;
     socklen_t len = sizeof(struct ucred);
