@@ -45,7 +45,7 @@ will be automatically adjusted based on what you select for the regular face.
 
 You can choose a specific style or font feature by clicking on it. A precise
 value for any variable axes can be selected using the slider, in the screenshot
-above the font supports precise weight adjustment. If you are lucky the font
+above, the font supports precise weight adjustment. If you are lucky the font
 designer has included descriptive names for font features, which will be
 displayed, if not, consult the documentation of the font to see what each feature does.
 
