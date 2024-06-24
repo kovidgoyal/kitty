@@ -26,7 +26,7 @@ kitty
 .. tab:: Capable
 
    * Graphics, with :doc:`images and animations <graphics-protocol>`
-   * Ligatures and emoji, with :opt:`per glyph font substitution <symbol_map>`
+   * Ligatures, emoji with :opt:`per glyph font substitution <symbol_map>` and :doc:`variable fonts and font features </kittens/choose-fonts>`
    * :term:`Hyperlinks<hyperlinks>`, with :doc:`configurable actions <open_actions>`
 
 .. tab:: Scriptable
