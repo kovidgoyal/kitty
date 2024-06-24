@@ -333,7 +333,7 @@ class GitHub:  # {{{
 
     def update_nightly_description(self, release_id: int) -> None:
         url = f'{self.url_base}/{release_id}'
-        now = str(datetime.datetime.utcnow()).split('.')[0] + ' UTC'
+        now = str(datetime.datetime.now(datetime.timezone.utc)).split('.')[0] + ' UTC'
         commit = subprocess.check_output(['git', 'rev-parse', '--verify', '--end-of-options', 'master^{commit}']).decode('utf-8').strip()
         self.patch(
             url, 'Failed to update nightly release description',
