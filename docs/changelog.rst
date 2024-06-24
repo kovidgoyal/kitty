@@ -9,6 +9,21 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Variable font support [0.36]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Terminal aficionados spend all day staring at text, so getting text
+rendering just right is very important. In that spirit, kitty now supports
+`OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__.
+These allow precise customisation of font characteristics, such as weight and
+spacing. Not only that, kitty now has a new :doc:`choose-fonts
+<kittens/choose-fonts>` kitten that provides a UI for choosing fonts with
+support for font features, variable fonts and previews of how the font will
+look. This is in addition to its existing best-in-class font customization
+abilities, such as: :opt:`symbol_map`, :opt:`text_composition_strategy`,
+:opt:`font_features` and :opt:`modify_font`. kitty knows text rendering is
+important, and goes the extra mile for it.
+
 Wayland goodies [0.34]
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -52,6 +67,10 @@ Detailed list of changes
 
 0.36.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Support `OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__
+
+- A new ``choose-fonts`` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts.
 
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
