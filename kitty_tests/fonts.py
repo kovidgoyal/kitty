@@ -53,7 +53,7 @@ class Selection(BaseTest):
                     self.ae(expected, actual)
                 except AssertionError:
                     if alternate:
-                        self.ae(tuple(map(alternate, expected)), actual)
+                        self.ae(alternate, actual)
                     else:
                         raise
 
@@ -76,7 +76,10 @@ class Selection(BaseTest):
 
         t('Source Code Pro', 'SourceCodePro', 'Semibold', 'It')
         t('sourcecodeVf', 'SourceCodeVF', 'Semibold')
-        t('fira code', 'FiraCodeRoman', 'SemiBold', 'Regular', 'SemiBold')
+
+        # The Arch ttf-fira-code package excludes the variable fonts for some reason
+        t('fira code', 'FiraCodeRoman', 'SemiBold', 'Regular', 'SemiBold', alternate=(
+            'FiraCode-Regular', 'FiraCode-SemiBold', 'FiraCode-Retina', 'FiraCode-SemiBold'))
         t('hack', 'Hack')
         # some ubuntu systems (such as the build VM) have only the regular and
         # bold faces of DejaVu Sans Mono installed.
