@@ -74,6 +74,8 @@ Detailed list of changes
 
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
+- Wayland: Fix specifying the output name for the panel kitten not working (:iss:`7573`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

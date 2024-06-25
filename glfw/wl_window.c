@@ -953,14 +953,10 @@ void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled UNUSED) {
 
 static struct wl_output*
 find_output_by_name(const char* name) {
-    if (!name) return NULL;
-    int count;
-    GLFWmonitor** monitors = glfwGetMonitors(&count);
-    for (int i = 0; i < count; ++i) {
-        _GLFWmonitor *m = (_GLFWmonitor*)monitors + i;
-        if (strcmp(m->name, name) == 0) {
-            return m->wl.output;
-        }
+    if (!name || !name[0]) return NULL;
+    for (int i = 0; i < _glfw.monitorCount; i++) {
+        _GLFWmonitor *m = _glfw.monitors[i];
+        if (strcmp(m->wl.friendly_name, name) == 0) return m->wl.output;
     }
     return NULL;
 }
@@ -1399,7 +1395,6 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         wp_viewport_destroy(window->wl.wp_viewport);
     if (window->wl.org_kde_kwin_blur)
         org_kde_kwin_blur_release(window->wl.org_kde_kwin_blur);
-    if (window->wl.layer_shell.config.output_name) free((void*)window->wl.layer_shell.config.output_name);
 
     if (window->context.destroy)
         window->context.destroy(window);
@@ -2747,11 +2742,8 @@ GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     if (csd_change_title(window)) commit_window_surface_if_safe(window);
 }
 
-GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(GLFWLayerShellConfig c) {
-    if (layer_shell_config_for_next_window.output_name) free((void*)layer_shell_config_for_next_window.output_name);
-    layer_shell_config_for_next_window = c;
-    if (layer_shell_config_for_next_window.output_name && !layer_shell_config_for_next_window.output_name[0]) layer_shell_config_for_next_window.output_name = NULL;
-    if (layer_shell_config_for_next_window.output_name) layer_shell_config_for_next_window.output_name = strdup(layer_shell_config_for_next_window.output_name);
+GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(const GLFWLayerShellConfig *c) {
+    layer_shell_config_for_next_window = *c;
 }
 
 void

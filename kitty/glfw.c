@@ -1090,17 +1090,26 @@ calculate_layer_shell_window_size(
     }
 }
 
-static GLFWLayerShellConfig
-translate_layer_shell_config(PyObject *p) {
-    GLFWLayerShellConfig ans = {.size_callback=calculate_layer_shell_window_size};
-#define A(attr, type_check, convert) RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return ans; if (!type_check(attr)) { PyErr_SetString(PyExc_TypeError, #attr " not of the correct type"); return ans; }; ans.attr = convert(attr);
-    A(output_name, PyUnicode_Check, PyUnicode_AsUTF8);
+static bool
+translate_layer_shell_config(PyObject *p, GLFWLayerShellConfig *ans) {
+    memset(ans, 0, sizeof(GLFWLayerShellConfig));
+    ans->size_callback = calculate_layer_shell_window_size;
+#define A(attr, type_check, convert) RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; if (!type_check(attr)) { PyErr_SetString(PyExc_TypeError, #attr " not of the correct type"); return false; }; ans->attr = convert(attr);
     A(type, PyLong_Check, PyLong_AsLong);
     A(edge, PyLong_Check, PyLong_AsLong);
     A(focus_policy, PyLong_Check, PyLong_AsLong);
     A(size_in_cells, PyLong_Check, PyLong_AsLong);
 #undef A
-    return ans;
+#define A(attr) { \
+    RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; \
+    if (!PyUnicode_Check(attr)) { PyErr_SetString(PyExc_TypeError, #attr " not a string"); return false; };\
+    Py_ssize_t sz; const char *t = PyUnicode_AsUTF8AndSize(attr, &sz); \
+    if (sz > (ssize_t)sizeof(ans->attr)-1) { PyErr_Format(PyExc_ValueError, "%s: %s is too long", #attr, t); return false; } \
+    memcpy(ans->attr, t, sz); }
+
+    A(output_name);
+    return true;
+#undef A
 }
 
 static PyObject*
@@ -1204,7 +1213,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
-    if (is_layer_shell) glfwWaylandSetupLayerShellForNextWindow(translate_layer_shell_config(layer_shell_config));
+    if (is_layer_shell) {
+        GLFWLayerShellConfig lsc = {0};
+        if (!translate_layer_shell_config(layer_shell_config, &lsc)) return NULL;
+        glfwWaylandSetupLayerShellForNextWindow(&lsc);
+    }
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context);
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }

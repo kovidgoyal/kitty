@@ -31,7 +31,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <math.h>
 
 
@@ -90,7 +89,6 @@ static void outputHandleDone(void* data, struct wl_output* output UNUSED)
     for (int i = 0; i < _glfw.monitorCount; i++) {
         if (_glfw.monitors[i] == monitor) return;
     }
-
     _glfwInputMonitor(monitor, GLFW_CONNECTED, _GLFW_INSERT_LAST);
 }
 
@@ -103,11 +101,28 @@ static void outputHandleScale(void* data,
         monitor->wl.scale = factor;
 }
 
+static void outputHandleName(void* data,
+                              struct wl_output* output UNUSED,
+                              const char* name) {
+    struct _GLFWmonitor *monitor = data;
+    if (name) strncpy(monitor->wl.friendly_name, name, sizeof(monitor->wl.friendly_name)-1);
+}
+
+static void outputHandleDescription(void* data,
+                              struct wl_output* output UNUSED,
+                              const char* description) {
+    struct _GLFWmonitor *monitor = data;
+    if (description) strncpy(monitor->wl.description, description, sizeof(monitor->wl.description)-1);
+
+}
+
 static const struct wl_output_listener outputListener = {
     outputHandleGeometry,
     outputHandleMode,
     outputHandleDone,
     outputHandleScale,
+    outputHandleName,
+    outputHandleDescription,
 };
 
 
@@ -133,7 +148,7 @@ void _glfwAddOutputWayland(uint32_t name, uint32_t version)
     output = wl_registry_bind(_glfw.wl.registry,
                               name,
                               &wl_output_interface,
-                              2);
+                              MIN(version, (unsigned)WL_OUTPUT_NAME_SINCE_VERSION));
     if (!output)
     {
         _glfwFreeMonitor(monitor);
