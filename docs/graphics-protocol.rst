@@ -953,7 +953,7 @@ by the ``C`` key with the default being to alpha blend the source rectangle
 onto the destination rectangle. With ``C=1`` it will be a simple replacement
 of pixels. For example::
 
-    <ESC>_Gi=1,r=7,c=9,w=23,h=27,X=4,Y=8,x=1,y=3<ESC>\
+    <ESC>_Ga=c,i=1,r=7,c=9,w=23,h=27,X=4,Y=8,x=1,y=3<ESC>\
 
 Will compose a ``23x27`` rectangle located at ``(4, 8)`` in the ``7th frame``
 onto the rectangle located at ``(1, 3)`` in the ``9th frame``. These will be
