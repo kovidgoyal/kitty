@@ -122,7 +122,7 @@ def get_features(features: Dict[str, Optional['FeatureData']]) -> Dict[str, FD]:
     return ans
 
 
-def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: float, width: int, height: int) -> RenderedSample:
+def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: float, width: int, height: int, sample_text: str = '') -> RenderedSample:
     face = face_from_descriptor(font, opts.font_size, dpi_x, dpi_y)
     face.set_size(opts.font_size, dpi_x, dpi_y)
     metadata = {
@@ -139,7 +139,7 @@ def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: flo
         if ns:
             metadata['variable_named_style'] = ns
         metadata['variable_axis_map'] = get_axis_map(face)
-    bitmap, cell_width, cell_height = face.render_sample_text(SAMPLE_TEXT, width, height, opts.foreground.rgb)
+    bitmap, cell_width, cell_height = face.render_sample_text(sample_text or SAMPLE_TEXT, width, height, opts.foreground.rgb)
     metadata['cell_width'] = cell_width
     metadata['cell_height'] = cell_height
     metadata['canvas_height'] = len(bitmap) // (4 *width)
@@ -230,7 +230,7 @@ def query_kitty() -> Dict[str, str]:
     return ans
 
 
-def showcase(family: str = 'family="Fira Code"') -> None:
+def showcase(family: str = 'family="Fira Code"', sample_text: str = '') -> None:
     q = query_kitty()
     opts = Options()
     opts.foreground = to_color(q['foreground'])
@@ -242,7 +242,7 @@ def showcase(family: str = 'family="Fira Code"') -> None:
     ss = screen_size_function()()
     width = ss.cell_width * ss.cols
     height = 5 * ss.cell_height
-    bitmap, m = render_face_sample(desc, opts, float(q['dpi_x']), float(q['dpi_y']), width, height)
+    bitmap, m = render_face_sample(desc, opts, float(q['dpi_x']), float(q['dpi_y']), width, height, sample_text=sample_text)
     display_bitmap(bitmap, m['canvas_width'], m['canvas_height'])
 
 
