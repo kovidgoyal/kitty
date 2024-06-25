@@ -1010,7 +1010,7 @@ render_sample_text(Face *self, PyObject *args) {
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
         ProcessedBitmap pbm = EMPTY_PBM;
         populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
-        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, 0, 0, baseline, 99999, fg, x, y);
+        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, x, 0, baseline, 99999, fg, 0, y);
     }
 
     for (uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf); p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * canvas_height; p += 4) {
