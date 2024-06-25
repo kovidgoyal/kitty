@@ -155,6 +155,12 @@ default=0
 The graphics protocol id to use for the created image. Normally, a random id is created if needed.
 This option allows control of the id. When multiple images are sent, sequential ids starting from the specified id
 are used. Valid ids are from 1 to 4294967295. Numbers outside this range are automatically wrapped.
+
+
+--no-trailing-newline -n
+type=bool-set
+By default, the cursor is moved to the next line after displaying an image. This option, prevents that. Should not be used
+when catting multiple images. Also has no effect when the :option:`--place` option is used.
 '''
 
 help_text = (

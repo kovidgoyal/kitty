@@ -292,7 +292,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		if imgd.err != nil {
 			print_error("Failed to process \x1b[31m%s\x1b[39m: %s\r\n", imgd.source_name, imgd.err)
 		} else {
-			transmit_image(imgd)
+			transmit_image(imgd, opts.NoTrailingNewline)
 			if imgd.err != nil {
 				print_error("Failed to transmit \x1b[31m%s\x1b[39m: %s\r\n", imgd.source_name, imgd.err)
 			}

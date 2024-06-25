@@ -278,7 +278,7 @@ func write_unicode_placeholder(imgd *image_data) {
 
 var seen_image_ids *utils.Set[uint32]
 
-func transmit_image(imgd *image_data) {
+func transmit_image(imgd *image_data, no_trailing_newline bool) {
 	if seen_image_ids == nil {
 		seen_image_ids = utils.NewSet[uint32](32)
 	}
@@ -406,7 +406,7 @@ func transmit_image(imgd *image_data) {
 			return
 		}
 	}
-	if imgd.move_to.x == 0 {
+	if imgd.move_to.x == 0 && !no_trailing_newline {
 		fmt.Println() // ensure cursor is on new line
 	}
 }
