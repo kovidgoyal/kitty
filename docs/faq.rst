@@ -258,7 +258,7 @@ fonts to be freely resizable, so it does not support bitmapped fonts.
    If you are trying to use a font patched with `Nerd Fonts
    <https://nerdfonts.com/>`__ symbols, don't do that as patching destroys
    fonts. There is no need, simply install the standalone ``Symbols Nerd Font Mono``
-   (the file :file:`NerdFontsSymbolsOnly.zip` from the `Nerd Fonts releases page
+   (the file :file:`NerdFontsSymbolsOnly.tar.xz` from the `Nerd Fonts releases page
    <https://github.com/ryanoasis/nerd-fonts/releases>`__). kitty should pick up
    symbols from it automatically, and you can tell it to do so explicitly in
    case it doesn't with the :opt:`symbol_map` directive::
