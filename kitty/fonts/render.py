@@ -32,10 +32,12 @@ from kitty.utils import log_error
 from .common import get_font_files
 
 if is_macos:
-    from .core_text import font_for_family as font_for_family_macos
     from kitty.fast_data_types import coretext_add_font_file as add_font_file
+
+    from .core_text import font_for_family as font_for_family_macos
 else:
     from kitty.fast_data_types import fc_add_font_file as add_font_file
+
     from .fontconfig import font_for_family as font_for_family_fontconfig
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
@@ -526,6 +528,7 @@ def test_fallback_font(qtext: Optional[str] = None, bold: bool = False, italic: 
 
 
 def showcase() -> None:
+    add_font_file
     f = 'monospace' if is_macos else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)
