@@ -41,6 +41,7 @@ static void* libfontconfig_handle = NULL;
 #define FcPatternCreate dynamically_loaded_fc_symbol.PatternCreate
 #define FcPatternGetBool dynamically_loaded_fc_symbol.PatternGetBool
 #define FcPatternAddCharSet dynamically_loaded_fc_symbol.PatternAddCharSet
+#define FcConfigAppFontAddFile dynamically_loaded_fc_symbol.ConfigAppFontAddFile
 
 static struct {
     FcBool(*Init)(void);
@@ -65,6 +66,7 @@ static struct {
     FcPattern * (*PatternCreate) (void);
     FcResult (*PatternGetBool) (const FcPattern *p, const char *object, int n, FcBool *b);
     FcBool (*PatternAddCharSet) (FcPattern *p, const char *object, const FcCharSet *c);
+    FcBool (*ConfigAppFontAddFile) (FcConfig *config, const FcChar8 *file);
 } dynamically_loaded_fc_symbol = {0};
 #define LOAD_FUNC(name) {\
     *(void **) (&dynamically_loaded_fc_symbol.name) = dlsym(libfontconfig_handle, "Fc" #name); \
@@ -115,6 +117,7 @@ load_fontconfig_lib(void) {
         LOAD_FUNC(PatternCreate);
         LOAD_FUNC(PatternGetBool);
         LOAD_FUNC(PatternAddCharSet);
+        LOAD_FUNC(ConfigAppFontAddFile);
 }
 #undef LOAD_FUNC
 
@@ -491,10 +494,22 @@ end:
 }
 
 #undef AP
+
+static PyObject*
+fc_add_font_file(PyObject UNUSED *self, PyObject *args) {
+    ensure_initialized();
+    const char *path = NULL;
+    if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    if (FcConfigAppFontAddFile(NULL, (const unsigned char*)path)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+
 static PyMethodDef module_methods[] = {
     {"fc_list", (PyCFunction)(void (*) (void))(fc_list), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(fc_match, METH_VARARGS),
     METHODB(fc_match_postscript_name, METH_VARARGS),
+    METHODB(fc_add_font_file, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

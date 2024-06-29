@@ -425,6 +425,10 @@ def fc_match_postscript_name(
     pass
 
 
+def fc_add_font_file(path: str) -> bool: ...
+def coretext_add_font_file(path: str) -> bool: ...
+
+
 class FeatureData(TypedDict):
     name: NotRequired[str]
     tooltip: NotRequired[str]

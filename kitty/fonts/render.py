@@ -33,7 +33,9 @@ from .common import get_font_files
 
 if is_macos:
     from .core_text import font_for_family as font_for_family_macos
+    from kitty.fast_data_types import coretext_add_font_file as add_font_file
 else:
+    from kitty.fast_data_types import fc_add_font_file as add_font_file
     from .fontconfig import font_for_family as font_for_family_fontconfig
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
