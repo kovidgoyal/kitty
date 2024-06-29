@@ -512,16 +512,56 @@ set_size(CTFace *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+// CoreText delegates U+2010 to U+00AD if the font is missing U+2010. Example
+// of such a font is Fira Code. So we specialize HarfBuzz glyph lookup to take
+// this into account.
+static hb_bool_t
+get_nominal_glyph(hb_font_t *font, void *font_data, hb_codepoint_t unicode, hb_codepoint_t *glyph, void *user_data) {
+    hb_font_t *parent_font = font_data; (void)user_data; (void)font;
+    hb_bool_t ans = hb_font_get_nominal_glyph(parent_font, unicode, glyph);
+    if (!ans && unicode == 0x2010) {
+        CTFontRef ct_font = hb_coretext_font_get_ct_font(parent_font);
+        unsigned int gid = glyph_id_for_codepoint_ctfont(ct_font, unicode);
+        if (gid > 0) {
+            ans = true; *glyph = gid;
+        }
+    }
+    return ans;
+}
+
+static hb_bool_t
+get_variation_glyph(hb_font_t *font, void *font_data, hb_codepoint_t unicode, hb_codepoint_t variation, hb_codepoint_t *glyph, void *user_data) {
+    hb_font_t *parent_font = font_data; (void)user_data; (void)font;
+    hb_bool_t ans = hb_font_get_variation_glyph(parent_font, unicode, variation, glyph);
+    if (!ans && unicode == 0x2010) {
+        CTFontRef ct_font = hb_coretext_font_get_ct_font(parent_font);
+        unsigned int gid = glyph_id_for_codepoint_ctfont(ct_font, unicode);
+        if (gid > 0) {
+            ans = true; *glyph = gid;
+        }
+    }
+    return ans;
+}
+
+
 hb_font_t*
 harfbuzz_font_for_face(PyObject* s) {
     CTFace *self = (CTFace*)s;
     if (!self->hb_font) {
-        self->hb_font = hb_coretext_font_create(self->ct_font);
-        if (!self->hb_font) fatal("Failed to create hb_font");
+        hb_font_t *hb = hb_coretext_font_create(self->ct_font);
+        if (!hb) fatal("Failed to create hb_font_t");
         // dunno if we need this, harfbuzz docs say it is used by CoreText
         // for optical sizing which changes the look of glyphs at small and large sizes
-        hb_font_set_ptem(self->hb_font, self->scaled_point_sz);
-        hb_ot_font_set_funcs(self->hb_font);
+        hb_font_set_ptem(hb, self->scaled_point_sz);
+        // Setup CoreText compatible glyph lookup functions
+        self->hb_font = hb_font_create_sub_font(hb);
+        if (!self->hb_font) fatal("Failed to create sub hb_font_t");
+        hb_font_funcs_t *ffunctions = hb_font_funcs_create();
+        hb_font_set_funcs(self->hb_font, ffunctions, hb, NULL);
+        hb_font_funcs_set_nominal_glyph_func(ffunctions, get_nominal_glyph, NULL, NULL);
+        hb_font_funcs_set_variation_glyph_func(ffunctions, get_variation_glyph, NULL, NULL);
+        hb_font_funcs_destroy(ffunctions); // sub font retains a reference to this
+        hb_font_destroy(hb);  // the sub font retains a reference to the parent font
     }
     return self->hb_font;
 }

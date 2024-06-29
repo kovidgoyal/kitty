@@ -80,6 +80,8 @@ Detailed list of changes
 
 - Speed up ``kitty --version`` and ``kitty --single-instance`` (for all subsequent instances). They are now the fastest of all terminal emulators with similar functionality.
 
+- macOS: Fix rendering of the unicode hyphen (U+2010) character when using a font that does not include a glyph for it (:iss:`7525`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
