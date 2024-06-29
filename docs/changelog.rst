@@ -68,7 +68,7 @@ Detailed list of changes
 0.36.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Support `OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__
+- Support `OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__ (:iss:`3711`)
 
 - A new ``choose-fonts`` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts.
 
