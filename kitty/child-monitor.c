@@ -810,7 +810,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
-    os_window->is_damaged = false;
+    if (os_window->redraw_count) os_window->redraw_count--;
     if (USE_RENDER_FRAMES) request_frame_render(os_window);
 #undef WD
 #undef TD
@@ -848,7 +848,7 @@ render_os_window(OSWindow *w, monotonic_t now, bool ignore_render_frames, bool s
     w->render_calls++;
     make_os_window_context_current(w);
     if (w->live_resize.in_progress) blank_os_window(w);
-    bool needs_render = w->is_damaged || w->live_resize.in_progress;
+    bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress;
     if (w->viewport_size_dirty) {
         w->clear_count = 0;
         update_surface_size(w->viewport_width, w->viewport_height, 0);
@@ -1073,7 +1073,10 @@ process_pending_resizes(monotonic_t now) {
                 update_os_window_viewport(w, true);
                 change_live_resize_state(w, false);
                 zero_at_ptr(&w->live_resize);
-                w->is_damaged = true;  // because the window size should be hidden even if update_os_window_viewport does nothing
+                // because the window size should be hidden even if update_os_window_viewport does nothing
+                // On Wayland some compositors require two redraws after a
+                // resize to actually render correctly (Run kitty -1 --wait-for-os-window-close in sway to reproduce)
+                w->redraw_count = global_state.is_wayland ? 2 : 1;
             }
         }
     }

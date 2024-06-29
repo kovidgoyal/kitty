@@ -362,7 +362,7 @@ dpi_change_callback(GLFWwindow *w, float x_scale UNUSED, float y_scale UNUSED) {
 static void
 refresh_callback(GLFWwindow *w) {
     if (!set_callback_window(w)) return;
-    global_state.callback_os_window->is_damaged = true;
+    if (!global_state.callback_os_window->redraw_count) global_state.callback_os_window->redraw_count++;
     global_state.callback_os_window = NULL;
     request_tick_callback();
 }
@@ -1330,7 +1330,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // macOS: Show the window after it is ready
     glfwShowWindow(glfw_window);
 #endif
-    w->is_damaged = true;
+    w->redraw_count = 1;
     debug("OS Window created\n");
     return PyLong_FromUnsignedLongLong(w->id);
 }
