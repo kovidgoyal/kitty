@@ -1044,7 +1044,7 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '': [p(spinner, start=360, end=540)],
     '': [p(spinner, start=80, end=220)],
     '': [p(spinner, start=170, end=270)],
-    '○': [p(spinner, start=0, end=360)],    # circle
+    '○': [p(spinner, start=0, end=360, level=0)],    # circle
     '◜': [p(spinner, start=180, end=270)],  # upper-left
     '◝': [p(spinner, start=270, end=360)],  # upper-right
     '◞': [p(spinner, start=360, end=450)],  # lower-right
