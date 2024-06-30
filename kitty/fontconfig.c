@@ -466,6 +466,8 @@ end:
     return ok;
 }
 
+static bool face_has_codepoint(const void *face, char_type cp) { return glyph_id_for_codepoint(face, cp) > 0; }
+
 PyObject*
 create_fallback_face(PyObject UNUSED *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     ensure_initialized();
@@ -490,7 +492,7 @@ create_fallback_face(PyObject UNUSED *base_face, CPUCell* cell, bool bold, bool 
     }
 end:
     if (pat != NULL) FcPatternDestroy(pat);
-    if (ans && !has_cell_text(ans, cell, global_state.debug_font_fallback)) {
+    if (ans && !has_cell_text(face_has_codepoint, ans, cell, global_state.debug_font_fallback)) {
         Py_CLEAR(ans);
         Py_RETURN_NONE;
     }

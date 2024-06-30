@@ -323,17 +323,8 @@ static CTFontRef nerd_font(CGFloat sz) {
     return _nerd_font_descriptor ? CTFontCreateWithFontDescriptor(_nerd_font_descriptor, sz, NULL) : NULL;
 }
 
-static bool
-font_can_render_cell(CTFontRef font, CPUCell *cell) {
-    char_type ch = cell->ch ? cell->ch : ' ';
-    bool found = true;
-    if (!glyph_id_for_codepoint_ctfont(font, ch)) found = false;
-    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i] && found; i++) {
-        char_type cch = codepoint_for_mark(cell->cc_idx[i]);
-        if (!glyph_id_for_codepoint_ctfont(font, cch)) found = false;
-    }
-    return found;
-}
+static bool ctfont_has_codepoint(const void *ctfont, char_type cp) { return glyph_id_for_codepoint_ctfont(ctfont, cp) > 0; }
+static bool font_can_render_cell(CTFontRef font, CPUCell *cell) { return has_cell_text(ctfont_has_codepoint, font, cell, false); }
 
 static CTFontRef
 manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
@@ -417,6 +408,8 @@ apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool 
     return original_fallback_font;
 }
 
+static bool face_has_codepoint(const void *face, char_type ch) { return glyph_id_for_codepoint(face, ch) > 0; }
+
 PyObject*
 create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)base_face;
@@ -451,7 +444,7 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
     }
     if (!ans) {
         ans = (PyObject*)ct_face(new_font, NULL);
-        if (ans && !has_cell_text(ans, cell, global_state.debug_font_fallback)) {
+        if (ans && !has_cell_text(face_has_codepoint, ans, cell, global_state.debug_font_fallback)) {
             Py_CLEAR(ans);
             Py_RETURN_NONE;
         }
@@ -460,8 +453,8 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
 }
 
 unsigned int
-glyph_id_for_codepoint(PyObject *s, char_type ch) {
-    CTFace *self = (CTFace*)s;
+glyph_id_for_codepoint(const PyObject *s, char_type ch) {
+    const CTFace *self = (CTFace*)s;
     return glyph_id_for_codepoint_ctfont(self->ct_font, ch);
 }
 

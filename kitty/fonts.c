@@ -464,7 +464,7 @@ calc_cell_metrics(FontGroup *fg) {
 }
 
 static bool
-face_has_codepoint(PyObject* face, char_type cp) {
+face_has_codepoint(const PyObject* face, char_type cp) {
     return glyph_id_for_codepoint(face, cp) > 0;
 }
 
@@ -474,8 +474,8 @@ has_emoji_presentation(CPUCell *cpu_cell, GPUCell *gpu_cell) {
 }
 
 bool
-has_cell_text(PyObject *face, const CPUCell *cell, bool do_debug) {
-    if (!face_has_codepoint(face, cell->ch)) goto not_found;
+has_cell_text(bool(*has_codepoint)(const void*, char_type ch), const void* face, const CPUCell *cell, bool do_debug) {
+    if (!has_codepoint(face, cell->ch)) goto not_found;
     char_type combining_chars[arraysz(cell->cc_idx)];
     unsigned num_cc = 0;
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
@@ -484,13 +484,13 @@ has_cell_text(PyObject *face, const CPUCell *cell, bool do_debug) {
     }
     if (num_cc == 0) return true;
     if (num_cc == 1) {
-        if (face_has_codepoint(face, combining_chars[0])) return true;
+        if (has_codepoint(face, combining_chars[0])) return true;
         char_type ch = 0;
         if (hb_unicode_compose(hb_unicode_funcs_get_default(), cell->ch, combining_chars[0], &ch) && face_has_codepoint(face, ch)) return true;
         goto not_found;
     }
     for (unsigned i = 0; i < num_cc; i++) {
-        if (!face_has_codepoint(face, combining_chars[i])) goto not_found;
+        if (!has_codepoint(face, combining_chars[i])) goto not_found;
     }
     return true;
 not_found:
@@ -500,7 +500,7 @@ not_found:
         for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
             debug("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
         }
-        debug("is "); PyObject_Print(face, stderr, 0);
+        debug("is "); PyObject_Print((PyObject*)face, stderr, 0);
         debug(" but it does not actually contain glyphs for that text\n");
     }
     return false;
@@ -638,7 +638,7 @@ START_ALLOW_CASE_RANGE
                     ans = fg->bi_font_idx; break;
             }
             if (ans < 0) ans = fg->medium_font_idx;
-            if (!*is_emoji_presentation && has_cell_text((fg->fonts + ans)->face, cpu_cell, false)) { *is_main_font = true; return ans; }
+            if (!*is_emoji_presentation && has_cell_text((bool(*)(const void*, char_type))face_has_codepoint, (fg->fonts + ans)->face, cpu_cell, false)) { *is_main_font = true; return ans; }
             return fallback_font(fg, cpu_cell, gpu_cell);
     }
 END_ALLOW_CASE_RANGE

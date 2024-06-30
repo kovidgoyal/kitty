@@ -33,7 +33,7 @@ typedef struct ParsedFontFeature {
 
 
 // API that font backends need to implement
-unsigned int glyph_id_for_codepoint(PyObject *, char_type);
+unsigned int glyph_id_for_codepoint(const PyObject *, char_type);
 int get_glyph_width(PyObject *, glyph_index);
 bool is_glyph_empty(PyObject *, glyph_index);
 hb_font_t* harfbuzz_font_for_face(PyObject*);
@@ -72,7 +72,8 @@ FontFeatures* features_for_face(PyObject *);
 bool create_features_for_face(const char* psname, PyObject *features, FontFeatures* output);
 PyObject*
 font_features_as_dict(const FontFeatures *font_features);
-bool has_cell_text(PyObject *face, const CPUCell *c, bool do_debug);
+bool
+has_cell_text(bool(*has_codepoint)(const void*, char_type ch), const void* face, const CPUCell *cell, bool do_debug);
 
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
