@@ -1108,9 +1108,8 @@ coretext_add_font_file(PyObject UNUSED *_self, PyObject *args) {
     const unsigned char *path = NULL; Py_ssize_t sz;
     if (!PyArg_ParseTuple(args, "s#", &path, &sz)) return NULL;
     RAII_CoreFoundation(CFURLRef, url, CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, path, sz, false));
-    RAII_CoreFoundation(CFArrayRef, descriptors, CTFontManagerCreateFontDescriptorsFromURL(url));
-    CTFontManagerEnableFontDescriptors(descriptors, true);
-    Py_RETURN_TRUE;
+    if (CTFontManagerRegisterFontsForURL(url, kCTFontManagerScopeProcess, NULL)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 static PyMethodDef module_methods[] = {
