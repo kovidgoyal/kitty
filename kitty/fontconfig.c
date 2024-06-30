@@ -490,6 +490,10 @@ create_fallback_face(PyObject UNUSED *base_face, CPUCell* cell, bool bold, bool 
     }
 end:
     if (pat != NULL) FcPatternDestroy(pat);
+    if (ans && !has_cell_text(ans, cell, global_state.debug_font_fallback)) {
+        Py_CLEAR(ans);
+        Py_RETURN_NONE;
+    }
     return ans;
 }
 

@@ -451,7 +451,14 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
             break;
         }
     }
-    return ans ? ans : (PyObject*)ct_face(new_font, NULL);
+    if (!ans) {
+        ans = (PyObject*)ct_face(new_font, NULL);
+        if (ans && !has_cell_text(ans, cell, global_state.debug_font_fallback)) {
+            Py_CLEAR(ans);
+            Py_RETURN_NONE;
+        }
+    }
+    return ans;
 }
 
 unsigned int

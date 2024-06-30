@@ -72,6 +72,7 @@ FontFeatures* features_for_face(PyObject *);
 bool create_features_for_face(const char* psname, PyObject *features, FontFeatures* output);
 PyObject*
 font_features_as_dict(const FontFeatures *font_features);
+bool has_cell_text(PyObject *face, const CPUCell *c, bool do_debug);
 
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {

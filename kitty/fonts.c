@@ -473,9 +473,9 @@ has_emoji_presentation(CPUCell *cpu_cell, GPUCell *gpu_cell) {
     return gpu_cell->attrs.width == 2 && is_emoji(cpu_cell->ch) && cpu_cell->cc_idx[0] != VS15;
 }
 
-static bool
-has_cell_text(PyObject *face, CPUCell *cell) {
-    if (!face_has_codepoint(face, cell->ch)) return false;
+bool
+has_cell_text(PyObject *face, const CPUCell *cell, bool do_debug) {
+    if (!face_has_codepoint(face, cell->ch)) goto not_found;
     char_type combining_chars[arraysz(cell->cc_idx)];
     unsigned num_cc = 0;
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
@@ -487,12 +487,23 @@ has_cell_text(PyObject *face, CPUCell *cell) {
         if (face_has_codepoint(face, combining_chars[0])) return true;
         char_type ch = 0;
         if (hb_unicode_compose(hb_unicode_funcs_get_default(), cell->ch, combining_chars[0], &ch) && face_has_codepoint(face, ch)) return true;
-        return false;
+        goto not_found;
     }
     for (unsigned i = 0; i < num_cc; i++) {
-        if (!face_has_codepoint(face, combining_chars[i])) return false;
+        if (!face_has_codepoint(face, combining_chars[i])) goto not_found;
     }
     return true;
+not_found:
+    if (do_debug) {
+        debug("The font chosen by the OS for the text: ");
+        debug("U+%x ", cell->ch);
+        for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+            debug("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
+        }
+        debug("is "); PyObject_Print(face, stderr, 0);
+        debug(" but it does not actually contain glyphs for that text\n");
+    }
+    return false;
 }
 
 static void
@@ -540,19 +551,6 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
     Font *af = &fg->fonts[ans];
     if (!init_font(af, face, bold, italic, emoji_presentation)) fatal("Out of memory");
     Py_DECREF(face);
-    if (!has_cell_text(af->face, cell)) {
-        if (global_state.debug_font_fallback) {
-            debug("The font chosen by the OS for the text: ");
-            debug("U+%x ", cell->ch);
-            for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-                debug("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
-            }
-            debug("is "); PyObject_Print(af->face, stderr, 0);
-            debug(" but it does not actually contain glyphs for that text\n");
-        }
-        del_font(af);
-        return MISSING_FONT;
-    }
     fg->fallback_fonts_count++;
     fg->fonts_count++;
     return ans;
@@ -640,7 +638,7 @@ START_ALLOW_CASE_RANGE
                     ans = fg->bi_font_idx; break;
             }
             if (ans < 0) ans = fg->medium_font_idx;
-            if (!*is_emoji_presentation && has_cell_text((fg->fonts + ans)->face, cpu_cell)) { *is_main_font = true; return ans; }
+            if (!*is_emoji_presentation && has_cell_text((fg->fonts + ans)->face, cpu_cell, false)) { *is_main_font = true; return ans; }
             return fallback_font(fg, cpu_cell, gpu_cell);
     }
 END_ALLOW_CASE_RANGE
