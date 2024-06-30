@@ -383,12 +383,10 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
                 new_font = manually_search_fallback_fonts(old_font, cpu_cell);
                 if (new_font) return new_font;
             }
-            PyErr_Format(PyExc_ValueError, "Failed to find fallback CTFont other than the %s font for: %s", LAST_RESORT_FONT_NAME, [(NSString *)str UTF8String]);
             return NULL;
         }
         return new_font;
     }
-    PyErr_SetString(PyExc_ValueError, "CoreText returned the same font as a fallback font");
     return NULL;
 }
 
@@ -439,7 +437,7 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
         }
     }
     else { search_for_fallback(); new_font = apply_styles_to_fallback_font(new_font, bold, italic); }
-    if (new_font == NULL) return NULL;
+    if (new_font == NULL) Py_RETURN_NONE;
     RAII_PyObject(postscript_name, convert_cfstring(CTFontCopyPostScriptName(new_font), true));
     if (!postscript_name) return NULL;
     ssize_t idx = -1;
