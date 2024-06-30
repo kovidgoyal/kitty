@@ -2,12 +2,13 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import ctypes
+import os
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Literal, Optional, Tuple, Union, cast
 
-from kitty.constants import is_macos
+from kitty.constants import fonts_dir, is_macos
 from kitty.fast_data_types import (
     NUM_UNDERLINE_STYLES,
     Screen,
@@ -195,6 +196,14 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
         sm, sz, ns
     )
+
+
+def add_application_fonts() -> None:
+    for font in ('SymbolsNerdFontMono-Regular.ttf',):
+        path = os.path.join(fonts_dir, font)
+        if os.path.exists(path):
+            if not add_font_file(path):
+                log_error(f'Failed to add application font: {path}')
 
 
 if TYPE_CHECKING:
@@ -528,7 +537,6 @@ def test_fallback_font(qtext: Optional[str] = None, bold: bool = False, italic: 
 
 
 def showcase() -> None:
-    add_font_file
     f = 'monospace' if is_macos else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)

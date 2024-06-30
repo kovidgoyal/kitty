@@ -72,6 +72,8 @@ Detailed list of changes
 
 - A new ``choose-fonts`` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts.
 
+- Add NERD fonts builtin so that users don't have to install them to use NERD symbols in kitty
+
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
 - Wayland: Fix specifying the output name for the panel kitten not working (:iss:`7573`)

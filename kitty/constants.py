@@ -177,6 +177,7 @@ terminfo_dir = os.path.join(kitty_base_dir, 'terminfo')
 logo_png_file = os.path.join(kitty_base_dir, 'logo', 'kitty.png')
 beam_cursor_data_file = os.path.join(kitty_base_dir, 'logo', 'beam-cursor.png')
 shell_integration_dir = os.path.join(kitty_base_dir, 'shell-integration')
+fonts_dir = os.path.join(kitty_base_dir, 'fonts')
 try:
     shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 except KeyError:

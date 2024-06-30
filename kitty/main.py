@@ -44,7 +44,7 @@ from .fast_data_types import (
     set_options,
 )
 from .fonts.box_drawing import set_scale
-from .fonts.render import dump_font_debug, set_font_family
+from .fonts.render import add_application_fonts, dump_font_debug, set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
@@ -249,6 +249,7 @@ class AppRunner:
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
         try:
             set_font_family(opts)
+            add_application_fonts()
             _run_app(opts, args, bad_lines, talk_fd)
         finally:
             set_options(None)
