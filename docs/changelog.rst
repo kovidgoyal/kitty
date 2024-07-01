@@ -82,6 +82,8 @@ Detailed list of changes
 
 - macOS: Fix rendering of the unicode hyphen (U+2010) character when using a font that does not include a glyph for it (:iss:`7525`)
 
+- macOS 15: Handle Fn modifier when detecting global shortcuts (:iss:`7582`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

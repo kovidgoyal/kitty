@@ -579,7 +579,7 @@ is_shiftable_shortcut(int scv) {
     return scv == kSHKMoveFocusToActiveOrNextWindow || scv == kSHKMoveFocusToNextWindow;
 }
 
-#define USEFUL_MODS(x) (x & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl))
+#define USEFUL_MODS(x) (x & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl | NSEventModifierFlagFunction))
 
 static void
 build_global_shortcuts_lookup(void) {
