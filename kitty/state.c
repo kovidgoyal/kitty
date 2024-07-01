@@ -985,6 +985,7 @@ PYWRAP1(set_os_window_title) {
     PyObject *title;
     PA("KU", &os_window_id, &title);
     WITH_OS_WINDOW(os_window_id)
+        if (os_window->disallow_title_changes) break;
         if (PyUnicode_GetLength(title)) {
             os_window->title_is_overriden = true;
             Py_XDECREF(os_window->window_title);
