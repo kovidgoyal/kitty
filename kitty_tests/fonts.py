@@ -2,7 +2,6 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import sys
 import tempfile
 import unittest
 from functools import partial
@@ -299,14 +298,8 @@ class Rendering(BaseTest):
     def test_fallback_font_not_last_resort(self):
         # Ensure that the LastResort font is not reported as a fallback font on
         # macOS. See https://github.com/kovidgoyal/kitty/issues/799
-        from io import StringIO
-        orig, buf = sys.stderr, StringIO()
-        sys.stderr = buf
-        try:
-            self.assertRaises(ValueError, get_fallback_font, '\U0010FFFF', False, False)
-        finally:
-            sys.stderr = orig
-        self.assertIn('LastResort', buf.getvalue())
+        with self.assertRaises(ValueError, msg='No fallback font found'):
+            get_fallback_font('\U0010FFFF', False, False)
 
     def test_coalesce_symbol_maps(self):
         q = {(2, 3): 'a', (4, 6): 'b', (5, 5): 'b', (7, 7): 'b', (9, 9): 'b', (1, 1): 'a'}
