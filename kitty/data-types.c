@@ -463,13 +463,18 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+static void
+free_fast_data_types_module(void *m UNUSED) {
+    run_at_exit_cleanup_functions();
+}
 
 static struct PyModuleDef module = {
     .m_base = PyModuleDef_HEAD_INIT,
     .m_name = "fast_data_types",   /* name of module */
     .m_doc = NULL,
     .m_size = -1,
-    .m_methods = module_methods
+    .m_methods = module_methods,
+    .m_free = free_fast_data_types_module,
 };
 
 
@@ -531,10 +536,6 @@ PyInit_fast_data_types(void) {
 
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
-    if (Py_AtExit(run_at_exit_cleanup_functions) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the atexit cleanup handler");
-        return NULL;
-    }
     init_monotonic();
 
     if (!init_logging(m)) return NULL;

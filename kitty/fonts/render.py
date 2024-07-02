@@ -16,6 +16,7 @@ from kitty.fast_data_types import (
     current_fonts,
     get_fallback_font,
     get_options,
+    set_builtin_nerd_font,
     set_font_data,
     set_options,
     set_send_sprite_to_gpu,
@@ -33,12 +34,8 @@ from kitty.utils import log_error
 from .common import get_font_files
 
 if is_macos:
-    from kitty.fast_data_types import coretext_add_font_file as add_font_file
-
     from .core_text import font_for_family as font_for_family_macos
 else:
-    from kitty.fast_data_types import fc_add_font_file as add_font_file
-
     from .fontconfig import font_for_family as font_for_family_fontconfig
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
@@ -202,8 +199,9 @@ def add_application_fonts() -> None:
     for font in ('SymbolsNerdFontMono-Regular.ttf',):
         path = os.path.join(fonts_dir, font)
         if os.path.exists(path):
-            if not add_font_file(path):
-                log_error(f'Failed to add application font: {path}')
+            set_builtin_nerd_font(path)
+        else:
+            log_error(f'No builtin NERD font found in {fonts_dir}')
 
 
 if TYPE_CHECKING:

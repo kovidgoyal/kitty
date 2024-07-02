@@ -300,7 +300,7 @@ is_last_resort_font(CTFontRef new_font) {
     return ans;
 }
 
-static CTFontDescriptorRef _nerd_font_descriptor = NULL;
+static CTFontDescriptorRef _nerd_font_descriptor = NULL, builtin_nerd_font_descriptor = NULL;
 
 static CTFontRef nerd_font(CGFloat sz) {
     static bool searched = false;
@@ -320,7 +320,9 @@ static CTFontRef nerd_font(CGFloat sz) {
         }
         CFRelease(fonts);
     }
-    return _nerd_font_descriptor ? CTFontCreateWithFontDescriptor(_nerd_font_descriptor, sz, NULL) : NULL;
+    if (_nerd_font_descriptor) return CTFontCreateWithFontDescriptor(_nerd_font_descriptor, sz, NULL);
+    if (builtin_nerd_font_descriptor) return CTFontCreateWithFontDescriptor(builtin_nerd_font_descriptor, sz, NULL);
+    return NULL;
 }
 
 static bool ctfont_has_codepoint(const void *ctfont, char_type cp) { return glyph_id_for_codepoint_ctfont(ctfont, cp) > 0; }
@@ -353,6 +355,13 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
         CFRelease(new_font);
     }
     CFRelease(fonts);
+    if (!ans) {
+        CTFontRef nf = nerd_font(CTFontGetSize(current_font));
+        if (nf) {
+            if (font_can_render_cell(nf, cell)) ans = nf;
+            else CFRelease(nf);
+        }
+    }
     return ans;
 }
 
@@ -684,6 +693,8 @@ finalize(void) {
     if (window_title_font) CFRelease(window_title_font);
     window_title_font = nil;
     if (_nerd_font_descriptor) CFRelease(_nerd_font_descriptor);
+    if (builtin_nerd_font_descriptor) CFRelease(builtin_nerd_font_descriptor);
+    _nerd_font_descriptor = NULL; builtin_nerd_font_descriptor = NULL;
 }
 
 
@@ -1102,7 +1113,7 @@ repr(CTFace *self) {
 
 
 static PyObject*
-coretext_add_font_file(PyObject UNUSED *_self, PyObject *args) {
+add_font_file(PyObject UNUSED *_self, PyObject *args) {
     const unsigned char *path = NULL; Py_ssize_t sz;
     if (!PyArg_ParseTuple(args, "s#", &path, &sz)) return NULL;
     RAII_CoreFoundation(CFURLRef, url, CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, path, sz, false));
@@ -1110,9 +1121,27 @@ coretext_add_font_file(PyObject UNUSED *_self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
+static PyObject*
+set_builtin_nerd_font(PyObject UNUSED *self, PyObject *pypath) {
+    if (!PyUnicode_Check(pypath)) { PyErr_SetString(PyExc_TypeError, "path must be a string"); return NULL; }
+    const char *path = NULL; Py_ssize_t sz;
+    path = PyUnicode_AsUTF8AndSize(pypath, &sz);
+    RAII_CoreFoundation(CFURLRef, url, CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (const unsigned char*)path, sz, false));
+    RAII_CoreFoundation(CFArrayRef, descriptors, CTFontManagerCreateFontDescriptorsFromURL(url));
+    if (!descriptors || CFArrayGetCount(descriptors) == 0) {
+        PyErr_SetString(PyExc_OSError, "Failed to create descriptor from nerd font path");
+        return NULL;
+    }
+    if (builtin_nerd_font_descriptor) CFRelease(builtin_nerd_font_descriptor);
+    builtin_nerd_font_descriptor = CFArrayGetValueAtIndex(descriptors, 0);
+    CFRetain(builtin_nerd_font_descriptor);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(coretext_all_fonts, METH_O),
-    METHODB(coretext_add_font_file, METH_VARARGS),
+    METHODB(add_font_file, METH_VARARGS),
+    METHODB(set_builtin_nerd_font, METH_O),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
