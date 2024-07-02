@@ -1821,7 +1821,7 @@ def clean(for_cross_compile: bool = False) -> None:
     safe_remove(
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile')
+        'kitty-profile', 'fonts')
     if not for_cross_compile:
         safe_remove('docs/generated')
     clean_launcher_dir('kitty/launcher')
