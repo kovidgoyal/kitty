@@ -15,6 +15,7 @@ from urllib.request import urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
 FONTS_URL = 'https://download.calibre-ebook.com/ci/fonts.tar.xz'
+NERD_URL = 'https://github.com/ryanoasis/nerd-fonts/releases/latest/download/NerdFontsSymbolsOnly.tar.xz'
 is_bundle = os.environ.get('KITTY_BUNDLE') == '1'
 is_macos = 'darwin' in sys.platform.lower()
 SW = ''
@@ -65,6 +66,10 @@ def install_fonts() -> None:
         data = f.read()
     fonts_dir = os.path.expanduser('~/Library/Fonts' if is_macos else '~/.local/share/fonts')
     os.makedirs(fonts_dir, exist_ok=True)
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
+        tf.extractall(fonts_dir)
+    with urlopen(NERD_URL) as f:
+        data = f.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
         tf.extractall(fonts_dir)
 
