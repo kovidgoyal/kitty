@@ -401,22 +401,35 @@ class Tab:  # {{{
             return None
         return 'Could not resize'
 
+    def resize_window_to(self, window_id: int, bias: float, is_horizontal: bool) -> Optional[str]:
+        if self.current_layout.modify_size_of_window_abs(self.windows, window_id, bias, is_horizontal):
+            self.relayout()
+            return None
+        return 'Could not resize'
+
     @ac('win', '''
         Resize the active window by the specified amount
 
         See :ref:`window_resizing` for details.
         ''')
-    def resize_window(self, quality: str, increment: int) -> None:
+    def resize_window(self, quality: str, quantity: int) -> None:
         if quality == 'reset':
             self.reset_window_sizes()
             return
-        if increment < 1:
-            raise ValueError(increment)
-        is_horizontal = quality in ('wider', 'narrower')
-        increment *= 1 if quality in ('wider', 'taller') else -1
         w = self.active_window
-        if w is not None and self.resize_window_by(
-                w.id, increment, is_horizontal) is not None:
+        if w is None: return
+
+        if quantity < 1:
+            raise ValueError(quantity)
+
+        if quality in ('width', 'height'):
+            if self.resize_window_to(w.id, float(quantity) / 100.0, quality == 'width') is not None:
+                if get_options().enable_audio_bell: ring_bell()
+            return
+
+        is_horizontal = quality in ('wider', 'narrower')
+        quantity *= 1 if quality in ('wider', 'taller') else -1
+        if self.resize_window_by(w.id, quantity, is_horizontal) is not None:
             if get_options().enable_audio_bell:
                 ring_bell()
 

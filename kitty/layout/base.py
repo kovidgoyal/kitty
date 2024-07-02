@@ -246,6 +246,9 @@ class Layout:
     def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         return False
 
+    def apply_bias_abs(self, window_id: int, bias: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
+        return False
+
     def remove_all_biases(self) -> bool:
         return False
 
@@ -254,6 +257,12 @@ class Layout:
         if idx is None:
             return False
         return self.apply_bias(idx, increment, all_windows, is_horizontal)
+
+    def modify_size_of_window_abs(self, all_windows: WindowList, window_id: int, bias: float, is_horizontal: bool = True) -> bool:
+        idx = all_windows.group_idx_for_window(window_id)
+        if idx is None:
+            return False
+        return self.apply_bias_abs(idx, bias, all_windows, is_horizontal)
 
     def parse_layout_opts(self, layout_opts: Optional[str] = None) -> LayoutOpts:
         data: Dict[str, str] = {}
