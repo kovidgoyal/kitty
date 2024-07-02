@@ -613,6 +613,8 @@ START_ALLOW_CASE_RANGE
         case '\t':
         case IMAGE_PLACEHOLDER_CHAR:
             return BLANK_FONT;
+        case 0xe0d7:
+        case 0xe0d6:
         case 0x2500 ... 0x2573:
         case 0x2574 ... 0x259f:
         case 0x25d6 ... 0x25d7:
