@@ -43,6 +43,11 @@ def preserve_sys_path() -> Generator[None, None, None]:
             sys.path.extend(orig)
 
 
+class CLIOnlyKitten(TypeError):
+    def __init__(self, kitten: str):
+        super().__init__(f'The {kitten} kitten must be run only at the commandline, as: kitten {kitten}')
+
+
 def import_kitten_main_module(config_dir: str, kitten: str) -> Dict[str, Any]:
     if kitten.endswith('.py'):
         with preserve_sys_path():
@@ -59,6 +64,8 @@ def import_kitten_main_module(config_dir: str, kitten: str) -> Dict[str, Any]:
 
     kitten = resolved_kitten(kitten)
     m = importlib.import_module(f'kittens.{kitten}.main')
+    if not hasattr(m, 'main'):
+        raise CLIOnlyKitten(kitten)
     return {
         'start': getattr(m, 'main'),
         'end': getattr(m, 'handle_result', lambda *a, **k: None),

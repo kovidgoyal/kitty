@@ -1897,8 +1897,12 @@ class Boss:
         default_data: Optional[Dict[str, Any]] = None
     ) -> Any:
         orig_args, args = list(args), list(args)
-        from kittens.runner import create_kitten_handler
-        end_kitten = create_kitten_handler(kitten, orig_args)
+        from kittens.runner import CLIOnlyKitten, create_kitten_handler
+        try:
+            end_kitten = create_kitten_handler(kitten, orig_args)
+        except CLIOnlyKitten as err:
+            self.show_error(f'Cannot run the {kitten} kitten', str(err))
+            return
         is_wrapped = kitten in wrapped_kitten_names()
         if window is None:
             w = self.active_window
