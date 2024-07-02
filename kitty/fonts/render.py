@@ -31,6 +31,7 @@ from kitty.types import _T
 from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
+from . import family_name_to_key
 from .common import get_font_files
 
 if is_macos:
@@ -40,6 +41,7 @@ else:
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: List[Tuple[FontObject, bool, bool]] = []
+builtin_nerd_font_descriptor: Optional[FontObject] = None
 
 
 def font_for_family(family: str) -> Tuple[FontObject, bool, bool]:
@@ -145,6 +147,10 @@ def create_symbol_map(opts: Options) -> Tuple[Tuple[int, int, int], ...]:
     for family in val.values():
         if family not in family_map:
             font, bold, italic = font_for_family(family)
+            fkey = family_name_to_key(family)
+            if fkey in ('symbolsnfm', 'symbols nerd font mono') and font['postscript_name'] != 'SymbolsNFM' and builtin_nerd_font_descriptor:
+                font = builtin_nerd_font_descriptor
+                bold = italic = False
             family_map[family] = count
             count += 1
             current_faces.append((font, bold, italic))
@@ -172,8 +178,8 @@ def dump_font_debug() -> None:
             log_error('  ' + s.identify_for_debug())
 
 
-def set_font_family(opts: Optional[Options] = None, override_font_size: Optional[float] = None) -> None:
-    global current_faces
+def set_font_family(opts: Optional[Options] = None, override_font_size: Optional[float] = None, add_builtin_nerd_font: bool = False) -> None:
+    global current_faces, builtin_nerd_font_descriptor
     opts = opts or defaults
     sz = override_font_size or opts.font_size
     font_map = get_font_files(opts)
@@ -185,6 +191,12 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
             indices[k] = len(current_faces)
             current_faces.append((font_map[k], 'b' in k, 'i' in k))
     before = len(current_faces)
+    if add_builtin_nerd_font:
+        builtin_nerd_font_path = os.path.join(fonts_dir, 'SymbolsNerdFontMono-Regular.ttf')
+        if os.path.exists(builtin_nerd_font_path):
+            builtin_nerd_font_descriptor = set_builtin_nerd_font(builtin_nerd_font_path)
+        else:
+            log_error(f'No builtin NERD font found in {fonts_dir}')
     sm = create_symbol_map(opts)
     ns = create_narrow_symbols(opts)
     num_symbol_fonts = len(current_faces) - before
@@ -193,15 +205,6 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
         sm, sz, ns
     )
-
-
-def add_application_fonts() -> None:
-    for font in ('SymbolsNerdFontMono-Regular.ttf',):
-        path = os.path.join(fonts_dir, font)
-        if os.path.exists(path):
-            set_builtin_nerd_font(path)
-        else:
-            log_error(f'No builtin NERD font found in {fonts_dir}')
 
 
 if TYPE_CHECKING:

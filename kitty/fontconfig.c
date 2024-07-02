@@ -426,6 +426,12 @@ specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts, dou
     AP(FcPatternAddDouble, FC_DPI, (dpi_x + dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
     FcPatternDestroy(pat); pat = NULL;
+    if (!ans) return NULL;
+    // fontconfig returns a completely random font if the base descriptor
+    // points to a font that fontconfig hasnt indexed, for example the builting
+    // NERD font
+    PyObject *new_path = PyDict_GetItemString(ans, "path");
+    if (!new_path || PyObject_RichCompareBool(p, new_path, Py_EQ) != 1) { Py_CLEAR(ans); ans = PyDict_Copy(base_descriptor); if (!ans) return NULL;  }
 
     if (face_idx > 0) {
         // For some reason FcFontMatch sets the index to zero, so manually restore it.
@@ -538,6 +544,7 @@ set_builtin_nerd_font(PyObject UNUSED *self, PyObject *pypath) {
         copy(hinting); copy(hint_style);
 #undef copy
         if (PyDict_SetItemString(builtin_nerd_font.descriptor, "path", pypath) != 0) goto end;
+        if (PyDict_SetItemString(builtin_nerd_font.descriptor, "index", PyLong_FromLong(0)) != 0) goto end;
     }
 end:
     if (pat) FcPatternDestroy(pat);
@@ -546,7 +553,8 @@ end:
         Py_CLEAR(builtin_nerd_font.descriptor);
         return NULL;
     }
-    Py_RETURN_NONE;
+    Py_INCREF(builtin_nerd_font.descriptor);
+    return builtin_nerd_font.descriptor;
 }
 
 

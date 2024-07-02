@@ -640,7 +640,18 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
 
 PyObject*
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
-    RAII_CoreFoundation(CTFontDescriptorRef, desc, font_descriptor_from_python(descriptor));
+    RAII_CoreFoundation(CTFontDescriptorRef, desc, NULL);
+    if (builtin_nerd_font_descriptor) {
+        PyObject *psname = PyDict_GetItemString(descriptor, "postscript_name");
+        if (psname && PyUnicode_CompareWithASCIIString(psname, "SymbolsNFM") == 0) {
+            RAII_PyObject(path, get_path_for_font_descriptor(builtin_nerd_font_descriptor));
+            PyObject *dpath = PyDict_GetItemString(descriptor, "path");
+            if (dpath && PyUnicode_Compare(path, dpath) == 0) {
+                desc = builtin_nerd_font_descriptor; CFRetain(desc);
+            }
+        }
+    }
+    if (!desc) desc = font_descriptor_from_python(descriptor);
     if (!desc) return NULL;
     RAII_CoreFoundation(CTFontRef, font, CTFontCreateWithFontDescriptor(desc, fg ? scaled_point_sz(fg) : 12, NULL));
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
@@ -672,8 +683,7 @@ new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
 
 PyObject*
 specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts UNUSED, double dpi_x UNUSED, double dpi_y UNUSED) {
-    Py_INCREF(base_descriptor);
-    return base_descriptor;
+    return PyDict_Copy(base_descriptor);
 }
 
 struct RenderBuffers {
@@ -1135,7 +1145,7 @@ set_builtin_nerd_font(PyObject UNUSED *self, PyObject *pypath) {
     if (builtin_nerd_font_descriptor) CFRelease(builtin_nerd_font_descriptor);
     builtin_nerd_font_descriptor = CFArrayGetValueAtIndex(descriptors, 0);
     CFRetain(builtin_nerd_font_descriptor);
-    Py_RETURN_NONE;
+    return font_descriptor_to_python(builtin_nerd_font_descriptor);
 }
 
 static PyMethodDef module_methods[] = {
