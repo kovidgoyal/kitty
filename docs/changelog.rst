@@ -72,7 +72,7 @@ Detailed list of changes
 
 - A new ``choose-fonts`` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts.
 
-- Add NERD fonts builtin so that users don't have to install them to use NERD symbols in kitty
+- Add NERD fonts builtin so that users don't have to install them to use NERD symbols in kitty. The builtin font is used only if the symbols are not available in some system font.
 
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
