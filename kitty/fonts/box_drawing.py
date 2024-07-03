@@ -201,7 +201,7 @@ def line_equation(x1: int, y1: int, x2: int, y2: int) -> Callable[[int], float]:
 
 
 @supersampled()
-def triangle(buf: SSByteArray, width: int, height: int, left: bool = True) -> None:
+def triangle(buf: SSByteArray, width: int, height: int, left: bool = True, inverted: bool = False) -> None:
     ay1, by1, y2 = 0, height - 1, height // 2
     if left:
         x1, x2 = 0, width - 1
@@ -210,7 +210,7 @@ def triangle(buf: SSByteArray, width: int, height: int, left: bool = True) -> No
     uppery = line_equation(x1, ay1, x2, y2)
     lowery = line_equation(x1, by1, x2, y2)
     xlimits = [(uppery(x), lowery(x)) for x in range(width)]
-    fill_region(buf, width, height, xlimits)
+    fill_region(buf, width, height, xlimits, inverted)
 
 
 @supersampled()
@@ -1011,8 +1011,10 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '╾': [p(half_hline, level=3), p(half_hline, which='right')],
     '╿': [p(half_vline, level=3), p(half_vline, which='bottom')],
     '': [triangle],
+    '': [p(triangle, inverted = True)],
     '': [p(half_cross_line, which='tl'), p(half_cross_line, which='bl')],
     '': [p(triangle, left=False)],
+    '': [p(triangle, left=False, inverted = True)],
     '': [p(half_cross_line, which='tr'), p(half_cross_line, which='br')],
     '': [D],
     '◗': [D],
