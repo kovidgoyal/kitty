@@ -279,11 +279,11 @@ func (self *ConfigParser) ParseOverrides(overrides ...string) error {
 	return self.parse(&s, "<overrides>", utils.ConfigDir(), 0)
 }
 
-func is_kitty_gui_cmdline(cmd ...string) bool {
+func is_kitty_gui_cmdline(exe string, cmd ...string) bool {
 	if len(cmd) == 0 {
 		return false
 	}
-	if filepath.Base(cmd[0]) != "kitty" {
+	if filepath.Base(exe) != "kitty" {
 		return false
 	}
 	if len(cmd) == 1 {
@@ -353,8 +353,10 @@ func ReloadConfigInKitty(in_parent_only bool) error {
 	if in_parent_only {
 		if pid, err := strconv.Atoi(os.Getenv("KITTY_PID")); err == nil {
 			if p, err := process.NewProcess(int32(pid)); err == nil {
-				if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(c...) {
-					return p.SendSignal(unix.SIGUSR1)
+				if exe, eerr := p.Exe(); eerr == nil {
+					if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(exe, c...) {
+						return p.SendSignal(unix.SIGUSR1)
+					}
 				}
 			}
 		}
@@ -362,8 +364,10 @@ func ReloadConfigInKitty(in_parent_only bool) error {
 	}
 	if all, err := process.Processes(); err == nil {
 		for _, p := range all {
-			if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(c...) {
-				_ = p.SendSignal(unix.SIGUSR1)
+			if exe, eerr := p.Exe(); eerr == nil {
+				if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(exe, c...) {
+					_ = p.SendSignal(unix.SIGUSR1)
+				}
 			}
 		}
 	}
