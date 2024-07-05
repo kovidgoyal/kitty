@@ -1,8 +1,6 @@
-import os
+if __name__ == '__main__':
+    import os
+    import sys
 
-from kitty.constants import kitten_exe
-
-
-def main(args: 'list[str]') -> None:
-    # allow running this kitten via map key kitten choose-fonts
-    os.execlp(kitten_exe(), 'kitten', *args)
+    from kitty.constants import kitten_exe
+    os.execlp(kitten_exe(), 'kitten', *sys.argv)

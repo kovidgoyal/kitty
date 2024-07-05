@@ -1897,13 +1897,13 @@ class Boss:
         default_data: Optional[Dict[str, Any]] = None
     ) -> Any:
         orig_args, args = list(args), list(args)
-        from kittens.runner import CLIOnlyKitten, create_kitten_handler
+        from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler
+        is_wrapped = kitten in wrapped_kitten_names()
         try:
             end_kitten = create_kitten_handler(kitten, orig_args)
-        except CLIOnlyKitten as err:
-            self.show_error(f'Cannot run the {kitten} kitten', str(err))
-            return
-        is_wrapped = kitten in wrapped_kitten_names()
+        except CLIOnlyKitten:
+            is_wrapped = True
+            end_kitten = KittenMetadata()
         if window is None:
             w = self.active_window
             tab = self.active_tab
@@ -1911,7 +1911,7 @@ class Boss:
             w = window
             tab = w.tabref() if w else None
         if end_kitten.no_ui:
-            return end_kitten(None, getattr(w, 'id', None), self)
+            return end_kitten.handle_result(None, w.id if w else 0, self)
 
         if w is not None and tab is not None:
             if not is_wrapped:
@@ -1968,7 +1968,7 @@ class Boss:
                 copy_colors_from=w
             )
             wid = w.id
-            overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten, default_data=default_data))
+            overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten.handle_result, default_data=default_data))
             overlay_window.open_url_handler = end_kitten.open_url_handler
             if action_on_removal is not None:
 
