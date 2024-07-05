@@ -100,6 +100,7 @@ Build-time dependencies:
 * ``simde``
 * ``go`` >= _build_go_version (see :file:`go.mod` for go packages used during building)
 * ``pkg-config``
+* Symbols NERD Font Mono either installed system-wide or placed in :file:`fonts/SymbolsNerdFontMono-Regular.ttf`
 * For building on Linux in addition to the above dependencies you might also
   need to install the following packages, if they are not already installed by
   your distro:
