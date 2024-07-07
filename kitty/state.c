@@ -337,6 +337,7 @@ update_os_window_title(OSWindow *os_window) {
 
 static void
 destroy_window(Window *w) {
+    free(w->pending_clicks.clicks); w->pending_clicks.clicks = NULL; w->pending_clicks.num = 0; w->pending_clicks.capacity = 0;
     Py_CLEAR(w->render_data.screen); Py_CLEAR(w->title);
     Py_CLEAR(w->title_bar_data.last_drawn_title_object_id);
     free(w->title_bar_data.buf); w->title_bar_data.buf = NULL;
@@ -611,21 +612,27 @@ make_window_context_current(id_type window_id) {
 }
 
 void
-send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
-    id_type window_id = *((id_type*)data);
-    for (size_t o = 0; o < global_state.num_os_windows; o++) {
-        OSWindow *osw = global_state.os_windows + o;
-        for (size_t t = 0; t < osw->num_tabs; t++) {
-            Tab *qtab = osw->tabs + t;
-            for (size_t w = 0; w < qtab->num_windows; w++) {
-                Window *window = qtab->windows + w;
-                if (window->id == window_id) {
-                    send_pending_click_to_window(window, data);
-                    return;
+dispatch_pending_clicks(id_type timer_id UNUSED, void *data UNUSED) {
+    bool dispatched = false;
+    do {  // dispatching a click can cause windows/tabs/etc to close so do it one at a time.
+        const monotonic_t now = monotonic();
+        dispatched = false;
+        for (size_t o = 0; o < global_state.num_os_windows && !dispatched; o++) {
+            OSWindow *osw = global_state.os_windows + o;
+            for (size_t t = 0; t < osw->num_tabs && !dispatched; t++) {
+                Tab *qtab = osw->tabs + t;
+                for (size_t w = 0; w < qtab->num_windows && !dispatched; w++) {
+                    Window *window = qtab->windows + w;
+                    for (size_t i = 0; i < window->pending_clicks.num && !dispatched; i++) {
+                        if (now - window->pending_clicks.clicks[i].at >= OPT(click_interval)) {
+                            dispatched = true;
+                            send_pending_click_to_window(window, i);
+                        }
+                    }
                 }
             }
         }
-    }
+    } while (dispatched);
 }
 
 bool

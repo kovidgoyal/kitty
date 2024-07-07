@@ -86,6 +86,8 @@ Detailed list of changes
 
 - macOS 15: Handle Fn modifier when detecting global shortcuts (:iss:`7582`)
 
+- Dispatch any clicks waiting for :opt:`click_interval` on key events (:iss:`7601`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

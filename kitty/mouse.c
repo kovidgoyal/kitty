@@ -491,38 +491,30 @@ move_cursor_to_mouse_if_at_shell_prompt(Window *w) {
 }
 
 
-typedef struct PendingClick {
-    id_type window_id;
-    int button, count, modifiers;
-    bool grabbed;
-    monotonic_t at;
-    MousePosition mouse_pos;
-    unsigned long press_num;
-    double radius_for_multiclick;
-} PendingClick;
-
-static void
-free_pending_click(id_type timer_id UNUSED, void *pc) { free(pc); }
-
 void
-send_pending_click_to_window(Window *w, void *data) {
-    PendingClick *pc = (PendingClick*)data;
-    const ClickQueue *q = &w->click_queues[pc->button];
+send_pending_click_to_window(Window *w, int i) {
+    if (i < 0) {
+        while (w->pending_clicks.num) send_pending_click_to_window(w, w->pending_clicks.num - 1);
+        return;
+    }
+    PendingClick pc = w->pending_clicks.clicks[i];
+    remove_i_from_array(w->pending_clicks.clicks, (unsigned)i, w->pending_clicks.num);
+    const ClickQueue *q = &w->click_queues[pc.button];
     // only send click if no presses have happened since the release that triggered
     // the click or if the subsequent press is too far or too late for a double click
     if (!q->length) return;
 #define press(n) q->clicks[q->length - n]
     if (
-            press(1).at <= pc->at || // latest press is before click release
-            (q->length > 1 && press(2).num == pc->press_num &&  (   // penultimate press is the press that belongs to this click
+            press(1).at <= pc.at || // latest press is before click release
+            (q->length > 1 && press(2).num == pc.press_num &&  (   // penultimate press is the press that belongs to this click
                 press(1).at - press(2).at > OPT(click_interval) ||  // too long between the presses for it to be a double click
-                distance(press(1).x, press(1).y, press(2).x, press(2).y) > pc->radius_for_multiclick  // presses are too far apart
+                distance(press(1).x, press(1).y, press(2).x, press(2).y) > pc.radius_for_multiclick  // presses are too far apart
             ))
     ) {
         MousePosition current_pos = w->mouse_pos;
-        w->mouse_pos = pc->mouse_pos;
+        w->mouse_pos = pc.mouse_pos;
         id_type wid = w->id;
-        dispatch_mouse_event(w, pc->button, pc->count, pc->modifiers, pc->grabbed);
+        dispatch_mouse_event(w, pc.button, pc.count, pc.modifiers, pc.grabbed);
         w = window_for_id(wid);
         if (w) w->mouse_pos = current_pos;
     }
@@ -534,20 +526,20 @@ dispatch_possible_click(Window *w, int button, int modifiers) {
     Screen *screen = w->render_data.screen;
     int count = multi_click_count(w, button);
     if (release_is_click(w, button)) {
-        PendingClick *pc = calloc(1, sizeof(PendingClick));
-        if (pc) {
-            const ClickQueue *q = &w->click_queues[button];
-            pc->press_num = q->length ? q->clicks[q->length - 1].num : 0;
-            pc->window_id = w->id;
-            pc->mouse_pos = w->mouse_pos;
-            pc->at = monotonic();
-            pc->button = button;
-            pc->count = count == 2 ? -3 : -2;
-            pc->modifiers = modifiers;
-            pc->grabbed = screen->modes.mouse_tracking_mode != 0;
-            pc->radius_for_multiclick = radius_for_multiclick();
-            add_main_loop_timer(OPT(click_interval), false, send_pending_click_to_window_id, pc, free_pending_click);
-        }
+        ensure_space_for(&(w->pending_clicks), clicks, PendingClick, w->pending_clicks.num + 1, capacity, 4, true);
+        PendingClick *pc = w->pending_clicks.clicks + w->pending_clicks.num++;
+        zero_at_ptr(pc);
+        const ClickQueue *q = &w->click_queues[button];
+        pc->press_num = q->length ? q->clicks[q->length - 1].num : 0;
+        pc->window_id = w->id;
+        pc->mouse_pos = w->mouse_pos;
+        pc->at = monotonic();
+        pc->button = button;
+        pc->count = count == 2 ? -3 : -2;
+        pc->modifiers = modifiers;
+        pc->grabbed = screen->modes.mouse_tracking_mode != 0;
+        pc->radius_for_multiclick = radius_for_multiclick();
+        add_main_loop_timer(OPT(click_interval), false, dispatch_pending_clicks, NULL, NULL);
     }
 }
 

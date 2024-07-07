@@ -157,6 +157,17 @@ typedef struct MousePosition {
     bool in_left_half_of_cell;
 } MousePosition;
 
+typedef struct PendingClick {
+    id_type window_id;
+    int button, count, modifiers;
+    bool grabbed;
+    monotonic_t at;
+    MousePosition mouse_pos;
+    unsigned long press_num;
+    double radius_for_multiclick;
+} PendingClick;
+
+
 typedef struct WindowBarData {
     unsigned width, height;
     uint8_t *buf;
@@ -181,6 +192,10 @@ typedef struct {
     monotonic_t last_drag_scroll_at;
     uint32_t last_special_key_pressed;
     WindowBarData title_bar_data, url_target_bar_data;
+    struct {
+        PendingClick *clicks;
+        size_t num, capacity;
+    } pending_clicks;
 } Window;
 
 typedef struct {
@@ -396,8 +411,8 @@ bool mouse_select_cmd_output(Window *w);
 bool move_cursor_to_mouse_if_at_shell_prompt(Window *w);
 void mouse_selection(Window *w, int code, int button);
 const char* format_mods(unsigned mods);
-void send_pending_click_to_window_id(id_type, void*);
-void send_pending_click_to_window(Window*, void*);
+void dispatch_pending_clicks(id_type, void*);
+void send_pending_click_to_window(Window*, int);
 void get_platform_dependent_config_values(void *glfw_window);
 bool draw_window_title(OSWindow *window, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height);
 uint8_t* draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height);
