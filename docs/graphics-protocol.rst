@@ -25,39 +25,41 @@ alpha-blending and text over graphics.
     :alt: Demo of graphics rendering in kitty
     :align: center
 
-Some programs and libraries that use the kitty graphics protocol:
+Some applications that use the kitty graphics protocol:
 
-* `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
-* `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with image previews
+* `awrit <https://github.com/chase/awrit>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
 * `broot <https://dystroy.org/broot/>`_ - a terminal file explorer and manager, with preview of images, SVG, PDF, etc.
-* `Yazi <https://github.com/sxyazi/yazi>`_ - Blazing fast terminal file manager written in Rust, based on async I/O
+* `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
-* `tpix <https://github.com/jesvedberg/tpix>`_ - a statically compiled binary that can be used to display images and easily installed on remote servers without root access
+* `fzf <https://github.com/junegunn/fzf/commit/d8188fce7b7bea982e7f9050c35e488e49fb8fd0>`_ - A command line fuzzy finder
 * `mpv <https://github.com/mpv-player/mpv/commit/874e28f4a41a916bb567a882063dd2589e9234e1>`_ - A video player that can play videos in the terminal
+* `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system information tool
 * `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
-* `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system
-  information tool
-* `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
-* `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
+* `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with image previews
+* `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
 * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
+* `tpix <https://github.com/jesvedberg/tpix>`_ - a statically compiled binary that can be used to display images and easily installed on remote servers without root access
+* `twitch-tui <https://github.com/Xithrius/twitch-tui>`_ - Twitch chat in the terminal
+* `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
+* `Yazi <https://github.com/sxyazi/yazi>`_ - Blazing fast terminal file manager written in Rust, based on async I/O
+
+Libraries:
+
+* `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
 * `notcurses <https://github.com/dankamongmen/notcurses>`_ - C library for terminal graphics with bindings for C++, Rust and Python
 * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the terminal
-* `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
 * `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside neovim using the kitty graphics protocol
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
-* `twitch-tui <https://github.com/Xithrius/twitch-tui>`_ - Twitch chat in the terminal
-* `awrit <https://github.com/chase/awrit>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
-* `fzf <https://github.com/junegunn/fzf/commit/d8188fce7b7bea982e7f9050c35e488e49fb8fd0>`_ - A command line fuzzy finder
 
 Other terminals that have implemented the graphics protocol:
 
-* `WezTerm <https://github.com/wez/wezterm/issues/986>`_
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
 * `wayst <https://github.com/91861/wayst>`_
+* `WezTerm <https://github.com/wez/wezterm/issues/986>`_
 
 
 Getting the window size
