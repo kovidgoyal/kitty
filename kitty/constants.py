@@ -116,7 +116,7 @@ def _get_config_dir() -> str:
     candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or '~/.config'))
     ans = os.path.join(candidate, appname)
     try:
-        os.makedirs(ans, exist_ok=True)
+        os.makedirs(os.path.realpath(ans), exist_ok=True)
     except FileExistsError:
         raise SystemExit(f'A file {ans} already exists. It must be a directory, not a file.')
     except PermissionError:
