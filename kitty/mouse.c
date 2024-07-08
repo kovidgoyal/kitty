@@ -493,8 +493,13 @@ move_cursor_to_mouse_if_at_shell_prompt(Window *w) {
 
 void
 send_pending_click_to_window(Window *w, int i) {
+    const id_type wid = w->id;
     if (i < 0) {
-        while (w->pending_clicks.num) send_pending_click_to_window(w, w->pending_clicks.num - 1);
+        while(true) {
+            w = window_for_id(wid);
+            if (!w || !w->pending_clicks.num) break;
+            send_pending_click_to_window(w, w->pending_clicks.num - 1);
+        }
         return;
     }
     PendingClick pc = w->pending_clicks.clicks[i];
@@ -513,7 +518,6 @@ send_pending_click_to_window(Window *w, int i) {
     ) {
         MousePosition current_pos = w->mouse_pos;
         w->mouse_pos = pc.mouse_pos;
-        id_type wid = w->id;
         dispatch_mouse_event(w, pc.button, pc.count, pc.modifiers, pc.grabbed);
         w = window_for_id(wid);
         if (w) w->mouse_pos = current_pos;
