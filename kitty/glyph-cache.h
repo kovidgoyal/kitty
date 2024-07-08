@@ -10,18 +10,19 @@
 
 void free_glyph_cache_global_resources(void);
 
-#define SpritePositionHead \
-    bool rendered, colored; \
-    sprite_index x, y, z; \
-
 typedef struct SpritePosition {
-    SpritePositionHead
+    bool rendered, colored;
+    sprite_index x, y, z;
 } SpritePosition;
 
+typedef struct {int x;} *SPRITE_POSITION_MAP_HANDLE;
 
-void free_sprite_position_hash_table(SpritePosition **head);
+SPRITE_POSITION_MAP_HANDLE
+create_sprite_position_hash_table(void);
+void
+free_sprite_position_hash_table(SPRITE_POSITION_MAP_HANDLE *handle);
 SpritePosition*
-find_or_create_sprite_position(SpritePosition **head, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created);
+find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created);
 
 #define GlyphPropertiesHead \
     uint8_t data;

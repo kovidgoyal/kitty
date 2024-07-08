@@ -6,61 +6,89 @@
  */
 
 #include "glyph-cache.h"
-#include "kitty-uthash.h"
 
-
-typedef struct SpritePosItem {
-    SpritePositionHead
-    UT_hash_handle hh;
+typedef struct SpritePosKey {
+    size_t keysz_in_bytes;
     glyph_index key[];
-} SpritePosItem;
+} SpritePosKey;
 
-static glyph_index *scratch = NULL;
-static unsigned scratch_sz = 0;
+#define NAME sprite_pos_map
+#define KEY_TY const SpritePosKey*
+#define VAL_TY SpritePosition*
+static uint64_t sprite_pos_map_hash(KEY_TY key);
+#define HASH_FN sprite_pos_map_hash
+static bool sprite_pos_map_cmpr(KEY_TY a, KEY_TY b);
+#define CMPR_FN sprite_pos_map_cmpr
+static void free_const(const void* x) { free((void*)x); }
+#define KEY_DTOR_FN free_const
+#define VAL_DTOR_FN free_const
+
+#include "kitty-verstable.h"
+
+static uint64_t
+sprite_pos_map_hash(const SpritePosKey *key) {
+    return vt_hash_bytes(key->key, key->keysz_in_bytes);
+}
+
+static bool
+sprite_pos_map_cmpr(const SpritePosKey *a, const SpritePosKey *b) {
+    return a->keysz_in_bytes == b->keysz_in_bytes && memcmp(a->key, b->key, a->keysz_in_bytes) == 0;
+}
+
+
+static SpritePosKey *scratch = NULL;
+static size_t scratch_key_capacity = 0;
 
 
 void
 free_glyph_cache_global_resources(void) {
-    free(scratch);
-    scratch = NULL; scratch_sz = 0;
+    free(scratch); scratch = NULL; scratch_key_capacity = 0;
 }
 
 
 static unsigned
 key_size_for_glyph_count(unsigned count) { return count + 3; }
 
+SPRITE_POSITION_MAP_HANDLE
+create_sprite_position_hash_table(void) {
+    sprite_pos_map *ans = calloc(1, sizeof(sprite_pos_map));
+    if (ans) vt_init(ans);
+    return (SPRITE_POSITION_MAP_HANDLE)ans;
+}
 
 SpritePosition*
-find_or_create_sprite_position(SpritePosition **head_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created) {
-    SpritePosItem **head = (SpritePosItem**)head_, *p;
-    const unsigned key_sz = key_size_for_glyph_count(count);
-    if (key_sz > scratch_sz) {
-        scratch = realloc(scratch, sizeof(glyph_index) * (key_sz + 16));
-        if (!scratch) return NULL;
-        scratch_sz = key_sz + 16;
+find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created) {
+    sprite_pos_map *map = (sprite_pos_map*)map_;
+    const size_t keysz_in_bytes = key_size_for_glyph_count(count) * sizeof(glyph_index);
+    if (!scratch || keysz_in_bytes > scratch_key_capacity) {
+        scratch = realloc(scratch, sizeof(scratch[0]) + keysz_in_bytes + 64);
+        if (!scratch) { scratch_key_capacity = 0; return NULL; }
+        scratch_key_capacity = keysz_in_bytes + 64;
     }
-    const unsigned key_sz_bytes = key_sz * sizeof(glyph_index);
-    scratch[0] = count; scratch[1] = ligature_index; scratch[2] = cell_count;
-    memcpy(scratch + 3, glyphs, count * sizeof(glyph_index));
-    HASH_FIND(hh, *head, scratch, key_sz_bytes, p);
-    if (p) { *created = false; return (SpritePosition*)p; }
+    scratch->keysz_in_bytes = keysz_in_bytes;
+    scratch->key[0] = count; scratch->key[1] = ligature_index; scratch->key[2] = cell_count;
+    memcpy(scratch->key + 3, glyphs, count * sizeof(glyph_index));
+    sprite_pos_map_itr n = vt_get(map, scratch);
+    if (!vt_is_end(n)) { *created = false; return n.data->val; }
 
-    p = calloc(1, sizeof(SpritePosItem) + key_sz_bytes);
-    if (!p) return NULL;
-    memcpy(p->key, scratch, key_sz_bytes);
-    HASH_ADD(hh, *head, key, key_sz_bytes, p);
+    SpritePosition *val = calloc(1, sizeof(SpritePosition));
+    SpritePosKey *key = malloc(sizeof(SpritePosKey) + scratch->keysz_in_bytes);
+    if (!val || ! key) return NULL;
+    memcpy(key, scratch, sizeof(scratch[0]) + scratch->keysz_in_bytes);
+    if (vt_is_end(vt_insert(map, key, val))) return NULL;
     *created = true;
-    return (SpritePosition*)p;
+    return val;
 }
 
 void
-free_sprite_position_hash_table(SpritePosition **head_) {
-    SpritePosItem **head = (SpritePosItem**)head_, *s, *tmp;
-    HASH_ITER(hh, *head, s, tmp) {
-        HASH_DEL(*head, s);
-        free(s);
+free_sprite_position_hash_table(SPRITE_POSITION_MAP_HANDLE *map) {
+    sprite_pos_map **mapref = (sprite_pos_map**)map;
+    if (*mapref) {
+        vt_cleanup(*mapref); *mapref = NULL;
     }
 }
+
+#include "kitty-uthash.h"
 
 typedef struct GlyphPropertiesItem {
     GlyphPropertiesHead

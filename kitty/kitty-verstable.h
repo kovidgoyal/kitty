@@ -18,10 +18,4 @@ vt_hash_bytes(const void *data, const size_t size) {
     return hash;
 }
 
-#define vt_hash_struct(s) vt_hash_bytes(&s, sizeof(s))
-#define vt_cmpr_struct(s) memcmp(&s, &s, sizeof(s))
-
-#define vt_hash_ptr(s) vt_hash_bytes(s, sizeof(s[0]))
-#define vt_cmpr_ptr(s) memcmp(s, s, sizeof(s[0]))
-
 #endif

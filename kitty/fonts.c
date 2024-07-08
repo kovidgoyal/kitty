@@ -58,7 +58,7 @@ typedef enum { SPACER_STRATEGY_UNKNOWN, SPACERS_BEFORE, SPACERS_AFTER, SPACERS_I
 typedef struct {
     PyObject *face;
     // Map glyphs to sprite map co-ords
-    SpritePosition *sprite_position_hash_table;
+    SPRITE_POSITION_MAP_HANDLE sprite_position_hash_table;
     hb_feature_t* ffs_hb_features;
     size_t num_ffs_hb_features;
     GlyphProperties *glyph_properties_hash_table;
@@ -142,9 +142,7 @@ font_group_is_unused(FontGroup *fg) {
 void
 free_maps(Font *font) {
     free_sprite_position_hash_table(&font->sprite_position_hash_table);
-    font->sprite_position_hash_table = NULL;
     free_glyph_properties_hash_table(&font->glyph_properties_hash_table);
-    font->glyph_properties_hash_table = NULL;
 }
 
 static void
@@ -169,7 +167,7 @@ del_font_group(FontGroup *fg) {
         fg->fallback_font_map = NULL;
     }
     for (size_t i = 0; i < fg->fonts_count; i++) del_font(fg->fonts + i);
-    free(fg->fonts); fg->fonts = NULL;
+    free(fg->fonts); fg->fonts = NULL; fg->fonts_count = 0;
 }
 
 static void
@@ -256,7 +254,7 @@ do_increment(FontGroup *fg, int *error) {
 static SpritePosition*
 sprite_position_for(FontGroup *fg, Font *font, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, unsigned cell_count, int *error) {
     bool created;
-    SpritePosition *s = find_or_create_sprite_position(&font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, cell_count, &created);
+    SpritePosition *s = find_or_create_sprite_position(font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, cell_count, &created);
     if (!s) { *error = 1; return NULL; }
     if (created) {
         s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
@@ -360,6 +358,8 @@ static bool
 init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentation) {
     f->face = face; Py_INCREF(f->face);
     f->bold = bold; f->italic = italic; f->emoji_presentation = emoji_presentation;
+    f->sprite_position_hash_table = create_sprite_position_hash_table();
+    if (!f->sprite_position_hash_table) { PyErr_NoMemory(); return false; }
     const FontFeatures *features = features_for_face(face);
     f->ffs_hb_features = calloc(1 + features->count, sizeof(hb_feature_t));
     if (!f->ffs_hb_features) { PyErr_NoMemory(); return false; }
@@ -1278,6 +1278,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         if (face == NULL) return NULL;
         font = calloc(1, sizeof(Font));
         font->face = face;
+        font->sprite_position_hash_table = create_sprite_position_hash_table();
     } else {
         FontGroup *fg = font_groups;
         font = fg->fonts + fg->medium_font_idx;
@@ -1537,6 +1538,8 @@ initialize_font_group(FontGroup *fg) {
     fg->fonts = calloc(fg->fonts_capacity, sizeof(Font));
     if (fg->fonts == NULL) fatal("Out of memory allocating fonts array");
     fg->fonts_count = 1;  // the 0 index font is the box font
+    fg->fonts[0].sprite_position_hash_table = create_sprite_position_hash_table();
+    if (!fg->fonts[0].sprite_position_hash_table) fatal("Out of memory");
 #define I(attr)  if (descriptor_indices.attr) fg->attr##_font_idx = initialize_font(fg, descriptor_indices.attr, #attr); else fg->attr##_font_idx = -1;
     fg->medium_font_idx = initialize_font(fg, 0, "medium");
     I(bold); I(italic); I(bi);
