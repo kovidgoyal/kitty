@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include "kitty-uthash.h"
-
 typedef unsigned int window_logo_id_t;
 
 typedef struct WindowLogo {

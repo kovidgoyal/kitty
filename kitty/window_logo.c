@@ -5,31 +5,39 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "window_logo.h"
-#include "state.h"
 
+#include "state.h"
+#include "window_logo.h"
 
 typedef struct WindowLogoItem {
     WindowLogo wl;
     unsigned int refcnt;
     char *path;
     window_logo_id_t id;
-    UT_hash_handle hh_id;
-    UT_hash_handle hh_path;
 } WindowLogoItem;
 
+#define NAME hash_by_id
+#define KEY_TY window_logo_id_t
+#define VAL_TY WindowLogoItem*
+#include "kitty-verstable.h"
+
+#define NAME hash_by_path
+#define KEY_TY const char*
+#define VAL_TY WindowLogoItem*
+#include "kitty-verstable.h"
+
+
 struct WindowLogoTable {
-    WindowLogoItem *by_id, *by_path;
+    hash_by_id by_id;
+    hash_by_path by_path;
 };
 
 static void
-free_window_logo(WindowLogoTable *table, WindowLogoItem **itemref) {
+free_window_logo(WindowLogoItem **itemref) {
     WindowLogoItem *item = *itemref;
     free(item->path);
     free(item->wl.bitmap);
     if (item->wl.texture_id) free_texture(&item->wl.texture_id);
-    HASH_DELETE(hh_id, table->by_id, item);
-    HASH_DELETE(hh_path, table->by_path, item);
     free(item); itemref = NULL;
 }
 
@@ -50,18 +58,13 @@ set_on_gpu_state(WindowLogo *s, bool on_gpu) {
 
 window_logo_id_t
 find_or_create_window_logo(WindowLogoTable *head, const char *path, void *png_data, size_t png_data_size) {
-    WindowLogoItem *s = NULL;
-    unsigned _uthash_hfstr_keylen = (unsigned)uthash_strlen(path);
-    HASH_FIND(hh_path, head->by_path, path, _uthash_hfstr_keylen, s);
-    if (s) {
-        s->refcnt++;
-        return s->id;
-    }
-    s = calloc(1, sizeof *s);
-    size_t size;
+    hash_by_path_itr n = vt_get(&head->by_path, path);
+    if (!vt_is_end(n)) { n.data->val->refcnt++; return n.data->val->id; }
+    WindowLogoItem *s = calloc(1, sizeof *s);
     if (!s) { PyErr_NoMemory(); return 0; }
     s->path = strdup(path);
     if (!s->path) { free(s); PyErr_NoMemory(); return 0; }
+    size_t size;
     bool ok = false;
     if (png_data == NULL || !png_data_size) {
         ok = png_path_to_bitmap(path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
@@ -72,40 +75,41 @@ find_or_create_window_logo(WindowLogoTable *head, const char *path, void *png_da
     s->refcnt++;
     static window_logo_id_t idc = 0;
     s->id = ++idc;
-    HASH_ADD(hh_id, head->by_id, id, sizeof(window_logo_id_t), s);
-    HASH_ADD_KEYPTR(hh_path, head->by_path, s->path, strlen(s->path), s);
+    if (vt_is_end(vt_insert(&head->by_path, s->path, s))) { free_window_logo(&s); PyErr_NoMemory(); return 0; }
+    if (vt_is_end(vt_insert(&head->by_id, s->id, s))) { vt_erase(&head->by_path, s->path); free_window_logo(&s); PyErr_NoMemory(); return 0; }
     return s->id;
 }
 
 WindowLogo*
 find_window_logo(WindowLogoTable *table, window_logo_id_t id) {
-    WindowLogoItem *s = NULL;
-    HASH_FIND(hh_id, table->by_id, &id, sizeof(window_logo_id_t), s);
-    return s ? &s->wl : NULL;
+    hash_by_id_itr n = vt_get(&table->by_id, id);
+    if (vt_is_end(n)) return NULL;
+    return &n.data->val->wl;
 }
 
 void
 decref_window_logo(WindowLogoTable *table, window_logo_id_t id) {
-    WindowLogoItem *s = NULL;
-    HASH_FIND(hh_id, table->by_id, &id, sizeof(window_logo_id_t), s);
-    if (s) {
-        if (s->refcnt < 2) free_window_logo(table, &s);
+    hash_by_id_itr n = vt_get(&table->by_id, id);
+    if (!vt_is_end(n)) {
+        WindowLogoItem *s = n.data->val;
+        if (s->refcnt < 2) {
+            vt_erase(&table->by_id, s->id); vt_erase(&table->by_path, s->path);
+            free_window_logo(&s);
+        }
         else s->refcnt--;
     }
 }
 
 WindowLogoTable*
 alloc_window_logo_table(void) {
-    return calloc(1, sizeof(WindowLogoTable));
+    WindowLogoTable *ans = calloc(1, sizeof(WindowLogoTable));
+    if (ans) { vt_init(&ans->by_path); vt_init(&ans->by_id); }
+    return ans;
 }
 
 void
 free_window_logo_table(WindowLogoTable **table) {
-    WindowLogoItem *current, *tmp;
-    HASH_ITER(hh_id, (*table)->by_id, current, tmp) {
-        free_window_logo(*table, &current);
-    }
-    HASH_CLEAR(hh_path, (*table)->by_path);
-    HASH_CLEAR(hh_id, (*table)->by_id);
+    for (hash_by_id_itr itr = vt_first( &(*table)->by_id ); !vt_is_end( itr ); itr = vt_next( itr )) free_window_logo(&itr.data->val);
+    vt_cleanup(&(*table)->by_id); vt_cleanup(&(*table)->by_path);
     free(*table); *table = NULL;
 }
