@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iter
 
 from kitty.cli import CompletionSpec, get_defaults_from_seq, parse_args, parse_option_spec
 from kitty.cli_stub import RCOptions as R
-from kitty.constants import appname, list_kitty_resources, running_in_kitty
+from kitty.constants import list_kitty_resources, running_in_kitty
 from kitty.types import AsyncResponse
 
 if TYPE_CHECKING:
@@ -429,7 +429,7 @@ class RemoteCommand:
 
 
 def cli_params_for(command: RemoteCommand) -> Tuple[Callable[[], str], str, str, str]:
-    return (command.options_spec or '\n').format, command.args.spec, command.desc, f'{appname} @ {command.name}'
+    return (command.options_spec or '\n').format, command.args.spec, command.desc, f'kitten @ {command.name}'
 
 
 def parse_subcommand_cli(command: RemoteCommand, args: ArgsType) -> Tuple[Any, ArgsType]:
