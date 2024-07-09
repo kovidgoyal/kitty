@@ -26,14 +26,14 @@
 typedef struct {
     hyperlink_map map;
     hyperlink_id_map idmap;
-    hyperlink_id_type max_link_id, num_of_adds_since_garbage_collection;
+    hyperlink_id_type max_link_id;
 } HyperLinkPool;
 
 static void
 clear_pool(HyperLinkPool *pool) {
     for (hyperlink_map_itr i = vt_first(&pool->map); !vt_is_end(i); i = vt_next(i)) free((char*)i.data->key);
     vt_cleanup(&pool->map); vt_cleanup(&pool->idmap);
-    pool->max_link_id = 0; pool->num_of_adds_since_garbage_collection = 0;
+    pool->max_link_id = 0;
 }
 
 HYPERLINK_POOL_HANDLE
@@ -94,9 +94,9 @@ process_cell(HyperLinkPool *pool, id_id_map *map, hyperlink_id_map *clone, CPUCe
 }
 
 static void
-remap_hyperlink_ids(Screen *self, id_id_map *map, hyperlink_id_map *clone) {
+remap_hyperlink_ids(Screen *self, bool preserve_hyperlinks_in_history, id_id_map *map, hyperlink_id_map *clone) {
     HyperLinkPool *pool = (HyperLinkPool*)self->hyperlink_pool;
-    if (self->historybuf->count) {
+    if (self->historybuf->count && preserve_hyperlinks_in_history) {
         for (index_type y = self->historybuf->count; y-- > 0;) {
             CPUCell *cells = historybuf_cpu_cells(self->historybuf, y);
             for (index_type x = 0; x < self->historybuf->xnum; x++) process_cell(pool, map, clone, cells + x);
@@ -107,10 +107,9 @@ remap_hyperlink_ids(Screen *self, id_id_map *map, hyperlink_id_map *clone) {
     for (index_type i = 0; i < self->lines * self->columns; i++) process_cell(pool, map, clone, second->cpu_cell_buf + i);
 }
 
-void
-screen_garbage_collect_hyperlink_pool(Screen *screen) {
+static void
+_screen_garbage_collect_hyperlink_pool(Screen *screen, bool preserve_hyperlinks_in_history) {
     HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
-    pool->num_of_adds_since_garbage_collection = 0;
     if (!pool->max_link_id) return;
     pool->max_link_id = 0;
     id_id_map map = {0};
@@ -118,10 +117,12 @@ screen_garbage_collect_hyperlink_pool(Screen *screen) {
     hyperlink_id_map clone = {0};
     if (!vt_init_clone(&clone, &pool->idmap)) fatal("Out of memory");
     vt_cleanup(&pool->map); vt_cleanup(&pool->idmap);
-    remap_hyperlink_ids(screen, &map, &clone);
+    remap_hyperlink_ids(screen, preserve_hyperlinks_in_history, &map, &clone);
     for (hyperlink_id_map_itr i = vt_first(&clone); !vt_is_end(i); i = vt_next(i)) free((char*)i.data->val);
     vt_clear(&map); vt_clear(&clone);
 }
+void
+screen_garbage_collect_hyperlink_pool(Screen *screen) { _screen_garbage_collect_hyperlink_pool(screen, true); }
 
 
 hyperlink_id_type
@@ -136,17 +137,20 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     hyperlink_map_itr itr = vt_get(&pool->map, key);
     if (!vt_is_end(itr)) return itr.data->val;
     if (pool->max_link_id >= HYPERLINK_MAX_NUMBER) {
-        if (pool->num_of_adds_since_garbage_collection > 128) screen_garbage_collect_hyperlink_pool(screen);
-        if (pool->max_link_id >= HYPERLINK_MAX_NUMBER) {
-            log_error("Too many hyperlinks, discarding hyperlink: %s", key);
-            return 0;
+        screen_garbage_collect_hyperlink_pool(screen);
+        if (pool->max_link_id >= HYPERLINK_MAX_NUMBER - 128) {
+            log_error("Too many hyperlinks, discarding hyperlinks in scrollback");
+            _screen_garbage_collect_hyperlink_pool(screen, false);
+            if (pool->max_link_id >= HYPERLINK_MAX_NUMBER) {
+                log_error("Too many hyperlinks, discarding hyperlink: %s", key);
+                return 0;
+            }
         }
     }
     hyperlink_id_type new_id = ++pool->max_link_id;
     const char *skey = dupstr(key, keylen);
     if (vt_is_end(vt_insert(&pool->map, skey, new_id))) fatal("Out of memory");
     if (vt_is_end(vt_insert(&pool->idmap, new_id, skey))) fatal("Out of memory");
-    pool->num_of_adds_since_garbage_collection++;
     return new_id;
 }
 
