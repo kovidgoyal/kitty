@@ -88,6 +88,7 @@ Detailed list of changes
 
 - Dispatch any clicks waiting for :opt:`click_interval` on key events (:iss:`7601`)
 
+- Wayland: Fix an issue with mouse selections not being stopped when there are multiple OS windows (:iss:`7381`)
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -515,15 +515,6 @@ static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
     debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", global_state.callback_os_window->id, focused);
-    // There exist some numbnut Wayland compositors, like kwin, that send mouse
-    // press events before focus gained events. So only clear the active drag
-    // window if it is not the focused window. See https://github.com/kovidgoyal/kitty/issues/6095
-    if (
-            (!focused && global_state.callback_os_window->id == global_state.active_drag_in_window) ||
-            (focused && global_state.callback_os_window->id != global_state.active_drag_in_window)
-    ) {
-        global_state.active_drag_in_window = 0;
-    }
     global_state.callback_os_window->is_focused = focused ? true : false;
     if (focused) {
         show_mouse_cursor(w);
