@@ -451,10 +451,11 @@ func (self *handler) draw_theme_demo() {
 				if intense {
 					s = "bright-" + s
 				}
-				if len(s) > trunc {
-					s = s[:trunc]
+				sTrunc := s
+				if len(sTrunc) > trunc {
+					sTrunc = sTrunc[:trunc]
 				}
-				buf.WriteString(self.lp.SprintStyled("fg="+s, s))
+				buf.WriteString(self.lp.SprintStyled("fg="+s, sTrunc))
 				buf.WriteString(" ")
 			}
 			text := strings.TrimSpace(buf.String())
