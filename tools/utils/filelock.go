@@ -3,27 +3,29 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
 
 func lock(fd, op int, path string) (err error) {
 	for {
-		err = syscall.Flock(fd, op)
-		if err != syscall.EINTR {
+		err = unix.Flock(fd, op)
+		if !errors.Is(err, unix.EINTR) {
 			break
 		}
 	}
 	if err != nil {
 		opname := "exclusive flock()"
 		switch op {
-		case syscall.LOCK_UN:
+		case unix.LOCK_UN:
 			opname = "unlock flock()"
-		case syscall.LOCK_SH:
+		case unix.LOCK_SH:
 			opname = "shared flock()"
 		}
 		return &fs.PathError{
@@ -36,13 +38,13 @@ func lock(fd, op int, path string) (err error) {
 }
 
 func LockFileShared(f *os.File) error {
-	return lock(int(f.Fd()), syscall.LOCK_SH, f.Name())
+	return lock(int(f.Fd()), unix.LOCK_SH, f.Name())
 }
 
 func LockFileExclusive(f *os.File) error {
-	return lock(int(f.Fd()), syscall.LOCK_EX, f.Name())
+	return lock(int(f.Fd()), unix.LOCK_EX, f.Name())
 }
 
 func UnlockFile(f *os.File) error {
-	return lock(int(f.Fd()), syscall.LOCK_UN, f.Name())
+	return lock(int(f.Fd()), unix.LOCK_UN, f.Name())
 }
