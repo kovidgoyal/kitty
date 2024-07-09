@@ -28,11 +28,6 @@ typedef enum {
 } LigatureType;
 
 
-#define SPECIAL_FILLED_MASK 1
-#define SPECIAL_VALUE_MASK 2
-#define EMPTY_FILLED_MASK 4
-#define EMPTY_VALUE_MASK 8
-
 typedef struct {
     size_t max_y;
     unsigned int x, y, z, xnum, ynum;
@@ -61,7 +56,7 @@ typedef struct {
     SPRITE_POSITION_MAP_HANDLE sprite_position_hash_table;
     hb_feature_t* ffs_hb_features;
     size_t num_ffs_hb_features;
-    GlyphProperties *glyph_properties_hash_table;
+    GLYPH_PROPERTIES_MAP_HANDLE glyph_properties_hash_table;
     bool bold, italic, emoji_presentation;
     SpacerStrategy spacer_strategy;
 } Font;
@@ -355,11 +350,19 @@ create_features_for_face(const char *psname, PyObject *features, FontFeatures *o
 }
 
 static bool
+init_hash_tables(Font *f) {
+    f->sprite_position_hash_table = create_sprite_position_hash_table();
+    if (!f->sprite_position_hash_table) { PyErr_NoMemory(); return false; }
+    f->glyph_properties_hash_table = create_glyph_properties_hash_table();
+    if (!f->glyph_properties_hash_table) { PyErr_NoMemory(); return false; }
+    return true;
+}
+
+static bool
 init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentation) {
     f->face = face; Py_INCREF(f->face);
     f->bold = bold; f->italic = italic; f->emoji_presentation = emoji_presentation;
-    f->sprite_position_hash_table = create_sprite_position_hash_table();
-    if (!f->sprite_position_hash_table) { PyErr_NoMemory(); return false; }
+    if (!init_hash_tables(f)) return false;
     const FontFeatures *features = features_for_face(face);
     f->ffs_hb_features = calloc(1 + features->count, sizeof(hb_feature_t));
     if (!f->ffs_hb_features) { PyErr_NoMemory(); return false; }
@@ -863,29 +866,28 @@ static bool
 is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
     // A glyph is special if the codepoint it corresponds to matches a
     // different glyph in the font
-    GlyphProperties *s = find_or_create_glyph_properties(&font->glyph_properties_hash_table, glyph_id);
-    if (s == NULL) return false;
-    if (!(s->data & SPECIAL_FILLED_MASK)) {
+    GlyphProperties s = find_glyph_properties(font->glyph_properties_hash_table, glyph_id);
+    if (!s.special_set) {
         bool is_special = cell_data->current_codepoint ? (
             glyph_id != glyph_id_for_codepoint(font->face, cell_data->current_codepoint) ? true : false)
             :
             false;
-        uint8_t val = is_special ? SPECIAL_VALUE_MASK : 0;
-        s->data |= val | SPECIAL_FILLED_MASK;
+        s.special_set = 1; s.special_val = is_special;
+        set_glyph_properties(font->glyph_properties_hash_table, glyph_id, s);
     }
-    return s->data & SPECIAL_VALUE_MASK;
+    return s.special_val;
 }
 
 static bool
 is_empty_glyph(glyph_index glyph_id, Font *font) {
     // A glyph is empty if its metrics have a width of zero
-    GlyphProperties *s = find_or_create_glyph_properties(&font->glyph_properties_hash_table, glyph_id);
-    if (s == NULL) return false;
-    if (!(s->data & EMPTY_FILLED_MASK)) {
-        uint8_t val = is_glyph_empty(font->face, glyph_id) ? EMPTY_VALUE_MASK : 0;
-        s->data |= val | EMPTY_FILLED_MASK;
+    GlyphProperties s = find_glyph_properties(font->glyph_properties_hash_table, glyph_id);
+    if (!s.empty_set) {
+        s.empty_val = is_glyph_empty(font->face, glyph_id) ? 1 : 0;
+        s.empty_set = 1;
+        set_glyph_properties(font->glyph_properties_hash_table, glyph_id, s);
     }
-    return s->data & EMPTY_VALUE_MASK;
+    return s.empty_val;
 }
 
 static unsigned int
@@ -1278,7 +1280,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         if (face == NULL) return NULL;
         font = calloc(1, sizeof(Font));
         font->face = face;
-        font->sprite_position_hash_table = create_sprite_position_hash_table();
+        if (!init_hash_tables(font)) return NULL;
     } else {
         FontGroup *fg = font_groups;
         font = fg->fonts + fg->medium_font_idx;
@@ -1539,7 +1541,7 @@ initialize_font_group(FontGroup *fg) {
     if (fg->fonts == NULL) fatal("Out of memory allocating fonts array");
     fg->fonts_count = 1;  // the 0 index font is the box font
     fg->fonts[0].sprite_position_hash_table = create_sprite_position_hash_table();
-    if (!fg->fonts[0].sprite_position_hash_table) fatal("Out of memory");
+    if (!init_hash_tables(fg->fonts)) fatal("Out of memory");
 #define I(attr)  if (descriptor_indices.attr) fg->attr##_font_idx = initialize_font(fg, descriptor_indices.attr, #attr); else fg->attr##_font_idx = -1;
     fg->medium_font_idx = initialize_font(fg, 0, "medium");
     I(bold); I(italic); I(bi);

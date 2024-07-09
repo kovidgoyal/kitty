@@ -24,13 +24,24 @@ free_sprite_position_hash_table(SPRITE_POSITION_MAP_HANDLE *handle);
 SpritePosition*
 find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created);
 
-#define GlyphPropertiesHead \
-    uint8_t data;
 
-typedef struct GlyphProperties {
-    GlyphPropertiesHead
+typedef union GlyphProperties {
+    struct {
+        uint8_t special_set : 1;
+        uint8_t special_val : 1;
+        uint8_t empty_set : 1;
+        uint8_t empty_val : 1;
+    };
+    uint8_t val;
 } GlyphProperties;
 
-void free_glyph_properties_hash_table(GlyphProperties **head);
-GlyphProperties*
-find_or_create_glyph_properties(GlyphProperties **head, unsigned glyph);
+typedef struct {int x;} *GLYPH_PROPERTIES_MAP_HANDLE;
+
+GLYPH_PROPERTIES_MAP_HANDLE
+create_glyph_properties_hash_table(void);
+
+void free_glyph_properties_hash_table(GLYPH_PROPERTIES_MAP_HANDLE *handle);
+GlyphProperties
+find_glyph_properties(GLYPH_PROPERTIES_MAP_HANDLE map, glyph_index glyph);
+bool
+set_glyph_properties(GLYPH_PROPERTIES_MAP_HANDLE map, glyph_index glyph, GlyphProperties val);

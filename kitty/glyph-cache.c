@@ -84,36 +84,42 @@ void
 free_sprite_position_hash_table(SPRITE_POSITION_MAP_HANDLE *map) {
     sprite_pos_map **mapref = (sprite_pos_map**)map;
     if (*mapref) {
-        vt_cleanup(*mapref); *mapref = NULL;
+        vt_cleanup(*mapref); free(*mapref); *mapref = NULL;
     }
 }
 
-#include "kitty-uthash.h"
 
-typedef struct GlyphPropertiesItem {
-    GlyphPropertiesHead
-    UT_hash_handle hh;
-    unsigned key;
-} GlyphPropertiesItem;
+#define NAME glyph_props_map
+#define KEY_TY glyph_index
+#define VAL_TY GlyphProperties
+#include "kitty-verstable.h"
 
-
-GlyphProperties*
-find_or_create_glyph_properties(GlyphProperties **head_, unsigned glyph) {
-    GlyphPropertiesItem **head = (GlyphPropertiesItem**)head_, *p;
-    HASH_FIND_INT(*head, &glyph, p);
-    if (p) return (GlyphProperties*)p;
-    p = calloc(1, sizeof(GlyphPropertiesItem));
-    if (!p) return NULL;
-    p->key = glyph;
-    HASH_ADD_INT(*head, key, p);
-    return (GlyphProperties*)p;
+GLYPH_PROPERTIES_MAP_HANDLE
+create_glyph_properties_hash_table(void) {
+    glyph_props_map *ans = calloc(1, sizeof(glyph_props_map));
+    if (ans) vt_init(ans);
+    return (GLYPH_PROPERTIES_MAP_HANDLE)ans;
 }
 
+GlyphProperties
+find_glyph_properties(GLYPH_PROPERTIES_MAP_HANDLE map_, glyph_index glyph) {
+    glyph_props_map *map = (glyph_props_map*)map_;
+    glyph_props_map_itr n = vt_get(map, glyph);
+    if (vt_is_end(n)) return (GlyphProperties){0};
+    return n.data->val;
+}
+
+bool
+set_glyph_properties(GLYPH_PROPERTIES_MAP_HANDLE map_, glyph_index glyph, GlyphProperties val) {
+    glyph_props_map *map = (glyph_props_map*)map_;
+    return !vt_is_end(vt_insert(map, glyph, val));
+}
+
+
 void
-free_glyph_properties_hash_table(GlyphProperties **head_) {
-    GlyphPropertiesItem **head = (GlyphPropertiesItem**)head_, *s, *tmp;
-    HASH_ITER(hh, *head, s, tmp) {
-        HASH_DEL(*head, s);
-        free(s);
+free_glyph_properties_hash_table(GLYPH_PROPERTIES_MAP_HANDLE *map_) {
+    glyph_props_map **mapref = (glyph_props_map**)map_;
+    if (*mapref) {
+        vt_clear(*mapref); free(*mapref); *mapref = NULL;
     }
 }
