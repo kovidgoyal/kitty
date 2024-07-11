@@ -697,7 +697,9 @@ PYWRAP(ensure_state) {
 PYWRAP(read_from_cache_file) {
     Py_ssize_t pos = 0, sz = -1;
     PA("|nn", &pos, &sz);
+    mutex(lock);
     if (sz < 0) sz = size_of_cache_file(self);
+    mutex(unlock);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (ans) {
         read_from_cache_file(self, pos, sz, PyBytes_AS_STRING(ans));
@@ -714,8 +716,11 @@ wait_for_write(PyObject *self, PyObject *args) {
 }
 
 static PyObject*
-size_on_disk(PyObject *self, PyObject *args UNUSED) {
-    unsigned long long ans = disk_cache_size_on_disk(self);
+size_on_disk(PyObject *self_, PyObject *args UNUSED) {
+    DiskCache *self = (DiskCache*)self_;
+    mutex(lock);
+    unsigned long long ans = disk_cache_size_on_disk(self_);
+    mutex(unlock);
     return PyLong_FromUnsignedLongLong(ans);
 }
 
