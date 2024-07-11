@@ -142,7 +142,8 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         ) {
             Py_CLEAR(self); return NULL;
         }
-        self->main_grman->window_id = self->window_id; self->alt_grman->window_id = self->window_id;
+        grman_set_window_id(self->main_grman, self->window_id);
+        grman_set_window_id(self->alt_grman, self->window_id);
         self->alt_tabstops = self->main_tabstops + self->columns;
         self->tabstops = self->main_tabstops;
         init_tabstops(self->main_tabstops, self->columns);
@@ -1065,7 +1066,7 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
     }
     screen_history_scroll(self, SCROLL_FULL, false);
     self->is_dirty = true;
-    self->grman->layers_dirty = true;
+    grman_mark_layers_dirty(self->grman);
     clear_selection(&self->selections);
     global_state.check_for_active_animated_images = true;
 }

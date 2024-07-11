@@ -12,6 +12,7 @@
 #include "emoji.h"
 #include "unicode-data.h"
 #include "glyph-cache.h"
+#include "kitty-uthash.h"
 
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u

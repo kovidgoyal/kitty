@@ -5,6 +5,8 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define GRAPHICS_INTERNAL_APIS
+#include "kitty-uthash.h"
 #include "graphics.h"
 #include "state.h"
 #include "disk-cache.h"
@@ -859,13 +861,13 @@ is_cell_image(const ImageRef *self) { return self->virtual_ref_id != 0; }
 // - `columns` - the number of columns we want to display
 // - `rows` - the number of rows we want to display
 // - `cell` - the size of a screen cell
-Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
+void grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
                             uint32_t screen_col, uint32_t image_id,
                             uint32_t placement_id, uint32_t img_col,
                             uint32_t img_row, uint32_t columns, uint32_t rows,
                             CellPixelSize cell) {
     Image *img = img_by_client_id(self, image_id);
-    if (img == NULL) return NULL;
+    if (img == NULL) return;
 
     ImageRef *virt_img_ref = NULL;
     if (placement_id) {
@@ -886,7 +888,7 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
         }
     }
 
-    if (!virt_img_ref) return NULL;
+    if (!virt_img_ref) return;
 
     // Create the ref structure on stack first. We will not create a real
     // reference if the image is completely out of bounds.
@@ -958,8 +960,7 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
         uint32_t col_offset = ref.cell_x_offset / cell.width;
         ref.cell_x_offset %= cell.width;
         ref.start_column += col_offset;
-        if (ref.num_cols <= col_offset)
-            return img;
+        if (ref.num_cols <= col_offset) return;
         ref.num_cols -= col_offset;
     }
     if (ref.src_y < 0) {
@@ -969,8 +970,7 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
         uint32_t row_offset = ref.cell_y_offset / cell.height;
         ref.cell_y_offset %= cell.height;
         ref.start_row += row_offset;
-        if (ref.num_rows <= row_offset)
-            return img;
+        if (ref.num_rows <= row_offset) return;
         ref.num_rows -= row_offset;
     }
 
@@ -979,16 +979,14 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     if (ref.src_x + ref.src_width > img->width) {
         float redundant_w = ref.src_x + ref.src_width - img->width;
         uint32_t redundant_cols = (uint32_t)(redundant_w * x_scale) / cell.width;
-        if (ref.num_cols <= redundant_cols)
-            return img;
+        if (ref.num_cols <= redundant_cols) return;
         ref.src_width -= redundant_cols * cell.width / x_scale;
         ref.num_cols -= redundant_cols;
     }
     if (ref.src_y + ref.src_height > img->height) {
         float redundant_h = ref.src_y + ref.src_height - img->height;
         uint32_t redundant_rows = (uint32_t)(redundant_h * y_scale) / cell.height;
-        if (ref.num_rows <= redundant_rows)
-            return img;
+        if (ref.num_rows <= redundant_rows) return;
         ref.src_height -= redundant_rows * cell.height / y_scale;
         ref.num_rows -= redundant_rows;
     }
@@ -1004,7 +1002,6 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
 
     update_src_rect(real_ref, img);
     update_dest_rect(real_ref, ref.num_cols, ref.num_rows, cell);
-    return img;
 }
 
 static void remove_ref(Image *img, ImageRef *ref);
@@ -2427,5 +2424,16 @@ init_graphics(PyObject *module) {
     if (PyModule_AddIntMacro(module, IMAGE_PLACEHOLDER_CHAR) != 0) return false;
     Py_INCREF(&GraphicsManager_Type);
     return true;
+}
+
+void grman_mark_layers_dirty(GraphicsManager *self) { self->layers_dirty = true; }
+void grman_set_window_id(GraphicsManager *self, id_type id) { self->window_id = id; }
+GraphicsRenderData grman_render_data(GraphicsManager *self) {
+    GraphicsRenderData ans = {
+        .count=self->render_data.count, .capacity=self->render_data.capacity, .images=self->render_data.item,
+        .num_of_below_refs=self->num_of_below_refs, .num_of_negative_refs=self->num_of_negative_refs,
+        .num_of_positive_refs=self->num_of_positive_refs
+    };
+    return ans;
 }
 // }}}

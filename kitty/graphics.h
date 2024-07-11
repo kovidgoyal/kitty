@@ -7,7 +7,6 @@
 #pragma once
 #include "data-types.h"
 #include "monotonic.h"
-#include "kitty-uthash.h"
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
@@ -30,6 +29,22 @@ typedef struct {
     float left, top, right, bottom;
 } ImageRect;
 
+typedef struct {
+    ImageRect src_rect, dest_rect;
+    uint32_t texture_id, group_count;
+    int z_index;
+    id_type image_id, ref_id;
+} ImageRenderData;
+
+typedef struct {
+    uint32_t texture_id;
+    unsigned int height, width;
+    uint8_t* bitmap;
+    uint32_t refcnt;
+} BackgroundImage;
+
+
+#ifdef GRAPHICS_INTERNAL_APIS
 typedef struct {
     float src_width, src_height, src_x, src_y;
     uint32_t cell_x_offset, cell_y_offset, num_cols, num_rows, effective_num_rows, effective_num_cols;
@@ -88,20 +103,6 @@ typedef struct {
 } Image;
 
 typedef struct {
-    uint32_t texture_id;
-    unsigned int height, width;
-    uint8_t* bitmap;
-    uint32_t refcnt;
-} BackgroundImage;
-
-typedef struct {
-    ImageRect src_rect, dest_rect;
-    uint32_t texture_id, group_count;
-    int z_index;
-    id_type image_id, ref_id;
-} ImageRenderData;
-
-typedef struct {
     id_type image_id;
     uint32_t frame_id;
 } ImageAndFrame;
@@ -142,7 +143,9 @@ typedef struct {
     bool has_images_needing_animation, context_made_current_for_this_command;
     id_type window_id;
 } GraphicsManager;
-
+#else
+typedef struct {int x;} *GraphicsManager;
+#endif
 
 typedef struct {
     int32_t amt, limit;
@@ -179,11 +182,15 @@ gl_pos_y(const unsigned int px_from_top_margin, const unsigned int viewport_size
     return 1.f - px_from_top_margin * px;
 }
 
+typedef struct GraphicsRenderData {
+    size_t count, capacity, num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
+    ImageRenderData *images;
+} GraphicsRenderData;
 
 GraphicsManager* grman_alloc(bool for_paused_rendering);
 void grman_clear(GraphicsManager*, bool, CellPixelSize fg);
 const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize fg);
-Image* grman_put_cell_image(GraphicsManager *self, uint32_t row, uint32_t col, uint32_t image_id, uint32_t placement_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h, CellPixelSize cell);
+void grman_put_cell_image(GraphicsManager *self, uint32_t row, uint32_t col, uint32_t image_id, uint32_t placement_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h, CellPixelSize cell);
 bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize);
 void grman_scroll_images(GraphicsManager *self, const ScrollData*, CellPixelSize fg);
 void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type, index_type, index_type);
@@ -197,3 +204,6 @@ bool png_from_data(void *png_data, size_t png_data_sz, const char *path_for_erro
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);
 void scale_rendered_graphic(ImageRenderData*, float xstart, float ystart, float x_scale, float y_scale);
 void grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest);
+void grman_mark_layers_dirty(GraphicsManager *self);
+void grman_set_window_id(GraphicsManager *self, id_type id);
+GraphicsRenderData grman_render_data(GraphicsManager *self);
