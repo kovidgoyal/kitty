@@ -66,7 +66,6 @@ typedef struct {
     } parent;
 
     id_type internal_id;
-    hash_handle_type hh;
 } ImageRef;
 
 typedef struct {
@@ -80,13 +79,17 @@ typedef struct TextureRef {
     uint32_t id, refcnt;
 } TextureRef;
 
+#define NAME ref_map
+#define KEY_TY id_type
+#define VAL_TY ImageRef*
+#include "kitty-verstable.h"
+
 typedef struct {
     uint32_t client_id, client_number, width, height;
     TextureRef *texture;
     id_type internal_id;
 
     bool root_frame_data_loaded;
-    ImageRef *refs;
     id_type ref_id_counter;
     Frame *extra_frames, root_frame;
     uint32_t current_frame_index, frame_id_counter;
@@ -98,8 +101,7 @@ typedef struct {
     AnimationState animation_state;
     uint32_t max_loops, current_loop;
     monotonic_t current_frame_shown_at;
-
-    hash_handle_type hh;
+    ref_map refs_by_internal_id;
 } Image;
 
 typedef struct {
@@ -123,12 +125,16 @@ typedef struct {
     ImageAndFrame loading_for;
 } LoadData;
 
+#define NAME image_map
+#define KEY_TY id_type
+#define VAL_TY Image*
+#include "kitty-verstable.h"
+
 typedef struct {
     PyObject_HEAD
 
     size_t storage_limit;
     LoadData currently_loading;
-    Image *images;
     id_type image_id_counter;
     struct {
         size_t count, capacity;
@@ -142,6 +148,7 @@ typedef struct {
     PyObject *disk_cache;
     bool has_images_needing_animation, context_made_current_for_this_command;
     id_type window_id;
+    image_map images_by_internal_id;
 } GraphicsManager;
 #else
 typedef struct {int x;} *GraphicsManager;

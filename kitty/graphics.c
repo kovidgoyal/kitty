@@ -6,7 +6,6 @@
  */
 
 #define GRAPHICS_INTERNAL_APIS
-#include "kitty-uthash.h"
 #include "graphics.h"
 #include "state.h"
 #include "disk-cache.h"
@@ -86,19 +85,16 @@ grman_alloc(bool for_paused_rendering) {
         self->disk_cache = create_disk_cache();
         if (!self->disk_cache) { Py_CLEAR(self); return NULL; }
     }
+    vt_init(&self->images_by_internal_id);
     return self;
 }
 
+#define iter_refs(img) for (ref_map_itr i = vt_first(&((img)->refs_by_internal_id)); !vt_is_end(i); i = vt_next(i))
+
 static void
 free_refs_data(Image *img) {
-    if (img->refs) {
-        ImageRef *s, *tmp;
-        HASH_ITER(hh, img->refs, s, tmp) {
-            HASH_DEL(img->refs, s);
-            free(s);
-        }
-    }
-    img->refs = NULL;
+    iter_refs(img) free(i.data->val);
+    vt_cleanup(&img->refs_by_internal_id);
 }
 
 static void
@@ -160,20 +156,16 @@ free_image_resources(GraphicsManager *self, Image *img) {
 
 static void
 free_image(GraphicsManager *self, Image *img) {
-    HASH_DEL(self->images, img);
     free_image_resources(self, img);
     free(img);
 }
 
+#define iter_images(grman) for (image_map_itr i = vt_first(&((grman)->images_by_internal_id)); !vt_is_end(i); i = vt_next(i))
+
 static void
 free_all_images(GraphicsManager *self) {
-    if (self->images) {
-        Image *img, *tmp;
-        HASH_ITER(hh, self->images, img, tmp) {
-            free_image(self, img);
-        }
-        self->images = NULL;
-    }
+    iter_images(self) free_image(self, i.data->val);
+    vt_cleanup(&self->images_by_internal_id);
 }
 
 static void
@@ -186,16 +178,13 @@ dealloc(GraphicsManager* self) {
 
 static Image*
 img_by_internal_id(const GraphicsManager *self, id_type id) {
-    Image *ans;
-    HASH_FIND(hh, self->images, &id, sizeof(id), ans);
-    return ans;
+    image_map_itr i = vt_get((image_map*)&self->images_by_internal_id, id);
+    return vt_is_end(i) ? NULL : i.data->val;
 }
 
 static Image*
 img_by_client_id(const GraphicsManager *self, uint32_t id) {
-    for (Image *img = self->images; img != NULL; img = img->hh.next) {
-        if (img->client_id == id) return img;
-    }
+    iter_images(((GraphicsManager*)self)) if (i.data->val->client_id == id) return i.data->val;
     return NULL;
 }
 
@@ -203,7 +192,8 @@ static Image*
 img_by_client_number(const GraphicsManager *self, uint32_t number) {
     // get the newest image with the specified number
     Image *ans = NULL;
-    for (Image *img = self->images; img != NULL; img = img->hh.next) {
+    iter_images(((GraphicsManager*)self)) {
+        Image *img = i.data->val;
         if (img->client_number == number && (!ans || img->internal_id > ans->internal_id)) ans = img;
     }
     return ans;
@@ -211,68 +201,65 @@ img_by_client_number(const GraphicsManager *self, uint32_t number) {
 
 static ImageRef*
 ref_by_internal_id(const Image *img, id_type id) {
-    ImageRef *ans;
-    HASH_FIND(hh, img->refs, &id, sizeof(id), ans);
-    return ans;
+    ref_map_itr i = vt_get(&((Image *)img)->refs_by_internal_id, id);
+    return vt_is_end(i) ? NULL : i.data->val;
 }
 
 
 static ImageRef*
 ref_by_client_id(const Image *img, uint32_t id) {
-    for (ImageRef *ref = img->refs; ref != NULL; ref = ref->hh.next) {
-        if (ref->client_id == id) {
-            return ref;
-        }
-    }
+    iter_refs((Image*)img) if (i.data->val->client_id == id) return i.data->val;
     return NULL;
+}
+
+static image_map_itr
+remove_image_itr(GraphicsManager *self, image_map_itr i) {
+    free_image(self, i.data->val);
+    self->layers_dirty = true;
+    return vt_erase_itr(&self->images_by_internal_id, i);
 }
 
 static void
 remove_image(GraphicsManager *self, Image *img) {
-    free_image(self, img);
-    self->layers_dirty = true;
+    image_map_itr i = vt_get(&self->images_by_internal_id, img->internal_id);
+    if (!vt_is_end(i)) remove_image_itr(self, i);
 }
 
 static void
 remove_images(GraphicsManager *self, bool(*predicate)(Image*), id_type skip_image_internal_id) {
-    Image *img, *tmp;
-    HASH_ITER(hh, self->images, img, tmp) {
-        if (img->internal_id != skip_image_internal_id && predicate(img)) {
-            remove_image(self, img);
-        }
+    for (image_map_itr i = vt_first(&self->images_by_internal_id); !vt_is_end(i);) {
+        Image *img = i.data->val;
+        if (img->internal_id != skip_image_internal_id && predicate(img)) i = remove_image_itr(self, i);
+        else i = vt_next(i);
     }
 }
 
 void
 grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
     make_window_context_current(dest->window_id);
-    free_all_images(dest); dest->images = NULL;
+    free_all_images(dest);
     dest->render_data.count = 0;
     if (self == NULL) return;
     dest->window_id = self->window_id;
     dest->layers_dirty = true;
     dest->last_scrolled_by = 0;
 
-    Image *img, *tmpimg;
-
-    HASH_ITER(hh, self->images, img, tmpimg) {
-        Image *clone = calloc(1, sizeof(Image));
+    iter_images(self) {
+        Image *clone = calloc(1, sizeof(Image)), *img = i.data->val;
         if (!clone) continue;
         memcpy(clone, img, sizeof(*clone));
+        memset(&clone->refs_by_internal_id, 0, sizeof(clone->refs_by_internal_id));
+        vt_init(&clone->refs_by_internal_id);
         clone->extra_frames = NULL;
-        if (img->refs) {
-            clone->refs = NULL;
-            ImageRef *ref, *tmpref;
-            HASH_ITER(hh, img->refs, ref, tmpref) {
-                ImageRef *cr = malloc(sizeof(ImageRef));
-                if (cr) {
-                    memcpy(cr, ref, sizeof(*cr));
-                    HASH_ADD(hh, clone->refs, internal_id, sizeof(cr->internal_id), cr);
-                }
+        iter_refs(img) {
+            ImageRef *cr = malloc(sizeof(ImageRef));
+            if (cr) {
+                memcpy(cr, i.data->val, sizeof(*cr));
+                vt_insert(&clone->refs_by_internal_id, cr->internal_id, cr);
             }
         }
-        HASH_ADD(hh, dest->images, internal_id, sizeof(clone->internal_id), clone);
         clone->texture = incref_texture_ref(img->texture);
+        vt_insert(&dest->images_by_internal_id, clone->internal_id, clone);
     }
 }
 
@@ -280,12 +267,7 @@ grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
 
 static bool
 trim_predicate(Image *img) {
-    return !img->root_frame_data_loaded || !img->refs;
-}
-
-static int
-oldest_img_first(const Image *a, const Image *b) {
-    return a->atime - b->atime;
+    return !img->root_frame_data_loaded || !vt_size(&img->refs_by_internal_id);
 }
 
 static void
@@ -293,12 +275,17 @@ apply_storage_quota(GraphicsManager *self, size_t storage_limit, id_type current
     // First remove unreferenced images, even if they have an id
     remove_images(self, trim_predicate, currently_added_image_internal_id);
     if (self->used_storage < storage_limit) return;
+    size_t num_images = vt_size(&self->images_by_internal_id);
+    RAII_ALLOC(Image*, sorted, malloc(num_images * sizeof(Image*)));
+    if (!sorted) fatal("Out of memory");
+    Image **p = sorted;
+    iter_images(self) { *p++ = i.data->val; }
+#define oldest_img_first(a, b) ((*a)->atime < (*b)->atime)
+    QSORT(Image*, sorted, num_images, oldest_img_first);
+#undef oldest_img_first
 
-    HASH_SORT(self->images, oldest_img_first);
-    while (self->used_storage > storage_limit && self->images) {
-        remove_image(self, self->images);
-    }
-    if (!self->images) self->used_storage = 0;  // sanity check
+    for (p = sorted; self->used_storage > storage_limit && num_images; p++, num_images--) remove_image(self, *p);
+    if (!num_images || !vt_size(&self->images_by_internal_id)) self->used_storage = 0;  // sanity check
 }
 
 static char command_response[512] = {0};
@@ -406,7 +393,7 @@ inflate_png(LoadData *load_data, uint8_t *buf, size_t bufsz) {
 
 static bool
 add_trim_predicate(Image *img) {
-    return !img->root_frame_data_loaded || (!img->client_id && !img->refs);
+    return !img->root_frame_data_loaded || (!img->client_id && !vt_size(&img->refs_by_internal_id));
 }
 
 static void
@@ -491,19 +478,23 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
     if (!ans) fatal("Out of memory allocating Image object");
     ans->internal_id = next_id(&self->image_id_counter);
     ans->texture = new_texture_ref();
-    HASH_ADD(hh, self->images, internal_id, sizeof(ans->internal_id), ans);
+    vt_init(&ans->refs_by_internal_id);
+    if (vt_is_end(vt_insert(&self->images_by_internal_id, ans->internal_id, ans))) fatal("Out of memory");
     return ans;
 }
 
 static uint32_t
 get_free_client_id(const GraphicsManager *self) {
-    if (!self->images) return 1;
-    uint32_t *client_ids = malloc(sizeof(uint32_t) * HASH_COUNT(self->images));
+    size_t num_images = vt_size(&((GraphicsManager*)self)->images_by_internal_id);
+    if (!num_images) return 1;
+    RAII_ALLOC(uint32_t, client_ids, malloc(num_images * sizeof(uint32_t)));
+    if (!client_ids) fatal("Out of memory");
     size_t count = 0;
-    for (Image *img = self->images; img != NULL; img = img->hh.next) {
+    iter_images((GraphicsManager*)self) {
+        Image *img = i.data->val;
         if (img->client_id) client_ids[count++] = img->client_id;
     }
-    if (!count) { free(client_ids); return 1; }
+    if (!count) return 1;
 #define int_lt(a, b) ((*a)<(*b))
     QSORT(uint32_t, client_ids, count, int_lt)
 #undef int_lt
@@ -514,7 +505,6 @@ get_free_client_id(const GraphicsManager *self) {
         if (client_ids[i] != ans) break;
         ans = client_ids[i] + 1;
     }
-    free(client_ids);
     return ans;
 }
 
@@ -829,12 +819,9 @@ static ImageRef*
 create_ref(Image *img, ImageRef *clone_from) {
     ImageRef *ans = calloc(1, sizeof(ImageRef));
     if (!ans) fatal("Out of memory creating ImageRef");
-    if (clone_from) {
-        *ans = *clone_from;
-        memset(&ans->hh, 0, sizeof(ans->hh));
-    }
+    if (clone_from) *ans = *clone_from;
     ans->internal_id = next_id(&img->ref_id_counter);
-    HASH_ADD(hh, img->refs, internal_id, sizeof(ans->internal_id), ans);
+    if (vt_is_end(vt_insert(&img->refs_by_internal_id, ans->internal_id, ans))) fatal("Out of memory");
     return ans;
 }
 
@@ -872,7 +859,7 @@ void grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     ImageRef *virt_img_ref = NULL;
     if (placement_id) {
         // Find the placement by the id. It must be a virtual placement.
-        for (ImageRef *r = img->refs; r != NULL; r = r->hh.next) {
+        iter_refs(img) { ImageRef *r = i.data->val;
             if (r->is_virtual_ref && r->client_id == placement_id) {
                 virt_img_ref = r;
                 break;
@@ -880,7 +867,7 @@ void grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
         }
     } else {
         // Find the first virtual image placement.
-        for (ImageRef *r = img->refs; r != NULL; r = r->hh.next) {
+        iter_refs(img) { ImageRef *r = i.data->val;
             if (r->is_virtual_ref) {
                 virt_img_ref = r;
                 break;
@@ -1005,6 +992,7 @@ void grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
 }
 
 static void remove_ref(Image *img, ImageRef *ref);
+static ref_map_itr remove_ref_itr(Image *img, ref_map_itr x);
 
 static bool
 has_good_ancestry(GraphicsManager *self, ImageRef *ref) {
@@ -1052,11 +1040,11 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
             set_command_failed_response("ENOPARENT", "Put command refers to a parent image with id: %u that does not exist", g->parent_id);
             return g->id;
         }
-        if (!parent->refs) {
+        if (!vt_size(&parent->refs_by_internal_id)) {
             set_command_failed_response("ENOPARENT", "Put command refers to a parent image with id: %u that has no placements", g->parent_id);
             return g->id;
         }
-        ImageRef *parent_ref = parent->refs;
+        ImageRef *parent_ref = vt_first(&parent->refs_by_internal_id).data->val;
         if (g->parent_placement_id) {
             parent_ref = ref_by_client_id(parent, g->parent_placement_id);
             if (!parent_ref) {
@@ -1069,7 +1057,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     }
     ImageRef *ref = NULL;
     if (g->placement_id && img->client_id) {
-        for (ImageRef *r = img->refs; r != NULL; r = r->hh.next) {
+        iter_refs(img) { ImageRef *r = i.data->val;
             if (r->client_id == g->placement_id) {
                 ref = r;
                 if (parent_id && parent_id == img->internal_id && parent_placement_id && parent_placement_id == r->internal_id) {
@@ -1151,20 +1139,19 @@ static bool
 resolve_cell_ref(const Image *img, id_type virt_ref_id, int32_t *start_row, int32_t *start_column) {
     *start_row = 0; *start_column = 0;
     bool found = false;
-    for (ImageRef *ref = img->refs; ref != NULL; ref = ref->hh.next) {
+    iter_refs((Image*)img) { ImageRef *ref = i.data->val;
         if (ref->virtual_ref_id == virt_ref_id) {
             if (!found || ref->start_row < *start_row) *start_row = ref->start_row;
             if (!found || ref->start_column < *start_column) *start_column = ref->start_column;
             found = true;
-
         }
     }
     return found;
 }
 
 static bool
-resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t *start_row, int32_t *start_column, bool *is_virtual_ref) {
-    *start_row = 0; *start_column = 0;
+resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t *start_row, int32_t *start_column, bool *has_virtual_ancestor) {
+    *start_row = 0; *start_column = 0; *has_virtual_ancestor = false;
     int32_t x = 0, y = 0;
     unsigned depth = 0;
     ImageRef cell_ref = {0};
@@ -1175,7 +1162,7 @@ resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t 
         ImageRef *parent = ref_by_internal_id(img, ref->parent.ref);
         if (!parent) return false;
         if (parent->is_virtual_ref) {
-            *is_virtual_ref = true;
+            *has_virtual_ancestor = true;
             if (!resolve_cell_ref(img, parent->internal_id, &cell_ref.start_row, &cell_ref.start_column)) return false;
             parent = &cell_ref;
         }
@@ -1199,7 +1186,6 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     self->num_of_below_refs = 0;
     self->num_of_negative_refs = 0;
     self->num_of_positive_refs = 0;
-    Image *img, *tmpimg; ImageRef *ref, *tmpref;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
     float screen_bottom = screen_top - screen_height;
@@ -1210,21 +1196,22 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     // Iterate over all visible refs and create render data
     self->render_data.count = 0;
 
-    HASH_ITER(hh, self->images, img, tmpimg) {
-        bool was_drawn = img->is_drawn;
-        bool ref_removed = false;
+    for (image_map_itr imgitr = vt_first(&self->images_by_internal_id); !vt_is_end(imgitr); ) {
+        Image *img = imgitr.data->val;
+        bool was_drawn = img->is_drawn, ref_removed = false;
         img->is_drawn = false;
 
-        HASH_ITER(hh, img->refs, ref, tmpref) {
-            if (ref->is_virtual_ref) continue;
+        for (ref_map_itr refitr = vt_first(&img->refs_by_internal_id); !vt_is_end(refitr); ) {
+            ImageRef *ref = refitr.data->val;
+            if (ref->is_virtual_ref) { refitr = vt_next(refitr); continue; }
             int32_t start_row = ref->start_row, start_column = ref->start_column;
             if (ref->parent.img) {
-                bool is_virtual_ref;
-                if (!resolve_parent_offset(self, ref, &start_row, &start_column, &is_virtual_ref)) {
-                    if (!is_virtual_ref) {
-                        remove_ref(img, ref);
+                bool has_virtual_ancestor;
+                if (!resolve_parent_offset(self, ref, &start_row, &start_column, &has_virtual_ancestor)) {
+                    if (!has_virtual_ancestor) {
+                        refitr = remove_ref_itr(img, refitr);
                         ref_removed = true;
-                    }
+                    } else refitr = vt_next(refitr);
                     continue;
                 }
             }
@@ -1248,7 +1235,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
                 r.bottom = r.top - (float)((height_px / screen_height_px) * screen_height);
             }
 
-            if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
+            if (r.top <= screen_bottom || r.bottom >= screen_top) { refitr = vt_next(refitr); continue; }  // not visible
 
             if (ref->z_index < ((int32_t)INT32_MIN/2))
                 self->num_of_below_refs++;
@@ -1264,19 +1251,22 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
             rd->z_index = ref->z_index; rd->image_id = img->internal_id; rd->ref_id = ref->internal_id;
             rd->texture_id = texture_id_for_img(img);
             img->is_drawn = true;
+            refitr = vt_next(refitr);
         }
-        if (ref_removed && !img->refs) {
-            remove_image(self, img);
+        if (ref_removed && !vt_size(&img->refs_by_internal_id)) {
+            imgitr = remove_image_itr(self, imgitr);
             continue;
         }
         if (img->is_drawn && !was_drawn && img->animation_state != ANIMATION_STOPPED && img->extra_framecnt && img->animation_duration) {
             self->has_images_needing_animation = true;
             global_state.check_for_active_animated_images = true;
         }
+        imgitr = vt_next(imgitr);
     }
     if (!self->render_data.count) return false;
-    // Sort visible refs in draw order (z-index, img)
-#define lt(a, b) ( (a)->z_index < (b)->z_index || ((a)->z_index == (b)->z_index && (a)->image_id < (b)->image_id) )
+    // Sort visible refs in draw order (z-index, img, ref)
+#define lt(a, b) ( (a)->z_index < (b)->z_index || ((a)->z_index == (b)->z_index && ( \
+                (a)->image_id < (b)->image_id || ((a)->image_id == (b)->image_id && a->ref_id < b->ref_id))) )
     QSORT(ImageRenderData, self->render_data.item, self->render_data.count, lt);
 #undef lt
     // Calculate the group counts
@@ -1765,7 +1755,7 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
     if (!self->has_images_needing_animation) return dirtied;
     self->has_images_needing_animation = false;
     self->context_made_current_for_this_command = os_window_context_set;
-    for (Image *img = self->images; img != NULL; img = img->hh.next) {
+    iter_images(self) { Image *img = i.data->val;
         if (image_is_animatable(img)) {
             Frame *f = current_frame(img);
             if (f) {
@@ -1864,28 +1854,33 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
 
 // Image lifetime/scrolling {{{
 
+static ref_map_itr
+remove_ref_itr(Image *img, ref_map_itr x) {
+    free(x.data->val);
+    return vt_erase_itr(&img->refs_by_internal_id, x);
+}
+
+
 static void
 remove_ref(Image *img, ImageRef *ref) {
-    HASH_DEL(img->refs, ref);
-    free(ref);
+    ref_map_itr i = vt_get(&img->refs_by_internal_id, ref->internal_id);
+    if (vt_is_end(i)) return;
+    remove_ref_itr(img, i);
 }
 
 static void
 filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(const ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell, bool only_first_image) {
     bool matched = false;
-    Image *img, *tmp;
-    HASH_ITER(hh, self->images, img, tmp) {
-        if (img->refs) {
-            ImageRef *ref, *tmp;
-            HASH_ITER(hh, img->refs, ref, tmp) {
-                if (filter_func(ref, img, data, cell)) {
-                    remove_ref(img, ref);
-                    self->layers_dirty = true;
-                    matched = true;
-                }
-            }
+    for (image_map_itr ii = vt_first(&self->images_by_internal_id); !vt_is_end(ii); ) { Image *img = ii.data->val;
+        for (ref_map_itr ri = vt_first(&img->refs_by_internal_id); !vt_is_end(ri); ) { ImageRef *ref = ri.data->val;
+            if (filter_func(ref, img, data, cell)) {
+                ri = remove_ref_itr(img, ri);
+                self->layers_dirty = true;
+                matched = true;
+            } else ri = vt_next(ri);
         }
-        if (!img->refs && (free_images || img->client_id == 0)) remove_image(self, img);
+        if (!vt_size(&img->refs_by_internal_id) && (free_images || img->client_id == 0)) ii = remove_image_itr(self, ii);
+        else ii = vt_next(ii);
         if (only_first_image && matched) break;
     }
 }
@@ -1893,19 +1888,16 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
 
 static void
 modify_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
-    Image *img, *tmp;
-    HASH_ITER(hh, self->images, img, tmp) {
-        if (img->refs) {
-            ImageRef *ref, *tmp;
-            HASH_ITER(hh, img->refs, ref, tmp) {
-                if (filter_func(ref, img, data, cell)) remove_ref(img, ref);
-            }
+    for (image_map_itr ii = vt_first(&self->images_by_internal_id); !vt_is_end(ii); ) { Image *img = ii.data->val;
+        for (ref_map_itr ri = vt_first(&img->refs_by_internal_id); !vt_is_end(ri); ) { ImageRef *ref = ri.data->val;
+            if (filter_func(ref, img, data, cell)) ri = remove_ref_itr(img, ri);
+            else ri = vt_next(ri);
         }
-        if (!img->refs && img->client_id == 0 && img->client_number == 0) {
+        if (!vt_size(&img->refs_by_internal_id) && img->client_id == 0 && img->client_number == 0) {
             // references have all scrolled off the history buffer and the image has no way to reference it
             // to create new references so remove it.
-            remove_image(self, img);
-        }
+            ii = remove_image_itr(self, ii);
+        } else ii = vt_next(ii);
     }
 }
 
@@ -1962,7 +1954,7 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data, CellPixe
 
 void
 grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize cell) {
-    if (self->images) {
+    if (vt_size(&self->images_by_internal_id)) {
         self->layers_dirty = true;
         modify_refs(self, data, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
     }
@@ -2116,7 +2108,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 #undef D
 #undef I
     }
-    if (!self->images && self->render_data.count) self->render_data.count = 0;
+    if (!vt_size(&self->images_by_internal_id) && self->render_data.count) self->render_data.count = 0;
 }
 
 // }}}
@@ -2127,8 +2119,8 @@ grman_resize(GraphicsManager *self, index_type old_lines UNUSED, index_type line
     self->layers_dirty = true;
     if (columns == old_columns && num_content_lines_before > num_content_lines_after) {
         const unsigned int vertical_shrink_size = num_content_lines_before - num_content_lines_after;
-        for (img = self->images; img != NULL; img = img->hh.next) {
-            for (ref = img->refs; ref != NULL; ref = ref->hh.next) {
+        iter_images(self) { img = i.data->val;
+            iter_refs(img) { ref = i.data->val;
                 if (ref->is_virtual_ref || is_cell_image(ref)) continue;
                 ref->start_row -= vertical_shrink_size;
             }
@@ -2140,8 +2132,8 @@ void
 grman_rescale(GraphicsManager *self, CellPixelSize cell) {
     ImageRef *ref; Image *img;
     self->layers_dirty = true;
-    for (img = self->images; img != NULL; img = img->hh.next) {
-        for (ref = img->refs; ref != NULL; ref = ref->hh.next) {
+    iter_images(self) { img = i.data->val;
+        iter_refs(img) { ref = i.data->val;
             if (ref->is_virtual_ref || is_cell_image(ref)) continue;
             ref->cell_x_offset = MIN(ref->cell_x_offset, cell.width - 1);
             ref->cell_y_offset = MIN(ref->cell_y_offset, cell.height - 1);
@@ -2272,7 +2264,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
     if (!cfd.buf) { PyErr_SetString(PyExc_RuntimeError, "Failed to get data for root frame"); return NULL; }
     PyObject *ans = Py_BuildValue("{sI sI sI sI sI sI sI " "sO sI sO " "sI sI sI " "sI sy# sN}",
         "texture_id", texture_id_for_img(img), U(client_id), U(width), U(height), U(internal_id),
-        "refs.count", (unsigned int)HASH_COUNT(img->refs), U(client_number),
+        "refs.count", (unsigned int)vt_size(&img->refs_by_internal_id), U(client_number),
 
         B(root_frame_data_loaded), U(animation_state), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
 
@@ -2356,9 +2348,9 @@ static PyMethodDef methods[] = {
 
 static PyObject*
 get_image_count(GraphicsManager *self, void* closure UNUSED) {
-    unsigned long ans = HASH_COUNT(self->images);
-    return PyLong_FromUnsignedLong(ans);
+    return PyLong_FromSize_t(vt_size(&self->images_by_internal_id));
 }
+
 static PyGetSetDef getsets[] = {
     {"image_count", (getter)get_image_count, NULL, NULL, NULL},
     {NULL},
