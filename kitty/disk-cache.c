@@ -122,7 +122,10 @@ open_cache_file(const char *cache_path) {
 
 static off_t
 size_of_cache_file(DiskCache *self) {
-    return lseek(self->cache_file_fd, 0, SEEK_END);
+    off_t pos = lseek(self->cache_file_fd, 0, SEEK_CUR);
+    off_t ans = lseek(self->cache_file_fd, 0, SEEK_END);
+    lseek(self->cache_file_fd, pos, SEEK_SET);
+    return ans;
 }
 
 size_t
