@@ -12,7 +12,6 @@
 #include "emoji.h"
 #include "unicode-data.h"
 #include "glyph-cache.h"
-#include "kitty-uthash.h"
 
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
@@ -67,11 +66,12 @@ typedef struct Canvas {
     unsigned current_cells, alloced_cells;
 } Canvas;
 
-typedef struct fallback_font_map {
-    const char *cell_text;
-    size_t font_idx;
-    UT_hash_handle hh;
-} fallback_font_map_t;
+#define NAME fallback_font_map_t
+#define KEY_TY const char*
+#define VAL_TY size_t
+static void free_const(const void* x) { free((void*)x); }
+#define KEY_DTOR_FN free_const
+#include "kitty-verstable.h"
 
 typedef struct {
     FONTS_DATA_HEAD
@@ -82,7 +82,7 @@ typedef struct {
     Font *fonts;
     Canvas canvas;
     GPUSpriteTracker sprite_tracker;
-    fallback_font_map_t *fallback_font_map;
+    fallback_font_map_t fallback_font_map;
 } FontGroup;
 
 static FontGroup* font_groups = NULL;
@@ -153,15 +153,7 @@ static void
 del_font_group(FontGroup *fg) {
     free(fg->canvas.buf); fg->canvas.buf = NULL; fg->canvas = (Canvas){0};
     fg->sprite_map = free_sprite_map(fg->sprite_map);
-    if (fg->fallback_font_map) {
-        fallback_font_map_t *current, *tmp;
-        HASH_ITER(hh, fg->fallback_font_map, current, tmp) {
-            free((void*)current->cell_text);
-            HASH_DEL(fg->fallback_font_map, current);
-            free(current);
-        }
-        fg->fallback_font_map = NULL;
-    }
+    vt_cleanup(&fg->fallback_font_map);
     for (size_t i = 0; i < fg->fonts_count; i++) del_font(fg->fonts + i);
     free(fg->fonts); fg->fonts = NULL; fg->fonts_count = 0;
 }
@@ -569,21 +561,11 @@ fallback_font(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     if (bold) style += italic ? 3 : 2; else style += italic ? 1 : 0;
     char cell_text[8 + arraysz(cpu_cell->cc_idx) * 4] = {style};
     const size_t cell_text_len = 1 + cell_as_utf8(cpu_cell, true, cell_text + 1, ' ');
-    if (fg->fallback_font_map) {
-        fallback_font_map_t *s;
-        HASH_FIND_STR(fg->fallback_font_map, cell_text, s);
-        /* printf("cache %s\n", (s ? "hit" : "miss")); */
-        if (s) return s->font_idx;
-    }
+    fallback_font_map_t_itr fi = vt_get(&fg->fallback_font_map, cell_text);
+    if (!vt_is_end(fi)) return fi.data->val;
     ssize_t idx = load_fallback_font(fg, cpu_cell, bold, italic, emoji_presentation);
-    fallback_font_map_t *ffm = calloc(1, sizeof(fallback_font_map_t));
-    if (ffm) {
-        ffm->font_idx = idx;
-        ffm->cell_text = strndup(cell_text, cell_text_len);
-        if (ffm->cell_text) {
-            HASH_ADD_KEYPTR(hh, fg->fallback_font_map, ffm->cell_text, cell_text_len, ffm);
-        }
-    }
+    const char *alloced_key = strndup(cell_text, cell_text_len);
+    if (alloced_key) vt_insert(&fg->fallback_font_map, alloced_key, idx);
     return idx;
 }
 
@@ -1543,6 +1525,7 @@ initialize_font_group(FontGroup *fg) {
     fg->fonts_count = 1;  // the 0 index font is the box font
     fg->fonts[0].sprite_position_hash_table = create_sprite_position_hash_table();
     if (!init_hash_tables(fg->fonts)) fatal("Out of memory");
+    vt_init(&fg->fallback_font_map);
 #define I(attr)  if (descriptor_indices.attr) fg->attr##_font_idx = initialize_font(fg, descriptor_indices.attr, #attr); else fg->attr##_font_idx = -1;
     fg->medium_font_idx = initialize_font(fg, 0, "medium");
     I(bold); I(italic); I(bi);
@@ -1805,9 +1788,10 @@ parsed_font_feature_cmp(PyObject *self, PyObject *other, int op) {
 static Py_hash_t
 parsed_font_feature_hash(PyObject *s) {
     ParsedFontFeature *self = (ParsedFontFeature*)s;
-    if (self->hash_computed) return self->hashval;
-    self->hash_computed = true;
-    HASH_FUNCTION(&self->feature, sizeof(hb_feature_t), self->hashval);
+    if (!self->hash_computed) {
+        self->hash_computed = true;
+        self->hashval = vt_hash_bytes(&self->feature, sizeof(hb_feature_t));
+    }
     return self->hashval;
 }
 
