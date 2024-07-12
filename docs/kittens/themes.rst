@@ -42,6 +42,16 @@ existing color settings in :file:`kitty.conf` so they do not interfere.
 
 Once that's done, the kitten sends kitty a signal to make it reload its config.
 
+
+.. note::
+
+   If you want to have some color settings in your :file:`kitty.conf` that the
+   theme kitten does not override, move them into a separate conf file and
+   ``include`` it into kitty.conf. The include should be places after the
+   inclusion of :file:`current-theme.conf` so that the settings in it override
+   conflicting settings from :file:`current-theme.conf`.
+
+
 Using your own themes
 -----------------------
 
