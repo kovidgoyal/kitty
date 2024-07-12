@@ -90,6 +90,8 @@ Detailed list of changes
 
 - Wayland: Fix an issue with mouse selections not being stopped when there are multiple OS windows (:iss:`7381`)
 
+- Splits layout: Fix the ``move_to_screen_edge`` action breaking when only a single window is present (:iss:`7621`)
+
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

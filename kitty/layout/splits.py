@@ -601,21 +601,27 @@ class Splits(Layout):
                         pair.one, pair.two = pair.two, pair.one
                     return True
         elif action_name == 'move_to_screen_edge':
-            args = args or ('left',)
-            which = args[0]
-            horizontal = which in ('left', 'right')
-            wg = all_windows.active_group
-            if wg is not None:
-                self.remove_windows(wg.id)
-                new_root = Pair(horizontal)
-                if which in ('left', 'top'):
-                    new_root.balanced_add(wg.id)
-                    new_root.two = self.pairs_root
-                else:
-                    new_root.one = self.pairs_root
-                    new_root.two = wg.id
-                self.pairs_root = new_root
-                return True
+            count = 0
+            for wid in self.pairs_root.all_window_ids():
+                count += 1
+                if count > 1:
+                    break
+            if count > 1:
+                args = args or ('left',)
+                which = args[0]
+                horizontal = which in ('left', 'right')
+                wg = all_windows.active_group
+                if wg is not None:
+                    self.remove_windows(wg.id)
+                    new_root = Pair(horizontal)
+                    if which in ('left', 'top'):
+                        new_root.balanced_add(wg.id)
+                        new_root.two = self.pairs_root
+                    else:
+                        new_root.one = self.pairs_root
+                        new_root.two = wg.id
+                    self.pairs_root = new_root
+                    return True
 
         return None
 
