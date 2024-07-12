@@ -775,9 +775,9 @@ VT_API_FN_QUALIFIERS bool VT_CAT( NAME, _init_clone )(
   #endif
 );
 
-VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _size )( NAME * );
+VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _size )( const NAME * );
 
-VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _bucket_count )( NAME * );
+VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _bucket_count )( const NAME * );
 
 VT_API_FN_QUALIFIERS bool VT_CAT( NAME, _is_end )( VT_CAT( NAME, _itr ) );
 
@@ -983,12 +983,12 @@ VT_API_FN_QUALIFIERS bool VT_CAT( NAME, _init_clone )(
   return true;
 }
 
-VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _size )( NAME *table )
+VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _size )( const NAME *table )
 {
   return table->key_count;
 }
 
-VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _bucket_count )( NAME *table )
+VT_API_FN_QUALIFIERS size_t VT_CAT( NAME, _bucket_count )( const NAME *table )
 {
   // If the bucket count is zero, buckets_mask will be zero, not the bucket count minus one.
   // We account for this special case by adding (bool)buckets_mask rather than one.
