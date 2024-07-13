@@ -119,7 +119,7 @@ _screen_garbage_collect_hyperlink_pool(Screen *screen, bool preserve_hyperlinks_
     vt_cleanup(&pool->map); vt_cleanup(&pool->idmap);
     remap_hyperlink_ids(screen, preserve_hyperlinks_in_history, &map, &clone);
     for (hyperlink_id_map_itr i = vt_first(&clone); !vt_is_end(i); i = vt_next(i)) free((char*)i.data->val);
-    vt_clear(&map); vt_clear(&clone);
+    vt_cleanup(&map); vt_cleanup(&clone);
 }
 void
 screen_garbage_collect_hyperlink_pool(Screen *screen) { _screen_garbage_collect_hyperlink_pool(screen, true); }

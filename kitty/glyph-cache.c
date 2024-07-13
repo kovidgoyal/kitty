@@ -120,6 +120,6 @@ void
 free_glyph_properties_hash_table(GLYPH_PROPERTIES_MAP_HANDLE *map_) {
     glyph_props_map **mapref = (glyph_props_map**)map_;
     if (*mapref) {
-        vt_clear(*mapref); free(*mapref); *mapref = NULL;
+        vt_cleanup(*mapref); free(*mapref); *mapref = NULL;
     }
 }
