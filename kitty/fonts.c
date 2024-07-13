@@ -1523,7 +1523,6 @@ initialize_font_group(FontGroup *fg) {
     fg->fonts = calloc(fg->fonts_capacity, sizeof(Font));
     if (fg->fonts == NULL) fatal("Out of memory allocating fonts array");
     fg->fonts_count = 1;  // the 0 index font is the box font
-    fg->fonts[0].sprite_position_hash_table = create_sprite_position_hash_table();
     if (!init_hash_tables(fg->fonts)) fatal("Out of memory");
     vt_init(&fg->fallback_font_map);
 #define I(attr)  if (descriptor_indices.attr) fg->attr##_font_idx = initialize_font(fg, descriptor_indices.attr, #attr); else fg->attr##_font_idx = -1;
