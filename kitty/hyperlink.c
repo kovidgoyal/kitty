@@ -26,14 +26,14 @@
 typedef struct {
     hyperlink_map map;
     hyperlink_id_map idmap;
-    hyperlink_id_type max_link_id;
+    hyperlink_id_type max_link_id, adds_since_last_gc;
 } HyperLinkPool;
 
 static void
 clear_pool(HyperLinkPool *pool) {
     for (hyperlink_map_itr i = vt_first(&pool->map); !vt_is_end(i); i = vt_next(i)) free((char*)i.data->key);
     vt_cleanup(&pool->map); vt_cleanup(&pool->idmap);
-    pool->max_link_id = 0;
+    pool->max_link_id = 0; pool->adds_since_last_gc = 0;
 }
 
 HYPERLINK_POOL_HANDLE
@@ -111,6 +111,7 @@ static void
 _screen_garbage_collect_hyperlink_pool(Screen *screen, bool preserve_hyperlinks_in_history) {
     HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
     if (!pool->max_link_id) return;
+    pool->adds_since_last_gc = 0;
     pool->max_link_id = 0;
     id_id_map map = {0};
     vt_init(&map);
@@ -151,6 +152,9 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     const char *skey = dupstr(key, keylen);
     if (vt_is_end(vt_insert(&pool->map, skey, new_id))) fatal("Out of memory");
     if (vt_is_end(vt_insert(&pool->idmap, new_id, skey))) fatal("Out of memory");
+    // If there have been a lot of hyperlink adds do a garbage collect so as
+    // not to leak too much memory over unused hyperlinks
+    if (++pool->adds_since_last_gc > 8192) screen_garbage_collect_hyperlink_pool(screen);
     return new_id;
 }
 
