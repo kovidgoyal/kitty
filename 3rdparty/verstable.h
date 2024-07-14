@@ -1757,12 +1757,12 @@ static inline bool VT_CAT( vt_init_clone_, VT_TEMPLATE_COUNT )(
   );
 }
 
-static inline size_t VT_CAT( vt_size_, VT_TEMPLATE_COUNT )( NAME *table )
+static inline size_t VT_CAT( vt_size_, VT_TEMPLATE_COUNT )( const NAME *table )
 {
   return VT_CAT( NAME, _size )( table );
 }
 
-static inline size_t VT_CAT( vt_bucket_count_, VT_TEMPLATE_COUNT )( NAME *table )
+static inline size_t VT_CAT( vt_bucket_count_, VT_TEMPLATE_COUNT )( const NAME *table )
 {
   return VT_CAT( NAME, _bucket_count )( table );
 }
