@@ -107,6 +107,7 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         }
         self->vt_parser = alloc_vt_parser(window_id);
         if (self->vt_parser == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
+        self->text_cache = tc_alloc(); if (!self->text_cache) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->reload_all_gpu_data = true;
         self->cell_size.width = cell_width; self->cell_size.height = cell_height;
         self->columns = columns; self->lines = lines;
@@ -125,9 +126,9 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->test_child = test_child; Py_INCREF(test_child);
         self->cursor = alloc_cursor();
         self->color_profile = alloc_color_profile();
-        self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
+        self->main_linebuf = alloc_linebuf(lines, columns, self->text_cache); self->alt_linebuf = alloc_linebuf(lines, columns, self->text_cache);
         self->linebuf = self->main_linebuf;
-        self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size));
+        self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size), self->text_cache);
         self->main_grman = grman_alloc(false);
         self->alt_grman = grman_alloc(false);
         self->active_hyperlink_id = 0;
@@ -214,7 +215,7 @@ screen_dirty_sprite_positions(Screen *self) {
 
 static HistoryBuf*
 realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns, ANSIBuf *as_ansi_buf) {
-    HistoryBuf *ans = alloc_historybuf(lines, columns, 0);
+    HistoryBuf *ans = alloc_historybuf(lines, columns, 0, old->text_cache);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->pagerhist = old->pagerhist; old->pagerhist = NULL;
     historybuf_rewrap(old, ans, as_ansi_buf);
@@ -232,7 +233,7 @@ typedef struct CursorTrack {
 
 static LineBuf*
 realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, CursorTrack *a, CursorTrack *b, ANSIBuf *as_ansi_buf) {
-    LineBuf *ans = alloc_linebuf(lines, columns);
+    LineBuf *ans = alloc_linebuf(lines, columns, old->text_cache);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     a->temp.x = a->before.x; a->temp.y = a->before.y;
     b->temp.x = b->before.x; b->temp.y = b->before.y;
@@ -398,7 +399,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     RAII_PyObject(prompt_copy, NULL);
     index_type num_of_prompt_lines = 0, num_of_prompt_lines_above_cursor = 0;
     if (is_main) {
-        prompt_copy = (PyObject*)alloc_linebuf(self->lines, self->columns);
+        prompt_copy = (PyObject*)alloc_linebuf(self->lines, self->columns, self->text_cache);
         num_of_prompt_lines = prevent_current_prompt_from_rewrapping(self, (LineBuf*)prompt_copy, &num_of_prompt_lines_above_cursor);
     }
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf);
@@ -500,6 +501,7 @@ static void
 dealloc(Screen* self) {
     pthread_mutex_destroy(&self->write_buf_lock);
     free_vt_parser(self->vt_parser); self->vt_parser = NULL;
+    self->text_cache = tc_decref(self->text_cache);
     Py_CLEAR(self->main_grman);
     Py_CLEAR(self->alt_grman);
     Py_CLEAR(self->last_reported_cwd);
@@ -2539,7 +2541,7 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     memcpy(&self->paused_rendering.color_profile, self->color_profile, sizeof(self->paused_rendering.color_profile));
     if (!self->paused_rendering.linebuf || self->paused_rendering.linebuf->xnum != self->columns || self->paused_rendering.linebuf->ynum != self->lines) {
         if (self->paused_rendering.linebuf) Py_CLEAR(self->paused_rendering.linebuf);
-        self->paused_rendering.linebuf = alloc_linebuf(self->lines, self->columns);
+        self->paused_rendering.linebuf = alloc_linebuf(self->lines, self->columns, self->text_cache);
         if (!self->paused_rendering.linebuf) { PyErr_Clear(); self->paused_rendering.expires_at = 0; return false; }
     }
     for (index_type y = 0; y < self->lines; y++) {

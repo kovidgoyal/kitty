@@ -114,7 +114,7 @@ pagerhist_clear(HistoryBuf *self) {
 }
 
 static HistoryBuf*
-create_historybuf(PyTypeObject *type, unsigned int xnum, unsigned int ynum, unsigned int pagerhist_sz) {
+create_historybuf(PyTypeObject *type, unsigned int xnum, unsigned int ynum, unsigned int pagerhist_sz, TextCache *tc) {
     if (xnum == 0 || ynum == 0) {
         PyErr_SetString(PyExc_ValueError, "Cannot create an empty history buffer");
         return NULL;
@@ -125,7 +125,8 @@ create_historybuf(PyTypeObject *type, unsigned int xnum, unsigned int ynum, unsi
         self->ynum = ynum;
         self->num_segments = 0;
         add_segment(self);
-        self->line = alloc_line();
+        self->text_cache = tc_incref(tc);
+        self->line = alloc_line(self->text_cache);
         self->line->xnum = xnum;
         self->pagerhist = alloc_pagerhist(pagerhist_sz);
     }
@@ -136,7 +137,10 @@ static PyObject *
 new_history_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     unsigned int xnum = 1, ynum = 1, pagerhist_sz = 0;
     if (!PyArg_ParseTuple(args, "II|I", &ynum, &xnum, &pagerhist_sz)) return NULL;
-    HistoryBuf *ans = create_historybuf(type, xnum, ynum, pagerhist_sz);
+    TextCache *tc = tc_alloc();
+    if (!tc) return PyErr_NoMemory();
+    HistoryBuf *ans = create_historybuf(type, xnum, ynum, pagerhist_sz, tc);
+    tc_decref(tc);
     return (PyObject*)ans;
 }
 
@@ -146,6 +150,7 @@ dealloc(HistoryBuf* self) {
     for (size_t i = 0; i < self->num_segments; i++) free_segment(self->segments + i);
     free(self->segments);
     free_pagerhist(self);
+    tc_decref(self->text_cache);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -574,8 +579,8 @@ PyTypeObject HistoryBuf_Type = {
 
 INIT_TYPE(HistoryBuf)
 
-HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned int pagerhist_sz) {
-    return create_historybuf(&HistoryBuf_Type, columns, lines, pagerhist_sz);
+HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned int pagerhist_sz, TextCache *tc) {
+    return create_historybuf(&HistoryBuf_Type, columns, lines, pagerhist_sz, tc);
 }
 // }}}
 

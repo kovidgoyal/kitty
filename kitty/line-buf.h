@@ -8,6 +8,7 @@
 #pragma once
 
 #include "line.h"
+#include "text-cache.h"
 
 typedef struct {
     PyObject_HEAD
@@ -17,7 +18,8 @@ typedef struct {
     index_type xnum, ynum, *line_map, *scratch;
     LineAttrs *line_attrs;
     Line *line;
+    TextCache *text_cache;
 } LineBuf;
 
 
-LineBuf* alloc_linebuf(unsigned int, unsigned int);
+LineBuf* alloc_linebuf(unsigned int, unsigned int, TextCache*);

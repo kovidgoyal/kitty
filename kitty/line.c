@@ -19,6 +19,7 @@ dealloc(Line* self) {
         PyMem_Free(self->cpu_cells);
         PyMem_Free(self->gpu_cells);
     }
+    tc_decref(self->text_cache);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -972,8 +973,10 @@ PyTypeObject Line_Type = {
     .tp_methods = methods,
 };
 
-Line *alloc_line(void) {
-    return (Line*)Line_Type.tp_alloc(&Line_Type, 0);
+Line *alloc_line(TextCache *tc) {
+    Line *ans = (Line*)Line_Type.tp_alloc(&Line_Type, 0);
+    if (ans) ans->text_cache = tc_incref(tc);
+    return ans;
 }
 
 RICHCMP(Line)

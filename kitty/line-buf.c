@@ -71,7 +71,7 @@ clear(LineBuf *self, PyObject *a UNUSED) {
 }
 
 LineBuf *
-alloc_linebuf_(PyTypeObject *cls, unsigned int lines, unsigned int columns) {
+alloc_linebuf_(PyTypeObject *cls, unsigned int lines, unsigned int columns, TextCache *text_cache) {
     if (columns > 5000 || lines > 50000) {
         PyErr_SetString(PyExc_ValueError, "Number of rows or columns is too large.");
         return NULL;
@@ -92,8 +92,9 @@ alloc_linebuf_(PyTypeObject *cls, unsigned int lines, unsigned int columns) {
         self->gpu_cell_buf = (GPUCell*)(self->cpu_cell_buf + area);
         self->line_map = (index_type*)(self->gpu_cell_buf + area);
         self->scratch = self->line_map + lines;
+        self->text_cache = tc_incref(text_cache);
+        self->line = alloc_line(self->text_cache);
         self->line_attrs = (LineAttrs*)(self->scratch + lines);
-        self->line = alloc_line();
         self->line->xnum = columns;
         for(index_type i = 0; i < lines; i++) {
             self->line_map[i] = i;
@@ -108,11 +109,16 @@ new_linebuf_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     unsigned int xnum = 1, ynum = 1;
 
     if (!PyArg_ParseTuple(args, "II", &ynum, &xnum)) return NULL;
-    return (PyObject*)alloc_linebuf_(type, ynum, xnum);
+    TextCache *tc = tc_alloc();
+    if (!tc) return PyErr_NoMemory();
+    PyObject *ans = (PyObject*)alloc_linebuf_(type, ynum, xnum, tc);
+    tc_decref(tc);
+    return ans;
 }
 
 static void
 dealloc(LineBuf* self) {
+    self->text_cache = tc_decref(self->text_cache);
     PyMem_Free(self->cpu_cell_buf);
     Py_CLEAR(self->line);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -249,7 +255,7 @@ allocate_line_storage(Line *line, bool initialize) {
 static PyObject*
 create_line_copy_inner(LineBuf* self, index_type y) {
     Line src, *line;
-    line = alloc_line();
+    line = alloc_line(self->text_cache);
     if (line == NULL) return PyErr_NoMemory();
     src.xnum = self->xnum; line->xnum = self->xnum;
     if (!allocate_line_storage(line, 0)) { Py_CLEAR(line); return PyErr_NoMemory(); }
@@ -631,4 +637,4 @@ rewrap(LineBuf *self, PyObject *args) {
 
 
 LineBuf *
-alloc_linebuf(unsigned int lines, unsigned int columns) { return alloc_linebuf_(&LineBuf_Type, lines, columns); }
+alloc_linebuf(unsigned int lines, unsigned int columns, TextCache *tc) { return alloc_linebuf_(&LineBuf_Type, lines, columns, tc); }

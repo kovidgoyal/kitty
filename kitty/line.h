@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "data-types.h"
+#include "text-cache.h"
 
 typedef struct {
     PyObject_HEAD
@@ -17,6 +17,7 @@ typedef struct {
     index_type xnum, ynum;
     bool needs_free;
     LineAttrs attrs;
+    TextCache *text_cache;
 } Line;
 
-Line* alloc_line(void);
+Line* alloc_line(TextCache *text_cache);

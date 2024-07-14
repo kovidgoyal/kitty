@@ -16,8 +16,9 @@ typedef struct {
     HistoryBufSegment *segments;
     PagerHistoryBuf *pagerhist;
     Line *line;
+    TextCache *text_cache;
     index_type start_of_data, count;
 } HistoryBuf;
 
 
-HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int);
+HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int, TextCache *tc);
