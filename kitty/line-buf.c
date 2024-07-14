@@ -70,47 +70,49 @@ clear(LineBuf *self, PyObject *a UNUSED) {
     Py_RETURN_NONE;
 }
 
-static PyObject *
-new_linebuf_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
-    LineBuf *self;
-    unsigned int xnum = 1, ynum = 1;
-
-    if (!PyArg_ParseTuple(args, "II", &ynum, &xnum)) return NULL;
-
-    if (xnum > 5000 || ynum > 50000) {
+LineBuf *
+alloc_linebuf_(PyTypeObject *cls, unsigned int lines, unsigned int columns) {
+    if (columns > 5000 || lines > 50000) {
         PyErr_SetString(PyExc_ValueError, "Number of rows or columns is too large.");
         return NULL;
     }
 
-    if (xnum * ynum == 0) {
+    const size_t area = columns * lines;
+    if (area == 0) {
         PyErr_SetString(PyExc_ValueError, "Cannot create an empty LineBuf");
         return NULL;
     }
 
-    self = (LineBuf *)type->tp_alloc(type, 0);
+    LineBuf *self = (LineBuf*)cls->tp_alloc(cls, 0);
     if (self != NULL) {
-        self->xnum = xnum;
-        self->ynum = ynum;
-        self->cpu_cell_buf = PyMem_Calloc(xnum * ynum, sizeof(CPUCell));
-        self->gpu_cell_buf = PyMem_Calloc(xnum * ynum, sizeof(GPUCell));
-        self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
-        self->scratch = PyMem_Calloc(ynum, sizeof(index_type));
-        self->line_attrs = PyMem_Calloc(ynum, sizeof(LineAttrs));
+        self->xnum = columns;
+        self->ynum = lines;
+        self->cpu_cell_buf = PyMem_Calloc(area, sizeof(CPUCell));
+        self->gpu_cell_buf = PyMem_Calloc(area, sizeof(GPUCell));
+        self->line_map = PyMem_Calloc(lines, sizeof(index_type));
+        self->scratch = PyMem_Calloc(lines, sizeof(index_type));
+        self->line_attrs = PyMem_Calloc(lines, sizeof(LineAttrs));
         self->line = alloc_line();
         if (self->cpu_cell_buf == NULL || self->gpu_cell_buf == NULL || self->line_map == NULL || self->scratch == NULL || self->line_attrs == NULL || self->line == NULL) {
-            PyErr_NoMemory();
-            PyMem_Free(self->cpu_cell_buf); PyMem_Free(self->gpu_cell_buf); PyMem_Free(self->line_map); PyMem_Free(self->line_attrs); Py_CLEAR(self->line);
             Py_CLEAR(self);
+            PyErr_NoMemory();
         } else {
-            self->line->xnum = xnum;
-            for(index_type i = 0; i < ynum; i++) {
+            self->line->xnum = columns;
+            for(index_type i = 0; i < lines; i++) {
                 self->line_map[i] = i;
                 if (BLANK_CHAR != 0) clear_chars_to(self, i, BLANK_CHAR);
             }
         }
     }
+    return self;
+}
 
-    return (PyObject*)self;
+static PyObject *
+new_linebuf_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+    unsigned int xnum = 1, ynum = 1;
+
+    if (!PyArg_ParseTuple(args, "II", &ynum, &xnum)) return NULL;
+    return (PyObject*)alloc_linebuf_(type, ynum, xnum);
 }
 
 static void
@@ -636,6 +638,6 @@ rewrap(LineBuf *self, PyObject *args) {
     return Py_BuildValue("II", nclb, ncla);
 }
 
-LineBuf *alloc_linebuf(unsigned int lines, unsigned int columns) {
-    return (LineBuf*)new_linebuf_object(&LineBuf_Type, Py_BuildValue("II", lines, columns), NULL);
-}
+
+LineBuf *
+alloc_linebuf(unsigned int lines, unsigned int columns) { return alloc_linebuf_(&LineBuf_Type, lines, columns); }
