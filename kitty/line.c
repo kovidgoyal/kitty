@@ -13,12 +13,6 @@
 
 extern PyTypeObject Cursor_Type;
 
-static PyObject *
-new_line_object(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
-    PyErr_SetString(PyExc_TypeError, "Line objects cannot be instantiated directly, create them using LineBuf.line()");
-    return NULL;
-}
-
 static void
 dealloc(Line* self) {
     if (self->needs_free) {
@@ -976,13 +970,10 @@ PyTypeObject Line_Type = {
     .tp_richcompare = richcmp,
     .tp_doc = "Lines",
     .tp_methods = methods,
-    .tp_new = new_line_object
 };
 
 Line *alloc_line(void) {
-    Line *ans = (Line*)PyType_GenericAlloc(&Line_Type, 0);
-    ans->needs_free = 0;
-    return ans;
+    return (Line*)Line_Type.tp_alloc(&Line_Type, 0);
 }
 
 RICHCMP(Line)
