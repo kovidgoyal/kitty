@@ -17,29 +17,36 @@
 #define VAL_TY hyperlink_id_type
 #include "kitty-verstable.h"
 
-#define NAME hyperlink_id_map
-#define KEY_TY hyperlink_id_type
-#define VAL_TY const char*
-#include "kitty-verstable.h"
-
+typedef const char* hyperlink;
+typedef struct HyperLinks {
+    hyperlink *items;
+    size_t count, capacity;
+} HyperLinks;
 
 typedef struct {
+    HyperLinks array;
     hyperlink_map map;
-    hyperlink_id_map idmap;
-    hyperlink_id_type max_link_id, adds_since_last_gc;
+    hyperlink_id_type adds_since_last_gc;
 } HyperLinkPool;
 
 static void
+free_hyperlink_items(HyperLinks array) { for (size_t i = 1; i < array.count; i++) free((void*)array.items[i]); }
+
+static void
 clear_pool(HyperLinkPool *pool) {
-    for (hyperlink_map_itr i = vt_first(&pool->map); !vt_is_end(i); i = vt_next(i)) free((char*)i.data->key);
-    vt_cleanup(&pool->map); vt_cleanup(&pool->idmap);
-    pool->max_link_id = 0; pool->adds_since_last_gc = 0;
+    if (pool->array.items) {
+        free_hyperlink_items(pool->array);
+        free(pool->array.items);
+    }
+    vt_cleanup(&pool->map);
+    zero_at_ptr(&(pool->array));
+    pool->adds_since_last_gc = 0;
 }
 
 HYPERLINK_POOL_HANDLE
 alloc_hyperlink_pool(void) {
     HyperLinkPool *ans = calloc(1, sizeof(HyperLinkPool));
-    if (ans) { vt_init(&ans->map); vt_init(&ans->idmap); }
+    if (ans) vt_init(&ans->map);
     return (HYPERLINK_POOL_HANDLE)ans;
 }
 
@@ -59,12 +66,6 @@ free_hyperlink_pool(HYPERLINK_POOL_HANDLE h) {
     }
 }
 
-#define NAME id_id_map
-#define KEY_TY hyperlink_id_type
-#define VAL_TY hyperlink_id_type
-#include "kitty-verstable.h"
-
-
 static const char*
 dupstr(const char *src, size_t len) {
     char *ans = malloc(len+1);
@@ -74,27 +75,21 @@ dupstr(const char *src, size_t len) {
 }
 
 static void
-process_cell(HyperLinkPool *pool, id_id_map *map, hyperlink_id_map *clone, CPUCell *c) {
+process_cell(HyperLinkPool *pool, hyperlink_id_type *map, HyperLinks clone, CPUCell *c) {
     if (!c->hyperlink_id) return;
-    id_id_map_itr n = vt_get(map, c->hyperlink_id);
-    hyperlink_id_type new_id;
-    if (vt_is_end(n)) {
-        hyperlink_id_map_itr i = vt_get(clone, c->hyperlink_id);
-        if (vt_is_end(i)) new_id = 0;
-        else {
-            new_id = ++pool->max_link_id;
-            if (vt_is_end(vt_insert(map, c->hyperlink_id, new_id))) fatal("Out of memory");
-            const char *key = i.data->val;
-            if (vt_is_end(vt_insert(&pool->map, key, new_id))) fatal("Out of memory");
-            if (vt_is_end(vt_insert(&pool->idmap, new_id, key))) fatal("Out of memory");
-            vt_erase_itr(clone, i);
-        }
-    } else new_id = n.data->val;
+    if (c->hyperlink_id >= clone.count) { c->hyperlink_id = 0; return; }
+    hyperlink_id_type new_id = map[c->hyperlink_id];
+    if (!new_id) {
+        new_id = pool->array.count++;
+        map[c->hyperlink_id] = new_id;
+        pool->array.items[new_id] = clone.items[c->hyperlink_id]; clone.items[c->hyperlink_id] = NULL;
+        if (vt_is_end(vt_insert(&pool->map, pool->array.items[new_id], new_id))) fatal("Out of memory");
+    }
     c->hyperlink_id = new_id;
 }
 
 static void
-remap_hyperlink_ids(Screen *self, bool preserve_hyperlinks_in_history, id_id_map *map, hyperlink_id_map *clone) {
+remap_hyperlink_ids(Screen *self, bool preserve_hyperlinks_in_history, hyperlink_id_type *map, HyperLinks clone) {
     HyperLinkPool *pool = (HyperLinkPool*)self->hyperlink_pool;
     if (self->historybuf->count && preserve_hyperlinks_in_history) {
         for (index_type y = self->historybuf->count; y-- > 0;) {
@@ -110,18 +105,19 @@ remap_hyperlink_ids(Screen *self, bool preserve_hyperlinks_in_history, id_id_map
 static void
 _screen_garbage_collect_hyperlink_pool(Screen *screen, bool preserve_hyperlinks_in_history) {
     HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
-    if (!pool->max_link_id) return;
+    if (!pool->array.count) return;
     pool->adds_since_last_gc = 0;
-    pool->max_link_id = 0;
-    id_id_map map = {0};
-    vt_init(&map);
-    hyperlink_id_map clone = {0};
-    if (!vt_init_clone(&clone, &pool->idmap)) fatal("Out of memory");
-    vt_cleanup(&pool->map); vt_cleanup(&pool->idmap);
-    remap_hyperlink_ids(screen, preserve_hyperlinks_in_history, &map, &clone);
-    for (hyperlink_id_map_itr i = vt_first(&clone); !vt_is_end(i); i = vt_next(i)) free((char*)i.data->val);
-    vt_cleanup(&map); vt_cleanup(&clone);
+    RAII_ALLOC(hyperlink_id_type, map, calloc(pool->array.count, sizeof(hyperlink_id_type)));
+    RAII_ALLOC(void, buf, malloc(pool->array.count * sizeof(pool->array.items[0])));
+    if (!map || !buf) fatal("Out of memory");
+    HyperLinks clone = {.capacity=pool->array.count, .count=pool->array.count, .items=buf};
+    memcpy(buf, pool->array.items, pool->array.count * sizeof(pool->array.items[0]));
+    vt_cleanup(&pool->map);
+    pool->array.count = 1;  // First id must be 1
+    remap_hyperlink_ids(screen, preserve_hyperlinks_in_history, map, clone);
+    free_hyperlink_items(clone);
 }
+
 void
 screen_garbage_collect_hyperlink_pool(Screen *screen) { _screen_garbage_collect_hyperlink_pool(screen, true); }
 
@@ -137,21 +133,22 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     key[keylen] = 0;
     hyperlink_map_itr itr = vt_get(&pool->map, key);
     if (!vt_is_end(itr)) return itr.data->val;
-    if (pool->max_link_id >= HYPERLINK_MAX_NUMBER) {
+    if (pool->array.count >= HYPERLINK_MAX_NUMBER-1) {
         screen_garbage_collect_hyperlink_pool(screen);
-        if (pool->max_link_id >= HYPERLINK_MAX_NUMBER - 128) {
+        if (pool->array.count >= HYPERLINK_MAX_NUMBER - 128) {
             log_error("Too many hyperlinks, discarding hyperlinks in scrollback");
             _screen_garbage_collect_hyperlink_pool(screen, false);
-            if (pool->max_link_id >= HYPERLINK_MAX_NUMBER) {
+            if (pool->array.count >= HYPERLINK_MAX_NUMBER) {
                 log_error("Too many hyperlinks, discarding hyperlink: %s", key);
                 return 0;
             }
         }
     }
-    hyperlink_id_type new_id = ++pool->max_link_id;
-    const char *skey = dupstr(key, keylen);
-    if (vt_is_end(vt_insert(&pool->map, skey, new_id))) fatal("Out of memory");
-    if (vt_is_end(vt_insert(&pool->idmap, new_id, skey))) fatal("Out of memory");
+    if (!pool->array.count) pool->array.count = 1;  // First id must be 1
+    ensure_space_for(&(pool->array), items, hyperlink, pool->array.count + 1, capacity, 256, false);
+    hyperlink_id_type new_id = pool->array.count++;
+    pool->array.items[new_id] = dupstr(key, keylen);
+    if (vt_is_end(vt_insert(&pool->map, pool->array.items[new_id], new_id))) fatal("Out of memory");
     // If there have been a lot of hyperlink adds do a garbage collect so as
     // not to leak too much memory over unused hyperlinks
     if (++pool->adds_since_last_gc > 8192) screen_garbage_collect_hyperlink_pool(screen);
@@ -161,9 +158,8 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
 const char*
 get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE handle, hyperlink_id_type id, bool only_url) {
     HyperLinkPool *pool = (HyperLinkPool*)handle;
-    hyperlink_id_map_itr itr = vt_get(&pool->idmap, id);
-    if (vt_is_end(itr)) return NULL;
-    return only_url ? strstr(itr.data->val, ":") + 1 : itr.data->val;
+    if (id >= pool->array.count) return NULL;
+    return only_url ? strstr(pool->array.items[id], ":") + 1 : pool->array.items[id];
 }
 
 PyObject*
