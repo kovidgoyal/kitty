@@ -251,27 +251,6 @@ typedef union LineAttrs {
 } LineAttrs ;
 
 typedef struct {
-    PyObject_HEAD
-
-    GPUCell *gpu_cells;
-    CPUCell *cpu_cells;
-    index_type xnum, ynum;
-    bool needs_free;
-    LineAttrs attrs;
-} Line;
-
-
-typedef struct {
-    PyObject_HEAD
-
-    GPUCell *gpu_cell_buf;
-    CPUCell *cpu_cell_buf;
-    index_type xnum, ynum, *line_map, *scratch;
-    LineAttrs *line_attrs;
-    Line *line;
-} LineBuf;
-
-typedef struct {
     GPUCell *gpu_cells;
     CPUCell *cpu_cells;
     LineAttrs *line_attrs;
@@ -290,16 +269,6 @@ typedef struct {
     HYPERLINK_POOL_HANDLE hyperlink_pool;
     hyperlink_id_type active_hyperlink_id;
 } ANSIBuf;
-
-typedef struct {
-    PyObject_HEAD
-
-    index_type xnum, ynum, num_segments;
-    HistoryBufSegment *segments;
-    PagerHistoryBuf *pagerhist;
-    Line *line;
-    index_type start_of_data, count;
-} HistoryBuf;
 
 typedef struct {
     PyObject_HEAD
@@ -395,10 +364,7 @@ attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
 
 
 // Global functions
-Line* alloc_line(void);
 Cursor* alloc_cursor(void);
-LineBuf* alloc_linebuf(unsigned int, unsigned int);
-HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int);
 ColorProfile* alloc_color_profile(void);
 void copy_color_profile(ColorProfile*, ColorProfile*);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);

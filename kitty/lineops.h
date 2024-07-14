@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "data-types.h"
+#include "history.h"
+#include "line-buf.h"
 
 #define set_attribute_on_line(cells, which, val, xnum) { \
     for (index_type i__ = 0; i__ < xnum; i__++) cells[i__].attrs.which = val; }
