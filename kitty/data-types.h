@@ -224,6 +224,14 @@ typedef struct {
 } GPUCell;
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 
+typedef union CharOrIndex {
+    struct {
+        char_type ch_is_index: 1;
+        char_type ch: sizeof(char_type) - 1;
+    };
+    char_type val;
+} CharOrIndex;
+
 typedef struct {
     char_type ch;
     hyperlink_id_type hyperlink_id;
