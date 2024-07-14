@@ -5,7 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "data-types.h"
+#include "line.h"
 
 #include <structmember.h>
 

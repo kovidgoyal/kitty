@@ -13,6 +13,7 @@
 #endif
 
 #include "data-types.h"
+#include "line.h"
 #include "charsets.h"
 #include "base64.h"
 #include <sys/socket.h>

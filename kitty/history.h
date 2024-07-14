@@ -10,6 +10,19 @@
 #include "line.h"
 
 typedef struct {
+    GPUCell *gpu_cells;
+    CPUCell *cpu_cells;
+    LineAttrs *line_attrs;
+} HistoryBufSegment;
+
+typedef struct {
+    void *ringbuf;
+    size_t maximum_size;
+    bool rewrap_needed;
+} PagerHistoryBuf;
+
+
+typedef struct {
     PyObject_HEAD
 
     index_type xnum, ynum, num_segments;
