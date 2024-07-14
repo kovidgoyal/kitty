@@ -254,7 +254,8 @@ class TestGraphics(BaseTest):
             self.assertRaises(KeyError, dc.get, key_as_bytes(x))
             self.assertEqual(sz, dc.size_on_disk())
         self.assertEqual(sz, dc.size_on_disk())
-        for x in ('xy', 'C'*4, 'B'*6, 'A'*8):
+        # fill holes largest first to ensure small one doesnt go into large accidentally causing fragmentation
+        for x in reversed(('xy', 'C'*4, 'B'*6, 'A'*8)):
             add(x, x)
             self.assertTrue(dc.wait_for_write())
             self.assertEqual(sz, dc.size_on_disk())
