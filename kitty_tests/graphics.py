@@ -343,7 +343,7 @@ class TestGraphics(BaseTest):
 
         # test hole coalescing
         reset()
-        for i in range(1, 6):
+        for i in range(1, 8):
             self.assertIsNone(add(i, str(i)*i))
             dc.wait_for_write()
         remove(2)
