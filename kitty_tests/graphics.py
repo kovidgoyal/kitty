@@ -263,7 +263,7 @@ class TestGraphics(BaseTest):
             self.assertEqual(sz, dc.size_on_disk())
             self.assertEqual(holes, {x[1] for x in dc.holes()})
         self.assertEqual(sz, dc.size_on_disk())
-        # fill holes largest first to ensure small one doesnt go into large accidentally causing fragmentation
+        # fill holes largest first to ensure small one doesn't go into large accidentally causing fragmentation
         for i, x in enumerate(sorted(holes, reverse=True)):
             x = 'ABCDEFGH'[i] * x
             add(x, x)
@@ -340,6 +340,17 @@ class TestGraphics(BaseTest):
         sz += 10
         dc.wait_for_write()
         self.ae(sz, dc.size_on_disk())
+
+        # test hole coalescing
+        reset()
+        for i in range(1, 6):
+            self.assertIsNone(add(i, str(i)*i))
+            dc.wait_for_write()
+        remove(2)
+        remove(4)
+        self.assertEqual(dc.holes(), {(1, 2), (6, 4)})
+        remove(3)
+        self.assertEqual(dc.holes(), {(1, 9)})
 
     def test_suppressing_gr_command_responses(self):
         s, g, pl, sl = load_helpers(self)

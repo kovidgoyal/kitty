@@ -53,9 +53,22 @@ typedef struct Hole {
     off_t pos, size;
 } Hole;
 
+#define NAME hole_pos_map
+#define KEY_TY off_t
+#define VAL_TY off_t
+#include "kitty-verstable.h"
+
+typedef struct PosList { size_t count, capacity; off_t *positions; } PosList;
+#define NAME hole_size_map
+#define KEY_TY off_t
+#define VAL_TY PosList
+static void free_pos_list(PosList p) { free(p.positions); }
+#define VAL_DTOR_FN free_pos_list
+#include "kitty-verstable.h"
+
 typedef struct Holes {
-    Hole *items;
-    size_t capacity, count;
+    hole_pos_map pos_map, end_pos_map;
+    hole_size_map size_map;
     off_t largest_hole_size;
 } Holes;
 
@@ -151,6 +164,14 @@ keydup(CacheKey k) {
 }
 
 static void
+cleanup_holes(Holes *holes) {
+    vt_cleanup(&holes->size_map);
+    vt_cleanup(&holes->pos_map);
+    vt_cleanup(&holes->end_pos_map);
+    holes->largest_hole_size = 0;
+}
+
+static void
 defrag(DiskCache *self) {
     int new_cache_file = -1;
     RAII_ALLOC(DefragEntry, defrag_entries, NULL);
@@ -198,8 +219,7 @@ defrag(DiskCache *self) {
         e->new_offset = current_pos;
         current_pos += e->data_sz;
     }
-    self->holes.count = 0;
-    self->holes.largest_hole_size = 0;
+    cleanup_holes(&self->holes);
     ok = true;
 
 cleanup:
@@ -217,32 +237,68 @@ cleanup:
     if (new_cache_file > -1) safe_close(new_cache_file, __FILE__, __LINE__);
 }
 
+static void
+append_position(PosList *p, off_t pos) {
+    ensure_space_for(p, positions, off_t, p->count + 1, capacity, 8, false);
+    p->positions[p->count++] = pos;
+}
+
+static void
+add_hole_to_maps(Holes *holes, Hole h) {
+    if (vt_is_end(vt_insert(&holes->pos_map, h.pos, h.size))) fatal("Out of memory");
+    if (vt_is_end(vt_insert(&holes->end_pos_map, h.pos + h.size, h.size))) fatal("Out of memory");
+    hole_size_map_itr i = vt_get_or_insert(&holes->size_map, h.size, (PosList){0});
+    if (vt_is_end(i)) fatal("Out of memory");
+    append_position(&(i.data->val), h.pos);
+    holes->largest_hole_size = MAX(h.size, holes->largest_hole_size);
+}
+
+static void
+update_largest_hole_size(Holes *holes) {
+    holes->largest_hole_size = 0;
+    for (hole_size_map_itr i = vt_first(&holes->size_map); !vt_is_end(i); i = vt_next(i)) {
+        if (i.data->key > holes->largest_hole_size) holes->largest_hole_size = i.data->key;
+    }
+}
+
+static void
+remove_hole_from_maps_itr(Holes *holes, Hole h, hole_size_map_itr i, size_t pos_in_sizes_array) {
+    vt_erase(&holes->pos_map, h.pos); vt_erase(&holes->end_pos_map, h.pos + h.size);
+    if (i.data->val.count <= 1) {
+        vt_erase_itr(&holes->size_map, i);
+        if (h.size > holes->largest_hole_size) update_largest_hole_size(holes);
+    } else remove_i_from_array(i.data->val.positions, pos_in_sizes_array, i.data->val.count);
+}
+
+static void
+remove_hole_from_maps(Holes *holes, Hole h) {
+    hole_size_map_itr i = vt_get(&holes->size_map, h.size);
+    for (size_t x = 0; x < i.data->val.count; x++) {
+        if (i.data->val.positions[x] == h.pos) {
+            remove_hole_from_maps_itr(holes, h, vt_get(&holes->size_map, h.size), x);
+            return;
+        }
+    }
+}
+
 static bool
 find_hole_to_use(DiskCache *self, const off_t required_sz) {
     if (self->holes.largest_hole_size < required_sz) return false;
-    off_t largest_hole_size = 0;
-    bool found = false;
-    ssize_t remove_at = -1;
-    for (size_t i = 0; i < self->holes.count; i++) {
-        Hole *h = self->holes.items + i;
-        if (!found && h->size >= required_sz) {
-            found = true;
-            self->currently_writing.val.pos_in_cache_file = h->pos;
-            bool was_largest_hole = h->size == self->holes.largest_hole_size;
-            h->size -= required_sz;
-            h->pos += required_sz;
-            if (h->size <= self->small_hole_threshold) remove_at = i;
-            if (!was_largest_hole) {
-                if (remove_at < 0) return found;
-                largest_hole_size = self->holes.largest_hole_size;
-                break;
-            }
+    hole_size_map_itr i = vt_get(&self->holes.size_map, required_sz);
+    if (vt_is_end(i)) {
+        for (i = vt_first(&self->holes.size_map); !vt_is_end(i); i = vt_next(i)) {
+            if (i.data->key >= required_sz) break;
         }
-        if (h->size > largest_hole_size) largest_hole_size = h->size;
     }
-    self->holes.largest_hole_size = largest_hole_size;
-    if (remove_at > -1) remove_i_from_array(self->holes.items, (size_t)remove_at, self->holes.count);
-    return found;
+    if (vt_is_end(i)) return false;
+    Hole h = {.pos=i.data->val.positions[i.data->val.count-1], .size=i.data->key};
+    remove_hole_from_maps_itr(&self->holes, h, i, i.data->val.count-1);
+    self->currently_writing.val.pos_in_cache_file = h.pos;
+    if (required_sz < h.size) {
+        h.pos += required_sz; h.size -= required_sz;
+        if (h.size > self->small_hole_threshold) add_hole_to_maps(&self->holes, h);
+    }
+    return true;
 }
 
 static inline bool
@@ -252,25 +308,46 @@ needs_defrag(DiskCache *self) {
 }
 
 static void
-add_hole(DiskCache *self, off_t pos, off_t size) {
+add_hole(DiskCache *self, const off_t pos, const off_t size) {
     if (size <= self->small_hole_threshold) return;
-    Hole *h;
-    if (self->holes.count) {
-        // see if we can find a hole that ends where we start and merge
-        // look through the prev at most 128 holes for a match
-        h = &self->holes.items[self->holes.count-1];
-        for (size_t i = 0; i < MIN(self->holes.count, 128u); i++, h--) {
-            if (h->pos + h->size == pos) {
-                h->size += size;
-                self->holes.largest_hole_size = MAX(self->holes.largest_hole_size, h->size);
-                return;
+    if (vt_size(&self->holes.pos_map)) {
+        // See if we can find a neighboring hole to merge this hole into
+        // First look for a hole after us
+        off_t end_pos = pos + size;
+        hole_pos_map_itr i = vt_get(&self->holes.pos_map, end_pos);
+        Hole original_hole, new_hole;
+        bool found = false;
+        if (vt_is_end(i)) {
+            // Now look for a hole before us
+            i = vt_get(&self->holes.end_pos_map, pos);
+            if (!vt_is_end(i)) {
+                original_hole.pos = i.data->key - i.data->val; original_hole.size = i.data->val;
+                new_hole.pos = original_hole.pos; new_hole.size = original_hole.size + size;
+                found = true;
+            }
+        } else {
+            original_hole.pos = i.data->key; original_hole.size = i.data->val;
+            new_hole.pos = pos; new_hole.size = original_hole.size + size;
+            found = true;
+            // there could be a hole before us as well
+            i = vt_get(&self->holes.end_pos_map, pos);
+            if (!vt_is_end(i)) {
+                self->holes.largest_hole_size = MAX(self->holes.largest_hole_size, new_hole.size);
+                remove_hole_from_maps(&self->holes, original_hole);
+                original_hole.pos = i.data->key - i.data->val; original_hole.size = i.data->val;
+                new_hole.pos = original_hole.pos; new_hole.size += original_hole.size;
             }
         }
+        if (found) {
+            // prevent remove_hole_from_maps updating largest hole size
+            self->holes.largest_hole_size = MAX(self->holes.largest_hole_size, new_hole.size);
+            remove_hole_from_maps(&self->holes, original_hole);
+            add_hole_to_maps(&self->holes, new_hole);
+            return;
+        }
     }
-    ensure_space_for(&self->holes, items, Hole, self->holes.count + 16, capacity, 64, false);
-    h = &self->holes.items[self->holes.count++];
-    h->pos = pos; h->size = size;
-    self->holes.largest_hole_size = MAX(self->holes.largest_hole_size, h->size);
+    Hole h = {.pos=pos, .size=size };
+    add_hole_to_maps(&self->holes, h);
 }
 
 static void
@@ -442,7 +519,7 @@ ensure_state(DiskCache *self) {
             return false;
         }
     }
-    vt_init(&self->map);
+    vt_init(&self->map); vt_init(&self->holes.pos_map); vt_init(&self->holes.size_map); vt_init(&self->holes.end_pos_map);
     self->fully_initialized = true;
     return true;
 }
@@ -471,12 +548,11 @@ dealloc(DiskCache* self) {
         free_loop_data(&self->loop_data);
         self->loop_data_inited = false;
     }
-    vt_cleanup(&self->map);
+    vt_cleanup(&self->map); cleanup_holes(&self->holes);
     if (self->cache_file_fd > -1) {
         safe_close(self->cache_file_fd, __FILE__, __LINE__);
         self->cache_file_fd = -1;
     }
-    free(self->holes.items); zero_at_ptr(&self->holes);
     if (self->currently_writing.val.data) free(self->currently_writing.val.data);
     free(self->cache_dir); self->cache_dir = NULL;
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -554,9 +630,8 @@ clear_disk_cache(PyObject *self_) {
     if (!ensure_state(self)) return;
     mutex(lock);
     vt_cleanup(&self->map);
+    cleanup_holes(&self->holes);
     self->total_size = 0;
-    self->holes.count = 0;
-    self->holes.largest_hole_size = 0;
     if (self->cache_file_fd > -1) add_hole(self, 0, size_of_cache_file(self));
     mutex(unlock);
     wakeup_write_loop(self);
@@ -737,15 +812,15 @@ static PyObject*
 holes(PyObject *self_, PyObject *args UNUSED) {
     DiskCache *self = (DiskCache*)self_;
     mutex(lock);
-    RAII_PyObject(ans, PyTuple_New(self->holes.count));
+    RAII_PyObject(ans, PyFrozenSet_New(NULL));
     if (ans) {
-        for (size_t i = 0; i < self->holes.count; i++) {
-            PyObject *t = Py_BuildValue("LL", (long long)self->holes.items[i].pos, (long long)self->holes.items[i].size);
-            if (!t) return NULL;
-            PyTuple_SetItem(ans, i, t);
+        for (hole_pos_map_itr i = vt_first(&self->holes.pos_map); !vt_is_end(i); i = vt_next(i)) {
+            RAII_PyObject(t, Py_BuildValue("LL", (long long)i.data->key, (long long)i.data->val));
+            if (!t || PySet_Add(ans, t) != 0) break;
         }
     }
     mutex(unlock);
+    if (PyErr_Occurred()) return NULL;
     Py_INCREF(ans);
     return ans;
 }
