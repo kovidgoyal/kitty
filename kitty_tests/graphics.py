@@ -254,11 +254,15 @@ class TestGraphics(BaseTest):
             self.assertRaises(KeyError, dc.get, key_as_bytes(x))
             self.assertEqual(sz, dc.size_on_disk())
         self.assertEqual(sz, dc.size_on_disk())
+        holes = {2, 4, 6, 8}
+        self.assertEqual(holes, {x[1] for x in dc.holes()})
         # fill holes largest first to ensure small one doesnt go into large accidentally causing fragmentation
         for x in sorted(('xy', 'C'*4, 'B'*6, 'A'*8), key=len, reverse=True):
             add(x, x)
             self.assertTrue(dc.wait_for_write())
             check_data()
+            holes.discard(len(x))
+            self.assertEqual(holes, {x[1] for x in dc.holes()})
             self.assertEqual(sz, dc.size_on_disk(), f'Disk cache has unexpectedly grown from {sz} to {dc.size_on_disk} with data: {x!r}')
         check_data()
         dc.clear()

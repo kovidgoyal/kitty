@@ -733,6 +733,23 @@ clear(PyObject *self, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+holes(PyObject *self_, PyObject *args UNUSED) {
+    DiskCache *self = (DiskCache*)self_;
+    mutex(lock);
+    RAII_PyObject(ans, PyTuple_New(self->holes.count));
+    if (ans) {
+        for (size_t i = 0; i < self->holes.count; i++) {
+            PyObject *t = Py_BuildValue("LL", (long long)self->holes.items[i].pos, (long long)self->holes.items[i].size);
+            if (!t) return NULL;
+            PyTuple_SetItem(ans, i, t);
+        }
+    }
+    mutex(unlock);
+    Py_INCREF(ans);
+    return ans;
+}
+
 
 static PyObject*
 add(PyObject *self, PyObject *args) {
@@ -816,6 +833,7 @@ static PyMethodDef methods[] = {
     {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
     {"size_on_disk", size_on_disk, METH_NOARGS, NULL},
     {"clear", clear, METH_NOARGS, NULL},
+    {"holes", holes, METH_NOARGS, NULL},
 
     {NULL}  /* Sentinel */
 };
