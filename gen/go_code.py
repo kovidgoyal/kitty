@@ -324,13 +324,16 @@ class JSONField:
         self.required = False
         self.field, self.field_type = field_def.split('/', 1)
         self.field_type, self.special_parser = self.field_type.partition('=')[::2]
+        self.field_type, self.metadata = self.field_type.partition('-')[::2]
         if self.field.endswith('+'):
             self.required = True
             self.field = self.field[:-1]
         self.struct_field_name = self.field[0].upper() + self.field[1:]
+        self.omitempty = 'noomitempty' not in self.metadata
 
     def go_declaration(self) -> str:
-        return self.struct_field_name + ' ' + go_field_type(self.field_type) + f'`json:"{self.field},omitempty"`'
+        omitempty = ',omitempty' if self.omitempty else ''
+        return self.struct_field_name + ' ' + go_field_type(self.field_type) + f'`json:"{self.field}{omitempty}"`'
 
 
 def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> str:

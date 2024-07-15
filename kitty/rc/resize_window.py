@@ -13,7 +13,7 @@ class ResizeWindow(RemoteCommand):
     protocol_spec = __doc__ = '''
     match/str: Which window to resize
     self/bool: Boolean indicating whether to resize the window the command is run in
-    increment/int: Integer specifying the resize increment
+    increment/int-noomitempty: Integer specifying the resize increment
     axis/choices.horizontal.vertical.reset: One of :code:`horizontal, vertical` or :code:`reset`
     '''
 
