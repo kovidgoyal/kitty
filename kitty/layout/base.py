@@ -251,7 +251,7 @@ class Layout:
 
     def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
         idx = all_windows.group_idx_for_window(window_id)
-        if idx is None:
+        if idx is None or not increment:
             return False
         return self.apply_bias(idx, increment, all_windows, is_horizontal)
 
