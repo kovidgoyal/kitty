@@ -260,7 +260,8 @@ class TestGraphics(BaseTest):
             self.assertEqual(holes, {x[1] for x in dc.holes()})
         self.assertEqual(sz, dc.size_on_disk())
         # fill holes largest first to ensure small one doesnt go into large accidentally causing fragmentation
-        for x in sorted(('xy', 'C'*4, 'B'*6, 'A'*8), key=len, reverse=True):
+        for i, x in enumerate(sorted(holes, reverse=True)):
+            x = 'ABCDEFGH'[i] * x
             add(x, x)
             self.assertTrue(dc.wait_for_write())
             check_data()
