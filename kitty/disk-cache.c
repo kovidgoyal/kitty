@@ -219,12 +219,12 @@ defrag(DiskCache *self) {
         e->new_offset = current_pos;
         current_pos += e->data_sz;
     }
-    cleanup_holes(&self->holes);
     ok = true;
 
 cleanup:
     if (lock_released) mutex(lock);
     if (ok) {
+        cleanup_holes(&self->holes);
         safe_close(self->cache_file_fd, __FILE__, __LINE__);
         self->cache_file_fd = new_cache_file; new_cache_file = -1;
         for (size_t i = 0; i < num_entries_to_defrag; i++) {
