@@ -460,7 +460,7 @@ calc_cell_metrics(FontGroup *fg) {
 }
 
 static bool
-face_has_codepoint(const PyObject* face, char_type cp) {
+face_has_codepoint(const void* face, char_type cp) {
     return glyph_id_for_codepoint(face, cp) > 0;
 }
 
