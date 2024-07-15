@@ -248,14 +248,17 @@ class TestGraphics(BaseTest):
         check_data()
         sz = dc.size_on_disk()
         self.assertEqual(sz, sum(map(len, data.values())))
+        self.assertFalse(dc.holes())
+        holes = set()
         for x in (2, 4, 6, 8):
             remove(x)
+            holes.add(x)
             check_data()
             self.assertRaises(KeyError, dc.get, key_as_bytes(x))
+            self.assertTrue(dc.wait_for_write())
             self.assertEqual(sz, dc.size_on_disk())
+            self.assertEqual(holes, {x[1] for x in dc.holes()})
         self.assertEqual(sz, dc.size_on_disk())
-        holes = {2, 4, 6, 8}
-        self.assertEqual(holes, {x[1] for x in dc.holes()})
         # fill holes largest first to ensure small one doesnt go into large accidentally causing fragmentation
         for x in sorted(('xy', 'C'*4, 'B'*6, 'A'*8), key=len, reverse=True):
             add(x, x)
