@@ -240,8 +240,13 @@ class TestGraphics(BaseTest):
             dc.small_hole_threshold = small_hole_threshold
             data = {}
 
+        holes_to_create = 2, 4, 6, 8
         for i in range(25):
             self.assertIsNone(add(i, f'{i}' * i))
+            if i <= max(holes_to_create):
+                # We wait here to ensure data is written in order, otherwise the
+                # holes test below can fail
+                self.assertTrue(dc.wait_for_write())
 
         self.assertEqual(dc.total_size, sum(map(len, data.values())))
         self.assertTrue(dc.wait_for_write())
@@ -250,12 +255,11 @@ class TestGraphics(BaseTest):
         self.assertEqual(sz, sum(map(len, data.values())))
         self.assertFalse(dc.holes())
         holes = set()
-        for x in (2, 4, 6, 8):
+        for x in holes_to_create:
             remove(x)
             holes.add(x)
             check_data()
             self.assertRaises(KeyError, dc.get, key_as_bytes(x))
-            self.assertTrue(dc.wait_for_write())
             self.assertEqual(sz, dc.size_on_disk())
             self.assertEqual(holes, {x[1] for x in dc.holes()})
         self.assertEqual(sz, dc.size_on_disk())
