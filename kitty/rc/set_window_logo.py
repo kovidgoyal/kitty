@@ -11,6 +11,7 @@ from kitty.utils import is_png
 
 from .base import (
     MATCH_WINDOW_OPTION,
+    SUPPORTED_IMAGE_FORMATS,
     ArgsType,
     Boss,
     CmdGenerator,
@@ -39,10 +40,10 @@ class SetWindowLogo(RemoteCommand):
 
     short_desc = 'Set the window logo'
     desc = (
-        'Set the logo image for the specified windows. You must specify the path to a PNG image that'
+        'Set the logo image for the specified windows. You must specify the path to an image that'
         ' will be used as the logo. If you specify the special value :code:`none` then any existing logo will'
-        ' be removed.'
-    )
+        ' be removed. Supported image formats are: '
+    ) + ', '.join(SUPPORTED_IMAGE_FORMATS)
 
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --self

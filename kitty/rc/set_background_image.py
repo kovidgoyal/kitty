@@ -11,6 +11,7 @@ from kitty.utils import is_png
 
 from .base import (
     MATCH_WINDOW_OPTION,
+    SUPPORTED_IMAGE_FORMATS,
     ArgsType,
     Boss,
     CmdGenerator,
@@ -43,10 +44,10 @@ class SetBackgroundImage(RemoteCommand):
 
     short_desc = 'Set the background image'
     desc = (
-        'Set the background image for the specified OS windows. You must specify the path to a PNG image that'
+        'Set the background image for the specified OS windows. You must specify the path to an image that'
         ' will be used as the background. If you specify the special value :code:`none` then any existing image will'
-        ' be removed.'
-    )
+        ' be removed. Supported image formats are: '
+    ) + ', '.join(SUPPORTED_IMAGE_FORMATS)
     options_spec = f'''\
 --all -a
 type=bool-set

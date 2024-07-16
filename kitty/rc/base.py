@@ -82,6 +82,7 @@ PayloadGetType = PayloadGetter
 ArgsType = List[str]
 ImageCompletion = CompletionSpec.from_string('type:file group:"Images"')
 ImageCompletion.extensions = 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'tiff'
+SUPPORTED_IMAGE_FORMATS = tuple(x.upper() for x in ImageCompletion.extensions if x != 'jpg')
 
 
 MATCH_WINDOW_OPTION = '''\
