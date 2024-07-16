@@ -79,8 +79,9 @@ cubic_bezier_easing_curve(easing_curve_parameters *p, double t) {
 
 static double
 step_easing_curve(easing_curve_parameters *p, double t) {
-    size_t val_bucket = (size_t)(t * p->count);
-    return p->params[MIN(val_bucket, p->count - 1)];
+    double num_of_buckets = p->extra0, start_value = p->extra2, jump_size = p->extra1;
+    size_t val_bucket = (size_t)(t * num_of_buckets);
+    return start_value + val_bucket * jump_size;
 }
 
 double
@@ -124,24 +125,23 @@ add_linear_animation(Animation *a, double y_at_start, double y_at_end, size_t co
 
 void
 add_steps_animation(Animation *a, double y_at_start, double y_at_end, size_t count, EasingStep step) {
-    animation_function *f = init_function(a, y_at_start, y_at_end, step_easing_curve, count + 2);
-    double jump_size = 1. / count, val = 0.;
-    f->params.count = count;
-    double *params = (double*)f->params.params;
+    animation_function *f = init_function(a, y_at_start, y_at_end, step_easing_curve, 0);
+    double jump_size = 1. / count, start_value = 0.;
+    size_t num_of_buckets = count;
     switch (step) {
         case EASING_STEP_START:
-            val = jump_size;
-            f->params.count = count - 1;
+            start_value = jump_size;
+            num_of_buckets--;
             break;
         case EASING_STEP_END: break;
         case EASING_STEP_NONE:
-            f->params.count = count - 1;
+            num_of_buckets--;
             break;
         case EASING_STEP_BOTH:
-            jump_size = 1. / (count + 1);
-            val = jump_size;
-            f->params.count = count + 1;
+            num_of_buckets++;
+            jump_size = 1. / num_of_buckets;
+            start_value = jump_size;
             break;
     }
-    for (size_t i = 0; i < f->params.count; i++, val += jump_size) params[i] = val;
+    f->params.extra0 = num_of_buckets; f->params.extra1 = jump_size; f->params.extra2 = start_value;
 }
