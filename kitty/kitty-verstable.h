@@ -18,4 +18,6 @@ vt_hash_bytes(const void *data, const size_t size) {
     return hash;
 }
 
+#define vt_create_for_loop(itr_type, itr, table) for (itr_type itr = vt_first(table); !vt_is_end(itr); itr = vt_next(itr))
+
 #endif

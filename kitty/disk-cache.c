@@ -33,13 +33,12 @@ typedef struct {
     uint8_t encryption_key[64];
 } CacheValue;
 
-
 #define NAME cache_map
 #define KEY_TY CacheKey
 #define VAL_TY CacheValue*
 static uint64_t key_hash(KEY_TY k);
 #define HASH_FN key_hash
-static bool keys_are_equal(KEY_TY a, KEY_TY b);
+static bool keys_are_equal(CacheKey a, CacheKey b) { return a.hash_keylen == b.hash_keylen && memcmp(a.hash_key, b.hash_key, a.hash_keylen) == 0; }
 #define CMPR_FN keys_are_equal
 static void free_cache_value(CacheValue *cv) { free(cv->data); cv->data = NULL; free(cv); }
 static void free_cache_key(CacheKey cv) { free(cv.hash_key); cv.hash_key = NULL; }
@@ -47,7 +46,7 @@ static void free_cache_key(CacheKey cv) { free(cv.hash_key); cv.hash_key = NULL;
 #define VAL_DTOR_FN free_cache_value
 #include "kitty-verstable.h"
 static uint64_t key_hash(CacheKey k) { return vt_hash_bytes(k.hash_key, k.hash_keylen); }
-static bool keys_are_equal(CacheKey a, CacheKey b) { return a.hash_keylen == b.hash_keylen && memcmp(a.hash_key, b.hash_key, a.hash_keylen) == 0; }
+#define cache_map_for_loop(i) vt_create_for_loop(cache_map_itr, i, &self->map)
 
 typedef struct Hole {
     off_t pos, size;
@@ -57,6 +56,7 @@ typedef struct Hole {
 #define KEY_TY off_t
 #define VAL_TY off_t
 #include "kitty-verstable.h"
+#define hole_pos_map_for_loop(i) vt_create_for_loop(hole_pos_map_itr, i, &self->holes.pos_map)
 
 typedef struct PosList { size_t count, capacity; off_t *positions; } PosList;
 #define NAME hole_size_map
@@ -65,6 +65,7 @@ typedef struct PosList { size_t count, capacity; off_t *positions; } PosList;
 static void free_pos_list(PosList p) { free(p.positions); }
 #define VAL_DTOR_FN free_pos_list
 #include "kitty-verstable.h"
+#define hole_size_map_for_loop(i) vt_create_for_loop(hole_size_map_itr, i, &holes->size_map)
 
 typedef struct Holes {
     hole_pos_map pos_map, end_pos_map;
@@ -192,7 +193,7 @@ defrag(DiskCache *self) {
     defrag_entries = calloc(num_entries, sizeof(DefragEntry));
     if (!defrag_entries) goto cleanup;
     size_t total_data_size = 0, num_entries_to_defrag = 0;
-    for (cache_map_itr i = vt_first(&self->map); !vt_is_end(i); i = vt_next(i)) {
+    cache_map_for_loop(i) {
         CacheValue *s = i.data->val;
         if (s->pos_in_cache_file > -1 && s->data_sz) {
             total_data_size += s->data_sz;
@@ -258,7 +259,7 @@ add_hole_to_maps(Holes *holes, Hole h) {
 static void
 update_largest_hole_size(Holes *holes) {
     holes->largest_hole_size = 0;
-    for (hole_size_map_itr i = vt_first(&holes->size_map); !vt_is_end(i); i = vt_next(i)) {
+    hole_size_map_for_loop(i) {
         if (i.data->key > holes->largest_hole_size) holes->largest_hole_size = i.data->key;
     }
 }
@@ -366,7 +367,7 @@ remove_from_disk(DiskCache *self, CacheValue *s) {
 static bool
 find_cache_entry_to_write(DiskCache *self) {
     if (needs_defrag(self)) defrag(self);
-    for (cache_map_itr i = vt_first(&self->map); !vt_is_end(i); i = vt_next(i)) {
+    cache_map_for_loop(i) {
         CacheValue *s = i.data->val;
         if (!s->written_to_disk) {
             if (s->data) {
@@ -715,7 +716,7 @@ disk_cache_clear_from_ram(PyObject *self_, bool(matches)(void*, void *key, unsig
     size_t ans = 0;
     if (!ensure_state(self)) return ans;
     mutex(lock);
-    for (cache_map_itr i = vt_first(&self->map); !vt_is_end(i); i = vt_next(i)) {
+    cache_map_for_loop(i) {
         CacheValue *s = i.data->val;
         if (s->written_to_disk && s->data && matches(data, i.data->key.hash_key, i.data->key.hash_keylen)) {
             free(s->data); s->data = NULL;
@@ -734,7 +735,7 @@ disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
     while (!timeout || monotonic() <= end_at) {
         bool pending = false;
         mutex(lock);
-        for (cache_map_itr i = vt_first(&self->map); !vt_is_end(i); i = vt_next(i)) {
+        cache_map_for_loop(i) {
             if (!i.data->val->written_to_disk) {
                 pending = true;
                 break;
@@ -758,7 +759,7 @@ disk_cache_num_cached_in_ram(PyObject *self_) {
     unsigned long ans = 0;
     if (ensure_state(self)) {
         mutex(lock);
-        for (cache_map_itr i = vt_first(&self->map); !vt_is_end(i); i = vt_next(i)) {
+        cache_map_for_loop(i) {
             if (i.data->val->written_to_disk && i.data->val->data) ans++;
         }
         mutex(unlock);
@@ -817,7 +818,7 @@ holes(PyObject *self_, PyObject *args UNUSED) {
     mutex(lock);
     RAII_PyObject(ans, PyFrozenSet_New(NULL));
     if (ans) {
-        for (hole_pos_map_itr i = vt_first(&self->holes.pos_map); !vt_is_end(i); i = vt_next(i)) {
+        hole_pos_map_for_loop(i) {
             RAII_PyObject(t, Py_BuildValue("LL", (long long)i.data->key, (long long)i.data->val));
             if (!t || PySet_Add(ans, t) != 0) break;
         }
