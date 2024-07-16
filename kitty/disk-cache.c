@@ -77,6 +77,7 @@ typedef struct {
     char *cache_dir;
     int cache_file_fd;
     Py_ssize_t small_hole_threshold;
+    unsigned int defrag_factor;
     pthread_mutex_t lock;
     pthread_t write_thread;
     bool thread_started, lock_inited, loop_data_inited, shutting_down, fully_initialized;
@@ -96,6 +97,7 @@ new_diskcache_object(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED 
     if (self) {
         self->cache_file_fd = -1;
         self->small_hole_threshold = 512;
+        self->defrag_factor = 2;
     }
     return (PyObject*) self;
 }
@@ -304,7 +306,7 @@ find_hole_to_use(DiskCache *self, const off_t required_sz) {
 static inline bool
 needs_defrag(DiskCache *self) {
     off_t size_on_disk = size_of_cache_file(self);
-    return self->total_size && size_on_disk > 0 && (size_t)size_on_disk > self->total_size * 2;
+    return self->total_size && size_on_disk > 0 && (size_t)size_on_disk > self->total_size * self->defrag_factor;
 }
 
 static void
@@ -453,7 +455,8 @@ write_loop(void *data) {
             continue;
         } else if (!count) {
             mutex(lock);
-            if (self->cache_file_fd > -1) {
+            count = vt_size(&self->map);
+            if (!count && self->cache_file_fd > -1) {
                 if (ftruncate(self->cache_file_fd, 0) == 0) lseek(self->cache_file_fd, 0, SEEK_END);
             }
             mutex(unlock);
@@ -916,6 +919,7 @@ static PyMethodDef methods[] = {
 static PyMemberDef members[] = {
     {"total_size", T_ULONGLONG, offsetof(DiskCache, total_size), READONLY, "total_size"},
     {"small_hole_threshold", T_PYSSIZET, offsetof(DiskCache, small_hole_threshold), 0, "small_hole_threshold"},
+    {"defrag_factor", T_UINT, offsetof(DiskCache, defrag_factor), 0, "defrag_factor"},
     {NULL},
 };
 

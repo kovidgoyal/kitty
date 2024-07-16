@@ -233,11 +233,12 @@ class TestGraphics(BaseTest):
             for key, val in data.items():
                 self.ae(dc.get(key_as_bytes(key)), val)
 
-        def reset(small_hole_threshold=0):
+        def reset(small_hole_threshold=0, defrag_factor=2):
             nonlocal dc, data, s
             s = self.create_screen()
             dc = s.grman.disk_cache
             dc.small_hole_threshold = small_hole_threshold
+            dc.defrag_factor = defrag_factor
             data = {}
 
         holes_to_create = 2, 4, 6, 8
@@ -342,8 +343,8 @@ class TestGraphics(BaseTest):
         self.ae(sz, dc.size_on_disk())
 
         # test hole coalescing
-        reset()
-        for i in range(1, 8):
+        reset(defrag_factor=20)
+        for i in range(1, 6):
             self.assertIsNone(add(i, str(i)*i))
             dc.wait_for_write()
         remove(2)
