@@ -1461,6 +1461,7 @@ finalize(void) {
 #define F(x) free(OPT(x)); OPT(x) = NULL;
     F(background_image); F(bell_path); F(bell_theme); F(default_window_logo);
 #undef F
+    Py_CLEAR(options_object);
     // we leak the texture here since it is not guaranteed
     // that freeing the texture will work during shutdown and
     // the GPU driver should take care of it when the OpenGL context is
