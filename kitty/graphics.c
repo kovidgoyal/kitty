@@ -89,7 +89,7 @@ grman_alloc(bool for_paused_rendering) {
     return self;
 }
 
-#define iter_refs(img) for (ref_map_itr i = vt_first(&((img)->refs_by_internal_id)); !vt_is_end(i); i = vt_next(i))
+#define iter_refs(img) vt_create_for_loop(ref_map_itr, i, &((img)->refs_by_internal_id))
 
 static void
 free_refs_data(Image *img) {
@@ -160,7 +160,7 @@ free_image(GraphicsManager *self, Image *img) {
     free(img);
 }
 
-#define iter_images(grman) for (image_map_itr i = vt_first(&((grman)->images_by_internal_id)); !vt_is_end(i); i = vt_next(i))
+#define iter_images(grman) vt_create_for_loop(image_map_itr, i, &((grman)->images_by_internal_id))
 
 static void
 free_all_images(GraphicsManager *self) {

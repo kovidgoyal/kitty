@@ -16,6 +16,7 @@
 #define KEY_TY const char*
 #define VAL_TY hyperlink_id_type
 #include "kitty-verstable.h"
+#define hyperlink_for_loop vt_create_for_loop(hyperlink_map_itr, itr, &pool->map)
 
 typedef const char* hyperlink;
 typedef struct HyperLinks {
@@ -167,7 +168,7 @@ screen_hyperlinks_as_set(Screen *screen) {
     HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
     RAII_PyObject(ans, PySet_New(0));
     if (ans) {
-        for (hyperlink_map_itr itr = vt_first(&pool->map); !vt_is_end(itr); itr = vt_next(itr)) {
+        hyperlink_for_loop {
             RAII_PyObject(e, Py_BuildValue("sH", itr.data->key, itr.data->val));
             if (!e || PySet_Add(ans, e) != 0) return NULL;
         }

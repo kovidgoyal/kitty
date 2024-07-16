@@ -20,6 +20,7 @@ typedef struct WindowLogoItem {
 #define KEY_TY window_logo_id_t
 #define VAL_TY WindowLogoItem*
 #include "kitty-verstable.h"
+#define id_for_loop(table) vt_create_for_loop(hash_by_id_itr, itr, &(table)->by_id)
 
 #define NAME hash_by_path
 #define KEY_TY const char*
@@ -109,7 +110,7 @@ alloc_window_logo_table(void) {
 
 void
 free_window_logo_table(WindowLogoTable **table) {
-    for (hash_by_id_itr itr = vt_first( &(*table)->by_id ); !vt_is_end( itr ); itr = vt_next( itr )) free_window_logo(&itr.data->val);
+    id_for_loop(*table) free_window_logo(&itr.data->val);
     vt_cleanup(&(*table)->by_id); vt_cleanup(&(*table)->by_path);
     free(*table); *table = NULL;
 }
