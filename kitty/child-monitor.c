@@ -652,7 +652,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 static bool
 cursor_needs_render(Window *w) {
 #define cri w->render_data.screen->cursor_render_info
-    return w->cursor_visible_at_last_render != cri.is_visible || w->render_data.screen->last_rendered.cursor_x != cri.x || w->render_data.screen->last_rendered.cursor_y != cri.y || w->last_cursor_shape != cri.shape;
+    return w->cursor_opacity_at_last_render != cri.opacity || w->render_data.screen->last_rendered.cursor_x != cri.x || w->render_data.screen->last_rendered.cursor_y != cri.y || w->last_cursor_shape != cri.shape;
 #undef cri
 }
 
@@ -669,7 +669,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
         cursor = rd->screen->paused_rendering.expires_at ? &rd->screen->paused_rendering.cursor : rd->screen->cursor;
         ans->x = cursor->x; ans->y = cursor->y;
     }
-    ans->is_visible = false;
+    ans->opacity = 0;
     if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return cursor_needs_render(w);
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && !cursor->non_blinking && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
@@ -683,8 +683,8 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
         monotonic_t delay = bucket - time_since_start_blink;
         set_maximum_wait(delay);
     }
-    if (!do_draw_cursor) { ans->is_visible = false; return cursor_needs_render(w); }
-    ans->is_visible = true;
+    if (!do_draw_cursor) { ans->opacity = 0; return cursor_needs_render(w); }
+    ans->opacity = 1;
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->is_focused = os_window->is_focused;
     return cursor_needs_render(w);
@@ -752,7 +752,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
                     WD.screen->cursor_render_info.is_focused = false;
                 } else {
-                    WD.screen->cursor_render_info.is_visible = false;
+                    WD.screen->cursor_render_info.opacity = 0;
                 }
             }
             if (scan_for_animated_images) {
@@ -803,7 +803,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             if (WD.screen->start_visual_bell_at != 0) {
                 set_maximum_wait(OPT(repaint_delay));
             }
-            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
+            w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
     if (os_window->live_resize.in_progress) draw_resizing_text(os_window);

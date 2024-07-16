@@ -297,7 +297,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
         GLuint xnum, ynum, cursor_fg_sprite_idx;
-        GLfloat cursor_x, cursor_y, cursor_w;
+        GLfloat cursor_x, cursor_y, cursor_w, cursor_opacity;
     };
     // Send the uniform data
     struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
@@ -322,8 +322,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     // Cursor position
     enum { BLOCK_IDX = 0, BEAM_IDX = NUM_UNDERLINE_STYLES + 3, UNDERLINE_IDX = NUM_UNDERLINE_STYLES + 4, UNFOCUSED_IDX = NUM_UNDERLINE_STYLES + 5 };
     Line *line_for_cursor = NULL;
-    if (cursor->is_visible) {
+    if (cursor->opacity > 0) {
         rd->cursor_x = cursor->x, rd->cursor_y = cursor->y;
+        rd->cursor_opacity = cursor->opacity;
         if (cursor->is_focused) {
             switch(cursor->shape) {
                 default:

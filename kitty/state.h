@@ -178,7 +178,8 @@ typedef struct WindowBarData {
 
 typedef struct {
     id_type id;
-    bool visible, cursor_visible_at_last_render;
+    bool visible;
+    float cursor_opacity_at_last_render;
     CursorShape last_cursor_shape;
     PyObject *title;
     WindowRenderData render_data;
