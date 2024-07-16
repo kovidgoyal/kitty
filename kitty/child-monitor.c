@@ -12,6 +12,7 @@
 #include "screen.h"
 #include "fonts.h"
 #include "monotonic.h"
+#include "animation.h"
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -673,18 +674,20 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return cursor_needs_render(w);
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && !cursor->non_blinking && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
-    bool do_draw_cursor = true;
-    if (cursor_blinking) {
-        int t = monotonic_t_to_ms(time_since_start_blink);
-        int d = monotonic_t_to_ms(OPT(cursor_blink_interval));
-        int n = t / d;
-        do_draw_cursor = n % 2 == 0 ? true : false;
-        monotonic_t bucket = ms_to_monotonic_t((monotonic_t)(n + 1) * d);
-        monotonic_t delay = bucket - time_since_start_blink;
-        set_maximum_wait(delay);
-    }
-    if (!do_draw_cursor) { ans->opacity = 0; return cursor_needs_render(w); }
     ans->opacity = 1;
+    if (cursor_blinking) {
+        if (OPT(animation.cursor).first_half.curve) {
+            monotonic_t den = OPT(cursor_blink_interval) * 2;
+            monotonic_t time_into_cycle = time_since_start_blink % den;
+            double frac_into_cycle = (double)time_into_cycle / (double)den;
+            ans->opacity = (float)apply_easing_curve(&OPT(animation.cursor), frac_into_cycle);
+            set_maximum_wait(ms_to_monotonic_t(75));
+        } else {
+            monotonic_t n = time_since_start_blink / OPT(cursor_blink_interval);
+            ans->opacity = n % 2 == 0 ? 1 : 0;
+            set_maximum_wait((n + 1) * OPT(cursor_blink_interval) - time_since_start_blink);
+        }
+    }
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->is_focused = os_window->is_focused;
     return cursor_needs_render(w);

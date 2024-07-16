@@ -5,7 +5,7 @@
  */
 
 #pragma once
-#include "data-types.h"
+#include "animation.h"
 #include "screen.h"
 #include "monotonic.h"
 #include "window_logo.h"
@@ -118,6 +118,7 @@ typedef struct {
             hb_feature_t *features;
         } *entries;
     } font_features;
+    struct { Animation cursor; } animation;
 } Options;
 
 typedef struct WindowLogoRenderData {
