@@ -118,7 +118,7 @@ typedef struct {
             hb_feature_t *features;
         } *entries;
     } font_features;
-    struct { Animation cursor; } animation;
+    struct { Animation *cursor; } animation;
 } Options;
 
 typedef struct WindowLogoRenderData {

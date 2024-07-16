@@ -8,21 +8,16 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
 
-typedef struct easing_curve_parameters {
-    size_t count;
-    const double *params, *positions;
-} easing_curve_parameters;
-
-typedef double(*easing_curve)(easing_curve_parameters, double);
-
-typedef struct Animation {
-    struct {
-        easing_curve_parameters params;
-        easing_curve curve;
-    } first_half, second_half;
-} Animation;
-
-double linear_easing_curve(easing_curve_parameters, double);
-double cubic_bezier_easing_curve(easing_curve_parameters, double);
+typedef enum { EASING_STEP_START, EASING_STEP_END, EASING_STEP_NONE, EASING_STEP_BOTH } EasingStep;
+#ifndef ANIMATION_INTERNAL_API
+typedef struct {int x;} *Animation;
+#endif
+Animation* alloc_animation(void);
 double apply_easing_curve(const Animation *a, double t /* must be between 0 and 1*/);
+bool animation_is_valid(const Animation *a);
+void add_cubic_bezier_animation(Animation *a, double y_at_start, double y_at_end, double start, double p1, double p2, double end);
+void add_linear_animation(Animation *a, double y_at_start, double y_at_end, size_t count, const double *params, const double *positions);
+void add_steps_animation(Animation *a, double y_at_start, double y_at_end, size_t count, EasingStep step);
+Animation* free_animation(Animation *a);

@@ -12,7 +12,6 @@
 #include "screen.h"
 #include "fonts.h"
 #include "monotonic.h"
-#include "animation.h"
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -676,11 +675,11 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && !cursor->non_blinking && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
     ans->opacity = 1;
     if (cursor_blinking) {
-        if (OPT(animation.cursor).first_half.curve) {
+        if (animation_is_valid(OPT(animation.cursor))) {
             monotonic_t den = OPT(cursor_blink_interval) * 2;
             monotonic_t time_into_cycle = time_since_start_blink % den;
             double frac_into_cycle = (double)time_into_cycle / (double)den;
-            ans->opacity = (float)apply_easing_curve(&OPT(animation.cursor), frac_into_cycle);
+            ans->opacity = (float)apply_easing_curve(OPT(animation.cursor), frac_into_cycle);
             set_maximum_wait(ms_to_monotonic_t(75));
         } else {
             monotonic_t n = time_since_start_blink / OPT(cursor_blink_interval);
