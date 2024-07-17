@@ -679,7 +679,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
             monotonic_t den = OPT(cursor_blink_interval) * 2;
             monotonic_t time_into_cycle = time_since_start_blink % den;
             double frac_into_cycle = (double)time_into_cycle / (double)den;
-            ans->opacity = (float)apply_easing_curve(OPT(animation.cursor), frac_into_cycle);
+            ans->opacity = (float)apply_easing_curve(OPT(animation.cursor), frac_into_cycle, den);
             set_maximum_wait(ms_to_monotonic_t(75));
         } else {
             monotonic_t n = time_since_start_blink / OPT(cursor_blink_interval);

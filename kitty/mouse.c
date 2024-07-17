@@ -6,13 +6,11 @@
  */
 
 #include "state.h"
-#include "screen.h"
 #include "charsets.h"
 #include <limits.h>
 #include <math.h>
 #include "glfw-wrapper.h"
 #include "control-codes.h"
-#include "monotonic.h"
 
 extern PyTypeObject Screen_Type;
 

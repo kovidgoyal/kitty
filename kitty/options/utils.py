@@ -6,6 +6,7 @@ import enum
 import re
 import sys
 from collections import defaultdict
+from contextlib import suppress
 from dataclasses import dataclass, fields
 from functools import lru_cache
 from typing import (
@@ -34,6 +35,7 @@ from kitty.conf.utils import (
     KeyAction,
     KeyFuncWrapper,
     currently_parsing,
+    percent,
     positive_float,
     positive_int,
     python_string,
@@ -1393,14 +1395,13 @@ def parse_font_spec(spec: str) -> FontSpec:
 
 
 class EasingFunction(NamedTuple):
-    type: str = ''
+    type: Literal['steps', 'linear', 'cubic-bezier', ''] = ''
 
     num_steps: int = 0
-    jump_type: int = 0
+    jump_type: Literal['start', 'end', 'none', 'both'] = 'end'
 
-    linear_count: int = 0
-    linear_params: Tuple[float, ...] = ()
-    linear_positions: Tuple[float, ...] = ()
+    linear_x: Tuple[float, ...] = ()
+    linear_y: Tuple[float, ...] = ()
 
     cubic_bezier_points: Tuple[float, ...] = ()
 
@@ -1411,13 +1412,125 @@ class EasingFunction(NamedTuple):
     def __bool__(self) -> bool:
         return bool(self.type)
 
+    @classmethod
+    def cubic_bezier(cls, params: str) -> 'EasingFunction':
+        parts = params.replace(',', ' ').split()
+        if len(parts) != 4:
+            raise ValueError('cubic-bezier easing function must have four points')
+        return cls(type='cubic-bezier', cubic_bezier_points=(
+            unit_float(parts[0]), float(parts[1]), unit_float(parts[2]), float(parts[2])))
+
+    @classmethod
+    def linear(cls, params: str) -> 'EasingFunction':
+        parts = params.split(',')
+        if len(parts) < 2:
+            raise ValueError('Must specify at least two points for the linear easing function')
+        xaxis: List[float] = []
+        yaxis: List[float] = []
+
+        def balance(end: float) -> None:
+            extra = len(yaxis) - len(xaxis)
+            if extra <= 0:
+                return
+            start = xaxis[-1] if xaxis else 0
+            delta = (end - start) / (extra + 1)
+            if delta <= 0:
+                raise ValueError(f'Linear easing curve must have strictly increasing points: {params} does not')
+            for i in range(extra):
+                xaxis.append((i+1) * delta)
+
+        def add_point(y: float, x: Optional[float] = None) -> None:
+            if x is None:
+                yaxis.append(y)
+            else:
+                x = unit_float(x)
+                balance(x)
+                xaxis.append(x)
+                yaxis.append(y)
+
+        for r in parts:
+            points = r.strip().split()
+            y = unit_float(points[0])
+            if len(points) == 1:
+                add_point(y)
+            elif len(points) == 2:
+                add_point(y, percent(points[1]))
+            elif len(points) == 3:
+                add_point(y, percent(points[1]))
+                add_point(y, percent(points[2]))
+            else:
+                raise ValueError(f'{r} has too many points for a linear easing curve parameter')
+        balance(1)
+        return cls(type='linear', linear_x=tuple(xaxis), linear_y=tuple(yaxis))
+
+
+    @classmethod
+    def steps(cls, params: str) -> 'EasingFunction':
+        parts = params.replace(',', ' ').split()
+        jump_type = 'end'
+        if len(parts) == 2:
+            n = int(parts[0])
+            jt = parts[1]
+            try:
+                jump_type = {
+                    'jump-start': 'start', 'start': 'start', 'end': 'end', 'jump-end': 'end', 'jump-none': 'none', 'jump-both': 'both'
+                }[jt.lower()]
+            except KeyError:
+                raise KeyError(f'{jt} is not a valid jump type for a linear easing function')
+            if jump_type == 'none':
+                n = max(2, n)
+            else:
+                n = max(1, n)
+        else:
+            n = max(1, int(parts[0]))
+        return cls(type='steps', jump_type=jump_type, num_steps=n)  # type: ignore
+
 
 def cursor_blink_interval(spec: str) -> Tuple[float, EasingFunction, EasingFunction]:
-    try:
+    interval: float = -1
+    with suppress(Exception):
         interval = float(spec)
         return interval, EasingFunction(), EasingFunction()
-    except Exception:
-        return -1, EasingFunction(), EasingFunction()
+
+    m = [EasingFunction(), EasingFunction()]
+    def parse_func(func_name: str, params: str) -> None:
+        idx = 1 if m[0] else 0
+        if m[idx]:
+            raise ValueError(f'{spec} specified more than two easing functions')
+        if func_name == 'cubic-bezier':
+            m[idx] = EasingFunction.cubic_bezier(params)
+        elif func_name == 'linear':
+            m[idx] = EasingFunction.linear(params)
+        elif func_name == 'steps':
+            m[idx] = EasingFunction.steps(params)
+        else:
+            raise KeyError(f'{func_name} is not a valid easing function')
+
+    for match in re.finditer(r'([-+.0-9a-zA-Z]+)(?:\(([^)]*)\)){0,1}', spec):
+        func_name, params = match.group(1, 2)
+        if params:
+            parse_func(func_name, params)
+            continue
+        with suppress(Exception):
+            interval = float(func_name)
+            continue
+        if func_name == 'ease-in-out':
+            parse_func('cubic-bezier', '0.42, 0, 0.58, 1')
+        elif func_name == 'linear':
+            parse_func('cubic-bezier', '0, 0, 1, 1')
+        elif func_name == 'ease':
+            parse_func('cubic-bezier', '0.25, 0.1, 0.25, 1')
+        elif func_name == 'ease-out':
+            parse_func('cubic-bezier', '0, 0, 0.58, 1')
+        elif func_name == 'ease-in':
+            parse_func('cubic-bezier', '0.42, 0, 1, 1')
+        elif func_name == 'step-start':
+            parse_func('steps', '1, start')
+        elif func_name == 'step-end':
+            parse_func('steps', '1, end')
+        else:
+            raise KeyError(f'{func_name} is not a valid easing function')
+    return interval, m[0], m[1]
 
 
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:

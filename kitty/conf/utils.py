@@ -56,6 +56,10 @@ def positive_float(x: ConvertibleToNumbers) -> float:
     return max(0, float(x))
 
 
+def percent(x: str) -> float:
+    return float(x.rstrip('%')) / 100.
+
+
 def to_color(x: str) -> Color:
     ans = as_color(x, validate=True)
     if ans is None:  # this is only for type-checking

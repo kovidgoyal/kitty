@@ -127,25 +127,31 @@ static void
 add_easing_function(Animation *a, PyObject *e, double y_at_start, double y_at_end) {
 #define G(name) RAII_PyObject(name, PyObject_GetAttrString(e, #name))
 #define D(container, idx) PyFloat_AsDouble(PyTuple_GET_ITEM(container, idx))
+#define EQ(x, val) (PyUnicode_CompareWithASCIIString((x), val) == 0)
     G(type);
-    if (PyUnicode_CompareWithASCIIString(type, "cubic-bezier")) {
+    if (EQ(type, "cubic-bezier")) {
         G(cubic_bezier_points);
         add_cubic_bezier_animation(a, y_at_start, y_at_end, D(cubic_bezier_points, 0), D(cubic_bezier_points, 1), D(cubic_bezier_points, 2), D(cubic_bezier_points, 3));
-    } else if (PyUnicode_CompareWithASCIIString(type, "linear")) {
-        G(linear_count); G(linear_params); G(linear_positions);
-        size_t count = PyLong_AsSize_t(linear_count);
-        RAII_ALLOC(double, params, malloc(2 * sizeof(double) * count));
-        if (params) {
-            double *positions = params + count;
+    } else if (EQ(type, "linear")) {
+        G(linear_x); G(linear_y);
+        size_t count = PyTuple_GET_SIZE(linear_x);
+        RAII_ALLOC(double, x, malloc(2 * sizeof(double) * count));
+        if (x) {
+            double *y = x + count;
             for (size_t i = 0; i < count; i++) {
-                params[i] = D(linear_params, i); positions[i] = D(linear_positions, i);
+                x[i] = D(linear_x, i); y[i] = D(y, i);
             }
-            add_linear_animation(a, y_at_start, y_at_end, count, params, positions);
+            add_linear_animation(a, y_at_start, y_at_end, count, x, y);
         }
-    } else if (PyUnicode_CompareWithASCIIString(type, "steps")) {
+    } else if (EQ(type, "steps")) {
         G(num_steps); G(jump_type);
-        add_steps_animation(a, y_at_start, y_at_end, PyLong_AsSize_t(num_steps), PyLong_AsLong(jump_type));
+        EasingStep jt = EASING_STEP_END;
+        if (EQ(jump_type, "start")) jt = EASING_STEP_START;
+        else if (EQ(jump_type, "none")) jt = EASING_STEP_NONE;
+        else if (EQ(jump_type, "both")) jt = EASING_STEP_BOTH;
+        add_steps_animation(a, y_at_start, y_at_end, PyLong_AsSize_t(num_steps), jt);
     }
+#undef EQ
 #undef D
 #undef G
 }
