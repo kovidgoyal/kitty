@@ -157,13 +157,15 @@ class TestConfParsing(BaseTest):
         cb('linear(0, 0.25 25% 75%, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.25, 0.75, 1.0), linear_y=(0, 0.25, 0.25, 1.0)))
 
         # test that easing functions give expected values
-        def ef(spec, tests, duration=0.5, accuracy=0):
+        def ef(spec, tests, only_single=True, duration=0.5, accuracy=0):
             cfv = p('cursor_blink_interval ' + spec).cursor_blink_interval
             self.set_options({'cursor_blink_interval': cfv})
             for t, expected in tests.items():
-                actual = test_cursor_blink_easing_function(t, duration)
+                actual = test_cursor_blink_easing_function(t, only_single, duration)
                 if abs(actual - expected) > accuracy:
                     self.ae(expected, actual, f'Failed for {spec=} with {t=}: {expected} != {actual}')
+
+        ef('linear', {0:1, 0.25: 0.5, 0.5: 0, 0.75: 0.5, 1: 1}, only_single=False)
 
         ef('linear(0, 0.25 25% 75%, 1)', {0: 0, 0.25: 0.25, 0.3: 0.25, 0.75: 0.25, 1:1})
         linear_vals = {0: 0, 1: 1, 0.1234: 0.1234, 0.6453: 0.6453}

@@ -179,7 +179,7 @@ apply_easing_curve(const Animation *a, double val, monotonic_t duration) {
     if (!a->count) return val;
     size_t idx = MIN((size_t)(val * a->count), a->count - 1);
     animation_function *f = a->functions + idx;
-    double interval_size = 1. / a->count, interval_start = val - idx * interval_size;
+    double interval_size = 1. / a->count, interval_start = idx * interval_size;
     val = (val - interval_start) / interval_size;
     double ans = f->curve(&f->params, val, duration);
     return f->y_at_start + unit_value(ans) * f->y_size;
@@ -282,11 +282,14 @@ test_cursor_blink_easing_function(PyObject *self UNUSED, PyObject *args) {
         PyErr_SetString(PyExc_RuntimeError, "must set a cursor blink animation on the global options object first");
         return NULL;
     }
-    double t, duration_s = 0.5;
-    if (!PyArg_ParseTuple(args, "d|d", &t, &duration_s)) return NULL;
+    double t, duration_s = 0.5; int only_single = 1;
+    if (!PyArg_ParseTuple(args, "d|pd", &t, &only_single, &duration_s)) return NULL;
     monotonic_t duration = s_double_to_monotonic_t(duration_s);
-    animation_function f = a->functions[0];
-    return PyFloat_FromDouble(f.curve(f.params, t, duration));
+    if (only_single) {
+        animation_function f = a->functions[0];
+        return PyFloat_FromDouble(f.curve(f.params, t, duration));
+    }
+    return PyFloat_FromDouble(apply_easing_curve(a, t, duration));
 }
 
 static PyMethodDef module_methods[] = {
