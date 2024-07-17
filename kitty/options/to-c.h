@@ -124,6 +124,47 @@ window_logo_path(PyObject *src, Options *opts) { STR_SETTER(default_window_logo)
 #undef STR_SETTER
 
 static void
+add_easing_function(Animation *a, PyObject *e, double y_at_start, double y_at_end) {
+#define G(name) RAII_PyObject(name, PyObject_GetAttrString(e, #name))
+#define D(container, idx) PyFloat_AsDouble(PyTuple_GET_ITEM(container, idx))
+    G(type);
+    if (PyUnicode_CompareWithASCIIString(type, "cubic-bezier")) {
+        G(cubic_bezier_points);
+        add_cubic_bezier_animation(a, y_at_start, y_at_end, D(cubic_bezier_points, 0), D(cubic_bezier_points, 1), D(cubic_bezier_points, 2), D(cubic_bezier_points, 3));
+    } else if (PyUnicode_CompareWithASCIIString(type, "linear")) {
+        G(linear_count); G(linear_params); G(linear_positions);
+        size_t count = PyLong_AsSize_t(linear_count);
+        RAII_ALLOC(double, params, malloc(2 * sizeof(double) * count));
+        if (params) {
+            double *positions = params + count;
+            for (size_t i = 0; i < count; i++) {
+                params[i] = D(linear_params, i); positions[i] = D(linear_positions, i);
+            }
+            add_linear_animation(a, y_at_start, y_at_end, count, params, positions);
+        }
+    } else if (PyUnicode_CompareWithASCIIString(type, "steps")) {
+        G(num_steps); G(jump_type);
+        add_steps_animation(a, y_at_start, y_at_end, PyLong_AsSize_t(num_steps), PyLong_AsLong(jump_type));
+    }
+#undef D
+#undef G
+}
+
+static inline void
+cursor_blink_interval(PyObject *src, Options *opts) {
+    free_animation(opts->animation.cursor);
+    opts->cursor_blink_interval = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(src, 0));
+    if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 1))) {
+        add_easing_function(opts->animation.cursor, PyTuple_GET_ITEM(src, 1), 1, 0);
+        if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 2))) {
+            add_easing_function(opts->animation.cursor, PyTuple_GET_ITEM(src, 2), 0, 1);
+        } else {
+            add_easing_function(opts->animation.cursor, PyTuple_GET_ITEM(src, 1), 0, 1);
+        }
+    }
+}
+
+static void
 parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {
     PyObject *mv = PyObject_GetAttrString(val, "mod_value");
     if (mv) {

@@ -137,7 +137,7 @@ convert_from_opts_cursor_underline_thickness(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_cursor_blink_interval(PyObject *val, Options *opts) {
-    opts->cursor_blink_interval = parse_s_double_to_monotonic_t(val);
+    cursor_blink_interval(val, opts);
 }
 
 static void

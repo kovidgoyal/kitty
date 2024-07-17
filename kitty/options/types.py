@@ -503,7 +503,7 @@ class Options:
     copy_on_select: str = ''
     cursor: typing.Optional[kitty.fast_data_types.Color] = Color(204, 204, 204)
     cursor_beam_thickness: float = 1.5
-    cursor_blink_interval: float = -1.0
+    cursor_blink_interval: typing.Tuple[float, kitty.options.utils.EasingFunction, kitty.options.utils.EasingFunction] = (-1.0, kitty.options.utils.EasingFunction(), kitty.options.utils.EasingFunction())
     cursor_shape: int = 1
     cursor_shape_unfocused: int = 0
     cursor_stop_blinking_after: float = 15.0

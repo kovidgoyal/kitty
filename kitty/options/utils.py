@@ -1392,6 +1392,34 @@ def parse_font_spec(spec: str) -> FontSpec:
     return FontSpec.from_setting(spec)
 
 
+class EasingFunction(NamedTuple):
+    type: str = ''
+
+    num_steps: int = 0
+    jump_type: int = 0
+
+    linear_count: int = 0
+    linear_params: Tuple[float, ...] = ()
+    linear_positions: Tuple[float, ...] = ()
+
+    cubic_bezier_points: Tuple[float, ...] = ()
+
+    def __repr__(self) -> str:
+        fields = ', '.join(f'{f}={getattr(self, f)!r}' for f in self._fields if getattr(self, f) != self._field_defaults[f])
+        return f'kitty.options.utils.EasingFunction({fields})'
+
+    def __bool__(self) -> bool:
+        return bool(self.type)
+
+
+def cursor_blink_interval(spec: str) -> Tuple[float, EasingFunction, EasingFunction]:
+    try:
+        interval = float(spec)
+        return interval, EasingFunction(), EasingFunction()
+    except Exception:
+        return -1, EasingFunction(), EasingFunction()
+
+
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(deprecated_hide_window_decorations_aliases, key):
         setattr(deprecated_hide_window_decorations_aliases, key, True)

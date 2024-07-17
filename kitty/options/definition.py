@@ -328,9 +328,7 @@ opt('cursor_underline_thickness', '2.0',
     long_text='The thickness of the underline cursor (in pts).'
     )
 
-opt('cursor_blink_interval', '-1',
-    option_type='float', ctype='time',
-    long_text='''
+opt('cursor_blink_interval', '-1', option_type='cursor_blink_interval', ctype='!cursor_blink_interval', long_text='''
 The interval to blink the cursor (in seconds). Set to zero to disable blinking.
 Negative values mean use system default. Note that the minimum interval will be
 limited to :opt:`repaint_delay`.
