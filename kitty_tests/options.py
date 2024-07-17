@@ -157,16 +157,21 @@ class TestConfParsing(BaseTest):
         cb('linear(0, 0.25 25% 75%, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.25, 0.75, 1.0), linear_y=(0, 0.25, 0.25, 1.0)))
 
         # test that easing functions give expected values
-        def ef(spec, tests, duration=0.5):
+        def ef(spec, tests, duration=0.5, accuracy=0):
             cfv = p('cursor_blink_interval ' + spec).cursor_blink_interval
             self.set_options({'cursor_blink_interval': cfv})
             for t, expected in tests.items():
                 actual = test_cursor_blink_easing_function(t, duration)
-                self.ae(expected, actual, f'Failed for {spec=} with {t=}: {expected} != {actual}')
+                if abs(actual - expected) > accuracy:
+                    self.ae(expected, actual, f'Failed for {spec=} with {t=}: {expected} != {actual}')
 
         ef('linear(0, 0.25 25% 75%, 1)', {0: 0, 0.25: 0.25, 0.3: 0.25, 0.75: 0.25, 1:1})
-        for spec in ('linear', 'linear(0, 1)'):
-            ef(spec, {0: 0, 1: 1, 0.1234: 0.1234, 0.6453: 0.6453})
+        linear_vals = {0: 0, 1: 1, 0.1234: 0.1234, 0.6453: 0.6453}
+        for spec in ('linear', 'linear(0, 1)', 'cubic-bezier(0, 0, 1, 1)', 'cubic-bezier(0.2, 0.2, 0.7, 0.7)'):
+            ef(spec, linear_vals)
+        # test an almost linear function to test cubic bezier implementation
+        ef('cubic-bezier(0.2, 0.2, 0.7, 0.71)', linear_vals, accuracy=0.01)
+        ef('cubic-bezier(0.23, 0.2, 0.7, 0.71)', linear_vals, accuracy=0.01)
 
         ef('steps(5)', {0: 0, 0.1: 0, 0.3: 0.2, 0.9:0.8})
         ef('steps(5, start)', {0: 0.2, 0.1: 0.2, 0.3: 0.4, 0.9:1})

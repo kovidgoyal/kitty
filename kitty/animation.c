@@ -194,10 +194,20 @@ init_function(Animation *a, double y_at_start, double y_at_end, easing_curve cur
     return f;
 }
 
+static bool
+is_bezier_linear(double p1x, double p1y, double p2x, double p2y) {
+    return (
+        (p1x == 0 && p1y == 0 && p2x == 1 && p2y == 1) ||
+        (p1x == 0 && p1y == 0 && p2x == 0 && p2y == 0) ||
+        (p1x == 1 && p1y == 1 && p2x == 1 && p2y == 1) ||
+        (p1x != 0 && p2x != 0 && p1y != 0 && p2y != 0 && p1y / p1x == p2y / p2x)
+    );
+}
+
 void
 add_cubic_bezier_animation(Animation *a, double y_at_start, double y_at_end, double p1x, double p1y, double p2x, double p2y) {
     p1x = unit_value(p1x); p2x = unit_value(p2x);
-    if (p1x == 0 && p1y == 0 && p2x == 1 && p2y == 1) {
+    if (is_bezier_linear(p1x, p1y, p2x, p2y)) {
         init_function(a, y_at_start, y_at_end, identity_easing_curve);
         return;
     }
