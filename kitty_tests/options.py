@@ -2,7 +2,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.fast_data_types import Color
+from kitty.fast_data_types import Color, test_cursor_blink_easing_function
 from kitty.options.utils import DELETE_ENV_VAR, EasingFunction
 from kitty.utils import log_error
 
@@ -155,3 +155,20 @@ class TestConfParsing(BaseTest):
         cb('linear(0, 0.25, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.5, 1.0), linear_y=(0, 0.25, 1.0)))
         cb('linear(0, 0.25 75%, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.75, 1.0), linear_y=(0, 0.25, 1.0)))
         cb('linear(0, 0.25 25% 75%, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.25, 0.75, 1.0), linear_y=(0, 0.25, 0.25, 1.0)))
+
+        # test that easing functions give expected values
+        def ef(spec, tests, duration=0.5):
+            cfv = p('cursor_blink_interval ' + spec).cursor_blink_interval
+            self.set_options({'cursor_blink_interval': cfv})
+            for t, expected in tests.items():
+                actual = test_cursor_blink_easing_function(t, duration)
+                self.ae(expected, actual, f'Failed for {spec=} with {t=}: {expected} != {actual}')
+
+        ef('linear(0, 0.25 25% 75%, 1)', {0: 0, 0.25: 0.25, 0.3: 0.25, 0.75: 0.25, 1:1})
+        for spec in ('linear', 'linear(0, 1)'):
+            ef(spec, {0: 0, 1: 1, 0.1234: 0.1234, 0.6453: 0.6453})
+
+        ef('steps(5)', {0: 0, 0.1: 0, 0.3: 0.2, 0.9:0.8})
+        ef('steps(5, start)', {0: 0.2, 0.1: 0.2, 0.3: 0.4, 0.9:1})
+        ef('steps(4, jump-both)', {0: 0.2, 0.1: 0.2, 0.3: 0.4, 0.9:1})
+        ef('steps(6, jump-none)', {0: 0, 0.1: 0.0, 0.3: 0.2, 0.9:1})

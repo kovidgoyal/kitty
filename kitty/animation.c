@@ -41,6 +41,7 @@ typedef struct Animation {
 
 
 #include "animation.h"
+#include "state.h"
 
 Animation*
 alloc_animation(void) {
@@ -178,6 +179,8 @@ apply_easing_curve(const Animation *a, double val, monotonic_t duration) {
     if (!a->count) return val;
     size_t idx = MIN((size_t)(val * a->count), a->count - 1);
     animation_function *f = a->functions + idx;
+    double interval_size = 1. / a->count, interval_start = val - idx * interval_size;
+    val = (val - interval_start) / interval_size;
     double ans = f->curve(&f->params, val, duration);
     return f->y_at_start + unit_value(ans) * f->y_size;
 }
@@ -244,13 +247,10 @@ add_steps_animation(Animation *a, double y_at_start, double y_at_end, size_t cou
     double jump_size = 1. / count, start_value = 0.;
     size_t num_of_buckets = count;
     switch (step) {
-        case EASING_STEP_START:
-            start_value = jump_size;
-            num_of_buckets--;
-            break;
+        case EASING_STEP_START: start_value = jump_size; break;
         case EASING_STEP_END: break;
         case EASING_STEP_NONE:
-            num_of_buckets--;
+            jump_size = 1. / (num_of_buckets - 1);
             break;
         case EASING_STEP_BOTH:
             num_of_buckets++;
@@ -263,4 +263,29 @@ add_steps_animation(Animation *a, double y_at_start, double y_at_end, size_t cou
     p->num_of_buckets = num_of_buckets; p->jump_size = jump_size; p->start_value = start_value;
     animation_function *f = init_function(a, y_at_start, y_at_end, step_easing_curve);
     f->params = p;
+}
+
+static PyObject*
+test_cursor_blink_easing_function(PyObject *self UNUSED, PyObject *args) {
+    Animation *a = OPT(animation.cursor);
+    if (!animation_is_valid(a)) {
+        PyErr_SetString(PyExc_RuntimeError, "must set a cursor blink animation on the global options object first");
+        return NULL;
+    }
+    double t, duration_s = 0.5;
+    if (!PyArg_ParseTuple(args, "d|d", &t, &duration_s)) return NULL;
+    monotonic_t duration = s_double_to_monotonic_t(duration_s);
+    animation_function f = a->functions[0];
+    return PyFloat_FromDouble(f.curve(f.params, t, duration));
+}
+
+static PyMethodDef module_methods[] = {
+    METHODB(test_cursor_blink_easing_function, METH_VARARGS),
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+
+bool init_animations(PyObject *module) {
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
 }
