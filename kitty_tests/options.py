@@ -3,7 +3,7 @@
 
 
 from kitty.fast_data_types import Color
-from kitty.options.utils import DELETE_ENV_VAR
+from kitty.options.utils import DELETE_ENV_VAR, EasingFunction
 from kitty.utils import log_error
 
 from . import BaseTest
@@ -137,3 +137,21 @@ class TestConfParsing(BaseTest):
                  " \\ blue")
         self.ae(opts.font_size, 12.35)
         self.ae(opts.color25, Color(0, 0, 255))
+
+        # cursor_blink_interval
+        def cb(src, interval=-1, first=EasingFunction(), second=EasingFunction()):
+            opts = p('cursor_blink_interval ' + src)
+            self.ae((float(interval), first, second), (float(opts.cursor_blink_interval[0]), opts.cursor_blink_interval[1], opts.cursor_blink_interval[2]))
+        cb('3', 3)
+        cb('-2.3', -2.3)
+        cb('linear', first=EasingFunction('cubic-bezier', cubic_bezier_points=(0, 0.0, 1.0, 1.0)))
+        cb('linear 19', 19, EasingFunction('cubic-bezier', cubic_bezier_points=(0, 0.0, 1.0, 1.0)))
+        cb('ease-in-out cubic-bezier(0.1, 0.2, 0.3, 0.4) 11', 11,
+            EasingFunction('cubic-bezier', cubic_bezier_points=(0.42, 0, 0.58, 1)),
+            EasingFunction('cubic-bezier', cubic_bezier_points=(0.1, 0.2, 0.3, 0.4))
+        )
+        cb('step-start', first=EasingFunction('steps', num_steps=1, jump_type='start'))
+        cb('steps(7, jump-none)', first=EasingFunction('steps', num_steps=7, jump_type='none'))
+        cb('linear(0, 0.25, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.5, 1.0), linear_y=(0, 0.25, 1.0)))
+        cb('linear(0, 0.25 75%, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.75, 1.0), linear_y=(0, 0.25, 1.0)))
+        cb('linear(0, 0.25 25% 75%, 1)', first=EasingFunction('linear', linear_x=(0.0, 0.25, 0.75, 1.0), linear_y=(0, 0.25, 0.25, 1.0)))

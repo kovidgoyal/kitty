@@ -1394,11 +1394,14 @@ def parse_font_spec(spec: str) -> FontSpec:
     return FontSpec.from_setting(spec)
 
 
+JumpTypes = Literal['start', 'end', 'none', 'both']
+
+
 class EasingFunction(NamedTuple):
     type: Literal['steps', 'linear', 'cubic-bezier', ''] = ''
 
     num_steps: int = 0
-    jump_type: Literal['start', 'end', 'none', 'both'] = 'end'
+    jump_type: JumpTypes = 'end'
 
     linear_x: Tuple[float, ...] = ()
     linear_y: Tuple[float, ...] = ()
@@ -1418,7 +1421,7 @@ class EasingFunction(NamedTuple):
         if len(parts) != 4:
             raise ValueError('cubic-bezier easing function must have four points')
         return cls(type='cubic-bezier', cubic_bezier_points=(
-            unit_float(parts[0]), float(parts[1]), unit_float(parts[2]), float(parts[2])))
+            unit_float(parts[0]), float(parts[1]), unit_float(parts[2]), float(parts[3])))
 
     @classmethod
     def linear(cls, params: str) -> 'EasingFunction':
@@ -1432,12 +1435,16 @@ class EasingFunction(NamedTuple):
             extra = len(yaxis) - len(xaxis)
             if extra <= 0:
                 return
-            start = xaxis[-1] if xaxis else 0
-            delta = (end - start) / (extra + 1)
-            if delta <= 0:
+            start = xaxis[-1] if xaxis else 0.
+            delta = (end - start) / max(1, extra - 1)
+            if delta <= 0.:
                 raise ValueError(f'Linear easing curve must have strictly increasing points: {params} does not')
-            for i in range(extra):
-                xaxis.append((i+1) * delta)
+            if xaxis:
+                for i in range(extra):
+                    xaxis.append(start + (i+1) * delta)
+            else:
+                for i in range(extra):
+                    xaxis.append(i * delta)
 
         def add_point(y: float, x: Optional[float] = None) -> None:
             if x is None:
@@ -1463,18 +1470,18 @@ class EasingFunction(NamedTuple):
         balance(1)
         return cls(type='linear', linear_x=tuple(xaxis), linear_y=tuple(yaxis))
 
-
     @classmethod
     def steps(cls, params: str) -> 'EasingFunction':
         parts = params.replace(',', ' ').split()
-        jump_type = 'end'
+        jump_type: JumpTypes = 'end'
         if len(parts) == 2:
             n = int(parts[0])
             jt = parts[1]
+            mapping: Dict[str, JumpTypes] = {
+                'jump-start': 'start', 'start': 'start', 'end': 'end', 'jump-end': 'end', 'jump-none': 'none', 'jump-both': 'both'
+            }
             try:
-                jump_type = {
-                    'jump-start': 'start', 'start': 'start', 'end': 'end', 'jump-end': 'end', 'jump-none': 'none', 'jump-both': 'both'
-                }[jt.lower()]
+                jump_type = mapping[jt.lower()]
             except KeyError:
                 raise KeyError(f'{jt} is not a valid jump type for a linear easing function')
             if jump_type == 'none':
@@ -1483,7 +1490,7 @@ class EasingFunction(NamedTuple):
                 n = max(1, n)
         else:
             n = max(1, int(parts[0]))
-        return cls(type='steps', jump_type=jump_type, num_steps=n)  # type: ignore
+        return cls(type='steps', jump_type=jump_type, num_steps=n)
 
 
 def cursor_blink_interval(spec: str) -> Tuple[float, EasingFunction, EasingFunction]:
