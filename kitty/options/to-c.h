@@ -159,7 +159,7 @@ add_easing_function(Animation *a, PyObject *e, double y_at_start, double y_at_en
 static inline void
 cursor_blink_interval(PyObject *src, Options *opts) {
     opts->cursor_blink_interval = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(src, 0));
-    free_animation(opts->animation.cursor);
+    opts->animation.cursor = free_animation(opts->animation.cursor);
     if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 1)) && (opts->animation.cursor = alloc_animation()) != NULL) {
         add_easing_function(opts->animation.cursor, PyTuple_GET_ITEM(src, 1), 1, 0);
         if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 2))) {
