@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,17 +83,46 @@ func (self *Loop) update_screen_size() error {
 	return nil
 }
 
-func (self *Loop) handle_csi(raw []byte) error {
+func (self *Loop) handle_csi(raw []byte) (err error) {
 	csi := string(raw)
-	ke := KeyEventFromCSI(csi)
-	if ke != nil {
-		return self.handle_key_event(ke)
-	}
-	sz, err := self.ScreenSize()
-	if err == nil {
-		me := MouseEventFromCSI(csi, sz)
-		if me != nil {
-			return self.handle_mouse_event(me)
+	if len(csi) > 2 {
+		if strings.HasSuffix(csi, "t") && strings.HasPrefix(csi, "48;") {
+			if parts := strings.Split(csi[3:len(csi)-1], ";"); len(parts) > 3 {
+				var parsed [4]int
+				ok := true
+				for i, x := range parts {
+					x, _, _ = strings.Cut(x, ":")
+					if parsed[i], err = strconv.Atoi(x); err != nil {
+						ok = false
+						break
+					}
+				}
+				if ok {
+					self.seen_inband_resize = true
+					old_size := self.screen_size
+					s := &self.screen_size
+					s.updated = true
+					s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
+					s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[2])
+					s.CellWidth = s.WidthPx / s.WidthCells
+					s.CellHeight = s.HeightPx / s.HeightCells
+					if self.OnResize != nil {
+						return self.OnResize(old_size, self.screen_size)
+					}
+					return nil
+				}
+			}
+		}
+		ke := KeyEventFromCSI(csi)
+		if ke != nil {
+			return self.handle_key_event(ke)
+		}
+		sz, err := self.ScreenSize()
+		if err == nil {
+			me := MouseEventFromCSI(csi, sz)
+			if me != nil {
+				return self.handle_mouse_event(me)
+			}
 		}
 	}
 	if self.OnEscapeCode != nil {
@@ -272,6 +302,9 @@ func (self *Loop) on_SIGPIPE() error {
 }
 
 func (self *Loop) on_SIGWINCH() error {
+	if self.seen_inband_resize {
+		return nil
+	}
 	self.screen_size.updated = false
 	if self.OnResize != nil {
 		old_size := self.screen_size
@@ -313,6 +346,7 @@ func (self *Loop) run() (err error) {
 	}()
 
 	self.keep_going = true
+	self.seen_inband_resize = false
 	self.pending_mouse_events = utils.NewRingBuffer[MouseEvent](4)
 	// tty_write_channel is buffered so there is no race between initial
 	// queueing and startup of writer thread and also as a performance

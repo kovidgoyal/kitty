@@ -41,6 +41,7 @@ type Loop struct {
 	controlling_term                       *tty.Term
 	terminal_options                       TerminalStateOptions
 	screen_size                            ScreenSize
+	seen_inband_resize                     bool
 	escape_code_parser                     wcswidth.EscapeCodeParser
 	keep_going                             bool
 	death_signal                           unix.Signal

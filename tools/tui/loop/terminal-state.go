@@ -46,26 +46,27 @@ type Mode uint32
 const private Mode = 1 << 31
 
 const (
-	LNM                    Mode = 20
-	IRM                    Mode = 4
-	DECKM                  Mode = 1 | private
-	DECSCNM                Mode = 5 | private
-	DECOM                  Mode = 6 | private
-	DECAWM                 Mode = 7 | private
-	DECARM                 Mode = 8 | private
-	DECTCEM                Mode = 25 | private
-	MOUSE_BUTTON_TRACKING  Mode = 1000 | private
-	MOUSE_MOTION_TRACKING  Mode = 1002 | private
-	MOUSE_MOVE_TRACKING    Mode = 1003 | private
-	FOCUS_TRACKING         Mode = 1004 | private
-	MOUSE_UTF8_MODE        Mode = 1005 | private
-	MOUSE_SGR_MODE         Mode = 1006 | private
-	MOUSE_URXVT_MODE       Mode = 1015 | private
-	MOUSE_SGR_PIXEL_MODE   Mode = 1016 | private
-	ALTERNATE_SCREEN       Mode = 1049 | private
-	BRACKETED_PASTE        Mode = 2004 | private
-	PENDING_UPDATE         Mode = 2026 | private
-	HANDLE_TERMIOS_SIGNALS Mode = kitty.HandleTermiosSignals | private
+	LNM                        Mode = 20
+	IRM                        Mode = 4
+	DECKM                      Mode = 1 | private
+	DECSCNM                    Mode = 5 | private
+	DECOM                      Mode = 6 | private
+	DECAWM                     Mode = 7 | private
+	DECARM                     Mode = 8 | private
+	DECTCEM                    Mode = 25 | private
+	MOUSE_BUTTON_TRACKING      Mode = 1000 | private
+	MOUSE_MOTION_TRACKING      Mode = 1002 | private
+	MOUSE_MOVE_TRACKING        Mode = 1003 | private
+	FOCUS_TRACKING             Mode = 1004 | private
+	MOUSE_UTF8_MODE            Mode = 1005 | private
+	MOUSE_SGR_MODE             Mode = 1006 | private
+	MOUSE_URXVT_MODE           Mode = 1015 | private
+	MOUSE_SGR_PIXEL_MODE       Mode = 1016 | private
+	ALTERNATE_SCREEN           Mode = 1049 | private
+	BRACKETED_PASTE            Mode = 2004 | private
+	PENDING_UPDATE             Mode = 2026 | private
+	INBAND_RESIZE_NOTIFICATION Mode = 2048 | private
+	HANDLE_TERMIOS_SIGNALS     Mode = kitty.HandleTermiosSignals | private
 )
 
 func (self Mode) escape_code(which string) string {
@@ -127,7 +128,7 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	reset_modes(&sb,
 		IRM, DECKM, DECSCNM, BRACKETED_PASTE, FOCUS_TRACKING,
 		MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING, MOUSE_MOVE_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE)
-	set_modes(&sb, DECARM, DECAWM, DECTCEM)
+	set_modes(&sb, DECARM, DECAWM, DECTCEM, INBAND_RESIZE_NOTIFICATION)
 	if self.Alternate_screen {
 		set_modes(&sb, ALTERNATE_SCREEN)
 		sb.WriteString(CLEAR_SCREEN)
@@ -169,6 +170,7 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 		sb.WriteString(RESTORE_COLORS)
 	}
 	sb.WriteString(RESTORE_CURSOR)
+	reset_modes(&sb, INBAND_RESIZE_NOTIFICATION)
 	return sb.String()
 }
 
