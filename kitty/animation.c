@@ -196,12 +196,8 @@ init_function(Animation *a, double y_at_start, double y_at_end, easing_curve cur
 
 static bool
 is_bezier_linear(double p1x, double p1y, double p2x, double p2y) {
-    return (
-        (p1x == 0 && p1y == 0 && p2x == 1 && p2y == 1) ||
-        (p1x == 0 && p1y == 0 && p2x == 0 && p2y == 0) ||
-        (p1x == 1 && p1y == 1 && p2x == 1 && p2y == 1) ||
-        (p1x != 0 && p2x != 0 && p1y != 0 && p2y != 0 && p1y / p1x == p2y / p2x)
-    );
+    // Is linear if all four points are on the same line. P0 and P4 are fixed at (0, 0) and (1, 1) for us.
+    return p1x == p1y && p2x == p2y;
 }
 
 void
