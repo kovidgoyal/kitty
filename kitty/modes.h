@@ -85,5 +85,8 @@
 // Pending updates mode
 #define PENDING_UPDATE (2026 << 5)
 
+// In-band resize notification mode
+#define INBAND_RESIZE_NOTIFICATION (2048 << 5)
+
 // Handle Ctrl-C/Ctrl-Z mode
 #define HANDLE_TERMIOS_SIGNALS (19997 << 5)

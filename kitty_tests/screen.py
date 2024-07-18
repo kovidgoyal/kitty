@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Cursor
+from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Cursor, ESC_CSI
 from kitty.marks import marker_from_function, marker_from_regex
 from kitty.window import pagerhist
 
@@ -304,6 +304,14 @@ class TestScreen(BaseTest):
         s.draw('x' * len(str(s.line(1))))
         s.resize(s.lines, s.columns + 4)
         self.ae(str(s.linebuf), 'xxx\nxx\nbb\n\n')
+        s = self.create_screen()
+        c = s.callbacks
+        parse_bytes(s, b'\x1b[?2048$p')  # ]
+        self.ae(c.wtcbuf, b'\x1b[?2048;2$y')  # ]
+        c.clear()
+        parse_bytes(s, b'\x1b[?2048h\x1b[?2048$p')  # ]
+        self.ae(c.wtcbuf, b'\x1b[?2048;1$y')  # ]
+        self.ae(c.num_of_resize_events, 1)
 
     def test_cursor_after_resize(self):
 

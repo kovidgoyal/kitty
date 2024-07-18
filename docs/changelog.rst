@@ -92,6 +92,8 @@ Detailed list of changes
 
 - Splits layout: Fix the ``move_to_screen_edge`` action breaking when only a single window is present (:iss:`7621`)
 
+- Add support for in-band window resize notifications (:iss:`7642`)
+
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

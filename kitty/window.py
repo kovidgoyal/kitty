@@ -45,6 +45,7 @@ from .fast_data_types import (
     CURSOR_BEAM,
     CURSOR_BLOCK,
     CURSOR_UNDERLINE,
+    ESC_CSI,
     ESC_DCS,
     ESC_OSC,
     GLFW_MOD_CONTROL,
@@ -862,6 +863,8 @@ class Window:
             boss = get_boss()
             boss.child_monitor.resize_pty(self.id, *current_pty_size)
             self.last_resized_at = monotonic()
+            self.last_reported_pty_size = current_pty_size
+            self.notify_child_of_resize()
             if not self.child_is_launched:
                 self.child.mark_terminal_ready()
                 self.child_is_launched = True
@@ -871,7 +874,6 @@ class Window:
                     print(f'[{now:.3f}] Child launched', file=sys.stderr)
             elif boss.args.debug_rendering:
                 print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
-            self.last_reported_pty_size = current_pty_size
         else:
             mark_os_window_dirty(self.os_window_id)
 
@@ -1222,6 +1224,10 @@ class Window:
         identifier = sanitize_identifier_pat().sub('', identifier)
         self.screen.send_escape_code_to_child(ESC_OSC, f'99;i={identifier};')
 
+    def notify_child_of_resize(self) -> None:
+        pty_size = self.last_reported_pty_size
+        if pty_size[0] > -1 and self.screen.in_band_resize_notification:
+            self.screen.send_escape_code_to_child(ESC_CSI, f'48;{pty_size[0]};{pty_size[1]};{pty_size[3]};{pty_size[2]}t')
 
     def set_dynamic_color(self, code: int, value: Union[str, bytes, memoryview] = '') -> None:
         if isinstance(value, (bytes, memoryview)):

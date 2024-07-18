@@ -50,6 +50,9 @@ class Callbacks:
     def write(self, data) -> None:
         self.wtcbuf += bytes(data)
 
+    def notify_child_of_resize(self):
+        self.num_of_resize_events += 1
+
     def title_changed(self, data, is_base64=False) -> None:
         self.titlebuf.append(process_title_from_child(data, is_base64, ''))
 
@@ -106,6 +109,7 @@ class Callbacks:
         self.last_cmd_exit_status = sys.maxsize
         self.last_cmd_cmdline = ''
         self.last_cmd_at = 0
+        self.num_of_resize_events = 0
 
     def on_bell(self) -> None:
         self.bell_count += 1

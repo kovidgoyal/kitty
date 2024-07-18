@@ -1153,6 +1153,12 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
                 log_error("Pending mode change to already current mode (%d) requested. Either pending mode expired or there is an application bug.", val);
             }
             break;
+        case INBAND_RESIZE_NOTIFICATION:
+            if (val != self->modes.mINBAND_RESIZE_NOTIFICATION) {
+                self->modes.mINBAND_RESIZE_NOTIFICATION = val;
+                if (val) CALLBACK("notify_child_of_resize", NULL);
+            }
+            break;
         default:
             private = mode >= 1 << 5;
             if (private) mode >>= 5;
@@ -1662,6 +1668,7 @@ copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, Scre
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
         SIMPLE_MODE(FOCUS_TRACKING)
+        SIMPLE_MODE(INBAND_RESIZE_NOTIFICATION)
         SIMPLE_MODE(DECCKM)
         SIMPLE_MODE(DECTCEM)
         SIMPLE_MODE(DECAWM)
@@ -1702,6 +1709,7 @@ copy_specific_modes(Screen *self, const ScreenModes *src, ScreenModes *dest) {
     copy_specific_mode(self, DECARM, src, dest);
     copy_specific_mode(self, BRACKETED_PASTE, src, dest);
     copy_specific_mode(self, FOCUS_TRACKING, src, dest);
+    copy_specific_mode(self, INBAND_RESIZE_NOTIFICATION, src, dest);
     copy_specific_mode(self, DECCKM, src, dest);
     copy_specific_mode(self, DECTCEM, src, dest);
     copy_specific_mode(self, DECAWM, src, dest);
@@ -2196,6 +2204,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(DECCKM);
         KNOWN_MODE(BRACKETED_PASTE);
         KNOWN_MODE(FOCUS_TRACKING);
+        KNOWN_MODE(INBAND_RESIZE_NOTIFICATION);
 #undef KNOWN_MODE
         case ALTERNATE_SCREEN:
             ans = self->linebuf == self->alt_linebuf ? 1 : 2; break;
@@ -3830,6 +3839,7 @@ WRAP0(clear_scrollback)
 
 MODE_GETSET(in_bracketed_paste_mode, BRACKETED_PASTE)
 MODE_GETSET(focus_tracking_enabled, FOCUS_TRACKING)
+MODE_GETSET(in_band_resize_notification, INBAND_RESIZE_NOTIFICATION)
 MODE_GETSET(auto_repeat_enabled, DECARM)
 MODE_GETSET(cursor_visible, DECTCEM)
 MODE_GETSET(cursor_key_mode, DECCKM)
@@ -4852,6 +4862,7 @@ static PyGetSetDef getsetters[] = {
     GETSET(in_bracketed_paste_mode)
     GETSET(auto_repeat_enabled)
     GETSET(focus_tracking_enabled)
+    GETSET(in_band_resize_notification)
     GETSET(cursor_visible)
     GETSET(cursor_key_mode)
     GETSET(disable_ligatures)
