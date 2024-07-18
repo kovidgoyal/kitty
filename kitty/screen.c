@@ -1154,10 +1154,8 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             }
             break;
         case INBAND_RESIZE_NOTIFICATION:
-            if (val != self->modes.mINBAND_RESIZE_NOTIFICATION) {
-                self->modes.mINBAND_RESIZE_NOTIFICATION = val;
-                if (val) CALLBACK("notify_child_of_resize", NULL);
-            }
+            self->modes.mINBAND_RESIZE_NOTIFICATION = val;
+            if (val) CALLBACK("notify_child_of_resize", NULL);
             break;
         default:
             private = mode >= 1 << 5;

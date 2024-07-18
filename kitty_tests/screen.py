@@ -309,9 +309,11 @@ class TestScreen(BaseTest):
         parse_bytes(s, b'\x1b[?2048$p')  # ]
         self.ae(c.wtcbuf, b'\x1b[?2048;2$y')  # ]
         c.clear()
-        parse_bytes(s, b'\x1b[?2048h\x1b[?2048$p')  # ]
+        parse_bytes(s, b'\x1b[?2048h\x1b[?2048$p')  # ]]
         self.ae(c.wtcbuf, b'\x1b[?2048;1$y')  # ]
         self.ae(c.num_of_resize_events, 1)
+        parse_bytes(s, b'\x1b[?2048h')  # ]
+        self.ae(c.num_of_resize_events, 2)
 
     def test_cursor_after_resize(self):
 
