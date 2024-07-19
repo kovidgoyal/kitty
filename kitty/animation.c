@@ -19,7 +19,7 @@ typedef struct StepsParameters {
 } StepsParameters;
 
 static const double bezier_epsilon = 1e-7;
-static const int max_newton_iterations = 4;
+static const unsigned max_newton_iterations = 4;
 
 typedef struct BezierParameters {
     double ax, bx, cx, ay, by, cy, start_gradient, end_gradient, spline_samples[11];
@@ -125,7 +125,7 @@ solve_curve_x(const BezierParameters *p, double x, double epsilon) {
     // Perform a few iterations of Newton's method -- normally very fast.
     // See https://en.wikipedia.org/wiki/Newton%27s_method.
     double newton_epsilon = MIN(bezier_epsilon, epsilon);
-    for (size_t i = 0; i < max_newton_iterations; i++) {
+    for (unsigned i = 0; i < max_newton_iterations; i++) {
         x2 = sample_curve_x(p, t2) - x;
         if (fabs(x2) < newton_epsilon) return t2;
         d2 = sample_derivative_x(p, t2);
