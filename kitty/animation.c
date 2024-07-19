@@ -159,7 +159,7 @@ cubic_bezier_easing_curve(void *p_, double t, monotonic_t duration) {
     BezierParameters *p = p_;
     // The longer the animation, the more precision we need
     double epsilon = 1.0 / monotonic_t_to_ms(duration);
-    return solve_unit_bezier(p, t, epsilon);
+    return fabs(solve_unit_bezier(p, t, epsilon));
 }
 // }}}
 
@@ -180,8 +180,8 @@ apply_easing_curve(const Animation *a, double val, monotonic_t duration) {
     size_t idx = MIN((size_t)(val * a->count), a->count - 1);
     animation_function *f = a->functions + idx;
     double interval_size = 1. / a->count, interval_start = idx * interval_size;
-    val = (val - interval_start) / interval_size;
-    double ans = f->curve(&f->params, val, duration);
+    double scaled_val = (val - interval_start) / interval_size;
+    double ans = f->curve(&f->params, scaled_val, duration);
     return f->y_at_start + unit_value(ans) * f->y_size;
 }
 
