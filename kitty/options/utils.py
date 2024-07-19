@@ -1493,8 +1493,7 @@ class EasingFunction(NamedTuple):
         return cls(type='steps', jump_type=jump_type, num_steps=n)
 
 
-def cursor_blink_interval(spec: str) -> Tuple[float, EasingFunction, EasingFunction]:
-    interval: float = -1
+def parse_animation(spec: str, interval: float = -1.) -> Tuple[float, EasingFunction, EasingFunction]:
     with suppress(Exception):
         interval = float(spec)
         return interval, EasingFunction(), EasingFunction()
@@ -1538,6 +1537,14 @@ def cursor_blink_interval(spec: str) -> Tuple[float, EasingFunction, EasingFunct
         else:
             raise KeyError(f'{func_name} is not a valid easing function')
     return interval, m[0], m[1]
+
+
+def cursor_blink_interval(spec: str) -> Tuple[float, EasingFunction, EasingFunction]:
+    return parse_animation(spec)
+
+
+def visual_bell_duration(spec: str) -> Tuple[float, EasingFunction, EasingFunction]:
+    return parse_animation(spec, interval=0.)
 
 
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:

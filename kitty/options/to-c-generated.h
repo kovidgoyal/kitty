@@ -488,7 +488,7 @@ convert_from_opts_enable_audio_bell(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_visual_bell_duration(PyObject *val, Options *opts) {
-    opts->visual_bell_duration = parse_s_double_to_monotonic_t(val);
+    visual_bell_duration(val, opts);
 }
 
 static void

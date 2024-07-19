@@ -7,6 +7,7 @@
 
 #include "fonts.h"
 #include "gl.h"
+#include "cleanup.h"
 #include "colors.h"
 #include <stddef.h>
 #include "window_logo.h"
@@ -973,31 +974,23 @@ send_cell_data_to_gpu(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat d
     return changed;
 }
 
-static float
-ease_out_cubic(float phase) {
-    return 1.0f - powf(1.0f - phase, 3.0f);
-}
-
-static float
-ease_in_out_cubic(float phase) {
-    return phase < 0.5f ?
-        4.0f * powf(phase, 3.0f) :
-        1.0f - powf(-2.0f * phase + 2.0f, 3.0f) / 2.0f;
-}
-
-static float
-visual_bell_intensity(float phase) {
-    static const float peak = 0.2f;
-    const float fade = 1.0f - peak;
-    return phase < peak ? ease_out_cubic(phase / peak) : ease_in_out_cubic((1.0f - phase) / fade);
-}
+static Animation *default_visual_bell_animation = NULL;
 
 static float
 get_visual_bell_intensity(Screen *screen) {
     if (screen->start_visual_bell_at > 0) {
-        monotonic_t progress = monotonic() - screen->start_visual_bell_at;
-        monotonic_t duration = OPT(visual_bell_duration);
-        if (progress <= duration) return visual_bell_intensity((float)progress / duration);
+        if (!default_visual_bell_animation) {
+            default_visual_bell_animation = alloc_animation();
+            if (!default_visual_bell_animation) fatal("Out of memory");
+            add_cubic_bezier_animation(default_visual_bell_animation, 0, 1, 0.42, 0, 0.58, 1);
+            add_cubic_bezier_animation(default_visual_bell_animation, 1, 0, 0.42, 0, 0.58, 1);
+        }
+        const monotonic_t progress = monotonic() - screen->start_visual_bell_at;
+        const monotonic_t duration = OPT(visual_bell_duration) / 2;
+        if (progress <= duration) {
+            Animation *a = animation_is_valid(OPT(animation.visual_bell)) ? OPT(animation.visual_bell) : default_visual_bell_animation;
+            return (float)apply_easing_curve(a, progress / (double)duration, duration);
+        }
         screen->start_visual_bell_at = 0;
     }
     return 0.0f;
@@ -1244,6 +1237,11 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+static void
+finalize(void) {
+    default_visual_bell_animation = free_animation(default_visual_bell_animation);
+}
+
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
@@ -1277,6 +1275,7 @@ init_shaders(PyObject *module) {
 
 #undef C
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    register_at_exit_cleanup_func(SHADERS_CLEANUP_FUNC, finalize);
     return true;
 }
 // }}}

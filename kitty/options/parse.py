@@ -19,7 +19,8 @@ from kitty.options.utils import (
     tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
     tab_font_style, tab_separator, tab_title_template, titlebar_color, to_cursor_shape,
     to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
-    visual_window_select_characters, window_border_width, window_logo_scale, window_size
+    visual_bell_duration, visual_window_select_characters, window_border_width, window_logo_scale,
+    window_size
 )
 
 
@@ -1353,7 +1354,7 @@ class Parser:
         ans['visual_bell_color'] = to_color_or_none(val)
 
     def visual_bell_duration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['visual_bell_duration'] = positive_float(val)
+        ans['visual_bell_duration'] = visual_bell_duration(val)
 
     def visual_window_select_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['visual_window_select_characters'] = visual_window_select_characters(val)

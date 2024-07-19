@@ -58,7 +58,8 @@ Glossary
       Commonly used easing functions are :code:`linear` for a constant rate
       animation and :code:`ease-in-out` for an animation that starts slow,
       becomes fast in the middle and ends slowly. These are used to control
-      various animations in kitty, such as :opt:`cursor_blink_interval`.
+      various animations in kitty, such as :opt:`cursor_blink_interval` and
+      :opt:`visual_bell_duration`.
 
 .. _env_vars:
 

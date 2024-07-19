@@ -612,7 +612,7 @@ class Options:
     url_prefixes: typing.Tuple[str, ...] = ('file', 'ftp', 'ftps', 'gemini', 'git', 'gopher', 'http', 'https', 'irc', 'ircs', 'kitty', 'mailto', 'news', 'sftp', 'ssh')
     url_style: int = 3
     visual_bell_color: typing.Optional[kitty.fast_data_types.Color] = None
-    visual_bell_duration: float = 0
+    visual_bell_duration: typing.Tuple[float, kitty.options.utils.EasingFunction, kitty.options.utils.EasingFunction] = (0.0, kitty.options.utils.EasingFunction(), kitty.options.utils.EasingFunction())
     visual_window_select_characters: str = '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     wayland_enable_ime: bool = True
     wayland_titlebar_color: int = 0

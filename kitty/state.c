@@ -1463,6 +1463,7 @@ finalize(void) {
 #undef F
     Py_CLEAR(options_object);
     free_animation(OPT(animation.cursor));
+    free_animation(OPT(animation.visual_bell));
     // we leak the texture here since it is not guaranteed
     // that freeing the texture will work during shutdown and
     // the GPU driver should take care of it when the OpenGL context is

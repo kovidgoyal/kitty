@@ -156,19 +156,30 @@ add_easing_function(Animation *a, PyObject *e, double y_at_start, double y_at_en
 #undef G
 }
 
+#define parse_animation(duration, name, start, end) \
+    opts->duration = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(src, 0)); \
+    opts->animation.name = free_animation(opts->animation.name); \
+    if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 1)) && (opts->animation.name = alloc_animation()) != NULL) { \
+        add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 1), start, end); \
+        if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 2))) { \
+            add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 2), end, start); \
+        } else { \
+            add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 1), end, start); \
+        } \
+    } \
+
 static inline void
 cursor_blink_interval(PyObject *src, Options *opts) {
-    opts->cursor_blink_interval = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(src, 0));
-    opts->animation.cursor = free_animation(opts->animation.cursor);
-    if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 1)) && (opts->animation.cursor = alloc_animation()) != NULL) {
-        add_easing_function(opts->animation.cursor, PyTuple_GET_ITEM(src, 1), 1, 0);
-        if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 2))) {
-            add_easing_function(opts->animation.cursor, PyTuple_GET_ITEM(src, 2), 0, 1);
-        } else {
-            add_easing_function(opts->animation.cursor, PyTuple_GET_ITEM(src, 1), 0, 1);
-        }
-    }
+    parse_animation(cursor_blink_interval, cursor, 1, 0);
 }
+
+static inline void
+visual_bell_duration(PyObject *src, Options *opts) {
+    parse_animation(visual_bell_duration, visual_bell, 0, 1);
+}
+
+#undef parse_animation
+
 
 static void
 parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {

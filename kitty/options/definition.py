@@ -897,10 +897,16 @@ The audio bell. Useful to disable it in environments that require silence.
     )
 
 opt('visual_bell_duration', '0.0',
-    option_type='positive_float', ctype='time',
+    option_type='visual_bell_duration', ctype='!visual_bell_duration',
     long_text='''
 The visual bell duration (in seconds). Flash the screen when a bell occurs for
-the specified number of seconds. Set to zero to disable.
+the specified number of seconds. Set to zero to disable. The flash is animated, fading
+in and out over the specified duration. The :term:`easing function` used for the fading can be controlled.
+For example, :code:`2.0 linear` will casuse the flash to fade in and out linearly. The default
+if unspecified is to use :code:`ease-in-out` which fades slowly at the start, middle and end.
+You can specify different easing functions for the fade-in and fade-out parts, like this:
+:code:`2.0 ease-in linear`. kitty
+supports all the :link:`CSS easing functions <https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function>`.
 '''
     )
 

@@ -96,6 +96,8 @@ Detailed list of changes
 
 - Add support for in-band window resize notifications (:iss:`7642`)
 
+- Allow controlling the easing curves used for :opt:`visual_bell_duration`
+
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
