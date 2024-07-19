@@ -70,9 +70,11 @@ Detailed list of changes
 
 - Support `OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__ (:iss:`3711`)
 
-- A new ``choose-fonts`` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts.
+- A new ``choose-fonts`` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts
 
-- Add NERD fonts builtin so that users don't have to install them to use NERD symbols in kitty. The builtin font is used only if the symbols are not available in some system font.
+- Allow animating the blinking of the cursor. See :opt:`cursor_blink_interval` for how to configure it
+
+- Add NERD fonts builtin so that users don't have to install them to use NERD symbols in kitty. The builtin font is used only if the symbols are not available in some system font
 
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
@@ -80,7 +82,7 @@ Detailed list of changes
 
 - icat kitten: Add an option :option:`kitty +kitten icat --no-trailing-newline` to leave the cursor to the right of the image (:iss:`7574`)
 
-- Speed up ``kitty --version`` and ``kitty --single-instance`` (for all subsequent instances). They are now the fastest of all terminal emulators with similar functionality.
+- Speed up ``kitty --version`` and ``kitty --single-instance`` (for all subsequent instances). They are now the fastest of all terminal emulators with similar functionality
 
 - macOS: Fix rendering of the unicode hyphen (U+2010) character when using a font that does not include a glyph for it (:iss:`7525`)
 

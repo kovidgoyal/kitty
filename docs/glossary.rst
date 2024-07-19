@@ -51,6 +51,15 @@ Glossary
       features such as viewing images, connecting conveniently to remote
       computers, transferring files, inputting unicode characters, etc.
 
+   easing function
+      A function that controls how an animation progresses over time. kitty
+      support the `CSS syntax for easing functions
+      <https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function>`__.
+      Commonly used easing functions are :code:`linear` for a constant rate
+      animation and :code:`ease-in-out` for an animation that starts slow,
+      becomes fast in the middle and ends slowly. These are used to control
+      various animations in kitty, such as :opt:`cursor_blink_interval`.
+
 .. _env_vars:
 
 Environment variables
