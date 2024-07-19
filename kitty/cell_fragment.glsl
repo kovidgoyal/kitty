@@ -134,7 +134,7 @@ vec4 calculate_premul_foreground_from_sprites(vec4 text_fg) {
     float combined_alpha = min(text_fg.a + strike_alpha, 1.0f);
     // Underline color might be different, so alpha blend
     vec4 ans = alpha_blend(vec4(text_fg.rgb, combined_alpha * effective_text_alpha), vec4(decoration_fg, underline_alpha * effective_text_alpha));
-    return mix(ans, cursor_color_premult, cursor_alpha);
+    return mix(ans, cursor_color_premult, cursor_alpha * cursor_color_premult.a);
 }
 
 vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {

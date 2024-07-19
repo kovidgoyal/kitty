@@ -186,7 +186,7 @@ void main() {
 
     // Cursor
     cursor_color_premult = vec4(color_to_vec(cursor_bg) * cursor_opacity, cursor_opacity);
-    vec3 final_cursor_text_color = color_to_vec(cursor_fg);
+    vec3 final_cursor_text_color = mix(foreground, color_to_vec(cursor_fg), cursor_opacity);
     foreground = choose_color(cell_data.has_block_cursor, final_cursor_text_color, foreground);
     decoration_fg = choose_color(cell_data.has_block_cursor, final_cursor_text_color, decoration_fg);
     cursor_pos = to_sprite_pos(cell_data.pos, cursor_fg_sprite_idx * uint(cell_data.has_cursor), ZERO, ZERO);
