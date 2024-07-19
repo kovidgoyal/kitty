@@ -680,7 +680,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
             monotonic_t time_into_cycle = time_since_start_blink % duration;
             double frac_into_cycle = (double)time_into_cycle / (double)duration;
             ans->opacity = (float)apply_easing_curve(OPT(animation.cursor), frac_into_cycle, duration);
-            set_maximum_wait(ms_to_monotonic_t(50));
+            set_maximum_wait(ANIMATION_SAMPLE_WAIT);
         } else {
             monotonic_t n = time_since_start_blink / OPT(cursor_blink_interval);
             ans->opacity = 1 - n % 2;
@@ -802,9 +802,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
         if (w->visible && WD.screen) {
             bool is_active_window = i == tab->active_window;
             draw_cells(WD.vao_idx, &WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
-            if (WD.screen->start_visual_bell_at != 0) {
-                set_maximum_wait(OPT(repaint_delay));
-            }
+            if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
             w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }

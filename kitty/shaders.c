@@ -982,8 +982,8 @@ get_visual_bell_intensity(Screen *screen) {
         if (!default_visual_bell_animation) {
             default_visual_bell_animation = alloc_animation();
             if (!default_visual_bell_animation) fatal("Out of memory");
-            add_cubic_bezier_animation(default_visual_bell_animation, 0, 1, 0.42, 0, 0.58, 1);
-            add_cubic_bezier_animation(default_visual_bell_animation, 1, 0, 0.42, 0, 0.58, 1);
+            add_cubic_bezier_animation(default_visual_bell_animation, 0, 1, EASE_IN_OUT);
+            add_cubic_bezier_animation(default_visual_bell_animation, 1, 0, EASE_IN_OUT);
         }
         const monotonic_t progress = monotonic() - screen->start_visual_bell_at;
         const monotonic_t duration = OPT(visual_bell_duration) / 2;
