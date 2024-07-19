@@ -85,44 +85,42 @@ func (self *Loop) update_screen_size() error {
 
 func (self *Loop) handle_csi(raw []byte) (err error) {
 	csi := string(raw)
-	if len(csi) > 2 {
-		if strings.HasSuffix(csi, "t") && strings.HasPrefix(csi, "48;") {
-			if parts := strings.Split(csi[3:len(csi)-1], ";"); len(parts) > 3 {
-				var parsed [4]int
-				ok := true
-				for i, x := range parts {
-					x, _, _ = strings.Cut(x, ":")
-					if parsed[i], err = strconv.Atoi(x); err != nil {
-						ok = false
-						break
-					}
-				}
-				if ok {
-					self.seen_inband_resize = true
-					old_size := self.screen_size
-					s := &self.screen_size
-					s.updated = true
-					s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
-					s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[2])
-					s.CellWidth = s.WidthPx / s.WidthCells
-					s.CellHeight = s.HeightPx / s.HeightCells
-					if self.OnResize != nil {
-						return self.OnResize(old_size, self.screen_size)
-					}
-					return nil
+	if strings.HasSuffix(csi, "t") && strings.HasPrefix(csi, "48;") {
+		if parts := strings.Split(csi[3:len(csi)-1], ";"); len(parts) > 3 {
+			var parsed [4]int
+			ok := true
+			for i, x := range parts {
+				x, _, _ = strings.Cut(x, ":")
+				if parsed[i], err = strconv.Atoi(x); err != nil {
+					ok = false
+					break
 				}
 			}
-		}
-		ke := KeyEventFromCSI(csi)
-		if ke != nil {
-			return self.handle_key_event(ke)
-		}
-		sz, err := self.ScreenSize()
-		if err == nil {
-			me := MouseEventFromCSI(csi, sz)
-			if me != nil {
-				return self.handle_mouse_event(me)
+			if ok {
+				self.seen_inband_resize = true
+				old_size := self.screen_size
+				s := &self.screen_size
+				s.updated = true
+				s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
+				s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[2])
+				s.CellWidth = s.WidthPx / s.WidthCells
+				s.CellHeight = s.HeightPx / s.HeightCells
+				if self.OnResize != nil {
+					return self.OnResize(old_size, self.screen_size)
+				}
+				return nil
 			}
+		}
+	}
+	ke := KeyEventFromCSI(csi)
+	if ke != nil {
+		return self.handle_key_event(ke)
+	}
+	sz, err := self.ScreenSize()
+	if err == nil {
+		me := MouseEventFromCSI(csi, sz)
+		if me != nil {
+			return self.handle_mouse_event(me)
 		}
 	}
 	if self.OnEscapeCode != nil {
