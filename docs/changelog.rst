@@ -76,6 +76,8 @@ Detailed list of changes
 
 - Add NERD fonts builtin so that users don't have to install them to use NERD symbols in kitty. The builtin font is used only if the symbols are not available in some system font
 
+- Sessions: A new command ``focus_matching_window`` to shift focus to a specific window, useful when creating complex layouts with splits (:disc:`7635`)
+
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
 - Wayland: Fix specifying the output name for the panel kitten not working (:iss:`7573`)

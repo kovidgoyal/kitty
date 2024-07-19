@@ -39,6 +39,7 @@ class WindowSpec:
     def __init__(self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance']):
         self.launch_spec = launch_spec
         self.resize_spec: Optional[ResizeSpec] = None
+        self.focus_matching_window_spec: str = ''
         self.is_background_process = False
         if hasattr(launch_spec, 'opts'):  # LaunchSpec
             from .launch import LaunchSpec
@@ -51,6 +52,7 @@ class Tab:
     def __init__(self, opts: Options, name: str):
         self.windows: List[WindowSpec] = []
         self.pending_resize_spec: Optional[ResizeSpec] = None
+        self.pending_focus_matching_window: str = ''
         self.name = name.strip()
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
@@ -122,6 +124,9 @@ class Session:
         if t.pending_resize_spec is not None:
             t.windows[-1].resize_spec = t.pending_resize_spec
             t.pending_resize_spec = None
+        if t.pending_focus_matching_window:
+            t.windows[-1].focus_matching_window_spec = t.pending_focus_matching_window
+            t.pending_focus_matching_window = ''
 
     def resize_window(self, args: List[str]) -> None:
         s = resize_window('resize_window', shlex.join(args))[1]
@@ -131,6 +136,13 @@ class Session:
             t.windows[-1].resize_spec = spec
         else:
             t.pending_resize_spec = spec
+
+    def focus_matching_window(self, spec: str) -> None:
+        t = self.tabs[-1]
+        if t.windows:
+            t.windows[-1].focus_matching_window_spec = spec
+        else:
+            t.pending_focus_matching_window = spec
 
     def add_special_window(self, sw: 'SpecialWindowInstance') -> None:
         self.tabs[-1].windows.append(WindowSpec(sw))
@@ -202,6 +214,8 @@ def parse_session(raw: str, opts: Options, environ: Optional[Mapping[str, str]] 
                 ans.os_window_state = rest
             elif cmd == 'resize_window':
                 ans.resize_window(rest.split())
+            elif cmd == 'focus_matching_window':
+                ans.focus_matching_window(rest)
             else:
                 raise ValueError(f'Unknown command in session file: {cmd}')
     yield finalize_session(ans)

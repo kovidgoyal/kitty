@@ -39,6 +39,7 @@ from .fast_data_types import (
     attach_window,
     current_focused_os_window_id,
     detach_window,
+    focus_os_window,
     get_boss,
     get_click_interval,
     get_options,
@@ -211,15 +212,29 @@ class Tab:  # {{{
         self.mark_tab_bar_dirty()
 
     def startup(self, session_tab: 'SessionTab') -> None:
+        target_tab = self
+        boss = get_boss()
         for window in session_tab.windows:
             spec = window.launch_spec
             if isinstance(spec, SpecialWindowInstance):
                 self.new_special_window(spec)
             else:
                 from .launch import launch
-                launch(get_boss(), spec.opts, spec.args, target_tab=self, force_target_tab=True)
+                launched_window = launch(boss, spec.opts, spec.args, target_tab=target_tab, force_target_tab=True)
             if window.resize_spec is not None:
                 self.resize_window(*window.resize_spec)
+            if window.focus_matching_window_spec:
+                for w in boss.match_windows(window.focus_matching_window_spec, launched_window or boss.active_window):
+                    tab = w.tabref()
+                    if tab:
+                        target_tab = tab or self
+                        tm = tab.tab_manager_ref()
+                        if tm and boss.active_tab is not target_tab:
+                            tm.set_active_tab(target_tab)
+                        if target_tab.active_window is not w:
+                            target_tab.set_active_window(w)
+                        if current_focused_os_window_id() != w.os_window_id:
+                            focus_os_window(w.os_window_id, True)
 
         with suppress(IndexError):
             self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])

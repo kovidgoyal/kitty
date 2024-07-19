@@ -176,6 +176,25 @@ option in :file:`kitty.conf`. An example, showing all available commands:
     focus_os_window
     launch emacs
 
+    # Create a complex layout using multiple splits. Creates two columns of
+    # windows with two windows in each column. The windows in the firt column are
+    # split 50:50. In the second column the windows are not evenly split.
+    new_tab complex tab
+    layout splits
+    # First window, set a user variable on it so we can focus it later
+    launch --var window=first
+    # Create the second column by splitting the first window vertically
+    launch --location=vsplit
+    # Create the third window in the second column by splitting the second window horizontally
+    launch --location=hsplit
+    # Make the third window shorter so that the split is not even
+    resize_window shorter 5
+    # Go back to focusing the first window, so that we can split it
+    focus_matching_window var:window=first
+    # Create the final window in the first column
+    launch --location=hsplit
+
+
 .. note::
     The :doc:`launch <launch>` command when used in a session file cannot create
     new OS windows, or tabs.
