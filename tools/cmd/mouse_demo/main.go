@@ -67,6 +67,7 @@ func Run(args []string) (rc int, err error) {
 		lp.AllowLineWrapping(false)
 		defer lp.AllowLineWrapping(true)
 		if current_mouse_event == nil {
+			lp.ClearScreen()
 			lp.Println(`Move the mouse or click to see mouse events`)
 			return
 		}
@@ -148,6 +149,10 @@ func Run(args []string) (rc int, err error) {
 		if ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("ctrl+c") {
 			lp.Quit(0)
 		}
+		return nil
+	}
+	lp.OnResize = func(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
+		draw_screen()
 		return nil
 	}
 	err = lp.Run()
