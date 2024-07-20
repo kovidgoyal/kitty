@@ -836,8 +836,8 @@ class Boss:
                     focused_os_window = os_window_id
                 if opts.background_opacity != get_options().background_opacity:
                     self._set_os_window_background_opacity(os_window_id, opts.background_opacity)
-                if data.get('notify_on_os_window_death'):
-                    self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
+                if n := data.get('notify_on_os_window_death'):
+                    self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, n)
             if focused_os_window > 0:
                 focus_os_window(focused_os_window, True, activation_token)
             elif activation_token and is_wayland() and os_window_id:

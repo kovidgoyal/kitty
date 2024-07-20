@@ -48,10 +48,12 @@ def setup_debug_print() -> bool:
 
 
 def send_to_kitten(x: Any) -> None:
+    f = sys.__stdout__
+    assert f is not None
     try:
-        sys.__stdout__.buffer.write(json.dumps(x).encode())
-        sys.__stdout__.buffer.write(b'\n')
-        sys.__stdout__.buffer.flush()
+        f.buffer.write(json.dumps(x).encode())
+        f.buffer.write(b'\n')
+        f.buffer.flush()
     except BrokenPipeError:
         raise SystemExit('Pipe to kitten was broken while sending data to it')
 

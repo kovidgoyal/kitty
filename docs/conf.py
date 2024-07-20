@@ -317,8 +317,10 @@ def write_remote_control_protocol_docs() -> None:  # {{{
                     else:
                         title = f'{title} (optional)'
                 p(f':code:`{title}`')
-                p(' ', desc), p()
-        p(), p()
+                p(' ', desc)
+                p()
+        p()
+        p()
 
     with open('generated/rc.rst', 'w') as f:
         p = partial(print, file=f)
