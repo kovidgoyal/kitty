@@ -100,9 +100,11 @@ wr = WeightRange()
 def weight_range_for_family(family: str) -> WeightRange:
     faces = all_fonts_map(True)['family_map'].get(family_name_to_key(family), ())
     mini, maxi, medium, bold = wr.minimum, wr.maximum, wr.medium, wr.bold
+    seen_weights = set()
     for face in faces:
         w = face['weight']
         mini, maxi = min(w, mini), max(w, maxi)
+        seen_weights.add(w)
         s = face['style'].lower()
         if not s:
             continue
@@ -115,6 +117,8 @@ def weight_range_for_family(family: str) -> WeightRange:
             medium = w
         elif s == 'medium' and medium == wr.medium:
             medium = w
+    if len(seen_weights) < 2:
+        return wr
     return WeightRange(mini, maxi, medium, bold)
 
 
