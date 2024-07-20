@@ -10,7 +10,17 @@ from kitty.types import Edges
 from kitty.typing import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, Layout, LayoutData, LayoutDimension, LayoutOpts, NeighborsMap, lgd, normalize_biases, safe_increment_bias
+from .base import (
+    BorderLine,
+    Layout,
+    LayoutData,
+    LayoutDimension,
+    LayoutOpts,
+    NeighborsMap,
+    lgd,
+    normalize_biases,
+    safe_increment_bias,
+)
 from .vertical import borders
 
 
@@ -76,6 +86,18 @@ class TallLayoutOpts(LayoutOpts):
         return tuple(repeat(b / self.full_size, self.full_size)) + (1.0 - b,)
 
 
+def set_bias(biases: Sequence[float], idx: int, target: float) -> List[float]:
+    remainder = 1 - target
+    previous_remainder = sum(x for i, x in enumerate(biases) if i != idx)
+    ans = [1. for i in range(len(biases))]
+    for i in range(len(biases)):
+        if i == idx:
+            ans[i] = target
+        else:
+            ans[i] = remainder * biases[i] / previous_remainder
+    return ans
+
+
 class Tall(Layout):
 
     name = 'tall'
@@ -99,6 +121,17 @@ class Tall(Layout):
         bias = biased_map if num > 1 else None
         return self.perp_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias, offset=self.num_full_size_windows)
 
+    def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
+        if idx < len(self.main_bias):
+            before_main_bias = self.main_bias
+            self.main_bias = set_bias(self.main_bias, idx, fractional_bias)
+            return self.main_bias != before_main_bias
+
+        before_layout = tuple(self.variable_layout(all_windows, self.biased_map))
+        self.biased_map[idx - self.num_full_size_windows] = cell_increment_bias_v if self.main_is_horizontal else cell_increment_bias_h
+        after_layout = tuple(self.variable_layout(all_windows, self.biased_map))
+        return before_layout == after_layout
+
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         num_windows = all_windows.num_groups
         if self.main_is_horizontal == is_horizontal:
@@ -115,11 +148,11 @@ class Tall(Layout):
         if idx < self.num_full_size_windows or num_of_short_windows < 2:
             return False
         idx -= self.num_full_size_windows
-        before_layout = list(self.variable_layout(all_windows, self.biased_map))
+        before_layout = tuple(self.variable_layout(all_windows, self.biased_map))
         before = self.biased_map.get(idx, 0.)
         candidate = self.biased_map.copy()
         candidate[idx] = after = before + increment
-        if before_layout == list(self.variable_layout(all_windows, candidate)):
+        if before_layout == tuple(self.variable_layout(all_windows, candidate)):
             return False
         self.biased_map = candidate
         return before != after

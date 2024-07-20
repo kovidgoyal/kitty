@@ -186,9 +186,8 @@ option in :file:`kitty.conf`. An example, showing all available commands:
     # Create the second column by splitting the first window vertically
     launch --location=vsplit
     # Create the third window in the second column by splitting the second window horizontally
-    launch --location=hsplit
-    # Make the third window shorter so that the split is not even
-    resize_window shorter 5
+    # Make it take 40% of the height instead of 50%
+    launch --location=hsplit --bias=40
     # Go back to focusing the first window, so that we can split it
     focus_matching_window var:window=first
     # Create the final window in the first column

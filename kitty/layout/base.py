@@ -190,7 +190,7 @@ def layout_single_window(
     return window_geometry_from_layouts(x, y)
 
 
-def safe_increment_bias(old_val: float, increment: float) -> float:
+def safe_increment_bias(old_val: float, increment: float = 0) -> float:
     return max(0.1, min(old_val + increment, 0.9))
 
 
@@ -234,11 +234,11 @@ class Layout:
         self.full_name = f'{self.name}:{layout_opts}' if layout_opts else self.name
         self.remove_all_biases()
 
-    def bias_increment_for_cell(self, all_windows: WindowList, window_id: int, is_horizontal: bool) -> float:
+    def bias_increment_for_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
         self._set_dimensions()
-        return self.calculate_bias_increment_for_a_single_cell(all_windows, window_id, is_horizontal)
+        return self.calculate_bias_increment_for_a_single_cell(all_windows, is_horizontal)
 
-    def calculate_bias_increment_for_a_single_cell(self, all_windows: WindowList, window_id: int, is_horizontal: bool) -> float:
+    def calculate_bias_increment_for_a_single_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
         if is_horizontal:
             return (lgd.cell_width + 1) / lgd.central.width
         return (lgd.cell_height + 1) / lgd.central.height
@@ -289,7 +289,7 @@ class Layout:
 
     def add_window(
         self, all_windows: WindowList, window: WindowType, location: Optional[str] = None,
-        overlay_for: Optional[int] = None, put_overlay_behind: bool = False
+        overlay_for: Optional[int] = None, put_overlay_behind: bool = False, bias: Optional[float] = None,
     ) -> None:
         if overlay_for is not None:
             underlay = all_windows.id_map.get(overlay_for)
@@ -299,9 +299,9 @@ class Layout:
                 return
         if location == 'neighbor':
             location = 'after'
-        self.add_non_overlay_window(all_windows, window, location)
+        self.add_non_overlay_window(all_windows, window, location, bias)
 
-    def add_non_overlay_window(self, all_windows: WindowList, window: WindowType, location: Optional[str]) -> None:
+    def add_non_overlay_window(self, all_windows: WindowList, window: WindowType, location: Optional[str], bias: Optional[float] = None) -> None:
         next_to: Optional[WindowType] = None
         before = False
         next_to = all_windows.active_window
@@ -316,6 +316,21 @@ class Layout:
             elif location == 'last':
                 next_to = None
         all_windows.add_window(window, next_to=next_to, before=before)
+        if bias is not None:
+            idx = all_windows.group_idx_for_window(window)
+            if idx is not None:
+                self._set_dimensions()
+                self._bias_slot(all_windows, idx, bias)
+
+    def _bias_slot(self, all_windows: WindowList, idx: int, bias: float) -> bool:
+        fractional_bias = max(10, min(abs(bias), 90)) / 100
+        h, v = self.calculate_bias_increment_for_a_single_cell(all_windows, True), self.calculate_bias_increment_for_a_single_cell(all_windows, False)
+        nh, nv = lgd.central.width / lgd.cell_width, lgd.central.height / lgd.cell_height
+        f = max(-90, min(bias, 90)) / 100.
+        return self.bias_slot(all_windows, idx, fractional_bias, h * nh *f, v * nv * f)
+
+    def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
+        return False
 
     def update_visibility(self, all_windows: WindowList) -> None:
         active_window = all_windows.active_window

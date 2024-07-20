@@ -93,6 +93,12 @@ class Vertical(Layout):
         self.biased_map = candidate
         return True
 
+    def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
+        before_layout = tuple(self.variable_layout(all_windows, self.biased_map))
+        self.biased_map[idx] = cell_increment_bias_h if self.main_is_horizontal else cell_increment_bias_v
+        after_layout = tuple(self.variable_layout(all_windows, self.biased_map))
+        return before_layout == after_layout
+
     def generate_layout_data(self, all_windows: WindowList) -> Generator[Tuple[WindowGroup, LayoutData, LayoutData], None, None]:
         ylayout = self.variable_layout(all_windows, self.biased_map)
         for wg, yl in zip(all_windows.iter_all_layoutable_groups(), ylayout):

@@ -141,14 +141,19 @@ class Pair:
             pair = self
             pair.horizontal = horizontal
             self.one, self.two = q
+            final_pair = pair
+
         else:
             pair = Pair(horizontal=horizontal)
             if self.one == existing_window_id:
                 self.one = pair
             else:
                 self.two = pair
-            tuple(map(pair.balanced_add, q))
-        return pair
+            for wid in q:
+                qp = pair.balanced_add(wid)
+                if wid == new_window_id:
+                    final_pair = qp
+        return final_pair
 
     def apply_window_geometry(
         self, window_id: int,
@@ -483,7 +488,8 @@ class Splits(Layout):
         self,
         all_windows: WindowList,
         window: WindowType,
-        location: Optional[str]
+        location: Optional[str],
+        bias: Optional[float] = None,
     ) -> None:
         horizontal = self.default_axis_is_horizontal
         after = True
@@ -494,6 +500,8 @@ class Splits(Layout):
         elif location in ('before', 'first'):
             after = False
         aw = all_windows.active_window
+        if bias:
+            bias = max(0, min(abs(bias), 100)) / 100
         if aw is not None:
             ag = all_windows.active_group
             assert ag is not None
@@ -505,9 +513,14 @@ class Splits(Layout):
                     wheight = aw.geometry.bottom - aw.geometry.top
                     horizontal = wwidth >= wheight
                 target_group = all_windows.add_window(window, next_to=aw, before=not after)
-                pair.split_and_add(group_id, target_group.id, horizontal, after)
+                parent_pair = pair.split_and_add(group_id, target_group.id, horizontal, after)
+                if bias is not None:
+                    parent_pair.bias = bias if parent_pair.one == target_group.id else (1 - bias)
                 return
         all_windows.add_window(window)
+        p = self.pairs_root.balanced_add(window.id)
+        if bias is not None:
+            p.bias = bias
 
     def modify_size_of_window(
         self,

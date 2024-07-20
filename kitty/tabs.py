@@ -410,7 +410,7 @@ class Tab:  # {{{
             self.goto_layout(layout_name)
 
     def resize_window_by(self, window_id: int, increment: float, is_horizontal: bool) -> Optional[str]:
-        increment_as_percent = self.current_layout.bias_increment_for_cell(self.windows, window_id, is_horizontal) * increment
+        increment_as_percent = self.current_layout.bias_increment_for_cell(self.windows, is_horizontal) * increment
         if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal):
             self.relayout()
             return None
@@ -511,8 +511,11 @@ class Tab:  # {{{
         ans.fork()
         return ans
 
-    def _add_window(self, window: Window, location: Optional[str] = None, overlay_for: Optional[int] = None, overlay_behind: bool = False) -> None:
-        self.current_layout.add_window(self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind)
+    def _add_window(
+        self, window: Window, location: Optional[str] = None, overlay_for: Optional[int] = None,
+        overlay_behind: bool = False, bias: Optional[float] = None
+    ) -> None:
+        self.current_layout.add_window(self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind, bias=bias)
         self.mark_tab_bar_dirty()
         self.relayout()
 
@@ -535,6 +538,7 @@ class Tab:  # {{{
         is_clone_launch: str = '',
         remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
         hold: bool = False,
+        bias: Optional[float] = None,
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
@@ -548,7 +552,7 @@ class Tab:  # {{{
         )
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind)
+        self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind, bias=bias)
         if marker:
             try:
                 window.set_marker(marker)
