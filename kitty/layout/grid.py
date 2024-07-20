@@ -73,10 +73,27 @@ class Grid(Layout):
             row_num += 1
         return 0, 0
 
+    def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
+        num_windows = all_windows.num_groups
+        ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
+        row_num, col_num = self.position_for_window_idx(idx, num_windows, ncols, nrows, special_rows, special_col)
+        if row_num == 0:
+            b = self.biased_cols
+            layout_func = self.column_layout
+            bias_idx = col_num
+            increment = cell_increment_bias_h
+        else:
+            b = self.biased_rows
+            layout_func = self.row_layout
+            bias_idx = row_num
+            increment = cell_increment_bias_v
+        before_layout = tuple(self.variable_layout(layout_func, num_windows, b))
+        b[bias_idx] = increment
+        return tuple(self.variable_layout(layout_func, num_windows, b)) == before_layout
+
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         num_windows = all_windows.num_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
-
         row_num, col_num = self.position_for_window_idx(idx, num_windows, ncols, nrows, special_rows, special_col)
 
         if is_horizontal:
@@ -99,11 +116,11 @@ class Grid(Layout):
             def layout_func(windows: ListOfWindows, bias: Optional[Sequence[float]] = None) -> LayoutDimension:
                 return self.row_layout(num_windows, bias=bias)
 
-        before_layout = list(self.variable_layout(layout_func, num_windows, b))
+        before_layout = tuple(self.variable_layout(layout_func, num_windows, b))
         candidate = b.copy()
         before = candidate.get(bias_idx, 0)
         candidate[bias_idx] = before + increment
-        if before_layout == list(self.variable_layout(layout_func, num_windows, candidate)):
+        if before_layout == tuple(self.variable_layout(layout_func, num_windows, candidate)):
             return False
         setattr(self, attr, candidate)
         return True

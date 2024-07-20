@@ -213,6 +213,14 @@ layout above.
 
 * Fat layout: Same as tall layout except it goes by rows instead of columns.
 
+* Grid layout: The bias is interpreted the same way as for the Vertical and Horizontal
+layouts, as something to be added/subtracted to the normal size. However, the
+since in a grid layout there are rows *and* columns, the bias on the first window in a column
+operates on the columns. Any later windows in that column operate on the row.
+So, for example, if you bias the first window in a grid layout it will change the width
+of the first column, the second window, the width of the second column, the third window,
+the height of the second row and so on.
+
 The bias option was introduced in kitty version 0.36.0.
 
 
