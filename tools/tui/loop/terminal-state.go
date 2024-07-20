@@ -170,7 +170,6 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 		sb.WriteString(RESTORE_COLORS)
 	}
 	sb.WriteString(RESTORE_CURSOR)
-	reset_modes(&sb, INBAND_RESIZE_NOTIFICATION)
 	return sb.String()
 }
 
