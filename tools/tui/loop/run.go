@@ -102,7 +102,7 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 				s := &self.screen_size
 				s.updated = true
 				s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
-				s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[2])
+				s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[3])
 				s.CellWidth = s.WidthPx / s.WidthCells
 				s.CellHeight = s.HeightPx / s.HeightCells
 				if self.OnResize != nil {
@@ -300,6 +300,7 @@ func (self *Loop) on_SIGPIPE() error {
 }
 
 func (self *Loop) on_SIGWINCH() error {
+	self.update_screen_size()
 	if self.seen_inband_resize {
 		return nil
 	}
