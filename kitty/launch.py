@@ -199,11 +199,11 @@ the remainder of the space.
 
 * Vertical/horizontal layout: The bias is interpreted as adding/subtracting from the
 normal size of the window. It should be a number between -90 and 90. This number is
-the percentage of cells in the full OS window that should be added to the window size.
-So for example, if a window would normally have been 50 cells in the layout inside an
-OS Window that is 80 cells high and --bias -10 is used it will become *approximately*
-42 cells high. Note that cell counts are approximations, you cannot use this method to
-create windows of fixed cell sizes.
+the percentage of the OS Window size that should be added to the window size.
+So for example, if a window would normally have been size 50 in the layout inside an
+OS Window that is size 80 high and --bias -10 is used it will become *approximately*
+size 42 high. Note that sizes are approximations, you cannot use this method to
+create windows of fixed sizes.
 
 * Tall layout: If the window being created is the *first* window in a column, then
 the bias is interpreted as a percentage, as for the splits layout, splitting the OS

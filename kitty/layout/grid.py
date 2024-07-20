@@ -58,26 +58,26 @@ class Grid(Layout):
     def variable_layout(self, layout_func: Callable[..., LayoutDimension], num_windows: int, biased_map: Dict[int, float]) -> LayoutDimension:
         return layout_func(num_windows, bias=biased_map if num_windows > 1 else None)
 
+    def position_for_window_idx(self, idx: int, num_windows: int, ncols:int , nrows: int, special_rows: int, special_col: int) -> Tuple[int, int]:
+        row_num = col_num = 0
+
+        def on_col_done(col_windows: List[int]) -> None:
+            nonlocal col_num, row_num
+            row_num = 0
+            col_num += 1
+
+        for window_idx, xl, yl in self.layout_windows(
+                num_windows, nrows, ncols, special_rows, special_col, on_col_done):
+            if idx == window_idx:
+                return row_num, col_num
+            row_num += 1
+        return 0, 0
+
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         num_windows = all_windows.num_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
 
-        def position_for_window_idx(idx: int) -> Tuple[int, int]:
-            row_num = col_num = 0
-
-            def on_col_done(col_windows: List[int]) -> None:
-                nonlocal col_num, row_num
-                row_num = 0
-                col_num += 1
-
-            for window_idx, xl, yl in self.layout_windows(
-                    num_windows, nrows, ncols, special_rows, special_col, on_col_done):
-                if idx == window_idx:
-                    return row_num, col_num
-                row_num += 1
-            return 0, 0
-
-        row_num, col_num = position_for_window_idx(idx)
+        row_num, col_num = self.position_for_window_idx(idx, num_windows, ncols, nrows, special_rows, special_col)
 
         if is_horizontal:
             b = self.biased_cols
