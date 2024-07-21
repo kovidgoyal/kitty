@@ -185,9 +185,7 @@ screen_reset(Screen *self) {
     self->modes = empty_modes;
     self->saved_modes = empty_modes;
     self->active_hyperlink_id = 0;
-#define R(name) self->color_profile->overridden.name.val = 0
-    R(default_fg); R(default_bg); R(cursor_color); R(highlight_fg); R(highlight_bg);
-#undef R
+    zero_at_ptr(&self->color_profile->overridden);
     reset_vt_parser(self->vt_parser);
     zero_at_ptr(&self->charset);
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
