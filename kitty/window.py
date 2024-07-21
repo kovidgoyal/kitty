@@ -76,6 +76,7 @@ from .fast_data_types import (
     monotonic,
     mouse_selection,
     move_cursor_to_mouse_if_in_prompt,
+    get_mouse_pos,
     pointer_name_to_css_name,
     pt_to_px,
     replace_c0_codes_except_nl_space_tab,
@@ -1543,6 +1544,10 @@ class Window:
     def mouse_show_command_output(self) -> None:
         if click_mouse_cmd_output(self.os_window_id, self.tab_id, self.id, False):
             self.show_cmd_output(CommandOutput.last_visited, 'Clicked command output')
+
+    @ac('mouse', 'Get position')
+    def mouse_position(self) -> tuple[int, int]:
+        return get_mouse_pos(self.os_window_id, self.tab_id, self.id)
     # }}}
 
     def text_for_selection(self, as_ansi: bool = False) -> str:

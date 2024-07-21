@@ -412,6 +412,7 @@ bool mouse_open_url(Window *w);
 bool mouse_set_last_visited_cmd_output(Window *w);
 bool mouse_select_cmd_output(Window *w);
 bool move_cursor_to_mouse_if_at_shell_prompt(Window *w);
+bool mouse_get_pos(Window *w, unsigned int *cell_x, unsigned int *cell_y);
 void mouse_selection(Window *w, int code, int button);
 const char* format_mods(unsigned mods);
 void dispatch_pending_clicks(id_type, void*);

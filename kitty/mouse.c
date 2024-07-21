@@ -488,6 +488,13 @@ move_cursor_to_mouse_if_at_shell_prompt(Window *w) {
     return screen_fake_move_cursor_to_position(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
 }
 
+bool
+mouse_get_pos(Window* w, unsigned int *cell_x, unsigned int *cell_y) {
+    *cell_x = w->mouse_pos.cell_x;
+    *cell_y = w->mouse_pos.cell_y;
+    return true;
+}
+
 
 void
 send_pending_click_to_window(Window *w, int i) {

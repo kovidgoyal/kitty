@@ -1289,6 +1289,15 @@ move_cursor_to_mouse_if_in_prompt(id_type os_window_id, id_type tab_id, id_type 
     return moved;
 }
 
+static bool
+get_mouse_pos(id_type os_window_id, id_type tab_id, id_type window_id, unsigned int *cell_x, unsigned int *cell_y) {
+    bool handled = false;
+    WITH_WINDOW(os_window_id, tab_id, window_id);
+    handled = mouse_get_pos(window, cell_x, cell_y);
+    END_WITH_WINDOW;
+    return handled;
+}
+
 static PyObject*
 pyupdate_pointer_shape(PyObject *self UNUSED, PyObject *args) {
     id_type os_window_id;
@@ -1351,6 +1360,14 @@ PYWRAP1(redirect_mouse_handling) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(get_mouse_pos) {
+    id_type a, b, c; PA("KKK", &a, &b, &c);
+    unsigned int x, y;
+    if (get_mouse_pos(a, b, c, &x, &y)) return Py_BuildValue("II", x, y);
+    Py_RETURN_NONE;
+}
+
+
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
@@ -1394,6 +1411,7 @@ static PyMethodDef module_methods[] = {
     MW(click_mouse_url, METH_VARARGS),
     MW(click_mouse_cmd_output, METH_VARARGS),
     MW(move_cursor_to_mouse_if_in_prompt, METH_VARARGS),
+    MW(get_mouse_pos, METH_VARARGS),
     MW(redirect_mouse_handling, METH_O),
     MW(mouse_selection, METH_VARARGS),
     MW(set_window_logo, METH_VARARGS),
