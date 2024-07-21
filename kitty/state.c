@@ -1376,11 +1376,22 @@ os_window_focus_counters(PyObject *self UNUSED, PyObject *args UNUSED) {
     return ans;
 }
 
+static PyObject*
+get_mouse_data_for_window(PyObject *self UNUSED, PyObject *args) {
+    id_type os_window_id, tab_id, window_id;
+    PA("KKK", &os_window_id, &tab_id, &window_id);
+    WITH_WINDOW(os_window_id, tab_id, window_id)
+        return Py_BuildValue("{sI sI sO}", "cell_x", window->mouse_pos.cell_x, "cell_y", window->mouse_pos.cell_y, "in_left_half_of_cell", window->mouse_pos.in_left_half_of_cell);
+    END_WITH_WINDOW
+    Py_RETURN_NONE;
+}
+
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 
 static PyMethodDef module_methods[] = {
     M(os_window_focus_counters, METH_NOARGS),
+    M(get_mouse_data_for_window, METH_VARARGS),
     MW(update_pointer_shape, METH_VARARGS),
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),

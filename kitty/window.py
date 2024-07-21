@@ -68,6 +68,7 @@ from .fast_data_types import (
     encode_key_for_tty,
     get_boss,
     get_click_interval,
+    get_mouse_data_for_window,
     get_options,
     is_css_pointer_name_valid,
     last_focused_os_window_id,
@@ -125,6 +126,7 @@ MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]
 if TYPE_CHECKING:
     from kittens.tui.handler import OpenUrlHandler
 
+    from .fast_data_types import MousePosition
     from .file_transmission import FileTransmission
 
 
@@ -1709,6 +1711,10 @@ class Window:
             self.screen.reset()
         else:
             self.screen.erase_in_display(3 if scrollback else 2, False)
+
+    def current_mouse_position(self) -> Optional['MousePosition']:
+        ' Return the last position at which a mouse event was received by this window '
+        return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
 
     # actions {{{
 
