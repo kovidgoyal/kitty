@@ -903,84 +903,6 @@ convert_from_opts_dim_opacity(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_mark1_foreground(PyObject *val, Options *opts) {
-    opts->mark1_foreground = color_as_int(val);
-}
-
-static void
-convert_from_opts_mark1_foreground(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mark1_foreground");
-    if (ret == NULL) return;
-    convert_from_python_mark1_foreground(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_mark1_background(PyObject *val, Options *opts) {
-    opts->mark1_background = color_as_int(val);
-}
-
-static void
-convert_from_opts_mark1_background(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mark1_background");
-    if (ret == NULL) return;
-    convert_from_python_mark1_background(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_mark2_foreground(PyObject *val, Options *opts) {
-    opts->mark2_foreground = color_as_int(val);
-}
-
-static void
-convert_from_opts_mark2_foreground(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mark2_foreground");
-    if (ret == NULL) return;
-    convert_from_python_mark2_foreground(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_mark2_background(PyObject *val, Options *opts) {
-    opts->mark2_background = color_as_int(val);
-}
-
-static void
-convert_from_opts_mark2_background(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mark2_background");
-    if (ret == NULL) return;
-    convert_from_python_mark2_background(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_mark3_foreground(PyObject *val, Options *opts) {
-    opts->mark3_foreground = color_as_int(val);
-}
-
-static void
-convert_from_opts_mark3_foreground(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mark3_foreground");
-    if (ret == NULL) return;
-    convert_from_python_mark3_foreground(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_mark3_background(PyObject *val, Options *opts) {
-    opts->mark3_background = color_as_int(val);
-}
-
-static void
-convert_from_opts_mark3_background(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mark3_background");
-    if (ret == NULL) return;
-    convert_from_python_mark3_background(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
 convert_from_python_close_on_child_death(PyObject *val, Options *opts) {
     opts->close_on_child_death = PyObject_IsTrue(val);
 }
@@ -1314,18 +1236,6 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_background_tint_gaps(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_dim_opacity(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mark1_foreground(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mark1_background(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mark2_foreground(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mark2_background(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mark3_foreground(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mark3_background(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_close_on_child_death(py_opts, opts);
     if (PyErr_Occurred()) return false;

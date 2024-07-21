@@ -20,15 +20,6 @@ def option_names_for_completion() -> Tuple[str, ...]:
     return option_names
 
 
-def build_ansi_color_table(opts: Optional[Options] = None) -> int:
-    if opts is None:
-        opts = defaults
-    addr, length = opts.color_table.buffer_info()
-    if length != 256 or opts.color_table.typecode != 'L':
-        raise TypeError(f'The color table has incorrect size length: {length} typecode: {opts.color_table.typecode}')
-    return addr
-
-
 def atomic_save(data: bytes, path: str) -> None:
     import shutil
     import tempfile

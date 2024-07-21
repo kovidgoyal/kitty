@@ -719,15 +719,14 @@ PYWRAP1(handle_for_window_id) {
     return NULL;
 }
 
-static PyObject* options_object = NULL;
 
 PYWRAP0(get_options) {
-    if (!options_object) {
+    if (!global_state.options_object) {
         PyErr_SetString(PyExc_RuntimeError, "Must call set_options() before using get_options()");
         return NULL;
     }
-    Py_INCREF(options_object);
-    return options_object;
+    Py_INCREF(global_state.options_object);
+    return global_state.options_object;
 }
 
 PYWRAP1(set_options) {
@@ -735,7 +734,7 @@ PYWRAP1(set_options) {
     int is_wayland = 0, debug_rendering = 0, debug_font_fallback = 0;
     PA("O|ppp", &opts, &is_wayland, &debug_rendering, &debug_font_fallback);
     if (opts == Py_None) {
-        Py_CLEAR(options_object);
+        Py_CLEAR(global_state.options_object);
         Py_RETURN_NONE;
     }
     global_state.is_wayland = is_wayland ? true : false;
@@ -746,8 +745,8 @@ PYWRAP1(set_options) {
     global_state.debug_rendering = debug_rendering ? true : false;
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
     if (!convert_opts_from_python_opts(opts, &global_state.opts)) return NULL;
-    options_object = opts;
-    Py_INCREF(options_object);
+    global_state.options_object = opts;
+    Py_INCREF(global_state.options_object);
     Py_RETURN_NONE;
 }
 
@@ -1159,8 +1158,6 @@ PYWRAP1(patch_global_colors) {
     P(active_border_color); P(inactive_border_color); P(bell_border_color); P(tab_bar_background); P(tab_bar_margin_color);
     if (configured) {
         P(background); P(url_color);
-        P(mark1_background); P(mark1_foreground); P(mark2_background); P(mark2_foreground);
-        P(mark3_background); P(mark3_foreground);
     }
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
@@ -1461,7 +1458,7 @@ finalize(void) {
 #define F(x) free(OPT(x)); OPT(x) = NULL;
     F(background_image); F(bell_path); F(bell_theme); F(default_window_logo);
 #undef F
-    Py_CLEAR(options_object);
+    Py_CLEAR(global_state.options_object);
     free_animation(OPT(animation.cursor));
     free_animation(OPT(animation.visual_bell));
     // we leak the texture here since it is not guaranteed

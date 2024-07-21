@@ -33,7 +33,6 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .clipboard import ClipboardRequestManager, set_clipboard_string
-from .config import build_ansi_color_table
 from .constants import (
     appname,
     clear_handled_signals,
@@ -98,7 +97,6 @@ from .notify import (
     notify_with_command,
     sanitize_identifier_pat,
 )
-from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
@@ -407,19 +405,6 @@ def as_text(
 
 
 
-def setup_colors(screen: Screen, opts: Options) -> None:
-    screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
-
-    def s(c: Optional[Color]) -> int:
-        return 0 if c is None else (0xff000000 | int(c))
-    screen.color_profile.set_configured_colors(
-        s(opts.foreground), s(opts.background),
-        s(opts.cursor), s(opts.cursor_text_color),
-        s(opts.selection_foreground), s(opts.selection_background),
-        s(opts.visual_bell_color)
-    )
-
-
 @run_once
 def load_paste_filter() -> Callable[[str], str]:
     import runpy
@@ -605,8 +590,6 @@ class Window:
         self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)
-        else:
-            setup_colors(self.screen, opts)
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
 
@@ -681,9 +664,8 @@ class Window:
         return int(val)
 
     def apply_options(self, is_active: bool) -> None:
-        opts = get_options()
         self.update_effective_padding()
-        setup_colors(self.screen, opts)
+        self.screen.color_profile.reload_from_opts()
 
     @property
     def title(self) -> str:
@@ -1188,33 +1170,12 @@ class Window:
                     tab.relayout_borders()
                 tab.on_bell(self)
 
-    def change_colors(self, changes: Dict[DynamicColor, Optional[str]]) -> None:
-        dirtied = default_bg_changed = False
-
-        def item(raw: Optional[str]) -> int:
-            if raw is None:
-                return 0
-            v = to_color(raw)
-            if v is None:
-                return 0
-            return 0xff000000 | int(v)
-
-        for which, val_ in changes.items():
-            val = item(val_)
-            dirtied = True
-            setattr(self.screen.color_profile, which.name, val)
-            if which.name == 'default_bg':
-                default_bg_changed = True
-        if dirtied:
-            self.screen.mark_as_dirty()
-        if default_bg_changed:
-            get_boss().default_bg_changed_for(self.id)
-
     def color_profile_popped(self, bg_changed: bool) -> None:
         if bg_changed:
             get_boss().default_bg_changed_for(self.id)
 
-    def report_color(self, code: str, r: int, g: int, b: int) -> None:
+    def report_color(self, code: str, col: Color) -> None:
+        r, g, b = col.red, col.green, col.blue
         r |= r << 8
         g |= g << 8
         b |= b << 8
@@ -1236,19 +1197,33 @@ class Window:
             ret = set_pointer_shape(self.screen, value, self.os_window_id)
             if ret:
                 self.screen.send_escape_code_to_child(ESC_OSC, '22:' + ret)
-        color_changes: Dict[DynamicColor, Optional[str]] = {}
+
+        dirtied = default_bg_changed = False
+        def change(which: DynamicColor, val: str) -> None:
+            nonlocal dirtied, default_bg_changed
+            dirtied = True
+            if which.name == 'default_bg':
+                default_bg_changed = True
+            v = to_color(val) if val else None
+            if v is None:
+                delattr(self.screen.color_profile, which.name)
+            else:
+                setattr(self.screen.color_profile, which.name, v)
+
         for val in value.split(';'):
             w = DYNAMIC_COLOR_CODES.get(code)
             if w is not None:
                 if val == '?':
-                    col = getattr(self.screen.color_profile, w.name)
-                    self.report_color(str(code), col >> 16, (col >> 8) & 0xff, col & 0xff)
+                    col = getattr(self.screen.color_profile, w.name) or Color()
+                    self.report_color(str(code), col)
                 else:
-                    q = None if code >= 100 else val
-                    color_changes[w] = q
+                    q = '' if code >= 100 else val
+                    change(w, q)
             code += 1
-        if color_changes:
-            self.change_colors(color_changes)
+        if dirtied:
+            self.screen.mark_as_dirty()
+        if default_bg_changed:
+            get_boss().default_bg_changed_for(self.id)
 
     def set_color_table_color(self, code: int, bvalue: Optional[memoryview] = None) -> None:
         value = str(bvalue or b'', 'utf-8', 'replace')
@@ -1259,7 +1234,7 @@ class Window:
                 if val is None:  # color query
                     qc = self.screen.color_profile.as_color((c << 8) | 1)
                     assert qc is not None
-                    self.report_color(f'4;{c}', qc.red, qc.green, qc.blue)
+                    self.report_color(f'4;{c}', qc)
                 else:
                     changed = True
                     cp.set_color(c, val)

@@ -78,6 +78,8 @@ Detailed list of changes
 
 - launch command: A new :option:`launch --bias` option to adjust the size of newly created windows declaratively (:iss:`7634`)
 
+- A new option :opt:`second_transparent_bg` to make a second background color semi-transparent via :opt:`background_opacity`. Useful for things like cursor line highlight in editors (:iss:`7646`)
+
 - Sessions: A new command ``focus_matching_window`` to shift focus to a specific window, useful when creating complex layouts with splits (:disc:`7635`)
 
 - Wayland: Allow fractional scales less than one (:pull:`7549`)

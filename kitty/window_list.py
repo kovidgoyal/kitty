@@ -7,6 +7,7 @@ from contextlib import suppress
 from itertools import count
 from typing import Any, Deque, Dict, Iterator, List, Optional, Tuple, Union
 
+from .fast_data_types import Color, get_options
 from .types import OverlayType, WindowGeometry
 from .typing import EdgeLiteral, TabType, WindowType
 
@@ -120,23 +121,23 @@ class WindowGroup:
             w.set_geometry(geom)
 
     @property
-    def default_bg(self) -> int:
+    def default_bg(self) -> Color:
         if self.windows:
-            w: WindowType = self.windows[-1]
-            return w.screen.color_profile.default_bg
-        return 0
+            w = self.windows[-1]
+            return w.screen.color_profile.default_bg or get_options().background
+        return get_options().background
 
     @property
     def geometry(self) -> Optional[WindowGeometry]:
         if self.windows:
-            w: WindowType = self.windows[-1]
+            w = self.windows[-1]
             return w.geometry
         return None
 
     @property
     def is_visible_in_layout(self) -> bool:
         if self.windows:
-            w: WindowType = self.windows[-1]
+            w = self.windows[-1]
             return w.is_visible_in_layout
         return False
 

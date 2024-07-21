@@ -52,7 +52,6 @@ typedef struct {
     char_type *select_by_word_characters;
     char_type *select_by_word_characters_forward;
     color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color;
-    color_type mark1_foreground, mark1_background, mark2_foreground, mark2_background, mark3_foreground, mark3_background;
     monotonic_t repaint_delay, input_delay;
     bool focus_follows_mouse;
     unsigned int hide_window_decorations;
@@ -307,6 +306,7 @@ typedef struct {
     bool redirect_mouse_handling;
     WindowLogoTable *all_window_logos;
     int gl_version;
+    PyObject *options_object;
 } GlobalState;
 
 extern GlobalState global_state;

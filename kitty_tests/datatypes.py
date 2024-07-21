@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 
-from kitty.config import build_ansi_color_table, defaults
+from kitty.config import defaults
 from kitty.fast_data_types import (
     Color,
     ColorProfile,
@@ -477,8 +477,7 @@ class TestDataTypes(BaseTest):
             'h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
 
     def test_color_profile(self):
-        c = ColorProfile()
-        c.update_ansi_color_table(build_ansi_color_table())
+        c = ColorProfile(defaults)
         for i in range(8):
             col = getattr(defaults, f'color{i}')
             self.ae(c.as_color(i << 8 | 1), col)

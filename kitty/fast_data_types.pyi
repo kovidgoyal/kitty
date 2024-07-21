@@ -755,8 +755,49 @@ class Color:
 
 class ColorProfile:
 
-    default_fg: int
-    default_bg: int
+    # The dynamic color properties return the current color value. Use delattr
+    # to reset them to configured value.
+    @property
+    def default_fg(self) -> Color: ...
+    @default_fg.setter
+    def default_fg(self, val: Union[int|Color]) -> None: ...
+
+    @property
+    def default_bg(self) -> Color: ...
+    @default_bg.setter
+    def default_bg(self, val: Union[int|Color]) -> None: ...
+
+    @property
+    def cursor_color(self) -> Optional[Color]: ...
+    @cursor_color.setter
+    def cursor_color(self, val: Union[None|int|Color]) -> None: ...
+
+    @property
+    def cursor_text_color(self) -> Optional[Color]: ...
+    @cursor_text_color.setter
+    def cursor_text_color(self, val: Union[None|int|Color]) -> None: ...
+
+    @property
+    def highlight_fg(self) -> Optional[Color]: ...
+    @highlight_fg.setter
+    def highlight_fg(self, val: Union[None|int|Color]) -> None: ...
+
+    @property
+    def highlight_bg(self) -> Optional[Color]: ...
+    @highlight_bg.setter
+    def highlight_bg(self, val: Union[None|int|Color]) -> None: ...
+
+    @property
+    def visual_bell_color(self) -> Optional[Color]: ...
+    @visual_bell_color.setter
+    def visual_bell_color(self, val: Union[None|int|Color]) -> None: ...
+
+    @property
+    def second_transparent_bg(self) -> Optional[Color]: ...
+    @second_transparent_bg.setter
+    def second_transparent_bg(self, val: Union[None|int|Color]) -> None: ...
+
+    def __init__(self, opts: Optional[Options] = None): ...
 
     def as_dict(self) -> Dict[str, Optional[int]]:
         pass
@@ -773,13 +814,7 @@ class ColorProfile:
     def reset_color(self, num: int) -> None:
         pass
 
-    def update_ansi_color_table(self, val: int) -> None:
-        pass
-
-    def set_configured_colors(
-        self, fg: int, bg: int, cursor: int = 0, cursor_text: int = 0, highlight_fg: int = 0, highlight_bg: int = 0, visual_bell_color: int = 0
-    ) -> None:
-        pass
+    def reload_from_opts(self, opts: Optional[Options] = None) -> None: ...
 
 
 def patch_color_profiles(

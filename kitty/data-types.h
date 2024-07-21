@@ -319,22 +319,15 @@ typedef union DynamicColor {
 } DynamicColor;
 
 typedef struct {
-    DynamicColor default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg, visual_bell_color;
+    DynamicColor default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg, visual_bell_color, second_transparent_bg;
 } DynamicColors;
-
-
-typedef struct {
-    DynamicColors dynamic_colors;
-    uint32_t color_table[256];
-} ColorStackEntry;
 
 typedef struct {
     PyObject_HEAD
 
     bool dirty;
-    uint32_t color_table[256];
-    uint32_t orig_color_table[256];
-    ColorStackEntry *color_stack;
+    uint32_t color_table[256], orig_color_table[256];
+    struct { DynamicColors dynamic_colors; uint32_t color_table[256]; } *color_stack;
     unsigned int color_stack_idx, color_stack_sz;
     DynamicColors configured, overridden;
     color_type mark_foregrounds[MARK_MASK+1], mark_backgrounds[MARK_MASK+1];
@@ -389,7 +382,6 @@ LineBuf* alloc_linebuf(unsigned int, unsigned int);
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int);
 ColorProfile* alloc_color_profile(void);
 void copy_color_profile(ColorProfile*, ColorProfile*);
-PyObject* create_256_color_table(void);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
 void cursor_reset(Cursor*);

@@ -17,7 +17,6 @@ from typing import (
 )
 
 from .borders import Border, BorderColor
-from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
     DECAWM,
@@ -495,11 +494,8 @@ class TabBar:
             self.screen = s = Screen(None, 1, 10, 0, self.cell_width, cell_height)
         else:
             s = self.screen
-        s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
-        s.color_profile.set_configured_colors(
-            color_as_int(opts.inactive_tab_foreground),
-            color_as_int(opts.tab_bar_background or opts.background)
-        )
+        s.color_profile.default_fg = opts.inactive_tab_foreground
+        s.color_profile.default_bg = opts.tab_bar_background or opts.background
         sep = opts.tab_separator
         self.trailing_spaces = self.leading_spaces = 0
         while sep and sep[0] == ' ':
@@ -575,8 +571,9 @@ class TabBar:
             ifg = color_from_int(fg)
             if ifg is not None:
                 self.draw_data = self.draw_data._replace(inactive_fg=ifg)
-        self.screen.color_profile.set_configured_colors(fg, bg)
-        self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
+        self.screen.color_profile.reload_from_opts()
+        self.screen.color_profile.default_fg = color_from_int(fg)
+        self.screen.color_profile.default_bg = color_from_int(bg)
 
     @property
     def current_colors(self) -> Dict[str, Color]:

@@ -1471,7 +1471,8 @@ theme with a background color in your editor, it will not be rendered as
 transparent. Instead you should change the default background color in your
 kitty config and not use a background color in the editor color scheme. Or use
 the escape codes to set the terminals default colors in a shell script to
-launch your editor. Be aware that using a value less than 1.0 is a (possibly
+launch your editor. See also :opt:`second_transparent_bg`.
+Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit. When using a low value for this setting, it is
 desirable that you set the :opt:`background` color to a color the matches the
 general color of the desktop background, for best text rendering.  If you want
@@ -1515,6 +1516,13 @@ opt('background_image_linear', 'no',
     option_type='to_bool', ctype='bool',
     long_text='When background image is scaled, whether linear interpolation should be used.'
     )
+
+opt('second_transparent_bg', 'none', option_type='to_color_or_none', long_text='''
+When the background color matches this color, :opt:`background_opacity` is applied to it
+to render it as semi-transparent, just as for colors matching the background color.
+Useful, in more complex UIs like editors where you could want more than a single background color
+to be rendered as transparent.
+''')
 
 opt('dynamic_background_opacity', 'no',
     option_type='to_bool', ctype='bool',
@@ -1651,32 +1659,32 @@ opt('color15', '#ffffff',
     )
 
 opt('mark1_foreground', 'black',
-    option_type='to_color', ctype='color_as_int',
+    option_type='to_color',
     long_text='Color for marks of type 1'
     )
 
 opt('mark1_background', '#98d3cb',
-    option_type='to_color', ctype='color_as_int',
+    option_type='to_color',
     long_text='Color for marks of type 1 (light steel blue)'
     )
 
 opt('mark2_foreground', 'black',
-    option_type='to_color', ctype='color_as_int',
+    option_type='to_color',
     long_text='Color for marks of type 2'
     )
 
 opt('mark2_background', '#f2dcd3',
-    option_type='to_color', ctype='color_as_int',
+    option_type='to_color',
     long_text='Color for marks of type 1 (beige)'
     )
 
 opt('mark3_foreground', 'black',
-    option_type='to_color', ctype='color_as_int',
+    option_type='to_color',
     long_text='Color for marks of type 3'
     )
 
 opt('mark3_background', '#f274bc',
-    option_type='to_color', ctype='color_as_int',
+    option_type='to_color',
     long_text='Color for marks of type 3 (violet)'
     )
 

@@ -6,7 +6,7 @@
 layout(std140) uniform CellRenderData {
     float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
-    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
+    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted, second_transparent_bg;
 
     uint xnum, ynum, cursor_fg_sprite_idx;
     float cursor_x, cursor_y, cursor_w, cursor_opacity;
@@ -194,7 +194,9 @@ void main() {
     // }}}
 
     // Background {{{
-    float cell_has_non_default_bg = step(1, float(abs(bg_as_uint - default_colors[1])));
+    float cell_has_non_default_bg = step(1, float(abs(
+        (bg_as_uint - default_colors[1]) * (bg_as_uint - second_transparent_bg)
+    )));
     draw_bg = 1;
 
 #if (PHASE == PHASE_BACKGROUND)

@@ -408,6 +408,7 @@ option_names = (  # {{{
  'scrollback_lines',
  'scrollback_pager',
  'scrollback_pager_history_size',
+ 'second_transparent_bg',
  'select_by_word_characters',
  'select_by_word_characters_forward',
  'selection_background',
@@ -572,6 +573,7 @@ class Options:
     scrollback_lines: int = 2000
     scrollback_pager: typing.List[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
+    second_transparent_bg: typing.Optional[kitty.fast_data_types.Color] = None
     select_by_word_characters: str = '@-./_~?&=%+#'
     select_by_word_characters_forward: str = ''
     selection_background: typing.Optional[kitty.fast_data_types.Color] = Color(255, 250, 205)
@@ -1022,3 +1024,15 @@ defaults.mouse_map = [
     # show_clicked_cmd_output_ungrabbed
     MouseMapping(button=1, mods=5, definition='mouse_show_command_output'), 
 ]
+
+nullable_colors = frozenset({
+    'cursor'
+    'cursor_text_color'
+    'visual_bell_color'
+    'active_border_color'
+    'tab_bar_background'
+    'tab_bar_margin_color'
+    'second_transparent_bg'
+    'selection_foreground'
+    'selection_background'
+})

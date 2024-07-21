@@ -122,7 +122,7 @@ from .key_encoding import get_name_to_functional_number_map
 from .keys import Mappings
 from .layout.base import set_layout_options
 from .notify import notification_activated
-from .options.types import Options
+from .options.types import Options, nullable_colors
 from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition
 from .os_window_size import initial_window_size_func
 from .rgb import color_from_int
@@ -342,9 +342,9 @@ class Boss:
         self.clipboard_buffers: Dict[str, str] = {}
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
-        self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
+        self.color_settings_at_startup: Dict[str, Optional[Color]] = {
+                k: opts[k] for k in opts if isinstance(opts[k], Color) or k in nullable_colors}
         self.current_visual_select: Optional[VisualSelect] = None
-        self.startup_cursor_text_color = opts.cursor_text_color
         # A list of events received so far that are potentially part of a sequence keybinding.
         self.cached_values = cached_values
         self.os_window_map: Dict[int, TabManager] = {}
@@ -2627,7 +2627,6 @@ class Boss:
             window.refresh()
 
     def patch_colors(self, spec: Dict[str, Optional[int]], configured: bool = False) -> None:
-        from kitty.rc.set_colors import nullable_colors
         opts = get_options()
         if configured:
             for k, v in spec.items():

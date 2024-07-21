@@ -179,14 +179,12 @@ class Foreground(Query):
 
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
-        from kitty.fast_data_types import Color, get_boss
+        from kitty.fast_data_types import get_boss, get_options
         boss = get_boss()
         w = boss.window_id_map.get(window_id)
         if w is None:
             return opts.foreground.as_sharp
-        col = w.screen.color_profile.default_fg
-        r, g, b = col >> 16, (col >> 8) & 0xff, col & 0xff
-        return Color(r, g, b).as_sharp
+        return (w.screen.color_profile.default_fg or get_options().foreground).as_sharp
 
 
 @query
@@ -196,15 +194,12 @@ class Background(Query):
 
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
-        from kitty.fast_data_types import Color, get_boss
+        from kitty.fast_data_types import get_boss, get_options
         boss = get_boss()
         w = boss.window_id_map.get(window_id)
         if w is None:
             return opts.background.as_sharp
-        col = w.screen.color_profile.default_bg
-        r, g, b = col >> 16, (col >> 8) & 0xff, col & 0xff
-        return Color(r, g, b).as_sharp
-
+        return (w.screen.color_profile.default_bg or get_options().background).as_sharp
 
 
 @query

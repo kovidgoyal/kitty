@@ -435,10 +435,11 @@ def generate_c_conversion(loc: str, ctypes: List[Union[Option, MultiOption]]) ->
     return '\n'.join(preamble + ['', ''] + lines)
 
 
-def write_output(loc: str, defn: Definition) -> None:
+def write_output(loc: str, defn: Definition, extra_after_type_defn: str = '') -> None:
     cls, tc = generate_class(defn, loc)
     with open(os.path.join(*loc.split('.'), 'options', 'types.py'), 'w') as f:
         f.write(f'{cls}\n')
+        f.write(extra_after_type_defn)
     with open(os.path.join(*loc.split('.'), 'options', 'parse.py'), 'w') as f:
         f.write(f'{tc}\n')
     ctypes = []
