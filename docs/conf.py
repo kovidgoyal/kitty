@@ -289,6 +289,20 @@ if you specify a program-to-run you can use the special placeholder
 # }}}
 
 
+def write_color_names_table() -> None: # {{{
+    from kitty.rgb import color_names
+    def s(c: Any) -> str:
+        return f'{c.red:02x}/{c.green:02x}/{c.blue:02x}'
+    with open('generated/color-names.rst', 'w') as f:
+        p = partial(print, file=f)
+        p('=' * 50, '=' * 20)
+        p('Name'.ljust(50), 'RGB value')
+        p('=' * 50, '=' * 20)
+        for name, col in color_names.items():
+            p(name.ljust(50), s(col))
+        p('=' * 50, '=' * 20)
+# }}}
+
 def write_remote_control_protocol_docs() -> None:  # {{{
     from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
     field_pat = re.compile(r'\s*([^:]+?)\s*:\s*(.+)')
@@ -750,6 +764,7 @@ def setup(app: Any) -> None:
     kn = all_kitten_names()
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
+    write_color_names_table()
     write_conf_docs(app, kn)
     app.add_config_value('string_replacements', {}, True)
     app.connect('source-read', replace_string)

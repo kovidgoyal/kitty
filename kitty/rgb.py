@@ -845,27 +845,3 @@ color_names = {
  'yellow4': Color(139, 139, 0),
  'yellowgreen': Color(154, 205, 50)}
 # END_DATA_SECTION }}}
-
-if __name__ == '__main__':
-    # Read RGB color table from specified rgb.txt file
-    import pprint
-    import sys
-    data = {}
-    with open(sys.argv[-1]) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('!'):
-                continue
-            parts = line.split()
-            r, g, b = map(int, parts[:3])
-            name = ' '.join(parts[3:]).lower()
-            data[name] = data[name.replace(' ', '')] = r, g, b
-    formatted_data = pprint.pformat(data).replace('{', '{\n ').replace('(', 'Color(')
-    with open(__file__, 'r+') as src:
-        raw = src.read()
-        raw = re.sub(
-            r'^# BEGIN_DATA_SECTION {{{$.*^# END_DATA_SECTION }}}',
-            '# BEGIN_DATA_SECTION {{{\ncolor_names = %s\n# END_DATA_SECTION }}}' % formatted_data,
-            raw, flags=re.DOTALL | re.MULTILINE
-        )
-        src.seek(0), src.truncate(), src.write(raw)

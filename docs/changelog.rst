@@ -80,6 +80,8 @@ Detailed list of changes
 
 - A new option :opt:`second_transparent_bg` to make a second background color semi-transparent via :opt:`background_opacity`. Useful for things like cursor line highlight in editors (:iss:`7646`)
 
+- A new protocol to allow terminal applications to change colors in the terminal more robustly than with the legacy XTerm protocol (:ref:`color_control`)
+
 - Sessions: A new command ``focus_matching_window`` to shift focus to a specific window, useful when creating complex layouts with splits (:disc:`7635`)
 
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
