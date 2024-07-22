@@ -61,13 +61,12 @@ func AtomicWriteFile(path string, data io.Reader, perm os.FileMode) (err error) 
 						removed = true
 					}
 				}()
-				_, err = io.Copy(f, data)
-				if err == nil {
-					err = f.Chmod(perm)
-					if err == nil {
-						err = os.Rename(f.Name(), path)
-						if err == nil {
-							removed = true
+				if _, err = io.Copy(f, data); err == nil {
+					if err = f.Chmod(perm); err == nil {
+						if err = f.Sync(); err == nil { // Sync before rename to ensure we dont end up with a zero sized file
+							if err = os.Rename(f.Name(), path); err == nil {
+								removed = true
+							}
 						}
 					}
 				}
