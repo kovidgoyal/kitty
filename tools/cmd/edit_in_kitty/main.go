@@ -3,6 +3,7 @@
 package edit_in_kitty
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -212,7 +213,7 @@ func edit_in_kitty(path string, opts *Options) (err error) {
 	add_encoded("file_data", utils.UnsafeBytesToString(file_data))
 	fmt.Println("Waiting for editing to be completed, press Esc to abort...")
 	write_data := func(data_type string, rdata []byte) (err error) {
-		err = utils.AtomicWriteFile(path, rdata, fs.FileMode(s.Mode).Perm())
+		err = utils.AtomicWriteFile(path, bytes.NewReader(rdata), fs.FileMode(s.Mode).Perm())
 		if err != nil {
 			err = fmt.Errorf("Failed to write data to %s with error: %w", path, err)
 		}

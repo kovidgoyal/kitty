@@ -50,7 +50,7 @@ func extract_files(match, dest_dir string) (err error) {
 			if existing, rerr := os.ReadFile(dest); rerr == nil && bytes.Equal(existing, entry.Data) {
 				continue
 			}
-			if err = utils.AtomicWriteFile(dest, entry.Data, 0o644); err != nil {
+			if err = utils.AtomicWriteFile(dest, bytes.NewReader(entry.Data), 0o644); err != nil {
 				return
 			}
 		}

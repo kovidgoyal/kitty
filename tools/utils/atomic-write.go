@@ -5,6 +5,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -39,7 +40,7 @@ func AtomicCreateSymlink(oldname, newname string) (err error) {
 	}
 }
 
-func AtomicWriteFile(path string, data []byte, perm os.FileMode) (err error) {
+func AtomicWriteFile(path string, data io.Reader, perm os.FileMode) (err error) {
 	npath, err := filepath.EvalSymlinks(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		err = nil
@@ -60,7 +61,7 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) (err error) {
 						removed = true
 					}
 				}()
-				_, err = f.Write(data)
+				_, err = io.Copy(f, data)
 				if err == nil {
 					err = f.Chmod(perm)
 					if err == nil {
@@ -76,7 +77,7 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) (err error) {
 	return
 }
 
-func AtomicUpdateFile(path string, data []byte, perms ...fs.FileMode) (err error) {
+func AtomicUpdateFile(path string, data io.Reader, perms ...fs.FileMode) (err error) {
 	perm := fs.FileMode(0o644)
 	if len(perms) > 0 {
 		perm = perms[0]

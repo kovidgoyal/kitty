@@ -344,7 +344,7 @@ func set_comment_in_zip_file(path string, comment string) error {
 		}
 	}
 	dest.Close()
-	return utils.AtomicUpdateFile(path, buf.Bytes(), 0o644)
+	return utils.AtomicUpdateFile(path, bytes.NewReader(buf.Bytes()), 0o644)
 }
 
 func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (string, error) {
@@ -584,7 +584,7 @@ func (self *Theme) SaveInDir(dirpath string) (err error) {
 	if err != nil {
 		return err
 	}
-	return utils.AtomicUpdateFile(path, utils.UnsafeStringToBytes(code), 0o644)
+	return utils.AtomicUpdateFile(path, bytes.NewReader(utils.UnsafeStringToBytes(code)), 0o644)
 }
 
 func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (err error) {
@@ -594,7 +594,7 @@ func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (e
 	if err != nil {
 		return err
 	}
-	err = utils.AtomicUpdateFile(path, utils.UnsafeStringToBytes(code), 0o644)
+	err = utils.AtomicUpdateFile(path, bytes.NewReader(utils.UnsafeStringToBytes(code)), 0o644)
 	if err != nil {
 		return err
 	}

@@ -344,7 +344,7 @@ func (self Patcher) Patch(path, sentinel, content string, settings_to_comment_ou
 			_ = os.WriteFile(backup_path+".bak", raw, self.Mode)
 		}
 
-		return true, utils.AtomicUpdateFile(path, nraw, self.Mode)
+		return true, utils.AtomicUpdateFile(path, bytes.NewReader(nraw), self.Mode)
 	}
 	return false, nil
 }

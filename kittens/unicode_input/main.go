@@ -3,6 +3,7 @@
 package unicode_input
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -442,7 +443,7 @@ func (self *handler) handle_favorites_key_event(event *loop.KeyEvent) {
 				self.lp.Quit(1)
 				return
 			}
-			err = utils.AtomicUpdateFile(fp, utils.UnsafeStringToBytes(raw), 0o600)
+			err = utils.AtomicUpdateFile(fp, bytes.NewReader(utils.UnsafeStringToBytes(raw)), 0o600)
 			if err != nil {
 				self.err = fmt.Errorf("Failed to write to favorites file %s with error: %w", fp, err)
 				self.lp.Quit(1)

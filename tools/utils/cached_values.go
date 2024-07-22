@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -31,7 +32,7 @@ func (self *CachedValues[T]) Load() T {
 func (self *CachedValues[T]) Save() {
 	raw, err := json.Marshal(self.Opts)
 	if err == nil {
-		AtomicUpdateFile(self.Path(), raw, 0o600)
+		AtomicUpdateFile(self.Path(), bytes.NewReader(raw), 0o600)
 	}
 }
 
