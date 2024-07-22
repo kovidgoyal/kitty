@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from io import BytesIO
 
 from kitty.fast_data_types import base64_decode, base64_encode, has_avx2, has_sse4_2, load_png_data, shm_unlink, shm_write, test_xor64
+from kitty.utils import cached_rgba_file_descriptor_for_image_path
 
 from . import BaseTest, parse_bytes
 
@@ -1240,3 +1241,19 @@ class TestGraphics(BaseTest):
         s.reset()
         self.ae(g.image_count, 0)
         self.assertEqual(g.disk_cache.total_size, 0)
+
+    @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
+    def test_cached_rgba_conversion(self):
+        w, h = 5, 3
+        rgba_data = byte_block(w * h * 4)
+        img = Image.frombytes('RGBA', (w, h), rgba_data)
+        buf = BytesIO()
+        img.save(buf, 'PNG')
+        png_data = buf.getvalue()
+        with tempfile.NamedTemporaryFile(suffix='.png') as png:
+            png.write(png_data)
+            png.flush()
+            os.fsync(png.fileno())
+            qw, qh, fd = cached_rgba_file_descriptor_for_image_path(png.name)
+            os.close(fd)
+            self.ae((qw, qh), (w, h))

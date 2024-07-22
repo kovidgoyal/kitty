@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"image"
@@ -93,8 +92,10 @@ func prune_cache(cdir string, max_entries int) error {
 }
 
 func render_image(src_path, cdir string, max_cache_entries int) (output_path string, err error) {
-	src_path, err = filepath.EvalSymlinks(src_path)
-	if err != nil {
+	if src_path, err = filepath.EvalSymlinks(src_path); err != nil {
+		return
+	}
+	if src_path, err = filepath.Abs(src_path); err != nil {
 		return
 	}
 	lock_file := filepath.Join(cdir, "lock")
@@ -109,7 +110,7 @@ func render_image(src_path, cdir string, max_cache_entries int) (output_path str
 	defer func() {
 		utils.UnlockFile(lockf)
 	}()
-	output_path = filepath.Join(cdir, hex.EncodeToString(sha256.New().Sum([]byte(src_path)))) + ".rgba"
+	output_path = filepath.Join(cdir, fmt.Sprintf("%x", sha256.Sum256([]byte(src_path)))) + ".rgba"
 	needs_update := true
 	input_info, err := os.Stat(src_path)
 	if err != nil {
@@ -154,16 +155,12 @@ func RenderEntryPoint(root *cli.Command) {
 			if len(args) != 1 {
 				return 1, fmt.Errorf("Usage: render input_image_path")
 			}
-			src_path, err := filepath.EvalSymlinks(args[0])
-			if err != nil {
-				return 1, err
-			}
 			cdir := utils.CacheDir()
 			cdir = filepath.Join(cdir, "rgba")
 			if err = os.MkdirAll(cdir, 0755); err != nil {
 				return 1, err
 			}
-			if output_path, err := render_image(src_path, cdir, 32); err != nil {
+			if output_path, err := render_image(args[0], cdir, 32); err != nil {
 				return 1, err
 			} else {
 				fmt.Println(output_path)
