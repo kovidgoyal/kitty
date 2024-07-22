@@ -310,3 +310,10 @@ func FunctionName(a any) string {
 	}
 	return ""
 }
+
+func Abs[T constraints.Integer](x T) T {
+	if x < 0 {
+		return -x
+	}
+	return x
+}

@@ -28,6 +28,7 @@ import (
 	"kitty/tools/cmd/show_error"
 	"kitty/tools/cmd/update_self"
 	"kitty/tools/tui"
+	"kitty/tools/utils/images"
 )
 
 var _ = fmt.Print
@@ -103,6 +104,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 			return confirm_and_run_shebang(args)
 		},
 	})
+	// __render_image__
+	images.RenderEntryPoint(root)
 	// __generate_man_pages__
 	root.AddSubCommand(&cli.Command{
 		Name:            "__generate_man_pages__",
