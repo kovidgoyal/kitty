@@ -1381,7 +1381,8 @@ get_mouse_data_for_window(PyObject *self UNUSED, PyObject *args) {
     id_type os_window_id, tab_id, window_id;
     PA("KKK", &os_window_id, &tab_id, &window_id);
     WITH_WINDOW(os_window_id, tab_id, window_id)
-        return Py_BuildValue("{sI sI sO}", "cell_x", window->mouse_pos.cell_x, "cell_y", window->mouse_pos.cell_y, "in_left_half_of_cell", window->mouse_pos.in_left_half_of_cell);
+        return Py_BuildValue("{sI sI sO}", "cell_x", window->mouse_pos.cell_x, "cell_y", window->mouse_pos.cell_y,
+                "in_left_half_of_cell", window->mouse_pos.in_left_half_of_cell ? Py_True: Py_False);
     END_WITH_WINDOW
     Py_RETURN_NONE;
 }
