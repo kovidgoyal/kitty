@@ -111,7 +111,6 @@ from .utils import (
     log_error,
     open_cmd,
     open_url,
-    parse_color_set,
     path_from_osc7_url,
     resolve_custom_file,
     resolved_shell,
@@ -1293,6 +1292,26 @@ class Window:
     def set_color_table_color(self, code: int, bvalue: Optional[memoryview] = None) -> None:
         value = str(bvalue or b'', 'utf-8', 'replace')
         cp = self.screen.color_profile
+
+        def parse_color_set(raw: str) -> Generator[Tuple[int, Optional[int]], None, None]:
+            parts = raw.split(';')
+            lp = len(parts)
+            if lp % 2 != 0:
+                return
+            for c_, spec in [parts[i:i + 2] for i in range(0, len(parts), 2)]:
+                try:
+                    c = int(c_)
+                    if c < 0 or c > 255:
+                        continue
+                    if spec == '?':
+                        yield c, None
+                    else:
+                        q = to_color(spec)
+                        if q is not None:
+                            yield c, color_as_int(q)
+                except Exception:
+                    continue
+
         if code == 4:
             changed = False
             for c, val in parse_color_set(value):

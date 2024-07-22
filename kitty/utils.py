@@ -44,7 +44,6 @@ from .constants import (
 )
 from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, Shlex, get_options, monotonic, open_tty
 from .fast_data_types import timed_debug_print as _timed_debug_print
-from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
@@ -162,26 +161,6 @@ def color_as_int(val: Color) -> int:
 
 def color_from_int(val: int) -> Color:
     return Color((val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)
-
-
-def parse_color_set(raw: str) -> Generator[Tuple[int, Optional[int]], None, None]:
-    parts = raw.split(';')
-    lp = len(parts)
-    if lp % 2 != 0:
-        return
-    for c_, spec in [parts[i:i + 2] for i in range(0, len(parts), 2)]:
-        try:
-            c = int(c_)
-            if c < 0 or c > 255:
-                continue
-            if spec == '?':
-                yield c, None
-            else:
-                q = to_color(spec)
-                if q is not None:
-                    yield c, int(q) & 0xffffff
-        except Exception:
-            continue
 
 
 class ScreenSize(NamedTuple):
