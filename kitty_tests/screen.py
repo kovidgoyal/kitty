@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Cursor
+from kitty.config import defaults
+from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
 from kitty.marks import marker_from_function, marker_from_regex
+from kitty.rgb import color_names
 from kitty.window import pagerhist
 
 from . import BaseTest, parse_bytes
@@ -1258,3 +1260,23 @@ class TestScreen(BaseTest):
         t('<', '0')
         t('=left_ptr', 'default')
         t('=fleur', 'move')
+
+    def test_color_profile(self):
+        c = ColorProfile(defaults)
+        for i in range(8):
+            col = getattr(defaults, f'color{i}')
+            self.ae(c.as_color(i << 8 | 1), col)
+        self.ae(c.as_color(255 << 8 | 1), Color(0xee, 0xee, 0xee))
+        s = self.create_screen()
+        s.color_profile.reload_from_opts(defaults)
+        def q(send, expected=None):
+            s.callbacks.clear()
+            parse_bytes(s, b'\x1b]21;' + ';'.join(f'{k}={v}' for k, v in send.items()).encode() + b'\a')
+            self.ae(s.callbacks.color_control_responses, [expected] if expected else [])
+        q({k: '?' for k in 'background foreground 213 unknown'.split()}, {
+            'background': defaults.background, 'foreground': defaults.foreground, '213': defaults.color213, 'unknown': '?'})
+        q({'background':'aquamarine'})
+        q({'background':'?', 'selection_background': '?'}, {'background': color_names['aquamarine'], 'selection_background': s.color_profile.highlight_bg})
+        q({'selection_background': ''})
+        self.assertIsNone(s.color_profile.highlight_bg)
+        q({'selection_background': '?'}, {'selection_background': ''})

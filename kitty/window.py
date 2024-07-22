@@ -56,6 +56,7 @@ from .fast_data_types import (
     SCROLL_LINE,
     SCROLL_PAGE,
     Color,
+    ColorProfile,
     KeyEvent,
     Screen,
     add_timer,
@@ -103,6 +104,7 @@ from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
+    color_as_int,
     docs_url,
     key_val_matcher,
     kitty_ansi_sanitizer_pat,
@@ -458,6 +460,62 @@ def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as
 
 def process_remote_print(msg: memoryview) -> str:
     return replace_c0_codes_except_nl_space_tab(base64_decode(msg)).decode('utf-8', 'replace')
+
+
+def color_control(cp: ColorProfile, code: int, value: Union[str, bytes, memoryview] = '') -> str:
+    if isinstance(value, (bytes, memoryview)):
+        value = str(value, 'utf-8', 'replace')
+    responses = {}
+    for rec in value.split(';'):
+        key, sep, val = rec.partition('=')
+        attr = {
+            'foreground': 'default_fg', 'background': 'default_bg',
+            'selection_background': 'highlight_bg', 'selection_foreground': 'highlight_fg',
+            'cursor': 'cursor_color', 'cursor_text': 'cursor_text_color',
+            'visual_bell': 'visual_bell_color', 'second_transparent_background': 'second_transparent_bg',
+        }.get(key, '')
+        colnum = -1
+        with suppress(Exception):
+            colnum = int(key)
+
+        def serialize_color(c: Optional[Color]) -> str:
+            return '' if c is None else f'rgb:{c.red:02x}/{c.green:02x}/{c.blue:02x}'
+
+        if sep == '=':
+            if val == '?':
+                if attr:
+                    c = getattr(cp, attr)
+                    responses[key] = serialize_color(c)
+                else:
+                    if 0 <= colnum <= 255:
+                        c = cp.as_color((colnum << 8) | 1)
+                        responses[key] = serialize_color(c)
+                    else:
+                        responses[key] = '?'
+            else:
+                if attr:
+                    if val:
+                        col = to_color(val)
+                        if col is not None:
+                            setattr(cp, attr, col)
+                    else:
+                        with suppress(TypeError):
+                            setattr(cp, attr, None)
+                else:
+                    if 0 <= colnum <= 255:
+                        col = to_color(val)
+                        if col is not None:
+                            cp.set_color(colnum, color_as_int(col))
+        else:
+            if attr:
+                delattr(cp, attr)
+            else:
+                if 0 <= colnum <= 255:
+                    cp.set_color(colnum, get_options().color_table[colnum])
+    if responses:
+        payload = ';'.join(f'{k}={v}' for k, v in responses.items())
+        return f'{code};{payload}'
+    return ''
 
 
 class EdgeWidths:
@@ -1191,6 +1249,11 @@ class Window:
         pty_size = self.last_reported_pty_size
         if pty_size[0] > -1 and self.screen.in_band_resize_notification:
             self.screen.send_escape_code_to_child(ESC_CSI, f'48;{pty_size[0]};{pty_size[1]};{pty_size[3]};{pty_size[2]}t')
+
+    def color_control(self, code: int, value: Union[str, bytes, memoryview] = '') -> None:
+        response = color_control(self.screen.color_profile, code, value)
+        if response:
+            self.screen.send_escape_code_to_child(ESC_OSC, response)
 
     def set_dynamic_color(self, code: int, value: Union[str, bytes, memoryview] = '') -> None:
         if isinstance(value, (bytes, memoryview)):

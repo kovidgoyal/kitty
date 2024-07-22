@@ -5,10 +5,8 @@ import os
 import sys
 import tempfile
 
-from kitty.config import defaults
 from kitty.fast_data_types import (
     Color,
-    ColorProfile,
     HistoryBuf,
     LineBuf,
     expand_ansi_c_escapes,
@@ -475,13 +473,6 @@ class TestDataTypes(BaseTest):
                 self.assertTrue(is_ok_to_read_image_file(tf.name, tf.fileno()), fifo)
         self.ae(sanitize_url_for_dispay_to_user(
             'h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
-
-    def test_color_profile(self):
-        c = ColorProfile(defaults)
-        for i in range(8):
-            col = getattr(defaults, f'color{i}')
-            self.ae(c.as_color(i << 8 | 1), col)
-        self.ae(c.as_color(255 << 8 | 1), Color(0xee, 0xee, 0xee))
 
     def test_historybuf(self):
         lb = filled_line_buf()

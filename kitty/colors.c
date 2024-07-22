@@ -464,7 +464,7 @@ static Color* alloc_color(unsigned char r, unsigned char g, unsigned char b, uns
         } else if (PyObject_TypeCheck(v, &Color_Type)) { \
             Color *c = (Color*)v; self->overridden.name.rgb = c->color.rgb; self->overridden.name.type = COLOR_IS_RGB; \
         } else if (v == Py_None) { \
-            if (!nullable) { PyErr_SetString(PyExc_ValueError, #name " cannot be set to None"); return -1; } \
+            if (!nullable) { PyErr_SetString(PyExc_TypeError, #name " cannot be set to None"); return -1; } \
             self->overridden.name.type = COLOR_IS_SPECIAL; self->overridden.name.rgb = 0; \
         } \
         self->dirty = true; return 0; \

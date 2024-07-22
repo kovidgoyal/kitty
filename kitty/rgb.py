@@ -41,6 +41,17 @@ def parse_rgb(spec: str) -> Optional[Color]:
     return None
 
 
+def parse_single_intensity(x: str) -> int:
+    return int(max(0, min(abs(float(x)), 1)) * 255)
+
+
+def parse_rgbi(spec: str) -> Optional[Color]:
+    colors = spec.split('/')
+    if len(colors) == 3:
+        return Color(*map(parse_single_intensity, colors))
+    return None
+
+
 def color_from_int(x: int) -> Color:
     return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
 
@@ -67,8 +78,12 @@ def to_color(raw: str, validate: bool = False) -> Optional[Color]:
     with suppress(Exception):
         if raw.startswith('#'):
             val = parse_sharp(raw[1:])
-        elif raw.startswith('rgb:'):
-            val = parse_rgb(raw[4:])
+        else:
+            k, sep, v = raw.partition(':')
+            if k == 'rgb':
+                val = parse_rgb(v)
+            elif k == 'rgbi':
+                val = parse_rgbi(v)
     if val is None and validate:
         raise ValueError(f'Invalid color name: {raw!r}')
     return val

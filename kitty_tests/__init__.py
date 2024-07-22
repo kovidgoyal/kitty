@@ -22,6 +22,7 @@ from kitty.config import finalize_keys, finalize_mouse_mappings
 from kitty.fast_data_types import Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
+from kitty.rgb import to_color
 from kitty.types import MouseEvent
 from kitty.utils import read_screen_size
 from kitty.window import decode_cmdline, process_remote_print, process_title_from_child
@@ -52,6 +53,18 @@ class Callbacks:
 
     def notify_child_of_resize(self):
         self.num_of_resize_events += 1
+
+    def color_control(self, code, data) -> None:
+        from kitty.window import color_control
+        response = color_control(self.color_profile, code, data)
+        if response:
+            def p(x):
+                ans = to_color(x)
+                if ans is None:
+                    ans = x
+                return ans
+            parts = {x.partition('=')[0]:p(x.partition('=')[2]) for x in response.split(';')[1:]}
+            self.color_control_responses.append(parts)
 
     def title_changed(self, data, is_base64=False) -> None:
         self.titlebuf.append(process_title_from_child(data, is_base64, ''))
@@ -100,6 +113,7 @@ class Callbacks:
         self.iconbuf = self.colorbuf = self.ctbuf = ''
         self.titlebuf = []
         self.printbuf = []
+        self.color_control_responses = []
         self.notifications = []
         self.open_urls = []
         self.cc_buf = []
@@ -242,6 +256,7 @@ class BaseTest(TestCase):
         self.set_options(options)
         c = Callbacks()
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
+        c.color_profile = s.color_profile
         return s
 
     def create_pty(

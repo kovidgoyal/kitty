@@ -227,6 +227,7 @@ void set_title(Screen *self, PyObject*);
 void desktop_notify(Screen *self, unsigned int, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
+void color_control(Screen *self, unsigned int code, PyObject*);
 void clipboard_control(Screen *self, int code, PyObject*);
 void shell_prompt_marking(Screen *self, char *buf);
 void file_transmission(Screen *self, PyObject*);

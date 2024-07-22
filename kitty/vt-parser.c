@@ -528,6 +528,10 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             START_DISPATCH
             DISPATCH_OSC_WITH_CODE(set_dynamic_color);
             END_DISPATCH
+        case 21:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(color_control);
+            END_DISPATCH
         case 52: case 5522:
             START_DISPATCH
             if (is_extended_osc && code == 52) code = -52;
