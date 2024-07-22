@@ -203,6 +203,20 @@ class Background(Query):
 
 
 @query
+class BackgroundOpacity(Query):
+    name: str = 'background_opacity'
+    help_text: str = 'The current background opacity as a number between 0 and 1'
+
+    @staticmethod
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
+        from kitty.fast_data_types import background_opacity_of
+        ans = background_opacity_of(os_window_id)
+        if ans is None:
+            ans = 1.0
+        return f'{ans:g}'
+
+
+@query
 class ClipboardControl(Query):
     name: str = 'clipboard_control'
     help_text: str = 'The config option :opt:`clipboard_control` in :file:`kitty.conf` for allowing reads/writes to/from the clipboard'
