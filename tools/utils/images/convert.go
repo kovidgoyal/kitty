@@ -71,7 +71,7 @@ func convert_image(input io.ReadSeeker, output io.Writer, format string) (err er
 	case "TIFF":
 		return Encode(output, img, "image/tiff")
 	}
-	return
+	return fmt.Errorf("Unknown image output format: %s", format)
 }
 
 func ConvertEntryPoint(root *cli.Command) {
@@ -80,10 +80,10 @@ func ConvertEntryPoint(root *cli.Command) {
 		Hidden:          true,
 		OnlyArgsAllowed: true,
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
-			format := "RGBA"
-			if len(args) > 0 {
-				format = args[0]
+			if len(args) != 1 {
+				return 1, fmt.Errorf("Usage: __convert_image__ OUTPUT_FORMAT")
 			}
+			format := args[0]
 			buf := bytes.NewBuffer(make([]byte, 0, 1024*1024))
 			if _, err = io.Copy(buf, os.Stdin); err != nil {
 				return 1, err
