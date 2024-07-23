@@ -57,21 +57,15 @@ func convert_image(input io.ReadSeeker, output io.Writer, format string) (err er
 		return fmt.Errorf("Image has no frames")
 	}
 	img := image_data.Frames[0].Img
-	switch strings.ToUpper(format) {
-	case "RGBA":
+	q := strings.ToLower(format)
+	if q == "rgba" {
 		return encode_rgba(output, img)
-	case "JPEG", "JPG":
-		return Encode(output, img, "image/jpeg")
-	case "PNG":
-		return Encode(output, img, "image/png")
-	case "GIF":
-		return Encode(output, img, "image/gif")
-	case "BMP":
-		return Encode(output, img, "image/bmp")
-	case "TIFF":
-		return Encode(output, img, "image/tiff")
 	}
-	return fmt.Errorf("Unknown image output format: %s", format)
+	mt := utils.GuessMimeType("file." + q)
+	if mt == "" {
+		return fmt.Errorf("Unknown image output format: %s", format)
+	}
+	return Encode(output, img, mt)
 }
 
 func ConvertEntryPoint(root *cli.Command) {
