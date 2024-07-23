@@ -29,7 +29,11 @@ class ImageRenderCache:
     def __enter__(self) -> None:
         self.ensure_subdir()
         self.lock_file = open(os.path.join(self.cache_dir, self.lock_file_name), 'wb')
-        lock_file(self.lock_file)
+        try:
+            lock_file(self.lock_file)
+        except Exception:
+            self.lock_file.close()
+            raise
 
     def __exit__(self, *a: object) -> None:
         with closing(self.lock_file):
