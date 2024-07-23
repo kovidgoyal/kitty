@@ -159,6 +159,12 @@ Key      Value
 In the future, if this protocol expands, more keys might be added. Clients must
 ignore keys they dont understand in the query response.
 
+To check if a terminal emulator supports this notifications protocol the best way is to
+send the above *query action* followed by a request for the `primary device
+attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_. If you get back an
+answer for the device attributes without getting back an answer for the *query
+action* the terminal emulator does not support this notifications protocol.
+
 Specification of all keys used in the protocol
 --------------------------------------------------
 
