@@ -601,11 +601,11 @@ class TestParser(BaseTest):
         reset()
         h('i=xyz:p=?')
         self.assertFalse(notifications)
-        self.ae(query_responses, ['99;i=xyz:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2'])
+        self.ae(query_responses, ['99;i=xyz:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close'])
         reset()
         h('p=?')
         self.assertFalse(notifications)
-        self.ae(query_responses, ['99;i=0:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2'])
+        self.ae(query_responses, ['99;i=0:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

@@ -179,7 +179,7 @@ Key      Value                 Default    Description
 
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
          ``body``, ``close``              notification has no title, the body will be used as title. Terminal
-          , ``?``                         emulators should ignore payloads of unknown type to allow for future
+         , ``?``                          emulators should ignore payloads of unknown type to allow for future
                                           expansion of this protocol.
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
