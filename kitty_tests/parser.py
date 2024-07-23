@@ -588,9 +588,9 @@ class TestParser(BaseTest):
         notification_activated(notifications[-1][-2], activated)
         self.ae(activations, [('0', 1, True, False)])
         reset()
-        h('?')
+        h('i=xyz:p=?')
         self.assertFalse(notifications)
-        self.ae(query_responses, ['99;?;a=focus,report:o=always,unfocused,invisible:u=0,1,2'])
+        self.ae(query_responses, ['99;i=xyz:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

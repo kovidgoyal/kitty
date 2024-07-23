@@ -140,11 +140,6 @@ class QueryResponse(Exception):
 def parse_osc_99(raw: str) -> NotificationCommand:
     cmd = NotificationCommand()
     metadata, payload = raw.partition(';')[::2]
-    if metadata == '?':
-        actions = ','.join(x.name for x in Action)
-        when = ','.join(x.name for x in OnlyWhen if x.value)
-        urgency = ','.join(str(x.value) for x in Urgency)
-        raise QueryResponse(f'99;?;a={actions}:o={when}:u={urgency}')
     payload_is_encoded = False
     payload_type = 'title'
     if metadata:
@@ -181,6 +176,15 @@ def parse_osc_99(raw: str) -> NotificationCommand:
             elif k == 'u':
                 with suppress(Exception):
                     cmd.urgency = Urgency(int(v))
+    if payload_type == '?':
+        actions = ','.join(x.name for x in Action)
+        when = ','.join(x.name for x in OnlyWhen if x.value)
+        urgency = ','.join(str(x.value) for x in Urgency)
+        i = ''
+        if cmd.identifier:
+            i = f'i={sanitize_id(cmd.identifier)}:'
+        raise QueryResponse(f'99;{i}p=?;a={actions}:o={when}:u={urgency}')
+
     if payload_type not in ('body', 'title'):
         log_error(f'Malformed OSC 99: unknown payload type: {payload_type}')
         return NotificationCommand()

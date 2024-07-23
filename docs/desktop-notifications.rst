@@ -102,11 +102,15 @@ Querying for support
 An application can query the terminal emulator for support of this protocol, by
 sending the following escape code::
 
-    <OSC> 99 ; ? ; <terminator>
+    <OSC> 99 ; i=<some identifier> : p=? ; <terminator>
 
 A conforming terminal must respond with an escape code of the form::
 
-    <OSC> 99 ; ? ; key=value : key=value <terminator>
+    <OSC> 99 ; i=<some identifier> : p=? ; key=value : key=value <terminator>
+
+The identifier must be some globally unique identifier string like an UUID. It
+is present to support terminal multiplexers, so that they know which window to
+redirect the query response too.
 
 Here, the ``key=value`` parts specify details about what the terminal
 implementation supports. Currently, the following keys are defined:
@@ -150,8 +154,8 @@ Key      Value                 Default    Description
 
 ``i``    ``[a-zA-Z0-9-_+.]``   ``0``      Identifier for the notification
 
-``p``    One of ``title`` or   ``title``  Whether the payload is the notification title or body. If a
-         ``body``.                        notification has no title, the body will be used as title.
+``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
+         ``body`` or ``?``                notification has no title, the body will be used as title.
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
          ``unfocused`` or                 the notification is sent on does not have keyboard focus. ``invisible``
