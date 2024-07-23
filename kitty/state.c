@@ -8,6 +8,7 @@
 #include "cleanup.h"
 #include "options/to-c-generated.h"
 #include <math.h>
+#include <sys/mman.h>
 
 GlobalState global_state = {{0}};
 
@@ -164,6 +165,16 @@ window_for_window_id(id_type kitty_window_id) {
 }
 
 static void
+free_bgimage_bitmap(BackgroundImage *bgimage) {
+    if (!bgimage->bitmap) return;
+    if (bgimage->mmap_size) {
+        if (munmap(bgimage->bitmap, bgimage->mmap_size) != 0) log_error("Failed to unmap BackgroundImage with error: %s", strerror(errno));
+    } else free(bgimage->bitmap);
+    bgimage->bitmap = NULL;
+    bgimage->mmap_size = 0;
+}
+
+static void
 send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
     RepeatStrategy r = REPEAT_DEFAULT;
     switch (layout) {
@@ -178,9 +189,10 @@ send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
             r = REPEAT_DEFAULT; break;
     }
     bgimage->texture_id = 0;
-    send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap, bgimage->width,
+    size_t delta = bgimage->mmap_size ? 8 : 0;
+    send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap + delta, bgimage->width,
             bgimage->height, false, true, OPT(background_image_linear), r);
-    free(bgimage->bitmap); bgimage->bitmap = NULL;
+    free_bgimage_bitmap(bgimage);
 }
 
 static void
@@ -188,7 +200,7 @@ free_bgimage(BackgroundImage **bgimage, bool release_texture) {
     if (*bgimage && (*bgimage)->refcnt) {
         (*bgimage)->refcnt--;
         if ((*bgimage)->refcnt == 0) {
-            free((*bgimage)->bitmap); (*bgimage)->bitmap = NULL;
+            free_bgimage_bitmap(*bgimage);
             if (release_texture) free_texture(&(*bgimage)->texture_id);
             free(*bgimage);
         }
@@ -213,8 +225,7 @@ add_os_window(void) {
             global_state.bgimage = calloc(1, sizeof(BackgroundImage));
             if (!global_state.bgimage) fatal("Out of memory allocating the global bg image object");
             global_state.bgimage->refcnt++;
-            size_t size;
-            if (png_path_to_bitmap(OPT(background_image), &global_state.bgimage->bitmap, &global_state.bgimage->width, &global_state.bgimage->height, &size)) {
+            if (image_path_to_bitmap(OPT(background_image), &global_state.bgimage->bitmap, &global_state.bgimage->width, &global_state.bgimage->height, &global_state.bgimage->mmap_size)) {
                 send_bgimage_to_gpu(OPT(background_image_layout), global_state.bgimage);
             }
         }
@@ -1192,7 +1203,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
         if (png_data && png_data_size) {
             ok = png_from_data(png_data, png_data_size, path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
         } else {
-            ok = png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
+            ok = image_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &bgimage->mmap_size);
         }
         if (!ok) {
             PyErr_Format(PyExc_ValueError, "Failed to load image from: %s", path);

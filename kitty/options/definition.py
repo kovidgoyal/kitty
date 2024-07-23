@@ -1498,7 +1498,7 @@ on macOS and KDE.
 
 opt('background_image', 'none',
     option_type='config_or_absolute_path', ctype='!background_image',
-    long_text='Path to a background image. Must be in PNG format.'
+    long_text='Path to a background image. Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
     )
 
 opt('background_image_layout', 'tiled',

@@ -463,6 +463,31 @@ png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsign
     return ret;
 }
 
+bool
+image_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
+    *data = NULL; *sz = 0; *width = 0; *height = 0;
+    RAII_PyObject(module, PyImport_ImportModule("kitty.render_cache"));
+#define fail_on_python_error { log_error("Failed to convert image at %s to bitmap with python error:", path); PyErr_Print(); return false; }
+    if (!module) fail_on_python_error;
+    RAII_PyObject(irc, PyObject_GetAttrString(module, "default_image_render_cache"));
+    if (!irc) fail_on_python_error;
+    RAII_PyObject(ret, PyObject_CallFunction(irc, "s", path));
+    if (!ret) fail_on_python_error;
+    size_t w = PyLong_AsSize_t(PyTuple_GET_ITEM(ret, 0));
+    size_t h = PyLong_AsSize_t(PyTuple_GET_ITEM(ret, 1));
+    int fd = PyLong_AsLong(PyTuple_GET_ITEM(ret, 2));
+#undef fail_on_python_error
+    size_t data_size = 8 + w * h * 4;
+    *data = mmap(NULL, data_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    int saved_errno = errno;
+    safe_close(fd, __FILE__, __LINE__);
+    if (*data == MAP_FAILED) {
+        log_error("Failed to mmap bitmap data for image at %s with error: %s", path, strerror(saved_errno));
+        return false;
+    }
+    *sz = data_size; *width = w; *height = h;
+    return true;
+}
 
 static Image*
 find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {

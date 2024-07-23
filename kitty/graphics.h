@@ -41,6 +41,7 @@ typedef struct {
     unsigned int height, width;
     uint8_t* bitmap;
     uint32_t refcnt;
+    size_t mmap_size;
 } BackgroundImage;
 
 
@@ -208,6 +209,7 @@ void gpu_data_for_image(ImageRenderData *ans, float left, float top, float right
 bool png_from_file_pointer(FILE* fp, const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool png_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool png_from_data(void *png_data, size_t png_data_sz, const char *path_for_error_messages, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
+bool image_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);
 void scale_rendered_graphic(ImageRenderData*, float xstart, float ystart, float x_scale, float y_scale);
 void grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest);
