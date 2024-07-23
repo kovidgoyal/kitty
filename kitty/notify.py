@@ -143,7 +143,8 @@ def parse_osc_99(raw: str) -> NotificationCommand:
     if metadata == '?':
         actions = ','.join(x.name for x in Action)
         when = ','.join(x.name for x in OnlyWhen if x.value)
-        raise QueryResponse(f'99;?;a={actions}:o={when}')
+        urgency = ','.join(str(x.value) for x in Urgency)
+        raise QueryResponse(f'99;?;a={actions}:o={when}:u={urgency}')
     payload_is_encoded = False
     payload_type = 'title'
     if metadata:

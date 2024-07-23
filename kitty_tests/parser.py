@@ -590,7 +590,7 @@ class TestParser(BaseTest):
         reset()
         h('?')
         self.assertFalse(notifications)
-        self.ae(query_responses, ['99;?;a=focus,report:o=always,unfocused,invisible'])
+        self.ae(query_responses, ['99;?;a=focus,report:o=always,unfocused,invisible:u=0,1,2'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

@@ -115,12 +115,16 @@ implementation supports. Currently, the following keys are defined:
 Key      Value
 =======  ================================================================================
 ``a``    Comma separated list of actions from the ``a`` key that the terminal
-         implements. If no actions are supported, the ``a`` key must be absent form the
+         implements. If no actions are supported, the ``a`` key must be absent from the
          query response.
 
 ``o``    Comma separated list of occassions from the ``o`` key that the
          terminal implements. If no occassions are supported, the value
          ``o=always`` must be sent in the query response.
+
+``u``    Comma separated list of urgency values that the terminal implements.
+         If urgency is not supported, the ``u`` key must be absent from the
+         query response.
 =======  ================================================================================
 
 In the future, if this protocol expands, more keys might be added. Clients must
