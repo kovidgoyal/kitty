@@ -96,6 +96,9 @@ to display it based on what it does understand.
 Querying for support
 -------------------------
 
+.. versionadded:: 0.36.0
+   The ability to query for support was added in kitty 0.36.0
+
 An application can query the terminal emulator for support of this protocol, by
 sending the following escape code::
 
@@ -112,7 +115,7 @@ implementation supports. Currently, the following keys are defined:
 Key      Value
 =======  ================================================================================
 ``a``    Comma separated list of actions from the ``a`` key that the terminal
-         implements. If no actions are supported, the a key must be absent form the
+         implements. If no actions are supported, the ``a`` key must be absent form the
          query response.
 
 ``o``    Comma separated list of occassions from the ``o`` key that the
