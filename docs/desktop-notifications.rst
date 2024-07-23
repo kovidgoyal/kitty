@@ -104,12 +104,16 @@ To close a previous notification, send::
     <OSC> i=<notification id> : p=close ; <terminator>
 
 This will close a previous notification with the specified id. If closing
-succeeds, the terminal will send an escape code of the form::
+succeeds, or the notification was already closed,
+the terminal will send an escape code of the form::
 
     <OSC> i=<notification id> : p=close ; <terminator>
 
 Closing is done on a best effort basis so applications must not rely on the
-delivery of the closed escape code.
+delivery of the closed escape code. If you do not want to receive an escape
+code notifying you of closure, use::
+
+    <OSC> i=<notification id> : p=close_simple ; <terminator>
 
 Querying for support
 -------------------------
@@ -178,9 +182,11 @@ Key      Value                 Default    Description
                                           direct responses to the correct window.
 
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
-         ``body``, ``close``              notification has no title, the body will be used as title. Terminal
-         , ``?``                          emulators should ignore payloads of unknown type to allow for future
-                                          expansion of this protocol.
+         ``body``,                        notification has no title, the body will be used as title. Terminal
+         ``close``,                       emulators should ignore payloads of unknown type to allow for future
+         ``close_simple``,                expansion of this protocol.
+         ``?``
+
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
          ``unfocused`` or                 the notification is sent on does not have keyboard focus. ``invisible``
