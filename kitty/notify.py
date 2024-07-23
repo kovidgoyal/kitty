@@ -137,7 +137,7 @@ class QueryResponse(Exception):
         self.response_string = response_string
 
 
-def parse_osc_99(raw: str) -> NotificationCommand:
+def parse_osc_99(raw: str, log_warnings: bool = True) -> NotificationCommand:
     cmd = NotificationCommand()
     metadata, payload = raw.partition(';')[::2]
     payload_is_encoded = False
@@ -147,7 +147,8 @@ def parse_osc_99(raw: str) -> NotificationCommand:
             try:
                 k, v = part.split('=', 1)
             except Exception:
-                log_error('Malformed OSC 99: metadata is not key=value pairs')
+                if log_warnings:
+                    log_error('Malformed OSC 99: metadata is not key=value pairs')
                 return cmd
             if k == 'p':
                 payload_type = v
@@ -183,19 +184,21 @@ def parse_osc_99(raw: str) -> NotificationCommand:
         i = f'i={sanitize_id(cmd.identifier or "0")}:'
         raise QueryResponse(f'99;{i}p=?;a={actions}:o={when}:u={urgency}')
 
-    if payload_type not in ('body', 'title'):
-        log_error(f'Malformed OSC 99: unknown payload type: {payload_type}')
-        return NotificationCommand()
-    if payload_is_encoded:
-        try:
-            payload = standard_b64decode(payload).decode('utf-8')
-        except Exception:
-            log_error('Malformed OSC 99: payload is not base64 encoded UTF-8 text')
-            return NotificationCommand()
-    if payload_type == 'title':
-        cmd.title = payload
+    if payload_type in ('body', 'title'):
+        if payload_is_encoded:
+            try:
+                payload = standard_b64decode(payload).decode('utf-8')
+            except Exception:
+                if log_warnings:
+                    log_error('Malformed OSC 99: payload is not base64 encoded UTF-8 text')
+                return NotificationCommand()
+        if payload_type == 'title':
+            cmd.title = payload
+        else:
+            cmd.body = payload
     else:
-        cmd.body = payload
+        if log_warnings:
+            log_error(f'OSC 99: unknown payload type: {payload_type}, ignoring payload')
     return cmd
 
 
@@ -293,10 +296,11 @@ def handle_notification_cmd(
     raw_data: str,
     window_id: int,
     prev_cmd: NotificationCommand,
-    notify_implementation: NotifyImplementation = notify_implementation
+    notify_implementation: NotifyImplementation = notify_implementation,
+    log_warnings: bool = True,
 ) -> Optional[NotificationCommand]:
     if osc_code == 99:
-        cmd = merge_osc_99(prev_cmd, parse_osc_99(raw_data))
+        cmd = merge_osc_99(prev_cmd, parse_osc_99(raw_data, log_warnings=log_warnings))
         if cmd.done:
             notify_with_command(cmd, window_id, notify_implementation)
             cmd = NotificationCommand()

@@ -542,7 +542,7 @@ class TestParser(BaseTest):
         def h(raw_data, osc_code=99, window_id=1):
             nonlocal prev_cmd
             try:
-                x = handle_notification_cmd(osc_code, raw_data, window_id, prev_cmd, notify)
+                x = handle_notification_cmd(osc_code, raw_data, window_id, prev_cmd, notify, log_warnings=False)
                 if x is not None and osc_code == 99:
                     prev_cmd = x
             except QueryResponse as err:
@@ -582,12 +582,16 @@ class TestParser(BaseTest):
         self.ae(activations, [('0', 1, True, False)])
         reset()
 
-
         h('d=0:i=x:a=-report;title')
         h('d=1:i=x:a=report;body')
         self.ae(notifications, [('titlebody', '', 'i0', Urgency.Normal)])
         notification_activated(notifications[-1][-2], activated)
         self.ae(activations, [('x', 1, True, True)])
+        reset()
+
+        h('d=0:i=y;title')
+        h('d=1:i=y:p=xxx;title')
+        self.ae(notifications, [('title', '', 'i0', Urgency.Normal)])
         reset()
 
         h(';title')
