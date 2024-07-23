@@ -108,9 +108,8 @@ A conforming terminal must respond with an escape code of the form::
 
     <OSC> 99 ; i=<some identifier> : p=? ; key=value : key=value <terminator>
 
-The identifier must be some globally unique identifier string like an UUID. It
-is present to support terminal multiplexers, so that they know which window to
-redirect the query response too.
+The identifier is present to support terminal multiplexers, so that they know
+which window to redirect the query response too.
 
 Here, the ``key=value`` parts specify details about what the terminal
 implementation supports. Currently, the following keys are defined:
@@ -152,7 +151,9 @@ Key      Value                 Default    Description
 ``e``    ``0`` or ``1``        ``0``      If set to ``1`` means the payload is Base64 encoded UTF-8,
                                           otherwise it is plain UTF-8 text with no C0 control codes in it
 
-``i``    ``[a-zA-Z0-9-_+.]``   ``0``      Identifier for the notification
+``i``    ``[a-zA-Z0-9-_+.]``   ``0``      Identifier for the notification. Make these globally unqiue,
+                                          like an UUID, so that termial multiplxers can
+                                          direct responses to the correct window.
 
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
          ``body`` or ``?``                notification has no title, the body will be used as title.
