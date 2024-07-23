@@ -1229,7 +1229,10 @@ def timed_debug_print(*a: Any, sep: str = ' ', end: str = '\n') -> None:
 
 def cached_rgba_file_descriptor_for_image_path(path: str) -> Tuple[int, int, int]:
     from hashlib import sha256
-    path = os.path.realpath(path, strict=True)
+    try:
+        path = os.path.realpath(path, strict=True)
+    except TypeError:
+        path = os.path.realpath(path)
     src_info = os.stat(path)
     output_name = sha256(path.encode()).hexdigest() + '.rgba'
     output_path = os.path.join(cache_dir(), 'rgba', output_name)
