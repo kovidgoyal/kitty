@@ -189,7 +189,7 @@ send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
             r = REPEAT_DEFAULT; break;
     }
     bgimage->texture_id = 0;
-    size_t delta = bgimage->mmap_size ? 8 : 0;
+    size_t delta = bgimage->mmap_size ? bgimage->mmap_size - bgimage->width * bgimage->height * 4 : 0;
     send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap + delta, bgimage->width,
             bgimage->height, false, true, OPT(background_image_linear), r);
     free_bgimage_bitmap(bgimage);

@@ -84,9 +84,9 @@ class ImageRenderCache:
         import struct
         from hashlib import sha256
         src_info = os.stat(src_path)
+        output_name = sha256(struct.pack('@qqqq', src_info.st_dev, src_info.st_ino, src_info.st_size, src_info.st_mtime_ns)).hexdigest()
 
         with self:
-            output_name = sha256(struct.pack('@qqqq', src_info.st_dev, src_info.st_ino, src_info.st_size, src_info.st_mtime_ns)).hexdigest()
             output_path = os.path.join(self.cache_dir, output_name)
             with suppress(OSError):
                 self.touch(output_path)
