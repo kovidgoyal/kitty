@@ -576,6 +576,13 @@ class TestParser(BaseTest):
         self.ae(activations, [('x', 1, True, False)])
         reset()
 
+        h('e=1;' + standard_b64encode(b'title').decode('ascii'))
+        self.ae(notifications, [('title', '', 'i0', Urgency.Normal)])
+        notification_activated(notifications[-1][-2], activated)
+        self.ae(activations, [('0', 1, True, False)])
+        reset()
+
+
         h('d=0:i=x:a=-report;title')
         h('d=1:i=x:a=report;body')
         self.ae(notifications, [('titlebody', '', 'i0', Urgency.Normal)])
@@ -591,6 +598,10 @@ class TestParser(BaseTest):
         h('i=xyz:p=?')
         self.assertFalse(notifications)
         self.ae(query_responses, ['99;i=xyz:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2'])
+        reset()
+        h('p=?')
+        self.assertFalse(notifications)
+        self.ae(query_responses, ['99;i=0:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

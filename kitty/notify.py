@@ -180,9 +180,7 @@ def parse_osc_99(raw: str) -> NotificationCommand:
         actions = ','.join(x.name for x in Action)
         when = ','.join(x.name for x in OnlyWhen if x.value)
         urgency = ','.join(str(x.value) for x in Urgency)
-        i = ''
-        if cmd.identifier:
-            i = f'i={sanitize_id(cmd.identifier)}:'
+        i = f'i={sanitize_id(cmd.identifier or "0")}:'
         raise QueryResponse(f'99;{i}p=?;a={actions}:o={when}:u={urgency}')
 
     if payload_type not in ('body', 'title'):
