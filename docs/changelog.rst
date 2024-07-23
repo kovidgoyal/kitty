@@ -110,6 +110,8 @@ Detailed list of changes
 
 - Desktop notifications protocol: Add support for querying if the terminal emulator supports the protocol (:iss:`7658`)
 
+- Desktop notifications protocol: Add support for closing previous notifications (:iss:`7659`)
+
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

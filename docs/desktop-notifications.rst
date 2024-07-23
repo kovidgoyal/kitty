@@ -93,6 +93,24 @@ to display it based on what it does understand.
    Similarly, features such as scheduled notifications could be added in future
    revisions.
 
+Closing an existing notification
+----------------------------------
+
+.. versionadded:: 0.36.0
+   The ability to close a previous notification was added in kitty 0.36.0
+
+To close a previous notification, send::
+
+    <OSC> i=<notification id> : p=close ; <terminator>
+
+This will close a previous notification with the specified id. If closing
+succeeds, the terminal will send an escape code of the form::
+
+    <OSC> i=<notification id> : p=close ; <terminator>
+
+Closing is done on a best effort basis so applications must not rely on the
+delivery of the closed escape code.
+
 Querying for support
 -------------------------
 
@@ -128,6 +146,10 @@ Key      Value
 ``u``    Comma separated list of urgency values that the terminal implements.
          If urgency is not supported, the ``u`` key must be absent from the
          query response.
+
+``p``    Comma spearated list of supported payload types (i.e. values of the
+         ``p`` key that the terminal implements). These must contain at least
+         ``title`` and ``body``.
 =======  ================================================================================
 
 In the future, if this protocol expands, more keys might be added. Clients must
@@ -156,8 +178,8 @@ Key      Value                 Default    Description
                                           direct responses to the correct window.
 
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
-         ``body`` or ``?``                notification has no title, the body will be used as title. Terminal
-                                          emulators should ignore payloads of unknown type to allow for future
+         ``body``, ``close``              notification has no title, the body will be used as title. Terminal
+          , ``?``                         emulators should ignore payloads of unknown type to allow for future
                                           expansion of this protocol.
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
