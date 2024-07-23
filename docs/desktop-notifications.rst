@@ -93,6 +93,38 @@ to display it based on what it does understand.
    Similarly, features such as scheduled notifications could be added in future
    revisions.
 
+Querying for support
+-------------------------
+
+An application can query the terminal emulator for support of this protocol, by
+sending the following escape code::
+
+    <OSC> 99 ; ? ; <terminator>
+
+A conforming terminal must respond with an escape code of the form::
+
+    <OSC> 99 ; ? ; key=value : key=value <terminator>
+
+Here, the ``key=value`` parts specify details about what the terminal
+implementation supports. Currently, the following keys are defined:
+
+=======  ================================================================================
+Key      Value
+=======  ================================================================================
+``a``    Comma separated list of actions from the ``a`` key that the terminal
+         implements. If no actions are supported, the a key must be absent form the
+         query response.
+
+``o``    Comma separated list of occassions from the ``o`` key that the
+         terminal implements. If no occassions are supported, the value
+         ``o=always`` must be sent in the query response.
+=======  ================================================================================
+
+In the future, if this protocol expands, more keys might be added. Clients must
+ignore keys they dont understand in the query response.
+
+Specification of all keys used in the protocol
+--------------------------------------------------
 
 =======  ====================  ========== =================
 Key      Value                 Default    Description

@@ -7,7 +7,7 @@ from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
 from itertools import count
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, FrozenSet, Optional
 
 from .constants import is_macos, logo_png_file
 from .fast_data_types import current_focused_os_window_id, get_boss
@@ -85,20 +85,25 @@ class OnlyWhen(Enum):
     invisible = 'invisible'
 
 
+class Action(Enum):
+    focus = 'focus'
+    report = 'report'
+
+
 class NotificationCommand:
 
     done: bool = True
     identifier: str = '0'
     title: str = ''
     body: str = ''
-    actions: str = ''
+    actions: FrozenSet[Action] = frozenset((Action.focus,))
     only_when: OnlyWhen = OnlyWhen.unset
     urgency: Optional[Urgency] = None
 
     def __repr__(self) -> str:
         return (
             f'NotificationCommand(identifier={self.identifier!r}, title={self.title!r}, body={self.body!r},'
-            f'actions={self.actions!r}, done={self.done!r}, urgency={self.urgency})')
+            f'actions={self.actions}, done={self.done!r}, urgency={self.urgency})')
 
 
 def parse_osc_9(raw: str) -> NotificationCommand:
@@ -125,9 +130,20 @@ def sanitize_id(v: str) -> str:
     return sanitize_identifier_pat().sub('', v)
 
 
+class QueryResponse(Exception):
+
+    def __init__(self, response_string: str):
+        super().__init__('not an error')
+        self.response_string = response_string
+
+
 def parse_osc_99(raw: str) -> NotificationCommand:
     cmd = NotificationCommand()
     metadata, payload = raw.partition(';')[::2]
+    if metadata == '?':
+        actions = ','.join(x.name for x in Action)
+        when = ','.join(x.name for x in OnlyWhen if x.value)
+        raise QueryResponse(f'99;?;a={actions}:o={when}')
     payload_is_encoded = False
     payload_type = 'title'
     if metadata:
@@ -146,7 +162,18 @@ def parse_osc_99(raw: str) -> NotificationCommand:
             elif k == 'd':
                 cmd.done = v != '0'
             elif k == 'a':
-                cmd.actions += f',{v}'
+                for ax in v.split(','):
+                    if remove := ax.startswith('-'):
+                        ax = ax.lstrip('+-')
+                    try:
+                        ac = Action(ax)
+                    except ValueError:
+                        pass
+                    else:
+                        if remove:
+                            cmd.actions -= {ac}
+                        else:
+                            cmd.actions = cmd.actions.union({ac})
             elif k == 'o':
                 with suppress(ValueError):
                     cmd.only_when = OnlyWhen(v)
@@ -178,7 +205,7 @@ def limit_size(x: str) -> str:
 def merge_osc_99(prev: NotificationCommand, cmd: NotificationCommand) -> NotificationCommand:
     if prev.done or prev.identifier != cmd.identifier:
         return cmd
-    cmd.actions = limit_size(f'{prev.actions},{cmd.actions}')
+    cmd.actions = prev.actions.union(cmd.actions)
     cmd.title = limit_size(prev.title + cmd.title)
     cmd.body = limit_size(prev.body + cmd.body)
     if cmd.only_when is OnlyWhen.unset:
@@ -195,18 +222,16 @@ id_counter = count()
 class RegisteredNotification:
     identifier: str
     window_id: int
-    focus: bool = True
+    focus: bool = False
     report: bool = False
 
     def __init__(self, cmd: NotificationCommand, window_id: int):
         self.window_id = window_id
-        for x in cmd.actions.strip(',').split(','):
-            val = not x.startswith('-')
-            x = x.lstrip('+-')
-            if x == 'focus':
-                self.focus = val
-            elif x == 'report':
-                self.report = val
+        for x in cmd.actions:
+            if x is Action.focus:
+                self.focus = True
+            elif x is Action.report:
+                self.report = True
         self.identifier = cmd.identifier
 
 

@@ -108,6 +108,8 @@ Detailed list of changes
 
 - Allow controlling the easing curves used for :opt:`visual_bell_duration`
 
+- Desktop notifications protocol: Add support for querying if the terminal emulator supports the protocol (:iss:`7658`)
+
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

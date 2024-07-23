@@ -15,7 +15,7 @@ from kitty.fast_data_types import (
     test_find_either_of_two_bytes,
     test_utf8_decode_to_sentinel,
 )
-from kitty.notify import NotificationCommand, Urgency, handle_notification_cmd, notification_activated, reset_registry
+from kitty.notify import NotificationCommand, QueryResponse, Urgency, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest, parse_bytes
 
@@ -525,6 +525,7 @@ class TestParser(BaseTest):
         reset_registry()
         notifications = []
         activations = []
+        query_responses = []
         prev_cmd = NotificationCommand()
 
         def reset():
@@ -532,6 +533,7 @@ class TestParser(BaseTest):
             reset_registry()
             del notifications[:]
             del activations[:]
+            del query_responses[:]
             prev_cmd = NotificationCommand()
 
         def notify(title, body, identifier, urgency=Urgency.Normal):
@@ -539,9 +541,12 @@ class TestParser(BaseTest):
 
         def h(raw_data, osc_code=99, window_id=1):
             nonlocal prev_cmd
-            x = handle_notification_cmd(osc_code, raw_data, window_id, prev_cmd, notify)
-            if x is not None and osc_code == 99:
-                prev_cmd = x
+            try:
+                x = handle_notification_cmd(osc_code, raw_data, window_id, prev_cmd, notify)
+                if x is not None and osc_code == 99:
+                    prev_cmd = x
+            except QueryResponse as err:
+                query_responses.append(err.response_string)
 
         def activated(identifier, window_id, focus, report):
             activations.append((identifier, window_id, focus, report))
@@ -583,6 +588,9 @@ class TestParser(BaseTest):
         notification_activated(notifications[-1][-2], activated)
         self.ae(activations, [('0', 1, True, False)])
         reset()
+        h('?')
+        self.assertFalse(notifications)
+        self.ae(query_responses, ['99;?;a=focus,report:o=always,unfocused,invisible'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

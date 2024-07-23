@@ -94,6 +94,7 @@ from .notify import (
     NotificationCommand,
     NotifyImplementation,
     OnlyWhen,
+    QueryResponse,
     Urgency,
     handle_notification_cmd,
     notify_with_command,
@@ -1077,9 +1078,12 @@ class Window:
                 log_error(f'Ignoring unknown OSC 777: {raw_data}')
                 return  # unknown OSC 777
             raw_data = raw_data[len('notify;'):]
-        cmd = handle_notification_cmd(osc_code, raw_data, self.id, self.prev_osc99_cmd)
-        if cmd is not None and osc_code == 99:
-            self.prev_osc99_cmd = cmd
+        try:
+            cmd = handle_notification_cmd(osc_code, raw_data, self.id, self.prev_osc99_cmd)
+            if cmd is not None and osc_code == 99:
+                self.prev_osc99_cmd = cmd
+        except QueryResponse as err:
+            self.screen.send_escape_code_to_child(ESC_OSC, err.response_string)
 
     def on_mouse_event(self, event: Dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
@@ -1492,7 +1496,6 @@ class Window:
             cmd.title = 'kitty'
             s = self.last_cmd_cmdline.replace('\\\n', ' ')
             cmd.body = f'Command {s} finished with status: {exit_status}.\nClick to focus.'
-            cmd.actions = 'focus'
             cmd.only_when = OnlyWhen(when)
             if action == 'notify':
                 notify_with_command(cmd, self.id)
