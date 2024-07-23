@@ -1260,6 +1260,7 @@ class TestGraphics(BaseTest):
                 outputs.append(irc.render(f.name))
                 entries = list(irc.entries())
                 self.assertLessEqual(len(entries), irc.max_entries)
+            self.ae(irc.num_of_renders, len(outputs))
             remaining_outputs = outputs[-irc.max_entries:]
             for x in remaining_outputs:
                 self.assertTrue(os.path.exists(x))
@@ -1268,6 +1269,7 @@ class TestGraphics(BaseTest):
             self.assertLess(os.path.getmtime(remaining_outputs[0]), os.path.getmtime(remaining_outputs[1]))
             remaining_srcs = srcs[-irc.max_entries:]
             self.ae(irc.render(remaining_srcs[0]), remaining_outputs[0])
+            self.ae(irc.num_of_renders, len(outputs))
             self.assertGreater(os.path.getmtime(remaining_outputs[0]), os.path.getmtime(remaining_outputs[1]))
 
             width, height, fd = irc(remaining_srcs[-1])

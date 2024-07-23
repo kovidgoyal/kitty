@@ -4,6 +4,7 @@
 import os
 import time
 from contextlib import closing, suppress
+from functools import partial
 from typing import Iterator, Tuple
 
 from .constants import cache_dir, kitten_exe
@@ -22,8 +23,9 @@ class ImageRenderCache:
 
     def ensure_subdir(self) -> None:
         if not self.cache_dir:
+            import stat
             x = os.path.abspath(os.path.join(self.cache_path or cache_dir(), self.subdirname))
-            os.makedirs(x, exist_ok=True)
+            os.makedirs(x, mode=stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC, exist_ok=True)
             self.cache_dir = x
 
     def __enter__(self) -> None:
@@ -63,8 +65,9 @@ class ImageRenderCache:
         os.utime(path, follow_symlinks=False)
 
     def render_image(self, src_path: str, output_path: str) -> None:
+        import stat
         import subprocess
-        with open(src_path, 'rb') as src, open(output_path, 'wb') as output:
+        with open(src_path, 'rb') as src, open(output_path, 'wb', opener=partial(os.open, mode=stat.S_IREAD | stat.S_IWRITE)) as output:
             cp = subprocess.run([kitten_exe(), '__convert_image__', 'RGBA'], stdin=src, stdout=output, stderr=subprocess.PIPE)
         if cp.returncode != 0:
             raise ValueError(f'Failed to convert path to RGBA data with error: {cp.stderr.decode("utf-8", "replace")}')
@@ -74,6 +77,7 @@ class ImageRenderCache:
             header = f.read(8)
             import struct
             width, height = struct.unpack('<II', header)
+            f.seek(0)
             return width, height, os.dup(f.fileno())
 
     def render(self, src_path: str) -> str:
@@ -85,7 +89,7 @@ class ImageRenderCache:
             src_info = os.stat(src_path)
             with suppress(OSError), open(output_path, 'rb') as f:
                 dest_info = os.stat(f.fileno())
-                if dest_info.st_size == src_info.st_size and dest_info.st_mtime >= src_info.st_mtime:
+                if dest_info.st_mtime >= src_info.st_mtime:
                     self.touch(output_path)
                     return output_path
 
@@ -102,10 +106,12 @@ class ImageRenderCacheForTesting(ImageRenderCache):
     def __init__(self, cache_path: str):
         super().__init__(max_entries=2, cache_path=cache_path)
         self.current_time = time.time_ns()
+        self.num_of_renders = 0
 
     def render_image(self, src_path: str, output_path: str) -> None:
         super().render_image(src_path, output_path)
         self.touch(output_path)
+        self.num_of_renders += 1
 
     def touch(self, path:str) -> None:
         self.current_time += 3 * int(1e9)
