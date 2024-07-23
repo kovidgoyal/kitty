@@ -5,6 +5,7 @@ package utils
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"strconv"
 
@@ -13,11 +14,15 @@ import (
 
 var _ = fmt.Print
 
-func CreateAnonymousTemp(dir string) (*os.File, error) {
+func CreateAnonymousTemp(dir string, perms ...fs.FileMode) (*os.File, error) {
 	if dir == "" {
 		dir = os.TempDir()
 	}
-	fd, err := unix.Open(dir, unix.O_RDWR|unix.O_TMPFILE|unix.O_CLOEXEC, 0600)
+	var perm fs.FileMode = unix.S_IREAD | unix.S_IWRITE
+	if len(perms) > 0 {
+		perm = perms[0]
+	}
+	fd, err := unix.Open(dir, unix.O_RDWR|unix.O_TMPFILE|unix.O_CLOEXEC, uint32(perm&fs.ModePerm))
 
 	if err == nil {
 		path := "/proc/self/fd/" + strconv.FormatUint(uint64(fd), 10)
