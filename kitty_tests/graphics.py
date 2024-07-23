@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from io import BytesIO
 
 from kitty.fast_data_types import base64_decode, base64_encode, has_avx2, has_sse4_2, load_png_data, shm_unlink, shm_write, test_xor64
-from kitty.utils import cached_rgba_file_descriptor_for_image_path
 
 from . import BaseTest, parse_bytes
 
@@ -1244,16 +1243,35 @@ class TestGraphics(BaseTest):
 
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
     def test_cached_rgba_conversion(self):
+        from kitty.render_cache import ImageRenderCacheForTesting
         w, h = 5, 3
         rgba_data = byte_block(w * h * 4)
         img = Image.frombytes('RGBA', (w, h), rgba_data)
         buf = BytesIO()
         img.save(buf, 'PNG')
         png_data = buf.getvalue()
-        with tempfile.NamedTemporaryFile(suffix='.png') as png:
-            png.write(png_data)
-            png.flush()
-            os.fsync(png.fileno())
-            qw, qh, fd = cached_rgba_file_descriptor_for_image_path(png.name)
-            os.close(fd)
-            self.ae((qw, qh), (w, h))
+        with tempfile.TemporaryDirectory() as cache_path:
+            irc = ImageRenderCacheForTesting(cache_path)
+            srcs, outputs = [], []
+            for i in range(2 * irc.max_entries):
+                with open(os.path.join(cache_path, f'{i}.png'), 'wb') as f:
+                    f.write(png_data)
+                srcs.append(f.name)
+                outputs.append(irc.render(f.name))
+                entries = list(irc.entries())
+                self.assertLessEqual(len(entries), irc.max_entries)
+            remaining_outputs = outputs[-irc.max_entries:]
+            for x in remaining_outputs:
+                self.assertTrue(os.path.exists(x))
+            for x in outputs[:-irc.max_entries]:
+                self.assertFalse(os.path.exists(x))
+            self.assertLess(os.path.getmtime(remaining_outputs[0]), os.path.getmtime(remaining_outputs[1]))
+            remaining_srcs = srcs[-irc.max_entries:]
+            self.ae(irc.render(remaining_srcs[0]), remaining_outputs[0])
+            self.assertGreater(os.path.getmtime(remaining_outputs[0]), os.path.getmtime(remaining_outputs[1]))
+
+            width, height, fd = irc(remaining_srcs[-1])
+            with open(fd, 'rb') as f:
+                self.ae((width, height), (w, h))
+                f.seek(8)
+                self.ae(rgba_data, f.read())

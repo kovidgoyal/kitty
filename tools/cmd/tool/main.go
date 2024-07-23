@@ -104,8 +104,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 			return confirm_and_run_shebang(args)
 		},
 	})
-	// __render_image__
-	images.RenderEntryPoint(root)
+	// __convert_image__
+	images.ConvertEntryPoint(root)
 	// __generate_man_pages__
 	root.AddSubCommand(&cli.Command{
 		Name:            "__generate_man_pages__",
