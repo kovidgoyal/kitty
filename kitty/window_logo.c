@@ -8,6 +8,7 @@
 
 #include "state.h"
 #include "window_logo.h"
+#include <sys/mman.h>
 
 typedef struct WindowLogoItem {
     WindowLogo wl;
@@ -34,18 +35,28 @@ struct WindowLogoTable {
 };
 
 static void
+free_window_logo_bitmap(WindowLogo *wl) {
+    if (!wl->bitmap) return;
+    if (wl->mmap_size) {
+        if (munmap(wl->bitmap, wl->mmap_size) != 0) log_error("Failed to unmap window logo bitmap with error: %s", strerror(errno));
+    } else free(wl->bitmap);
+    wl->bitmap = NULL; wl->mmap_size = 0;
+}
+
+static void
 free_window_logo(WindowLogoItem **itemref) {
     WindowLogoItem *item = *itemref;
     free(item->path);
-    free(item->wl.bitmap);
+    free_window_logo_bitmap(&item->wl);
     if (item->wl.texture_id) free_texture(&item->wl.texture_id);
     free(item); itemref = NULL;
 }
 
 static void
 send_logo_to_gpu(WindowLogo *s) {
-    send_image_to_gpu(&s->texture_id, s->bitmap, s->width, s->height, false, true, true, REPEAT_CLAMP);
-    free(s->bitmap); s->bitmap = NULL;
+    size_t off = s->mmap_size ? 8 : 0;
+    send_image_to_gpu(&s->texture_id, s->bitmap + off, s->width, s->height, false, true, true, REPEAT_CLAMP);
+    free_window_logo_bitmap(s);
 }
 
 
@@ -68,7 +79,7 @@ find_or_create_window_logo(WindowLogoTable *head, const char *path, void *png_da
     size_t size;
     bool ok = false;
     if (png_data == NULL || !png_data_size) {
-        ok = png_path_to_bitmap(path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
+        ok = image_path_to_bitmap(path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &s->wl.mmap_size);
     } else {
         ok = png_from_data(png_data, png_data_size, path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
     }

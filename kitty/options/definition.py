@@ -1134,7 +1134,7 @@ corners from clipping text. Or use :code:`titlebar-and-corners`.
 opt('window_logo_path', 'none',
     option_type='config_or_absolute_path', ctype='!window_logo_path',
     long_text='''
-Path to a logo image. Must be in PNG format. Relative paths are interpreted
+Path to a logo image. Must be in PNG/JPEG/WEBP/GIF/TIFF/BMP format. Relative paths are interpreted
 relative to the kitty config directory. The logo is displayed in a corner of
 every kitty window. The position is controlled by :opt:`window_logo_position`.
 Individual windows can be configured to have different logos either using the

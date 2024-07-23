@@ -84,6 +84,8 @@ Detailed list of changes
 
 - Sessions: A new command ``focus_matching_window`` to shift focus to a specific window, useful when creating complex layouts with splits (:disc:`7635`)
 
+- Speed up loading of large background images by caching the decoded image data. Also allow using images in JPEG/WEBP/TIFF/GIF/BMP formats in addition to PNG
+
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
 - Wayland: Fix specifying the output name for the panel kitten not working (:iss:`7573`)

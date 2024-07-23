@@ -6,6 +6,10 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
 typedef unsigned int window_logo_id_t;
 
 typedef struct WindowLogo {
@@ -13,6 +17,7 @@ typedef struct WindowLogo {
     bool load_from_disk_ok;
     uint32_t texture_id;
     uint8_t* bitmap;
+    size_t mmap_size;
 } WindowLogo;
 
 typedef struct WindowLogoTable WindowLogoTable;
