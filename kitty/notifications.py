@@ -6,7 +6,7 @@ from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
 from itertools import count
-from typing import Any, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Union
 
 from .constants import is_macos, logo_png_file
 from .fast_data_types import ESC_OSC, current_focused_os_window_id, get_boss
@@ -141,6 +141,9 @@ class NotificationCommand:
     # desktop integration specific fields
     created_by_desktop: bool = False
     activation_token: str = ''
+
+    # event callbacks
+    on_activation: Optional[Callable[['NotificationCommand'], None]] = None
 
     @property
     def report_requested(self) -> bool:
@@ -398,7 +401,6 @@ class NotificationManager:
         self.reset()
 
     def reset(self) -> None:
-        self.new_version_notification_id = ''
         self.in_progress_notification_commands: 'OrderedDict[int, NotificationCommand]' = OrderedDict()
         self.in_progress_notification_commands_by_client_id: Dict[str, NotificationCommand] = {}
         self.pending_commands: Dict[int, NotificationCommand] = {}
@@ -416,15 +418,17 @@ class NotificationManager:
 
     def notification_activated(self, desktop_notification_id: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
+            self.purge_notification(n)
             if n.focus_requested:
                 self.channel.focus(n.channel_id, n.activation_token)
             if n.report_requested:
                 if n.identifier:
                     self.channel.send(n.channel_id, f'99;i={n.identifier}')
-            if self.new_version_notification_id and n.identifier == self.new_version_notification_id:
-                self.new_version_notification_id = ''
-                from .update_check import notification_activated
-                notification_activated()
+            if n.on_activation:
+                try:
+                    n.on_activation(n)
+                except Exception as e:
+                    self.log(e)
 
     def notification_closed(self, desktop_notification_id: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
@@ -440,15 +444,19 @@ class NotificationManager:
             now = monotonic()
             cmd.title = f'Test {now}'
             cmd.body = f'At: {now}'
+            cmd.on_activation = print
             self.notify_with_command(cmd, w.id)
 
     def send_new_version_notification(self, version: str) -> None:
-        from .short_uuid import uuid4
         cmd = NotificationCommand()
         cmd.title = 'kitty update available!'
         cmd.body = f'kitty version {version} released'
-        self.new_version_notification_id = cmd.identifier = uuid4()
+        cmd.on_activation = self.on_new_version_notification_activation
         self.notify_with_command(cmd, 0)
+
+    def on_new_version_notification_activation(self, cmd: NotificationCommand) -> None:
+        from .update_check import notification_activated
+        notification_activated()
 
     def is_notification_allowed(self, cmd: NotificationCommand, channel_id: int) -> bool:
         if cmd.only_when is not OnlyWhen.always and cmd.only_when is not OnlyWhen.unset:
