@@ -103,17 +103,26 @@ To close a previous notification, send::
 
     <OSC> i=<notification id> : p=close ; <terminator>
 
-This will close a previous notification with the specified id. If closing
-succeeds, or the notification was already closed,
-the terminal will send an escape code of the form::
+This will close a previous notification with the specified id. If you want a
+notification when closing succeeds, send the following instead::
+
+    <OSC> i=<notification id> : p=close ; notify <terminator>
+
+Then, the terminal will respond with::
 
     <OSC> i=<notification id> : p=close ; <terminator>
 
-Closing is done on a best effort basis so applications must not rely on the
-delivery of the closed escape code. If you do not want to receive an escape
-code notifying you of closure, use::
+This escape code is sent by the terminal if the notification is closed
+or was already closed when the close request arrives, or a notification
+with the specified identifier does not exist. If the notification is activated,
+before it can be closed, then the close response is sent only if the there is no
+activation response. In other words, if you close a response and request
+notification, you will get either of the following two responses::
 
-    <OSC> i=<notification id> : p=close_simple ; <terminator>
+    <OSC> i=<notification id> : p=close ; <terminator>  # closed
+
+    <OSC> i=<notification id> ; <terminator>  # activated
+
 
 Querying for support
 -------------------------
@@ -190,8 +199,7 @@ Key      Value                 Default    Description
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
          ``body``,                        notification has no title, the body will be used as title. Terminal
          ``close``,                       emulators should ignore payloads of unknown type to allow for future
-         ``close_simple``,                expansion of this protocol.
-         ``?``
+         ``?``                            expansion of this protocol.
 
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
