@@ -1420,9 +1420,14 @@ error_callback(int error, const char* description) {
 
 #ifndef __APPLE__
 static void
-dbus_user_notification_activated(uint32_t notification_id, const char* action) {
+dbus_user_notification_activated(uint32_t notification_id, int type, const char* action) {
     unsigned long nid = notification_id;
-    call_boss(dbus_notification_callback, "Oks", Py_True, nid, action);
+    const char *stype = "activated";
+    switch (type) {
+        case 0: stype = "closed"; break;
+        case 1: stype = "activation_token"; break;
+    }
+    call_boss(dbus_notification_callback, "sks", stype, nid, action);
 }
 #endif
 
@@ -2064,7 +2069,7 @@ request_frame_render(OSWindow *w) {
 void
 dbus_notification_created_callback(unsigned long long notification_id, uint32_t new_notification_id, void* data UNUSED) {
     unsigned long new_id = new_notification_id;
-    call_boss(dbus_notification_callback, "OKk", Py_False, notification_id, new_id);
+    call_boss(dbus_notification_callback, "sKk", "created", notification_id, new_id);
 }
 
 static PyObject*
@@ -2079,6 +2084,19 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args) {
     unsigned long long notification_id = glfwDBusUserNotify(app_name, icon, summary, body, action_name, timeout, urgency, dbus_notification_created_callback, NULL);
     return PyLong_FromUnsignedLongLong(notification_id);
 }
+
+static PyObject*
+dbus_close_notification(PyObject *self UNUSED, PyObject *args) {
+    unsigned int id;
+    if (!PyArg_ParseTuple(args, "I", &id)) return NULL;
+    if (!glfwDBusUserNotify) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
+        return NULL;
+    }
+    if (glfwDBusUserNotify("", "", "", "", "", -9999, -9999, NULL, &id)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 
 #endif
 
@@ -2244,6 +2262,7 @@ static PyMethodDef module_methods[] = {
     METHODB(strip_csi, METH_O),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
+    METHODB(dbus_close_notification, METH_VARARGS),
 #else
     {"cocoa_recreate_global_menu", (PyCFunction)py_recreate_global_menu, METH_NOARGS, ""},
     {"cocoa_clear_global_shortcuts", (PyCFunction)py_clear_global_shortcuts, METH_NOARGS, ""},

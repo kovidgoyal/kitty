@@ -90,16 +90,6 @@ from .fast_data_types import (
     wakeup_main_loop,
 )
 from .keys import keyboard_mode_name, mod_mask
-from .notify import (
-    NotificationCommand,
-    NotifyImplementation,
-    OnlyWhen,
-    QueryResponse,
-    Urgency,
-    handle_notification_cmd,
-    notify_with_command,
-    sanitize_identifier_pat,
-)
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
@@ -611,7 +601,6 @@ class Window:
         self.current_remote_data: List[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
-        self.prev_osc99_cmd = NotificationCommand()
         self.last_cmd_output_start_time = 0.
         self.open_url_handler: 'OpenUrlHandler' = None
         self.last_cmd_cmdline = ''
@@ -1078,12 +1067,7 @@ class Window:
                 log_error(f'Ignoring unknown OSC 777: {raw_data}')
                 return  # unknown OSC 777
             raw_data = raw_data[len('notify;'):]
-        try:
-            cmd = handle_notification_cmd(osc_code, raw_data, self.id, self.prev_osc99_cmd)
-            if cmd is not None and osc_code == 99:
-                self.prev_osc99_cmd = cmd
-        except QueryResponse as err:
-            self.screen.send_escape_code_to_child(ESC_OSC, err.response_string)
+        get_boss().notification_manager.handle_notification_cmd(self.id, osc_code, raw_data)
 
     def on_mouse_event(self, event: Dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
@@ -1243,10 +1227,6 @@ class Window:
         g |= g << 8
         b |= b << 8
         self.screen.send_escape_code_to_child(ESC_OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
-
-    def report_notification_activated(self, identifier: str) -> None:
-        identifier = sanitize_identifier_pat().sub('', identifier)
-        self.screen.send_escape_code_to_child(ESC_OSC, f'99;i={identifier};')
 
     def notify_child_of_resize(self) -> None:
         pty_size = self.last_reported_pty_size
@@ -1492,29 +1472,21 @@ class Window:
         when, duration, action, notify_cmdline = opts.notify_on_cmd_finish
 
         if last_cmd_output_duration >= duration and when != 'never':
+            from .notifications import NotificationCommand, OnlyWhen
             cmd = NotificationCommand()
             cmd.title = 'kitty'
             s = self.last_cmd_cmdline.replace('\\\n', ' ')
             cmd.body = f'Command {s} finished with status: {exit_status}.\nClick to focus.'
             cmd.only_when = OnlyWhen(when)
+            nm = get_boss().notification_manager
+            if not nm.is_notification_allowed(cmd, self.id):
+                return
             if action == 'notify':
-                notify_with_command(cmd, self.id)
+                nm.notify_with_command(cmd, self.id)
             elif action == 'bell':
-                class Bell(NotifyImplementation):
-                    def __init__(self, window_id: int):
-                        self.window_id = window_id
-                    def __call__(self, title: str, body: str, identifier: str, urgency: Urgency = Urgency.Normal) -> None:
-                        w = get_boss().window_id_map.get(self.window_id)
-                        if w:
-                            w.screen.bell()
-                notify_with_command(cmd, self.id, notify_implementation=Bell(self.id))
+                self.screen.bell()
             elif action == 'command':
-                class Run(NotifyImplementation):
-                    def __init__(self, last_cmd_cmdline: str):
-                        self.last_cmd_cmdline = last_cmd_cmdline
-                    def __call__(self, title: str, body: str, identifier: str, urgency: Urgency = Urgency.Normal) -> None:
-                        open_cmd([x.replace('%c', self.last_cmd_cmdline).replace('%s', exit_status) for x in notify_cmdline])
-                notify_with_command(cmd, self.id, notify_implementation=Run(self.last_cmd_cmdline))
+                open_cmd([x.replace('%c', self.last_cmd_cmdline).replace('%s', exit_status) for x in notify_cmdline])
             else:
                 raise ValueError(f'Unknown action in option `notify_on_cmd_finish`: {action}')
 

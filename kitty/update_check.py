@@ -11,7 +11,6 @@ from urllib.request import urlopen
 from .config import atomic_save
 from .constants import Version, cache_dir, clear_handled_signals, kitty_exe, version, website_url
 from .fast_data_types import add_timer, get_boss, monitor_pid
-from .notify import notify
 from .utils import log_error, open_url
 
 CHANGELOG_URL = website_url('changelog')
@@ -37,11 +36,7 @@ def version_notification_log() -> str:
 
 
 def notify_new_version(release_version: Version) -> None:
-    notify(
-            'kitty update available!',
-            'kitty version {} released'.format('.'.join(map(str, release_version))),
-            identifier='new-version',
-    )
+    get_boss().notification_manager.send_new_version_notification('.'.join(map(str, release_version)))
 
 
 def get_released_version() -> str:

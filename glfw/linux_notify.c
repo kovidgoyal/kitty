@@ -50,26 +50,58 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
     /* printf("session_bus message_handler invoked interface: %s member: %s\n", dbus_message_get_interface(msg), dbus_message_get_member(msg)); */
     if (dbus_message_is_signal(msg, NOTIFICATIONS_IFACE, "ActionInvoked")) {
         uint32_t id;
-        const char *action;
+        const char *action = NULL;
         if (glfw_dbus_get_args(msg, "Failed to get args from ActionInvoked notification signal",
                     DBUS_TYPE_UINT32, &id, DBUS_TYPE_STRING, &action, DBUS_TYPE_INVALID)) {
             if (activated_handler) {
-                activated_handler(id, action);
+                activated_handler(id, 2, action);
                 return DBUS_HANDLER_RESULT_HANDLED;
             }
         }
 
     }
+
+    if (dbus_message_is_signal(msg, NOTIFICATIONS_IFACE, "ActivationToken")) {
+        uint32_t id;
+        const char *token = NULL;
+        if (glfw_dbus_get_args(msg, "Failed to get args from ActivationToken notification signal",
+                    DBUS_TYPE_UINT32, &id, DBUS_TYPE_STRING, &token, DBUS_TYPE_INVALID)) {
+            if (activated_handler) {
+                activated_handler(id, 1, token);
+                return DBUS_HANDLER_RESULT_HANDLED;
+            }
+        }
+
+    }
+
+    if (dbus_message_is_signal(msg, NOTIFICATIONS_IFACE, "NotificationClosed")) {
+        uint32_t id;
+        if (glfw_dbus_get_args(msg, "Failed to get args from NotificationClosed notification signal",
+                    DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID)) {
+            if (activated_handler) {
+                activated_handler(id, 0, "");
+                return DBUS_HANDLER_RESULT_HANDLED;
+            }
+        }
+    }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static bool
+cancel_user_notification(DBusConnection *session_bus, uint32_t *id) {
+    return glfw_dbus_call_method_no_reply(session_bus, NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "CloseNotification", DBUS_TYPE_UINT32, id, DBUS_TYPE_INVALID);
 }
 
 notification_id_type
 glfw_dbus_send_user_notification(const char *app_name, const char* icon, const char *summary, const char *body, const char* action_name, int32_t timeout, int urgency, GLFWDBusnotificationcreatedfun callback, void *user_data) {
     DBusConnection *session_bus = glfw_dbus_session_bus();
-    static DBusConnection *added_signal_match = NULL;
     if (!session_bus) return 0;
+    if (timeout == -9999 && urgency == -9999) return cancel_user_notification(session_bus, user_data) ? 1 : 0;
+    static DBusConnection *added_signal_match = NULL;
     if (added_signal_match != session_bus) {
         dbus_bus_add_match(session_bus, "type='signal',interface='" NOTIFICATIONS_IFACE "',member='ActionInvoked'", NULL);
+        dbus_bus_add_match(session_bus, "type='signal',interface='" NOTIFICATIONS_IFACE "',member='NotificationClosed'", NULL);
+        dbus_bus_add_match(session_bus, "type='signal',interface='" NOTIFICATIONS_IFACE "',member='ActivationToken'", NULL);
         dbus_connection_add_filter(session_bus, message_handler, NULL, NULL);
         added_signal_match = session_bus;
     }

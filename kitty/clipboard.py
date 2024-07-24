@@ -339,7 +339,7 @@ class ClipboardRequestManager:
     def parse_osc_5522(self, data: memoryview) -> None:
         import base64
 
-        from .notify import sanitize_id
+        from .notifications import sanitize_id
         idx = find_in_memoryview(data, ord(b';'))
         if idx > -1:
             metadata = str(data[:idx], "utf-8", "replace")

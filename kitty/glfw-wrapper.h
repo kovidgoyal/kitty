@@ -1699,7 +1699,7 @@ typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
-typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, const char*);
+typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, int, const char*);
 typedef int (*glfwInit_func)(monotonic_t);
 GFW_EXTERN glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl

@@ -121,7 +121,7 @@ from .fast_data_types import (
 from .key_encoding import get_name_to_functional_number_map
 from .keys import Mappings
 from .layout.base import set_layout_options
-from .notify import notification_activated
+from .notifications import NotificationManager
 from .options.types import Options, nullable_colors
 from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition
 from .os_window_size import initial_window_size_func
@@ -372,13 +372,11 @@ class Boss:
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
             talk_fd, listen_fd,
         )
-        set_boss(self)
         self.args: CLIOptions = args
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
+        set_boss(self)
         self.mappings: Mappings = Mappings(global_shortcuts, self.refresh_active_tab_bar)
-        if is_macos:
-            from .fast_data_types import cocoa_set_notification_activated_callback
-            cocoa_set_notification_activated_callback(notification_activated)
+        self.notification_manager: NotificationManager = NotificationManager()
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
@@ -538,7 +536,9 @@ class Boss:
                 if q:
                     yield q
 
-    def set_active_window(self, window: Window, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False) -> Optional[int]:
+    def set_active_window(
+        self, window: Window, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False, activation_token: str = ''
+    ) -> Optional[int]:
         for os_window_id, tm in self.os_window_map.items():
             for tab in tm:
                 for w in tab:
@@ -546,8 +546,8 @@ class Boss:
                         if tab is not self.active_tab:
                             tm.set_active_tab(tab, for_keep_focus=window.tabref() if for_keep_focus else None)
                         tab.set_active_window(w, for_keep_focus=window if for_keep_focus else None)
-                        if switch_os_window_if_needed and current_focused_os_window_id() != os_window_id:
-                            focus_os_window(os_window_id, True)
+                        if activation_token or (switch_os_window_if_needed and current_focused_os_window_id() != os_window_id):
+                            focus_os_window(os_window_id, True, activation_token)
                         return os_window_id
         return None
 
@@ -2750,14 +2750,8 @@ class Boss:
                 except Exception as e:
                     log_error(f'Failed to process update check data {raw!r}, with error: {e}')
 
-    def dbus_notification_callback(self, activated: bool, a: int, b: Union[int, str]) -> None:
-        from .notify import dbus_notification_activated, dbus_notification_created
-        if activated:
-            assert isinstance(b, str)
-            dbus_notification_activated(a, b)
-        else:
-            assert isinstance(b, int)
-            dbus_notification_created(a, b)
+    def dbus_notification_callback(self, event_type: str, a: int, b: Union[int, str]) -> None:
+        self.notification_manager.desktop_integration.dispatch_event_from_desktop(event_type, a, b)
 
     def show_bad_config_lines(self, bad_lines: Iterable[BadLine], misc_errors: Iterable[str] = ()) -> None:
 
@@ -2984,19 +2978,7 @@ class Boss:
 
     # Can be called with kitty -o "map f1 send_test_notification"
     def send_test_notification(self) -> None:
-        from .notify import notify
-        now = monotonic()
-        ident = f'test-notify-{now}'
-        notify(f'Test {now}', f'At: {now}', identifier=ident, subtitle=f'Test subtitle {now}')
-
-    def notification_activated(self, identifier: str, window_id: int, focus: bool, report: bool) -> None:
-        w = self.window_id_map.get(window_id)
-        if w is None:
-            return
-        if focus:
-            self.set_active_window(w, switch_os_window_if_needed=True)
-        if report:
-            w.report_notification_activated(identifier)
+        self.notification_manager.send_test_notification()
 
     @ac('debug', 'Show the environment variables that the kitty process sees')
     def show_kitty_env_vars(self) -> None:

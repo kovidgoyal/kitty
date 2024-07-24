@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
@@ -15,7 +14,6 @@ from kitty.fast_data_types import (
     test_find_either_of_two_bytes,
     test_utf8_decode_to_sentinel,
 )
-from kitty.notify import NotificationCommand, QueryResponse, Urgency, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest, parse_bytes
 
@@ -520,92 +518,6 @@ class TestParser(BaseTest):
         pb(f'\033]52;p;{payload}\x07', ('clipboard_control', 52, f'p;{payload}'))
         c.clear()
         pb('\033]52;p;xyz\x07', ('clipboard_control', 52, 'p;xyz'))
-
-    def test_desktop_notify(self):
-        reset_registry()
-        notifications = []
-        activations = []
-        query_responses = []
-        prev_cmd = NotificationCommand()
-
-        def reset():
-            nonlocal prev_cmd
-            reset_registry()
-            del notifications[:]
-            del activations[:]
-            del query_responses[:]
-            prev_cmd = NotificationCommand()
-
-        def notify(title, body, identifier, urgency=Urgency.Normal):
-            notifications.append((title, body, identifier, urgency))
-
-        def h(raw_data, osc_code=99, window_id=1):
-            nonlocal prev_cmd
-            try:
-                x = handle_notification_cmd(osc_code, raw_data, window_id, prev_cmd, notify, log_warnings=False)
-                if x is not None and osc_code == 99:
-                    prev_cmd = x
-            except QueryResponse as err:
-                query_responses.append(err.response_string)
-
-        def activated(identifier, window_id, focus, report):
-            activations.append((identifier, window_id, focus, report))
-
-        h('test it', osc_code=9)
-        self.ae(notifications, [('test it', '', 'i0', Urgency.Normal)])
-        notification_activated(notifications[-1][-2], activated)
-        self.ae(activations, [('0', 1, True, False)])
-        reset()
-
-        h('d=0:u=2:i=x;title')
-        h('d=1:i=x:p=body;body')
-        self.ae(notifications, [('title', 'body', 'i0', Urgency.Critical)])
-        notification_activated(notifications[-1][-2], activated)
-        self.ae(activations, [('x', 1, True, False)])
-        reset()
-
-        h('i=x:p=body:a=-focus;body')
-        self.ae(notifications, [('body', '', 'i0', Urgency.Normal)])
-        notification_activated(notifications[-1][-2], activated)
-        self.ae(activations, [])
-        reset()
-
-        h('i=x:e=1;' + standard_b64encode(b'title').decode('ascii'))
-        self.ae(notifications, [('title', '', 'i0', Urgency.Normal)])
-        notification_activated(notifications[-1][-2], activated)
-        self.ae(activations, [('x', 1, True, False)])
-        reset()
-
-        h('e=1;' + standard_b64encode(b'title').decode('ascii'))
-        self.ae(notifications, [('title', '', 'i0', Urgency.Normal)])
-        notification_activated(notifications[-1][-2], activated)
-        self.ae(activations, [('0', 1, True, False)])
-        reset()
-
-        h('d=0:i=x:a=-report;title')
-        h('d=1:i=x:a=report;body')
-        self.ae(notifications, [('titlebody', '', 'i0', Urgency.Normal)])
-        notification_activated(notifications[-1][-2], activated)
-        self.ae(activations, [('x', 1, True, True)])
-        reset()
-
-        h('d=0:i=y;title')
-        h('d=1:i=y:p=xxx;title')
-        self.ae(notifications, [('title', '', 'i0', Urgency.Normal)])
-        reset()
-
-        h(';title')
-        self.ae(notifications, [('title', '', 'i0', Urgency.Normal)])
-        notification_activated(notifications[-1][-2], activated)
-        self.ae(activations, [('0', 1, True, False)])
-        reset()
-        h('i=xyz:p=?')
-        self.assertFalse(notifications)
-        self.ae(query_responses, ['99;i=xyz:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close'])
-        reset()
-        h('p=?')
-        self.assertFalse(notifications)
-        self.ae(query_responses, ['99;i=0:p=?;a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

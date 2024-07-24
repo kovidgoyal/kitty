@@ -555,6 +555,9 @@ def dbus_send_notification(
     pass
 
 
+def dbus_close_notification(dbus_notification_id: int) -> bool: ...
+
+
 def cocoa_send_notification(
     identifier: Optional[str],
     title: str,
