@@ -115,7 +115,7 @@ Then, the terminal will respond with::
 This escape code is sent by the terminal if the notification is closed
 or was already closed when the close request arrives, or a notification
 with the specified identifier does not exist. If the notification is activated,
-before it can be closed, then the close response is sent only if the there is no
+before it can be closed, then the close response is sent only if there is no
 activation response. In other words, if you close a response and request
 notification, you will get either of the following two responses::
 
