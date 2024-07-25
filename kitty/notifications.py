@@ -161,38 +161,39 @@ class NotificationCommand:
     def parse_metadata(self, metadata: str, prev: 'NotificationCommand') -> Tuple[PayloadType, bool]:
         payload_type = PayloadType.title
         payload_is_encoded = False
-        for part in metadata.split(':'):
-            k, v = part.split('=', 1)
-            if k == 'p':
-                try:
-                    payload_type = PayloadType(v)
-                except ValueError:
-                    payload_type = PayloadType.unknown
-            elif k == 'i':
-                self.identifier = sanitize_id(v)
-            elif k == 'e':
-                payload_is_encoded = v == '1'
-            elif k == 'd':
-                self.done = v != '0'
-            elif k == 'a':
-                for ax in v.split(','):
-                    if remove := ax.startswith('-'):
-                        ax = ax.lstrip('+-')
+        if metadata:
+            for part in metadata.split(':'):
+                k, v = part.split('=', 1)
+                if k == 'p':
                     try:
-                        ac = Action(ax)
+                        payload_type = PayloadType(v)
                     except ValueError:
-                        pass
-                    else:
-                        if remove:
-                            self.actions -= {ac}
+                        payload_type = PayloadType.unknown
+                elif k == 'i':
+                    self.identifier = sanitize_id(v)
+                elif k == 'e':
+                    payload_is_encoded = v == '1'
+                elif k == 'd':
+                    self.done = v != '0'
+                elif k == 'a':
+                    for ax in v.split(','):
+                        if remove := ax.startswith('-'):
+                            ax = ax.lstrip('+-')
+                        try:
+                            ac = Action(ax)
+                        except ValueError:
+                            pass
                         else:
-                            self.actions = self.actions.union({ac})
-            elif k == 'o':
-                with suppress(ValueError):
-                    self.only_when = OnlyWhen(v)
-            elif k == 'u':
-                with suppress(Exception):
-                    self.urgency = Urgency(int(v))
+                            if remove:
+                                self.actions -= {ac}
+                            else:
+                                self.actions = self.actions.union({ac})
+                elif k == 'o':
+                    with suppress(ValueError):
+                        self.only_when = OnlyWhen(v)
+                elif k == 'u':
+                    with suppress(Exception):
+                        self.urgency = Urgency(int(v))
         if not prev.done and prev.identifier == self.identifier:
             self.actions = prev.actions.union(self.actions)
             self.title = prev.title
@@ -265,6 +266,10 @@ class DesktopIntegration:
         urgency: Urgency = Urgency.Normal,
     ) -> int:
         raise NotImplementedError('Implement me in subclass')
+
+    def on_new_version_notification_activation(self, cmd: NotificationCommand) -> None:
+        from .update_check import notification_activated
+        notification_activated()
 
 
 class MacOSIntegration(DesktopIntegration):
@@ -367,8 +372,7 @@ class Channel:
             boss.set_active_window(w, switch_os_window_if_needed=True, activation_token=activation_token)
 
 
-def sanitize_text(x: str) -> str:
-    return sanitize_control_codes(x)
+sanitize_text = sanitize_control_codes
 
 @run_once
 def sanitize_identifier_pat() -> 're.Pattern[str]':
@@ -423,7 +427,7 @@ class NotificationManager:
                 self.channel.focus(n.channel_id, n.activation_token)
             if n.report_requested:
                 if n.identifier:
-                    self.channel.send(n.channel_id, f'99;i={n.identifier}')
+                    self.channel.send(n.channel_id, f'99;i={n.identifier};')
             if n.on_activation:
                 try:
                     n.on_activation(n)
@@ -451,12 +455,8 @@ class NotificationManager:
         cmd = NotificationCommand()
         cmd.title = 'kitty update available!'
         cmd.body = f'kitty version {version} released'
-        cmd.on_activation = self.on_new_version_notification_activation
+        cmd.on_activation = self.desktop_integration.on_new_version_notification_activation
         self.notify_with_command(cmd, 0)
-
-    def on_new_version_notification_activation(self, cmd: NotificationCommand) -> None:
-        from .update_check import notification_activated
-        notification_activated()
 
     def is_notification_allowed(self, cmd: NotificationCommand, channel_id: int) -> bool:
         if cmd.only_when is not OnlyWhen.always and cmd.only_when is not OnlyWhen.unset:

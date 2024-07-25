@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import re
 from base64 import standard_b64encode
 from typing import Optional
 
@@ -21,10 +22,18 @@ class DesktopIntegration(DesktopIntegration):
     def reset(self):
         self.notifications = []
         self.close_events = []
+        self.new_version_activated = False
+        self.close_succeeds = True
         self.counter = 0
+
+    def on_new_version_notification_activation(self, cmd) -> None:
+        self.new_version_activated = True
 
     def close_notification(self, desktop_notification_id: int) -> bool:
         self.close_events.append(desktop_notification_id)
+        if self.close_succeeds:
+            self.notification_manager.notification_closed(desktop_notification_id)
+        return self.close_succeeds
 
     def notify(self,
         title: str,
@@ -80,6 +89,26 @@ def do_test(self: 'TestNotifications') -> None:
         n = di.notifications[which]
         nm.notification_activated(n['id'])
 
+    def close(which=0):
+        n = di.notifications[which]
+        di.close_notification(n['id'])
+
+    def assert_events(focus=True, close=0, report='', close_response=''):
+        self.ae(ch.focus_events, [''] if focus else [])
+        if report:
+            self.assertIn(f'99;i={report};', ch.responses)
+        else:
+            for r in ch.responses:
+                m = re.match(r'99;i=[a-z0-9]+;', r)
+                self.assertIsNone(m, f'Unexpectedly found report response: {r}')
+        if close_response:
+            self.assertIn(f'99;i={close_response}:p=close;', ch.responses)
+        else:
+            for r in ch.responses:
+                m = re.match(r'99;i=[a-z0-9]+:p=close;', r)
+                self.assertIsNone(m, f'Unexpectedly found close response: {r}')
+        self.ae(di.close_events, [close] if close else [])
+
     h('test it', osc_code=9)
     self.ae(di.notifications, [n(title='test it')])
     activate()
@@ -88,73 +117,79 @@ def do_test(self: 'TestNotifications') -> None:
 
     h('d=0:u=2:i=x;title')
     h('d=1:i=x:p=body;body')
-    self.ae(notifications, [n(client_id='x', body='body', urgency=Urgency.Critical)])
+    self.ae(di.notifications, [n(body='body', urgency=Urgency.Critical)])
     activate()
-    assert_events('x')
+    assert_events()
     reset()
 
     h('i=x:p=body:a=-focus;body')
-    self.ae(notifications, [n(client_id='x', title='body')])
+    self.ae(di.notifications, [n(title='body')])
     activate()
-    assert_events('x', focus=False)
+    assert_events(focus=False)
+    reset()
+
+    nm.send_new_version_notification('moose')
+    self.ae(di.notifications, [n('kitty update available!', 'kitty version moose released')])
+    activate()
+    self.assertTrue(di.new_version_activated)
     reset()
 
     h('i=x:e=1;' + standard_b64encode(b'title').decode('ascii'))
-    self.ae(notifications, [n(client_id='x', )])
+    self.ae(di.notifications, [n()])
     activate()
-    assert_events('x')
+    assert_events()
     reset()
 
     h('e=1;' + standard_b64encode(b'title').decode('ascii'))
-    self.ae(notifications, [n()])
+    self.ae(di.notifications, [n()])
     activate()
     assert_events()
     reset()
 
     h('d=0:i=x:a=-report;title')
     h('d=1:i=x:a=report;body')
-    self.ae(notifications, [n(client_id='x', title='titlebody')])
+    self.ae(di.notifications, [n(title='titlebody')])
     activate()
-    assert_events('x', report=True)
+    assert_events(report='x')
     reset()
 
     h('d=0:i=y;title')
     h('d=1:i=y:p=xxx;title')
-    self.ae(notifications, [n(client_id='y')])
+    self.ae(di.notifications, [n()])
     reset()
 
     # test closing interactions with reporting and activation
     h('i=c;title')
-    self.ae(notifications, [n(client_id='c')])
+    self.ae(di.notifications, [n()])
     close()
-    assert_events('c', focus=False, close=True)
+    assert_events(focus=False, close=True)
     reset()
     h('i=c;title')
-    self.ae(notifications, [n(client_id='c')])
+    self.ae(di.notifications, [n()])
     h('i=c:p=close')
-    self.ae(notifications, [n(client_id='c')])
-    assert_events('c', focus=False, close=True)
+    self.ae(di.notifications, [n()])
+    assert_events(focus=False, close=True)
     reset()
     h('i=c;title')
     h('i=c:p=close;notify')
-    assert_events('c', focus=False, close=True, close_response=True)
+    assert_events(focus=False, close=True, close_response='c')
     reset()
 
     h(';title')
-    self.ae(notifications, [n()])
+    self.ae(di.notifications, [n()])
     activate()
     assert_events()
     reset()
 
     # Test querying
     h('i=xyz:p=?')
-    self.assertFalse(notifications)
+    self.assertFalse(di.notifications)
     qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close'
-    self.ae(query_responses, [f'99;i=xyz:p=?;{qr}'])
+    self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
-    self.assertFalse(notifications)
-    self.ae(query_responses, [f'99;i=0:p=?;{qr}'])
+    self.assertFalse(di.notifications)
+    self.ae(ch.responses, [f'99;i=0:p=?;{qr}'])
 
 
 class TestNotifications(BaseTest):
