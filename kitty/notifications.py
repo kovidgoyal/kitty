@@ -14,6 +14,8 @@ from .types import run_once
 from .typing import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
 
+debug_desktop_integration = False
+
 
 class Urgency(Enum):
     Low: int = 0
@@ -30,7 +32,7 @@ class PayloadType(Enum):
 
     @property
     def is_text(self) -> bool:
-        return self in (PayloadType.title, PayloadType.body, PayloadType.close, PayloadType.query)
+        return self in (PayloadType.title, PayloadType.body)
 
 
 class OnlyWhen(Enum):
@@ -132,7 +134,7 @@ class NotificationCommand:
     actions: FrozenSet[Action] = frozenset((Action.focus,))
     only_when: OnlyWhen = OnlyWhen.unset
     urgency: Optional[Urgency] = None
-    close_response_requested: bool = False
+    close_response_requested: Optional[bool] = None
 
     # payload handling
     current_payload_type: PayloadType = PayloadType.title
@@ -194,6 +196,8 @@ class NotificationCommand:
                 elif k == 'u':
                     with suppress(Exception):
                         self.urgency = Urgency(int(v))
+                elif k == 'c':
+                    self.close_response_requested = v != '0'
         if not prev.done and prev.identifier == self.identifier:
             self.actions = prev.actions.union(self.actions)
             self.title = prev.title
@@ -202,6 +206,8 @@ class NotificationCommand:
                 self.only_when = prev.only_when
             if self.urgency is None:
                 self.urgency = prev.urgency
+            if self.close_response_requested is None:
+                self.close_response_requested = prev.close_response_requested
 
         return payload_type, payload_is_encoded
 
@@ -306,11 +312,16 @@ class FreeDesktopIntegration(DesktopIntegration):
 
     def close_notification(self, desktop_notification_id: int) -> bool:
         from .fast_data_types import dbus_close_notification
-        return dbus_close_notification(desktop_notification_id)
+        close_succeeded = dbus_close_notification(desktop_notification_id)
+        if debug_desktop_integration:
+            log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
+        return close_succeeded
 
     def dispatch_event_from_desktop(self, *args: Any) -> None:
         event_type: str = args[0]
         dbus_notification_id: int = args[1]
+        if debug_desktop_integration:
+            log_error(f'Got notification event from desktop: {args=}')
         if event_type == 'created':
             self.notification_manager.notification_created(dbus_notification_id)
         elif event_type == 'activation_token':
@@ -334,7 +345,10 @@ class FreeDesktopIntegration(DesktopIntegration):
         if icon is True:
             icf = get_custom_window_icon()[1] or logo_png_file
         from .fast_data_types import dbus_send_notification
-        return dbus_send_notification(application, icf, title, body, 'Click to see changes', timeout, urgency.value)
+        desktop_notification_id = dbus_send_notification(application, icf, title, body, 'Click to see changes', timeout, urgency.value)
+        if debug_desktop_integration:
+            log_error(f'Created notification with {desktop_notification_id=}')
+        return desktop_notification_id
 
 
 class UIState(NamedTuple):
@@ -422,12 +436,13 @@ class NotificationManager:
 
     def notification_activated(self, desktop_notification_id: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
-            self.purge_notification(n)
+            if not n.close_response_requested:
+                self.purge_notification(n)
             if n.focus_requested:
                 self.channel.focus(n.channel_id, n.activation_token)
             if n.report_requested:
-                if n.identifier:
-                    self.channel.send(n.channel_id, f'99;i={n.identifier};')
+                ident = n.identifier or '0'
+                self.channel.send(n.channel_id, f'99;i={ident};')
             if n.on_activation:
                 try:
                     n.on_activation(n)
@@ -505,23 +520,13 @@ class NotificationManager:
             self.channel.send(channel_id, f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}')
             return None
         if payload_type is PayloadType.close:
-            if payload_is_encoded:
-                from base64 import standard_b64decode
-                try:
-                    payload = standard_b64decode(payload).decode('utf-8')
-                except Exception:
-                    self.log('Malformed OSC 99 close command: payload is not base64 encoded UTF-8 text')
             if cmd.identifier:
                 to_close = self.in_progress_notification_commands_by_client_id.get(cmd.identifier)
                 if to_close:
-                    if payload == 'notify':
-                        to_close.close_response_requested = True
                     if not self.desktop_integration.close_notification(to_close.desktop_notification_id):
                         if to_close.close_response_requested:
                             self.send_closed_response(to_close.channel_id, to_close.identifier)
                         self.purge_notification(to_close)
-                else:
-                    self.send_closed_response(channel_id, cmd.identifier, not_found=True)
             return None
 
         if payload_type is PayloadType.unknown:
@@ -531,9 +536,8 @@ class NotificationManager:
         cmd.set_payload(payload_type, payload_is_encoded, payload, prev_cmd)
         return cmd
 
-    def send_closed_response(self, channel_id: int, client_id: str, not_found: bool = False) -> None:
-        trailer = 'ENOENT;' if not_found else ''
-        self.channel.send(channel_id, f'99;i={client_id}:p=close;{trailer}')
+    def send_closed_response(self, channel_id: int, client_id: str) -> None:
+        self.channel.send(channel_id, f'99;i={client_id}:p=close;')
 
     def purge_notification(self, cmd: NotificationCommand) -> None:
         self.in_progress_notification_commands_by_client_id.pop(cmd.identifier, None)

@@ -233,7 +233,7 @@ This is a so-called *Application Programming Command (APC)*. Most terminal
 emulators ignore APC codes, making it safe to use.
 
 The control data is a comma-separated list of ``key=value`` pairs.  The payload
-is arbitrary binary data, base64-encoded to prevent interoperation problems
+is arbitrary binary data, :rfc:`base64 <4648>` encoded to prevent interoperation problems
 with legacy terminals that get confused by control codes within an APC code.
 The meaning of the payload is interpreted based on the control data.
 
@@ -294,7 +294,8 @@ compression is supported, which is specified using ``o=z``. For example::
     <ESC>_Gf=24,s=10,v=20,o=z;<payload><ESC>\
 
 This is the same as the example from the RGB data section, except that the
-payload is now compressed using deflate (this occurs prior to base64-encoding).
+payload is now compressed using deflate (this occurs prior to
+:rfc:`base64 <4648>` encoding).
 The terminal emulator will decompress it before rendering. You can specify
 compression for any format. The terminal emulator will decompress before
 interpreting the pixel data.
@@ -366,7 +367,7 @@ Remote clients, those that are unable to use the filesystem/shared memory to
 transmit data, must send the pixel data directly using escape codes. Since
 escape codes are of limited maximum length, the data will need to be chunked up
 for transfer. This is done using the ``m`` key. The pixel data must first be
-base64 encoded then chunked up into chunks no larger than ``4096`` bytes. All
+:rfc:`base64 <4648>` encoded then chunked up into chunks no larger than ``4096`` bytes. All
 chunks, except the last, must have a size that is a multiple of 4. The client
 then sends the graphics escape code as usual, with the addition of an ``m`` key
 that must have the value ``1`` for all but the last chunk, where it must be
