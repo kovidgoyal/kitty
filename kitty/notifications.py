@@ -249,6 +249,8 @@ class NotificationCommand:
 
 class DesktopIntegration:
 
+    supports_close_events: bool = True
+
     def __init__(self, notification_manager: 'NotificationManager'):
         self.notification_manager = notification_manager
         self.initialize()
@@ -274,8 +276,19 @@ class DesktopIntegration:
         from .update_check import notification_activated
         notification_activated()
 
+    def query_response(self, identifier: str) -> str:
+        actions = ','.join(x.value for x in Action)
+        when = ','.join(x.value for x in OnlyWhen if x.value)
+        urgency = ','.join(str(x.value) for x in Urgency)
+        i = f'i={identifier or "0"}:'
+        p = ','.join(x.value for x in PayloadType if x.value)
+        c = ':c=1' if self.supports_close_events else ''
+        return f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}{c}'
+
 
 class MacOSIntegration(DesktopIntegration):
+
+    supports_close_events: bool = False
 
     def initialize(self) -> None:
         from .fast_data_types import cocoa_set_notification_activated_callback
@@ -543,7 +556,9 @@ class NotificationManager:
             _, cmd = self.in_progress_notification_commands.popitem(False)
             self.in_progress_notification_commands_by_client_id.pop(cmd.identifier, None)
 
-    def parse_notification_cmd(self, prev_cmd: NotificationCommand, channel_id: int, raw: str) -> Optional[NotificationCommand]:
+    def parse_notification_cmd(
+        self, prev_cmd: NotificationCommand, channel_id: int, raw: str
+    ) -> Optional[NotificationCommand]:
         metadata, payload = raw.partition(';')[::2]
         cmd = NotificationCommand()
         try:
@@ -552,12 +567,7 @@ class NotificationManager:
             self.log('Malformed metadata section in OSC 99: ' + metadata)
             return None
         if payload_type is PayloadType.query:
-            actions = ','.join(x.value for x in Action)
-            when = ','.join(x.value for x in OnlyWhen if x.value)
-            urgency = ','.join(str(x.value) for x in Urgency)
-            i = f'i={cmd.identifier or "0"}:'
-            p = ','.join(x.value for x in PayloadType if x.value)
-            self.channel.send(channel_id, f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}')
+            self.channel.send(channel_id, self.desktop_integration.query_response(cmd.identifier))
             return None
         if payload_type is PayloadType.close:
             if cmd.identifier:

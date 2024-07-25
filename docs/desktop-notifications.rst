@@ -99,6 +99,9 @@ to display it based on what it does understand.
 Being informed when a notification is closed
 ------------------------------------------------
 
+.. versionadded:: 0.36.0
+   Notifications of close events were added in kitty version 0.36.0
+
 If you wish to be informed when a notification is closed, you can specify
 ``c=1`` when sending the notification. For example::
 
@@ -112,6 +115,12 @@ escape code to inform when the notification is closed::
 If no notification id was specified ``i=0`` will be used.
 If ``a=report`` is specified and the notification is activated/clicked on
 then both the activation report and close notification are sent.
+
+.. note::
+   Close events are best effort, some platforms such as macOS do not have
+   events when notifications are closed. Applications can use the
+   :ref:`notifications_query` to check if close events are supported
+   by the current terminal emulator.
 
 
 Closing an existing notification
@@ -127,6 +136,8 @@ To close a previous notification, send::
 This will close a previous notification with the specified id. If no such
 notification exists (perhaps because it was already closed or it was activated)
 then the request is ignored.
+
+.. _notifications_query:
 
 Querying for support
 -------------------------
@@ -167,6 +178,9 @@ Key      Value
 ``p``    Comma spearated list of supported payload types (i.e. values of the
          ``p`` key that the terminal implements). These must contain at least
          ``title`` and ``body``.
+
+``c``    ``c=1`` if the terminal supports close events, otherwise the ``c``
+         must be omitted.
 =======  ================================================================================
 
 In the future, if this protocol expands, more keys might be added. Clients must
