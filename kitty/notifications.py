@@ -521,7 +521,7 @@ class NotificationManager:
                             self.send_closed_response(to_close.channel_id, to_close.identifier)
                         self.purge_notification(to_close)
                 else:
-                    self.send_closed_response(channel_id, cmd.identifier)
+                    self.send_closed_response(channel_id, cmd.identifier, not_found=True)
             return None
 
         if payload_type is PayloadType.unknown:
@@ -531,8 +531,9 @@ class NotificationManager:
         cmd.set_payload(payload_type, payload_is_encoded, payload, prev_cmd)
         return cmd
 
-    def send_closed_response(self, channel_id: int, client_id: str) -> None:
-        self.channel.send(channel_id, f'99;i={client_id}:p=close;')
+    def send_closed_response(self, channel_id: int, client_id: str, not_found: bool = False) -> None:
+        trailer = 'ENOENT;' if not_found else ''
+        self.channel.send(channel_id, f'99;i={client_id}:p=close;{trailer}')
 
     def purge_notification(self, cmd: NotificationCommand) -> None:
         self.in_progress_notification_commands_by_client_id.pop(cmd.identifier, None)

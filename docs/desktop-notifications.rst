@@ -110,18 +110,16 @@ notification when closing succeeds, send the following instead::
 
 Then, the terminal will respond with::
 
-    <OSC> i=<notification id> : p=close ; <terminator>
+    <OSC> i=<notification id> : p=close ; <terminator>  # notification was closed
+    or
+    <OSC> i=<notification id> : p=close ; ENOENT ; <terminator>  # notification did not exist
 
-This escape code is sent by the terminal if the notification is closed
-or was already closed when the close request arrives, or a notification
-with the specified identifier does not exist. If the notification is activated,
-before it can be closed, then the close response is sent only if there is no
-activation response. In other words, if you close a response and request
-notification, you will get either of the following two responses::
-
-    <OSC> i=<notification id> : p=close ; <terminator>  # closed
-
-    <OSC> i=<notification id> ; <terminator>  # activated
+This escape code is sent by the terminal if the notification is closed or a
+notification with the specified identifier does not exist. If the notification
+is activated or closed before the close request is received, then the notification does
+not exist as far as the terminal is concerned, and an ``ENOENT`` response is
+sent. To detect activation, before close, enable reporting with ``a=report``
+when creating the notification.
 
 
 Querying for support

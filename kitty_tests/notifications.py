@@ -93,7 +93,7 @@ def do_test(self: 'TestNotifications') -> None:
         n = di.notifications[which]
         di.close_notification(n['id'])
 
-    def assert_events(focus=True, close=0, report='', close_response=''):
+    def assert_events(focus=True, close=0, report='', close_response='', enoent=False):
         self.ae(ch.focus_events, [''] if focus else [])
         if report:
             self.assertIn(f'99;i={report};', ch.responses)
@@ -102,7 +102,8 @@ def do_test(self: 'TestNotifications') -> None:
                 m = re.match(r'99;i=[a-z0-9]+;', r)
                 self.assertIsNone(m, f'Unexpectedly found report response: {r}')
         if close_response:
-            self.assertIn(f'99;i={close_response}:p=close;', ch.responses)
+            t = 'ENOENT;' if enoent else ''
+            self.assertIn(f'99;i={close_response}:p=close;{t}', ch.responses)
         else:
             for r in ch.responses:
                 m = re.match(r'99;i=[a-z0-9]+:p=close;', r)
@@ -172,7 +173,20 @@ def do_test(self: 'TestNotifications') -> None:
     reset()
     h('i=c;title')
     h('i=c:p=close;notify')
+    self.ae(di.notifications, [n()])
     assert_events(focus=False, close=True, close_response='c')
+    reset()
+    h('i=c;title')
+    activate()
+    h('i=c:p=close;notify')
+    self.ae(di.notifications, [n()])
+    assert_events(focus=True, close_response='c', enoent=True)
+    reset()
+    h('i=c:a=report;title')
+    activate()
+    h('i=c:p=close;notify')
+    self.ae(di.notifications, [n()])
+    assert_events(focus=True, report='c', close_response='c', enoent=True)
     reset()
 
     h(';title')

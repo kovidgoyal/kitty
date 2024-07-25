@@ -584,7 +584,7 @@ class TestDataTypes(BaseTest):
         self.assertNotEqual(SingleKey(key=1, mods=2), SingleKey(key=1))
 
     def test_notify_identifier_sanitization(self):
-        from kitty.notify import sanitize_identifier_pat
+        from kitty.notifications import sanitize_identifier_pat
         self.ae(sanitize_identifier_pat().sub('', '\x1b\nabc\n[*'), 'abc')
 
     def test_bracketed_paste_sanitizer(self):
