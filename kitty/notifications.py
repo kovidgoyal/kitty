@@ -306,15 +306,18 @@ class MacOSIntegration(DesktopIntegration):
         cocoa_send_notification(str(desktop_notification_id), title, body or ' ', subtitle, urgency.value)
         return desktop_notification_id
 
-    def notification_activated(self, ident: str) -> None:
+    def notification_activated(self, ident: str, activated: bool) -> None:
         if debug_desktop_integration:
-            log_error(f'Notification {ident} activated')
+            log_error(f'Notification {ident} {activated=}')
         try:
             desktop_notification_id = int(ident)
         except Exception:
             log_error(f'Got unexpected notification activated event with id: {ident!r} from cocoa')
         else:
-            self.notification_manager.notification_activated(desktop_notification_id)
+            if activated:
+                self.notification_manager.notification_activated(desktop_notification_id)
+            else:
+                self.notification_manager.notification_closed(desktop_notification_id)
 
 
 class FreeDesktopIntegration(DesktopIntegration):

@@ -413,6 +413,14 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 @interface NotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
 @end
 
+static void
+do_notification_callback(NSString *identifier, bool activated) {
+    PyObject *ret = PyObject_CallFunction(notification_activated_callback, "zO",
+            (identifier ? [identifier UTF8String] : NULL), activated ? Py_True : Py_False);
+    if (ret) Py_DECREF(ret);
+    else PyErr_Print();
+}
+
 @implementation NotificationDelegate
     - (void)userNotificationCenter:(UNUserNotificationCenter *)center
             willPresentNotification:(UNNotification *)notification
@@ -430,13 +438,10 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
         (void)(center);
         if (notification_activated_callback) {
             if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
-                NSString *identifier = [[[response notification] request] identifier];
-                PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
-                        identifier ? [identifier UTF8String] : NULL);
-                if (ret == NULL) PyErr_Print();
-                else Py_DECREF(ret);
+                do_notification_callback([[[response notification] request] identifier], true);
             } else if ([response.actionIdentifier isEqualToString:UNNotificationDismissActionIdentifier]) {
-                NSLog(@"Notification was dismissed: %@", response.notification);
+                // this never actually happens on macOS. Bloody Crapple.
+                do_notification_callback([[[response notification] request] identifier], false);
             }
         }
         completionHandler();

@@ -838,7 +838,7 @@ def os_window_font_size(
     pass
 
 
-def cocoa_set_notification_activated_callback(identifier: Optional[Callable[[str], None]]) -> None:
+def cocoa_set_notification_activated_callback(identifier: Optional[Callable[[str, bool], None]]) -> None:
     pass
 
 
