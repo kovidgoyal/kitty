@@ -2750,9 +2750,6 @@ class Boss:
                 except Exception as e:
                     log_error(f'Failed to process update check data {raw!r}, with error: {e}')
 
-    def dbus_notification_callback(self, event_type: str, a: int, b: Union[int, str]) -> None:
-        self.notification_manager.desktop_integration.dispatch_event_from_desktop(event_type, a, b)
-
     def show_bad_config_lines(self, bad_lines: Iterable[BadLine], misc_errors: Iterable[str] = ()) -> None:
 
         def format_bad_line(bad_line: BadLine) -> str:

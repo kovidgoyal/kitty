@@ -256,9 +256,6 @@ class DesktopIntegration:
     def initialize(self) -> None:
         pass
 
-    def dispatch_event_from_desktop(self, *a: Any) -> None:
-        raise NotImplementedError('Implement me in subclass')
-
     def close_notification(self, desktop_notification_id: int) -> bool:
         raise NotImplementedError('Implement me in subclass')
 
@@ -310,27 +307,53 @@ class MacOSIntegration(DesktopIntegration):
 
 class FreeDesktopIntegration(DesktopIntegration):
 
+    def initialize(self) -> None:
+        from .fast_data_types import dbus_set_notification_callback
+        dbus_set_notification_callback(self.dispatch_event_from_desktop)
+        # map the id returned by the notification daemon to the
+        # desktop_notification_id we use for the notification
+        self.creation_id_map: 'OrderedDict[int, int]' = OrderedDict()
+
     def close_notification(self, desktop_notification_id: int) -> bool:
         from .fast_data_types import dbus_close_notification
-        close_succeeded = dbus_close_notification(desktop_notification_id)
-        if debug_desktop_integration:
-            log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
+        close_succeeded = False
+        if dbus_id := self.get_dbus_notification_id(desktop_notification_id, 'close_request'):
+            close_succeeded = dbus_close_notification(dbus_id)
+            if debug_desktop_integration:
+                log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
         return close_succeeded
 
-    def dispatch_event_from_desktop(self, *args: Any) -> None:
-        event_type: str = args[0]
-        dbus_notification_id: int = args[1]
+    def get_desktop_notification_id(self, dbus_notification_id: int, event: str) -> Optional[int]:
+        q = self.creation_id_map.get(dbus_notification_id)
+        if q is None:
+            if debug_desktop_integration:
+                log_error(f'Could not find desktop_notification_id for {dbus_notification_id=} for event {event}')
+        return q
+
+    def get_dbus_notification_id(self, desktop_notification_id: int, event: str) ->Optional[int]:
+        for dbus_id, q in self.creation_id_map.items():
+            if q == desktop_notification_id:
+                return dbus_id
         if debug_desktop_integration:
-            log_error(f'Got notification event from desktop: {args=}')
+            log_error(f'Could not find dbus_notification_id for {desktop_notification_id=} for event {event}')
+        return None
+
+    def dispatch_event_from_desktop(self, event_type: str, dbus_notification_id: int, extra: Union[int, str]) -> None:
+        if debug_desktop_integration:
+            log_error(f'Got notification event from desktop: {event_type=} {dbus_notification_id=} {extra=}')
         if event_type == 'created':
+            self.creation_id_map[int(extra)] = dbus_notification_id
+            if len(self.creation_id_map) > 128:
+                self.creation_id_map.popitem(False)
             self.notification_manager.notification_created(dbus_notification_id)
-        elif event_type == 'activation_token':
-            token: str = args[2]
-            self.notification_manager.notification_activation_token_received(dbus_notification_id, token)
-        elif event_type == 'activated':
-            self.notification_manager.notification_activated(dbus_notification_id)
-        elif event_type == 'closed':
-            self.notification_manager.notification_closed(dbus_notification_id)
+            return
+        if desktop_notification_id := self.get_desktop_notification_id(dbus_notification_id, event_type):
+            if event_type == 'activation_token':
+                self.notification_manager.notification_activation_token_received(desktop_notification_id, str(extra))
+            elif event_type == 'activated':
+                self.notification_manager.notification_activated(desktop_notification_id)
+            elif event_type == 'closed':
+                self.notification_manager.notification_closed(desktop_notification_id)
 
     def notify(self,
         title: str,
@@ -381,6 +404,8 @@ class Channel:
         return False
 
     def focus(self, channel_id: int, activation_token: str) -> None:
+        if debug_desktop_integration:
+            log_error(f'Focusing window: {channel_id} with activation_token: {activation_token}')
         boss = get_boss()
         if w := self.window_for_id(channel_id):
             boss.set_active_window(w, switch_os_window_if_needed=True, activation_token=activation_token)
@@ -422,9 +447,6 @@ class NotificationManager:
         self.in_progress_notification_commands: 'OrderedDict[int, NotificationCommand]' = OrderedDict()
         self.in_progress_notification_commands_by_client_id: Dict[str, NotificationCommand] = {}
         self.pending_commands: Dict[int, NotificationCommand] = {}
-
-    def dispatch_event_from_desktop(self, *args: Any) -> None:
-        self.desktop_integration.dispatch_event_from_desktop(*args)
 
     def notification_created(self, desktop_notification_id: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):

@@ -543,6 +543,8 @@ def os_window_has_background_image(os_window_id: int) -> bool:
     pass
 
 
+def dbus_set_notification_callback(c: Callable[[str, int, Union[str, int]], None]) -> None: ...
+
 def dbus_send_notification(
     app_name: str,
     icon: str,

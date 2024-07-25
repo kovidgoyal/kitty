@@ -16,8 +16,6 @@
 static inline void cleanup_free(void *p) { free(*(void**)p); }
 #define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
 
-static notification_id_type notification_id = 0;
-
 typedef struct {
     notification_id_type next_id;
     GLFWDBusnotificationcreatedfun callback;
@@ -41,8 +39,10 @@ notification_created(DBusMessage *msg, const char* errmsg, void *data) {
     uint32_t id;
     if (!glfw_dbus_get_args(msg, "Failed to get Notification uid", DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID)) return;
     NotificationCreatedData *ncd = (NotificationCreatedData*)data;
-    if (ncd->callback) ncd->callback(ncd->next_id, id, ncd->data);
-    if (data) free(data);
+    if (ncd) {
+        if (ncd->callback) ncd->callback(ncd->next_id, id, ncd->data);
+        free(ncd);
+    }
 }
 
 static DBusHandlerResult
@@ -107,6 +107,7 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     }
     RAII_ALLOC(NotificationCreatedData, data, malloc(sizeof(NotificationCreatedData)));
     if (!data) return 0;
+    static notification_id_type notification_id = 0;
     data->next_id = ++notification_id;
     data->callback = callback; data->data = user_data;
     if (!data->next_id) data->next_id = ++notification_id;
