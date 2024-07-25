@@ -543,7 +543,7 @@ def os_window_has_background_image(os_window_id: int) -> bool:
     pass
 
 
-def dbus_set_notification_callback(c: Callable[[str, int, Union[str, int]], None]) -> None: ...
+def dbus_set_notification_callback(c: Optional[Callable[[str, int, Union[str, int]], None]]) -> None: ...
 
 def dbus_send_notification(
     app_name: str,
@@ -561,7 +561,7 @@ def dbus_close_notification(dbus_notification_id: int) -> bool: ...
 
 
 def cocoa_send_notification(
-    identifier: Optional[str],
+    identifier: str,
     title: str,
     body: Optional[str],
     subtitle: Optional[str],
@@ -569,6 +569,7 @@ def cocoa_send_notification(
 ) -> None:
     pass
 
+def cocoa_remove_delivered_notification(identifier: str) -> bool: ...
 
 def create_os_window(
     get_window_size: Callable[[int, int, int, int, float, float], Tuple[int,

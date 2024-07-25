@@ -376,7 +376,7 @@ class Boss:
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
         set_boss(self)
         self.mappings: Mappings = Mappings(global_shortcuts, self.refresh_active_tab_bar)
-        self.notification_manager: NotificationManager = NotificationManager()
+        self.notification_manager: NotificationManager = NotificationManager(debug=self.args.debug_keyboard or self.args.debug_rendering)
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)

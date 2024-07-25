@@ -279,8 +279,15 @@ class MacOSIntegration(DesktopIntegration):
 
     def initialize(self) -> None:
         from .fast_data_types import cocoa_set_notification_activated_callback
-        self.id_counter = count()
+        self.id_counter = count(start=1)
         cocoa_set_notification_activated_callback(self.notification_activated)
+
+    def close_notification(self, desktop_notification_id: int) -> bool:
+        from .fast_data_types import cocoa_remove_delivered_notification
+        close_succeeded = cocoa_remove_delivered_notification(str(desktop_notification_id))
+        if debug_desktop_integration:
+            log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
+        return close_succeeded
 
     def notify(self,
         title: str,
@@ -293,10 +300,15 @@ class MacOSIntegration(DesktopIntegration):
     ) -> int:
         desktop_notification_id = next(self.id_counter)
         from .fast_data_types import cocoa_send_notification
-        cocoa_send_notification(str(desktop_notification_id), title, body, subtitle, urgency.value)
+        # If the body is not set macos makes the title the body and uses
+        # "kitty" as the title. So use a single space for the body in this
+        # case.
+        cocoa_send_notification(str(desktop_notification_id), title, body or ' ', subtitle, urgency.value)
         return desktop_notification_id
 
     def notification_activated(self, ident: str) -> None:
+        if debug_desktop_integration:
+            log_error(f'Notification {ident} activated')
         try:
             desktop_notification_id = int(ident)
         except Exception:
@@ -434,7 +446,10 @@ class NotificationManager:
         desktop_integration: Optional[DesktopIntegration] = None,
         channel: Channel = Channel(),
         log: Log = Log(),
+        debug: bool = False,
     ):
+        global debug_desktop_integration
+        debug_desktop_integration = debug
         if desktop_integration is None:
             self.desktop_integration = MacOSIntegration(self) if is_macos else FreeDesktopIntegration(self)
         else:

@@ -1423,7 +1423,8 @@ static PyObject *dbus_notification_callback = NULL;
 
 static PyObject*
 dbus_set_notification_callback(PyObject *self UNUSED, PyObject *callback) {
-    Py_CLEAR(dbus_notification_callback); dbus_notification_callback = callback; Py_INCREF(callback);
+    Py_CLEAR(dbus_notification_callback);
+    if (callback && callback != Py_None) { dbus_notification_callback = callback; Py_INCREF(callback); }
     Py_RETURN_NONE;
 }
 
