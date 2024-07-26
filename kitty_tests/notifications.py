@@ -47,7 +47,9 @@ class DesktopIntegration(DesktopIntegration):
         urgency: Urgency = Urgency.Normal,
     ) -> int:
         self.counter += 1
-        self.notifications.append(n(title, body, urgency, self.counter, icon_name, icon_path))
+        ans = n(title, body, urgency, self.counter, icon_name)
+        ans['icon_path'] = os.path.basename(icon_path)
+        self.notifications.append(ans)
         return self.counter
 
 
@@ -76,7 +78,7 @@ class Channel(Channel):
 def do_test(self: 'TestNotifications', tdir: str) -> None:
     di = DesktopIntegration(None)
     ch = Channel()
-    nm = NotificationManager(di, ch, lambda *a, **kw: None)
+    nm = NotificationManager(di, ch, lambda *a, **kw: None, base_cache_dir=tdir)
     di.notification_manager = nm
 
     def reset():
@@ -236,6 +238,31 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     self.ae(set(dc.keys()), set(map(str, range(1, 5))))
     del dc
     self.assertFalse(os.path.exists(cache_dir))
+
+    # Test icons
+    def send_with_icon(data='', n='', g=''):
+        m = ''
+        if n:
+            m += f'n={n}:'
+        if g:
+            m += f'g={g}:'
+        h(f'i=9:d=0:{m};title')
+        h(f'i=9:p=icon;{data}')
+
+    dc = nm.icon_data_cache
+    send_with_icon(n='mycon')
+    self.ae(di.notifications, [n(icon_name='mycon')])
+    reset()
+    send_with_icon(g='gid')
+    self.ae(di.notifications, [n()])
+    reset()
+    send_with_icon(g='gid', data='1')
+    self.ae(di.notifications, [n(icon_path=dc.hash(b'1'))])
+    send_with_icon(g='gid', n='moose')
+    self.ae(di.notifications[-1], n(icon_name='moose', icon_path=dc.hash(b'1'), desktop_notification_id=len(di.notifications)))
+    send_with_icon(g='gid2', data='2')
+    self.ae(di.notifications[-1], n(icon_path=dc.hash(b'2'), desktop_notification_id=len(di.notifications)))
+    reset()
 
 
 class TestNotifications(BaseTest):

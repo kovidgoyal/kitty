@@ -28,6 +28,8 @@ class IconDataCache:
         self.base_cache_dir = base_cache_dir
         self.cache_dir = ''
         self.total_size = 0
+        import struct
+        self.seed: int = struct.unpack("!Q", os.urandom(8))[0]
 
     def _ensure_state(self) -> str:
         if not self.cache_dir:
@@ -45,10 +47,14 @@ class IconDataCache:
     def keys(self) -> Iterator[str]:
         yield from self.key_map.keys()
 
+    def hash(self, data: bytes) -> str:
+        from kittens.transfer.rsync import xxh128_hash_with_seed
+        d = xxh128_hash_with_seed(data, self.seed)
+        return d.hex()
+
     def add_icon(self, key: str, data: bytes) -> str:
-        from kittens.transfer.rsync import Hasher
         self._ensure_state()
-        data_hash = Hasher(which='xxh3-128', data=data).hexdigest()
+        data_hash = self.hash(data)
         path = os.path.join(self.cache_dir, data_hash)
         if not os.path.exists(path):
             with open(path, 'wb') as f:
@@ -231,6 +237,8 @@ class NotificationCommand:
         payload_is_encoded = False
         if metadata:
             for part in metadata.split(':'):
+                if not part:
+                    continue
                 k, v = part.split('=', 1)
                 if k == 'p':
                     try:
