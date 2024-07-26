@@ -2,17 +2,19 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import os
 import re
+import tempfile
 from base64 import standard_b64encode
 from typing import Optional
 
-from kitty.notifications import Channel, DesktopIntegration, NotificationManager, UIState, Urgency
+from kitty.notifications import Channel, DesktopIntegration, IconDataCache, NotificationManager, UIState, Urgency
 
 from . import BaseTest
 
 
-def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1):
-    return {'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id}
+def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path=''):
+    return {'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_name': icon_name, 'icon_path': icon_path}
 
 
 class DesktopIntegration(DesktopIntegration):
@@ -40,12 +42,12 @@ class DesktopIntegration(DesktopIntegration):
         body: str,
         timeout: int = -1,
         application: str = 'kitty',
-        icon: bool = True,
+        icon_name: str = '', icon_path: str = '',
         subtitle: Optional[str] = None,
         urgency: Urgency = Urgency.Normal,
     ) -> int:
         self.counter += 1
-        self.notifications.append(n(title, body, urgency, self.counter))
+        self.notifications.append(n(title, body, urgency, self.counter, icon_name, icon_path))
         return self.counter
 
 
@@ -71,7 +73,7 @@ class Channel(Channel):
         self.responses.append(osc_escape_code)
 
 
-def do_test(self: 'TestNotifications') -> None:
+def do_test(self: 'TestNotifications', tdir: str) -> None:
     di = DesktopIntegration(None)
     ch = Channel()
     nm = NotificationManager(di, ch, lambda *a, **kw: None)
@@ -204,16 +206,36 @@ def do_test(self: 'TestNotifications') -> None:
     # Test querying
     h('i=xyz:p=?')
     self.assertFalse(di.notifications)
-    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close:c=1'
+    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon:c=1'
     self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
     self.assertFalse(di.notifications)
     self.ae(ch.responses, [f'99;i=0:p=?;{qr}'])
 
+    # Test MIME streaming
+    text = 'some reasonably long text to test MIME streaming with'
+    encoded = standard_b64encode(text.encode()).decode()
+    for ch in encoded:
+        h(f'i=s:e=1:d=0;{ch}')
+    h(f'i=s:e=1:d=0:p=body;{encoded[:13]}')
+    h(f'i=s:e=1:d=0:p=body;{encoded[13:]}')
+    h('i=s')
+    self.ae(di.notifications, [n(text, text)])
+
+    # Test Disk Cache
+    dc = IconDataCache(base_cache_dir=tdir, max_cache_size=4)
+    cache_dir = dc._ensure_state()
+    for i in range(5):
+        dc.add_icon(str(i), str(i).encode())
+    self.ae(set(dc.keys()), set(map(str, range(1, 5))))
+    del dc
+    self.assertFalse(os.path.exists(cache_dir))
+
 
 class TestNotifications(BaseTest):
 
     def test_desktop_notify(self):
-        do_test(self)
+        with tempfile.TemporaryDirectory() as tdir:
+            do_test(self, tdir)
 
