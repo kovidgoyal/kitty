@@ -214,14 +214,19 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     self.ae(ch.responses, [f'99;i=0:p=?;{qr}'])
 
     # Test MIME streaming
-    text = 'some reasonably long text to test MIME streaming with'
-    encoded = standard_b64encode(text.encode()).decode()
-    for ch in encoded:
-        h(f'i=s:e=1:d=0;{ch}')
-    h(f'i=s:e=1:d=0:p=body;{encoded[:13]}')
-    h(f'i=s:e=1:d=0:p=body;{encoded[13:]}')
-    h('i=s')
-    self.ae(di.notifications, [n(text, text)])
+    for padding in (True, False):
+        for extra in ('a', 'ab', 'abc', 'abcd'):
+            text = 'some reasonably long text to test MIME streaming with: '
+            encoded = standard_b64encode(text.encode()).decode()
+            if not padding:
+                encoded = encoded.rstrip('=')
+            for t in encoded:
+                h(f'i=s:e=1:d=0;{t}')
+            h(f'i=s:e=1:d=0:p=body;{encoded[:13]}')
+            h(f'i=s:e=1:d=0:p=body;{encoded[13:]}')
+            h('i=s')
+            self.ae(di.notifications, [n(text, text)])
+            reset()
 
     # Test Disk Cache
     dc = IconDataCache(base_cache_dir=tdir, max_cache_size=4)

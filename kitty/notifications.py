@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, FrozenSet, Iterator, List, NamedTuple, O
 from weakref import ReferenceType, ref
 
 from .constants import cache_dir, is_macos, logo_png_file
-from .fast_data_types import ESC_OSC, base64_decode, current_focused_os_window_id, get_boss
+from .fast_data_types import ESC_OSC, StreamingBase64Decoder, current_focused_os_window_id, get_boss
 from .types import run_once
 from .typing import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
@@ -146,7 +146,7 @@ class DataStore:
 class EncodedDataStore:
 
     def __init__(self, data_store: DataStore) -> None:
-        self.current_leftover_bytes = memoryview(b'')
+        self.decoder = StreamingBase64Decoder(initial_capacity=4096)
         self.data_store = data_store
 
     @property
@@ -162,41 +162,14 @@ class EncodedDataStore:
     def add_base64_data(self, data: Union[str, bytes]) -> None:
         if isinstance(data, str):
             data = data.encode('ascii')
-
-        def write_saving_leftover_bytes(data: bytes) -> None:
-            if len(data) == 0:
-                return
-            extra = len(data) % 4
-            if extra > 0:
-                mv = memoryview(data)
-                self.current_leftover_bytes = memoryview(bytes(mv[-extra:]))
-                mv = mv[:-extra]
-                if len(mv) > 0:
-                    self._write_base64_data(mv)
-            else:
-                self._write_base64_data(data)
-
-        if len(self.current_leftover_bytes) > 0:
-            extra = 4 - len(self.current_leftover_bytes)
-            if len(data) >= extra:
-                self._write_base64_data(memoryview(bytes(self.current_leftover_bytes) + data[:extra]))
-                self.current_leftover_bytes = memoryview(b'')
-                data = memoryview(data)[extra:]
-                write_saving_leftover_bytes(data)
-            else:
-                self.current_leftover_bytes = memoryview(bytes(self.current_leftover_bytes) + data)
-        else:
-            write_saving_leftover_bytes(data)
-
-    def _write_base64_data(self, b: bytes) -> None:
-        self.data_store(base64_decode(b))
+        self.decoder.add(data)
+        if len(self.decoder) >= self.data_store.max_size:
+            self.data_store(self.decoder.take_output())
 
     def flush_encoded_data(self) -> None:
-        b = self.current_leftover_bytes
-        self.current_leftover_bytes = memoryview(b'')
-        padding = 4 - len(b)
-        if padding in (1, 2):
-            self._write_base64_data(memoryview(bytes(b) + b'=' * padding))
+        self.decoder.flush()
+        if len(self.decoder):
+            self.data_store(self.decoder.take_output())
 
     def finalise(self) -> bytes:
         self.flush_encoded_data()
