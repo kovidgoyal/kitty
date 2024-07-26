@@ -29,6 +29,53 @@ type Options struct {
 	InjectSelfOntoPath string
 }
 
+func inject_self_onto_path() {
+	if exe, err := os.Executable(); err == nil {
+		if exe_dir, err := filepath.Abs(exe); err == nil {
+			realpath := func(x string) string {
+				if ans, err := filepath.EvalSymlinks(x); err == nil {
+					return ans
+				}
+				return x
+			}
+			exe_dir = realpath(filepath.Dir(exe_dir))
+			path_items := strings.Split(os.Getenv("PATH"), string(os.PathListSeparator))
+			realpath_items := utils.Map(realpath, path_items)
+			done := false
+			changed := false
+			is_executable_file := func(q string) bool {
+				if unix.Access(q, unix.X_OK) != nil {
+					return false
+				}
+				if s, err := os.Stat(q); err == nil && !s.IsDir() {
+					return true
+				}
+				return false
+			}
+			for i, x := range realpath_items {
+				q := filepath.Join(x, filepath.Base(exe))
+				if is_executable_file(q) {
+					// some kitten already in path
+					if utils.Samefile(q, exe) {
+						done = true
+						break
+					}
+					path_items = slices.Insert(path_items, i, exe_dir)
+					changed, done = true, true
+					break
+				}
+			}
+			if !done {
+				path_items = append(path_items, exe_dir)
+				changed = true
+			}
+			if changed {
+				os.Setenv("PATH", strings.Join(path_items, string(os.PathListSeparator)))
+			}
+		}
+	}
+}
+
 func main(args []string, opts *Options) (rc int, err error) {
 	if len(args) > 0 {
 		tui.RunCommandRestoringTerminalToSaneStateAfter(args)
@@ -52,50 +99,7 @@ func main(args []string, opts *Options) (rc int, err error) {
 		os.Setenv("TERM", kitty.DefaultTermName)
 	}
 	if opts.InjectSelfOntoPath == "always" || (opts.InjectSelfOntoPath == "unless-root" && os.Geteuid() != 0) {
-		if exe, err := os.Executable(); err == nil {
-			if exe_dir, err := filepath.Abs(exe); err == nil {
-				realpath := func(x string) string {
-					if ans, err := filepath.EvalSymlinks(x); err == nil {
-						return ans
-					}
-					return x
-				}
-				exe_dir = realpath(filepath.Dir(exe_dir))
-				path_items := strings.Split(os.Getenv("PATH"), string(os.PathListSeparator))
-				realpath_items := utils.Map(realpath, path_items)
-				done := false
-				changed := false
-				is_executable_file := func(q string) bool {
-					if unix.Access(q, unix.X_OK) != nil {
-						return false
-					}
-					if s, err := os.Stat(q); err == nil && !s.IsDir() {
-						return true
-					}
-					return false
-				}
-				for i, x := range realpath_items {
-					q := filepath.Join(x, filepath.Base(exe))
-					if is_executable_file(q) {
-						// some kitten already in path
-						if utils.Samefile(q, exe) {
-							done = true
-							break
-						}
-						path_items = slices.Insert(path_items, i, exe_dir)
-						changed, done = true, true
-						break
-					}
-				}
-				if !done {
-					path_items = append(path_items, exe_dir)
-					changed = true
-				}
-				if changed {
-					os.Setenv("PATH", strings.Join(path_items, string(os.PathListSeparator)))
-				}
-			}
-		}
+		inject_self_onto_path()
 	}
 	if term := os.Getenv("TERM"); term == kitty.DefaultTermName && shell_integration.PathToTerminfoDb(term) == "" {
 		if terminfo_dir, err := shell_integration.EnsureTerminfoFiles(); err == nil {
