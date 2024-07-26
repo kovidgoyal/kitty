@@ -133,14 +133,18 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     check_call(dbus_message_iter_close_container, &args, &array);
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "{sv}", &array);
 
-    check_call(dbus_message_iter_open_container, &array, DBUS_TYPE_DICT_ENTRY, NULL, &dict);
-    static const char* urgency_key = "urgency";
-    APPEND(dict, DBUS_TYPE_STRING, urgency_key);
-    check_call(dbus_message_iter_open_container, &dict, DBUS_TYPE_VARIANT, DBUS_TYPE_BYTE_AS_STRING, &variant);
+#define append_sv_dictionary_entry(k, val_type, val) { \
+    check_call(dbus_message_iter_open_container, &array, DBUS_TYPE_DICT_ENTRY, NULL, &dict); \
+    static const char *key = k; \
+    APPEND(dict, DBUS_TYPE_STRING, key); \
+    check_call(dbus_message_iter_open_container, &dict, DBUS_TYPE_VARIANT, val_type##_AS_STRING, &variant); \
+    APPEND(variant, val_type, val); \
+    check_call(dbus_message_iter_close_container, &dict, &variant); \
+    check_call(dbus_message_iter_close_container, &array, &dict); \
+}
     uint8_t urgencyb = urgency & 3;
-    APPEND(variant, DBUS_TYPE_BYTE, urgencyb);
-    check_call(dbus_message_iter_close_container, &dict, &variant);
-    check_call(dbus_message_iter_close_container, &array, &dict);
+    append_sv_dictionary_entry("urgency", DBUS_TYPE_BYTE, urgencyb);
+
     check_call(dbus_message_iter_close_container, &args, &array);
     APPEND(args, DBUS_TYPE_INT32, timeout)
 #undef check_call

@@ -494,10 +494,10 @@ class FreeDesktopIntegration(DesktopIntegration):
         subtitle: Optional[str] = None,
         urgency: Urgency = Urgency.Normal,
     ) -> int:
-        if not icon_name and not icon_path:
-            icon_path = get_custom_window_icon()[1] or logo_png_file
         from .fast_data_types import dbus_send_notification
-        desktop_notification_id = dbus_send_notification(application, icon_path, title, body, 'Click to see changes', timeout, urgency.value)
+        app_icon = icon_name or icon_path or get_custom_window_icon()[1] or logo_png_file
+        desktop_notification_id = dbus_send_notification(
+            application, app_icon, title, body, 'Click to see changes', timeout, urgency.value)
         if debug_desktop_integration:
             log_error(f'Created notification with {desktop_notification_id=}')
         return desktop_notification_id
