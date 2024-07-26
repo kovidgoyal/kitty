@@ -118,9 +118,6 @@ StreamingBase64Decoder_init(PyObject *s, PyObject *args, PyObject *kwds) {
     unsigned long initial_capacity = 8 * 1024;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|k", kwlist, &initial_capacity)) return -1;
     StreamingBase64Decoder *self = (StreamingBase64Decoder*)s;
-    self->output = PyBytes_FromStringAndSize(NULL, initial_capacity);
-    if (!self->output) return -1;
-    self->output_capacity = initial_capacity;
     self->initial_capacity = initial_capacity;
     return 0;
 }
@@ -138,7 +135,8 @@ write_base64_data(StreamingBase64Decoder *self, const void *data, size_t len) {
     size_t sz = required_buffer_size_for_base64_decode(len);
     if ((self->output_sz + sz) > self->output_capacity) {
         size_t cap = MAX(self->output_capacity * 2, self->output_sz + sz + self->initial_capacity);
-        if (_PyBytes_Resize(&self->output, cap) != 0) return false;
+        if (self->output) { if (_PyBytes_Resize(&self->output, cap) != 0) return false; }
+        else { self->output = PyBytes_FromStringAndSize(NULL, cap); if (!self->output) return false; }
         self->output_capacity = cap;
     }
     if (!base64_decode8(data, len, (unsigned char*)(PyBytes_AS_STRING(self->output) + self->output_sz), &sz)) {
@@ -208,6 +206,7 @@ StreamingBase64Decoder_copy_output(StreamingBase64Decoder *self, PyObject *args 
 
 static PyObject*
 StreamingBase64Decoder_take_output(StreamingBase64Decoder *self, PyObject *args UNUSED) {
+    if (!self->output_sz) return PyBytes_FromStringAndSize(NULL, 0);
     RAII_PyObject(newbuf, PyBytes_FromStringAndSize(NULL, self->initial_capacity));
     if (!newbuf) return NULL;
     if (_PyBytes_Resize(&self->output, self->output_sz) != 0) return NULL;
