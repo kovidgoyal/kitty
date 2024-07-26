@@ -100,6 +100,8 @@ Detailed list of changes
 
 - Dispatch any clicks waiting for :opt:`click_interval` on key events (:iss:`7601`)
 
+- ``kitten run-shell``: Automatically add the directory containing the kitten binary to PATH if needed. Controlled via the ``--inject-self-onto-path`` option (`disc`:7668`)
+
 - Wayland: Fix an issue with mouse selections not being stopped when there are multiple OS windows (:iss:`7381`)
 
 - Splits layout: Fix the ``move_to_screen_edge`` action breaking when only a single window is present (:iss:`7621`)

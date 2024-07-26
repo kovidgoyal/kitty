@@ -6,21 +6,27 @@ import (
 	"fmt"
 	"kitty"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/shell_integration"
+	"kitty/tools/utils"
+
+	"golang.org/x/exp/slices"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
 
 type Options struct {
-	Shell            string
-	ShellIntegration string
-	Env              []string
-	Cwd              string
+	Shell              string
+	ShellIntegration   string
+	Env                []string
+	Cwd                string
+	InjectSelfOntoPath string
 }
 
 func main(args []string, opts *Options) (rc int, err error) {
@@ -44,6 +50,52 @@ func main(args []string, opts *Options) (rc int, err error) {
 	}
 	if os.Getenv("TERM") == "" {
 		os.Setenv("TERM", kitty.DefaultTermName)
+	}
+	if opts.InjectSelfOntoPath == "always" || (opts.InjectSelfOntoPath == "unless-root" && os.Geteuid() != 0) {
+		if exe, err := os.Executable(); err == nil {
+			if exe_dir, err := filepath.Abs(exe); err == nil {
+				realpath := func(x string) string {
+					if ans, err := filepath.EvalSymlinks(x); err == nil {
+						return ans
+					}
+					return x
+				}
+				exe_dir = realpath(filepath.Dir(exe_dir))
+				path_items := strings.Split(os.Getenv("PATH"), string(os.PathListSeparator))
+				realpath_items := utils.Map(realpath, path_items)
+				done := false
+				changed := false
+				is_executable_file := func(q string) bool {
+					if unix.Access(q, unix.X_OK) != nil {
+						return false
+					}
+					if s, err := os.Stat(q); err == nil && !s.IsDir() {
+						return true
+					}
+					return false
+				}
+				for i, x := range realpath_items {
+					q := filepath.Join(x, filepath.Base(exe))
+					if is_executable_file(q) {
+						// some kitten already in path
+						if utils.Samefile(q, exe) {
+							done = true
+							break
+						}
+						path_items = slices.Insert(path_items, i, exe_dir)
+						changed, done = true, true
+						break
+					}
+				}
+				if !done {
+					path_items = append(path_items, exe_dir)
+					changed = true
+				}
+				if changed {
+					os.Setenv("PATH", strings.Join(path_items, string(os.PathListSeparator)))
+				}
+			}
+		}
 	}
 	if term := os.Getenv("TERM"); term == kitty.DefaultTermName && shell_integration.PathToTerminfoDb(term) == "" {
 		if terminfo_dir, err := shell_integration.EnsureTerminfoFiles(); err == nil {
@@ -104,6 +156,12 @@ func EntryPoint(root *cli.Command) *cli.Command {
 	sc.Add(cli.OptionSpec{
 		Name: "--cwd",
 		Help: "The working directory to use when executing the shell.",
+	})
+	sc.Add(cli.OptionSpec{
+		Name:    "--inject-self-onto-path",
+		Help:    "Add the directory containing this kitten binary to PATH. Directory is added only if not already present.",
+		Default: "always",
+		Choices: "always,never,unless-root",
 	})
 
 	return sc
