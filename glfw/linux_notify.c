@@ -93,10 +93,10 @@ cancel_user_notification(DBusConnection *session_bus, uint32_t *id) {
 }
 
 notification_id_type
-glfw_dbus_send_user_notification(const char *app_name, const char* icon, const char *summary, const char *body, const char* action_name, int32_t timeout, int urgency, GLFWDBusnotificationcreatedfun callback, void *user_data) {
+glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *user_data) {
     DBusConnection *session_bus = glfw_dbus_session_bus();
     if (!session_bus) return 0;
-    if (timeout == -9999 && urgency == -9999) return cancel_user_notification(session_bus, user_data) ? 1 : 0;
+    if (n->timeout == -9999 && n->urgency == 255) return cancel_user_notification(session_bus, user_data) ? 1 : 0;
     static DBusConnection *added_signal_match = NULL;
     if (added_signal_match != session_bus) {
         dbus_bus_add_match(session_bus, "type='signal',interface='" NOTIFICATIONS_IFACE "',member='ActionInvoked'", NULL);
@@ -119,16 +119,16 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     dbus_message_iter_init_append(msg, &args);
 #define check_call(func, ...) if (!func(__VA_ARGS__)) { _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
 #define APPEND(to, type, val) check_call(dbus_message_iter_append_basic, &to, type, &val);
-    APPEND(args, DBUS_TYPE_STRING, app_name)
+    APPEND(args, DBUS_TYPE_STRING, n->app_name)
     APPEND(args, DBUS_TYPE_UINT32, replaces_id)
-    APPEND(args, DBUS_TYPE_STRING, icon)
-    APPEND(args, DBUS_TYPE_STRING, summary)
-    APPEND(args, DBUS_TYPE_STRING, body)
+    APPEND(args, DBUS_TYPE_STRING, n->icon)
+    APPEND(args, DBUS_TYPE_STRING, n->summary)
+    APPEND(args, DBUS_TYPE_STRING, n->body)
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "s", &array);
-    if (action_name) {
+    if (n->action_name) {
         static const char* default_action = "default";
         APPEND(array, DBUS_TYPE_STRING, default_action);
-        APPEND(array, DBUS_TYPE_STRING, action_name);
+        APPEND(array, DBUS_TYPE_STRING, n->action_name);
     }
     check_call(dbus_message_iter_close_container, &args, &array);
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "{sv}", &array);
@@ -142,11 +142,10 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     check_call(dbus_message_iter_close_container, &dict, &variant); \
     check_call(dbus_message_iter_close_container, &array, &dict); \
 }
-    uint8_t urgencyb = urgency & 3;
-    append_sv_dictionary_entry("urgency", DBUS_TYPE_BYTE, urgencyb);
+    append_sv_dictionary_entry("urgency", DBUS_TYPE_BYTE, n->urgency);
 
     check_call(dbus_message_iter_close_container, &args, &array);
-    APPEND(args, DBUS_TYPE_INT32, timeout)
+    APPEND(args, DBUS_TYPE_INT32, n->timeout)
 #undef check_call
 #undef APPEND
     if (!call_method_with_msg(session_bus, msg, 5000, notification_created, data)) return 0;

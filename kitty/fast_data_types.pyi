@@ -550,10 +550,10 @@ def dbus_set_notification_callback(c: Optional[Callable[[str, int, Union[str, in
 
 def dbus_send_notification(
     app_name: str,
-    icon: str,
-    summary: str,
+    app_icon: str,
+    title: str,
     body: str,
-    action_name: str,
+    action_text: str = '',
     timeout: int = -1,
     urgency: int = 1,
 ) -> int:
