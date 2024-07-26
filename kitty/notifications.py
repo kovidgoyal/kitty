@@ -215,7 +215,7 @@ class NotificationCommand:
     # event callbacks
     on_activation: Optional[Callable[['NotificationCommand'], None]] = None
 
-    def __init__(self, icon_data_cache: ReferenceType[IconDataCache], log: 'Log') -> None:
+    def __init__(self, icon_data_cache: 'ReferenceType[IconDataCache]', log: 'Log') -> None:
         self.icon_data_cache_ref = icon_data_cache
         self.log = log
 
@@ -613,11 +613,14 @@ class NotificationManager:
             if n.close_response_requested:
                 self.send_closed_response(n.channel_id, n.identifier)
 
+    def create_notification_cmd(self) -> NotificationCommand:
+        return NotificationCommand(ref(self.icon_data_cache), self.log)
+
     def send_test_notification(self) -> None:
         boss = get_boss()
         if w := boss.active_window:
             from time import monotonic
-            cmd = NotificationCommand(ref(self.icon_data_cache), self.log)
+            cmd = self.create_notification_cmd()
             now = monotonic()
             cmd.title = f'Test {now}'
             cmd.body = f'At: {now}'
@@ -625,7 +628,7 @@ class NotificationManager:
             self.notify_with_command(cmd, w.id)
 
     def send_new_version_notification(self, version: str) -> None:
-        cmd = NotificationCommand(ref(self.icon_data_cache), self.log)
+        cmd = self.create_notification_cmd()
         cmd.title = 'kitty update available!'
         cmd.body = f'kitty version {version} released'
         cmd.on_activation = self.desktop_integration.on_new_version_notification_activation
@@ -668,7 +671,7 @@ class NotificationManager:
         self, prev_cmd: NotificationCommand, channel_id: int, raw: str
     ) -> Optional[NotificationCommand]:
         metadata, payload = raw.partition(';')[::2]
-        cmd = NotificationCommand(ref(self.icon_data_cache), self.log)
+        cmd = self.create_notification_cmd()
         try:
             payload_type, payload_is_encoded = cmd.parse_metadata(metadata, prev_cmd)
         except Exception:
@@ -703,7 +706,7 @@ class NotificationManager:
 
     def handle_notification_cmd(self, channel_id: int, osc_code: int, raw: str) -> None:
         if osc_code == 99:
-            cmd = self.pending_commands.pop(channel_id, None) or NotificationCommand(ref(self.icon_data_cache), self.log)
+            cmd = self.pending_commands.pop(channel_id, None) or self.create_notification_cmd()
             q = self.parse_notification_cmd(cmd, channel_id, raw)
             if q is not None:
                 if q.done:
@@ -711,11 +714,11 @@ class NotificationManager:
                 else:
                     self.pending_commands[channel_id] = q
         elif osc_code == 9:
-            n = NotificationCommand(ref(self.icon_data_cache), self.log)
+            n = self.create_notification_cmd()
             n.title = raw
             self.notify_with_command(n, channel_id)
         elif osc_code == 777:
-            n = NotificationCommand(ref(self.icon_data_cache), self.log)
+            n = self.create_notification_cmd()
             parts = raw.split(';', 1)
             n.title, n.body = parts[0], (parts[1] if len(parts) > 1 else '')
             self.notify_with_command(n, channel_id)
