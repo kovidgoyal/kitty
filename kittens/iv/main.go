@@ -28,11 +28,11 @@ var rootCmd = &cobra.Command{
 }
 
 type gridConfig struct {
-    x_param int `yaml:"xParam"`    // horizontal parameter  
-    y_param int `yaml:"yParam"`    // vertical parameter 
+    x_param int `yaml:"xParam"`    // horizontal parameter
+    y_param int `yaml:"yParam"`    // vertical parameter
 }
 
-// Will contain all the window parameters 
+// Will contain all the window parameters
 type windowParameters struct {
 	Row    uint16
 	Col    uint16
@@ -40,10 +40,11 @@ type windowParameters struct {
 	yPixel uint16
 }
 
-// Will contain Global Navigation 
+// Will contain Global Navigation
 type navigationParameters struct {
-    x int          // Horizontal Grid Coordinate 
-    y int          // Vertical Grid Coordinate 
+	imageIndex int // Index of the Image selected as per globalImages
+    x int          // Horizontal Grid Coordinate
+    y int          // Vertical Grid Coordinate
 }
 
 // Config struct to hold the configuration
@@ -52,30 +53,40 @@ type Config struct {
 }
 
 var (
-    globalWindowParameters windowParameters // Contains Global Level Window Parameters 
+    globalWindowParameters windowParameters // Contains Global Level Window Parameters
     globalConfig Config
     globalNavigation navigationParameters
-    globalImages []string 
-    globalImagePages [][]string 
+    globalImages []string
+    globalImagePages [][]string
 )
 
-// This function takes globalConfig struct and parses the YAML data 
+func xyToIndex(x, y, x_param int) int {
+    return y*x_param + x
+}
+
+func indexToXY(index, x_param int) (int, int) {
+    y := index / x_param
+    x := index % x_param
+    return x, y
+}
+
+// This function takes globalConfig struct and parses the YAML data
 func loadConfig(filename string) error {
     data, err := os.ReadFile(filename)
     if err != nil {
         log.Fatalf("error: %v", err)
         return err
     }
-    
+
     err = yaml.Unmarshal(data, &globalConfig)
     if err != nil {
         log.Fatalf("error: %v", err)
     }
 
-    return nil 
+    return nil
 }
 
-// Gets the window size and modifies the globalWindowParameters (global struct) 
+// Gets the window size and modifies the globalWindowParameters (global struct)
 func getWindowSize(window windowParameters) error {
 	var err error
 	var f *os.File
@@ -85,14 +96,14 @@ func getWindowSize(window windowParameters) error {
 		var sz *unix.Winsize
 		if sz, err = unix.IoctlGetWinsize(int(f.Fd()), unix.TIOCGWINSZ); err == nil {
 			fmt.Printf("rows: %v columns: %v width: %v height %v\n", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
-			return nil 
+			return nil
 		}
 	}
 
 	fmt.Fprintln(os.Stderr, err)
 	// os.Exit(1)
-    
-    return err 
+
+    return err
 }
 
 // Function handler for changes in window sizes (will be added to goroutines)
@@ -103,7 +114,7 @@ func handleWindowSizeChange() {
 	}
 }
 
-// Checks if a given file is an image 
+// Checks if a given file is an image
 func isImage(fileName string) bool {
 	extensions := []string{".jpg", ".jpeg", ".png", ".gif", ".bmp"}
 	ext := strings.ToLower(filepath.Ext(fileName))
@@ -132,7 +143,7 @@ func discoverImages(dir string) error {
 	return nil
 }
 
-// Resizes images, return  
+// Resizes images, return
 func resizeImage(img image.Image, width, height uint) image.Image {
     return resize.Resize(width, height, img, resize.Lanczos3)
 }
@@ -161,7 +172,7 @@ func loadImage(filePath string) (image.Image, error) {
     return img, nil
 }
 
-// Print image to Kitty Terminal 
+// Print image to Kitty Terminal
 func printImageToKitty(encoded string, width, height int) {
     fmt.Printf("\x1b_Gf=1,t=%d,%d;x=%s\x1b\\", width, height, encoded)
 }
@@ -190,13 +201,13 @@ func readKeyboardInput(navParams *navigationParameters, wg *sync.WaitGroup) {
 		case 'h':
 			navParams.x++
 		case 'l':
-            if (navParams.x > 0) { // cursor is at left most part of the screen 
+            if (navParams.x > 0) { // cursor is at left most part of the screen
 			    navParams.x--
             }
 		case 'j':
 			navParams.y++
 		case 'k':
-            if (navParams.y > 0) { // cursor is at the top most part of the screen  
+            if (navParams.y > 0) { // cursor is at the top most part of the screen
 			    navParams.y--
 		    }
         }
@@ -221,10 +232,10 @@ func paginateImages() {
         if end > len(globalImages) {
             end = len(globalImages)
         }
-        
+
         row := globalImages[i:end]
         globalImagePages = append(globalImagePages, row)
-        
+
         if len(globalImagePages) == yParam {
             break
         }
@@ -258,7 +269,7 @@ func session(cmd *cobra.Command, args []string) {
 	go func() {
 		for {
 			sig := <-sigs
-			
+
             // if window size change syscall is detected, execute the handleWindowSizeChange()
 			if sig == syscall.SIGWINCH {
 				handleWindowSizeChange()
@@ -266,48 +277,38 @@ func session(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-    /* Getting Keyboard Inputs into Goroutines 
-    Here, the keyboard handler with keep updating the globalNavigation and update x and y. 
-    globalNavigation contains all the global cooridinates, updated regularly and keeps the whole 
-    program aware of current state of keyboard. 
-    */ 
-    
+    /* Getting Keyboard Inputs into Goroutines
+    Here, the keyboard handler with keep updating the globalNavigation and update x and y.
+    globalNavigation contains all the global cooridinates, updated regularly and keeps the whole
+    program aware of current state of keyboard.
+    */
+
     var keyboardWg sync.WaitGroup
     keyboardWg.Add(1)
 
     go readKeyboardInput(&globalNavigation, &keyboardWg)
 
-    // Till this point, WindowSize Changes would be handled and stored into globalWindowParameters 
-  
+    // Till this point, WindowSize Changes would be handled and stored into globalWindowParameters
+
     var config Config
 
     /* Load system configuration from kitty.conf
-    Currently, the loadConfig is loading configurations from config.yaml, parsing can be updated later 
-    */ 
+    Currently, the loadConfig is loading configurations from config.yaml, parsing can be updated later
+    */
     err = loadConfig("config.yaml")
     if (err != nil) {
         fmt.Printf("Error Parsing config file, exiting ....")
         os.Exit(1)
     }
-   
-    // if x_param or y_param are 0, exit 
+
+    // if x_param or y_param are 0, exit
     if (config.gridParam.x_param == 0 || config.gridParam.y_param == 0) {
         fmt.Printf("x_param or y_param set to 0, check the system config file for kitty")
         os.Exit(1)
     }
 
-    // config cannot be changed at runtime 
-	//err = renderImageGrid(images, gridConfig)
-	//if err != nil {
-	//	fmt.Printf("Error rendering image grid: %v\n", err)
-	//	os.Exit(1)
-	//}
 
-	//err = handleNavigation(images, layout)
-	//if err != nil {
-	//	fmt.Printf("Error during navigation: %v\n", err)
-	//	os.Exit(1)
-	//}
+
 }
 
 func main() {
