@@ -604,7 +604,6 @@ apple_url_open_callback(const char* url) {
     return true;
 }
 
-extern bool cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height);
 
 bool
 draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
@@ -613,7 +612,6 @@ draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, colo
     return cocoa_render_line_of_text(buf, fg, bg, output_buf, width, height);
 }
 
-extern uint8_t* render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height);
 
 uint8_t*
 draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height) {

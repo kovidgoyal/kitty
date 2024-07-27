@@ -363,36 +363,7 @@ void set_os_window_chrome(OSWindow *w);
 FONTS_DATA_HANDLE load_fonts_data(double, double, double);
 void send_prerendered_sprites_for_window(OSWindow *w);
 #ifdef __APPLE__
-void get_cocoa_key_equivalent(uint32_t, int, char *key, size_t key_sz, int*);
-typedef enum {
-    PREFERENCES_WINDOW,
-    NEW_OS_WINDOW,
-    NEW_OS_WINDOW_WITH_WD,
-    NEW_TAB_WITH_WD,
-    CLOSE_OS_WINDOW,
-    CLOSE_TAB,
-    NEW_TAB,
-    NEXT_TAB,
-    PREVIOUS_TAB,
-    DETACH_TAB,
-    LAUNCH_URLS,
-    NEW_WINDOW,
-    CLOSE_WINDOW,
-    RESET_TERMINAL,
-    CLEAR_TERMINAL_AND_SCROLLBACK,
-    RELOAD_CONFIG,
-    TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY,
-    TOGGLE_FULLSCREEN,
-    OPEN_KITTY_WEBSITE,
-    HIDE,
-    HIDE_OTHERS,
-    MINIMIZE,
-    QUIT,
-    USER_MENU_ACTION,
-
-    NUM_COCOA_PENDING_ACTIONS
-} CocoaPendingAction;
-void set_cocoa_pending_action(CocoaPendingAction action, const char*);
+#include "cocoa_window.h"
 #endif
 void request_frame_render(OSWindow *w);
 void request_tick_callback(void);
