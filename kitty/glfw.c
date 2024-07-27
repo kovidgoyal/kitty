@@ -11,26 +11,11 @@
 #include <structmember.h>
 #include "glfw-wrapper.h"
 #include "gl.h"
-#ifndef __APPLE__
+#ifdef __APPLE__
+#include "cocoa_window.h"
+#else
 #include "freetype_render_ui_text.h"
 #endif
-extern void cocoa_focus_window(void *w);
-extern long cocoa_window_number(void *w);
-extern void cocoa_create_global_menu(void);
-extern void cocoa_recreate_global_menu(void);
-extern void cocoa_system_beep(const char*);
-extern void cocoa_set_activation_policy(bool);
-extern bool cocoa_alt_option_key_pressed(unsigned long);
-extern void cocoa_toggle_secure_keyboard_entry(void);
-extern void cocoa_hide(void);
-extern void cocoa_clear_global_shortcuts(void);
-extern void cocoa_hide_others(void);
-extern void cocoa_minimize(void *w);
-extern void cocoa_set_uncaught_exception_handler(void);
-extern void cocoa_update_menu_bar_title(PyObject*);
-extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
-extern monotonic_t cocoa_cursor_blink_interval(void);
-
 #define debug debug_rendering
 
 typedef struct mouse_cursor {

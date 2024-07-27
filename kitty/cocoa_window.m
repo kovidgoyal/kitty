@@ -8,7 +8,7 @@
 
 #include "state.h"
 #include "cleanup.h"
-#include "monotonic.h"
+#include "cocoa_window.h"
 #include <Availability.h>
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
