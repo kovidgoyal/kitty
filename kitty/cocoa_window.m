@@ -361,6 +361,16 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
+static void
+do_notification_callback(NSString *identifier, const char *event) {
+    if (notification_activated_callback) {
+        PyObject *ret = PyObject_CallFunction(notification_activated_callback, "sz", event, (identifier ? [identifier UTF8String] : NULL));
+        if (ret) Py_DECREF(ret);
+        else PyErr_Print();
+    }
+}
+
+
 #ifdef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
 
 @interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
@@ -381,11 +391,7 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     - (void) userNotificationCenter:(NSUserNotificationCenter *)center
             didActivateNotification:(NSUserNotification *)notification {
         (void)(center); (void)(notification);
-        if (notification_activated_callback) {
-            PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
-                    notification.userInfo[@"user_id"] ? [notification.userInfo[@"user_id"] UTF8String] : NULL);
-            if (ret == NULL) PyErr_Print();
-            else Py_DECREF(ret);
+        do_notification_callback(notification.userInfo[@"user_id"], "activated");
         }
     }
 @end
@@ -413,14 +419,6 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 @interface NotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
 @end
 
-static void
-do_notification_callback(NSString *identifier, bool activated) {
-    PyObject *ret = PyObject_CallFunction(notification_activated_callback, "zO",
-            (identifier ? [identifier UTF8String] : NULL), activated ? Py_True : Py_False);
-    if (ret) Py_DECREF(ret);
-    else PyErr_Print();
-}
-
 @implementation NotificationDelegate
     - (void)userNotificationCenter:(UNUserNotificationCenter *)center
             willPresentNotification:(UNNotification *)notification
@@ -436,13 +434,11 @@ do_notification_callback(NSString *identifier, bool activated) {
             didReceiveNotificationResponse:(UNNotificationResponse *)response
             withCompletionHandler:(void (^)(void))completionHandler {
         (void)(center);
-        if (notification_activated_callback) {
-            if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
-                do_notification_callback([[[response notification] request] identifier], true);
-            } else if ([response.actionIdentifier isEqualToString:UNNotificationDismissActionIdentifier]) {
-                // this never actually happens on macOS. Bloody Crapple.
-                do_notification_callback([[[response notification] request] identifier], false);
-            }
+        if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
+            do_notification_callback([[[response notification] request] identifier], "activated");
+        } else if ([response.actionIdentifier isEqualToString:UNNotificationDismissActionIdentifier]) {
+            // this never actually happens on macOS. Bloody Crapple.
+            do_notification_callback([[[response notification] request] identifier], "closed");
         }
         completionHandler();
     }
@@ -503,10 +499,16 @@ schedule_notification(const char *identifier, const char *title, const char *bod
     UNNotificationRequest* request = [
         UNNotificationRequest requestWithIdentifier:(identifier ? @(identifier) : [NSString stringWithFormat:@"Id_%lu", counter++])
         content:content trigger:nil];
+    char *duped_ident = strdup(identifier ? identifier : "");
     [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
         if (error != nil) {
             log_error("Failed to show notification: %s", [[error localizedDescription] UTF8String]);
         }
+        bool ok = error == nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            do_notification_callback(@(duped_ident), ok ? "created" : "closed");
+            free(duped_ident);
+        });
     }];
     [content release];
 }
@@ -544,6 +546,7 @@ drain_pending_notifications(BOOL granted) {
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
+        if (!granted) do_notification_callback(@(n->identifier), "closed");
         free(n->identifier); free(n->title); free(n->body); free(n->subtitle);
         memset(n, 0, sizeof(QueuedNotification));
     }
