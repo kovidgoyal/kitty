@@ -56,7 +56,8 @@ longer than ``2048`` bytes, *before being encoded*.
 Both the ``title`` and ``body`` payloads must be either UTF-8 encoded plain
 text with no embedded escape codes, or UTF-8 text that is :rfc:`base64 <4648>`
 encoded, in which case there must be an ``e=1`` key in the metadata to indicate
-the payload is :rfc:`base64 <4648>` encoded.
+the payload is :rfc:`base64 <4648>` encoded. No HTML or other markup in the
+plain text is allowed. It is strictly plain text, to be interpreted as such.
 
 Being informed when user activates the notification
 -------------------------------------------------------

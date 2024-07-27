@@ -369,7 +369,6 @@ class DesktopIntegration:
         timeout: int = -1,
         application: str = 'kitty',
         icon_name: str = '', icon_path: str = '',
-        subtitle: Optional[str] = None,
         urgency: Urgency = Urgency.Normal,
     ) -> int:
         raise NotImplementedError('Implement me in subclass')
@@ -408,15 +407,18 @@ class MacOSIntegration(DesktopIntegration):
         timeout: int = -1,
         application: str = 'kitty',
         icon_name: str = '', icon_path: str = '',
-        subtitle: Optional[str] = None,
         urgency: Urgency = Urgency.Normal,
     ) -> int:
         desktop_notification_id = next(self.id_counter)
         from .fast_data_types import cocoa_send_notification
         # If the body is not set macos makes the title the body and uses
         # "kitty" as the title. So use a single space for the body in this
-        # case.
-        cocoa_send_notification(str(desktop_notification_id), title, body or ' ', subtitle, urgency.value)
+        # case. Although https://developer.apple.com/documentation/usernotifications/unnotificationcontent/body?language=objc
+        # says printf style strings are stripped this doesnt actually happen,
+        # so dont double %
+        # for %% escaping.
+        body = (body or ' ')
+        cocoa_send_notification(str(desktop_notification_id), title, body, '', urgency.value)
         return desktop_notification_id
 
     def notification_activated(self, event: str, ident: str) -> None:
@@ -491,11 +493,11 @@ class FreeDesktopIntegration(DesktopIntegration):
         timeout: int = -1,
         application: str = 'kitty',
         icon_name: str = '', icon_path: str = '',
-        subtitle: Optional[str] = None,
         urgency: Urgency = Urgency.Normal,
     ) -> int:
         from .fast_data_types import dbus_send_notification
         app_icon = icon_name or icon_path or get_custom_window_icon()[1] or logo_png_file
+        body = body.replace('<', '<\u200c')  # prevent HTML tags from being recognized
         desktop_notification_id = dbus_send_notification(
             app_name=application, app_icon=app_icon, title=title, body=body, timeout=timeout, urgency=urgency.value)
         if debug_desktop_integration:
