@@ -390,8 +390,6 @@ class DesktopIntegration:
 
 class MacOSIntegration(DesktopIntegration):
 
-    supports_close_events: bool = False
-
     def initialize(self) -> None:
         from .fast_data_types import cocoa_set_notification_activated_callback
         self.id_counter = count(start=1)

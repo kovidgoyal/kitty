@@ -354,10 +354,7 @@ static PyObject *notification_activated_callback = NULL;
 static PyObject*
 set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_CLEAR(notification_activated_callback);
-    if (callback != Py_None) {
-        notification_activated_callback = callback;
-        Py_INCREF(callback);
-    }
+    if (callback != Py_None) notification_activated_callback = Py_NewRef(callback);
     Py_RETURN_NONE;
 }
 
@@ -468,6 +465,89 @@ remove_delivered_notification(const char *identifier) {
     return true;
 }
 
+
+static NSLock *notifications_polling_lock = NULL;
+static bool polling_notifications = false;
+typedef struct tn { char *ident; bool closed; monotonic_t creation_time; } tn;
+static struct { tn *items; size_t count, capacity; monotonic_t creation_time; } tracked_notifications;
+static void dispatch_closed_notifications(void);
+#define CLOSE_POLL_TIME 60.
+#define CLOSE_POLL_INTERVAL 750
+
+static bool
+ident_in_list_of_notifications(NSString *ident, NSArray<UNNotification*> *list) {
+    for (UNNotification *n in list) {
+        if ([[[n request] identifier] isEqualToString:ident]) return true;
+    }
+    return false;
+}
+
+static void
+poll_for_closed_notifications(void) {
+    UNUserNotificationCenter *center = get_notification_center_safely();
+    if (!center) return;
+    [center getDeliveredNotificationsWithCompletionHandler:^(NSArray<UNNotification *> * notifications) {
+        // NSLog(@"num of delivered but not closed nots: %lu", (unsigned long)[notifications count]);
+        [notifications_polling_lock lock];
+        for (size_t i = 0; i < tracked_notifications.count; i++) {
+            if (!ident_in_list_of_notifications(@(tracked_notifications.items[i].ident), notifications)) tracked_notifications.items[i].closed = true;
+        }
+        [notifications_polling_lock unlock];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_closed_notifications();
+        });
+    }];
+}
+
+void
+cocoa_report_closed_notification(const char* ident) {
+    do_notification_callback(@(ident), "closed");
+}
+
+static void
+dispatch_closed_notifications(void) {
+    bool poll = false;
+    [notifications_polling_lock lock];
+    monotonic_t now = monotonic();
+    for (size_t i = tracked_notifications.count; i-- > 0; ) {
+        if (tracked_notifications.items[i].closed) {
+            set_cocoa_pending_action(COCOA_NOTIFICATION_CLOSED, tracked_notifications.items[i].ident);
+            free(tracked_notifications.items[i].ident);
+            remove_i_from_array(tracked_notifications.items, i, tracked_notifications.count);
+        } else if (now - tracked_notifications.items[i].creation_time < s_double_to_monotonic_t(CLOSE_POLL_TIME)) poll = true;
+    }
+    polling_notifications = poll;
+    [notifications_polling_lock unlock];
+    if (poll) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, CLOSE_POLL_INTERVAL * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            poll_for_closed_notifications();
+        });
+    }
+}
+
+static void
+track_notification(char *ident) {
+    UNUserNotificationCenter *center = get_notification_center_safely();
+    if (center) {
+        [notifications_polling_lock lock];
+        bool has_existing = false;
+        for (size_t i = 0; i < tracked_notifications.count; i++) {
+            if (strcmp(tracked_notifications.items[i].ident, ident) == 0) {
+                tracked_notifications.items[i].creation_time = monotonic();
+                has_existing = true;
+                break;
+            }
+        }
+        if (!has_existing) {
+            ensure_space_for(&tracked_notifications, items, tn, tracked_notifications.count + 1, capacity, 8, false);
+            tracked_notifications.items[tracked_notifications.count++] = (tn){.ident=ident, .creation_time=monotonic()};
+        }
+        bool needs_poll = !polling_notifications;
+        [notifications_polling_lock unlock];
+        if (needs_poll) poll_for_closed_notifications();
+    }
+}
+
 static void
 schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle, int urgency) {
     UNUserNotificationCenter *center = get_notification_center_safely();
@@ -501,13 +581,12 @@ schedule_notification(const char *identifier, const char *title, const char *bod
         content:content trigger:nil];
     char *duped_ident = strdup(identifier ? identifier : "");
     [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
-        if (error != nil) {
-            log_error("Failed to show notification: %s", [[error localizedDescription] UTF8String]);
-        }
+        if (error != nil) log_error("Failed to show notification: %s", [[error localizedDescription] UTF8String]);
         bool ok = error == nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             do_notification_callback(@(duped_ident), ok ? "created" : "closed");
-            free(duped_ident);
+            if (ok) track_notification(duped_ident);
+            else free(duped_ident);
         });
     }];
     [content release];
@@ -1037,6 +1116,8 @@ cleanup(void) {
     dockMenu = nil;
     if (beep_sound) [beep_sound release];
     beep_sound = nil;
+    if (notifications_polling_lock) [notifications_polling_lock release];
+    notifications_polling_lock = nil;
 
 #ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
     drain_pending_notifications(NO);
@@ -1087,6 +1168,7 @@ bool
 init_cocoa(PyObject *module) {
     cocoa_clear_global_shortcuts();
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    notifications_polling_lock = [NSLock new];
     register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
     return true;
 }

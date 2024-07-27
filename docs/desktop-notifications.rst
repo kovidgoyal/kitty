@@ -116,11 +116,12 @@ If no notification id was specified ``i=0`` will be used.
 If ``a=report`` is specified and the notification is activated/clicked on
 then both the activation report and close notification are sent.
 
-.. note::
-   Close events are best effort, some platforms such as macOS do not have
-   events when notifications are closed. Applications can use the
-   :ref:`notifications_query` to check if close events are supported
-   by the current terminal emulator.
+.. note:: On macOS the OS does not supply notification
+   closed events to applications. As such close events must be implemented
+   via polling. It is up to the terminal emulator to decide a reasonable
+   time limit for how long to poll, before giving up. kitty polls for 60
+   seconds. Therefore, terminal applications should not rely on close events
+   being authoritative.
 
 
 Closing an existing notification
@@ -205,7 +206,8 @@ Key      Value                 Default    Description
          ``-``
 
 ``d``    ``0`` or ``1``        ``1``      Indicates if the notification is
-                                          complete or not.
+                                          complete or not. A non-zero value
+                                          means it is complete.
 
 ``e``    ``0`` or ``1``        ``0``      If set to ``1`` means the payload is :rfc:`base64 <4648>` encoded UTF-8,
                                           otherwise it is plain UTF-8 text with no C0 control codes in it
