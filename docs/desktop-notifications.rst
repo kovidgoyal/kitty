@@ -59,6 +59,18 @@ encoded, in which case there must be an ``e=1`` key in the metadata to indicate
 the payload is :rfc:`base64 <4648>` encoded. No HTML or other markup in the
 plain text is allowed. It is strictly plain text, to be interpreted as such.
 
+Allowing users to filter notifications
+-------------------------------------------------------
+
+Well behaved applications should identify themselves to the terminal
+by means of two keys ``f`` which is the application name and ``t``
+which is the notification type. These are free form keys, they can contain
+any values, their purpose is to allow users to easily filter out
+notifications they do not want. Both keys must have :rfc:`base64 <4648>`
+encoded UTF-8 text as their values. Terminals can then present UI to users
+to allow them to filter out notifications from applications they do not want.
+
+
 Being informed when user activates the notification
 -------------------------------------------------------
 
@@ -234,6 +246,14 @@ Key      Value                 Default    Description
                                           If not specified normal is used.
 
 ``c``    ``0`` or ``1``        ``0``      When non-zero an escape code is sent to the application when the notification is closed.
+
+``f``    :rfc:`base64 <4648>`  ``unset``  The name of the application sending the notification. Can be used to filter out notifications.
+         encoded UTF-8
+         application name
+
+``t``    :rfc:`base64 <4648>`  ``unset``  The type of the notification. Can be used to filter out notifications.
+         encoded UTF-8
+         notification type
 =======  ====================  ========== =================
 
 

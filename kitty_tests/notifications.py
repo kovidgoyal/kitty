@@ -6,15 +6,17 @@ import os
 import re
 import tempfile
 from base64 import standard_b64encode
-from typing import Optional
 
 from kitty.notifications import Channel, DesktopIntegration, IconDataCache, NotificationManager, UIState, Urgency
 
 from . import BaseTest
 
 
-def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path=''):
-    return {'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_name': icon_name, 'icon_path': icon_path}
+def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path='', application_name='', notification_type=''):
+    return {
+        'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_name': icon_name, 'icon_path': icon_path,
+        'application_name': application_name, 'notification_type': notification_type,
+    }
 
 
 class DesktopIntegration(DesktopIntegration):
@@ -37,18 +39,10 @@ class DesktopIntegration(DesktopIntegration):
             self.notification_manager.notification_closed(desktop_notification_id)
         return self.close_succeeds
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon_name: str = '', icon_path: str = '',
-        subtitle: Optional[str] = None,
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
+    def notify(self, cmd) -> int:
         self.counter += 1
-        ans = n(title, body, urgency, self.counter, icon_name)
-        ans['icon_path'] = os.path.basename(icon_path)
+        title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
+        ans = n(title, body, urgency, self.counter, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type)
         self.notifications.append(ans)
         return self.counter
 
@@ -229,6 +223,15 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
             h('i=s')
             self.ae(di.notifications, [n(text, text)])
             reset()
+
+    # Test application name and notification type
+    def e(x):
+        return standard_b64encode(x.encode()).decode()
+
+    h(f'i=t:d=0:f={e("app")};title')
+    h(f'i=t:t={e("test")}')
+    self.ae(di.notifications, [n(application_name='app', notification_type='test')])
+    reset()
 
     # Test Disk Cache
     dc = IconDataCache(base_cache_dir=tdir, max_cache_size=4)

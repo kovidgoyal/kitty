@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, FrozenSet, Iterator, List, NamedTuple, O
 from weakref import ReferenceType, ref
 
 from .constants import cache_dir, is_macos, logo_png_file
-from .fast_data_types import ESC_OSC, StreamingBase64Decoder, current_focused_os_window_id, get_boss
+from .fast_data_types import ESC_OSC, StreamingBase64Decoder, base64_decode, current_focused_os_window_id, get_boss
 from .types import run_once
 from .typing import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
@@ -203,6 +203,8 @@ class NotificationCommand:
     icon_data_key: str = ''
     icon_path: str = ''
     icon_name: str = ''
+    application_name: str = ''
+    notification_type: str = ''
 
     # payload handling
     current_payload_type: PayloadType = PayloadType.title
@@ -276,6 +278,16 @@ class NotificationCommand:
                     self.icon_data_key = sanitize_id(v)
                 elif k == 'n':
                     self.icon_name = v
+                elif k == 'f':
+                    try:
+                        self.application_name = base64_decode(v).decode('utf-8', 'replace')
+                    except Exception:
+                        self.log('Ignoring invalid application_name in notification: {v!r}')
+                elif k == 't':
+                    try:
+                        self.notification_type = base64_decode(v).decode('utf-8', 'replace')
+                    except Exception:
+                        self.log('Ignoring invalid notification type in notification: {v!r}')
         if not prev.done and prev.identifier == self.identifier:
             self.merge_metadata(prev)
         return payload_type, payload_is_encoded
@@ -294,6 +306,10 @@ class NotificationCommand:
             self.icon_data_key = prev.icon_data_key
         if not self.icon_name:
             self.icon_name = prev.icon_name
+        if not self.application_name:
+            self.application_name = prev.application_name
+        if not self.notification_type:
+            self.notification_type = prev.notification_type
         self.icon_path = prev.icon_path
 
     def create_payload_buffer(self, payload_type: PayloadType) -> EncodedDataStore:
@@ -347,6 +363,12 @@ class NotificationCommand:
             icd = self.icon_data_cache_ref()
             if icd:
                 self.icon_path = icd.get_icon(self.icon_data_key)
+        if self.title:
+            self.title = sanitize_text(self.title)
+            self.body = sanitize_text(self.body)
+        else:
+            self.title = sanitize_text(self.body)
+            self.body = ''
 
 
 class DesktopIntegration:
@@ -363,14 +385,7 @@ class DesktopIntegration:
     def close_notification(self, desktop_notification_id: int) -> bool:
         raise NotImplementedError('Implement me in subclass')
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon_name: str = '', icon_path: str = '',
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
+    def notify(self, nc: NotificationCommand) -> int:
         raise NotImplementedError('Implement me in subclass')
 
     def on_new_version_notification_activation(self, cmd: NotificationCommand) -> None:
@@ -401,14 +416,7 @@ class MacOSIntegration(DesktopIntegration):
             log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
         return close_succeeded
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon_name: str = '', icon_path: str = '',
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
+    def notify(self, nc: NotificationCommand) -> int:
         desktop_notification_id = next(self.id_counter)
         from .fast_data_types import cocoa_send_notification
         # If the body is not set macos makes the title the body and uses
@@ -417,8 +425,9 @@ class MacOSIntegration(DesktopIntegration):
         # says printf style strings are stripped this doesnt actually happen,
         # so dont double %
         # for %% escaping.
-        body = (body or ' ')
-        cocoa_send_notification(str(desktop_notification_id), title, body, '', urgency.value)
+        body = (nc.body or ' ')
+        urgency = Urgency.Normal if nc.urgency is None else nc.urgency
+        cocoa_send_notification(str(desktop_notification_id), nc.title, body, '', urgency.value)
         return desktop_notification_id
 
     def notification_activated(self, event: str, ident: str) -> None:
@@ -487,19 +496,13 @@ class FreeDesktopIntegration(DesktopIntegration):
             elif event_type == 'closed':
                 self.notification_manager.notification_closed(desktop_notification_id)
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon_name: str = '', icon_path: str = '',
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
+    def notify(self, nc: NotificationCommand) -> int:
         from .fast_data_types import dbus_send_notification
-        app_icon = icon_name or icon_path or get_custom_window_icon()[1] or logo_png_file
-        body = body.replace('<', '<\u200c')  # prevent HTML tags from being recognized
+        app_icon = nc.icon_name or nc.icon_path or get_custom_window_icon()[1] or logo_png_file
+        body = nc.body.replace('<', '<\u200c')  # prevent HTML tags from being recognized
+        urgency = Urgency.Normal if nc.urgency is None else nc.urgency
         desktop_notification_id = dbus_send_notification(
-            app_name=application, app_icon=app_icon, title=title, body=body, timeout=timeout, urgency=urgency.value)
+            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, timeout=-1, urgency=urgency.value)
         if debug_desktop_integration:
             log_error(f'Created notification with {desktop_notification_id=}')
         return desktop_notification_id
@@ -648,15 +651,9 @@ class NotificationManager:
     def notify_with_command(self, cmd: NotificationCommand, channel_id: int) -> Optional[int]:
         cmd.channel_id = channel_id
         cmd.finalise()
-        title = cmd.title or cmd.body
-        body = cmd.body if cmd.title else ''
-        if not title or not self.is_notification_allowed(cmd, channel_id):
+        if not cmd.title or not self.is_notification_allowed(cmd, channel_id):
             return None
-        urgency = Urgency.Normal if cmd.urgency is None else cmd.urgency
-        desktop_notification_id = self.desktop_integration.notify(
-            title=sanitize_text(title), body=sanitize_text(body), urgency=urgency,
-            icon_name=cmd.icon_name, icon_path=cmd.icon_path,
-        )
+        desktop_notification_id = self.desktop_integration.notify(cmd)
         self.register_in_progress_notification(cmd, desktop_notification_id)
         return desktop_notification_id
 
