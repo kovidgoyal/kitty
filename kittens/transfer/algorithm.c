@@ -933,8 +933,30 @@ parse_ftc(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+pyxxh128_hash(PyObject *self UNUSED, PyObject *b) {
+    RAII_PY_BUFFER(data);
+    if (PyObject_GetBuffer(b, &data, PyBUF_SIMPLE) == -1) return NULL;
+    XXH128_canonical_t c;
+    XXH128_canonicalFromHash(&c, XXH3_128bits(data.buf, data.len));
+    return PyBytes_FromStringAndSize((char*)c.digest, sizeof(c.digest));
+}
+
+static PyObject*
+pyxxh128_hash_with_seed(PyObject *self UNUSED, PyObject *args) {
+    RAII_PY_BUFFER(data);
+    unsigned long long seed;
+    if (!PyArg_ParseTuple(args, "y*K", &data, &seed)) return NULL;
+    XXH128_canonical_t c;
+    XXH128_canonicalFromHash(&c, XXH3_128bits_withSeed(data.buf, data.len, seed));
+    return PyBytes_FromStringAndSize((char*)c.digest, sizeof(c.digest));
+}
+
+
 static PyMethodDef module_methods[] = {
     {"parse_ftc", parse_ftc, METH_VARARGS, ""},
+    {"xxh128_hash", pyxxh128_hash, METH_O, ""},
+    {"xxh128_hash_with_seed", pyxxh128_hash_with_seed, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

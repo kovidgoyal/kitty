@@ -325,8 +325,7 @@ def generate_wrappers(glfw_header: str) -> None:
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)
     void glfwWaylandSetupLayerShellForNextWindow(const GLFWLayerShellConfig *c)
     pid_t glfwWaylandCompositorPID(void)
-    unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, \
-const char *action_text, int32_t timeout, int urgency, GLFWDBusnotificationcreatedfun callback, void *data)
+    unsigned long long glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
     int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
     void glfwSetX11WindowAsDock(int32_t x11_window_id)

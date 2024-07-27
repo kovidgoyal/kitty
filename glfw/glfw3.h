@@ -1315,6 +1315,11 @@ typedef struct GLFWLayerShellConfig {
     void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
 } GLFWLayerShellConfig;
 
+typedef struct GLFWDBUSNotificationData {
+    const char *app_name, *icon, *summary, *body, *action_name;
+    int32_t timeout; uint8_t urgency;
+} GLFWDBUSNotificationData;
+
 /*! @brief The function pointer type for error callbacks.
  *
  *  This is the function pointer type for error callbacks.  An error callback

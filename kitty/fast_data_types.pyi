@@ -305,6 +305,9 @@ WINDOW_MINIMIZED: int
 # }}}
 
 
+ReadOnlyBuffer = Union[bytes, bytearray, memoryview]
+
+
 def encode_key_for_tty(
     key: int = 0,
     shifted_key: int = 0,
@@ -547,10 +550,10 @@ def dbus_set_notification_callback(c: Optional[Callable[[str, int, Union[str, in
 
 def dbus_send_notification(
     app_name: str,
-    icon: str,
-    summary: str,
+    app_icon: str,
+    title: str,
     body: str,
-    action_name: str,
+    action_text: str = '',
     timeout: int = -1,
     urgency: int = 1,
 ) -> int:
@@ -838,7 +841,7 @@ def os_window_font_size(
     pass
 
 
-def cocoa_set_notification_activated_callback(identifier: Optional[Callable[[str, bool], None]]) -> None:
+def cocoa_set_notification_activated_callback(identifier: Optional[Callable[[str, str], None]]) -> None:
     pass
 
 
@@ -1698,6 +1701,16 @@ class MousePosition(TypedDict):
     in_left_half_of_cell: bool
 
 def get_mouse_data_for_window(os_window_id: int, tab_id: int, window_id: int) -> Optional[MousePosition]: ...
+
+
+class StreamingBase64Decoder:
+    def __init__(self, initial_capacity: int = 8 *1024) -> None: ...  # set the initial output buffer capacity
+    def add(self, data: ReadOnlyBuffer) -> int: ...  # add the base64 data
+    def flush(self) -> None: ...  # indicate end of base64 data, left over bytes are processed as if they were followed by padding
+    def take_output(self) -> bytes: ...  # take the output so far. The decoder no longer references this output
+    def copy_output(self) -> bytes: ...  # copy the output so far
+    def __len__(self) -> int: ...  # return the length of the current output
+    def leftover_bytes(self) -> memoryview: ...  # return the currently leftover bytes that will be consumed by flush()
 
 
 class DiskCache:

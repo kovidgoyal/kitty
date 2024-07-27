@@ -56,7 +56,20 @@ longer than ``2048`` bytes, *before being encoded*.
 Both the ``title`` and ``body`` payloads must be either UTF-8 encoded plain
 text with no embedded escape codes, or UTF-8 text that is :rfc:`base64 <4648>`
 encoded, in which case there must be an ``e=1`` key in the metadata to indicate
-the payload is :rfc:`base64 <4648>` encoded.
+the payload is :rfc:`base64 <4648>` encoded. No HTML or other markup in the
+plain text is allowed. It is strictly plain text, to be interpreted as such.
+
+Allowing users to filter notifications
+-------------------------------------------------------
+
+Well behaved applications should identify themselves to the terminal
+by means of two keys ``f`` which is the application name and ``t``
+which is the notification type. These are free form keys, they can contain
+any values, their purpose is to allow users to easily filter out
+notifications they do not want. Both keys must have :rfc:`base64 <4648>`
+encoded UTF-8 text as their values. Terminals can then present UI to users
+to allow them to filter out notifications from applications they do not want.
+
 
 Being informed when user activates the notification
 -------------------------------------------------------
@@ -116,11 +129,12 @@ If no notification id was specified ``i=0`` will be used.
 If ``a=report`` is specified and the notification is activated/clicked on
 then both the activation report and close notification are sent.
 
-.. note::
-   Close events are best effort, some platforms such as macOS do not have
-   events when notifications are closed. Applications can use the
-   :ref:`notifications_query` to check if close events are supported
-   by the current terminal emulator.
+.. note:: On macOS the OS does not supply notification
+   closed events to applications. As such close events must be implemented
+   via polling. It is up to the terminal emulator to decide a reasonable
+   time limit for how long to poll, before giving up. kitty polls for 60
+   seconds. Therefore, terminal applications should not rely on close events
+   being authoritative.
 
 
 Closing an existing notification
@@ -205,7 +219,8 @@ Key      Value                 Default    Description
          ``-``
 
 ``d``    ``0`` or ``1``        ``1``      Indicates if the notification is
-                                          complete or not.
+                                          complete or not. A non-zero value
+                                          means it is complete.
 
 ``e``    ``0`` or ``1``        ``0``      If set to ``1`` means the payload is :rfc:`base64 <4648>` encoded UTF-8,
                                           otherwise it is plain UTF-8 text with no C0 control codes in it
@@ -231,6 +246,14 @@ Key      Value                 Default    Description
                                           If not specified normal is used.
 
 ``c``    ``0`` or ``1``        ``0``      When non-zero an escape code is sent to the application when the notification is closed.
+
+``f``    :rfc:`base64 <4648>`  ``unset``  The name of the application sending the notification. Can be used to filter out notifications.
+         encoded UTF-8
+         application name
+
+``t``    :rfc:`base64 <4648>`  ``unset``  The type of the notification. Can be used to filter out notifications.
+         encoded UTF-8
+         notification type
 =======  ====================  ========== =================
 
 

@@ -2,17 +2,21 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import os
 import re
+import tempfile
 from base64 import standard_b64encode
-from typing import Optional
 
-from kitty.notifications import Channel, DesktopIntegration, NotificationManager, UIState, Urgency
+from kitty.notifications import Channel, DesktopIntegration, IconDataCache, NotificationManager, UIState, Urgency
 
 from . import BaseTest
 
 
-def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1):
-    return {'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id}
+def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path='', application_name='', notification_type=''):
+    return {
+        'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_name': icon_name, 'icon_path': icon_path,
+        'application_name': application_name, 'notification_type': notification_type,
+    }
 
 
 class DesktopIntegration(DesktopIntegration):
@@ -35,17 +39,11 @@ class DesktopIntegration(DesktopIntegration):
             self.notification_manager.notification_closed(desktop_notification_id)
         return self.close_succeeds
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon: bool = True,
-        subtitle: Optional[str] = None,
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
+    def notify(self, cmd) -> int:
         self.counter += 1
-        self.notifications.append(n(title, body, urgency, self.counter))
+        title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
+        ans = n(title, body, urgency, self.counter, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type)
+        self.notifications.append(ans)
         return self.counter
 
 
@@ -71,10 +69,10 @@ class Channel(Channel):
         self.responses.append(osc_escape_code)
 
 
-def do_test(self: 'TestNotifications') -> None:
+def do_test(self: 'TestNotifications', tdir: str) -> None:
     di = DesktopIntegration(None)
     ch = Channel()
-    nm = NotificationManager(di, ch, lambda *a, **kw: None)
+    nm = NotificationManager(di, ch, lambda *a, **kw: None, base_cache_dir=tdir)
     di.notification_manager = nm
 
     def reset():
@@ -204,16 +202,75 @@ def do_test(self: 'TestNotifications') -> None:
     # Test querying
     h('i=xyz:p=?')
     self.assertFalse(di.notifications)
-    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close:c=1'
+    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon:c=1'
     self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
     self.assertFalse(di.notifications)
     self.ae(ch.responses, [f'99;i=0:p=?;{qr}'])
 
+    # Test MIME streaming
+    for padding in (True, False):
+        for extra in ('a', 'ab', 'abc', 'abcd'):
+            text = 'some reasonably long text to test MIME streaming with: '
+            encoded = standard_b64encode(text.encode()).decode()
+            if not padding:
+                encoded = encoded.rstrip('=')
+            for t in encoded:
+                h(f'i=s:e=1:d=0;{t}')
+            h(f'i=s:e=1:d=0:p=body;{encoded[:13]}')
+            h(f'i=s:e=1:d=0:p=body;{encoded[13:]}')
+            h('i=s')
+            self.ae(di.notifications, [n(text, text)])
+            reset()
+
+    # Test application name and notification type
+    def e(x):
+        return standard_b64encode(x.encode()).decode()
+
+    h(f'i=t:d=0:f={e("app")};title')
+    h(f'i=t:t={e("test")}')
+    self.ae(di.notifications, [n(application_name='app', notification_type='test')])
+    reset()
+
+    # Test Disk Cache
+    dc = IconDataCache(base_cache_dir=tdir, max_cache_size=4)
+    cache_dir = dc._ensure_state()
+    for i in range(5):
+        dc.add_icon(str(i), str(i).encode())
+    self.ae(set(dc.keys()), set(map(str, range(1, 5))))
+    del dc
+    self.assertFalse(os.path.exists(cache_dir))
+
+    # Test icons
+    def send_with_icon(data='', n='', g=''):
+        m = ''
+        if n:
+            m += f'n={n}:'
+        if g:
+            m += f'g={g}:'
+        h(f'i=9:d=0:{m};title')
+        h(f'i=9:p=icon;{data}')
+
+    dc = nm.icon_data_cache
+    send_with_icon(n='mycon')
+    self.ae(di.notifications, [n(icon_name='mycon')])
+    reset()
+    send_with_icon(g='gid')
+    self.ae(di.notifications, [n()])
+    reset()
+    send_with_icon(g='gid', data='1')
+    self.ae(di.notifications, [n(icon_path=dc.hash(b'1'))])
+    send_with_icon(g='gid', n='moose')
+    self.ae(di.notifications[-1], n(icon_name='moose', icon_path=dc.hash(b'1'), desktop_notification_id=len(di.notifications)))
+    send_with_icon(g='gid2', data='2')
+    self.ae(di.notifications[-1], n(icon_path=dc.hash(b'2'), desktop_notification_id=len(di.notifications)))
+    reset()
+
 
 class TestNotifications(BaseTest):
 
     def test_desktop_notify(self):
-        do_test(self)
+        with tempfile.TemporaryDirectory() as tdir:
+            do_test(self, tdir)
 

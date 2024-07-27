@@ -1472,13 +1472,13 @@ class Window:
         when, duration, action, notify_cmdline = opts.notify_on_cmd_finish
 
         if last_cmd_output_duration >= duration and when != 'never':
-            from .notifications import NotificationCommand, OnlyWhen
-            cmd = NotificationCommand()
+            from .notifications import OnlyWhen
+            nm = get_boss().notification_manager
+            cmd = nm.create_notification_cmd()
             cmd.title = 'kitty'
             s = self.last_cmd_cmdline.replace('\\\n', ' ')
             cmd.body = f'Command {s} finished with status: {exit_status}.\nClick to focus.'
             cmd.only_when = OnlyWhen(when)
-            nm = get_boss().notification_manager
             if not nm.is_notification_allowed(cmd, self.id):
                 return
             if action == 'notify':

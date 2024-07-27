@@ -20,6 +20,9 @@ class Hasher:
     @property
     def name(self) -> str: ...
 
+def xxh128_hash(data: ReadOnlyBuffer) -> bytes: ...
+def xxh128_hash_with_seed(data: ReadOnlyBuffer, seed: int) -> bytes: ...
+
 
 class Patcher:
 

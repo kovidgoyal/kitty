@@ -1,20 +1,101 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import re
 from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
 from itertools import count
-from typing import Any, Callable, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Dict, FrozenSet, Iterator, List, NamedTuple, Optional, Tuple, Union
+from weakref import ReferenceType, ref
 
-from .constants import is_macos, logo_png_file
-from .fast_data_types import ESC_OSC, current_focused_os_window_id, get_boss
+from .constants import cache_dir, is_macos, logo_png_file
+from .fast_data_types import ESC_OSC, StreamingBase64Decoder, base64_decode, current_focused_os_window_id, get_boss
 from .types import run_once
 from .typing import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
 
 debug_desktop_integration = False
+
+
+class IconDataCache:
+
+
+    def __init__(self, base_cache_dir: str = '', max_cache_size: int = 128 * 1024 * 1024):
+        self.max_cache_size = max_cache_size
+        self.key_map: 'OrderedDict[str, str]' = OrderedDict()
+        self.base_cache_dir = base_cache_dir
+        self.cache_dir = ''
+        self.total_size = 0
+        import struct
+        self.seed: int = struct.unpack("!Q", os.urandom(8))[0]
+
+    def _ensure_state(self) -> str:
+        if not self.cache_dir:
+            self.cache_dir = os.path.join(self.base_cache_dir or cache_dir(), 'notifications-icons', str(os.getpid()))
+            os.makedirs(self.cache_dir, exist_ok=True, mode=0o700)
+        return self.cache_dir
+
+    def __del__(self) -> None:
+        if self.cache_dir:
+            import shutil
+            with suppress(FileNotFoundError):
+                shutil.rmtree(self.cache_dir)
+            self.cache_dir = ''
+
+    def keys(self) -> Iterator[str]:
+        yield from self.key_map.keys()
+
+    def hash(self, data: bytes) -> str:
+        from kittens.transfer.rsync import xxh128_hash_with_seed
+        d = xxh128_hash_with_seed(data, self.seed)
+        return d.hex()
+
+    def add_icon(self, key: str, data: bytes) -> str:
+        self._ensure_state()
+        data_hash = self.hash(data)
+        path = os.path.join(self.cache_dir, data_hash)
+        if not os.path.exists(path):
+            with open(path, 'wb') as f:
+                f.write(data)
+            self.total_size += len(data)
+        self.key_map.pop(key, None)  # mark this key as being used recently
+        self.key_map[key] = data_hash
+        self.prune()
+        return path
+
+    def get_icon(self, key: str) -> str:
+        self._ensure_state()
+        data_hash = self.key_map.pop(key, None)
+        if data_hash:
+            self.key_map[key] = data_hash  # mark this key as being used recently
+            return os.path.join(self.cache_dir, data_hash)
+        return ''
+
+    def clear(self) -> None:
+        while self.key_map:
+            key, data_hash = self.key_map.popitem(False)
+            self._remove_data_hash(data_hash)
+
+    def prune(self) -> None:
+        self._ensure_state()
+        while self.total_size > self.max_cache_size and self.key_map:
+            key, data_hash = self.key_map.popitem(False)
+            self._remove_data_hash(data_hash)
+
+    def _remove_data_hash(self, data_hash: str) -> None:
+        path = os.path.join(self.cache_dir, data_hash)
+        with suppress(FileNotFoundError):
+            sz = os.path.getsize(path)
+            os.remove(path)
+            self.total_size -= sz
+
+    def remove_icon(self, key: str) -> None:
+        self._ensure_state()
+        data_hash = self.key_map.pop(key, None)
+        if data_hash:
+            self._remove_data_hash(data_hash)
 
 
 class Urgency(Enum):
@@ -29,6 +110,7 @@ class PayloadType(Enum):
     body = 'body'
     query = '?'
     close = 'close'
+    icon = 'icon'
 
     @property
     def is_text(self) -> bool:
@@ -49,11 +131,19 @@ class Action(Enum):
 
 class DataStore:
 
-    def __init__(self) -> None:
+    def __init__(self, max_size: int = 4 * 1024 * 1024) -> None:
         self.buf: List[bytes] = []
+        self.current_size = 0
+        self.max_size = max_size
+        self.truncated = 0
 
     def __call__(self, data: bytes) -> None:
-        self.buf.append(data)
+        if data:
+            if self.current_size > self.max_size:
+                self.truncated += len(data)
+            else:
+                self.current_size += len(data)
+                self.buf.append(data)
 
     def finalise(self) -> bytes:
         return b''.join(self.buf)
@@ -62,8 +152,12 @@ class DataStore:
 class EncodedDataStore:
 
     def __init__(self, data_store: DataStore) -> None:
-        self.current_leftover_bytes = memoryview(b'')
+        self.decoder = StreamingBase64Decoder(initial_capacity=4096)
         self.data_store = data_store
+
+    @property
+    def truncated(self) -> int:
+        return self.data_store.truncated
 
     def add_unencoded_data(self, data: Union[str, bytes]) -> None:
         if isinstance(data, str):
@@ -74,43 +168,14 @@ class EncodedDataStore:
     def add_base64_data(self, data: Union[str, bytes]) -> None:
         if isinstance(data, str):
             data = data.encode('ascii')
-
-        def write_saving_leftover_bytes(data: bytes) -> None:
-            if len(data) == 0:
-                return
-            extra = len(data) % 4
-            if extra > 0:
-                mv = memoryview(data)
-                self.current_leftover_bytes = memoryview(bytes(mv[-extra:]))
-                mv = mv[:-extra]
-                if len(mv) > 0:
-                    self._write_base64_data(mv)
-            else:
-                self._write_base64_data(data)
-
-        if len(self.current_leftover_bytes) > 0:
-            extra = 4 - len(self.current_leftover_bytes)
-            if len(data) >= extra:
-                self._write_base64_data(memoryview(bytes(self.current_leftover_bytes) + data[:extra]))
-                self.current_leftover_bytes = memoryview(b'')
-                data = memoryview(data)[extra:]
-                write_saving_leftover_bytes(data)
-            else:
-                self.current_leftover_bytes = memoryview(bytes(self.current_leftover_bytes) + data)
-        else:
-            write_saving_leftover_bytes(data)
-
-    def _write_base64_data(self, b: bytes) -> None:
-        from base64 import standard_b64decode
-        d = standard_b64decode(b)
-        self.data_store(d)
+        self.decoder.add(data)
+        if len(self.decoder) >= self.data_store.max_size:
+            self.data_store(self.decoder.take_output())
 
     def flush_encoded_data(self) -> None:
-        b = self.current_leftover_bytes
-        self.current_leftover_bytes = memoryview(b'')
-        padding = 4 - len(b)
-        if padding in (1, 2):
-            self._write_base64_data(memoryview(bytes(b) + b'=' * padding))
+        self.decoder.flush()
+        if len(self.decoder):
+            self.data_store(self.decoder.take_output())
 
     def finalise(self) -> bytes:
         self.flush_encoded_data()
@@ -135,6 +200,11 @@ class NotificationCommand:
     only_when: OnlyWhen = OnlyWhen.unset
     urgency: Optional[Urgency] = None
     close_response_requested: Optional[bool] = None
+    icon_data_key: str = ''
+    icon_path: str = ''
+    icon_name: str = ''
+    application_name: str = ''
+    notification_type: str = ''
 
     # payload handling
     current_payload_type: PayloadType = PayloadType.title
@@ -146,6 +216,10 @@ class NotificationCommand:
 
     # event callbacks
     on_activation: Optional[Callable[['NotificationCommand'], None]] = None
+
+    def __init__(self, icon_data_cache: 'ReferenceType[IconDataCache]', log: 'Log') -> None:
+        self.icon_data_cache_ref = icon_data_cache
+        self.log = log
 
     @property
     def report_requested(self) -> bool:
@@ -165,6 +239,8 @@ class NotificationCommand:
         payload_is_encoded = False
         if metadata:
             for part in metadata.split(':'):
+                if not part:
+                    continue
                 k, v = part.split('=', 1)
                 if k == 'p':
                     try:
@@ -198,18 +274,43 @@ class NotificationCommand:
                         self.urgency = Urgency(int(v))
                 elif k == 'c':
                     self.close_response_requested = v != '0'
+                elif k == 'g':
+                    self.icon_data_key = sanitize_id(v)
+                elif k == 'n':
+                    self.icon_name = v
+                elif k == 'f':
+                    try:
+                        self.application_name = base64_decode(v).decode('utf-8', 'replace')
+                    except Exception:
+                        self.log('Ignoring invalid application_name in notification: {v!r}')
+                elif k == 't':
+                    try:
+                        self.notification_type = base64_decode(v).decode('utf-8', 'replace')
+                    except Exception:
+                        self.log('Ignoring invalid notification type in notification: {v!r}')
         if not prev.done and prev.identifier == self.identifier:
-            self.actions = prev.actions.union(self.actions)
-            self.title = prev.title
-            self.body = prev.body
-            if self.only_when is OnlyWhen.unset:
-                self.only_when = prev.only_when
-            if self.urgency is None:
-                self.urgency = prev.urgency
-            if self.close_response_requested is None:
-                self.close_response_requested = prev.close_response_requested
-
+            self.merge_metadata(prev)
         return payload_type, payload_is_encoded
+
+    def merge_metadata(self, prev: 'NotificationCommand') -> None:
+        self.actions = prev.actions.union(self.actions)
+        self.title = prev.title
+        self.body = prev.body
+        if self.only_when is OnlyWhen.unset:
+            self.only_when = prev.only_when
+        if self.urgency is None:
+            self.urgency = prev.urgency
+        if self.close_response_requested is None:
+            self.close_response_requested = prev.close_response_requested
+        if not self.icon_data_key:
+            self.icon_data_key = prev.icon_data_key
+        if not self.icon_name:
+            self.icon_name = prev.icon_name
+        if not self.application_name:
+            self.application_name = prev.application_name
+        if not self.notification_type:
+            self.notification_type = prev.notification_type
+        self.icon_path = prev.icon_path
 
     def create_payload_buffer(self, payload_type: PayloadType) -> EncodedDataStore:
         self.current_payload_type = payload_type
@@ -223,7 +324,7 @@ class NotificationCommand:
         else:
             if prev_cmd.current_payload_buffer:
                 self.current_payload_type = prev_cmd.current_payload_type
-                self.commit_data(prev_cmd.current_payload_buffer.finalise())
+                self.commit_data(prev_cmd.current_payload_buffer.finalise(), prev_cmd.current_payload_buffer.truncated)
         if self.current_payload_buffer is None:
             self.current_payload_buffer = self.create_payload_buffer(payload_type)
         if payload_is_encoded:
@@ -231,20 +332,43 @@ class NotificationCommand:
         else:
             self.current_payload_buffer.add_unencoded_data(payload)
 
-    def commit_data(self, data: bytes) -> None:
+    def commit_data(self, data: bytes, truncated: int) -> None:
         if not data:
             return
         if self.current_payload_type.is_text:
-            text = data.decode('utf-8', 'replace')
+            if truncated:
+                text = ' too long, truncated'
+            else:
+                text = data.decode('utf-8', 'replace')
         if self.current_payload_type is PayloadType.title:
             self.title = limit_size(self.title + text)
         elif self.current_payload_type is PayloadType.body:
             self.body = limit_size(self.body + text)
+        elif self.current_payload_type is PayloadType.icon:
+            if truncated:
+                self.log('Ignoring too long notification icon data')
+            else:
+                if self.icon_data_key:
+                    icd = self.icon_data_cache_ref()
+                    if icd:
+                        self.icon_path = icd.add_icon(self.icon_data_key, data)
+                else:
+                    self.log('Ignoring notification icon data because no icon data key specified')
 
     def finalise(self) -> None:
         if self.current_payload_buffer:
-            self.commit_data(self.current_payload_buffer.finalise())
+            self.commit_data(self.current_payload_buffer.finalise(), self.current_payload_buffer.truncated)
             self.current_payload_buffer = None
+        if self.icon_data_key and not self.icon_path:
+            icd = self.icon_data_cache_ref()
+            if icd:
+                self.icon_path = icd.get_icon(self.icon_data_key)
+        if self.title:
+            self.title = sanitize_text(self.title)
+            self.body = sanitize_text(self.body)
+        else:
+            self.title = sanitize_text(self.body)
+            self.body = ''
 
 
 class DesktopIntegration:
@@ -261,15 +385,7 @@ class DesktopIntegration:
     def close_notification(self, desktop_notification_id: int) -> bool:
         raise NotImplementedError('Implement me in subclass')
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon: bool = True,
-        subtitle: Optional[str] = None,
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
+    def notify(self, nc: NotificationCommand) -> int:
         raise NotImplementedError('Implement me in subclass')
 
     def on_new_version_notification_activation(self, cmd: NotificationCommand) -> None:
@@ -288,8 +404,6 @@ class DesktopIntegration:
 
 class MacOSIntegration(DesktopIntegration):
 
-    supports_close_events: bool = False
-
     def initialize(self) -> None:
         from .fast_data_types import cocoa_set_notification_activated_callback
         self.id_counter = count(start=1)
@@ -302,35 +416,34 @@ class MacOSIntegration(DesktopIntegration):
             log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
         return close_succeeded
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon: bool = True,
-        subtitle: Optional[str] = None,
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
+    def notify(self, nc: NotificationCommand) -> int:
         desktop_notification_id = next(self.id_counter)
         from .fast_data_types import cocoa_send_notification
         # If the body is not set macos makes the title the body and uses
         # "kitty" as the title. So use a single space for the body in this
-        # case.
-        cocoa_send_notification(str(desktop_notification_id), title, body or ' ', subtitle, urgency.value)
+        # case. Although https://developer.apple.com/documentation/usernotifications/unnotificationcontent/body?language=objc
+        # says printf style strings are stripped this doesnt actually happen,
+        # so dont double %
+        # for %% escaping.
+        body = (nc.body or ' ')
+        urgency = Urgency.Normal if nc.urgency is None else nc.urgency
+        cocoa_send_notification(str(desktop_notification_id), nc.title, body, '', urgency.value)
         return desktop_notification_id
 
-    def notification_activated(self, ident: str, activated: bool) -> None:
+    def notification_activated(self, event: str, ident: str) -> None:
         if debug_desktop_integration:
-            log_error(f'Notification {ident} {activated=}')
+            log_error(f'Notification {ident} {event=}')
         try:
             desktop_notification_id = int(ident)
         except Exception:
             log_error(f'Got unexpected notification activated event with id: {ident!r} from cocoa')
-        else:
-            if activated:
-                self.notification_manager.notification_activated(desktop_notification_id)
-            else:
-                self.notification_manager.notification_closed(desktop_notification_id)
+            return
+        if event == "created":
+            self.notification_manager.notification_created(desktop_notification_id)
+        elif event == "activated":
+            self.notification_manager.notification_activated(desktop_notification_id)
+        elif event == "closed":
+            self.notification_manager.notification_closed(desktop_notification_id)
 
 
 class FreeDesktopIntegration(DesktopIntegration):
@@ -383,20 +496,13 @@ class FreeDesktopIntegration(DesktopIntegration):
             elif event_type == 'closed':
                 self.notification_manager.notification_closed(desktop_notification_id)
 
-    def notify(self,
-        title: str,
-        body: str,
-        timeout: int = -1,
-        application: str = 'kitty',
-        icon: bool = True,
-        subtitle: Optional[str] = None,
-        urgency: Urgency = Urgency.Normal,
-    ) -> int:
-        icf = ''
-        if icon is True:
-            icf = get_custom_window_icon()[1] or logo_png_file
+    def notify(self, nc: NotificationCommand) -> int:
         from .fast_data_types import dbus_send_notification
-        desktop_notification_id = dbus_send_notification(application, icf, title, body, 'Click to see changes', timeout, urgency.value)
+        app_icon = nc.icon_name or nc.icon_path or get_custom_window_icon()[1] or logo_png_file
+        body = nc.body.replace('<', '<\u200c')  # prevent HTML tags from being recognized
+        urgency = Urgency.Normal if nc.urgency is None else nc.urgency
+        desktop_notification_id = dbus_send_notification(
+            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, timeout=-1, urgency=urgency.value)
         if debug_desktop_integration:
             log_error(f'Created notification with {desktop_notification_id=}')
         return desktop_notification_id
@@ -447,7 +553,7 @@ def sanitize_identifier_pat() -> 're.Pattern[str]':
 
 
 def sanitize_id(v: str) -> str:
-    return sanitize_identifier_pat().sub('', v)
+    return sanitize_identifier_pat().sub('', v)[:512]
 
 
 class Log:
@@ -463,6 +569,7 @@ class NotificationManager:
         channel: Channel = Channel(),
         log: Log = Log(),
         debug: bool = False,
+        base_cache_dir: str = ''
     ):
         global debug_desktop_integration
         debug_desktop_integration = debug
@@ -471,10 +578,13 @@ class NotificationManager:
         else:
             self.desktop_integration = desktop_integration
         self.channel = channel
+        self.base_cache_dir = base_cache_dir
         self.log = log
+        self.icon_data_cache = IconDataCache(base_cache_dir=self.base_cache_dir)
         self.reset()
 
     def reset(self) -> None:
+        self.icon_data_cache.clear()
         self.in_progress_notification_commands: 'OrderedDict[int, NotificationCommand]' = OrderedDict()
         self.in_progress_notification_commands_by_client_id: Dict[str, NotificationCommand] = {}
         self.pending_commands: Dict[int, NotificationCommand] = {}
@@ -508,11 +618,14 @@ class NotificationManager:
             if n.close_response_requested:
                 self.send_closed_response(n.channel_id, n.identifier)
 
+    def create_notification_cmd(self) -> NotificationCommand:
+        return NotificationCommand(ref(self.icon_data_cache), self.log)
+
     def send_test_notification(self) -> None:
         boss = get_boss()
         if w := boss.active_window:
             from time import monotonic
-            cmd = NotificationCommand()
+            cmd = self.create_notification_cmd()
             now = monotonic()
             cmd.title = f'Test {now}'
             cmd.body = f'At: {now}'
@@ -520,7 +633,7 @@ class NotificationManager:
             self.notify_with_command(cmd, w.id)
 
     def send_new_version_notification(self, version: str) -> None:
-        cmd = NotificationCommand()
+        cmd = self.create_notification_cmd()
         cmd.title = 'kitty update available!'
         cmd.body = f'kitty version {version} released'
         cmd.on_activation = self.desktop_integration.on_new_version_notification_activation
@@ -538,12 +651,9 @@ class NotificationManager:
     def notify_with_command(self, cmd: NotificationCommand, channel_id: int) -> Optional[int]:
         cmd.channel_id = channel_id
         cmd.finalise()
-        title = cmd.title or cmd.body
-        body = cmd.body if cmd.title else ''
-        if not title or not self.is_notification_allowed(cmd, channel_id):
+        if not cmd.title or not self.is_notification_allowed(cmd, channel_id):
             return None
-        urgency = Urgency.Normal if cmd.urgency is None else cmd.urgency
-        desktop_notification_id = self.desktop_integration.notify(title=sanitize_text(title), body=sanitize_text(body), urgency=urgency)
+        desktop_notification_id = self.desktop_integration.notify(cmd)
         self.register_in_progress_notification(cmd, desktop_notification_id)
         return desktop_notification_id
 
@@ -560,7 +670,7 @@ class NotificationManager:
         self, prev_cmd: NotificationCommand, channel_id: int, raw: str
     ) -> Optional[NotificationCommand]:
         metadata, payload = raw.partition(';')[::2]
-        cmd = NotificationCommand()
+        cmd = self.create_notification_cmd()
         try:
             payload_type, payload_is_encoded = cmd.parse_metadata(metadata, prev_cmd)
         except Exception:
@@ -595,7 +705,7 @@ class NotificationManager:
 
     def handle_notification_cmd(self, channel_id: int, osc_code: int, raw: str) -> None:
         if osc_code == 99:
-            cmd = self.pending_commands.pop(channel_id, None) or NotificationCommand()
+            cmd = self.pending_commands.pop(channel_id, None) or self.create_notification_cmd()
             q = self.parse_notification_cmd(cmd, channel_id, raw)
             if q is not None:
                 if q.done:
@@ -603,11 +713,11 @@ class NotificationManager:
                 else:
                     self.pending_commands[channel_id] = q
         elif osc_code == 9:
-            n = NotificationCommand()
+            n = self.create_notification_cmd()
             n.title = raw
             self.notify_with_command(n, channel_id)
         elif osc_code == 777:
-            n = NotificationCommand()
+            n = self.create_notification_cmd()
             parts = raw.split(';', 1)
             n.title, n.body = parts[0], (parts[1] if len(parts) > 1 else '')
             self.notify_with_command(n, channel_id)

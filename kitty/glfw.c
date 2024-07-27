@@ -11,26 +11,11 @@
 #include <structmember.h>
 #include "glfw-wrapper.h"
 #include "gl.h"
-#ifndef __APPLE__
+#ifdef __APPLE__
+#include "cocoa_window.h"
+#else
 #include "freetype_render_ui_text.h"
 #endif
-extern void cocoa_focus_window(void *w);
-extern long cocoa_window_number(void *w);
-extern void cocoa_create_global_menu(void);
-extern void cocoa_recreate_global_menu(void);
-extern void cocoa_system_beep(const char*);
-extern void cocoa_set_activation_policy(bool);
-extern bool cocoa_alt_option_key_pressed(unsigned long);
-extern void cocoa_toggle_secure_keyboard_entry(void);
-extern void cocoa_hide(void);
-extern void cocoa_clear_global_shortcuts(void);
-extern void cocoa_hide_others(void);
-extern void cocoa_minimize(void *w);
-extern void cocoa_set_uncaught_exception_handler(void);
-extern void cocoa_update_menu_bar_title(PyObject*);
-extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
-extern monotonic_t cocoa_cursor_blink_interval(void);
-
 #define debug debug_rendering
 
 typedef struct mouse_cursor {
@@ -619,7 +604,6 @@ apple_url_open_callback(const char* url) {
     return true;
 }
 
-extern bool cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height);
 
 bool
 draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
@@ -628,7 +612,6 @@ draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, colo
     return cocoa_render_line_of_text(buf, fg, bg, output_buf, width, height);
 }
 
-extern uint8_t* render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height);
 
 uint8_t*
 draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height) {
@@ -2092,15 +2075,19 @@ dbus_notification_created_callback(unsigned long long notification_id, uint32_t 
 }
 
 static PyObject*
-dbus_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *app_name, *icon, *summary, *body, *action_name;
+dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     int timeout = -1, urgency = 1;
-    if (!PyArg_ParseTuple(args, "sssss|ii", &app_name, &icon, &summary, &body, &action_name, &timeout, &urgency)) return NULL;
+    GLFWDBUSNotificationData d = {.action_name=""};
+    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "action_text", "timeout", "urgency", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|sii", (char**)kwlist,
+                &d.app_name, &d.icon, &d.summary, &d.body, &d.action_name, &timeout, &urgency)) return NULL;
     if (!glfwDBusUserNotify) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
         return NULL;
     }
-    unsigned long long notification_id = glfwDBusUserNotify(app_name, icon, summary, body, action_name, timeout, urgency, dbus_notification_created_callback, NULL);
+    d.timeout = timeout;
+    d.urgency = urgency & 3;
+    unsigned long long notification_id = glfwDBusUserNotify(&d, dbus_notification_created_callback, NULL);
     return PyLong_FromUnsignedLongLong(notification_id);
 }
 
@@ -2108,11 +2095,12 @@ static PyObject*
 dbus_close_notification(PyObject *self UNUSED, PyObject *args) {
     unsigned int id;
     if (!PyArg_ParseTuple(args, "I", &id)) return NULL;
+    GLFWDBUSNotificationData d = {.timeout=-9999, .urgency=255};
     if (!glfwDBusUserNotify) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
         return NULL;
     }
-    if (glfwDBusUserNotify("", "", "", "", "", -9999, -9999, NULL, &id)) Py_RETURN_TRUE;
+    if (glfwDBusUserNotify(&d, NULL, &id)) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
 
@@ -2280,9 +2268,9 @@ static PyMethodDef module_methods[] = {
     METHODB(make_x11_window_a_dock_window, METH_VARARGS),
     METHODB(strip_csi, METH_O),
 #ifndef __APPLE__
-    METHODB(dbus_send_notification, METH_VARARGS),
     METHODB(dbus_close_notification, METH_VARARGS),
     METHODB(dbus_set_notification_callback, METH_O),
+    {"dbus_send_notification", (PyCFunction)(void (*) (void))(dbus_send_notification), METH_KEYWORDS | METH_VARARGS, NULL},
 #else
     {"cocoa_recreate_global_menu", (PyCFunction)py_recreate_global_menu, METH_NOARGS, ""},
     {"cocoa_clear_global_shortcuts", (PyCFunction)py_clear_global_shortcuts, METH_NOARGS, ""},

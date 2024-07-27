@@ -1142,23 +1142,44 @@ process_pending_closes(ChildMonitor *self) {
 // glfw/cocoa. So we use a flag instead.
 static bool cocoa_pending_actions[NUM_COCOA_PENDING_ACTIONS] = {0};
 static bool has_cocoa_pending_actions = false;
+typedef struct cocoa_list { char **items; size_t count, capacity; } cocoa_list;
 typedef struct {
     char* wd;
-    char **open_urls;
-    size_t open_urls_count;
-    size_t open_urls_capacity;
+    cocoa_list open_urls, closed_notifications;
 } CocoaPendingActionsData;
 static CocoaPendingActionsData cocoa_pending_actions_data = {0};
+
+static void
+cocoa_append_to_pending_list(cocoa_list *array, const char* item) {
+    ensure_space_for(array, items, char*, array->count + 1, capacity, 8, false);
+    array->items[array->count++] = strdup(item);
+}
+
+static void
+cocoa_free_pending_list(cocoa_list *array) {
+    for (size_t i = 0; i < array->count; i++) free(array->items[i]);
+    free(array->items); zero_at_ptr(array);
+}
+
+static void
+cocoa_free_actions_data(void) {
+    if (cocoa_pending_actions_data.wd) { free(cocoa_pending_actions_data.wd); cocoa_pending_actions_data.wd = NULL; }
+    cocoa_free_pending_list(&cocoa_pending_actions_data.open_urls);
+    cocoa_free_pending_list(&cocoa_pending_actions_data.closed_notifications);
+}
 
 void
 set_cocoa_pending_action(CocoaPendingAction action, const char *data) {
     if (data) {
-        if (action == LAUNCH_URLS) {
-            ensure_space_for(&cocoa_pending_actions_data, open_urls, char*, cocoa_pending_actions_data.open_urls_count + 8, open_urls_capacity, 8, true);
-            cocoa_pending_actions_data.open_urls[cocoa_pending_actions_data.open_urls_count++] = strdup(data);
-        } else {
-            if (cocoa_pending_actions_data.wd) free(cocoa_pending_actions_data.wd);
-            cocoa_pending_actions_data.wd = strdup(data);
+        switch(action) {
+            case LAUNCH_URLS:
+                cocoa_append_to_pending_list(&cocoa_pending_actions_data.open_urls, data); break;
+            case COCOA_NOTIFICATION_CLOSED:
+                cocoa_append_to_pending_list(&cocoa_pending_actions_data.closed_notifications, data); break;
+            default:
+                if (cocoa_pending_actions_data.wd) free(cocoa_pending_actions_data.wd);
+                cocoa_pending_actions_data.wd = strdup(data);
+                break;
         }
     }
     cocoa_pending_actions[action] = true;
@@ -1197,16 +1218,22 @@ process_cocoa_pending_actions(void) {
         free(cocoa_pending_actions_data.wd);
         cocoa_pending_actions_data.wd = NULL;
     }
-    if (cocoa_pending_actions_data.open_urls_count) {
-        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_urls_count; cpa++) {
-            if (cocoa_pending_actions_data.open_urls[cpa]) {
-                call_boss(launch_urls, "s", cocoa_pending_actions_data.open_urls[cpa]);
-                free(cocoa_pending_actions_data.open_urls[cpa]);
-                cocoa_pending_actions_data.open_urls[cpa] = NULL;
-            }
+    for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_urls.count; cpa++) {
+        if (cocoa_pending_actions_data.open_urls.items[cpa]) {
+            call_boss(launch_urls, "s", cocoa_pending_actions_data.open_urls.items[cpa]);
+            free(cocoa_pending_actions_data.open_urls.items[cpa]);
+            cocoa_pending_actions_data.open_urls.items[cpa] = NULL;
         }
-        cocoa_pending_actions_data.open_urls_count = 0;
     }
+    cocoa_pending_actions_data.open_urls.count = 0;
+    for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.closed_notifications.count; cpa++) {
+        if (cocoa_pending_actions_data.closed_notifications.items[cpa]) {
+            cocoa_report_closed_notification(cocoa_pending_actions_data.closed_notifications.items[cpa]);
+            free(cocoa_pending_actions_data.closed_notifications.items[cpa]);
+            cocoa_pending_actions_data.closed_notifications.items[cpa] = NULL;
+        }
+    }
+    cocoa_pending_actions_data.closed_notifications.count = 0;
     memset(cocoa_pending_actions, 0, sizeof(cocoa_pending_actions));
     has_cocoa_pending_actions = false;
 
@@ -1264,13 +1291,7 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
     state_check_timer = add_main_loop_timer(1000, true, do_state_check, self, NULL);
     run_main_loop(process_global_state, self);
 #ifdef __APPLE__
-    if (cocoa_pending_actions_data.wd) { free(cocoa_pending_actions_data.wd); cocoa_pending_actions_data.wd = NULL; }
-    if (cocoa_pending_actions_data.open_urls) {
-        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_urls_count; cpa++) {
-            if (cocoa_pending_actions_data.open_urls[cpa]) free(cocoa_pending_actions_data.open_urls[cpa]);
-        }
-        free(cocoa_pending_actions_data.open_urls); cocoa_pending_actions_data.open_urls = NULL;
-    }
+    cocoa_free_actions_data();
 #endif
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;

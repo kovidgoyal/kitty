@@ -8,7 +8,7 @@
 
 #include "state.h"
 #include "cleanup.h"
-#include "monotonic.h"
+#include "cocoa_window.h"
 #include <Availability.h>
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
@@ -354,12 +354,19 @@ static PyObject *notification_activated_callback = NULL;
 static PyObject*
 set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_CLEAR(notification_activated_callback);
-    if (callback != Py_None) {
-        notification_activated_callback = callback;
-        Py_INCREF(callback);
-    }
+    if (callback != Py_None) notification_activated_callback = Py_NewRef(callback);
     Py_RETURN_NONE;
 }
+
+static void
+do_notification_callback(NSString *identifier, const char *event) {
+    if (notification_activated_callback) {
+        PyObject *ret = PyObject_CallFunction(notification_activated_callback, "sz", event, (identifier ? [identifier UTF8String] : NULL));
+        if (ret) Py_DECREF(ret);
+        else PyErr_Print();
+    }
+}
+
 
 #ifdef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
 
@@ -381,11 +388,7 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     - (void) userNotificationCenter:(NSUserNotificationCenter *)center
             didActivateNotification:(NSUserNotification *)notification {
         (void)(center); (void)(notification);
-        if (notification_activated_callback) {
-            PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
-                    notification.userInfo[@"user_id"] ? [notification.userInfo[@"user_id"] UTF8String] : NULL);
-            if (ret == NULL) PyErr_Print();
-            else Py_DECREF(ret);
+        do_notification_callback(notification.userInfo[@"user_id"], "activated");
         }
     }
 @end
@@ -413,14 +416,6 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 @interface NotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
 @end
 
-static void
-do_notification_callback(NSString *identifier, bool activated) {
-    PyObject *ret = PyObject_CallFunction(notification_activated_callback, "zO",
-            (identifier ? [identifier UTF8String] : NULL), activated ? Py_True : Py_False);
-    if (ret) Py_DECREF(ret);
-    else PyErr_Print();
-}
-
 @implementation NotificationDelegate
     - (void)userNotificationCenter:(UNUserNotificationCenter *)center
             willPresentNotification:(UNNotification *)notification
@@ -436,13 +431,11 @@ do_notification_callback(NSString *identifier, bool activated) {
             didReceiveNotificationResponse:(UNNotificationResponse *)response
             withCompletionHandler:(void (^)(void))completionHandler {
         (void)(center);
-        if (notification_activated_callback) {
-            if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
-                do_notification_callback([[[response notification] request] identifier], true);
-            } else if ([response.actionIdentifier isEqualToString:UNNotificationDismissActionIdentifier]) {
-                // this never actually happens on macOS. Bloody Crapple.
-                do_notification_callback([[[response notification] request] identifier], false);
-            }
+        if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
+            do_notification_callback([[[response notification] request] identifier], "activated");
+        } else if ([response.actionIdentifier isEqualToString:UNNotificationDismissActionIdentifier]) {
+            // this never actually happens on macOS. Bloody Crapple.
+            do_notification_callback([[[response notification] request] identifier], "closed");
         }
         completionHandler();
     }
@@ -470,6 +463,89 @@ remove_delivered_notification(const char *identifier) {
     if (!center) return false;
     [center removeDeliveredNotificationsWithIdentifiers:@[ @(identifier) ]];
     return true;
+}
+
+
+static NSLock *notifications_polling_lock = NULL;
+static bool polling_notifications = false;
+typedef struct tn { char *ident; bool closed; monotonic_t creation_time; } tn;
+static struct { tn *items; size_t count, capacity; monotonic_t creation_time; } tracked_notifications;
+static void dispatch_closed_notifications(void);
+#define CLOSE_POLL_TIME 60.
+#define CLOSE_POLL_INTERVAL 750
+
+static bool
+ident_in_list_of_notifications(NSString *ident, NSArray<UNNotification*> *list) {
+    for (UNNotification *n in list) {
+        if ([[[n request] identifier] isEqualToString:ident]) return true;
+    }
+    return false;
+}
+
+static void
+poll_for_closed_notifications(void) {
+    UNUserNotificationCenter *center = get_notification_center_safely();
+    if (!center) return;
+    [center getDeliveredNotificationsWithCompletionHandler:^(NSArray<UNNotification *> * notifications) {
+        // NSLog(@"num of delivered but not closed nots: %lu", (unsigned long)[notifications count]);
+        [notifications_polling_lock lock];
+        for (size_t i = 0; i < tracked_notifications.count; i++) {
+            if (!ident_in_list_of_notifications(@(tracked_notifications.items[i].ident), notifications)) tracked_notifications.items[i].closed = true;
+        }
+        [notifications_polling_lock unlock];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_closed_notifications();
+        });
+    }];
+}
+
+void
+cocoa_report_closed_notification(const char* ident) {
+    do_notification_callback(@(ident), "closed");
+}
+
+static void
+dispatch_closed_notifications(void) {
+    bool poll = false;
+    [notifications_polling_lock lock];
+    monotonic_t now = monotonic();
+    for (size_t i = tracked_notifications.count; i-- > 0; ) {
+        if (tracked_notifications.items[i].closed) {
+            set_cocoa_pending_action(COCOA_NOTIFICATION_CLOSED, tracked_notifications.items[i].ident);
+            free(tracked_notifications.items[i].ident);
+            remove_i_from_array(tracked_notifications.items, i, tracked_notifications.count);
+        } else if (now - tracked_notifications.items[i].creation_time < s_double_to_monotonic_t(CLOSE_POLL_TIME)) poll = true;
+    }
+    polling_notifications = poll;
+    [notifications_polling_lock unlock];
+    if (poll) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, CLOSE_POLL_INTERVAL * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            poll_for_closed_notifications();
+        });
+    }
+}
+
+static void
+track_notification(char *ident) {
+    UNUserNotificationCenter *center = get_notification_center_safely();
+    if (center) {
+        [notifications_polling_lock lock];
+        bool has_existing = false;
+        for (size_t i = 0; i < tracked_notifications.count; i++) {
+            if (strcmp(tracked_notifications.items[i].ident, ident) == 0) {
+                tracked_notifications.items[i].creation_time = monotonic();
+                has_existing = true;
+                break;
+            }
+        }
+        if (!has_existing) {
+            ensure_space_for(&tracked_notifications, items, tn, tracked_notifications.count + 1, capacity, 8, false);
+            tracked_notifications.items[tracked_notifications.count++] = (tn){.ident=ident, .creation_time=monotonic()};
+        }
+        bool needs_poll = !polling_notifications;
+        [notifications_polling_lock unlock];
+        if (needs_poll) poll_for_closed_notifications();
+    }
 }
 
 static void
@@ -503,10 +579,15 @@ schedule_notification(const char *identifier, const char *title, const char *bod
     UNNotificationRequest* request = [
         UNNotificationRequest requestWithIdentifier:(identifier ? @(identifier) : [NSString stringWithFormat:@"Id_%lu", counter++])
         content:content trigger:nil];
+    char *duped_ident = strdup(identifier ? identifier : "");
     [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
-        if (error != nil) {
-            log_error("Failed to show notification: %s", [[error localizedDescription] UTF8String]);
-        }
+        if (error != nil) log_error("Failed to show notification: %s", [[error localizedDescription] UTF8String]);
+        bool ok = error == nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            do_notification_callback(@(duped_ident), ok ? "created" : "closed");
+            if (ok) track_notification(duped_ident);
+            else free(duped_ident);
+        });
     }];
     [content release];
 }
@@ -544,6 +625,7 @@ drain_pending_notifications(BOOL granted) {
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
+        if (!granted) do_notification_callback(@(n->identifier), "closed");
         free(n->identifier); free(n->title); free(n->body); free(n->subtitle);
         memset(n, 0, sizeof(QueuedNotification));
     }
@@ -1034,6 +1116,8 @@ cleanup(void) {
     dockMenu = nil;
     if (beep_sound) [beep_sound release];
     beep_sound = nil;
+    if (notifications_polling_lock) [notifications_polling_lock release];
+    notifications_polling_lock = nil;
 
 #ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
     drain_pending_notifications(NO);
@@ -1084,6 +1168,7 @@ bool
 init_cocoa(PyObject *module) {
     cocoa_clear_global_shortcuts();
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    notifications_polling_lock = [NSLock new];
     register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
     return true;
 }

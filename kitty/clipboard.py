@@ -14,6 +14,7 @@ from .fast_data_types import (
     ESC_OSC,
     GLFW_CLIPBOARD,
     GLFW_PRIMARY_SELECTION,
+    StreamingBase64Decoder,
     find_in_memoryview,
     get_boss,
     get_clipboard_mime,
@@ -236,6 +237,7 @@ class WriteRequest:
         self, is_primary_selection: bool = False, protocol_type: ProtocolType = ProtocolType.osc_52, id: str = '',
         rollover_size: int = 16 * 1024 * 1024, max_size: int = -1,
     ) -> None:
+        self.decoder = StreamingBase64Decoder(8 * 1024)
         self.id = id
         self.is_primary_selection = is_primary_selection
         self.protocol_type = protocol_type
@@ -243,7 +245,6 @@ class WriteRequest:
         self.tempfile = Tempfile(max_size=rollover_size)
         self.mime_map: Dict[str, MimePos] = {}
         self.currently_writing_mime = ''
-        self.current_leftover_bytes = memoryview(b'')
         self.max_size = (get_options().clipboard_max_size * 1024 * 1024) if max_size < 0 else max_size
         self.aliases: Dict[str, str] = {}
         self.committed = False
@@ -276,51 +277,29 @@ class WriteRequest:
         if not self.currently_writing_mime:
             self.mime_map[mime] = MimePos(self.tempfile.tell(), -1)
             self.currently_writing_mime = mime
+        self.write_base64_data(data)
 
-        def write_saving_leftover_bytes(data: bytes) -> None:
-            if len(data) == 0:
-                return
-            extra = len(data) % 4
-            if extra > 0:
-                mv = memoryview(data)
-                self.current_leftover_bytes = memoryview(bytes(mv[-extra:]))
-                mv = mv[:-extra]
-                if len(mv) > 0:
-                    self.write_base64_data(mv)
-            else:
-                self.write_base64_data(data)
-
-        if len(self.current_leftover_bytes) > 0:
-            extra = 4 - len(self.current_leftover_bytes)
-            if len(data) >= extra:
-                self.write_base64_data(memoryview(bytes(self.current_leftover_bytes) + data[:extra]))
-                self.current_leftover_bytes = memoryview(b'')
-                data = memoryview(data)[extra:]
-                write_saving_leftover_bytes(data)
-            else:
-                self.current_leftover_bytes = memoryview(bytes(self.current_leftover_bytes) + data)
-        else:
-            write_saving_leftover_bytes(data)
+    @property
+    def current_leftover_bytes(self) -> memoryview:
+        return self.decoder.leftover_bytes()
 
     def flush_base64_data(self) -> None:
         if self.currently_writing_mime:
-            b = self.current_leftover_bytes
-            padding = 4 - len(b)
-            if padding in (1, 2):
-                self.write_base64_data(memoryview(bytes(b) + b'=' * padding))
+            self.decoder.flush()
+            if len(self.decoder):
+                self.write_base64_data(b'')
             start = self.mime_map[self.currently_writing_mime][0]
             self.mime_map[self.currently_writing_mime] = MimePos(start, self.tempfile.tell() - start)
             self.currently_writing_mime = ''
-            self.current_leftover_bytes = memoryview(b'')
 
     def write_base64_data(self, b: bytes) -> None:
-        from base64 import standard_b64decode
         if not self.max_size_exceeded:
-            d = standard_b64decode(b)
-            self.tempfile.write(d)
-            if self.max_size > 0 and self.tempfile.tell() > (self.max_size * 1024 * 1024):
-                log_error(f'Clipboard write request has more data than allowed by clipboard_max_size ({self.max_size}), truncating')
-                self.max_size_exceeded = True
+            self.decoder.add(b)
+            if len(self.decoder):
+                self.tempfile.write(self.decoder.take_output())
+                if self.max_size > 0 and self.tempfile.tell() > (self.max_size * 1024 * 1024):
+                    log_error(f'Clipboard write request has more data than allowed by clipboard_max_size ({self.max_size}), truncating')
+                    self.max_size_exceeded = True
 
     def data_for(self, mime: str = 'text/plain', offset: int = 0, size: int = -1) -> bytes:
         start, full_size = self.mime_map[mime]
