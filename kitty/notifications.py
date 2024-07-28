@@ -685,11 +685,15 @@ class NotificationManager:
                 return False
         return True
 
+    @property
+    def filter_rules(self) -> Iterator[str]:
+        return iter(get_options().filter_notification.keys())
+
     def is_notification_filtered(self, cmd: NotificationCommand) -> bool:
         if self.filter_script(cmd):
             self.log(f'Notification {cmd.title!r} filtered out by script')
             return True
-        for rule in get_options().filter_notification:
+        for rule in self.filter_rules:
             if cmd.matches_rule(rule):
                 self.log(f'Notification {cmd.title!r} filtered out by filter_notification rule: {rule}')
                 return True
