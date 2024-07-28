@@ -12,6 +12,7 @@ import (
 	"kitty/kittens/hints"
 	"kitty/kittens/hyperlinked_grep"
 	"kitty/kittens/icat"
+	"kitty/kittens/notify"
 	"kitty/kittens/query_terminal"
 	"kitty/kittens/show_key"
 	"kitty/kittens/ssh"
@@ -70,8 +71,10 @@ func KittyToolEntryPoints(root *cli.Command) {
 	ask.EntryPoint(root)
 	// hints
 	hints.EntryPoint(root)
-	// hints
+	// diff
 	diff.EntryPoint(root)
+	// notify
+	notify.EntryPoint(root)
 	// themes
 	themes.EntryPoint(root)
 	themes.ParseEntryPoint(root)
