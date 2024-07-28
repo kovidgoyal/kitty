@@ -116,14 +116,14 @@ this could be achieved using the ssh kitten with :program:`zsh` and
    hostname myserver-*
 
    # Setup zsh to read its files from my-conf/zsh
-   env ZDOTDIR $HOME/my-conf/zsh
+   env ZDOTDIR=$HOME/my-conf/zsh
    copy --dest my-conf/zsh/.zshrc .zshrc
    copy --dest my-conf/zsh/.zshenv .zshenv
    # If you use other zsh init files add them in a similar manner
 
    # Setup vim to read its config from my-conf/vim
-   env VIMINIT $HOME/my-conf/vim/vimrc
-   env VIMRUNTIME $HOME/my-conf/vim
+   env VIMINIT=$HOME/my-conf/vim/vimrc
+   env VIMRUNTIME=$HOME/my-conf/vim
    copy --dest my-conf/vim .vim
    copy --dest my-conf/vim/vimrc .vimrc
 
