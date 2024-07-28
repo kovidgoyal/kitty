@@ -7,11 +7,11 @@ from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
 from itertools import count
-from typing import Any, Callable, Dict, FrozenSet, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Dict, FrozenSet, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from weakref import ReferenceType, ref
 
-from .constants import cache_dir, is_macos, logo_png_file
-from .fast_data_types import ESC_OSC, StreamingBase64Decoder, base64_decode, current_focused_os_window_id, get_boss
+from .constants import cache_dir, config_dir, is_macos, logo_png_file
+from .fast_data_types import ESC_OSC, StreamingBase64Decoder, base64_decode, current_focused_os_window_id, get_boss, get_options
 from .types import run_once
 from .typing import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
@@ -190,21 +190,28 @@ def limit_size(x: str) -> str:
 
 class NotificationCommand:
 
-    done: bool = True
-    identifier: str = ''
-    channel_id: int = 0
-    desktop_notification_id: int = -1
+    # data received from client and eventually displayed/processed
     title: str = ''
     body: str = ''
     actions: FrozenSet[Action] = frozenset((Action.focus,))
     only_when: OnlyWhen = OnlyWhen.unset
     urgency: Optional[Urgency] = None
-    close_response_requested: Optional[bool] = None
     icon_data_key: str = ''
-    icon_path: str = ''
     icon_name: str = ''
     application_name: str = ''
     notification_type: str = ''
+
+    # event callbacks
+    on_activation: Optional[Callable[['NotificationCommand'], None]] = None
+    on_close: Optional[Callable[['NotificationCommand'], None]] = None
+
+    # metadata
+    identifier: str = ''
+    done: bool = True
+    channel_id: int = 0
+    desktop_notification_id: int = -1
+    close_response_requested: Optional[bool] = None
+    icon_path: str = ''
 
     # payload handling
     current_payload_type: PayloadType = PayloadType.title
@@ -213,9 +220,6 @@ class NotificationCommand:
     # desktop integration specific fields
     created_by_desktop: bool = False
     activation_token: str = ''
-
-    # event callbacks
-    on_activation: Optional[Callable[['NotificationCommand'], None]] = None
 
     def __init__(self, icon_data_cache: 'ReferenceType[IconDataCache]', log: 'Log') -> None:
         self.icon_data_cache_ref = icon_data_cache
@@ -369,6 +373,25 @@ class NotificationCommand:
         else:
             self.title = sanitize_text(self.body)
             self.body = ''
+        self.urgency = Urgency.Normal if self.urgency is None else self.urgency
+
+    def matches_rule_item(self, location:str, query:str) -> bool:
+        import re
+        pat = re.compile(query)
+        val = {'title': self.title, 'body': self.body, 'app': self.application_name, 'type': self.notification_type}[location]
+        return pat.search(val) is not None
+
+    def matches_rule(self, rule: str) -> bool:
+        if rule == 'all':
+            return True
+        from .search_query_parser import search
+        def get_matches(location: str, query: str, candidates: Set['NotificationCommand']) -> Set['NotificationCommand']:
+            return {x for x in candidates if x.matches_rule_item(location, query)}
+        try:
+            return self in search(rule, ('title', 'body', 'app', 'type'), {self}, get_matches)
+        except Exception as e:
+            self.log(f'Ignoring invalid filter_notification rule: {rule} with error: {e}')
+        return False
 
 
 class DesktopIntegration:
@@ -426,8 +449,8 @@ class MacOSIntegration(DesktopIntegration):
         # so dont double %
         # for %% escaping.
         body = (nc.body or ' ')
-        urgency = Urgency.Normal if nc.urgency is None else nc.urgency
-        cocoa_send_notification(str(desktop_notification_id), nc.title, body, '', urgency.value)
+        assert nc.urgency is not None
+        cocoa_send_notification(str(desktop_notification_id), nc.title, body, '', nc.urgency.value)
         return desktop_notification_id
 
     def notification_activated(self, event: str, ident: str) -> None:
@@ -499,10 +522,10 @@ class FreeDesktopIntegration(DesktopIntegration):
     def notify(self, nc: NotificationCommand) -> int:
         from .fast_data_types import dbus_send_notification
         app_icon = nc.icon_name or nc.icon_path or get_custom_window_icon()[1] or logo_png_file
-        body = nc.body.replace('<', '<\u200c')  # prevent HTML tags from being recognized
-        urgency = Urgency.Normal if nc.urgency is None else nc.urgency
+        body = nc.body.replace('<', '<\u200c').replace('&', '&\u200c')  # prevent HTML markup from being recognized
+        assert nc.urgency is not None
         desktop_notification_id = dbus_send_notification(
-            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, timeout=-1, urgency=urgency.value)
+            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, timeout=-1, urgency=nc.urgency.value)
         if debug_desktop_integration:
             log_error(f'Created notification with {desktop_notification_id=}')
         return desktop_notification_id
@@ -581,6 +604,15 @@ class NotificationManager:
         self.base_cache_dir = base_cache_dir
         self.log = log
         self.icon_data_cache = IconDataCache(base_cache_dir=self.base_cache_dir)
+        script_path = os.path.join(config_dir, 'notifications.py')
+        self.filter_script: Callable[[NotificationCommand], bool] = lambda nc: False
+        if os.path.exists(script_path):
+            import runpy
+            try:
+                m = runpy.run_path(script_path)
+                self.filter_script = m['main']
+            except Exception as e:
+                self.log(f'Failed to load {script_path} with error: {e}')
         self.reset()
 
     def reset(self) -> None:
@@ -610,13 +642,18 @@ class NotificationManager:
                 try:
                     n.on_activation(n)
                 except Exception as e:
-                    self.log(e)
+                    self.log('Notification on_activation handler failed with error:', e)
 
     def notification_closed(self, desktop_notification_id: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             self.purge_notification(n)
             if n.close_response_requested:
                 self.send_closed_response(n.channel_id, n.identifier)
+            if n.on_close is not None:
+                try:
+                    n.on_close(n)
+                except Exception as e:
+                    self.log('Notification on_close handler failed with error:', e)
 
     def create_notification_cmd(self) -> NotificationCommand:
         return NotificationCommand(ref(self.icon_data_cache), self.log)
@@ -639,7 +676,7 @@ class NotificationManager:
         cmd.on_activation = self.desktop_integration.on_new_version_notification_activation
         self.notify_with_command(cmd, 0)
 
-    def is_notification_allowed(self, cmd: NotificationCommand, channel_id: int) -> bool:
+    def is_notification_allowed(self, cmd: NotificationCommand, channel_id: int, apply_filter_rules: bool = True) -> bool:
         if cmd.only_when is not OnlyWhen.always and cmd.only_when is not OnlyWhen.unset:
             ui_state = self.channel.ui_state(channel_id)
             if ui_state.has_keyboard_focus:
@@ -648,10 +685,20 @@ class NotificationManager:
                 return False
         return True
 
+    def is_notification_filtered(self, cmd: NotificationCommand) -> bool:
+        if self.filter_script(cmd):
+            self.log(f'Notification {cmd.title!r} filtered out by script')
+            return True
+        for rule in get_options().filter_notification:
+            if cmd.matches_rule(rule):
+                self.log(f'Notification {cmd.title!r} filtered out by filter_notification rule: {rule}')
+                return True
+        return False
+
     def notify_with_command(self, cmd: NotificationCommand, channel_id: int) -> Optional[int]:
         cmd.channel_id = channel_id
         cmd.finalise()
-        if not cmd.title or not self.is_notification_allowed(cmd, channel_id):
+        if not cmd.title or not self.is_notification_allowed(cmd, channel_id) or self.is_notification_filtered(cmd):
             return None
         desktop_notification_id = self.desktop_integration.notify(cmd)
         self.register_in_progress_notification(cmd, desktop_notification_id)

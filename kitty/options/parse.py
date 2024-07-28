@@ -12,15 +12,15 @@ from kitty.options.utils import (
     config_or_absolute_path, copy_on_select, cursor_blink_interval, cursor_text_color,
     deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
-    edge_width, env, font_features, hide_window_decorations, macos_option_as_alt, macos_titlebar_color,
-    menu_map, modify_font, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
-    parse_map, parse_mouse_map, paste_actions, remote_control_password, resize_debounce_time,
-    scrollback_lines, scrollback_pager_history_size, shell_integration, store_multiple, symbol_map,
-    tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
-    tab_font_style, tab_separator, tab_title_template, titlebar_color, to_cursor_shape,
-    to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
-    visual_bell_duration, visual_window_select_characters, window_border_width, window_logo_scale,
-    window_size
+    edge_width, env, filter_notification, font_features, hide_window_decorations, macos_option_as_alt,
+    macos_titlebar_color, menu_map, modify_font, narrow_symbols, notify_on_cmd_finish,
+    optional_edge_width, parse_font_spec, parse_map, parse_mouse_map, paste_actions,
+    remote_control_password, resize_debounce_time, scrollback_lines, scrollback_pager_history_size,
+    shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
+    tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    tab_title_template, titlebar_color, to_cursor_shape, to_cursor_unfocused_shape, to_font_size,
+    to_layout_names, to_modifiers, url_prefixes, url_style, visual_bell_duration,
+    visual_window_select_characters, window_border_width, window_logo_scale, window_size
 )
 
 
@@ -976,6 +976,10 @@ class Parser:
     def file_transfer_confirmation_bypass(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['file_transfer_confirmation_bypass'] = str(val)
 
+    def filter_notification(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        for k, v in filter_notification(val, ans["filter_notification"]):
+            ans["filter_notification"][k] = v
+
     def focus_follows_mouse(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['focus_follows_mouse'] = to_bool(val)
 
@@ -1448,6 +1452,7 @@ def create_result_dict() -> typing.Dict[str, typing.Any]:
         'action_alias': {},
         'env': {},
         'exe_search_path': {},
+        'filter_notification': {},
         'font_features': {},
         'kitten_alias': {},
         'menu_map': {},

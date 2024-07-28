@@ -347,6 +347,7 @@ option_names = (  # {{{
  'env',
  'exe_search_path',
  'file_transfer_confirmation_bypass',
+ 'filter_notification',
  'focus_follows_mouse',
  'font_family',
  'font_features',
@@ -633,6 +634,7 @@ class Options:
     action_alias: typing.Dict[str, str] = {}
     env: typing.Dict[str, str] = {}
     exe_search_path: typing.Dict[str, str] = {}
+    filter_notification: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fast_data_types.ParsedFontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, str] = {}
     menu_map: typing.Dict[typing.Tuple[str, ...], str] = {}
@@ -755,6 +757,7 @@ defaults = Options()
 defaults.action_alias = {}
 defaults.env = {}
 defaults.exe_search_path = {}
+defaults.filter_notification = {}
 defaults.font_features = {}
 defaults.kitten_alias = {}
 defaults.menu_map = {}
