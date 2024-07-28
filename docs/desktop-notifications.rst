@@ -171,6 +171,20 @@ This will close a previous notification with the specified id. If no such
 notification exists (perhaps because it was already closed or it was activated)
 then the request is ignored.
 
+
+Automatically expiring notifications
+-------------------------------------
+
+A notification can be marked as expiring (being closed) automatically after
+a specified number of milliseconds using the ``w`` key. The default if
+unspecified is ``-1`` which means to use whatever expiry policy the OS has for
+notifications. A value of ``0`` means the notification should never expire.
+Values greater than zero specify the number of milliseconds after which the
+notification should be auto-closed. Note that the value of ``0``
+is best effort, some platforms honor it and some do not. Positive values
+are robust, since they can be implemented by the terminal emulator itself,
+by manually closing the notification after the expiry time.
+
 .. _notifications_query:
 
 Querying for support
@@ -215,6 +229,8 @@ Key      Value
 
 ``c``    ``c=1`` if the terminal supports close events, otherwise the ``c``
          must be omitted.
+
+``w``    ``w=1`` if the terminal supports auto expiring of notifications.
 =======  ================================================================================
 
 In the future, if this protocol expands, more keys might be added. Clients must
@@ -274,6 +290,8 @@ Key      Value                 Default    Description
 ``t``    :rfc:`base64 <4648>`  ``unset``  The type of the notification. Can be used to filter out notifications.
          encoded UTF-8
          notification type
+
+``w``    ``>=-1``              ``-1``     The number of milliseconds to auto-close the notification after.
 =======  ====================  ========== =================
 
 

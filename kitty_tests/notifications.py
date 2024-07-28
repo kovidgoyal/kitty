@@ -12,10 +12,13 @@ from kitty.notifications import Channel, DesktopIntegration, IconDataCache, Noti
 from . import BaseTest
 
 
-def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path='', application_name='', notification_type=''):
+def n(
+    title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path='',
+    application_name='', notification_type='', timeout=-1,
+):
     return {
         'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_name': icon_name, 'icon_path': icon_path,
-        'application_name': application_name, 'notification_type': notification_type,
+        'application_name': application_name, 'notification_type': notification_type, 'timeout': timeout
     }
 
 
@@ -50,7 +53,7 @@ class DesktopIntegration(DesktopIntegration):
             self.counter += 1
             did = self.counter
         title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
-        ans = n(title, body, urgency, did, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type)
+        ans = n(title, body, urgency, did, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type, timeout=cmd.timeout)
         self.notifications.append(ans)
         return self.counter
 
@@ -235,7 +238,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     # Test querying
     h('i=xyz:p=?')
     self.assertFalse(di.notifications)
-    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive:c=1'
+    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive:c=1:w=1'
     self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
@@ -264,6 +267,11 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     h(f'i=t:d=0:f={e("app")};title')
     h(f'i=t:t={e("test")}')
     self.ae(di.notifications, [n(application_name='app', notification_type='test')])
+    reset()
+
+    # Test timeout
+    h('w=3;title')
+    self.ae(di.notifications, [n(timeout=3)])
     reset()
 
     # Test Disk Cache
