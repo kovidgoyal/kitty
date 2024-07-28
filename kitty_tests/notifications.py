@@ -30,6 +30,10 @@ class DesktopIntegration(DesktopIntegration):
         self.close_succeeds = True
         self.counter = 0
 
+    def query_live_notifications(self, channel_id, client_id):
+        ids = [n['id'] for n in self.notifications]
+        self.notification_manager.send_live_response(channel_id, client_id, tuple(ids))
+
     def on_new_version_notification_activation(self, cmd) -> None:
         self.new_version_activated = True
 
@@ -102,7 +106,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
         n = di.notifications[which]
         di.close_notification(n['id'])
 
-    def assert_events(focus=True, close=0, report='', close_response=''):
+    def assert_events(focus=True, close=0, report='', close_response='', live=''):
         self.ae(ch.focus_events, [''] if focus else [])
         if report:
             self.assertIn(f'99;i={report};', ch.responses)
@@ -116,6 +120,12 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
             for r in ch.responses:
                 m = re.match(r'99;i=[a-z0-9]+:p=close;', r)
                 self.assertIsNone(m, f'Unexpectedly found close response: {r}')
+        if live:
+            self.assertIn(f'99;i=live:p=alive;{live}', ch.responses)
+        else:
+            for r in ch.responses:
+                m = re.match(r'99;i=[a-z0-9]+:p=alive;', r)
+                self.assertIsNone(m, f'Unexpectedly found alive response: {r}')
         self.ae(di.close_events, [close] if close else [])
 
     h('test it', osc_code=9)
@@ -208,6 +218,12 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     h('i=c:p=close')
     self.ae(di.notifications, [n()])
     assert_events(focus=True, report='c', close=True, close_response='c')
+    reset()
+
+    h('i=a;title')
+    h('i=b;title')
+    h('i=live:p=alive;')
+    assert_events(focus=False, live='a,b')
     reset()
 
     h(';title')

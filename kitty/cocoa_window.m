@@ -489,10 +489,12 @@ live_delivered_notifications(void) {
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return false;
     [center getDeliveredNotificationsWithCompletionHandler:^(NSArray<UNNotification *> * notifications) {
-        NSMutableString *buffer = [[NSMutableString stringWithCapacity:1024] autorelease];
-        for (UNNotification *n in notifications) [buffer appendFormat:@"%@,", [[n request] identifier]];
-        const char *val = [buffer UTF8String];
-        set_cocoa_pending_action(COCOA_NOTIFICATION_UNTRACKED, val ? val : "");
+        @autoreleasepool {
+            NSMutableString *buffer = [NSMutableString stringWithCapacity:1024];  // autoreleased
+            for (UNNotification *n in notifications) [buffer appendFormat:@"%@,", [[n request] identifier]];
+            const char *val = [buffer UTF8String];
+            set_cocoa_pending_action(COCOA_NOTIFICATION_UNTRACKED, val ? val : "");
+        }
     }];
     return true;
 }
