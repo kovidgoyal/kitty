@@ -212,6 +212,9 @@ func readKeyboardInput(navParams *navigationParameters, wg *sync.WaitGroup) {
 		    }
         }
 
+		// Update the image index which locates the image index to
+		navParams.imageIndex = xyToIndex(navParams.x, navParams.y, globalConfig.gridParam.x_param)
+
 		// Print the current state of navigation parameters
 		fmt.Printf("Current navigation parameters (in goroutine): %+v\n", *navParams)
 
