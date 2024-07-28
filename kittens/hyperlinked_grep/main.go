@@ -427,6 +427,28 @@ func specialize_command(hg *cli.Command) {
 	hg.ArgCompleter = cli.CompletionForWrapper("rg")
 }
 
+type Options struct {
+}
+
+func create_cmd(root *cli.Command, run_func func(*cli.Command, *Options, []string) (int, error)) {
+	ans := root.AddSubCommand(&cli.Command{
+		Name: "hyperlinked_grep",
+		Run: func(cmd *cli.Command, args []string) (int, error) {
+			opts := Options{}
+			err := cmd.GetOptionValues(&opts)
+			if err != nil {
+				return 1, err
+			}
+			return run_func(cmd, &opts, args)
+		},
+		Hidden: true,
+	})
+	specialize_command(ans)
+	clone := root.AddClone(ans.Group, ans)
+	clone.Hidden = false
+	clone.Name = "hyperlinked-grep"
+}
+
 func EntryPoint(parent *cli.Command) {
 	create_cmd(parent, main)
 }
