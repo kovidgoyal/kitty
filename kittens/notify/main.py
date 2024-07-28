@@ -4,12 +4,44 @@
 import sys
 
 OPTIONS = r'''
+--app-name -a
+default=kitten-notify
+The application name for the notification.
+
+
+--urgency -u
+default=normal
+choices=normal,low,critical
+The urgency of the notification.
+
+
+--expire-time -t
+default=-1
+type=int
+The duration, in milliseconds, for the notification to appear on screen. The default is to
+use the policy of the OS notification service. A value of 0 means the notification should
+never expire, however, this may or may not work depending on the policies of the OS notification
+service. Positive values guarantee the notification will be closed automatically
+after that many milliseconds have elapsed. The notification could be closed before by user
+action or OS policy.
+
+
+--type -c
+The notification type. Can be any string, it is used by users to create filter rules
+for notifications, so choose something descriptive of the notifications, purpose.
+
+
 --identifier -i
 The identifier of this notification. If a notification with the same identifier
 is already displayed, it is replaced/updated.
 
 
---wait-till-closed
+--print-identifier -p
+Print the identifier for the notification to STDOUT. Useful when not specifying
+your own identifier via the --identifier option.
+
+
+--wait-till-closed -w
 type=bool-set
 Wait until the notification is closed. If the user activates the notification,
 "activated" is printed to STDOUT before quitting.

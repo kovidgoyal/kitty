@@ -183,7 +183,9 @@ Values greater than zero specify the number of milliseconds after which the
 notification should be auto-closed. Note that the value of ``0``
 is best effort, some platforms honor it and some do not. Positive values
 are robust, since they can be implemented by the terminal emulator itself,
-by manually closing the notification after the expiry time.
+by manually closing the notification after the expiry time. The notification
+could still be closed before the expiry time by user interaction or OS policy,
+but it is guaranteed to be closed once the expiry time has passed.
 
 .. _notifications_query:
 
