@@ -96,6 +96,7 @@ func indexToXY(index, x_param int) (int, int) {
     return x, y
 }
 
+
 /// NOT NEEDED SINCE USING RESIZE METHOD 
 // // creates a new 2D matrix
 // func NewMatrix2D() *Matrix2D {
@@ -290,8 +291,10 @@ func debugPrintImage(imagePath string, width, height, x, y int) {
 //	fmt.Println(globalImageCoordinates)
 //}
 
+
 func pageCoordinater() {
-    globalImageBound.xBound = int(globalWindowParameters.Row) / globalConfig.GridParam.XParam
+
+	globalImageBound.xBound = int(globalWindowParameters.Row) / globalConfig.GridParam.XParam
     globalImageBound.yBound = int(globalWindowParameters.Col) / globalConfig.GridParam.YParam
 
     fmt.Printf("xBound: %d, yBound: %d\n", globalImageBound.xBound, globalImageBound.yBound)
@@ -299,10 +302,38 @@ func pageCoordinater() {
 
     for imageIndex, imagePath := range globalImages {
         x, y := indexToXY(imageIndex, globalConfig.GridParam.XParam)
-        coordinates := [2]int{x, y}
+        coordinates := [2]int{globalImageBound.xBound * x, globalImageBound.yBound * y}
+        globalImageCoordinates[imagePath] = coordinates
+    }
+
+    fmt.Println("Final globalImageCoordinates:")
+    for path, coord := range globalImageCoordinates {
+        fmt.Printf("%s: (%d, %d)\n", path, coord[0], coord[1])
+    }
+}
+
+func pageCoordinater2() {
+
+	fmt.Printf("globalWindowParameters.Row: %d\n", globalWindowParameters.Row)
+    fmt.Printf("globalWindowParameters.Col: %d\n", globalWindowParameters.Col)
+    fmt.Printf("globalConfig.GridParam.XParam: %d\n", globalConfig.GridParam.XParam)
+    fmt.Printf("globalConfig.GridParam.YParam: %d\n", globalConfig.GridParam.YParam)
+
+    globalImageBound.xBound = int(globalWindowParameters.Row) / globalConfig.GridParam.XParam
+    globalImageBound.yBound = int(globalWindowParameters.Col) / globalConfig.GridParam.YParam
+
+    fmt.Printf("xBound: %d, yBound: %d\n", globalImageBound.xBound, globalImageBound.yBound)
+    fmt.Printf("Number of images: %d\n", len(globalImages))
+    fmt.Printf("XParam: %d\n", globalConfig.GridParam.XParam)
+
+    for imageIndex, imagePath := range globalImages {
+        x, y := indexToXY(imageIndex, globalConfig.GridParam.XParam)
+        fmt.Printf("Before multiplication - imageIndex: %d, x: %d, y: %d\n", imageIndex, x, y)
+
+        coordinates := [2]int{globalImageBound.xBound * x, globalImageBound.yBound * y}
         globalImageCoordinates[imagePath] = coordinates
 
-        fmt.Printf("Image %d: Path=%s, Coordinates=(%d, %d)\n", imageIndex, imagePath, x, y)
+        fmt.Printf("After multiplication - imagePath: %s, coordinates: (%d, %d)\n", imagePath, coordinates[0], coordinates[1])
     }
 
     fmt.Println("Final globalImageCoordinates:")
@@ -468,11 +499,6 @@ func readKeyboardInput(navParams *navigationParameters, wg *sync.WaitGroup) {
 		if key == keyboard.KeyCtrlC {
 			break
 		}
-	}
-}
-
-// Paginate images into slice called globalImagePages from globalImages
-func paginateImages() {
     var xParam int = globalConfig.GridParam.XParam
     var yParam int = globalConfig.GridParam.YParam
 
@@ -548,8 +574,8 @@ func session(cmd *cobra.Command, args []string) {
         os.Exit(1)
     }
 
-	globalConfig.GridParam.XParam = 3
-	globalConfig.GridParam.YParam = 2
+	// globalConfig.GridParam.XParam = 3
+	// globalConfig.GridParam.YParam = 2
 	fmt.Printf("Window parameters: X = %d, Y = %d\n",
                globalConfig.GridParam.XParam,
                globalConfig.GridParam.YParam)
@@ -559,6 +585,7 @@ func session(cmd *cobra.Command, args []string) {
         fmt.Printf("x_param or y_param set to 0, check the system config file for kitty")
         os.Exit(1)
     }
+
 
 	pageCoordinater()
 
@@ -573,6 +600,7 @@ func session(cmd *cobra.Command, args []string) {
         bounds := img.Bounds()
         debugPrintImage(imagePath, bounds.Dx(), bounds.Dy(), posX, posY)
     }
+
 
 	time.Sleep(100 * time.Second)
 
