@@ -132,14 +132,22 @@ is updated then the close event is not sent unless the updated notification
 also requests a close notification.
 
 Note that on some platforms, such as macOS, the OS does not inform applications
-when notifications are closed, on such platforms, terminals may reply with::
+when notifications are closed, on such platforms, terminals reply with::
 
     <OSC> 99 ; i=mynotification : p=close ; untracked <terminator>
 
 This means that the terminal has no way of knowing when the notification is
-closed. |kitty|, on macOS, manually tracks notifications by polling the OS
-for a short period to see if they are closed, after which it gives up
-and replies with an ``untracked`` response.
+closed. Instead, applications can poll the terminal to determine which
+notifications are still alive (not closed), with::
+
+    <OSC> 99 ; i=myid : p=alive ; <terminator>
+
+The terminal will reply with::
+    <OSC> 99 ; i=myid : p=alive ; id1,id2,id3 <terminator>
+
+Here, ``myid`` is present for multiplxer support. The reponse from the terminal
+contains a comma separated list of ids that are still alive.
+
 
 Updating or closing an existing notification
 ----------------------------------------------
@@ -244,7 +252,7 @@ Key      Value                 Default    Description
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
          ``body``,                        notification has no title, the body will be used as title. Terminal
          ``close``,                       emulators should ignore payloads of unknown type to allow for future
-         ``?``                            expansion of this protocol.
+         ``?``, ``alive``                 expansion of this protocol.
 
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window

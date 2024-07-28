@@ -568,12 +568,12 @@ def cocoa_send_notification(
     identifier: str,
     title: str,
     body: str,
-    track_closing: bool,
     urgency: int = 1,
 ) -> None:
     pass
 
 def cocoa_remove_delivered_notification(identifier: str) -> bool: ...
+def cocoa_live_delivered_notifications() -> bool: ...
 
 def create_os_window(
     get_window_size: Callable[[int, int, int, int, float, float], Tuple[int,

@@ -219,7 +219,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     # Test querying
     h('i=xyz:p=?')
     self.assertFalse(di.notifications)
-    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon:c=1'
+    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive:c=1'
     self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
