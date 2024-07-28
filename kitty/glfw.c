@@ -2076,17 +2076,18 @@ dbus_notification_created_callback(unsigned long long notification_id, uint32_t 
 
 static PyObject*
 dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
-    int timeout = -1, urgency = 1;
+    int timeout = -1, urgency = 1; unsigned int replaces = 0;
     GLFWDBUSNotificationData d = {.action_name=""};
-    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "action_text", "timeout", "urgency", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|sii", (char**)kwlist,
-                &d.app_name, &d.icon, &d.summary, &d.body, &d.action_name, &timeout, &urgency)) return NULL;
+    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "action_text", "timeout", "urgency", "replaces", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|siiI", (char**)kwlist,
+                &d.app_name, &d.icon, &d.summary, &d.body, &d.action_name, &timeout, &urgency, &replaces)) return NULL;
     if (!glfwDBusUserNotify) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
         return NULL;
     }
     d.timeout = timeout;
     d.urgency = urgency & 3;
+    d.replaces = replaces;
     unsigned long long notification_id = glfwDBusUserNotify(&d, dbus_notification_created_callback, NULL);
     return PyLong_FromUnsignedLongLong(notification_id);
 }

@@ -111,7 +111,6 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
     data->next_id = ++notification_id;
     data->callback = callback; data->data = user_data;
     if (!data->next_id) data->next_id = ++notification_id;
-    uint32_t replaces_id = 0;
 
     RAII_MSG(msg, dbus_message_new_method_call(NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "Notify"));
     if (!msg) { return 0; }
@@ -120,7 +119,7 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
 #define check_call(func, ...) if (!func(__VA_ARGS__)) { _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
 #define APPEND(to, type, val) check_call(dbus_message_iter_append_basic, &to, type, &val);
     APPEND(args, DBUS_TYPE_STRING, n->app_name)
-    APPEND(args, DBUS_TYPE_UINT32, replaces_id)
+    APPEND(args, DBUS_TYPE_UINT32, n->replaces)
     APPEND(args, DBUS_TYPE_STRING, n->icon)
     APPEND(args, DBUS_TYPE_STRING, n->summary)
     APPEND(args, DBUS_TYPE_STRING, n->body)

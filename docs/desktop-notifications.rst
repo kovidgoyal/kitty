@@ -127,21 +127,33 @@ escape code to inform when the notification is closed::
 
 If no notification id was specified ``i=0`` will be used.
 If ``a=report`` is specified and the notification is activated/clicked on
-then both the activation report and close notification are sent.
+then both the activation report and close notification are sent. If the notification
+is updated then the close event is not sent unless the updated notification
+also requests a close notification.
 
-.. note:: On macOS the OS does not supply notification
-   closed events to applications. As such close events must be implemented
-   via polling. It is up to the terminal emulator to decide a reasonable
-   time limit for how long to poll, before giving up. kitty polls for 60
-   seconds. Therefore, terminal applications should not rely on close events
-   being authoritative.
+Note that on some platforms, such as macOS, the OS does not inform applications
+when notifications are closed, on such platforms, terminals may reply with::
 
+    <OSC> 99 ; i=mynotification : p=close ; untracked <terminator>
 
-Closing an existing notification
-----------------------------------
+This means that the terminal has no way of knowing when the notification is
+closed. |kitty|, on macOS, manually tracks notifications by polling the OS
+for a short period to see if they are closed, after which it gives up
+and replies with an ``untracked`` response.
+
+Updating or closing an existing notification
+----------------------------------------------
 
 .. versionadded:: 0.36.0
-   The ability to close a previous notification was added in kitty 0.36.0
+   The ability to update and close a previous notification was added in kitty 0.36.0
+
+To update a previous notification simply send a new notification with the same
+*notification id* (``i`` key) as the one you want to update. If the original
+notification is still displayed it will be replaced, otherwise a new
+notification is displayed. This can be used, for example, to show progress of
+an operation. Note that how smoothly the existing notification is replaced
+depends on the underlying OS, for example, on Linux the replacement is usually flicker
+free, on macOS it isn't, because of Apple's design choices.
 
 To close a previous notification, send::
 

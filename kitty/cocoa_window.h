@@ -35,6 +35,7 @@ typedef enum {
     QUIT,
     USER_MENU_ACTION,
     COCOA_NOTIFICATION_CLOSED,
+    COCOA_NOTIFICATION_UNTRACKED,
 
     NUM_COCOA_PENDING_ACTIONS
 } CocoaPendingAction;
@@ -59,4 +60,4 @@ bool cocoa_render_line_of_text(const char *text, const color_type fg, const colo
 extern uint8_t* render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height);
 void get_cocoa_key_equivalent(uint32_t, int, char *key, size_t key_sz, int*);
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
-void cocoa_report_closed_notification(const char* ident);
+void cocoa_report_closed_notification(const char* ident, bool untracked);

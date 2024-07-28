@@ -1145,7 +1145,7 @@ static bool has_cocoa_pending_actions = false;
 typedef struct cocoa_list { char **items; size_t count, capacity; } cocoa_list;
 typedef struct {
     char* wd;
-    cocoa_list open_urls, closed_notifications;
+    cocoa_list open_urls, closed_notifications, untracked_notifications;
 } CocoaPendingActionsData;
 static CocoaPendingActionsData cocoa_pending_actions_data = {0};
 
@@ -1166,6 +1166,7 @@ cocoa_free_actions_data(void) {
     if (cocoa_pending_actions_data.wd) { free(cocoa_pending_actions_data.wd); cocoa_pending_actions_data.wd = NULL; }
     cocoa_free_pending_list(&cocoa_pending_actions_data.open_urls);
     cocoa_free_pending_list(&cocoa_pending_actions_data.closed_notifications);
+    cocoa_free_pending_list(&cocoa_pending_actions_data.untracked_notifications);
 }
 
 void
@@ -1176,6 +1177,8 @@ set_cocoa_pending_action(CocoaPendingAction action, const char *data) {
                 cocoa_append_to_pending_list(&cocoa_pending_actions_data.open_urls, data); break;
             case COCOA_NOTIFICATION_CLOSED:
                 cocoa_append_to_pending_list(&cocoa_pending_actions_data.closed_notifications, data); break;
+            case COCOA_NOTIFICATION_UNTRACKED:
+                cocoa_append_to_pending_list(&cocoa_pending_actions_data.untracked_notifications, data); break;
             default:
                 if (cocoa_pending_actions_data.wd) free(cocoa_pending_actions_data.wd);
                 cocoa_pending_actions_data.wd = strdup(data);
@@ -1226,14 +1229,26 @@ process_cocoa_pending_actions(void) {
         }
     }
     cocoa_pending_actions_data.open_urls.count = 0;
+
     for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.closed_notifications.count; cpa++) {
         if (cocoa_pending_actions_data.closed_notifications.items[cpa]) {
-            cocoa_report_closed_notification(cocoa_pending_actions_data.closed_notifications.items[cpa]);
+            cocoa_report_closed_notification(cocoa_pending_actions_data.closed_notifications.items[cpa], false);
             free(cocoa_pending_actions_data.closed_notifications.items[cpa]);
             cocoa_pending_actions_data.closed_notifications.items[cpa] = NULL;
         }
     }
     cocoa_pending_actions_data.closed_notifications.count = 0;
+
+    for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.untracked_notifications.count; cpa++) {
+        if (cocoa_pending_actions_data.untracked_notifications.items[cpa]) {
+            cocoa_report_closed_notification(cocoa_pending_actions_data.untracked_notifications.items[cpa], true);
+            free(cocoa_pending_actions_data.untracked_notifications.items[cpa]);
+            cocoa_pending_actions_data.untracked_notifications.items[cpa] = NULL;
+        }
+    }
+    cocoa_pending_actions_data.untracked_notifications.count = 0;
+
+
     memset(cocoa_pending_actions, 0, sizeof(cocoa_pending_actions));
     has_cocoa_pending_actions = false;
 

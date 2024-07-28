@@ -500,8 +500,8 @@ poll_for_closed_notifications(void) {
 }
 
 void
-cocoa_report_closed_notification(const char* ident) {
-    do_notification_callback(@(ident), "closed");
+cocoa_report_closed_notification(const char* ident, bool untracked) {
+    do_notification_callback(@(ident), untracked ? "untracked" : "closed");
 }
 
 static void
@@ -514,7 +514,15 @@ dispatch_closed_notifications(void) {
             set_cocoa_pending_action(COCOA_NOTIFICATION_CLOSED, tracked_notifications.items[i].ident);
             free(tracked_notifications.items[i].ident);
             remove_i_from_array(tracked_notifications.items, i, tracked_notifications.count);
-        } else if (now - tracked_notifications.items[i].creation_time < s_double_to_monotonic_t(CLOSE_POLL_TIME)) poll = true;
+        } else {
+            if (now - tracked_notifications.items[i].creation_time < s_double_to_monotonic_t(CLOSE_POLL_TIME)) {
+                poll = true;
+            } else {
+                set_cocoa_pending_action(COCOA_NOTIFICATION_UNTRACKED, tracked_notifications.items[i].ident);
+                free(tracked_notifications.items[i].ident);
+                remove_i_from_array(tracked_notifications.items, i, tracked_notifications.count);
+            }
+        }
     }
     polling_notifications = poll;
     [notifications_polling_lock unlock];
@@ -549,14 +557,13 @@ track_notification(char *ident) {
 }
 
 static void
-schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle, int urgency) {
+schedule_notification(const char *identifier, const char *title, const char *body, bool track_closing, int urgency) {
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
     if (title) content.title = @(title);
     if (body) content.body = @(body);
-    if (subtitle) content.subtitle = @(subtitle);
     content.sound = [UNNotificationSound defaultSound];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
     switch (urgency) {
@@ -585,7 +592,7 @@ schedule_notification(const char *identifier, const char *title, const char *bod
         bool ok = error == nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             do_notification_callback(@(duped_ident), ok ? "created" : "closed");
-            if (ok) track_notification(duped_ident);
+            if (ok && track_closing) track_notification(duped_ident);
             else free(duped_ident);
         });
     }];
@@ -594,8 +601,8 @@ schedule_notification(const char *identifier, const char *title, const char *bod
 
 
 typedef struct {
-    char *identifier, *title, *body, *subtitle;
-    int urgency;
+    char *identifier, *title, *body;
+    int urgency; bool track_closing;
 } QueuedNotification;
 
 typedef struct {
@@ -605,14 +612,13 @@ typedef struct {
 static NotificationQueue notification_queue = {0};
 
 static void
-queue_notification(const char *identifier, const char *title, const char* body, const char* subtitle, int urgency) {
+queue_notification(const char *identifier, const char *title, const char* body, bool track_closing, int urgency) {
     ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
     QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
     n->identifier = identifier ? strdup(identifier) : NULL;
     n->title = title ? strdup(title) : NULL;
     n->body = body ? strdup(body) : NULL;
-    n->subtitle = subtitle ? strdup(subtitle) : NULL;
-    n->urgency = urgency;
+    n->urgency = urgency; n->track_closing = track_closing;
 }
 
 static void
@@ -620,13 +626,13 @@ drain_pending_notifications(BOOL granted) {
     if (granted) {
         for (size_t i = 0; i < notification_queue.count; i++) {
             QueuedNotification *n = notification_queue.notifications + i;
-            schedule_notification(n->identifier, n->title, n->body, n->subtitle, n->urgency);
+            schedule_notification(n->identifier, n->title, n->body, n->track_closing, n->urgency);
         }
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
         if (!granted) do_notification_callback(@(n->identifier), "closed");
-        free(n->identifier); free(n->title); free(n->body); free(n->subtitle);
+        free(n->identifier); free(n->title); free(n->body);
         memset(n, 0, sizeof(QueuedNotification));
     }
 }
@@ -640,13 +646,14 @@ cocoa_remove_delivered_notification(PyObject *self UNUSED, PyObject *x) {
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL; int urgency = 1;
-    if (!PyArg_ParseTuple(args, "ssz|zi", &identifier, &title, &body, &subtitle, &urgency)) return NULL;
+    char *identifier = NULL, *title = NULL, *body = NULL; int urgency = 1;
+    int track_closing;
+    if (!PyArg_ParseTuple(args, "sssp|i", &identifier, &title, &body, &track_closing, &urgency)) return NULL;
 
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
-    queue_notification(identifier, title, body, subtitle, urgency);
+    queue_notification(identifier, title, body, track_closing, urgency);
 
     // The badge permission needs to be requested as well, even though it is not used,
     // otherwise macOS refuses to show the preference checkbox for enable/disable notification sound.
