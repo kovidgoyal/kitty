@@ -72,7 +72,7 @@ func writeChunked(imagePath string) error {
 }
 
 func main() {
-	err := writeChunked("../../../../assets/kitty.png")
+	err := writeChunked("../../../logo/kitty.png")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
