@@ -18,6 +18,12 @@ def log_notification(nc: NotificationCommand) -> None:
         print('\n', file=log)
 
 
+def on_notification_activated(nc: NotificationCommand) -> None:
+    # do something when this notification is activated (clicked on)
+    # remember to assign this to the on_activation field in main()
+    pass
+
+
 def main(nc: NotificationCommand) -> bool:
     '''
     This function should return True to filter out the notification
@@ -44,6 +50,9 @@ def main(nc: NotificationCommand) -> bool:
     # to the script.
     if nc.application_name == 'myapp' and nc.notification_type == 'foo':
         subprocess.Popen(['/path/to/my/script', nc.title, nc.body])
+
+    # do some arbitrary actions when this notification is activated
+    nc.on_activation = on_notification_activated
 
     # dont filter out this notification
     return False
