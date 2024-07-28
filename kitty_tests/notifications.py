@@ -69,6 +69,13 @@ class Channel(Channel):
         self.responses.append(osc_escape_code)
 
 
+class NotificationManager(NotificationManager):
+
+    @property
+    def filter_rules(self):
+        yield from ('title:filterme',)
+
+
 def do_test(self: 'TestNotifications', tdir: str) -> None:
     di = DesktopIntegration(None)
     ch = Channel()
@@ -159,6 +166,12 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
 
     h('d=0:i=y;title')
     h('d=1:i=y:p=xxx;title')
+    self.ae(di.notifications, [n()])
+    reset()
+
+    # test filtering
+    h(';title')
+    h(';filterme please')
     self.ae(di.notifications, [n()])
     reset()
 

@@ -3035,6 +3035,29 @@ The value of :code:`VAR2` will be :code:`<path to home directory>/a/b`.
 '''
     )
 
+opt('+filter_notification', '', option_type='filter_notification', add_to_default=False, long_text='''
+Specify rules to filter out notifications sent by applications running in kitty.
+Can be specified multiple times to create multiple filter rules. A rule specification
+is of the form :code:`field:regexp`. A filter rule
+can match on any of the fields: :code:`title`, :code:`body`, :code:`app`, :code:`type`.
+The special value of :code:`all` filters out all notifications. Rules can be combined
+using Boolean operators. Some examples::
+
+    filter_notification title:hello or body:"abc.*def"
+    # filter out notification from vim except for ones about updates, (?i)
+    # makes matching case insesitive.
+    filter_notification app:"[ng]?vim" and not body:"(?i)update"
+    # filter out all notifications
+    filter_notification all
+
+The field :code:`app` is the name of the application sending the notification and :code:`type`
+is the type of the notification. Not all applications will send these fields, so you can also
+match on the title and body of the notification text. More sophisticated programmatic filtering
+and custom actions on notifications can be done by creating a notifications.py file in the
+kitty config directory (:file:`~/.config/kitty`). An annotated sample is
+:link:`available <https://github.com/kovidgoyal/kitty/blob/master/docs/notifications.py>`.
+''')
+
 opt('+watcher', '',
     option_type='store_multiple',
     add_to_default=False,
