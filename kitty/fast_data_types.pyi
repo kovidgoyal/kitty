@@ -568,6 +568,7 @@ def cocoa_send_notification(
     identifier: str,
     title: str,
     body: str,
+    track_closing: bool,
     urgency: int = 1,
 ) -> None:
     pass

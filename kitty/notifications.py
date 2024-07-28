@@ -203,7 +203,7 @@ class NotificationCommand:
 
     # event callbacks
     on_activation: Optional[Callable[['NotificationCommand'], None]] = None
-    on_close: Optional[Callable[['NotificationCommand'], None]] = None
+    on_close: Optional[Callable[['NotificationCommand', bool], None]] = None
     on_update: Optional[Callable[['NotificationCommand', 'NotificationCommand'], None]] = None
 
     # metadata
@@ -378,6 +378,7 @@ class NotificationCommand:
             self.title = sanitize_text(self.body)
             self.body = ''
         self.urgency = Urgency.Normal if self.urgency is None else self.urgency
+        self.close_response_requested = bool(self.close_response_requested)
 
     def matches_rule_item(self, location:str, query:str) -> bool:
         import re
@@ -454,7 +455,7 @@ class MacOSIntegration(DesktopIntegration):
         # for %% escaping.
         body = (nc.body or ' ')
         assert nc.urgency is not None
-        cocoa_send_notification(str(desktop_notification_id), nc.title, body, nc.urgency.value)
+        cocoa_send_notification(str(desktop_notification_id), nc.title, body, bool(nc.close_response_requested), nc.urgency.value)
         return desktop_notification_id
 
     def notification_activated(self, event: str, ident: str) -> None:
@@ -471,6 +472,8 @@ class MacOSIntegration(DesktopIntegration):
             self.notification_manager.notification_activated(desktop_notification_id)
         elif event == "closed":
             self.notification_manager.notification_closed(desktop_notification_id)
+        elif event == "untracked":
+            self.notification_manager.notification_closed(desktop_notification_id, True)
 
 
 class FreeDesktopIntegration(DesktopIntegration):
@@ -669,14 +672,14 @@ class NotificationManager:
             except Exception as e:
                 self.log('Notification on_update handler failed with error:', e)
 
-    def notification_closed(self, desktop_notification_id: int) -> None:
+    def notification_closed(self, desktop_notification_id: int, untracked: bool = False) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             self.purge_notification(n)
             if n.close_response_requested:
-                self.send_closed_response(n.channel_id, n.identifier)
+                self.send_closed_response(n.channel_id, n.identifier, untracked)
             if n.on_close is not None:
                 try:
-                    n.on_close(n)
+                    n.on_close(n, untracked)
                 except Exception as e:
                     self.log('Notification on_close handler failed with error:', e)
 
@@ -778,8 +781,9 @@ class NotificationManager:
         cmd.set_payload(payload_type, payload_is_encoded, payload, prev_cmd)
         return cmd
 
-    def send_closed_response(self, channel_id: int, client_id: str) -> None:
-        self.channel.send(channel_id, f'99;i={client_id}:p=close;')
+    def send_closed_response(self, channel_id: int, client_id: str, untracked: bool = False) -> None:
+        payload = 'untracked' if untracked else ''
+        self.channel.send(channel_id, f'99;i={client_id}:p=close;{payload}')
 
     def purge_notification(self, cmd: NotificationCommand) -> None:
         self.in_progress_notification_commands_by_client_id.pop(cmd.identifier, None)

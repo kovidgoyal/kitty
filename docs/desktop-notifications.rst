@@ -131,13 +131,15 @@ then both the activation report and close notification are sent. If the notifica
 is updated then the close event is not sent unless the updated notification
 also requests a close notification.
 
-.. note:: On macOS the OS does not supply notification
-   closed events to applications. As such close events must be implemented
-   via polling. It is up to the terminal emulator to decide a reasonable
-   time limit for how long to poll, before giving up. kitty polls for 60
-   seconds. Therefore, terminal applications should not rely on close events
-   being authoritative.
+Note that on some platforms, such as macOS, the OS does not inform applications
+when notifications are closed, on such platforms, terminals may reply with::
 
+    <OSC> 99 ; i=mynotification : p=close ; untracked <terminator>
+
+This means that the terminal has no way of knowing when the notification is
+closed. |kitty|, on macOS, manually tracks notifications by polling the OS
+for a short period to see if they are closed, after which it gives up
+and replies with an ``untracked`` response.
 
 Updating or closing an existing notification
 ----------------------------------------------
