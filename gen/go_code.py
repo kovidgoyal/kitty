@@ -464,9 +464,20 @@ def generate_extra_cli_parser(name: str, spec: str) -> None:
     print('}')
 
 
+def kittens_needing_cli_parsers() -> Iterator[str]:
+    for d in os.scandir('kittens'):
+        if not d.is_dir(follow_symlinks=False):
+            continue
+        if os.path.exists(os.path.join(d.path, 'main.py')) and os.path.exists(os.path.join(d.path, 'main.go')):
+            with open(os.path.join(d.path, 'main.py')) as f:
+                raw = f.read()
+            if 'options' in raw:
+                yield d.name
+
+
 def kitten_clis() -> None:
     from kittens.runner import get_kitten_conf_docs, get_kitten_extra_cli_parsers
-    for kitten in wrapped_kittens() + ('pager', 'notify',):
+    for kitten in kittens_needing_cli_parsers():
         defn = get_kitten_conf_docs(kitten)
         if defn is not None:
             generate_conf_parser(kitten, defn)
