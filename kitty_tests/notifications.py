@@ -39,10 +39,14 @@ class DesktopIntegration(DesktopIntegration):
             self.notification_manager.notification_closed(desktop_notification_id)
         return self.close_succeeds
 
-    def notify(self, cmd) -> int:
-        self.counter += 1
+    def notify(self, cmd, existing_desktop_notification_id) -> int:
+        if existing_desktop_notification_id:
+            did = existing_desktop_notification_id
+        else:
+            self.counter += 1
+            did = self.counter
         title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
-        ans = n(title, body, urgency, self.counter, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type)
+        ans = n(title, body, urgency, did, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type)
         self.notifications.append(ans)
         return self.counter
 
@@ -275,9 +279,9 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     send_with_icon(g='gid', data='1')
     self.ae(di.notifications, [n(icon_path=dc.hash(b'1'))])
     send_with_icon(g='gid', n='moose')
-    self.ae(di.notifications[-1], n(icon_name='moose', icon_path=dc.hash(b'1'), desktop_notification_id=len(di.notifications)))
+    self.ae(di.notifications[-1], n(icon_name='moose', icon_path=dc.hash(b'1')))
     send_with_icon(g='gid2', data='2')
-    self.ae(di.notifications[-1], n(icon_path=dc.hash(b'2'), desktop_notification_id=len(di.notifications)))
+    self.ae(di.notifications[-1], n(icon_path=dc.hash(b'2')))
     reset()
 
 

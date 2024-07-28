@@ -556,6 +556,7 @@ def dbus_send_notification(
     action_text: str = '',
     timeout: int = -1,
     urgency: int = 1,
+    replaces: int = 0,
 ) -> int:
     pass
 
@@ -566,8 +567,7 @@ def dbus_close_notification(dbus_notification_id: int) -> bool: ...
 def cocoa_send_notification(
     identifier: str,
     title: str,
-    body: Optional[str],
-    subtitle: Optional[str],
+    body: str,
     urgency: int = 1,
 ) -> None:
     pass

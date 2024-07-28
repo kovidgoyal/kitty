@@ -204,6 +204,7 @@ class NotificationCommand:
     # event callbacks
     on_activation: Optional[Callable[['NotificationCommand'], None]] = None
     on_close: Optional[Callable[['NotificationCommand'], None]] = None
+    on_update: Optional[Callable[['NotificationCommand', 'NotificationCommand'], None]] = None
 
     # metadata
     identifier: str = ''
@@ -234,9 +235,12 @@ class NotificationCommand:
         return Action.focus in self.actions
 
     def __repr__(self) -> str:
-        return (
-            f'NotificationCommand(identifier={self.identifier!r}, title={self.title!r}, body={self.body!r},'
-            f'actions={self.actions}, done={self.done!r}, urgency={self.urgency})')
+        fields = {}
+        for x in ('title', 'body', 'identifier', 'actions', 'urgency', 'done'):
+            val = getattr(self, x)
+            if val:
+                fields[x] = val
+        return f'NotificationCommand{fields}'
 
     def parse_metadata(self, metadata: str, prev: 'NotificationCommand') -> Tuple[PayloadType, bool]:
         payload_type = PayloadType.title
@@ -408,7 +412,7 @@ class DesktopIntegration:
     def close_notification(self, desktop_notification_id: int) -> bool:
         raise NotImplementedError('Implement me in subclass')
 
-    def notify(self, nc: NotificationCommand) -> int:
+    def notify(self, nc: NotificationCommand, existing_desktop_notification_id: Optional[int]) -> int:
         raise NotImplementedError('Implement me in subclass')
 
     def on_new_version_notification_activation(self, cmd: NotificationCommand) -> None:
@@ -439,18 +443,18 @@ class MacOSIntegration(DesktopIntegration):
             log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
         return close_succeeded
 
-    def notify(self, nc: NotificationCommand) -> int:
-        desktop_notification_id = next(self.id_counter)
+    def notify(self, nc: NotificationCommand, existing_desktop_notification_id: Optional[int]) -> int:
+        desktop_notification_id = existing_desktop_notification_id or next(self.id_counter)
         from .fast_data_types import cocoa_send_notification
         # If the body is not set macos makes the title the body and uses
         # "kitty" as the title. So use a single space for the body in this
         # case. Although https://developer.apple.com/documentation/usernotifications/unnotificationcontent/body?language=objc
-        # says printf style strings are stripped this doesnt actually happen,
+        # says printf style strings are stripped this does not actually happen,
         # so dont double %
         # for %% escaping.
         body = (nc.body or ' ')
         assert nc.urgency is not None
-        cocoa_send_notification(str(desktop_notification_id), nc.title, body, '', nc.urgency.value)
+        cocoa_send_notification(str(desktop_notification_id), nc.title, body, nc.urgency.value)
         return desktop_notification_id
 
     def notification_activated(self, event: str, ident: str) -> None:
@@ -476,7 +480,8 @@ class FreeDesktopIntegration(DesktopIntegration):
         dbus_set_notification_callback(self.dispatch_event_from_desktop)
         # map the id returned by the notification daemon to the
         # desktop_notification_id we use for the notification
-        self.creation_id_map: 'OrderedDict[int, int]' = OrderedDict()
+        self.dbus_to_desktop: 'OrderedDict[int, int]' = OrderedDict()
+        self.desktop_to_dbus: Dict[int, int] = {}
 
     def close_notification(self, desktop_notification_id: int) -> bool:
         from .fast_data_types import dbus_close_notification
@@ -488,28 +493,32 @@ class FreeDesktopIntegration(DesktopIntegration):
         return close_succeeded
 
     def get_desktop_notification_id(self, dbus_notification_id: int, event: str) -> Optional[int]:
-        q = self.creation_id_map.get(dbus_notification_id)
+        q = self.dbus_to_desktop.get(dbus_notification_id)
         if q is None:
             if debug_desktop_integration:
                 log_error(f'Could not find desktop_notification_id for {dbus_notification_id=} for event {event}')
         return q
 
     def get_dbus_notification_id(self, desktop_notification_id: int, event: str) ->Optional[int]:
-        for dbus_id, q in self.creation_id_map.items():
-            if q == desktop_notification_id:
-                return dbus_id
-        if debug_desktop_integration:
-            log_error(f'Could not find dbus_notification_id for {desktop_notification_id=} for event {event}')
-        return None
+        q = self.desktop_to_dbus.get(desktop_notification_id)
+        if q is None:
+            if debug_desktop_integration:
+                log_error(f'Could not find dbus_notification_id for {desktop_notification_id=} for event {event}')
+        return q
+
+    def created(self, dbus_notification_id: int, desktop_notification_id: int) -> None:
+        self.dbus_to_desktop[desktop_notification_id] = dbus_notification_id
+        self.desktop_to_dbus[dbus_notification_id] = desktop_notification_id
+        if len(self.dbus_to_desktop) > 128:
+            k, v = self.dbus_to_desktop.popitem(False)
+            self.desktop_to_dbus.pop(v, None)
+        self.notification_manager.notification_created(dbus_notification_id)
 
     def dispatch_event_from_desktop(self, event_type: str, dbus_notification_id: int, extra: Union[int, str]) -> None:
         if debug_desktop_integration:
             log_error(f'Got notification event from desktop: {event_type=} {dbus_notification_id=} {extra=}')
         if event_type == 'created':
-            self.creation_id_map[int(extra)] = dbus_notification_id
-            if len(self.creation_id_map) > 128:
-                self.creation_id_map.popitem(False)
-            self.notification_manager.notification_created(dbus_notification_id)
+            self.created(dbus_notification_id, int(extra))
             return
         if desktop_notification_id := self.get_desktop_notification_id(dbus_notification_id, event_type):
             if event_type == 'activation_token':
@@ -519,15 +528,22 @@ class FreeDesktopIntegration(DesktopIntegration):
             elif event_type == 'closed':
                 self.notification_manager.notification_closed(desktop_notification_id)
 
-    def notify(self, nc: NotificationCommand) -> int:
+    def notify(self, nc: NotificationCommand, existing_desktop_notification_id: Optional[int]) -> int:
         from .fast_data_types import dbus_send_notification
         app_icon = nc.icon_name or nc.icon_path or get_custom_window_icon()[1] or logo_png_file
         body = nc.body.replace('<', '<\u200c').replace('&', '&\u200c')  # prevent HTML markup from being recognized
         assert nc.urgency is not None
+        replaces_dbus_id = 0
+        if existing_desktop_notification_id:
+            replaces_dbus_id = self.get_dbus_notification_id(existing_desktop_notification_id, 'notify') or 0
         desktop_notification_id = dbus_send_notification(
-            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, timeout=-1, urgency=nc.urgency.value)
+            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, timeout=-1, urgency=nc.urgency.value,
+            replaces=replaces_dbus_id)
         if debug_desktop_integration:
-            log_error(f'Created notification with {desktop_notification_id=}')
+            log_error(f'Requested creation of notification with {desktop_notification_id=}')
+        if existing_desktop_notification_id and replaces_dbus_id:
+            self.dbus_to_desktop.pop(replaces_dbus_id, None)
+            self.desktop_to_dbus.pop(existing_desktop_notification_id, None)
         return desktop_notification_id
 
 
@@ -644,6 +660,15 @@ class NotificationManager:
                 except Exception as e:
                     self.log('Notification on_activation handler failed with error:', e)
 
+    def notification_replaced(self, old_cmd: NotificationCommand, new_cmd: NotificationCommand) -> None:
+        if old_cmd.desktop_notification_id != new_cmd.desktop_notification_id:
+            self.in_progress_notification_commands.pop(old_cmd.desktop_notification_id, None)
+        if old_cmd.on_update is not None:
+            try:
+                old_cmd.on_update(old_cmd, new_cmd)
+            except Exception as e:
+                self.log('Notification on_update handler failed with error:', e)
+
     def notification_closed(self, desktop_notification_id: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             self.purge_notification(n)
@@ -704,8 +729,14 @@ class NotificationManager:
         cmd.finalise()
         if not cmd.title or not self.is_notification_allowed(cmd, channel_id) or self.is_notification_filtered(cmd):
             return None
-        desktop_notification_id = self.desktop_integration.notify(cmd)
+        existing_desktop_notification_id: Optional[int] = None
+        existing_cmd = self.in_progress_notification_commands_by_client_id.get(cmd.identifier) if cmd.identifier else None
+        if existing_cmd:
+            existing_desktop_notification_id = existing_cmd.desktop_notification_id
+        desktop_notification_id = self.desktop_integration.notify(cmd, existing_desktop_notification_id)
         self.register_in_progress_notification(cmd, desktop_notification_id)
+        if existing_cmd:
+            self.notification_replaced(existing_cmd, cmd)
         return desktop_notification_id
 
     def register_in_progress_notification(self, cmd: NotificationCommand, desktop_notification_id: int) -> None:

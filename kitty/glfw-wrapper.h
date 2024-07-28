@@ -1055,7 +1055,7 @@ typedef struct GLFWLayerShellConfig {
 
 typedef struct GLFWDBUSNotificationData {
     const char *app_name, *icon, *summary, *body, *action_name;
-    int32_t timeout; uint8_t urgency;
+    int32_t timeout; uint8_t urgency; uint32_t replaces;
 } GLFWDBUSNotificationData;
 
 /*! @brief The function pointer type for error callbacks.
@@ -1705,7 +1705,6 @@ typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
 typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, int, const char*);
-
 typedef int (*glfwInit_func)(monotonic_t);
 GFW_EXTERN glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
