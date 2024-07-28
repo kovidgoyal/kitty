@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
     "io/fs"
+	"time"
 
 	"github.com/eiannone/keyboard"
 	"github.com/nfnt/resize"
@@ -21,15 +22,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+func init() {
+    globalImageCoordinates = make(map[string][2]int)
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "icat [directory]",
 	Short: "Kitten to display images in a grid layout in Kitty terminal",
 	Run:   session,
-}
-
-type gridConfig struct {
-    x_param int `yaml:"xParam"`    // horizontal parameter
-    y_param int `yaml:"yParam"`    // vertical parameter
 }
 
 // Will contain all the window parameters
@@ -47,10 +47,19 @@ type navigationParameters struct {
     y int          // Vertical Grid Coordinate
 }
 
-// Config struct to hold the configuration
 type Config struct {
-    gridParam gridConfig `yaml:"windowParam"`
+    GridParam struct {
+        XParam int `yaml:"x_param"`
+        YParam int `yaml:"y_param"`
+    } `yaml:"grid_param"`
 }
+
+type ImageBound struct {
+	xBound int
+	yBound int
+}
+
+type ImageCoordinates map[string][2]int
 
 var (
     globalWindowParameters windowParameters // Contains Global Level Window Parameters
@@ -58,6 +67,8 @@ var (
     globalNavigation navigationParameters
     globalImages []string
     globalImagePages [][]string
+	globalImageBound ImageBound
+	globalImageCoordinates ImageCoordinates
 )
 
 func xyToIndex(x, y, x_param int) int {
@@ -70,17 +81,53 @@ func indexToXY(index, x_param int) (int, int) {
     return x, y
 }
 
+// Assign Coordinates to each Image in a Page
+//func pageCoordinater() {
+//	globalImageBound.xBound = int(globalWindowParameters.Row) / globalConfig.GridParam.XParam
+//	globalImageBound.yBound = int(globalWindowParameters.Col) / globalConfig.GridParam.YParam
+//
+//	for imageIndex, imagePath := range globalImages {
+//		x, y := indexToXY(imageIndex, globalConfig.GridParam.XParam)
+//		coordinates := [2]int{x, y}
+//		globalImageCoordinates[imagePath] = coordinates
+//	}
+//
+//	fmt.Println(globalImageCoordinates)
+//}
+
+func pageCoordinater() {
+    globalImageBound.xBound = int(globalWindowParameters.Row) / globalConfig.GridParam.XParam
+    globalImageBound.yBound = int(globalWindowParameters.Col) / globalConfig.GridParam.YParam
+
+    fmt.Printf("xBound: %d, yBound: %d\n", globalImageBound.xBound, globalImageBound.yBound)
+    fmt.Printf("Number of images: %d\n", len(globalImages))
+
+    for imageIndex, imagePath := range globalImages {
+        x, y := indexToXY(imageIndex, globalConfig.GridParam.XParam)
+        coordinates := [2]int{x, y}
+        globalImageCoordinates[imagePath] = coordinates
+
+        fmt.Printf("Image %d: Path=%s, Coordinates=(%d, %d)\n", imageIndex, imagePath, x, y)
+    }
+
+    fmt.Println("Final globalImageCoordinates:")
+    for path, coord := range globalImageCoordinates {
+        fmt.Printf("%s: (%d, %d)\n", path, coord[0], coord[1])
+    }
+}
+
 // This function takes globalConfig struct and parses the YAML data
 func loadConfig(filename string) error {
     data, err := os.ReadFile(filename)
     if err != nil {
-        log.Fatalf("error: %v", err)
+        log.Printf("Error reading file: %v", err)
         return err
     }
 
     err = yaml.Unmarshal(data, &globalConfig)
     if err != nil {
-        log.Fatalf("error: %v", err)
+        log.Printf("Error unmarshaling YAML: %v", err)
+        return err
     }
 
     return nil
@@ -96,6 +143,10 @@ func getWindowSize(window windowParameters) error {
 		var sz *unix.Winsize
 		if sz, err = unix.IoctlGetWinsize(int(f.Fd()), unix.TIOCGWINSZ); err == nil {
 			fmt.Printf("rows: %v columns: %v width: %v height %v\n", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
+			window.Row = sz.Row
+			window.Col = sz.Col
+			window.xPixel = sz.Xpixel
+			window.yPixel = sz.Ypixel
 			return nil
 		}
 	}
@@ -199,11 +250,11 @@ func readKeyboardInput(navParams *navigationParameters, wg *sync.WaitGroup) {
 		// Handle the key event
 		switch char {
 		case 'h':
-			navParams.x++
+			if (navParams.x > 0) {
+				navParams.x--
+			}
 		case 'l':
-            if (navParams.x > 0) { // cursor is at left most part of the screen
-			    navParams.x--
-            }
+			navParams.x++
 		case 'j':
 			navParams.y++
 		case 'k':
@@ -213,7 +264,7 @@ func readKeyboardInput(navParams *navigationParameters, wg *sync.WaitGroup) {
         }
 
 		// Update the image index which locates the image index to
-		navParams.imageIndex = xyToIndex(navParams.x, navParams.y, globalConfig.gridParam.x_param)
+		navParams.imageIndex = xyToIndex(navParams.x, navParams.y, globalConfig.GridParam.XParam)
 
 		// Print the current state of navigation parameters
 		fmt.Printf("Current navigation parameters (in goroutine): %+v\n", *navParams)
@@ -227,8 +278,8 @@ func readKeyboardInput(navParams *navigationParameters, wg *sync.WaitGroup) {
 
 // Paginate images into slice called globalImagePages from globalImages
 func paginateImages() {
-    var xParam int = globalConfig.gridParam.x_param
-    var yParam int = globalConfig.gridParam.y_param
+    var xParam int = globalConfig.GridParam.XParam
+    var yParam int = globalConfig.GridParam.YParam
 
     for i := 0; i < len(globalImages); i += xParam {
         end := i + xParam
@@ -293,24 +344,30 @@ func session(cmd *cobra.Command, args []string) {
 
     // Till this point, WindowSize Changes would be handled and stored into globalWindowParameters
 
-    var config Config
-
     /* Load system configuration from kitty.conf
     Currently, the loadConfig is loading configurations from config.yaml, parsing can be updated later
     */
-    err = loadConfig("config.yaml")
+    err = loadConfig("./config.yaml")
     if (err != nil) {
         fmt.Printf("Error Parsing config file, exiting ....")
         os.Exit(1)
     }
 
+	globalConfig.GridParam.XParam = 3
+	globalConfig.GridParam.YParam = 2
+	fmt.Printf("Window parameters: X = %d, Y = %d\n",
+               globalConfig.GridParam.XParam,
+               globalConfig.GridParam.YParam)
+
     // if x_param or y_param are 0, exit
-    if (config.gridParam.x_param == 0 || config.gridParam.y_param == 0) {
+    if (globalConfig.GridParam.XParam == 0 || globalConfig.GridParam.YParam == 0) {
         fmt.Printf("x_param or y_param set to 0, check the system config file for kitty")
         os.Exit(1)
     }
 
+	pageCoordinater()
 
+	time.Sleep(100 * time.Second)
 
 }
 
