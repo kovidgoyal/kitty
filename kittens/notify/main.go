@@ -31,31 +31,38 @@ func check_id_valid(x string) bool {
 	return pat.ReplaceAllString(x, "") == x
 }
 
-func create_metadata(opts *Options, wait_till_closed bool, expire_time time.Duration) string {
+type parsed_data struct {
+	opts                    *Options
+	wait_till_closed        bool
+	expire_time             time.Duration
+	title, body, identifier string
+}
+
+func (p *parsed_data) create_metadata() string {
 	ans := []string{}
-	if opts.AppName != "" {
-		ans = append(ans, "f="+b64encode(opts.AppName))
+	if p.opts.AppName != "" {
+		ans = append(ans, "f="+b64encode(p.opts.AppName))
 	}
-	switch opts.Urgency {
+	switch p.opts.Urgency {
 	case "low":
 		ans = append(ans, "u=0")
 	case "critical":
 		ans = append(ans, "u=2")
 	}
-	if expire_time >= 0 {
-		ans = append(ans, "w="+strconv.FormatInt(expire_time.Milliseconds(), 10))
+	if p.expire_time >= 0 {
+		ans = append(ans, "w="+strconv.FormatInt(p.expire_time.Milliseconds(), 10))
 	}
-	if opts.Type != "" {
-		ans = append(ans, "t="+b64encode(opts.Type))
+	if p.opts.Type != "" {
+		ans = append(ans, "t="+b64encode(p.opts.Type))
 	}
-	if wait_till_closed {
+	if p.wait_till_closed {
 		ans = append(ans, "c=1:a=report")
 	}
-	for _, x := range opts.Icon {
+	for _, x := range p.opts.Icon {
 		ans = append(ans, "n="+b64encode(x))
 	}
-	if opts.IconCacheId != "" {
-		ans = append(ans, "g="+opts.IconCacheId)
+	if p.opts.IconCacheId != "" {
+		ans = append(ans, "g="+p.opts.IconCacheId)
 	}
 	m := strings.Join(ans, ":")
 	if m != "" {
@@ -66,8 +73,8 @@ func create_metadata(opts *Options, wait_till_closed bool, expire_time time.Dura
 
 var debugprintln = tty.DebugPrintln
 
-func generate_chunks(title, body, identifier string, opts *Options, wait_till_closed bool, expire_time time.Duration, callback func(string)) {
-	prefix := ESC_CODE_PREFIX + "i=" + identifier
+func (p *parsed_data) generate_chunks(callback func(string)) {
+	prefix := ESC_CODE_PREFIX + "i=" + p.identifier
 	write_chunk := func(middle string) {
 		callback(prefix + middle + ESC_CODE_SUFFIX)
 	}
@@ -81,22 +88,22 @@ func generate_chunks(title, body, identifier string, opts *Options, wait_till_cl
 			write_chunk(":d=0:e=1" + p + ";" + enc)
 		}
 	}
-	metadata := create_metadata(opts, wait_till_closed, expire_time)
+	metadata := p.create_metadata()
 	write_chunk(":d=0" + metadata + ";")
-	add_payload("title", title)
-	if body != "" {
-		add_payload("body", body)
+	add_payload("title", p.title)
+	if p.body != "" {
+		add_payload("body", p.body)
 	}
 	write_chunk(";")
 }
 
-func run_loop(title, body, identifier string, opts *Options, wait_till_closed bool, expire_time time.Duration) (err error) {
+func (p *parsed_data) run_loop() (err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if err != nil {
 		return err
 	}
 	activated := ""
-	prefix := ESC_CODE_PREFIX + "i=" + identifier
+	prefix := ESC_CODE_PREFIX + "i=" + p.identifier
 
 	poll_for_close := func() {
 		lp.AddTimer(time.Millisecond*50, false, func(_ loop.IdType) error {
@@ -105,7 +112,7 @@ func run_loop(title, body, identifier string, opts *Options, wait_till_closed bo
 		})
 	}
 	lp.OnInitialize = func() (string, error) {
-		generate_chunks(title, body, identifier, opts, wait_till_closed, expire_time, func(x string) { lp.QueueWriteString(x) })
+		p.generate_chunks(func(x string) { lp.QueueWriteString(x) })
 		return "", nil
 	}
 	lp.OnEscapeCode = func(ect loop.EscapeCodeType, data []byte) error {
@@ -122,7 +129,7 @@ func run_loop(title, body, identifier string, opts *Options, wait_till_closed bo
 					payload_type = val
 				}
 			}
-			if sent_identifier == identifier {
+			if sent_identifier == p.identifier {
 				switch payload_type {
 				case "close":
 					if payload == "untracked" {
@@ -132,7 +139,7 @@ func run_loop(title, body, identifier string, opts *Options, wait_till_closed bo
 					}
 				case "alive":
 					live_ids := strings.Split(payload, ",")
-					if slices.Contains(live_ids, identifier) {
+					if slices.Contains(live_ids, p.identifier) {
 						poll_for_close()
 					} else {
 						lp.Quit(0)
@@ -218,13 +225,14 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if len(args) == 0 {
 		return 1, fmt.Errorf("Must specify a TITLE for the notification")
 	}
-	title := args[0]
-	if len(title) == 0 {
+	var p parsed_data
+	p.opts = opts
+	p.title = args[0]
+	if len(p.title) == 0 {
 		return 1, fmt.Errorf("Must specify a non-empty TITLE for the notification")
 	}
-	body := ""
 	if len(args) > 1 {
-		body = strings.Join(args[1:], " ")
+		p.body = strings.Join(args[1:], " ")
 	}
 	ident := opts.Identifier
 	if ident == "" {
@@ -238,16 +246,16 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if !check_id_valid(ident) {
 		return 1, bad_ident(ident)
 	}
+	p.identifier = ident
 	if !check_id_valid(opts.IconCacheId) {
 		return 1, bad_ident(opts.IconCacheId)
 	}
-	var expire_time time.Duration
-	if expire_time, err = parse_duration(opts.ExpireTime); err != nil {
+	if p.expire_time, err = parse_duration(opts.ExpireTime); err != nil {
 		return 1, fmt.Errorf("Invalid expire time: %s with error: %w", opts.ExpireTime, err)
 	}
-	wait_till_closed := opts.WaitTillClosed
+	p.wait_till_closed = opts.WaitTillClosed
 	if opts.OnlyPrintEscapeCode {
-		generate_chunks(title, body, ident, opts, wait_till_closed, expire_time, func(x string) {
+		p.generate_chunks(func(x string) {
 			if err == nil {
 				_, err = os.Stdout.WriteString(x)
 			}
@@ -256,14 +264,14 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		if opts.PrintIdentifier {
 			fmt.Println(ident)
 		}
-		if wait_till_closed {
-			err = run_loop(title, body, ident, opts, wait_till_closed, expire_time)
+		if p.wait_till_closed {
+			err = p.run_loop()
 		} else {
 			var term *tty.Term
 			if term, err = tty.OpenControllingTerm(); err != nil {
 				return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
 			}
-			generate_chunks(title, body, ident, opts, wait_till_closed, expire_time, func(x string) {
+			p.generate_chunks(func(x string) {
 				if err == nil {
 					_, err = term.WriteString(x)
 				}
