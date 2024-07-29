@@ -671,7 +671,8 @@ class NotificationManager:
         channel: Channel = Channel(),
         log: Log = Log(),
         debug: bool = False,
-        base_cache_dir: str = ''
+        base_cache_dir: str = '',
+        cleanup_at_exit: bool = True,
     ):
         global debug_desktop_integration
         debug_desktop_integration = debug
@@ -693,6 +694,9 @@ class NotificationManager:
             except Exception as e:
                 self.log(f'Failed to load {script_path} with error: {e}')
         self.reset()
+        if cleanup_at_exit:
+            import atexit
+            atexit.register(self.cleanup)
 
     def reset(self) -> None:
         self.icon_data_cache.clear()
@@ -892,3 +896,6 @@ class NotificationManager:
             parts = raw.split(';', 1)
             n.title, n.body = parts[0], (parts[1] if len(parts) > 1 else '')
             self.notify_with_command(n, channel_id)
+
+    def cleanup(self) -> None:
+        del self.icon_data_cache

@@ -237,7 +237,9 @@ func (p *parsed_data) load_image_data() (err error) {
 	}
 	defer f.Close()
 	_, imgfmt, err := image.DecodeConfig(f)
-	f.Seek(0, io.SeekStart)
+	if _, err = f.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
 	if err == nil && imgfmt != "" && strings.Contains("jpeg jpg gif png", strings.ToLower(imgfmt)) {
 		p.image_data, err = io.ReadAll(f)
 		return
