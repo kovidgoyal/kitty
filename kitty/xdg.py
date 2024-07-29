@@ -31,35 +31,35 @@ class XDGIconCache:
     def __init__(self) -> None:
         self.existing_icon_names: set[str] = set()
         self.scanned = False
-        self.themes_to_search: set[str] = set()
 
-    def find_inherited_themes(self, basedir: str, seen_indexes: set[str]) -> bool:
+    def find_inherited_themes(self, basedir: str, seen_indexes: set[str], themes_to_search: set[str]) -> bool:
         if basedir not in seen_indexes:
             seen_indexes.add(basedir)
             with suppress(OSError), open(os.path.join(basedir, 'index.theme')) as f:
                 raw = f.read()
                 if m := re.search(r'^Inherits\s*=\s*(.+?)$', raw, re.MULTILINE):
                     for x in m.group(1).split(','):
-                        self.themes_to_search.add(x.strip())
+                        themes_to_search.add(x.strip())
                 return True
         return False
 
     def scan(self) -> None:
+        themes_to_search: set[str] = set()
         self.scanned = True
         seen_indexes: set[str] = set()
         for icdir in icon_dirs():
-            if self.find_inherited_themes(os.path.join(icdir, 'default'), seen_indexes):
+            if self.find_inherited_themes(os.path.join(icdir, 'default'), seen_indexes, themes_to_search):
                 break
-        self.themes_to_search.add('hicolor')
+        themes_to_search.add('hicolor')
         while True:
-            before = len(self.themes_to_search)
+            before = len(themes_to_search)
             for icdir in icon_dirs():
-                for theme in tuple(self.themes_to_search):
-                    self.find_inherited_themes(os.path.join(icdir, theme), seen_indexes)
-            if len(self.themes_to_search) == before:
+                for theme in tuple(themes_to_search):
+                    self.find_inherited_themes(os.path.join(icdir, theme), seen_indexes, themes_to_search)
+            if len(themes_to_search) == before:
                 break
         for icdir in icon_dirs():
-            for theme in self.themes_to_search:
+            for theme in themes_to_search:
                 self.scan_theme_dir(os.path.join(icdir, theme))
         self.scan_theme_dir('/usr/share/pixmaps')
 
