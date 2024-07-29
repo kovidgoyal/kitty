@@ -163,7 +163,7 @@ static Py_ssize_t
 StreamingBase64Decoder_len(PyObject *s) { return ((StreamingBase64Decoder*)s)->output_sz; }
 
 static PyObject*
-StreamingBase64Decoder_flush(StreamingBase64Decoder *self, PyObject *args UNUSED) {
+StreamingBase64Decoder_reinitialize(StreamingBase64Decoder *self, PyObject *args UNUSED) {
     base64_stream_decode_init(&self->state, 0);
     Py_RETURN_NONE;
 }
@@ -191,7 +191,7 @@ static PyTypeObject StreamingBase64Decoder_Type = {
     .tp_doc = "StreamingBase64Decoder",
     .tp_methods = (PyMethodDef[]){
         {"add", (PyCFunction)StreamingBase64Decoder_add, METH_O, ""},
-        {"flush", (PyCFunction)StreamingBase64Decoder_flush, METH_NOARGS, ""},
+        {"reinitialize", (PyCFunction)StreamingBase64Decoder_reinitialize, METH_NOARGS, ""},
         {"take_output", (PyCFunction)StreamingBase64Decoder_take_output, METH_NOARGS, ""},
         {"copy_output", (PyCFunction)StreamingBase64Decoder_copy_output, METH_NOARGS, ""},
         {NULL, NULL, 0, NULL},

@@ -281,7 +281,7 @@ class WriteRequest:
 
     def flush_base64_data(self) -> None:
         if self.currently_writing_mime:
-            self.decoder.flush()
+            self.decoder.reinitialize()
             if len(self.decoder):
                 self.write_base64_data(b'')
             start = self.mime_map[self.currently_writing_mime][0]

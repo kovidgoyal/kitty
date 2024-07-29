@@ -183,7 +183,7 @@ class EncodedDataStore:
             self.data_store(self.decoder.take_output())
 
     def flush_encoded_data(self) -> None:
-        self.decoder.flush()
+        self.decoder.reinitialize()
         if len(self.decoder):
             self.data_store(self.decoder.take_output())
 
