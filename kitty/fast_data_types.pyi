@@ -1711,7 +1711,6 @@ class StreamingBase64Decoder:
     def take_output(self) -> bytes: ...  # take the output so far. The decoder no longer references this output
     def copy_output(self) -> bytes: ...  # copy the output so far
     def __len__(self) -> int: ...  # return the length of the current output
-    def leftover_bytes(self) -> memoryview: ...  # return the currently leftover bytes that will be consumed by flush()
 
 
 class DiskCache:

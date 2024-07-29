@@ -279,10 +279,6 @@ class WriteRequest:
             self.currently_writing_mime = mime
         self.write_base64_data(data)
 
-    @property
-    def current_leftover_bytes(self) -> memoryview:
-        return self.decoder.leftover_bytes()
-
     def flush_base64_data(self) -> None:
         if self.currently_writing_mime:
             self.decoder.flush()
