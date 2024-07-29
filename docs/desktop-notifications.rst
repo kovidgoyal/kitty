@@ -33,7 +33,7 @@ notification from a shell script::
 To show a message with a title and a body::
 
     printf '\x1b]99;i=1:d=0;Hello world\x1b\\'
-    printf '\x1b]99;i=1:d=1:p=body;This is cool\x1b\\'
+    printf '\x1b]99;i=1:p=body;This is cool\x1b\\'
 
 The most important key in the metadata is the ``p`` key, it controls how the
 payload is interpreted. A value of ``title`` means the payload is setting the
@@ -46,18 +46,18 @@ code can be. Chunking is accomplished by the ``i`` and ``d`` keys. The ``i``
 key is the *notification id* which can be any string containing the characters
 ``[a-zA-Z0-9_-+.]``. The ``d`` key stands for *done* and can only take the
 values ``0`` and ``1``. A value of ``0`` means the notification is not yet done
-and the terminal emulator should hold off displaying it. A value of ``1`` means
+and the terminal emulator should hold off displaying it. A non-zero value means
 the notification is done, and should be displayed. You can specify the title or
 body multiple times and the terminal emulator will concatenate them, thereby
 allowing arbitrarily long text (terminal emulators are free to impose a sensible
 limit to avoid Denial-of-Service attacks). The size of the payload must be no
-longer than ``4096`` bytes, *before being encoded*.
+longer than ``2048`` bytes, *before being encoded* or ``4096`` encoded bytes.
 
-Both the ``title`` and ``body`` payloads must be either UTF-8 encoded plain
-text with no embedded escape codes, or UTF-8 text that is :rfc:`base64 <4648>`
-encoded, in which case there must be an ``e=1`` key in the metadata to indicate
-the payload is :rfc:`base64 <4648>` encoded. No HTML or other markup in the
-plain text is allowed. It is strictly plain text, to be interpreted as such.
+Both the ``title`` and ``body`` payloads must be either :ref:`safe_utf8` text ,
+or UTF-8 text that is :ref:`base64` encoded, in which case there must be an
+``e=1`` key in the metadata to indicate the payload is :ref:`base64`
+encoded. No HTML or other markup in the plain text is allowed. It is strictly
+plain text, to be interpreted as such.
 
 Allowing users to filter notifications
 -------------------------------------------------------
@@ -66,7 +66,7 @@ Well behaved applications should identify themselves to the terminal
 by means of two keys ``f`` which is the application name and ``t``
 which is the notification type. These are free form keys, they can contain
 any values, their purpose is to allow users to easily filter out
-notifications they do not want. Both keys must have :rfc:`base64 <4648>`
+notifications they do not want. Both keys must have :ref:`base64`
 encoded UTF-8 text as their values. Terminals can then present UI to users
 to allow them to filter out notifications from applications they do not want.
 
@@ -106,12 +106,12 @@ off, so for example if you do not want any action, turn off the default
 
     a=-focus
 
-Complete specification of all the metadata keys is in the table below. If a
-terminal emulator encounters a key in the metadata it does not understand,
+Complete specification of all the metadata keys is in the :ref:`table below <keys_in_notificatons_protocol>`.
+If a terminal emulator encounters a key in the metadata it does not understand,
 the key *must* be ignored, to allow for future extensibility of this escape
 code. Similarly if values for known keys are unknown, the terminal emulator
-*should* either ignore the entire escape code or perform a best guess effort
-to display it based on what it does understand.
+*should* either ignore the entire escape code or perform a best guess effort to
+display it based on what it does understand.
 
 
 Being informed when a notification is closed
@@ -223,20 +223,20 @@ Key      Value
          implements. If no actions are supported, the ``a`` key must be absent from the
          query response.
 
+``c``    ``c=1`` if the terminal supports close events, otherwise the ``c``
+         must be omitted.
+
 ``o``    Comma separated list of occassions from the ``o`` key that the
          terminal implements. If no occasions are supported, the value
          ``o=always`` must be sent in the query response.
-
-``u``    Comma separated list of urgency values that the terminal implements.
-         If urgency is not supported, the ``u`` key must be absent from the
-         query response.
 
 ``p``    Comma spearated list of supported payload types (i.e. values of the
          ``p`` key that the terminal implements). These must contain at least
          ``title`` and ``body``.
 
-``c``    ``c=1`` if the terminal supports close events, otherwise the ``c``
-         must be omitted.
+``u``    Comma separated list of urgency values that the terminal implements.
+         If urgency is not supported, the ``u`` key must be absent from the
+         query response.
 
 ``w``    ``w=1`` if the terminal supports auto expiring of notifications.
 =======  ================================================================================
@@ -249,6 +249,8 @@ send the above *query action* followed by a request for the `primary device
 attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_. If you get back an
 answer for the device attributes without getting back an answer for the *query
 action* the terminal emulator does not support this notifications protocol.
+
+.. _keys_in_notificatons_protocol:
 
 Specification of all keys used in the protocol
 --------------------------------------------------
@@ -268,10 +270,10 @@ Key      Value                 Default    Description
                                           complete or not. A non-zero value
                                           means it is complete.
 
-``e``    ``0`` or ``1``        ``0``      If set to ``1`` means the payload is :rfc:`base64 <4648>` encoded UTF-8,
+``e``    ``0`` or ``1``        ``0``      If set to ``1`` means the payload is :ref:`base64` encoded UTF-8,
                                           otherwise it is plain UTF-8 text with no C0 control codes in it
 
-``f``    :rfc:`base64 <4648>`  ``unset``  The name of the application sending the notification. Can be used to filter out notifications.
+``f``    :ref:`base64`  ``unset``         The name of the application sending the notification. Can be used to filter out notifications.
          encoded UTF-8
          application name
 
@@ -291,7 +293,7 @@ Key      Value                 Default    Description
          ``close``,                       emulators should ignore payloads of unknown type to allow for future
          ``?``, ``alive``                 expansion of this protocol.
 
-``t``    :rfc:`base64 <4648>`  ``unset``  The type of the notification. Can be used to filter out notifications.
+``t``    :ref:`base64`         ``unset``  The type of the notification. Can be used to filter out notifications.
          encoded UTF-8
          notification type
 
@@ -314,3 +316,31 @@ Key      Value                 Default    Description
    |kitty| also supports the `legacy OSC 9 protocol developed by iTerm2
    <https://iterm2.com/documentation-escape-codes.html>`__ for desktop
    notifications.
+
+
+.. _base64:
+
+Base64
+---------------
+
+The base64 encoding used in the this specification is the one defined in
+:rfc:`4648`. When a base64 payload is chunked, either the chunking should be
+done before encoding or after. When the chunking is done before encoding, no
+more than 2048 bytes of data should be encoded per chunk and the encoded data
+**must** include the base64 padding bytes, if any. When the chunking is done
+after encoding, each encoded chunk must be no more than 4096 bytes in size.
+There may or may not be padding bytes at the end of the last chunk, terminals
+must handle either case.
+
+
+.. _safe_utf8:
+
+Escape code safe UTF-8
+--------------------------
+
+This must be valid UTF-8 as per the spec in :rfc:`3629`. In addition, in order
+to make it safe for transmission embedded inside an escape code, it must
+contain none of the C0 and C1 control characters, that is, the unicode
+characters: U+0000 (NUL) - U+1F (Unit separator), U+7F (DEL) and U+80 (PAD) - U+9F
+(APC). Note that in particular, this means that no newlines, carriage returns,
+tabs, etc. are allowed.

@@ -83,20 +83,21 @@ func (p *parsed_data) generate_chunks(callback func(string)) {
 	}
 
 	add_payload := func(payload_type, payload string) {
+		if payload == "" {
+			return
+		}
 		p := utils.IfElse(payload_type == "title", "", ":p="+payload_type)
+		payload = b64encode(payload)
 		for len(payload) > 0 {
 			chunk := payload[:min(CHUNK_SIZE, len(payload))]
 			payload = utils.IfElse(len(payload) > len(chunk), payload[len(chunk):], "")
-			enc := b64encode(chunk)
-			write_chunk(":d=0:e=1" + p + ";" + enc)
+			write_chunk(":d=0:e=1" + p + ";" + chunk)
 		}
 	}
 	metadata := p.create_metadata()
 	write_chunk(":d=0" + metadata + ";")
 	add_payload("title", p.title)
-	if p.body != "" {
-		add_payload("body", p.body)
-	}
+	add_payload("body", p.body)
 	if len(p.image_data) > 0 {
 		add_payload("icon", utils.UnsafeBytesToString(p.image_data))
 	}
