@@ -71,6 +71,12 @@ encoded UTF-8 text as their values. Terminals can then present UI to users
 to allow them to filter out notifications from applications they do not want.
 
 
+.. note::
+
+   |kitty| has sophisticated notification filtering and management
+   capabilities via :opt:`filter_notification`.
+
+
 Being informed when user activates the notification
 -------------------------------------------------------
 
@@ -249,6 +255,8 @@ Key      Value                 Default    Description
          optional leading
          ``-``
 
+``c``    ``0`` or ``1``        ``0``      When non-zero an escape code is sent to the application when the notification is closed.
+
 ``d``    ``0`` or ``1``        ``1``      Indicates if the notification is
                                           complete or not. A non-zero value
                                           means it is complete.
@@ -256,15 +264,13 @@ Key      Value                 Default    Description
 ``e``    ``0`` or ``1``        ``0``      If set to ``1`` means the payload is :rfc:`base64 <4648>` encoded UTF-8,
                                           otherwise it is plain UTF-8 text with no C0 control codes in it
 
+``f``    :rfc:`base64 <4648>`  ``unset``  The name of the application sending the notification. Can be used to filter out notifications.
+         encoded UTF-8
+         application name
+
 ``i``    ``[a-zA-Z0-9-_+.]``   ``0``      Identifier for the notification. Make these globally unqiue,
                                           like an UUID, so that terminal multiplexers can
                                           direct responses to the correct window.
-
-``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
-         ``body``,                        notification has no title, the body will be used as title. Terminal
-         ``close``,                       emulators should ignore payloads of unknown type to allow for future
-         ``?``, ``alive``                 expansion of this protocol.
-
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
          ``unfocused`` or                 the notification is sent on does not have keyboard focus. ``invisible``
@@ -273,18 +279,18 @@ Key      Value                 Default    Description
                                           its OS window is not currently active.
                                           ``always`` is the default and always honors the request.
 
-``u``    ``0, 1 or 2``         ``unset``  The *urgency* of the notification. ``0`` is low, ``1`` is normal and ``2`` is critical.
-                                          If not specified normal is used.
-
-``c``    ``0`` or ``1``        ``0``      When non-zero an escape code is sent to the application when the notification is closed.
-
-``f``    :rfc:`base64 <4648>`  ``unset``  The name of the application sending the notification. Can be used to filter out notifications.
-         encoded UTF-8
-         application name
+``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
+         ``body``,                        notification has no title, the body will be used as title. Terminal
+         ``close``,                       emulators should ignore payloads of unknown type to allow for future
+         ``?``, ``alive``                 expansion of this protocol.
 
 ``t``    :rfc:`base64 <4648>`  ``unset``  The type of the notification. Can be used to filter out notifications.
          encoded UTF-8
          notification type
+
+``u``    ``0, 1 or 2``         ``unset``  The *urgency* of the notification. ``0`` is low, ``1`` is normal and ``2`` is critical.
+                                          If not specified normal is used.
+
 
 ``w``    ``>=-1``              ``-1``     The number of milliseconds to auto-close the notification after.
 =======  ====================  ========== =================
