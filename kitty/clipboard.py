@@ -237,7 +237,7 @@ class WriteRequest:
         self, is_primary_selection: bool = False, protocol_type: ProtocolType = ProtocolType.osc_52, id: str = '',
         rollover_size: int = 16 * 1024 * 1024, max_size: int = -1,
     ) -> None:
-        self.decoder = StreamingBase64Decoder(8 * 1024)
+        self.decoder = StreamingBase64Decoder()
         self.id = id
         self.is_primary_selection = is_primary_selection
         self.protocol_type = protocol_type
@@ -281,18 +281,16 @@ class WriteRequest:
 
     def flush_base64_data(self) -> None:
         if self.currently_writing_mime:
-            self.decoder.reinitialize()
-            if len(self.decoder):
-                self.write_base64_data(b'')
+            self.decoder.reset()
             start = self.mime_map[self.currently_writing_mime][0]
             self.mime_map[self.currently_writing_mime] = MimePos(start, self.tempfile.tell() - start)
             self.currently_writing_mime = ''
 
     def write_base64_data(self, b: bytes) -> None:
         if not self.max_size_exceeded:
-            self.decoder.add(b)
-            if len(self.decoder):
-                self.tempfile.write(self.decoder.take_output())
+            decoded = self.decoder.decode(b)
+            if decoded:
+                self.tempfile.write(decoded)
                 if self.max_size > 0 and self.tempfile.tell() > (self.max_size * 1024 * 1024):
                     log_error(f'Clipboard write request has more data than allowed by clipboard_max_size ({self.max_size}), truncating')
                     self.max_size_exceeded = True

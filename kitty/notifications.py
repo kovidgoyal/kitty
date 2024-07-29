@@ -162,7 +162,7 @@ class DataStore:
 class EncodedDataStore:
 
     def __init__(self, data_store: DataStore) -> None:
-        self.decoder = StreamingBase64Decoder(initial_capacity=4096)
+        self.decoder = StreamingBase64Decoder()
         self.data_store = data_store
 
     @property
@@ -178,14 +178,10 @@ class EncodedDataStore:
     def add_base64_data(self, data: Union[str, bytes]) -> None:
         if isinstance(data, str):
             data = data.encode('ascii')
-        self.decoder.add(data)
-        if len(self.decoder) >= self.data_store.max_size:
-            self.data_store(self.decoder.take_output())
+        self.data_store(self.decoder.decode(data))
 
     def flush_encoded_data(self) -> None:
-        self.decoder.reinitialize()
-        if len(self.decoder):
-            self.data_store(self.decoder.take_output())
+        self.decoder.reset()
 
     def finalise(self) -> bytes:
         self.flush_encoded_data()
