@@ -16,10 +16,9 @@ Standard names: {', '.join(sorted(standard_icon_names))}
 
 
 --icon-path -I
-Path to an image file in PNG/JPEG/WEBP/GIF formats to use as the icon. If both
+Path to an image file in PNG/JPEG/GIF formats to use as the icon. If both
 name and path are specified then first the name will be looked for and if not found
-then the path will be used. Other image formats are supported if ImageMagick is
-installed on the system.
+then the path will be used.
 
 
 --app-name -a

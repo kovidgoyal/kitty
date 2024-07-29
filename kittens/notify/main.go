@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"image"
+	"io"
 	"os"
 	"slices"
 	"strconv"
@@ -36,6 +38,7 @@ type parsed_data struct {
 	wait_till_closed        bool
 	expire_time             time.Duration
 	title, body, identifier string
+	image_data              []byte
 }
 
 func (p *parsed_data) create_metadata() string {
@@ -93,6 +96,9 @@ func (p *parsed_data) generate_chunks(callback func(string)) {
 	add_payload("title", p.title)
 	if p.body != "" {
 		add_payload("body", p.body)
+	}
+	if len(p.image_data) > 0 {
+		add_payload("icon", utils.UnsafeBytesToString(p.image_data))
 	}
 	write_chunk(";")
 }
@@ -221,6 +227,24 @@ func parse_duration(x string) (ans time.Duration, err error) {
 	return
 }
 
+func (p *parsed_data) load_image_data() (err error) {
+	if p.opts.IconPath == "" {
+		return nil
+	}
+	f, err := os.Open(p.opts.IconPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, imgfmt, err := image.DecodeConfig(f)
+	f.Seek(0, io.SeekStart)
+	if err == nil && imgfmt != "" && strings.Contains("jpeg jpg gif png", strings.ToLower(imgfmt)) {
+		p.image_data, err = io.ReadAll(f)
+		return
+	}
+	return fmt.Errorf("The icon must be in PNG, JPEG or GIF formats")
+}
+
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if len(args) == 0 {
 		return 1, fmt.Errorf("Must specify a TITLE for the notification")
@@ -254,6 +278,9 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, fmt.Errorf("Invalid expire time: %s with error: %w", opts.ExpireTime, err)
 	}
 	p.wait_till_closed = opts.WaitTillClosed
+	if err = p.load_image_data(); err != nil {
+		return 1, fmt.Errorf("Failed to load image data from %s with error %w", opts.IconPath, err)
+	}
 	if opts.OnlyPrintEscapeCode {
 		p.generate_chunks(func(x string) {
 			if err == nil {
