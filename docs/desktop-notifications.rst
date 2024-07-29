@@ -51,7 +51,7 @@ the notification is done, and should be displayed. You can specify the title or
 body multiple times and the terminal emulator will concatenate them, thereby
 allowing arbitrarily long text (terminal emulators are free to impose a sensible
 limit to avoid Denial-of-Service attacks). The size of the payload must be no
-longer than ``2048`` bytes, *before being encoded*.
+longer than ``4096`` bytes, *before being encoded*.
 
 Both the ``title`` and ``body`` payloads must be either UTF-8 encoded plain
 text with no embedded escape codes, or UTF-8 text that is :rfc:`base64 <4648>`

@@ -37,6 +37,7 @@ is already displayed, it is replaced/updated.
 
 
 --print-identifier -p
+type=bool-set
 Print the identifier for the notification to STDOUT. Useful when not specifying
 your own identifier via the --identifier option.
 
@@ -45,6 +46,13 @@ your own identifier via the --identifier option.
 type=bool-set
 Wait until the notification is closed. If the user activates the notification,
 "activated" is printed to STDOUT before quitting.
+
+
+--only-print-escape-code
+type=bool-set
+Only print the escape code to STDOUT. Useful if using this kitten as part
+of a larger application. If this is specified, the --wait-till-closed option
+will be used for escape code generation, but no actual waiting will be done.
 '''.format
 help_text = '''\
 Send notifications to the user that are displayed to them via the
