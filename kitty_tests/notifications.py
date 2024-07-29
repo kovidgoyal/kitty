@@ -306,6 +306,8 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     self.ae(di.notifications[-1], n(icon_name='moose', icon_path=dc.hash(b'1')))
     send_with_icon(g='gid2', data='2')
     self.ae(di.notifications[-1], n(icon_path=dc.hash(b'2')))
+    send_with_icon(data='3')
+    self.ae(di.notifications[-1], n(icon_path=dc.hash(b'3')))
     reset()
 
 

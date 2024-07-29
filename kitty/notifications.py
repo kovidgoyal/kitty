@@ -25,7 +25,8 @@ class IconDataCache:
 
     def __init__(self, base_cache_dir: str = '', max_cache_size: int = 128 * 1024 * 1024):
         self.max_cache_size = max_cache_size
-        self.key_map: 'OrderedDict[str, str]' = OrderedDict()
+        self.key_map: Dict[str, str] = {}
+        self.hash_map: 'OrderedDict[str, Set[str]]' = OrderedDict()
         self.base_cache_dir = base_cache_dir
         self.cache_dir = ''
         self.total_size = 0
@@ -61,31 +62,36 @@ class IconDataCache:
             with open(path, 'wb') as f:
                 f.write(data)
             self.total_size += len(data)
-        self.key_map.pop(key, None)  # mark this key as being used recently
-        self.key_map[key] = data_hash
+            self.hash_map[data_hash] = self.hash_map.pop(data_hash, set()) | {key} # mark this data as being used recently
+        if key:
+            self.key_map[key] = data_hash
         self.prune()
         return path
 
     def get_icon(self, key: str) -> str:
         self._ensure_state()
-        data_hash = self.key_map.pop(key, None)
+        data_hash = self.key_map.get(key)
         if data_hash:
-            self.key_map[key] = data_hash  # mark this key as being used recently
+            self.hash_map[data_hash] = self.hash_map.pop(data_hash, set()) | {key} # mark this data as being used recently
             return os.path.join(self.cache_dir, data_hash)
         return ''
 
     def clear(self) -> None:
-        while self.key_map:
-            key, data_hash = self.key_map.popitem(False)
-            self._remove_data_hash(data_hash)
+        while self.hash_map:
+            data_hash, keys = self.hash_map.popitem(False)
+            for key in keys:
+                self.key_map.pop(key, None)
+            self._remove_data_file(data_hash)
 
     def prune(self) -> None:
         self._ensure_state()
-        while self.total_size > self.max_cache_size and self.key_map:
-            key, data_hash = self.key_map.popitem(False)
-            self._remove_data_hash(data_hash)
+        while self.total_size > self.max_cache_size and self.hash_map:
+            data_hash, keys = self.hash_map.popitem(False)
+            for key in keys:
+                self.key_map.pop(key, None)
+            self._remove_data_file(data_hash)
 
-    def _remove_data_hash(self, data_hash: str) -> None:
+    def _remove_data_file(self, data_hash: str) -> None:
         path = os.path.join(self.cache_dir, data_hash)
         with suppress(FileNotFoundError):
             sz = os.path.getsize(path)
@@ -96,7 +102,9 @@ class IconDataCache:
         self._ensure_state()
         data_hash = self.key_map.pop(key, None)
         if data_hash:
-            self._remove_data_hash(data_hash)
+            for key in self.hash_map.pop(data_hash, set()):
+                self.key_map.pop(key, None)
+            self._remove_data_file(data_hash)
 
 
 class Urgency(Enum):
@@ -366,12 +374,9 @@ class NotificationCommand:
             if truncated:
                 self.log('Ignoring too long notification icon data')
             else:
-                if self.icon_data_key:
-                    icd = self.icon_data_cache_ref()
-                    if icd:
-                        self.icon_path = icd.add_icon(self.icon_data_key, data)
-                else:
-                    self.log('Ignoring notification icon data because no icon data key specified')
+                icd = self.icon_data_cache_ref()
+                if icd:
+                    self.icon_path = icd.add_icon(self.icon_data_key, data)
 
     def finalise(self) -> None:
         if self.current_payload_buffer:
