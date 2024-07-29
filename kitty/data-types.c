@@ -111,7 +111,7 @@ typedef struct StreamingBase64Decoder {
 } StreamingBase64Decoder;
 
 static int
-StreamingBase64Decoder_init(PyObject *s, PyObject *args UNUSED, PyObject *kwds UNUSED) {
+StreamingBase64Decoder_init(PyObject *s, PyObject *args, PyObject *kwds UNUSED) {
     if (PyTuple_GET_SIZE(args)) { PyErr_SetString(PyExc_TypeError, "constructor takes no arguments"); return -1; }
     StreamingBase64Decoder *self = (StreamingBase64Decoder*)s;
 	base64_stream_decode_init(&self->state, 0);
