@@ -11,7 +11,7 @@ from itertools import count
 from typing import Any, Callable, Dict, FrozenSet, Iterator, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 from weakref import ReferenceType, ref
 
-from .constants import cache_dir, config_dir, is_macos, logo_png_file
+from .constants import cache_dir, config_dir, is_macos, logo_png_file, standard_icon_names
 from .fast_data_types import ESC_OSC, StreamingBase64Decoder, add_timer, base64_decode, current_focused_os_window_id, get_boss, get_options
 from .types import run_once
 from .typing import WindowType
@@ -207,7 +207,7 @@ class NotificationCommand:
     only_when: OnlyWhen = OnlyWhen.unset
     urgency: Optional[Urgency] = None
     icon_data_key: str = ''
-    icon_name: str = ''
+    icon_names: Tuple[str, ...] = ()
     application_name: str = ''
     notification_type: str = ''
     timeout: int = -2
@@ -296,7 +296,10 @@ class NotificationCommand:
                 elif k == 'g':
                     self.icon_data_key = sanitize_id(v)
                 elif k == 'n':
-                    self.icon_name = v
+                    try:
+                        self.icon_names += (base64_decode(v).decode('utf-8', 'replace'),)
+                    except Exception:
+                        self.log('Ignoring invalid icon name in notification: {v!r}')
                 elif k == 'f':
                     try:
                         self.application_name = base64_decode(v).decode('utf-8', 'replace')
@@ -328,8 +331,8 @@ class NotificationCommand:
             self.close_response_requested = prev.close_response_requested
         if not self.icon_data_key:
             self.icon_data_key = prev.icon_data_key
-        if not self.icon_name:
-            self.icon_name = prev.icon_name
+        if prev.icon_names:
+            self.icon_names += prev.icon_names
         if not self.application_name:
             self.application_name = prev.application_name
         if not self.notification_type:
@@ -574,7 +577,23 @@ class FreeDesktopIntegration(DesktopIntegration):
 
     def notify(self, nc: NotificationCommand, existing_desktop_notification_id: Optional[int]) -> int:
         from .fast_data_types import dbus_send_notification
-        app_icon = nc.icon_name or nc.icon_path or get_custom_window_icon()[1] or logo_png_file
+        from .xdg import icon_exists, icon_for_appname
+        app_icon = ''
+        if nc.icon_names:
+            for name in nc.icon_names:
+                if sn := standard_icon_names.get(name):
+                    app_icon = sn
+                    break
+                if icon_exists(name):
+                    app_icon = name
+                    break
+            if not app_icon:
+                app_icon = nc.icon_path or nc.icon_names[0]
+        else:
+            app_icon = nc.icon_path or icon_for_appname(nc.application_name)
+        if not app_icon:
+            app_icon = get_custom_window_icon()[1] or logo_png_file
+
         body = nc.body.replace('<', '<\u200c').replace('&', '&\u200c')  # prevent HTML markup from being recognized
         assert nc.urgency is not None
         replaces_dbus_id = 0

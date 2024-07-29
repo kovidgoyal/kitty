@@ -3,7 +3,25 @@
 
 import sys
 
-OPTIONS = r'''
+
+def OPTIONS() -> str:
+    from kitty.constants import standard_icon_names
+    return  f'''
+--icon -i
+type=list
+The name of the icon to use for the notification. An icon with this name
+will be searched for on the computer running the terminal emulator. Can
+be specified multiple times, the first name that is found will be used.
+Standard names: {', '.join(sorted(standard_icon_names))}
+
+
+--icon-path -I
+Path to an image file in PNG/JPEG/WEBP/GIF formats to use as the icon. If both
+name and path are specified then first the name will be looked for and if not found
+then the path will be used. Other image formats are supported if ImageMagick is
+installed on the system.
+
+
 --app-name -a
 default=kitten-notify
 The application name for the notification.
@@ -31,7 +49,7 @@ The notification type. Can be any string, it is used by users to create filter r
 for notifications, so choose something descriptive of the notifications, purpose.
 
 
---identifier -i
+--identifier
 The identifier of this notification. If a notification with the same identifier
 is already displayed, it is replaced/updated.
 
@@ -54,7 +72,15 @@ type=bool-set
 Only print the escape code to STDOUT. Useful if using this kitten as part
 of a larger application. If this is specified, the --wait-till-closed option
 will be used for escape code generation, but no actual waiting will be done.
-'''.format
+
+
+--icon-cache-id -g
+Identifier to use when caching icons in the terminal emulator. Using an identifier means
+that icon data needs to be transmitted only once using --icon-path. Subsequent invocations
+will use the cached icon data, at least until the terminal instance is restarted. This is useful
+if this kitten is being used inside a larger application, with --only-print-escape-code.
+'''
+
 help_text = '''\
 Send notifications to the user that are displayed to them via the
 desktop environment's notifications service. Works over SSH as well.

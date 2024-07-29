@@ -26,6 +26,11 @@ func b64encode(x string) string {
 	return base64.RawStdEncoding.EncodeToString(utils.UnsafeStringToBytes(x))
 }
 
+func check_id_valid(x string) bool {
+	pat := utils.MustCompile(`[^a-zA-Z0-9_+.-]`)
+	return pat.ReplaceAllString(x, "") == x
+}
+
 func create_metadata(opts *Options, wait_till_closed bool, expire_time time.Duration) string {
 	ans := []string{}
 	if opts.AppName != "" {
@@ -45,6 +50,12 @@ func create_metadata(opts *Options, wait_till_closed bool, expire_time time.Dura
 	}
 	if wait_till_closed {
 		ans = append(ans, "c=1:a=report")
+	}
+	for _, x := range opts.Icon {
+		ans = append(ans, "n="+b64encode(x))
+	}
+	if opts.IconCacheId != "" {
+		ans = append(ans, "g="+opts.IconCacheId)
 	}
 	m := strings.Join(ans, ":")
 	if m != "" {
@@ -220,6 +231,15 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		if ident, err = random_ident(); err != nil {
 			return 1, fmt.Errorf("Failed to generate a random identifier with error: %w", err)
 		}
+	}
+	bad_ident := func(which string) error {
+		return fmt.Errorf("Invalid identifier: %s must be only English letters, numbers, hyphens and underscores.", which)
+	}
+	if !check_id_valid(ident) {
+		return 1, bad_ident(ident)
+	}
+	if !check_id_valid(opts.IconCacheId) {
+		return 1, bad_ident(opts.IconCacheId)
 	}
 	var expire_time time.Duration
 	if expire_time, err = parse_duration(opts.ExpireTime); err != nil {

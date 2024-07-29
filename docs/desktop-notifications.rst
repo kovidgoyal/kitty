@@ -70,6 +70,13 @@ notifications they do not want. Both keys must have :rfc:`base64 <4648>`
 encoded UTF-8 text as their values. Terminals can then present UI to users
 to allow them to filter out notifications from applications they do not want.
 
+.. note::
+   The application name should generally be set to the filename of the
+   applications `desktop file
+   <https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html#file-naming>`__
+   (without the ``.desktop`` part) or the bundle identifier for a macOS
+   application. While not strictly necessary, this allows the terminal
+   emulator to deduce an icon for the notification when one is not specified.
 
 .. note::
 

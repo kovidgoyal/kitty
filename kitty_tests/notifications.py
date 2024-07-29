@@ -13,11 +13,11 @@ from . import BaseTest
 
 
 def n(
-    title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path='',
+    title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_names=(), icon_path='',
     application_name='', notification_type='', timeout=-1,
 ):
     return {
-        'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_name': icon_name, 'icon_path': icon_path,
+        'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_names': icon_names, 'icon_path': icon_path,
         'application_name': application_name, 'notification_type': notification_type, 'timeout': timeout
     }
 
@@ -53,7 +53,7 @@ class DesktopIntegration(DesktopIntegration):
             self.counter += 1
             did = self.counter
         title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
-        ans = n(title, body, urgency, did, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type, timeout=cmd.timeout)
+        ans = n(title, body, urgency, did, cmd.icon_names, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type, timeout=cmd.timeout)
         self.notifications.append(ans)
         return self.counter
 
@@ -287,15 +287,16 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     def send_with_icon(data='', n='', g=''):
         m = ''
         if n:
-            m += f'n={n}:'
+            for x in n.split(','):
+                m += f'n={standard_b64encode(x.encode()).decode()}:'
         if g:
             m += f'g={g}:'
         h(f'i=9:d=0:{m};title')
         h(f'i=9:p=icon;{data}')
 
     dc = nm.icon_data_cache
-    send_with_icon(n='mycon')
-    self.ae(di.notifications, [n(icon_name='mycon')])
+    send_with_icon(n='mycon,ic2')
+    self.ae(di.notifications, [n(icon_names=('mycon', 'ic2'))])
     reset()
     send_with_icon(g='gid')
     self.ae(di.notifications, [n()])
@@ -303,7 +304,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     send_with_icon(g='gid', data='1')
     self.ae(di.notifications, [n(icon_path=dc.hash(b'1'))])
     send_with_icon(g='gid', n='moose')
-    self.ae(di.notifications[-1], n(icon_name='moose', icon_path=dc.hash(b'1')))
+    self.ae(di.notifications[-1], n(icon_names=('moose',), icon_path=dc.hash(b'1')))
     send_with_icon(g='gid2', data='2')
     self.ae(di.notifications[-1], n(icon_path=dc.hash(b'2')))
     send_with_icon(data='3')

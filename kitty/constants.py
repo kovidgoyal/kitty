@@ -188,6 +188,20 @@ except KeyError:
 # https://github.com/ansible/ansible/issues/11536#issuecomment-153030743
 ssh_control_master_template = 'kssh-{kitty_pid}-{ssh_placeholder}'
 
+# See https://specifications.freedesktop.org/icon-naming-spec/latest/ar01s04.html
+standard_icon_names = {
+    'error': 'dialog-error',
+    'warning': 'dialog-warning',
+    'warn': 'dialog-warning',
+    'info': 'dialog-information',
+    'question': 'dialog-question',
+
+    'help': 'system-help',
+    'file-manager': 'system-file-manager',
+    'system-monitor': 'utilities-system-monitor',
+    'text-editor': 'utilities-text-editor',
+}
+
 
 def glfw_path(module: str) -> str:
     prefix = 'kitty.' if getattr(sys, 'frozen', False) else ''
