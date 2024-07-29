@@ -78,10 +78,10 @@ def run_build(args: Any) -> None:
             needs_retry = 'arm64' in cmd or building_nightly
             if not needs_retry:
                 raise
-            print('Build failed, retrying in a few seconds...', file=sys.stderr)
+            print('Build failed, retrying in a minute seconds...', file=sys.stderr)
             if 'macos' in cmd:
                 call('python ../bypy macos shutdown')
-            time.sleep(25)
+            time.sleep(60)
             call(cmd, echo=True)
 
     for x in ('64', 'arm64'):
