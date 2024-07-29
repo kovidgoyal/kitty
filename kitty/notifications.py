@@ -209,7 +209,7 @@ class NotificationCommand:
     icon_data_key: str = ''
     icon_names: Tuple[str, ...] = ()
     application_name: str = ''
-    notification_type: str = ''
+    notification_types: tuple[str, ...] = ()
     timeout: int = -2
 
     # event callbacks
@@ -297,17 +297,17 @@ class NotificationCommand:
                     self.icon_data_key = sanitize_id(v)
                 elif k == 'n':
                     try:
-                        self.icon_names += (base64_decode(v).decode('utf-8', 'replace'),)
+                        self.icon_names += (base64_decode(v).decode('utf-8'),)
                     except Exception:
                         self.log('Ignoring invalid icon name in notification: {v!r}')
                 elif k == 'f':
                     try:
-                        self.application_name = base64_decode(v).decode('utf-8', 'replace')
+                        self.application_name = base64_decode(v).decode('utf-8')
                     except Exception:
                         self.log('Ignoring invalid application_name in notification: {v!r}')
                 elif k == 't':
                     try:
-                        self.notification_type = base64_decode(v).decode('utf-8', 'replace')
+                        self.notification_types += (base64_decode(v).decode('utf-8'),)
                     except Exception:
                         self.log('Ignoring invalid notification type in notification: {v!r}')
                 elif k == 'w':
@@ -332,11 +332,11 @@ class NotificationCommand:
         if not self.icon_data_key:
             self.icon_data_key = prev.icon_data_key
         if prev.icon_names:
-            self.icon_names += prev.icon_names
+            self.icon_names = prev.icon_names + self.icon_names
         if not self.application_name:
             self.application_name = prev.application_name
-        if not self.notification_type:
-            self.notification_type = prev.notification_type
+        if prev.notification_types:
+            self.notification_types = prev.notification_types + self.notification_types
         if self.timeout < -1:
             self.timeout = prev.timeout
         self.icon_path = prev.icon_path
@@ -402,7 +402,11 @@ class NotificationCommand:
     def matches_rule_item(self, location:str, query:str) -> bool:
         import re
         pat = re.compile(query)
-        val = {'title': self.title, 'body': self.body, 'app': self.application_name, 'type': self.notification_type}[location]
+        if location == 'type':
+            for x in self.notification_types:
+                if pat.search(x) is not None:
+                    return True
+        val = {'title': self.title, 'body': self.body, 'app': self.application_name}[location]
         return pat.search(val) is not None
 
     def matches_rule(self, rule: str) -> bool:

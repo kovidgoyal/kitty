@@ -67,8 +67,11 @@ by means of two keys ``f`` which is the application name and ``t``
 which is the notification type. These are free form keys, they can contain
 any values, their purpose is to allow users to easily filter out
 notifications they do not want. Both keys must have :ref:`base64`
-encoded UTF-8 text as their values. Terminals can then present UI to users
-to allow them to filter out notifications from applications they do not want.
+encoded UTF-8 text as their values. The ``t`` key can be specified multiple
+times, as notifications can have more than one type. See the `freedesktop.org
+spec
+<https://specifications.freedesktop.org/notification-spec/notification-spec-latest.html#categories>`__
+for examples of notification types.
 
 .. note::
    The application name should generally be set to the filename of the
@@ -273,7 +276,7 @@ Key      Value                 Default    Description
 ``e``    ``0`` or ``1``        ``0``      If set to ``1`` means the payload is :ref:`base64` encoded UTF-8,
                                           otherwise it is plain UTF-8 text with no C0 control codes in it
 
-``f``    :ref:`base64`  ``unset``         The name of the application sending the notification. Can be used to filter out notifications.
+``f``    :ref:`base64`         ``unset``  The name of the application sending the notification. Can be used to filter out notifications.
          encoded UTF-8
          application name
 

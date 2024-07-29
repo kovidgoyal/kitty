@@ -14,11 +14,11 @@ from . import BaseTest
 
 def n(
     title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_names=(), icon_path='',
-    application_name='', notification_type='', timeout=-1,
+    application_name='', notification_types=(), timeout=-1,
 ):
     return {
         'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_names': icon_names, 'icon_path': icon_path,
-        'application_name': application_name, 'notification_type': notification_type, 'timeout': timeout
+        'application_name': application_name, 'notification_types': notification_types, 'timeout': timeout
     }
 
 
@@ -53,7 +53,7 @@ class DesktopIntegration(DesktopIntegration):
             self.counter += 1
             did = self.counter
         title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
-        ans = n(title, body, urgency, did, cmd.icon_names, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type, timeout=cmd.timeout)
+        ans = n(title, body, urgency, did, cmd.icon_names, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_types, timeout=cmd.timeout)
         self.notifications.append(ans)
         return self.counter
 
@@ -264,9 +264,9 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     def e(x):
         return standard_b64encode(x.encode()).decode()
 
-    h(f'i=t:d=0:f={e("app")};title')
+    h(f'i=t:d=0:f={e("app")}:t={e("1")};title')
     h(f'i=t:t={e("test")}')
-    self.ae(di.notifications, [n(application_name='app', notification_type='test')])
+    self.ae(di.notifications, [n(application_name='app', notification_types=('1', 'test',))])
     reset()
 
     # Test timeout

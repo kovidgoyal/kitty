@@ -14,7 +14,7 @@ def log_notification(nc: NotificationCommand) -> None:
         print(f'title: {nc.title}', file=log)
         print(f'body: {nc.body}', file=log)
         print(f'app: {nc.application_name}', file=log)
-        print(f'type: {nc.notification_type}', file=log)
+        print(f'types: {nc.notification_types}', file=log)
         print('\n', file=log)
 
 
@@ -48,7 +48,7 @@ def main(nc: NotificationCommand) -> bool:
     # run a script if this notification is from myapp and has
     # type foo, passing in the title and body as command line args
     # to the script.
-    if nc.application_name == 'myapp' and nc.notification_type == 'foo':
+    if nc.application_name == 'myapp' and 'foo' in nc.notification_types:
         subprocess.Popen(['/path/to/my/script', nc.title, nc.body])
 
     # do some arbitrary actions when this notification is activated
