@@ -33,26 +33,29 @@ class XDGIconCache:
         self.scanned = False
         self.themes_to_search: set[str] = set()
 
-    def find_inherited_themes(self, basedir: str) -> bool:
-        with suppress(OSError), open(os.path.join(basedir, 'index.theme')) as f:
-            raw = f.read()
-            if m := re.search(r'^Inherits\s*=\s*(.+?)$', raw, re.MULTILINE):
-                for x in m.group(1).split(','):
-                    self.themes_to_search.add(x.strip())
-            return True
+    def find_inherited_themes(self, basedir: str, seen_indexes: set[str]) -> bool:
+        if basedir not in seen_indexes:
+            seen_indexes.add(basedir)
+            with suppress(OSError), open(os.path.join(basedir, 'index.theme')) as f:
+                raw = f.read()
+                if m := re.search(r'^Inherits\s*=\s*(.+?)$', raw, re.MULTILINE):
+                    for x in m.group(1).split(','):
+                        self.themes_to_search.add(x.strip())
+                return True
         return False
 
     def scan(self) -> None:
         self.scanned = True
+        seen_indexes: set[str] = set()
         for icdir in icon_dirs():
-            if self.find_inherited_themes(os.path.join(icdir, 'default')):
+            if self.find_inherited_themes(os.path.join(icdir, 'default'), seen_indexes):
                 break
         self.themes_to_search.add('hicolor')
         while True:
             before = len(self.themes_to_search)
             for icdir in icon_dirs():
                 for theme in tuple(self.themes_to_search):
-                    self.find_inherited_themes(os.path.join(icdir, theme))
+                    self.find_inherited_themes(os.path.join(icdir, theme), seen_indexes)
             if len(self.themes_to_search) == before:
                 break
         for icdir in icon_dirs():
