@@ -1709,6 +1709,13 @@ class StreamingBase64Decoder:
     def reset(self) -> None: ...  # reset the state to empty to start decoding a new stream
 
 
+class StreamingBase64Encodeer:
+    def __init__(self, add_trailing_bytes: bool = True) -> None: ...
+    def encode(self, data: ReadOnlyBuffer) -> bytes: ...  # decode the specified data
+    def reset(self) -> bytes: ...  # reset the state to empty to start decoding a new stream, return any trailing bytes
+
+
+
 class DiskCache:
     small_hole_threshold: int
     defrag_factor: int
