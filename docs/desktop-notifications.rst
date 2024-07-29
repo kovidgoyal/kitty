@@ -100,14 +100,6 @@ code. Similarly if values for known keys are unknown, the terminal emulator
 *should* either ignore the entire escape code or perform a best guess effort
 to display it based on what it does understand.
 
-.. note::
-   It is possible to extend this escape code to allow specifying an icon for
-   the notification, however, given that some platforms, such as legacy versions
-   of macOS, don't allow displaying custom images on a notification, it was
-   decided to leave it out of the spec for the time being.
-
-   Similarly, features such as scheduled notifications could be added in future
-   revisions.
 
 Being informed when a notification is closed
 ------------------------------------------------
@@ -143,9 +135,10 @@ notifications are still alive (not closed), with::
     <OSC> 99 ; i=myid : p=alive ; <terminator>
 
 The terminal will reply with::
+
     <OSC> 99 ; i=myid : p=alive ; id1,id2,id3 <terminator>
 
-Here, ``myid`` is present for multiplxer support. The reponse from the terminal
+Here, ``myid`` is present for multiplexer support. The response from the terminal
 contains a comma separated list of ids that are still alive.
 
 
@@ -218,7 +211,7 @@ Key      Value
          query response.
 
 ``o``    Comma separated list of occassions from the ``o`` key that the
-         terminal implements. If no occassions are supported, the value
+         terminal implements. If no occasions are supported, the value
          ``o=always`` must be sent in the query response.
 
 ``u``    Comma separated list of urgency values that the terminal implements.
@@ -236,7 +229,7 @@ Key      Value
 =======  ================================================================================
 
 In the future, if this protocol expands, more keys might be added. Clients must
-ignore keys they dont understand in the query response.
+ignore keys they do not understand in the query response.
 
 To check if a terminal emulator supports this notifications protocol the best way is to
 send the above *query action* followed by a request for the `primary device
@@ -264,7 +257,7 @@ Key      Value                 Default    Description
                                           otherwise it is plain UTF-8 text with no C0 control codes in it
 
 ``i``    ``[a-zA-Z0-9-_+.]``   ``0``      Identifier for the notification. Make these globally unqiue,
-                                          like an UUID, so that termial multiplxers can
+                                          like an UUID, so that terminal multiplexers can
                                           direct responses to the correct window.
 
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a

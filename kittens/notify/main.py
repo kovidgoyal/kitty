@@ -45,7 +45,8 @@ your own identifier via the --identifier option.
 --wait-till-closed -w
 type=bool-set
 Wait until the notification is closed. If the user activates the notification,
-"activated" is printed to STDOUT before quitting.
+"activated" is printed to STDOUT before quitting. Press the Esc or Ctrl+C keys
+to close the notification manually.
 
 
 --only-print-escape-code

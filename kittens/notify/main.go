@@ -1,9 +1,11 @@
 package notify
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +44,7 @@ func create_metadata(opts *Options, wait_till_closed bool, expire_time time.Dura
 		ans = append(ans, "t="+b64encode(opts.Type))
 	}
 	if wait_till_closed {
-		ans = append(ans, "c=1")
+		ans = append(ans, "c=1:a=report")
 	}
 	m := strings.Join(ans, ":")
 	if m != "" {
@@ -82,17 +84,87 @@ func run_loop(title, body, identifier string, opts *Options, wait_till_closed bo
 	if err != nil {
 		return err
 	}
+	activated := ""
+	prefix := ESC_CODE_PREFIX + "i=" + identifier
 
+	poll_for_close := func() {
+		lp.AddTimer(time.Millisecond*50, false, func(_ loop.IdType) error {
+			lp.QueueWriteString(prefix + ":p=alive;" + ESC_CODE_SUFFIX)
+			return nil
+		})
+	}
 	lp.OnInitialize = func() (string, error) {
 		generate_chunks(title, body, identifier, opts, wait_till_closed, expire_time, func(x string) { lp.QueueWriteString(x) })
 		return "", nil
 	}
+	lp.OnEscapeCode = func(ect loop.EscapeCodeType, data []byte) error {
+		if ect == loop.OSC && bytes.HasPrefix(data, []byte(ESC_CODE_PREFIX[2:])) {
+			raw := utils.UnsafeBytesToString(data[len(ESC_CODE_PREFIX[2:]):])
+			metadata, payload, _ := strings.Cut(raw, ";")
+			sent_identifier, payload_type := "", ""
+			for _, x := range strings.Split(metadata, ":") {
+				key, val, _ := strings.Cut(x, "=")
+				switch key {
+				case "i":
+					sent_identifier = val
+				case "p":
+					payload_type = val
+				}
+			}
+			if sent_identifier == identifier {
+				switch payload_type {
+				case "close":
+					if payload == "untracked" {
+						poll_for_close()
+					} else {
+						lp.Quit(0)
+					}
+				case "alive":
+					live_ids := strings.Split(payload, ",")
+					if slices.Contains(live_ids, identifier) {
+						poll_for_close()
+					} else {
+						lp.Quit(0)
+					}
+				case "":
+					activated = utils.IfElse(payload == "", "activated", payload)
+				}
+			}
+		}
+		return nil
+	}
+	close_requested := 0
+	lp.OnKeyEvent = func(event *loop.KeyEvent) error {
+		if event.MatchesPressOrRepeat("ctrl+c") || event.MatchesPressOrRepeat("esc") {
+			event.Handled = true
+			switch close_requested {
+			case 0:
+				lp.QueueWriteString(prefix + ":p=close;" + ESC_CODE_SUFFIX)
+				lp.Println("Closing notification, please wait...")
+				close_requested++
+			case 1:
+				key := "Esc"
+				if event.MatchesPressOrRepeat("ctrl+c") {
+					key = "Ctrl+C"
+				}
+				lp.Println(fmt.Sprintf("Waiting for response from terminal, press the %s key again to abort. Note that this might result in garbage being printed to the terminal.", key))
+				close_requested++
+			default:
+				return fmt.Errorf("Aborted by user!")
+			}
+		}
+		return nil
+	}
+
 	err = lp.Run()
 	ds := lp.DeathSignalName()
 	if ds != "" {
 		fmt.Println("Killed by signal: ", ds)
 		lp.KillIfSignalled()
 		return
+	}
+	if activated != "" && err == nil {
+		fmt.Println(activated)
 	}
 	return
 }
