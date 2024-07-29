@@ -1705,8 +1705,12 @@ def get_mouse_data_for_window(os_window_id: int, tab_id: int, window_id: int) ->
 
 
 class StreamingBase64Decoder:
-    def decode(self, data: ReadOnlyBuffer) -> bytes: ...  # decode the specified data
     def reset(self) -> None: ...  # reset the state to empty to start decoding a new stream
+    def decode(self, data: ReadOnlyBuffer) -> bytes: ...  # decode the specified data
+    def decode_into(self, dest: bytearray, src: ReadOnlyBuffer) -> int: ...  # decode the specified data, return number of bytes written
+                                                                             # dest should be as large as src (technically 3/4 src + 2)
+                                                                             # dest can be any writable buffer
+
 
 
 class StreamingBase64Encodeer:
