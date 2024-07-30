@@ -12,6 +12,7 @@ KeyEventType = ImageManagerType = KittyCommonOpts = HandlerType = None
 GRT_t = GRT_a = GRT_d = GRT_f = GRT_m = GRT_o = GRT_C = None
 ScreenSize = KittensKeyActionType = MouseEvent = MouseButton = AbstractEventLoop = None
 TermManagerType = LoopType = Debug = GraphicsCommandType = None
+ReadableBuffer = WriteableBuffer = bytearray
 
 CompletedProcess = Tuple
 TypedDict = dict

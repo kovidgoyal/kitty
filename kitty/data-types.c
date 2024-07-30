@@ -202,6 +202,21 @@ StreamingBase64Encoder_encode(StreamingBase64Decoder *self, PyObject *a) {
 }
 
 static PyObject*
+StreamingBase64Encoder_encode_into(StreamingBase64Decoder *self, PyObject *const *args, Py_ssize_t nargs) {
+    if (nargs != 2) { PyErr_SetString(PyExc_TypeError, "constructor takes exactly two arguments"); return NULL; }
+    RAII_PY_BUFFER(data);
+    if (PyObject_GetBuffer(args[0], &data, PyBUF_WRITE) != 0) return NULL;
+    if (!data.buf || !data.len) return PyLong_FromLong(0);
+    RAII_PY_BUFFER(src);
+    if (PyObject_GetBuffer(args[1], &src, PyBUF_SIMPLE) != 0) return NULL;
+    if (!src.buf || !src.len) return PyLong_FromLong(0);
+    size_t sz = required_buffer_size_for_base64_encode(src.len);
+    if ((Py_ssize_t)sz > data.len) { PyErr_SetString(PyExc_BufferError, "output buffer too small"); return NULL; }
+    base64_stream_encode(&self->state, src.buf, src.len, data.buf, &sz);
+    return PyLong_FromSize_t(sz);
+}
+
+static PyObject*
 StreamingBase64Encoder_reset(StreamingBase64Decoder *self, PyObject *args UNUSED) {
     char trailer[4];
     size_t sz;
@@ -219,6 +234,7 @@ static PyTypeObject StreamingBase64Encoder_Type = {
     .tp_doc = "StreamingBase64Encoder",
     .tp_methods = (PyMethodDef[]){
         {"encode", (PyCFunction)StreamingBase64Encoder_encode, METH_O, ""},
+        {"encode_into", (PyCFunction)(void(*)(void))StreamingBase64Encoder_encode_into, METH_FASTCALL, ""},
         {"reset", (PyCFunction)StreamingBase64Encoder_reset, METH_NOARGS, ""},
         {NULL, NULL, 0, NULL},
     },

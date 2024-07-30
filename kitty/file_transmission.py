@@ -22,6 +22,7 @@ from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterat
 from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
 from kitty.fast_data_types import ESC_OSC, FILE_TRANSFER_CODE, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options, monotonic
 from kitty.types import run_once
+from kitty.typing import ReadableBuffer, WriteableBuffer
 
 from .utils import log_error
 
@@ -412,12 +413,12 @@ class PatchFile:
             return os.path.getsize(self.path)
         return df.tell()
 
-    def read_from_src(self, pos: int, b: Union[bytearray, memoryview]) -> int:
+    def read_from_src(self, pos: int, b: WriteableBuffer) -> int:
         assert self.src_file is not None
         self.src_file.seek(pos, os.SEEK_SET)
         return self.src_file.readinto(b)
 
-    def write_to_dest(self, b: Union[bytes, bytearray, memoryview]) -> None:
+    def write_to_dest(self, b: ReadableBuffer) -> None:
         self.dest_file.write(b)
 
     def write(self, b: bytes) -> None:
@@ -669,7 +670,7 @@ class SourceFile:
         self.buf = bytearray()
         self.write_pos = 0
 
-    def write(self, b: Union[bytes, bytearray, memoryview]) -> None:
+    def write(self, b: ReadableBuffer) -> None:
         self.buf[self.write_pos:self.write_pos+len(b)] = b
         self.write_pos += len(b)
 

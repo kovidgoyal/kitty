@@ -8,7 +8,7 @@ from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.options.types import Options
 from kitty.types import LayerShellConfig, SignalInfo
-from kitty.typing import EdgeLiteral, NotRequired
+from kitty.typing import EdgeLiteral, NotRequired, ReadableBuffer, WriteableBuffer
 
 # Constants {{{
 GLFW_LAYER_SHELL_NONE: int
@@ -303,9 +303,6 @@ WINDOW_FULLSCREEN: int
 WINDOW_MAXIMIZED: int
 WINDOW_MINIMIZED: int
 # }}}
-
-
-ReadOnlyBuffer = Union[bytes, bytearray, memoryview]
 
 
 def encode_key_for_tty(
@@ -1705,18 +1702,23 @@ def get_mouse_data_for_window(os_window_id: int, tab_id: int, window_id: int) ->
 
 
 class StreamingBase64Decoder:
-    def reset(self) -> None: ...  # reset the state to empty to start decoding a new stream
-    def decode(self, data: ReadOnlyBuffer) -> bytes: ...  # decode the specified data
-    def decode_into(self, dest: bytearray, src: ReadOnlyBuffer) -> int: ...  # decode the specified data, return number of bytes written
-                                                                             # dest should be as large as src (technically 3/4 src + 2)
-                                                                             # dest can be any writable buffer
+    # reset the state to empty to start decoding a new stream
+    def reset(self) -> None: ...
+    # decode the specified data
+    def decode(self, data: ReadableBuffer) -> bytes: ...
+    # decode the specified data, return number of bytes written dest should be as large as src (technically 3/4 src + 2)
+    def decode_into(self, dest: WriteableBuffer, src: ReadableBuffer) -> int: ...
 
 
 
 class StreamingBase64Encodeer:
     def __init__(self, add_trailing_bytes: bool = True) -> None: ...
-    def encode(self, data: ReadOnlyBuffer) -> bytes: ...  # decode the specified data
-    def reset(self) -> bytes: ...  # reset the state to empty to start decoding a new stream, return any trailing bytes
+    # encode the specified data
+    def encode(self, data: ReadableBuffer) -> bytes: ...
+    # reset the state to empty to start encoding a new stream, return any trailing bytes from the previous encode call
+    def reset(self) -> bytes: ...
+    # encode the specified data, return number of bytes written dest should be at least 4/3 *src + 2 bytes in size
+    def encode_into(self, dest: WriteableBuffer, src: ReadableBuffer) -> int: ...
 
 
 
