@@ -453,13 +453,14 @@ live_delivered_notifications(void) {
 }
 
 static void
-schedule_notification(const char *identifier, const char *title, const char *body, int urgency) {
+schedule_notification(const char *appname, const char *identifier, const char *title, const char *body, int urgency) {
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
     if (title) content.title = @(title);
     if (body) content.body = @(body);
+    if (appname) content.threadIdentifier = @(appname);
     content.sound = [UNNotificationSound defaultSound];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
     switch (urgency) {
@@ -496,7 +497,7 @@ schedule_notification(const char *identifier, const char *title, const char *bod
 
 
 typedef struct {
-    char *identifier, *title, *body;
+    char *identifier, *title, *body, *appname;
     int urgency;
 } QueuedNotification;
 
@@ -507,9 +508,10 @@ typedef struct {
 static NotificationQueue notification_queue = {0};
 
 static void
-queue_notification(const char *identifier, const char *title, const char* body, int urgency) {
+queue_notification(const char *appname, const char *identifier, const char *title, const char* body, int urgency) {
     ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
     QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
+    n->appname = appname ? strdup(appname) : NULL;
     n->identifier = identifier ? strdup(identifier) : NULL;
     n->title = title ? strdup(title) : NULL;
     n->body = body ? strdup(body) : NULL;
@@ -521,13 +523,13 @@ drain_pending_notifications(BOOL granted) {
     if (granted) {
         for (size_t i = 0; i < notification_queue.count; i++) {
             QueuedNotification *n = notification_queue.notifications + i;
-            schedule_notification(n->identifier, n->title, n->body, n->urgency);
+            schedule_notification(n->appname, n->identifier, n->title, n->body, n->urgency);
         }
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
         if (!granted) do_notification_callback(@(n->identifier), "creation_failed");
-        free(n->identifier); free(n->title); free(n->body);
+        free(n->identifier); free(n->title); free(n->body); free(n->appname);
         memset(n, 0, sizeof(QueuedNotification));
     }
 }
@@ -548,14 +550,15 @@ cocoa_live_delivered_notifications(PyObject *self UNUSED, PyObject *x UNUSED) {
 
 
 static PyObject*
-cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *identifier = NULL, *title = NULL, *body = NULL; int urgency = 1;
-    if (!PyArg_ParseTuple(args, "sss|i", &identifier, &title, &body, &urgency)) return NULL;
+cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
+    const char *identifier = "", *title = "", *body = "", *appname = ""; int urgency = 1;
+    static const char* kwlist[] = {"appname", "identifier", "title", "body", "urgency", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|i", (char**)kwlist, &appname, &identifier, &title, &body, &urgency)) return NULL;
 
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
-    queue_notification(identifier, title, body, urgency);
+    queue_notification(appname, identifier, title, body, urgency);
 
     // The badge permission needs to be requested as well, even though it is not used,
     // otherwise macOS refuses to show the preference checkbox for enable/disable notification sound.
@@ -1058,7 +1061,7 @@ cocoa_set_uncaught_exception_handler(void) {
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
-    {"cocoa_send_notification", (PyCFunction)(void(*)(void))cocoa_send_notification, METH_VARARGS, ""},
+    {"cocoa_send_notification", (PyCFunction)(void(*)(void))cocoa_send_notification, METH_VARARGS | METH_KEYWORDS, ""},
     {"cocoa_remove_delivered_notification", (PyCFunction)cocoa_remove_delivered_notification, METH_O, ""},
     {"cocoa_live_delivered_notifications", (PyCFunction)cocoa_live_delivered_notifications, METH_NOARGS, ""},
     {"cocoa_set_notification_activated_callback", (PyCFunction)set_notification_activated_callback, METH_O, ""},

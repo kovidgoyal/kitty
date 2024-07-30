@@ -562,6 +562,7 @@ def dbus_close_notification(dbus_notification_id: int) -> bool: ...
 
 
 def cocoa_send_notification(
+    appname: str,
     identifier: str,
     title: str,
     body: str,

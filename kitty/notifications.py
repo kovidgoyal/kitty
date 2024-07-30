@@ -487,7 +487,7 @@ class MacOSIntegration(DesktopIntegration):
         # for %% escaping.
         body = (nc.body or ' ')
         assert nc.urgency is not None
-        cocoa_send_notification(str(desktop_notification_id), nc.title, body, nc.urgency.value)
+        cocoa_send_notification(nc.application_name or 'kitty', str(desktop_notification_id), nc.title, body, nc.urgency.value)
         return desktop_notification_id
 
     def notification_activated(self, event: str, ident: str) -> None:
