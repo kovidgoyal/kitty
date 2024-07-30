@@ -1072,22 +1072,7 @@ cocoa_set_uncaught_exception_handler(void) {
 }
 
 static PyObject*
-bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autoreleasepool {
-    const char *b, *output_path = NULL; int is_identifier = 0; unsigned image_size = 256;
-    static const char* kwlist[] = {"path_or_identifier", "output_path", "image_size", "is_identifier", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sIp", (char**)kwlist, &b, &output_path, &image_size, &is_identifier)) return NULL;
-    NSWorkspace *workspace = [NSWorkspace sharedWorkspace]; // autoreleased
-    NSImage *icon = nil;
-    if (is_identifier) {
-        NSURL *url = [workspace URLForApplicationWithBundleIdentifier:@(b)]; // autoreleased
-        if (!url) {
-            PyErr_Format(PyExc_KeyError, "Failed to find bundle path for identifier: %s", b); return NULL;
-        }
-        icon = [workspace iconForFile:@(url.fileSystemRepresentation)];
-    } else icon = [workspace iconForFile:@(b)];
-    if (!icon) {
-        PyErr_Format(PyExc_ValueError, "Failed to load icon for bundle: %s", b); return NULL;
-    }
+convert_image_to_png(NSImage *icon, unsigned image_size, const char *output_path) {
     NSRect r = NSMakeRect(0, 0, image_size, image_size);
     RAII_CoreFoundation(CGColorSpaceRef, colorSpace, CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB));
     RAII_CoreFoundation(CGContextRef, cgContext, CGBitmapContextCreate(NULL, image_size, image_size, 8, 4*image_size, colorSpace, kCGBitmapByteOrderDefault|kCGImageAlphaPremultipliedLast));
@@ -1104,6 +1089,26 @@ bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autor
         return PyBytes_FromStringAndSize(NULL, 0);
     }
     return PyBytes_FromStringAndSize(png.bytes, png.length);
+}
+
+static PyObject*
+bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autoreleasepool {
+    const char *b, *output_path = NULL; int is_identifier = 0; unsigned image_size = 256;
+    static const char* kwlist[] = {"path_or_identifier", "output_path", "image_size", "is_identifier", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sIp", (char**)kwlist, &b, &output_path, &image_size, &is_identifier)) return NULL;
+    NSWorkspace *workspace = [NSWorkspace sharedWorkspace]; // autoreleased
+    NSImage *icon = nil;
+    if (is_identifier) {
+        NSURL *url = [workspace URLForApplicationWithBundleIdentifier:@(b)]; // autoreleased
+        if (!url) {
+            PyErr_Format(PyExc_KeyError, "Failed to find bundle path for identifier: %s", b); return NULL;
+        }
+        icon = [workspace iconForFile:@(url.fileSystemRepresentation)];
+    } else icon = [workspace iconForFile:@(b)];
+    if (!icon) {
+        PyErr_Format(PyExc_ValueError, "Failed to load icon for bundle: %s", b); return NULL;
+    }
+    return convert_image_to_png(icon, image_size, output_path);
 }}
 
 static PyMethodDef module_methods[] = {
