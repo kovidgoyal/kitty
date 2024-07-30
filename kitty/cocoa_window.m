@@ -6,7 +6,6 @@
  */
 
 
-#include "pytypedefs.h"
 #include "state.h"
 #include "cleanup.h"
 #include "cocoa_window.h"
