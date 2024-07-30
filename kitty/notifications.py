@@ -20,6 +20,16 @@ from .utils import get_custom_window_icon, log_error, sanitize_control_codes
 debug_desktop_integration = False
 
 
+def image_type(data: bytes) -> str:
+    if data[:8] == b"\211PNG\r\n\032\n":
+        return 'png'
+    if data[:6] in (b'GIF87a', b'GIF89a'):
+        return 'gif'
+    if data[:2] == b'\xff\xd8':
+        return 'jpeg'
+    return 'unknown'
+
+
 class IconDataCache:
 
 
@@ -52,7 +62,7 @@ class IconDataCache:
     def hash(self, data: bytes) -> str:
         from kittens.transfer.rsync import xxh128_hash_with_seed
         d = xxh128_hash_with_seed(data, self.seed)
-        return d.hex()
+        return d.hex() + '.' + image_type(data)
 
     def add_icon(self, key: str, data: bytes) -> str:
         self._ensure_state()
@@ -482,12 +492,14 @@ class MacOSIntegration(DesktopIntegration):
         # If the body is not set macos makes the title the body and uses
         # "kitty" as the title. So use a single space for the body in this
         # case. Although https://developer.apple.com/documentation/usernotifications/unnotificationcontent/body?language=objc
-        # says printf style strings are stripped this does not actually happen,
-        # so dont double %
-        # for %% escaping.
+        # says printf style strings are stripped this does not actually happen, so dont double % for %% escaping.
         body = (nc.body or ' ')
         assert nc.urgency is not None
-        cocoa_send_notification(nc.application_name or 'kitty', str(desktop_notification_id), nc.title, body, nc.urgency.value)
+        image_path = nc.icon_path
+        cocoa_send_notification(
+            nc.application_name or 'kitty', str(desktop_notification_id), nc.title, body,
+            image_path=image_path, urgency=nc.urgency.value,
+        )
         return desktop_notification_id
 
     def notification_activated(self, event: str, ident: str) -> None:

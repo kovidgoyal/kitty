@@ -566,6 +566,7 @@ def cocoa_send_notification(
     identifier: str,
     title: str,
     body: str,
+    image_path: str = "",
     urgency: int = 1,
 ) -> None:
     pass

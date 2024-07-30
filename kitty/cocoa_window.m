@@ -453,7 +453,7 @@ live_delivered_notifications(void) {
 }
 
 static void
-schedule_notification(const char *appname, const char *identifier, const char *title, const char *body, int urgency) {
+schedule_notification(const char *appname, const char *identifier, const char *title, const char *body, const char *image_path, int urgency) {
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
@@ -478,6 +478,18 @@ schedule_notification(const char *appname, const char *identifier, const char *t
         [content setValue:@(level) forKey:@"interruptionLevel"];
     }
 #endif
+    if (image_path) {
+        @try {
+            NSError *error;
+            NSURL *image_url = [NSURL fileURLWithFileSystemRepresentation:image_path isDirectory:NO relativeToURL:nil];  // autoreleased
+            UNNotificationAttachment *attachment = [UNNotificationAttachment attachmentWithIdentifier:@"image" URL:image_url options:nil error:&error];  // autoreleased
+            if (attachment) { content.attachments = @[ attachment ]; }
+            else NSLog(@"Error attaching image %@ to notification: %@", @(image_path), error.localizedDescription);
+        } @catch(NSException *exc) {
+            NSLog(@"Creating image attachment %@ for notification failed with error: %@", @(image_path), exc.reason);
+        }
+    }
+
     // Deliver the notification
     static unsigned long counter = 1;
     UNNotificationRequest* request = [
@@ -497,7 +509,7 @@ schedule_notification(const char *appname, const char *identifier, const char *t
 
 
 typedef struct {
-    char *identifier, *title, *body, *appname;
+    char *identifier, *title, *body, *appname, *image_path;
     int urgency;
 } QueuedNotification;
 
@@ -508,13 +520,12 @@ typedef struct {
 static NotificationQueue notification_queue = {0};
 
 static void
-queue_notification(const char *appname, const char *identifier, const char *title, const char* body, int urgency) {
+queue_notification(const char *appname, const char *identifier, const char *title, const char* body, const char *image_path, int urgency) {
     ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
     QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
-    n->appname = appname ? strdup(appname) : NULL;
-    n->identifier = identifier ? strdup(identifier) : NULL;
-    n->title = title ? strdup(title) : NULL;
-    n->body = body ? strdup(body) : NULL;
+#define d(x) n->x = (x && x[0]) ? strdup(x) : NULL;
+    d(appname); d(identifier); d(title); d(body); d(image_path);
+#undef d
     n->urgency = urgency;
 }
 
@@ -523,13 +534,13 @@ drain_pending_notifications(BOOL granted) {
     if (granted) {
         for (size_t i = 0; i < notification_queue.count; i++) {
             QueuedNotification *n = notification_queue.notifications + i;
-            schedule_notification(n->appname, n->identifier, n->title, n->body, n->urgency);
+            schedule_notification(n->appname, n->identifier, n->title, n->body, n->image_path, n->urgency);
         }
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
         if (!granted) do_notification_callback(@(n->identifier), "creation_failed");
-        free(n->identifier); free(n->title); free(n->body); free(n->appname);
+        free(n->identifier); free(n->title); free(n->body); free(n->appname); free(n->image_path);
         memset(n, 0, sizeof(QueuedNotification));
     }
 }
@@ -551,14 +562,14 @@ cocoa_live_delivered_notifications(PyObject *self UNUSED, PyObject *x UNUSED) {
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
-    const char *identifier = "", *title = "", *body = "", *appname = ""; int urgency = 1;
-    static const char* kwlist[] = {"appname", "identifier", "title", "body", "urgency", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|i", (char**)kwlist, &appname, &identifier, &title, &body, &urgency)) return NULL;
+    const char *identifier = "", *title = "", *body = "", *appname = "", *image_path = ""; int urgency = 1;
+    static const char* kwlist[] = {"appname", "identifier", "title", "body", "image_path", "urgency", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|si", (char**)kwlist, &appname, &identifier, &title, &body, &image_path, &urgency)) return NULL;
 
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
-    queue_notification(appname, identifier, title, body, urgency);
+    queue_notification(appname, identifier, title, body, image_path, urgency);
 
     // The badge permission needs to be requested as well, even though it is not used,
     // otherwise macOS refuses to show the preference checkbox for enable/disable notification sound.
