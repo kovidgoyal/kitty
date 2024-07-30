@@ -1094,8 +1094,9 @@ bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autor
     RAII_CoreFoundation(CGContextRef, cgContext, CGBitmapContextCreate(NULL, image_size, image_size, 8, 4*image_size, colorSpace, kCGBitmapByteOrderDefault|kCGImageAlphaPremultipliedLast));
     NSGraphicsContext *context = [NSGraphicsContext graphicsContextWithCGContext:cgContext flipped:NO];  // autoreleased
     RAII_CoreFoundation(CGImageRef, cg, [icon CGImageForProposedRect:&r context:context hints:nil]);
-    RAII_CoreFoundation(NSBitmapImageRep, *rep, [[NSBitmapImageRep alloc] initWithCGImage:cg]);
+    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithCGImage:cg];  // autoreleased
     NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{NSImageCompressionFactor: @1.0}]; // autoreleased
+
     if (output_path) {
         if (![png writeToFile:@(output_path) atomically:YES]) {
             PyErr_Format(PyExc_OSError, "Failed to write PNG data to %s", output_path);

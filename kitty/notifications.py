@@ -32,7 +32,6 @@ def image_type(data: bytes) -> str:
 
 class IconDataCache:
 
-
     def __init__(self, base_cache_dir: str = '', max_cache_size: int = 128 * 1024 * 1024):
         self.max_cache_size = max_cache_size
         self.key_map: Dict[str, str] = {}
@@ -470,6 +469,8 @@ class MacOSIntegration(DesktopIntegration):
         from .fast_data_types import cocoa_set_notification_activated_callback
         self.id_counter = count(start=1)
         self.live_notification_queries: List[Tuple[int, str]] = []
+        self.failed_icons: OrderedDict[str, bool] = OrderedDict()
+        self.icd_key_prefix = os.urandom(16).hex()
         cocoa_set_notification_activated_callback(self.notification_activated)
 
     def query_live_notifications(self, channel_id: int, identifier: str) -> None:
@@ -486,6 +487,27 @@ class MacOSIntegration(DesktopIntegration):
             log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
         return close_succeeded
 
+    def get_icon_for_name(self, name: str) -> str:
+        if name in self.failed_icons:
+            return ''
+        icd = self.notification_manager.icon_data_cache
+        icd_key = self.icd_key_prefix + name
+        ans = icd.get_icon(icd_key)
+        if ans:
+            return ans
+        from .fast_data_types import cocoa_bundle_image_as_png
+        try:
+            data = cocoa_bundle_image_as_png(name, is_identifier=True)
+        except Exception as err:
+            if debug_desktop_integration:
+                self.notification_manager.log(f'Failed to get icon for {name} with error: {err}')
+            self.failed_icons[name] = True
+            if len(self.failed_icons) > 256:
+                self.failed_icons.popitem(False)
+        else:
+            return icd.add_icon(icd_key, data)
+        return ''
+
     def notify(self, nc: NotificationCommand, existing_desktop_notification_id: Optional[int]) -> int:
         desktop_notification_id = existing_desktop_notification_id or next(self.id_counter)
         from .fast_data_types import cocoa_send_notification
@@ -495,7 +517,15 @@ class MacOSIntegration(DesktopIntegration):
         # says printf style strings are stripped this does not actually happen, so dont double % for %% escaping.
         body = (nc.body or ' ')
         assert nc.urgency is not None
-        image_path = nc.icon_path
+        image_path = ''
+        if nc.icon_names:
+            for name in nc.icon_names:
+                if image_path := self.get_icon_for_name(name):
+                    break
+        image_path = image_path or nc.icon_path
+        if not image_path and nc.application_name:
+            image_path = self.get_icon_for_name(nc.application_name)
+
         cocoa_send_notification(
             nc.application_name or 'kitty', str(desktop_notification_id), nc.title, body,
             image_path=image_path, urgency=nc.urgency.value,
