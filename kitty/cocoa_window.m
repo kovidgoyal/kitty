@@ -1111,6 +1111,18 @@ bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autor
     return convert_image_to_png(icon, image_size, output_path);
 }}
 
+static PyObject*
+symbol_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autoreleasepool {
+    const char *b, *output_path = NULL; unsigned image_size = 256;
+    static const char* kwlist[] = {"symbol", "output_path", "image_size", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sI", (char**)kwlist, &b, &output_path, &image_size)) return NULL;
+    NSImage *img = [NSImage imageWithSystemSymbolName:@(b) accessibilityDescription:@""];  // autoreleased
+    if (!img) {
+        PyErr_Format(PyExc_KeyError, "Failed to find image for symbol name: %s", b); return NULL;
+    }
+    return convert_image_to_png(img, image_size, output_path);
+}}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
@@ -1122,6 +1134,7 @@ static PyMethodDef module_methods[] = {
     {"cocoa_set_app_icon", (PyCFunction)cocoa_set_app_icon, METH_VARARGS, ""},
     {"cocoa_set_dock_icon", (PyCFunction)cocoa_set_dock_icon, METH_VARARGS, ""},
     {"cocoa_bundle_image_as_png", (PyCFunction)(void(*)(void))bundle_image_as_png, METH_VARARGS | METH_KEYWORDS, ""},
+    {"cocoa_symbol_image_as_png", (PyCFunction)(void(*)(void))symbol_image_as_png, METH_VARARGS | METH_KEYWORDS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
