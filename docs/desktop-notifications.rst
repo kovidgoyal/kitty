@@ -43,8 +43,8 @@ and so on, see the table below for full details.
 The design of the escape code is fundamentally chunked, this is because
 different terminal emulators have different limits on how large a single escape
 code can be. Chunking is accomplished by the ``i`` and ``d`` keys. The ``i``
-key is the *notification id* which can be any string containing the characters
-``[a-zA-Z0-9_-+.]``. The ``d`` key stands for *done* and can only take the
+key is the *notification id* which is an :ref:`identifier`.
+The ``d`` key stands for *done* and can only take the
 values ``0`` and ``1``. A value of ``0`` means the notification is not yet done
 and the terminal emulator should hold off displaying it. A non-zero value means
 the notification is done, and should be displayed. You can specify the title or
@@ -61,6 +61,9 @@ plain text, to be interpreted as such.
 
 Allowing users to filter notifications
 -------------------------------------------------------
+
+.. versionadded:: 0.36.0
+   Specifying application name and notification type
 
 Well behaved applications should identify themselves to the terminal
 by means of two keys ``f`` which is the application name and ``t``
@@ -121,7 +124,7 @@ Being informed when a notification is closed
 ------------------------------------------------
 
 .. versionadded:: 0.36.0
-   Notifications of close events were added in kitty version 0.36.0
+   Notifications of close events
 
 If you wish to be informed when a notification is closed, you can specify
 ``c=1`` when sending the notification. For example::
@@ -162,7 +165,7 @@ Updating or closing an existing notification
 ----------------------------------------------
 
 .. versionadded:: 0.36.0
-   The ability to update and close a previous notification was added in kitty 0.36.0
+   The ability to update and close a previous notification
 
 To update a previous notification simply send a new notification with the same
 *notification id* (``i`` key) as the one you want to update. If the original
@@ -196,13 +199,99 @@ by manually closing the notification after the expiry time. The notification
 could still be closed before the expiry time by user interaction or OS policy,
 but it is guaranteed to be closed once the expiry time has passed.
 
+
+Adding icons to notifications
+--------------------------------
+
+.. versionadded:: 0.36.0
+   Custom icons in notifications
+
+Applications can specify a custom icon to be displayed with a notification.
+This can be the application's logo or a symbol such as error or warning
+symbols. The simplest way to specify an icon is by *name*, using the ``n``
+key. The value of this key is :ref:`base64` encoded UTF-8 text. Names
+can be either application names, or symbol names. The terminal emulator
+will try to resolve the name based on icons and applications available
+on the computer it is running on. The following list of well defined names
+must be supported by any terminal emulator implementing this spec.
+The ``n`` key can be specified multiple times, the terminal will go through
+the list in order and use the first icon that it finds available on the
+system.
+
+.. table:: Universally available icon names
+
+   ======================== ==============================================
+   Name                     Description
+   ======================== ==============================================
+   ``error``                An error symbol
+   ``warn``, ``warning``    A warning symbol
+   ``info``                 A symbol denoting an informational message
+   ``question``             A symbol denoting asking the user a question
+   ``help``                 A symbol denoting a help message
+   ``file-manager``         A symbol denoting a generic file manager application
+   ``system-monitor``       A symbol denoting a generic system monitoring/information application
+   ``text-editor``          A symbol denoting a generic text editor application
+   ======================== ==============================================
+
+If an icon name is an application name it should be an application identifier,
+such as the filename of the application's :file:`.desktop` file on Linux or its
+bundle identifier on macOS. For example if the cross-platform application
+FooBar has a desktop file named: :file:`foo-bar.desktop` and a bundle
+identifier of ``net.foo-bar-website.foobar`` then it should use the icon names
+``net.foo-bar-website.foobar`` *and* ``foo-bar`` so that terminals running on
+both platforms can find the application icon.
+
+If no icon is specified, but the ``f`` key (application name) is specified, the
+terminal emulator should use the value of the ``f`` key to try to find a
+suitable icon.
+
+Adding icons by transmitting icon data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This can be done by using the ``p=icon`` key. Then, the payload is the icon
+image in any of the ``PNG``, ``JPEG`` or ``GIF`` image formats. It is recommended
+to use an image size of ``256x256`` for icons. Since icons are binary data,
+they must be transmitted encoded, with ``e=1``.
+
+When both an icon name and an image are specified, the terminal emulator must
+first try to find a locally available icon matching the name and only if one
+is not found, fallback to the provided image. This is so that users are
+presented with icons from their current icon theme, where possible.
+
+Transmitted icon data can be cached using the ``g`` key. The value of the ``g``
+key must be a random globally unique UUID like :ref:`identifier`. Then, the
+terminal emulator will cache the transmitted data using that key. The cache
+should exist for as long as the terminal emulator remains running. Thus, in
+future notifications, the application can simply send the ``g`` key to display
+a previously cached icon image with needing to re-transmit the actual data with
+``p=icon``. The ``g`` key refers only to the icon data, multiple different
+notifications with different icon or application names can use the same ``g``
+key to refer to the same icon. Terminal multiplexers must cache icon data
+themselves and refresh it in the underlying terminal implementation when
+detaching and then re-attaching. This means that applications once started
+need to transmit icon data only once until they are quit.
+
+.. note::
+   To avoid DoS attacks terminal implementations can impose a reasonable max size
+   on the icon cache and evict icons in order of last used. Thus theoretically,
+   a previously cached icon may become unavailable, but given that icons are
+   small images, practically this is not an issue in all but the most resource
+   constrained environments, and the failure mode is simply that the icon is not
+   displayed.
+
+.. note::
+   How the icon is displayed depends on the underlying OS notifications
+   implementation. For example, on Linux, typically a single icon is displayed.
+   On macOS, both the terminal emulator's icon and the specified custom icon
+   are displayed.
+
 .. _notifications_query:
 
 Querying for support
 -------------------------
 
 .. versionadded:: 0.36.0
-   The ability to query for support was added in kitty 0.36.0
+   The ability to query for support
 
 An application can query the terminal emulator for support of this protocol, by
 sending the following escape code::
@@ -280,9 +369,16 @@ Key      Value                 Default    Description
          encoded UTF-8
          application name
 
-``i``    ``[a-zA-Z0-9-_+.]``   ``0``      Identifier for the notification. Make these globally unqiue,
+``g``    :ref:`identifier`     ``unset``  Identifier for icon data. Make these globally unqiue,
+                                          like an UUID.
+
+``i``    :ref:`identifier`     ``0``      Identifier for the notification. Make these globally unqiue,
                                           like an UUID, so that terminal multiplexers can
                                           direct responses to the correct window.
+
+``n``    :ref:`base64`         ``unset``  Icon name. Can be specified multiple times.
+         encoded UTF-8
+         application name
 
 ``o``    One of ``always``,    ``always`` When to honor the notification request. ``unfocused`` means when the window
          ``unfocused`` or                 the notification is sent on does not have keyboard focus. ``invisible``
@@ -296,7 +392,7 @@ Key      Value                 Default    Description
          ``close``,                       emulators should ignore payloads of unknown type to allow for future
          ``?``, ``alive``                 expansion of this protocol.
 
-``t``    :ref:`base64`         ``unset``  The type of the notification. Can be used to filter out notifications.
+``t``    :ref:`base64`         ``unset``  The type of the notification. Used to filter out notifications. Can be specified multiple times.
          encoded UTF-8
          notification type
 
@@ -347,3 +443,13 @@ contain none of the C0 and C1 control characters, that is, the unicode
 characters: U+0000 (NUL) - U+1F (Unit separator), U+7F (DEL) and U+80 (PAD) - U+9F
 (APC). Note that in particular, this means that no newlines, carriage returns,
 tabs, etc. are allowed.
+
+
+.. _identifier:
+
+Identifier
+----------------
+
+Any string consisting solely of characters from the set ``[a-zA-Z0-9_-+.]``,
+that is, the letters ``a-z``, ``A-Z``, the underscore, the hyphen, the plus
+sign and the period.

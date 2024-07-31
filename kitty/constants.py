@@ -190,6 +190,7 @@ except KeyError:
 ssh_control_master_template = 'kssh-{kitty_pid}-{ssh_placeholder}'
 
 # See https://specifications.freedesktop.org/icon-naming-spec/latest/ar01s04.html
+# Update the spec in docs/desktop-notifications.rst if you change this.
 standard_icon_names = {
     'error': ('dialog-error', '☠'),
     'warning': ('dialog-warning','⚠'),
