@@ -780,7 +780,7 @@ class NotificationManager:
                 self.channel.focus(n.channel_id, n.activation_token)
             if n.report_requested:
                 ident = n.identifier or '0'
-                self.channel.send(n.channel_id, f'99;i={ident};{which or ''}')
+                self.channel.send(n.channel_id, f'99;i={ident};{which or ""}')
             if n.on_activation:
                 try:
                     n.on_activation(n)
