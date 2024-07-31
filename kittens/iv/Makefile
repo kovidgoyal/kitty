@@ -1,2 +1,2 @@
-all: 
-	go build
+all:
+	go build main.go

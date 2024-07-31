@@ -17,6 +17,8 @@ import (
 	"syscall"
 	"time"
 
+	// "kitty/tools/cli"
+
 	"github.com/eiannone/keyboard"
 	"github.com/nfnt/resize"
 	"github.com/spf13/cobra"
@@ -50,7 +52,7 @@ type navigationParameters struct {
     y int          // Vertical Grid Coordinate
 }
 
-// To hold info the image , it's height and width 
+// To hold info the image , it's height and width
 type ImageInfo struct {
     Path   string
     Width  int
@@ -97,20 +99,20 @@ func indexToXY(index, x_param int) (int, int) {
 }
 
 
-/// NOT NEEDED SINCE USING RESIZE METHOD 
+/// NOT NEEDED SINCE USING RESIZE METHOD
 // // creates a new 2D matrix
 // func NewMatrix2D() *Matrix2D {
 //     return &Matrix2D{mat: mat.NewDense(3, 3, nil)}
 // }
 
-// // This will set the scale factors for the matrix for transformation later 
+// // This will set the scale factors for the matrix for transformation later
 // func (m *Matrix2D) Scale(sx, sy float64) {
 //     m.mat.Set(0, 0, sx)
 //     m.mat.Set(1, 1, sy)
 //     m.mat.Set(2, 2, 1)
 // }
 
-// //This will set the translation factors for the matrix for transformation later 
+// //This will set the translation factors for the matrix for transformation later
 // func (m *Matrix2D) Translate(tx, ty float64) {
 //     m.mat.Set(0, 2, tx)
 //     m.mat.Set(1, 2, ty)
@@ -177,12 +179,12 @@ func CenterImageInGrid(imgWidth, imgHeight, gridWidth, gridHeight int) (int, int
 func ScaleAndCenterImage(img image.Image, gridWidth, gridHeight int) (image.Image, int, int) {
 	bounds := img.Bounds()
     imgWidth, imgHeight := bounds.Dx(), bounds.Dy()
-    
+
     newWidth, newHeight, fits := FitImageToGrid(ImageInfo{Width: imgWidth, Height: imgHeight}, gridWidth, gridHeight)
-    
+
     var scaledImg image.Image
     if !fits {
-        // Use 0 for one of the dimensions to maintain aspect ratio 
+        // Use 0 for one of the dimensions to maintain aspect ratio
         if float64(newWidth)/float64(imgWidth) < float64(newHeight)/float64(imgHeight) {
             scaledImg = resize.Resize(uint(newWidth), 0, img, resize.Lanczos3)
         } else {
@@ -191,11 +193,11 @@ func ScaleAndCenterImage(img image.Image, gridWidth, gridHeight int) (image.Imag
     } else {
         scaledImg = img
     }
-    
+
     // Recalculate dimensions after scaling
     scaledBounds := scaledImg.Bounds()
     finalWidth, finalHeight := scaledBounds.Dx(), scaledBounds.Dy()
-    
+
     x, y := CenterImageInGrid(finalWidth, finalHeight, gridWidth, gridHeight)
     return scaledImg, x, y
 }
@@ -499,6 +501,8 @@ func readKeyboardInput(navParams *navigationParameters, wg *sync.WaitGroup) {
 		if key == keyboard.KeyCtrlC {
 			break
 		}
+	}
+
     var xParam int = globalConfig.GridParam.XParam
     var yParam int = globalConfig.GridParam.YParam
 
