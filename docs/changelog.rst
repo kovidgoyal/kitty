@@ -116,6 +116,8 @@ Detailed list of changes
 
 - New special rendering for font symbols useful in drawing commit graphs (:pull:`7681`)
 
+- diff kitten: Add bindings to jump to next and previous file (:pull:`7683`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
