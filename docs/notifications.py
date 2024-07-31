@@ -18,7 +18,7 @@ def log_notification(nc: NotificationCommand) -> None:
         print('\n', file=log)
 
 
-def on_notification_activated(nc: NotificationCommand) -> None:
+def on_notification_activated(nc: NotificationCommand, which: int) -> None:
     # do something when this notification is activated (clicked on)
     # remember to assign this to the on_activation field in main()
     pass

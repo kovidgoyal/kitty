@@ -221,7 +221,7 @@ class NotificationCommand:
     buttons: tuple[str, ...] = ()
 
     # event callbacks
-    on_activation: Optional[Callable[['NotificationCommand'], None]] = None
+    on_activation: Optional[Callable[['NotificationCommand', int], None]] = None
     on_close: Optional[Callable[['NotificationCommand'], None]] = None
     on_update: Optional[Callable[['NotificationCommand', 'NotificationCommand'], None]] = None
 
@@ -455,7 +455,7 @@ class DesktopIntegration:
     def notify(self, nc: NotificationCommand, existing_desktop_notification_id: Optional[int]) -> int:
         raise NotImplementedError('Implement me in subclass')
 
-    def on_new_version_notification_activation(self, cmd: NotificationCommand) -> None:
+    def on_new_version_notification_activation(self, cmd: NotificationCommand, which: int) -> None:
         from .update_check import notification_activated
         notification_activated()
 
@@ -779,11 +779,10 @@ class NotificationManager:
             if n.focus_requested:
                 self.channel.focus(n.channel_id, n.activation_token)
             if n.report_requested:
-                ident = n.identifier or '0'
-                self.channel.send(n.channel_id, f'99;i={ident};{which or ""}')
+                self.channel.send(n.channel_id, f'99;i={n.identifier or "0"};{which or ""}')
             if n.on_activation:
                 try:
-                    n.on_activation(n)
+                    n.on_activation(n, which)
                 except Exception as e:
                     self.log('Notification on_activation handler failed with error:', e)
 

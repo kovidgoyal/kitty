@@ -37,8 +37,8 @@ class DesktopIntegration(DesktopIntegration):
         ids = [n['id'] for n in self.notifications]
         self.notification_manager.send_live_response(channel_id, client_id, tuple(ids))
 
-    def on_new_version_notification_activation(self, cmd) -> None:
-        self.new_version_activated = True
+    def on_new_version_notification_activation(self, cmd, which) -> None:
+        self.new_version_activated = which + 1
 
     def close_notification(self, desktop_notification_id: int) -> bool:
         self.close_events.append(desktop_notification_id)
@@ -101,9 +101,9 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     def h(raw_data, osc_code=99, channel_id=1):
         nm.handle_notification_cmd(channel_id, osc_code, raw_data)
 
-    def activate(which=0):
+    def activate(which=0, button=0):
         n = di.notifications[which]
-        nm.notification_activated(n['id'])
+        nm.notification_activated(n['id'], button)
 
     def close(which=0):
         n = di.notifications[which]
@@ -238,7 +238,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     # Test querying
     h('i=xyz:p=?')
     self.assertFalse(di.notifications)
-    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive:c=1:w=1'
+    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive,buttons:c=1:w=1'
     self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
