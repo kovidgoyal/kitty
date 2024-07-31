@@ -39,6 +39,7 @@ type parsed_data struct {
 	expire_time             time.Duration
 	title, body, identifier string
 	image_data              []byte
+	initial_msg             string
 }
 
 func (p *parsed_data) create_metadata() string {
@@ -119,6 +120,9 @@ func (p *parsed_data) run_loop() (err error) {
 		})
 	}
 	lp.OnInitialize = func() (string, error) {
+		if p.initial_msg != "" {
+			return p.initial_msg, nil
+		}
 		p.generate_chunks(func(x string) { lp.QueueWriteString(x) })
 		return "", nil
 	}
@@ -255,9 +259,6 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	var p parsed_data
 	p.opts = opts
 	p.title = args[0]
-	if len(p.title) == 0 {
-		return 1, fmt.Errorf("Must specify a non-empty TITLE for the notification")
-	}
 	if len(args) > 1 {
 		p.body = strings.Join(args[1:], " ")
 	}
@@ -276,6 +277,28 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	p.identifier = ident
 	if !check_id_valid(opts.IconCacheId) {
 		return 1, bad_ident(opts.IconCacheId)
+	}
+	if len(p.title) == 0 {
+		if ident == "" {
+			return 1, fmt.Errorf("Must specify a non-empty TITLE for the notification or specify an identifier to close a notification.")
+		}
+		msg := ESC_CODE_PREFIX + "i=" + ident + ":p=close;" + ESC_CODE_SUFFIX
+		if opts.OnlyPrintEscapeCode {
+			_, err = os.Stdout.WriteString(msg)
+		} else if p.wait_till_closed {
+			p.initial_msg = msg
+			err = p.run_loop()
+		} else {
+			var term *tty.Term
+			if term, err = tty.OpenControllingTerm(); err != nil {
+				return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
+			}
+			if _, err = term.WriteString(msg); err != nil {
+				term.RestoreAndClose()
+				return 1, err
+			}
+			term.RestoreAndClose()
+		}
 	}
 	if p.expire_time, err = parse_duration(opts.ExpireTime); err != nil {
 		return 1, fmt.Errorf("Invalid expire time: %s with error: %w", opts.ExpireTime, err)

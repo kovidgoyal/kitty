@@ -83,6 +83,14 @@ if this kitten is being used inside a larger application, with --only-print-esca
 help_text = '''\
 Send notifications to the user that are displayed to them via the
 desktop environment's notifications service. Works over SSH as well.
+
+To update an existing notification, specify the identifier of the notification
+with the --identifier option. The value should be the same as the identifier specified for
+the notification you wish to update.
+
+If no title is specified and an identifier is specified using the --identifier
+option, then instead of creating a new notification, an existing notification
+with the specified identifier is closed.
 '''
 
 usage = 'TITLE [BODY ...]'
