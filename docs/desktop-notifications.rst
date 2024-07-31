@@ -136,7 +136,10 @@ escape code to inform when the notification is closed::
 
     <OSC> 99 ; i=mynotification : p=close ; <terminator>
 
-If no notification id was specified ``i=0`` will be used.
+If no notification id was specified ``i=0`` will be used in the response
+(Ideally ``i`` should have been left out from the response, but for backwards
+compatibility ``i=0`` is used).
+
 If ``a=report`` is specified and the notification is activated/clicked on
 then both the activation report and close notification are sent. If the notification
 is updated then the close event is not sent unless the updated notification
@@ -375,7 +378,7 @@ Key      Value                 Default    Description
 ``g``    :ref:`identifier`     ``unset``  Identifier for icon data. Make these globally unqiue,
                                           like an UUID.
 
-``i``    :ref:`identifier`     ``0``      Identifier for the notification. Make these globally unqiue,
+``i``    :ref:`identifier`     ``unset``  Identifier for the notification. Make these globally unqiue,
                                           like an UUID, so that terminal multiplexers can
                                           direct responses to the correct window.
 
@@ -456,4 +459,5 @@ Identifier
 
 Any string consisting solely of characters from the set ``[a-zA-Z0-9_-+.]``,
 that is, the letters ``a-z``, ``A-Z``, the underscore, the hyphen, the plus
-sign and the period.
+sign and the period. Applications should make these globally unique, like a
+UUID for maximum robustness.
