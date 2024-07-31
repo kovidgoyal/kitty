@@ -550,7 +550,7 @@ def dbus_send_notification(
     app_icon: str,
     title: str,
     body: str,
-    action_text: str = '',
+    actions: dict[str, str],
     timeout: int = -1,
     urgency: int = 1,
     replaces: int = 0,

@@ -2077,10 +2077,11 @@ dbus_notification_created_callback(unsigned long long notification_id, uint32_t 
 static PyObject*
 dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     int timeout = -1, urgency = 1; unsigned int replaces = 0;
-    GLFWDBUSNotificationData d = {.action_name=""};
-    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "action_text", "timeout", "urgency", "replaces", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|siiI", (char**)kwlist,
-                &d.app_name, &d.icon, &d.summary, &d.body, &d.action_name, &timeout, &urgency, &replaces)) return NULL;
+    GLFWDBUSNotificationData d = {0};
+    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "actions", "timeout", "urgency", "replaces", NULL};
+    PyObject *actions = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssssO!|iiI", (char**)kwlist,
+        &d.app_name, &d.icon, &d.summary, &d.body, &PyDict_Type, &actions, &timeout, &urgency, &replaces)) return NULL;
     if (!glfwDBusUserNotify) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
         return NULL;
@@ -2088,6 +2089,17 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     d.timeout = timeout;
     d.urgency = urgency & 3;
     d.replaces = replaces;
+    RAII_ALLOC(const char*, aclist, calloc(2*PyDict_Size(actions), sizeof(d.actions[0])));
+    if (!aclist) { return PyErr_NoMemory(); }
+    PyObject *key, *value; Py_ssize_t pos = 0;
+    d.num_actions = 0;
+    while (PyDict_Next(actions, &pos, &key, &value)) {
+        if (!PyUnicode_Check(key) || !PyUnicode_Check(value)) { PyErr_SetString(PyExc_TypeError, "actions must be strings"); return NULL; }
+        if (PyUnicode_GET_LENGTH(key) == 0 || PyUnicode_GET_LENGTH(value) == 0) { PyErr_SetString(PyExc_TypeError, "actions must be non-empty strings"); return NULL; }
+        aclist[d.num_actions] = PyUnicode_AsUTF8(key); if (!aclist[d.num_actions++]) return NULL;
+        aclist[d.num_actions] = PyUnicode_AsUTF8(value); if (!aclist[d.num_actions++]) return NULL;
+    }
+    d.actions = aclist;
     unsigned long long notification_id = glfwDBusUserNotify(&d, dbus_notification_created_callback, NULL);
     return PyLong_FromUnsignedLongLong(notification_id);
 }

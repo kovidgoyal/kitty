@@ -26,6 +26,13 @@ default=kitten-notify
 The application name for the notification.
 
 
+--button -b
+type=list
+Add a button with the specified text to the notification. Can be specified multiple times for multiple buttons.
+If --wait-for-completion is used then the kitten will print th ebutton number to STDOUT if the user clicks a button.
+1 for the first button, 2 for the second button and so on.
+
+
 --urgency -u
 default=normal
 choices=normal,low,critical
@@ -62,7 +69,7 @@ your own identifier via the --identifier option.
 --wait-till-closed -w
 type=bool-set
 Wait until the notification is closed. If the user activates the notification,
-"activated" is printed to STDOUT before quitting. Press the Esc or Ctrl+C keys
+"0" is printed to STDOUT before quitting. Press the Esc or Ctrl+C keys
 to close the notification manually.
 
 

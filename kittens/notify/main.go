@@ -102,6 +102,9 @@ func (p *parsed_data) generate_chunks(callback func(string)) {
 	if len(p.image_data) > 0 {
 		add_payload("icon", utils.UnsafeBytesToString(p.image_data))
 	}
+	if len(p.opts.Button) > 0 {
+		add_payload("buttons", strings.Join(p.opts.Button, "\u2028"))
+	}
 	write_chunk(";")
 }
 
@@ -110,7 +113,7 @@ func (p *parsed_data) run_loop() (err error) {
 	if err != nil {
 		return err
 	}
-	activated := ""
+	activated := -1
 	prefix := ESC_CODE_PREFIX + "i=" + p.identifier
 
 	poll_for_close := func() {
@@ -156,7 +159,9 @@ func (p *parsed_data) run_loop() (err error) {
 						lp.Quit(0)
 					}
 				case "":
-					activated = utils.IfElse(payload == "", "activated", payload)
+					if activated, err = strconv.Atoi(utils.IfElse(payload == "", "0", payload)); err != nil {
+						return fmt.Errorf("Got invalid activation response from terminal: %#v", payload)
+					}
 				}
 			}
 		}
@@ -192,7 +197,7 @@ func (p *parsed_data) run_loop() (err error) {
 		lp.KillIfSignalled()
 		return
 	}
-	if activated != "" && err == nil {
+	if activated > -1 && err == nil {
 		fmt.Println(activated)
 	}
 	return

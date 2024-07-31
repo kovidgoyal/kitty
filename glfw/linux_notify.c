@@ -124,10 +124,10 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
     APPEND(args, DBUS_TYPE_STRING, n->summary)
     APPEND(args, DBUS_TYPE_STRING, n->body)
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "s", &array);
-    if (n->action_name) {
-        static const char* default_action = "default";
-        APPEND(array, DBUS_TYPE_STRING, default_action);
-        APPEND(array, DBUS_TYPE_STRING, n->action_name);
+    if (n->actions) {
+        for (size_t i = 0; i < n->num_actions; i++) {
+            APPEND(array, DBUS_TYPE_STRING, n->actions[i]);
+        }
     }
     check_call(dbus_message_iter_close_container, &args, &array);
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "{sv}", &array);

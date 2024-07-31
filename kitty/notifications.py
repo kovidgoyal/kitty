@@ -131,10 +131,11 @@ class PayloadType(Enum):
     close = 'close'
     icon = 'icon'
     alive = 'alive'
+    buttons = 'buttons'
 
     @property
     def is_text(self) -> bool:
-        return self in (PayloadType.title, PayloadType.body)
+        return self in (PayloadType.title, PayloadType.body, PayloadType.buttons)
 
 
 class OnlyWhen(Enum):
@@ -198,9 +199,9 @@ class EncodedDataStore:
         return self.data_store.finalise()
 
 
-def limit_size(x: str) -> str:
-    if len(x) > 1024:
-        x = x[:1024]
+def limit_size(x: str, limit: int = 1024) -> str:
+    if len(x) > limit:
+        x = x[:limit]
     return x
 
 
@@ -217,6 +218,7 @@ class NotificationCommand:
     application_name: str = ''
     notification_types: tuple[str, ...] = ()
     timeout: int = -2
+    buttons: tuple[str, ...] = ()
 
     # event callbacks
     on_activation: Optional[Callable[['NotificationCommand'], None]] = None
@@ -343,6 +345,8 @@ class NotificationCommand:
             self.application_name = prev.application_name
         if prev.notification_types:
             self.notification_types = prev.notification_types + self.notification_types
+        if prev.buttons:
+            self.buttons += prev.buttons
         if self.timeout < -1:
             self.timeout = prev.timeout
         self.icon_path = prev.icon_path
@@ -386,6 +390,9 @@ class NotificationCommand:
                 icd = self.icon_data_cache_ref()
                 if icd:
                     self.icon_path = icd.add_icon(self.icon_data_key, data)
+        elif self.current_payload_type is PayloadType.buttons:
+            self.buttons += tuple(limit_size(x, 256) for x in text.split('\u2028') if x)
+            self.buttons = self.buttons[:8]
 
     def finalise(self) -> None:
         if self.current_payload_buffer:
@@ -559,7 +566,7 @@ class MacOSIntegration(DesktopIntegration):
             from .fast_data_types import cocoa_live_delivered_notifications
             cocoa_live_delivered_notifications()  # so that we purge dead notifications
         elif event == "activated":
-            self.notification_manager.notification_activated(desktop_notification_id)
+            self.notification_manager.notification_activated(desktop_notification_id, 0)
         elif event == "creation_failed":
             self.notification_manager.notification_closed(desktop_notification_id)
 
@@ -618,7 +625,8 @@ class FreeDesktopIntegration(DesktopIntegration):
             if event_type == 'activation_token':
                 self.notification_manager.notification_activation_token_received(desktop_notification_id, str(extra))
             elif event_type == 'activated':
-                self.notification_manager.notification_activated(desktop_notification_id)
+                button = 0 if extra == 'default' else int(extra)
+                self.notification_manager.notification_activated(desktop_notification_id, button)
             elif event_type == 'closed':
                 self.notification_manager.notification_closed(desktop_notification_id)
 
@@ -646,9 +654,12 @@ class FreeDesktopIntegration(DesktopIntegration):
         replaces_dbus_id = 0
         if existing_desktop_notification_id:
             replaces_dbus_id = self.get_dbus_notification_id(existing_desktop_notification_id, 'notify') or 0
+        actions = {'default': ' '}  # dbus requires string to not be empty
+        for i, b in enumerate(nc.buttons):
+            actions[str(i+1)] = b
         desktop_notification_id = dbus_send_notification(
-            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, timeout=nc.timeout,
-            urgency=nc.urgency.value, replaces=replaces_dbus_id)
+            app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, actions=actions,
+            timeout=nc.timeout, urgency=nc.urgency.value, replaces=replaces_dbus_id)
         if debug_desktop_integration:
             log_error(f'Requested creation of notification with {desktop_notification_id=}')
         if existing_desktop_notification_id and replaces_dbus_id:
@@ -761,7 +772,7 @@ class NotificationManager:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             n.activation_token = token
 
-    def notification_activated(self, desktop_notification_id: int) -> None:
+    def notification_activated(self, desktop_notification_id: int, which: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             if not n.close_response_requested:
                 self.purge_notification(n)
@@ -769,7 +780,7 @@ class NotificationManager:
                 self.channel.focus(n.channel_id, n.activation_token)
             if n.report_requested:
                 ident = n.identifier or '0'
-                self.channel.send(n.channel_id, f'99;i={ident};')
+                self.channel.send(n.channel_id, f'99;i={ident};{which or ''}')
             if n.on_activation:
                 try:
                     n.on_activation(n)

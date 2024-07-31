@@ -1054,7 +1054,7 @@ typedef struct GLFWLayerShellConfig {
 } GLFWLayerShellConfig;
 
 typedef struct GLFWDBUSNotificationData {
-    const char *app_name, *icon, *summary, *body, *action_name;
+    const char *app_name, *icon, *summary, *body, **actions; size_t num_actions;
     int32_t timeout; uint8_t urgency; uint32_t replaces;
 } GLFWDBUSNotificationData;
 
