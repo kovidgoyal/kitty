@@ -488,16 +488,20 @@ class MacOSIntegration(DesktopIntegration):
         return close_succeeded
 
     def get_icon_for_name(self, name: str) -> str:
+        from .fast_data_types import cocoa_bundle_image_as_png
         if name in self.failed_icons:
             return ''
+        image_type, image_name = 1, name
+        if sic := standard_icon_names.get(name):
+            image_name = sic[1]
+            image_type = 2
         icd = self.notification_manager.icon_data_cache
         icd_key = self.icd_key_prefix + name
         ans = icd.get_icon(icd_key)
         if ans:
             return ans
-        from .fast_data_types import cocoa_bundle_image_as_png
         try:
-            data = cocoa_bundle_image_as_png(name, is_identifier=True)
+            data = cocoa_bundle_image_as_png(image_name, image_type=image_type)
         except Exception as err:
             if debug_desktop_integration:
                 self.notification_manager.log(f'Failed to get icon for {name} with error: {err}')
@@ -624,7 +628,7 @@ class FreeDesktopIntegration(DesktopIntegration):
         if nc.icon_names:
             for name in nc.icon_names:
                 if sn := standard_icon_names.get(name):
-                    app_icon = sn
+                    app_icon = sn[0]
                     break
                 if icon_exists(name):
                     app_icon = name

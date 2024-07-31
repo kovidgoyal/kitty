@@ -460,7 +460,7 @@ schedule_notification(const char *appname, const char *identifier, const char *t
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
-    RAII_CoreFoundation(UNMutableNotificationContent, *content, [[UNMutableNotificationContent alloc] init]);
+    UNMutableNotificationContent *content = [[[UNMutableNotificationContent alloc] init] autorelease];
     if (title) content.title = @(title);
     if (body) content.body = @(body);
     if (appname) content.threadIdentifier = @(appname);
@@ -1072,13 +1072,7 @@ cocoa_set_uncaught_exception_handler(void) {
 }
 
 static PyObject*
-convert_image_to_png(NSImage *icon, unsigned image_size, const char *output_path) {
-    NSRect r = NSMakeRect(0, 0, image_size, image_size);
-    RAII_CoreFoundation(CGColorSpaceRef, colorSpace, CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB));
-    RAII_CoreFoundation(CGContextRef, cgContext, CGBitmapContextCreate(NULL, image_size, image_size, 8, 4*image_size, colorSpace, kCGBitmapByteOrderDefault|kCGImageAlphaPremultipliedLast));
-    NSGraphicsContext *context = [NSGraphicsContext graphicsContextWithCGContext:cgContext flipped:NO];  // autoreleased
-    RAII_CoreFoundation(CGImageRef, cg, [icon CGImageForProposedRect:&r context:context hints:nil]);
-    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithCGImage:cg];  // autoreleased
+convert_imagerep_to_png(NSBitmapImageRep *rep, const char *output_path) {
     NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{NSImageCompressionFactor: @1.0}]; // autoreleased
 
     if (output_path) {
@@ -1092,35 +1086,66 @@ convert_image_to_png(NSImage *icon, unsigned image_size, const char *output_path
 }
 
 static PyObject*
+convert_image_to_png(NSImage *icon, unsigned image_size, const char *output_path) {
+    NSRect r = NSMakeRect(0, 0, image_size, image_size);
+    RAII_CoreFoundation(CGColorSpaceRef, colorSpace, CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB));
+    RAII_CoreFoundation(CGContextRef, cgContext, CGBitmapContextCreate(NULL, image_size, image_size, 8, 4*image_size, colorSpace, kCGBitmapByteOrderDefault|kCGImageAlphaPremultipliedLast));
+    NSGraphicsContext *context = [NSGraphicsContext graphicsContextWithCGContext:cgContext flipped:NO];  // autoreleased
+    CGImageRef cg = [icon CGImageForProposedRect:&r context:context hints:nil];
+    NSBitmapImageRep *rep = [[[NSBitmapImageRep alloc] initWithCGImage:cg] autorelease];
+    return convert_imagerep_to_png(rep, output_path);
+}
+
+static PyObject*
+render_emoji(NSString *text, unsigned image_size, const char *output_path) {
+    NSFont *font = [NSFont fontWithName:@"AppleColorEmoji" size:12];
+    CTFontRef ctfont = (__bridge CTFontRef)(font);
+    CGFloat line_height = MAX(1, floor(CTFontGetAscent(ctfont) + CTFontGetDescent(ctfont) + MAX(0, CTFontGetLeading(ctfont)) + 0.5));
+    CGFloat pts_per_px = CTFontGetSize(ctfont) / line_height;
+    CGFloat desired_size = image_size * pts_per_px;
+    NSFont *final_font = [NSFont fontWithName:@"AppleColorEmoji" size:desired_size];
+    NSAttributedString *attr_string = [[[NSAttributedString alloc] initWithString:text attributes:@{NSFontAttributeName: final_font}] autorelease];
+    NSBitmapImageRep *bmp = [[[NSBitmapImageRep alloc] initWithBitmapDataPlanes:nil pixelsWide:image_size pixelsHigh:image_size bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:0 bitsPerPixel:0] autorelease];
+    [NSGraphicsContext saveGraphicsState];
+    NSGraphicsContext *context = [NSGraphicsContext graphicsContextWithBitmapImageRep:bmp];
+    [NSGraphicsContext setCurrentContext:context];
+    [attr_string drawInRect:NSMakeRect(0, 0, image_size, image_size)];
+    [NSGraphicsContext restoreGraphicsState];
+    return convert_imagerep_to_png(bmp, output_path);
+}
+
+
+static PyObject*
 bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autoreleasepool {
-    const char *b, *output_path = NULL; int is_identifier = 0; unsigned image_size = 256;
-    static const char* kwlist[] = {"path_or_identifier", "output_path", "image_size", "is_identifier", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sIp", (char**)kwlist, &b, &output_path, &image_size, &is_identifier)) return NULL;
-    NSWorkspace *workspace = [NSWorkspace sharedWorkspace]; // autoreleased
+    const char *b, *output_path = NULL; int image_type = 1; unsigned image_size = 256;
+    static const char* kwlist[] = {"path_or_identifier", "output_path", "image_size", "image_type", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sIi", (char**)kwlist, &b, &output_path, &image_size, &image_type)) return NULL;
     NSImage *icon = nil;
-    if (is_identifier) {
-        NSURL *url = [workspace URLForApplicationWithBundleIdentifier:@(b)]; // autoreleased
-        if (!url) {
-            PyErr_Format(PyExc_KeyError, "Failed to find bundle path for identifier: %s", b); return NULL;
-        }
-        icon = [workspace iconForFile:@(url.fileSystemRepresentation)];
-    } else icon = [workspace iconForFile:@(b)];
+    switch (image_type) {
+        case 0: case 1: {
+            NSWorkspace *workspace = [NSWorkspace sharedWorkspace]; // autoreleased
+            if (image_type == 1) {
+                NSURL *url = [workspace URLForApplicationWithBundleIdentifier:@(b)]; // autoreleased
+                if (!url) {
+                    PyErr_Format(PyExc_KeyError, "Failed to find bundle path for identifier: %s", b); return NULL;
+                }
+                icon = [workspace iconForFile:@(url.fileSystemRepresentation)];
+            } else icon = [workspace iconForFile:@(b)];
+        } break;
+        case 2:
+            return render_emoji(@(b), image_size, output_path);
+        default:
+            if (@available(macOS 11.0, *)) {
+                icon = [NSImage imageWithSystemSymbolName:@(b) accessibilityDescription:@""];  // autoreleased
+            } else {
+                PyErr_SetString(PyExc_ValueError, "Your version of macOS is too old to use symbol images, need >= 11.0"); return NULL;
+            }
+            break;
+    }
     if (!icon) {
         PyErr_Format(PyExc_ValueError, "Failed to load icon for bundle: %s", b); return NULL;
     }
     return convert_image_to_png(icon, image_size, output_path);
-}}
-
-static PyObject*
-symbol_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autoreleasepool {
-    const char *b, *output_path = NULL; unsigned image_size = 256;
-    static const char* kwlist[] = {"symbol", "output_path", "image_size", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sI", (char**)kwlist, &b, &output_path, &image_size)) return NULL;
-    NSImage *img = [NSImage imageWithSystemSymbolName:@(b) accessibilityDescription:@""];  // autoreleased
-    if (!img) {
-        PyErr_Format(PyExc_KeyError, "Failed to find image for symbol name: %s", b); return NULL;
-    }
-    return convert_image_to_png(img, image_size, output_path);
 }}
 
 static PyMethodDef module_methods[] = {
@@ -1134,7 +1159,6 @@ static PyMethodDef module_methods[] = {
     {"cocoa_set_app_icon", (PyCFunction)cocoa_set_app_icon, METH_VARARGS, ""},
     {"cocoa_set_dock_icon", (PyCFunction)cocoa_set_dock_icon, METH_VARARGS, ""},
     {"cocoa_bundle_image_as_png", (PyCFunction)(void(*)(void))bundle_image_as_png, METH_VARARGS | METH_KEYWORDS, ""},
-    {"cocoa_symbol_image_as_png", (PyCFunction)(void(*)(void))symbol_image_as_png, METH_VARARGS | METH_KEYWORDS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

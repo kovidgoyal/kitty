@@ -190,16 +190,16 @@ ssh_control_master_template = 'kssh-{kitty_pid}-{ssh_placeholder}'
 
 # See https://specifications.freedesktop.org/icon-naming-spec/latest/ar01s04.html
 standard_icon_names = {
-    'error': 'dialog-error',
-    'warning': 'dialog-warning',
-    'warn': 'dialog-warning',
-    'info': 'dialog-information',
-    'question': 'dialog-question',
+    'error': ('dialog-error', '☠'),
+    'warning': ('dialog-warning','⚠'),
+    'warn': ('dialog-warning', '⚠'),
+    'info': ('dialog-information', 'ℹ'),
+    'question': ('dialog-question', '❔'),
 
-    'help': 'system-help',
-    'file-manager': 'system-file-manager',
-    'system-monitor': 'utilities-system-monitor',
-    'text-editor': 'utilities-text-editor',
+    'help': ('system-help', '📖'),
+    'file-manager': ('system-file-manager', '🗄'),
+    'system-monitor': ('utilities-system-monitor', '🎛'),
+    'text-editor': ('utilities-text-editor', '📄'),
 }
 
 
