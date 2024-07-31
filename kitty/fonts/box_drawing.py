@@ -27,9 +27,9 @@ def thickness(level: int = 1, horizontal: bool = True) -> int:
     return int(math.ceil(pts * (_dpi / 72.0)))
 
 
-def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int) -> None:
-    ' Draw a horizontal line between [x1, x2) centered at y with the thickness given by level '
-    sz = thickness(level=level, horizontal=False)
+def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int, supersample_factor: int = 1) -> None:
+    ' Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and supersample factor '
+    sz = int(supersample_factor * thickness(level=level, horizontal=False))
     start = y - sz // 2
     for y in range(start, start + sz):
         offset = y * width
@@ -37,9 +37,9 @@ def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int) -
             buf[offset + x] = 255
 
 
-def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int) -> None:
-    ' Draw a vertical line between [y1, y2) centered at x with the thickness given by level '
-    sz = thickness(level=level, horizontal=True)
+def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int, supersample_factor: float = 1.0) -> None:
+    ' Draw a vertical line between [y1, y2) centered at x with the thickness given by level and supersample factor '
+    sz = int(supersample_factor * thickness(level=level, horizontal=True))
     start = x - sz // 2
     for x in range(start, start + sz):
         for y in range(y1, y2):
@@ -329,6 +329,45 @@ def mid_lines(buf: SSByteArray, width: int, height: int, level: int = 1, pts: It
         thick_line(buf, width, height, buf.supersample_factor * thickness(level), p1, p2)
 
 
+def get_fading_lines(total_length: int, num: int = 1, fade: str = 'right') -> List[Tuple[int, int]]:
+    lines = []
+
+    if fade == 'left' or fade == 'up':
+        d1 = total_length
+        dir = -1
+    else:
+        d1 = 0
+        dir = 1
+
+    step = total_length // num
+
+    for i in range(num):
+        sz = step * (num - i) // (num + 1)
+        if sz >= step - 1 and step > 2:
+            sz = step - 2
+        d2 = d1 + dir * sz
+        lines.append(tuple(sorted((d1, d2))))
+        d1 += step * dir
+
+    return lines
+
+
+@supersampled()
+def fading_hline(buf: SSByteArray, width: int, height: int, level: int = 1, num: int = 1, fade: str = 'right') -> None:
+    factor = buf.supersample_factor
+    y = (height // 2 // factor) * factor
+    for x1, x2 in get_fading_lines(width, num, fade):
+        draw_hline(buf, width, x1, x2, y, level, supersample_factor = factor)
+
+
+@supersampled()
+def fading_vline(buf: SSByteArray, width: int, height: int, level: int = 1, num: int = 1, fade: str = 'down') -> None:
+    factor = buf.supersample_factor
+    x = (width // 2 // factor) * factor
+    for y1, y2 in get_fading_lines(height, num, fade):
+        draw_vline(buf, width, y1, y2, x, level, supersample_factor = factor)
+
+
 ParameterizedFunc = Callable[[float], float]
 
 
@@ -546,6 +585,38 @@ def spinner(buf: SSByteArray, width: int, height: int, level: int = 1, start: fl
     radius = min(w, h) - int(thickness(level) * buf.supersample_factor) // 2
     arc_x, arc_y = circle_equations(w, h, radius, start_at=start, end_at=end)
     draw_parametrized_curve(buf, width, height, level, arc_x, arc_y)
+
+
+def draw_circle(buf: SSByteArray, width: int, height: int, scale: float = 1.0, gap: int = 0, invert: bool = False) -> None:
+    w, h = width // 2, height // 2
+    radius = int(scale * min(w, h) - gap / 2)
+    fill = 0 if invert else 255
+    for y in range(height):
+        for x in range(width):
+            if (x - w) ** 2 + (y - h) ** 2 <= radius ** 2:
+                buf[y * width + x] = fill
+
+
+@supersampled()
+def commit(buf: SSByteArray, width: int, height: int, level: int = 1, scale: float = 0.75, line: str = 'none', solid: bool = True) -> None:
+    ' Draw a circular commit with the given scale. Commits can either be solid or hollow and can have vertical, horizontal, up, down, left, or right line(s) '
+
+    factor = buf.supersample_factor
+    # Round half width/height to supersample factor to avoid misalignment with non-supersampled lines
+    hwidth, hheight = factor * (width // 2 // factor), factor * (height // 2 // factor)
+
+    if line == 'horizontal' or line == 'right':
+        draw_hline(buf, width, hwidth, width, hheight, level, supersample_factor=factor)
+    if line == 'horizontal' or line == 'left':
+        draw_hline(buf, width, 0, hwidth, hheight, level, supersample_factor=factor)
+    if line == 'vertical' or line == 'down':
+        draw_vline(buf, width, hheight, height, hwidth, level, supersample_factor=factor)
+    if line == 'vertical' or line == 'up':
+        draw_vline(buf, width, 0, hheight, hwidth, level, supersample_factor=factor)
+
+    draw_circle(buf, width, height, scale=scale)
+    if not solid:
+        draw_circle(buf, width, height, scale=scale, gap=thickness(level) * factor, invert=True)
 
 
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
@@ -1231,6 +1302,51 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '🮬': [p(mid_lines, pts=('rt', 'lt', 'rb'))],
     '🮭': [p(mid_lines, pts=('rt', 'lt', 'lb'))],
     '🮮': [p(mid_lines, pts=('rt', 'rb', 'lt', 'lb'))],
+
+    '': [hline],
+    '': [vline],
+    '': [p(fading_hline, num=4, fade='right')],
+    '': [p(fading_hline, num=4, fade='left')],
+    '': [p(fading_vline, num=5, fade='down')],
+    '': [p(fading_vline, num=5, fade='up')],
+    '': [p(rounded_corner, which='╭')],
+    '': [p(rounded_corner, which='╮')],
+    '': [p(rounded_corner, which='╰')],
+    '': [p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╰')],
+    '': [vline, p(rounded_corner, which='╭')],
+    '': [p(rounded_corner, which='╰'), p(rounded_corner, which='╭')],
+    '': [vline, p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╮')],
+    '': [p(rounded_corner, which='╮'), p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╮')],
+    '': [hline, p(rounded_corner, which='╭')],
+    '': [p(rounded_corner, which='╭'), p(rounded_corner, which='╮')],
+    '': [hline, p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╰')],
+    '': [p(rounded_corner, which='╰'), p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╰'), p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╭'), p(rounded_corner, which='╮')],
+    '': [hline, p(rounded_corner, which='╮'), p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╰'), p(rounded_corner, which='╭')],
+    '': [vline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
+    '': [hline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
+    '': [commit],
+    '': [p(commit, solid=False)],
+    '': [p(commit, line='right')],
+    '': [p(commit, solid=False, line='right')],
+    '': [p(commit, line='left')],
+    '': [p(commit, solid=False, line='left')],
+    '': [p(commit, line='horizontal')],
+    '': [p(commit, solid=False, line='horizontal')],
+    '': [p(commit, line='down')],
+    '': [p(commit, solid=False, line='down')],
+    '': [p(commit, line='up')],
+    '': [p(commit, solid=False, line='up')],
+    '': [p(commit, line='vertical')],
+    '': [p(commit, solid=False, line='vertical')],
 }
 
 t, f = 1, 3
