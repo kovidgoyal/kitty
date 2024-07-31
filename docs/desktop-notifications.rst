@@ -171,9 +171,12 @@ To update a previous notification simply send a new notification with the same
 *notification id* (``i`` key) as the one you want to update. If the original
 notification is still displayed it will be replaced, otherwise a new
 notification is displayed. This can be used, for example, to show progress of
-an operation. Note that how smoothly the existing notification is replaced
+an operation. How smoothly the existing notification is replaced
 depends on the underlying OS, for example, on Linux the replacement is usually flicker
 free, on macOS it isn't, because of Apple's design choices.
+Note that if no ``i`` key is specified, no updating must take place, even if
+there is a previous notification without an identifier. The terminal must
+treat these as being two unique *unidentified* notifications.
 
 To close a previous notification, send::
 
@@ -181,7 +184,7 @@ To close a previous notification, send::
 
 This will close a previous notification with the specified id. If no such
 notification exists (perhaps because it was already closed or it was activated)
-then the request is ignored.
+then the request is ignored. If no ``i`` key is specified, this must be a no-op.
 
 
 Automatically expiring notifications
@@ -390,7 +393,8 @@ Key      Value                 Default    Description
 ``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
          ``body``,                        notification has no title, the body will be used as title. Terminal
          ``close``,                       emulators should ignore payloads of unknown type to allow for future
-         ``?``, ``alive``                 expansion of this protocol.
+         ``icon``,                        expansion of this protocol.
+         ``?``, ``alive``
 
 ``t``    :ref:`base64`         ``unset``  The type of the notification. Used to filter out notifications. Can be specified multiple times.
          encoded UTF-8
