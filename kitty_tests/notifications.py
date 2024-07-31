@@ -223,7 +223,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     assert_events(focus=True, report='c', close=True, close_response='c')
     reset()
 
-    h('i=a;title')
+    h('i=a[;title')
     h('i=b;title')
     h('i=live:p=alive;')
     assert_events(focus=False, live='a,b')
@@ -290,7 +290,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
             for x in n.split(','):
                 m += f'n={standard_b64encode(x.encode()).decode()}:'
         if g:
-            m += f'g={g}:'
+            m += f'g=({g}:'
         h(f'i=9:d=0:{m};title')
         h(f'i=9:p=icon;{data}')
 
