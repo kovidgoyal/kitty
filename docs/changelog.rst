@@ -114,6 +114,8 @@ Detailed list of changes
 
 - Allow controlling the easing curves used for :opt:`visual_bell_duration`
 
+- New special rendering for font symbols useful in drawing commit graphs (:pull:`7681`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
