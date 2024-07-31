@@ -329,9 +329,7 @@ def mid_lines(buf: SSByteArray, width: int, height: int, level: int = 1, pts: It
         thick_line(buf, width, height, buf.supersample_factor * thickness(level), p1, p2)
 
 
-def get_fading_lines(total_length: int, num: int = 1, fade: str = 'right') -> List[Tuple[int, int]]:
-    lines = []
-
+def get_fading_lines(total_length: int, num: int = 1, fade: str = 'right') -> Iterator[Tuple[int, int]]:
     if fade == 'left' or fade == 'up':
         d1 = total_length
         dir = -1
@@ -346,10 +344,8 @@ def get_fading_lines(total_length: int, num: int = 1, fade: str = 'right') -> Li
         if sz >= step - 1 and step > 2:
             sz = step - 2
         d2 = d1 + dir * sz
-        lines.append(tuple(sorted((d1, d2))))
+        yield (d1, d2) if d1 <= d2 else (d2, d1)
         d1 += step * dir
-
-    return lines
 
 
 @supersampled()
