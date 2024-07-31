@@ -106,9 +106,10 @@ escape code is::
 
 The value of ``identifier`` comes from the ``i`` key in the escape code sent by
 the application. If the application sends no identifier, then the terminal
-*must* use ``i=0``. Actions can be preceded by a negative sign to turn them
-off, so for example if you do not want any action, turn off the default
-``focus`` action with::
+*must* use ``i=0``. (Ideally ``i`` should have been left out from the response,
+but for backwards compatibility ``i=0`` is used). Actions can be preceded by a
+negative sign to turn them off, so for example if you do not want any action,
+turn off the default ``focus`` action with::
 
     a=-focus
 
@@ -137,8 +138,6 @@ escape code to inform when the notification is closed::
     <OSC> 99 ; i=mynotification : p=close ; <terminator>
 
 If no notification id was specified ``i=0`` will be used in the response
-(Ideally ``i`` should have been left out from the response, but for backwards
-compatibility ``i=0`` is used).
 
 If ``a=report`` is specified and the notification is activated/clicked on
 then both the activation report and close notification are sent. If the notification
