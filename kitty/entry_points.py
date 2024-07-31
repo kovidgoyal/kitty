@@ -4,33 +4,32 @@
 
 import os
 import sys
-from typing import List
 
 
-def icat(args: List[str]) -> None:
+def icat(args: list[str]) -> None:
     from kitty.constants import kitten_exe
     os.execl(kitten_exe(), "kitten", *args)
 
 
-def list_fonts(args: List[str]) -> None:
+def list_fonts(args: list[str]) -> None:
     from kitty.fonts.list import main as list_main
     list_main(args)
 
 
-def runpy(args: List[str]) -> None:
+def runpy(args: list[str]) -> None:
     if len(args) < 2:
         raise SystemExit('Usage: kitty +runpy "some python code"')
     sys.argv = ['kitty'] + args[2:]
     exec(args[1])
 
 
-def hold(args: List[str]) -> None:
+def hold(args: list[str]) -> None:
     from kitty.constants import kitten_exe
     args = ['kitten', '__hold_till_enter__'] + args[1:]
     os.execvp(kitten_exe(), args)
 
 
-def complete(args: List[str]) -> None:
+def complete(args: list[str]) -> None:
     # Delegate to kitten to maintain backward compatibility
     if len(args) < 2 or args[1] not in ('setup', 'zsh', 'fish2', 'bash'):
         raise SystemExit(1)
@@ -43,14 +42,14 @@ def complete(args: List[str]) -> None:
     os.execvp(kitten_exe(), args)
 
 
-def open_urls(args: List[str]) -> None:
+def open_urls(args: list[str]) -> None:
     setattr(sys, 'cmdline_args_for_open', True)
     sys.argv = ['kitty'] + args[1:]
     from kitty.main import main as kitty_main
     kitty_main()
 
 
-def launch(args: List[str]) -> None:
+def launch(args: list[str]) -> None:
     import runpy
     sys.argv = args[1:]
     try:
@@ -73,7 +72,7 @@ def launch(args: List[str]) -> None:
     runpy.run_path(exe, run_name='__main__')
 
 
-def edit(args: List[str]) -> None:
+def edit(args: list[str]) -> None:
     import shutil
 
     from .constants import is_macos
@@ -93,7 +92,7 @@ def edit(args: List[str]) -> None:
     os.execv(exe, args[1:])
 
 
-def shebang(args: List[str]) -> None:
+def shebang(args: list[str]) -> None:
     from kitty.constants import kitten_exe
     script_path = args[1]
     cmd = args[2:]
@@ -115,7 +114,7 @@ def shebang(args: List[str]) -> None:
     os.execvp(kitten_exe(), ['kitten', '__confirm_and_run_shebang__'] + cmd + [script_path])
 
 
-def run_kitten(args: List[str]) -> None:
+def run_kitten(args: list[str]) -> None:
     try:
         kitten = args[1]
     except IndexError:
@@ -127,7 +126,7 @@ def run_kitten(args: List[str]) -> None:
     rk(kitten)
 
 
-def edit_config_file(args: List[str]) -> None:
+def edit_config_file(args: list[str]) -> None:
     from kitty.cli import create_default_opts
     from kitty.fast_data_types import set_options
     from kitty.utils import edit_config_file as f
@@ -135,7 +134,7 @@ def edit_config_file(args: List[str]) -> None:
     f()
 
 
-def namespaced(args: List[str]) -> None:
+def namespaced(args: list[str]) -> None:
     try:
         func = namespaced_entry_points[args[1]]
     except IndexError:

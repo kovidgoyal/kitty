@@ -3,10 +3,11 @@
 
 import io
 import os
+from collections.abc import Mapping
 from enum import Enum, IntEnum
 from gettext import gettext as _
 from tempfile import TemporaryFile
-from typing import IO, Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple, Union
+from typing import IO, Callable, NamedTuple, Optional, Union
 
 from .conf.utils import uniq
 from .constants import supports_primary_selection
@@ -83,7 +84,7 @@ class ClipboardType(IntEnum):
 class Clipboard:
 
     def __init__(self, clipboard_type: ClipboardType = ClipboardType.clipboard) -> None:
-        self.data: Dict[str, DataType] = {}
+        self.data: dict[str, DataType] = {}
         self.clipboard_type = clipboard_type
         self.enabled = self.clipboard_type is ClipboardType.clipboard or supports_primary_selection
 
@@ -98,7 +99,7 @@ class Clipboard:
             set_clipboard_data_types(self.clipboard_type, tuple(self.data))
 
     def get_text(self) -> str:
-        parts: List[bytes] = []
+        parts: list[bytes] = []
         self.get_mime("text/plain", parts.append)
         return b''.join(parts).decode('utf-8', 'replace')
 
@@ -120,13 +121,13 @@ class Clipboard:
                         output(q)
 
     def get_mime_data(self, mime: str) -> bytes:
-        ans: List[bytes] = []
+        ans: list[bytes] = []
         self.get_mime(mime, ans.append)
         return b''.join(ans)
 
-    def get_available_mime_types_for_paste(self) -> Tuple[str, ...]:
+    def get_available_mime_types_for_paste(self) -> tuple[str, ...]:
         if self.enabled:
-            parts: List[bytes] = []
+            parts: list[bytes] = []
             try:
                 get_clipboard_mime(self.clipboard_type, None, parts.append)
             except RuntimeError as err:
@@ -168,7 +169,7 @@ def get_primary_selection() -> str:
     return get_boss().primary_selection.get_text()
 
 
-def develop() -> Tuple[Clipboard, Clipboard]:
+def develop() -> tuple[Clipboard, Clipboard]:
     from .constants import detect_if_wayland_ok, is_macos
     from .fast_data_types import set_boss
     from .main import init_glfw_module
@@ -201,7 +202,7 @@ def decode_metadata_value(k: str, x: str) -> str:
 
 class ReadRequest(NamedTuple):
     is_primary_selection: bool = False
-    mime_types: Tuple[str, ...] = ('text/plain',)
+    mime_types: tuple[str, ...] = ('text/plain',)
     id: str = ''
     protocol_type: ProtocolType = ProtocolType.osc_52
 
@@ -243,10 +244,10 @@ class WriteRequest:
         self.protocol_type = protocol_type
         self.max_size_exceeded = False
         self.tempfile = Tempfile(max_size=rollover_size)
-        self.mime_map: Dict[str, MimePos] = {}
+        self.mime_map: dict[str, MimePos] = {}
         self.currently_writing_mime = ''
         self.max_size = (get_options().clipboard_max_size * 1024 * 1024) if max_size < 0 else max_size
-        self.aliases: Dict[str, str] = {}
+        self.aliases: dict[str, str] = {}
         self.committed = False
 
     def encode_response(self, status: str = 'OK') -> bytes:
@@ -320,7 +321,7 @@ class ClipboardRequestManager:
         else:
             metadata = str(data, "utf-8", "replace")
             epayload = data[len(data):]
-        m: Dict[str, str] = {}
+        m: dict[str, str] = {}
         for record in metadata.split(':'):
             try:
                 k, v = record.split('=', 1)

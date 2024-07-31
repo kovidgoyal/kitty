@@ -3,9 +3,10 @@
 
 import weakref
 from collections import deque
+from collections.abc import Iterator
 from contextlib import suppress
 from itertools import count
-from typing import Any, Deque, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Deque, Optional, Union
 
 from .fast_data_types import Color, get_options
 from .types import OverlayType, WindowGeometry
@@ -29,7 +30,7 @@ def wrap_increment(val: int, num: int, delta: int) -> int:
 class WindowGroup:
 
     def __init__(self) -> None:
-        self.windows: List[WindowType] = []
+        self.windows: list[WindowType] = []
         self.id = next(group_id_counter)
 
     def __len__(self) -> int:
@@ -86,13 +87,13 @@ class WindowGroup:
         with suppress(ValueError):
             self.windows.remove(window)
 
-    def serialize_state(self) -> Dict[str, Any]:
+    def serialize_state(self) -> dict[str, Any]:
         return {
             'id': self.id,
             'windows': [w.serialize_state() for w in self.windows]
         }
 
-    def as_simple_dict(self) -> Dict[str, Any]:
+    def as_simple_dict(self) -> dict[str, Any]:
         return {
             'id': self.id,
             'windows': [w.id for w in self.windows],
@@ -145,9 +146,9 @@ class WindowGroup:
 class WindowList:
 
     def __init__(self, tab: TabType) -> None:
-        self.all_windows: List[WindowType] = []
-        self.id_map: Dict[int, WindowType] = {}
-        self.groups: List[WindowGroup] = []
+        self.all_windows: list[WindowType] = []
+        self.id_map: dict[int, WindowType] = {}
+        self.groups: list[WindowGroup] = []
         self._active_group_idx: int = -1
         self.active_group_history: Deque[int] = deque((), 64)
         self.tabref = weakref.ref(tab)
@@ -165,7 +166,7 @@ class WindowList:
         q = window if isinstance(window, int) else window.id
         return q in self.id_map
 
-    def serialize_state(self) -> Dict[str, Any]:
+    def serialize_state(self) -> dict[str, Any]:
         return {
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
@@ -177,7 +178,7 @@ class WindowList:
         return self._active_group_idx
 
     @property
-    def active_window_history(self) -> List[int]:
+    def active_window_history(self) -> list[int]:
         ans = []
         seen = set()
         gid_map = {g.id: g for g in self.groups}
@@ -225,7 +226,7 @@ class WindowList:
     def change_tab(self, tab: TabType) -> None:
         self.tabref = weakref.ref(tab)
 
-    def iter_windows_with_visibility(self) -> Iterator[Tuple[WindowType, bool]]:
+    def iter_windows_with_visibility(self) -> Iterator[tuple[WindowType, bool]]:
         for g in self.groups:
             aw = g.active_window_id
             for window in g:
@@ -234,7 +235,7 @@ class WindowList:
     def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
         return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
 
-    def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[Tuple[int, WindowType]]:
+    def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[tuple[int, WindowType]]:
         for i, g in enumerate(self.groups):
             if not only_visible or g.is_visible_in_layout:
                 aw = g.active_window_id
@@ -430,7 +431,7 @@ class WindowList:
             return True
         return False
 
-    def compute_needs_borders_map(self, draw_active_borders: bool) -> Dict[int, bool]:
+    def compute_needs_borders_map(self, draw_active_borders: bool) -> dict[int, bool]:
         ag = self.active_group
         return {gr.id: ((gr is ag and draw_active_borders) or gr.needs_attention) for gr in self.groups}
 

@@ -3,11 +3,11 @@
 
 import sys
 from contextlib import suppress
-from typing import Callable, Dict, Optional
+from typing import Callable, Optional
 
 from .constants import is_macos
 
-functional_key_name_aliases: Dict[str, str] = {
+functional_key_name_aliases: dict[str, str] = {
     'ESC': 'ESCAPE',
     'PGUP': 'PAGE_UP',
     'PAGEUP': 'PAGE_UP',
@@ -24,7 +24,7 @@ functional_key_name_aliases: Dict[str, str] = {
 }
 
 
-character_key_name_aliases: Dict[str, str] = {
+character_key_name_aliases: dict[str, str] = {
     'SPC': ' ',
     'SPACE': ' ',
     'STAR': '*',

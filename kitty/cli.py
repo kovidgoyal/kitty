@@ -5,9 +5,11 @@ import os
 import re
 import sys
 from collections import deque
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Callable, Dict, FrozenSet, Iterator, List, Match, Optional, Sequence, Tuple, Type, TypeVar, Union, cast
+from re import Match
+from typing import Any, Callable, Optional, TypeVar, Union, cast
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
@@ -36,9 +38,9 @@ class CompletionRelativeTo(Enum):
 class CompletionSpec:
 
     type: CompletionType = CompletionType.none
-    kwds: Tuple[str,...] = ()
-    extensions: Tuple[str,...] = ()
-    mime_patterns: Tuple[str,...] = ()
+    kwds: tuple[str,...] = ()
+    extensions: tuple[str,...] = ()
+    mime_patterns: tuple[str,...] = ()
     group: str = ''
     relative_to: CompletionRelativeTo = CompletionRelativeTo.cwd
 
@@ -99,9 +101,9 @@ class CompletionSpec:
 class OptionDict(TypedDict):
     dest: str
     name: str
-    aliases: FrozenSet[str]
+    aliases: frozenset[str]
     help: str
-    choices: FrozenSet[str]
+    choices: frozenset[str]
     type: str
     default: Optional[str]
     condition: bool
@@ -167,7 +169,7 @@ class GoOption:
         return ans + '})'
 
     @property
-    def sorted_choices(self) -> List[str]:
+    def sorted_choices(self) -> list[str]:
         choices = sorted(self.obj_dict['choices'])
         choices.remove(self.default or '')
         choices.insert(0, self.default or '')
@@ -212,7 +214,7 @@ def surround(x: str, start: int, end: int) -> str:
     return x
 
 
-role_map: Dict[str, Callable[[str], str]] = {}
+role_map: dict[str, Callable[[str], str]] = {}
 
 
 def role(func: Callable[[str], str]) -> Callable[[str], str]:
@@ -280,7 +282,7 @@ def code(x: str) -> str:
     return cyan(x)
 
 
-def text_and_target(x: str) -> Tuple[str, str]:
+def text_and_target(x: str) -> tuple[str, str]:
     parts = x.split('<', 1)
     return parts[0].strip(), parts[-1].rstrip('>')
 
@@ -373,10 +375,10 @@ def disc(x: str) -> str:
     return ref_hyperlink(x, 'discussions-')
 
 
-OptionSpecSeq = List[Union[str, OptionDict]]
+OptionSpecSeq = list[Union[str, OptionDict]]
 
 
-def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, OptionSpecSeq]:
+def parse_option_spec(spec: Optional[str] = None) -> tuple[OptionSpecSeq, OptionSpecSeq]:
     if spec is None:
         spec = options_spec()
     NORMAL, METADATA, HELP = 'NORMAL', 'METADATA', 'HELP'
@@ -497,9 +499,9 @@ def wrap(text: str, limit: int = 80) -> Iterator[str]:
         yield ''
         return
     in_escape = 0
-    current_line: List[str] = []
-    escapes: List[str] = []
-    current_word: List[str] = []
+    current_line: list[str] = []
+    escapes: list[str] = []
+    current_word: list[str] = []
     current_line_length = 0
 
     def print_word(ch: str = '') -> Iterator[str]:
@@ -545,8 +547,8 @@ def wrap(text: str, limit: int = 80) -> Iterator[str]:
         yield ''.join(current_line)
 
 
-def get_defaults_from_seq(seq: OptionSpecSeq) -> Dict[str, Any]:
-    ans: Dict[str, Any] = {}
+def get_defaults_from_seq(seq: OptionSpecSeq) -> dict[str, Any]:
+    ans: dict[str, Any] = {}
     for opt in seq:
         if not isinstance(opt, str):
             ans[opt['dest']] = defval_for_opt(opt)
@@ -574,14 +576,14 @@ class PrintHelpForSeq:
             linesz = min(screen_size().cols, 76)
         except OSError:
             linesz = 76
-        blocks: List[str] = []
+        blocks: list[str] = []
         a = blocks.append
 
         def wa(text: str, indent: int = 0, leading_indent: Optional[int] = None) -> None:
             if leading_indent is None:
                 leading_indent = indent
             j = '\n' + (' ' * indent)
-            lines: List[str] = []
+            lines: list[str] = []
             for ln in text.splitlines():
                 lines.extend(wrap(ln, limit=linesz - indent))
             a((' ' * leading_indent) + j.join(lines))
@@ -608,7 +610,7 @@ class PrintHelpForSeq:
             defval = opt.get('default')
             if not opt.get('type', '').startswith('bool-'):
                 if defval:
-                    dt = '=[{}]'.format(italic(defval))
+                    dt = f'=[{italic(defval)}]'
                     blocks[-1] += dt
             if opt.get('help'):
                 t = help_text.replace('%default', str(defval)).strip()
@@ -648,7 +650,7 @@ def seq_as_rst(
     heading_char: str = '-'
 ) -> str:
     import textwrap
-    blocks: List[str] = []
+    blocks: list[str] = []
     a = blocks.append
 
     usage = '[program-to-run ...]' if usage is None else usage
@@ -696,7 +698,7 @@ def seq_as_rst(
 
 def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, extra_fields: Sequence[str] = ()) -> str:
     from itertools import chain
-    ans: List[str] = [f'class {class_name}:']
+    ans: list[str] = [f'class {class_name}:']
     for opt in chain(seq, disabled):
         if isinstance(opt, str):
             continue
@@ -743,8 +745,8 @@ class Options:
     def __init__(self, seq: OptionSpecSeq, usage: Optional[str], message: Optional[str], appname: Optional[str]):
         self.alias_map = {}
         self.seq = seq
-        self.names_map: Dict[str, OptionDict] = {}
-        self.values_map: Dict[str, Any] = {}
+        self.names_map: dict[str, OptionDict] = {}
+        self.values_map: dict[str, Any] = {}
         self.usage, self.message, self.appname = usage, message, appname
         for opt in seq:
             if isinstance(opt, str):
@@ -801,11 +803,11 @@ class Options:
             self.values_map[name] = val
 
 
-def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional[List[str]] = None) -> List[str]:
+def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional[list[str]] = None) -> list[str]:
     NORMAL, EXPECTING_ARG = 'NORMAL', 'EXPECTING_ARG'
     state = NORMAL
     dargs = deque(sys.argv[1:] if args is None else args)
-    leftover_args: List[str] = []
+    leftover_args: list[str] = []
     current_option = None
 
     while dargs:
@@ -1044,13 +1046,13 @@ T = TypeVar('T')
 
 
 def parse_args(
-    args: Optional[List[str]] = None,
+    args: Optional[list[str]] = None,
     ospec: Callable[[], str] = options_spec,
     usage: Optional[str] = None,
     message: Optional[str] = None,
     appname: Optional[str] = None,
-    result_class: Optional[Type[T]] = None,
-) -> Tuple[T, List[str]]:
+    result_class: Optional[type[T]] = None,
+) -> tuple[T, list[str]]:
     options = parse_option_spec(ospec())
     seq, disabled = options
     oc = Options(seq, usage, message, appname)
@@ -1064,7 +1066,7 @@ def parse_args(
 SYSTEM_CONF = f'/etc/xdg/{appname}/{appname}.conf'
 
 
-def default_config_paths(conf_paths: Sequence[str]) -> Tuple[str, ...]:
+def default_config_paths(conf_paths: Sequence[str]) -> tuple[str, ...]:
     return tuple(resolve_config(SYSTEM_CONF, defconf, conf_paths))
 
 
@@ -1078,7 +1080,7 @@ def parse_override(x: str) -> str:
     return override_pat().sub(r'\1 ', x.lstrip())
 
 
-def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> KittyOpts:
+def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[list[BadLineType]] = None) -> KittyOpts:
     from .config import load_config
     config = default_config_paths(args.config)
     overrides = map(parse_override, args.override or ())

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import ParsedFontFeature
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from kitty.fast_data_types import Face as FT_Face
 
     FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
-    FontMap = Dict[FontCollectionMapType, Dict[str, List[Descriptor]]]
+    FontMap = dict[FontCollectionMapType, dict[str, list[Descriptor]]]
     Face = Union[FT_Face, CTFace]
     def all_fonts_map(monospaced: bool) -> FontMap: ...
     def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer: ...
@@ -27,8 +27,8 @@ if TYPE_CHECKING:
     def is_monospace(descriptor: Descriptor) -> bool: ...
     def is_variable(descriptor: Descriptor) -> bool: ...
     def set_named_style(name: str, font: Descriptor, vd: VariableData) -> bool: ...
-    def set_axis_values(tag_map: Dict[str, float], font: Descriptor, vd: VariableData) -> bool: ...
-    def get_axis_values(font: Descriptor, vd: VariableData) -> Dict[str, float]: ...
+    def set_axis_values(tag_map: dict[str, float], font: Descriptor, vd: VariableData) -> bool: ...
+    def get_axis_values(font: Descriptor, vd: VariableData) -> dict[str, float]: ...
 else:
     FontCollectionMapType = FontMap = None
     from kitty.fast_data_types import specialize_font_descriptor
@@ -64,7 +64,7 @@ else:
         return Face(descriptor=descriptor)
 
 
-cache_for_variable_data_by_path: Dict[str, VariableData] = {}
+cache_for_variable_data_by_path: dict[str, VariableData] = {}
 attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, True): 'italic_font', (True, True): 'bold_italic_font'}
 
 
@@ -99,16 +99,16 @@ class FamilyAxisValues:
         f = getattr(self, f'get_{tag}', None)
         return None if f is None else f(bold, italic)
 
-    def set_regular_values(self, axis_values: Dict[str, float]) -> None:
+    def set_regular_values(self, axis_values: dict[str, float]) -> None:
         self.regular_weight = axis_values.get('wght')
         self.regular_width = axis_values.get('wdth')
         self.regular_ital = axis_values.get('ital')
         self.regular_slant = axis_values.get('slnt')
 
-    def set_bold_values(self, axis_values: Dict[str, float]) -> None:
+    def set_bold_values(self, axis_values: dict[str, float]) -> None:
         self.bold_weight = axis_values.get('wght')
 
-    def set_italic_values(self, axis_values: Dict[str, float]) -> None:
+    def set_italic_values(self, axis_values: dict[str, float]) -> None:
         self.italic_ital = axis_values.get('ital')
         self.italic_slant = axis_values.get('slnt')
 
@@ -133,7 +133,7 @@ def get_variable_data_for_face(d: Face) -> VariableData:
 
 
 def find_best_match_in_candidates(
-    candidates: List[DescriptorVar], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[DescriptorVar] = None
+    candidates: list[DescriptorVar], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[DescriptorVar] = None
 ) -> Optional[DescriptorVar]:
     if candidates:
         for x in scorer.sorted_candidates(candidates):
@@ -232,7 +232,7 @@ def find_bold_italic_variant(medium: Descriptor, bold: bool, italic: bool, famil
     return ans
 
 
-def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced: bool, candidates: List[Descriptor]) -> Descriptor:
+def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced: bool, candidates: list[Descriptor]) -> Descriptor:
     if spec.variable_name is not None:
         q = spec.variable_name.lower()
         for font in candidates:
@@ -293,7 +293,7 @@ def get_fine_grained_font(
     return find_last_resort_text_font(bold, italic, monospaced)
 
 
-def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> Tuple[Descriptor, bool]:
+def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> tuple[Descriptor, bool]:
     vd = face_from_descriptor(pat).get_variable_data()
     pat = pat.copy()
     if spec.style:
@@ -348,7 +348,7 @@ class FontFiles(TypedDict):
     bi: Descriptor
 
 
-actually_variable_cache: Dict[str, bool] = {}
+actually_variable_cache: dict[str, bool] = {}
 
 
 def is_actually_variable_despite_fontconfigs_lies(d: Descriptor) -> bool:
@@ -368,7 +368,7 @@ def is_actually_variable_despite_fontconfigs_lies(d: Descriptor) -> bool:
 
 
 def get_font_files(opts: Options) -> FontFiles:
-    ans: Dict[str, Descriptor] = {}
+    ans: dict[str, Descriptor] = {}
     match_is_more_specific_than_family = Event()
     medium_font = get_font_from_spec(opts.font_family, match_is_more_specific_than_family=match_is_more_specific_than_family)
     medium_font_is_variable = is_variable(medium_font) or is_actually_variable_despite_fontconfigs_lies(medium_font)
@@ -397,14 +397,14 @@ def get_font_files(opts: Options) -> FontFiles:
     return {'medium': ans['medium'], 'bold': ans['bold'], 'italic': ans['italic'], 'bi': ans['bi']}
 
 
-def axis_values_are_equal(defaults: Dict[str, float], a: Dict[str, float], b: Dict[str, float]) -> bool:
+def axis_values_are_equal(defaults: dict[str, float], a: dict[str, float], b: dict[str, float]) -> bool:
     ad, bd = defaults.copy(), defaults.copy()
     ad.update(a)
     bd.update(b)
     return ad == bd
 
 
-def _get_named_style(axis_map: Dict[str, float], vd: VariableData) -> Optional[NamedStyle]:
+def _get_named_style(axis_map: dict[str, float], vd: VariableData) -> Optional[NamedStyle]:
     defaults = {ax['tag']: ax['default'] for ax in vd['axes']}
     for ns in vd['named_styles']:
         if axis_values_are_equal(defaults, ns['axis_values'], axis_map):
@@ -437,9 +437,9 @@ def get_named_style(face_or_descriptor: Union[Face, Descriptor]) -> Optional[Nam
     return _get_named_style(axis_map, vd)
 
 
-def get_axis_map(face_or_descriptor: Union[Face, Descriptor]) -> Dict[str, float]:
+def get_axis_map(face_or_descriptor: Union[Face, Descriptor]) -> dict[str, float]:
     base_axis_map = {}
-    axis_map: Dict[str, float] = {}
+    axis_map: dict[str, float] = {}
     if isinstance(face_or_descriptor, dict):
         d: Descriptor = face_or_descriptor
         vd = get_variable_data_for_descriptor(d)

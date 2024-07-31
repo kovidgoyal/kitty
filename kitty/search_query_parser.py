@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 import re
+from collections.abc import Iterator, Sequence
 from enum import Enum
 from functools import lru_cache
 from gettext import gettext as _
-from typing import Callable, Iterator, List, NamedTuple, Optional, Sequence, Set, Tuple, TypeVar, Union
+from typing import Callable, NamedTuple, Optional, TypeVar, Union
 
 from .types import run_once
 
@@ -35,7 +36,7 @@ class TokenType(Enum):
 
 
 T = TypeVar('T')
-GetMatches = Callable[[str, str, Set[T]], Set[T]]
+GetMatches = Callable[[str, str, set[T]], set[T]]
 
 
 class SearchTreeNode:
@@ -44,10 +45,10 @@ class SearchTreeNode:
     def __init__(self, type: ExpressionType) -> None:
         self.type = type
 
-    def search(self, universal_set: Set[T], get_matches: GetMatches[T]) -> Set[T]:
+    def search(self, universal_set: set[T], get_matches: GetMatches[T]) -> set[T]:
         return self(universal_set, get_matches)
 
-    def __call__(self, candidates: Set[T], get_matches: GetMatches[T]) -> Set[T]:
+    def __call__(self, candidates: set[T], get_matches: GetMatches[T]) -> set[T]:
         return set()
 
     def iter_token_nodes(self) -> Iterator['TokenNode']:
@@ -60,7 +61,7 @@ class OrNode(SearchTreeNode):
         self.lhs = lhs
         self.rhs = rhs
 
-    def __call__(self, candidates: Set[T], get_matches: GetMatches[T]) -> Set[T]:
+    def __call__(self, candidates: set[T], get_matches: GetMatches[T]) -> set[T]:
         lhs = self.lhs(candidates, get_matches)
         return lhs.union(self.rhs(candidates.difference(lhs), get_matches))
 
@@ -76,7 +77,7 @@ class AndNode(SearchTreeNode):
         self.lhs = lhs
         self.rhs = rhs
 
-    def __call__(self, candidates: Set[T], get_matches: GetMatches[T]) -> Set[T]:
+    def __call__(self, candidates: set[T], get_matches: GetMatches[T]) -> set[T]:
         lhs = self.lhs(candidates, get_matches)
         return self.rhs(lhs, get_matches)
 
@@ -91,7 +92,7 @@ class NotNode(SearchTreeNode):
     def __init__(self, rhs: SearchTreeNode) -> None:
         self.rhs = rhs
 
-    def __call__(self, candidates: Set[T], get_matches: GetMatches[T]) -> Set[T]:
+    def __call__(self, candidates: set[T], get_matches: GetMatches[T]) -> set[T]:
         return candidates.difference(self.rhs(candidates, get_matches))
 
     def iter_token_nodes(self) -> Iterator['TokenNode']:
@@ -105,7 +106,7 @@ class TokenNode(SearchTreeNode):
         self.location = location
         self.query = query
 
-    def __call__(self, candidates: Set[T], get_matches: GetMatches[T]) -> Set[T]:
+    def __call__(self, candidates: set[T], get_matches: GetMatches[T]) -> set[T]:
         return get_matches(self.location, self.query, candidates)
 
     def iter_token_nodes(self) -> Iterator['TokenNode']:
@@ -118,7 +119,7 @@ class Token(NamedTuple):
 
 
 @run_once
-def lex_scanner() -> Callable[[str], Tuple[List[Token], str]]:
+def lex_scanner() -> Callable[[str], tuple[list[Token], str]]:
     return getattr(re, 'Scanner')([  # type: ignore
             (r'[()]', lambda x, t: Token(TokenType.OPCODE, t)),
             (r'@.+?:[^")\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
@@ -129,7 +130,7 @@ def lex_scanner() -> Callable[[str], Tuple[List[Token], str]]:
 
 
 @run_once
-def replacements() -> Tuple[Tuple[str, str], ...]:
+def replacements() -> tuple[tuple[str, str], ...]:
     return tuple(('\\' + x, chr(i + 1)) for i, x in enumerate('\\"()'))
 
 
@@ -147,7 +148,7 @@ class Parser:
 
     def __init__(self, allow_no_location: bool = False) -> None:
         self.current_token = 0
-        self.tokens: List[Token] = []
+        self.tokens: list[Token] = []
         self.allow_no_location = allow_no_location
 
     def token(self, advance: bool = False) -> Optional[str]:
@@ -177,7 +178,7 @@ class Parser:
     def advance(self) -> None:
         self.current_token += 1
 
-    def tokenize(self, expr: str) -> List[Token]:
+    def tokenize(self, expr: str) -> list[Token]:
         # Strip out escaped backslashes, quotes and parens so that the
         # lex scanner doesn't get confused. We put them back later.
         for k, v in replacements():
@@ -279,7 +280,7 @@ class Parser:
 
 
 @lru_cache(maxsize=64)
-def build_tree(query: str, locations: Union[str, Tuple[str, ...]], allow_no_location: bool = False) -> SearchTreeNode:
+def build_tree(query: str, locations: Union[str, tuple[str, ...]], allow_no_location: bool = False) -> SearchTreeNode:
     if isinstance(locations, str):
         locations = tuple(locations.split())
     p = Parser(allow_no_location)
@@ -290,7 +291,7 @@ def build_tree(query: str, locations: Union[str, Tuple[str, ...]], allow_no_loca
 
 
 def search(
-    query: str, locations: Union[str, Tuple[str, ...]], universal_set: Set[T], get_matches: GetMatches[T],
+    query: str, locations: Union[str, tuple[str, ...]], universal_set: set[T], get_matches: GetMatches[T],
     allow_no_location: bool = False,
-) -> Set[T]:
+) -> set[T]:
     return build_tree(query, locations, allow_no_location).search(universal_set, get_matches)

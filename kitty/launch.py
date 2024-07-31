@@ -4,8 +4,9 @@
 
 import os
 import shutil
+from collections.abc import Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, NamedTuple, Optional
 
 from .boss import Boss
 from .child import Child
@@ -27,7 +28,7 @@ except ImportError:
 
 class LaunchSpec(NamedTuple):
     opts: LaunchCLIOptions
-    args: List[str]
+    args: list[str]
 
 
 env_docs = '''\
@@ -373,8 +374,8 @@ def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
     return LaunchSpec(opts, args)
 
 
-def get_env(opts: LaunchCLIOptions, active_child: Optional[Child] = None, base_env: Optional[Dict[str,str]] = None) -> Dict[str, str]:
-    env: Dict[str, str] = {}
+def get_env(opts: LaunchCLIOptions, active_child: Optional[Child] = None, base_env: Optional[dict[str,str]] = None) -> dict[str, str]:
+    env: dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
     if base_env is not None:
@@ -414,7 +415,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
     return tab
 
 
-watcher_modules: Dict[str, Any] = {}
+watcher_modules: dict[str, Any] = {}
 
 
 def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
@@ -461,14 +462,14 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
 class LaunchKwds(TypedDict):
 
     allow_remote_control: bool
-    remote_control_passwords: Optional[Dict[str, Sequence[str]]]
+    remote_control_passwords: Optional[dict[str, Sequence[str]]]
     cwd_from: Optional[CwdRequest]
     cwd: Optional[str]
     location: Optional[str]
     override_title: Optional[str]
     copy_colors_from: Optional[Window]
     marker: Optional[str]
-    cmd: Optional[List[str]]
+    cmd: Optional[list[str]]
     overlay_for: Optional[int]
     stdin: Optional[bytes]
     hold: bool
@@ -482,7 +483,7 @@ def apply_colors(window: Window, spec: Sequence[str]) -> None:
     patch_color_profiles(colors, profiles, True)
 
 
-def parse_var(defn: Iterable[str]) -> Iterator[Tuple[str, str]]:
+def parse_var(defn: Iterable[str]) -> Iterator[tuple[str, str]]:
     for item in defn:
         a, sep, b = item.partition('=')
         yield a, b
@@ -511,8 +512,8 @@ force_window_launch = ForceWindowLaunch()
 non_window_launch_types = 'background', 'clipboard', 'primary'
 
 
-def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequence[str]) -> Optional[Dict[str, Sequence[str]]]:
-    remote_control_restrictions: Optional[Dict[str, Sequence[str]]] = None
+def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequence[str]) -> Optional[dict[str, Sequence[str]]]:
+    remote_control_restrictions: Optional[dict[str, Sequence[str]]] = None
     if allow_remote_control and passwords:
         from kitty.options.utils import remote_control_password
         remote_control_restrictions = {}
@@ -525,13 +526,13 @@ def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequen
 def _launch(
     boss: Boss,
     opts: LaunchCLIOptions,
-    args: List[str],
+    args: list[str],
     target_tab: Optional[Tab] = None,
     force_target_tab: bool = False,
     active: Optional[Window] = None,
     is_clone_launch: str = '',
     rc_from_window: Optional[Window] = None,
-    base_env: Optional[Dict[str, str]] = None,
+    base_env: Optional[dict[str, str]] = None,
 ) -> Optional[Window]:
     active = active or boss.active_window_for_cwd
     if active:
@@ -589,7 +590,7 @@ def _launch(
         kw['location'] = opts.location
     if opts.copy_colors and active:
         kw['copy_colors_from'] = active
-    pipe_data: Dict[str, Any] = {}
+    pipe_data: dict[str, Any] = {}
     if opts.stdin_source != 'none':
         q = str(opts.stdin_source)
         if opts.stdin_add_formatting:
@@ -608,7 +609,7 @@ def _launch(
     if opts.copy_cmdline and active_child:
         cmd = active_child.foreground_cmdline
     if cmd:
-        final_cmd: List[str] = []
+        final_cmd: list[str] = []
         for x in cmd:
             if active and not opts.copy_cmdline:
                 if x == '@selection':
@@ -699,13 +700,13 @@ def _launch(
 def launch(
     boss: Boss,
     opts: LaunchCLIOptions,
-    args: List[str],
+    args: list[str],
     target_tab: Optional[Tab] = None,
     force_target_tab: bool = False,
     active: Optional[Window] = None,
     is_clone_launch: str = '',
     rc_from_window: Optional[Window] = None,
-    base_env: Optional[Dict[str, str]] = None,
+    base_env: Optional[dict[str, str]] = None,
 ) -> Optional[Window]:
     active = active or boss.active_window_for_cwd
     if opts.keep_focus and active:
@@ -717,7 +718,7 @@ def launch(
             active.ignore_focus_changes = orig
 
 @run_once
-def clone_safe_opts() -> FrozenSet[str]:
+def clone_safe_opts() -> frozenset[str]:
     return frozenset((
         'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'var', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
@@ -725,7 +726,7 @@ def clone_safe_opts() -> FrozenSet[str]:
     ))
 
 
-def parse_opts_for_clone(args: List[str]) -> Tuple[LaunchCLIOptions, List[str]]:
+def parse_opts_for_clone(args: list[str]) -> tuple[LaunchCLIOptions, list[str]]:
     unsafe, unsafe_args = parse_launch_args(args)
     default_opts, default_args = parse_launch_args()
     # only copy safe options, those that dont lead to local code exec
@@ -734,7 +735,7 @@ def parse_opts_for_clone(args: List[str]) -> Tuple[LaunchCLIOptions, List[str]]:
     return default_opts, unsafe_args
 
 
-def parse_null_env(text: str) -> Dict[str, str]:
+def parse_null_env(text: str) -> dict[str, str]:
     ans = {}
     for line in text.split('\0'):
         if line:
@@ -746,7 +747,7 @@ def parse_null_env(text: str) -> Dict[str, str]:
     return ans
 
 
-def parse_message(msg: str, simple: Container[str]) -> Iterator[Tuple[str, str]]:
+def parse_message(msg: str, simple: Container[str]) -> Iterator[tuple[str, str]]:
     from base64 import standard_b64decode
     for x in msg.split(','):
         try:
@@ -762,7 +763,7 @@ class EditCmd:
 
     def __init__(self, msg: str) -> None:
         self.tdir = ''
-        self.args: List[str] = []
+        self.args: list[str] = []
         self.cwd = self.file_name = self.file_localpath = ''
         self.file_data = b''
         self.file_inode = -1, -1
@@ -871,8 +872,8 @@ class EditCmd:
 class CloneCmd:
 
     def __init__(self, msg: str) -> None:
-        self.args: List[str] = []
-        self.env: Optional[Dict[str, str]] = None
+        self.args: list[str] = []
+        self.env: Optional[dict[str, str]] = None
         self.cwd = ''
         self.shell = ''
         self.envfmt = 'default'
@@ -917,7 +918,7 @@ class CloneCmd:
                 self.history = v
 
 
-edits_in_flight: Dict[int, EditCmd] = {}
+edits_in_flight: dict[int, EditCmd] = {}
 
 
 def remote_edit(msg: str, window: Window) -> None:

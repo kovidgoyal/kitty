@@ -3,7 +3,8 @@
 
 import re
 from binascii import hexlify, unhexlify
-from typing import Dict, Generator, Optional, cast
+from collections.abc import Generator
+from typing import Optional, cast
 
 from kitty.options.types import Options
 
@@ -484,7 +485,7 @@ termcap_aliases.update({
         'FV FW FX FY FZ Fa Fb Fc Fd Fe Ff Fg Fh Fi Fj Fk Fl Fm Fn Fo '
         'Fp Fq Fr'.split(), 1)})
 
-queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
+queryable_capabilities = cast(dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(

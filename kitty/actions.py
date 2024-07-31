@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import inspect
-from typing import Dict, List, NamedTuple, cast
+from typing import NamedTuple, cast
 
 from .boss import Boss
 from .tabs import Tab
@@ -17,7 +17,7 @@ class Action(NamedTuple):
     long_help: str
 
 
-groups: Dict[ActionGroup, str] = {
+groups: dict[ActionGroup, str] = {
     'cp': 'Copy/paste',
     'sc': 'Scrolling',
     'win': 'Window management',
@@ -32,10 +32,10 @@ group_title = groups.__getitem__
 
 
 @run_once
-def get_all_actions() -> Dict[ActionGroup, List[Action]]:
+def get_all_actions() -> dict[ActionGroup, list[Action]]:
     ' test docstring '
 
-    ans: Dict[ActionGroup, List[Action]] = {}
+    ans: dict[ActionGroup, list[Action]] = {}
 
     def is_action(x: object) -> bool:
         return isinstance(getattr(x, 'action_spec', None), ActionSpec)
@@ -73,9 +73,9 @@ def as_rst() -> str:
     from .conf.types import Mapping
     from .options.definition import definition
     allg = get_all_actions()
-    lines: List[str] = []
+    lines: list[str] = []
     a = lines.append
-    maps: Dict[str, List[Mapping]] = {}
+    maps: dict[str, list[Mapping]] = {}
     for m in definition.iter_all_maps():
         if m.documented:
             func = m.action_def.split()[0]

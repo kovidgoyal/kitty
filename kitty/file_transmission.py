@@ -10,6 +10,7 @@ import stat
 import tempfile
 from base64 import b85decode
 from collections import defaultdict, deque
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
 from dataclasses import Field, dataclass, field, fields
 from enum import Enum, auto
@@ -17,7 +18,7 @@ from functools import partial
 from gettext import gettext as _
 from itertools import count
 from time import time_ns
-from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import IO, Any, Callable, DefaultDict, Deque, Optional, Union
 
 from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
 from kitty.fast_data_types import ESC_OSC, FILE_TRANSFER_CODE, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options, monotonic
@@ -68,11 +69,11 @@ def split_for_transfer(
         data = data[chunk_size:]
 
 
-def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union['FileTransmissionCommand', 'TransmissionError']]:
-    file_map: DefaultDict[Tuple[int, int], List[FileTransmissionCommand]] = defaultdict(list)
+def iter_file_metadata(file_specs: Iterable[tuple[str, str]]) -> Iterator[Union['FileTransmissionCommand', 'TransmissionError']]:
+    file_map: DefaultDict[tuple[int, int], list[FileTransmissionCommand]] = defaultdict(list)
     counter = count()
 
-    def skey(sr: os.stat_result) -> Tuple[int, int]:
+    def skey(sr: os.stat_result) -> tuple[int, int]:
         return sr.st_dev, sr.st_ino
 
     def make_ftc(path: str, spec_id: str, sr: Optional[os.stat_result] = None, parent: str = '') -> FileTransmissionCommand:
@@ -234,16 +235,16 @@ class TransmissionError(Exception):
 
 
 @run_once
-def name_to_serialized_map() -> Dict[str, str]:
-    ans: Dict[str, str] = {}
+def name_to_serialized_map() -> dict[str, str]:
+    ans: dict[str, str] = {}
     for k in fields(FileTransmissionCommand):
         ans[k.name] = k.metadata.get('sname', k.name)
     return ans
 
 
 @run_once
-def serialized_to_field_map() -> Dict[bytes, 'Field[Any]']:
-    ans: Dict[bytes, 'Field[Any]'] = {}
+def serialized_to_field_map() -> dict[bytes, 'Field[Any]']:
+    ans: dict[bytes, 'Field[Any]'] = {}
     for k in fields(FileTransmissionCommand):
         ans[k.metadata.get('sname', k.name).encode('ascii')] = k
     return ans
@@ -280,7 +281,7 @@ class FileTransmissionCommand:
             ans.append(f'data={len(self.data)} bytes')
         return 'FTC(' + ', '.join(ans) + ')'
 
-    def asdict(self, keep_defaults: bool = False) -> Dict[str, Union[str, int, bytes]]:
+    def asdict(self, keep_defaults: bool = False) -> dict[str, Union[str, int, bytes]]:
         ans = {}
         for k in fields(self):
             val = getattr(self, k.name)
@@ -508,7 +509,7 @@ class DestFile:
             self.existing_stat = None
             self.needs_unlink = False
 
-    def write_data(self, all_files: Dict[str, 'DestFile'], data: bytes, is_last: bool) -> None:
+    def write_data(self, all_files: dict[str, 'DestFile'], data: bytes, is_last: bool) -> None:
         if self.ftype is FileType.directory:
             raise TransmissionError(code=ErrorCode.EISDIR, file_id=self.file_id, msg='Cannot write data to a directory entry')
         if self.closed:
@@ -583,7 +584,7 @@ def check_bypass(password: str, request_id: str, bypass_data: str) -> bool:
 
 class ActiveReceive:
     id: str
-    files: Dict[str, DestFile]
+    files: dict[str, DestFile]
     accepted: bool = False
 
     def __init__(self, request_id: str, quiet: int, bypass: str) -> None:
@@ -596,7 +597,7 @@ class ActiveReceive:
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
         self.send_errors = quiet < 2
-        self.pending_files_to_transmit_signature_of: Deque[Tuple[PatchFile, str]] = deque()
+        self.pending_files_to_transmit_signature_of: Deque[tuple[PatchFile, str]] = deque()
         self.signature_pending_chunks: Deque[FileTransmissionCommand] = deque()
 
     @property
@@ -684,7 +685,7 @@ class SourceFile:
             self.open_file = None
         self.differ = None
 
-    def next_chunk(self, sz: int = 1024 * 1024) -> Tuple[bytes, int]:
+    def next_chunk(self, sz: int = 1024 * 1024) -> tuple[bytes, int]:
         if self.target:
             self.transmitted = True
             data = self.target
@@ -726,8 +727,8 @@ class ActiveSend:
         self.send_acknowledgements = quiet < 1
         self.send_errors = quiet < 2
         self.last_activity_at = monotonic()
-        self.file_specs: List[Tuple[str, str]] = []
-        self.queued_files_map: Dict[str, SourceFile] = {}
+        self.file_specs: list[tuple[str, str]] = []
+        self.queued_files_map: dict[str, SourceFile] = {}
         self.active_file: Optional[SourceFile] = None
         self.pending_chunks: Deque[FileTransmissionCommand] = deque()
         self.metadata_sent = False
@@ -805,8 +806,8 @@ class FileTransmission:
 
     def __init__(self, window_id: int):
         self.window_id = window_id
-        self.active_receives: Dict[str, ActiveReceive] = {}
-        self.active_sends: Dict[str, ActiveSend] = {}
+        self.active_receives: dict[str, ActiveReceive] = {}
+        self.active_sends: dict[str, ActiveSend] = {}
         self.pending_receive_responses: Deque[FileTransmissionCommand] = deque()
         self.pending_timer: Optional[int] = None
 
@@ -1231,7 +1232,7 @@ class TestFileTransmission(FileTransmission):
 
     def __init__(self, allow: bool = True) -> None:
         super().__init__(0)
-        self.test_responses: List[Dict[str, Union[str, int, bytes]]] = []
+        self.test_responses: list[dict[str, Union[str, int, bytes]]] = []
         self.allow = allow
 
     def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:

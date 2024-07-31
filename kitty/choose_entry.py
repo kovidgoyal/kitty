@@ -2,13 +2,14 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from typing import Any, Generator, List, Type
+from collections.abc import Generator
+from typing import Any
 
 from .cli_stub import HintsCLIOptions
 from .typing import MarkType
 
 
-def mark(text: str, args: HintsCLIOptions, Mark: Type[MarkType], extra_cli_args: List[str], *a: Any) -> Generator[MarkType, None, None]:
+def mark(text: str, args: HintsCLIOptions, Mark: type[MarkType], extra_cli_args: list[str], *a: Any) -> Generator[MarkType, None, None]:
     idx = 0
     found_start_line = False
     for m in re.finditer(r'(?m)^.+$', text):

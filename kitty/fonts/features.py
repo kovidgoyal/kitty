@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 from enum import IntEnum
-from typing import Dict, NamedTuple
+from typing import NamedTuple
 
 
 class Type(IntEnum):
@@ -16,7 +16,7 @@ class FeatureDefinition(NamedTuple):
     type: Type
 
 # From: https://learn.microsoft.com/en-ca/typography/opentype/spec/featurelist
-known_features: Dict[str, FeatureDefinition] = {  # {{{
+known_features: dict[str, FeatureDefinition] = {  # {{{
     'aalt':	FeatureDefinition('Access All Alternates', Type.index),
     'abvf':	FeatureDefinition('Above-base Forms', Type.hidden),
     'abvm':	FeatureDefinition('Above-base Mark Positioning', Type.hidden),

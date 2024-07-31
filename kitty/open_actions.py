@@ -5,8 +5,9 @@
 import os
 import posixpath
 import shlex
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
-from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, cast
+from typing import Any, NamedTuple, Optional, cast
 from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
@@ -25,14 +26,14 @@ class MatchCriteria(NamedTuple):
 
 
 class OpenAction(NamedTuple):
-    match_criteria: Tuple[MatchCriteria, ...]
-    actions: Tuple[KeyAction, ...]
+    match_criteria: tuple[MatchCriteria, ...]
+    actions: tuple[KeyAction, ...]
 
 
 def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
-    match_criteria: List[MatchCriteria] = []
-    raw_actions: List[str] = []
-    alias_map: Dict[str, List[ActionAlias]] = {}
+    match_criteria: list[MatchCriteria] = []
+    raw_actions: list[str] = []
+    alias_map: dict[str, list[ActionAlias]] = {}
     entries = []
 
     for line in lines:
@@ -74,7 +75,7 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         SHELL=resolved_shell(get_options())[0]
     ):
         for (mc, action_defns) in entries:
-            actions: List[KeyAction] = []
+            actions: list[KeyAction] = []
             for defn in action_defns:
                 actions.extend(resolve_aliases_and_parse_actions(defn, alias_map, MapType.OPEN_ACTION))
             yield OpenAction(mc, tuple(actions))
@@ -198,10 +199,10 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
             return
 
 
-actions_cache: Dict[str, Tuple[os.stat_result, Tuple[OpenAction, ...]]] = {}
+actions_cache: dict[str, tuple[os.stat_result, tuple[OpenAction, ...]]] = {}
 
 
-def load_actions_from_path(path: str) -> Tuple[OpenAction, ...]:
+def load_actions_from_path(path: str) -> tuple[OpenAction, ...]:
     try:
         st = os.stat(path)
     except OSError:
@@ -215,11 +216,11 @@ def load_actions_from_path(path: str) -> Tuple[OpenAction, ...]:
     return actions_cache[path][1]
 
 
-def load_open_actions() -> Tuple[OpenAction, ...]:
+def load_open_actions() -> tuple[OpenAction, ...]:
     return load_actions_from_path(os.path.join(config_dir, 'open-actions.conf'))
 
 
-def load_launch_actions() -> Tuple[OpenAction, ...]:
+def load_launch_actions() -> tuple[OpenAction, ...]:
     return load_actions_from_path(os.path.join(config_dir, 'launch-actions.conf'))
 
 
@@ -228,7 +229,7 @@ def clear_caches() -> None:
 
 
 @run_once
-def default_open_actions() -> Tuple[OpenAction, ...]:
+def default_open_actions() -> tuple[OpenAction, ...]:
     return tuple(parse('''\
 # Open kitty HTML docs links
 protocol kitty+doc
@@ -237,7 +238,7 @@ action show_kitty_doc $URL_PATH
 
 
 @run_once
-def default_launch_actions() -> Tuple[OpenAction, ...]:
+def default_launch_actions() -> tuple[OpenAction, ...]:
     return tuple(parse('''\
 # Open script files
 protocol file

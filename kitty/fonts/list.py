@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Optional
 
 from kitty.constants import is_macos
 
@@ -14,8 +15,8 @@ else:
     from .fontconfig import list_fonts, prune_family_group
 
 
-def create_family_groups(monospaced: bool = True) -> Dict[str, List[ListedFont]]:
-    g: Dict[str, List[ListedFont]] = {}
+def create_family_groups(monospaced: bool = True) -> dict[str, list[ListedFont]]:
+    g: dict[str, list[ListedFont]] = {}
     for f in list_fonts():
         if not monospaced or f['is_monospace']:
             g.setdefault(f['family'], []).append(f)

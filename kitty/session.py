@@ -4,9 +4,10 @@
 import os
 import shlex
 import sys
+from collections.abc import Generator, Iterator, Mapping
 from contextlib import suppress
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Generator, Iterator, List, Mapping, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from .cli_stub import CLIOptions
 from .layout.interface import all_layouts
@@ -31,7 +32,7 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
         opts.single_window_padding_width, opts.window_padding_width)
 
 
-ResizeSpec = Tuple[str, int]
+ResizeSpec = tuple[str, int]
 
 
 class WindowSpec:
@@ -50,7 +51,7 @@ class WindowSpec:
 class Tab:
 
     def __init__(self, opts: Options, name: str):
-        self.windows: List[WindowSpec] = []
+        self.windows: list[WindowSpec] = []
         self.pending_resize_spec: Optional[ResizeSpec] = None
         self.pending_focus_matching_window: str = ''
         self.name = name.strip()
@@ -71,7 +72,7 @@ class Tab:
 class Session:
 
     def __init__(self, default_title: Optional[str] = None):
-        self.tabs: List[Tab] = []
+        self.tabs: list[Tab] = []
         self.active_tab_idx = 0
         self.default_title = default_title
         self.os_window_size: Optional[WindowSizes] = None
@@ -99,7 +100,7 @@ class Session:
             raise ValueError(f'{val} is not a valid layout')
         self.tabs[-1].layout = val
 
-    def add_window(self, cmd: Union[None, str, List[str]], expand: Callable[[str], str] = lambda x: x) -> None:
+    def add_window(self, cmd: Union[None, str, list[str]], expand: Callable[[str], str] = lambda x: x) -> None:
         from .launch import parse_launch_args
         needs_expandvars = False
         if isinstance(cmd, str):
@@ -128,7 +129,7 @@ class Session:
             t.windows[-1].focus_matching_window_spec = t.pending_focus_matching_window
             t.pending_focus_matching_window = ''
 
-    def resize_window(self, args: List[str]) -> None:
+    def resize_window(self, args: list[str]) -> None:
         s = resize_window('resize_window', shlex.join(args))[1]
         spec: ResizeSpec = s[0], s[1]
         t = self.tabs[-1]

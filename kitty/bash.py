@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Dict, List, Tuple
 
 from .utils import shlex_split
 
@@ -10,9 +9,9 @@ def decode_ansi_c_quoted_string(text: str) -> str:
     return next(shlex_split(text, True))
 
 
-def decode_double_quoted_string(text: str, pos: int) -> Tuple[str, int]:
+def decode_double_quoted_string(text: str, pos: int) -> tuple[str, int]:
     escapes = r'"\$`'
-    buf: List[str] = []
+    buf: list[str] = []
     a = buf.append
     while pos < len(text):
         ch = text[pos]
@@ -30,7 +29,7 @@ def decode_double_quoted_string(text: str, pos: int) -> Tuple[str, int]:
     return ''.join(buf), pos
 
 
-def parse_modern_bash_env(text: str) -> Dict[str, str]:
+def parse_modern_bash_env(text: str) -> dict[str, str]:
     ans = {}
     for line in text.splitlines():
         idx = line.find('=')
@@ -46,7 +45,7 @@ def parse_modern_bash_env(text: str) -> Dict[str, str]:
     return ans
 
 
-def parse_bash_env(text: str, bash_version: str) -> Dict[str, str]:
+def parse_bash_env(text: str, bash_version: str) -> dict[str, str]:
     # See https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
     parts = bash_version.split('.')
     bv = tuple(map(int, parts[:2]))

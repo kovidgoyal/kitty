@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Tuple
 
 BossType = ChildType = TabType = WindowType = ScreenType = None
 BadLineType = SequenceMap = KeyActionType = AliasMap = None
@@ -14,7 +13,7 @@ ScreenSize = KittensKeyActionType = MouseEvent = MouseButton = AbstractEventLoop
 TermManagerType = LoopType = Debug = GraphicsCommandType = None
 ReadableBuffer = WriteableBuffer = bytearray
 
-CompletedProcess = Tuple
+CompletedProcess = tuple
 TypedDict = dict
 EdgeLiteral = str
 UnderlineLiteral = str
@@ -22,4 +21,4 @@ PowerlineStyle = str
 MatchType = str
 Protocol = object
 OptionsProtocol = object
-NotRequired = Tuple
+NotRequired = tuple

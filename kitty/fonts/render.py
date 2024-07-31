@@ -4,9 +4,10 @@
 import ctypes
 import os
 import sys
+from collections.abc import Generator
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Literal, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, Union, cast
 
 from kitty.constants import fonts_dir, is_macos
 from kitty.fast_data_types import (
@@ -40,19 +41,19 @@ else:
     from .fontconfig import font_for_family as font_for_family_fontconfig
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
-current_faces: List[Tuple[FontObject, bool, bool]] = []
+current_faces: list[tuple[FontObject, bool, bool]] = []
 builtin_nerd_font_descriptor: Optional[FontObject] = None
 
 
-def font_for_family(family: str) -> Tuple[FontObject, bool, bool]:
+def font_for_family(family: str) -> tuple[FontObject, bool, bool]:
     if is_macos:
         return font_for_family_macos(family)
     return font_for_family_fontconfig(family)
 
 
 def merge_ranges(
-    a: Tuple[Tuple[int, int], _T], b: Tuple[Tuple[int, int], _T], priority_map: Dict[Tuple[int, int], int]
-) -> Generator[Tuple[Tuple[int, int], _T], None, None]:
+    a: tuple[tuple[int, int], _T], b: tuple[tuple[int, int], _T], priority_map: dict[tuple[int, int], int]
+) -> Generator[tuple[tuple[int, int], _T], None, None]:
     a_start, a_end = a[0]
     b_start, b_end = b[0]
     a_val, b_val = a[1], b[1]
@@ -94,8 +95,8 @@ def merge_ranges(
             after_range = ((b_end + 1, a_end), a_val)
             after_range_prio = a_prio
     # check if the before, mid and after ranges can be coalesced
-    ranges: List[Tuple[Tuple[int, int], _T]] = []
-    priorities: List[int] = []
+    ranges: list[tuple[tuple[int, int], _T]] = []
+    priorities: list[int] = []
     for rq, prio in ((before_range, before_range_prio), (mid_range, mid_range_prio), (after_range, after_range_prio)):
         if rq is None:
             continue
@@ -116,7 +117,7 @@ def merge_ranges(
     yield from ranges
 
 
-def coalesce_symbol_maps(maps: Dict[Tuple[int, int], _T]) -> Dict[Tuple[int, int], _T]:
+def coalesce_symbol_maps(maps: dict[tuple[int, int], _T]) -> dict[tuple[int, int], _T]:
     if not maps:
         return maps
     priority_map = {r: i for i, r in enumerate(maps.keys())}
@@ -140,9 +141,9 @@ def coalesce_symbol_maps(maps: Dict[Tuple[int, int], _T]) -> Dict[Tuple[int, int
     return dict(ans)
 
 
-def create_symbol_map(opts: Options) -> Tuple[Tuple[int, int, int], ...]:
+def create_symbol_map(opts: Options) -> tuple[tuple[int, int, int], ...]:
     val = coalesce_symbol_maps(opts.symbol_map)
-    family_map: Dict[str, int] = {}
+    family_map: dict[str, int] = {}
     count = 0
     for family in val.values():
         if family not in family_map:
@@ -158,11 +159,11 @@ def create_symbol_map(opts: Options) -> Tuple[Tuple[int, int, int], ...]:
     return sm
 
 
-def create_narrow_symbols(opts: Options) -> Tuple[Tuple[int, int, int], ...]:
+def create_narrow_symbols(opts: Options) -> tuple[tuple[int, int, int], ...]:
     return tuple((a, b, v) for (a, b), v in coalesce_symbol_maps(opts.narrow_symbols).items())
 
 
-def descriptor_for_idx(idx: int) -> Tuple[FontObject, bool, bool]:
+def descriptor_for_idx(idx: int) -> tuple[FontObject, bool, bool]:
     return current_faces[idx]
 
 
@@ -184,7 +185,7 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     sz = override_font_size or opts.font_size
     font_map = get_font_files(opts)
     current_faces = [(font_map['medium'], False, False)]
-    ftypes: List[Literal['bold', 'italic', 'bi']] = ['bold', 'italic', 'bi']
+    ftypes: list[Literal['bold', 'italic', 'bi']] = ['bold', 'italic', 'bi']
     indices = {k: 0 for k in ftypes}
     for k in ftypes:
         if k in font_map:
@@ -387,7 +388,7 @@ def prerender_function(
     cursor_underline_thickness: float,
     dpi_x: float,
     dpi_y: float
-) -> Tuple[Tuple[int, ...], Tuple[CBufType, ...]]:
+) -> tuple[tuple[int, ...], tuple[CBufType, ...]]:
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
@@ -410,7 +411,7 @@ def prerender_function(
     return tuple(map(ctypes.addressof, tcells)), tcells
 
 
-def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> Tuple[int, CBufType]:
+def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> tuple[int, CBufType]:
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     buf = CharTexture()
     render_box_char(
@@ -424,7 +425,7 @@ class setup_for_testing:
     def __init__(self, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0):
         self.family, self.size, self.dpi = family, size, dpi
 
-    def __enter__(self) -> Tuple[Dict[Tuple[int, int, int], bytes], int, int]:
+    def __enter__(self) -> tuple[dict[tuple[int, int, int], bytes], int, int]:
         opts = defaults._replace(font_family=parse_font_spec(self.family), font_size=self.size)
         set_options(opts)
         sprites = {}
@@ -446,7 +447,7 @@ class setup_for_testing:
         set_send_sprite_to_gpu(None)
 
 
-def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0) -> Tuple[int, int, List[bytes]]:
+def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0) -> tuple[int, int, list[bytes]]:
     with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
@@ -467,7 +468,7 @@ def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi:
 
 def shape_string(
     text: str = "abcd", family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, path: Optional[str] = None
-) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
+) -> list[tuple[int, int, int, tuple[int, ...]]]:
     with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
@@ -534,7 +535,7 @@ def test_fallback_font(qtext: Optional[str] = None, bold: bool = False, italic: 
             try:
                 print(text, f)
             except UnicodeEncodeError:
-                sys.stdout.buffer.write(f'{text} {f}\n'.encode('utf-8'))
+                sys.stdout.buffer.write(f'{text} {f}\n'.encode())
 
 
 def showcase() -> None:

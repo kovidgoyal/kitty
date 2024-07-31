@@ -5,8 +5,9 @@ import locale
 import os
 import shutil
 import sys
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
-from typing import Dict, Generator, List, Optional, Sequence, Tuple
+from typing import Optional
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -99,7 +100,7 @@ def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool
 
 
 def get_macos_shortcut_for(
-    func_map: Dict[Tuple[str, ...], List[SingleKey]], defn: str = 'new_os_window', lookup_name: str = ''
+    func_map: dict[tuple[str, ...], list[SingleKey]], defn: str = 'new_os_window', lookup_name: str = ''
 ) -> Optional[SingleKey]:
     # for maximum robustness we should use opts.alias_map to resolve
     # aliases however this requires parsing everything on startup which could
@@ -167,8 +168,8 @@ def set_x11_window_icon() -> None:
         log_error(err)
 
 
-def set_cocoa_global_shortcuts(opts: Options) -> Dict[str, SingleKey]:
-    global_shortcuts: Dict[str, SingleKey] = {}
+def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
+    global_shortcuts: dict[str, SingleKey] = {}
     if is_macos:
         from collections import defaultdict
         func_map = defaultdict(list)
@@ -309,7 +310,7 @@ def setup_profiling() -> Generator[None, None, None]:
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
-def macos_cmdline(argv_args: List[str]) -> List[str]:
+def macos_cmdline(argv_args: list[str]) -> list[str]:
     try:
         with open(os.path.join(config_dir, 'macos-launch-services-cmdline')) as f:
             raw = f.read()
@@ -384,7 +385,7 @@ def ensure_kitten_in_path() -> None:
     os.environ['PATH'] = prepend_if_not_present(os.path.dirname(correct_kitten), env_path)
 
 
-def setup_manpath(env: Dict[str, str]) -> None:
+def setup_manpath(env: dict[str, str]) -> None:
     # Ensure kitty manpages are available in frozen builds
     if not getattr(sys, 'frozen', False):
         return
@@ -490,7 +491,7 @@ def _main() -> None:
                     if sep and socket_path:
                         os.unlink(socket_path)
             atexit.register(cleanup_si)
-    bad_lines: List[BadLine] = []
+    bad_lines: list[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
     setup_environment(opts, cli_opts)
 

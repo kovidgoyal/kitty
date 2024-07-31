@@ -6,9 +6,10 @@
 
 
 import os
+from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import context, get_all_start_methods, get_context, spawn, util
-from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from .constants import kitty_exe
 
@@ -52,7 +53,7 @@ def get_process_pool_executor(
     prefer_fork: bool = False,
     max_workers: Optional[int] = None,
     initializer: Optional[Callable[..., None]] = None,
-    initargs: Tuple[Any, ...] = ()
+    initargs: tuple[Any, ...] = ()
 ) -> ProcessPoolExecutor:
     if prefer_fork and 'fork' in get_all_start_methods():
         ctx: Union[context.DefaultContext, context.ForkContext] = get_context('fork')

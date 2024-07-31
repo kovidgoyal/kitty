@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import lru_cache, partial
 from time import time_ns
@@ -13,14 +14,7 @@ from types import GeneratorType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    FrozenSet,
-    Iterable,
-    Iterator,
-    List,
     Optional,
-    Sequence,
-    Tuple,
     Union,
     cast,
 )
@@ -43,8 +37,8 @@ from .types import AsyncResponse
 from .typing import BossType, WindowType
 from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
 
-active_async_requests: Dict[str, float] = {}
-active_streams: Dict[str, str] = {}
+active_async_requests: dict[str, float] = {}
+active_streams: dict[str, str] = {}
 if TYPE_CHECKING:
     from .window import Window
 
@@ -53,7 +47,7 @@ def encode_response_for_peer(response: Any) -> bytes:
     return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
 
 
-def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> Dict[str, Any]:
+def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> dict[str, Any]:
     # See https://github.com/python/cpython/issues/74379 for why we cant use
     # memoryview directly :((
     try:
@@ -88,7 +82,7 @@ def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> D
 
 class CMDChecker:
 
-    def __call__(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
+    def __call__(self, pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> Optional[bool]:
         return False
 
 
@@ -111,8 +105,8 @@ def fnmatch_pattern(pat: str) -> 're.Pattern[str]':
 
 
 def remote_control_allowed(
-    pcmd: Dict[str, Any], remote_control_passwords: Optional[Dict[str, Sequence[str]]],
-    window: Optional['Window'], extra_data: Dict[str, Any]
+    pcmd: dict[str, Any], remote_control_passwords: Optional[dict[str, Sequence[str]]],
+    window: Optional['Window'], extra_data: dict[str, Any]
 ) -> bool:
     if not remote_control_passwords:
         return True
@@ -133,7 +127,7 @@ def remote_control_allowed(
 
 class PasswordAuthorizer:
 
-    def __init__(self, auth_items: FrozenSet[str]) -> None:
+    def __init__(self, auth_items: frozenset[str]) -> None:
         self.command_patterns = []
         self.function_checkers = []
         self.name = ''
@@ -144,7 +138,7 @@ class PasswordAuthorizer:
             else:
                 self.command_patterns.append(fnmatch_pattern(item))
 
-    def is_cmd_allowed(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> bool:
+    def is_cmd_allowed(self, pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> bool:
         cmd_name = pcmd.get('cmd')
         if not cmd_name:
             return False
@@ -167,14 +161,14 @@ class PasswordAuthorizer:
 
 
 @lru_cache(maxsize=256)
-def password_authorizer(auth_items: FrozenSet[str]) -> PasswordAuthorizer:
+def password_authorizer(auth_items: frozenset[str]) -> PasswordAuthorizer:
     return PasswordAuthorizer(auth_items)
 
 
-user_password_allowed: Dict[str, bool] = {}
+user_password_allowed: dict[str, bool] = {}
 
 
-def is_cmd_allowed(pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
+def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> Optional[bool]:
     sid = pcmd.get('stream_id', '')
     if sid and active_streams.get(sid, '') == pcmd['cmd']:
         return True
@@ -211,8 +205,8 @@ def close_active_stream(stream_id: str) -> None:
 
 
 def handle_cmd(
-    boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any], peer_id: int, self_window: Optional[WindowType]
-) -> Union[Dict[str, Any], None, AsyncResponse]:
+    boss: BossType, window: Optional[WindowType], cmd: dict[str, Any], peer_id: int, self_window: Optional[WindowType]
+) -> Union[dict[str, Any], None, AsyncResponse]:
     v = cmd['version']
     no_response = cmd.get('no_response', False)
     if tuple(v)[:2] > version[:2]:
@@ -255,7 +249,7 @@ def handle_cmd(
         if stream:
             return {'ok': True, 'stream': True}
         return ans
-    response: Dict[str, Any] = {'ok': True}
+    response: dict[str, Any] = {'ok': True}
     if ans is not None:
         response['data'] = ans
     if not no_response:
@@ -361,14 +355,14 @@ class SocketIO:
 class RCIO(TTYIO):
 
     def simple_recv(self, timeout: float) -> bytes:
-        ans: List[bytes] = []
+        ans: list[bytes] = []
         read_command_response(self.tty_fd, timeout, ans)
         return b''.join(ans)
 
 
 def do_io(
-    to: Optional[str], original_cmd: Dict[str, Any], no_response: bool, response_timeout: float, encrypter: 'CommandEncrypter'
-) -> Dict[str, Any]:
+    to: Optional[str], original_cmd: dict[str, Any], no_response: bool, response_timeout: float, encrypter: 'CommandEncrypter'
+) -> dict[str, Any]:
     payload = original_cmd.get('payload')
     if not isinstance(payload, GeneratorType):
         send_data: Union[bytes, Iterator[bytes]] = encode_send(encrypter(original_cmd))
@@ -387,7 +381,7 @@ def do_io(
             return {'ok': True}
         received = io.simple_recv(timeout=response_timeout)
 
-    return cast(Dict[str, Any], json.loads(received.decode('ascii')))
+    return cast(dict[str, Any], json.loads(received.decode('ascii')))
 
 
 cli_msg = (
@@ -397,7 +391,7 @@ cli_msg = (
 ).format(appname=appname)
 
 
-def parse_rc_args(args: List[str]) -> Tuple[RCOptions, List[str]]:
+def parse_rc_args(args: list[str]) -> tuple[RCOptions, list[str]]:
     cmap = {name: command_for_name(name) for name in sorted(all_command_names())}
     cmds = (f'  :green:`{cmd.name}`\n    {cmd.short_desc}' for c, cmd in cmap.items())
     msg = cli_msg + (
@@ -422,7 +416,7 @@ class CommandEncrypter:
         self.encryption_version = encryption_version
         self.password = password
 
-    def __call__(self, cmd: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, cmd: dict[str, Any]) -> dict[str, Any]:
         encrypter = AES256GCMEncrypt(self.secret)
         cmd['timestamp'] = time_ns()
         cmd['password'] = self.password
@@ -446,14 +440,14 @@ class NoEncryption(CommandEncrypter):
 
     def __init__(self) -> None: ...
 
-    def __call__(self, cmd: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, cmd: dict[str, Any]) -> dict[str, Any]:
         return cmd
 
     def adjust_response_timeout_for_password(self, response_timeout: float) -> float:
         return response_timeout
 
 
-def create_basic_command(name: str, payload: Any = None, no_response: bool = False, is_asynchronous: bool = False) -> Dict[str, Any]:
+def create_basic_command(name: str, payload: Any = None, no_response: bool = False, is_asynchronous: bool = False) -> dict[str, Any]:
     ans = {'cmd': name, 'version': version, 'no_response': no_response}
     if payload is not None:
         ans['payload'] = payload
@@ -467,7 +461,7 @@ def send_response_to_client(data: Any = None, error: str = '', peer_id: int = 0,
     if active_async_requests.pop(async_id, None) is None:
         return
     if error:
-        response: Dict[str, Union[bool, int, str]] = {'ok': False, 'error': error}
+        response: dict[str, Union[bool, int, str]] = {'ok': False, 'error': error}
     else:
         response = {'ok': True, 'data': data}
     if peer_id > 0:
@@ -513,7 +507,7 @@ def get_password(opts: RCOptions) -> str:
     return ans
 
 
-def get_pubkey() -> Tuple[str, bytes]:
+def get_pubkey() -> tuple[str, bytes]:
     raw = os.environ.get('KITTY_PUBLIC_KEY', '')
     if not raw:
         raise SystemExit('Password usage requested but KITTY_PUBLIC_KEY environment variable is not available')
