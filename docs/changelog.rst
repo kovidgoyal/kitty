@@ -29,7 +29,7 @@ Desktop notifications [0.36]
 
 |kitty| now has a :doc:`notify </kittens/notify>` kitten that can be used to
 display desktop notifications from the command line, even over SSH. It has
-support for icons, buttons, waiting, updating notifications, waiting till
+support for icons, buttons, updating notifications, waiting till
 the notification is closed, etc. The underlying :doc:`desktop-notifications`
 protocol has been expanded to support all these features.
 
