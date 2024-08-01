@@ -290,6 +290,38 @@ need to transmit icon data only once until they are quit.
    On macOS, both the terminal emulator's icon and the specified custom icon
    are displayed.
 
+
+Adding buttons to the notification
+---------------------------------------
+
+Buttons can be added to the notification using the *buttons* payload, with ``p=buttons``.
+Buttons are a list of UTF-8 text separated by the Unicode Line Separator
+character (U+2028) which is the UTF-8 bytes ``0xe2 0x80 0xa8``. They can be
+sent either as :ref:`safe_utf8` or :ref:`base64`. When the user clicks on one
+of the buttons, and reporting is enabled with ``a=report``, the terminal will
+send an escape code of the form::
+
+    <OSC> 99 ; i=identifier ; button_number <terminator>
+
+Here, `button_number` is a number from 1 onwards, where 1 corresponds
+to the first button, two to the second and so on. If the user activates the
+notification as a whole, and not a specific button, the response, as described
+above is::
+
+    <OSC> 99 ; i=identifier ; <terminator>
+
+If no identifier was specified when creating the notification, ``i=0`` is used.
+The terminal *must not* send a response unless report is requested with
+``a=report``.
+
+.. note::
+
+   The appearance of the buttons depends on the underlying OS implementation.
+   On most Linux systems, the buttons appear as individual buttons on the
+   notification. On macOS they appear as a drop down menu that is accessible
+   when hovering the notification. Generally, using more than two or three
+   buttons is not a good idea.
+
 .. _notifications_query:
 
 Querying for support
@@ -379,7 +411,8 @@ Key      Value                 Default    Description
 
 ``i``    :ref:`identifier`     ``unset``  Identifier for the notification. Make these globally unqiue,
                                           like an UUID, so that terminal multiplexers can
-                                          direct responses to the correct window.
+                                          direct responses to the correct window. Note that for backwards
+                                          compatibility reasons i=0 is special and should not be used.
 
 ``n``    :ref:`base64`         ``unset``  Icon name. Can be specified multiple times.
          encoded UTF-8
@@ -392,11 +425,12 @@ Key      Value                 Default    Description
                                           its OS window is not currently active.
                                           ``always`` is the default and always honors the request.
 
-``p``    One of ``title``,     ``title``  Whether the payload is the notification title or body or query. If a
-         ``body``,                        notification has no title, the body will be used as title. Terminal
+``p``    One of ``title``,     ``title``  Type of the payload. If a notification has no title, the body will be used as title.
+         ``body``,                        A notification with not title and no body is ignored. Terminal
          ``close``,                       emulators should ignore payloads of unknown type to allow for future
          ``icon``,                        expansion of this protocol.
-         ``?``, ``alive``
+         ``?``, ``alive``,
+         ``buttons``
 
 ``t``    :ref:`base64`         ``unset``  The type of the notification. Used to filter out notifications. Can be specified multiple times.
          encoded UTF-8
