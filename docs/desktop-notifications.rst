@@ -93,7 +93,7 @@ for examples of notification types.
    application. While not strictly necessary, this allows the terminal
    emulator to deduce an icon for the notification when one is not specified.
 
-.. note::
+.. tip::
 
    |kitty| has sophisticated notification filtering and management
    capabilities via :opt:`filter_notification`.
