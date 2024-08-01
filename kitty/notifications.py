@@ -469,6 +469,12 @@ class DesktopIntegration:
         return f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}{c}:w=1'
 
 
+class MacOSNotificationCategory(NamedTuple):
+    id: str
+    buttons: tuple[str, ...] = ()
+    button_ids: tuple[str, ...] = ()
+
+
 class MacOSIntegration(DesktopIntegration):
 
     supports_close_events: bool = False
@@ -479,6 +485,11 @@ class MacOSIntegration(DesktopIntegration):
         self.live_notification_queries: list[tuple[int, str]] = []
         self.failed_icons: OrderedDict[str, bool] = OrderedDict()
         self.icd_key_prefix = os.urandom(16).hex()
+        self.category_cache: OrderedDict[tuple[str, ...], MacOSNotificationCategory] = OrderedDict()
+        self.category_id_counter = count(start=2)
+        self.buttons_id_counter = count(start=1)
+        self.default_category = MacOSNotificationCategory('1')
+        self.current_categories: frozenset[MacOSNotificationCategory] = frozenset()
         cocoa_set_notification_activated_callback(self.notification_activated)
 
     def query_live_notifications(self, channel_id: int, identifier: str) -> None:
@@ -520,6 +531,21 @@ class MacOSIntegration(DesktopIntegration):
             return icd.add_icon(icd_key, data)
         return ''
 
+    def category_for_notification(self, nc: NotificationCommand) -> MacOSNotificationCategory:
+        key = nc.buttons
+        if not key:
+            return self.default_category
+        if ans := self.category_cache.get(key):
+            self.category_cache.pop(key)
+            self.category_cache[key] = ans
+            return ans
+        ans = self.category_cache[key] = MacOSNotificationCategory(
+            str(next(self.category_id_counter)), nc.buttons, tuple(str(next(self.buttons_id_counter)) for x in nc.buttons)
+        )
+        if len(self.category_cache) > 32:
+            self.category_cache.popitem(False)
+        return ans
+
     def notify(self, nc: NotificationCommand, existing_desktop_notification_id: Optional[int]) -> int:
         desktop_notification_id = existing_desktop_notification_id or next(self.id_counter)
         from .fast_data_types import cocoa_send_notification
@@ -537,17 +563,22 @@ class MacOSIntegration(DesktopIntegration):
         image_path = image_path or nc.icon_path
         if not image_path and nc.application_name:
             image_path = self.get_icon_for_name(nc.application_name)
+        category = self.category_for_notification(nc)
+        categories = tuple(self.category_cache.values())
+        sc = frozenset(categories)
+        if sc == self.current_categories:
+            categories = ()
+        else:
+            self.current_categories = sc
 
         cocoa_send_notification(
             nc.application_name or 'kitty', str(desktop_notification_id), nc.title, body,
-            image_path=image_path, urgency=nc.urgency.value,
+            category=category, categories=categories, image_path=image_path, urgency=nc.urgency.value,
         )
         return desktop_notification_id
 
-    def notification_activated(self, event: str, ident: str) -> None:
+    def notification_activated(self, event: str, ident: str, button_id: str) -> None:
         if event == 'live':
-            if debug_desktop_integration:
-                log_error('Got list of live notifications:', ident)
             live_ids = tuple(int(x) for x in ident.split(',') if x)
             self.notification_manager.purge_dead_notifications(live_ids)
             self.live_notification_queries, queries = [], self.live_notification_queries
@@ -555,20 +586,36 @@ class MacOSIntegration(DesktopIntegration):
                 self.notification_manager.send_live_response(channel_id, req_id, live_ids)
             return
         if debug_desktop_integration:
-            log_error(f'Notification {ident} {event=}')
+            log_error(f'Notification {ident=} {event=} {button_id=}')
         try:
             desktop_notification_id = int(ident)
         except Exception:
             log_error(f'Got unexpected notification activated event with id: {ident!r} from cocoa')
             return
-        if event == "created":
+        if event == 'created':
             self.notification_manager.notification_created(desktop_notification_id)
             from .fast_data_types import cocoa_live_delivered_notifications
             cocoa_live_delivered_notifications()  # so that we purge dead notifications
-        elif event == "activated":
+        elif event == 'activated':
             self.notification_manager.notification_activated(desktop_notification_id, 0)
-        elif event == "creation_failed":
+        elif event == 'creation_failed':
             self.notification_manager.notification_closed(desktop_notification_id)
+        elif event == 'closed':  # sadly Crapple never delivers these events
+            self.notification_manager.notification_closed(desktop_notification_id)
+        elif event == 'button':
+            if n := self.notification_manager.in_progress_notification_commands.get(desktop_notification_id):
+                if debug_desktop_integration:
+                    log_error('Button matches notification:', n)
+                for c in self.current_categories:
+                    if c.buttons == n.buttons and button_id in c.button_ids:
+                        if debug_desktop_integration:
+                            log_error('Button number:', c.button_ids.index(button_id) + 1)
+                        self.notification_manager.notification_activated(desktop_notification_id, c.button_ids.index(button_id) + 1)
+                        break
+                else:
+                    if debug_desktop_integration:
+                        log_error('No category found with buttons:', n.buttons)
+                        log_error('Current categories:', self.current_categories)
 
 
 class FreeDesktopIntegration(DesktopIntegration):
@@ -772,17 +819,17 @@ class NotificationManager:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             n.activation_token = token
 
-    def notification_activated(self, desktop_notification_id: int, which: int) -> None:
+    def notification_activated(self, desktop_notification_id: int, button: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             if not n.close_response_requested:
                 self.purge_notification(n)
             if n.focus_requested:
                 self.channel.focus(n.channel_id, n.activation_token)
             if n.report_requested:
-                self.channel.send(n.channel_id, f'99;i={n.identifier or "0"};{which or ""}')
+                self.channel.send(n.channel_id, f'99;i={n.identifier or "0"};{button or ""}')
             if n.on_activation:
                 try:
-                    n.on_activation(n, which)
+                    n.on_activation(n, button)
                 except Exception as e:
                     self.log('Notification on_activation handler failed with error:', e)
 
@@ -798,7 +845,7 @@ class NotificationManager:
     def notification_closed(self, desktop_notification_id: int) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             self.purge_notification(n)
-            if n.close_response_requested:
+            if n.close_response_requested and self.desktop_integration.supports_close_events:
                 self.send_closed_response(n.channel_id, n.identifier)
             if n.on_close is not None:
                 try:
@@ -929,6 +976,8 @@ class NotificationManager:
 
     def purge_dead_notifications(self, live_desktop_ids: Sequence[int]) -> None:
         for d in set(self.in_progress_notification_commands) - set(live_desktop_ids):
+            if debug_desktop_integration:
+                log_error(f'Purging dead notification {d} from list of live notifications:', live_desktop_ids)
             self.purge_notification(self.in_progress_notification_commands[d])
 
     def purge_notification(self, cmd: NotificationCommand) -> None:

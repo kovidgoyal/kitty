@@ -360,9 +360,10 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
 }
 
 static void
-do_notification_callback(NSString *identifier, const char *event) {
+do_notification_callback(const char *identifier, const char *event, const char *action_identifer) {
     if (notification_activated_callback) {
-        PyObject *ret = PyObject_CallFunction(notification_activated_callback, "sz", event, (identifier ? [identifier UTF8String] : NULL));
+        PyObject *ret = PyObject_CallFunction(notification_activated_callback, "sss", event,
+                identifier ? identifier : "", action_identifer ? action_identifer : "");
         if (ret) Py_DECREF(ret);
         else PyErr_Print();
     }
@@ -387,12 +388,19 @@ do_notification_callback(NSString *identifier, const char *event) {
             didReceiveNotificationResponse:(UNNotificationResponse *)response
             withCompletionHandler:(void (^)(void))completionHandler {
         (void)(center);
+        char *identifier = strdup(response.notification.request.identifier.UTF8String);
+        char *action_identifier = strdup(response.actionIdentifier.UTF8String);
+        const char *event = "button";
         if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
-            do_notification_callback([[[response notification] request] identifier], "activated");
+            event = "activated";
         } else if ([response.actionIdentifier isEqualToString:UNNotificationDismissActionIdentifier]) {
-            // this never actually happens on macOS. Bloody Crapple.
-            // do_notification_callback([[[response notification] request] identifier], "closed");
+            // Crapple never actually sends this event on macOS
+            event = "closed";
         }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            do_notification_callback(identifier, event, action_identifier);
+            free(identifier); free(action_identifier);
+        });
         completionHandler();
     }
 @end
@@ -423,7 +431,7 @@ ident_in_list_of_notifications(NSString *ident, NSArray<UNNotification*> *list) 
 
 void
 cocoa_report_live_notifications(const char* ident) {
-    do_notification_callback(@(ident), "live");
+    do_notification_callback(ident, "live", "");
 }
 
 static bool
@@ -456,7 +464,7 @@ live_delivered_notifications(void) {
 }
 
 static void
-schedule_notification(const char *appname, const char *identifier, const char *title, const char *body, const char *image_path, int urgency) {@autoreleasepool {
+schedule_notification(const char *appname, const char *identifier, const char *title, const char *body, const char *image_path, int urgency, const char *category_id) {@autoreleasepool {
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
@@ -464,6 +472,7 @@ schedule_notification(const char *appname, const char *identifier, const char *t
     if (title) content.title = @(title);
     if (body) content.body = @(body);
     if (appname) content.threadIdentifier = @(appname);
+    if (category_id) content.categoryIdentifier = @(category_id);
     content.sound = [UNNotificationSound defaultSound];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
     switch (urgency) {
@@ -503,7 +512,7 @@ schedule_notification(const char *appname, const char *identifier, const char *t
         if (error != nil) log_error("Failed to show notification: %s", [[error localizedDescription] UTF8String]);
         bool ok = error == nil;
         dispatch_async(dispatch_get_main_queue(), ^{
-            do_notification_callback(@(duped_ident), ok ? "created" : "creation_failed");
+            do_notification_callback(duped_ident, ok ? "created" : "creation_failed", "");
             free(duped_ident);
         });
     }];
@@ -511,7 +520,7 @@ schedule_notification(const char *appname, const char *identifier, const char *t
 
 
 typedef struct {
-    char *identifier, *title, *body, *appname, *image_path;
+    char *identifier, *title, *body, *appname, *image_path, *category_id;
     int urgency;
 } QueuedNotification;
 
@@ -522,11 +531,11 @@ typedef struct {
 static NotificationQueue notification_queue = {0};
 
 static void
-queue_notification(const char *appname, const char *identifier, const char *title, const char* body, const char *image_path, int urgency) {
+queue_notification(const char *appname, const char *identifier, const char *title, const char* body, const char *image_path, int urgency, const char *category_id) {
     ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
     QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
 #define d(x) n->x = (x && x[0]) ? strdup(x) : NULL;
-    d(appname); d(identifier); d(title); d(body); d(image_path);
+    d(appname); d(identifier); d(title); d(body); d(image_path); d(category_id);
 #undef d
     n->urgency = urgency;
 }
@@ -536,13 +545,13 @@ drain_pending_notifications(BOOL granted) {
     if (granted) {
         for (size_t i = 0; i < notification_queue.count; i++) {
             QueuedNotification *n = notification_queue.notifications + i;
-            schedule_notification(n->appname, n->identifier, n->title, n->body, n->image_path, n->urgency);
+            schedule_notification(n->appname, n->identifier, n->title, n->body, n->image_path, n->urgency, n->category_id);
         }
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
-        if (!granted) do_notification_callback(@(n->identifier), "creation_failed");
-        free(n->identifier); free(n->title); free(n->body); free(n->appname); free(n->image_path);
+        if (!granted) do_notification_callback(n->identifier, "creation_failed", "");
+        free(n->identifier); free(n->title); free(n->body); free(n->appname); free(n->image_path); free(n->category_id);
         memset(n, 0, sizeof(QueuedNotification));
     }
 }
@@ -560,18 +569,46 @@ cocoa_live_delivered_notifications(PyObject *self UNUSED, PyObject *x UNUSED) {
     Py_RETURN_FALSE;
 }
 
+static UNNotificationCategory*
+category_from_python(PyObject *p) {
+    RAII_PyObject(button_ids, PyObject_GetAttrString(p, "button_ids"));
+    RAII_PyObject(buttons, PyObject_GetAttrString(p, "buttons"));
+    RAII_PyObject(id, PyObject_GetAttrString(p, "id"));
+    NSMutableArray<UNNotificationAction *> *actions = [NSMutableArray arrayWithCapacity:PyTuple_GET_SIZE(buttons)];
+    for (int i = 0; i < PyTuple_GET_SIZE(buttons); i++) [actions addObject:
+        [UNNotificationAction actionWithIdentifier:@(PyUnicode_AsUTF8(PyTuple_GET_ITEM(button_ids, i)))
+            title:@(PyUnicode_AsUTF8(PyTuple_GET_ITEM(buttons, i))) options:UNNotificationActionOptionNone]];
 
+    return [UNNotificationCategory categoryWithIdentifier:@(PyUnicode_AsUTF8(id))
+        actions:actions intentIdentifiers:@[] options:0];
+}
+
+static bool
+set_notification_categories(UNUserNotificationCenter *center, PyObject *categories) {
+    NSMutableArray<UNNotificationCategory *> *ans = [NSMutableArray arrayWithCapacity:PyTuple_GET_SIZE(categories)];
+    for (int i = 0; i < PyTuple_GET_SIZE(categories); i++) {
+        UNNotificationCategory *c = category_from_python(PyTuple_GET_ITEM(categories, i));
+        if (!c) return false;
+        [ans addObject:c];
+    }
+    [center setNotificationCategories:[NSSet setWithArray:ans]];
+    return true;
+}
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     const char *identifier = "", *title = "", *body = "", *appname = "", *image_path = ""; int urgency = 1;
-    static const char* kwlist[] = {"appname", "identifier", "title", "body", "image_path", "urgency", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|si", (char**)kwlist, &appname, &identifier, &title, &body, &image_path, &urgency)) return NULL;
+    PyObject *category, *categories;
+    static const char* kwlist[] = {"appname", "identifier", "title", "body", "category", "categories", "image_path", "urgency", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssssOO!|si", (char**)kwlist,
+        &appname, &identifier, &title, &body, &category, &PyTuple_Type, &categories, &image_path, &urgency)) return NULL;
 
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
-    queue_notification(appname, identifier, title, body, image_path, urgency);
+    if (PyObject_IsTrue(categories)) if (!set_notification_categories(center, categories)) return NULL;
+    RAII_PyObject(category_id, PyObject_GetAttrString(category, "id"));
+    queue_notification(appname, identifier, title, body, image_path, urgency, PyUnicode_AsUTF8(category_id));
 
     // The badge permission needs to be requested as well, even though it is not used,
     // otherwise macOS refuses to show the preference checkbox for enable/disable notification sound.

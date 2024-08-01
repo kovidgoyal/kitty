@@ -6,6 +6,7 @@ from kitty.boss import Boss
 from kitty.fonts import VariableData
 from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
+from kitty.notifications import MacOSNotificationCategory
 from kitty.options.types import Options
 from kitty.types import LayerShellConfig, SignalInfo
 from kitty.typing import EdgeLiteral, NotRequired, ReadableBuffer, WriteableBuffer
@@ -566,6 +567,8 @@ def cocoa_send_notification(
     identifier: str,
     title: str,
     body: str,
+    category: MacOSNotificationCategory,
+    categories: tuple[MacOSNotificationCategory, ...],
     image_path: str = "",
     urgency: int = 1,
 ) -> None:
@@ -842,7 +845,7 @@ def os_window_font_size(
     pass
 
 
-def cocoa_set_notification_activated_callback(identifier: Optional[Callable[[str, str], None]]) -> None:
+def cocoa_set_notification_activated_callback(identifier: Optional[Callable[[str, str, str], None]]) -> None:
     pass
 
 
