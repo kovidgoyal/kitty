@@ -305,8 +305,8 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 			term.RestoreAndClose()
 		}
 	}
-	if p.expire_time, err = parse_duration(opts.ExpireTime); err != nil {
-		return 1, fmt.Errorf("Invalid expire time: %s with error: %w", opts.ExpireTime, err)
+	if p.expire_time, err = parse_duration(opts.ExpireAfter); err != nil {
+		return 1, fmt.Errorf("Invalid expire time: %s with error: %w", opts.ExpireAfter, err)
 	}
 	p.wait_till_closed = opts.WaitTillClosed
 	if err = p.load_image_data(); err != nil {
