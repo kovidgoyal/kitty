@@ -35,6 +35,15 @@ To show a message with a title and a body::
     printf '\x1b]99;i=1:d=0;Hello world\x1b\\'
     printf '\x1b]99;i=1:p=body;This is cool\x1b\\'
 
+.. tip::
+
+   |kitty| also comes with its own :doc:`statically compiled command line tool </kittens/notify>` to easily display
+   notifications, with all their advanced features. For example:
+
+   .. code-block:: sh
+
+        kitten notify "Hello world" A good day to you
+
 The most important key in the metadata is the ``p`` key, it controls how the
 payload is interpreted. A value of ``title`` means the payload is setting the
 title for the notification. A value of ``body`` means it is setting the body,
