@@ -642,8 +642,7 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     if (!ensure_csd_title_render_ctx()) return false;
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
-    unsigned px_sz = (unsigned)(global_state.callback_os_window->fonts_data->font_sz_in_pts * ydpi / 72.);
-    px_sz = MIN(px_sz, 3 * height / 4);
+    unsigned px_sz = 2 * height / 3;
     static char title[2048];
     if (!is_single_glyph) {
         snprintf(title, sizeof(title), " ❭ %s", text);
