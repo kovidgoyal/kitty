@@ -370,7 +370,7 @@ Key      Value
 
 ``p``    Comma spearated list of supported payload types (i.e. values of the
          ``p`` key that the terminal implements). These must contain at least
-         ``title`` and ``body``.
+         ``title``.
 
 ``u``    Comma separated list of urgency values that the terminal implements.
          If urgency is not supported, the ``u`` key must be absent from the

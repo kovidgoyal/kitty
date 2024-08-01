@@ -438,6 +438,8 @@ class NotificationCommand:
 class DesktopIntegration:
 
     supports_close_events: bool = True
+    supports_body: bool = True
+    supports_buttons: bool = True
 
     def __init__(self, notification_manager: 'NotificationManager'):
         self.notification_manager = notification_manager
@@ -459,12 +461,19 @@ class DesktopIntegration:
         from .update_check import notification_activated
         notification_activated()
 
+    def payload_type_supported(self, x: PayloadType) -> bool:
+        if x is PayloadType.body and not self.supports_body:
+            return False
+        if x is PayloadType.buttons and not self.supports_buttons:
+            return False
+        return True
+
     def query_response(self, identifier: str) -> str:
         actions = ','.join(x.value for x in Action)
         when = ','.join(x.value for x in OnlyWhen if x.value)
         urgency = ','.join(str(x.value) for x in Urgency)
         i = f'i={identifier or "0"}:'
-        p = ','.join(x.value for x in PayloadType if x.value)
+        p = ','.join(x.value for x in PayloadType if x.value and self.payload_type_supported(x))
         c = ':c=1' if self.supports_close_events else ''
         return f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}{c}:w=1'
 
@@ -620,6 +629,8 @@ class MacOSIntegration(DesktopIntegration):
 
 class FreeDesktopIntegration(DesktopIntegration):
 
+    supports_body_markup: bool = True
+
     def initialize(self) -> None:
         from .fast_data_types import dbus_set_notification_callback
         dbus_set_notification_callback(self.dispatch_event_from_desktop)
@@ -663,6 +674,14 @@ class FreeDesktopIntegration(DesktopIntegration):
         self.notification_manager.notification_created(dbus_notification_id)
 
     def dispatch_event_from_desktop(self, event_type: str, dbus_notification_id: int, extra: Union[int, str]) -> None:
+        if event_type == 'capabilities':
+            capabilities = frozenset(str(extra).splitlines())
+            self.supports_body = 'body' in capabilities
+            self.supports_buttons = 'actions' in capabilities
+            self.supports_body_markup = 'body-markup' in capabilities
+            if debug_desktop_integration:
+                log_error('Got notification server capabilities:', capabilities)
+            return
         if debug_desktop_integration:
             log_error(f'Got notification event from desktop: {event_type=} {dbus_notification_id=} {extra=}')
         if event_type == 'created':
@@ -696,7 +715,9 @@ class FreeDesktopIntegration(DesktopIntegration):
         if not app_icon:
             app_icon = get_custom_window_icon()[1] or logo_png_file
 
-        body = nc.body.replace('<', '<\u200c').replace('&', '&\u200c')  # prevent HTML markup from being recognized
+        body = nc.body
+        if self.supports_body_markup:
+            body = body.replace('<', '<\u200c').replace('&', '&\u200c')  # prevent HTML markup from being recognized
         assert nc.urgency is not None
         replaces_dbus_id = 0
         if existing_desktop_notification_id:

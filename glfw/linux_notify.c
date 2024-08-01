@@ -92,11 +92,43 @@ cancel_user_notification(DBusConnection *session_bus, uint32_t *id) {
     return glfw_dbus_call_method_no_reply(session_bus, NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "CloseNotification", DBUS_TYPE_UINT32, id, DBUS_TYPE_INVALID);
 }
 
+static void
+got_capabilities(DBusMessage *msg, const char* err, void* data UNUSED) {
+    if (err) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to get server capabilities error: %s", err);
+        return;
+    }
+#define check_call(func, err, ...) if (!func(__VA_ARGS__)) { _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: GetCapabilities: %s", err); return;  }
+    DBusMessageIter iter, array_iter;
+    check_call(dbus_message_iter_init, "message has no parameters", msg, &iter);
+    if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY || dbus_message_iter_get_element_type(&iter) != DBUS_TYPE_STRING) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: GetCapabilities: %s", "reply is not an array of strings");
+        return;
+    }
+    dbus_message_iter_recurse(&iter, &array_iter);
+    char buf[2048] = {0}, *p = buf;
+    while (dbus_message_iter_get_arg_type(&array_iter) == DBUS_TYPE_STRING) {
+        const char *str;
+        dbus_message_iter_get_basic(&array_iter, &str);
+        if (sizeof(buf) > (size_t)(p-buf) + 1u) p += snprintf(p, sizeof(buf) - (p-buf) - 1, "%s\n", str);
+        dbus_message_iter_next(&array_iter);
+    }
+    if (activated_handler) activated_handler(0, -1, buf);
+#undef check_call
+
+}
+
+static bool
+get_capabilities(DBusConnection *session_bus) {
+    return glfw_dbus_call_method_with_reply(session_bus, NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "GetCapabilities", 60, got_capabilities, NULL, DBUS_TYPE_INVALID);
+}
+
 notification_id_type
 glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *user_data) {
     DBusConnection *session_bus = glfw_dbus_session_bus();
     if (!session_bus) return 0;
     if (n->timeout == -9999 && n->urgency == 255) return cancel_user_notification(session_bus, user_data) ? 1 : 0;
+    if (n->timeout == -99999 && n->urgency == 255) return get_capabilities(session_bus) ? 1 : 0;
     static DBusConnection *added_signal_match = NULL;
     if (added_signal_match != session_bus) {
         dbus_bus_add_match(session_bus, "type='signal',interface='" NOTIFICATIONS_IFACE "',member='ActionInvoked'", NULL);

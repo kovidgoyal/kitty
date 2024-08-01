@@ -1407,7 +1407,15 @@ static PyObject *dbus_notification_callback = NULL;
 static PyObject*
 dbus_set_notification_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_CLEAR(dbus_notification_callback);
-    if (callback && callback != Py_None) { dbus_notification_callback = callback; Py_INCREF(callback); }
+    if (callback && callback != Py_None) {
+        dbus_notification_callback = callback; Py_INCREF(callback);
+        GLFWDBUSNotificationData d = {.timeout=-99999, .urgency=255};
+        if (!glfwDBusUserNotify) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
+            return NULL;
+        }
+        glfwDBusUserNotify(&d, NULL, NULL);
+    }
     Py_RETURN_NONE;
 }
 
@@ -1428,6 +1436,7 @@ dbus_user_notification_activated(uint32_t notification_id, int type, const char*
     switch (type) {
         case 0: stype = "closed"; break;
         case 1: stype = "activation_token"; break;
+        case -1: stype = "capabilities"; break;
     }
     send_dbus_notification_event_to_python(stype, nid, action);
 }
