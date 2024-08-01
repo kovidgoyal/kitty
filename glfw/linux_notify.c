@@ -5,9 +5,11 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "internal.h"
 #include "linux_notify.h"
 #include <stdlib.h>
+#include <string.h>
 
 #define NOTIFICATIONS_SERVICE  "org.freedesktop.Notifications"
 #define NOTIFICATIONS_PATH "/org/freedesktop/Notifications"
@@ -106,11 +108,12 @@ got_capabilities(DBusMessage *msg, const char* err, void* data UNUSED) {
         return;
     }
     dbus_message_iter_recurse(&iter, &array_iter);
-    char buf[2048] = {0}, *p = buf;
+    char buf[2048] = {0}, *p = buf, *end = buf + sizeof(buf);
     while (dbus_message_iter_get_arg_type(&array_iter) == DBUS_TYPE_STRING) {
         const char *str;
         dbus_message_iter_get_basic(&array_iter, &str);
-        if (sizeof(buf) > (size_t)(p-buf) + 1u) p += snprintf(p, sizeof(buf) - (p-buf) - 1, "%s\n", str);
+        size_t len = strlen(str);
+        if (len && p + len + 2 < end) { p = stpcpy(p, str); *(p++) = '\n'; }
         dbus_message_iter_next(&array_iter);
     }
     if (activated_handler) activated_handler(0, -1, buf);
