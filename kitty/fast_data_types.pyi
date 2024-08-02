@@ -555,6 +555,7 @@ def dbus_send_notification(
     timeout: int = -1,
     urgency: int = 1,
     replaces: int = 0,
+    category: str = '',
 ) -> int:
     pass
 
@@ -569,7 +570,7 @@ def cocoa_send_notification(
     body: str,
     category: MacOSNotificationCategory,
     categories: tuple[MacOSNotificationCategory, ...],
-    image_path: str = "",
+    image_path: str = '',
     urgency: int = 1,
 ) -> None:
     pass

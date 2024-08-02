@@ -727,7 +727,7 @@ class FreeDesktopIntegration(DesktopIntegration):
             actions[str(i+1)] = b
         desktop_notification_id = dbus_send_notification(
             app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, actions=actions,
-            timeout=nc.timeout, urgency=nc.urgency.value, replaces=replaces_dbus_id)
+            timeout=nc.timeout, urgency=nc.urgency.value, replaces=replaces_dbus_id, category=(nc.notification_types or ('',))[0])
         if debug_desktop_integration:
             log_error(f'Requested creation of notification with {desktop_notification_id=}')
         if existing_desktop_notification_id and replaces_dbus_id:

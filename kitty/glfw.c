@@ -2086,10 +2086,10 @@ static PyObject*
 dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     int timeout = -1, urgency = 1; unsigned int replaces = 0;
     GLFWDBUSNotificationData d = {0};
-    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "actions", "timeout", "urgency", "replaces", NULL};
+    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "actions", "timeout", "urgency", "replaces", "category", NULL};
     PyObject *actions = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssssO!|iiI", (char**)kwlist,
-        &d.app_name, &d.icon, &d.summary, &d.body, &PyDict_Type, &actions, &timeout, &urgency, &replaces)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssssO!|iiIs", (char**)kwlist,
+        &d.app_name, &d.icon, &d.summary, &d.body, &PyDict_Type, &actions, &timeout, &urgency, &replaces, &d.category)) return NULL;
     if (!glfwDBusUserNotify) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
         return NULL;
