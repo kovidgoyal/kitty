@@ -853,7 +853,7 @@ class NotificationManager:
         self.in_progress_notification_commands_by_client_id: dict[str, NotificationCommand] = {}
         self.pending_commands: dict[int, NotificationCommand] = {}
 
-    def notification_created(self, desktop_notification_id: int) -> NotificationCommand | None:
+    def notification_created(self, desktop_notification_id: int) -> Optional[NotificationCommand]:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             n.created_by_desktop = True
             if n.timeout > 0:
