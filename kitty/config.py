@@ -3,9 +3,10 @@
 
 import json
 import os
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager, suppress
 from functools import partial
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
+from typing import Any, Optional
 
 from .conf.utils import BadLine, parse_config_base
 from .conf.utils import load_config as _load_config
@@ -16,7 +17,7 @@ from .typing import TypedDict
 from .utils import log_error
 
 
-def option_names_for_completion() -> Tuple[str, ...]:
+def option_names_for_completion() -> tuple[str, ...]:
     return option_names
 
 
@@ -42,9 +43,9 @@ def atomic_save(data: bytes, path: str) -> None:
 
 
 @contextmanager
-def cached_values_for(name: str) -> Generator[Dict[str, Any], None, None]:
+def cached_values_for(name: str) -> Generator[dict[str, Any], None, None]:
     cached_path = os.path.join(cache_dir(), f'{name}.json')
-    cached_values: Dict[str, Any] = {}
+    cached_values: dict[str, Any] = {}
     try:
         with open(cached_path, 'rb') as f:
             cached_values.update(json.loads(f.read().decode('utf-8')))
@@ -77,8 +78,8 @@ def prepare_config_file_for_editing() -> str:
     return defconf
 
 
-def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] = None) -> None:
-    defns: List[KeyDefinition] = []
+def finalize_keys(opts: Options, accumulate_bad_lines: Optional[list[BadLine]] = None) -> None:
+    defns: list[KeyDefinition] = []
     for d in opts.map:
         if d is None:  # clear_all_shortcuts
             defns = []  # type: ignore
@@ -116,8 +117,8 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] =
     opts.keyboard_modes = modes
 
 
-def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: Optional[List[BadLine]] = None) -> None:
-    defns: List[MouseMapping] = []
+def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: Optional[list[BadLine]] = None) -> None:
+    defns: list[MouseMapping] = []
     for d in opts.mouse_map:
         if d is None:  # clear_all_mouse_actions
             defns = []  # type: ignore
@@ -139,9 +140,9 @@ def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: Optional[List[B
     opts.mousemap = mousemap
 
 
-def parse_config(lines: Iterable[str], accumulate_bad_lines: Optional[List[BadLine]] = None) -> Dict[str, Any]:
+def parse_config(lines: Iterable[str], accumulate_bad_lines: Optional[list[BadLine]] = None) -> dict[str, Any]:
     from .options.parse import create_result_dict, parse_conf_item
-    ans: Dict[str, Any] = create_result_dict()
+    ans: dict[str, Any] = create_result_dict()
     parse_config_base(
         lines,
         parse_conf_item,
@@ -151,7 +152,7 @@ def parse_config(lines: Iterable[str], accumulate_bad_lines: Optional[List[BadLi
     return ans
 
 
-def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Options:
+def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumulate_bad_lines: Optional[list[BadLine]] = None) -> Options:
     from .options.parse import merge_result_dicts
 
     overrides = tuple(overrides) if overrides is not None else ()
@@ -179,8 +180,8 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
 
 class KittyCommonOpts(TypedDict):
     select_by_word_characters: str
-    open_url_with: List[str]
-    url_prefixes: Tuple[str, ...]
+    open_url_with: list[str]
+    url_prefixes: tuple[str, ...]
 
 
 def common_opts_as_dict(opts: Optional[Options] = None) -> KittyCommonOpts:

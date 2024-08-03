@@ -1,3 +1,5 @@
+import array
+import mmap
 from asyncio import AbstractEventLoop as AbstractEventLoop
 from socket import AddressFamily as AddressFamily
 from socket import socket as Socket
@@ -50,6 +52,9 @@ GRT_o = Literal['z', 'z']  # two z's to workaround a bug in ruff
 GRT_m = Literal[0, 1]
 GRT_C = Literal[0, 1]
 GRT_d = Literal['a', 'A', 'c', 'C', 'i', 'I', 'p', 'P', 'q', 'Q', 'x', 'X', 'y', 'Y', 'z', 'Z', 'f', 'F']
+ReadableBuffer = bytes | bytearray | memoryview | array.array[int] | mmap.mmap
+WriteableBuffer = bytearray | memoryview | array.array[int] | mmap.mmap
+
 
 
 class WindowSystemMouseEvent(TypedDict):
@@ -65,5 +70,6 @@ __all__ = (
     'TermManagerType', 'BossType', 'ChildType', 'BadLineType', 'MouseButton', 'NotRequired',
     'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'AliasMap', 'CoreTextFont', 'WindowSystemMouseEvent',
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType', 'PowerlineStyle',
-    'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType'
+    'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType',
+    'ReadableBuffer', 'WriteableBuffer',
 )

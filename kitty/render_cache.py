@@ -3,9 +3,9 @@
 
 import os
 import time
+from collections.abc import Iterator
 from contextlib import closing, suppress
 from functools import partial
-from typing import Iterator, Tuple
 
 from .constants import cache_dir, kitten_exe
 from .utils import lock_file, unlock_file
@@ -72,7 +72,7 @@ class ImageRenderCache:
         if cp.returncode != 0:
             raise ValueError(f'Failed to convert path to RGBA data with error: {cp.stderr.decode("utf-8", "replace")}')
 
-    def read_metadata(self, output_path: str) -> Tuple[int, int, int]:
+    def read_metadata(self, output_path: str) -> tuple[int, int, int]:
         with open(output_path, 'rb') as f:
             header = f.read(8)
             import struct
@@ -95,7 +95,7 @@ class ImageRenderCache:
             self.prune_entries()
             return output_path
 
-    def __call__(self, src: str) -> Tuple[int, int, int]:
+    def __call__(self, src: str) -> tuple[int, int, int]:
         return self.read_metadata(self.render(src))
 
 

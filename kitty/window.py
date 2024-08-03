@@ -7,26 +7,21 @@ import re
 import sys
 import weakref
 from collections import deque
+from collections.abc import Generator, Iterable, Sequence
 from contextlib import contextmanager, suppress
 from enum import Enum, IntEnum, auto
 from functools import lru_cache, partial
 from gettext import gettext as _
 from itertools import chain
+from re import Pattern
 from time import time_ns
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Deque,
-    Dict,
-    Generator,
-    Iterable,
-    List,
     NamedTuple,
     Optional,
-    Pattern,
-    Sequence,
-    Tuple,
     Union,
 )
 
@@ -112,7 +107,7 @@ from .utils import (
     shlex_split,
 )
 
-MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
+MatchPatternType = Union[Pattern[str], tuple[Pattern[str], Optional[Pattern[str]]]]
 
 
 if TYPE_CHECKING:
@@ -155,7 +150,7 @@ class CwdRequest:
             return window.get_cwd_of_root_child() or ''
         return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''
 
-    def modify_argv_for_launch_with_cwd(self, argv: List[str], env: Optional[Dict[str, str]]=None) -> str:
+    def modify_argv_for_launch_with_cwd(self, argv: list[str], env: Optional[dict[str, str]]=None) -> str:
         window = self.window
         if not window:
             return ''
@@ -232,15 +227,15 @@ class WindowDict(TypedDict):
     title: str
     pid: Optional[int]
     cwd: str
-    cmdline: List[str]
+    cmdline: list[str]
     last_reported_cmdline: str
     last_cmd_exit_status: int
-    env: Dict[str, str]
-    foreground_processes: List[ProcessDesc]
+    env: dict[str, str]
+    foreground_processes: list[ProcessDesc]
     is_self: bool
     lines: int
     columns: int
-    user_vars: Dict[str, str]
+    user_vars: dict[str, str]
     at_prompt: bool
     created_at: int
 
@@ -281,18 +276,18 @@ DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
 
 class Watcher:
 
-    def __call__(self, boss: BossType, window: 'Window', data: Dict[str, Any]) -> None:
+    def __call__(self, boss: BossType, window: 'Window', data: dict[str, Any]) -> None:
         pass
 
 
 class Watchers:
 
-    on_resize: List[Watcher]
-    on_close: List[Watcher]
-    on_focus_change: List[Watcher]
-    on_set_user_var: List[Watcher]
-    on_title_change: List[Watcher]
-    on_cmd_startstop: List[Watcher]
+    on_resize: list[Watcher]
+    on_close: list[Watcher]
+    on_focus_change: list[Watcher]
+    on_set_user_var: list[Watcher]
+    on_title_change: list[Watcher]
+    on_cmd_startstop: list[Watcher]
 
     def __init__(self) -> None:
         self.on_resize = []
@@ -303,7 +298,7 @@ class Watchers:
         self.on_cmd_startstop = []
 
     def add(self, others: 'Watchers') -> None:
-        def merge(base: List[Watcher], other: List[Watcher]) -> None:
+        def merge(base: list[Watcher], other: list[Watcher]) -> None:
             for x in other:
                 if x not in base:
                     base.append(x)
@@ -334,12 +329,12 @@ class Watchers:
                     or self.on_set_user_var or self.on_title_change or self.on_cmd_startstop)
 
 
-def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: Dict[str, Any]) -> None:
+def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
 
     def callback(timer_id: Optional[int]) -> None:
         w = windowref()
         if w is not None:
-            watchers: List[Watcher] = getattr(w.watchers, which)
+            watchers: list[Watcher] = getattr(w.watchers, which)
             w.call_watchers(watchers, data)
 
     add_timer(callback, 0, False)
@@ -361,7 +356,7 @@ def as_text(
     alternate_screen: bool = False,
     add_cursor: bool = False
 ) -> str:
-    lines: List[str] = []
+    lines: list[str] = []
     add_history = add_history and not (screen.is_using_alternate_linebuf() ^ alternate_screen)
     if alternate_screen:
         f = screen.as_text_alternate
@@ -383,7 +378,7 @@ def as_text(
 
     if add_history:
         pht = pagerhist(screen, as_ansi, add_wrap_markers)
-        h: List[str] = [pht] if pht else []
+        h: list[str] = [pht] if pht else []
         screen.as_text_for_history_buf(h.append, as_ansi, add_wrap_markers)
         if h:
             if as_ansi:
@@ -435,7 +430,7 @@ def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str
 
 
 def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
-    lines: List[str] = []
+    lines: list[str] = []
     search_in_pager_hist = screen.cmd_output(which, lines.append, as_ansi, add_wrap_markers)
     if search_in_pager_hist:
         pht = pagerhist(screen, as_ansi, add_wrap_markers, True)
@@ -514,7 +509,7 @@ class EdgeWidths:
     right: Optional[float]
     bottom: Optional[float]
 
-    def __init__(self, serialized: Optional[Dict[str, Optional[float]]] = None):
+    def __init__(self, serialized: Optional[dict[str, Optional[float]]] = None):
         if serialized is not None:
             self.left = serialized['left']
             self.right = serialized['right']
@@ -523,7 +518,7 @@ class EdgeWidths:
         else:
             self.left = self.top = self.right = self.bottom = None
 
-    def serialize(self) -> Dict[str, Optional[float]]:
+    def serialize(self) -> dict[str, Optional[float]]:
         return {'left': self.left, 'right': self.right, 'top': self.top, 'bottom': self.bottom}
 
     def copy(self) -> 'EdgeWidths':
@@ -533,7 +528,7 @@ class EdgeWidths:
 class GlobalWatchers:
 
     def __init__(self) -> None:
-        self.options_spec: Optional[Dict[str, str]] = None
+        self.options_spec: Optional[dict[str, str]] = None
         self.ans = Watchers()
         self.extra = ''
 
@@ -586,7 +581,7 @@ class Window:
         copy_colors_from: Optional['Window'] = None,
         watchers: Optional[Watchers] = None,
         allow_remote_control: bool = False,
-        remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
+        remote_control_passwords: Optional[dict[str, Sequence[str]]] = None,
     ):
         if watchers:
             self.watchers = watchers
@@ -598,18 +593,18 @@ class Window:
         self.last_resized_at = 0.
         self.started_at = monotonic()
         self.created_at = time_ns()
-        self.current_remote_data: List[str] = []
+        self.current_remote_data: list[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.last_cmd_output_start_time = 0.
         self.open_url_handler: 'OpenUrlHandler' = None
         self.last_cmd_cmdline = ''
         self.last_cmd_exit_status = 0
-        self.actions_on_close: List[Callable[['Window'], None]] = []
-        self.actions_on_focus_change: List[Callable[['Window', bool], None]] = []
-        self.actions_on_removal: List[Callable[['Window'], None]] = []
-        self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
-        self.kitten_result_processors: List[Callable[['Window', Any], None]] = []
+        self.actions_on_close: list[Callable[['Window'], None]] = []
+        self.actions_on_focus_change: list[Callable[['Window', bool], None]] = []
+        self.actions_on_removal: list[Callable[['Window'], None]] = []
+        self.current_marker_spec: Optional[tuple[str, Union[str, tuple[tuple[int, str], ...]]]] = None
+        self.kitten_result_processors: list[Callable[['Window', Any], None]] = []
         self.child_is_launched = False
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self.needs_attention = False
@@ -618,12 +613,12 @@ class Window:
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
-        self.user_vars: Dict[str, str] = {}
+        self.user_vars: dict[str, str] = {}
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
-        self.kitten_result: Optional[Dict[str, Any]] = None
+        self.kitten_result: Optional[dict[str, Any]] = None
         if not self.id:
             raise Exception(f'No tab with id: {tab.id} in OS Window: {tab.os_window_id} was found, or the window counter wrapped')
         self.tab_id = tab.id
@@ -642,7 +637,7 @@ class Window:
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
 
-    def remote_control_allowed(self, pcmd: Dict[str, Any], extra_data: Dict[str, Any]) -> bool:
+    def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
             return False
         from .remote_control import remote_control_allowed
@@ -744,7 +739,7 @@ class Window:
             'created_at': self.created_at,
         }
 
-    def serialize_state(self) -> Dict[str, Any]:
+    def serialize_state(self) -> dict[str, Any]:
         ans = {
             'version': 1,
             'id': self.id,
@@ -779,7 +774,7 @@ class Window:
         return tab.overlay_parent(self)
 
     @property
-    def current_colors(self) -> Dict[str, Optional[int]]:
+    def current_colors(self) -> dict[str, Optional[int]]:
         return self.screen.color_profile.as_dict()
 
     @property
@@ -980,7 +975,7 @@ class Window:
 
     @ac('debug', 'Show a dump of the current lines in the scrollback + screen with their line attributes')
     def dump_lines_with_attrs(self) -> None:
-        strings: List[str] = []
+        strings: list[str] = []
         self.screen.dump_lines_with_attrs(strings.append)
         text = ''.join(strings)
         get_boss().display_scrollback(self, text, title='Dump of lines', report_cursor=False)
@@ -1069,7 +1064,7 @@ class Window:
             raw_data = raw_data[len('notify;'):]
         get_boss().notification_manager.handle_notification_cmd(self.id, osc_code, raw_data)
 
-    def on_mouse_event(self, event: Dict[str, Any]) -> bool:
+    def on_mouse_event(self, event: dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
         ev = MouseEvent(**event)
         self.current_mouse_event_button = ev.button
@@ -1127,7 +1122,7 @@ class Window:
 
         from .utils import SSHConnectionData
         args = self.ssh_kitten_cmdline()
-        conn_data: Union[None, List[str], SSHConnectionData] = None
+        conn_data: Union[None, list[str], SSHConnectionData] = None
         if args:
             ssh_cmdline = sorted(self.child.foreground_processes, key=lambda p: p['pid'])[-1]['cmdline'] or ['']
             if 'ControlPath=' in ' '.join(ssh_cmdline):
@@ -1277,7 +1272,7 @@ class Window:
         value = str(bvalue or b'', 'utf-8', 'replace')
         cp = self.screen.color_profile
 
-        def parse_color_set(raw: str) -> Generator[Tuple[int, Optional[int]], None, None]:
+        def parse_color_set(raw: str) -> Generator[tuple[int, Optional[int]], None, None]:
             parts = raw.split(';')
             lp = len(parts)
             if lp % 2 != 0:
@@ -1588,7 +1583,7 @@ class Window:
     def has_selection(self) -> bool:
         return self.screen.has_selection()
 
-    def call_watchers(self, which: Iterable[Watcher], data: Dict[str, Any]) -> None:
+    def call_watchers(self, which: Iterable[Watcher], data: dict[str, Any]) -> None:
         boss = get_boss()
         for w in which:
             try:
@@ -1652,7 +1647,7 @@ class Window:
                 return True
         return False
 
-    def ssh_kitten_cmdline(self) -> List[str]:
+    def ssh_kitten_cmdline(self) -> list[str]:
         from kittens.ssh.utils import is_kitten_cmdline
         for p in self.child.foreground_processes:
             q = list(p['cmdline'] or ())
@@ -1950,7 +1945,7 @@ class Window:
         return True
 
     @ac('mk', 'Toggle the current marker on/off')
-    def toggle_marker(self, ftype: str, spec: Union[str, Tuple[Tuple[int, str], ...]], flags: int) -> None:
+    def toggle_marker(self, ftype: str, spec: Union[str, tuple[tuple[int, str], ...]], flags: int) -> None:
         from .marks import marker_from_spec
         key = ftype, spec
         if key == self.current_marker_spec:

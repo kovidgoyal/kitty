@@ -5,7 +5,7 @@ import os
 import subprocess
 import time
 from contextlib import suppress
-from typing import Dict, NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 from urllib.request import urlopen
 
 from .config import atomic_save
@@ -55,7 +55,7 @@ def parse_line(line: str) -> Notification:
     return Notification(v, float(timestamp), int(count))
 
 
-def read_cache() -> Dict[Version, Notification]:
+def read_cache() -> dict[Version, Notification]:
     notified_versions = {}
     with suppress(FileNotFoundError):
         with open(version_notification_log()) as f:
@@ -68,7 +68,7 @@ def read_cache() -> Dict[Version, Notification]:
     return notified_versions
 
 
-def already_notified(version: Tuple[int, int, int]) -> bool:
+def already_notified(version: tuple[int, int, int]) -> bool:
     notified_versions = read_cache()
     return version in notified_versions
 

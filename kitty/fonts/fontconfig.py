@@ -2,8 +2,9 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
+from collections.abc import Generator, Sequence
 from functools import lru_cache
-from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Sequence, Tuple, cast
+from typing import Literal, NamedTuple, Optional, cast
 
 from kitty.fast_data_types import (
     FC_DUAL,
@@ -24,10 +25,10 @@ from kitty.typing import FontConfigPattern
 from . import Descriptor, DescriptorVar, ListedFont, Score, Scorer, VariableData, family_name_to_key
 
 FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
-FontMap = Dict[FontCollectionMapType, Dict[str, List[FontConfigPattern]]]
+FontMap = dict[FontCollectionMapType, dict[str, list[FontConfigPattern]]]
 
 
-def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
+def create_font_map(all_fonts: tuple[FontConfigPattern, ...]) -> FontMap:
     ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}, 'variable_map': {}}
     for x in all_fonts:
         if not x.get('path'):
@@ -78,7 +79,7 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
             }
 
 
-@lru_cache()
+@lru_cache
 def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> FontConfigPattern:
     return fc_match_impl(family, bold, italic, spacing)
 
@@ -96,7 +97,7 @@ class WeightRange(NamedTuple):
 wr = WeightRange()
 
 
-@lru_cache()
+@lru_cache
 def weight_range_for_family(family: str) -> WeightRange:
     faces = all_fonts_map(True)['family_map'].get(family_name_to_key(family), ())
     mini, maxi, medium, bold = wr.minimum, wr.maximum, wr.medium, wr.bold
@@ -141,7 +142,7 @@ class FCScorer(Scorer):
         width_score = abs(candidate['width'] - FC_WIDTH_NORMAL)
         return Score(variable_score, bold_score / 1000 + italic_score / 110, monospace_match, width_score)
 
-    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> list[DescriptorVar]:
         self.weight_range = None
         families = {x['family'] for x in candidates}
         if len(families) == 1:
@@ -181,7 +182,7 @@ def find_best_match(
     scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
     is_medium_face = not bold and not italic
     # First look for an exact match
-    groups: Tuple[FontCollectionMapType, ...] = ('ps_map', 'full_map', 'family_map')
+    groups: tuple[FontCollectionMapType, ...] = ('ps_map', 'full_map', 'family_map')
     for which in groups:
         m = font_map[which]
         cq = m.get(q, [])
@@ -217,7 +218,7 @@ def find_best_match(
     return find_last_resort_text_font(bold, italic, monospaced)
 
 
-def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
+def font_for_family(family: str) -> tuple[FontConfigPattern, bool, bool]:
     ans = find_best_match(family, monospaced=False)
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
 
@@ -228,7 +229,7 @@ def descriptor(f: ListedFont) -> FontConfigPattern:
     return d
 
 
-def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
+def prune_family_group(g: list[ListedFont]) -> list[ListedFont]:
     # fontconfig creates dummy entries for named styles in variable fonts, prune them
     variable_paths = {descriptor(f)['path'] for f in g if f['is_variable']}
     if not variable_paths:
@@ -269,7 +270,7 @@ def lift_axes_to_named_style_if_possible(font: FontConfigPattern, vd: VariableDa
     return False
 
 
-def set_axis_values(tag_map: Dict[str, float], font: FontConfigPattern, vd: VariableData) -> bool:
+def set_axis_values(tag_map: dict[str, float], font: FontConfigPattern, vd: VariableData) -> bool:
     axes = list(font.get('axes', ())) or [ax['default'] for ax in vd['axes']]
     changed = False
     for i, ax in enumerate(vd['axes']):
@@ -283,8 +284,8 @@ def set_axis_values(tag_map: Dict[str, float], font: FontConfigPattern, vd: Vari
     return changed
 
 
-def get_axis_values(font: FontConfigPattern, vd: VariableData) -> Dict[str, float]:
-    ans: Dict[str, float] = {}
+def get_axis_values(font: FontConfigPattern, vd: VariableData) -> dict[str, float]:
+    ans: dict[str, float] = {}
     ns = font.get('named_style')
     if ns is not None:
         if ns > -1 and ns < len(vd['named_styles']):

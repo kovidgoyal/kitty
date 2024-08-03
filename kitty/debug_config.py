@@ -7,10 +7,11 @@ import socket
 import sys
 import termios
 import time
+from collections.abc import Iterator, Sequence
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import IO, Callable, Dict, Iterator, Optional, Sequence, Set, TypeVar
+from typing import IO, Callable, Optional, TypeVar
 
 from kittens.tui.operations import colored, styled
 
@@ -26,7 +27,7 @@ from .types import MouseEvent, Shortcut, mod_to_names
 
 AnyEvent = TypeVar('AnyEvent', MouseEvent, Shortcut)
 Print = Callable[..., None]
-ShortcutMap = Dict[Shortcut, str]
+ShortcutMap = dict[Shortcut, str]
 
 
 def green(x: str) -> str:
@@ -45,7 +46,7 @@ def print_event(ev: str, defn: str, print: Print) -> None:
     print(f'\t{ev} →  {defn}')
 
 
-def print_mapping_changes(defns: Dict[str, str], changes: Set[str], text: str, print: Print) -> None:
+def print_mapping_changes(defns: dict[str, str], changes: set[str], text: str, print: Print) -> None:
     if changes:
         print(title(text))
         for k in sorted(changes):
@@ -53,7 +54,7 @@ def print_mapping_changes(defns: Dict[str, str], changes: Set[str], text: str, p
 
 
 def compare_maps(
-    final: Dict[AnyEvent, str], final_kitty_mod: int, initial: Dict[AnyEvent, str], initial_kitty_mod: int, print: Print, mode_name: str = ''
+    final: dict[AnyEvent, str], final_kitty_mod: int, initial: dict[AnyEvent, str], initial_kitty_mod: int, print: Print, mode_name: str = ''
 ) -> None:
     ei = {k.human_repr(initial_kitty_mod): v for k, v in initial.items()}
     ef = {k.human_repr(final_kitty_mod): v for k, v in final.items()}

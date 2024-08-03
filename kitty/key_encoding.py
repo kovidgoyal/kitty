@@ -3,7 +3,7 @@
 
 from enum import IntEnum
 from functools import lru_cache
-from typing import Dict, NamedTuple, Optional, Tuple, Union
+from typing import NamedTuple, Optional, Union
 
 from . import fast_data_types as defines
 from .fast_data_types import KeyEvent as WindowSystemKeyEvent
@@ -153,17 +153,17 @@ tilde_trailers = {57348, 57349, 57354, 57355, 57366, 57368, 57369, 57370, 57371,
 
 
 @lru_cache(2)
-def get_name_to_functional_number_map() -> Dict[str, int]:
+def get_name_to_functional_number_map() -> dict[str, int]:
     return {v: k for k, v in functional_key_number_to_name_map.items()}
 
 
 @lru_cache(2)
-def get_functional_to_csi_number_map() -> Dict[int, int]:
+def get_functional_to_csi_number_map() -> dict[int, int]:
     return {v: k for k, v in csi_number_to_functional_number_map.items()}
 
 
 @lru_cache(2)
-def get_csi_number_to_letter_trailer_map() -> Dict[int, str]:
+def get_csi_number_to_letter_trailer_map() -> dict[int, str]:
     return {v: k for k, v in letter_trailer_to_csi_number_map.items()}
 
 
@@ -314,7 +314,7 @@ config_mod_map = {
 def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
     parts = csi.split(';')
 
-    def get_sub_sections(x: str, missing: int = 0) -> Tuple[int, ...]:
+    def get_sub_sections(x: str, missing: int = 0) -> tuple[int, ...]:
         return tuple(int(y) if y else missing for y in x.split(':'))
 
     first_section = get_sub_sections(parts[0])

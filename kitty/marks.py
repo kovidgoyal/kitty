@@ -2,8 +2,10 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+from collections.abc import Generator, Iterable, Sequence
 from ctypes import POINTER, c_uint, c_void_p, cast
-from typing import Callable, Generator, Iterable, Pattern, Sequence, Tuple, Union
+from re import Pattern
+from typing import Callable, Union
 
 from .utils import resolve_custom_file
 
@@ -13,7 +15,7 @@ pointer_to_uint = POINTER(c_uint)
 MarkerFunc = Callable[[str, int, int, int], Generator[None, None, None]]
 
 
-def get_output_variables(left_address: int, right_address: int, color_address: int) -> Tuple[c_uint, c_uint, c_uint]:
+def get_output_variables(left_address: int, right_address: int, color_address: int) -> tuple[c_uint, c_uint, c_uint]:
     return (
         cast(c_void_p(left_address), pointer_to_uint).contents,
         cast(c_void_p(right_address), pointer_to_uint).contents,
@@ -39,7 +41,7 @@ def marker_from_regex(expression: Union[str, 'Pattern[str]'], color: int, flags:
     return marker
 
 
-def marker_from_multiple_regex(regexes: Iterable[Tuple[int, str]], flags: int = re.UNICODE) -> MarkerFunc:
+def marker_from_multiple_regex(regexes: Iterable[tuple[int, str]], flags: int = re.UNICODE) -> MarkerFunc:
     expr = ''
     color_map = {}
     for i, (color, spec) in enumerate(regexes):
@@ -65,7 +67,7 @@ def marker_from_text(expression: str, color: int) -> MarkerFunc:
     return marker_from_regex(re.escape(expression), color)
 
 
-def marker_from_function(func: Callable[[str], Iterable[Tuple[int, int, int]]]) -> MarkerFunc:
+def marker_from_function(func: Callable[[str], Iterable[tuple[int, int, int]]]) -> MarkerFunc:
     def marker(text: str, left_address: int, right_address: int, color_address: int) -> Generator[None, None, None]:
         left, right, colorv = get_output_variables(left_address, right_address, color_address)
         for (ll, r, c) in func(text):
@@ -77,7 +79,7 @@ def marker_from_function(func: Callable[[str], Iterable[Tuple[int, int, int]]]) 
     return marker
 
 
-def marker_from_spec(ftype: str, spec: Union[str, Sequence[Tuple[int, str]]], flags: int) -> MarkerFunc:
+def marker_from_spec(ftype: str, spec: Union[str, Sequence[tuple[int, str]]], flags: int) -> MarkerFunc:
     if ftype == 'regex':
         assert not isinstance(spec, str)
         if len(spec) == 1:

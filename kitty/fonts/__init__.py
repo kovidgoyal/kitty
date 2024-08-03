@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from enum import Enum, IntEnum, auto
-from typing import TYPE_CHECKING, Dict, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Literal, NamedTuple, Optional, TypedDict, TypeVar, Union
 
 from kitty.fast_data_types import ParsedFontFeature
 from kitty.types import run_once
@@ -30,7 +31,7 @@ class VariableAxis(TypedDict):
 
 
 class NamedStyle(TypedDict):
-    axis_values: Dict[str, float]
+    axis_values: dict[str, float]
     name: str
     psname: str  # can be empty string when not present
 
@@ -66,7 +67,7 @@ class DesignAxis(TypedDict):
     name: str
     ordering: int
     tag: str
-    values: List[DesignValue]
+    values: list[DesignValue]
 
 
 class AxisValue(TypedDict):
@@ -77,16 +78,16 @@ class AxisValue(TypedDict):
 class MultiAxisStyle(TypedDict):
     flags: int
     name: str
-    values: Tuple[AxisValue, ...]
+    values: tuple[AxisValue, ...]
 
 
 class VariableData(TypedDict):
-    axes: Tuple[VariableAxis, ...]
-    named_styles: Tuple[NamedStyle, ...]
+    axes: tuple[VariableAxis, ...]
+    named_styles: tuple[NamedStyle, ...]
     variations_postscript_name_prefix: str
     elided_fallback_name: str
-    design_axes: Tuple[DesignAxis, ...]
-    multi_axis_styles: Tuple[MultiAxisStyle, ...]
+    design_axes: tuple[DesignAxis, ...]
+    multi_axis_styles: tuple[MultiAxisStyle, ...]
 
 
 class ModificationType(Enum):
@@ -131,9 +132,9 @@ class FontSpec(NamedTuple):
     postscript_name: Optional[str] = None
     full_name: Optional[str] = None
     system: Optional[str] = None
-    axes: Tuple[Tuple[str, float], ...] = ()
+    axes: tuple[tuple[str, float], ...] = ()
     variable_name: Optional[str] = None
-    features: Tuple[ParsedFontFeature, ...] = ()
+    features: tuple[ParsedFontFeature, ...] = ()
     created_from_string: str = ''
 
     @classmethod
@@ -145,7 +146,7 @@ class FontSpec(NamedTuple):
             return FontSpec(system=spec, created_from_string=spec)
         axes = {}
         defined = {}
-        features: Tuple[ParsedFontFeature, ...] = ()
+        features: tuple[ParsedFontFeature, ...] = ()
         for item in items:
             k, sep, v = item.partition('=')
             if sep != '=':
@@ -222,7 +223,7 @@ class Scorer:
         self.monospaced = monospaced
         self.prefer_variable = prefer_variable
 
-    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> list[DescriptorVar]:
         raise NotImplementedError()
 
     def __repr__(self) -> str:

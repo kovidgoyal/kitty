@@ -184,7 +184,6 @@ func (self *Handler) highlight_all() {
 		self.async_results <- r
 		self.lp.WakeupMainThread()
 	}()
-
 }
 
 func (self *Handler) load_all_images() {
@@ -523,6 +522,27 @@ func (self *Handler) scroll_to_next_change(backwards bool) bool {
 	return false
 }
 
+func (self *Handler) scroll_to_next_file(backwards bool) bool {
+	if backwards {
+		for i := self.scroll_pos.logical_line - 1; i >= 0; i-- {
+			line := self.logical_lines.At(i)
+			if line.line_type == TITLE_LINE {
+				self.scroll_pos = ScrollPos{i, 0}
+				return true
+			}
+		}
+	} else {
+		for i := self.scroll_pos.logical_line + 1; i < self.logical_lines.Len(); i++ {
+			line := self.logical_lines.At(i)
+			if line.line_type == TITLE_LINE {
+				self.scroll_pos = ScrollPos{i, 0}
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (self *Handler) scroll_to_next_match(backwards, include_current_match bool) bool {
 	if self.current_search == nil {
 		return false
@@ -616,6 +636,8 @@ func (self *Handler) dispatch_action(name, args string) error {
 	case `scroll_to`:
 		done := false
 		switch {
+		case strings.Contains(args, "file"):
+			done = self.scroll_to_next_file(strings.Contains(args, `prev`))
 		case strings.Contains(args, `change`):
 			done = self.scroll_to_next_change(strings.Contains(args, `prev`))
 		case strings.Contains(args, `match`):

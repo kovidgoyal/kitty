@@ -626,7 +626,7 @@ def kitty_env(args: Options) -> Env:
         if user_notifications_framework:
             platform_libs.extend(shlex.split(user_notifications_framework))
         else:
-            cppflags.append('-DKITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API')
+            raise SystemExit('UserNotifications framework missing')
         # Apple deprecated OpenGL in Mojave (10.14) silence the endless
         # warnings about it
         cppflags.append('-DGL_SILENCE_DEPRECATION')

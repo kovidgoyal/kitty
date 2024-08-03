@@ -221,6 +221,14 @@ map('Scroll to previous change',
     'prev_change p scroll_to prev-change',
     )
 
+map('Scroll to next file',
+    'next_file shift+j scroll_to next-file',
+    )
+
+map('Scroll to previous file',
+    'prev_file shift+k scroll_to prev-file',
+    )
+
 map('Show all context',
     'all_context a change_context all',
     )

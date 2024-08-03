@@ -107,135 +107,141 @@ pybase64_decode(PyObject UNUSED *self, PyObject *args) {
 
 typedef struct StreamingBase64Decoder {
     PyObject_HEAD
-    PyObject *output;
-    size_t output_sz, output_capacity, num_leftover_bytes, initial_capacity;
-    unsigned char leftover_bytes[8];
+    struct base64_state state;
+    bool add_trailing_bytes;
 } StreamingBase64Decoder;
 
 static int
-StreamingBase64Decoder_init(PyObject *s, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"initial_capacity", NULL};
-    unsigned long initial_capacity = 8 * 1024;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|k", kwlist, &initial_capacity)) return -1;
+StreamingBase64Decoder_init(PyObject *s, PyObject *args, PyObject *kwds UNUSED) {
+    if (PyTuple_GET_SIZE(args)) { PyErr_SetString(PyExc_TypeError, "constructor takes no arguments"); return -1; }
     StreamingBase64Decoder *self = (StreamingBase64Decoder*)s;
-    self->initial_capacity = initial_capacity;
+	base64_stream_decode_init(&self->state, 0);
     return 0;
 }
 
-static void
-StreamingBase64Decoder_dealloc(PyObject *self) {
-    StreamingBase64Decoder *h = (StreamingBase64Decoder*)self;
-    Py_CLEAR(h->output);
-    Py_TYPE(self)->tp_free(self);
-}
-
-static bool
-write_base64_data(StreamingBase64Decoder *self, const void *data, size_t len) {
-    if (!len) return true;
-    size_t sz = required_buffer_size_for_base64_decode(len);
-    if ((self->output_sz + sz) > self->output_capacity) {
-        size_t cap = MAX(self->output_capacity * 2, self->output_sz + sz + self->initial_capacity);
-        if (self->output) { if (_PyBytes_Resize(&self->output, cap) != 0) return false; }
-        else { self->output = PyBytes_FromStringAndSize(NULL, cap); if (!self->output) return false; }
-        self->output_capacity = cap;
-    }
-    if (!base64_decode8(data, len, (unsigned char*)(PyBytes_AS_STRING(self->output) + self->output_sz), &sz)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
-        return false;
-    }
-    self->output_sz += sz;
-    return true;
-}
-
-static bool
-write_saving_leftover_bytes(StreamingBase64Decoder *self, const unsigned char *data, size_t len) {
-    size_t extra = len % 4;
-    if (!write_base64_data(self, data, len - extra)) return false;
-    self->num_leftover_bytes = extra;
-    if (extra) memcpy(self->leftover_bytes, data + len - extra, extra);
-    return true;
-}
-
 static PyObject*
-StreamingBase64Decoder_add(StreamingBase64Decoder *self, PyObject *a) {
+StreamingBase64Decoder_decode(StreamingBase64Decoder *self, PyObject *a) {
     RAII_PY_BUFFER(data);
     if (PyObject_GetBuffer(a, &data, PyBUF_SIMPLE) != 0) return NULL;
-    if (!data.buf || !data.len) return PyLong_FromLong(0);
-    unsigned char *d = data.buf; size_t dlen = data.len;
-    size_t before = self->output_sz;
-    if (self->num_leftover_bytes) {
-        size_t extra = 4 - self->num_leftover_bytes;
-        if (dlen >= extra) {
-            memcpy(self->leftover_bytes + self->num_leftover_bytes, d, extra);
-            if (!write_base64_data(self, self->leftover_bytes, self->num_leftover_bytes + extra)) return NULL;
-            self->num_leftover_bytes = 0;
-            d += extra; dlen -= extra;
-            if (!write_saving_leftover_bytes(self, d, dlen)) return NULL;
-        } else {
-            memcpy(self->leftover_bytes + self->num_leftover_bytes, d, dlen);
-            self->num_leftover_bytes += dlen;
-        }
-    } else if (!write_saving_leftover_bytes(self, d, dlen)) return NULL;
-    return PyLong_FromSize_t(self->output_sz - before);
-}
-
-static Py_ssize_t
-StreamingBase64Decoder_len(PyObject *s) { return ((StreamingBase64Decoder*)s)->output_sz; }
-
-static PyObject*
-StreamingBase64Decoder_leftover_bytes(StreamingBase64Decoder *self, PyObject *a UNUSED) {
-    return PyMemoryView_FromMemory((char*)self->leftover_bytes, self->num_leftover_bytes, PyBUF_READ);
-}
-
-static PyObject*
-StreamingBase64Decoder_flush(StreamingBase64Decoder *self, PyObject *args UNUSED) {
-    size_t padding = 4 - self->num_leftover_bytes;
-    switch(padding) {
-        case 1: self->leftover_bytes[self->num_leftover_bytes++] = '='; break;
-        case 2: self->leftover_bytes[self->num_leftover_bytes++] = '='; self->leftover_bytes[self->num_leftover_bytes++] = '='; break;
+    if (!data.buf || !data.len) return PyBytes_FromStringAndSize(NULL, 0);
+    size_t sz = required_buffer_size_for_base64_decode(data.len);
+    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, sz));
+    if (!ans) return NULL;
+    if (!base64_stream_decode(&self->state, data.buf, data.len, PyBytes_AS_STRING(ans), &sz)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
+        return NULL;
     }
-    write_base64_data(self, self->leftover_bytes, self->num_leftover_bytes);
-    self->num_leftover_bytes = 0;
+    if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
+    return Py_NewRef(ans);
+}
+
+static PyObject*
+StreamingBase64Decoder_decode_into(StreamingBase64Decoder *self, PyObject *const *args, Py_ssize_t nargs) {
+    if (nargs != 2) { PyErr_SetString(PyExc_TypeError, "constructor takes exactly two arguments"); return NULL; }
+    RAII_PY_BUFFER(data);
+    if (PyObject_GetBuffer(args[0], &data, PyBUF_WRITE) != 0) return NULL;
+    if (!data.buf || !data.len) return PyLong_FromLong(0);
+    RAII_PY_BUFFER(src);
+    if (PyObject_GetBuffer(args[1], &src, PyBUF_SIMPLE) != 0) return NULL;
+    if (!src.buf || !src.len) return PyLong_FromLong(0);
+    size_t sz = required_buffer_size_for_base64_decode(src.len);
+    if ((Py_ssize_t)sz > data.len) { PyErr_SetString(PyExc_BufferError, "output buffer too small"); return NULL; }
+    if (!base64_stream_decode(&self->state, src.buf, src.len, data.buf, &sz)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
+        return NULL;
+    }
+    return PyLong_FromSize_t(sz);
+}
+
+static PyObject*
+StreamingBase64Decoder_reset(StreamingBase64Decoder *self, PyObject *args UNUSED) {
+    base64_stream_decode_init(&self->state, 0);
     Py_RETURN_NONE;
-}
-
-static PyObject*
-StreamingBase64Decoder_copy_output(StreamingBase64Decoder *self, PyObject *args UNUSED) {
-    return PyBytes_FromStringAndSize(PyBytes_AS_STRING(self->output), self->output_sz);
-}
-
-static PyObject*
-StreamingBase64Decoder_take_output(StreamingBase64Decoder *self, PyObject *args UNUSED) {
-    if (!self->output_sz) return PyBytes_FromStringAndSize(NULL, 0);
-    RAII_PyObject(newbuf, PyBytes_FromStringAndSize(NULL, self->initial_capacity));
-    if (!newbuf) return NULL;
-    if (_PyBytes_Resize(&self->output, self->output_sz) != 0) return NULL;
-    PyObject *ans = self->output;
-    self->output = Py_NewRef(newbuf); self->output_sz = 0; self->output_capacity = self->initial_capacity;
-    return ans;
 }
 
 static PyTypeObject StreamingBase64Decoder_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "kitty.fast_data_types.StreamingBase64Decoder",
     .tp_basicsize = sizeof(StreamingBase64Decoder),
-    .tp_dealloc = StreamingBase64Decoder_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "StreamingBase64Decoder",
     .tp_methods = (PyMethodDef[]){
-        {"add", (PyCFunction)StreamingBase64Decoder_add, METH_O, ""},
-        {"flush", (PyCFunction)StreamingBase64Decoder_flush, METH_NOARGS, ""},
-        {"take_output", (PyCFunction)StreamingBase64Decoder_take_output, METH_NOARGS, ""},
-        {"copy_output", (PyCFunction)StreamingBase64Decoder_copy_output, METH_NOARGS, ""},
-        {"leftover_bytes", (PyCFunction)StreamingBase64Decoder_leftover_bytes, METH_NOARGS, ""},
+        {"decode", (PyCFunction)StreamingBase64Decoder_decode, METH_O, ""},
+        {"decode_into", (PyCFunction)(void(*)(void))StreamingBase64Decoder_decode_into, METH_FASTCALL, ""},
+        {"reset", (PyCFunction)StreamingBase64Decoder_reset, METH_NOARGS, ""},
         {NULL, NULL, 0, NULL},
     },
     .tp_new = PyType_GenericNew,
     .tp_init = StreamingBase64Decoder_init,
-    .tp_as_sequence = &(PySequenceMethods){
-        .sq_length = StreamingBase64Decoder_len,
-    },
 };
+
+static int
+StreamingBase64Encoder_init(PyObject *s, PyObject *args, PyObject *kwds UNUSED) {
+    StreamingBase64Decoder *self = (StreamingBase64Decoder*)s;
+    self->add_trailing_bytes = true;
+    switch (PyTuple_GET_SIZE(args)) {
+        case 0: break;
+        case 1: self->add_trailing_bytes = PyObject_IsTrue(PyTuple_GET_ITEM(args, 0)); break;
+        default: PyErr_SetString(PyExc_TypeError, "constructor takes no more than one argument"); return -1;
+    }
+	base64_stream_encode_init(&self->state, 0);
+    return 0;
+}
+
+static PyObject*
+StreamingBase64Encoder_encode(StreamingBase64Decoder *self, PyObject *a) {
+    RAII_PY_BUFFER(data);
+    if (PyObject_GetBuffer(a, &data, PyBUF_SIMPLE) != 0) return NULL;
+    if (!data.buf || !data.len) return PyBytes_FromStringAndSize(NULL, 0);
+    size_t sz = required_buffer_size_for_base64_encode(data.len);
+    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, sz));
+    if (!ans) return NULL;
+    base64_stream_encode(&self->state, data.buf, data.len, PyBytes_AS_STRING(ans), &sz);
+    if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
+    return Py_NewRef(ans);
+}
+
+static PyObject*
+StreamingBase64Encoder_encode_into(StreamingBase64Decoder *self, PyObject *const *args, Py_ssize_t nargs) {
+    if (nargs != 2) { PyErr_SetString(PyExc_TypeError, "constructor takes exactly two arguments"); return NULL; }
+    RAII_PY_BUFFER(data);
+    if (PyObject_GetBuffer(args[0], &data, PyBUF_WRITE) != 0) return NULL;
+    if (!data.buf || !data.len) return PyLong_FromLong(0);
+    RAII_PY_BUFFER(src);
+    if (PyObject_GetBuffer(args[1], &src, PyBUF_SIMPLE) != 0) return NULL;
+    if (!src.buf || !src.len) return PyLong_FromLong(0);
+    size_t sz = required_buffer_size_for_base64_encode(src.len);
+    if ((Py_ssize_t)sz > data.len) { PyErr_SetString(PyExc_BufferError, "output buffer too small"); return NULL; }
+    base64_stream_encode(&self->state, src.buf, src.len, data.buf, &sz);
+    return PyLong_FromSize_t(sz);
+}
+
+static PyObject*
+StreamingBase64Encoder_reset(StreamingBase64Decoder *self, PyObject *args UNUSED) {
+    char trailer[4];
+    size_t sz;
+    base64_stream_encode_final(&self->state, trailer, &sz);
+    base64_stream_encode_init(&self->state, 0);
+    if (!self->add_trailing_bytes) { while(sz && trailer[sz-1] == '=') sz--; }
+    return PyBytes_FromStringAndSize(trailer, sz);
+}
+
+static PyTypeObject StreamingBase64Encoder_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "kitty.fast_data_types.StreamingBase64Encoder",
+    .tp_basicsize = sizeof(StreamingBase64Decoder),
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "StreamingBase64Encoder",
+    .tp_methods = (PyMethodDef[]){
+        {"encode", (PyCFunction)StreamingBase64Encoder_encode, METH_O, ""},
+        {"encode_into", (PyCFunction)(void(*)(void))StreamingBase64Encoder_encode_into, METH_FASTCALL, ""},
+        {"reset", (PyCFunction)StreamingBase64Encoder_reset, METH_NOARGS, ""},
+        {NULL, NULL, 0, NULL},
+    },
+    .tp_new = PyType_GenericNew,
+    .tp_init = StreamingBase64Encoder_init,
+};
+
 
 static PyObject*
 pyset_iutf8(PyObject UNUSED *self, PyObject *args) {
@@ -744,6 +750,8 @@ PyInit_fast_data_types(void) {
 
     if (PyType_Ready(&StreamingBase64Decoder_Type) < 0) return NULL;
     if (PyModule_AddObject(m, "StreamingBase64Decoder", (PyObject *) &StreamingBase64Decoder_Type) < 0) return NULL;
+    if (PyType_Ready(&StreamingBase64Encoder_Type) < 0) return NULL;
+    if (PyModule_AddObject(m, "StreamingBase64Encoder", (PyObject *) &StreamingBase64Encoder_Type) < 0) return NULL;
 
     return m;
 }

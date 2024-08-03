@@ -7,10 +7,11 @@
 #
 
 import math
+from collections.abc import Iterable, Iterator, MutableSequence, Sequence
 from functools import lru_cache, wraps
 from functools import partial as p
 from itertools import repeat
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Literal, MutableSequence, Optional, Sequence, Tuple
+from typing import Any, Callable, Literal, Optional
 
 scale = (0.001, 1., 1.5, 2.)
 _dpi = 96.0
@@ -27,9 +28,9 @@ def thickness(level: int = 1, horizontal: bool = True) -> int:
     return int(math.ceil(pts * (_dpi / 72.0)))
 
 
-def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int) -> None:
-    ' Draw a horizontal line between [x1, x2) centered at y with the thickness given by level '
-    sz = thickness(level=level, horizontal=False)
+def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int, supersample_factor: int = 1) -> None:
+    ' Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and supersample factor '
+    sz = int(supersample_factor * thickness(level=level, horizontal=False))
     start = y - sz // 2
     for y in range(start, start + sz):
         offset = y * width
@@ -37,9 +38,9 @@ def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int) -
             buf[offset + x] = 255
 
 
-def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int) -> None:
-    ' Draw a vertical line between [y1, y2) centered at x with the thickness given by level '
-    sz = thickness(level=level, horizontal=True)
+def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int, supersample_factor: float = 1.0) -> None:
+    ' Draw a vertical line between [y1, y2) centered at x with the thickness given by level and supersample factor '
+    sz = int(supersample_factor * thickness(level=level, horizontal=True))
     start = x - sz // 2
     for x in range(start, start + sz):
         for y in range(y1, y2):
@@ -56,7 +57,7 @@ def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str
     draw_vline(buf, width, y1, y2, width // 2, level)
 
 
-def get_holes(sz: int, hole_sz: int, num: int) -> List[Tuple[int, ...]]:
+def get_holes(sz: int, hole_sz: int, num: int) -> list[tuple[int, ...]]:
     all_holes_use = (num + 1) * hole_sz
     individual_block_size = (sz - all_holes_use) // (num + 1)
     half_hole_sz = hole_sz // 2
@@ -256,7 +257,7 @@ def half_triangle(buf: SSByteArray, width: int, height: int, which: str = 'left'
     fill_region(buf, width, height, limits, inverted)
 
 
-def thick_line(buf: BufType, width: int, height: int, thickness_in_pixels: int, p1: Tuple[int, int], p2: Tuple[int, int]) -> None:
+def thick_line(buf: BufType, width: int, height: int, thickness_in_pixels: int, p1: tuple[int, int], p2: tuple[int, int]) -> None:
     if p1[0] > p2[0]:
         p1, p2 = p2, p1
     leq = line_equation(*p1, *p2)
@@ -313,7 +314,7 @@ def half_cross_line(buf: SSByteArray, width: int, height: int, which: str = 'tl'
 def mid_lines(buf: SSByteArray, width: int, height: int, level: int = 1, pts: Iterable[str] = ('lt',)) -> None:
     mid_x, mid_y = width // 2, height // 2
 
-    def pt_to_coords(p: str) -> Tuple[int, int]:
+    def pt_to_coords(p: str) -> tuple[int, int]:
         if p == 'l':
             return 0, mid_y
         if p == 't':
@@ -329,10 +330,45 @@ def mid_lines(buf: SSByteArray, width: int, height: int, level: int = 1, pts: It
         thick_line(buf, width, height, buf.supersample_factor * thickness(level), p1, p2)
 
 
+def get_fading_lines(total_length: int, num: int = 1, fade: str = 'right') -> Iterator[tuple[int, int]]:
+    if fade == 'left' or fade == 'up':
+        d1 = total_length
+        dir = -1
+    else:
+        d1 = 0
+        dir = 1
+
+    step = total_length // num
+
+    for i in range(num):
+        sz = step * (num - i) // (num + 1)
+        if sz >= step - 1 and step > 2:
+            sz = step - 2
+        d2 = d1 + dir * sz
+        yield (d1, d2) if d1 <= d2 else (d2, d1)
+        d1 += step * dir
+
+
+@supersampled()
+def fading_hline(buf: SSByteArray, width: int, height: int, level: int = 1, num: int = 1, fade: str = 'right') -> None:
+    factor = buf.supersample_factor
+    y = (height // 2 // factor) * factor
+    for x1, x2 in get_fading_lines(width, num, fade):
+        draw_hline(buf, width, x1, x2, y, level, supersample_factor = factor)
+
+
+@supersampled()
+def fading_vline(buf: SSByteArray, width: int, height: int, level: int = 1, num: int = 1, fade: str = 'down') -> None:
+    factor = buf.supersample_factor
+    x = (width // 2 // factor) * factor
+    for y1, y2 in get_fading_lines(height, num, fade):
+        draw_vline(buf, width, y1, y2, x, level, supersample_factor = factor)
+
+
 ParameterizedFunc = Callable[[float], float]
 
 
-def cubic_bezier(start: Tuple[int, int], end: Tuple[int, int], c1: Tuple[int, int], c2: Tuple[int, int]) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
+def cubic_bezier(start: tuple[int, int], end: tuple[int, int], c1: tuple[int, int], c2: tuple[int, int]) -> tuple[ParameterizedFunc, ParameterizedFunc]:
 
     def bezier_eq(p0: int, p1: int, p2: int, p3: int) -> ParameterizedFunc:
 
@@ -362,7 +398,7 @@ def find_bezier_for_D(width: int, height: int) -> int:
         cx += 1
 
 
-def get_bezier_limits(bezier_x: ParameterizedFunc, bezier_y: ParameterizedFunc) -> Iterator[Tuple[float, float]]:
+def get_bezier_limits(bezier_x: ParameterizedFunc, bezier_y: ParameterizedFunc) -> Iterator[tuple[float, float]]:
     start_x = int(bezier_x(0))
     max_x = int(bezier_x(0.5))
     last_t, t_limit = 0., 0.5
@@ -446,7 +482,7 @@ def draw_parametrized_curve(
 def circle_equations(
     origin_x: int = 0, origin_y: int = 0, radius: float = 10., # radius is in pixels as are origin co-ords
     start_at: float = 0., end_at: float = 360.
-) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
+) -> tuple[ParameterizedFunc, ParameterizedFunc]:
     conv = math.pi / 180.
     start = start_at * conv
     end = end_at * conv
@@ -464,7 +500,7 @@ def circle_equations(
 def rectircle_equations(
     cell_width: int, cell_height: int, supersample_factor: int,
     which: str = '╭'
-) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
+) -> tuple[ParameterizedFunc, ParameterizedFunc]:
     '''
     Return two functions, x(t) and y(t) that map the parameter t which must be
     in the range [0, 1] to x and y coordinates in the cell. The rectircle equation
@@ -548,7 +584,39 @@ def spinner(buf: SSByteArray, width: int, height: int, level: int = 1, start: fl
     draw_parametrized_curve(buf, width, height, level, arc_x, arc_y)
 
 
-def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
+def draw_circle(buf: SSByteArray, width: int, height: int, scale: float = 1.0, gap: int = 0, invert: bool = False) -> None:
+    w, h = width // 2, height // 2
+    radius = int(scale * min(w, h) - gap / 2)
+    fill = 0 if invert else 255
+    for y in range(height):
+        for x in range(width):
+            if (x - w) ** 2 + (y - h) ** 2 <= radius ** 2:
+                buf[y * width + x] = fill
+
+
+@supersampled()
+def commit(buf: SSByteArray, width: int, height: int, level: int = 1, scale: float = 0.75, line: str = 'none', solid: bool = True) -> None:
+    ' Draw a circular commit with the given scale. Commits can either be solid or hollow and can have vertical, horizontal, up, down, left, or right line(s) '
+
+    factor = buf.supersample_factor
+    # Round half width/height to supersample factor to avoid misalignment with non-supersampled lines
+    hwidth, hheight = factor * (width // 2 // factor), factor * (height // 2 // factor)
+
+    if line == 'horizontal' or line == 'right':
+        draw_hline(buf, width, hwidth, width, hheight, level, supersample_factor=factor)
+    if line == 'horizontal' or line == 'left':
+        draw_hline(buf, width, 0, hwidth, hheight, level, supersample_factor=factor)
+    if line == 'vertical' or line == 'down':
+        draw_vline(buf, width, hheight, height, hwidth, level, supersample_factor=factor)
+    if line == 'vertical' or line == 'up':
+        draw_vline(buf, width, 0, hheight, hwidth, level, supersample_factor=factor)
+
+    draw_circle(buf, width, height, scale=scale)
+    if not solid:
+        draw_circle(buf, width, height, scale=scale, gap=thickness(level) * factor, invert=True)
+
+
+def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> tuple[int, int]:
     x1, x2 = (0, width // 2) if which == 'left' else (width // 2, width)
     gap = thickness(level + 1, horizontal=False)
     if only != 'bottom':
@@ -558,7 +626,7 @@ def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: st
     return height // 2 - gap, height // 2 + gap
 
 
-def half_dvline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', only: Optional[str] = None) -> Tuple[int, int]:
+def half_dvline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', only: Optional[str] = None) -> tuple[int, int]:
     y1, y2 = (0, height // 2) if which == 'top' else (height // 2, height)
     gap = thickness(level + 1, horizontal=True)
     if only != 'right':
@@ -568,12 +636,12 @@ def half_dvline(buf: BufType, width: int, height: int, level: int = 1, which: st
     return width // 2 - gap, width // 2 + gap
 
 
-def dvline(buf: BufType, width: int, height: int, only: Optional[str] = None, level: int = 1) -> Tuple[int, int]:
+def dvline(buf: BufType, width: int, height: int, only: Optional[str] = None, level: int = 1) -> tuple[int, int]:
     half_dvline(buf, width, height, only=only, level=level)
     return half_dvline(buf, width, height, only=only, which='bottom', level=level)
 
 
-def dhline(buf: BufType, width: int, height: int, only: Optional[str] = None, level: int = 1) -> Tuple[int, int]:
+def dhline(buf: BufType, width: int, height: int, only: Optional[str] = None, level: int = 1) -> tuple[int, int]:
     half_dhline(buf, width, height, only=only, level=level)
     return half_dhline(buf, width, height, only=only, which='bottom', level=level)
 
@@ -834,7 +902,7 @@ def sextant(buf: BufType, width: int, height: int, level: int = 1, which: int = 
 @supersampled()
 def smooth_mosaic(
     buf: SSByteArray, width: int, height: int, level: int = 1,
-    lower: bool = True, a: Tuple[float, float] = (0, 0), b: Tuple[float, float] = (0, 0)
+    lower: bool = True, a: tuple[float, float] = (0, 0), b: tuple[float, float] = (0, 0)
 ) -> None:
     ax, ay = int(a[0] * (width - 1)), int(a[1] * (height - 1))
     bx, by = int(b[0] * (width - 1)), int(b[1] * (height - 1))
@@ -886,12 +954,12 @@ def eight_bar(buf: BufType, width: int, height: int, level: int = 1, which: int 
             buf[offset + x] = 255
 
 
-def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tuple[int, ...] = (0,), horizontal: bool = False) -> None:
+def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: tuple[int, ...] = (0,), horizontal: bool = False) -> None:
     for x in which:
         eight_bar(buf, width, height, level, x, horizontal)
 
 
-def frame(buf: BufType, width: int, height: int, edges: Tuple[Literal['l', 'r', 't', 'b'], ...] = ('l', 'r', 't', 'b'), level: int = 0) -> None:
+def frame(buf: BufType, width: int, height: int, edges: tuple[Literal['l', 'r', 't', 'b'], ...] = ('l', 'r', 't', 'b'), level: int = 0) -> None:
     h = thickness(level=level, horizontal=True)
     v = thickness(level=level, horizontal=False)
 
@@ -943,7 +1011,7 @@ def progress_bar(buf: BufType, width: int, height: int, which: Literal['l', 'm',
 
 
 @lru_cache(maxsize=64)
-def distribute_dots(available_space: int, num_of_dots: int) -> Tuple[Tuple[int, ...], int]:
+def distribute_dots(available_space: int, num_of_dots: int) -> tuple[tuple[int, ...], int]:
     dot_size = max(1, available_space // (2 * num_of_dots))
     extra = available_space - 2 * num_of_dots * dot_size
     gaps = list(repeat(dot_size, num_of_dots))
@@ -981,7 +1049,7 @@ def braille(buf: BufType, width: int, height: int, which: int = 0) -> None:
             braille_dot(buf, width, height, col, row)
 
 
-box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
+box_chars: dict[str, list[Callable[[BufType, int, int], Any]]] = {
     '─': [hline],
     '━': [p(hline, level=3)],
     '│': [vline],
@@ -1231,6 +1299,51 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '🮬': [p(mid_lines, pts=('rt', 'lt', 'rb'))],
     '🮭': [p(mid_lines, pts=('rt', 'lt', 'lb'))],
     '🮮': [p(mid_lines, pts=('rt', 'rb', 'lt', 'lb'))],
+
+    '': [hline],
+    '': [vline],
+    '': [p(fading_hline, num=4, fade='right')],
+    '': [p(fading_hline, num=4, fade='left')],
+    '': [p(fading_vline, num=5, fade='down')],
+    '': [p(fading_vline, num=5, fade='up')],
+    '': [p(rounded_corner, which='╭')],
+    '': [p(rounded_corner, which='╮')],
+    '': [p(rounded_corner, which='╰')],
+    '': [p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╰')],
+    '': [vline, p(rounded_corner, which='╭')],
+    '': [p(rounded_corner, which='╰'), p(rounded_corner, which='╭')],
+    '': [vline, p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╮')],
+    '': [p(rounded_corner, which='╮'), p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╮')],
+    '': [hline, p(rounded_corner, which='╭')],
+    '': [p(rounded_corner, which='╭'), p(rounded_corner, which='╮')],
+    '': [hline, p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╰')],
+    '': [p(rounded_corner, which='╰'), p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╰'), p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╭'), p(rounded_corner, which='╮')],
+    '': [hline, p(rounded_corner, which='╮'), p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╰'), p(rounded_corner, which='╭')],
+    '': [vline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
+    '': [vline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
+    '': [hline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
+    '': [hline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
+    '': [commit],
+    '': [p(commit, solid=False)],
+    '': [p(commit, line='right')],
+    '': [p(commit, solid=False, line='right')],
+    '': [p(commit, line='left')],
+    '': [p(commit, solid=False, line='left')],
+    '': [p(commit, line='horizontal')],
+    '': [p(commit, solid=False, line='horizontal')],
+    '': [p(commit, line='down')],
+    '': [p(commit, solid=False, line='down')],
+    '': [p(commit, line='up')],
+    '': [p(commit, solid=False, line='up')],
+    '': [p(commit, line='vertical')],
+    '': [p(commit, solid=False, line='vertical')],
 }
 
 t, f = 1, 3

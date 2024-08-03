@@ -24,6 +24,15 @@ abilities, such as: :opt:`symbol_map`, :opt:`text_composition_strategy`,
 :opt:`font_features` and :opt:`modify_font`. kitty knows text rendering is
 important, and goes the extra mile for it.
 
+Desktop notifications [0.36]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+|kitty| now has a :doc:`notify </kittens/notify>` kitten that can be used to
+display desktop notifications from the command line, even over SSH. It has
+support for icons, buttons, updating notifications, waiting till
+the notification is closed, etc. The underlying :doc:`desktop-notifications`
+protocol has been expanded to support all these features.
+
 Wayland goodies [0.34]
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -70,7 +79,7 @@ Detailed list of changes
 
 - Support `OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__ (:iss:`3711`)
 
-- A new ``choose-fonts`` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts
+- A new :doc:`choose-fonts </kittens/choose-fonts>` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts
 
 - Allow animating the blinking of the cursor. See :opt:`cursor_blink_interval` for how to configure it
 
@@ -80,7 +89,10 @@ Detailed list of changes
 
 - A new option :opt:`second_transparent_bg` to make a second background color semi-transparent via :opt:`background_opacity`. Useful for things like cursor line highlight in editors (:iss:`7646`)
 
-- Desktop notifications protocol: Add support for closing notifications and querying if the terminal emulator supports the protocol (:iss:`7658`, :iss:`7659`)
+- A new :doc:`notify </kittens/notify>` kitten to show desktop notifications
+  from the command line with support for icons, buttons and more.
+
+- Desktop notifications protocol: Add support for icons, buttons, closing of notifications, expiry of notifications, updating of notifications and querying if the terminal emulator supports the protocol (:iss:`7657`, :iss:`7658`, :iss:`7659`)
 
 - A new option :opt:`filter_notification` to filter out or perform arbitrary actions on desktop notifications based on sophisticated criteria (:iss:`7670`)
 
@@ -113,6 +125,12 @@ Detailed list of changes
 - Add support for in-band window resize notifications (:iss:`7642`)
 
 - Allow controlling the easing curves used for :opt:`visual_bell_duration`
+
+- New special rendering for font symbols useful in drawing commit graphs (:pull:`7681`)
+
+- diff kitten: Add bindings to jump to next and previous file (:pull:`7683`)
+
+- Wayland GNOME: Fix the font size in the OS Window title bar changing with the size of the text in the window (:disc:`7677`)
 
 
 0.35.2 [2024-06-22]

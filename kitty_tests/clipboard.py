@@ -10,14 +10,17 @@ from . import BaseTest
 class TestClipboard(BaseTest):
 
     def test_clipboard_write_request(self):
-        wr = WriteRequest(max_size=64)
-        wr.add_base64_data('bGlnaHQgd29yaw')
-        self.ae(bytes(wr.current_leftover_bytes), b'aw')
-        wr.flush_base64_data()
-        self.ae(wr.data_for(), b'light work')
-        wr = WriteRequest(max_size=64)
-        wr.add_base64_data('bGlnaHQgd29yaw==')
-        self.ae(wr.data_for(), b'light work')
+        def t(data, expected):
+            wr = WriteRequest(max_size=64)
+            wr.add_base64_data(data)
+            self.ae(wr.data_for(), expected)
+        t('dGl0bGU=', b'title')
+        t('dGl0bGU', b'title')
+        t('dGl0bG', b'titl')
+        t('dGl0bG==', b'titl')
+        t('dGl0b', b'tit')
+        t('bGlnaHQgd29yaw', b'light work')
+        t('bGlnaHQgd29yaw==', b'light work')
         wr = WriteRequest(max_size=64)
         wr.add_base64_data('bGlnaHQgd29')
         for x in b'y', b'a', b'y', b'4', b'=':

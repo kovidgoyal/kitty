@@ -4,7 +4,8 @@
 import math
 import string
 import uuid as _uuid
-from typing import Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Optional
 
 
 def num_to_string(number: int, alphabet: Sequence[str], alphabet_len: int, pad_to_length: Optional[int] = None) -> str:
@@ -18,7 +19,7 @@ def num_to_string(number: int, alphabet: Sequence[str], alphabet_len: int, pad_t
     return ''.join(ans)
 
 
-def string_to_num(string: str, alphabet_map: Dict[str, int], alphabet_len: int) -> int:
+def string_to_num(string: str, alphabet_map: dict[str, int], alphabet_len: int) -> int:
     ans = 0
     for char in reversed(string):
         ans = ans * alphabet_len + alphabet_map[char]

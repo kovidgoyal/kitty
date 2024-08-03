@@ -5,9 +5,11 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "internal.h"
 #include "linux_notify.h"
 #include <stdlib.h>
+#include <string.h>
 
 #define NOTIFICATIONS_SERVICE  "org.freedesktop.Notifications"
 #define NOTIFICATIONS_PATH "/org/freedesktop/Notifications"
@@ -92,11 +94,44 @@ cancel_user_notification(DBusConnection *session_bus, uint32_t *id) {
     return glfw_dbus_call_method_no_reply(session_bus, NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "CloseNotification", DBUS_TYPE_UINT32, id, DBUS_TYPE_INVALID);
 }
 
+static void
+got_capabilities(DBusMessage *msg, const char* err, void* data UNUSED) {
+    if (err) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to get server capabilities error: %s", err);
+        return;
+    }
+#define check_call(func, err, ...) if (!func(__VA_ARGS__)) { _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: GetCapabilities: %s", err); return;  }
+    DBusMessageIter iter, array_iter;
+    check_call(dbus_message_iter_init, "message has no parameters", msg, &iter);
+    if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY || dbus_message_iter_get_element_type(&iter) != DBUS_TYPE_STRING) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: GetCapabilities: %s", "reply is not an array of strings");
+        return;
+    }
+    dbus_message_iter_recurse(&iter, &array_iter);
+    char buf[2048] = {0}, *p = buf, *end = buf + sizeof(buf);
+    while (dbus_message_iter_get_arg_type(&array_iter) == DBUS_TYPE_STRING) {
+        const char *str;
+        dbus_message_iter_get_basic(&array_iter, &str);
+        size_t len = strlen(str);
+        if (len && p + len + 2 < end) { p = stpcpy(p, str); *(p++) = '\n'; }
+        dbus_message_iter_next(&array_iter);
+    }
+    if (activated_handler) activated_handler(0, -1, buf);
+#undef check_call
+
+}
+
+static bool
+get_capabilities(DBusConnection *session_bus) {
+    return glfw_dbus_call_method_with_reply(session_bus, NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "GetCapabilities", 60, got_capabilities, NULL, DBUS_TYPE_INVALID);
+}
+
 notification_id_type
 glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *user_data) {
     DBusConnection *session_bus = glfw_dbus_session_bus();
     if (!session_bus) return 0;
     if (n->timeout == -9999 && n->urgency == 255) return cancel_user_notification(session_bus, user_data) ? 1 : 0;
+    if (n->timeout == -99999 && n->urgency == 255) return get_capabilities(session_bus) ? 1 : 0;
     static DBusConnection *added_signal_match = NULL;
     if (added_signal_match != session_bus) {
         dbus_bus_add_match(session_bus, "type='signal',interface='" NOTIFICATIONS_IFACE "',member='ActionInvoked'", NULL);
@@ -124,10 +159,10 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
     APPEND(args, DBUS_TYPE_STRING, n->summary)
     APPEND(args, DBUS_TYPE_STRING, n->body)
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "s", &array);
-    if (n->action_name) {
-        static const char* default_action = "default";
-        APPEND(array, DBUS_TYPE_STRING, default_action);
-        APPEND(array, DBUS_TYPE_STRING, n->action_name);
+    if (n->actions) {
+        for (size_t i = 0; i < n->num_actions; i++) {
+            APPEND(array, DBUS_TYPE_STRING, n->actions[i]);
+        }
     }
     check_call(dbus_message_iter_close_container, &args, &array);
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "{sv}", &array);
@@ -142,6 +177,7 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
     check_call(dbus_message_iter_close_container, &array, &dict); \
 }
     append_sv_dictionary_entry("urgency", DBUS_TYPE_BYTE, n->urgency);
+    if (n->category && n->category[0]) append_sv_dictionary_entry("category", DBUS_TYPE_STRING, n->category);
 
     check_call(dbus_message_iter_close_container, &args, &array);
     APPEND(args, DBUS_TYPE_INT32, n->timeout)

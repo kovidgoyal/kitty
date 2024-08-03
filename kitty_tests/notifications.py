@@ -12,10 +12,13 @@ from kitty.notifications import Channel, DesktopIntegration, IconDataCache, Noti
 from . import BaseTest
 
 
-def n(title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_name='', icon_path='', application_name='', notification_type=''):
+def n(
+    title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_names=(), icon_path='',
+    application_name='', notification_types=(), timeout=-1,
+):
     return {
-        'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_name': icon_name, 'icon_path': icon_path,
-        'application_name': application_name, 'notification_type': notification_type,
+        'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_names': icon_names, 'icon_path': icon_path,
+        'application_name': application_name, 'notification_types': notification_types, 'timeout': timeout
     }
 
 
@@ -30,8 +33,12 @@ class DesktopIntegration(DesktopIntegration):
         self.close_succeeds = True
         self.counter = 0
 
-    def on_new_version_notification_activation(self, cmd) -> None:
-        self.new_version_activated = True
+    def query_live_notifications(self, channel_id, client_id):
+        ids = [n['id'] for n in self.notifications]
+        self.notification_manager.send_live_response(channel_id, client_id, tuple(ids))
+
+    def on_new_version_notification_activation(self, cmd, which) -> None:
+        self.new_version_activated = which + 1
 
     def close_notification(self, desktop_notification_id: int) -> bool:
         self.close_events.append(desktop_notification_id)
@@ -46,7 +53,7 @@ class DesktopIntegration(DesktopIntegration):
             self.counter += 1
             did = self.counter
         title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
-        ans = n(title, body, urgency, did, cmd.icon_name, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_type)
+        ans = n(title, body, urgency, did, cmd.icon_names, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_types, timeout=cmd.timeout)
         self.notifications.append(ans)
         return self.counter
 
@@ -83,7 +90,7 @@ class NotificationManager(NotificationManager):
 def do_test(self: 'TestNotifications', tdir: str) -> None:
     di = DesktopIntegration(None)
     ch = Channel()
-    nm = NotificationManager(di, ch, lambda *a, **kw: None, base_cache_dir=tdir)
+    nm = NotificationManager(di, ch, lambda *a, **kw: None, base_cache_dir=tdir, cleanup_at_exit=False)
     di.notification_manager = nm
 
     def reset():
@@ -94,15 +101,15 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     def h(raw_data, osc_code=99, channel_id=1):
         nm.handle_notification_cmd(channel_id, osc_code, raw_data)
 
-    def activate(which=0):
+    def activate(which=0, button=0):
         n = di.notifications[which]
-        nm.notification_activated(n['id'])
+        nm.notification_activated(n['id'], button)
 
     def close(which=0):
         n = di.notifications[which]
         di.close_notification(n['id'])
 
-    def assert_events(focus=True, close=0, report='', close_response=''):
+    def assert_events(focus=True, close=0, report='', close_response='', live=''):
         self.ae(ch.focus_events, [''] if focus else [])
         if report:
             self.assertIn(f'99;i={report};', ch.responses)
@@ -116,6 +123,12 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
             for r in ch.responses:
                 m = re.match(r'99;i=[a-z0-9]+:p=close;', r)
                 self.assertIsNone(m, f'Unexpectedly found close response: {r}')
+        if live:
+            self.assertIn(f'99;i=live:p=alive;{live}', ch.responses)
+        else:
+            for r in ch.responses:
+                m = re.match(r'99;i=[a-z0-9]+:p=alive;', r)
+                self.assertIsNone(m, f'Unexpectedly found alive response: {r}')
         self.ae(di.close_events, [close] if close else [])
 
     h('test it', osc_code=9)
@@ -210,6 +223,12 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     assert_events(focus=True, report='c', close=True, close_response='c')
     reset()
 
+    h('i=a[;title')
+    h('i=b;title')
+    h('i=live:p=alive;')
+    assert_events(focus=False, live='a,b')
+    reset()
+
     h(';title')
     self.ae(di.notifications, [n()])
     activate()
@@ -219,7 +238,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     # Test querying
     h('i=xyz:p=?')
     self.assertFalse(di.notifications)
-    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon:c=1'
+    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive,buttons:c=1:w=1'
     self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
@@ -245,9 +264,14 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     def e(x):
         return standard_b64encode(x.encode()).decode()
 
-    h(f'i=t:d=0:f={e("app")};title')
+    h(f'i=t:d=0:f={e("app")}:t={e("1")};title')
     h(f'i=t:t={e("test")}')
-    self.ae(di.notifications, [n(application_name='app', notification_type='test')])
+    self.ae(di.notifications, [n(application_name='app', notification_types=('1', 'test',))])
+    reset()
+
+    # Test timeout
+    h('w=3;title')
+    self.ae(di.notifications, [n(timeout=3)])
     reset()
 
     # Test Disk Cache
@@ -263,15 +287,16 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     def send_with_icon(data='', n='', g=''):
         m = ''
         if n:
-            m += f'n={n}:'
+            for x in n.split(','):
+                m += f'n={standard_b64encode(x.encode()).decode()}:'
         if g:
-            m += f'g={g}:'
+            m += f'g=({g}:'
         h(f'i=9:d=0:{m};title')
         h(f'i=9:p=icon;{data}')
 
     dc = nm.icon_data_cache
-    send_with_icon(n='mycon')
-    self.ae(di.notifications, [n(icon_name='mycon')])
+    send_with_icon(n='mycon,ic2')
+    self.ae(di.notifications, [n(icon_names=('mycon', 'ic2'))])
     reset()
     send_with_icon(g='gid')
     self.ae(di.notifications, [n()])
@@ -279,9 +304,11 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     send_with_icon(g='gid', data='1')
     self.ae(di.notifications, [n(icon_path=dc.hash(b'1'))])
     send_with_icon(g='gid', n='moose')
-    self.ae(di.notifications[-1], n(icon_name='moose', icon_path=dc.hash(b'1')))
+    self.ae(di.notifications[-1], n(icon_names=('moose',), icon_path=dc.hash(b'1')))
     send_with_icon(g='gid2', data='2')
     self.ae(di.notifications[-1], n(icon_path=dc.hash(b'2')))
+    send_with_icon(data='3')
+    self.ae(di.notifications[-1], n(icon_path=dc.hash(b'3')))
     reset()
 
 

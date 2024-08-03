@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Container, Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager, suppress
 from functools import partial
 from gettext import gettext as _
@@ -17,17 +18,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Container,
-    Dict,
-    Generator,
-    Iterable,
-    Iterator,
-    List,
     Literal,
     Optional,
-    Sequence,
-    Set,
-    Tuple,
     Union,
 )
 from weakref import WeakValueDictionary
@@ -159,7 +151,7 @@ if TYPE_CHECKING:
     from .rc.base import ResponseType
 # }}}
 
-RCResponse = Union[Dict[str, Any], None, AsyncResponse]
+RCResponse = Union[dict[str, Any], None, AsyncResponse]
 
 
 class OSWindowDict(TypedDict):
@@ -168,13 +160,13 @@ class OSWindowDict(TypedDict):
     is_focused: bool
     is_active: bool
     last_focused: bool
-    tabs: List[TabDict]
+    tabs: list[TabDict]
     wm_class: str
     wm_name: str
     background_opacity: float
 
 
-def listen_on(spec: str) -> Tuple[int, str]:
+def listen_on(spec: str) -> tuple[int, str]:
     import socket
     family, address, socket_path = parse_address_spec(spec)
     s = socket.socket(family)
@@ -232,7 +224,7 @@ def data_for_at(w: Optional[Window], arg: str, add_wrap_markers: bool = False) -
 class DumpCommands:  # {{{
 
     def __init__(self, args: CLIOptions):
-        self.draw_dump_buf: List[str] = []
+        self.draw_dump_buf: list[str] = []
         if args.dump_bytes:
             self.dump_bytes_to = open(args.dump_bytes, 'wb')
 
@@ -270,7 +262,7 @@ class VisualSelect:
         self.prev_tab_id = prev_tab_id
         self.prev_os_window_id = prev_os_window_id
         self.callback = callback
-        self.window_ids: List[int] = []
+        self.window_ids: list[int] = []
         self.window_used_for_selection_id = 0
         self.reactivate_prev_tab = reactivate_prev_tab
         set_os_window_title(self.os_window_id, title)
@@ -326,8 +318,8 @@ class Boss:
         self,
         opts: Options,
         args: CLIOptions,
-        cached_values: Dict[str, Any],
-        global_shortcuts: Dict[str, SingleKey],
+        cached_values: dict[str, Any],
+        global_shortcuts: dict[str, SingleKey],
         talk_fd: int = -1,
     ):
         set_layout_options(opts)
@@ -335,23 +327,23 @@ class Boss:
         self.window_for_dispatch: Optional[Window] = None
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
-        self.peer_data_map: Dict[int, Optional[Dict[str, Sequence[str]]]] = {}
-        self.background_process_death_notify_map: Dict[int, Callable[[int, Optional[Exception]], None]] = {}
+        self.peer_data_map: dict[int, Optional[dict[str, Sequence[str]]]] = {}
+        self.background_process_death_notify_map: dict[int, Callable[[int, Optional[Exception]], None]] = {}
         self.encryption_key = EllipticCurveKey()
         self.encryption_public_key = f'{RC_ENCRYPTION_PROTOCOL_VERSION}:{base64.b85encode(self.encryption_key.public).decode("ascii")}'
-        self.clipboard_buffers: Dict[str, str] = {}
+        self.clipboard_buffers: dict[str, str] = {}
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
-        self.color_settings_at_startup: Dict[str, Optional[Color]] = {
+        self.color_settings_at_startup: dict[str, Optional[Color]] = {
                 k: opts[k] for k in opts if isinstance(opts[k], Color) or k in nullable_colors}
         self.current_visual_select: Optional[VisualSelect] = None
         # A list of events received so far that are potentially part of a sequence keybinding.
         self.cached_values = cached_values
-        self.os_window_map: Dict[int, TabManager] = {}
-        self.os_window_death_actions: Dict[int, Callable[[], None]] = {}
+        self.os_window_map: dict[int, TabManager] = {}
+        self.os_window_death_actions: dict[int, Callable[[], None]] = {}
         self.cursor_blinking = True
         self.shutting_down = False
-        self.misc_config_errors: List[str] = []
+        self.misc_config_errors: list[str] = []
         # we dont allow reloading the config file to change
         # allow_remote_control
         self.allow_remote_control = opts.allow_remote_control
@@ -478,7 +470,7 @@ class Boss:
                 tab = tm.active_tab
         window_id_limit = max(self.window_id_map, default=-1) + 1
 
-        def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
+        def get_matches(location: str, query: str, candidates: set[int]) -> set[int]:
             if location == 'id' and query.startswith('-'):
                 try:
                     q = int(query)
@@ -512,7 +504,7 @@ class Boss:
         tab_id_limit = max(tim, default=-1) + 1
         window_id_limit = max(self.window_id_map, default=-1) + 1
 
-        def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
+        def get_matches(location: str, query: str, candidates: set[int]) -> set[int]:
             if location in ('id', 'window_id') and query.startswith('-'):
                 try:
                     q = int(query)
@@ -575,7 +567,7 @@ class Boss:
         w = self.window_for_dispatch or self.active_window_for_cwd
         self._new_os_window(args, CwdRequest(w))
 
-    def new_os_window_with_wd(self, wd: Union[str, List[str]], str_is_multiple_paths: bool = False) -> None:
+    def new_os_window_with_wd(self, wd: Union[str, list[str]], str_is_multiple_paths: bool = False) -> None:
         if isinstance(wd, str):
             wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
@@ -618,7 +610,7 @@ class Boss:
                 if swid > 0:
                     self_window = self.window_id_map.get(swid)
 
-        extra_data: Dict[str, Any] = {}
+        extra_data: dict[str, Any] = {}
         try:
             allowed_unconditionally = (
                 self.allow_remote_control == 'y' or
@@ -645,7 +637,7 @@ class Boss:
         return response
 
     def ask_if_remote_cmd_is_allowed(
-        self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
+        self, pcmd: dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
     ) -> bool:
         from kittens.tui.operations import styled
         in_flight = 0
@@ -674,7 +666,7 @@ class Boss:
         overlay_window.window_custom_type = 'remote_command_permission_dialog'
         return True
 
-    def remote_cmd_permission_received(self, pcmd: Dict[str, Any], window_id: int, peer_id: int, self_window: Optional[Window], choice: str) -> None:
+    def remote_cmd_permission_received(self, pcmd: dict[str, Any], window_id: int, peer_id: int, self_window: Optional[Window], choice: str) -> None:
         from .remote_control import encode_response_for_peer, set_user_password_allowed
         response: RCResponse = None
         window = self.window_id_map.get(window_id)
@@ -698,7 +690,7 @@ class Boss:
                 send_data_to_peer(peer_id, encode_response_for_peer(response))
 
     def _execute_remote_command(
-        self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
+        self, pcmd: dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
     ) -> RCResponse:
         from .remote_control import handle_cmd
         try:
@@ -742,7 +734,7 @@ class Boss:
             return
         self.run_background_process([path] + list(args), allow_remote_control=True)
 
-    def call_remote_control(self, self_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
+    def call_remote_control(self, self_window: Optional[Window], args: tuple[str, ...]) -> 'ResponseType':
         from .rc.base import PayloadGetter, command_for_name, parse_subcommand_cli
         from .remote_control import parse_rc_args
         aa = list(args)
@@ -1003,7 +995,7 @@ class Boss:
     ) -> Window:
         result: bool = False
 
-        def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
+        def callback_(res: dict[str, Any], x: int, boss: Boss) -> None:
             nonlocal result
             result = res.get('response') == 'y'
 
@@ -1032,7 +1024,7 @@ class Boss:
     ) -> Optional[Window]:
         result: str = ''
 
-        def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
+        def callback_(res: dict[str, Any], x: int, boss: Boss) -> None:
             nonlocal result
             result = res.get('response') or ''
 
@@ -1072,7 +1064,7 @@ class Boss:
     ) -> None:
         result: str = ''
 
-        def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
+        def callback_(res: dict[str, Any], x: int, boss: Boss) -> None:
             nonlocal result
             result = res.get('response') or ''
 
@@ -1184,7 +1176,7 @@ class Boss:
             self.io_thread_started = True
             for signum in self.child_monitor.handled_signals():
                 handled_signals.add(signum)
-            urls: List[str] = getattr(sys, 'cmdline_args_for_open', [])
+            urls: list[str] = getattr(sys, 'cmdline_args_for_open', [])
             if urls:
                 delattr(sys, 'cmdline_args_for_open')
                 sess = create_sessions(get_options(), self.args, special_window=SpecialWindow([kitty_exe(), '+runpy', 'input()']))
@@ -1313,7 +1305,7 @@ class Boss:
             if final_windows:
                 self._change_font_size(final_windows)
 
-    def _change_font_size(self, sz_map: Dict[int, float]) -> None:
+    def _change_font_size(self, sz_map: dict[int, float]) -> None:
         for os_window_id, sz in sz_map.items():
             tm = self.os_window_map.get(os_window_id)
             if tm is not None:
@@ -1492,8 +1484,8 @@ class Boss:
             self.mouse_handler(ev)
 
     def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> Optional[Window]:
-        windows: List[Tuple[Optional[int], str]] = []
-        selectable_windows: List[Tuple[int, str]] = []
+        windows: list[tuple[Optional[int], str]] = []
+        selectable_windows: list[tuple[int, str]] = []
         for i, w in tab.windows.iter_windows_with_number(only_visible=False):
             if only_window_ids and w.id not in only_window_ids:
                 windows.append((None, f'Current window: {w.title}' if w is self.active_window else w.title))
@@ -1892,9 +1884,9 @@ class Boss:
         args: Iterable[str] = (),
         input_data: Optional[Union[bytes, str]] = None,
         window: Optional[Window] = None,
-        custom_callback: Optional[Callable[[Dict[str, Any], int, 'Boss'], None]] = None,
+        custom_callback: Optional[Callable[[dict[str, Any], int, 'Boss'], None]] = None,
         action_on_removal: Optional[Callable[[int, 'Boss'], None]] = None,
-        default_data: Optional[Dict[str, Any]] = None
+        default_data: Optional[dict[str, Any]] = None
     ) -> Any:
         orig_args, args = list(args), list(args)
         from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler
@@ -1936,7 +1928,7 @@ class Boss:
             else:
                 data = input_data if isinstance(input_data, bytes) else input_data.encode('utf-8')
             copts = common_opts_as_dict(get_options())
-            final_args: List[str] = []
+            final_args: list[str] = []
             for x in args:
                 if x == '@selection':
                     sel = self.data_for_at(which='@selection', window=w)
@@ -1987,9 +1979,9 @@ class Boss:
         self.run_kitten_with_metadata(kitten, args)
 
     def on_kitten_finish(
-        self, target_window_id: int, end_kitten: Callable[[Dict[str, Any], int, 'Boss'], None],
+        self, target_window_id: int, end_kitten: Callable[[dict[str, Any], int, 'Boss'], None],
         source_window: Window,
-        default_data: Optional[Dict[str, Any]] = None
+        default_data: Optional[dict[str, Any]] = None
     ) -> None:
         data, source_window.kitten_result = source_window.kitten_result, None
         if data is None:
@@ -2064,7 +2056,7 @@ class Boss:
         if w:
             spec = None
 
-            def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
+            def done(data: dict[str, Any], target_window_id: int, self: Boss) -> None:
                 nonlocal spec
                 spec = data['response']
 
@@ -2084,7 +2076,7 @@ class Boss:
 
     @ac('misc', 'Run the kitty shell to control kitty with commands')
     def kitty_shell(self, window_type: str = 'window') -> None:
-        kw: Dict[str, Any] = {}
+        kw: dict[str, Any] = {}
         cmd = [kitty_exe(), '@']
         aw = self.window_for_dispatch or self.active_window
         if aw is not None:
@@ -2126,7 +2118,7 @@ class Boss:
         self.open_url(website_url())
 
     @ac('misc', 'Open the specified URL')
-    def open_url(self, url: str, program: Optional[Union[str, List[str]]] = None, cwd: Optional[str] = None) -> None:
+    def open_url(self, url: str, program: Optional[Union[str, list[str]]] = None, cwd: Optional[str] = None) -> None:
         if not url:
             return
         if isinstance(program, str):
@@ -2163,7 +2155,7 @@ class Boss:
     def open_url_with_hints(self) -> None:
         self.run_kitten_with_metadata('hints', window=self.window_for_dispatch)
 
-    def drain_actions(self, actions: List[KeyAction], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> None:
+    def drain_actions(self, actions: list[KeyAction], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> None:
 
         def callback(timer_id: Optional[int]) -> None:
             self.dispatch_action(actions.pop(0), window_for_dispatch, dispatch_type)
@@ -2309,8 +2301,8 @@ class Boss:
 
     def process_stdin_source(
         self, window: Optional[Window] = None,
-        stdin: Optional[str] = None, copy_pipe_data: Optional[Dict[str, Any]] = None
-    ) -> Tuple[Optional[Dict[str, str]], Optional[bytes]]:
+        stdin: Optional[str] = None, copy_pipe_data: Optional[dict[str, Any]] = None
+    ) -> tuple[Optional[dict[str, str]], Optional[bytes]]:
         w = window or self.active_window
         if not w:
             return None, None
@@ -2340,7 +2332,7 @@ class Boss:
         return data_for_at(window, which, add_wrap_markers=add_wrap_markers)
 
     def special_window_for_cmd(
-        self, cmd: List[str],
+        self, cmd: list[str],
         window: Optional[Window] = None,
         stdin: Optional[str] = None,
         cwd_from: Optional[CwdRequest] = None,
@@ -2361,13 +2353,13 @@ class Boss:
 
     def run_background_process(
         self,
-        cmd: List[str],
+        cmd: list[str],
         cwd: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
+        env: Optional[dict[str, str]] = None,
         stdin: Optional[bytes] = None,
         cwd_from: Optional[CwdRequest] = None,
         allow_remote_control: bool = False,
-        remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
+        remote_control_passwords: Optional[dict[str, Sequence[str]]] = None,
         notify_on_death: Optional[Callable[[int, Optional[Exception]], None]] = None,  # guaranteed to be called only after event loop tick
         stdout: Optional[int] = None, stderr: Optional[int] = None,
     ) -> None:
@@ -2389,8 +2381,8 @@ class Boss:
 
         def doit(activation_token: str = '') -> None:
             nonlocal env
-            pass_fds: List[int] = []
-            fds_to_close_on_launch_failure: List[int] = []
+            pass_fds: list[int] = []
+            fds_to_close_on_launch_failure: list[int] = []
             if allow_remote_control:
                 import socket
                 local, remote = socket.socketpair()
@@ -2522,7 +2514,7 @@ class Boss:
             return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
         return None
 
-    def _create_tab(self, args: List[str], cwd_from: Optional[CwdRequest] = None) -> None:
+    def _create_tab(self, args: list[str], cwd_from: Optional[CwdRequest] = None) -> None:
         as_neighbor = False
         if args and args[0].startswith('!'):
             as_neighbor = 'neighbor' in args[0][1:].split(',')
@@ -2537,14 +2529,14 @@ class Boss:
     def new_tab_with_cwd(self, *args: str) -> None:
         self._create_tab(list(args), cwd_from=CwdRequest(self.window_for_dispatch or self.active_window_for_cwd))
 
-    def new_tab_with_wd(self, wd: Union[str, List[str]], str_is_multiple_paths: bool = False) -> None:
+    def new_tab_with_wd(self, wd: Union[str, list[str]], str_is_multiple_paths: bool = False) -> None:
         if isinstance(wd, str):
             wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
             special_window = SpecialWindow(None, cwd=path)
             self._new_tab(special_window)
 
-    def _new_window(self, args: List[str], cwd_from: Optional[CwdRequest] = None) -> Optional[Window]:
+    def _new_window(self, args: list[str], cwd_from: Optional[CwdRequest] = None) -> Optional[Window]:
         if not self.os_window_map:
             os_window_id = self.add_os_window()
             tm = self.os_window_map.get(os_window_id)
@@ -2609,7 +2601,7 @@ class Boss:
     def disable_ligatures_in(self, where: Union[str, Iterable[Window]], strategy: int) -> None:
         w = self.window_for_dispatch or self.active_window
         if isinstance(where, str):
-            windows: List[Window] = []
+            windows: list[Window] = []
             if where == 'active':
                 if w:
                     windows = [w]
@@ -2626,7 +2618,7 @@ class Boss:
             window.screen.disable_ligatures = strategy
             window.refresh()
 
-    def patch_colors(self, spec: Dict[str, Optional[int]], configured: bool = False) -> None:
+    def patch_colors(self, spec: dict[str, Optional[int]], configured: bool = False) -> None:
         opts = get_options()
         if configured:
             for k, v in spec.items():
@@ -2697,7 +2689,7 @@ class Boss:
         old_opts = get_options()
         prev_paths = old_opts.all_config_paths or default_config_paths(self.args.config)
         paths = paths or prev_paths
-        bad_lines: List[BadLine] = []
+        bad_lines: list[BadLine] = []
         final_overrides = old_opts.config_overrides if apply_overrides else ()
         if overrides:
             final_overrides += tuple(overrides)
@@ -2755,10 +2747,10 @@ class Boss:
         def format_bad_line(bad_line: BadLine) -> str:
             return f'{bad_line.number}:{bad_line.exception} in line: {bad_line.line}\n'
 
-        groups: Dict[str, List[BadLine]] = {}
+        groups: dict[str, list[BadLine]] = {}
         for bl in bad_lines:
             groups.setdefault(bl.file, []).append(bl)
-        ans: List[str] = []
+        ans: list[str] = []
         a = ans.append
         for file in sorted(groups):
             if file:
@@ -2852,13 +2844,13 @@ class Boss:
         target_tab.make_active()
 
     def choose_entry(
-        self, title: str, entries: Iterable[Tuple[Union[_T, str, None], str]],
+        self, title: str, entries: Iterable[tuple[Union[_T, str, None], str]],
         callback: Callable[[Union[_T, str, None]], None],
         subtitle: str = '',
-        hints_args: Optional[Tuple[str, ...]] = None,
+        hints_args: Optional[tuple[str, ...]] = None,
     ) -> Optional[Window]:
         lines = [title, subtitle, ' '] if subtitle else [title, ' ']
-        idx_map: List[Union[_T, str, None]] = []
+        idx_map: list[Union[_T, str, None]] = []
         ans: Union[str, _T, None] = None
         fmt = ': {1}'
 
@@ -2869,7 +2861,7 @@ class Boss:
             else:
                 lines.append(fmt.format(len(idx_map), text))
 
-        def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
+        def done(data: dict[str, Any], target_window_id: int, self: Boss) -> None:
             nonlocal ans
             ans = idx_map[int(data['groupdicts'][0]['index'])]
 
@@ -2926,7 +2918,7 @@ class Boss:
             return self._move_window_to(target_tab_id=where)
         w = self.window_for_dispatch or self.active_window
         ct = w.tabref() if w else None
-        items: List[Tuple[Union[str, int], str]] = [(t.id, t.effective_title) for t in self.all_tabs if t is not ct]
+        items: list[tuple[Union[str, int], str]] = [(t.id, t.effective_title) for t in self.all_tabs if t is not ct]
         items.append(('new_tab', 'New tab'))
         items.append(('new_os_window', 'New OS Window'))
         target_window = w
@@ -2952,7 +2944,7 @@ class Boss:
         if not args or args[0] == 'new':
             return self._move_tab_to()
 
-        items: List[Tuple[Union[str, int], str]] = []
+        items: list[tuple[Union[str, int], str]] = []
         ct = self.active_tab_manager_with_dispatch
         for osw_id, tm in self.os_window_map.items():
             if tm is not ct and tm.active_tab:
@@ -2968,7 +2960,7 @@ class Boss:
 
         self.choose_entry('Choose an OS window to move the tab to', items, chosen)
 
-    def set_background_image(self, path: Optional[str], os_windows: Tuple[int, ...], configured: bool, layout: Optional[str], png_data: bytes = b'') -> None:
+    def set_background_image(self, path: Optional[str], os_windows: tuple[int, ...], configured: bool, layout: Optional[str], png_data: bytes = b'') -> None:
         set_background_image(path, os_windows, configured, layout, png_data)
         for os_window_id in os_windows:
             self.default_bg_changed_for(os_window_id)
@@ -2998,7 +2990,7 @@ class Boss:
     def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
         from .launch import force_window_launch
         from .open_actions import actions_for_launch
-        actions: List[KeyAction] = []
+        actions: list[KeyAction] = []
         failures = []
         for url in urls:
             uactions = tuple(actions_for_launch(url))

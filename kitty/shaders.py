@@ -2,9 +2,10 @@
 # License: GPLv3 Copyright: 2023, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+from collections.abc import Iterator
 from functools import lru_cache, partial
 from itertools import count
-from typing import Any, Callable, Dict, Iterator, Optional, Set
+from typing import Any, Callable, Optional
 
 from .constants import read_kitty_resource
 from .fast_data_types import (
@@ -48,7 +49,7 @@ class Program:
     def __init__(self, name: str, vertex_name: str = '', fragment_name: str = '') -> None:
         self.name = name
         self.filename_number_counter = count(self.filename_number_base + 1)
-        self.filename_map: Dict[str, int] = {}
+        self.filename_map: dict[str, int] = {}
         if Program.include_pat is None:
             Program.include_pat = re.compile(r'^#pragma\s+kitty_include_shader\s+<(.+?)>', re.MULTILINE)
         self.vertex_name = vertex_name or f'{name}_vertex.glsl'
@@ -58,7 +59,7 @@ class Program:
         self.vertex_sources = self.original_vertex_sources
         self.fragment_sources = self.original_fragment_sources
 
-    def _load_sources(self, name: str, seen: Set[str], level: int = 0) -> Iterator[str]:
+    def _load_sources(self, name: str, seen: set[str], level: int = 0) -> Iterator[str]:
         if level == 0:
             yield f'#version {GLSL_VERSION}\n'
         if name in seen:

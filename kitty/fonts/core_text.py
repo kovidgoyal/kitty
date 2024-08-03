@@ -4,8 +4,9 @@
 import itertools
 import operator
 from collections import defaultdict
+from collections.abc import Generator, Iterable, Sequence
 from functools import lru_cache
-from typing import Dict, Generator, Iterable, List, NamedTuple, Optional, Sequence, Tuple
+from typing import NamedTuple, Optional
 
 from kitty.fast_data_types import CTFace, coretext_all_fonts
 from kitty.typing import CoreTextFont
@@ -19,12 +20,12 @@ attr_map = {(False, False): 'font_family',
             (True, True): 'bold_italic_font'}
 
 
-FontMap = Dict[str, Dict[str, List[CoreTextFont]]]
+FontMap = dict[str, dict[str, list[CoreTextFont]]]
 
 
 def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
     ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}, 'variable_map': {}}
-    vmap: Dict[str, List[CoreTextFont]] = defaultdict(list)
+    vmap: dict[str, list[CoreTextFont]] = defaultdict(list)
     for x in all_fonts:
         f = family_name_to_key(x['family'])
         s = family_name_to_key(x['style'])
@@ -85,7 +86,7 @@ class WeightRange(NamedTuple):
 wr = WeightRange()
 
 
-@lru_cache()
+@lru_cache
 def weight_range_for_family(family: str) -> WeightRange:
     faces = all_fonts_map(True)['family_map'].get(family_name_to_key(family), ())
     mini, maxi, medium, bold = wr.minimum, wr.maximum, wr.medium, wr.bold
@@ -134,7 +135,7 @@ class CTScorer(Scorer):
         is_regular_width = not candidate['expanded'] and not candidate['condensed']
         return Score(variable_score, bold_score + italic_score, monospace_match, 0 if is_regular_width else 1)
 
-    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> List[DescriptorVar]:
+    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> list[DescriptorVar]:
         self.weight_range = None
         families = {x['family'] for x in candidates}
         if len(families) == 1:
@@ -201,7 +202,7 @@ def find_best_match(
     return candidates[0]
 
 
-def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
+def font_for_family(family: str) -> tuple[CoreTextFont, bool, bool]:
     ans = find_best_match(family, monospaced=False)
     return ans, ans['bold'], ans['italic']
 
@@ -212,7 +213,7 @@ def descriptor(f: ListedFont) -> CoreTextFont:
     return d
 
 
-def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
+def prune_family_group(g: list[ListedFont]) -> list[ListedFont]:
     # CoreText returns a separate font for every style in the variable font, so
     # merge them.
     variable_paths = {descriptor(f)['path']: False for f in g if f['is_variable']}
@@ -228,7 +229,7 @@ def prune_family_group(g: List[ListedFont]) -> List[ListedFont]:
     return [x for x in g if is_ok(descriptor(x))]
 
 
-def set_axis_values(tag_map: Dict[str, float], font: CoreTextFont, vd: VariableData) -> bool:
+def set_axis_values(tag_map: dict[str, float], font: CoreTextFont, vd: VariableData) -> bool:
     known_axes = {ax['tag'] for ax in vd['axes']}
     previous = font.get('axis_map', {})
     new = previous.copy()
@@ -256,5 +257,5 @@ def set_named_style(name: str, font: CoreTextFont, vd: VariableData) -> bool:
     return False
 
 
-def get_axis_values(font: CoreTextFont, vd: VariableData) -> Dict[str, float]:
+def get_axis_values(font: CoreTextFont, vd: VariableData) -> dict[str, float]:
     return font.get('axis_map', {})

@@ -642,8 +642,7 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     if (!ensure_csd_title_render_ctx()) return false;
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
-    unsigned px_sz = (unsigned)(global_state.callback_os_window->fonts_data->font_sz_in_pts * ydpi / 72.);
-    px_sz = MIN(px_sz, 3 * height / 4);
+    unsigned px_sz = 2 * height / 3;
     static char title[2048];
     if (!is_single_glyph) {
         snprintf(title, sizeof(title), " ❭ %s", text);
@@ -1407,7 +1406,15 @@ static PyObject *dbus_notification_callback = NULL;
 static PyObject*
 dbus_set_notification_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_CLEAR(dbus_notification_callback);
-    if (callback && callback != Py_None) { dbus_notification_callback = callback; Py_INCREF(callback); }
+    if (callback && callback != Py_None) {
+        dbus_notification_callback = callback; Py_INCREF(callback);
+        GLFWDBUSNotificationData d = {.timeout=-99999, .urgency=255};
+        if (!glfwDBusUserNotify) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
+            return NULL;
+        }
+        glfwDBusUserNotify(&d, NULL, NULL);
+    }
     Py_RETURN_NONE;
 }
 
@@ -1428,6 +1435,7 @@ dbus_user_notification_activated(uint32_t notification_id, int type, const char*
     switch (type) {
         case 0: stype = "closed"; break;
         case 1: stype = "activation_token"; break;
+        case -1: stype = "capabilities"; break;
     }
     send_dbus_notification_event_to_python(stype, nid, action);
 }
@@ -2077,10 +2085,11 @@ dbus_notification_created_callback(unsigned long long notification_id, uint32_t 
 static PyObject*
 dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     int timeout = -1, urgency = 1; unsigned int replaces = 0;
-    GLFWDBUSNotificationData d = {.action_name=""};
-    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "action_text", "timeout", "urgency", "replaces", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssss|siiI", (char**)kwlist,
-                &d.app_name, &d.icon, &d.summary, &d.body, &d.action_name, &timeout, &urgency, &replaces)) return NULL;
+    GLFWDBUSNotificationData d = {0};
+    static const char* kwlist[] = {"app_name", "app_icon", "title", "body", "actions", "timeout", "urgency", "replaces", "category", NULL};
+    PyObject *actions = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssssO!|iiIs", (char**)kwlist,
+        &d.app_name, &d.icon, &d.summary, &d.body, &PyDict_Type, &actions, &timeout, &urgency, &replaces, &d.category)) return NULL;
     if (!glfwDBusUserNotify) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
         return NULL;
@@ -2088,6 +2097,17 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     d.timeout = timeout;
     d.urgency = urgency & 3;
     d.replaces = replaces;
+    RAII_ALLOC(const char*, aclist, calloc(2*PyDict_Size(actions), sizeof(d.actions[0])));
+    if (!aclist) { return PyErr_NoMemory(); }
+    PyObject *key, *value; Py_ssize_t pos = 0;
+    d.num_actions = 0;
+    while (PyDict_Next(actions, &pos, &key, &value)) {
+        if (!PyUnicode_Check(key) || !PyUnicode_Check(value)) { PyErr_SetString(PyExc_TypeError, "actions must be strings"); return NULL; }
+        if (PyUnicode_GET_LENGTH(key) == 0 || PyUnicode_GET_LENGTH(value) == 0) { PyErr_SetString(PyExc_TypeError, "actions must be non-empty strings"); return NULL; }
+        aclist[d.num_actions] = PyUnicode_AsUTF8(key); if (!aclist[d.num_actions++]) return NULL;
+        aclist[d.num_actions] = PyUnicode_AsUTF8(value); if (!aclist[d.num_actions++]) return NULL;
+    }
+    d.actions = aclist;
     unsigned long long notification_id = glfwDBusUserNotify(&d, dbus_notification_created_callback, NULL);
     return PyLong_FromUnsignedLongLong(notification_id);
 }
