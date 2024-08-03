@@ -963,7 +963,9 @@ MP3 or WAV on macOS (NSSound).
 opt('linux_bell_theme', '__custom', ctype='!bell_theme',
     long_text='''
 The XDG Sound Theme kitty will use to play the bell sound.
-Defaults to the custom theme name used by GNOME and Budgie, falling back to the default freedesktop theme if it does not exist.
+Defaults to the custom theme name specified in the
+:link:`XDG Sound theme specification <https://specifications.freedesktop.org/sound-theme-spec/latest/sound_lookup.html>,
+falling back to the default freedesktop theme if it does not exist.
 To change your sound theme desktop wide, create :file:`~/.local/share/sounds/__custom/index.theme` with the contents:
 
     [Sound Theme]

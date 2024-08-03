@@ -5,7 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "data-types.h"
+#include "state.h"
 #include "safe-wrappers.h"
 #include "cleanup.h"
 #include "loop-utils.h"
@@ -249,9 +249,10 @@ play_canberra_sound(const char *which_sound, const char *event_id, bool is_path,
 }
 
 static PyObject*
-play_desktop_sound(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
+play_desktop_sound_async(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     const char *which, *event_id = "test sound";
-    const char *theme_name = "freedesktop";
+    const char *theme_name = OPT(bell_theme);
+    if (!theme_name || !theme_name[0]) theme_name = "__custom";
     int is_path = 0;
     static const char* kwlist[] = {"sound_name", "event_id", "is_path", "theme_name", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sps", (char**)kwlist, &which, &event_id, &is_path, &theme_name)) return NULL;
@@ -277,7 +278,7 @@ finalize(void) {
 static PyMethodDef module_methods[] = {
     METHODB(init_x11_startup_notification, METH_VARARGS),
     METHODB(end_x11_startup_notification, METH_VARARGS),
-    {"play_desktop_sound", (PyCFunction)(void(*)(void))play_desktop_sound, METH_VARARGS | METH_KEYWORDS, ""},
+    {"play_desktop_sound_async", (PyCFunction)(void(*)(void))play_desktop_sound_async, METH_VARARGS | METH_KEYWORDS, ""},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

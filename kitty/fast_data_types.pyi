@@ -556,6 +556,7 @@ def dbus_send_notification(
     urgency: int = 1,
     replaces: int = 0,
     category: str = '',
+    muted: bool = False,
 ) -> int:
     pass
 
@@ -572,6 +573,7 @@ def cocoa_send_notification(
     categories: tuple[MacOSNotificationCategory, ...],
     image_path: str = '',
     urgency: int = 1,
+    muted: bool = False,
 ) -> None:
     pass
 
@@ -1699,6 +1701,7 @@ def monotonic() -> float: ...
 def timed_debug_print(x: str) -> None: ...
 def opengl_version_string() -> str: ...
 def systemd_move_pid_into_new_scope(pid: int, scope_name: str, description: str) -> str: ...
+def play_desktop_sound_async(name: str, event_id: str = 'test sound', is_path: bool = False, theme_name: str = '') -> str: ...
 
 class MousePosition(TypedDict):
     cell_x: int
