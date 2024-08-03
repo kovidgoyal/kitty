@@ -532,3 +532,10 @@ Any string consisting solely of characters from the set ``[a-zA-Z0-9_-+.]``,
 that is, the letters ``a-z``, ``A-Z``, the underscore, the hyphen, the plus
 sign and the period. Applications should make these globally unique, like a
 UUID for maximum robustness.
+
+
+.. important::
+   Terminals **must** sanitize ids received from client programs before sending
+   them back in responses, to mitigate input injection based attacks. That is, they must
+   either reject ids containing characters not from the above set, or remove
+   bad characters when reading ids sent to them.
