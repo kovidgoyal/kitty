@@ -187,7 +187,6 @@ play_current_sound(void) {
             which_type, e.which_sound,
             "event.description", e.event_id,
             "media.role", e.media_role,
-            "canberra.cache-control", "permanent",
             "canberra.xdg-theme.name", e.theme_name,
             NULL
         );
