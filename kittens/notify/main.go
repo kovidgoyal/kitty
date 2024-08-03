@@ -68,6 +68,9 @@ func (p *parsed_data) create_metadata() string {
 	if p.opts.IconCacheId != "" {
 		ans = append(ans, "g="+p.opts.IconCacheId)
 	}
+	if p.opts.SoundName != "system" {
+		ans = append(ans, "s="+b64encode(p.opts.SoundName))
+	}
 	m := strings.Join(ans, ":")
 	if m != "" {
 		m = ":" + m

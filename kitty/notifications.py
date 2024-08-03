@@ -219,6 +219,7 @@ class NotificationCommand:
     notification_types: tuple[str, ...] = ()
     timeout: int = -2
     buttons: tuple[str, ...] = ()
+    sound_name: str = ''
 
     # event callbacks
     on_activation: Optional[Callable[['NotificationCommand', int], None]] = None
@@ -323,6 +324,11 @@ class NotificationCommand:
                         self.timeout = max(-1, int(v))
                     except Exception:
                         self.log('Ignoring invalid timeout in notification: {v!r}')
+                elif k == 's':
+                    try:
+                        self.sound_name = base64_decode(v).decode('utf-8')
+                    except Exception:
+                        self.log('Ignoring invalid sound name in notification: {v!r}')
         if not prev.done and prev.identifier == self.identifier:
             self.merge_metadata(prev)
         return payload_type, payload_is_encoded
@@ -347,6 +353,8 @@ class NotificationCommand:
             self.notification_types = prev.notification_types + self.notification_types
         if prev.buttons:
             self.buttons += prev.buttons
+        if not self.sound_name:
+            self.sound_name = prev.sound_name
         if self.timeout < -1:
             self.timeout = prev.timeout
         self.icon_path = prev.icon_path
@@ -411,6 +419,7 @@ class NotificationCommand:
         self.urgency = Urgency.Normal if self.urgency is None else self.urgency
         self.close_response_requested = bool(self.close_response_requested)
         self.timeout = max(-1, self.timeout)
+        self.sound_name = self.sound_name or 'system'
 
     def matches_rule_item(self, location:str, query:str) -> bool:
         import re
@@ -440,6 +449,8 @@ class DesktopIntegration:
     supports_close_events: bool = True
     supports_body: bool = True
     supports_buttons: bool = True
+    supports_sound: bool = True
+    supports_sound_names: str = 'xdg-names'
 
     def __init__(self, notification_manager: 'NotificationManager'):
         self.notification_manager = notification_manager
@@ -475,7 +486,8 @@ class DesktopIntegration:
         i = f'i={identifier or "0"}:'
         p = ','.join(x.value for x in PayloadType if x.value and self.payload_type_supported(x))
         c = ':c=1' if self.supports_close_events else ''
-        return f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}{c}:w=1'
+        s = 'silent' + (f',{self.supports_sound_names}' if self.supports_sound_names else '')
+        return f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}{c}:w=1:s={s}'
 
 
 class MacOSNotificationCategory(NamedTuple):
@@ -487,6 +499,7 @@ class MacOSNotificationCategory(NamedTuple):
 class MacOSIntegration(DesktopIntegration):
 
     supports_close_events: bool = False
+    supports_sound_names: str = ''
 
     def initialize(self) -> None:
         from .fast_data_types import cocoa_set_notification_activated_callback
@@ -583,6 +596,7 @@ class MacOSIntegration(DesktopIntegration):
         cocoa_send_notification(
             nc.application_name or 'kitty', str(desktop_notification_id), nc.title, body,
             category=category, categories=categories, image_path=image_path, urgency=nc.urgency.value,
+            muted=nc.sound_name == 'silent',
         )
         return desktop_notification_id
 
@@ -671,7 +685,13 @@ class FreeDesktopIntegration(DesktopIntegration):
         if len(self.dbus_to_desktop) > 128:
             k, v = self.dbus_to_desktop.popitem(False)
             self.desktop_to_dbus.pop(v, None)
-        self.notification_manager.notification_created(dbus_notification_id)
+        if n := self.notification_manager.notification_created(dbus_notification_id):
+            # self.supports_sound does not tell us if the notification server
+            # supports named sounds or not so we play the named sound
+            # ourselves and tell the server to mute any sound it might play.
+            if n.sound_name not in ('system', 'silent'):
+                from .fast_data_types import play_desktop_sound_async
+                play_desktop_sound_async(n.sound_name, event_id='desktop notification')
 
     def dispatch_event_from_desktop(self, event_type: str, dbus_notification_id: int, extra: Union[int, str]) -> None:
         if event_type == 'capabilities':
@@ -679,6 +699,7 @@ class FreeDesktopIntegration(DesktopIntegration):
             self.supports_body = 'body' in capabilities
             self.supports_buttons = 'actions' in capabilities
             self.supports_body_markup = 'body-markup' in capabilities
+            self.supports_sound = 'sound' in capabilities
             if debug_desktop_integration:
                 log_error('Got notification server capabilities:', capabilities)
             return
@@ -727,7 +748,9 @@ class FreeDesktopIntegration(DesktopIntegration):
             actions[str(i+1)] = b
         desktop_notification_id = dbus_send_notification(
             app_name=nc.application_name or 'kitty', app_icon=app_icon, title=nc.title, body=body, actions=actions,
-            timeout=nc.timeout, urgency=nc.urgency.value, replaces=replaces_dbus_id, category=(nc.notification_types or ('',))[0])
+            timeout=nc.timeout, urgency=nc.urgency.value, replaces=replaces_dbus_id,
+            category=(nc.notification_types or ('',))[0], muted=nc.sound_name == 'silent' or nc.sound_name != 'system',
+        )
         if debug_desktop_integration:
             log_error(f'Requested creation of notification with {desktop_notification_id=}')
         if existing_desktop_notification_id and replaces_dbus_id:
@@ -830,11 +853,13 @@ class NotificationManager:
         self.in_progress_notification_commands_by_client_id: dict[str, NotificationCommand] = {}
         self.pending_commands: dict[int, NotificationCommand] = {}
 
-    def notification_created(self, desktop_notification_id: int) -> None:
+    def notification_created(self, desktop_notification_id: int) -> NotificationCommand | None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             n.created_by_desktop = True
             if n.timeout > 0:
                 add_timer(partial(self.expire_notification, desktop_notification_id, id(n)), n.timeout / 1000, False)
+            return n
+        return None
 
     def notification_activation_token_received(self, desktop_notification_id: int, token: str) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):

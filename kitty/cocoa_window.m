@@ -464,7 +464,7 @@ live_delivered_notifications(void) {
 }
 
 static void
-schedule_notification(const char *appname, const char *identifier, const char *title, const char *body, const char *image_path, int urgency, const char *category_id) {@autoreleasepool {
+schedule_notification(const char *appname, const char *identifier, const char *title, const char *body, const char *image_path, int urgency, const char *category_id, bool muted) {@autoreleasepool {
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) return;
     // Configure the notification's payload.
@@ -473,7 +473,7 @@ schedule_notification(const char *appname, const char *identifier, const char *t
     if (body) content.body = @(body);
     if (appname) content.threadIdentifier = @(appname);
     if (category_id) content.categoryIdentifier = @(category_id);
-    content.sound = [UNNotificationSound defaultSound];
+    if (!muted) content.sound = [UNNotificationSound defaultSound];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
     switch (urgency) {
         case 0:
@@ -521,7 +521,7 @@ schedule_notification(const char *appname, const char *identifier, const char *t
 
 typedef struct {
     char *identifier, *title, *body, *appname, *image_path, *category_id;
-    int urgency;
+    int urgency; bool muted;
 } QueuedNotification;
 
 typedef struct {
@@ -531,13 +531,13 @@ typedef struct {
 static NotificationQueue notification_queue = {0};
 
 static void
-queue_notification(const char *appname, const char *identifier, const char *title, const char* body, const char *image_path, int urgency, const char *category_id) {
+queue_notification(const char *appname, const char *identifier, const char *title, const char* body, const char *image_path, int urgency, const char *category_id, bool muted) {
     ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
     QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
 #define d(x) n->x = (x && x[0]) ? strdup(x) : NULL;
     d(appname); d(identifier); d(title); d(body); d(image_path); d(category_id);
 #undef d
-    n->urgency = urgency;
+    n->urgency = urgency; n->muted = muted;
 }
 
 static void
@@ -545,7 +545,7 @@ drain_pending_notifications(BOOL granted) {
     if (granted) {
         for (size_t i = 0; i < notification_queue.count; i++) {
             QueuedNotification *n = notification_queue.notifications + i;
-            schedule_notification(n->appname, n->identifier, n->title, n->body, n->image_path, n->urgency, n->category_id);
+            schedule_notification(n->appname, n->identifier, n->title, n->body, n->image_path, n->urgency, n->category_id, n->muted);
         }
     }
     while(notification_queue.count) {
@@ -598,17 +598,17 @@ set_notification_categories(UNUserNotificationCenter *center, PyObject *categori
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     const char *identifier = "", *title = "", *body = "", *appname = "", *image_path = ""; int urgency = 1;
-    PyObject *category, *categories;
-    static const char* kwlist[] = {"appname", "identifier", "title", "body", "category", "categories", "image_path", "urgency", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssssOO!|si", (char**)kwlist,
-        &appname, &identifier, &title, &body, &category, &PyTuple_Type, &categories, &image_path, &urgency)) return NULL;
+    PyObject *category, *categories; int muted = 0;
+    static const char* kwlist[] = {"appname", "identifier", "title", "body", "category", "categories", "image_path", "urgency", "muted", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "ssssOO!|sip", (char**)kwlist,
+        &appname, &identifier, &title, &body, &category, &PyTuple_Type, &categories, &image_path, &urgency, &muted)) return NULL;
 
     UNUserNotificationCenter *center = get_notification_center_safely();
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
     if (PyObject_IsTrue(categories)) if (!set_notification_categories(center, categories)) return NULL;
     RAII_PyObject(category_id, PyObject_GetAttrString(category, "id"));
-    queue_notification(appname, identifier, title, body, image_path, urgency, PyUnicode_AsUTF8(category_id));
+    queue_notification(appname, identifier, title, body, image_path, urgency, PyUnicode_AsUTF8(category_id), muted);
 
     // The badge permission needs to be requested as well, even though it is not used,
     // otherwise macOS refuses to show the preference checkbox for enable/disable notification sound.

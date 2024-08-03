@@ -1055,7 +1055,7 @@ typedef struct GLFWLayerShellConfig {
 
 typedef struct GLFWDBUSNotificationData {
     const char *app_name, *icon, *summary, *body, *category, **actions; size_t num_actions;
-    int32_t timeout; uint8_t urgency; uint32_t replaces;
+    int32_t timeout; uint8_t urgency; uint32_t replaces; int muted;
 } GLFWDBUSNotificationData;
 
 /*! @brief The function pointer type for error callbacks.

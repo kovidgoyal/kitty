@@ -50,6 +50,14 @@ after the specified time has elapsed. The notification could be closed before by
 action or OS policy.
 
 
+--sound-name -s
+default=system
+The name of the sound to play with the notification. :code:`system` means let the
+notification system use whatever sound it wants. :code:`silent` means prevent
+any sound from being played. Any other value is passed to the desktop's notification system
+which may or may not honor it.
+
+
 --type -t
 The notification type. Can be any string, it is used by users to create filter rules
 for notifications, so choose something descriptive of the notification's purpose.

@@ -34,6 +34,9 @@ def main(nc: NotificationCommand) -> bool:
     if 'unwanted' in nc.title.lower():
         return True
 
+    # force the notification to be silent
+    nc.sound_name = 'silent'
+
     # filter out notifications from the application badapp
     if nc.application_name == 'badapp':
         return True

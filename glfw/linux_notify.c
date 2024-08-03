@@ -178,6 +178,7 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
 }
     append_sv_dictionary_entry("urgency", DBUS_TYPE_BYTE, n->urgency);
     if (n->category && n->category[0]) append_sv_dictionary_entry("category", DBUS_TYPE_STRING, n->category);
+    if (n->muted) append_sv_dictionary_entry("suppress-sound", DBUS_TYPE_BOOLEAN, n->muted);
 
     check_call(dbus_message_iter_close_container, &args, &array);
     APPEND(args, DBUS_TYPE_INT32, n->timeout)

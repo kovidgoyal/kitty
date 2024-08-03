@@ -14,11 +14,11 @@ from . import BaseTest
 
 def n(
     title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_names=(), icon_path='',
-    application_name='', notification_types=(), timeout=-1,
+    application_name='', notification_types=(), timeout=-1, sound='system',
 ):
     return {
         'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_names': icon_names, 'icon_path': icon_path,
-        'application_name': application_name, 'notification_types': notification_types, 'timeout': timeout
+        'application_name': application_name, 'notification_types': notification_types, 'timeout': timeout, 'sound': sound,
     }
 
 
@@ -53,7 +53,8 @@ class DesktopIntegration(DesktopIntegration):
             self.counter += 1
             did = self.counter
         title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
-        ans = n(title, body, urgency, did, cmd.icon_names, os.path.basename(cmd.icon_path), cmd.application_name, cmd.notification_types, timeout=cmd.timeout)
+        ans = n(title, body, urgency, did, cmd.icon_names, os.path.basename(cmd.icon_path), cmd.application_name,
+                cmd.notification_types, timeout=cmd.timeout, sound=cmd.sound_name)
         self.notifications.append(ans)
         return self.counter
 
@@ -235,10 +236,20 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
     assert_events()
     reset()
 
+    # test sounds
+    def enc(x):
+      return standard_b64encode(x.encode()).decode()
+
+    h(f's={enc("silent")};title')
+    self.ae(di.notifications, [n(sound='silent')])
+    h(f's={enc("custom")};title')
+    self.ae(di.notifications[-1], n(desktop_notification_id=2, sound='custom'))
+    reset()
+
     # Test querying
     h('i=xyz:p=?')
     self.assertFalse(di.notifications)
-    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive,buttons:c=1:w=1'
+    qr = 'a=focus,report:o=always,unfocused,invisible:u=0,1,2:p=title,body,?,close,icon,alive,buttons:c=1:w=1:s=silent,xdg-names'
     self.ae(ch.responses, [f'99;i=xyz:p=?;{qr}'])
     reset()
     h('p=?')
