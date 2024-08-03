@@ -12,6 +12,10 @@ from kitty.types import run_once
 def xdg_data_dirs() -> tuple[str, ...]:
     return tuple(os.environ.get('XDG_DATA_DIRS', '/usr/local/share/:/usr/share/').split(os.pathsep))
 
+@run_once
+def xdg_data_home() -> str:
+    return os.environ.get('XDG_DATA_HOME', os.path.expanduser('~/.local/share/'))
+
 
 @run_once
 def icon_dirs() -> list[str]:
@@ -20,6 +24,7 @@ def icon_dirs() -> list[str]:
         if os.path.isdir(x):
             ans.append(x)
 
+    a(os.path.join(xdg_data_home(), 'icons'))
     a(os.path.expanduser('~/.icons'))
     for x in xdg_data_dirs():
         a(os.path.join(x, 'icons'))
