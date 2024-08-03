@@ -62,7 +62,7 @@ allowing arbitrarily long text (terminal emulators are free to impose a sensible
 limit to avoid Denial-of-Service attacks). The size of the payload must be no
 longer than ``2048`` bytes, *before being encoded* or ``4096`` encoded bytes.
 
-Both the ``title`` and ``body`` payloads must be either :ref:`safe_utf8` text ,
+Both the ``title`` and ``body`` payloads must be either :ref:`safe_utf8` text
 or UTF-8 text that is :ref:`base64` encoded, in which case there must be an
 ``e=1`` key in the metadata to indicate the payload is :ref:`base64`
 encoded. No HTML or other markup in the plain text is allowed. It is strictly
