@@ -150,7 +150,7 @@ func GetChoices(o *Options) (response string, err error) {
 
 	ctx := style.Context{AllowEscapeCodes: true}
 
-	draw_choice_boxes := func(y, screen_width, screen_height int, choices ...Choice) {
+	draw_choice_boxes := func(y, screen_width, _ int, choices ...Choice) {
 		clickable_ranges = map[string][]Range{}
 		width := screen_width - 2
 		current_line_length := 0
@@ -402,7 +402,7 @@ func GetChoices(o *Options) (response string, err error) {
 		if ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("ctrl+c") {
 			ev.Handled = true
 			lp.Quit(1)
-		} else if ev.MatchesPressOrRepeat("enter") {
+		} else if ev.MatchesPressOrRepeat("enter") || ev.MatchesPressOrRepeat("kp_enter") {
 			ev.Handled = true
 			response = response_on_accept
 			lp.Quit(0)
