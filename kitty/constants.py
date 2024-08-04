@@ -204,6 +204,16 @@ standard_icon_names = {
     'text-editor': ('utilities-text-editor', '📄'),
 }
 
+# See https://github.com/TUNER88/iOSSystemSoundsLibrary for Apple's system
+# sound ids not all of which are available on macOS.
+standard_sound_names = {
+    'error': ('dialog-error', 1),
+    'info': ('dialog-information', 2),
+    'warning': ('dialog-warning', 3),
+    'warn': ('dialog-warning', 3),
+    'question': ('dialog-question', 4),
+}
+
 
 def glfw_path(module: str) -> str:
     prefix = 'kitty.' if getattr(sys, 'frozen', False) else ''

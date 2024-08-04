@@ -12,7 +12,7 @@ from itertools import count
 from typing import Any, Callable, NamedTuple, Optional, Set, Union
 from weakref import ReferenceType, ref
 
-from .constants import cache_dir, config_dir, is_macos, logo_png_file, standard_icon_names
+from .constants import cache_dir, config_dir, is_macos, logo_png_file, standard_icon_names, standard_sound_names
 from .fast_data_types import ESC_OSC, StreamingBase64Decoder, add_timer, base64_decode, current_focused_os_window_id, get_boss, get_options
 from .types import run_once
 from .typing import WindowType
@@ -486,7 +486,7 @@ class DesktopIntegration:
         i = f'i={identifier or "0"}:'
         p = ','.join(x.value for x in PayloadType if x.value and self.payload_type_supported(x))
         c = ':c=1' if self.supports_close_events else ''
-        s = 'silent' + (f',{self.supports_sound_names}' if self.supports_sound_names else '')
+        s = 'system,silent,' + ','.join(sorted(standard_sound_names))
         return f'99;{i}p=?;a={actions}:o={when}:u={urgency}:p={p}{c}:w=1:s={s}'
 
 
@@ -596,7 +596,7 @@ class MacOSIntegration(DesktopIntegration):
         cocoa_send_notification(
             nc.application_name or 'kitty', str(desktop_notification_id), nc.title, body,
             category=category, categories=categories, image_path=image_path, urgency=nc.urgency.value,
-            muted=nc.sound_name == 'silent',
+            muted=nc.sound_name == 'silent' or nc.sound_name in standard_sound_names,
         )
         return desktop_notification_id
 
@@ -616,9 +616,12 @@ class MacOSIntegration(DesktopIntegration):
             log_error(f'Got unexpected notification activated event with id: {ident!r} from cocoa')
             return
         if event == 'created':
-            self.notification_manager.notification_created(desktop_notification_id)
+            n = self.notification_manager.notification_created(desktop_notification_id)
             from .fast_data_types import cocoa_live_delivered_notifications
             cocoa_live_delivered_notifications()  # so that we purge dead notifications
+            if n and n.sound_name in standard_sound_names:
+                from .fast_data_types import cocoa_play_system_sound_by_id_async
+                cocoa_play_system_sound_by_id_async(standard_sound_names[n.sound_name][1])
         elif event == 'activated':
             self.notification_manager.notification_activated(desktop_notification_id, 0)
         elif event == 'creation_failed':
@@ -690,8 +693,9 @@ class FreeDesktopIntegration(DesktopIntegration):
             # supports named sounds or not so we play the named sound
             # ourselves and tell the server to mute any sound it might play.
             if n.sound_name not in ('system', 'silent'):
+                sn = standard_sound_names[n.sound_name][0] if n.sound_name in standard_sound_names else n.sound_name
                 from .fast_data_types import play_desktop_sound_async
-                play_desktop_sound_async(n.sound_name, event_id='desktop notification')
+                play_desktop_sound_async(sn, event_id='desktop notification')
 
     def dispatch_event_from_desktop(self, event_type: str, dbus_notification_id: int, extra: Union[int, str]) -> None:
         if event_type == 'capabilities':

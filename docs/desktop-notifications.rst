@@ -343,13 +343,25 @@ By default, notifications may or may not have a sound associated with them
 depending on the policies of the OS notifications service. Sometimes it
 might be useful to ensure a notification is not accompanied by a sound.
 This can be done by using the ``s`` key which accepts :ref:`base64` encoded
-UTF-8 text as its value. Using a value of ``silent`` means the notification
-will not be accompanied with a sound. A value of ``system`` (the default)
-means that the OS notifications default policies are followed. Any other name
-is implementation dependent. For example, on Linux, one can use the `standard
-sound names
-<https://specifications.freedesktop.org/sound-naming-spec/latest/#names>`__.
-Support for sounds can be queried as described below.
+UTF-8 text as its value. The set of known sounds names is in the table below,
+any other names are implementation dependent, for instance, on Linux, terminal emulators will
+probably support the `standard sound names
+<https://specifications.freedesktop.org/sound-naming-spec/latest/#names>`__
+
+.. table:: Standard sound names
+
+   ======================== ==============================================
+   Name                     Description
+   ======================== ==============================================
+   ``system``               The default system sound for a notification, which may be some kind of beep or just silence
+   ``silent``               No sound must accompany the notification
+   ``error``                A sound associated with error messages
+   ``warn``, ``warning``    A sound associated with warning messages
+   ``info``                 A sound associated with information messages
+   ``question``             A sound associated with questions
+   ======================== ==============================================
+
+Support for sound names can be queried as described below.
 
 
 Querying for support
@@ -391,11 +403,9 @@ Key      Value
          ``p`` key that the terminal implements). These must contain at least
          ``title``.
 
-``s``    Comma separated list of keywords ``silent`` and ``xdg-names`` indicating
-         support for silent notifications and for passing of `Freedesktop
-         standard sound names
-         <https://specifications.freedesktop.org/sound-naming-spec/latest/#names>`__ to the
-         desktop notification service for custom sounds.
+``s``    Comma separated list of sound names from the table of standard sound names above.
+         Terminals will report the list of standard sound names they support.
+         Terminals *should* support atleast ``system`` and ``silent``.
 
 ``u``    Comma separated list of urgency values that the terminal implements.
          If urgency is not supported, the ``u`` key must be absent from the

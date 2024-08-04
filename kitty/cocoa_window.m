@@ -13,6 +13,7 @@
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
 #include <UserNotifications/UserNotifications.h>
+#import <AudioToolbox/AudioServices.h>
 
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
@@ -1185,7 +1186,15 @@ bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autor
     return convert_image_to_png(icon, image_size, output_path);
 }}
 
+static PyObject*
+play_system_sound_by_id_async(PyObject *self UNUSED, PyObject *which) {
+    if (!PyLong_Check(which)) { PyErr_SetString(PyExc_TypeError, "system sound id must be an integer"); return NULL; }
+    AudioServicesPlaySystemSound(PyLong_AsUnsignedLong(which));
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
+    {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
     {"cocoa_send_notification", (PyCFunction)(void(*)(void))cocoa_send_notification, METH_VARARGS | METH_KEYWORDS, ""},
