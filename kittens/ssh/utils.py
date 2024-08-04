@@ -74,7 +74,7 @@ def patch_cmdline(key: str, val: str, argv: List[str]) -> None:
             argv[i] = f'--kitten={key}={val}'
             return
         elif i > 0 and argv[i-1] == '--kitten' and (arg.startswith(f'{key}=') or arg.startswith(f'{key} ')):
-            argv[i] = val
+            argv[i] = f'{key}={val}'
             return
     idx = argv.index('ssh')
     argv.insert(idx + 1, f'--kitten={key}={val}')
