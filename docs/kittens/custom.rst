@@ -348,6 +348,14 @@ See `the code <https://github.com/kovidgoyal/kitty/tree/master/kittens/diff>`__
 for the builtin :doc:`diff kitten </kittens/diff>` for examples of creating more
 options and keyboard shortcuts.
 
+
+Developing builtin kittens for inclusion with kitty
+----------------------------------------------------------
+
+There is documentation for :doc:`developing-builtin-kittens` which are written in the Go
+language.
+
+
 .. _external_kittens:
 
 Kittens created by kitty users
