@@ -314,17 +314,21 @@ def go_field_type(json_field_type: str) -> str:
 
 class JSONField:
 
-    def __init__(self, line: str) -> None:
+    def __init__(self, line: str, field_to_option_map: dict[str, str], option_map: dict[str, GoOption]) -> None:
         field_def = line.split(':', 1)[0]
         self.required = False
         self.field, self.field_type = field_def.split('/', 1)
+        self.go_option_name = field_to_option_map.get(self.field, self.field)
+        self.go_option_name = ''.join(x.capitalize() for x in self.go_option_name.split('_'))
+        self.omitempty = True
+        if fo := option_map.get(self.go_option_name):
+            if fo.type in ('int', 'float') and float(fo.default or 0) != 0:
+                self.omitempty = False
         self.field_type, self.special_parser = self.field_type.partition('=')[::2]
-        self.field_type, self.metadata = self.field_type.partition('-')[::2]
         if self.field.endswith('+'):
             self.required = True
             self.field = self.field[:-1]
         self.struct_field_name = self.field[0].upper() + self.field[1:]
-        self.omitempty = 'noomitempty' not in self.metadata
 
     def go_declaration(self) -> str:
         omitempty = ',omitempty' if self.omitempty else ''
@@ -351,7 +355,7 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
         line = line.strip()
         if ':' not in line:
             continue
-        f = JSONField(line)
+        f = JSONField(line, cmd.field_to_option_map or {}, option_map)
         json_fields.append(f)
         field_types[f.field] = f.field_type
         jd.append(f.go_declaration())
@@ -362,11 +366,9 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
     unhandled = {}
     used_options = set()
     for field in json_fields:
-        oq = (cmd.field_to_option_map or {}).get(field.field, field.field)
-        oq = ''.join(x.capitalize() for x in oq.split('_'))
-        if oq in option_map:
-            o = option_map[oq]
-            used_options.add(oq)
+        if field.go_option_name in option_map:
+            o = option_map[field.go_option_name]
+            used_options.add(field.go_option_name)
             optstring = f'options_{name}.{o.go_var_name}'
             if field.special_parser:
                 optstring = f'{field.special_parser}({optstring})'
