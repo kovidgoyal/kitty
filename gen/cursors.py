@@ -4,7 +4,6 @@
 import os
 import subprocess
 import sys
-from typing import List
 
 if __name__ == '__main__' and not __package__:
     import __main__
@@ -58,7 +57,7 @@ grabbing      grabbing       grabbing,closedhand,dnd-none              grabbing 
 '''
 
 
-def main(args: List[str]=sys.argv) -> None:
+def main(args: list[str]=sys.argv) -> None:
     glfw_enum = []
     css_names = []
     glfw_xc_map = {}

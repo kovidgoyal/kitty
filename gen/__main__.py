@@ -4,10 +4,9 @@
 
 import os
 import sys
-from typing import List
 
 
-def main(args: List[str]=sys.argv) -> None:
+def main(args: list[str]=sys.argv) -> None:
     os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     sys.path.insert(0, os.getcwd())
     if len(args) == 1:

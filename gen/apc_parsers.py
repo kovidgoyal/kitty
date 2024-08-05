@@ -5,18 +5,18 @@ import os
 import subprocess
 import sys
 from collections import defaultdict
-from typing import Any, DefaultDict, Dict, FrozenSet, List, Tuple, Union
+from typing import Any, DefaultDict, Union
 
 if __name__ == '__main__' and not __package__:
     import __main__
     __main__.__package__ = 'gen'
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-KeymapType = Dict[str, Tuple[str, Union[FrozenSet[str], str]]]
+KeymapType = dict[str, tuple[str, Union[frozenset[str], str]]]
 
 
-def resolve_keys(keymap: KeymapType) -> DefaultDict[str, List[str]]:
-    ans: DefaultDict[str, List[str]] = defaultdict(list)
+def resolve_keys(keymap: KeymapType) -> DefaultDict[str, list[str]]:
+    ans: DefaultDict[str, list[str]] = defaultdict(list)
     for ch, (attr, atype) in keymap.items():
         if isinstance(atype, str) and atype in ('int', 'uint'):
             q = atype
@@ -45,7 +45,7 @@ def parse_key(keymap: KeymapType) -> str:
     return '        \n'.join(lines)
 
 
-def parse_flag(keymap: KeymapType, type_map: Dict[str, Any], command_class: str) -> str:
+def parse_flag(keymap: KeymapType, type_map: dict[str, Any], command_class: str) -> str:
     lines = []
     for ch in type_map['flag']:
         attr, allowed_values = keymap[ch]
@@ -63,14 +63,14 @@ def parse_flag(keymap: KeymapType, type_map: Dict[str, Any], command_class: str)
     return '        \n'.join(lines)
 
 
-def parse_number(keymap: KeymapType) -> Tuple[str, str]:
+def parse_number(keymap: KeymapType) -> tuple[str, str]:
     int_keys = [f'I({attr})' for attr, atype in keymap.values() if atype == 'int']
     uint_keys = [f'U({attr})' for attr, atype in keymap.values() if atype == 'uint']
     return '; '.join(int_keys), '; '.join(uint_keys)
 
 
-def cmd_for_report(report_name: str, keymap: KeymapType, type_map: Dict[str, Any], payload_allowed: bool) -> str:
-    def group(atype: str, conv: str) -> Tuple[str, str]:
+def cmd_for_report(report_name: str, keymap: KeymapType, type_map: dict[str, Any], payload_allowed: bool) -> str:
+    def group(atype: str, conv: str) -> tuple[str, str]:
         flag_fmt, flag_attrs = [], []
         cv = {'flag': 'c', 'int': 'i', 'uint': 'I'}[atype]
         for ch in type_map[atype]:
@@ -293,7 +293,7 @@ def graphics_parser() -> None:
     write_header(text, 'kitty/parse-graphics-command.h')
 
 
-def main(args: List[str]=sys.argv) -> None:
+def main(args: list[str]=sys.argv) -> None:
     graphics_parser()
 
 

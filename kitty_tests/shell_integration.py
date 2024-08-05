@@ -19,7 +19,7 @@ from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_en
 from . import BaseTest
 
 
-@lru_cache()
+@lru_cache
 def bash_ok():
     v = shutil.which('bash')
     if not v:

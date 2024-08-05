@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 from functools import lru_cache, partial
 from html.entities import html5
@@ -14,14 +15,7 @@ from operator import itemgetter
 from typing import (
     Callable,
     DefaultDict,
-    Dict,
-    FrozenSet,
-    Generator,
-    Iterable,
-    List,
     Optional,
-    Set,
-    Tuple,
     Union,
 )
 from urllib.request import urlopen
@@ -58,7 +52,7 @@ def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
 
 
 @lru_cache(maxsize=2)
-def unicode_version() -> Tuple[int, int, int]:
+def unicode_version() -> tuple[int, int, int]:
     for line in get_data("ReadMe.txt"):
         m = re.search(r'Version\s+(\d+)\.(\d+)\.(\d+)', line)
         if m is not None:
@@ -67,16 +61,16 @@ def unicode_version() -> Tuple[int, int, int]:
 
 
 # Map of class names to set of codepoints in class
-class_maps: Dict[str, Set[int]] = {}
-all_symbols: Set[int] = set()
-name_map: Dict[int, str] = {}
-word_search_map: DefaultDict[str, Set[int]] = defaultdict(set)
+class_maps: dict[str, set[int]] = {}
+all_symbols: set[int] = set()
+name_map: dict[int, str] = {}
+word_search_map: DefaultDict[str, set[int]] = defaultdict(set)
 soft_hyphen = 0xad
 flag_codepoints = frozenset(range(0x1F1E6, 0x1F1E6 + 26))
 # See https://github.com/harfbuzz/harfbuzz/issues/169
 marks = set(emoji_skin_tone_modifiers) | flag_codepoints
 not_assigned = set(range(0, sys.maxunicode))
-property_maps: Dict[str, Set[int]] = defaultdict(set)
+property_maps: dict[str, set[int]] = defaultdict(set)
 
 
 def parse_prop_list() -> None:
@@ -118,7 +112,7 @@ def parse_ucd() -> None:
         category = parts[2]
         s = class_maps.setdefault(category, set())
         desc = parts[1]
-        codepoints: Union[Tuple[int, ...], Iterable[int]] = (codepoint,)
+        codepoints: Union[tuple[int, ...], Iterable[int]] = (codepoint,)
         if first is None:
             if desc.endswith(', First>'):
                 first = codepoint
@@ -159,7 +153,7 @@ def parse_ucd() -> None:
     word_search_map['diamond'] |= word_search_map['gem']
 
 
-def parse_range_spec(spec: str) -> Set[int]:
+def parse_range_spec(spec: str) -> set[int]:
     spec = spec.strip()
     if '..' in spec:
         chars_ = tuple(map(lambda x: int(x, 16), filter(None, spec.split('.'))))
@@ -169,17 +163,17 @@ def parse_range_spec(spec: str) -> Set[int]:
     return chars
 
 
-def split_two(line: str) -> Tuple[Set[int], str]:
+def split_two(line: str) -> tuple[set[int], str]:
     spec, rest = line.split(';', 1)
     spec, rest = spec.strip(), rest.strip().split(' ', 1)[0].strip()
     return parse_range_spec(spec), rest
 
 
-all_emoji: Set[int] = set()
-emoji_presentation_bases: Set[int] = set()
-narrow_emoji: Set[int] = set()
-wide_emoji: Set[int] = set()
-flags: Dict[int, List[int]] = {}
+all_emoji: set[int] = set()
+emoji_presentation_bases: set[int] = set()
+narrow_emoji: set[int] = set()
+wide_emoji: set[int] = set()
+flags: dict[int, list[int]] = {}
 
 
 def parse_basic_emoji(spec: str) -> None:
@@ -243,13 +237,13 @@ def parse_emoji() -> None:
             parse_emoji_modifier_sequence(data)
 
 
-doublewidth: Set[int] = set()
-ambiguous: Set[int] = set()
+doublewidth: set[int] = set()
+ambiguous: set[int] = set()
 
 
 def parse_eaw() -> None:
     global doublewidth, ambiguous
-    seen: Set[int] = set()
+    seen: set[int] = set()
     for line in get_data('ucd/EastAsianWidth.txt'):
         chars, eaw = split_two(line)
         if eaw == 'A':
@@ -265,7 +259,7 @@ def parse_eaw() -> None:
     doublewidth |= set(range(0x30000, 0x3FFFD + 1)) - seen
 
 
-def get_ranges(items: List[int]) -> Generator[Union[int, Tuple[int, int]], None, None]:
+def get_ranges(items: list[int]) -> Generator[Union[int, tuple[int, int]], None, None]:
     items.sort()
     for k, g in groupby(enumerate(items), lambda m: m[0]-m[1]):
         group = tuple(map(itemgetter(1), g))
@@ -276,7 +270,7 @@ def get_ranges(items: List[int]) -> Generator[Union[int, Tuple[int, int]], None,
             yield a, b
 
 
-def write_case(spec: Union[Tuple[int, ...], int], p: Callable[..., None], for_go: bool = False) -> None:
+def write_case(spec: Union[tuple[int, ...], int], p: Callable[..., None], for_go: bool = False) -> None:
     if isinstance(spec, tuple):
         if for_go:
             v = ', '.join(f'0x{x:x}' for x in range(spec[0], spec[1] + 1))
@@ -332,13 +326,13 @@ def category_test(
     classes: Iterable[str],
     comment: str,
     use_static: bool = False,
-    extra_chars: Union[FrozenSet[int], Set[int]] = frozenset(),
-    exclude: Union[Set[int], FrozenSet[int]] = frozenset(),
+    extra_chars: Union[frozenset[int], set[int]] = frozenset(),
+    exclude: Union[set[int], frozenset[int]] = frozenset(),
     least_check_return: Optional[str] = None,
     ascii_range: Optional[str] = None
 ) -> None:
     static = 'static inline ' if use_static else ''
-    chars: Set[int] = set()
+    chars: set[int] = set()
     for c in classes:
         chars |= class_maps[c]
     chars |= extra_chars
@@ -358,7 +352,7 @@ def category_test(
     p('\treturn false;\n}\n')
 
 
-def codepoint_to_mark_map(p: Callable[..., None], mark_map: List[int]) -> Dict[int, int]:
+def codepoint_to_mark_map(p: Callable[..., None], mark_map: list[int]) -> dict[int, int]:
     p('\tswitch(c) { // {{{')
     rmap = {c: m for m, c in enumerate(mark_map)}
     for spec in get_ranges(mark_map):
@@ -374,7 +368,7 @@ def codepoint_to_mark_map(p: Callable[..., None], mark_map: List[int]) -> Dict[i
 
 
 def classes_to_regex(classes: Iterable[str], exclude: str = '', for_go: bool = True) -> Iterable[str]:
-    chars: Set[int] = set()
+    chars: set[int] = set()
     for c in classes:
         chars |= class_maps[c]
     for x in map(ord, exclude):
@@ -451,7 +445,7 @@ def gen_ucd() -> None:
 
 
 def gen_names() -> None:
-    aliases_map: Dict[int, Set[str]] = {}
+    aliases_map: dict[int, set[str]] = {}
     for word, codepoints in word_search_map.items():
         for cp in codepoints:
             aliases_map.setdefault(cp, set()).add(word)
@@ -470,10 +464,10 @@ def gen_names() -> None:
 
 
 def gen_wcwidth() -> None:
-    seen: Set[int] = set()
+    seen: set[int] = set()
     non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
 
-    def add(p: Callable[..., None], comment: str, chars_: Union[Set[int], FrozenSet[int]], ret: int, for_go: bool = False) -> None:
+    def add(p: Callable[..., None], comment: str, chars_: Union[set[int], frozenset[int]], ret: int, for_go: bool = False) -> None:
         chars = chars_ - seen
         seen.update(chars)
         p(f'\t\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
@@ -582,7 +576,7 @@ def gen_rowcolumn_diacritics() -> None:
     subprocess.check_call(['gofmt', '-w', '-s', go_file])
 
 
-def main(args: List[str]=sys.argv) -> None:
+def main(args: list[str]=sys.argv) -> None:
     parse_ucd()
     parse_prop_list()
     parse_emoji()

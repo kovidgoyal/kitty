@@ -592,7 +592,7 @@ class TestDataTypes(BaseTest):
         for x in ('\x1b[201~ab\x9b201~cd', '\x1b[201\x1b[201~~ab'):  # ]]]
             q = sanitize_for_bracketed_paste(x.encode('utf-8'))
             self.assertNotIn(b'\x1b[201~', q)
-            self.assertNotIn('\x9b201~'.encode('utf-8'), q)
+            self.assertNotIn('\x9b201~'.encode(), q)
             self.assertIn(b'ab', q)
 
     def test_expand_ansi_c_escapes(self):

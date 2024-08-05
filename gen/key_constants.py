@@ -6,7 +6,7 @@ import string
 import subprocess
 import sys
 from pprint import pformat
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 if __name__ == '__main__' and not __package__:
     import __main__
@@ -194,11 +194,11 @@ macos_ansi_key_codes = {  # {{{
     0x31: ord(' '),
 }  # }}}
 
-functional_key_names: List[str] = []
-name_to_code: Dict[str, int] = {}
-name_to_xkb: Dict[str, str] = {}
-name_to_vk: Dict[str, int] = {}
-name_to_macu: Dict[str, str] = {}
+functional_key_names: list[str] = []
+name_to_code: dict[str, int] = {}
+name_to_xkb: dict[str, str] = {}
+name_to_vk: dict[str, int] = {}
+name_to_macu: dict[str, str] = {}
 start_code = 0xe000
 for line in functional_key_defs.splitlines():
     line = line.strip()
@@ -254,11 +254,11 @@ def patch_file(path: str, what: str, text: str, start_marker: str = '/* ', end_m
         subprocess.check_call(['go', 'fmt', path])
 
 
-def serialize_dict(x: Dict[Any, Any]) -> str:
+def serialize_dict(x: dict[Any, Any]) -> str:
     return pformat(x, indent=4).replace('{', '{\n ', 1)
 
 
-def serialize_go_dict(x: Union[Dict[str, int], Dict[int, str], Dict[int, int]]) -> str:
+def serialize_go_dict(x: Union[dict[str, int], dict[int, str], dict[int, int]]) -> str:
     ans = []
 
     def s(x: Union[int, str]) -> str:
@@ -332,7 +332,7 @@ def generate_functional_table() -> None:
     patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
     code_to_name = {v: k.upper() for k, v in name_to_code.items()}
     csi_map = {v: name_to_code[k] for k, v in functional_encoding_overrides.items()}
-    letter_trailer_codes: Dict[str, int] = {
+    letter_trailer_codes: dict[str, int] = {
         v: functional_encoding_overrides.get(k, name_to_code.get(k, 0))
         for k, v in different_trailer_functionals.items() if v in 'ABCDEHFPQRSZ'}
     text = f'functional_key_number_to_name_map = {serialize_dict(code_to_name)}'
@@ -377,7 +377,7 @@ def generate_legacy_text_key_maps() -> None:
     patch_file('kitty_tests/keys.py', 'legacy letter tests', '\n'.join(tests), start_marker='# ', end_marker='')
 
 
-def chunks(lst: List[Any], n: int) -> Any:
+def chunks(lst: list[Any], n: int) -> Any:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
@@ -427,7 +427,7 @@ def generate_macos_mapping() -> None:
     patch_file('glfw/cocoa_window.m', 'functional to macu', '\n'.join(lines))
 
 
-def main(args: List[str]=sys.argv) -> None:
+def main(args: list[str]=sys.argv) -> None:
     generate_glfw_header()
     generate_xkb_mapping()
     generate_functional_table()

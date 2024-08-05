@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 import sys
-from typing import List
 
 from kitty.conf.generate import write_output
 
@@ -16,7 +15,7 @@ if __name__ == '__main__' and not __package__:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def patch_color_list(path: str, colors: List[str], name: str, spc: str = '    ') -> None:
+def patch_color_list(path: str, colors: list[str], name: str, spc: str = '    ') -> None:
     with open(path, 'r+') as f:
         raw = f.read()
         colors = sorted(colors)
@@ -40,7 +39,7 @@ def patch_color_list(path: str, colors: List[str], name: str, spc: str = '    ')
                 subprocess.check_call(['gofmt', '-w', path])
 
 
-def main(args: List[str]=sys.argv) -> None:
+def main(args: list[str]=sys.argv) -> None:
     from kitty.options.definition import definition
     nullable_colors = []
     all_colors = []

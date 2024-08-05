@@ -46,7 +46,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         def t(cmdline, binary='ssh', host='main', port=None, identity_file='', extra_args=()):
             if identity_file:
                 identity_file = os.path.abspath(identity_file)
-            en = set(f'{x[0]}' for x in extra_args)
+            en = {f'{x[0]}' for x in extra_args}
             q = get_connection_data(cmdline.split(), extra_args=en)
             self.ae(q, SSHConnectionData(binary, host, port, identity_file, extra_args))
 
@@ -59,7 +59,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.assertTrue(runtime_dir())
 
     @property
-    @lru_cache()
+    @lru_cache
     def all_possible_sh(self):
         python = 'python3' if shutil.which('python3') else 'python'
         return tuple(filter(shutil.which, ('dash', 'zsh', 'bash', 'posh', 'sh', python)))
@@ -102,7 +102,7 @@ copy --exclude **/w.* --exclude **/r d1
                 self.assertTrue(os.path.exists(f'{remote_home}/{tname}/78/xterm-kitty'))
                 self.assertTrue(os.path.exists(f'{remote_home}/{tname}/x/xterm-kitty'))
                 for w in ('simple-file', 'a/sfa', 's2'):
-                    with open(os.path.join(remote_home, w), 'r') as f:
+                    with open(os.path.join(remote_home, w)) as f:
                         self.ae(f.read(), simple_data)
                     self.assertFalse(os.path.islink(f.name))
                 self.assertTrue(os.path.lexists(f'{remote_home}/d1/y'))
