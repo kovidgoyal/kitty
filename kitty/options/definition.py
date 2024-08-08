@@ -302,7 +302,7 @@ place your value after the lines where the theme file is included.
 opt('cursor_shape', 'block',
     option_type='to_cursor_shape', ctype='int',
     long_text='''
-The cursor shape can be one of :code:`block`, :code:`beam`, :code:`underline`.
+The cursor shape can be one of :code:`block`, :code:`beam`, :code:`underline`, :code:`hollow`.
 Note that when reloading the config this will be changed only if the cursor
 shape has not been set by the program running in the terminal. This sets the
 default cursor shape, applications running in the terminal can override it. In

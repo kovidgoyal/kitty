@@ -524,7 +524,8 @@ def cursor_text_color(x: str) -> Optional[Color]:
 cshapes = {
     'block': CURSOR_BLOCK,
     'beam': CURSOR_BEAM,
-    'underline': CURSOR_UNDERLINE
+    'underline': CURSOR_UNDERLINE,
+    'hollow': NO_CURSOR_SHAPE
 }
 cshapes_unfocused = {
     'block': CURSOR_BLOCK,
