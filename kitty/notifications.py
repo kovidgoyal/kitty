@@ -451,6 +451,7 @@ class DesktopIntegration:
     supports_buttons: bool = True
     supports_sound: bool = True
     supports_sound_names: str = 'xdg-names'
+    supports_timeout_natively: bool = True
 
     def __init__(self, notification_manager: 'NotificationManager'):
         self.notification_manager = notification_manager
@@ -500,6 +501,7 @@ class MacOSIntegration(DesktopIntegration):
 
     supports_close_events: bool = False
     supports_sound_names: str = ''
+    supports_timeout_natively: bool = False
 
     def initialize(self) -> None:
         from .fast_data_types import cocoa_set_notification_activated_callback
@@ -860,7 +862,7 @@ class NotificationManager:
     def notification_created(self, desktop_notification_id: int) -> Optional[NotificationCommand]:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             n.created_by_desktop = True
-            if n.timeout > 0:
+            if n.timeout > 0 and not self.desktop_integration.supports_timeout_natively:
                 add_timer(partial(self.expire_notification, desktop_notification_id, id(n)), n.timeout / 1000, False)
             return n
         return None
