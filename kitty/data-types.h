@@ -31,10 +31,10 @@
 #define LIKELY(x)    __builtin_expect (!!(x), 1)
 #define UNLIKELY(x)  __builtin_expect (!!(x), 0)
 #define MAX(x, y) __extension__ ({ \
-    __typeof__ (x) __a__ = (x); __typeof__ (y) __b__ = (y); \
+    const __typeof__ (x) __a__ = (x); const __typeof__ (y) __b__ = (y); \
         __a__ > __b__ ? __a__ : __b__;})
 #define MIN(x, y) __extension__ ({ \
-    __typeof__ (x) __a__ = (x); __typeof__ (y) __b__ = (y); \
+    const __typeof__ (x) __a__ = (x); const __typeof__ (y) __b__ = (y); \
         __a__ < __b__ ? __a__ : __b__;})
 #define SWAP(x, y) do { __typeof__(x) _sw_ = y; y = x; x = _sw_; } while(0)
 #define xstr(s) str(s)
