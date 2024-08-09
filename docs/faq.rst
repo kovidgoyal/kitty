@@ -318,8 +318,9 @@ see :iss:`here <45>`.
 I do not like the kitty icon!
 -------------------------------
 
-There are many alternate icons available, click on an icon to visit its
-homepage:
+The kitty icon was created as tribute to my cat of nine years who passed away,
+as such it is not going to change. However, if you do not like it, there are
+many alternate icons available, click on an icon to visit its homepage:
 
 .. image:: https://github.com/k0nserv/kitty-icon/raw/main/kitty.iconset/icon_256x256.png
    :target: https://github.com/k0nserv/kitty-icon
