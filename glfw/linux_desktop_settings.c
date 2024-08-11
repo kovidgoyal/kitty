@@ -111,7 +111,9 @@ HANDLER(process_desktop_settings)
         if (!dbus_message_iter_next(&array)) break;
     }
 #undef die
+#ifndef _GLFW_X11
     if (cursor_theme_changed) _glfwPlatformChangeCursorTheme();
+#endif
 }
 
 #undef HANDLER
@@ -124,8 +126,7 @@ read_desktop_settings(DBusConnection *session_bus) {
     dbus_message_iter_init_append(msg, &iter);
     if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &array_iter)) { return false; }
     if (!dbus_message_iter_close_container(&iter, &array_iter)) { return false; }
-    bool ok = call_method_with_msg(session_bus, msg, DBUS_TIMEOUT_USE_DEFAULT, process_desktop_settings, NULL);
-    return ok;
+    return call_method_with_msg(session_bus, msg, DBUS_TIMEOUT_USE_DEFAULT, process_desktop_settings, NULL);
 }
 
 void

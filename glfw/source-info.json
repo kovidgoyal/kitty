@@ -144,6 +144,7 @@
       "linux_joystick.h",
       "null_joystick.h",
       "linux_notify.h",
+      "linux_desktop_settings.h",
       "main_loop.h"
     ],
     "sources": [
@@ -160,6 +161,7 @@
       "backend_utils.c",
       "linux_joystick.c",
       "null_joystick.c",
+      "linux_desktop_settings.c",
       "linux_notify.c"
     ]
   }

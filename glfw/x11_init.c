@@ -30,6 +30,7 @@
 #define _GNU_SOURCE
 #include "internal.h"
 #include "backend_utils.h"
+#include "linux_desktop_settings.h"
 
 #include <X11/Xresource.h>
 
@@ -648,6 +649,7 @@ int _glfwPlatformInit(void)
                         "X11: Failed to initialize event loop data");
     }
     glfw_dbus_init(&_glfw.x11.dbus, &_glfw.x11.eventLoopData);
+    glfw_initialize_desktop_settings();  // needed for color scheme change notification
 
     _glfw.x11.screen = DefaultScreen(_glfw.x11.display);
     _glfw.x11.root = RootWindow(_glfw.x11.display, _glfw.x11.screen);
