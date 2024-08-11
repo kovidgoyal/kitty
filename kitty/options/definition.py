@@ -272,12 +272,12 @@ egr()  # }}}
 
 
 # cursor {{{
-agr('cursor', 'Cursor customization')
+agr('cursor', 'Text cursor customization')
 
 opt('cursor', '#cccccc',
     option_type='to_color_or_none',
     long_text='''
-Default cursor color. If set to the special value :code:`none` the cursor will
+Default text cursor color. If set to the special value :code:`none` the cursor will
 be rendered with a "reverse video" effect. Its color will be the color of the
 text in the cell it is over and the text will be rendered with the background
 color of the cell. Note that if the program running in the terminal sets a

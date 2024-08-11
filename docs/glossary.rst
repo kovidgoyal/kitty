@@ -50,6 +50,8 @@ Glossary
       inside kitty windows and provide it with lots of powerful and flexible
       features such as viewing images, connecting conveniently to remote
       computers, transferring files, inputting unicode characters, etc.
+      They can also be written by users in Python and used to customize and
+      extend kitty functionality, see :doc:`kittens_intro` for details.
 
    easing function
       A function that controls how an animation progresses over time. kitty
