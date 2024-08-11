@@ -134,6 +134,8 @@ Detailed list of changes
 
 - Wayland GNOME: Fix a small rendering artifact when docking a window at a screen edge or maximizing it (:iss:`7701`)
 
+- When :opt:`shell` is set to ``.`` respect the SHELL environment variable in the environment in which kitty is launched (:pull:`7714`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

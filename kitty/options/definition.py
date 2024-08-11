@@ -2909,6 +2909,7 @@ agr('advanced', 'Advanced')
 opt('shell', '.',
     long_text='''
 The shell program to execute. The default value of :code:`.` means to use
+the value of of the :envvar:`SHELL` environment variable or if unset,
 whatever shell is set as the default shell for the current user. Note that on
 macOS if you change this, you might need to add :code:`--login` and
 :code:`--interactive` to ensure that the shell starts in interactive mode and

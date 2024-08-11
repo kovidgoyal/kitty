@@ -98,6 +98,11 @@ Variables that influence kitty behavior
 
    Same as :envvar:`VISUAL`. Used if :envvar:`VISUAL` is not set.
 
+.. envvar:: SHELL
+
+   Specifies the default shell kitty will run when :opt:`shell` is set to
+   :code:`.`.
+
 .. envvar:: GLFW_IM_MODULE
 
    Set this to ``ibus`` to enable support for IME under X11.
