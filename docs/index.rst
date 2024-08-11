@@ -3,6 +3,8 @@ kitty
 
 *The fast, feature-rich, GPU based terminal emulator*
 
+\<`Website <https://sw.kovidgoyal.net/kitty/>`> \<`Source repo<https://github.com/kovidgoyal/kitty>`>
+
 .. toctree::
     :hidden:
 

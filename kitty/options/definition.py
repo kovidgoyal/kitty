@@ -272,7 +272,9 @@ egr()  # }}}
 
 
 # cursor {{{
-agr('cursor', 'Cursor customization')
+agr('cursor', 'Cursor customization', '''
+This section is about the text cursor. For the mouse pointer, see FAQ.
+''')
 
 opt('cursor', '#cccccc',
     option_type='to_color_or_none',

@@ -98,6 +98,9 @@ so any :opt:`hostname <kitten-ssh.hostname>` directives are ignored.
    shell prompt appears may be lost. So ideally don't start typing till you see
    the shell prompt. 😇
 
+.. warning::
+
+   If you forward X over ssh, do *not* use this kitten, or it fails.
 
 .. _real_world_ssh_kitten_config:
 

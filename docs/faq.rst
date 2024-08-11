@@ -540,3 +540,8 @@ The correct command will depend on your situation and hardware.
 system, which will wake the NVIDIA card during device enumeration.
 ``MESA_LOADER_DRIVER_OVERRIDE`` also assures that Mesa won't offer any NVIDIA
 card during enumeration, and will instead just use :file:`radeonsi_dri.so`.
+
+Mouse pointer configuration in X11
+----------------------------------
+To change the mouse pointer, run kitty with environment variables, like this:
+    XCURSOR_SIZE=<size> XCURSOR_THEME=<cursor theme> kitty <options>...
