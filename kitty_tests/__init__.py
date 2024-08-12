@@ -306,6 +306,7 @@ class PTY:
         if argv is None:
             from kitty.child import openpty
             self.master_fd, self.slave_fd = openpty()
+            self.child_pid = 0
         else:
             self.child_pid, self.master_fd = fork()
             self.is_child = self.child_pid == CHILD

@@ -201,9 +201,9 @@ def create_tarfile(env, compression_level='9'):
     try:
         shutil.rmtree(base)
     except OSError as err:
-        if err.errno != errno.ENOENT:
+        if err.errno not in (errno.ENOENT, errno.EBUSY):  # EBUSY when the directory is mountpoint
             raise
-    os.mkdir(base)
+    os.makedirs(base, exist_ok=True)
     dist = os.path.join(base, f'{kitty_constants["appname"]}-{kitty_constants["version"]}-{arch}.tar')
     with tarfile.open(dist, mode='w', format=tarfile.PAX_FORMAT) as tf:
         cwd = os.getcwd()
