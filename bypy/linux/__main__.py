@@ -10,16 +10,12 @@ import subprocess
 import tarfile
 import time
 
-from bypy.constants import OUTPUT_DIR, PREFIX, is64bit, python_major_minor_version
+from bypy.constants import OUTPUT_DIR, PREFIX, python_major_minor_version
 from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
 from bypy.utils import get_dll_path, mkdtemp, py_compile, walk
 
 j = os.path.join
 machine = (os.uname()[4] or '').lower()
-if machine.startswith('arm64') or machine.startswith('aarch64'):
-    arch = 'arm64'
-else:
-    arch = 'x86_64' if is64bit else 'i686'
 self_dir = os.path.dirname(os.path.abspath(__file__))
 py_ver = '.'.join(map(str, python_major_minor_version()))
 iv = globals()['init_env']
@@ -198,6 +194,7 @@ def strip_binaries(files):
 def create_tarfile(env, compression_level='9'):
     print('Creating archive...')
     base = OUTPUT_DIR
+    arch = 'arm64' if 'arm64' in os.environ['BYPY_ARCH'] else ('i686' if 'i386' in os.environ['BYPY_ARCH'] else 'x86_64')
     try:
         shutil.rmtree(base)
     except OSError as err:
