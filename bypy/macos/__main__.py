@@ -441,7 +441,7 @@ class Freeze(object):
         py_compile(join(self.resources_dir, 'Python'))
 
     @flush
-    def makedmg(self, d, volname, format='ULFO'):
+    def makedmg(self, d, volname, format='ULMO'):
         ''' Copy a directory d into a dmg named volname '''
         print('\nMaking dmg...')
         sys.stdout.flush()

@@ -136,6 +136,8 @@ Detailed list of changes
 
 - When :opt:`shell` is set to ``.`` respect the SHELL environment variable in the environment in which kitty is launched (:pull:`7714`)
 
+- macOS: Bump the minimum required macOS version to Catalina released five years ago.
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
