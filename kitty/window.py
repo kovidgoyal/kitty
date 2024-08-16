@@ -1452,13 +1452,13 @@ class Window:
     def handle_cmd_end(self, exit_status: str = '') -> None:
         if self.last_cmd_output_start_time == 0.:
             return
-        self.last_cmd_output_start_time = 0.
         try:
             self.last_cmd_exit_status = int(exit_status)
         except Exception:
             self.last_cmd_exit_status = 0
         end_time = monotonic()
         last_cmd_output_duration = end_time - self.last_cmd_output_start_time
+        self.last_cmd_output_start_time = 0.
 
         self.call_watchers(self.watchers.on_cmd_startstop, {
             "is_start": False, "time": end_time, 'cmdline': self.last_cmd_cmdline, 'exit_status': self.last_cmd_exit_status})

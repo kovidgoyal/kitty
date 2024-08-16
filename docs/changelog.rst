@@ -138,6 +138,8 @@ Detailed list of changes
 
 - macOS: Bump the minimum required macOS version to Catalina released five years ago.
 
+- Fix a regression in :opt:`notify_on_cmd_finish` that caused notifications to appear for every command after the first (:iss:`7725`)
+
 
 0.35.2 [2024-06-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
