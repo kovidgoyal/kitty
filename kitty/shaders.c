@@ -333,9 +333,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
                 rd->cursor_fg_sprite_idx = BEAM_IDX; break;
             case CURSOR_UNDERLINE:
                 rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
-            case CURSOR_BLOCK: case NUM_OF_CURSOR_SHAPES:
+            case CURSOR_BLOCK: case NUM_OF_CURSOR_SHAPES: case NO_CURSOR_SHAPE:
                 rd->cursor_fg_sprite_idx = BLOCK_IDX; break;
-            case CURSOR_HOLLOW: case NO_CURSOR_SHAPE:
+            case CURSOR_HOLLOW:
                 rd->cursor_fg_sprite_idx = UNFOCUSED_IDX; break;
         };
         color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;
