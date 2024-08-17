@@ -141,22 +141,24 @@ compatibility, but a sane, rigorously specified subset is chosen.
 
 RGB colors are encoded in one of three forms:
 
-rgb:<red>/<green>/<blue>
-    <red>, <green>, <blue> := h | hh | hhh | hhhh
-    h := single hexadecimal digits (case insignificant)
-    Note that h indicates the value scaled in 4 bits, hh the value scaled in 8 bits, hhh the value scaled in 12 bits, and hhhh the value scaled
-    in 16 bits, respectively.
+``rgb:<red>/<green>/<blue>``
+    | <red>, <green>, <blue> := h | hh | hhh | hhhh
+    | h := single hexadecimal digits (case insignificant)
+    | Note that h indicates the value scaled in 4 bits, hh the value scaled in 8 bits,
+      hhh the value scaled in 12 bits, and hhhh the value scaled in 16 bits, respectively.
 
-#<h...>
-    h := single hexadecimal digits (case insignificant)
-    #RGB            (4 bits each)
-    #RRGGBB         (8 bits each)
-    #RRRGGGBBB      (12 bits each)
-    #RRRRGGGGBBBB   (16 bits each)
-    The R, G, and B represent single hexadecimal digits.  When fewer than 16 bits each are specified, they represent the most significant bits
-    of the value (unlike the “rgb:” syntax, in which values are scaled). For example, the string ``#3a7`` is the same as ``#3000a0007000``.
+``#<h...>``
+    | h := single hexadecimal digits (case insignificant)
+    | #RGB            (4 bits each)
+    | #RRGGBB         (8 bits each)
+    | #RRRGGGBBB      (12 bits each)
+    | #RRRRGGGGBBBB   (16 bits each)
+    | The R, G, and B represent single hexadecimal digits.  When fewer than 16 bits
+      each are specified, they represent the most significant bits of the value
+      (unlike the “rgb:” syntax, in which values are scaled). For example,
+      the string ``#3a7`` is the same as ``#3000a0007000``.
 
-rgbi:<red>/<green>/<blue>
+``rgbi:<red>/<green>/<blue>``
     red, green, and blue are floating-point values between 0.0 and 1.0, inclusive. The input format for these values is an optional
     sign, a string of numbers possibly containing a decimal point, and an optional exponent field containing an E or e followed by  a  possibly
     signed integer string.
