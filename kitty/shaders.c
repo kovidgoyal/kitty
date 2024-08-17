@@ -327,27 +327,17 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     if (cursor->opacity > 0) {
         rd->cursor_x = cursor->x, rd->cursor_y = cursor->y;
         rd->cursor_opacity = cursor->opacity;
-        if (cursor->is_focused) {
-            switch(cursor->shape) {
-                default:
-                    rd->cursor_fg_sprite_idx = BLOCK_IDX; break;
-                case CURSOR_BEAM:
-                    rd->cursor_fg_sprite_idx = BEAM_IDX; break;
-                case CURSOR_UNDERLINE:
-                    rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
-            }
-        } else {
-            switch(OPT(cursor_shape_unfocused)) {
-                default:
-                    rd->cursor_fg_sprite_idx = UNFOCUSED_IDX; break;
-                case CURSOR_BEAM:
-                    rd->cursor_fg_sprite_idx = BEAM_IDX; break;
-                case CURSOR_UNDERLINE:
-                    rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
-                case CURSOR_BLOCK:
-                    rd->cursor_fg_sprite_idx = BLOCK_IDX; break;
-            }
-        }
+        CursorShape cs = (cursor->is_focused || OPT(cursor_shape_unfocused) == NO_CURSOR_SHAPE) ? cursor->shape : OPT(cursor_shape_unfocused);
+        switch(cs) {
+            case CURSOR_BEAM:
+                rd->cursor_fg_sprite_idx = BEAM_IDX; break;
+            case CURSOR_UNDERLINE:
+                rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
+            case CURSOR_BLOCK: case NUM_OF_CURSOR_SHAPES:
+                rd->cursor_fg_sprite_idx = BLOCK_IDX; break;
+            case CURSOR_HOLLOW: case NO_CURSOR_SHAPE:
+                rd->cursor_fg_sprite_idx = UNFOCUSED_IDX; break;
+        };
         color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;
         index_type cell_color_x = cursor->x;
         bool reversed = false;

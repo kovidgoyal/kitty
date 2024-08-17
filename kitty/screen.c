@@ -2442,8 +2442,7 @@ screen_request_capabilities(Screen *self, char c, const char *query) {
             if (strcmp(" q", query) == 0) {
                 // cursor shape DECSCUSR
                 switch(self->cursor->shape) {
-                    case NO_CURSOR_SHAPE:
-                    case NUM_OF_CURSOR_SHAPES:
+                    case NO_CURSOR_SHAPE: case CURSOR_HOLLOW: case NUM_OF_CURSOR_SHAPES:
                         shape = 1; break;
                     case CURSOR_BLOCK:
                         shape = self->cursor->non_blinking ? 2 : 0; break;

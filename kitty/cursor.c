@@ -27,7 +27,7 @@ static int __eq__(Cursor *a, Cursor *b) {
     return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(dim) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
 }
 
-static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "BEAM", "UNDERLINE" };
+static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "BEAM", "UNDERLINE", "HOLLOW" };
 
 #define BOOL(x) ((x) ? Py_True : Py_False)
 static PyObject *

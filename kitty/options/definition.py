@@ -315,7 +315,7 @@ cursor shape to :code:`beam` at shell prompts. You can avoid this by setting
 opt('cursor_shape_unfocused', 'hollow', option_type='to_cursor_unfocused_shape', ctype='int', long_text='''
 Defines the text cursor shape when the OS window is not focused. The unfocused
 cursor shape can be one of :code:`block`, :code:`beam`, :code:`underline`,
-:code:`hollow`.
+:code:`hollow` and :code:`unchanged` (leave the cursor shape as it is).
 ''')
 
 opt('cursor_beam_thickness', '1.5',

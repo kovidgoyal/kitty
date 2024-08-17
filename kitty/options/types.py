@@ -507,7 +507,7 @@ class Options:
     cursor_beam_thickness: float = 1.5
     cursor_blink_interval: typing.Tuple[float, kitty.options.utils.EasingFunction, kitty.options.utils.EasingFunction] = (-1.0, kitty.options.utils.EasingFunction(), kitty.options.utils.EasingFunction())
     cursor_shape: int = 1
-    cursor_shape_unfocused: int = 0
+    cursor_shape_unfocused: int = 4
     cursor_stop_blinking_after: float = 15.0
     cursor_text_color: typing.Optional[kitty.fast_data_types.Color] = Color(17, 17, 17)
     cursor_underline_thickness: float = 2.0

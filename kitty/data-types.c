@@ -728,6 +728,7 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, CURSOR_BLOCK);
     PyModule_AddIntMacro(m, CURSOR_BEAM);
     PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
+    PyModule_AddIntMacro(m, CURSOR_HOLLOW);
     PyModule_AddIntMacro(m, NO_CURSOR_SHAPE);
     PyModule_AddIntMacro(m, DECAWM);
     PyModule_AddIntMacro(m, DECCOLM);
