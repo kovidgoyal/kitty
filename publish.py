@@ -442,7 +442,6 @@ def files_for_upload() -> Dict[str, str]:
     for f, desc in {
         'macos/dist/kitty-{}.dmg': 'macOS dmg',
         'linux/64/dist/kitty-{}-x86_64.txz': 'Linux amd64 binary bundle',
-        'linux/32/dist/kitty-{}-i686.txz': 'Linux x86 binary bundle',
         'linux/arm64/dist/kitty-{}-arm64.txz': 'Linux arm64 binary bundle',
     }.items():
         path = os.path.join('bypy', 'b', f.format(version))
