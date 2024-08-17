@@ -74,7 +74,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.36.0 [future]
+0.36.0 [2024-08-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support `OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__ (:iss:`3711`)
