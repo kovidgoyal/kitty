@@ -340,12 +340,22 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
             switch(OPT(cursor_shape_unfocused)) {
                 default:
                     rd->cursor_fg_sprite_idx = UNFOCUSED_IDX; break;
-                case CURSOR_BEAM:
+                case UNFOCUSED_CURSOR_BEAM:
                     rd->cursor_fg_sprite_idx = BEAM_IDX; break;
-                case CURSOR_UNDERLINE:
+                case UNFOCUSED_CURSOR_UNDERLINE:
                     rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
-                case CURSOR_BLOCK:
+                case UNFOCUSED_CURSOR_BLOCK:
                     rd->cursor_fg_sprite_idx = BLOCK_IDX; break;
+                case UNFOCUSED_CURSOR_AUTO:
+                    switch(cursor->shape) {
+                        default:
+                            rd->cursor_fg_sprite_idx = BLOCK_IDX; break;
+                        case CURSOR_BEAM:
+                            rd->cursor_fg_sprite_idx = BEAM_IDX; break;
+                        case CURSOR_UNDERLINE:
+                            rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
+                    }
+                    break;
             }
         }
         color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;

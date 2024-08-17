@@ -46,7 +46,7 @@ from kitty.conf.utils import (
     unit_float,
 )
 from kitty.constants import is_macos
-from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, NO_CURSOR_SHAPE, Color, Shlex, SingleKey
+from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, UNFOCUSED_CURSOR_BLOCK, UNFOCUSED_CURSOR_BEAM, UNFOCUSED_CURSOR_UNDERLINE, UNFOCUSED_NO_CURSOR_SHAPE, UNFOCUSED_CURSOR_AUTO, Color, Shlex, SingleKey
 from kitty.fonts import FontModification, FontSpec, ModificationType, ModificationUnit, ModificationValue
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases, get_key_name_lookup
 from kitty.rgb import color_as_int
@@ -527,10 +527,11 @@ cshapes = {
     'underline': CURSOR_UNDERLINE
 }
 cshapes_unfocused = {
-    'block': CURSOR_BLOCK,
-    'beam': CURSOR_BEAM,
-    'underline': CURSOR_UNDERLINE,
-    'hollow': NO_CURSOR_SHAPE
+    'block': UNFOCUSED_CURSOR_BLOCK,
+    'beam': UNFOCUSED_CURSOR_BEAM,
+    'underline': UNFOCUSED_CURSOR_UNDERLINE,
+    'hollow': UNFOCUSED_NO_CURSOR_SHAPE,
+    'auto': UNFOCUSED_CURSOR_AUTO,
 }
 
 
