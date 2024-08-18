@@ -1013,7 +1013,8 @@ render_sample_text(Face *self, PyObject *args) {
         place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, x, 0, baseline, 99999, fg, 0, y);
     }
 
-    for (uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf); p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * canvas_height; p += 4) {
+    const uint8_t *last_pixel = (uint8_t*)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
+    for (uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf); p <= last_pixel; p += sizeof(pixel)) {
         uint8_t a = p[0], b = p[1], g = p[2], r = p[3];
         p[0] = r; p[1] = g; p[2] = b; p[3] = a;
     }
