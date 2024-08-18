@@ -40,7 +40,7 @@ Action                      Shortcut
 ========================    =======================
 New tab                     :sc:`new_tab` (also :kbd:`⌘+t` on macOS)
 Close tab                   :sc:`close_tab` (also :kbd:`⌘+w` on macOS)
-Next tab                    :sc:`next_tab` (also :kbd:`⌃+⇥` and :kbd:`⇧+⌘+]` on macOS)
+Next tab                    :sc:`next_tab` (also :kbd:`⇧+⌃+⇥` and :kbd:`⇧+⌘+]` on macOS)
 Previous tab                :sc:`previous_tab` (also :kbd:`⇧+⌃+⇥` and :kbd:`⇧+⌘+[` on macOS)
 Next layout                 :sc:`next_layout`
 Move tab forward            :sc:`move_tab_forward`
