@@ -111,7 +111,7 @@ with the specified identifier is closed.
 
 usage = 'TITLE [BODY ...]'
 if __name__ == '__main__':
-    raise SystemExit('This should be run as kitten clipboard')
+    raise SystemExit('This should be run as `kitten notify ...`')
 elif __name__ == '__doc__':
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
