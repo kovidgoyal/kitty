@@ -79,6 +79,8 @@ Detailed list of changes
 
 - Allow specifying that the :opt:`cursor shape for unfocused windows <cursor_shape_unfocused>` should remain unchanged (:pull:`7728`)
 
+- MacOS Intel: Fix a crash in the choose-fonts kitten when displaying previews of variable fonts (:iss:`7734`)
+
 0.36.0 [2024-08-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -325,8 +325,8 @@ read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
         const double minimum = next32, def = next32, maximum = next32;
         p = (uint16_t*)(pos + 16);
         int32_t flags = next, strid = next;
-        PyObject *axis = Py_BuildValue("{sd sd sd ss# sO sN}",
-            "minimum", minimum, "maximum", maximum, "default", def, "tag", pos, 4,
+        PyObject *axis = Py_BuildValue("{sd sd sd sN sO sN}",
+            "minimum", minimum, "maximum", maximum, "default", def, "tag", PyUnicode_FromStringAndSize((const char*)pos, 4),
             "hidden", (flags & 1) ? Py_True : Py_False, "strid", get_best_name(name_lookup_table, strid)
         ); if (!axis) return NULL;
         PyTuple_SET_ITEM(axes, i, axis);
