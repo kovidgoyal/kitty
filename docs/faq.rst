@@ -399,9 +399,11 @@ This is accomplished by using ``map`` with :ac:`send_key` in :file:`kitty.conf`.
 For example::
 
     map alt+s send_key ctrl+s
+    map ctrl+alt+2 combine : send_key ctrl+c : send_key h : send_key a
 
 This causes the program running in kitty to receive the :kbd:`ctrl+s` key when
-you press the :kbd:`alt+s` key. To see this in action, run::
+you press the :kbd:`alt+s` key and several keystrokes when you press
+:kbd:`ctrl+alt+2`. To see this in action, run::
 
     kitten show-key -m kitty
 
