@@ -854,10 +854,11 @@ render_sample_text(CTFace *self, PyObject *args) {
     }
     render_glyphs(font, canvas_width, canvas_height, baseline, num_glyphs);
     uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
+    const uint8_t *last_pixel = (uint8_t*)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
     for (
         uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf), *s = buffers.render_buf;
-        p < (uint8_t*)PyBytes_AS_STRING(pbuf) + sizeof(pixel) * canvas_width * canvas_height;
-        p += 4, s++
+        p <= last_pixel;
+        p += sizeof(pixel), s++
     ) {
         p[0] = r; p[1] = g; p[2] = b; p[3] = s[0];
     }
