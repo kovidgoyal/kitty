@@ -117,7 +117,7 @@ that will be called at specific events, such as when the window is resized or
 closed. Note that you can also specify watchers that are loaded for all windows,
 via :opt:`watcher`. To create a watcher, specify the path to a Python module
 that specifies callback functions for the events you are interested in, for
-create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =:file:`mywatcher.py`:
+create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` = :file:`mywatcher.py`:
 
 .. code-block:: python
 
