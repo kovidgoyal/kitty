@@ -98,6 +98,9 @@ get_release_url() {
     get_file_url "v$release_version" "$release_version"
 }
 
+get_version_url() {
+    get_file_url "v$1" "$1"
+}
 
 get_nightly_url() {
     get_file_url "nightly" "nightly"
@@ -105,9 +108,11 @@ get_nightly_url() {
 
 get_download_url() {
     installer_is_file="n"
+    echo "$installer"
     case "$installer" in
         "nightly") get_nightly_url ;;
         "") get_release_url ;;
+        version-*) get_version_url "${installer#*-}";;
         *) installer_is_file="y" ;;
     esac
 }
