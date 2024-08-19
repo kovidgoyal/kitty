@@ -364,8 +364,8 @@ func ReloadConfigInKitty(in_parent_only bool) error {
 	}
 	if all, err := process.Processes(); err == nil {
 		for _, p := range all {
-			if exe, eerr := p.Exe(); eerr == nil {
-				if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(exe, c...) {
+			if c, err := p.CmdlineSlice(); err == nil && strings.Contains(c[0], "kitty") {
+				if exe, err := p.Exe(); err == nil && is_kitty_gui_cmdline(exe, c...) {
 					_ = p.SendSignal(unix.SIGUSR1)
 				}
 			}
