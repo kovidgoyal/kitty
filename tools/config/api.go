@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -362,11 +363,22 @@ func ReloadConfigInKitty(in_parent_only bool) error {
 		}
 		return nil
 	}
-	if all, err := process.Processes(); err == nil {
-		for _, p := range all {
-			if c, err := p.CmdlineSlice(); err == nil && strings.Contains(c[0], "kitty") {
-				if exe, err := p.Exe(); err == nil && is_kitty_gui_cmdline(exe, c...) {
-					_ = p.SendSignal(unix.SIGUSR1)
+	// process.Processes() followed by filtering by getting the process
+	// exe and cmdline is very slow on non-Linux systems as CGO is not allowed
+	// which means getting exe works by calling lsof on every process. So instead do
+	// initial filtering based on ps output.
+	if ps_out, err := exec.Command("ps", "-x", "-o", "pid=,comm=").Output(); err == nil {
+		for _, line := range utils.Splitlines(utils.UnsafeBytesToString(ps_out)) {
+			line = strings.TrimSpace(line)
+			if pid_string, argv0, found := strings.Cut(line, " "); found {
+				if pid, err := strconv.Atoi(strings.TrimSpace(pid_string)); err == nil && strings.Contains(argv0, "kitty") {
+					if p, err := process.NewProcess(int32(pid)); err == nil {
+						if cmdline, err := p.CmdlineSlice(); err == nil {
+							if exe, err := p.Exe(); err == nil && is_kitty_gui_cmdline(exe, cmdline...) {
+								_ = p.SendSignal(unix.SIGUSR1)
+							}
+						}
+					}
 				}
 			}
 		}
