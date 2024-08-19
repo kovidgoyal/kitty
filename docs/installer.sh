@@ -108,7 +108,6 @@ get_nightly_url() {
 
 get_download_url() {
     installer_is_file="n"
-    echo "$installer"
     case "$installer" in
         "nightly") get_nightly_url ;;
         "") get_release_url ;;
