@@ -73,6 +73,9 @@ would pass to ``kitten @``. For example:
    shown above or ``--self``.
 
 
+Run, ``kitten @ --help`` in a kitty terminal, to see all the remote control
+commands available to you.
+
 Passing arguments to kittens
 ------------------------------
 

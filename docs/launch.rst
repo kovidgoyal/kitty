@@ -114,11 +114,14 @@ Watching launched windows
 
 The :option:`launch --watcher` option allows you to specify Python functions
 that will be called at specific events, such as when the window is resized or
-closed. Simply specify the path to a Python module that specifies callback
-functions for the events you are interested in, for example:
+closed. Note that you can also specify watchers that are loaded for all windows,
+via :opt:`watcher`. To create a watcher, specify the path to a Python module
+that specifies callback functions for the events you are interested in, for
+create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =:file:`mywatcher.py`:
 
 .. code-block:: python
 
+    # ~/.config/kitty/mywatcher.py
     from typing import Any, Dict
 
     from kitty.boss import Boss
@@ -127,6 +130,9 @@ functions for the events you are interested in, for example:
 
     def on_resize(boss: Boss, window: Window, data: Dict[str, Any]) -> None:
         # Here data will contain old_geometry and new_geometry
+        # Note that resize is also called the first time a window is created
+        # which can be detected as old_geometry will have all zero values, in
+        # particular, old_geometry.xnum and old_geometry.ynum will be zero.
 
     def on_focus_change(boss: Boss, window: Window, data: Dict[str, Any])-> None:
         # Here data will contain focused
@@ -151,12 +157,20 @@ functions for the events you are interested in, for example:
 
 Every callback is passed a reference to the global ``Boss`` object as well as
 the ``Window`` object the action is occurring on. The ``data`` object is a dict
-that contains event dependent data. Some useful methods and attributes for the
-``Window`` object are: ``as_text(as_ans=False, add_history=False,
-add_wrap_markers=False, alternate_screen=False)`` with which you can get the
-contents of the window and its scrollback buffer. Similarly,
-``window.child.pid`` is the PID of the processes that was launched
-in the window and ``window.id`` is the internal kitty ``id`` of the window.
+that contains event dependent data. You have full access to kitty internals in
+the watcher scripts, however kitty internals are not documented/stable so for
+most things you are better off using the kitty :doc:`Remote control API </remote-control>`.
+Simply call :code:`boss.call_remote_control()`, with the same arguments you
+would pass to ``kitten @``. For example:
+
+.. code-block:: python
+
+    def on_resize(boss: Boss, window: Window, data: Dict[str, Any]) -> None:
+        # send some text to the resized window
+        boss.call_remote_control(window, ('send-text', f'--match=id:{window.id}', 'hello world'))
+
+Run, ``kitten @ --help`` in a kitty terminal, to see all the remote control
+commands available to you.
 
 
 Finding executables
