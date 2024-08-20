@@ -196,6 +196,10 @@ func NoRestoreColors(self *Loop) {
 	self.terminal_options.restore_colors = false
 }
 
+func NoInBandResizeNotifications(self *Loop) {
+	self.terminal_options.in_band_resize_notification = false
+}
+
 func (self *Loop) DeathSignalName() string {
 	if self.death_signal != SIGNULL {
 		return self.death_signal.String()

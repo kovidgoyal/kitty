@@ -100,6 +100,7 @@ type TerminalStateOptions struct {
 	Alternate_screen, restore_colors bool
 	mouse_tracking                   MouseTracking
 	kitty_keyboard_mode              KeyboardStateBits
+	in_band_resize_notification      bool
 }
 
 func set_modes(sb *strings.Builder, modes ...Mode) {
@@ -128,7 +129,10 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	reset_modes(&sb,
 		IRM, DECKM, DECSCNM, BRACKETED_PASTE, FOCUS_TRACKING,
 		MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING, MOUSE_MOVE_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE)
-	set_modes(&sb, DECARM, DECAWM, DECTCEM, INBAND_RESIZE_NOTIFICATION)
+	set_modes(&sb, DECARM, DECAWM, DECTCEM)
+	if self.in_band_resize_notification {
+		set_modes(&sb, INBAND_RESIZE_NOTIFICATION)
+	}
 	if self.Alternate_screen {
 		set_modes(&sb, ALTERNATE_SCREEN)
 		sb.WriteString(CLEAR_SCREEN)
