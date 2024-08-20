@@ -83,6 +83,8 @@ Detailed list of changes
 
 - Remote control: Fix a regression causing an escape code to leak when using @ launch with ``--no-response`` over the TTY (:iss:`7752`)
 
+- OSC 52: Fix a regression in the previous release that broke handling of invalid base64 encoded data in OSC 52 requests (:iss:`7757`)
+
 0.36.0 [2024-08-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

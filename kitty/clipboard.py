@@ -289,7 +289,12 @@ class WriteRequest:
 
     def write_base64_data(self, b: bytes) -> None:
         if not self.max_size_exceeded:
-            decoded = self.decoder.decode(b)
+            try:
+                decoded = self.decoder.decode(b)
+            except ValueError:
+                log_error('Clipboard write request has invalid data, ignoring this chunk of data')
+                self.decoder.reset()
+                decoded = b''
             if decoded:
                 self.tempfile.write(decoded)
                 if self.max_size > 0 and self.tempfile.tell() > (self.max_size * 1024 * 1024):

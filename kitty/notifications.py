@@ -189,7 +189,12 @@ class EncodedDataStore:
     def add_base64_data(self, data: Union[str, bytes]) -> None:
         if isinstance(data, str):
             data = data.encode('ascii')
-        self.data_store(self.decoder.decode(data))
+        try:
+            decoded = self.decoder.decode(data)
+        except ValueError:
+            log_error('Ignoring invalid base64 encoded data in notification request')
+        else:
+            self.data_store(decoded)
 
     def flush_encoded_data(self) -> None:
         self.decoder.reset()
