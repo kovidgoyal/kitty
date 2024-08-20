@@ -346,6 +346,10 @@ many alternate icons available, click on an icon to visit its homepage:
    :target: https://github.com/samholmes/whiskers
    :width: 256
 
+.. image:: https://github.com/user-attachments/assets/a37d7830-4a8c-45a8-988a-3e98a41ea541
+   :target: https://github.com/diegobit/kitty-icon
+   :width: 256
+
 .. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/2d/kitty-preview.png
    :target: https://github.com/eccentric-j/eccentric-icons
    :width: 256
