@@ -112,7 +112,7 @@ func (p *parsed_data) generate_chunks(callback func(string)) {
 }
 
 func (p *parsed_data) run_loop() (err error) {
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
+	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking, loop.NoInBandResizeNotifications)
 	if err != nil {
 		return err
 	}
