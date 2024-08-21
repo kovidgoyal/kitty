@@ -38,11 +38,15 @@ In addition to kitty, this protocol is also implemented in:
 * The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_kitty_keyboard.html>`__
 * The `alacritty terminal <https://github.com/alacritty/alacritty/pull/7125>`__
 * The `rio terminal <https://github.com/raphamorim/rio/commit/cd463ca37677a0fc48daa8795ea46dadc92b1e95>`__
-* The `notcurses library
-  <https://github.com/dankamongmen/notcurses/issues/2131>`__
-* The `crossterm library
-  <https://github.com/crossterm-rs/crossterm/pull/688>`__
+
+Libraries implementing this protocol:
+
+* The `notcurses library <https://github.com/dankamongmen/notcurses/issues/2131>`__
+* The `crossterm library <https://github.com/crossterm-rs/crossterm/pull/688>`__
 * The `textual library <https://github.com/Textualize/textual/pull/4631>`__
+
+Programs implementing this protocol:
+
 * The `Vim text editor <https://github.com/vim/vim/commit/63a2e360cca2c70ab0a85d14771d3259d4b3aafa>`__
 * The `Emacs text editor via the kkp package <https://github.com/benjaminor/kkp>`__
 * The `Neovim text editor <https://github.com/neovim/neovim/pull/18181>`__
@@ -52,6 +56,10 @@ In addition to kitty, this protocol is also implemented in:
 * The `far2l file manager <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__
 * The `Yazi file manager <https://github.com/sxyazi/yazi>`__
 * The `awrit web browser <https://github.com/chase/awrit>`__
+* The `Turbo Vision <https://github.com/magiblot/tvision/commit/6e5a7b46c6634079feb2ac98f0b890bbed59f1ba>`/`Free Vision <https://gitlab.com/freepascal.org/fpc/source/-/issues/40673#note_2061428120>`__ IDEs
+
+Shells implementing this protocol:
+
 * The `nushell shell <https://github.com/nushell/nushell/pull/10540>`__
 * The `fish shell <https://github.com/fish-shell/fish-shell/commit/8bf8b10f685d964101f491b9cc3da04117a308b4>`__
 
