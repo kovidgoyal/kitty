@@ -110,7 +110,7 @@ func run_plain_text_loop(opts *Options) (err error) {
 			defer tempfile.Close()
 		}
 	}
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
+	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking, loop.NoInBandResizeNotifications)
 	if err != nil {
 		return
 	}
