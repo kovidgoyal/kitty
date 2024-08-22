@@ -1529,7 +1529,7 @@ opt('background_image_linear', 'no',
 
 opt('second_transparent_bg', 'none', option_type='to_color_or_none', long_text='''
 When the background color matches this color, :opt:`background_opacity` is applied to it
-to render it as semi-transparent, just as for colors matching the background color.
+to render it as semi-transparent, just as for colors matching the main :opt:`background` color.
 Useful in more complex UIs like editors where you could want more than a single background color
 to be rendered as transparent, for instance, for a cursor highlight line background.
 Terminal applications can set this color using :ref:`The kitty color control <color_control>`
