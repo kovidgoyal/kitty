@@ -85,6 +85,8 @@ Detailed list of changes
 
 - OSC 52: Fix a regression in the previous release that broke handling of invalid base64 encoded data in OSC 52 requests (:iss:`7757`)
 
+- macOS: Fix a regression in the previous release that caused :option:`--single-instance` to not work when using :file:`macos-launch-services-cmdline`
+
 0.36.0 [2024-08-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

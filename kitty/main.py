@@ -320,6 +320,11 @@ def macos_cmdline(argv_args: list[str]) -> list[str]:
     ans = list(shlex_split(raw))
     if ans and ans[0] == 'kitty':
         del ans[0]
+    if '-1' in ans or '--single-instance' in ans:
+        # Re-exec with new argv so that the C code that handles single instance
+        # can pick up the modified argv
+        os.environ['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '2'  # so that use_os_log is set in the re-execed process
+        os.execl(kitty_exe(), 'kitty', *(ans + argv_args))
     return ans + argv_args
 
 
@@ -446,7 +451,6 @@ def _main() -> None:
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
         os.chdir(os.path.expanduser('~'))
         args = macos_cmdline(args)
-        getattr(sys, 'kitty_run_data')['launched_by_launch_services'] = True
     try:
         cwd_ok = os.path.isdir(os.getcwd())
     except Exception:

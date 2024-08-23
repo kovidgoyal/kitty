@@ -86,6 +86,7 @@ bool
 init_logging(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #ifdef __APPLE__
+    // This env var can be either 1 or 2
     if (getenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES") != NULL) use_os_log = true;
 #endif
     return true;
