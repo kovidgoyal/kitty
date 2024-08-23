@@ -124,6 +124,8 @@ def find_testable_go_packages() -> tuple[set[str], dict[str, list[str]]]:
     base = os.getcwd()
     pat = re.compile(r'^func Test([A-Z]\w+)', re.MULTILINE)
     for (dirpath, dirnames, filenames) in os.walk(base):
+        if 'b' in dirnames and os.path.basename(dirpath) == 'bypy':
+            dirnames.remove('b')
         for f in filenames:
             if f.endswith('_test.go'):
                 q = os.path.relpath(dirpath, base)
