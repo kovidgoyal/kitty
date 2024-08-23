@@ -195,7 +195,7 @@ def find_best_match(
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
     if q not in font_map['family_map']:
-        if family != "monospace":
+        if family.lower() not in ('monospace', 'symbols nerd font mono'):
             log_error(f'The font {family} was not found, falling back to Menlo')
         q = 'menlo'
     candidates = scorer.sorted_candidates(font_map['family_map'][q])
