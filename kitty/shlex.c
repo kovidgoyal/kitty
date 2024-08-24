@@ -92,11 +92,10 @@ write_control_ch(Shlex *self) {
 
 static void
 read_valid_digits(Shlex *self, int max, char *output, bool(*is_valid)(Py_UCS4 ch)) {
-    for (int i = 0; i < max && self->src_pos < self->src_sz; i++) {
-        Py_UCS4 ch = PyUnicode_READ(self->kind, self->src_data, self->src_pos);
-        if (!is_valid(ch)) break;
-        output[0] = ch;
-        self->src_pos++; output++;
+    for (int i = 0; i < max && self->src_pos < self->src_sz; i++, output++) {
+        Py_UCS4 ch = read_ch(self);
+        if (!is_valid(ch)) { self->src_pos--; break; }
+        *output = ch;
     }
 }
 
