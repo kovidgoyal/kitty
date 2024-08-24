@@ -29,13 +29,13 @@ void FUNC(xor_data64)(const uint8_t key[64] UNUSED, uint8_t* data UNUSED, const 
 // Boilerplate {{{
 START_IGNORE_DIAGNOSTIC("-Wfloat-conversion")
 START_IGNORE_DIAGNOSTIC("-Wpedantic")
-#if  defined(__clang__) && __clang_major__ > 12
+#if  defined(__clang__) && __clang_major__ > 13
 _Pragma("clang diagnostic push")
 _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #endif
 #include <simde/x86/avx2.h>
 #include <simde/arm/neon.h>
-#if  defined(__clang__) && __clang_major__ > 12
+#if  defined(__clang__) && __clang_major__ > 13
 _Pragma("clang diagnostic pop")
 #endif
 END_IGNORE_DIAGNOSTIC

@@ -1,6 +1,6 @@
 module kitty
 
-go 1.22
+go 1.23
 
 require (
 	github.com/ALTree/bigfloat v0.2.0
