@@ -74,7 +74,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.36.1 [future]
+0.36.1 [2024-08-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow specifying that the :opt:`cursor shape for unfocused windows <cursor_shape_unfocused>` should remain unchanged (:pull:`7728`)
