@@ -386,7 +386,7 @@ calc_cell_width(Face *self) {
             ans = MAX(ans, (unsigned int)ceilf((float)self->face->glyph->metrics.horiAdvance / 64.f));
         }
     }
-    if (!ans) ans = (unsigned int)ceilf(self->face->size->metrics.max_advance / 64.f);
+    if (!ans) ans = MAX(1u, (unsigned int)ceilf(self->face->size->metrics.max_advance / 64.f));
     return ans;
 }
 
