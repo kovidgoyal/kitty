@@ -31,6 +31,7 @@ typedef struct ParsedFontFeature {
     bool hash_computed;
 } ParsedFontFeature;
 
+ParsedFontFeature* parse_font_feature(const char *spec);
 
 // API that font backends need to implement
 unsigned int glyph_id_for_codepoint(const PyObject *, char_type);

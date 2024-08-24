@@ -419,6 +419,9 @@ specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts, dou
 
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
+    RAII_PyObject(features, PyList_New(0));
+    if (!features) return NULL;
+    RAII_PyObject(final_features, NULL);
     RAII_PyObject(ans, NULL);
     AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
     AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
@@ -445,10 +448,23 @@ specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts, dou
     if (axes) {
         if (PyDict_SetItemString(ans, "axes", axes) != 0) return NULL;
     }
-    PyObject *features = PyDict_GetItemString(base_descriptor, "features");
-    if (features) {
-        if (PyDict_SetItemString(ans, "features", features) != 0) return NULL;
+    PyObject *ff = PyDict_GetItemString(ans, "fontfeatures");
+    if (ff && PyList_GET_SIZE(ff)) {
+        for (Py_ssize_t i = 0; i < PyList_GET_SIZE(ff); i++) {
+            RAII_PyObject(pff, (PyObject*)parse_font_feature(PyUnicode_AsUTF8(PyList_GET_ITEM(ff, i))));
+            if (pff == NULL) {
+                PyErr_Print(); fprintf(stderr, "\n");
+            } else if (PyList_Append(features, pff) != 0) return NULL;
+        }
     }
+    PyObject *base_features = PyDict_GetItemString(base_descriptor, "features");
+    final_features = PyTuple_New(PyList_GET_SIZE(features) + (base_features ? PyTuple_GET_SIZE(base_features) : 0));
+    if (!final_features) return NULL;
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(features); i++) { PyTuple_SET_ITEM(final_features, i, Py_NewRef(PyList_GET_ITEM(features, i))); }
+    if (base_features) {
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(base_features); i++) { PyTuple_SET_ITEM(final_features, i + PyList_GET_SIZE(features), Py_NewRef(PyTuple_GET_ITEM(base_features, i))); }
+    }
+    if (PyDict_SetItemString(ans, "features", final_features) != 0) return NULL;
     Py_INCREF(ans);
     return ans;
 end:
