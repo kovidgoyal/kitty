@@ -812,11 +812,13 @@ render_sample_text(CTFace *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
     unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
+    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
+    if (!pbuf) return NULL;
+    memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
+    if (!cell_width || !cell_height) return Py_BuildValue("OII", pbuf, cell_width, cell_height);
     size_t num_chars = PyUnicode_GET_LENGTH(ptext);
     int num_chars_per_line = canvas_width / cell_width, num_of_lines = (int)ceil((float)num_chars / (float)num_chars_per_line);
     canvas_height = MIN(canvas_height, num_of_lines * cell_height);
-    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
-    if (!pbuf) return NULL;
 
     __attribute__((cleanup(destroy_hb_buffer))) hb_buffer_t *hb_buffer = hb_buffer_create();
     if (!hb_buffer_pre_allocate(hb_buffer, 4*num_chars)) { PyErr_NoMemory(); return NULL; }
