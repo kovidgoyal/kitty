@@ -56,7 +56,7 @@ Programs implementing this protocol:
 * The `far2l file manager <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__
 * The `Yazi file manager <https://github.com/sxyazi/yazi>`__
 * The `awrit web browser <https://github.com/chase/awrit>`__
-* The `Turbo Vision <https://github.com/magiblot/tvision/commit/6e5a7b46c6634079feb2ac98f0b890bbed59f1ba>`/`Free Vision <https://gitlab.com/freepascal.org/fpc/source/-/issues/40673#note_2061428120>`__ IDEs
+* The `Turbo Vision <https://github.com/magiblot/tvision/commit/6e5a7b46c6634079feb2ac98f0b890bbed59f1ba>`__/`Free Vision <https://gitlab.com/freepascal.org/fpc/source/-/issues/40673#note_2061428120>`__ IDEs
 
 Shells implementing this protocol:
 
