@@ -1070,9 +1070,15 @@ get_variable_data(CTFace *self) {
 
 static PyObject*
 identify_for_debug(CTFace *self) {
-    return PyUnicode_FromFormat("%V: %V", self->postscript_name, "[psname]", self->path, "[path]");
+    RAII_PyObject(features, PyTuple_New(self->font_features.count)); if (!features) return NULL;
+    char buf[128];
+    for (unsigned i = 0; i < self->font_features.count; i++) {
+        hb_feature_to_string(self->font_features.features + i, buf, sizeof(buf));
+        PyObject *f = PyUnicode_FromString(buf); if (!f) return NULL;
+        PyTuple_SET_ITEM(features, i, f);
+    }
+    return PyUnicode_FromFormat("%V: %V\nFeatures: %S", self->postscript_name, "[psname]", self->path, "[path]", features);
 }
-
 
 // }}}
 

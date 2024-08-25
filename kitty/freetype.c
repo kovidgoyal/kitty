@@ -747,7 +747,14 @@ identify_for_debug(PyObject *s, PyObject *a UNUSED) {
     Face *self = (Face*)s;
     FaceIndex instance;
     instance.val = self->face->face_index;
-    return PyUnicode_FromFormat("%s: %V:%d", FT_Get_Postscript_Name(self->face), self->path, "[path]", instance.val);
+    RAII_PyObject(features, PyTuple_New(self->font_features.count)); if (!features) return NULL;
+    char buf[128];
+    for (unsigned i = 0; i < self->font_features.count; i++) {
+        hb_feature_to_string(self->font_features.features + i, buf, sizeof(buf));
+        PyObject *f = PyUnicode_FromString(buf); if (!f) return NULL;
+        PyTuple_SET_ITEM(features, i, f);
+    }
+    return PyUnicode_FromFormat("%s: %V:%d\nFeatures: %S", FT_Get_Postscript_Name(self->face), self->path, "[path]", instance.val, features);
 }
 
 static PyObject*

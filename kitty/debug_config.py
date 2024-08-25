@@ -261,7 +261,10 @@ def debug_config(opts: KittyOpts) -> str:
     p(green('Fonts:'))
     for k, font in current_fonts().items():
         if hasattr(font, 'identify_for_debug'):
-            p(yellow(f'  {k}:'), font.identify_for_debug())
+            flines = font.identify_for_debug().splitlines()
+            p(yellow(f'{k.rjust(8)}:'), flines[0])
+            for fl in flines[1:]:
+                p(' ' * 9, fl)
     p(green('Paths:'))
     p(yellow('  kitty:'), os.path.realpath(kitty_exe()))
     p(yellow('  base dir:'), kitty_base_dir)
