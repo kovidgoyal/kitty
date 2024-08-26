@@ -1663,6 +1663,17 @@ accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer) {
         if (!shutting_down) perror("accept() on talk socket failed!");
         return false;
     }
+    struct ucred ucred;
+    socklen_t optlen = sizeof(struct ucred);
+    if (getsockopt(peer, SOL_SOCKET, SO_PEERCRED, &ucred, &optlen) == -1) {
+        perror("getsockopt() on talk socket failed");
+        return true;
+    }
+    if (ucred.uid != getuid()) {
+        log_error("Access denied for uid %d", ucred.uid);
+        safe_close(peer, __FILE__, __LINE__);
+        return true;
+    }
     add_peer(peer, is_remote_control_peer);
     return true;
 }
