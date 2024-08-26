@@ -360,19 +360,25 @@ locale_is_valid(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_TRUE;
 }
 
+bool
+getpeerid(int fd, uid_t *euid, gid_t *egid) {
+#ifdef __linux__
+    struct ucred cr;
+    socklen_t sz = sizeof(cr);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &sz) != 0) return false;
+    *euid = cr.uid; *egid = cr.gid;
+#else
+    if (getpeereid(fd, euid, egid) != 0) return false;
+#endif
+    return true;
+}
+
 static PyObject*
 py_getpeereid(PyObject *self UNUSED, PyObject *args) {
     int fd;
     if (!PyArg_ParseTuple(args, "i", &fd)) return NULL;
     uid_t euid = 0; gid_t egid = 0;
-#ifdef __linux__
-    struct ucred cr;
-    socklen_t sz = sizeof(cr);
-    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &sz) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-    euid = cr.uid; egid = cr.gid;
-#else
-    if (getpeereid(fd, &euid, &egid) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-#endif
+    if (!getpeerid(fd, &euid, &egid)) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     int u = euid, g = egid;
     return Py_BuildValue("ii", u, g);
 }
