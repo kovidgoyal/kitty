@@ -1320,30 +1320,8 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     window->swaps_disallowed = true;
 
     if (!createSurface(window, wndconfig)) return false;
-
-    if (ctxconfig->client != GLFW_NO_API)
-    {
-        if (ctxconfig->source == GLFW_EGL_CONTEXT_API ||
-            ctxconfig->source == GLFW_NATIVE_CONTEXT_API)
-        {
-            if (!_glfwInitEGL())
-                return false;
-            if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig))
-                return false;
-        }
-        else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API)
-        {
-            if (!_glfwInitOSMesa())
-                return false;
-            if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig))
-                return false;
-        }
-    }
-
-    if (wndconfig->title)
-        window->wl.title = _glfw_strdup(wndconfig->title);
-    if (wndconfig->maximized)
-        window->wl.maximize_on_first_show = true;
+    if (wndconfig->title) window->wl.title = _glfw_strdup(wndconfig->title);
+    if (wndconfig->maximized) window->wl.maximize_on_first_show = true;
 
     if (wndconfig->visible)
     {
@@ -1367,6 +1345,24 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     window->wl.monitorsCount = 0;
     window->wl.monitorsSize = 1;
     if (window->wl.visible) loop_till_window_fully_created(window);
+    if (ctxconfig->client != GLFW_NO_API)
+    {
+        if (ctxconfig->source == GLFW_EGL_CONTEXT_API ||
+            ctxconfig->source == GLFW_NATIVE_CONTEXT_API)
+        {
+            if (!_glfwInitEGL())
+                return false;
+            if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig))
+                return false;
+        }
+        else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API)
+        {
+            if (!_glfwInitOSMesa())
+                return false;
+            if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig))
+                return false;
+        }
+    }
     return true;
 }
 

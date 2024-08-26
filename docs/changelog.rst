@@ -81,6 +81,8 @@ Detailed list of changes
 
 - :ac:`goto_tab`: Allow numbers less than ``-1`` to go to the Nth previously active tab
 
+- Wayland: Fix for upcoming explicit sync changes in Wayland compositors breaking kitty (:iss:`7767`)
+
 0.36.1 [2024-08-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
