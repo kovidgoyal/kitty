@@ -362,7 +362,7 @@ class Boss:
         self.child_monitor: ChildMonitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
-            talk_fd, listen_fd,
+            talk_fd, listen_fd, self.listening_on.startswith('unix:')
         )
         self.args: CLIOptions = args
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None

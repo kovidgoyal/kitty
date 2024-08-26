@@ -83,6 +83,8 @@ Detailed list of changes
 
 - Wayland: Fix for upcoming explicit sync changes in Wayland compositors breaking kitty (:iss:`7767`)
 
+- Remote control: When listening on a UNIX domain socket only allow connections from processes having the same user id (:pull:`7777`)
+
 0.36.1 [2024-08-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

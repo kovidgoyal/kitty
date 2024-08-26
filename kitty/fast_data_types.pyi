@@ -1366,6 +1366,7 @@ class ChildMonitor:
         dump_callback: Optional[Callable[[int, str, Any], None]],
         talk_fd: int = -1,
         listen_fd: int = -1,
+        verify_peer_uid: bool = False,
     ):
         pass
 
