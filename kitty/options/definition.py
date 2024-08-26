@@ -3968,8 +3968,9 @@ map('Set tab title',
 egr('''
 You can also create shortcuts to go to specific :term:`tabs <tab>`, with
 :code:`1` being the first tab, :code:`2` the second tab and :code:`-1` being the
-previously active tab, and any number larger than the last tab being the last
-tab::
+previously active tab, :code:`-2` being the tab active before the previously active tab and so on.
+Any number larger than the number of tabs goes to the last tab and any number less
+than the number of previously used tabs in the history goes to the oldest previously used tab in the history::
 
     map ctrl+alt+1 goto_tab 1
     map ctrl+alt+2 goto_tab 2

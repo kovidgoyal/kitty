@@ -1034,11 +1034,11 @@ class TabManager:  # {{{
             tab_num = max(0, len(self.tabs) - 1)
         if tab_num >= 0:
             self.set_active_tab_idx(tab_num)
-        else:
+        elif self.active_tab_history:
             try:
                 old_active_tab_id = self.active_tab_history[tab_num]
             except IndexError:
-                return
+                old_active_tab_id = self.active_tab_history[0]
             for idx, tab in enumerate(self.tabs):
                 if tab.id == old_active_tab_id:
                     self.set_active_tab_idx(idx)

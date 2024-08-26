@@ -145,8 +145,10 @@ def open_url_parse(func: str, rest: str) -> FuncArgsType:
 
 @func_with_args('goto_tab')
 def goto_tab_parse(func: str, rest: str) -> FuncArgsType:
-    args = (max(0, int(rest)), )
-    return func, args
+    n = int(rest)
+    if n < 0:
+        n += 1  # goto_tab subtracts 1 from its argument, this maps both zero and -1 to previous tab for backwards compat.
+    return func, (n,)
 
 
 @func_with_args('detach_window')
