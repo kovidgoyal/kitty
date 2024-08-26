@@ -1669,11 +1669,14 @@ accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer) {
         uid_t peer_uid; gid_t peer_gid;
         if (!getpeerid(peer, &peer_uid, &peer_gid)) {
             log_error("Denying access to peer because failed to get uid and gid for peer: %d with error: %s", peer, strerror(errno));
+            shutdown(peer, SHUT_RDWR);
             safe_close(peer, __FILE__, __LINE__);
             return true;
         }
         if (peer_uid != geteuid()) {
             log_error("Denying access to peer because its uid (%d) does not match our uid (%d)", peer_uid, geteuid());
+            shutdown(peer, SHUT_RDWR);
+            safe_close(peer, __FILE__, __LINE__);
             return true;
         }
     }
