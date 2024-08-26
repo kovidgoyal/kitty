@@ -360,29 +360,6 @@ locale_is_valid(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_TRUE;
 }
 
-bool
-getpeerid(int fd, uid_t *euid, gid_t *egid) {
-#ifdef __linux__
-    struct ucred cr;
-    socklen_t sz = sizeof(cr);
-    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &sz) != 0) return false;
-    *euid = cr.uid; *egid = cr.gid;
-#else
-    if (getpeereid(fd, euid, egid) != 0) return false;
-#endif
-    return true;
-}
-
-static PyObject*
-py_getpeereid(PyObject *self UNUSED, PyObject *args) {
-    int fd;
-    if (!PyArg_ParseTuple(args, "i", &fd)) return NULL;
-    uid_t euid = 0; gid_t egid = 0;
-    if (!getpeerid(fd, &euid, &egid)) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-    int u = euid, g = egid;
-    return Py_BuildValue("ii", u, g);
-}
-
 #include "docs_ref_map_generated.h"
 
 static PyObject*
@@ -575,7 +552,6 @@ static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"expand_ansi_c_escapes", (PyCFunction)expand_ansi_c_escapes, METH_O, ""},
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
-    {"getpeereid", (PyCFunction)py_getpeereid, METH_VARARGS, ""},
     {"wcswidth", (PyCFunction)wcswidth_std, METH_O, ""},
     {"unicode_database_version", (PyCFunction)unicode_database_version, METH_NOARGS, ""},
     {"open_tty", open_tty, METH_VARARGS, ""},

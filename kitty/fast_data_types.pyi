@@ -1590,10 +1590,6 @@ def remove_signal_handlers() -> None:
     pass
 
 
-def getpeereid(fd: int) -> Tuple[int, int]:
-    pass
-
-
 X25519: int
 SHA1_HASH: int
 SHA224_HASH: int

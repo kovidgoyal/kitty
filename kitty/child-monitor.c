@@ -1658,6 +1658,20 @@ add_peer(int peer, bool is_remote_control_peer) {
 }
 
 static bool
+getpeerid(int fd, uid_t *euid, gid_t *egid) {
+#ifdef __linux__
+    struct ucred cr;
+    socklen_t sz = sizeof(cr);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &sz) != 0) return false;
+    *euid = cr.uid; *egid = cr.gid;
+#else
+    if (getpeereid(fd, euid, egid) != 0) return false;
+#endif
+    return true;
+}
+
+
+static bool
 accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer) {
     int peer = accept(listen_fd, NULL, NULL);
     if (UNLIKELY(peer == -1)) {
