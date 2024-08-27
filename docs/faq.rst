@@ -257,11 +257,11 @@ fonts to be freely resizable, so it does not support bitmapped fonts.
 .. note::
    If you are trying to use a font patched with `Nerd Fonts
    <https://nerdfonts.com/>`__ symbols, don't do that as patching destroys
-   fonts. There is no need, simply install the standalone ``Symbols Nerd Font Mono``
-   (the file :file:`NerdFontsSymbolsOnly.tar.xz` from the `Nerd Fonts releases page
-   <https://github.com/ryanoasis/nerd-fonts/releases>`__). kitty should pick up
-   symbols from it automatically, and you can tell it to do so explicitly in
-   case it doesn't with the :opt:`symbol_map` directive::
+   fonts. There is no need, kitty has a builtin NERD font and will use it for
+   symbols not found in any other font on your system.
+   If you have patched fonts on your system they might be used instead for NERD
+   symbols, so to force kitty to use the pure NERD font for NERD symbols,
+   add the following line to :file:`kitty.conf`::
 
         # Nerd Fonts v3.2.0
 
