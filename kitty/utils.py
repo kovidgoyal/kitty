@@ -492,7 +492,14 @@ def parse_address_spec(spec: str) -> tuple[AddressFamily, Union[tuple[str, int],
             socket_path = address
     elif protocol in ('tcp', 'tcp6'):
         family = socket.AF_INET if protocol == 'tcp' else socket.AF_INET6
-        host, port = rest.rsplit(':', 1)
+        if rest.startswith('['):  # ]
+            host = rest[1:]
+            host, sep, leftover = host.rpartition(']')
+            _, port = leftover.rsplit(':', 1)
+            if ':' in host and protocol == 'tcp':
+                family = socket.AF_INET6
+        else:
+            host, port = rest.rsplit(':', 1)
         address = host, int(port)
     else:
         raise ValueError(f'Unknown protocol in listen-on value: {spec}')
