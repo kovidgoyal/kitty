@@ -327,6 +327,10 @@ def end_startup_notification(ctx: Optional['StartupCtx']) -> None:
 
 class startup_notification_handler:
 
+    # WARNING: This only works on X11 on other platforms extra_callback will be called
+    # after the window is shown, not before, as they do not do two stage window
+    # creation.
+
     def __init__(self, do_notify: bool = True, startup_id: Optional[str] = None, extra_callback: Optional[Callable[[int], None]] = None):
         self.do_notify = do_notify
         self.startup_id = startup_id
