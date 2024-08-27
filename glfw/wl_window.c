@@ -1345,7 +1345,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     window->wl.monitorsCount = 0;
     window->wl.monitorsSize = 1;
     // looping till window fully created attaches a single pixel buffer to the window,
-    // this cannot be done once a OpenGL context is created for the window.  So first loop
+    // this cannot be done once a OpenGL context is created for the window. So first loop
     // and only then create the OpenGL context.
     if (window->wl.visible) loop_till_window_fully_created(window);
     debug("Creating OpenGL context and attaching it to window\n");
