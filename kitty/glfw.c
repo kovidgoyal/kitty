@@ -1155,7 +1155,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // We use a temp window to avoid the need to set the window size after
     // creation, which causes a resize event and all the associated processing.
     // The temp window is used to get the DPI.
-    glfwWindowHint(GLFW_VISIBLE, false);
+    if (!global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, false);
     GLFWwindow *common_context = global_state.num_os_windows ? global_state.os_windows[0].handle : NULL;
     GLFWwindow *temp_window = NULL;
 #ifdef __APPLE__
@@ -1213,7 +1213,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     bool is_apple = true;
 #ifndef __APPLE__
     is_apple = false;
-    glfwShowWindow(glfw_window);
+    if (!global_state.is_wayland) glfwShowWindow(glfw_window);
 #endif
     if (global_state.is_wayland || is_apple) {
         float n_xscale, n_yscale;

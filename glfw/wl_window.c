@@ -371,8 +371,8 @@ wait_for_swap_to_commit(_GLFWwindow *window) {
 static void
 resizeFramebuffer(_GLFWwindow* window) {
     GLFWwindow *ctx = glfwGetCurrentContext();
-    const bool ctx_changed = ctx != (GLFWwindow*)window;
-    if (ctx_changed) glfwMakeContextCurrent((GLFWwindow*)window);
+    bool ctx_changed = false;
+    if (ctx != (GLFWwindow*)window && window->context.client != GLFW_NO_API) { ctx_changed = true;  glfwMakeContextCurrent((GLFWwindow*)window); }
     double scale = _glfwWaylandWindowScale(window);
     int scaled_width = (int)round(window->wl.width * scale);
     int scaled_height = (int)round(window->wl.height * scale);
@@ -1344,7 +1344,11 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     window->wl.monitors = calloc(1, sizeof(_GLFWmonitor*));
     window->wl.monitorsCount = 0;
     window->wl.monitorsSize = 1;
+    // looping till window fully created attaches a single pixel buffer to the window,
+    // this cannot be done once a OpenGL context is created for the window.  So first loop
+    // and only then create the OpenGL context.
     if (window->wl.visible) loop_till_window_fully_created(window);
+    debug("Creating OpenGL context and attaching it to window\n");
     if (ctxconfig->client != GLFW_NO_API)
     {
         if (ctxconfig->source == GLFW_EGL_CONTEXT_API ||
@@ -1594,7 +1598,6 @@ void _glfwPlatformShowWindow(_GLFWwindow* window)
     if (!window->wl.visible) {
         create_window_desktop_surface(window);
         window->wl.visible = true;
-        loop_till_window_fully_created(window);
     }
 }
 
