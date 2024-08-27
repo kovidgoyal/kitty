@@ -599,6 +599,9 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfw.wl.zwlr_layer_shell_v1 = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version);
         }
     }
+    else if (is(zwp_idle_inhibit_manager_v1)) {
+        _glfw.wl.idle_inhibit_manager = wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1);
+    }
 #undef is
 }
 
@@ -679,6 +682,7 @@ get_compositor_missing_capabilities(void) {
     C(blur, org_kde_kwin_blur_manager); C(server_side_decorations, decorationManager);
     C(cursor_shape, wp_cursor_shape_manager_v1); C(layer_shell, zwlr_layer_shell_v1);
     C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
+    C(idle_inhibit, idle_inhibit_manager);
 #undef C
     return buf;
 }
@@ -861,6 +865,8 @@ void _glfwPlatformTerminate(void)
         org_kde_kwin_blur_manager_destroy(_glfw.wl.org_kde_kwin_blur_manager);
     if (_glfw.wl.zwlr_layer_shell_v1)
         zwlr_layer_shell_v1_destroy(_glfw.wl.zwlr_layer_shell_v1);
+    if (_glfw.wl.idle_inhibit_manager)
+        zwp_idle_inhibit_manager_v1_destroy(_glfw.wl.idle_inhibit_manager);
 
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);

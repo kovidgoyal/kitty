@@ -65,6 +65,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-kwin-blur-v1-client-protocol.h"
 #include "wayland-wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wayland-single-pixel-buffer-v1-client-protocol.h"
+#include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -338,6 +339,7 @@ typedef struct _GLFWlibraryWayland
     struct org_kde_kwin_blur_manager *org_kde_kwin_blur_manager;
     struct zwlr_layer_shell_v1* zwlr_layer_shell_v1; uint32_t zwlr_layer_shell_v1_version;
     struct wp_single_pixel_buffer_manager_v1 *wp_single_pixel_buffer_manager_v1;
+    struct zwp_idle_inhibit_manager_v1* idle_inhibit_manager;
 
     int                         compositorVersion;
     int                         seatVersion;
