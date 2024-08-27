@@ -85,6 +85,8 @@ Detailed list of changes
 
 - Remote control: When listening on a UNIX domain socket only allow connections from processes having the same user id (:pull:`7777`)
 
+- kitten @: Fix a regression connecting to TCP sockets using plain IP addresses rather than hostnames (:iss:`7794`)
+
 0.36.1 [2024-08-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

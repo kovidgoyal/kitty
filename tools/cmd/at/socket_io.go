@@ -174,8 +174,10 @@ func do_socket_io(io_data *rc_io_data) (serialized_response []byte, err error) {
 		}
 		defer f.Close()
 	} else {
-		conn, err = net.Dial(global_options.to_network, global_options.to_address)
+		network := utils.IfElse(global_options.to_network == "ip", "tcp", global_options.to_network)
+		conn, err = net.Dial(network, global_options.to_address)
 		if err != nil {
+			err = fmt.Errorf("Failed to connect to %s %s with error: %w", network, global_options.to_address, err)
 			return
 		}
 	}
