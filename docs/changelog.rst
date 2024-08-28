@@ -87,6 +87,8 @@ Detailed list of changes
 
 - kitten @: Fix a regression connecting to TCP sockets using plain IP addresses rather than hostnames (:iss:`7794`)
 
+- diff kitten: Fix a regression that broke diffing against remote files (:iss:`7797`)
+
 0.36.1 [2024-08-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

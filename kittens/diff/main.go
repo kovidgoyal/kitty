@@ -58,7 +58,7 @@ func get_ssh_file(hostname, rpath string) (string, error) {
 	for strings.HasPrefix(rpath, "/") {
 		rpath = rpath[1:]
 	}
-	cmd := []string{ssh.SSHExe(), hostname, "tar", "-c", "-f", "-"}
+	cmd := []string{ssh.SSHExe(), hostname, "tar", "--dereference", "--create", "--file", "-"}
 	if is_abs {
 		cmd = append(cmd, "-C", "/")
 	}

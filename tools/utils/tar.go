@@ -48,6 +48,7 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 		var hdr *tar.Header
 		hdr, err = tr.Next()
 		if errors.Is(err, io.EOF) {
+			err = nil
 			break
 		}
 		if err != nil {
@@ -70,6 +71,9 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			var d *os.File
+			if err = os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
+				return
+			}
 			if d, err = os.Create(dest); err != nil {
 				return
 			}
@@ -82,6 +86,9 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 				return
 			}
 		case tar.TypeLink:
+			if err = os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
+				return
+			}
 			if err = os.Link(hdr.Linkname, dest); err != nil {
 				return
 			}
@@ -89,6 +96,9 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 				return
 			}
 		case tar.TypeSymlink:
+			if err = os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
+				return
+			}
 			if err = os.Symlink(hdr.Linkname, dest); err != nil {
 				return
 			}
