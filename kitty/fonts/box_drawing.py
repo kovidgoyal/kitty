@@ -595,7 +595,7 @@ def draw_circle(buf: SSByteArray, width: int, height: int, scale: float = 1.0, g
 
 
 @supersampled()
-def commit(buf: SSByteArray, width: int, height: int, level: int = 1, scale: float = 0.75, line: str = 'none', solid: bool = True) -> None:
+def commit(buf: SSByteArray, width: int, height: int, level: int = 1, scale: float = 0.9, line: str = 'none', solid: bool = True) -> None:
     ' Draw a circular commit with the given scale. Commits can either be solid or hollow and can have vertical, horizontal, up, down, left, or right line(s) '
 
     factor = buf.supersample_factor
