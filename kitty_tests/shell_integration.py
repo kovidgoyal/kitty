@@ -42,6 +42,7 @@ def basic_shell_env(home_dir):
         'BASH_SILENCE_DEPRECATION_WARNING': '1',
         'PYTHONDONTWRITEBYTECODE': '1',
         'WEZTERM_SHELL_SKIP_ALL': '1',  # dont fail if WezTerm's system wide, default on (why?) shell integration is installed
+        'IN_NIX_SHELL': '1',
     }
     for x in ('USER', 'LANG'):
         if os.environ.get(x):
