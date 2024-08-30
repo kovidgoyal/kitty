@@ -595,21 +595,22 @@ def draw_circle(buf: SSByteArray, width: int, height: int, scale: float = 1.0, g
 
 
 @supersampled()
-def commit(buf: SSByteArray, width: int, height: int, level: int = 1, scale: float = 0.75, line: str = 'none', solid: bool = True) -> None:
+def commit(buf: SSByteArray, width: int, height: int, level: int = 1, scale: float = 0.9, lines: list[str] = [], solid: bool = True) -> None:
     ' Draw a circular commit with the given scale. Commits can either be solid or hollow and can have vertical, horizontal, up, down, left, or right line(s) '
 
     factor = buf.supersample_factor
     # Round half width/height to supersample factor to avoid misalignment with non-supersampled lines
     hwidth, hheight = factor * (width // 2 // factor), factor * (height // 2 // factor)
 
-    if line == 'horizontal' or line == 'right':
-        draw_hline(buf, width, hwidth, width, hheight, level, supersample_factor=factor)
-    if line == 'horizontal' or line == 'left':
-        draw_hline(buf, width, 0, hwidth, hheight, level, supersample_factor=factor)
-    if line == 'vertical' or line == 'down':
-        draw_vline(buf, width, hheight, height, hwidth, level, supersample_factor=factor)
-    if line == 'vertical' or line == 'up':
-        draw_vline(buf, width, 0, hheight, hwidth, level, supersample_factor=factor)
+    for line in lines:
+        if line == 'horizontal' or line == 'right':
+            draw_hline(buf, width, hwidth, width, hheight, level, supersample_factor=factor)
+        if line == 'horizontal' or line == 'left':
+            draw_hline(buf, width, 0, hwidth, hheight, level, supersample_factor=factor)
+        if line == 'vertical' or line == 'down':
+            draw_vline(buf, width, hheight, height, hwidth, level, supersample_factor=factor)
+        if line == 'vertical' or line == 'up':
+            draw_vline(buf, width, 0, hheight, hwidth, level, supersample_factor=factor)
 
     draw_circle(buf, width, height, scale=scale)
     if not solid:
@@ -1332,18 +1333,36 @@ box_chars: dict[str, list[Callable[[BufType, int, int], Any]]] = {
     '': [hline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
     '': [commit],
     '': [p(commit, solid=False)],
-    '': [p(commit, line='right')],
-    '': [p(commit, solid=False, line='right')],
-    '': [p(commit, line='left')],
-    '': [p(commit, solid=False, line='left')],
-    '': [p(commit, line='horizontal')],
-    '': [p(commit, solid=False, line='horizontal')],
-    '': [p(commit, line='down')],
-    '': [p(commit, solid=False, line='down')],
-    '': [p(commit, line='up')],
-    '': [p(commit, solid=False, line='up')],
-    '': [p(commit, line='vertical')],
-    '': [p(commit, solid=False, line='vertical')],
+    '': [p(commit, lines=['right'])],
+    '': [p(commit, solid=False, lines=['right'])],
+    '': [p(commit, lines=['left'])],
+    '': [p(commit, solid=False, lines=['left'])],
+    '': [p(commit, lines=['horizontal'])],
+    '': [p(commit, solid=False, lines=['horizontal'])],
+    '': [p(commit, lines=['down'])],
+    '': [p(commit, solid=False, lines=['down'])],
+    '': [p(commit, lines=['up'])],
+    '': [p(commit, solid=False, lines=['up'])],
+    '': [p(commit, lines=['vertical'])],
+    '': [p(commit, solid=False, lines=['vertical'])],
+    '': [p(commit, lines=['right', 'down'])],
+    '': [p(commit, solid=False, lines=['right', 'down'])],
+    '': [p(commit, lines=['left', 'down'])],
+    '': [p(commit, solid=False, lines=['left', 'down'])],
+    '': [p(commit, lines=['right', 'up'])],
+    '': [p(commit, solid=False, lines=['right', 'up'])],
+    '': [p(commit, lines=['left', 'up'])],
+    '': [p(commit, solid=False, lines=['left', 'up'])],
+    '': [p(commit, lines=['vertical', 'right'])],
+    '': [p(commit, solid=False, lines=['vertical', 'right'])],
+    '': [p(commit, lines=['vertical', 'left'])],
+    '': [p(commit, solid=False, lines=['vertical', 'left'])],
+    '': [p(commit, lines=['horizontal', 'down'])],
+    '': [p(commit, solid=False, lines=['horizontal', 'down'])],
+    '': [p(commit, lines=['horizontal', 'up'])],
+    '': [p(commit, solid=False, lines=['horizontal', 'up'])],
+    '': [p(commit, lines=['horizontal', 'vertical'])],
+    '': [p(commit, solid=False, lines=['horizontal', 'vertical'])],
 }
 
 t, f = 1, 3
