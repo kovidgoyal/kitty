@@ -135,33 +135,51 @@ func get_shell_name(argv0 string) (ans string) {
 	return strings.TrimPrefix(ans, "-")
 }
 
-func rc_modification_allowed(ksi string) bool {
+func rc_modification_allowed(ksi string) (allowed bool, set_ksi_env_var bool) {
+	allowed = ksi != ""
+	set_ksi_env_var = true
 	for _, x := range strings.Split(ksi, " ") {
 		switch x {
-		case "disabled", "no-rc":
-			return false
+		case "disabled":
+			allowed = false
+			set_ksi_env_var = false
+			break
+		case "no-rc":
+			allowed = false
+			break
 		}
 	}
-	return ksi != ""
+	return
+}
+
+func copy_os_env_as_dict() map[string]string {
+	oenv := os.Environ()
+	env := make(map[string]string, len(oenv))
+	for _, x := range oenv {
+		if k, v, found := strings.Cut(x, "="); found {
+			env[k] = v
+		}
+	}
+	return env
 }
 
 func RunShell(shell_cmd []string, shell_integration_env_var_val, cwd string) (err error) {
 	shell_name := get_shell_name(shell_cmd[0])
 	var shell_env map[string]string
-	if rc_modification_allowed(shell_integration_env_var_val) && shell_integration.IsSupportedShell(shell_name) {
-		oenv := os.Environ()
-		env := make(map[string]string, len(oenv))
-		for _, x := range oenv {
-			if k, v, found := strings.Cut(x, "="); found {
-				env[k] = v
+	if shell_integration.IsSupportedShell(shell_name) {
+		rc_mod_allowed, set_ksi_env_var := rc_modification_allowed(shell_integration_env_var_val)
+		if rc_mod_allowed {
+			// KITTY_SHELL_INTEGRATION is always set by this function
+			argv, env, err := shell_integration.Setup(shell_name, shell_integration_env_var_val, shell_cmd, copy_os_env_as_dict())
+			if err != nil {
+				return err
 			}
+			shell_cmd = argv
+			shell_env = env
+		} else if set_ksi_env_var {
+			shell_env = copy_os_env_as_dict()
+			shell_env["KITTY_SHELL_INTEGRATION"] = shell_integration_env_var_val
 		}
-		argv, env, err := shell_integration.Setup(shell_name, shell_integration_env_var_val, shell_cmd, env)
-		if err != nil {
-			return err
-		}
-		shell_cmd = argv
-		shell_env = env
 	}
 	exe := shell_cmd[0]
 	if runtime.GOOS == "darwin" && (os.Getenv("KITTY_RUNNING_SHELL_INTEGRATION_TEST") != "1" || os.Getenv("KITTY_RUNNING_BASH_INTEGRATION_TEST") != "") {
