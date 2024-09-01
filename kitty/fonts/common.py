@@ -502,5 +502,14 @@ def develop(family: str = '') -> None:
     s('Bold-Italic:', ff['bi'])
 
 
+def list_fonts(monospaced: bool = True) -> dict[str, list[dict[str, str]]]:
+    ans: dict[str, list[dict[str, str]]] = {}
+    for key, descriptors in all_fonts_map(monospaced)['family_map'].items():
+        entries = ans.setdefault(key, [])
+        for d in descriptors:
+            entries.append({'family': d['family'], 'psname': d['postscript_name'], 'path': d['path'], 'style': d['style']})
+    return ans
+
+
 if __name__ == '__main__':
     develop()
