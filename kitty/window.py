@@ -213,8 +213,7 @@ def compile_match_query(exp: str, is_simple: bool = True) -> MatchPatternType:
 def decode_cmdline(x: str) -> str:
     ctype, sep, val = x.partition('=')
     if ctype == 'cmdline':
-        with suppress(StopIteration):
-            return next(shlex_split(val, True))
+        return next(shlex_split(val, True))
     elif ctype == 'cmdline_url':
         from urllib.parse import unquote
         return unquote(val)

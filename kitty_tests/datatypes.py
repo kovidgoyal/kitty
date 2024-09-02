@@ -629,7 +629,7 @@ class TestDataTypes(BaseTest):
             r'x "ab"y \m': ((0, 'x'), (2, 'aby'), (8, 'm')),
             r'''x'y"\z'1''': ((0, 'xy"\\z1'),),
             r'\abc\ d': ((0, 'abc d'),),
-            '': (), '   ': (), ' \tabc\n\t\r ': ((2, 'abc'),),
+            '': ((0, ''),), '   ': ((0, ''),), ' \tabc\n\t\r ': ((2, 'abc'),),
             "$'ab'": ((0, '$ab'),),
         }.items():
             actual = tuple(shlex_split_with_positions(q))
