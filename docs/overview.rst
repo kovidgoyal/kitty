@@ -177,7 +177,7 @@ option in :file:`kitty.conf`. An example, showing all available commands:
     launch emacs
 
     # Create a complex layout using multiple splits. Creates two columns of
-    # windows with two windows in each column. The windows in the firt column are
+    # windows with two windows in each column. The windows in the first column are
     # split 50:50. In the second column the windows are not evenly split.
     new_tab complex tab
     layout splits
