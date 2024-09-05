@@ -133,6 +133,7 @@ typedef struct {
         struct {
             unsigned int redraws_prompts_at_all: 1;
             unsigned int uses_special_keys_for_cursor_movement: 1;
+            unsigned int supports_click_events: 1;
         };
         unsigned int val;
     } prompt_settings;
@@ -274,6 +275,7 @@ uint8_t screen_current_key_encoding_flags(Screen *self);
 void screen_report_key_encoding_flags(Screen *self);
 int screen_detect_url(Screen *screen, unsigned int x, unsigned int y);
 int screen_cursor_at_a_shell_prompt(const Screen *);
+bool screen_prompt_supports_click_events(const Screen *);
 bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
 bool screen_send_signal_for_key(Screen *, char key);
 bool get_line_edge_colors(Screen *self, color_type *left, color_type *right);
