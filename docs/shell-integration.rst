@@ -456,6 +456,13 @@ to control its behavior, separated by semi-colons. They are::
     k=s - this tells kitty that the secondary (PS2) prompt is starting at the
     current line.
 
+    click_events=1 - this tells kitty that the shell is capable of handling
+    mouse click events. kitty will thus send a click event to the shell when
+    the user clicks somewhere in the prompt. The shell can then move the cursor
+    to that position or perform some other appropriate action. Without this,
+    kitty will instead generate a number of fake key events to move the cursor
+    to the clicked location, which is not fully robust.
+
 kitty also optionally supports sending the cmdline going to be executed with ``<OSC>133;C`` as::
 
     <OSC>133;C;cmdline=cmdline encoded by %q<ST>
