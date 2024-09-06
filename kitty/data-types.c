@@ -90,6 +90,17 @@ pybase64_encode(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
+base64_encode_into(PyObject UNUSED *self, PyObject *args) {
+    int add_padding = 0;
+    RAII_PY_BUFFER(view); RAII_PY_BUFFER(output);
+    if (!PyArg_ParseTuple(args, "s*w*|i", &view, &add_padding)) return NULL;
+    size_t sz = required_buffer_size_for_base64_encode(view.len);
+    if (output.len < (ssize_t)sz) { PyErr_SetString(PyExc_TypeError, "output buffer too small"); return NULL; }
+    base64_encode8(view.buf, view.len, output.buf, &sz, add_padding);
+    return PyLong_FromSize_t(sz);
+}
+
+static PyObject*
 pybase64_decode(PyObject UNUSED *self, PyObject *args) {
     RAII_PY_BUFFER(view);
     if (!PyArg_ParseTuple(args, "s*", &view)) return NULL;
@@ -104,6 +115,20 @@ pybase64_decode(PyObject UNUSED *self, PyObject *args) {
     if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
     return ans;
 }
+
+static PyObject*
+base64_decode_into(PyObject UNUSED *self, PyObject *args) {
+    RAII_PY_BUFFER(view); RAII_PY_BUFFER(output);
+    if (!PyArg_ParseTuple(args, "s*", &view, &output)) return NULL;
+    size_t sz = required_buffer_size_for_base64_decode(view.len);
+    if (output.len < (ssize_t)sz) { PyErr_SetString(PyExc_TypeError, "output buffer too small"); return NULL; }
+    if (!base64_decode8(view.buf, view.len, output.buf, &sz)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
+        return NULL;
+    }
+    return PyLong_FromSize_t(sz);
+}
+
 
 typedef struct StreamingBase64Decoder {
     PyObject_HEAD
@@ -560,7 +585,9 @@ static PyMethodDef module_methods[] = {
     {"close_tty", close_tty, METH_VARARGS, ""},
     {"set_iutf8_fd", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"base64_encode", (PyCFunction)pybase64_encode, METH_VARARGS, ""},
+    {"base64_encode_into", (PyCFunction)base64_encode_into, METH_VARARGS, ""},
     {"base64_decode", (PyCFunction)pybase64_decode, METH_VARARGS, ""},
+    {"base64_decode_into", (PyCFunction)base64_decode_into, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"locale_is_valid", (PyCFunction)locale_is_valid, METH_VARARGS, ""},
