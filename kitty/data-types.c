@@ -77,10 +77,13 @@ redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-pybase64_encode(PyObject UNUSED *self, PyObject *args) {
+pybase64_encode(PyObject UNUSED *self, PyObject *const *args, Py_ssize_t nargs) {
     int add_padding = 0;
+    if (nargs < 1 || nargs > 2) { PyErr_SetString(PyExc_TypeError, "must supply one or two arguments"); return NULL; }
     RAII_PY_BUFFER(view);
-    if (!PyArg_ParseTuple(args, "s*|p", &view, &add_padding)) return NULL;
+    if (PyUnicode_Check(args[0])) view.buf = (void*)PyUnicode_AsUTF8AndSize(args[0], &view.len);
+    else if (PyObject_GetBuffer(args[0], &view, PyBUF_READ) != 0) return NULL;
+    if (nargs == 2) add_padding = PyObject_IsTrue(args[1]);
     size_t sz = required_buffer_size_for_base64_encode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
@@ -93,7 +96,7 @@ static PyObject*
 base64_encode_into(PyObject UNUSED *self, PyObject *args) {
     int add_padding = 0;
     RAII_PY_BUFFER(view); RAII_PY_BUFFER(output);
-    if (!PyArg_ParseTuple(args, "s*w*|i", &view, &add_padding)) return NULL;
+    if (!PyArg_ParseTuple(args, "s*w*|i", &view, &output, &add_padding)) return NULL;
     size_t sz = required_buffer_size_for_base64_encode(view.len);
     if (output.len < (ssize_t)sz) { PyErr_SetString(PyExc_TypeError, "output buffer too small"); return NULL; }
     base64_encode8(view.buf, view.len, output.buf, &sz, add_padding);
@@ -101,9 +104,11 @@ base64_encode_into(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-pybase64_decode(PyObject UNUSED *self, PyObject *args) {
+pybase64_decode(PyObject UNUSED *self, PyObject *const *args, Py_ssize_t nargs) {
     RAII_PY_BUFFER(view);
-    if (!PyArg_ParseTuple(args, "s*", &view)) return NULL;
+    if (nargs != 1) { PyErr_SetString(PyExc_TypeError, "must supply exactly one argument"); return NULL; }
+    if (PyUnicode_Check(args[0])) view.buf = (void*)PyUnicode_AsUTF8AndSize(args[0], &view.len);
+    else if (PyObject_GetBuffer(args[0], &view, PyBUF_READ) != 0) return NULL;
     size_t sz = required_buffer_size_for_base64_decode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
@@ -119,7 +124,7 @@ pybase64_decode(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 base64_decode_into(PyObject UNUSED *self, PyObject *args) {
     RAII_PY_BUFFER(view); RAII_PY_BUFFER(output);
-    if (!PyArg_ParseTuple(args, "s*", &view, &output)) return NULL;
+    if (!PyArg_ParseTuple(args, "s*w*", &view, &output)) return NULL;
     size_t sz = required_buffer_size_for_base64_decode(view.len);
     if (output.len < (ssize_t)sz) { PyErr_SetString(PyExc_TypeError, "output buffer too small"); return NULL; }
     if (!base64_decode8(view.buf, view.len, output.buf, &sz)) {
@@ -584,9 +589,9 @@ static PyMethodDef module_methods[] = {
     {"raw_tty", raw_tty, METH_VARARGS, ""},
     {"close_tty", close_tty, METH_VARARGS, ""},
     {"set_iutf8_fd", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
-    {"base64_encode", (PyCFunction)pybase64_encode, METH_VARARGS, ""},
+    {"base64_encode", (PyCFunction)(void (*) (void))(pybase64_encode), METH_FASTCALL, ""},
     {"base64_encode_into", (PyCFunction)base64_encode_into, METH_VARARGS, ""},
-    {"base64_decode", (PyCFunction)pybase64_decode, METH_VARARGS, ""},
+    {"base64_decode", (PyCFunction)(void (*) (void))(pybase64_decode), METH_FASTCALL, ""},
     {"base64_decode_into", (PyCFunction)base64_decode_into, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
