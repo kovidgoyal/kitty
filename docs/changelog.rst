@@ -74,7 +74,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.36.2 [future]
+0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Linux: Fix a regression in 0.36.0 that caused font features defined via fontconfig to be ignored (:iss:`7773`)
