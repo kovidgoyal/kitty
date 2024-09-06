@@ -45,7 +45,7 @@ def echo_cmd(cmd: Iterable[str]) -> None:
     end = '\n'
     if isatty:
         end = f'\x1b[m{end}'
-        print('\x1b[92m', end='')
+        print('\x1b[32m', end='')
     print(shlex.join(cmd), end=end, flush=True)
 
 
@@ -75,7 +75,7 @@ def run_build(args: Any) -> None:
         try:
             call(cmd, echo=True)
         except (SystemExit, Exception):
-            needs_retry = 'arm64' in cmd or building_nightly
+            needs_retry = building_nightly and 'linux' not in cmd
             if not needs_retry:
                 raise
             print('Build failed, retrying in a minute seconds...', file=sys.stderr)
@@ -87,7 +87,6 @@ def run_build(args: Any) -> None:
     for x in ('64', 'arm64'):
         prefix = f'python ../bypy linux --arch {x} '
         run_with_retry(prefix + f'program --non-interactive --extra-program-data "{vcs_rev}"')
-        call(prefix + 'shutdown', echo=True)
     run_with_retry(f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{vcs_rev}"')
     call('python ../bypy macos shutdown', echo=True)
     call('make debug')
