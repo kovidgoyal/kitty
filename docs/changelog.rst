@@ -74,6 +74,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.36.3 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a regression in the previous release that broke use of the ``cd`` command in session files (:iss:`7829`)
+
 0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

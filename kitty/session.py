@@ -103,7 +103,7 @@ class Session:
     def add_window(self, cmd: Union[None, str, list[str]], expand: Callable[[str], str] = lambda x: x) -> None:
         from .launch import parse_launch_args
         needs_expandvars = False
-        if isinstance(cmd, str):
+        if isinstance(cmd, str) and cmd:
             needs_expandvars = True
             cmd = list(shlex_split(cmd))
         spec = parse_launch_args(cmd)
