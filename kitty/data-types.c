@@ -82,7 +82,7 @@ pybase64_encode(PyObject UNUSED *self, PyObject *const *args, Py_ssize_t nargs) 
     if (nargs < 1 || nargs > 2) { PyErr_SetString(PyExc_TypeError, "must supply one or two arguments"); return NULL; }
     RAII_PY_BUFFER(view);
     if (PyUnicode_Check(args[0])) view.buf = (void*)PyUnicode_AsUTF8AndSize(args[0], &view.len);
-    else if (PyObject_GetBuffer(args[0], &view, PyBUF_READ) != 0) return NULL;
+    else if (PyObject_GetBuffer(args[0], &view, PyBUF_SIMPLE) != 0) return NULL;
     if (nargs == 2) add_padding = PyObject_IsTrue(args[1]);
     size_t sz = required_buffer_size_for_base64_encode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
@@ -104,11 +104,10 @@ base64_encode_into(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-pybase64_decode(PyObject UNUSED *self, PyObject *const *args, Py_ssize_t nargs) {
+pybase64_decode(PyObject UNUSED *self, PyObject *input_data) {
     RAII_PY_BUFFER(view);
-    if (nargs != 1) { PyErr_SetString(PyExc_TypeError, "must supply exactly one argument"); return NULL; }
-    if (PyUnicode_Check(args[0])) view.buf = (void*)PyUnicode_AsUTF8AndSize(args[0], &view.len);
-    else if (PyObject_GetBuffer(args[0], &view, PyBUF_READ) != 0) return NULL;
+    if (PyUnicode_Check(input_data)) view.buf = (void*)PyUnicode_AsUTF8AndSize(input_data, &view.len);
+    else if (PyObject_GetBuffer(input_data, &view, PyBUF_SIMPLE) != 0) return NULL;
     size_t sz = required_buffer_size_for_base64_decode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
@@ -591,7 +590,7 @@ static PyMethodDef module_methods[] = {
     {"set_iutf8_fd", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"base64_encode", (PyCFunction)(void (*) (void))(pybase64_encode), METH_FASTCALL, ""},
     {"base64_encode_into", (PyCFunction)base64_encode_into, METH_VARARGS, ""},
-    {"base64_decode", (PyCFunction)(void (*) (void))(pybase64_decode), METH_FASTCALL, ""},
+    {"base64_decode", (PyCFunction)(void (*) (void))(pybase64_decode), METH_O, ""},
     {"base64_decode_into", (PyCFunction)base64_decode_into, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
