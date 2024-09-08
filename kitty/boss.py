@@ -3034,7 +3034,7 @@ class Boss:
         from .debug_config import debug_config
         w = self.window_for_dispatch or self.active_window
         if w is not None:
-            output = debug_config(get_options())
+            output = debug_config(get_options(), self.mappings.global_shortcuts)
             set_clipboard_string(re.sub(r'\x1b.+?m', '', output))
             output += '\n\x1b[35mThis debug output has been copied to the clipboard\x1b[m'
             self.display_scrollback(w, output, title=_('Current kitty options'), report_cursor=False)

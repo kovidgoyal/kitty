@@ -79,6 +79,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke use of the ``cd`` command in session files (:iss:`7829`)
 
+- macOS: Fix shortcuts that become entries in the global menubar being reported as removed shortcuts in the debug output
+
 0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

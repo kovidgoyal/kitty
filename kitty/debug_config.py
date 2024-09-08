@@ -70,7 +70,7 @@ def compare_maps(
 
 
 
-def compare_opts(opts: KittyOpts, print: Print) -> None:
+def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None, print: Print) -> None:
     from .config import load_config
     print()
     print('Config options different from defaults:')
@@ -134,6 +134,11 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
         initial = {as_sc(k, v[0]): as_str(v) for k, v in initial_.keymap.items()}
         final_ = opts.keyboard_modes.get(kmn, KeyboardMode(kmn))
         final = {as_sc(k, v[0]): as_str(v) for k, v in final_.keymap.items()}
+        if not kmn and global_shortcuts:
+            for action, sk in global_shortcuts.items():
+                sc = Shortcut((sk,))
+                if sc not in final:
+                    final[sc] = action
         compare_maps(final, opts.kitty_mod, initial, default_opts.kitty_mod, print, mode_name=kmn)
     new_keyboard_modes = set(opts.keyboard_modes) - set(default_opts.keyboard_modes)
     for kmn in new_keyboard_modes:
@@ -229,7 +234,7 @@ def compositor_name() -> str:
     return ans
 
 
-def debug_config(opts: KittyOpts) -> str:
+def debug_config(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None = None) -> str:
     from io import StringIO
     out = StringIO()
     p = partial(print, file=out)
@@ -276,7 +281,7 @@ def debug_config(opts: KittyOpts) -> str:
     if opts.config_overrides:
         p(green('Loaded config overrides:'))
         p(' ', '\n  '.join(opts.config_overrides))
-    compare_opts(opts, p)
+    compare_opts(opts, global_shortcuts, p)
     p()
     p(green('Important environment variables seen by the kitty process:'))
 
