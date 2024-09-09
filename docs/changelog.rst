@@ -81,6 +81,8 @@ Detailed list of changes
 
 - macOS: Fix shortcuts that become entries in the global menubar being reported as removed shortcuts in the debug output
 
+- macOS: Fix :opt:`macos_option_as_alt` not working when :kbd:`caps lock` is engaged (:iss:`7836`)
+
 0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

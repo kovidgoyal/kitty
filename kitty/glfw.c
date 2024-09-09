@@ -898,6 +898,7 @@ static GLFWwindow *apple_preserve_common_context = NULL;
 
 static int
 filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned long flags) {
+    mods &= ~(GLFW_MOD_NUM_LOCK | GLFW_MOD_CAPS_LOCK);
     if ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) {
         if (OPT(macos_option_as_alt) == 3) return 1;
         if (cocoa_alt_option_key_pressed(flags)) return 1;
