@@ -588,10 +588,28 @@ def draw_circle(buf: SSByteArray, width: int, height: int, scale: float = 1.0, g
     w, h = width // 2, height // 2
     radius = int(scale * min(w, h) - gap / 2)
     fill = 0 if invert else 255
+    limit = radius * radius
     for y in range(height):
         for x in range(width):
-            if (x - w) ** 2 + (y - h) ** 2 <= radius ** 2:
+            xw, yh = x - w, y - h
+            if xw * xw + yh * yh <= limit:
                 buf[y * width + x] = fill
+
+
+@supersampled()
+def draw_filled_circle(buf: SSByteArray, width: int, height: int, level: int = 1) -> None:
+    draw_circle(buf, width, height)
+
+
+@supersampled()
+def draw_fish_eye(buf: SSByteArray, width: int, height: int, level: int = 0) -> None:
+    w, h = width // 2, height // 2
+    line_width = int(thickness(level) * buf.supersample_factor) // 2
+    radius = min(w, h) - line_width
+    arc_x, arc_y = circle_equations(w, h, radius, start_at=0, end_at=360)
+    draw_parametrized_curve(buf, width, height, level, arc_x, arc_y)
+    gap = radius - radius // 10
+    draw_circle(buf, width, height, gap=gap)
 
 
 @supersampled()
@@ -1116,6 +1134,8 @@ box_chars: dict[str, list[Callable[[BufType, int, int], Any]]] = {
     '': [p(spinner, start=80, end=220)],
     '': [p(spinner, start=170, end=270)],
     '○': [p(spinner, start=0, end=360, level=0)],    # circle
+    '●': [draw_filled_circle],
+    '◉': [draw_fish_eye],
     '◜': [p(spinner, start=180, end=270)],  # upper-left
     '◝': [p(spinner, start=270, end=360)],  # upper-right
     '◞': [p(spinner, start=360, end=450)],  # lower-right

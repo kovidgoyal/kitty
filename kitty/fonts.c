@@ -602,7 +602,7 @@ START_ALLOW_CASE_RANGE
         case 0x2500 ... 0x2573:
         case 0x2574 ... 0x259f:
         case 0x25d6 ... 0x25d7:
-        case 0x25cb:
+        case 0x25cb: case 0x25c9: case 0x25cf:
         case 0x25dc ... 0x25e5:
         case 0x2800 ... 0x28ff:
         case 0xe0b0 ... 0xe0bf: case 0xe0d6 ... 0xe0d7:    // powerline box drawing
