@@ -282,9 +282,11 @@ if you specify a program-to-run you can use the special placeholder
                 p(f'\nThe source code for this kitten is `available on GitHub <{scurl}>`_.')
                 p('\nCommand Line Interface')
                 p('-' * 72)
+                appname = f'kitten {kitten}'
+                if kitten in ('panel', 'broadcast'):
+                    appname = 'kitty +' + appname
                 p('\n\n' + option_spec_as_rst(
-                    data['options'], message=data['help_text'], usage=data['usage'], appname=f'kitty +kitten {kitten}',
-                    heading_char='^'))
+                    data['options'], message=data['help_text'], usage=data['usage'], appname=appname, heading_char='^'))
 
 # }}}
 
