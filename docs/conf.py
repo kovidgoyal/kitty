@@ -283,7 +283,7 @@ if you specify a program-to-run you can use the special placeholder
                 p('\nCommand Line Interface')
                 p('-' * 72)
                 appname = f'kitten {kitten}'
-                if kitten in ('panel', 'broadcast'):
+                if kitten in ('panel', 'broadcast', 'remote_file'):
                     appname = 'kitty +' + appname
                 p('\n\n' + option_spec_as_rst(
                     data['options'], message=data['help_text'], usage=data['usage'], appname=appname, heading_char='^'))
