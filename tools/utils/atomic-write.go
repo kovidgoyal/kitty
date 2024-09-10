@@ -55,7 +55,11 @@ func AtomicWriteFile(path string, data io.Reader, perm os.FileMode) (err error) 
 			if err == nil {
 				removed := false
 				defer func() {
-					f.Close()
+					if err == nil {
+						err = f.Close()
+					} else {
+						f.Close()
+					}
 					if !removed {
 						os.Remove(f.Name())
 						removed = true
