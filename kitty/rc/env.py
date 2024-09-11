@@ -39,7 +39,7 @@ class Env(RemoteCommand):
         env = default_env().copy()
         for k, v in new_env.items():
             if k.endswith('='):
-                env.pop(k, None)
+                env.pop(k[:-1], None)
             else:
                 env[k] = expandvars(v or '', env)
         set_default_env(env)
