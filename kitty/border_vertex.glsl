@@ -1,6 +1,5 @@
 uniform uvec2 viewport;
 uniform uint colors[9];
-uniform float background_opacity;
 uniform float tint_opacity, tint_premult;
 uniform float gamma_lut[256];
 in vec4 rect;  // left, top, right, bottom
@@ -42,7 +41,7 @@ void main() {
     float is_window_bg = is_integer_value(rc, 3.);
     float is_default_bg = is_integer_value(rc, 0.);
     color3 = is_window_bg * window_bg + (1. - is_window_bg) * color3;
-    float final_opacity = is_default_bg * tint_opacity + (1. - is_default_bg) * background_opacity;
-    float final_premult_opacity = is_default_bg * tint_premult + (1. - is_default_bg) * background_opacity;
+    float final_opacity = is_default_bg * tint_opacity + (1. - is_default_bg);
+    float final_premult_opacity = is_default_bg * tint_premult + (1. - is_default_bg);
     color = vec4(color3 * final_premult_opacity, final_opacity);
 }

@@ -1082,15 +1082,13 @@ create_border_vao(void) {
 
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
-    float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
-    float tint_opacity = background_opacity;
-    float tint_premult = background_opacity;
+    float tint_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
+    float tint_premult = tint_opacity;
     if (has_bgimage(w)) {
         glEnable(GL_BLEND);
         BLEND_ONTO_OPAQUE;
         draw_background_image(w);
         BLEND_ONTO_OPAQUE;
-        background_opacity = 1.0f;
         tint_opacity = OPT(background_tint) * OPT(background_tint_gaps);
         tint_premult = w->is_semi_transparent ? OPT(background_tint) : 1.0f;
     }
@@ -1111,7 +1109,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
         };
         glUniform1uiv(border_program_layout.uniforms.colors, arraysz(colors), colors);
-        glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
         glUniform1f(border_program_layout.uniforms.tint_opacity, tint_opacity);
         glUniform1f(border_program_layout.uniforms.tint_premult, tint_premult);
         glUniform2ui(border_program_layout.uniforms.viewport, viewport_width, viewport_height);
