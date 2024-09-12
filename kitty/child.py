@@ -242,6 +242,7 @@ class Child:
         env.update(self.env)
         env['TERM'] = opts.term
         env['COLORTERM'] = 'truecolor'
+        env['KITTY_SUPPORTS_PROMPT_CLICK_EVENTS'] = 1
         env['KITTY_PID'] = getpid()
         env['KITTY_PUBLIC_KEY'] = boss.encryption_public_key
         if self.add_listen_on_env_var and boss.listening_on:
