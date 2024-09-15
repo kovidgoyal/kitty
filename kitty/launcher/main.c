@@ -434,6 +434,7 @@ handle_option_value:
         }
         exit(0);
     }
+    unsetenv("KITTY_SI_DATA");
     if (opts.single_instance) single_instance_main(argc, argv, &opts);
 }
 
