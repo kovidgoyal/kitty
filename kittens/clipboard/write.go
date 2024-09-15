@@ -222,8 +222,6 @@ func run_set_loop(opts *Options, args []string) (err error) {
 			return fmt.Errorf("Could not guess MIME type for %s use the --mime option to specify a MIME type", arg)
 		}
 		to_process[i] = inputs[i]
-		if to_process[i].is_stream {
-		}
 	}
 	return write_loop(to_process, opts)
 }

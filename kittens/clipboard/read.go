@@ -203,7 +203,11 @@ func unescape_metadata_value(k, x string) (ans string) {
 
 func encode_bytes(metadata map[string]string, payload []byte) string {
 	ans := strings.Builder{}
-	ans.Grow(2048)
+	enc_payload := ""
+	if len(payload) > 0 {
+		enc_payload = base64.StdEncoding.EncodeToString(payload)
+	}
+	ans.Grow(2048 + len(enc_payload))
 	ans.WriteString("\x1b]")
 	ans.WriteString(OSC_NUMBER)
 	ans.WriteString(";")
@@ -217,7 +221,7 @@ func encode_bytes(metadata map[string]string, payload []byte) string {
 	}
 	if len(payload) > 0 {
 		ans.WriteString(";")
-		ans.WriteString(base64.StdEncoding.EncodeToString(payload))
+		ans.WriteString(enc_payload)
 	}
 	ans.WriteString("\x1b\\")
 	return ans.String()
