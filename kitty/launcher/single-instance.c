@@ -29,7 +29,7 @@
 #define NO_SINGLE_BYTE_CHARSETS
 #include "../charsets.c"
 
-#define fail_on_errno(msg) { perror(msg); exit(1); }
+#define fail_on_errno(msg) { perror(msg); do_exit(1); }
 
 void
 log_error(const char *fmt, ...) {
@@ -38,6 +38,37 @@ log_error(const char *fmt, ...) {
     vfprintf(stderr, fmt, ar);
     va_end(ar);
 }
+
+typedef struct cleanup_data {
+    int fd1, fd2;
+    bool close_fd1, close_fd2;
+    char path1[sizeof(struct sockaddr_un) + 16], path2[sizeof(struct sockaddr_un) + 16];
+} cleanup_data;
+
+struct {
+    cleanup_data si, notify;
+} cleanup_entries = {0};
+
+static void
+do_cleanup(cleanup_data *d) {
+    if (d->path1[0]) unlink(d->path1);
+    if (d->path2[0]) unlink(d->path2);
+    if (d->close_fd1) safe_close(d->fd1, __FILE__, __LINE__);
+    if (d->close_fd2) safe_close(d->fd2, __FILE__, __LINE__);
+}
+
+static void
+cleanup(void) {
+    do_cleanup(&cleanup_entries.notify);
+    do_cleanup(&cleanup_entries.si);
+}
+
+static void
+do_exit(int code) {
+    cleanup();
+    exit(code);
+}
+
 
 #ifndef __APPLE__
 static bool
@@ -79,11 +110,10 @@ get_socket_dir(char *output, size_t output_capacity) {
 }
 
 static void
-set_single_instance_socket(int fd, const char *socket_path) {
+set_single_instance_socket(int fd) {
     if (listen(fd, 5) != 0) fail_on_errno("Failed to listen on single instance socket");
     char buf[256];
-    if (socket_path && socket_path[0]) snprintf(buf, sizeof(buf), "%d:%s", fd, socket_path);
-    else snprintf(buf, sizeof(buf), "%d", fd);
+    snprintf(buf, sizeof(buf), "%d", fd);
     setenv("KITTY_SI_DATA", buf, 1);
 }
 
@@ -159,8 +189,9 @@ read_till_eof(FILE *f, membuf *m) {
     fclose(f);
 }
 
+
 static bool
-bind_unix_socket(int s, const char *basename, struct sockaddr_un *addr) {
+bind_unix_socket(int s, const char *basename, struct sockaddr_un *addr, cleanup_data *cleanup) {
     addr->sun_family = AF_UNIX;
     const size_t blen = strlen(basename);
     // First try abstract socket
@@ -173,9 +204,28 @@ bind_unix_socket(int s, const char *basename, struct sockaddr_un *addr) {
     const size_t dlen = strlen(addr->sun_path);
     if (snprintf(addr->sun_path + dlen, sizeof(addr->sun_path) - dlen, "/%s", basename) < blen + 1) {
         fprintf(stderr, "Socket directory has path too long for single instance socket file %s\n", addr->sun_path);
-        exit(1);
+        do_exit(1);
     }
-    if (safe_bind(s, (struct sockaddr*)addr, sizeof(*addr)) > -1) return true;
+    // First lock the socket file using a separate lock file
+    char lock_file_path[sizeof(addr->sun_path) + 16];
+    snprintf(lock_file_path, sizeof(lock_file_path), "%s.lock", addr->sun_path);
+    int fd = safe_open(lock_file_path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR);
+    if (fd == -1) return false;
+    cleanup->close_fd2 = true; cleanup->fd2 = fd;
+    snprintf(cleanup->path2, sizeof(cleanup->path2), "%s", lock_file_path);
+    if (safe_lockf(fd, F_TLOCK, 0) != 0) {
+        int saved_errno = errno;
+        safe_close(fd, __FILE__, __LINE__);
+        errno = saved_errno;
+        if (errno == EAGAIN || errno == EACCES) errno = EADDRINUSE;  // client
+        return false;
+    }
+    // First unlink the socket file and then try to bind it.
+    if (unlink(addr->sun_path) != 0 && errno != ENOENT) return false;
+    if (safe_bind(s, (struct sockaddr*)addr, sizeof(*addr)) > -1) {
+        snprintf(cleanup->path1, sizeof(cleanup->path1), "%s", addr->sun_path);
+        return true;
+    }
     return false;
 }
 
@@ -193,6 +243,7 @@ extern char **environ;
 
 static void
 talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[], const CLIOptions *opts) {
+    cleanup_entries.si.path2[0] = 0; cleanup_entries.si.path1[0] = 0;
     membuf session_data = {0};
     if (opts->session && opts->session[0]) {
         if (strcmp(opts->session, "none") == 0) {
@@ -235,10 +286,11 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     int notify_socket = -1;
     if (opts->wait_for_single_instance_window_close) {
         notify_socket = create_unix_socket();
+        cleanup_entries.notify.fd1 = notify_socket; cleanup_entries.notify.close_fd1 = true;
         struct sockaddr_un server_addr;
         char addr[128];
         snprintf(addr, sizeof(addr), "kitty-os-window-close-notify-%d-%d", getpid(), geteuid());
-        if (!bind_unix_socket(notify_socket, addr, &server_addr)) fail_on_errno("Failed to bind notification socket");
+        if (!bind_unix_socket(notify_socket, addr, &server_addr, &cleanup_entries.notify)) fail_on_errno("Failed to bind notification socket");
         size_t len = strlen(server_addr.sun_path);
         if (len == 0) len = 1 + strlen(server_addr.sun_path +1);
         if (listen(notify_socket, 5) != 0) fail_on_errno("Failed to listen on notify socket");
@@ -282,15 +334,17 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
 
 void
 single_instance_main(int argc, char *argv[], const CLIOptions *opts) {
+    if (argc == -1) { cleanup(); return; }
     struct sockaddr_un server_addr;
     char addr_buf[sizeof(server_addr.sun_path)-1];
     if (opts->instance_group) snprintf(addr_buf, sizeof(addr_buf), "kitty-ipc-%d-%s", geteuid(), opts->instance_group);
     else snprintf(addr_buf, sizeof(addr_buf), "kitty-ipc-%d", geteuid());
 
     int s = create_unix_socket();
-    if (!bind_unix_socket(s, addr_buf, &server_addr)) {
-        if (errno == EADDRINUSE) { talk_to_instance(s, &server_addr, argc, argv, opts); exit(0); }
+    cleanup_entries.si.fd1 = s; cleanup_entries.si.close_fd1 = true;
+    if (!bind_unix_socket(s, addr_buf, &server_addr, &cleanup_entries.si)) {
+        if (errno == EADDRINUSE) { talk_to_instance(s, &server_addr, argc, argv, opts); do_exit(0); }
         else fail_on_errno("Failed to bind single instance socket");
-    } else set_single_instance_socket(s, server_addr.sun_path);
+    } else set_single_instance_socket(s);
 }
 

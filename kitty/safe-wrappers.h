@@ -10,6 +10,16 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+static inline int
+safe_lockf(int fd, int function, off_t size) {
+    while (true) {
+        int ret = lockf(fd, function, size);
+        if (ret != 0 && (errno == EINTR)) continue;
+        return ret;
+    }
+}
 
 static inline int
 safe_connect(int socket_fd, struct sockaddr *addr, socklen_t addrlen) {

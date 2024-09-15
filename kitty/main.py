@@ -485,16 +485,7 @@ def _main() -> None:
     if cli_opts.single_instance:
         si_data = os.environ.pop('KITTY_SI_DATA', '')
         if si_data:
-            import atexit
-            fdnum, sep, socket_path = si_data.partition(':')
-            talk_fd = int(fdnum)
-            def cleanup_si() -> None:
-                with suppress(OSError):
-                    os.close(talk_fd)
-                with suppress(OSError):
-                    if sep and socket_path:
-                        os.unlink(socket_path)
-            atexit.register(cleanup_si)
+            talk_fd = int(si_data)
     bad_lines: list[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
     setup_environment(opts, cli_opts)
