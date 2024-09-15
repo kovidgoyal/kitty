@@ -197,6 +197,8 @@ class EncodedDataStore:
             self.data_store(decoded)
 
     def flush_encoded_data(self) -> None:
+        if self.decoder.needs_more_data():
+            log_error('Received incomplete encoded data for notification request')
         self.decoder.reset()
 
     def finalise(self) -> bytes:
