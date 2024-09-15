@@ -137,8 +137,14 @@ base64_decode_into(PyObject UNUSED *self, PyObject *args) {
 typedef struct StreamingBase64Decoder {
     PyObject_HEAD
     struct base64_state state;
-    bool add_trailing_bytes;
+    bool add_trailing_bytes, needs_more_data;
 } StreamingBase64Decoder;
+
+static void
+StreamingBase64Decoder_reset_(StreamingBase64Decoder *self) {
+    base64_stream_decode_init(&self->state, 0);
+    self->needs_more_data = false;
+}
 
 static int
 StreamingBase64Decoder_init(PyObject *s, PyObject *args, PyObject *kwds UNUSED) {
@@ -156,10 +162,17 @@ StreamingBase64Decoder_decode(StreamingBase64Decoder *self, PyObject *a) {
     size_t sz = required_buffer_size_for_base64_decode(data.len);
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, sz));
     if (!ans) return NULL;
-    if (!base64_stream_decode(&self->state, data.buf, data.len, PyBytes_AS_STRING(ans), &sz)) {
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = base64_stream_decode(&self->state, data.buf, data.len, PyBytes_AS_STRING(ans), &sz);
+    Py_END_ALLOW_THREADS;
+    if (!ret) {
+        StreamingBase64Decoder_reset_(self);
         PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
         return NULL;
     }
+    if (self->state.eof) StreamingBase64Decoder_reset_(self);
+    else self->needs_more_data = self->state.carry != 0 || self->state.bytes != 0;
     if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
     return Py_NewRef(ans);
 }
@@ -175,17 +188,28 @@ StreamingBase64Decoder_decode_into(StreamingBase64Decoder *self, PyObject *const
     if (!src.buf || !src.len) return PyLong_FromLong(0);
     size_t sz = required_buffer_size_for_base64_decode(src.len);
     if ((Py_ssize_t)sz > data.len) { PyErr_SetString(PyExc_BufferError, "output buffer too small"); return NULL; }
-    if (!base64_stream_decode(&self->state, src.buf, src.len, data.buf, &sz)) {
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = base64_stream_decode(&self->state, src.buf, src.len, data.buf, &sz);
+    Py_END_ALLOW_THREADS
+    if (!ret) {
+        StreamingBase64Decoder_reset_(self);
         PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
         return NULL;
     }
+    if (self->state.eof) StreamingBase64Decoder_reset_(self); else self->needs_more_data = true;
     return PyLong_FromSize_t(sz);
 }
 
 static PyObject*
 StreamingBase64Decoder_reset(StreamingBase64Decoder *self, PyObject *args UNUSED) {
-    base64_stream_decode_init(&self->state, 0);
+    StreamingBase64Decoder_reset_(self);
     Py_RETURN_NONE;
+}
+
+static PyObject*
+StreamingBase64Decoder_needs_more_data(StreamingBase64Decoder *self, PyObject *args UNUSED) {
+    return Py_NewRef(self->needs_more_data ? Py_True : Py_False);
 }
 
 static PyTypeObject StreamingBase64Decoder_Type = {
@@ -198,6 +222,7 @@ static PyTypeObject StreamingBase64Decoder_Type = {
         {"decode", (PyCFunction)StreamingBase64Decoder_decode, METH_O, ""},
         {"decode_into", (PyCFunction)(void(*)(void))StreamingBase64Decoder_decode_into, METH_FASTCALL, ""},
         {"reset", (PyCFunction)StreamingBase64Decoder_reset, METH_NOARGS, ""},
+        {"needs_more_data", (PyCFunction)StreamingBase64Decoder_needs_more_data, METH_NOARGS, ""},
         {NULL, NULL, 0, NULL},
     },
     .tp_new = PyType_GenericNew,
@@ -225,7 +250,9 @@ StreamingBase64Encoder_encode(StreamingBase64Decoder *self, PyObject *a) {
     size_t sz = required_buffer_size_for_base64_encode(data.len);
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, sz));
     if (!ans) return NULL;
+    Py_BEGIN_ALLOW_THREADS
     base64_stream_encode(&self->state, data.buf, data.len, PyBytes_AS_STRING(ans), &sz);
+    Py_END_ALLOW_THREADS
     if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
     return Py_NewRef(ans);
 }
@@ -241,7 +268,9 @@ StreamingBase64Encoder_encode_into(StreamingBase64Decoder *self, PyObject *const
     if (!src.buf || !src.len) return PyLong_FromLong(0);
     size_t sz = required_buffer_size_for_base64_encode(src.len);
     if ((Py_ssize_t)sz > data.len) { PyErr_SetString(PyExc_BufferError, "output buffer too small"); return NULL; }
+    Py_BEGIN_ALLOW_THREADS
     base64_stream_encode(&self->state, src.buf, src.len, data.buf, &sz);
+    Py_END_ALLOW_THREADS
     return PyLong_FromSize_t(sz);
 }
 

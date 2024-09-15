@@ -1719,7 +1719,8 @@ class StreamingBase64Decoder:
     def decode(self, data: ReadableBuffer) -> bytes: ...
     # decode the specified data, return number of bytes written dest should be as large as src (technically 3/4 src + 2)
     def decode_into(self, dest: WriteableBuffer, src: ReadableBuffer) -> int: ...
-
+    # whether the data stream decoded so far is complete or not
+    def needs_more_data(self) -> bool: ...
 
 
 class StreamingBase64Encodeer:

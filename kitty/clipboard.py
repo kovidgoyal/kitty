@@ -282,6 +282,8 @@ class WriteRequest:
 
     def flush_base64_data(self) -> None:
         if self.currently_writing_mime:
+            if self.decoder.needs_more_data():
+                log_error('Received incomplete data for clipboard')
             self.decoder.reset()
             start = self.mime_map[self.currently_writing_mime][0]
             self.mime_map[self.currently_writing_mime] = MimePos(start, self.tempfile.tell() - start)
@@ -291,8 +293,8 @@ class WriteRequest:
         if not self.max_size_exceeded:
             try:
                 decoded = self.decoder.decode(b)
-            except ValueError:
-                log_error('Clipboard write request has invalid data, ignoring this chunk of data')
+            except ValueError as e:
+                log_error(f'Clipboard write request has invalid data, ignoring this chunk of data. Error: {e}')
                 self.decoder.reset()
                 decoded = b''
             if decoded:

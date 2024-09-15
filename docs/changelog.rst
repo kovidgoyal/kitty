@@ -85,6 +85,8 @@ Detailed list of changes
 
 - Fix a regression when tinting of background images was introduced that caused window borders to have :opt:`background_opacity` applied to them (:iss:`7850`)
 
+- Fix a regression that broke writing to the clipboard using the OSC 5522 protocol (:iss:`7858`)
+
 0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
