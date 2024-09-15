@@ -321,7 +321,7 @@ def macos_cmdline(argv_args: list[str]) -> list[str]:
     if ans and ans[0] == 'kitty':
         del ans[0]
     if '-1' in ans or '--single-instance' in ans:
-        if '-1' in argv_args or '--single-instance' in argv_args:
+        if 'KITTY_SI_DATA' in os.environ:
             # C code will already have setup single instance
             log_error(
                 '--single-instance supplied in both command line arguments and macos-launch-services-cmdline,'
