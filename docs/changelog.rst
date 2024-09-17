@@ -89,6 +89,8 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that caused kitty to fail to run after an unclean shutdown/crash when using --single-instance (:iss:`7846`)
 
+- kitten @ ls: Fix the ``--self`` flag not working (:iss:`7864`)
+
 0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
