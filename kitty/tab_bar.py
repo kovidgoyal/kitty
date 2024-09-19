@@ -599,7 +599,7 @@ class TabBar:
                     blank_rects.append(Border(0, tab_bar.bottom + 1, vw, central.top, bg))
         g = self.window_geometry
         left_bg = right_bg = bg
-        if opts.tab_bar_margin_color is None:
+        if opts.tab_bar_margin_color is None or opts.tab_bar_margin_width == 0:
             left_bg = BorderColor.tab_bar_left_edge_color
             right_bg = BorderColor.tab_bar_right_edge_color
         if g.left > 0:
