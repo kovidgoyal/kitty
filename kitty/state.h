@@ -119,6 +119,7 @@ typedef struct {
         } *entries;
     } font_features;
     struct { Animation *cursor, *visual_bell; } animation;
+    struct { color_type color; float opacity; bool is_set; } transparent_background_colors[8];
 } Options;
 
 typedef struct WindowLogoRenderData {

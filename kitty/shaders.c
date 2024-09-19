@@ -293,12 +293,14 @@ pick_cursor_color(Line *line, const ColorProfile *color_profile, color_type cell
 static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CellRenderData *crd, CursorRenderInfo *cursor, OSWindow *os_window) {
     struct GPUCellRenderData {
-        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
+        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
-        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted, second_transparent_bg;
+        GLuint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted, second_transparent_bg;
 
         GLuint xnum, ynum, cursor_fg_sprite_idx;
         GLfloat cursor_x, cursor_y, cursor_w, cursor_opacity;
+        GLuint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
+        GLfloat bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
     };
     // Send the uniform data
     struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
@@ -307,8 +309,16 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         copy_color_table_to_buffer(cp, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
-    rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg);
+    rd->default_fg = COLOR(default_fg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
+    rd->bg_colors0 = COLOR(default_bg);
+    rd->bg_opacities0 = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
+#define SETBG(which) if (OPT(transparent_background_colors)[which-1].is_set) { \
+    rd->bg_colors##which = OPT(transparent_background_colors)[which-1].color; \
+    rd->bg_opacities##which = OPT(transparent_background_colors)[which-1].opacity < 0 ? rd->bg_opacities0 : OPT(transparent_background_colors)[which-1].opacity; \
+} else { rd->bg_colors##which = UINT32_MAX; }
+    SETBG(1); SETBG(2); SETBG(3); SETBG(4); SETBG(5); SETBG(6); SETBG(7);
+#undef SETBG
     // selection
     if (IS_SPECIAL_COLOR(highlight_fg)) {
         if (IS_SPECIAL_COLOR(highlight_bg)) {
@@ -320,7 +330,6 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         rd->use_cell_bg_for_selection_fg = 0.f; rd->use_cell_fg_for_selection_color = 0.f;
     }
     rd->use_cell_for_selection_bg = IS_SPECIAL_COLOR(highlight_bg) ? 1. : 0.;
-    rd->second_transparent_bg = IS_SPECIAL_COLOR(second_transparent_bg) ? rd->default_bg : COLOR(second_transparent_bg);
     // Cursor position
     enum { BLOCK_IDX = 0, BEAM_IDX = NUM_UNDERLINE_STYLES + 3, UNDERLINE_IDX = NUM_UNDERLINE_STYLES + 4, UNFOCUSED_IDX = NUM_UNDERLINE_STYLES + 5 };
     Line *line_for_cursor = NULL;
@@ -338,7 +347,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
             case CURSOR_HOLLOW:
                 rd->cursor_fg_sprite_idx = UNFOCUSED_IDX; break;
         };
-        color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;
+        color_type cell_fg = rd->default_fg, cell_bg = rd->bg_colors0;
         index_type cell_color_x = cursor->x;
         bool reversed = false;
         if (cursor->x < screen->columns && cursor->y < screen->lines) {
@@ -352,10 +361,10 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
             colors_for_cell(line_for_cursor, cp, &cell_color_x, &cell_fg, &cell_bg, &reversed);
         }
         if (IS_SPECIAL_COLOR(cursor_color)) {
-            if (line_for_cursor) pick_cursor_color(line_for_cursor, cp, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->default_bg);
-            else { rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg; }
+            if (line_for_cursor) pick_cursor_color(line_for_cursor, cp, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->bg_colors0);
+            else { rd->cursor_fg = rd->bg_colors0; rd->cursor_bg = rd->default_fg; }
             if (cell_bg == cell_fg) {
-                rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg;
+                rd->cursor_fg = rd->bg_colors0; rd->cursor_bg = rd->default_fg;
             } else { rd->cursor_fg = cell_bg; rd->cursor_bg = cell_fg; }
         } else {
             rd->cursor_bg = COLOR(cursor_color);
@@ -375,7 +384,6 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     sprite_tracker_current_layout(os_window->fonts_data, &x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->inverted = screen_invert_colors(screen) ? 1 : 0;
-    rd->background_opacity = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
 
 #undef COLOR
     rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);

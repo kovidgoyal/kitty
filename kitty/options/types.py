@@ -443,6 +443,7 @@ option_names = (  # {{{
  'text_composition_strategy',
  'text_fg_override_threshold',
  'touch_scroll_multiplier',
+ 'transparent_background_colors',
  'undercurl_style',
  'underline_hyperlinks',
  'update_check_interval',
@@ -607,6 +608,7 @@ class Options:
     text_composition_strategy: str = 'platform'
     text_fg_override_threshold: float = 0.0
     touch_scroll_multiplier: float = 1.0
+    transparent_background_colors: typing.Tuple[typing.Tuple[kitty.fast_data_types.Color, float], ...] = ()
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     underline_hyperlinks: choices_for_underline_hyperlinks = 'hover'
     update_check_interval: float = 24.0
