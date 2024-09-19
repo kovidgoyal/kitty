@@ -136,7 +136,7 @@ Detailed list of changes
 
 - launch command: A new :option:`launch --bias` option to adjust the size of newly created windows declaratively (:iss:`7634`)
 
-- A new option :opt:`second_transparent_bg` to make a second background color semi-transparent via :opt:`background_opacity`. Useful for things like cursor line highlight in editors (:iss:`7646`)
+- A new option :opt:`transparent_background_colors` to make a second background color semi-transparent via :opt:`background_opacity`. Useful for things like cursor line highlight in editors (:iss:`7646`)
 
 - A new :doc:`notify </kittens/notify>` kitten to show desktop notifications
   from the command line with support for icons, buttons and more.

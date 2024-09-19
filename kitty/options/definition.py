@@ -1527,16 +1527,22 @@ opt('background_image_linear', 'no',
     long_text='When background image is scaled, whether linear interpolation should be used.'
     )
 
-opt('transparent_background_colors', '', option_type='transparent_background_colors', ctype='!transparent_background_colors')
+opt('transparent_background_colors', '', option_type='transparent_background_colors', ctype='!transparent_background_colors', long_text='''
+A space separated list of upto 7 colors, with opacity. When the background color of a cell matches one of these colors,
+it is rendered semi-transparent using the specified opacity.
 
-opt('second_transparent_bg', 'none', option_type='to_color_or_none', long_text='''
-When the background color matches this color, :opt:`background_opacity` is applied to it
-to render it as semi-transparent, just as for colors matching the main :opt:`background` color.
 Useful in more complex UIs like editors where you could want more than a single background color
-to be rendered as transparent, for instance, for a cursor highlight line background.
+to be rendered as transparent, for instance, for a cursor highlight line background or a highlighted block.
 Terminal applications can set this color using :ref:`The kitty color control <color_control>`
 escape code.
-''')
+
+The syntax for specifiying colors is: :code:`color@opacity`, where the :code:`@opacity`
+part is optional. When unspecified, the value of :opt:`background_opacity` is used. For example::
+
+    transparent_background_colors red@0.5 #00ff00@0.3
+
+'''
+)
 
 opt('dynamic_background_opacity', 'no',
     option_type='to_bool', ctype='bool',
