@@ -187,7 +187,7 @@ void main() {
 #ifdef TRANSPARENT
     final_color = vec4_premul(background, bg_alpha);
 #else
-    final_color = vec4(background, draw_bg);
+    final_color = vec4(background, draw_bg * bg_alpha);
 #endif
 #endif
 

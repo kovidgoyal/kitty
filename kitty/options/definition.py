@@ -1481,7 +1481,7 @@ theme with a background color in your editor, it will not be rendered as
 transparent. Instead you should change the default background color in your
 kitty config and not use a background color in the editor color scheme. Or use
 the escape codes to set the terminals default colors in a shell script to
-launch your editor. See also :opt:`second_transparent_bg`.
+launch your editor. See also :opt:`transparent_background_colors`.
 Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit. When using a low value for this setting, it is
 desirable that you set the :opt:`background` color to a color the matches the
@@ -1526,6 +1526,8 @@ opt('background_image_linear', 'no',
     option_type='to_bool', ctype='bool',
     long_text='When background image is scaled, whether linear interpolation should be used.'
     )
+
+opt('transparent_background_colors', '', option_type='transparent_background_colors', ctype='!transparent_background_colors')
 
 opt('second_transparent_bg', 'none', option_type='to_color_or_none', long_text='''
 When the background color matches this color, :opt:`background_opacity` is applied to it

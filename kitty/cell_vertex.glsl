@@ -4,13 +4,16 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
-    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted, second_transparent_bg;
+    uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted, second_transparent_bg;
 
     uint xnum, ynum, cursor_fg_sprite_idx;
     float cursor_x, cursor_y, cursor_w, cursor_opacity;
 
+    // must have unique entries with 0 being default_bg and unset being UINT32_MAX
+    uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
+    float bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
     uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
 #if (PHASE == PHASE_BACKGROUND)
@@ -145,12 +148,30 @@ CellData set_vertex_position() {
     return CellData(has_cursor, has_cursor * is_block_cursor, pos);
 }
 
+float background_opacity_for(uint bg, uint colorval, float opacity_if_matched) {  // opacity_if_matched if bg == colorval else 1
+    float not_matched = step(1.f, abs(float(colorval - bg)));  // not_matched = 0 if bg == colorval else 1
+    return not_matched + opacity_if_matched * (1.f - not_matched);
+}
+
+float calc_background_opacity(uint bg) {
+    return (
+        background_opacity_for(bg, bg_colors0, bg_opacities0) *
+        background_opacity_for(bg, bg_colors1, bg_opacities1) *
+        background_opacity_for(bg, bg_colors2, bg_opacities2) *
+        background_opacity_for(bg, bg_colors3, bg_opacities3) *
+        background_opacity_for(bg, bg_colors4, bg_opacities4) *
+        background_opacity_for(bg, bg_colors5, bg_opacities5) *
+        background_opacity_for(bg, bg_colors6, bg_opacities6) *
+        background_opacity_for(bg, bg_colors7, bg_opacities7)
+    );
+}
+
 void main() {
 
     CellData cell_data = set_vertex_position();
 
     // set cell color indices {{{
-    uvec2 default_colors = uvec2(default_fg, default_bg);
+    uvec2 default_colors = uvec2(default_fg, bg_colors0);
     uint text_attrs = sprite_coords[3];
     uint is_reversed = ((text_attrs >> REVERSE_SHIFT) & ONE);
     uint is_inverted = is_reversed + inverted;
@@ -194,42 +215,34 @@ void main() {
     // }}}
 
     // Background {{{
-    float bg_is_not_transparent = step(1, float(abs(
-        (bg_as_uint - default_colors[1]) * (bg_as_uint - second_transparent_bg)
-    )));  // bg_is_not_transparent = 0 if bg_as_uint in (default_colors[1], second_transparent_bg) else 1
+#if PHASE == PHASE_BOTH && !defined(TRANSPARENT)  // fast case single pass opaque background
+    bg_alpha = 1;
     draw_bg = 1;
-
+#else
+    bg_alpha = calc_background_opacity(bg_as_uint);
 #if (PHASE == PHASE_BACKGROUND)
     // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
-    uint draw_bg_mask = uint(2 * bg_is_not_transparent + (1 - bg_is_not_transparent));
-    draw_bg = step(1, float(draw_bg_bitfield & draw_bg_mask));
+    float cell_has_non_default_bg = step(1.f, abs(float(bg_as_uint - bg_colors0))); // 0 if has default bg else 1
+    uint draw_bg_mask = uint(2.f * cell_has_non_default_bg + (1.f - cell_has_non_default_bg)); // 1 if has default bg else 2
+    draw_bg = step(0.5, float(draw_bg_bitfield & draw_bg_mask));
+#else
+    draw_bg = 1;
 #endif
 
-    bg_alpha = 1.f;
-#ifdef TRANSPARENT
-    // Set bg_alpha to background_opacity on cells that have the default background color
-    // Which means they must not have a block cursor or a selection or reverse video
-    // On other cells it should be 1. For the SPECIAL program it should be 1 on cells with
-    // selections/block cursor and 0 everywhere else.
     float is_special_cell = cell_data.has_block_cursor + float(is_selected & ONE);
-#if (PHASE != PHASE_SPECIAL)
-    is_special_cell += bg_is_not_transparent + float(is_reversed);
-#endif
+#if PHASE == PHASE_SPECIAL
+    // Only special cells must be drawn and they must have bg_alpha 1
     bg_alpha = step(0.5, is_special_cell); // bg_alpha = 1 if is_special_cell else 0
-#if (PHASE != PHASE_SPECIAL)
-    bg_alpha = bg_alpha + (1.0f - bg_alpha) * background_opacity;  // bg_alpha = 1 if bg_alpha else background_opacity
-    bg_alpha *= draw_bg;  // if not draw_bg: bg_alpha = 0
+#else
+    is_special_cell += float(is_reversed);  // bg_alpha should be 1 for reverse video cells as well
+    is_special_cell = step(0.5, is_special_cell);  // is_special_cell = 1 if is_special_cell else 0
+    bg_alpha = bg_alpha * (1. - float(is_special_cell)) + is_special_cell;  // bg_alpha = 1 if is_special_cell else bg_alpha
 #endif
-#endif
+    bg_alpha *= draw_bg;
+#endif  // ends fast case #if else
 
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
     background = choose_color(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg);
-#if !defined(TRANSPARENT) && (PHASE == PHASE_SPECIAL)
-    float is_special_cell = cell_data.has_block_cursor + float(is_selected & ONE);
-    bg_alpha = step(0.5, is_special_cell);
-#endif
-
     // }}}
-
 }

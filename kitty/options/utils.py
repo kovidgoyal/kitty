@@ -1554,6 +1554,23 @@ def visual_bell_duration(spec: str) -> Tuple[float, EasingFunction, EasingFuncti
     return parse_animation(spec, interval=0.)
 
 
+def transparent_background_colors(spec: str) -> Tuple[Tuple[Color, float], ...]:
+    if not spec:
+        return ()
+    ans: list[tuple[Color, float]] = []
+    seen: dict[Color, int] = {}
+    for part in spec.split():
+        col, sep, alpha = part.partition('@')
+        c = to_color(col)
+        o = unit_float(alpha) if alpha else -1
+        if (idx := seen.get(c)) is not None:
+            ans[idx] = c, o
+            continue
+        seen[c] = len(ans)
+        ans.append((c, o))
+    return tuple(ans[:7])
+
+
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(deprecated_hide_window_decorations_aliases, key):
         setattr(deprecated_hide_window_decorations_aliases, key, True)

@@ -441,6 +441,17 @@ window_logo_scale(PyObject *src, Options *opts) {
     opts->window_logo_scale.height = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));
 }
 
+static void
+transparent_background_colors(PyObject *src, Options *opts) {
+    memset(opts->transparent_background_colors, 0, sizeof(opts->transparent_background_colors));
+    for (Py_ssize_t i = 0; i < MIN(PyTuple_GET_SIZE(src), (Py_ssize_t)arraysz(opts->transparent_background_colors)); i++) {
+        PyObject *e = PyTuple_GET_ITEM(src, i);
+        opts->transparent_background_colors[i].color = color_as_int(PyTuple_GET_ITEM(e, 0));
+        opts->transparent_background_colors[i].opacity = PyFloat_AsFloat(PyTuple_GET_ITEM(e, 1));
+        opts->transparent_background_colors[i].is_set = true;
+    }
+}
+
 static inline void
 resize_debounce_time(PyObject *src, Options *opts) {
     opts->resize_debounce_time.on_end = s_double_to_monotonic_t(PyFloat_AsDouble(PyTuple_GET_ITEM(src, 0)));
