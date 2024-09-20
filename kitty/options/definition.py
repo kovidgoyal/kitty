@@ -1527,7 +1527,7 @@ opt('background_image_linear', 'no',
     long_text='When background image is scaled, whether linear interpolation should be used.'
     )
 
-opt('transparent_background_colors', '', option_type='transparent_background_colors', ctype='!transparent_background_colors', long_text='''
+opt('transparent_background_colors', '', option_type='transparent_background_colors', long_text='''
 A space separated list of upto 7 colors, with opacity. When the background color of a cell matches one of these colors,
 it is rendered semi-transparent using the specified opacity.
 

@@ -851,19 +851,6 @@ convert_from_opts_background_image_linear(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_transparent_background_colors(PyObject *val, Options *opts) {
-    transparent_background_colors(val, opts);
-}
-
-static void
-convert_from_opts_transparent_background_colors(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "transparent_background_colors");
-    if (ret == NULL) return;
-    convert_from_python_transparent_background_colors(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
 convert_from_python_dynamic_background_opacity(PyObject *val, Options *opts) {
     opts->dynamic_background_opacity = PyObject_IsTrue(val);
 }
@@ -1241,8 +1228,6 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_background_image_layout(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_image_linear(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_transparent_background_colors(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_dynamic_background_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;
