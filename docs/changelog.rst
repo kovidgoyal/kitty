@@ -77,6 +77,8 @@ Detailed list of changes
 0.36.3 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- The option ``second_transparent_bg`` has been removed and replaced by :opt:`transparent_background_colors` which allows setting up to seven additional colors that will be transparent, with individual opacities per color (:iss:`7646`)
+
 - Fix a regression in the previous release that broke use of the ``cd`` command in session files (:iss:`7829`)
 
 - macOS: Fix shortcuts that become entries in the global menubar being reported as removed shortcuts in the debug output

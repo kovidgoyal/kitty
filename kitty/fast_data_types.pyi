@@ -828,6 +828,9 @@ class ColorProfile:
 
     def reload_from_opts(self, opts: Optional[Options] = None) -> None: ...
 
+    def get_transparent_background_color(self, index: int) -> Color | None: ...
+    def set_transparent_background_color(self, index: int, color: Color | None = None, opacity: float | None = None) -> None: ...
+
 
 def patch_color_profiles(
     spec: Dict[str, Optional[int]], profiles: Tuple[ColorProfile, ...], change_configured: bool

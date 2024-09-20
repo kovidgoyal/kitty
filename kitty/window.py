@@ -447,13 +447,41 @@ def process_remote_print(msg: memoryview) -> str:
     return replace_c0_codes_except_nl_space_tab(base64_decode(msg)).decode('utf-8', 'replace')
 
 
+def transparent_background_color_control(cp: ColorProfile, responses: dict[str, str], index: int, key: str, sep: str, val: str) -> None:
+    if sep == '=':
+        if val == '?':
+            if index > 8:
+                responses[key] = '?'
+            else:
+                c = cp.get_transparent_background_color(index - 1)
+                if c is None:
+                    responses[key] = ''
+                else:
+                    opacity = max(0, min(c.alpha / 255.0, 1))
+                    responses[key] = f'rgb:{c.red:02x}/{c.green:02x}/{c.blue:02x}@{opacity:.4f}'
+        elif index <= 8:
+            col, _, o = val.partition('@')
+            try:
+                opacity = float(o)
+            except Exception:
+                opacity = -1.0
+            c = to_color(col)
+            if c is not None:
+                cp.set_transparent_background_color(index - 1, c, opacity)
+    elif index <= 8:
+        cp.set_transparent_background_color(index - 1)
+
+
 def color_control(cp: ColorProfile, code: int, value: Union[str, bytes, memoryview] = '') -> str:
     if isinstance(value, (bytes, memoryview)):
         value = str(value, 'utf-8', 'replace')
-    responses = {}
+    responses: dict[str, str] = {}
     for rec in value.split(';'):
         key, sep, val = rec.partition('=')
-        # TODO: Add transparent_colors
+        if key.startswith('transparent_background_color'):
+            index = int(key[len('transparent_background_color'):])
+            transparent_background_color_control(cp, responses, index, key, sep, val)
+            continue
         attr = {
             'foreground': 'default_fg', 'background': 'default_bg',
             'selection_background': 'highlight_bg', 'selection_foreground': 'highlight_fg',
@@ -481,6 +509,7 @@ def color_control(cp: ColorProfile, code: int, value: Union[str, bytes, memoryvi
             else:
                 if attr:
                     if val:
+                        val = val.partition('@')[0]
                         col = to_color(val)
                         if col is not None:
                             setattr(cp, attr, col)
@@ -489,6 +518,7 @@ def color_control(cp: ColorProfile, code: int, value: Union[str, bytes, memoryvi
                             setattr(cp, attr, None)
                 else:
                     if 0 <= colnum <= 255:
+                        val = val.partition('@')[0]
                         col = to_color(val)
                         if col is not None:
                             cp.set_color(colnum, color_as_int(col))
