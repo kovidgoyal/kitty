@@ -1194,9 +1194,6 @@ class Parser:
     def scrollback_pager_history_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['scrollback_pager_history_size'] = scrollback_pager_history_size(val)
 
-    def second_transparent_bg(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['second_transparent_bg'] = to_color_or_none(val)
-
     def select_by_word_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['select_by_word_characters'] = str(val)
 

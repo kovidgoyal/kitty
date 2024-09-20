@@ -453,11 +453,12 @@ def color_control(cp: ColorProfile, code: int, value: Union[str, bytes, memoryvi
     responses = {}
     for rec in value.split(';'):
         key, sep, val = rec.partition('=')
+        # TODO: Add transparent_colors
         attr = {
             'foreground': 'default_fg', 'background': 'default_bg',
             'selection_background': 'highlight_bg', 'selection_foreground': 'highlight_fg',
             'cursor': 'cursor_color', 'cursor_text': 'cursor_text_color',
-            'visual_bell': 'visual_bell_color', 'second_transparent_background': 'second_transparent_bg',
+            'visual_bell': 'visual_bell_color',
         }.get(key, '')
         colnum = -1
         with suppress(Exception):

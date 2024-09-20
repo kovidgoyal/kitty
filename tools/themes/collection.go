@@ -309,7 +309,6 @@ var AllColorSettingNames = map[string]bool{ // {{{
 	"mark2_foreground":        true,
 	"mark3_background":        true,
 	"mark3_foreground":        true,
-	"second_transparent_bg":   true,
 	"selection_background":    true,
 	"selection_foreground":    true,
 	"tab_bar_background":      true,

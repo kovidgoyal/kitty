@@ -323,15 +323,21 @@ typedef union DynamicColor {
 } DynamicColor;
 
 typedef struct {
-    DynamicColor default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg, visual_bell_color, second_transparent_bg;
+    DynamicColor default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg, visual_bell_color;
 } DynamicColors;
+
+typedef struct TransparentDynamicColor {
+    color_type color; float opacity; bool is_set;
+} TransparentDynamicColor;
+
 
 typedef struct {
     PyObject_HEAD
 
     bool dirty;
     uint32_t color_table[256], orig_color_table[256];
-    struct { DynamicColors dynamic_colors; uint32_t color_table[256]; } *color_stack;
+    TransparentDynamicColor configured_transparent_colors[8], overriden_transparent_colors[8];
+    struct { DynamicColors dynamic_colors; uint32_t color_table[256]; TransparentDynamicColor transparent_colors[8]; } *color_stack;
     unsigned int color_stack_idx, color_stack_sz;
     DynamicColors configured, overridden;
     color_type mark_foregrounds[MARK_MASK+1], mark_backgrounds[MARK_MASK+1];
@@ -403,6 +409,7 @@ bool schedule_write_to_child_python(unsigned long id, const char *prefix, PyObje
 bool set_iutf8(int, bool);
 
 DynamicColor colorprofile_to_color(const ColorProfile *self, DynamicColor entry, DynamicColor defval);
+bool colorprofile_to_transparent_color(const ColorProfile *self, unsigned index, color_type *color, float *opacity);
 color_type
 colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval);
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);

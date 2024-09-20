@@ -313,10 +313,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
     rd->bg_colors0 = COLOR(default_bg);
     rd->bg_opacities0 = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
-#define SETBG(which) if (OPT(transparent_background_colors)[which-1].is_set) { \
-    rd->bg_colors##which = OPT(transparent_background_colors)[which-1].color; \
-    rd->bg_opacities##which = OPT(transparent_background_colors)[which-1].opacity < 0 ? rd->bg_opacities0 : OPT(transparent_background_colors)[which-1].opacity; \
-} else { rd->bg_colors##which = UINT32_MAX; }
+#define SETBG(which) colorprofile_to_transparent_color(cp, which - 1, &rd->bg_colors##which, &rd->bg_opacities##which)
     SETBG(1); SETBG(2); SETBG(3); SETBG(4); SETBG(5); SETBG(6); SETBG(7);
 #undef SETBG
     // selection
