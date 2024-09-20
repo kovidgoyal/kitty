@@ -69,8 +69,11 @@ selection_foreground              The foreground color of selections            
 cursor                            The color of the text cursor                    Foreground color
 cursor_text                       The color of text under the cursor              Background color
 visual_bell                       The color of a visual bell                      Automatic color selection based on current screen colors
-second_transparent_background     A color that might be rendered semi-transparent No second color is made transparent
-                                  in addition to the default background color
+transparent_background_color1..8  A background color that is rendered             Unset
+                                  with the specified opacity in cells that have
+                                  the specified background color. An opacity
+                                  value less than zero means, use the
+                                  :opt:`background_opacity` value.
 ================================= =============================================== ===============================
 
 In this table the third column shows what effect setting the color to *dynamic*
@@ -160,8 +163,19 @@ RGB colors are encoded in one of three forms:
 
 ``rgbi:<red>/<green>/<blue>``
     red, green, and blue are floating-point values between 0.0 and 1.0, inclusive. The input format for these values is an optional
-    sign, a string of numbers possibly containing a decimal point, and an optional exponent field containing an E or e followed by  a  possibly
-    signed integer string.
+    sign, a string of numbers possibly containing a decimal point, and an optional exponent field containing an E or e followed by a possibly
+    signed integer string. Values outside the ``0 - 1`` range must be clipped to be within the range.
+
+If a color should have an alpha component, it must be suffixed to the color
+specification in the form :code:`@number between zero and one`. For example::
+
+    red@0.5 rgb:ff0000@0.1 #ff0000@0.3
+
+The syntax for the floating point alpha component is the same as used for the
+components of ``rgbi`` defined above. When not specified, the default alpha
+value is ``1.0``. Values outside the range ``0 - 1`` must be clipped
+to be within the range, negative values may have special context dependent
+meaning.
 
 In addition, the following color names are accepted (case-insensitively) corresponding to the
 specified RGB values.

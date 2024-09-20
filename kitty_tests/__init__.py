@@ -59,6 +59,8 @@ class Callbacks:
         response = color_control(self.color_profile, code, data)
         if response:
             def p(x):
+                if '@' in x:
+                    return (to_color(x.partition('@')[0]), int(255 * float(x.partition('@')[2])))
                 ans = to_color(x)
                 if ans is None:
                     ans = x

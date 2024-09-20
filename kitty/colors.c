@@ -249,10 +249,12 @@ colorprofile_to_transparent_color(const ColorProfile *self, unsigned index, colo
     if (index < arraysz(self->configured_transparent_colors)) {
         if (self->overriden_transparent_colors[index].is_set) {
             *color = self->overriden_transparent_colors[index].color; *opacity = self->overriden_transparent_colors[index].opacity;
+            if (*opacity < 0) *opacity = OPT(background_opacity);
             return true;
         }
         if (self->configured_transparent_colors[index].is_set) {
             *color = self->configured_transparent_colors[index].color; *opacity = self->configured_transparent_colors[index].opacity;
+            if (*opacity < 0) *opacity = OPT(background_opacity);
             return true;
         }
     }
@@ -537,6 +539,36 @@ reload_from_opts(ColorProfile *self, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+get_transparent_background_color(ColorProfile *self, PyObject *index) {
+    if (!PyLong_Check(index)) { PyErr_SetString(PyExc_TypeError, "index must be an int"); return NULL; }
+    unsigned long idx = PyLong_AsUnsignedLong(index);
+    if (PyErr_Occurred()) return NULL;
+    if (idx >= arraysz(self->configured_transparent_colors)) Py_RETURN_NONE;
+    TransparentDynamicColor *c = self->overriden_transparent_colors[idx].is_set ? self->overriden_transparent_colors + idx : self->configured_transparent_colors + idx;
+    if (!c->is_set) Py_RETURN_NONE;
+    float opacity = c->opacity >= 0 ? c->opacity : OPT(background_opacity);
+    return (PyObject*)alloc_color((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff, (unsigned)(255.f * opacity));
+}
+
+static PyObject*
+set_transparent_background_color(ColorProfile *self, PyObject *const *args, Py_ssize_t nargs) {
+    if (nargs < 1) { PyErr_SetString(PyExc_TypeError, "must specify index"); return NULL; }
+    if (!PyLong_Check(args[0])) { PyErr_SetString(PyExc_TypeError, "index must be an int"); return NULL; }
+    unsigned long idx = PyLong_AsUnsignedLong(args[0]);
+    if (PyErr_Occurred()) return NULL;
+    if (idx >= arraysz(self->configured_transparent_colors)) Py_RETURN_NONE;
+    if (nargs < 2) { self->overriden_transparent_colors[idx].is_set = false; Py_RETURN_NONE; }
+    if (!PyObject_TypeCheck(args[1], &Color_Type)) { PyErr_SetString(PyExc_TypeError, "color must be Color object"); return NULL; }
+    Color *c = (Color*)args[1];
+    float opacity = (float)(c->color.alpha) / 255.f;
+    if (nargs > 2 && PyFloat_Check(args[2])) opacity = (float)PyFloat_AsDouble(args[2]);
+    self->overriden_transparent_colors[idx].is_set = true;
+    self->overriden_transparent_colors[idx].color = c->color.rgb;
+    self->overriden_transparent_colors[idx].opacity = MAX(-1.f, MIN(opacity, 1.f));
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef cp_methods[] = {
     METHOD(reset_color_table, METH_NOARGS)
     METHOD(as_dict, METH_NOARGS)
@@ -544,7 +576,9 @@ static PyMethodDef cp_methods[] = {
     METHOD(as_color, METH_O)
     METHOD(reset_color, METH_O)
     METHOD(set_color, METH_VARARGS)
+    METHODB(get_transparent_background_color, METH_O),
     METHODB(reload_from_opts, METH_VARARGS),
+    {"set_transparent_background_color", (PyCFunction)(void(*)(void))set_transparent_background_color, METH_FASTCALL, ""},
     {NULL}  /* Sentinel */
 };
 
