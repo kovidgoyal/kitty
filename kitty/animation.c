@@ -20,6 +20,7 @@ typedef struct StepsParameters {
 
 static const double bezier_epsilon = 1e-7;
 static const unsigned max_newton_iterations = 4;
+static const unsigned max_bisection_iterations = 16;
 
 typedef struct BezierParameters {
     double ax, bx, cx, ay, by, cy, start_gradient, end_gradient, spline_samples[11];
@@ -136,13 +137,12 @@ solve_curve_x(const BezierParameters *p, double x, double epsilon) {
 
     // Fall back to the bisection method for reliability.
     unsigned iteration = 0;
-    while (t0 < t1 && iteration < 15u) {
+    while (t0 < t1 && iteration++ < max_bisection_iterations) {
         x2 = sample_curve_x(p, t2);
         if (fabs(x2 - x) < epsilon) return t2;
         if (x > x2) t0 = t2;
         else t1 = t2;
         t2 = (t1 + t0) * .5;
-        ++iteration;
     }
 
     // Failure.
