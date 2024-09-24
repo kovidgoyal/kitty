@@ -184,11 +184,13 @@ in a split using the ``rotate`` action with an argument of ``180`` and rotate
 and swap with an argument of ``270``.
 
 This layout takes one option, ``split_axis`` that controls whether new windows
-are placed into vertical or horizontal splits when a :option:`--location <launch
---location>` is not specified. A value of ``horizontal`` (same as
-``--location=vsplit``) means when a new split is created the two windows will be
-placed side by side and a value of ``vertical`` (same as ``--location=hsplit``)
-means the two windows will be placed one on top of the other. By default::
+are placed into vertical or horizontal splits when a :option:`--location
+<launch --location>` is not specified. A value of ``horizontal`` (same as
+``--location=vsplit``) means when a new split is created the two windows will
+be placed side by side and a value of ``vertical`` (same as
+``--location=hsplit``) means the two windows will be placed one on top of the
+other. A value of ``auto`` means the axis of the split is chosen automatically
+(same as ``--location=split``). By default::
 
     enabled_layouts splits:split_axis=horizontal
 

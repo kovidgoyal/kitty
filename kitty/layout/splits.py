@@ -423,10 +423,14 @@ class Pair:
 
 class SplitsLayoutOpts(LayoutOpts):
 
-    default_axis_is_horizontal: bool = True
+    default_axis_is_horizontal: bool | None = True
 
     def __init__(self, data: Dict[str, str]):
-        self.default_axis_is_horizontal = data.get('split_axis', 'horizontal') == 'horizontal'
+        q = data.get('split_axis', 'horizontal')
+        if q == 'auto':
+            self.default_axis_is_horizontal = None
+        else:
+            self.default_axis_is_horizontal = q == 'horizontal'
 
     def serialized(self) -> Dict[str, Any]:
         return {'default_axis_is_horizontal': self.default_axis_is_horizontal}
@@ -439,14 +443,17 @@ class Splits(Layout):
     no_minimal_window_borders = True
 
     @property
-    def default_axis_is_horizontal(self) -> bool:
+    def default_axis_is_horizontal(self) -> bool | None:
         return self.layout_opts.default_axis_is_horizontal
 
     @property
     def pairs_root(self) -> Pair:
         root: Optional[Pair] = getattr(self, '_pairs_root', None)
         if root is None:
-            self._pairs_root = root = Pair(horizontal=self.default_axis_is_horizontal)
+            horizontal = self.default_axis_is_horizontal
+            if horizontal is None:
+                horizontal = True
+            self._pairs_root = root = Pair(horizontal=horizontal)
         return root
 
     @pairs_root.setter
@@ -508,7 +515,7 @@ class Splits(Layout):
             group_id = ag.id
             pair = self.pairs_root.pair_for_window(group_id)
             if pair is not None:
-                if location == 'split':
+                if location == 'split' or horizontal is None:
                     wwidth = aw.geometry.right - aw.geometry.left
                     wheight = aw.geometry.bottom - aw.geometry.top
                     horizontal = wwidth >= wheight

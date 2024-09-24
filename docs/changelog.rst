@@ -93,6 +93,8 @@ Detailed list of changes
 
 - Remote control: Fix ``--match state:self`` not working (:disc:`7886`)
 
+- Splits layout: Allow setting the ``split_axis`` option to ``auto`` so that all new windows have their split axis chosen automatically unless explicitly specified in the launch command (:iss:`7887`)
+
 0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
