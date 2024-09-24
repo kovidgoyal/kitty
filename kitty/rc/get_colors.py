@@ -49,7 +49,7 @@ configured colors.
                 for k, v in windows[0].current_colors.items():
                     if v is None:
                         ans.pop(k, None)
-                    else:
+                    elif isinstance(v, int):
                         ans[k] = color_from_int(v)
                 tab = windows[0].tabref()
                 tm = None if tab is None else tab.tab_manager_ref()

@@ -805,7 +805,7 @@ class Window:
         return tab.overlay_parent(self)
 
     @property
-    def current_colors(self) -> dict[str, Optional[int]]:
+    def current_colors(self) -> dict[str, int | tuple[tuple[Color, float], ...] | None]:
         return self.screen.color_profile.as_dict()
 
     @property

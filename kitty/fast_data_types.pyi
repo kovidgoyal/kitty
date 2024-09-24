@@ -811,7 +811,7 @@ class ColorProfile:
 
     def __init__(self, opts: Optional[Options] = None): ...
 
-    def as_dict(self) -> Dict[str, Optional[int]]:
+    def as_dict(self) -> Dict[str, int | None | tuple[tuple[Color, float], ...]]:
         pass
 
     def as_color(self, val: int) -> Optional[Color]:
@@ -833,7 +833,8 @@ class ColorProfile:
 
 
 def patch_color_profiles(
-    spec: Dict[str, Optional[int]], profiles: Tuple[ColorProfile, ...], change_configured: bool
+        spec: Dict[str, Optional[int]], transparent_background_colors: tuple[tuple[Color, float], ...],
+        profiles: Tuple[ColorProfile, ...], change_configured: bool
 ) -> None:
     pass
 

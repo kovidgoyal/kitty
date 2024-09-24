@@ -35,6 +35,8 @@ func set_color_in_color_map(key, val string, ans map[string]any, check_nullable,
 			return fmt.Errorf("The color %s cannot be set to none", key)
 		}
 		ans[key] = nil
+	} else if key == "transparent_background_colors" {
+		ans[key] = val
 	} else {
 		col, err := style.ParseColor(val)
 		if err != nil {

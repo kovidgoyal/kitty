@@ -2617,7 +2617,7 @@ class Boss:
             window.screen.disable_ligatures = strategy
             window.refresh()
 
-    def patch_colors(self, spec: dict[str, Optional[int]], configured: bool = False) -> None:
+    def patch_colors(self, spec: dict[str, Optional[int]], transparent_background_colors: tuple[tuple[Color, float], ...], configured: bool = False) -> None:
         opts = get_options()
         if configured:
             for k, v in spec.items():
@@ -2627,6 +2627,7 @@ class Boss:
                             setattr(opts, k, None)
                     else:
                         setattr(opts, k, color_from_int(v))
+            opts.transparent_background_colors = transparent_background_colors
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
             tm.tab_bar.layout()

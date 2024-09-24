@@ -27,16 +27,19 @@ if TYPE_CHECKING:
     from kitty.cli_stub import SetColorsRCOptions as CLIOptions
 
 
-def parse_colors(args: Iterable[str]) -> Dict[str, Optional[int]]:
+def parse_colors(args: Iterable[str]) -> tuple[Dict[str, Optional[int]], tuple[tuple[Color, float], ...]]:
     from kitty.options.types import nullable_colors
     colors: Dict[str, Optional[Color]] = {}
     nullable_color_map: Dict[str, Optional[int]] = {}
+    transparent_background_colors = ()
     for spec in args:
         if '=' in spec:
-            colors.update(parse_config((spec.replace('=', ' '),)))
+            conf = parse_config((spec.replace('=', ' '),))
         else:
             with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
-                colors.update(parse_config(f))
+                conf = parse_config(f)
+        transparent_background_colors = conf.pop('transparent_background_colors', ())
+        colors.update(conf)
     for k in nullable_colors:
         q = colors.pop(k, False)
         if q is not False:
@@ -44,13 +47,13 @@ def parse_colors(args: Iterable[str]) -> Dict[str, Optional[int]]:
             nullable_color_map[k] = val
     ans: Dict[str, Optional[int]] = {k: int(v) for k, v in colors.items() if isinstance(v, Color)}
     ans.update(nullable_color_map)
-    return ans
+    return ans, transparent_background_colors
 
 
 class SetColors(RemoteCommand):
 
     protocol_spec = __doc__ = '''
-    colors+/dict.colors: An object mapping names to colors as 24-bit RGB integers or null for nullable colors
+    colors+/dict.colors: An object mapping names to colors as 24-bit RGB integers or null for nullable colors. Or a string for transparent_background_colors.
     match_window/str: Window to change colors in
     match_tab/str: Tab to change colors in
     all/bool: Boolean indicating change colors everywhere or not
@@ -88,14 +91,18 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
                               completion=RemoteCommand.CompletionSpec.from_string('type:file group:"CONF files", ext:conf'))
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        final_colors: Dict[str, Optional[int]] = {}
+        final_colors: Dict[str, int | None | str] = {}
+        transparent_background_colors: tuple[tuple[Color, float], ...] = ()
         if not opts.reset:
             try:
-                final_colors = parse_colors(args)
+                fc, transparent_background_colors = parse_colors(args)
             except FileNotFoundError as err:
                 raise ParsingOfArgsFailed(f'The colors configuration file {emph(err.filename)} was not found.') from err
             except Exception as err:
                 raise ParsingOfArgsFailed(str(err)) from err
+            final_colors.update(fc)
+        if transparent_background_colors:
+            final_colors['transparent_background_colors'] = ' '.join(f'{c.as_sharp}@{f}' for c, f in transparent_background_colors)
         ans = {
             'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,
@@ -105,12 +112,18 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_payload(boss, window, payload_get)
-        colors: Dict[str, Optional[int]] = payload_get('colors')
+        colors: Dict[str, int | None] = payload_get('colors')
+        tbc = colors.get('transparent_background_colors')
         if payload_get('reset'):
             colors = {k: None if v is None else int(v) for k, v in boss.color_settings_at_startup.items()}
         profiles = tuple(w.screen.color_profile for w in windows if w)
-        patch_color_profiles(colors, profiles, payload_get('configured'))
-        boss.patch_colors(colors, payload_get('configured'))
+        if tbc:
+            from kitty.options.utils import transparent_background_colors
+            parsed_tbc = transparent_background_colors(str(tbc))
+        else:
+            parsed_tbc = ()
+        patch_color_profiles(colors, parsed_tbc, profiles, payload_get('configured'))
+        boss.patch_colors(colors, parsed_tbc, payload_get('configured'))
         default_bg_changed = 'background' in colors
         for w in windows:
             if w:
