@@ -423,7 +423,7 @@ class Pair:
 
 class SplitsLayoutOpts(LayoutOpts):
 
-    default_axis_is_horizontal: bool | None = True
+    default_axis_is_horizontal: Optional[bool] = True
 
     def __init__(self, data: Dict[str, str]):
         q = data.get('split_axis', 'horizontal')
@@ -443,7 +443,7 @@ class Splits(Layout):
     no_minimal_window_borders = True
 
     @property
-    def default_axis_is_horizontal(self) -> bool | None:
+    def default_axis_is_horizontal(self) -> Optional[bool]:
         return self.layout_opts.default_axis_is_horizontal
 
     @property
