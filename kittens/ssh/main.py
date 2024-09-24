@@ -92,7 +92,8 @@ available or broken, using an alternate interpreter can be useful.
 
 opt('remote_dir', '.local/share/kitty-ssh-kitten', long_text='''
 The location on the remote host where the files needed for this kitten are
-installed. Relative paths are resolved with respect to :code:`$HOME`.
+installed. Relative paths are resolved with respect to :code:`$HOME`. Absolute
+paths have their leading / removed and so are also resolved with respect to $HOME.
 ''')
 
 opt('+copy', '', add_to_default=False, ctype='CopyInstruction', long_text=f'''
