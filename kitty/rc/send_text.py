@@ -194,7 +194,7 @@ on bracketed paste mode.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         sid = payload_get('session_id', '')
-        windows = self.windows_for_payload(boss, None, payload_get, window_match_name='match')
+        windows = self.windows_for_payload(boss, window, payload_get, window_match_name='match')
         pdata: str = payload_get('data')
         encoding, _, q = pdata.partition(':')
         session = ''

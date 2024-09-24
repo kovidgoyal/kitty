@@ -398,7 +398,7 @@ class RemoteCommand:
             window = window or boss.active_window
             windows = [window] if window else []
             if payload_get(window_match_name):
-                windows = list(boss.match_windows(payload_get(window_match_name)))
+                windows = list(boss.match_windows(payload_get(window_match_name), window))
                 if not windows:
                     raise MatchError(payload_get(window_match_name))
             if payload_get(tab_match_name):

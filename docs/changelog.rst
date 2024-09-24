@@ -91,6 +91,8 @@ Detailed list of changes
 
 - kitten @ ls: Fix the ``--self`` flag not working (:iss:`7864`)
 
+- Remote control: Fix ``--match state:self`` not working (:disc:`7886`)
+
 0.36.2 [2024-09-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
