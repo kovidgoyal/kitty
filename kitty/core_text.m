@@ -744,6 +744,7 @@ ensure_render_space(size_t width, size_t height, size_t num_glyphs) {
     }
     if (buffers.sz < num_glyphs) {
         buffers.sz = MAX(128, num_glyphs * 2);
+        free(buffers.boxes); free(buffers.glyphs); free(buffers.positions);
         buffers.boxes = calloc(sizeof(buffers.boxes[0]), buffers.sz);
         buffers.glyphs = calloc(sizeof(buffers.glyphs[0]), buffers.sz);
         buffers.positions = calloc(sizeof(buffers.positions[0]), buffers.sz);
