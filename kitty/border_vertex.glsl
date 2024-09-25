@@ -43,7 +43,7 @@ void main() {
     float is_default_bg = is_integer_value(rc, 0.);
     color3 = is_window_bg * window_bg + (1. - is_window_bg) * color3;
     // Border must be always drawn opaque
-    float is_border_bg = 1. - step(0.5, abs((float(rc) - 2.) * (float(rc) - 1.))); // 1 if rc in (1, 2) else 0
+    float is_border_bg = 1. - step(0.5, abs((float(rc) - 2.) * (float(rc) - 1.) * (float(rc) - 4.))); // 1 if rc in (1, 2, 4) else 0
     float final_opacity = is_default_bg * tint_opacity + (1. - is_default_bg) * background_opacity;
     final_opacity = is_border_bg + (1. - is_border_bg) * final_opacity;
     float final_premult_opacity = is_default_bg * tint_premult + (1. - is_default_bg) * background_opacity;
