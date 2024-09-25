@@ -74,6 +74,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.36.4 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Wayland GNOME: Fix a crash when using multiple monitors with different scales and starting on or moving to the monitor with lower scale (:iss:`7894`)
+
 0.36.3 [2024-09-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

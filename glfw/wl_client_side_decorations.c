@@ -468,10 +468,8 @@ render_shadows(_GLFWwindow *window) {
 
 static bool
 create_shm_buffers(_GLFWwindow* window) {
-    const double scale = _glfwWaylandWindowScale(window);
-
     decs.mapping.size = 0;
-#define bp(which, width, height) decs.mapping.size += init_buffer_pair(&decs.which.buffer, width, height, scale);
+#define bp(which, width, height) decs.mapping.size += init_buffer_pair(&decs.which.buffer, width, height, decs.for_window_state.fscale);
     bp(titlebar, window->wl.width, decs.metrics.visible_titlebar_height);
     bp(shadow_top, window->wl.width, decs.metrics.width);
     bp(shadow_bottom, window->wl.width, decs.metrics.width);
@@ -504,7 +502,7 @@ create_shm_buffers(_GLFWwindow* window) {
     wl_shm_pool_destroy(pool);
     render_title_bar(window, true);
     render_shadows(window);
-    debug("Created decoration buffers at scale: %f\n", scale);
+    debug("Created decoration buffers at scale: %f\n", decs.for_window_state.fscale);
     return true;
 }
 
@@ -577,10 +575,11 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!window_is_csd_capable(window)) return false;
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool focus_changed = is_focused != decs.for_window_state.focused;
+    const double current_scale = _glfwWaylandWindowScale(window);
     const bool size_changed = (
         decs.for_window_state.width != window->wl.width ||
         decs.for_window_state.height != window->wl.height ||
-        decs.for_window_state.fscale != _glfwWaylandWindowScale(window) ||
+        decs.for_window_state.fscale != current_scale ||
         !decs.mapping.data
     );
     const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
@@ -589,6 +588,7 @@ ensure_csd_resources(_GLFWwindow *window) {
             decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update,
             size_changed, state_changed, decs.buffer_destroyed);
     if (!needs_update) return false;
+    decs.for_window_state.fscale = current_scale;  // used in create_shm_buffers
     if (size_changed || decs.buffer_destroyed) {
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
@@ -618,7 +618,6 @@ ensure_csd_resources(_GLFWwindow *window) {
 
     decs.for_window_state.width = window->wl.width;
     decs.for_window_state.height = window->wl.height;
-    decs.for_window_state.fscale = _glfwWaylandWindowScale(window);
     decs.for_window_state.focused = is_focused;
     decs.for_window_state.toplevel_states = window->wl.current.toplevel_states;
     return true;
