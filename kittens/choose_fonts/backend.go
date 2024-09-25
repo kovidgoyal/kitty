@@ -65,6 +65,9 @@ func (k *kitty_font_backend_type) start() (err error) {
 var kitty_font_backend kitty_font_backend_type
 
 func (k *kitty_font_backend_type) send(v any) error {
+	if k.to == nil {
+		return fmt.Errorf("Trying to send data when to pipe is nil")
+	}
 	data, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("Could not encode message to kitty with error: %w", err)
