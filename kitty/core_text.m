@@ -813,13 +813,13 @@ render_sample_text(CTFace *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
     unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
-    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
-    if (!pbuf) return NULL;
-    memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
-    if (!cell_width || !cell_height) return Py_BuildValue("OII", pbuf, cell_width, cell_height);
+    if (!cell_width || !cell_height) return Py_BuildValue("yII", "", cell_width, cell_height);
     size_t num_chars = PyUnicode_GET_LENGTH(ptext);
     int num_chars_per_line = canvas_width / cell_width, num_of_lines = (int)ceil((float)num_chars / (float)num_chars_per_line);
     canvas_height = MIN(canvas_height, num_of_lines * cell_height);
+    RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
+    if (!pbuf) return NULL;
+    memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
 
     __attribute__((cleanup(destroy_hb_buffer))) hb_buffer_t *hb_buffer = hb_buffer_create();
     if (!hb_buffer_pre_allocate(hb_buffer, 4*num_chars)) { PyErr_NoMemory(); return NULL; }
@@ -858,9 +858,10 @@ render_sample_text(CTFace *self, PyObject *args) {
     render_glyphs(font, canvas_width, canvas_height, baseline, num_glyphs);
     uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
     const uint8_t *last_pixel = (uint8_t*)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
+    const uint8_t *s_limit = buffers.render_buf + canvas_width * canvas_height;
     for (
         uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf), *s = buffers.render_buf;
-        p <= last_pixel;
+        p <= last_pixel && s < s_limit;
         p += sizeof(pixel), s++
     ) {
         p[0] = r; p[1] = g; p[2] = b; p[3] = s[0];

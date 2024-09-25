@@ -81,6 +81,8 @@ Detailed list of changes
 
 - Wayland GNOME: Fix a crash when using multiple monitors with different scales and starting on or moving to the monitor with lower scale (:iss:`7894`)
 
+- macOS: Fix a regression in the previous release that caused junk to be rendered in font previews in the choose fonts kitten and crash on Intel macs (:iss:`7892`)
+
 
 0.36.3 [2024-09-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
