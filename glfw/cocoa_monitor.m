@@ -27,6 +27,7 @@
 // It is fine to use C99 in this file because it will not be built with VS
 //========================================================================
 
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #include "internal.h"
 
 #include <stdlib.h>
