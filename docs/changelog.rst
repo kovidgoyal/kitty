@@ -77,7 +77,10 @@ Detailed list of changes
 0.36.4 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Fix a regression in the previous release that caused window padding to be rendered opaque even when :opt:`background_opacity` is less than 1 (:iss:`7895`)
+
 - Wayland GNOME: Fix a crash when using multiple monitors with different scales and starting on or moving to the monitor with lower scale (:iss:`7894`)
+
 
 0.36.3 [2024-09-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
