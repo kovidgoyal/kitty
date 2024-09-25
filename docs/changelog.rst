@@ -74,7 +74,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.36.3 [future]
+0.36.3 [2024-09-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - The option ``second_transparent_bg`` has been removed and replaced by :opt:`transparent_background_colors` which allows setting up to seven additional colors that will be transparent, with individual opacities per color (:iss:`7646`)
