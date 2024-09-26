@@ -17,6 +17,20 @@
 #include <sys/mman.h>
 #include <structmember.h>
 
+#ifdef LIBRESSL_VERSION_NUMBER
+/* from: https://github.com/libressl/portable/blob/master/include/compat/string.h#L63 */
+#define explicit_bzero libressl_explicit_bzero
+void explicit_bzero(void *, size_t);
+/* from: https://github.com/libressl/portable/blob/master/crypto/compat/freezero.c */
+void
+freezero(void *ptr, size_t sz) {
+    if (ptr == NULL) return;
+    explicit_bzero(ptr, sz);
+    free(ptr);
+}
+#define OPENSSL_clear_free freezero
+#endif
+
 #define SHA1_DIGEST_LENGTH SHA_DIGEST_LENGTH
 
 typedef enum HASH_ALGORITHM { SHA1_HASH, SHA224_HASH, SHA256_HASH, SHA384_HASH, SHA512_HASH } HASH_ALGORITHM;
