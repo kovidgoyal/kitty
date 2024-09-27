@@ -74,7 +74,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.36.4 [future]
+0.36.4 [2024-09-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix a regression in the previous release that caused window padding to be rendered opaque even when :opt:`background_opacity` is less than 1 (:iss:`7895`)
