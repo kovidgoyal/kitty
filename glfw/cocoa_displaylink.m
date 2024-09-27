@@ -5,7 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-// CVDisplayLink is deprecated
+// CVDisplayLink is deprecated replace with CADisplayLink via [NSScreen displayLink] once base macOS version is 14
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 #include "internal.h"
