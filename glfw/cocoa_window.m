@@ -26,7 +26,6 @@
 // It is fine to use C99 in this file because it will not be built with VS
 //========================================================================
 
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #include "../kitty/monotonic.h"
 #include "glfw3.h"
 #include "internal.h"
@@ -307,28 +306,6 @@ static NSUInteger getStyleMask(_GLFWwindow* window)
 }
 
 
-CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
-    NSWindow *nw = w->ns.object;
-    NSDictionary *dict = [nw.screen deviceDescription];
-    NSNumber *displayIDns = dict[@"NSScreenNumber"];
-    if (displayIDns) return [displayIDns unsignedIntValue];
-    return (CGDirectDisplayID)-1;
-}
-
-static unsigned long long display_link_shutdown_timer = 0;
-#define DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL s_to_monotonic_t(30ll)
-
-void
-_glfwShutdownCVDisplayLink(unsigned long long timer_id UNUSED, void *user_data UNUSED) {
-    display_link_shutdown_timer = 0;
-    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
-        if (dl->displayLink) CVDisplayLinkStop(dl->displayLink);
-        dl->lastRenderFrameRequestedAt = 0;
-        dl->first_unserviced_render_frame_request_at = 0;
-    }
-}
-
 static void
 requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     if (!callback) {
@@ -338,46 +315,7 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     }
     w->ns.renderFrameCallback = callback;
     w->ns.renderFrameRequested = true;
-    CGDirectDisplayID displayID = displayIDForWindow(w);
-    if (display_link_shutdown_timer) {
-        _glfwPlatformUpdateTimer(display_link_shutdown_timer, DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, true);
-    } else {
-        display_link_shutdown_timer = _glfwPlatformAddTimer(DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, false, _glfwShutdownCVDisplayLink, NULL, NULL);
-    }
-    monotonic_t now = glfwGetTime();
-    bool found_display_link = false;
-    _GLFWDisplayLinkNS *dl = NULL;
-    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        dl = &_glfw.ns.displayLinks.entries[i];
-        if (dl->displayID == displayID) {
-            found_display_link = true;
-            dl->lastRenderFrameRequestedAt = now;
-            if (!dl->first_unserviced_render_frame_request_at) dl->first_unserviced_render_frame_request_at = now;
-            if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
-            else if (now - dl->first_unserviced_render_frame_request_at > s_to_monotonic_t(1ll)) {
-                // display link is stuck need to recreate it because Apple can't even
-                // get a simple timer right
-                CVDisplayLinkRelease(dl->displayLink); dl->displayLink = nil;
-                dl->first_unserviced_render_frame_request_at = now;
-                _glfw_create_cv_display_link(dl);
-                _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "CVDisplayLink stuck possibly because of sleep/screensaver + Apple's incompetence, recreating.");
-                if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
-            }
-        } else if (dl->displayLink && dl->lastRenderFrameRequestedAt && now - dl->lastRenderFrameRequestedAt >= DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL) {
-            CVDisplayLinkStop(dl->displayLink);
-            dl->lastRenderFrameRequestedAt = 0;
-            dl->first_unserviced_render_frame_request_at = 0;
-        }
-    }
-    if (!found_display_link) {
-        dl = _glfw_create_display_link(displayID);
-        if (dl) {
-            dl->lastRenderFrameRequestedAt = now;
-            dl->first_unserviced_render_frame_request_at = now;
-            if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
-        }
-    }
+    _glfwRequestRenderFrame(w);
 }
 
 void
@@ -2336,24 +2274,6 @@ void _glfwPlatformSetRawMouseMotion(_GLFWwindow *window UNUSED, bool enabled UNU
 bool _glfwPlatformRawMouseMotionSupported(void)
 {
     return false;
-}
-
-void
-_glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
-    _GLFWwindow *w = _glfw.windowListHead;
-    while (w) {
-        if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
-            w->ns.renderFrameRequested = false;
-            w->ns.renderFrameCallback((GLFWwindow*)w);
-        }
-        w = w->next;
-    }
-    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
-        if (dl->displayID == displayID) {
-            dl->first_unserviced_render_frame_request_at = 0;
-        }
-    }
 }
 
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)

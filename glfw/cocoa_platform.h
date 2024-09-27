@@ -30,10 +30,8 @@
 #include <Carbon/Carbon.h>
 #if defined(__OBJC__)
 #import <Cocoa/Cocoa.h>
-#import <CoreVideo/CoreVideo.h>
 #else
 typedef void* id;
-typedef void* CVDisplayLinkRef;
 #endif
 
 // NOTE: Many Cocoa enum values have been renamed and we need to build across
@@ -160,13 +158,6 @@ typedef struct _GLFWwindowNS
     GLFWcocoarenderframefun resizeCallback;
 } _GLFWwindowNS;
 
-typedef struct _GLFWDisplayLinkNS
-{
-    CVDisplayLinkRef displayLink;
-    CGDirectDisplayID displayID;
-    monotonic_t lastRenderFrameRequestedAt, first_unserviced_render_frame_request_at;
-} _GLFWDisplayLinkNS;
-
 // Cocoa-specific global data
 //
 typedef struct _GLFWlibraryNS
@@ -199,10 +190,6 @@ typedef struct _GLFWlibraryNS
         CFStringRef     kPropertyUnicodeKeyLayoutData;
     } tis;
 
-    struct {
-        _GLFWDisplayLinkNS entries[256];
-        size_t count;
-    } displayLinks;
     // the callback to handle url open events
     GLFWhandleurlopen url_open_callback;
 
@@ -244,12 +231,16 @@ float _glfwTransformYNS(float y);
 
 void* _glfwLoadLocalVulkanLoaderNS(void);
 
+
+// display links
 void _glfwClearDisplayLinks(void);
 void _glfwRestartDisplayLinks(void);
-void _glfwDispatchTickCallback(void);
+unsigned _glfwCreateDisplayLink(CGDirectDisplayID);
 void _glfwDispatchRenderFrame(CGDirectDisplayID);
-void _glfwShutdownCVDisplayLink(unsigned long long, void*);
+void _glfwRequestRenderFrame(_GLFWwindow *w);
+
+// event loop
+void _glfwDispatchTickCallback(void);
 void _glfwCocoaPostEmptyEvent(void);
-void _glfw_create_cv_display_link(_GLFWDisplayLinkNS *entry);
-_GLFWDisplayLinkNS* _glfw_create_display_link(CGDirectDisplayID);
+
 uint32_t vk_to_unicode_key_with_current_layout(uint16_t keycode);

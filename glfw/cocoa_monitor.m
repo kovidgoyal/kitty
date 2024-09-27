@@ -27,7 +27,6 @@
 // It is fine to use C99 in this file because it will not be built with VS
 //========================================================================
 
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #include "internal.h"
 
 #include <stdlib.h>
@@ -36,7 +35,6 @@
 
 #include <IOKit/graphics/IOGraphicsLib.h>
 #include <CoreVideo/CVBase.h>
-#include <CoreVideo/CVDisplayLink.h>
 #include <ApplicationServices/ApplicationServices.h>
 
 
@@ -324,54 +322,7 @@ static double getFallbackRefreshRate(CGDirectDisplayID displayID)
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwClearDisplayLinks(void) {
-    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        if (_glfw.ns.displayLinks.entries[i].displayLink) {
-            CVDisplayLinkStop(_glfw.ns.displayLinks.entries[i].displayLink);
-            CVDisplayLinkRelease(_glfw.ns.displayLinks.entries[i].displayLink);
-        }
-    }
-    memset(_glfw.ns.displayLinks.entries, 0, sizeof(_GLFWDisplayLinkNS) * _glfw.ns.displayLinks.count);
-    _glfw.ns.displayLinks.count = 0;
-}
-
-static CVReturn displayLinkCallback(
-        CVDisplayLinkRef displayLink UNUSED,
-        const CVTimeStamp* now UNUSED, const CVTimeStamp* outputTime UNUSED,
-        CVOptionFlags flagsIn UNUSED, CVOptionFlags* flagsOut UNUSED, void* userInfo)
-{
-    CGDirectDisplayID displayID = (uintptr_t)userInfo;
-    NSNumber *arg = [NSNumber numberWithUnsignedInt:displayID];
-    [NSApp performSelectorOnMainThread:@selector(render_frame_received:) withObject:arg waitUntilDone:NO];
-    [arg release];
-    return kCVReturnSuccess;
-}
-
-void
-_glfw_create_cv_display_link(_GLFWDisplayLinkNS *entry) {
-    CVDisplayLinkCreateWithCGDisplay(entry->displayID, &entry->displayLink);
-    CVDisplayLinkSetOutputCallback(entry->displayLink, &displayLinkCallback, (void*)(uintptr_t)entry->displayID);
-}
-
-_GLFWDisplayLinkNS*
-_glfw_create_display_link(CGDirectDisplayID displayID) {
-    if (_glfw.ns.displayLinks.count >= arraysz(_glfw.ns.displayLinks.entries) - 1) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many monitors cannot create display link");
-        return NULL;
-    }
-    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        // already created in this run
-        if (_glfw.ns.displayLinks.entries[i].displayID == displayID) return _glfw.ns.displayLinks.entries + i;
-    }
-    _GLFWDisplayLinkNS *entry = &_glfw.ns.displayLinks.entries[_glfw.ns.displayLinks.count++];
-    memset(entry, 0, sizeof(_GLFWDisplayLinkNS));
-    entry->displayID = displayID;
-    _glfw_create_cv_display_link(entry);
-    return entry;
-}
-
 // Poll for changes in the set of connected monitors
-//
 void _glfwPollMonitorsNS(void)
 {
     uint32_t displayCount;
@@ -427,7 +378,7 @@ void _glfwPollMonitorsNS(void)
             {
                 disconnected[j]->ns.displayID  = displays[i];
                 disconnected[j]->ns.screen = screen;
-                _glfw_create_display_link(displays[i]);
+                _glfwCreateDisplayLink(displays[i]);
                 disconnected[j] = NULL;
                 break;
             }
@@ -448,7 +399,7 @@ void _glfwPollMonitorsNS(void)
         monitor->ns.displayID  = displays[i];
         monitor->ns.unitNumber = unitNumber;
         monitor->ns.screen     = screen;
-        _glfw_create_display_link(monitor->ns.displayID);
+        _glfwCreateDisplayLink(monitor->ns.displayID);
 
         free(name);
 

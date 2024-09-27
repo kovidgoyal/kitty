@@ -13,6 +13,7 @@
       "cocoa_joystick.m",
       "cocoa_monitor.m",
       "cocoa_window.m",
+      "cocoa_displaylink.m",
       "posix_thread.c",
       "nsgl_context.m",
       "egl_context.c",
