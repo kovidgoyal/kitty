@@ -79,11 +79,11 @@ wait_for_terminal_ready(int fd) {
 
 static PyObject*
 spawn(PyObject *self UNUSED, PyObject *args) {
-    PyObject *argv_p, *env_p, *handled_signals_p;
+    PyObject *argv_p, *env_p, *handled_signals_p, *pass_fds;
     int master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd, forward_stdio;
     const char *kitten_exe;
     char *cwd, *exe;
-    if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!sp", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p, &kitten_exe, &forward_stdio)) return NULL;
+    if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!spO!", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p, &kitten_exe, &forward_stdio, &PyTuple_Type, &pass_fds)) return NULL;
     char name[2048] = {0};
     if (ttyname_r(slave, name, sizeof(name) - 1) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     char **argv = serialize_string_tuple(argv_p);
@@ -130,6 +130,15 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             safe_close(tfd, __FILE__, __LINE__);
 
             int min_closed_fd = 3;
+            for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(pass_fds); i++) {
+                PyObject *pfd = PyTuple_GET_ITEM(pass_fds, i);
+                if (!PyLong_Check(pfd)) exit_on_err("pass_fds must contain only integers");
+                int fd = PyLong_AsLong(pfd);
+                if (fd > -1) {
+                    if (fd == min_closed_fd) min_closed_fd++;
+                    else if (safe_dup2(fd, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 1");
+                }
+            }
             if (forward_stdio) {
                 if (safe_dup2(STDOUT_FILENO, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 1");
                 if (safe_dup2(STDERR_FILENO, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 2");

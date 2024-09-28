@@ -1460,6 +1460,7 @@ def spawn(
     handled_signals: Tuple[int, ...],
     kitten_exe: str,
     forward_stdio: bool,
+    pass_fds: tuple[int, ...],
 ) -> int:
     pass
 

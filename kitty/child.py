@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
-from typing import TYPE_CHECKING, DefaultDict, Optional
+from typing import TYPE_CHECKING, DefaultDict, Optional, Protocol, Union
 
 import kitty.fast_data_types as fast_data_types
 
@@ -21,6 +21,12 @@ except ImportError:
     TypedDict = dict
 if TYPE_CHECKING:
     from .window import CwdRequest
+
+
+class InheritableFile(Protocol):
+
+    def close(self) -> None: ...
+    def fileno(self) -> int: ...
 
 
 if is_macos:
@@ -211,11 +217,13 @@ class Child:
         is_clone_launch: str = '',
         add_listen_on_env_var: bool = True,
         hold: bool = False,
+        pass_fds: tuple[Union[int, InheritableFile], ...] = (),
     ):
         self.is_clone_launch = is_clone_launch
         self.id = next(child_counter)
         self.add_listen_on_env_var = add_listen_on_env_var
         self.argv = list(argv)
+        self.pass_fds = pass_fds
         if cwd_from:
             try:
                 cwd = cwd_from.modify_argv_for_launch_with_cwd(self.argv, env) or cwd
@@ -331,10 +339,17 @@ class Child:
             argv = cmdline_for_hold(argv)
             final_exe = argv[0]
         env = tuple(f'{k}={v}' for k, v in self.final_env.items())
+        pass_fds = tuple(sorted(x if isinstance(x, int) else x.fileno() for x in self.pass_fds))
         pid = fast_data_types.spawn(
             final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
-            ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio)
+            ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio, pass_fds)
         os.close(slave)
+        for x in self.pass_fds:
+            if isinstance(x, int):
+                os.close(x)
+            else:
+                x.close()
+        self.pass_fds = ()
         self.pid = pid
         self.child_fd = master
         if stdin is not None:
