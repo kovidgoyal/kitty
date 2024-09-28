@@ -136,7 +136,10 @@ spawn(PyObject *self UNUSED, PyObject *args) {
                 int fd = PyLong_AsLong(pfd);
                 if (fd > -1) {
                     if (fd == min_closed_fd) min_closed_fd++;
-                    else if (safe_dup2(fd, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 1");
+                    else {
+                        if (safe_dup2(fd, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 1");
+                        safe_close(fd, __FILE__, __LINE__);
+                    }
                 }
             }
             if (forward_stdio) {
