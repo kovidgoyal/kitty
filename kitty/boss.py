@@ -7,6 +7,7 @@ import base64
 import json
 import os
 import re
+import socket
 import sys
 from collections.abc import Container, Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager, suppress
@@ -2350,6 +2351,20 @@ class Boss:
         overlay_for = w.id if w and as_overlay else None
         return SpecialWindow(cmd, input_data, cwd_from=cwd_from, overlay_for=overlay_for, env=env)
 
+    def add_fd_based_remote_control(self, remote_control_passwords: Optional[dict[str, Sequence[str]]] = None) -> socket.socket:
+        local, remote = socket.socketpair()
+        os.set_inheritable(remote.fileno(), True)
+        lfd = os.dup(local.fileno())
+        local.close()
+        try:
+            peer_id = self.child_monitor.inject_peer(lfd)
+        except Exception:
+            os.close(lfd)
+            remote.close()
+            raise
+        self.peer_data_map[peer_id] = remote_control_passwords
+        return remote
+
     def run_background_process(
         self,
         cmd: list[str],
@@ -2383,20 +2398,9 @@ class Boss:
             pass_fds: list[int] = []
             fds_to_close_on_launch_failure: list[int] = []
             if allow_remote_control:
-                import socket
-                local, remote = socket.socketpair()
-                os.set_inheritable(remote.fileno(), True)
-                lfd = os.dup(local.fileno())
-                local.close()
-                try:
-                    peer_id = self.child_monitor.inject_peer(lfd)
-                except Exception:
-                    os.close(lfd)
-                    remote.close()
-                    raise
+                remote = self.add_fd_based_remote_control(remote_control_passwords)
                 pass_fds.append(remote.fileno())
                 add_env('KITTY_LISTEN_ON', f'fd:{remote.fileno()}')
-                self.peer_data_map[peer_id] = remote_control_passwords
             if activation_token:
                 add_env('XDG_ACTIVATION_TOKEN', activation_token)
             fds_to_close_on_launch_failure = list(pass_fds)
