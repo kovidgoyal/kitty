@@ -74,6 +74,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.37.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Custom kittens: Add :ref:`a framework <kitten_main_rc>` for easily and securely using remote control from within a kitten's :code:`main()` function
+
 0.36.4 [2024-09-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -453,6 +453,8 @@ class Tab:  # {{{
         is_clone_launch: str = '',
         add_listen_on_env_var: bool = True,
         hold: bool = False,
+        pass_fds: tuple[int, ...] = (),
+        remote_control_fd: int = -1,
     ) -> Child:
         check_for_suitability = True
         if cmd is None:
@@ -500,7 +502,9 @@ class Tab:  # {{{
         pwid = platform_window_id(self.os_window_id)
         if pwid is not None:
             fenv['WINDOWID'] = str(pwid)
-        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, is_clone_launch=is_clone_launch, add_listen_on_env_var=add_listen_on_env_var, hold=hold)
+        ans = Child(
+                cmd, cwd or self.cwd, stdin, fenv, cwd_from, is_clone_launch=is_clone_launch,
+                add_listen_on_env_var=add_listen_on_env_var, hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd)
         ans.fork()
         return ans
 
@@ -532,11 +536,13 @@ class Tab:  # {{{
         remote_control_passwords: Optional[dict[str, Sequence[str]]] = None,
         hold: bool = False,
         bias: Optional[float] = None,
+        pass_fds: tuple[int, ...] = (),
+        remote_control_fd: int = -1,
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
             is_clone_launch=is_clone_launch, add_listen_on_env_var=False if allow_remote_control and remote_control_passwords else True,
-            hold=hold,
+            hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd,
         )
         window = Window(
             self, child, self.args, override_title=override_title,
@@ -561,6 +567,8 @@ class Tab:  # {{{
             copy_colors_from: Optional[Window] = None,
             allow_remote_control: bool = False,
             remote_control_passwords: Optional[dict[str, Sequence[str]]] = None,
+            pass_fds: tuple[int, ...] = (),
+            remote_control_fd: int = -1,
     ) -> Window:
         return self.new_window(
             use_shell=False, cmd=special_window.cmd, stdin=special_window.stdin,
@@ -568,7 +576,7 @@ class Tab:  # {{{
             cwd_from=special_window.cwd_from, cwd=special_window.cwd, overlay_for=special_window.overlay_for,
             env=special_window.env, location=location, copy_colors_from=copy_colors_from,
             allow_remote_control=allow_remote_control, watchers=special_window.watchers, overlay_behind=special_window.overlay_behind,
-            hold=special_window.hold, remote_control_passwords=remote_control_passwords,
+            hold=special_window.hold, remote_control_passwords=remote_control_passwords, pass_fds=pass_fds, remote_control_fd=remote_control_fd,
         )
 
     @ac('win', 'Close all windows in the tab other than the currently active window')

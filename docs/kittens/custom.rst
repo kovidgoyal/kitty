@@ -231,6 +231,56 @@ The function will only send the event if the program is receiving events of
 that type, and will return ``True`` if it sent the event, and ``False`` if not.
 
 
+.. _kitten_main_rc:
+
+Using remote control inside the main() kitten function
+------------------------------------------------------------
+
+You can use kitty's remote control features inside the main() function of a
+kitten, even without enabling remote control. This is useful if you want to
+probe kitty for more information before presenting some UI to the user or if
+you want the user to be able to control kitty from within your kitten's UI
+rather than after it has finished running. To enable it, simply tell kitty your kitten
+requires remote control, as shown in the example below::
+
+    import json
+    import sys
+    from pprint import pprint
+
+    from kittens.tui.handler import kitten_ui
+
+    @kitten_ui(allow_remote_control=True)
+    def main(args: list[str]) -> str:
+        # get the result of running kitten @ ls
+        cp = main.remote_control(['ls'], capture_output=True)
+        if cp.returncode != 0:
+            sys.stderr.buffer.write(cp.stderr)
+            raise SystemExit(cp.returncode)
+        output = json.loads(cp.stdout)
+        pprint(output)
+        # open a new tab with a title specified by the user
+        title = input('Enter the name of tab: ')
+        window_id = main.remote_control(['launch', '--type=tab', '--tab-title', title], check=True, capture_output=True).stdout.decode()
+        return window_id
+
+:code:`allow_remote_control=True` tells kitty to run this kitten with remote
+control enabled, regardless of whether it is enabled globally or not.
+To run a remote control command use the :code:`main.remote_control()` function
+which is a thin wrapper around Python's :code:`subprocess.run` function. Note
+that by default, for security, child processes launched by your kitten cannot use remote
+control, thus it is necessary to use :code:`main.remote_control()`. If you wish
+to enable child processes to use remote control, call
+:code:`main.allow_indiscriminate_remote_control()`.
+
+Remote control access can be further secured by using
+:code:`kitten_ui(allow_remote_control=True, remote_control_password='ls set-colors')`.
+This will use a secure generated password to restrict remote control.
+You can specify a space separated list of remote control commands to allow, see
+:opt:`remote_control_password` for details. The password value is accessible
+as :code:`main.password` and is used by :code:`main.remote_control()`
+automatically.
+
+
 Debugging kittens
 --------------------
 

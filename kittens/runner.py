@@ -80,18 +80,22 @@ class KittenMetadata(NamedTuple):
     no_ui: bool = False
     has_ready_notification: bool = False
     open_url_handler: Optional[Callable[[BossType, WindowType, str, int, str], bool]] = None
-
+    allow_remote_control: bool = False
+    remote_control_password: str | bool = False
 
 
 def create_kitten_handler(kitten: str, orig_args: List[str]) -> KittenMetadata:
     from kitty.constants import config_dir
     kitten = resolved_kitten(kitten)
     m = import_kitten_main_module(config_dir, kitten)
+    main = m['start']
     handle_result = m['end']
     return KittenMetadata(
         handle_result=partial(handle_result, [kitten] + orig_args),
         type_of_input=getattr(handle_result, 'type_of_input', None),
         no_ui=getattr(handle_result, 'no_ui', False),
+        allow_remote_control=getattr(main, 'allow_remote_control', False),
+        remote_control_password=getattr(main, 'remote_control_password', True),
         has_ready_notification=getattr(handle_result, 'has_ready_notification', False),
         open_url_handler=getattr(handle_result, 'open_url_handler', None))
 

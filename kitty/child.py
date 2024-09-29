@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
-from typing import TYPE_CHECKING, DefaultDict, Optional, Protocol, Union
+from typing import TYPE_CHECKING, DefaultDict, Optional
 
 import kitty.fast_data_types as fast_data_types
 
@@ -21,11 +21,6 @@ except ImportError:
     TypedDict = dict
 if TYPE_CHECKING:
     from .window import CwdRequest
-
-
-class InheritableFile(Protocol):
-
-    def fileno(self) -> int: ...
 
 
 if is_macos:
@@ -216,13 +211,15 @@ class Child:
         is_clone_launch: str = '',
         add_listen_on_env_var: bool = True,
         hold: bool = False,
-        pass_fds: tuple[Union[int, InheritableFile], ...] = (),
+        pass_fds: tuple[int, ...] = (),
+        remote_control_fd: int = -1,
     ):
         self.is_clone_launch = is_clone_launch
         self.id = next(child_counter)
         self.add_listen_on_env_var = add_listen_on_env_var
         self.argv = list(argv)
         self.pass_fds = pass_fds
+        self.remote_control_fd = remote_control_fd
         if cwd_from:
             try:
                 cwd = cwd_from.modify_argv_for_launch_with_cwd(self.argv, env) or cwd
@@ -251,7 +248,9 @@ class Child:
         env['COLORTERM'] = 'truecolor'
         env['KITTY_PID'] = getpid()
         env['KITTY_PUBLIC_KEY'] = boss.encryption_public_key
-        if self.add_listen_on_env_var and boss.listening_on:
+        if self.remote_control_fd > -1:
+            env['KITTY_LISTEN_ON'] = f'fd:{self.remote_control_fd}'
+        elif self.add_listen_on_env_var and boss.listening_on:
             env['KITTY_LISTEN_ON'] = boss.listening_on
         else:
             env.pop('KITTY_LISTEN_ON', None)
@@ -299,6 +298,9 @@ class Child:
         self.final_env = self.get_final_env()
         argv = list(self.argv)
         cwd = self.cwd
+        pass_fds = self.pass_fds
+        if self.remote_control_fd > -1:
+            pass_fds += self.remote_control_fd,
         if self.should_run_via_run_shell_kitten:
             # bash will only source ~/.bash_profile if it detects it is a login
             # shell (see the invocation section of the bash man page), which it
@@ -319,7 +321,7 @@ class Child:
             if ksi == 'invalid':
                 ksi = 'enabled'
             argv = [kitten_exe(), 'run-shell', '--shell', shlex.join(argv), '--shell-integration', ksi]
-            if is_macos and not self.pass_fds and not opts.forward_stdio:
+            if is_macos and not pass_fds and not opts.forward_stdio:
                 # In addition for getlogin() to work we need to run the shell
                 # via the /usr/bin/login wrapper, sigh.
                 # And login on macOS looks for .hushlogin in CWD instead of
@@ -339,12 +341,10 @@ class Child:
             argv = cmdline_for_hold(argv)
             final_exe = argv[0]
         env = tuple(f'{k}={v}' for k, v in self.final_env.items())
-        pass_fds = tuple(sorted(x if isinstance(x, int) else x.fileno() for x in self.pass_fds))
         pid = fast_data_types.spawn(
             final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
             ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio, pass_fds)
         os.close(slave)
-        self.pass_fds = ()
         self.pid = pid
         self.child_fd = master
         if stdin is not None:

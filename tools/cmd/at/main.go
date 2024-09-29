@@ -326,6 +326,17 @@ func get_password(password string, password_file string, password_env string, us
 					ttyf.Close()
 				}
 			}
+		} else if strings.HasPrefix(password_file, "fd:") {
+			var fd int
+			if fd, err = strconv.Atoi(password_file[3:]); err == nil {
+				f := os.NewFile(uintptr(fd), password_file)
+				var q []byte
+				if q, err = io.ReadAll(f); err == nil {
+					ans.is_set = true
+					ans.val = string(q)
+				}
+				f.Close()
+			}
 		} else {
 			var q []byte
 			q, err = os.ReadFile(password_file)

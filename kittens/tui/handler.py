@@ -2,12 +2,14 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import os
 from collections import deque
 from contextlib import suppress
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, ContextManager, Deque, Dict, NamedTuple, Optional, Sequence, Type, Union, cast
 
-from kitty.fast_data_types import monotonic
+from kitty.constants import kitten_exe, running_in_kitty
+from kitty.fast_data_types import monotonic, safe_pipe
 from kitty.types import DecoratedFunc, ParsedShortcut
 from kitty.typing import (
     AbstractEventLoop,
@@ -45,6 +47,98 @@ def is_click(a: ButtonEvent, b: ButtonEvent) -> bool:
     x = a.mouse_event.cell_x - b.mouse_event.cell_x
     y = a.mouse_event.cell_y - b.mouse_event.cell_y
     return x*x + y*y <= 4
+
+
+class KittenUI:
+    allow_remote_control: bool = False
+    remote_control_password: bool | str = False
+
+    def __init__(self, func: Callable[[list[str]], str], allow_remote_control: bool, remote_control_password: bool | str):
+        self.func = func
+        self.allow_remote_control = allow_remote_control
+        self.remote_control_password = remote_control_password
+        self.password = self.to = ''
+        self.rc_fd = -1
+        self.initialized = False
+
+    def initialize(self) -> None:
+        if self.initialized:
+            return
+        self.initialized = True
+        if running_in_kitty():
+            return
+        if self.allow_remote_control:
+            self.to = os.environ.get('KITTY_LISTEN_ON', '')
+            self.rc_fd = int(self.to.partition(':')[-1])
+            os.set_inheritable(self.rc_fd, False)
+        if (self.remote_control_password or self.remote_control_password == '') and not self.password:
+            import socket
+            with socket.fromfd(self.rc_fd, socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                data = s.recv(256)
+            if not data.endswith(b'\n'):
+                raise Exception(f'The remote control password was invalid: {data!r}')
+            self.password = data.strip().decode()
+
+    def __call__(self, args: list[str]) -> str:
+        self.initialize()
+        return self.func(args)
+
+    def allow_indiscriminate_remote_control(self, enable: bool = True) -> None:
+        if self.rc_fd > -1:
+            if enable:
+                os.set_inheritable(self.rc_fd, True)
+                if self.password:
+                    os.environ['KITTY_RC_PASSWORD'] = self.password
+            else:
+                os.set_inheritable(self.rc_fd, False)
+                if self.password:
+                    os.environ.pop('KITTY_RC_PASSWORD', None)
+
+    def remote_control(self, cmd: str | Sequence[str], **kw: Any) -> Any:
+        if not self.allow_remote_control:
+            raise ValueError('Remote control is not enabled, remember to use allow_remote_control=True')
+        prefix = [kitten_exe(), '@']
+        r = -1
+        pass_fds = list(kw.get('pass_fds') or ())
+        try:
+            if self.rc_fd > -1:
+                pass_fds.append(self.rc_fd)
+            if self.password and self.rc_fd > -1:
+                r, w = safe_pipe(False)
+                os.write(w, self.password.encode())
+                os.close(w)
+                prefix += ['--password-file', f'fd:{r}', '--use-password', 'always']
+                pass_fds.append(r)
+            if pass_fds:
+                kw['pass_fds'] = tuple(pass_fds)
+            if isinstance(cmd, str):
+                cmd = ' '.join(prefix)
+            else:
+                cmd = prefix + list(cmd)
+            import subprocess
+            if self.rc_fd > -1:
+                is_inheritable = os.get_inheritable(self.rc_fd)
+                if not is_inheritable:
+                    os.set_inheritable(self.rc_fd, True)
+            try:
+                return subprocess.run(cmd, **kw)
+            finally:
+                if self.rc_fd > -1 and not is_inheritable:
+                    os.set_inheritable(self.rc_fd, False)
+        finally:
+            if r > -1:
+                os.close(r)
+
+
+def kitten_ui(
+    allow_remote_control: bool = KittenUI.allow_remote_control,
+    remote_control_password: bool | str = KittenUI.allow_remote_control,
+) -> Callable[[Callable[[list[str]], str]], KittenUI]:
+
+    def wrapper(impl: Callable[..., Any]) -> KittenUI:
+        return KittenUI(impl, allow_remote_control, remote_control_password)
+
+    return wrapper
 
 
 class Handler:

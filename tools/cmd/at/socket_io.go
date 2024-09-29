@@ -170,7 +170,7 @@ func do_socket_io(io_data *rc_io_data) (serialized_response []byte, err error) {
 		f := os.NewFile(uintptr(fd), "fd:"+global_options.to_address)
 		conn, err = net.FileConn(f)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Failed to open a socket for the remote control file descriptor: %d with error: %w", fd, err)
 		}
 		defer f.Close()
 	} else {

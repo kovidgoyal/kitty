@@ -1948,17 +1948,32 @@ class Boss:
             else:
                 cmd = [kitty_exe(), '+runpy', 'from kittens.runner import main; main()']
                 env['PYTHONWARNINGS'] = 'ignore'
-            overlay_window = tab.new_special_window(
-                SpecialWindow(
-                    cmd + final_args,
-                    stdin=data,
-                    env=env,
-                    cwd=w.cwd_of_child,
-                    overlay_for=w.id,
-                    overlay_behind=end_kitten.has_ready_notification,
-                ),
-                copy_colors_from=w
-            )
+            remote_control_fd = -1
+            if end_kitten.allow_remote_control:
+                remote_control_passwords: Optional[dict[str, Sequence[str]]] = None
+                initial_data = b''
+                if end_kitten.remote_control_password:
+                    from secrets import token_hex
+                    p = token_hex(16)
+                    remote_control_passwords = {p: end_kitten.remote_control_password if isinstance(end_kitten.remote_control_password, str) else ''}
+                    initial_data = p.encode() + b'\n'
+                remote = self.add_fd_based_remote_control(remote_control_passwords, initial_data)
+                remote_control_fd = remote.fileno()
+            try:
+                overlay_window = tab.new_special_window(
+                    SpecialWindow(
+                        cmd + final_args,
+                        stdin=data,
+                        env=env,
+                        cwd=w.cwd_of_child,
+                        overlay_for=w.id,
+                        overlay_behind=end_kitten.has_ready_notification,
+                    ),
+                    copy_colors_from=w, remote_control_fd=remote_control_fd,
+                )
+            finally:
+                if end_kitten.allow_remote_control:
+                    remote.close()
             wid = w.id
             overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten.handle_result, default_data=default_data))
             overlay_window.open_url_handler = end_kitten.open_url_handler
@@ -2351,9 +2366,11 @@ class Boss:
         overlay_for = w.id if w and as_overlay else None
         return SpecialWindow(cmd, input_data, cwd_from=cwd_from, overlay_for=overlay_for, env=env)
 
-    def add_fd_based_remote_control(self, remote_control_passwords: Optional[dict[str, Sequence[str]]] = None) -> socket.socket:
+    def add_fd_based_remote_control(self, remote_control_passwords: Optional[dict[str, Sequence[str]]] = None, initial_data: bytes = b'') -> socket.socket:
         local, remote = socket.socketpair()
         os.set_inheritable(remote.fileno(), True)
+        if initial_data:
+            local.send(initial_data)
         lfd = os.dup(local.fileno())
         local.close()
         try:
