@@ -560,6 +560,7 @@ class Tab:  # {{{
             location: Optional[str] = None,
             copy_colors_from: Optional[Window] = None,
             allow_remote_control: bool = False,
+            remote_control_passwords: Optional[dict[str, Sequence[str]]] = None,
     ) -> Window:
         return self.new_window(
             use_shell=False, cmd=special_window.cmd, stdin=special_window.stdin,
@@ -567,7 +568,7 @@ class Tab:  # {{{
             cwd_from=special_window.cwd_from, cwd=special_window.cwd, overlay_for=special_window.overlay_for,
             env=special_window.env, location=location, copy_colors_from=copy_colors_from,
             allow_remote_control=allow_remote_control, watchers=special_window.watchers, overlay_behind=special_window.overlay_behind,
-            hold=special_window.hold,
+            hold=special_window.hold, remote_control_passwords=remote_control_passwords,
         )
 
     @ac('win', 'Close all windows in the tab other than the currently active window')
