@@ -161,7 +161,9 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             if (has_preserved_fds) { for (int c = 3; c < 256; c++) { if (!FD_ISSET(c, &passed_fds)) safe_close(c, __FILE__, __LINE__); } }
             else for (int c = 3; c < 256; c++) { safe_close(c, __FILE__, __LINE__); }
 
-            execvpe(exe, argv, env);
+            extern char **environ;
+            environ = env;
+            execvp(exe, argv);
             // Report the failure and exec kitten instead, so that we are not left
             // with a forked but not exec'ed process
             write_to_stderr("Failed to launch child: ");
