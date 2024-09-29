@@ -99,6 +99,13 @@ safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
 }
 
 static inline int
+safe_dup(int a) {
+    int ret;
+    while((ret = dup(a)) < 0 && errno == EINTR);
+    return ret;
+}
+
+static inline int
 safe_dup2(int a, int b) {
     int ret;
     while((ret = dup2(a, b)) < 0 && errno == EINTR);

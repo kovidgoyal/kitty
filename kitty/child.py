@@ -256,6 +256,7 @@ class Child:
             env['KITTY_LISTEN_ON'] = boss.listening_on
         else:
             env.pop('KITTY_LISTEN_ON', None)
+        env.pop('KITTY_STDIO_FORWARDED', None)
         if self.cwd:
             # needed in case cwd is a symlink, in which case shells
             # can use it to display the current directory name rather
@@ -268,8 +269,6 @@ class Child:
         elif opts.terminfo_type == 'direct':
             env['TERMINFO'] = base64_terminfo_data()
         env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
-        if opts.forward_stdio:
-            env['KITTY_STDIO_FORWARDED'] = '3'
         self.unmodified_argv = list(self.argv)
         if not self.should_run_via_run_shell_kitten and 'disabled' not in opts.shell_integration:
             from .shell_integration import modify_shell_environ
@@ -344,11 +343,6 @@ class Child:
             final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
             ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio, pass_fds)
         os.close(slave)
-        for x in self.pass_fds:
-            if isinstance(x, int):
-                os.close(x)
-            else:
-                x.close()
         self.pass_fds = ()
         self.pid = pid
         self.child_fd = master

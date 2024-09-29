@@ -16,39 +16,24 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 
-static char**
-serialize_string_tuple(PyObject *src) {
-    Py_ssize_t sz = PyTuple_GET_SIZE(src);
+#define EXTRA_ENV_BUFFER_SIZE 64
 
-    char **ans = calloc(sz + 1, sizeof(char*));
-    if (!ans) fatal("Out of memory");
+static char**
+serialize_string_tuple(PyObject *src, Py_ssize_t extra) {
+    const Py_ssize_t sz = PyTuple_GET_SIZE(src);
+    size_t required_size = sizeof(char*) * (1 + sz + extra);
+    required_size += extra * EXTRA_ENV_BUFFER_SIZE;
+    void *block = calloc(required_size, 1);
+    if (!block) { PyErr_NoMemory(); return NULL; }
+    char **ans = block;
     for (Py_ssize_t i = 0; i < sz; i++) {
-        const char *pysrc = PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i));
-        if (!pysrc) {
-            PyErr_Clear();
-            RAII_PyObject(u8, PyUnicode_AsEncodedString(PyTuple_GET_ITEM(src, i), "UTF-8", "ignore"));
-            if (!u8) { PyErr_Print(); fatal("couldn't parse command line"); }
-            ans[i] = calloc(PyBytes_GET_SIZE(u8) + 1, sizeof(char));
-            if (ans[i] == NULL) fatal("Out of memory");
-            memcpy(ans[i], PyBytes_AS_STRING(u8), PyBytes_GET_SIZE(u8));
-        } else {
-            size_t len = strlen(pysrc);
-            ans[i] = calloc(len + 1, sizeof(char));
-            if (ans[i] == NULL) fatal("Out of memory");
-            memcpy(ans[i], pysrc, len);
-        }
+        PyObject *x = PyTuple_GET_ITEM(src, i);
+        if (!PyUnicode_Check(x)) { free(block); PyErr_SetString(PyExc_TypeError, "string tuple must have only strings"); return NULL; }
+        ans[i] = (char*)PyUnicode_AsUTF8(x);
+        if (!ans[i]) { free(block); return NULL; }
     }
     return ans;
 }
-
-static void
-free_string_tuple(char** data) {
-    size_t i = 0;
-    while(data[i]) free(data[i++]);
-    free(data);
-}
-
-extern char **environ;
 
 static void
 write_to_stderr(const char *text) {
@@ -86,8 +71,10 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!spO!", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p, &kitten_exe, &forward_stdio, &PyTuple_Type, &pass_fds)) return NULL;
     char name[2048] = {0};
     if (ttyname_r(slave, name, sizeof(name) - 1) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-    char **argv = serialize_string_tuple(argv_p);
-    char **env = serialize_string_tuple(env_p);
+    char **argv = serialize_string_tuple(argv_p, 0);
+    if (!argv) return NULL;
+    char **env = serialize_string_tuple(env_p, 1);
+    if (!env) { free(argv); return NULL; }
     int handled_signals[16] = {0}, num_handled_signals = MIN((int)arraysz(handled_signals), PyTuple_GET_SIZE(handled_signals_p));
     for (Py_ssize_t i = 0; i < num_handled_signals; i++) handled_signals[i] = PyLong_AsLong(PyTuple_GET_ITEM(handled_signals_p, i));
 
@@ -129,22 +116,28 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
             safe_close(tfd, __FILE__, __LINE__);
 
-            int min_closed_fd = 3;
+            fd_set passed_fds; FD_ZERO(&passed_fds); bool has_preserved_fds = false;
+            if (forward_stdio) {
+                int fd = safe_dup(STDOUT_FILENO);
+                if (fd < 0) exit_on_err("dup() failed for forwarded STDOUT");
+                FD_SET(fd, &passed_fds);
+                size_t s = PyTuple_GET_SIZE(env_p);
+                env[s] = (char*)(env + (s + 2));
+                snprintf(env[s], EXTRA_ENV_BUFFER_SIZE, "KITTY_STDIO_FORWARDED=%d", fd);
+                fd = safe_dup(STDERR_FILENO);
+                if (fd < 0) exit_on_err("dup() failed for forwarded STDERR");
+                FD_SET(fd, &passed_fds);
+                has_preserved_fds = true;
+            }
+
             for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(pass_fds); i++) {
                 PyObject *pfd = PyTuple_GET_ITEM(pass_fds, i);
                 if (!PyLong_Check(pfd)) exit_on_err("pass_fds must contain only integers");
                 int fd = PyLong_AsLong(pfd);
-                if (fd > -1) {
-                    if (fd == min_closed_fd) min_closed_fd++;
-                    else {
-                        if (safe_dup2(fd, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 1");
-                        safe_close(fd, __FILE__, __LINE__);
-                    }
+                if (fd > -1 && fd < FD_SETSIZE) {
+                    FD_SET(fd, &passed_fds);
+                    has_preserved_fds = true;
                 }
-            }
-            if (forward_stdio) {
-                if (safe_dup2(STDOUT_FILENO, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 1");
-                if (safe_dup2(STDERR_FILENO, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 2");
             }
             // Redirect stdin/stdout/stderr to the pty
             if (safe_dup2(slave, STDOUT_FILENO) == -1) exit_on_err("dup2() failed for fd number 1");
@@ -165,10 +158,10 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             safe_close(ready_read_fd, __FILE__, __LINE__);
 
             // Close any extra fds inherited from parent
-            for (int c = min_closed_fd; c < 201; c++) safe_close(c, __FILE__, __LINE__);
+            if (has_preserved_fds) { for (int c = 3; c < 256; c++) { if (!FD_ISSET(c, &passed_fds)) safe_close(c, __FILE__, __LINE__); } }
+            else for (int c = 3; c < 256; c++) { safe_close(c, __FILE__, __LINE__); }
 
-            environ = env;
-            execvp(exe, argv);
+            execvpe(exe, argv, env);
             // Report the failure and exec kitten instead, so that we are not left
             // with a forked but not exec'ed process
             write_to_stderr("Failed to launch child: ");
@@ -196,32 +189,14 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             break;
     }
 #undef exit_on_err
-    free_string_tuple(argv);
-    free_string_tuple(env);
+    free(argv);
+    free(env);
     if (PyErr_Occurred()) return NULL;
     return PyLong_FromLong(pid);
 }
 
-#ifdef __APPLE__
-#include <crt_externs.h>
-#else
-extern char **environ;
-#endif
-
-static PyObject*
-clearenv_py(PyObject *self UNUSED, PyObject *args UNUSED) {
-#ifdef __APPLE__
-    char **e = *_NSGetEnviron();
-    if (e) *e = NULL;
-#else
-    if (environ) *environ = NULL;
-#endif
-    Py_RETURN_NONE;
-}
-
 static PyMethodDef module_methods[] = {
     METHODB(spawn, METH_VARARGS),
-    {"clearenv", clearenv_py, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
