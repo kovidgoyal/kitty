@@ -68,7 +68,8 @@ func main(opts *Options) (rc int, err error) {
 }
 
 type Options struct {
-	Reload_in string
+	Reload_in        string
+	Config_file_name string
 }
 
 func EntryPoint(root *cli.Command) {
@@ -93,6 +94,18 @@ func EntryPoint(root *cli.Command) {
 running in to reload its config, after making changes. Use this option to
 instead either not reload the config at all or in all running kitty instances.`,
 	})
+	ans.Add(cli.OptionSpec{
+		Name:    "--config-file-name",
+		Dest:    "Config_file_name",
+		Type:    "str",
+		Default: "kitty.conf",
+		Help: `The name or path to the config file to edit. Relative paths are interpreted
+with respect to the kitty config directory. By default the kitty config
+file, kitty.conf is edited. This is most useful if you add include
+fonts.conf to your kitty.conf and then have the kitten operate only on
+fonts.conf, allowing kitty.conf to remain unchanged.`,
+	})
+
 	clone := root.AddClone(ans.Group, ans)
 	clone.Hidden = false
 	clone.Name = "choose_fonts"
