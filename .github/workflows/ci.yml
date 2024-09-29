@@ -188,3 +188,23 @@ jobs:
 
           - name: Build kitty package
             run: python3 .github/workflows/ci.py package
+
+    linux-dev:
+        name: Test ./dev.sh
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout source code
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: 10
+
+          - name: Install build deps
+            run: sudo apt-get install -y curl xz-utils build-essential git pkg-config libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libxkbcommon-x11-dev libfontconfig-dev libx11-xcb-dev libdbus-1-dev
+
+          - name: Install Go
+            uses: actions/setup-go@v4
+            with:
+              go-version-file: go.mod
+
+          - name: Build kitty
+            run: ./dev.sh build
