@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
 class InheritableFile(Protocol):
 
-    def close(self) -> None: ...
     def fileno(self) -> int: ...
 
 
