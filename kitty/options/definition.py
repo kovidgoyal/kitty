@@ -3316,7 +3316,9 @@ This is useful for debugging as it
 allows child processes to print to kitty's STDOUT directly. For example,
 :code:`echo hello world >&$KITTY_STDIO_FORWARDED` in a shell will print
 to the parent kitty's STDOUT. Sets the :code:`KITTY_STDIO_FORWARDED=fdnum`
-environment variable so child processes know about the forwarding.
+environment variable so child processes know about the forwarding. Note that
+on macOS this prevents the shell from being run via the login utility so getlogin()
+will not work in programs run in this session.
 ''')
 
 opt('+menu_map', '',
