@@ -23,7 +23,10 @@ That's it, kitty will be built from source, magically. You can run it as
 
 This works, because the :code:`./dev.sh build` command downloads all the major
 dependencies of kitty as pre-built binaries for your platform and builds kitty
-to use these rather than system libraries.
+to use these rather than system libraries. The few required system libraries
+are mostly X11 and DBUS on Linux, as can be seen in the `linux-dev
+<https://github.com/kovidgoyal/kitty/blob/master/.github/workflows/ci.yml>`__
+CI job.
 
 If you make changes to kitty code, simply re-run :code:`./dev.sh build`
 to build kitty with your changes.
