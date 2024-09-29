@@ -51,9 +51,9 @@ def is_click(a: ButtonEvent, b: ButtonEvent) -> bool:
 
 class KittenUI:
     allow_remote_control: bool = False
-    remote_control_password: bool | str = False
+    remote_control_password: Union[bool, str] = False
 
-    def __init__(self, func: Callable[[list[str]], str], allow_remote_control: bool, remote_control_password: bool | str):
+    def __init__(self, func: Callable[[list[str]], str], allow_remote_control: bool, remote_control_password: Union[bool, str]):
         self.func = func
         self.allow_remote_control = allow_remote_control
         self.remote_control_password = remote_control_password
@@ -94,7 +94,7 @@ class KittenUI:
                 if self.password:
                     os.environ.pop('KITTY_RC_PASSWORD', None)
 
-    def remote_control(self, cmd: str | Sequence[str], **kw: Any) -> Any:
+    def remote_control(self, cmd: Union[str, Sequence[str]], **kw: Any) -> Any:
         if not self.allow_remote_control:
             raise ValueError('Remote control is not enabled, remember to use allow_remote_control=True')
         prefix = [kitten_exe(), '@']
@@ -132,7 +132,7 @@ class KittenUI:
 
 def kitten_ui(
     allow_remote_control: bool = KittenUI.allow_remote_control,
-    remote_control_password: bool | str = KittenUI.allow_remote_control,
+    remote_control_password: Union[bool, str] = KittenUI.allow_remote_control,
 ) -> Callable[[Callable[[list[str]], str]], KittenUI]:
 
     def wrapper(impl: Callable[..., Any]) -> KittenUI:

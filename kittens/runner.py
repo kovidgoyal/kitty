@@ -7,7 +7,7 @@ import os
 import sys
 from contextlib import contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Generator, List, NamedTuple, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Generator, List, NamedTuple, Optional, Union, cast
 
 from kitty.constants import list_kitty_resources
 from kitty.types import run_once
@@ -81,7 +81,7 @@ class KittenMetadata(NamedTuple):
     has_ready_notification: bool = False
     open_url_handler: Optional[Callable[[BossType, WindowType, str, int, str], bool]] = None
     allow_remote_control: bool = False
-    remote_control_password: str | bool = False
+    remote_control_password: Union[str, bool] = False
 
 
 def create_kitten_handler(kitten: str, orig_args: List[str]) -> KittenMetadata:
