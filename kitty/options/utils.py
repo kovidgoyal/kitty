@@ -1562,7 +1562,7 @@ def transparent_background_colors(spec: str) -> Tuple[Tuple[Color, float], ...]:
     for part in spec.split():
         col, sep, alpha = part.partition('@')
         c = to_color(col)
-        o = unit_float(alpha) if alpha else -1
+        o = max(-1, min(float(alpha) if alpha else -1, 1))
         if (idx := seen.get(c)) is not None:
             ans[idx] = c, o
             continue
