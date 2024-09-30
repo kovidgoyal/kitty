@@ -19,10 +19,9 @@ Create a file in the kitty config directory, :file:`~/.config/kitty/mykitten.py`
 
 .. code-block:: python
 
-    from typing import List
     from kitty.boss import Boss
 
-    def main(args: List[str]) -> str:
+    def main(args: list[str]) -> str:
         # this is the main entry point of the kitten, it will be executed in
         # the overlay window when the kitten is launched
         answer = input('Enter some text: ')
@@ -30,7 +29,7 @@ Create a file in the kitty config directory, :file:`~/.config/kitty/mykitten.py`
         # handle_result() function
         return answer
 
-    def handle_result(args: List[str], answer: str, target_window_id: int, boss: Boss) -> None:
+    def handle_result(args: list[str], answer: str, target_window_id: int, boss: Boss) -> None:
         # get the kitty window into which to paste answer
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
@@ -60,7 +59,7 @@ would pass to ``kitten @``. For example:
 
 .. code-block:: python
 
-    def handle_result(args: List[str], answer: str, target_window_id: int, boss: Boss) -> None:
+    def handle_result(args: list[str], answer: str, target_window_id: int, boss: Boss) -> None:
         # get the kitty window to which to send text
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
@@ -101,19 +100,18 @@ like. For example:
 
 .. code-block:: py
 
-    from typing import List
     from kitty.boss import Boss
 
     # in main, STDIN is for the kitten process and will contain
     # the contents of the screen
-    def main(args: List[str]) -> str:
+    def main(args: list[str]) -> str:
         return sys.stdin.read()
 
     # in handle_result, STDIN is for the kitty process itself, rather
     # than the kitten process and should not be read from.
     from kittens.tui.handler import result_handler
     @result_handler(type_of_input='text')
-    def handle_result(args: List[str], stdin_data: str, target_window_id: int, boss: Boss) -> None:
+    def handle_result(args: list[str], stdin_data: str, target_window_id: int, boss: Boss) -> None:
         pass
 
 
@@ -171,15 +169,14 @@ Create a Python file in the :ref:`kitty config directory <confloc>`,
 
 .. code-block:: py
 
-    from typing import List
     from kitty.boss import Boss
 
-    def main(args: List[str]) -> str:
+    def main(args: list[str]) -> str:
         pass
 
     from kittens.tui.handler import result_handler
     @result_handler(no_ui=True)
-    def handle_result(args: List[str], answer: str, target_window_id: int, boss: Boss) -> None:
+    def handle_result(args: list[str], answer: str, target_window_id: int, boss: Boss) -> None:
         tab = boss.active_tab
         if tab is not None:
             if tab.current_layout.name == 'stack':
