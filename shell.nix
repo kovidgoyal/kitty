@@ -12,7 +12,6 @@ in
           harfbuzzWithCoreText
           ncurses
           lcms2
-          xxhash
           xxHash
           simde
           go_1_23
