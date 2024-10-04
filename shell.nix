@@ -13,6 +13,9 @@ in
           ncurses
           lcms2
           xxhash
+          xxHash
+          simde
+          go_1_23
         ]
         ++ optionals stdenv.isDarwin [
           Cocoa
@@ -43,9 +46,7 @@ in
           wayland-protocols
           wayland
           openssl
-          xxHash
           dbus
-          simde
         ]
         ++ checkInputs;
 
