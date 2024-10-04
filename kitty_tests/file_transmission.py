@@ -410,8 +410,10 @@ class TestFileTransmission(BaseTest):
             se(f.name)
             se(str(s))
             os.symlink('/', b/'abssym')
+            os.utime(b/'abssym', (1234.5, 1234.5), follow_symlinks=False)
             se(b/'abssym')
             os.symlink('sub/reg', b/'sym')
+            os.utime(b/'sym', (6789.1, 6789.1), follow_symlinks=False)
             se(b/'sym')
 
             with self.run_kitten(list(cmd) + [src, dest]) as pty:
