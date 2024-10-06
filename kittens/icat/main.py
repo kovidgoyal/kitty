@@ -133,7 +133,7 @@ Use the Unicode placeholder method to display the images. Useful to display
 images from within full screen terminal programs that do not understand the
 kitty graphics protocol such as multiplexers or editors. See
 :ref:`graphics_unicode_placeholders` for details. Note that when using this
-method, placed (with :option:`--place`) images that do not fit on the screen,
+method, images placed (with :option:`--place`) that do not fit on the screen,
 will get wrapped at the screen edge instead of getting truncated. This
 wrapping is per line and therefore the image will look like it is interleaved
 with blank lines.
