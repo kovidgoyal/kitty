@@ -521,7 +521,8 @@ opt('underline_hyperlinks', 'hover', choices=('hover', 'always', 'never'),
     ctype='underline_hyperlinks', long_text='''
 Control how hyperlinks are underlined. They can either be underlined on mouse
 :code:`hover`, :code:`always` (i.e. permanently underlined) or :code:`never` which means
-that kitty will not apply any underline styling to hyperlinks.
+that kitty will not apply any underline styling to hyperlinks. Note that the value of :code:`always`
+only applies to real (OSC 8) hyperlinks not text that is detected to be a URL on mouse hover.
 Uses the :opt:`url_style` and :opt:`url_color` settings for the underline style. Note
 that reloading the config and changing this value to/from :code:`always` will only
 affect text subsequently received by kitty.
