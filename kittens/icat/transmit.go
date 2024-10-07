@@ -272,7 +272,9 @@ func write_unicode_placeholder(imgd *image_data) {
 		for c := 0; c < imgd.width_cells; c++ {
 			os.Stdout.WriteString(string(kitty.ImagePlaceholderChar) + string(images.NumberToDiacritic[r]) + string(images.NumberToDiacritic[c]) + id_char)
 		}
-		os.Stdout.WriteString("\n\r")
+		if r < imgd.height_cells-1 {
+			os.Stdout.WriteString("\n\r")
+		}
 	}
 }
 

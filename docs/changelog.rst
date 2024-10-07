@@ -79,6 +79,8 @@ Detailed list of changes
 
 - Custom kittens: Add :ref:`a framework <kitten_main_rc>` for easily and securely using remote control from within a kitten's :code:`main()` function
 
+- kitten icat: Fix the :option:`kitty +kitten icat --no-trailing-newline` not working when using unicode placeholders (:iss:`7948`)
+
 0.36.4 [2024-09-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
