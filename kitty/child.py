@@ -30,6 +30,8 @@ if is_macos:
     from kitty.fast_data_types import process_group_map as _process_group_map
 
     def cwd_of_process(pid: int) -> str:
+        # The underlying code on macos returns a path with symlinks resolved
+        # anyway but we use realpath for extra safety.
         return os.path.realpath(_cwd(pid))
 
     def process_group_map() -> DefaultDict[int, list[int]]:
@@ -56,6 +58,8 @@ else:
             return os.path.realpath(ans)
     else:
         def cwd_of_process(pid: int) -> str:
+            # We use realpath instead of readlink to match macOS behavior where
+            # the underlying OS API returns real paths.
             ans = f'/proc/{pid}/cwd'
             return os.path.realpath(ans)
 
