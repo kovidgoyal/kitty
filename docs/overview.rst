@@ -146,6 +146,8 @@ option in :file:`kitty.conf`. An example, showing all available commands:
     launch --env FOO=BAR vim
     # Set the title for the next window
     launch --title "Chat with x" irssi --profile x
+    # Run a short lived command and see its output
+    launch --hold message-of-the-day
 
     # Create a new tab
     # The part after new_tab is the optional tab title which will be displayed in
