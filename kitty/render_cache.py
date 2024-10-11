@@ -67,12 +67,17 @@ class ImageRenderCache:
     def render_image(self, src_path: str, output_path: str) -> None:
         import stat
         import subprocess
-        with open(src_path, 'rb') as src, open(output_path, 'wb', opener=partial(os.open, mode=stat.S_IREAD | stat.S_IWRITE)) as output:
-            cp = subprocess.run([kitten_exe(), '__convert_image__', 'RGBA'], stdin=src, stdout=output, stderr=subprocess.PIPE)
-            if cp.returncode != 0:
-                raise ValueError(f'Failed to convert {src_path} to RGBA data with error: {cp.stderr.decode("utf-8", "replace")}')
-            if output.seek(0, os.SEEK_END) < 8:
-                raise ValueError(f'Failed to convert {src_path} to RGBA data, no output written. stderr: {cp.stderr.decode("utf-8", "replace")}')
+        try:
+            with open(src_path, 'rb') as src, open(output_path, 'wb', opener=partial(os.open, mode=stat.S_IREAD | stat.S_IWRITE)) as output:
+                cp = subprocess.run([kitten_exe(), '__convert_image__', 'RGBA'], stdin=src, stdout=output, stderr=subprocess.PIPE)
+                if cp.returncode != 0:
+                    raise ValueError(f'Failed to convert {src_path} to RGBA data with error: {cp.stderr.decode("utf-8", "replace")}')
+                if output.seek(0, os.SEEK_END) < 8:
+                    raise ValueError(f'Failed to convert {src_path} to RGBA data, no output written. stderr: {cp.stderr.decode("utf-8", "replace")}')
+        except Exception:
+            with suppress(Exception):
+                os.unlink(output_path)
+            raise
 
     def read_metadata(self, output_path: str) -> tuple[int, int, int]:
         with open(output_path, 'rb') as f:
