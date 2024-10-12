@@ -213,10 +213,17 @@ typedef struct {
 } BorderRects;
 
 typedef struct {
+    monotonic_t updated_at;
+    float corner_x[4];
+    float corner_y[4];
+} CursorTrail;
+
+typedef struct {
     id_type id;
     unsigned int active_window, num_windows, capacity;
     Window *windows;
     BorderRects border_rects;
+    CursorTrail cursor_trail;
 } Tab;
 
 enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
@@ -352,6 +359,7 @@ ssize_t create_border_vao(void);
 bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cells(ssize_t, const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
+void draw_trail(CursorTrail *trail);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void free_framebuffer(uint32_t*);

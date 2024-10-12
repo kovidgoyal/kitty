@@ -18,7 +18,7 @@
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, TRAIL_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
@@ -1133,6 +1133,41 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
 
 // }}}
 
+// Cursor Trail {{{
+typedef struct {
+    TrailUniforms uniforms;
+} TrailProgramLayout;
+static TrailProgramLayout trail_program_layout;
+
+static void
+init_trail_program(void) {
+    get_uniform_locations_trail(TRAIL_PROGRAM, &trail_program_layout.uniforms);
+}
+
+void
+draw_trail(CursorTrail *trail) {
+    glEnable(GL_BLEND);
+    // BLEND_PREMULT
+    /*glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);*/
+    BLEND_ONTO_OPAQUE;
+
+    bind_program(TRAIL_PROGRAM);
+
+    glUniform4fv(trail_program_layout.uniforms.x_coords, 1, trail->corner_x);
+    glUniform4fv(trail_program_layout.uniforms.y_coords, 1, trail->corner_y);
+
+    // todo - get cursor color from opt
+    float trail_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glUniform4fv(trail_program_layout.uniforms.trail_color, 1, trail_color);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glDisable(GL_BLEND);
+    unbind_program();
+}
+
+// }}}
+
 // Python API {{{
 
 static bool
@@ -1205,6 +1240,8 @@ NO_ARG(init_borders_program)
 
 NO_ARG(init_cell_program)
 
+NO_ARG(init_trail_program)
+
 static PyObject*
 sprite_map_set_limits(PyObject UNUSED *self, PyObject *args) {
     unsigned int w, h;
@@ -1229,6 +1266,7 @@ static PyMethodDef module_methods[] = {
     MW(unbind_program, METH_NOARGS),
     MW(init_borders_program, METH_NOARGS),
     MW(init_cell_program, METH_NOARGS),
+    MW(init_trail_program, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -1241,7 +1279,7 @@ finalize(void) {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
