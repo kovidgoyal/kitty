@@ -364,7 +364,7 @@ bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWind
 void draw_cells(ssize_t, const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
 void draw_cursor_trail(CursorTrail *trail);
-bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now);
+bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void free_framebuffer(uint32_t*);

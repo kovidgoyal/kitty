@@ -751,7 +751,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 WD.screen->cursor_render_info.is_focused = os_window->is_focused;
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
-                if (true && update_cursor_trail(&tab->cursor_trail, w, now)) needs_render = true;
+                if (true && update_cursor_trail(&tab->cursor_trail, w, now, os_window)) needs_render = true;
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;

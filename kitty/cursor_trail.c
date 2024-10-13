@@ -30,7 +30,7 @@ get_cursor_edge(float *left, float *right, float *top, float *bottom, Window *w)
 }
 
 bool
-update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now) {
+update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
 
@@ -49,7 +49,14 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now) {
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
     float decay_fast = 0.10f;
     float decay_slow = 0.30f;
-    if (OPT(input_delay) < now - WD.screen->cursor->updated_at && ct->updated_at < now) {
+
+    if (os_window->live_resize.in_progress) {
+        for (int i = 0; i < 4; ++i) {
+            ct->corner_x[i] = ct->cursor_edge_x[ci[i][0]];
+            ct->corner_y[i] = ct->cursor_edge_y[ci[i][1]];
+        }
+    }
+    else if (OPT(input_delay) < now - WD.screen->cursor->updated_at && ct->updated_at < now) {
         float cursor_center_x = (ct->cursor_edge_x[0] + ct->cursor_edge_x[1]) * 0.5f;
         float cursor_center_y = (ct->cursor_edge_y[0] + ct->cursor_edge_y[1]) * 0.5f;
         float cursor_diag_2 = norm(ct->cursor_edge_x[1] - ct->cursor_edge_x[0], ct->cursor_edge_y[1] - ct->cursor_edge_y[0]) * 0.5;
