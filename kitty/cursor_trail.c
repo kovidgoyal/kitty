@@ -12,6 +12,7 @@ get_cursor_edge(float *left, float *right, float *top, float *bottom, Window *w)
     *bottom = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
     switch (WD.screen->cursor->shape) {
         case CURSOR_BLOCK:
+        case CURSOR_HOLLOW:
             *right = *left + WD.dx;
             *top = *bottom + WD.dy;
             return true;
@@ -23,8 +24,6 @@ get_cursor_edge(float *left, float *right, float *top, float *bottom, Window *w)
             *right = *left + WD.dx;
             *top = *bottom + WD.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
             return true;
-        case CURSOR_HOLLOW:
-            // TODO - implement
         default:
             return false;
     }
@@ -49,7 +48,7 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now) {
     // todo - make these configurable
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
     float decay_fast = 0.10f;
-    float decay_slow = 0.80f;
+    float decay_slow = 0.30f;
     if (OPT(input_delay) < now - WD.screen->cursor->updated_at && ct->updated_at < now) {
         float cursor_center_x = (ct->cursor_edge_x[0] + ct->cursor_edge_x[1]) * 0.5f;
         float cursor_center_y = (ct->cursor_edge_y[0] + ct->cursor_edge_y[1]) * 0.5f;
@@ -87,6 +86,12 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now) {
           break;
         }
     }
+
+    if (ct->needs_render) {
+        ColorProfile *cp = WD.screen->color_profile;
+        ct->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color).rgb;
+    }
+
 #undef WD
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;

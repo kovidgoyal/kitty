@@ -1,6 +1,7 @@
 uniform vec2 cursor_edge_x;
 uniform vec2 cursor_edge_y;
-uniform vec4 trail_color;
+uniform vec3 trail_color;
+
 in vec2 frag_pos;
 out vec4 final_color;
 
@@ -9,6 +10,6 @@ void main() {
         cursor_edge_y[1] <= frag_pos.y && frag_pos.y <= cursor_edge_y[0]) {
         discard;
     } else {
-        final_color = trail_color;
+        final_color = vec4(trail_color, 1.0);
     }
 }

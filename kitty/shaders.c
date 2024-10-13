@@ -1146,8 +1146,6 @@ init_trail_program(void) {
 
 void
 draw_cursor_trail(CursorTrail *trail) {
-    glEnable(GL_BLEND);
-    BLEND_ONTO_OPAQUE;
     bind_program(TRAIL_PROGRAM);
 
     glUniform4fv(trail_program_layout.uniforms.x_coords, 1, trail->corner_x);
@@ -1156,13 +1154,10 @@ draw_cursor_trail(CursorTrail *trail) {
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_x, 1, trail->cursor_edge_x);
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_y, 1, trail->cursor_edge_y);
 
-    // todo - get cursor color from opt
-    float trail_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glUniform4fv(trail_program_layout.uniforms.trail_color, 1, trail_color);
+    color_vec3(trail_program_layout.uniforms.trail_color, trail->color);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    glDisable(GL_BLEND);
     unbind_program();
 }
 
