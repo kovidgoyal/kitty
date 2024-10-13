@@ -2096,6 +2096,7 @@ point3d_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixel
 
 static void
 handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, CellPixelSize cell) {
+    if (self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);
     GraphicsCommand d;
     bool only_first_image = false;
     switch (g->delete_action) {

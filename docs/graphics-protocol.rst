@@ -754,6 +754,9 @@ deleted, if the capital letter form above is specified. Also, when the terminal
 is running out of quota space for new images, existing images without
 placements will be preferentially deleted.
 
+If an image is being loaded in chunks and the upload is not complete when any
+delete command is received, the partial upload must be aborted.
+
 Some examples::
 
     <ESC>_Ga=d<ESC>\              # delete all visible placements

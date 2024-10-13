@@ -410,6 +410,17 @@ class TestGraphics(BaseTest):
         img = g.image_for_client_id(1)
         self.ae(img['data'], b'abcdefghijklmnop')
 
+        # Test interrupted and retried chunked load
+        self.assertIsNone(pl('abcd', s=2, v=2, m=1))
+        self.assertIsNone(pl('efgh', m=1))
+        send_command(s, 'a=d')  # delete command should clear partial transfer
+        self.assertIsNone(pl('abcd', s=2, v=2, m=1))
+        self.assertIsNone(pl('efgh', m=1))
+        self.assertIsNone(pl('ijkl', m=1))
+        self.ae(pl('1234', m=0), 'OK')
+        img = g.image_for_client_id(1)
+        self.ae(img['data'], b'abcdefghijkl1234')
+
         random_data = byte_block(32 * 1024)
         sl(
             random_data,
