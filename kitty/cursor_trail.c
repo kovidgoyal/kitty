@@ -10,7 +10,7 @@ get_cursor_edge(float *left, float *right, float *top, float *bottom, Window *w)
 #define WD w->render_data
     *left = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
     *bottom = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
-    switch (WD.screen->cursor->shape) {
+    switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
             *right = *left + WD.dx;
