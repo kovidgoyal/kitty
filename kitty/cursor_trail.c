@@ -34,17 +34,21 @@ bool
 update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
+
     static const int ci[4][2] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
+    const float dx_threshold = WD.dx / WD.screen->cell_size.width;
+    const float dy_threshold = WD.dy / WD.screen->cell_size.height;
+
     float cursor_edge_x[2], cursor_edge_y[2];
-    if (!get_cursor_edge(cursor_edge_x, cursor_edge_x + 1, cursor_edge_y, cursor_edge_y + 1, w)) {
-        return false;
+    if (!get_cursor_edge(&cursor_edge_x[0], &cursor_edge_x[1],
+                         &cursor_edge_y[0], &cursor_edge_y[1], w)) {
+      return false;
     }
 
     // todo - make these configurable
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
     float decay_fast = 0.10f;
     float decay_slow = 0.40f;
-
     if (OPT(input_delay) < now - WD.screen->cursor->updated_at && ct->updated_at < now) {
         float cursor_center_x = (cursor_edge_x[0] + cursor_edge_x[1]) * 0.5f;
         float cursor_center_y = (cursor_edge_y[0] + cursor_edge_y[1]) * 0.5f;
@@ -54,13 +58,17 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now) {
         for (int i = 0; i < 4; ++i) {
             float dx = cursor_edge_x[ci[i][0]] - ct->corner_x[i];
             float dy = cursor_edge_y[ci[i][1]] - ct->corner_y[i];
-            float dist = norm(dx, dy);
-            if (dist == 0) {
+            if (fabsf(dx) < dx_threshold && fabsf(dy) < dy_threshold) {
+                ct->corner_x[i] = cursor_edge_x[ci[i][0]];
+                ct->corner_y[i] = cursor_edge_y[ci[i][1]];
                 continue;
             }
+
+            // Corner that is closer to the cursor moves faster.
+            // It creates dynamic effect that looks like the trail is being pulled towards the cursor.
             float dot = (dx * (cursor_edge_x[ci[i][0]] - cursor_center_x) +
                 dy * (cursor_edge_y[ci[i][1]] - cursor_center_y)) /
-                cursor_diag_2 / dist;
+                cursor_diag_2 / norm(dx, dy);
 
             float decay_seconds = decay_slow + (decay_fast - decay_slow) * (1.0f + dot) * 0.5f;
             float step = 1.0f - 1.0f / exp2f(10.0f * dt / decay_seconds);
@@ -71,10 +79,10 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now) {
     }
     ct->updated_at = now;
     for (int i = 0; i < 4; ++i) {
-        float dx = cursor_edge_x[ci[i][0]] - ct->corner_x[i];
-        float dy = cursor_edge_y[ci[i][1]] - ct->corner_y[i];
-        if (dx * dx + dy * dy >= 1e-6) {
-            return true;
+        float dx = fabsf(cursor_edge_x[ci[i][0]] - ct->corner_x[i]);
+        float dy = fabsf(cursor_edge_y[ci[i][1]] - ct->corner_y[i]);
+        if (dx_threshold <= dx || dy_threshold <= dy) {
+          return true;
         }
     }
 #undef WD
