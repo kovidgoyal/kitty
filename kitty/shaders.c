@@ -1145,7 +1145,7 @@ init_trail_program(void) {
 }
 
 void
-draw_trail(CursorTrail *trail) {
+draw_cursor_trail(CursorTrail *trail) {
     glEnable(GL_BLEND);
     // BLEND_PREMULT
     /*glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);*/
