@@ -45,10 +45,9 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
         return needs_render_prev;
     }
 
-    // todo - make these configurable
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
-    float decay_fast = 0.10f;
-    float decay_slow = 0.30f;
+    float decay_fast = OPT(cursor_trail_decay_fast);
+    float decay_slow = OPT(cursor_trail_decay_slow);
 
     if (os_window->live_resize.in_progress) {
         for (int i = 0; i < 4; ++i) {

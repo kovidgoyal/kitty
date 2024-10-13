@@ -46,6 +46,9 @@ typedef struct {
     CursorShape cursor_shape, cursor_shape_unfocused;
     float cursor_beam_thickness;
     float cursor_underline_thickness;
+    bool enable_cursor_trail;
+    float cursor_trail_decay_fast;
+    float cursor_trail_decay_slow;
     unsigned int url_style;
     unsigned int scrollback_pager_history_size;
     bool scrollback_fill_enlarged_window;

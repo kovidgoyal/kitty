@@ -162,6 +162,32 @@ convert_from_opts_cursor_stop_blinking_after(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_enable_cursor_trail(PyObject *val, Options *opts) {
+    opts->enable_cursor_trail = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_enable_cursor_trail(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "enable_cursor_trail");
+    if (ret == NULL) return;
+    convert_from_python_enable_cursor_trail(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_decay(PyObject *val, Options *opts) {
+    cursor_trail_decay(val, opts);
+}
+
+static void
+convert_from_opts_cursor_trail_decay(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_decay");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_decay(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_scrollback_indicator_opacity(PyObject *val, Options *opts) {
     opts->scrollback_indicator_opacity = PyFloat_AsFloat(val);
 }
@@ -1122,6 +1148,10 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_cursor_blink_interval(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_stop_blinking_after(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_enable_cursor_trail(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_decay(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollback_indicator_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;
