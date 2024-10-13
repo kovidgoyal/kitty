@@ -214,8 +214,11 @@ typedef struct {
 
 typedef struct {
     monotonic_t updated_at;
+    bool needs_render;
     float corner_x[4];
     float corner_y[4];
+    float cursor_edge_x[2];
+    float cursor_edge_y[2];
 } CursorTrail;
 
 typedef struct {
