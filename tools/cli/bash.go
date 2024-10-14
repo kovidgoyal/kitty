@@ -35,9 +35,11 @@ func bash_output_serializer(completions []*Completions, shell_state map[string]s
 	f := func(format string, args ...any) { fmt.Fprintf(&output, format+"\n", args...) }
 	n := completions[0].Delegate.NumToRemove
 	if n > 0 {
-		f("compopt +o nospace")
-		f("COMP_WORDS[%d]=%s", n, utils.QuoteStringForSH(completions[0].Delegate.Command))
-		f("_command_offset %d", n)
+		f("if builtin declare -F _command_offset >/dev/null; then")
+		f("  compopt +o nospace")
+		f("  COMP_WORDS[%d]=%s", n, utils.QuoteStringForSH(completions[0].Delegate.Command))
+		f("  _command_offset %d", n)
+		f("fi")
 	} else {
 		for _, mg := range completions[0].Groups {
 			mg.remove_common_prefix()
