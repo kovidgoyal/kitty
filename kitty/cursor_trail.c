@@ -58,8 +58,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     else if (OPT(input_delay) < now - WD.screen->cursor->updated_at && ct->updated_at < now) {
         float cursor_center_x = (ct->cursor_edge_x[0] + ct->cursor_edge_x[1]) * 0.5f;
         float cursor_center_y = (ct->cursor_edge_y[0] + ct->cursor_edge_y[1]) * 0.5f;
-        float cursor_diag_2 = norm(ct->cursor_edge_x[1] - ct->cursor_edge_x[0], ct->cursor_edge_y[1] - ct->cursor_edge_y[0]) * 0.5;
-        float dt = monotonic_t_to_s_double(now - ct->updated_at);
+        float cursor_diag_2 = norm(ct->cursor_edge_x[1] - ct->cursor_edge_x[0], ct->cursor_edge_y[1] - ct->cursor_edge_y[0]) * 0.5f;
+        float dt = (float)monotonic_t_to_s_double(now - ct->updated_at);
 
         for (int i = 0; i < 4; ++i) {
             float dx = ct->cursor_edge_x[ci[i][0]] - ct->corner_x[i];
