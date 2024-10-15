@@ -180,6 +180,11 @@ visual_bell_duration(PyObject *src, Options *opts) {
 
 #undef parse_animation
 
+static inline void
+cursor_trail_decay(PyObject *src, Options *opts) {
+    opts->cursor_trail_decay_fast = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 0));
+    opts->cursor_trail_decay_slow = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));
+}
 
 static void
 parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {

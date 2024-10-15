@@ -46,6 +46,9 @@ typedef struct {
     CursorShape cursor_shape, cursor_shape_unfocused;
     float cursor_beam_thickness;
     float cursor_underline_thickness;
+    bool enable_cursor_trail;
+    float cursor_trail_decay_fast;
+    float cursor_trail_decay_slow;
     unsigned int url_style;
     unsigned int scrollback_pager_history_size;
     bool scrollback_fill_enlarged_window;
@@ -213,10 +216,21 @@ typedef struct {
 } BorderRects;
 
 typedef struct {
+    bool needs_render;
+    monotonic_t updated_at;
+    color_type color;
+    float corner_x[4];
+    float corner_y[4];
+    float cursor_edge_x[2];
+    float cursor_edge_y[2];
+} CursorTrail;
+
+typedef struct {
     id_type id;
     unsigned int active_window, num_windows, capacity;
     Window *windows;
     BorderRects border_rects;
+    CursorTrail cursor_trail;
 } Tab;
 
 enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
@@ -352,6 +366,8 @@ ssize_t create_border_vao(void);
 bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cells(ssize_t, const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
+void draw_cursor_trail(CursorTrail *trail);
+bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void free_framebuffer(uint32_t*);

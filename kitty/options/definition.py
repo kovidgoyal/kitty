@@ -350,6 +350,28 @@ inactivity. Set to zero to never stop blinking.
 '''
     )
 
+opt('enable_cursor_trail', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Enables or disables the cursor trail effect. When set to `yes`, a trailing
+effect is rendered behind the cursor as it moves, creating a motion trail.
+'''
+    )
+
+opt('cursor_trail_decay', '0.1 0.3',
+    option_type='cursor_trail_decay',
+    ctype='!cursor_trail_decay',
+    long_text='''
+Controls the decay times for the cursor trail effect when  :code:`enable_cursor_trail`
+is set to  :code:`yes`. This option accepts two positive float values specifying the
+fastest and slowest decay times in seconds. The first value corresponds to the
+fastest decay time (minimum), and the second value corresponds to the slowest
+decay time (maximum). The second value must be equal to or greater than the
+first value. Smaller values result in a faster decay of the cursor trail.
+Adjust these values to control how quickly the cursor trail fades away.
+''',
+    )
+
 egr()  # }}}
 
 

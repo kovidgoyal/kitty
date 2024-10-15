@@ -296,6 +296,7 @@ FC_WIDTH_NORMAL: int
 FC_SLANT_ROMAN: int
 FC_SLANT_ITALIC: int
 BORDERS_PROGRAM: int
+TRAIL_PROGRAM: int
 PRESS: int
 RELEASE: int
 DRAG: int
@@ -540,6 +541,8 @@ def add_borders_rect(
 def init_borders_program() -> None:
     pass
 
+def init_trail_program() -> None:
+    pass
 
 def os_window_has_background_image(os_window_id: int) -> bool:
     pass

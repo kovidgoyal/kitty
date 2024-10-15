@@ -27,9 +27,11 @@ from .fast_data_types import (
     REVERSE,
     STRIKETHROUGH,
     TINT_PROGRAM,
+    TRAIL_PROGRAM,
     compile_program,
     get_options,
     init_cell_program,
+    init_trail_program,
 )
 
 
@@ -200,6 +202,9 @@ class LoadShaderPrograms:
         program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)
         program_for('tint').compile(TINT_PROGRAM, allow_recompile)
         init_cell_program()
+
+        program_for('trail').compile(TRAIL_PROGRAM, allow_recompile)
+        init_trail_program()
 
 
 load_shader_programs = LoadShaderPrograms()
