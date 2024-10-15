@@ -110,6 +110,7 @@ _ksi_main() {
             "no-complete") _ksi_prompt[complete]='n';;
             "no-cwd") _ksi_prompt[cwd]='n';;
             "no-sudo") _ksi_prompt[sudo]='n';;
+            "prompt-click-events") _ksi_prompt[click_events]='y';;
         esac
     done
     IFS="$ifs"
@@ -134,7 +135,14 @@ _ksi_main() {
     _ksi_set_mark start_suffix
     _ksi_set_mark end_suffix
     builtin unset -f _ksi_set_mark
-    _ksi_prompt[secondary_prompt]="\n${_ksi_prompt[start_secondary_mark]}\[\e]133;A;k=s\a\]${_ksi_prompt[end_secondary_mark]}"
+
+    if [[ ${_ksi_prompt[click_events]} == y ]]; then
+        _ksi_prompt[mark_options]=';click_events=1'
+    else
+        _ksi_prompt[mark_options]=''
+    fi
+
+    _ksi_prompt[secondary_prompt]="\n${_ksi_prompt[start_secondary_mark]}\[\e]133;A${_ksi_prompt[mark_options]};k=s\a\]${_ksi_prompt[end_secondary_mark]}"
 
     _ksi_prompt_command() {
         # we first remove any previously added kitty code from the prompt variables and then add
@@ -236,8 +244,8 @@ _ksi_main() {
         # this can result in multiple D prompt marks or ones that dont
         # correspond to a cmd but kitty handles this gracefully, only
         # taking into account the first D after a C.
-        _ksi_prompt[ps1]+="\[\e]133;D;\$?\a\e]133;A\a\]"
-        _ksi_prompt[ps2]+="\[\e]133;A;k=s\a\]"
+        _ksi_prompt[ps1]+="\[\e]133;D;\$?\a\e]133;A${_ksi_prompt[mark_options]}\a\]"
+        _ksi_prompt[ps2]+="\[\e]133;A${_ksi_prompt[mark_options]};k=s\a\]"
     fi
 
     builtin alias edit-in-kitty="kitten edit-in-kitty"
