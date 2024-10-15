@@ -118,6 +118,8 @@ class ColorFormatter:
         elif q == 'tab':
             col = color_from_int((self.draw_data.tab_bg if self.which == '4' else self.draw_data.tab_fg)(self.tab_data))
             ans = f'8{color_as_sgr(col)}'
+        elif q.startswith('color'):
+            ans = f'8:5:{int(q[5:])}'
         else:
             if name.startswith('_'):
                 q = f'#{name[1:]}'

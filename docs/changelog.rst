@@ -81,6 +81,8 @@ Detailed list of changes
 
 - kitten icat: Fix the :option:`kitty +kitten icat --no-trailing-newline` not working when using unicode placeholders (:iss:`7948`)
 
+- :opt:`tab_title_template` allow using the 256 terminal colors for formatting (:disc:`7976`)
+
 0.36.4 [2024-09-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -1399,6 +1399,7 @@ use styling directives, for example:
 ``{fmt.fg.red}red{fmt.fg.tab}normal{fmt.bg._00FF00}greenbg{fmt.bg.tab}``.
 Similarly, for bold and italic:
 ``{fmt.bold}bold{fmt.nobold}normal{fmt.italic}italic{fmt.noitalic}``.
+The 256 eight terminal colors can be used as ``fmt.fg.color0`` through ``fmt.fg.color255``.
 Note that for backward compatibility, if :code:`{bell_symbol}` or
 :code:`{activity_symbol}` are not present in the template, they are prepended to
 it.
