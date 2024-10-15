@@ -40,9 +40,9 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     bool needs_render_prev = ct->needs_render;
     ct->needs_render = false;
 
-    if (!WD.screen->paused_rendering.expires_at &&
-        !get_cursor_edge(&ct->cursor_edge_x[0], &ct->cursor_edge_x[1],
-                         &ct->cursor_edge_y[0], &ct->cursor_edge_y[1], w)) {
+#define EDGE(axis, index) ct->cursor_edge_##axis[index]
+
+    if (!WD.screen->paused_rendering.expires_at && !get_cursor_edge(&EDGE(x, 0), &EDGE(x, 1), &EDGE(y, 0), &EDGE(y, 1), w)) {
         return needs_render_prev;
     }
 
@@ -52,29 +52,29 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
 
     if (os_window->live_resize.in_progress) {
         for (int i = 0; i < 4; ++i) {
-            ct->corner_x[i] = ct->cursor_edge_x[ci[i][0]];
-            ct->corner_y[i] = ct->cursor_edge_y[ci[i][1]];
+            ct->corner_x[i] = EDGE(x, ci[i][0]);
+            ct->corner_y[i] = EDGE(y, ci[i][1]);
         }
     }
     else if (OPT(input_delay) < now - WD.screen->cursor->updated_at && ct->updated_at < now) {
-        float cursor_center_x = (ct->cursor_edge_x[0] + ct->cursor_edge_x[1]) * 0.5f;
-        float cursor_center_y = (ct->cursor_edge_y[0] + ct->cursor_edge_y[1]) * 0.5f;
-        float cursor_diag_2 = norm(ct->cursor_edge_x[1] - ct->cursor_edge_x[0], ct->cursor_edge_y[1] - ct->cursor_edge_y[0]) * 0.5f;
+        float cursor_center_x = (EDGE(x, 0) + EDGE(x, 1)) * 0.5f;
+        float cursor_center_y = (EDGE(y, 0) + EDGE(y, 1)) * 0.5f;
+        float cursor_diag_2 = norm(EDGE(x, 1) - EDGE(x, 0), EDGE(y, 1) - EDGE(y, 0)) * 0.5f;
         float dt = (float)monotonic_t_to_s_double(now - ct->updated_at);
 
         for (int i = 0; i < 4; ++i) {
-            float dx = ct->cursor_edge_x[ci[i][0]] - ct->corner_x[i];
-            float dy = ct->cursor_edge_y[ci[i][1]] - ct->corner_y[i];
+            float dx = EDGE(x, ci[i][0]) - ct->corner_x[i];
+            float dy = EDGE(y, ci[i][1]) - ct->corner_y[i];
             if (fabsf(dx) < dx_threshold && fabsf(dy) < dy_threshold) {
-                ct->corner_x[i] = ct->cursor_edge_x[ci[i][0]];
-                ct->corner_y[i] = ct->cursor_edge_y[ci[i][1]];
+                ct->corner_x[i] = EDGE(x, ci[i][0]);
+                ct->corner_y[i] = EDGE(y, ci[i][1]);
                 continue;
             }
 
             // Corner that is closer to the cursor moves faster.
             // It creates dynamic effect that looks like the trail is being pulled towards the cursor.
-            float dot = (dx * (ct->cursor_edge_x[ci[i][0]] - cursor_center_x) +
-                dy * (ct->cursor_edge_y[ci[i][1]] - cursor_center_y)) /
+            float dot = (dx * (EDGE(x, ci[i][0]) - cursor_center_x) +
+                dy * (EDGE(y, ci[i][1]) - cursor_center_y)) /
                 cursor_diag_2 / norm(dx, dy);
 
             float decay_seconds = decay_slow + (decay_fast - decay_slow) * (1.0f + dot) * 0.5f;
@@ -86,8 +86,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     }
     ct->updated_at = now;
     for (int i = 0; i < 4; ++i) {
-        float dx = fabsf(ct->cursor_edge_x[ci[i][0]] - ct->corner_x[i]);
-        float dy = fabsf(ct->cursor_edge_y[ci[i][1]] - ct->corner_y[i]);
+        float dx = fabsf(EDGE(x, ci[i][0]) - ct->corner_x[i]);
+        float dy = fabsf(EDGE(y, ci[i][1]) - ct->corner_y[i]);
         if (dx_threshold <= dx || dy_threshold <= dy) {
           ct->needs_render = true;
           break;
@@ -100,6 +100,7 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     }
 
 #undef WD
+#undef EDGE
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;
 }
