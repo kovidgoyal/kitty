@@ -306,6 +306,20 @@ func (self *KeyEvent) MatchesPressOrRepeat(spec string) bool {
 	return self.MatchesParsedShortcut(ParseShortcut(spec), PRESS|REPEAT)
 }
 
+func (self *KeyEvent) MatchesCaseSensitiveTextOrKey(spec string) bool {
+	if self.MatchesParsedShortcut(ParseShortcut(spec), PRESS|REPEAT) {
+		return true
+	}
+	return self.Text == spec
+}
+
+func (self *KeyEvent) MatchesCaseInsensitiveTextOrKey(spec string) bool {
+	if self.MatchesParsedShortcut(ParseShortcut(spec), PRESS|REPEAT) {
+		return true
+	}
+	return strings.ToLower(self.Text) == strings.ToLower(spec)
+}
+
 func (self *KeyEvent) MatchesRelease(spec string) bool {
 	return self.MatchesParsedShortcut(ParseShortcut(spec), RELEASE)
 }
