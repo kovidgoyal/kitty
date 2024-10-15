@@ -40,7 +40,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     bool needs_render_prev = ct->needs_render;
     ct->needs_render = false;
 
-    if (!get_cursor_edge(&ct->cursor_edge_x[0], &ct->cursor_edge_x[1],
+    if (!WD.screen->paused_rendering.expires_at &&
+        !get_cursor_edge(&ct->cursor_edge_x[0], &ct->cursor_edge_x[1],
                          &ct->cursor_edge_y[0], &ct->cursor_edge_y[1], w)) {
         return needs_render_prev;
     }
