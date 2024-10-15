@@ -829,7 +829,7 @@ class NotificationManager:
 
     def __init__(
         self,
-        desktop_integration: Optional[DesktopIntegration] = None,
+        desktop_integration: Union[MacOSIntegration, FreeDesktopIntegration, None] = None,
         channel: Channel = Channel(),
         log: Log = Log(),
         debug: bool = False,
