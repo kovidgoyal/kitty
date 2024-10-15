@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
+import inspect
 import io
 import json
 import os
@@ -287,7 +288,7 @@ class FileTransmissionCommand:
             val = getattr(self, k.name)
             if not keep_defaults and val == k.default:
                 continue
-            if issubclass(k.type, Enum):
+            if inspect.isclass(k.type) and issubclass(k.type, Enum):
                 val = val.name
             ans[k.name] = val
         return ans
@@ -310,7 +311,7 @@ class FileTransmissionCommand:
                 found = True
             yield nts[name]
             yield '='
-            if issubclass(k.type, Enum):
+            if inspect.isclass(k.type) and issubclass(k.type, Enum):
                 yield val.name
             elif k.type is bytes:
                 yield base64_encode(val)
@@ -337,7 +338,7 @@ class FileTransmissionCommand:
             field = fmap.get(key)
             if field is None:
                 return
-            if issubclass(field.type, Enum):
+            if inspect.isclass(field.type) and issubclass(field.type, Enum):
                 setattr(ans, field.name, field.type[str(val, "utf-8")])
             elif field.type is bytes:
                 setattr(ans, field.name, base64_decode(val))
