@@ -42,8 +42,10 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
 
 #define EDGE(axis, index) ct->cursor_edge_##axis[index]
 
-    if (!WD.screen->paused_rendering.expires_at && !get_cursor_edge(&EDGE(x, 0), &EDGE(x, 1), &EDGE(y, 0), &EDGE(y, 1), w)) {
-        return needs_render_prev;
+    if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->updated_at) {
+        if (!get_cursor_edge(&EDGE(x, 0), &EDGE(x, 1), &EDGE(y, 0), &EDGE(y, 1), w)) {
+            return needs_render_prev;
+        }
     }
 
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
@@ -55,7 +57,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
             ct->corner_x[i] = EDGE(x, ci[i][0]);
             ct->corner_y[i] = EDGE(y, ci[i][1]);
         }
-    } else if (OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at && ct->updated_at < now) {
+    }
+    else if (ct->updated_at < now) {
         float cursor_center_x = (EDGE(x, 0) + EDGE(x, 1)) * 0.5f;
         float cursor_center_y = (EDGE(y, 0) + EDGE(y, 1)) * 0.5f;
         float cursor_diag_2 = norm(EDGE(x, 1) - EDGE(x, 0), EDGE(y, 1) - EDGE(y, 0)) * 0.5f;
