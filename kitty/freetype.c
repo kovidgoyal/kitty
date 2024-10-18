@@ -279,7 +279,7 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     if (retval != NULL) {
         Face *self = (Face *)retval;
         int error;
-        if ((error = FT_New_Face(library, path, index, &(self->face)))) { self->face = NULL; set_load_error(path, error); }
+        if ((error = FT_New_Face(library, path, index, &(self->face)))) { self->face = NULL; return set_load_error(path, error); }
         if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, fg)) return NULL;
         PyObject *ns = PyDict_GetItemString(descriptor, "named_style");
         if (ns) {

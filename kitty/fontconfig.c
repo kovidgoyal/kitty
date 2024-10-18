@@ -520,7 +520,7 @@ face_from_descriptor:
             }
         }
         ans = face_from_descriptor(d, fg);
-        if (!glyph_found) glyph_found = has_cell_text(face_has_codepoint, ans, cell, false);
+        if (!glyph_found && ans) glyph_found = has_cell_text(face_has_codepoint, ans, cell, false);
     }
 end:
     Py_CLEAR(d);
