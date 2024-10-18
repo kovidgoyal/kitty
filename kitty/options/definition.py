@@ -350,11 +350,17 @@ inactivity. Set to zero to never stop blinking.
 '''
     )
 
-opt('enable_cursor_trail', 'no',
-    option_type='to_bool', ctype='bool',
+opt('cursor_trail', '0',
+    option_type='positive_int', ctype='time-ms',
     long_text='''
-Enables or disables the cursor trail effect. When set to `yes`, a trailing
-effect is rendered behind the cursor as it moves, creating a motion trail.
+Set this to a value larger than zero to enable a "cursor trail" animation.
+This is an animation that shows a "trail" following the movement of the text cursor.
+It makes it easy to follow large cursor jumps and makes for a cool visual effect
+of the cursor zooming around the screen. The actual value of this option
+controls when the animation is trigerred. It is a number of milliseconds. The
+trail animation only follows cursors that have stayed in their position for longer
+than the specified number of milliseconds. This prevents trails from appearing
+for cursors that rapidly change their positions during UI updates in complex applications.
 '''
     )
 
@@ -362,8 +368,8 @@ opt('cursor_trail_decay', '0.1 0.3',
     option_type='cursor_trail_decay',
     ctype='!cursor_trail_decay',
     long_text='''
-Controls the decay times for the cursor trail effect when  :code:`enable_cursor_trail`
-is set to  :code:`yes`. This option accepts two positive float values specifying the
+Controls the decay times for the cursor trail effect when the :opt:`cursor_trail`
+is enabled. This option accepts two positive float values specifying the
 fastest and slowest decay times in seconds. The first value corresponds to the
 fastest decay time (minimum), and the second value corresponds to the slowest
 decay time (maximum). The second value must be equal to or greater than the

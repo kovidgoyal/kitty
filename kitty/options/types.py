@@ -334,6 +334,7 @@ option_names = (  # {{{
  'cursor_shape_unfocused',
  'cursor_stop_blinking_after',
  'cursor_text_color',
+ 'cursor_trail',
  'cursor_trail_decay',
  'cursor_underline_thickness',
  'default_pointer_shape',
@@ -344,7 +345,6 @@ option_names = (  # {{{
  'dynamic_background_opacity',
  'editor',
  'enable_audio_bell',
- 'enable_cursor_trail',
  'enabled_layouts',
  'env',
  'exe_search_path',
@@ -512,6 +512,7 @@ class Options:
     cursor_shape_unfocused: int = 4
     cursor_stop_blinking_after: float = 15.0
     cursor_text_color: typing.Optional[kitty.fast_data_types.Color] = Color(17, 17, 17)
+    cursor_trail: int = 0
     cursor_trail_decay: typing.Tuple[float, float] = (0.1, 0.3)
     cursor_underline_thickness: float = 2.0
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
@@ -522,7 +523,6 @@ class Options:
     dynamic_background_opacity: bool = False
     editor: str = '.'
     enable_audio_bell: bool = True
-    enable_cursor_trail: bool = False
     enabled_layouts: typing.List[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
     file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False

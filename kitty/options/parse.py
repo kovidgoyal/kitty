@@ -931,6 +931,9 @@ class Parser:
     def cursor_text_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_text_color'] = cursor_text_color(val)
 
+    def cursor_trail(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['cursor_trail'] = positive_int(val)
+
     def cursor_trail_decay(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_trail_decay'] = cursor_trail_decay(val)
 
@@ -965,9 +968,6 @@ class Parser:
 
     def enable_audio_bell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['enable_audio_bell'] = to_bool(val)
-
-    def enable_cursor_trail(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['enable_cursor_trail'] = to_bool(val)
 
     def enabled_layouts(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['enabled_layouts'] = to_layout_names(val)

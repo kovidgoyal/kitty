@@ -162,15 +162,15 @@ convert_from_opts_cursor_stop_blinking_after(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_enable_cursor_trail(PyObject *val, Options *opts) {
-    opts->enable_cursor_trail = PyObject_IsTrue(val);
+convert_from_python_cursor_trail(PyObject *val, Options *opts) {
+    opts->cursor_trail = parse_ms_long_to_monotonic_t(val);
 }
 
 static void
-convert_from_opts_enable_cursor_trail(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "enable_cursor_trail");
+convert_from_opts_cursor_trail(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail");
     if (ret == NULL) return;
-    convert_from_python_enable_cursor_trail(ret, opts);
+    convert_from_python_cursor_trail(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1149,7 +1149,7 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_stop_blinking_after(py_opts, opts);
     if (PyErr_Occurred()) return false;
-    convert_from_opts_enable_cursor_trail(py_opts, opts);
+    convert_from_opts_cursor_trail(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_trail_decay(py_opts, opts);
     if (PyErr_Occurred()) return false;
