@@ -361,6 +361,7 @@ controls when the animation is trigerred. It is a number of milliseconds. The
 trail animation only follows cursors that have stayed in their position for longer
 than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
+See :opt:`cursor_trail_decay` to control the animation speed.
 '''
     )
 

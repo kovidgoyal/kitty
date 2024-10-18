@@ -77,6 +77,10 @@ Detailed list of changes
 0.37.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new optional :opt:`text cursor movement animation <cursor_trail>` that
+  shows a "trail" following the movement of the cursor making it easy to follow
+  large cursor jumps (:pull:`7970`)
+
 - Custom kittens: Add :ref:`a framework <kitten_main_rc>` for easily and securely using remote control from within a kitten's :code:`main()` function
 
 - kitten icat: Fix the :option:`kitty +kitten icat --no-trailing-newline` not working when using unicode placeholders (:iss:`7948`)
