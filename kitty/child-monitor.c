@@ -751,6 +751,10 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 WD.screen->cursor_render_info.is_focused = os_window->is_focused;
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
+                if (OPT(enable_cursor_trail) && update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
+                    needs_render = true;
+                    set_maximum_wait(OPT(repaint_delay));
+                }
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
@@ -808,6 +812,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
+    if (OPT(enable_cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail);
     if (os_window->live_resize.in_progress) draw_resizing_text(os_window);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;

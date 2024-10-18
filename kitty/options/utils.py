@@ -558,6 +558,11 @@ def to_cursor_unfocused_shape(x: str) -> int:
             )
         )
 
+def cursor_trail_decay(x: str) -> Tuple[float, float]:
+    fast, slow = map(positive_float, x.split())
+    slow = max(slow, fast)
+    return fast, slow
+
 
 def scrollback_lines(x: str) -> int:
     ans = int(x)
