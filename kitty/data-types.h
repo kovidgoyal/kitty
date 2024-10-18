@@ -297,7 +297,7 @@ typedef struct {
     PyObject_HEAD
 
     bool bold, italic, reverse, strikethrough, dim, non_blinking;
-    monotonic_t updated_at;
+    monotonic_t position_changed_by_client_at;
     unsigned int x, y;
     uint8_t decoration;
     CursorShape shape;
