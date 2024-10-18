@@ -123,6 +123,16 @@ _ksi_deferred_init() {
 
     # Enable semantic markup with OSC 133.
     if (( ! opt[(Ie)no-prompt-mark] )); then
+        if (( opt[(Ie)prompt-click-events] )); then
+            _ksi_mark_options() {
+                echo ';click_events=1'
+            }
+        else
+            _ksi_mark_options() {
+                echo ''
+            }
+        fi
+
         _ksi_precmd() {
             builtin local -i cmd_status=$?
             builtin emulate -L zsh -o no_warn_create_global -o no_aliases
@@ -150,7 +160,7 @@ _ksi_deferred_init() {
                 fi
             fi
 
-            builtin local mark1=$'%{\e]133;A\a%}'
+            builtin local mark1=$'%{\e]133;A'$(_ksi_mark_options)'\a%}'
             if [[ -o prompt_percent ]]; then
                 builtin typeset -g precmd_functions
                 if [[ ${precmd_functions[-1]} == _ksi_precmd ]]; then
@@ -160,7 +170,7 @@ _ksi_deferred_init() {
                     # SIGCHLD if notify is set. Themes that update prompt
                     # asynchronously from a `zle -F` handler might still remove our
                     # marks. Oh well.
-                    builtin local mark2=$'%{\e]133;A;k=s\a%}'
+                    builtin local mark2=$'%{\e]133;A;k=s'$(_ksi_mark_options)'\a%}'
                     # Add marks conditionally to avoid a situation where we have
                     # several marks in place. These conditions can have false
                     # positives and false negatives though.
@@ -207,8 +217,8 @@ _ksi_deferred_init() {
             # our own prompt, user prompt, and our own prompt with user additions on
             # top. We cannot force prompt_subst on the user though, so we would
             # still need this code for the no_prompt_subst case.
-            PS1=${PS1//$'%{\e]133;A\a%}'}
-            PS2=${PS2//$'%{\e]133;A;k=s\a%}'}
+            PS1=${PS1//$'%{\e]133;A'$(_ksi_mark_options)'\a%}'}
+            PS2=${PS2//$'%{\e]133;A'$(_ksi_mark_options)';k=s\a%}'}
 
             # This will work incorrectly in the presence of a preexec hook that
             # prints. For example, if MichaelAquilina/zsh-you-should-use installs
