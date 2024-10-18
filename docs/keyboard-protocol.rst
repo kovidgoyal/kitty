@@ -44,6 +44,8 @@ Libraries implementing this protocol:
 * The `notcurses library <https://github.com/dankamongmen/notcurses/issues/2131>`__
 * The `crossterm library <https://github.com/crossterm-rs/crossterm/pull/688>`__
 * The `textual library <https://github.com/Textualize/textual/pull/4631>`__
+* The `vaxis (go) library <https://sr.ht/~rockorager/vaxis/>`__
+* The `vaxis (zig) library <https://github.com/rockorager/libvaxis/>`__
 
 Programs implementing this protocol:
 
@@ -57,6 +59,7 @@ Programs implementing this protocol:
 * The `Yazi file manager <https://github.com/sxyazi/yazi>`__
 * The `awrit web browser <https://github.com/chase/awrit>`__
 * The `Turbo Vision <https://github.com/magiblot/tvision/commit/6e5a7b46c6634079feb2ac98f0b890bbed59f1ba>`__/`Free Vision <https://gitlab.com/freepascal.org/fpc/source/-/issues/40673#note_2061428120>`__ IDEs
+* The `aerc email client <https://git.sr.ht/~rjarry/aerc/commit/d73cf33c2c6c3e564ce8aff04acc329a06eafc54>`__
 
 Shells implementing this protocol:
 
