@@ -55,8 +55,7 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
             ct->corner_x[i] = EDGE(x, ci[i][0]);
             ct->corner_y[i] = EDGE(y, ci[i][1]);
         }
-    }
-    else if (OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at && ct->updated_at < now) {
+    } else if (OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at && ct->updated_at < now) {
         float cursor_center_x = (EDGE(x, 0) + EDGE(x, 1)) * 0.5f;
         float cursor_center_y = (EDGE(y, 0) + EDGE(y, 1)) * 0.5f;
         float cursor_diag_2 = norm(EDGE(x, 1) - EDGE(x, 0), EDGE(y, 1) - EDGE(y, 0)) * 0.5f;
@@ -99,8 +98,9 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
         ct->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color).rgb;
     }
 
-#undef WD
 #undef EDGE
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;
 }
+
+#undef WD
