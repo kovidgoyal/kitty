@@ -44,8 +44,7 @@ Libraries implementing this protocol:
 * The `notcurses library <https://github.com/dankamongmen/notcurses/issues/2131>`__
 * The `crossterm library <https://github.com/crossterm-rs/crossterm/pull/688>`__
 * The `textual library <https://github.com/Textualize/textual/pull/4631>`__
-* The `vaxis (go) library <https://sr.ht/~rockorager/vaxis/>`__
-* The `vaxis (zig) library <https://github.com/rockorager/libvaxis/>`__
+* The vaxis library `go <https://sr.ht/~rockorager/vaxis/>`__ and `zig <https://github.com/rockorager/libvaxis/>`__
 
 Programs implementing this protocol:
 
