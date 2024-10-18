@@ -325,7 +325,12 @@ get_ibus_address_file_name(void) {
         }
         offset = snprintf(ans, sizeof(ans), "%s/.config", conf_env);
     }
-    char *key = dbus_get_local_machine_id();
+    DBusError err;
+    char *key = dbus_try_get_local_machine_id(&err);
+    if (!key) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Cannot connect to IBUS as could not get DBUS local machine id with error %s: %s", err.name ? err.name : "", err.message ? err.message : "");
+        return NULL;
+    }
     snprintf(ans + offset, sizeof(ans) - offset, "/ibus/bus/%s-%s-%s", key, host, disp_num);
     dbus_free(key);
     return ans;
