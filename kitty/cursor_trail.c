@@ -45,6 +45,7 @@ update_cursor_trail_target(CursorTrail *ct, Window *w) {
         EDGE(x, 1) = right;
         EDGE(y, 0) = top;
         EDGE(y, 1) = bottom;
+        ct->screen = WD.screen;
     }
 }
 
@@ -119,13 +120,9 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
         ct->needs_render = true;
     }
 
-    if (ct->needs_render) {
-        ColorProfile *cp = WD.screen->color_profile;
-        ct->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color).rgb;
-    }
-
-#undef WD
-#undef EDGE
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;
 }
+
+#undef WD
+#undef EDGE

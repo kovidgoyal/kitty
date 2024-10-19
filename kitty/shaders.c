@@ -1154,7 +1154,9 @@ draw_cursor_trail(CursorTrail *trail) {
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_x, 1, trail->cursor_edge_x);
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_y, 1, trail->cursor_edge_y);
 
-    color_vec3(trail_program_layout.uniforms.trail_color, trail->color);
+    ColorProfile *cp = trail->screen->color_profile;
+    color_type color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color).rgb;
+    color_vec3(trail_program_layout.uniforms.trail_color, color);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
