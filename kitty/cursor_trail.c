@@ -10,7 +10,7 @@ static void
 update_cursor_trail_target(CursorTrail *ct, Window *w) {
 #define EDGE(axis, index) ct->cursor_edge_##axis[index]
 #define WD w->render_data
-    float left, right, top, bottom;
+    float left = FLT_MAX, right = FLT_MAX, top = FLT_MAX, bottom = FLT_MAX;
     switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
@@ -18,10 +18,8 @@ update_cursor_trail_target(CursorTrail *ct, Window *w) {
         case CURSOR_UNDERLINE:
             left = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
             bottom = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
-            break;
         default:
-            left = FLT_MAX;
-            bottom = FLT_MAX;
+            break;
     }
     switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
