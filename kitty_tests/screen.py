@@ -1084,10 +1084,14 @@ class TestScreen(BaseTest):
             for i in range(n):
                 s.draw(f'{i}{x}'), s.index(), s.carriage_return()
 
-        def lines_with_attrs():
-            b = []
-            s.dump_lines_with_attrs(b.append)
-            return ''.join(b)
+        s = self.create_screen(cols=5, lines=5, scrollback=15)
+        draw_output(3, 'oo')
+        draw_prompt('pp')
+        mark_output()
+        s.toggle_alt_screen()
+        s.resize(s.lines, 2)
+        s.toggle_alt_screen()
+        self.assertFalse(str(s.line(s.cursor.y)))
 
         s = self.create_screen()
         for i in range(4):
