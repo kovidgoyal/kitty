@@ -27,6 +27,7 @@ from .fast_data_types import (
     set_tab_bar_render_data,
     update_tab_bar_edge_colors,
     viewport_for_window,
+    wcswidth,
 )
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
@@ -221,6 +222,7 @@ class TabAccessor:
 
 safe_builtins = {
     'max': max, 'min': min, 'str': str, 'repr': repr, 'abs': abs, 'len': len, 'chr': chr, 'ord': ord, 're': re,
+    'wcswidth': wcswidth,
 }
 
 
