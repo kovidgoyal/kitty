@@ -385,6 +385,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
 #undef COLOR
     rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
 
+    // store last rendered cursor color for trail rendering
+    screen->last_rendered.cursor_bg = rd->cursor_bg;
+
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }
 
@@ -1154,9 +1157,7 @@ draw_cursor_trail(CursorTrail *trail) {
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_x, 1, trail->cursor_edge_x);
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_y, 1, trail->cursor_edge_y);
 
-    ColorProfile *cp = trail->screen->color_profile;
-    color_type color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color).rgb;
-    color_vec3(trail_program_layout.uniforms.trail_color, color);
+    color_vec3(trail_program_layout.uniforms.trail_color, trail->screen->last_rendered.cursor_bg);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
