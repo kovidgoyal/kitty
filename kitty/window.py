@@ -20,6 +20,7 @@ from typing import (
     Any,
     Callable,
     Deque,
+    Literal,
     NamedTuple,
     Optional,
     Union,
@@ -1005,9 +1006,10 @@ class Window:
                     self.write_to_child(enc)
 
     @ac('debug', 'Show a dump of the current lines in the scrollback + screen with their line attributes')
-    def dump_lines_with_attrs(self) -> None:
+    def dump_lines_with_attrs(self, which_screen: Literal['main', 'alternate', 'current'] = 'current') -> None:
         strings: list[str] = []
-        self.screen.dump_lines_with_attrs(strings.append)
+        ws = 0 if which_screen == 'main' else (1 if which_screen == 'alternate' else -1)
+        self.screen.dump_lines_with_attrs(strings.append, ws)
         text = ''.join(strings)
         get_boss().display_scrollback(self, text, title='Dump of lines', report_cursor=False)
 

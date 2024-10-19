@@ -4701,40 +4701,42 @@ scroll_prompt_to_bottom(Screen *self, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
-dump_lines_with_attrs(Screen *self, PyObject *accum) {
-    int y = (self->linebuf == self->main_linebuf) ? -self->historybuf->count : 0;
-    PyObject *t;
-    while (y < (int)self->lines) {
-        Line *line = range_line_(self, y);
-        t = PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y++);
-        if (t) {
-            PyObject_CallFunctionObjArgs(accum, t, NULL);
-            Py_DECREF(t);
-        }
-        switch (line->attrs.prompt_kind) {
-            case UNKNOWN_PROMPT_KIND:
-                break;
-            case PROMPT_START:
-                PyObject_CallFunction(accum, "s", "\x1b[32mprompt \x1b[39m");
-                break;
-            case SECONDARY_PROMPT:
-                PyObject_CallFunction(accum, "s", "\x1b[32msecondary_prompt \x1b[39m");
-                break;
-            case OUTPUT_START:
-                PyObject_CallFunction(accum, "s", "\x1b[33moutput \x1b[39m");
-                break;
-        }
-        if (line->attrs.is_continued) PyObject_CallFunction(accum, "s", "continued ");
-        if (line->attrs.has_dirty_text) PyObject_CallFunction(accum, "s", "dirty ");
-        PyObject_CallFunction(accum, "s", "\n");
-        t = line_as_unicode(line, false);
-        if (t) {
-            PyObject_CallFunctionObjArgs(accum, t, NULL);
-            Py_DECREF(t);
-        }
-        PyObject_CallFunction(accum, "s", "\n");
+static void
+dump_line_with_attrs(Screen *self, int y, PyObject *accum) {
+    Line *line = range_line_(self, y);
+    RAII_PyObject(u, PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y++));
+    if (!u) return;
+    RAII_PyObject(r1, PyObject_CallOneArg(accum, u));
+    if (!r1) return;
+#define call_string(s) { RAII_PyObject(ret, PyObject_CallFunction(accum, "s", s)); if (!ret) return; }
+    switch (line->attrs.prompt_kind) {
+        case UNKNOWN_PROMPT_KIND: break;
+        case PROMPT_START: call_string("\x1b[32mprompt \x1b[39m"); break;
+        case SECONDARY_PROMPT: call_string("\x1b[32msecondary_prompt \x1b[39m"); break;
+        case OUTPUT_START: call_string("\x1b[33moutput \x1b[39m"); break;
     }
+    if (line->attrs.is_continued) call_string("continued ");
+    if (line->attrs.has_dirty_text) call_string("dirty ");
+    call_string("\n");
+    RAII_PyObject(t, line_as_unicode(line, false)); if (!t) return;
+    RAII_PyObject(r2, PyObject_CallOneArg(accum, t)); if (!r2) return;
+    call_string("\n");
+#undef call_string
+}
+
+static PyObject*
+dump_lines_with_attrs(Screen *self, PyObject *args) {
+    PyObject *accum; int which_screen = -1;
+    if (!PyArg_ParseTuple(args, "O|i", &accum, &which_screen)) return NULL;
+    LineBuf *orig = self->linebuf;
+    switch(which_screen) {
+        case 0: self->linebuf = self->main_linebuf; break;
+        case 1: self->linebuf = self->alt_linebuf; break;
+    }
+    int y = (self->linebuf == self->main_linebuf) ? -self->historybuf->count : 0;
+    while (y < (int)self->lines && !PyErr_Occurred()) dump_line_with_attrs(self, y++, accum);
+    self->linebuf = orig;
+    if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -4790,7 +4792,7 @@ static PyMethodDef methods[] = {
     METHODB(test_parse_written_data, METH_VARARGS),
     MND(line_edge_colors, METH_NOARGS)
     MND(line, METH_O)
-    MND(dump_lines_with_attrs, METH_O)
+    MND(dump_lines_with_attrs, METH_VARARGS)
     MND(cursor_at_prompt, METH_NOARGS)
     MND(visual_line, METH_VARARGS)
     MND(current_url_text, METH_NOARGS)
