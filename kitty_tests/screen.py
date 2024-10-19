@@ -280,6 +280,22 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.x, 1)
 
     def test_resize(self):
+        # test that trailing blank line is preserved on resize
+        s = self.create_screen(cols=5, lines=5, scrollback=15)
+        for i in range(3):
+            s.draw(f'oo{i}'), s.index(), s.carriage_return()
+        s.draw('$ pp'), s.index(), s.carriage_return()
+        s.resize(s.lines, 2)
+        self.assertFalse(str(s.line(s.cursor.y)))
+        self.assertFalse(s.cursor.x)
+        # test that only happens when last line is not continued
+        s = self.create_screen(cols=5, lines=5, scrollback=15)
+        for i in range(3):
+            s.draw(f'oo{i}'), s.index(), s.carriage_return()
+        s.draw('p' * (s.columns + 2)), s.carriage_return()
+        s.resize(s.lines, 2)
+        self.assertTrue(str(s.line(s.cursor.y)))
+
         s = self.create_screen(scrollback=6)
         s.draw(''.join([str(i) * s.columns for i in range(s.lines)]))
         s.resize(3, 10)

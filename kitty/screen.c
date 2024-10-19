@@ -343,7 +343,7 @@ found:
 
 static bool
 preserve_blank_output_start_line(Cursor *cursor, LineBuf *linebuf) {
-    if (cursor->x == 0 && cursor->y < linebuf->ynum && linebuf->line_attrs[cursor->y].prompt_kind == OUTPUT_START) {
+    if (cursor->x == 0 && cursor->y < linebuf->ynum && !linebuf->line_attrs[cursor->y].is_continued) {
         linebuf_init_line(linebuf, cursor->y);
         if (!linebuf->line->cpu_cells[0].ch) {
             // we have a blank output start line, we need it to be preserved by
@@ -371,9 +371,14 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after;
-    bool dummy_output_inserted = false;
-    if (is_main) dummy_output_inserted = preserve_blank_output_start_line(self->cursor, self->linebuf);
-    else if (self->main_savepoint.is_valid) dummy_output_inserted = preserve_blank_output_start_line(&self->main_savepoint.cursor, self->main_linebuf);
+    bool main_has_blank_line = false, alt_has_blank_line = false;
+    if (is_main) {
+        main_has_blank_line = preserve_blank_output_start_line(self->cursor, self->linebuf);
+        if (self->alt_savepoint.is_valid) alt_has_blank_line = preserve_blank_output_start_line(&self->alt_savepoint.cursor, self->alt_linebuf);
+    } else {
+        if (self->main_savepoint.is_valid) main_has_blank_line = preserve_blank_output_start_line(&self->main_savepoint.cursor, self->main_linebuf);
+        alt_has_blank_line = preserve_blank_output_start_line(self->cursor, self->linebuf);
+    }
     unsigned int lines_after_cursor_before_resize = self->lines - self->cursor->y;
     CursorTrack cursor = {.before = {self->cursor->x, self->cursor->y}};
     CursorTrack main_saved_cursor = {.before = {self->main_savepoint.cursor.x, self->main_savepoint.cursor.y}};
@@ -451,10 +456,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
             sp->cursor.y = MIN(sp->cursor.y + 1, self->lines - 1);
         }
     }
-    if (dummy_output_inserted) {
-        if (is_main) remove_blank_output_line_reservation_marker(self->cursor, self->linebuf);
-        else remove_blank_output_line_reservation_marker(&self->main_savepoint.cursor, self->main_linebuf);
-    }
+    if (main_has_blank_line) remove_blank_output_line_reservation_marker(is_main ? self->cursor : &self->main_savepoint.cursor, self->main_linebuf);
+    if (alt_has_blank_line) remove_blank_output_line_reservation_marker(is_main ? &self->alt_savepoint.cursor : self->cursor, self->alt_linebuf);
     if (num_of_prompt_lines) {
         // Copy the old prompt lines without any reflow this prevents
         // flickering of prompt during resize. THe flicker is caused by the
