@@ -1,4 +1,5 @@
 #include "state.h"
+#include "float.h"
 
 inline static float
 norm(float x, float y) {
@@ -7,51 +8,51 @@ norm(float x, float y) {
 
 static void
 update_cursor_trail_target(CursorTrail *ct, Window *w) {
-// EDGE(x, 0) left
-// EDGE(x, 1) right
-// EDGE(y, 0) top
-// EDGE(y, 1) bottom
 #define EDGE(axis, index) ct->cursor_edge_##axis[index]
 #define WD w->render_data
+    float left, right, top, bottom;
     switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
-            EDGE(x, 0) = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
-            EDGE(y, 1) = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
-            EDGE(x, 1) = EDGE(x, 0) + WD.dx;
-            EDGE(y, 0) = EDGE(y, 1) + WD.dy;
+        case CURSOR_BEAM:
+        case CURSOR_UNDERLINE:
+            left = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
+            bottom = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
+            break;
+        default:
+            left = FLT_MAX;
+            bottom = FLT_MAX;
+    }
+    switch (WD.screen->cursor_render_info.shape) {
+        case CURSOR_BLOCK:
+        case CURSOR_HOLLOW:
+            right = left + WD.dx;
+            top = bottom + WD.dy;
             break;
         case CURSOR_BEAM:
-            EDGE(x, 0) = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
-            EDGE(y, 1) = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
-            EDGE(x, 1) = EDGE(x, 0) + WD.dx / WD.screen->cell_size.width * OPT(cursor_beam_thickness);
-            EDGE(y, 0) = EDGE(y, 1) + WD.dy;
+            right = left + WD.dx / WD.screen->cell_size.width * OPT(cursor_beam_thickness);
+            top = bottom + WD.dy;
             break;
         case CURSOR_UNDERLINE:
-            EDGE(x, 0) = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
-            EDGE(y, 1) = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
-            EDGE(x, 1) = EDGE(x, 0) + WD.dx;
-            EDGE(y, 0) = EDGE(y, 1) + WD.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
+            right = left + WD.dx;
+            top = bottom + WD.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
             break;
         default:
             break;
     }
+    if (left != FLT_MAX) {
+        EDGE(x, 0) = left;
+        EDGE(x, 1) = right;
+        EDGE(y, 0) = top;
+        EDGE(y, 1) = bottom;
+    }
 }
 
-bool
-update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+static bool
+update_cursor_trail_corners(CursorTrail *ct, monotonic_t now, OSWindow *os_window, float dx_threshold, float dy_threshold) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
-
     static const int ci[4][2] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
-    const float dx_threshold = WD.dx / WD.screen->cell_size.width;
-    const float dy_threshold = WD.dy / WD.screen->cell_size.height;
-    bool needs_render_prev = ct->needs_render;
-    ct->needs_render = false;
-
-    if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at) {
-        update_cursor_trail_target(ct, w);
-    }
 
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
     float decay_fast = OPT(cursor_trail_decay_fast);
@@ -91,14 +92,31 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
             ct->corner_y[i] += dy * step;
         }
     }
+
     ct->updated_at = now;
     for (int i = 0; i < 4; ++i) {
         float dx = fabsf(EDGE(x, ci[i][0]) - ct->corner_x[i]);
         float dy = fabsf(EDGE(y, ci[i][1]) - ct->corner_y[i]);
         if (dx_threshold <= dx || dy_threshold <= dy) {
-          ct->needs_render = true;
-          break;
+            return true;
         }
+    }
+    return false;
+}
+
+bool
+update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+    const float dx_threshold = WD.dx / WD.screen->cell_size.width;
+    const float dy_threshold = WD.dy / WD.screen->cell_size.height;
+    bool needs_render_prev = ct->needs_render;
+    ct->needs_render = false;
+
+    if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at) {
+        update_cursor_trail_target(ct, w);
+    }
+
+    if (update_cursor_trail_corners(ct, now, os_window, dx_threshold, dy_threshold)) {
+        ct->needs_render = true;
     }
 
     if (ct->needs_render) {
