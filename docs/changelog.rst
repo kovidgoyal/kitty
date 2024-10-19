@@ -87,6 +87,8 @@ Detailed list of changes
 
 - :opt:`tab_title_template` allow using the 256 terminal colors for formatting (:disc:`7976`)
 
+- Fix resizing window when alternate screen is active does not preserve trailing blank output line in the main screen (:iss:`7978`)
+
 0.36.4 [2024-09-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -373,6 +373,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     index_type num_content_lines_before, num_content_lines_after;
     bool dummy_output_inserted = false;
     if (is_main) dummy_output_inserted = preserve_blank_output_start_line(self->cursor, self->linebuf);
+    else if (self->main_savepoint.is_valid) dummy_output_inserted = preserve_blank_output_start_line(&self->main_savepoint.cursor, self->main_linebuf);
     unsigned int lines_after_cursor_before_resize = self->lines - self->cursor->y;
     CursorTrack cursor = {.before = {self->cursor->x, self->cursor->y}};
     CursorTrack main_saved_cursor = {.before = {self->main_savepoint.cursor.x, self->main_savepoint.cursor.y}};
@@ -452,6 +453,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     }
     if (dummy_output_inserted) {
         if (is_main) remove_blank_output_line_reservation_marker(self->cursor, self->linebuf);
+        else remove_blank_output_line_reservation_marker(&self->main_savepoint.cursor, self->main_linebuf);
     }
     if (num_of_prompt_lines) {
         // Copy the old prompt lines without any reflow this prevents
