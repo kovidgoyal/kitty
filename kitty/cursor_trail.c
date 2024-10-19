@@ -50,10 +50,12 @@ update_cursor_trail_target(CursorTrail *ct, Window *w) {
 }
 
 static bool
-update_cursor_trail_corners(CursorTrail *ct, monotonic_t now, OSWindow *os_window, float dx_threshold, float dy_threshold) {
+update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
     static const int ci[4][2] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
+    const float dx_threshold = WD.dx / WD.screen->cell_size.width;
+    const float dy_threshold = WD.dy / WD.screen->cell_size.height;
 
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
     float decay_fast = OPT(cursor_trail_decay_fast);
@@ -107,16 +109,14 @@ update_cursor_trail_corners(CursorTrail *ct, monotonic_t now, OSWindow *os_windo
 
 bool
 update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
-    const float dx_threshold = WD.dx / WD.screen->cell_size.width;
-    const float dy_threshold = WD.dy / WD.screen->cell_size.height;
-    bool needs_render_prev = ct->needs_render;
-    ct->needs_render = false;
-
     if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at) {
         update_cursor_trail_target(ct, w);
     }
 
-    if (update_cursor_trail_corners(ct, now, os_window, dx_threshold, dy_threshold)) {
+    bool needs_render_prev = ct->needs_render;
+    ct->needs_render = false;
+
+    if (update_cursor_trail_corners(ct, w, now, os_window)) {
         ct->needs_render = true;
     }
 
