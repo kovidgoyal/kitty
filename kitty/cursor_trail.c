@@ -5,27 +5,36 @@ norm(float x, float y) {
     return sqrtf(x * x + y * y);
 }
 
-inline static bool
-get_cursor_edge(float *left, float *right, float *top, float *bottom, Window *w) {
+static void
+update_cursor_trail_target(CursorTrail *ct, Window *w) {
+// EDGE(x, 0) left
+// EDGE(x, 1) right
+// EDGE(y, 0) top
+// EDGE(y, 1) bottom
+#define EDGE(axis, index) ct->cursor_edge_##axis[index]
 #define WD w->render_data
-    *left = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
-    *bottom = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
     switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
-            *right = *left + WD.dx;
-            *top = *bottom + WD.dy;
-            return true;
+            EDGE(x, 0) = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
+            EDGE(y, 1) = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
+            EDGE(x, 1) = EDGE(x, 0) + WD.dx;
+            EDGE(y, 0) = EDGE(y, 1) + WD.dy;
+            break;
         case CURSOR_BEAM:
-            *right = *left + WD.dx / WD.screen->cell_size.width * OPT(cursor_beam_thickness);
-            *top = *bottom + WD.dy;
-            return true;
+            EDGE(x, 0) = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
+            EDGE(y, 1) = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
+            EDGE(x, 1) = EDGE(x, 0) + WD.dx / WD.screen->cell_size.width * OPT(cursor_beam_thickness);
+            EDGE(y, 0) = EDGE(y, 1) + WD.dy;
+            break;
         case CURSOR_UNDERLINE:
-            *right = *left + WD.dx;
-            *top = *bottom + WD.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
-            return true;
+            EDGE(x, 0) = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
+            EDGE(y, 1) = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
+            EDGE(x, 1) = EDGE(x, 0) + WD.dx;
+            EDGE(y, 0) = EDGE(y, 1) + WD.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
+            break;
         default:
-            return false;
+            break;
     }
 }
 
@@ -40,12 +49,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     bool needs_render_prev = ct->needs_render;
     ct->needs_render = false;
 
-#define EDGE(axis, index) ct->cursor_edge_##axis[index]
-
-    if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->updated_at) {
-        if (!get_cursor_edge(&EDGE(x, 0), &EDGE(x, 1), &EDGE(y, 0), &EDGE(y, 1), w)) {
-            return needs_render_prev;
-        }
+    if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at) {
+        update_cursor_trail_target(ct, w);
     }
 
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
@@ -101,9 +106,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
         ct->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color).rgb;
     }
 
+#undef WD
 #undef EDGE
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;
 }
-
-#undef WD
