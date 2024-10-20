@@ -218,7 +218,6 @@ typedef struct {
 typedef struct {
     bool needs_render;
     monotonic_t updated_at;
-    Screen* screen;
     float corner_x[4];
     float corner_y[4];
     float cursor_edge_x[2];
@@ -366,7 +365,7 @@ ssize_t create_border_vao(void);
 bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cells(ssize_t, const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
-void draw_cursor_trail(CursorTrail *trail);
+void draw_cursor_trail(CursorTrail *trail, Window *active_window);
 bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);

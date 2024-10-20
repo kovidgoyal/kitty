@@ -368,6 +368,8 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
             if (IS_SPECIAL_COLOR(cursor_text_color)) rd->cursor_fg = cell_bg;
             else rd->cursor_fg = COLOR(cursor_text_color);
         }
+        // store last rendered cursor color for trail rendering
+        screen->last_rendered.cursor_bg = rd->cursor_bg;
     } else rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;
     rd->cursor_w = rd->cursor_x;
     if ((rd->cursor_fg_sprite_idx == BLOCK_IDX || rd->cursor_fg_sprite_idx == UNDERLINE_IDX) && line_for_cursor && line_for_cursor->gpu_cells[cursor->x].attrs.width > 1) {
@@ -384,9 +386,6 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
 
 #undef COLOR
     rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
-
-    // store last rendered cursor color for trail rendering
-    screen->last_rendered.cursor_bg = rd->cursor_bg;
 
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }
@@ -1148,7 +1147,7 @@ init_trail_program(void) {
 }
 
 void
-draw_cursor_trail(CursorTrail *trail) {
+draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     bind_program(TRAIL_PROGRAM);
 
     glUniform4fv(trail_program_layout.uniforms.x_coords, 1, trail->corner_x);
@@ -1157,7 +1156,7 @@ draw_cursor_trail(CursorTrail *trail) {
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_x, 1, trail->cursor_edge_x);
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_y, 1, trail->cursor_edge_y);
 
-    color_vec3(trail_program_layout.uniforms.trail_color, trail->screen->last_rendered.cursor_bg);
+    color_vec3(trail_program_layout.uniforms.trail_color, active_window ? active_window->render_data.screen->last_rendered.cursor_bg : OPT(foreground));
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 

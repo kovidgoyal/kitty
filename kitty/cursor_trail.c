@@ -1,5 +1,5 @@
+#include <float.h>
 #include "state.h"
-#include "float.h"
 
 inline static float
 norm(float x, float y) {
@@ -43,7 +43,6 @@ update_cursor_trail_target(CursorTrail *ct, Window *w) {
         EDGE(x, 1) = right;
         EDGE(y, 0) = top;
         EDGE(y, 1) = bottom;
-        ct->screen = WD.screen;
     }
 }
 
