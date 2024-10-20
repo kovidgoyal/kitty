@@ -824,7 +824,7 @@ create_single_color_buffer(int width, int height, pixel color) {
     if (width == 1 && height == 1 && _glfw.wl.wp_single_pixel_buffer_manager_v1) {
 #define C(x) (uint32_t)(((double)((uint64_t)color.alpha * color.x * UINT32_MAX)) / (255 * 255))
         struct wl_buffer *ans = wp_single_pixel_buffer_manager_v1_create_u32_rgba_buffer(
-            _glfw.wl.wp_single_pixel_buffer_manager_v1, C(red), C(green), C(blue), color.alpha * UINT32_MAX);
+            _glfw.wl.wp_single_pixel_buffer_manager_v1, C(red), C(green), C(blue), (uint32_t)((color.alpha / 255.) * UINT32_MAX));
 #undef C
         if (!ans) _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create single pixel buffer");
         return ans;
