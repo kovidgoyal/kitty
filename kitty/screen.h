@@ -97,6 +97,7 @@ typedef struct {
     struct {
         unsigned int cursor_x, cursor_y, scrolled_by;
         index_type lines, columns;
+        color_type cursor_bg;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
