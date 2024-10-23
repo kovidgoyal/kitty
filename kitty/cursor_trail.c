@@ -70,30 +70,48 @@ update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindo
         float cursor_diag_2 = norm(EDGE(x, 1) - EDGE(x, 0), EDGE(y, 1) - EDGE(y, 0)) * 0.5f;
         float dt = (float)monotonic_t_to_s_double(now - ct->updated_at);
 
+        float dx[4], dy[4];
+        float dot[4];  // dot product of "direction vector" and "cursor center to corner vector"
+        // dot product here is used to dynamically adjust the decay speed of
+        // each corner. The closer the corner is to the cursor, the faster it
+        // moves.
         for (int i = 0; i < 4; ++i) {
-            float dx = EDGE(x, ci[i][0]) - ct->corner_x[i];
-            float dy = EDGE(y, ci[i][1]) - ct->corner_y[i];
-            if (fabsf(dx) < dx_threshold && fabsf(dy) < dy_threshold) {
+            dx[i] = EDGE(x, ci[i][0]) - ct->corner_x[i];
+            dy[i] = EDGE(y, ci[i][1]) - ct->corner_y[i];
+            if (fabsf(dx[i]) < dx_threshold && fabsf(dy[i]) < dy_threshold) {
+                dx[i] = dy[i] = 0.0f;
+                dot[i] = 1.0f;
+                continue;
+            }
+            dot[i] = (dx[i] * (EDGE(x, ci[i][0]) - cursor_center_x) +
+                      dy[i] * (EDGE(y, ci[i][1]) - cursor_center_y)) /
+                     cursor_diag_2 / norm(dx[i], dy[i]);
+        }
+        float min_dot = FLT_MAX, max_dot = -FLT_MAX;
+        for (int i = 0; i < 4; ++i) {
+            min_dot = fminf(min_dot, dot[i]);
+            max_dot = fmaxf(max_dot, dot[i]);
+        }
+
+        for (int i = 0; i < 4; ++i) {
+            if ((dx[i] == 0 && dy[i] == 0) || min_dot == FLT_MAX) {
                 ct->corner_x[i] = EDGE(x, ci[i][0]);
                 ct->corner_y[i] = EDGE(y, ci[i][1]);
                 continue;
             }
 
-            // Corner that is closer to the cursor moves faster.
-            // It creates dynamic effect that looks like the trail is being pulled towards the cursor.
-            float dot = (dx * (EDGE(x, ci[i][0]) - cursor_center_x) +
-                dy * (EDGE(y, ci[i][1]) - cursor_center_y)) /
-                cursor_diag_2 / norm(dx, dy);
-
-            float decay_seconds = decay_slow + (decay_fast - decay_slow) * (1.0f + dot) * 0.5f;
-            float step = 1.0f - 1.0f / exp2f(10.0f * dt / decay_seconds);
-
-            ct->corner_x[i] += dx * step;
-            ct->corner_y[i] += dy * step;
+            float decay = (min_dot == max_dot)
+                ? decay_slow
+                : decay_slow + (decay_fast - decay_slow) * (dot[i] - min_dot) / (max_dot - min_dot);
+            float step = 1.0f - exp2f(-10.0f * dt / decay);
+            ct->corner_x[i] += dx[i] * step;
+            ct->corner_y[i] += dy[i] * step;
         }
     }
 
     ct->updated_at = now;
+
+    // check if any corner is still far from the cursor corner, so it should be rendered
     for (int i = 0; i < 4; ++i) {
         float dx = fabsf(EDGE(x, ci[i][0]) - ct->corner_x[i]);
         float dy = fabsf(EDGE(y, ci[i][1]) - ct->corner_y[i]);
