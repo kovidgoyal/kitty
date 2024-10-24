@@ -47,6 +47,23 @@ update_cursor_trail_target(CursorTrail *ct, Window *w) {
 }
 
 static bool
+should_skip_cursor_trail_update(CursorTrail *ct, Window *w, OSWindow *os_window) {
+    if (os_window->live_resize.in_progress) {
+        return true;
+    }
+
+    int distance_threshold = 2;  // make it option
+    if (distance_threshold > 0 && !ct->needs_render) {
+        int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / WD.dx);
+        int dy = (int)round((ct->corner_y[0] - EDGE(y, 0)) / WD.dy);
+        if (abs(dx) + abs(dy) <= distance_threshold) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool
 update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
@@ -58,7 +75,7 @@ update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindo
     float decay_fast = OPT(cursor_trail_decay_fast);
     float decay_slow = OPT(cursor_trail_decay_slow);
 
-    if (os_window->live_resize.in_progress) {
+    if (should_skip_cursor_trail_update(ct, w, os_window)) {
         for (int i = 0; i < 4; ++i) {
             ct->corner_x[i] = EDGE(x, ci[i][0]);
             ct->corner_y[i] = EDGE(y, ci[i][1]);
@@ -70,11 +87,11 @@ update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindo
         float cursor_diag_2 = norm(EDGE(x, 1) - EDGE(x, 0), EDGE(y, 1) - EDGE(y, 0)) * 0.5f;
         float dt = (float)monotonic_t_to_s_double(now - ct->updated_at);
 
-        float dx[4], dy[4];
-        float dot[4];  // dot product of "direction vector" and "cursor center to corner vector"
         // dot product here is used to dynamically adjust the decay speed of
         // each corner. The closer the corner is to the cursor, the faster it
         // moves.
+        float dx[4], dy[4];
+        float dot[4];  // dot product of "direction vector" and "cursor center to corner vector"
         for (int i = 0; i < 4; ++i) {
             dx[i] = EDGE(x, ci[i][0]) - ct->corner_x[i];
             dy[i] = EDGE(y, ci[i][1]) - ct->corner_y[i];
@@ -127,11 +144,7 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     }
 
     bool needs_render_prev = ct->needs_render;
-    ct->needs_render = false;
-
-    if (update_cursor_trail_corners(ct, w, now, os_window)) {
-        ct->needs_render = true;
-    }
+    ct->needs_render = update_cursor_trail_corners(ct, w, now, os_window);
 
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;
