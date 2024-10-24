@@ -51,8 +51,8 @@ update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindo
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
     static const int ci[4][2] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
-    const float dx_threshold = WD.dx / WD.screen->cell_size.width;
-    const float dy_threshold = WD.dy / WD.screen->cell_size.height;
+    const float dx_threshold = WD.dx / WD.screen->cell_size.width * 0.5f;
+    const float dy_threshold = WD.dy / WD.screen->cell_size.height * 0.5f;
 
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
     float decay_fast = OPT(cursor_trail_decay_fast);
@@ -78,9 +78,9 @@ update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindo
         for (int i = 0; i < 4; ++i) {
             dx[i] = EDGE(x, ci[i][0]) - ct->corner_x[i];
             dy[i] = EDGE(y, ci[i][1]) - ct->corner_y[i];
-            if (fabsf(dx[i]) < dx_threshold && fabsf(dy[i]) < dy_threshold) {
+            if (fabsf(dx[i]) < 1e-6 && fabsf(dy[i]) < 1e-6) {
                 dx[i] = dy[i] = 0.0f;
-                dot[i] = 1.0f;
+                dot[i] = 0.0f;
                 continue;
             }
             dot[i] = (dx[i] * (EDGE(x, ci[i][0]) - cursor_center_x) +
@@ -95,8 +95,6 @@ update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindo
 
         for (int i = 0; i < 4; ++i) {
             if ((dx[i] == 0 && dy[i] == 0) || min_dot == FLT_MAX) {
-                ct->corner_x[i] = EDGE(x, ci[i][0]);
-                ct->corner_y[i] = EDGE(y, ci[i][1]);
                 continue;
             }
 
