@@ -69,6 +69,7 @@ func (self *line_pos) Equal(other tui.LinePos) bool {
 	}
 	return false
 }
+
 func (self *line_pos) LessThan(other tui.LinePos) bool {
 	if o, ok := other.(*line_pos); ok {
 		return self.y.Less(o.y)
@@ -113,7 +114,6 @@ func (self *Handler) drag_scroll_tick(timer_id loop.IdType) error {
 }
 
 var debugprintln = tty.DebugPrintln
-var _ = debugprintln
 
 func (self *Handler) update_mouse_selection(ev *loop.MouseEvent) {
 	if !self.mouse_selection.IsActive() {
@@ -146,6 +146,12 @@ func (self *Handler) text_for_current_mouse_selection() string {
 	}
 	text := make([]byte, 0, 2048)
 	start_pos, end_pos := *self.mouse_selection.StartLine().(*line_pos), *self.mouse_selection.EndLine().(*line_pos)
+
+	// if start is after end, swap them
+	if end_pos.y.Less(start_pos.y) {
+		start_pos, end_pos = end_pos, start_pos
+	}
+
 	start, end := start_pos.y, end_pos.y
 	is_left := start_pos.min_x == self.logical_lines.margin_size
 
