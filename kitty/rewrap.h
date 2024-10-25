@@ -67,7 +67,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
         src_x_limit = src->xnum;
         if (!src_line_is_continued) {
             // Trim trailing blanks since there is a hard line break at the end of this line
-            while(src_x_limit && (src->line->cpu_cells[src_x_limit - 1].ch) == BLANK_CHAR) src_x_limit--;
+            while(src_x_limit && src->line->cpu_cells[src_x_limit - 1].ch_or_idx == BLANK_CHAR && !src->line->cpu_cells[src_x_limit - 1].ch_is_idx) src_x_limit--;
         } else {
             src->line->gpu_cells[src->xnum-1].attrs.next_char_was_wrapped = false;
         }

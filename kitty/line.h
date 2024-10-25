@@ -28,6 +28,10 @@ typedef union CellAttrs {
 #define DECORATION_MASK (7u)
 #define NUM_UNDERLINE_STYLES (5u)
 #define SGR_MASK (~(((CellAttrs){.width=WIDTH_MASK, .mark=MARK_MASK, .next_char_was_wrapped=1}).val))
+// Text presentation selector
+#define VS15 0xfe0e
+// Emoji presentation selector
+#define VS16 0xfe0f
 
 typedef struct {
     color_type fg, bg, decoration_fg;
@@ -36,13 +40,16 @@ typedef struct {
 } GPUCell;
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 
-typedef struct {
-    char_type ch;
-    hyperlink_id_type hyperlink_id;
-    combining_type cc_idx[3];
+typedef union CPUCell {
+    struct {
+        char_type ch_or_idx: sizeof(char_type) * 8;
+        hyperlink_id_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
+        bool ch_is_idx: 1;
+        uint16_t : 15;
+    };
+    uint64_t val;
 } CPUCell;
-static_assert(sizeof(CPUCell) == 12, "Fix the ordering of CPUCell");
-
+static_assert(sizeof(CPUCell) == sizeof(uint64_t), "Fix the ordering of CPUCell");
 
 typedef union LineAttrs {
     struct {
@@ -69,6 +76,37 @@ typedef struct {
 Line* alloc_line(TextCache *text_cache);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);
 const char* cell_as_sgr(const GPUCell *, const GPUCell *);
+static inline bool cell_has_text(const CPUCell *c) { return c->ch_is_idx || c->ch_or_idx; }
+static inline void cell_set_char(CPUCell *c, char_type ch) { c->ch_is_idx = false; c->ch_or_idx = ch; }
+static inline bool cell_is_char(const CPUCell *c, char_type ch) { return !c->ch_is_idx && c->ch_or_idx == ch; }
+static inline unsigned num_codepoints_in_cell(const CPUCell *c, const TextCache *tc) {
+    return c->ch_is_idx ? tc_num_codepoints(tc, c->ch_or_idx) : (c->ch_or_idx ? 1 : 0);
+}
+
+static inline void
+text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
+    if (c->ch_is_idx) tc_chars_at_index(tc, c->ch_or_idx, ans);
+    else {
+        ans->count = 1;
+        ans->chars[0] = c->ch_or_idx;
+    }
+}
+
+static inline void
+cell_set_chars(CPUCell *c, TextCache *tc, const ListOfChars *lc) {
+    if (lc->count <= 1) cell_set_char(c, lc->chars[0]);
+    else {
+        c->ch_or_idx = tc_get_or_insert_chars(tc,  lc);
+        c->ch_is_idx = true;
+    }
+}
+
+static inline char_type
+cell_first_char(const CPUCell *c, const TextCache *tc) {
+    if (c->ch_is_idx) return tc_first_char_at_index(tc, c->ch_or_idx);
+    return c->ch_or_idx;
+}
+
 
 static inline CellAttrs
 cursor_to_attrs(const Cursor *c, const uint16_t width) {

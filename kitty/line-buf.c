@@ -602,7 +602,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
         first--;
         CPUCell *cells = cpu_lineptr(self, self->line_map[first]);
         for(i = 0; i < self->xnum; i++) {
-            if ((cells[i].ch) != BLANK_CHAR) { is_empty = false; break; }
+            if (cells[i].ch_or_idx || cells[i].ch_is_idx) { is_empty = false; break; }
         }
     } while(is_empty && first > 0);
 

@@ -172,6 +172,7 @@ typedef struct {
         Selections selections, url_ranges;
     } paused_rendering;
     CharsetState charset;
+    ListOfChars *lc;
 } Screen;
 
 

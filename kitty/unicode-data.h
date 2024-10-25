@@ -1,9 +1,6 @@
 #pragma once
 #include "data-types.h"
 #include "state.h"
-// START_KNOWN_MARKS
-static const combining_type VS15 = 1364, VS16 = 1365;
-// END_KNOWN_MARKS
 
 // Converts row/column diacritics to numbers.
 int diacritic_to_num(char_type ch);
@@ -14,8 +11,6 @@ bool is_word_char(char_type ch);
 bool is_CZ_category(char_type);
 bool is_P_category(char_type);
 bool is_non_rendered_char(char_type);
-char_type codepoint_for_mark(combining_type m);
-combining_type mark_for_codepoint(char_type c);
 
 static inline bool
 is_excluded_from_url(uint32_t ch) {

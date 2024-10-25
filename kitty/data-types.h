@@ -59,6 +59,7 @@ static inline PyObject* Py_XNewRef(PyObject *o) { Py_XINCREF(o); return o; }
 
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
+#define MAX_CHAR_TYPE_VALUE UINT32_MAX
 typedef uint32_t color_type;
 typedef uint16_t hyperlink_id_type;
 typedef int key_type;
@@ -119,7 +120,6 @@ typedef struct ImageAnchorPosition {
 #define BLANK_CHAR 0
 #define COL_MASK 0xFFFFFFFF
 #define DECORATION_FG_CODE 58
-#define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
 
 // PUA character used as an image placeholder.
 #define IMAGE_PLACEHOLDER_CHAR 0x10EEEE
@@ -196,14 +196,6 @@ typedef enum UTF8State { UTF8_ACCEPT = 0, UTF8_REJECT = 1} UTF8State;
 typedef struct {
     uint32_t left, top, right, bottom;
 } Region;
-
-typedef union CharOrIndex {
-    struct {
-        char_type ch_is_index: 1;
-        char_type ch: sizeof(char_type) - 1;
-    };
-    char_type val;
-} CharOrIndex;
 
 typedef enum { UNKNOWN_PROMPT_KIND = 0, PROMPT_START = 1, SECONDARY_PROMPT = 2, OUTPUT_START = 3 } PromptKind;
 typedef struct {int x;} *HYPERLINK_POOL_HANDLE;

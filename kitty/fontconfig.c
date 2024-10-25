@@ -494,7 +494,7 @@ end:
 static bool face_has_codepoint(const void *face, char_type cp) { return glyph_id_for_codepoint(face, cp) > 0; }
 
 PyObject*
-create_fallback_face(PyObject UNUSED *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
+create_fallback_face(PyObject UNUSED *base_face, const ListOfChars *lc, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     ensure_initialized();
     PyObject *ans = NULL;
     RAII_PyObject(d, NULL);
@@ -505,7 +505,7 @@ create_fallback_face(PyObject UNUSED *base_face, CPUCell* cell, bool bold, bool 
     if (!emoji_presentation && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (!emoji_presentation && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
     if (emoji_presentation) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
-    size_t num = cell_as_unicode_for_fallback(cell, char_buf);
+    size_t num = cell_as_unicode_for_fallback(lc, char_buf);
     add_charset(pat, num);
     d = _fc_match(pat);
 face_from_descriptor:
@@ -515,22 +515,22 @@ face_from_descriptor:
         while ((q = iter_fallback_faces(fg, &idx))) {
             if (face_equals_descriptor(q, d)) {
                 ans = PyLong_FromSsize_t(idx);
-                if (!glyph_found) glyph_found = has_cell_text(face_has_codepoint, q, cell, false);
+                if (!glyph_found) glyph_found = has_cell_text(face_has_codepoint, q, false, lc);
                 goto end;
             }
         }
         ans = face_from_descriptor(d, fg);
-        if (!glyph_found && ans) glyph_found = has_cell_text(face_has_codepoint, ans, cell, false);
+        if (!glyph_found && ans) glyph_found = has_cell_text(face_has_codepoint, ans, false, lc);
     }
 end:
     Py_CLEAR(d);
     if (pat != NULL) { FcPatternDestroy(pat); pat = NULL; }
     if (!glyph_found && !PyErr_Occurred()) {
-        if (builtin_nerd_font.face && has_cell_text(face_has_codepoint, builtin_nerd_font.face, cell, false)) {
+        if (builtin_nerd_font.face && has_cell_text(face_has_codepoint, builtin_nerd_font.face, false, lc)) {
             Py_CLEAR(ans);
             d = builtin_nerd_font.descriptor; Py_INCREF(d); glyph_found = true; goto face_from_descriptor;
         } else {
-            if (global_state.debug_font_fallback && ans) has_cell_text(face_has_codepoint, ans, cell, true);
+            if (global_state.debug_font_fallback && ans) has_cell_text(face_has_codepoint, ans, true, lc);
             Py_CLEAR(ans); ans = Py_None; Py_INCREF(ans);
         }
     }

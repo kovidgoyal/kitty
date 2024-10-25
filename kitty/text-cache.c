@@ -13,7 +13,7 @@ typedef struct Chars {
 
 #define NAME chars_map
 #define KEY_TY Chars
-#define VAL_TY CharOrIndex
+#define VAL_TY char_type
 static uint64_t hash_chars(Chars k);
 static bool cmpr_chars(Chars a, Chars b);
 #define HASH_FN hash_chars
@@ -21,7 +21,7 @@ static bool cmpr_chars(Chars a, Chars b);
 #include "kitty-verstable.h"
 
 typedef struct TextCache {
-    struct { Chars *items; size_t count, capacity; } array;
+    struct { Chars *items; size_t capacity; char_type count; } array;
     chars_map map;
     unsigned refcnt;
 } TextCache;
@@ -52,7 +52,7 @@ tc_clear(TextCache *ans) {
 static void
 free_text_cache(TextCache *self) {
     vt_cleanup(&self->map);
-    for (size_t i = 0; i < self->array.count; i++) free((char_type*)self->array.items[i].chars);
+    for (char_type i = 0; i < self->array.count; i++) free((char_type*)self->array.items[i].chars);
     free(self->array.items);
     free(self);
 }
@@ -69,32 +69,49 @@ tc_decref(TextCache *self) {
     return NULL;
 }
 
+char_type
+tc_first_char_at_index(const TextCache *self, char_type idx) {
+    if (self->array.count > idx) return self->array.items[idx].chars[0];
+    return 0;
+}
+
+
 void
-tc_chars_at_index(const TextCache *self, CharOrIndex idx, ListOfChars *ans) {
-    if (idx.ch_is_index) {
-        if (self->array.count > idx.ch) {
-            ans->count = self->array.items[idx.ch].count;
-            ensure_space_for(ans, chars, char_type, ans->count, capacity, 8, false);
-            memcpy(ans->chars, self->array.items[idx.ch].chars, sizeof(ans->chars[0]) * ans->count);
-        } else {
-            ans->count = 0;
-        }
+tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans) {
+    if (self->array.count > idx) {
+        ans->count = self->array.items[idx].count;
+        ensure_space_for_chars(ans, ans->count);
+        memcpy(ans->chars, self->array.items[idx].chars, sizeof(ans->chars[0]) * ans->count);
     } else {
-        ans->count = 1;
-        ensure_space_for(ans, chars, char_type, 1, capacity, 8, false);
-        ans->chars[0] = idx.ch;
+        ans->count = 0;
     }
 }
 
-static CharOrIndex
+unsigned
+tc_num_codepoints(const TextCache *self, char_type idx) {
+     return self->array.count > idx ? self->array.items[idx].count : 0;
+}
+
+unsigned
+tc_chars_at_index_ansi(const TextCache *self, char_type idx, ANSIBuf *output) {
+    unsigned count = 0;
+    if (self->array.count > idx) {
+        count = self->array.items[idx].count;
+        ensure_space_for(output, buf, output->buf[0], output->len + count, capacity, 2048, false);
+        memcpy(output->buf + output->len, self->array.items[idx].chars, sizeof(output->buf[0]) * count);
+        output->len += count;
+    }
+    return count;
+}
+
+static char_type
 copy_and_insert(TextCache *self, const Chars key) {
-    if (self->array.count >= (1llu << (8*sizeof(char_type) - 1)) - 1) fatal("Too many items in TextCache");
+    if (self->array.count > MAX_CHAR_TYPE_VALUE) fatal("Too many items in TextCache");
     ensure_space_for(&(self->array), items, Chars, self->array.count + 1, capacity, 256, false);
     char_type *copy = malloc(key.count * sizeof(key.chars[0]));
     if (!copy) fatal("Out of memory");
     memcpy(copy, key.chars, key.count * sizeof(key.chars[0]));
-    CharOrIndex ans;
-    ans.ch_is_index = 1; ans.ch = self->array.count;
+    char_type ans = self->array.count;
     Chars *k = self->array.items + self->array.count++;
     k->count = key.count; k->chars = copy;
     chars_map_itr i = vt_insert(&self->map, *k, ans);
@@ -102,13 +119,8 @@ copy_and_insert(TextCache *self, const Chars key) {
     return ans;
 }
 
-CharOrIndex
+char_type
 tc_get_or_insert_chars(TextCache *self, const ListOfChars *chars) {
-    if (chars->count == 1) {
-        CharOrIndex ans = {0};
-        ans.ch = chars->chars[0];
-        return ans;
-    }
     Chars key = {.count=chars->count, .chars=chars->chars};
     chars_map_itr i = vt_get(&self->map, key);
     if (vt_is_end(i)) return copy_and_insert(self, key);

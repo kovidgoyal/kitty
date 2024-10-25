@@ -32,8 +32,8 @@ static inline void
 clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, char_type ch) {
     // Clear only the char part of each cell, the rest must have been cleared by a memset or similar
     if (ch) {
-        const CellAttrs empty = {.width=1};
-        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].ch = ch; cpu_cells[i].hyperlink_id = 0; gpu_cells[i].attrs = empty; }
+        static const CellAttrs empty = {.width=1};
+        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].val = 0; cpu_cells[i].ch_or_idx = ch; gpu_cells[i].attrs = empty; }
     }
 }
 
@@ -41,7 +41,8 @@ static inline index_type
 xlimit_for_line(const Line *line) {
     index_type xlimit = line->xnum;
     if (BLANK_CHAR == 0) {
-        while (xlimit > 0 && (line->cpu_cells[xlimit - 1].ch) == BLANK_CHAR) xlimit--;
+        const CPUCell *c;
+        while (xlimit > 0 && !((c = line->cpu_cells + xlimit - 1)->ch_is_idx) && c->ch_or_idx == BLANK_CHAR) xlimit--;
         if (xlimit < line->xnum && line->gpu_cells[xlimit > 0 ? xlimit - 1 : xlimit].attrs.width == 2) xlimit++;
     }
     return xlimit;
@@ -67,8 +68,7 @@ left_shift_line(Line *line, index_type at, index_type num) {
     const CellAttrs empty = {.width=1};
     const CellAttrs zero = {{0}};
     if (at < line->xnum && line->gpu_cells[at].attrs.width != 1) {
-        line->cpu_cells[at].ch = BLANK_CHAR;
-        line->cpu_cells[at].hyperlink_id = 0;
+        line->cpu_cells[at].val = 0;
         line->gpu_cells[at].attrs = BLANK_CHAR ? empty : zero;
         clear_sprite_position(line->gpu_cells[at]);
     }
@@ -77,7 +77,7 @@ left_shift_line(Line *line, index_type at, index_type num) {
 static inline bool
 line_is_empty(const Line *line) {
     for (index_type i = 0; i < line->xnum; i++) {
-        if (line->cpu_cells[i].ch != BLANK_CHAR) return false;
+        if (line->cpu_cells[i].ch_is_idx || line->cpu_cells[i].ch_or_idx != BLANK_CHAR) return false;
     }
     return true;
 }
@@ -88,16 +88,14 @@ void line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsign
 char_type line_get_char(Line *self, index_type at);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, hyperlink_id_type);
 void line_right_shift(Line *, unsigned int , unsigned int );
-void line_add_combining_char(CPUCell *, GPUCell *, uint32_t , unsigned int );
+bool line_add_combining_char(CPUCell *, GPUCell *, TextCache*, ListOfChars*, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool, bool, index_type);
 bool line_startswith_url_chars(Line*, bool);
 bool line_as_ansi(Line *self, ANSIBuf *output, const GPUCell**, index_type start_at, index_type stop_before, char_type prefix_char) __attribute__((nonnull));
 unsigned int line_length(Line *self);
-size_t cell_as_unicode(CPUCell *cell, bool include_cc, Py_UCS4 *buf, char_type);
-size_t cell_as_unicode_for_fallback(CPUCell *cell, Py_UCS4 *buf);
-size_t cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type);
-size_t cell_as_utf8_for_fallback(CPUCell *cell, char *buf);
+size_t cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf);
+size_t cell_as_utf8_for_fallback(CPUCell *cell, TextCache *tc, char *buf);
 PyObject* unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells);
 PyObject* line_as_unicode(Line *, bool);
 
