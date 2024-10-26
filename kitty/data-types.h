@@ -59,6 +59,7 @@ static inline PyObject* Py_XNewRef(PyObject *o) { Py_XINCREF(o); return o; }
 
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
+static_assert(sizeof(Py_UCS4) == sizeof(char_type), "PyUCS4 and char_type dont match");
 #define MAX_CHAR_TYPE_VALUE UINT32_MAX
 typedef uint32_t color_type;
 typedef uint16_t hyperlink_id_type;

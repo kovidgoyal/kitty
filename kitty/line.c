@@ -229,7 +229,10 @@ static size_t
 cell_as_unicode(ListOfChars *lc, bool include_cc, Py_UCS4 *buf, char_type zero_char) {
     size_t n = 1;
     buf[0] = lc->chars[0] ? lc->chars[0] : zero_char;
-    if (include_cc && lc->count > 1) memcpy(buf + 1, lc->chars + 1, lc->count - 1);
+    if (include_cc && lc->count > 1) {
+        memcpy(buf + 1, lc->chars + 1, (lc->count - 1) * sizeof(lc->chars[0]));
+        n += lc->count - 1;
+    }
     return n;
 }
 
