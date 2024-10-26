@@ -225,17 +225,6 @@ text_at(Line* self, Py_ssize_t xval) {
     return cell_text(self->cpu_cells + xval, self->text_cache);
 }
 
-static size_t
-cell_as_unicode(ListOfChars *lc, bool include_cc, Py_UCS4 *buf, char_type zero_char) {
-    size_t n = 1;
-    buf[0] = lc->chars[0] ? lc->chars[0] : zero_char;
-    if (include_cc && lc->count > 1) {
-        memcpy(buf + 1, lc->chars + 1, (lc->count - 1) * sizeof(lc->chars[0]));
-        n += lc->count - 1;
-    }
-    return n;
-}
-
 size_t
 cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf) {
     size_t n = 1;
@@ -271,15 +260,16 @@ PyObject*
 unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells) {
     size_t n = 0;
     static Py_UCS4 buf[4096];
-    RAII_ListOfChars(lc);
+    ListOfChars lc;
     char_type previous_width = 0;
-    for(index_type i = start; i < limit; i++) {
-        text_in_cell(self->cpu_cells + i, self->text_cache, &lc);
+    for (index_type i = start; i < limit; i++) {
+        lc.chars = buf + n; lc.capacity = arraysz(buf) - n;
+        if (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) break;
         if (!lc.chars[0]) {
             if (previous_width == 2) { previous_width = 0; continue; };
             if (skip_zero_cells) continue;
+            lc.chars[0] = ' ';
         }
-        if (lc.count + n >= arraysz(buf)) break;
         if (lc.chars[0] == '\t') {
             buf[n++] = '\t';
             unsigned num_cells_to_skip_for_tab = lc.count > 1 ? lc.chars[1] : 0;
@@ -288,7 +278,7 @@ unicode_in_range(const Line *self, const index_type start, const index_type limi
                 num_cells_to_skip_for_tab--;
             }
         } else {
-            n += cell_as_unicode(&lc, include_cc, buf + n, ' ');
+            n += include_cc ? lc.count : 1;
         }
         previous_width = self->gpu_cells[i].attrs.width;
     }

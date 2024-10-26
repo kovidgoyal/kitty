@@ -87,6 +87,19 @@ tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans) {
     }
 }
 
+bool
+tc_chars_at_index_without_alloc(const TextCache *self, char_type idx, ListOfChars *ans) {
+    if (self->array.count > idx) {
+        ans->count = self->array.items[idx].count;
+        if (ans->capacity < ans->count) return false;
+        memcpy(ans->chars, self->array.items[idx].chars, sizeof(ans->chars[0]) * ans->count);
+    } else {
+        ans->count = 0;
+    }
+    return true;
+}
+
+
 unsigned
 tc_num_codepoints(const TextCache *self, char_type idx) {
      return self->array.count > idx ? self->array.items[idx].count : 0;

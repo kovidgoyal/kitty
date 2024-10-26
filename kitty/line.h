@@ -92,6 +92,14 @@ text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
     }
 }
 
+static inline bool
+text_in_cell_without_alloc(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
+    if (c->ch_is_idx) return tc_chars_at_index_without_alloc(tc, c->ch_or_idx, ans);
+    ans->count = 1;
+    ans->chars[0] = c->ch_or_idx;
+    return true;
+}
+
 static inline void
 cell_set_chars(CPUCell *c, TextCache *tc, const ListOfChars *lc) {
     if (lc->count <= 1) cell_set_char(c, lc->chars[0]);

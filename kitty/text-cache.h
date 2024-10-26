@@ -53,4 +53,5 @@ void tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans);
 unsigned tc_chars_at_index_ansi(const TextCache *self, char_type idx, ANSIBuf *output);
 char_type tc_get_or_insert_chars(TextCache *self, const ListOfChars *chars);
 char_type tc_first_char_at_index(const TextCache *self, char_type idx);
+bool tc_chars_at_index_without_alloc(const TextCache *self, char_type idx, ListOfChars *ans);
 unsigned tc_num_codepoints(const TextCache *self, char_type idx);
