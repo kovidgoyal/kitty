@@ -96,6 +96,7 @@ static inline bool
 text_in_cell_without_alloc(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
     if (c->ch_is_idx) return tc_chars_at_index_without_alloc(tc, c->ch_or_idx, ans);
     ans->count = 1;
+    if (ans->capacity < 1) return false;
     ans->chars[0] = c->ch_or_idx;
     return true;
 }

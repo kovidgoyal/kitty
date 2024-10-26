@@ -5,6 +5,9 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#include "cleanup.h"
+#define EXTRA_INIT register_at_exit_cleanup_func(LINE_CLEANUP_FUNC, cleanup_module);
+
 #include "state.h"
 #include "unicode-data.h"
 #include "lineops.h"
@@ -255,35 +258,39 @@ cell_as_utf8_for_fallback(CPUCell *cell, TextCache *tc, char *buf) {
     return n;
 }
 
+static ListOfChars global_unicode_in_range_buf = {0};
 
 PyObject*
 unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells) {
     size_t n = 0;
-    static Py_UCS4 buf[4096];
     ListOfChars lc;
     char_type previous_width = 0;
     for (index_type i = start; i < limit; i++) {
-        lc.chars = buf + n; lc.capacity = arraysz(buf) - n;
-        if (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) break;
+        lc.chars = global_unicode_in_range_buf.chars + n; lc.capacity = global_unicode_in_range_buf.capacity - n;
+        while (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) {
+            size_t ns = MAX(4096, 2 * global_unicode_in_range_buf.capacity);
+            char_type *np = realloc(global_unicode_in_range_buf.chars, ns);
+            if (!np) return PyErr_NoMemory();
+            global_unicode_in_range_buf.capacity = ns; global_unicode_in_range_buf.chars = np;
+            lc.chars = global_unicode_in_range_buf.chars + n; lc.capacity = global_unicode_in_range_buf.capacity - n;
+        }
         if (!lc.chars[0]) {
             if (previous_width == 2) { previous_width = 0; continue; };
             if (skip_zero_cells) continue;
             lc.chars[0] = ' ';
         }
         if (lc.chars[0] == '\t') {
-            buf[n++] = '\t';
+            n++;
             unsigned num_cells_to_skip_for_tab = lc.count > 1 ? lc.chars[1] : 0;
             while (num_cells_to_skip_for_tab && i + 1 < limit && cell_is_char(self->cpu_cells+i+1, ' ')) {
                 i++;
                 num_cells_to_skip_for_tab--;
             }
-        } else {
-            n += include_cc ? lc.count : 1;
-        }
+        } else n += include_cc ? lc.count : 1;
         previous_width = self->gpu_cells[i].attrs.width;
     }
-    if (add_trailing_newline && !self->gpu_cells[self->xnum-1].attrs.next_char_was_wrapped && n < arraysz(buf)) buf[n++] = '\n';
-    return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
+    if (add_trailing_newline && !self->gpu_cells[self->xnum-1].attrs.next_char_was_wrapped && n < global_unicode_in_range_buf.capacity) global_unicode_in_range_buf.chars[n++] = '\n';
+    return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, global_unicode_in_range_buf.chars, n);
 }
 
 PyObject *
@@ -997,6 +1004,12 @@ Line *alloc_line(TextCache *tc) {
     Line *ans = (Line*)Line_Type.tp_alloc(&Line_Type, 0);
     if (ans) ans->text_cache = tc_incref(tc);
     return ans;
+}
+
+static void
+cleanup_module(void) {
+    free(global_unicode_in_range_buf.chars);
+    global_unicode_in_range_buf = (ListOfChars){0};
 }
 
 RICHCMP(Line)
