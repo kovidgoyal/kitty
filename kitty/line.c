@@ -235,16 +235,14 @@ cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf) {
 }
 
 size_t
-cell_as_utf8_for_fallback(CPUCell *cell, TextCache *tc, char *buf) {
-    RAII_ListOfChars(lc);
-    text_in_cell(cell, tc, &lc);
-    char_type ch = lc.chars[0] ? lc.chars[0] : ' ';
+cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf) {
+    char_type ch = lc->chars[0] ? lc->chars[0] : ' ';
     bool include_cc = true;
     if (ch == '\t') { ch = ' '; include_cc = false; }
     size_t n = encode_utf8(ch, buf);
     if (include_cc) {
-        for (unsigned i = 1; i < lc.count; i++) {
-            char_type ch = lc.chars[i];
+        for (unsigned i = 1; i < lc->count; i++) {
+            char_type ch = lc->chars[i];
             if (ch != VS15 && ch != VS16) n += encode_utf8(ch, buf + n);
         }
     }

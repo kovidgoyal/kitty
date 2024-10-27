@@ -326,17 +326,17 @@ static CTFontRef nerd_font(CGFloat sz) {
 }
 
 static bool ctfont_has_codepoint(const void *ctfont, char_type cp) { return glyph_id_for_codepoint_ctfont(ctfont, cp) > 0; }
-static bool font_can_render_cell(CTFontRef font, CPUCell *cell) { return has_cell_text(ctfont_has_codepoint, font, cell, false); }
+static bool font_can_render_cell(CTFontRef font, const ListOfChars *lc) { return has_cell_text(ctfont_has_codepoint, font, false, lc); }
 
 static CTFontRef
-manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
-    char_type ch = cell->ch ? cell->ch : ' ';
+manually_search_fallback_fonts(CTFontRef current_font, const ListOfChars *lc) {
+    char_type ch = lc->chars[0] ? lc->chars[0] : ' ';
     const bool in_first_pua = 0xe000 <= ch && ch <= 0xf8ff;
     // preferentially load from NERD fonts
     if (in_first_pua) {
         CTFontRef nf = nerd_font(CTFontGetSize(current_font));
         if (nf) {
-            if (font_can_render_cell(nf, cell)) return nf;
+            if (font_can_render_cell(nf, lc)) return nf;
             CFRelease(nf);
         }
     }
@@ -347,7 +347,7 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
         CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(fonts, i);
         CTFontRef new_font = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(current_font), NULL);
         if (!is_last_resort_font(new_font)) {
-            if (font_can_render_cell(new_font, cell)) {
+            if (font_can_render_cell(new_font, lc)) {
                 ans = new_font;
                 break;
             }
@@ -358,7 +358,7 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
     if (!ans) {
         CTFontRef nf = nerd_font(CTFontGetSize(current_font));
         if (nf) {
-            if (font_can_render_cell(nf, cell)) ans = nf;
+            if (font_can_render_cell(nf, lc)) ans = nf;
             else CFRelease(nf);
         }
     }
@@ -366,7 +366,7 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
 }
 
 static CTFontRef
-find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
+find_substitute_face(CFStringRef str, CTFontRef old_font, const ListOfChars *lc) {
     // CTFontCreateForString returns the original font when there are combining
     // diacritics in the font and the base character is in the original font,
     // so we have to check each character individually
@@ -378,9 +378,9 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
         if (new_font == old_font) { CFRelease(new_font); continue; }
         if (!new_font || is_last_resort_font(new_font)) {
             if (new_font) CFRelease(new_font);
-            if (is_private_use(cpu_cell->ch)) {
+            if (is_private_use(lc->chars[0])) {
                 // CoreTexts fallback font mechanism does not work for private use characters
-                new_font = manually_search_fallback_fonts(old_font, cpu_cell);
+                new_font = manually_search_fallback_fonts(old_font, lc);
                 if (new_font) return new_font;
             }
             return NULL;
@@ -418,22 +418,28 @@ apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool 
 }
 
 static bool face_has_codepoint(const void *face, char_type ch) { return glyph_id_for_codepoint(face, ch) > 0; }
+static struct { char *buf; size_t capacity; } ft_buffer;
+
+static CFStringRef
+lc_as_fallback(const ListOfChars *lc) {
+    ensure_space_for((&ft_buffer), buf, ft_buffer.buf[0], lc->count * 4 + 128, capacity, 256, false);
+    cell_as_utf8_for_fallback(lc, ft_buffer.buf);
+    return CFStringCreateWithCString(NULL, ft_buffer.buf, kCFStringEncodingUTF8);
+}
 
 PyObject*
-create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
+create_fallback_face(PyObject *base_face, const ListOfChars *lc, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)base_face;
     RAII_CoreFoundation(CTFontRef, new_font, NULL);
 #define search_for_fallback() \
-        char text[64] = {0}; \
-        cell_as_utf8_for_fallback(cell, text); \
-        CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8); \
+        CFStringRef str = lc_as_fallback(lc); \
         if (str == NULL) return PyErr_NoMemory(); \
-        new_font = find_substitute_face(str, self->ct_font, cell); \
+        new_font = find_substitute_face(str, self->ct_font, lc); \
         CFRelease(str);
 
     if (emoji_presentation) {
         new_font = CTFontCreateWithName((CFStringRef)@"AppleColorEmoji", self->scaled_point_sz, NULL);
-        if (!new_font || !glyph_id_for_codepoint_ctfont(new_font, cell->ch)) {
+        if (!new_font || !glyph_id_for_codepoint_ctfont(new_font, lc->chars[0])) {
             if (new_font) CFRelease(new_font);
             search_for_fallback();
         }
@@ -453,7 +459,7 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic,
     }
     if (!ans) {
         ans = (PyObject*)ct_face(new_font, NULL);
-        if (ans && !has_cell_text(face_has_codepoint, ans, cell, global_state.debug_font_fallback)) {
+        if (ans && !has_cell_text(face_has_codepoint, ans, global_state.debug_font_fallback, lc)) {
             Py_CLEAR(ans);
             Py_RETURN_NONE;
         }
@@ -697,7 +703,7 @@ static struct RenderBuffers buffers = {0};
 
 static void
 finalize(void) {
-    free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions);
+    free(ft_buffer.buf); free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions);
     memset(&buffers, 0, sizeof(struct RenderBuffers));
     if (all_fonts_collection_data) CFRelease(all_fonts_collection_data);
     if (window_title_font) CFRelease(window_title_font);

@@ -95,7 +95,7 @@ bool line_startswith_url_chars(Line*, bool);
 bool line_as_ansi(Line *self, ANSIBuf *output, const GPUCell**, index_type start_at, index_type stop_before, char_type prefix_char) __attribute__((nonnull));
 unsigned int line_length(Line *self);
 size_t cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf);
-size_t cell_as_utf8_for_fallback(CPUCell *cell, TextCache *tc, char *buf);
+size_t cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf);
 PyObject* unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells);
 PyObject* line_as_unicode(Line *, bool);
 
