@@ -128,10 +128,10 @@ update_cursor_trail_opacity(CursorTrail *ct, Window *w, monotonic_t now) {
     if (cursor_trail_always_visible) {
         ct->opacity = 1.0f;
     } else if (WD.screen->modes.mDECTCEM) {
-        ct->opacity += monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
+        ct->opacity += (float)monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
         ct->opacity = fminf(ct->opacity, 1.0f);
     } else {
-        ct->opacity -= monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
+        ct->opacity -= (float)monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
         ct->opacity = fmaxf(ct->opacity, 0.0f);
     }
 }
