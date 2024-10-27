@@ -382,28 +382,28 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
     if (*prev_cell == NULL) *prev_cell = &blank_cell;
     const CellAttrs mask_for_sgr = {.val=SGR_MASK};
 
+#define CMP_ATTRS (cell->attrs.val & mask_for_sgr.val) != ((*prev_cell)->attrs.val & mask_for_sgr.val)
+#define CMP(x) cell->x != (*prev_cell)->x
+
     for (index_type pos=start_at; pos < limit; pos++) {
-        unsigned n = text_in_cell_ansi(self->cpu_cells + pos, self->text_cache, output);
-        if (output->buf[output->len - n] == 0) {
-            if (previous_width == 2) { previous_width = 0; output->len -= n; continue; }
-            output->buf[output->len - n] = ' ';
-        }
         if (output->hyperlink_pool) {
             hyperlink_id_type hid = self->cpu_cells[pos].hyperlink_id;
             if (hid != output->active_hyperlink_id) {
                 WRITE_HYPERLINK(hid);
             }
         }
-
         cell = &self->gpu_cells[pos];
-
-#define CMP_ATTRS (cell->attrs.val & mask_for_sgr.val) != ((*prev_cell)->attrs.val & mask_for_sgr.val)
-#define CMP(x) cell->x != (*prev_cell)->x
         if (CMP_ATTRS || CMP(fg) || CMP(bg) || CMP(decoration_fg)) {
             const char *sgr = cell_as_sgr(cell, *prev_cell);
             if (*sgr) WRITE_SGR(sgr);
         }
-        *prev_cell = cell;
+
+        unsigned n = text_in_cell_ansi(self->cpu_cells + pos, self->text_cache, output);
+        if (output->buf[output->len - n] == 0) {
+            if (previous_width == 2) { previous_width = 0; output->len -= n; continue; }
+            output->buf[output->len - n] = ' ';
+        }
+
         if (output->buf[output->len - n] == '\t') {
             unsigned num_cells_to_skip_for_tab = 0;
             if (n > 1) {
@@ -414,6 +414,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
                 num_cells_to_skip_for_tab--; pos++;
             }
         }
+        *prev_cell = cell;
         previous_width = cell->attrs.width;
     }
     return escape_code_written;

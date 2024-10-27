@@ -543,8 +543,8 @@ class TestDataTypes(BaseTest):
         c.bg = (1 << 24) | (2 << 16) | (3 << 8) | 2
         c.decoration_fg = (5 << 8) | 1
         l2.set_text('1', 0, 1, c)
-        self.ae(l2.as_ansi(), '\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
-                '\x1b[22;23;27;29;39;49;59m' '0000')
+        self.ae(str(l2), '10000')
+        self.ae(l2.as_ansi(), '\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m' '1' '\x1b[22;23;27;29;39;49;59m' '0000')  # ]]
         lb = filled_line_buf()
         for i in range(1, lb.ynum + 1):
             lb.set_continued(i, True)
