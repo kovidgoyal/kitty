@@ -204,9 +204,9 @@ class TestDataTypes(BaseTest):
         l0.add_combining_char(0, '\u0302')
         self.ae(l0[0], ' \u0300\U000e0100\u0302')
         l0.add_combining_char(0, '\u0301')
-        self.ae(l0[0], ' \u0300\U000e0100\u0301')
+        self.ae(l0[0], ' \u0300\U000e0100\u0302\u0301')
         self.ae(l0[1], '\0')
-        self.ae(str(l0), ' \u0300\U000e0100\u0301')
+        self.ae(str(l0), ' \u0300\U000e0100\u0302\u0301')
         t = 'Testing with simple text'
         lb = LineBuf(2, len(t))
         l0 = lb.line(0)

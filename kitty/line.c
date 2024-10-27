@@ -45,19 +45,6 @@ line_length(Line *self) {
     return 0;
 }
 
-PyObject*
-cell_text(CPUCell *cell, TextCache *tc) {
-    if (cell->ch_is_idx) {
-        RAII_ListOfChars(lc);
-        tc_chars_at_index(tc, cell->ch_or_idx, &lc);
-        PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &lc.chars, lc.count);
-        return ans;
-    } else {
-        Py_UCS4 ch = cell->ch_or_idx;
-        return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &ch, 1);
-    }
-}
-
 // URL detection {{{
 
 static bool
@@ -225,7 +212,14 @@ static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
     if ((unsigned)xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
-    return cell_text(self->cpu_cells + xval, self->text_cache);
+    const CPUCell *cell = self->cpu_cells + xval;
+    if (cell->ch_is_idx) {
+        RAII_ListOfChars(lc);
+        tc_chars_at_index(self->text_cache, cell->ch_or_idx, &lc);
+        return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, lc.chars, lc.count);
+    }
+    Py_UCS4 ch = cell->ch_or_idx;
+    return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &ch, 1);
 }
 
 size_t
@@ -471,7 +465,7 @@ width(Line *self, PyObject *val) {
 bool
 line_add_combining_char(CPUCell *cpu_cells, GPUCell *gpu_cells, TextCache *tc, ListOfChars *lc, uint32_t ch, unsigned int x) {
     CPUCell *cell = cpu_cells + x;
-    if (!cell->ch_or_idx && !cell->ch_is_idx) {
+    if (!cell_has_text(cell)) {
         if (x > 0 && (gpu_cells[x-1].attrs.width) == 2 && cell_has_text(cpu_cells + x - 1)) cell = cpu_cells + x - 1;
         else return false; // don't allow adding combining chars to a null cell
     }
