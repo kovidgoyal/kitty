@@ -1728,8 +1728,9 @@ get_fallback_font(PyObject UNUSED *self, PyObject *args) {
     int bold, italic;
     if (!PyArg_ParseTuple(args, "Upp", &text, &bold, &italic)) return NULL;
     GPUCell gpu_cell = {0};
-    RAII_ListOfChars(lc); ensure_space_for_chars(&lc, PyUnicode_GetLength(text));
-    if (!PyUnicode_AsUCS4(text, lc.chars, lc.count, 1)) return NULL;
+    RAII_ListOfChars(lc); lc.count = PyUnicode_GET_LENGTH(text);
+    ensure_space_for_chars(&lc, lc.count);
+    if (!PyUnicode_AsUCS4(text, lc.chars, lc.capacity, 1)) return NULL;
     if (bold) gpu_cell.attrs.bold = true;
     if (italic) gpu_cell.attrs.italic = true;
     FontGroup *fg = font_groups;

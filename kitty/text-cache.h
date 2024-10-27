@@ -36,7 +36,7 @@ ensure_space_for_chars(ListOfChars *lc, size_t count) {
         lc->capacity = count + LIST_OF_CHARS_STACK_SIZE;
         void *chars = malloc(lc->capacity * sizeof(lc->chars[0]));
         if (!chars) fatal("Out of memory allocating LCChars char space");
-        memcpy(chars, lc->chars, MIN(lc->count, LIST_OF_CHARS_STACK_SIZE) * sizeof(lc->chars[0]));
+        memcpy(chars, lc->chars, LIST_OF_CHARS_STACK_SIZE * sizeof(lc->chars[0]));
         lc->chars = chars;
     }
 }
