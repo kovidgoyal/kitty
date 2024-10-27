@@ -379,8 +379,18 @@ Adjust these values to control how quickly the cursor trail fades away.
 ''',
     )
 
-egr()  # }}}
+opt('cursor_trail_distance_threshold', '2',
+    option_type='positive_int', ctype='int',
+    long_text='''
+Set the distance threshold for updating the cursor trail. This option accepts a
+positive integer value that represents the minimum distance (in cell units) the
+cursor must move before the trail is updated. When the cursor moves less than
+this threshold, the trail update is skipped, reducing unnecessary cursor trail
+animation.
+'''
+    )
 
+egr()  # }}}
 
 # scrollback {{{
 agr('scrollback', 'Scrollback')

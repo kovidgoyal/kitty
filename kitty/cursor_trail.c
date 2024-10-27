@@ -52,11 +52,10 @@ should_skip_cursor_trail_update(CursorTrail *ct, Window *w, OSWindow *os_window)
         return true;
     }
 
-    int distance_threshold = 2;  // make it option
-    if (distance_threshold > 0 && !ct->needs_render) {
+    if (OPT(cursor_trail_distance_threshold) > 0 && !ct->needs_render) {
         int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / WD.dx);
         int dy = (int)round((ct->corner_y[0] - EDGE(y, 0)) / WD.dy);
-        if (abs(dx) + abs(dy) <= distance_threshold) {
+        if (abs(dx) + abs(dy) <= OPT(cursor_trail_distance_threshold)) {
             return true;
         }
     }
