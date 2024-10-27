@@ -361,7 +361,8 @@ controls when the animation is trigerred. It is a number of milliseconds. The
 trail animation only follows cursors that have stayed in their position for longer
 than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
-See :opt:`cursor_trail_decay` to control the animation speed.
+See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_trail_start_threshold`
+to control when a cursor trail is started.
 '''
     )
 
@@ -379,13 +380,13 @@ Adjust these values to control how quickly the cursor trail fades away.
 ''',
     )
 
-opt('cursor_trail_distance_threshold', '2',
+opt('cursor_trail_start_threshold', '2',
     option_type='positive_int', ctype='int',
     long_text='''
-Set the distance threshold for updating the cursor trail. This option accepts a
-positive integer value that represents the minimum distance (in cell units) the
-cursor must move before the trail is updated. When the cursor moves less than
-this threshold, the trail update is skipped, reducing unnecessary cursor trail
+Set the distance threshold for starting the cursor trail. This option accepts a
+positive integer value that represents the minimum number of cells the
+cursor must move before the trail is started. When the cursor moves less than
+this threshold, the trail is skipped, reducing unnecessary cursor trail
 animation.
 '''
     )

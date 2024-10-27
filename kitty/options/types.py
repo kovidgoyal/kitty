@@ -336,7 +336,7 @@ option_names = (  # {{{
  'cursor_text_color',
  'cursor_trail',
  'cursor_trail_decay',
- 'cursor_trail_distance_threshold',
+ 'cursor_trail_start_threshold',
  'cursor_underline_thickness',
  'default_pointer_shape',
  'detect_urls',
@@ -515,7 +515,7 @@ class Options:
     cursor_text_color: typing.Optional[kitty.fast_data_types.Color] = Color(17, 17, 17)
     cursor_trail: int = 0
     cursor_trail_decay: typing.Tuple[float, float] = (0.1, 0.4)
-    cursor_trail_distance_threshold: int = 2
+    cursor_trail_start_threshold: int = 2
     cursor_underline_thickness: float = 2.0
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
     detect_urls: bool = True
