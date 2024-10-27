@@ -62,8 +62,8 @@ should_skip_cursor_trail_update(CursorTrail *ct, Window *w, OSWindow *os_window)
     return false;
 }
 
-static bool
-update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+static void
+update_cursor_trail_state(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
     static const int ci[4][2] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
@@ -124,16 +124,17 @@ update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindo
     }
 
     ct->updated_at = now;
+    ct->needs_render = false;
 
     // check if any corner is still far from the cursor corner, so it should be rendered
     for (int i = 0; i < 4; ++i) {
         float dx = fabsf(EDGE(x, ci[i][0]) - ct->corner_x[i]);
         float dy = fabsf(EDGE(y, ci[i][1]) - ct->corner_y[i]);
         if (dx_threshold <= dx || dy_threshold <= dy) {
-            return true;
+            ct->needs_render = true;
+            break;
         }
     }
-    return false;
 }
 
 bool
@@ -143,7 +144,7 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     }
 
     bool needs_render_prev = ct->needs_render;
-    ct->needs_render = update_cursor_trail_corners(ct, w, now, os_window);
+    update_cursor_trail_state(ct, w, now, os_window);
 
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;
