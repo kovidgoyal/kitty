@@ -937,6 +937,9 @@ class Parser:
     def cursor_trail_decay(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_trail_decay'] = cursor_trail_decay(val)
 
+    def cursor_trail_distance_threshold(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['cursor_trail_distance_threshold'] = positive_int(val)
+
     def cursor_underline_thickness(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_underline_thickness'] = positive_float(val)
 
