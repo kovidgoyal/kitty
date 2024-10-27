@@ -63,12 +63,10 @@ should_skip_cursor_trail_update(CursorTrail *ct, Window *w, OSWindow *os_window)
 }
 
 static void
-update_cursor_trail_state(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+update_cursor_trail_corners(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
-    static const int ci[4][2] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
-    const float dx_threshold = WD.dx / WD.screen->cell_size.width * 0.5f;
-    const float dy_threshold = WD.dy / WD.screen->cell_size.height * 0.5f;
+    static const int corner_index[2][4] = {{1, 1, 0, 0}, {0, 1, 1, 0}};
 
     // the decay time for the trail to reach 1/1024 of its distance from the cursor corner
     float decay_fast = OPT(cursor_trail_decay_fast);
@@ -76,8 +74,8 @@ update_cursor_trail_state(CursorTrail *ct, Window *w, monotonic_t now, OSWindow 
 
     if (should_skip_cursor_trail_update(ct, w, os_window)) {
         for (int i = 0; i < 4; ++i) {
-            ct->corner_x[i] = EDGE(x, ci[i][0]);
-            ct->corner_y[i] = EDGE(y, ci[i][1]);
+            ct->corner_x[i] = EDGE(x, corner_index[0][i]);
+            ct->corner_y[i] = EDGE(y, corner_index[1][i]);
         }
     }
     else if (ct->updated_at < now) {
@@ -92,15 +90,15 @@ update_cursor_trail_state(CursorTrail *ct, Window *w, monotonic_t now, OSWindow 
         float dx[4], dy[4];
         float dot[4];  // dot product of "direction vector" and "cursor center to corner vector"
         for (int i = 0; i < 4; ++i) {
-            dx[i] = EDGE(x, ci[i][0]) - ct->corner_x[i];
-            dy[i] = EDGE(y, ci[i][1]) - ct->corner_y[i];
+            dx[i] = EDGE(x, corner_index[0][i]) - ct->corner_x[i];
+            dy[i] = EDGE(y, corner_index[1][i]) - ct->corner_y[i];
             if (fabsf(dx[i]) < 1e-6 && fabsf(dy[i]) < 1e-6) {
                 dx[i] = dy[i] = 0.0f;
                 dot[i] = 0.0f;
                 continue;
             }
-            dot[i] = (dx[i] * (EDGE(x, ci[i][0]) - cursor_center_x) +
-                      dy[i] * (EDGE(y, ci[i][1]) - cursor_center_y)) /
+            dot[i] = (dx[i] * (EDGE(x, corner_index[0][i]) - cursor_center_x) +
+                      dy[i] * (EDGE(y, corner_index[1][i]) - cursor_center_y)) /
                      cursor_diag_2 / norm(dx[i], dy[i]);
         }
         float min_dot = FLT_MAX, max_dot = -FLT_MAX;
@@ -122,29 +120,33 @@ update_cursor_trail_state(CursorTrail *ct, Window *w, monotonic_t now, OSWindow 
             ct->corner_y[i] += dy[i] * step;
         }
     }
+}
 
-
+static void
+update_cursor_trail_opacity(CursorTrail *ct, Window *w, monotonic_t now) {
     const bool cursor_trail_always_visible = false;
     if (cursor_trail_always_visible) {
-        log_error("A: cursor trail always visible");
         ct->opacity = 1.0f;
     } else if (WD.screen->modes.mDECTCEM) {
-        log_error("B: cursor is visible");
-      ct->opacity += monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
-      ct->opacity = fminf(ct->opacity, 1.0f);
+        ct->opacity += monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
+        ct->opacity = fminf(ct->opacity, 1.0f);
     } else {
-        log_error("C: cursor is invisible");
-      ct->opacity -= monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
-      ct->opacity = fmaxf(ct->opacity, 0.0f);
+        ct->opacity -= monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
+        ct->opacity = fmaxf(ct->opacity, 0.0f);
     }
+}
 
-    ct->updated_at = now;
+static void
+update_cursor_trail_needs_render(CursorTrail *ct, Window *w) {
+    static const int corner_index[2][4] = {{1, 1, 0, 0}, {0, 1, 1, 0}};
     ct->needs_render = false;
 
     // check if any corner is still far from the cursor corner, so it should be rendered
+    const float dx_threshold = WD.dx / WD.screen->cell_size.width * 0.5f;
+    const float dy_threshold = WD.dy / WD.screen->cell_size.height * 0.5f;
     for (int i = 0; i < 4; ++i) {
-        float dx = fabsf(EDGE(x, ci[i][0]) - ct->corner_x[i]);
-        float dy = fabsf(EDGE(y, ci[i][1]) - ct->corner_y[i]);
+        float dx = fabsf(EDGE(x, corner_index[0][i]) - ct->corner_x[i]);
+        float dy = fabsf(EDGE(y, corner_index[1][i]) - ct->corner_y[i]);
         if (dx_threshold <= dx || dy_threshold <= dy) {
             ct->needs_render = true;
             break;
@@ -154,12 +156,18 @@ update_cursor_trail_state(CursorTrail *ct, Window *w, monotonic_t now, OSWindow 
 
 bool
 update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+
     if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at) {
         update_cursor_trail_target(ct, w);
     }
 
+    update_cursor_trail_corners(ct, w, now, os_window);
+    update_cursor_trail_opacity(ct, w, now);
+
     bool needs_render_prev = ct->needs_render;
-    update_cursor_trail_state(ct, w, now, os_window);
+    update_cursor_trail_needs_render(ct, w);
+
+    ct->updated_at = now;
 
     // returning true here will cause the cells to be drawn
     return ct->needs_render || needs_render_prev;
