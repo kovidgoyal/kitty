@@ -38,6 +38,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_kitty_keyboard.html>`__
 * The `alacritty terminal <https://github.com/alacritty/alacritty/pull/7125>`__
 * The `rio terminal <https://github.com/raphamorim/rio/commit/cd463ca37677a0fc48daa8795ea46dadc92b1e95>`__
+* The `iTerm2 terminal <https://gitlab.com/gnachman/iterm2/-/issues/10017>`__
 
 Libraries implementing this protocol:
 
