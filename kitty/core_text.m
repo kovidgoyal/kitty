@@ -703,7 +703,8 @@ static struct RenderBuffers buffers = {0};
 
 static void
 finalize(void) {
-    free(ft_buffer.buf); free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions);
+    free(ft_buffer.buf); ft_buffer.buf = NULL; ft_buffer.capacity = 0;
+    free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions);
     memset(&buffers, 0, sizeof(struct RenderBuffers));
     if (all_fonts_collection_data) CFRelease(all_fonts_collection_data);
     if (window_title_font) CFRelease(window_title_font);

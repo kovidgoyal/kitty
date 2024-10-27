@@ -79,8 +79,8 @@ tc_first_char_at_index(const TextCache *self, char_type idx) {
 void
 tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans) {
     if (self->array.count > idx) {
+        ensure_space_for_chars(ans, self->array.items[idx].count);
         ans->count = self->array.items[idx].count;
-        ensure_space_for_chars(ans, ans->count);
         memcpy(ans->chars, self->array.items[idx].chars, sizeof(ans->chars[0]) * ans->count);
     } else {
         ans->count = 0;
