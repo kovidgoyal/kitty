@@ -123,6 +123,21 @@ update_cursor_trail_state(CursorTrail *ct, Window *w, monotonic_t now, OSWindow 
         }
     }
 
+
+    const bool cursor_trail_always_visible = false;
+    if (cursor_trail_always_visible) {
+        log_error("A: cursor trail always visible");
+        ct->opacity = 1.0f;
+    } else if (WD.screen->modes.mDECTCEM) {
+        log_error("B: cursor is visible");
+      ct->opacity += monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
+      ct->opacity = fminf(ct->opacity, 1.0f);
+    } else {
+        log_error("C: cursor is invisible");
+      ct->opacity -= monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
+      ct->opacity = fmaxf(ct->opacity, 0.0f);
+    }
+
     ct->updated_at = now;
     ct->needs_render = false;
 

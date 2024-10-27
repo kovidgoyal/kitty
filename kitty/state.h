@@ -219,6 +219,7 @@ typedef struct {
 typedef struct {
     bool needs_render;
     monotonic_t updated_at;
+    float opacity;
     float corner_x[4];
     float corner_y[4];
     float cursor_edge_x[2];
