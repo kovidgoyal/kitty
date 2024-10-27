@@ -365,7 +365,7 @@ See :opt:`cursor_trail_decay` to control the animation speed.
 '''
     )
 
-opt('cursor_trail_decay', '0.1 0.3',
+opt('cursor_trail_decay', '0.1 0.4',
     option_type='cursor_trail_decay',
     ctype='!cursor_trail_decay',
     long_text='''
