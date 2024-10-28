@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 
+	"kitty"
 	"kitty/tools/utils"
 
 	"github.com/shirou/gopsutil/v3/process"
@@ -320,8 +321,15 @@ func (self Patcher) Patch(path, sentinel, content string, settings_to_comment_ou
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return false, err
 	}
+	add_at_top := ""
+	backup := true
 	if raw == nil {
-		raw = []byte{}
+		cc := kitty.CommentedOutDefaultConfig
+		if idx := strings.Index(cc, "\n\n"); idx > 0 {
+			add_at_top = cc[:idx+2]
+			raw = []byte(cc[idx+2:])
+			backup = false
+		}
 	}
 	pat := utils.MustCompile(fmt.Sprintf(`(?m)^\s*(%s)\b`, strings.Join(settings_to_comment_out, "|")))
 	text := pat.ReplaceAllString(utils.UnsafeBytesToString(raw), `# $1`)
@@ -334,14 +342,21 @@ func (self Patcher) Patch(path, sentinel, content string, settings_to_comment_ou
 		return addition
 	})
 	if !replaced {
-		if text != "" {
-			text += "\n\n"
+		if add_at_top != "" {
+			ntext = add_at_top + addition
+			if text != "" {
+				ntext += "\n\n" + text
+			}
+		} else {
+			if text != "" {
+				text += "\n\n"
+			}
+			ntext = text + addition
 		}
-		ntext = text + addition
 	}
 	nraw := utils.UnsafeStringToBytes(ntext)
 	if !bytes.Equal(raw, nraw) {
-		if len(raw) > 0 && self.Write_backup {
+		if len(raw) > 0 && self.Write_backup && backup {
 			_ = os.WriteFile(backup_path+".bak", raw, self.Mode)
 		}
 

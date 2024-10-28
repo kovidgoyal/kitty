@@ -37,6 +37,7 @@ from kitty.cli import (
 )
 from kitty.conf.generate import gen_go_code
 from kitty.conf.types import Definition
+from kitty.config import commented_out_default_config
 from kitty.guess_mime_type import known_extensions, text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
@@ -626,6 +627,7 @@ var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var QueryNames = []string{{ {query_names} }}
+var CommentedOutDefaultConfig = "{serialize_as_go_string(commented_out_default_config())}"
 var KittyConfigDefaults = struct {{
 Term, Shell_integration, Select_by_word_characters, Url_excluded_characters, Shell string
 Wheel_scroll_multiplier int
