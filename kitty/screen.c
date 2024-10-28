@@ -597,8 +597,7 @@ move_widened_char(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *
     self->cursor->x = xpos; self->cursor->y = ypos;
     CPUCell src_cpu = *cpu_cell, *dest_cpu;
     GPUCell src_gpu = *gpu_cell, *dest_gpu;
-    memcpy(cpu_cell, &s->cc, sizeof(s->cc));
-    memcpy(gpu_cell, &s->g, sizeof(s->g));
+    *cpu_cell = s->cc; *gpu_cell = s->g;
 
     if (self->modes.mDECAWM) {  // overflow goes onto next line
         continue_to_next_line(self);
@@ -611,7 +610,7 @@ move_widened_char(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *
         self->cursor->x = self->columns;
     }
     *dest_cpu = src_cpu; *dest_gpu = src_gpu;
-    memcpy(dest_cpu + 1 , &s->cc, sizeof(s->cc));
+    *(dest_cpu + 1) = s->cc; *(dest_gpu + 1) = s->g;
     memcpy(dest_gpu + 1, &s->g, sizeof(s->g));
     dest_gpu[1].attrs.width = 0;
 }
@@ -653,8 +652,8 @@ draw_second_flag_codepoint(Screen *self, char_type ch) {
 
 static void
 zero_cells(text_loop_state *s, CPUCell *c, GPUCell *g) {
-    memcpy(c, &s->cc, sizeof(s->cc));
-    memcpy(g, &s->g, sizeof(s->g));
+    *c = s->cc;
+    *g = s->g;
 }
 
 static void
