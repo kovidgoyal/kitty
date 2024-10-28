@@ -1092,6 +1092,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
     float tint_opacity = background_opacity;
     float tint_premult = background_opacity;
+    bind_vertex_array(vao_idx);
     if (has_bgimage(w)) {
         glEnable(GL_BLEND);
         BLEND_ONTO_OPAQUE;
@@ -1103,7 +1104,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     }
 
     if (num_border_rects) {
-        bind_vertex_array(vao_idx);
         bind_program(BORDERS_PROGRAM);
         if (rect_data_is_dirty) {
             const size_t sz = sizeof(BorderRect) * num_border_rects;
@@ -1127,9 +1127,9 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }
         }
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
-        unbind_vertex_array();
         unbind_program();
     }
+    unbind_vertex_array();
     if (has_bgimage(w)) glDisable(GL_BLEND);
 }
 

@@ -91,6 +91,8 @@ Detailed list of changes
 
 - Wayland: Fix :opt:`background_opacity` less than one causing flicker on startup when the Wayland compositor supports single pixel buffers (:iss:`7987`)
 
+- Fix background image flashing when closing a tab (:iss:`7999`)
+
 0.36.4 [2024-09-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
