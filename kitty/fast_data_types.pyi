@@ -1164,6 +1164,8 @@ class LineBuf:
     def line(self, num: int) -> Line:
         pass
 
+    def as_ansi(self, callback: Callable[[str], None]) -> None: ...
+
 
 class Cursor:
     x: int
@@ -1204,6 +1206,10 @@ class Screen:
             test_child: Any = None
     ):
         pass
+
+    def test_create_write_buffer(self) -> memoryview: ...
+    def test_commit_write_buffer(self, inp: memoryview, output: memoryview) -> int: ...
+    def test_parse_written_data(self, dump_callback: None = None) -> None: ...
 
     def cursor_at_prompt(self) -> bool:
         pass
