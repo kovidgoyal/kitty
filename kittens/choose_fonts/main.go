@@ -105,8 +105,4 @@ file, kitty.conf is edited. This is most useful if you add include
 fonts.conf to your kitty.conf and then have the kitten operate only on
 fonts.conf, allowing kitty.conf to remain unchanged.`,
 	})
-
-	clone := root.AddClone(ans.Group, ans)
-	clone.Hidden = false
-	clone.Name = "choose_fonts"
 }
