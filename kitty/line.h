@@ -42,10 +42,10 @@ static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 
 typedef union CPUCell {
     struct {
-        char_type ch_or_idx: sizeof(char_type) * 8;
-        hyperlink_id_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
         bool ch_is_idx: 1;
-        uint16_t : 15;
+        char_type ch_or_idx: sizeof(char_type) * 8 - 1;
+        hyperlink_id_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
+        uint16_t : 16;
     };
     uint64_t val;
 } CPUCell;
