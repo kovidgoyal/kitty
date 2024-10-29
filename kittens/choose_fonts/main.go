@@ -107,6 +107,6 @@ fonts.conf, allowing kitty.conf to remain unchanged.`,
 	})
 
 	clone := root.AddClone(ans.Group, ans)
-	clone.Hidden = false
+	clone.Hidden = true
 	clone.Name = "choose_fonts"
 }
