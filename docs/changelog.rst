@@ -84,7 +84,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.37.0 [future]
+0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new optional :opt:`text cursor movement animation <cursor_trail>` that
