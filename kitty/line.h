@@ -20,9 +20,11 @@ typedef union CellAttrs {
         uint16_t dim : 1;
         uint16_t mark : 2;
         uint16_t next_char_was_wrapped : 1;
+        uint16_t : 3;
     };
     uint16_t val;
 } CellAttrs;
+static_assert(sizeof(CellAttrs) == sizeof(uint16_t), "Fix the ordering of CellAttrs");
 
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
@@ -56,10 +58,12 @@ typedef union LineAttrs {
         uint8_t is_continued : 1;
         uint8_t has_dirty_text : 1;
         uint8_t has_image_placeholders : 1;
-        PromptKind prompt_kind : 2;
+        uint8_t prompt_kind : 2;
+        uint8_t : 3;
     };
     uint8_t val;
 } LineAttrs ;
+static_assert(sizeof(LineAttrs) == sizeof(uint8_t), "Fix the ordering of LineAttrs");
 
 
 typedef struct {
