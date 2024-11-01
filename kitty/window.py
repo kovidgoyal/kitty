@@ -1095,6 +1095,13 @@ class Window:
                 log_error(f'Ignoring unknown OSC 777: {raw_data}')
                 return  # unknown OSC 777
             raw_data = raw_data[len('notify;'):]
+        if osc_code == 9 and raw_data.startswith('4;'):
+            # This is probably the Windows Terminal "progress reporting" conflicting
+            # implementation which sadly some thoughtless people have
+            # implemented in unix CLI programs. So ignore it rather than
+            # spamming the user with continuous notifications. See for example:
+            # https://github.com/kovidgoyal/kitty/issues/8011
+            return
         get_boss().notification_manager.handle_notification_cmd(self.id, osc_code, raw_data)
 
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
