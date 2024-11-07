@@ -45,11 +45,13 @@ void glfw_dbus_terminate(_GLFWDBUSData *dbus);
 DBusConnection* glfw_dbus_connect_to(const char *path, const char* err_msg, const char* name, bool register_on_bus);
 void glfw_dbus_close_connection(DBusConnection *conn);
 bool
-call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_pending_callback callback, void *user_data);
+call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_pending_callback callback, void *user_data, bool block);
 bool
 glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
 bool
 glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout_ms, dbus_pending_callback callback, void *user_data, ...);
+bool
+glfw_dbus_call_blocking_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout, dbus_pending_callback callback, void* user_data, ...);
 void glfw_dbus_dispatch(DBusConnection *);
 void glfw_dbus_session_bus_dispatch(void);
 bool glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...);

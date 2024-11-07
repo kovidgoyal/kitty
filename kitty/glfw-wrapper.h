@@ -2010,7 +2010,7 @@ typedef GLFWsystemcolorthemechangefun (*glfwSetSystemColorThemeChangeCallback_fu
 GFW_EXTERN glfwSetSystemColorThemeChangeCallback_func glfwSetSystemColorThemeChangeCallback_impl;
 #define glfwSetSystemColorThemeChangeCallback glfwSetSystemColorThemeChangeCallback_impl
 
-typedef GLFWColorScheme (*glfwGetCurrentSystemColorTheme_func)(void);
+typedef GLFWColorScheme (*glfwGetCurrentSystemColorTheme_func)(bool);
 GFW_EXTERN glfwGetCurrentSystemColorTheme_func glfwGetCurrentSystemColorTheme_impl;
 #define glfwGetCurrentSystemColorTheme glfwGetCurrentSystemColorTheme_impl
 

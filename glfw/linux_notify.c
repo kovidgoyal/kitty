@@ -184,7 +184,7 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
     APPEND(args, DBUS_TYPE_INT32, n->timeout)
 #undef check_call
 #undef APPEND
-    if (!call_method_with_msg(session_bus, msg, 5000, notification_created, data)) return 0;
+    if (!call_method_with_msg(session_bus, msg, 5000, notification_created, data, false)) return 0;
     notification_id_type ans = data->next_id;
     data = NULL;
     return ans;

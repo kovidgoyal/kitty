@@ -46,14 +46,20 @@ get_platform_dependent_config_values(void *glfw_window) {
     }
 }
 
-static void
-on_system_color_scheme_change(GLFWColorScheme appearance, bool is_initial_value) {
+static const char*
+appearance_name(GLFWColorScheme appearance) {
     const char *which = NULL;
     switch (appearance) {
         case GLFW_COLOR_SCHEME_NO_PREFERENCE: which = "no_preference"; break;
         case GLFW_COLOR_SCHEME_DARK: which = "dark"; break;
         case GLFW_COLOR_SCHEME_LIGHT: which = "light"; break;
     }
+    return which;
+}
+
+static void
+on_system_color_scheme_change(GLFWColorScheme appearance, bool is_initial_value) {
+    const char *which = appearance_name(appearance);
     debug("system color-scheme changed to: %s is_initial_value: %d\n", which, is_initial_value);
     call_boss(on_system_color_scheme_change, "sO", which, is_initial_value ? Py_True : Py_False);
 }
@@ -1520,6 +1526,17 @@ glfw_get_physical_dpi(PYNOARG) {
 }
 
 static PyObject*
+glfw_get_system_color_theme(PyObject UNUSED *self, PyObject *args) {
+    int query_if_unintialized = 1;
+    if (!PyArg_ParseTuple(args, "|p", &query_if_unintialized)) return NULL;
+    if (!glfwGetCurrentSystemColorTheme) {
+        PyErr_SetString(PyExc_RuntimeError, "must initialize GFLW before calling this function"); return NULL;
+    }
+    const char *which = appearance_name(glfwGetCurrentSystemColorTheme(query_if_unintialized));
+    return PyUnicode_FromString(which);
+}
+
+static PyObject*
 glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
     int key, native_key;
     if (!PyArg_ParseTuple(args, "ii", &key, &native_key)) return NULL;
@@ -2306,6 +2323,7 @@ static PyMethodDef module_methods[] = {
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
+    {"glfw_get_system_color_theme", (PyCFunction)glfw_get_system_color_theme, METH_VARARGS, ""},
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */

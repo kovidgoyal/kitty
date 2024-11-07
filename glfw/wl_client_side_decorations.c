@@ -332,7 +332,7 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     const uint32_t dark_fg = is_focused ? 0xffffffff : 0xffcccccc, dark_bg = is_focused ? 0xff303030 : 0xff242424;
     static const uint32_t hover_dark_bg = 0xff444444, hover_light_bg = 0xffbbbbbb;
     uint32_t bg_color = light_bg, fg_color = light_fg, hover_bg = hover_light_bg;
-    GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme();
+    GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
     bool is_dark = false;
     if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
         bg_color = 0xff000000 | (decs.titlebar_color & 0xffffff);

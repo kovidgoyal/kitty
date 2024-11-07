@@ -636,8 +636,8 @@ static const struct wl_registry_listener registryListener = {
 };
 
 
-GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(void) {
-    return glfw_current_system_color_theme();
+GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
+    return glfw_current_system_color_theme(query_if_unintialized);
 }
 
 static pid_t

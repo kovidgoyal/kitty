@@ -952,7 +952,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)viewDidChangeEffectiveAppearance
 {
     static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
-    GLFWColorScheme new_appearance = glfwGetCurrentSystemColorTheme();
+    GLFWColorScheme new_appearance = glfwGetCurrentSystemColorTheme(true);
     if (new_appearance != appearance) {
         appearance = new_appearance;
         _glfwInputColorScheme(appearance, false);
@@ -3091,7 +3091,8 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     [window->ns.object makeFirstResponder:window->ns.view];
 }}
 
-GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(void) {
+GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
+    (void)query_if_unintialized;
     int theme_type = 0;
     NSAppearance *changedAppearance = NSApp.effectiveAppearance;
     NSAppearanceName newAppearance = [changedAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
