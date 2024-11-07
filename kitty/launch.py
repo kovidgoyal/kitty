@@ -486,7 +486,7 @@ class LaunchKwds(TypedDict):
 
 
 def apply_colors(window: Window, spec: Sequence[str]) -> None:
-    from kitty.rc.set_colors import parse_colors
+    from .colors import parse_colors
     colors, transparent_background_colors = parse_colors(spec)
     profiles = window.screen.color_profile,
     patch_color_profiles(colors, transparent_background_colors, profiles, True)

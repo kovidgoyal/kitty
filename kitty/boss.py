@@ -118,7 +118,6 @@ from .notifications import NotificationManager
 from .options.types import Options, nullable_colors
 from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition
 from .os_window_size import initial_window_size_func
-from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
 from .shaders import load_shader_programs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
@@ -2641,14 +2640,8 @@ class Boss:
     def patch_colors(self, spec: dict[str, Optional[int]], transparent_background_colors: tuple[tuple[Color, float], ...], configured: bool = False) -> None:
         opts = get_options()
         if configured:
-            for k, v in spec.items():
-                if hasattr(opts, k):
-                    if v is None:
-                        if k in nullable_colors:
-                            setattr(opts, k, None)
-                    else:
-                        setattr(opts, k, color_from_int(v))
-            opts.transparent_background_colors = transparent_background_colors
+            from kitty.colors import patch_options_with_color_spec
+            patch_options_with_color_spec(opts, spec, transparent_background_colors)
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
             tm.tab_bar.layout()

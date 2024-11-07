@@ -2,11 +2,9 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import os
-from typing import TYPE_CHECKING, Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from kitty.cli import emph
-from kitty.config import parse_config
 from kitty.fast_data_types import Color, patch_color_profiles
 
 from .base import (
@@ -25,29 +23,6 @@ from .base import (
 
 if TYPE_CHECKING:
     from kitty.cli_stub import SetColorsRCOptions as CLIOptions
-
-
-def parse_colors(args: Iterable[str]) -> tuple[Dict[str, Optional[int]], tuple[tuple[Color, float], ...]]:
-    from kitty.options.types import nullable_colors
-    colors: Dict[str, Optional[Color]] = {}
-    nullable_color_map: Dict[str, Optional[int]] = {}
-    transparent_background_colors = ()
-    for spec in args:
-        if '=' in spec:
-            conf = parse_config((spec.replace('=', ' '),))
-        else:
-            with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
-                conf = parse_config(f)
-        transparent_background_colors = conf.pop('transparent_background_colors', ())
-        colors.update(conf)
-    for k in nullable_colors:
-        q = colors.pop(k, False)
-        if q is not False:
-            val = int(q) if isinstance(q, Color) else None
-            nullable_color_map[k] = val
-    ans: Dict[str, Optional[int]] = {k: int(v) for k, v in colors.items() if isinstance(v, Color)}
-    ans.update(nullable_color_map)
-    return ans, transparent_background_colors
 
 
 class SetColors(RemoteCommand):
@@ -93,6 +68,7 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         final_colors: Dict[str, int | None | str] = {}
         transparent_background_colors: tuple[tuple[Color, float], ...] = ()
+        from kitty.colors import parse_colors
         if not opts.reset:
             try:
                 fc, transparent_background_colors = parse_colors(args)
