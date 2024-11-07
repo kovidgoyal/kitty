@@ -423,6 +423,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
         return None
     import runpy
     ans = Watchers()
+    boss = get_boss()
     for path in watchers:
         path = resolve_custom_file(path)
         m = watcher_modules.get(path, None)
@@ -436,6 +437,9 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
                 watcher_modules[path] = False
                 continue
             watcher_modules[path] = m
+            w = m.get('on_load')
+            if callable(w):
+                w(boss)
         if m is False:
             continue
         w = m.get('on_close')

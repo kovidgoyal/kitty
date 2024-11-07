@@ -128,6 +128,12 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
     from kitty.window import Window
 
 
+    def on_load(boss: Boss) -> None:
+        # This is a special function that is called just once when this watcher
+        # module is first loaded, can be used to perform any initializztion/one
+        # time setup.
+        ...
+
     def on_resize(boss: Boss, window: Window, data: Dict[str, Any]) -> None:
         # Here data will contain old_geometry and new_geometry
         # Note that resize is also called the first time a window is created
