@@ -201,7 +201,7 @@ option in :file:`kitty.conf`. An example, showing all available commands:
     new OS windows, or tabs.
 
 .. note::
-   Environment variables of the for :code:`${NAME}` or :code:`$NAME` are
+   Environment variables of the form :code:`${NAME}` or :code:`$NAME` are
    expanded in the session file, except in the *arguments* (not options) to the
    launch command.
 
