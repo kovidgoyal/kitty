@@ -43,6 +43,7 @@ process_fdo_setting(const char *key, DBusMessageIter *value) {
             dbus_message_iter_get_basic(value, &val);
             if (val > 2) val = 0;
             appearance = val;
+            _glfwInputColorScheme(appearance, true);
         }
     }
 }
@@ -161,7 +162,7 @@ on_color_scheme_change(DBusMessage *message) {
                 if (val > 2) val = 0;
                 if (val != appearance) {
                     appearance = val;
-                    _glfwInputColorScheme(appearance);
+                    _glfwInputColorScheme(appearance, false);
                 }
             }
             break;

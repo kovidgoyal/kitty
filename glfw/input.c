@@ -448,9 +448,9 @@ void _glfwInputJoystickHat(_GLFWjoystick* js, int hat, char value)
     js->hats[hat] = value;
 }
 
-void _glfwInputColorScheme(GLFWColorScheme value) {
+void _glfwInputColorScheme(GLFWColorScheme value, bool is_initial_value) {
     _glfwPlatformInputColorScheme(value);
-    if (_glfw.callbacks.system_color_theme_change) _glfw.callbacks.system_color_theme_change(value);
+    if (_glfw.callbacks.system_color_theme_change) _glfw.callbacks.system_color_theme_change(value, is_initial_value);
 }
 
 //////////////////////////////////////////////////////////////////////////

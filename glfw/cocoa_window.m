@@ -955,7 +955,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     GLFWColorScheme new_appearance = glfwGetCurrentSystemColorTheme();
     if (new_appearance != appearance) {
         appearance = new_appearance;
-        _glfwInputColorScheme(appearance);
+        _glfwInputColorScheme(appearance, false);
     }
 }
 

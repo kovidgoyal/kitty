@@ -3058,7 +3058,7 @@ class Boss:
         if w is not None:
             output = debug_config(get_options(), self.mappings.global_shortcuts)
             set_clipboard_string(re.sub(r'\x1b.+?m', '', output))
-            output += '\n\x1b[35mThis debug output has been copied to the clipboard\x1b[m'
+            output += '\n\x1b[35mThis debug output has been copied to the clipboard\x1b[m'  # ]]]
             self.display_scrollback(w, output, title=_('Current kitty options'), report_cursor=False)
 
     @ac('misc', 'Discard this event completely ignoring it')
@@ -3069,8 +3069,11 @@ class Boss:
     def sanitize_url_for_dispay_to_user(self, url: str) -> str:
         return sanitize_url_for_dispay_to_user(url)
 
-    def on_system_color_scheme_change(self, appearance: Literal['light', 'dark', 'no_preference']) -> None:
-        log_error('system color theme changed:', appearance)
+    def on_system_color_scheme_change(self, appearance: Literal['light', 'dark', 'no_preference'], is_initial_value: bool) -> None:
+        if is_initial_value:
+            pass
+        else:
+            log_error('system color theme changed:', appearance)
 
     @ac('win', '''
         Toggle to the tab matching the specified expression
