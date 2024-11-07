@@ -36,6 +36,7 @@ from .clipboard import (
     set_clipboard_string,
     set_primary_selection,
 )
+from .colors import ColorsSpec, TransparentBackgroundColors, patch_options_with_color_spec, theme_colors
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
@@ -2637,10 +2638,9 @@ class Boss:
             window.screen.disable_ligatures = strategy
             window.refresh()
 
-    def patch_colors(self, spec: dict[str, Optional[int]], transparent_background_colors: tuple[tuple[Color, float], ...], configured: bool = False) -> None:
+    def patch_colors(self, spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, configured: bool = False) -> None:
         opts = get_options()
         if configured:
-            from kitty.colors import patch_options_with_color_spec
             patch_options_with_color_spec(opts, spec, transparent_background_colors)
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
@@ -3063,10 +3063,8 @@ class Boss:
         return sanitize_url_for_dispay_to_user(url)
 
     def on_system_color_scheme_change(self, appearance: Literal['light', 'dark', 'no_preference'], is_initial_value: bool) -> None:
-        if is_initial_value:
-            pass
-        else:
-            log_error('system color theme changed:', appearance)
+        if not is_initial_value and appearance != 'no_preference':
+            theme_colors.on_system_color_scheme_change(appearance)
 
     @ac('win', '''
         Toggle to the tab matching the specified expression

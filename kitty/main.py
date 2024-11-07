@@ -14,6 +14,7 @@ from .boss import Boss
 from .child import set_default_env, set_LANG_in_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
+from .colors import theme_colors
 from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
@@ -248,6 +249,8 @@ class AppRunner:
     def __call__(self, opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
         set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
+        theme_colors.refresh()
+        theme_colors.patch_opts(opts)
         try:
             set_font_family(opts, add_builtin_nerd_font=True)
             _run_app(opts, args, bad_lines, talk_fd)
