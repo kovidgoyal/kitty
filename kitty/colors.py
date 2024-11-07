@@ -3,35 +3,60 @@
 
 import os
 from contextlib import suppress
-from typing import Iterable, Literal, Optional, Union
+from enum import Enum
+from typing import Iterable, Literal, Optional, Sequence, Union
 
 from .config import parse_config
 from .constants import config_dir
-from .fast_data_types import Color, get_boss, glfw_get_system_color_theme
+from .fast_data_types import Color, get_boss, get_options, glfw_get_system_color_theme, patch_color_profiles, patch_global_colors, set_os_window_chrome
 from .options.types import Options, nullable_colors
 from .rgb import color_from_int
+from .typing import WindowType
 
 ColorsSpec = dict[str, Optional[int]]
 TransparentBackgroundColors = tuple[tuple[Color, float], ...]
+ColorSchemes = Literal['light', 'dark', 'no_preference']
+
+
+class ThemeFile(Enum):
+    dark: str = 'dark-theme.auto.conf'
+    light: str = 'light-theme.auto.conf'
+    no_preference: str = 'no-preference-theme.auto.conf'
 
 
 class ThemeColors:
 
-    dark_mtime: float = -1
-    light_mtime: float = -1
-    applied_theme: Literal['light', 'dark', ''] = ''
+    dark_mtime: int = -1
+    light_mtime: int = -1
+    no_preference_mtime: int = -1
+    applied_theme: Literal['light', 'dark', 'no_preference', ''] = ''
 
-    def refresh(self) -> None:
-        with suppress(FileNotFoundError), open(os.path.join(config_dir, 'dark-theme.conf')) as f:
-            mtime = os.stat(f.fileno()).st_mtime
-            if mtime > self.dark_mtime:
-                self.dark_spec, self.dark_tbc = parse_colors((f,))
-                self.dark_mtime = mtime
-        with suppress(FileNotFoundError), open(os.path.join(config_dir, 'light-theme.conf')) as f:
-            mtime = os.stat(f.fileno()).st_mtime
-            if mtime > self.light_mtime:
-                self.light_spec, self.light_tbc = parse_colors((f,))
-                self.light_mtime = mtime
+    def refresh(self) -> bool:
+        found = False
+        with suppress(FileNotFoundError):
+            for x in os.scandir(config_dir):
+                if x.name == ThemeFile.dark.value:
+                    mtime = x.stat().st_mtime_ns
+                    if mtime > self.dark_mtime:
+                        with open(x.path) as f:
+                            self.dark_spec, self.dark_tbc = parse_colors((f,))
+                        self.dark_mtime = mtime
+                        found = True
+                elif x.name == ThemeFile.light.value:
+                    mtime = x.stat().st_mtime_ns
+                    if mtime > self.light_mtime:
+                        with open(x.path) as f:
+                            self.light_spec, self.light_tbc = parse_colors((f,))
+                        self.light_mtime = mtime
+                        found = True
+                elif x.name == ThemeFile.no_preference.value:
+                    mtime = x.stat().st_mtime_ns
+                    if mtime > self.no_preference_mtime:
+                        with open(x.path) as f:
+                            self.no_preference_spec, self.no_preference_tbc = parse_colors((f,))
+                        self.no_preference_mtime = mtime
+                        found = True
+        return found
 
     @property
     def has_dark_theme(self) -> bool:
@@ -41,24 +66,56 @@ class ThemeColors:
     def has_light_theme(self) -> bool:
         return self.light_mtime > -1
 
-    def patch_opts(self, opts: Options) -> None:
+    @property
+    def has_no_preference_theme(self) -> bool:
+        return self.no_preference_mtime > -1
+
+    def patch_opts(self, opts: Options, debug_rendering: bool = False) -> None:
+        from .utils import log_error
+        if debug_rendering:
+            log_error('Querying system for current color scheme')
         which = glfw_get_system_color_theme()
+        if debug_rendering:
+            log_error('Current system color scheme:', which)
         if which == 'dark' and self.has_dark_theme:
             patch_options_with_color_spec(opts, self.dark_spec, self.dark_tbc)
-            self.applied_theme = 'dark'
+            if debug_rendering:
+                log_error(f'Applied {which} color theme')
+            self.applied_theme = which
         elif which == 'light' and self.has_light_theme:
             patch_options_with_color_spec(opts, self.light_spec, self.light_tbc)
-            self.applied_theme = 'light'
+            if debug_rendering:
+                log_error(f'Applied {which} color theme')
+            self.applied_theme = which
+        elif which == 'no_preference' and self.has_no_preference_theme:
+            patch_options_with_color_spec(opts, self.no_preference_spec, self.no_preference_tbc)
+            if debug_rendering:
+                log_error(f'Applied {which} color theme')
+            self.applied_theme = which
 
-    def on_system_color_scheme_change(self, new_value: Literal['light', 'dark']) -> bool:
+    def on_system_color_scheme_change(self, new_value: ColorSchemes, is_initial_value: bool = False) -> bool:
+        if is_initial_value:
+            return False
+        from .utils import log_error
+        self.refresh()
         boss = get_boss()
         if new_value == 'dark' and self.has_dark_theme:
-            boss.patch_colors(self.dark_spec, self.dark_tbc, True)
-            self.applied_theme = 'dark'
+            patch_colors(self.dark_spec, self.dark_tbc, True)
+            self.applied_theme = new_value
+            if boss.args.debug_rendering:
+                log_error(f'Applied color theme {new_value}')
             return True
         if new_value == 'light' and self.has_light_theme:
-            boss.patch_colors(self.light_spec, self.light_tbc, True)
-            self.applied_theme = 'light'
+            patch_colors(self.light_spec, self.light_tbc, True)
+            self.applied_theme = new_value
+            if boss.args.debug_rendering:
+                log_error(f'Applied color theme {new_value}')
+            return True
+        if new_value == 'no_preference' and self.has_no_preference_theme:
+            patch_colors(self.no_preference_spec, self.no_preference_tbc, True)
+            self.applied_theme = new_value
+            if boss.args.debug_rendering:
+                log_error(f'Applied color theme {new_value}')
             return True
         return False
 
@@ -92,7 +149,6 @@ def parse_colors(args: Iterable[Union[str, Iterable[str]]]) -> tuple[ColorsSpec,
 
 
 def patch_options_with_color_spec(opts: Options, spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors) -> None:
-
     for k, v in spec.items():
         if hasattr(opts, k):
             if v is None:
@@ -101,3 +157,33 @@ def patch_options_with_color_spec(opts: Options, spec: ColorsSpec, transparent_b
             else:
                 setattr(opts, k, color_from_int(v))
     opts.transparent_background_colors = transparent_background_colors
+
+
+def patch_colors(
+    spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, configured: bool = False,
+    windows: Optional[Sequence[WindowType]] = None
+) -> None:
+    boss = get_boss()
+    if windows is None:
+        windows = tuple(boss.all_windows)
+    profiles = tuple(w.screen.color_profile for w in windows if w)
+    patch_color_profiles(spec, transparent_background_colors, profiles, configured)
+    opts = get_options()
+    if configured:
+        patch_options_with_color_spec(opts, spec, transparent_background_colors)
+    for tm in get_boss().all_tab_managers:
+        tm.tab_bar.patch_colors(spec)
+        tm.tab_bar.layout()
+        tm.mark_tab_bar_dirty()
+        t = tm.active_tab
+        if t is not None:
+            t.relayout_borders()
+        set_os_window_chrome(tm.os_window_id)
+    patch_global_colors(spec, configured)
+    default_bg_changed = 'background' in spec
+    boss = get_boss()
+    for w in windows:
+        if w:
+            if default_bg_changed:
+                boss.default_bg_changed_for(w.id)
+            w.refresh()

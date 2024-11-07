@@ -583,6 +583,7 @@ def load_ref_map() -> dict[str, dict[str, str]]:
 def generate_constants() -> str:
     from kittens.hints.main import DEFAULT_REGEX
     from kittens.query_terminal.main import all_queries
+    from kitty.colors import ThemeFile
     from kitty.config import option_names_for_completion
     from kitty.fast_data_types import FILE_TRANSFER_CODE
     from kitty.options.utils import allowed_shell_integration_values, url_style_map
@@ -638,6 +639,9 @@ Select_by_word_characters: `{Options.select_by_word_characters}`, Wheel_scroll_m
 Shell: "{Options.shell}", Url_excluded_characters: "{Options.url_excluded_characters}",
 }}
 const OptionNames = {option_names}
+const DarkThemeFileName = "{ThemeFile.dark.value}"
+const LightThemeFileName = "{ThemeFile.light.value}"
+const NoPreferenceThemeFileName = "{ThemeFile.no_preference.value}"
 '''  # }}}
 
 

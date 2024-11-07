@@ -19,7 +19,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Literal,
     Optional,
     Union,
 )
@@ -36,7 +35,7 @@ from .clipboard import (
     set_clipboard_string,
     set_primary_selection,
 )
-from .colors import ColorsSpec, TransparentBackgroundColors, patch_options_with_color_spec, theme_colors
+from .colors import ColorSchemes, theme_colors
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
@@ -93,7 +92,6 @@ from .fast_data_types import (
     monotonic,
     os_window_focus_counters,
     os_window_font_size,
-    patch_global_colors,
     redirect_mouse_handling,
     ring_bell,
     run_with_activation_token,
@@ -2638,20 +2636,6 @@ class Boss:
             window.screen.disable_ligatures = strategy
             window.refresh()
 
-    def patch_colors(self, spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, configured: bool = False) -> None:
-        opts = get_options()
-        if configured:
-            patch_options_with_color_spec(opts, spec, transparent_background_colors)
-        for tm in self.all_tab_managers:
-            tm.tab_bar.patch_colors(spec)
-            tm.tab_bar.layout()
-            tm.mark_tab_bar_dirty()
-            t = tm.active_tab
-            if t is not None:
-                t.relayout_borders()
-            set_os_window_chrome(tm.os_window_id)
-        patch_global_colors(spec, configured)
-
     def apply_new_options(self, opts: Options) -> None:
         from .fonts.box_drawing import set_scale
         # Update options storage
@@ -3062,9 +3046,8 @@ class Boss:
     def sanitize_url_for_dispay_to_user(self, url: str) -> str:
         return sanitize_url_for_dispay_to_user(url)
 
-    def on_system_color_scheme_change(self, appearance: Literal['light', 'dark', 'no_preference'], is_initial_value: bool) -> None:
-        if not is_initial_value and appearance != 'no_preference':
-            theme_colors.on_system_color_scheme_change(appearance)
+    def on_system_color_scheme_change(self, appearance: ColorSchemes, is_initial_value: bool) -> None:
+        theme_colors.on_system_color_scheme_change(appearance, is_initial_value)
 
     @ac('win', '''
         Toggle to the tab matching the specified expression

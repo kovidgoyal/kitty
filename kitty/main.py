@@ -249,8 +249,8 @@ class AppRunner:
     def __call__(self, opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
         set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
-        theme_colors.refresh()
-        theme_colors.patch_opts(opts)
+        if theme_colors.refresh():
+            theme_colors.patch_opts(opts, args.debug_rendering)
         try:
             set_font_family(opts, add_builtin_nerd_font=True)
             _run_app(opts, args, bad_lines, talk_fd)

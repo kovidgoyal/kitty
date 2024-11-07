@@ -5,6 +5,7 @@ package themes
 import (
 	"fmt"
 	"io"
+	"kitty"
 	"maps"
 	"path/filepath"
 	"regexp"
@@ -521,6 +522,24 @@ func (self *handler) on_accepting_key_event(ev *loop.KeyEvent) error {
 		self.lp.Quit(0)
 		return nil
 	}
+
+	scheme := func(name string) error {
+		ev.Handled = true
+		self.themes_list.CurrentTheme().SaveInFile(utils.ConfigDir(), name)
+		self.update_recent()
+		self.lp.Quit(0)
+		return nil
+
+	}
+	if ev.MatchesCaseInsensitiveTextOrKey("d") || ev.MatchesPressOrRepeat("shift+d") {
+		return scheme(kitty.DarkThemeFileName)
+	}
+	if ev.MatchesCaseInsensitiveTextOrKey("l") || ev.MatchesPressOrRepeat("shift+l") {
+		return scheme(kitty.LightThemeFileName)
+	}
+	if ev.MatchesCaseInsensitiveTextOrKey("n") || ev.MatchesPressOrRepeat("shift+n") {
+		return scheme(kitty.NoPreferenceThemeFileName)
+	}
 	return nil
 }
 
@@ -556,6 +575,15 @@ func (self *handler) draw_accepting_screen() {
 	self.lp.Println()
 	self.lp.Println()
 	self.lp.Printf(` %slace the theme file in %s but do not modify %s`, ac("P"), utils.ConfigDir(), kc)
+	self.lp.Println()
+	self.lp.Println()
+	self.lp.Printf(` Save as colors to use when the OS switches to:`)
+	self.lp.Println()
+	self.lp.Printf(`   %sark mode`, ac("D"))
+	self.lp.Println()
+	self.lp.Printf(`   %sight mode`, ac("L"))
+	self.lp.Println()
+	self.lp.Printf(`   %so preference mode`, ac("N"))
 	self.lp.Println()
 	self.lp.Println()
 	self.lp.Printf(` %sbort and return to list of themes`, ac("A"))

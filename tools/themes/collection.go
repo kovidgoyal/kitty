@@ -586,15 +586,18 @@ func (self *Theme) SaveInDir(dirpath string) (err error) {
 	return utils.AtomicUpdateFile(path, bytes.NewReader(utils.UnsafeStringToBytes(code)), 0o644)
 }
 
-func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (err error) {
+func (self *Theme) SaveInFile(config_dir, config_file_name string) (err error) {
 	_ = os.MkdirAll(config_dir, 0o755)
-	path := filepath.Join(config_dir, `current-theme.conf`)
+	path := filepath.Join(config_dir, config_file_name)
 	code, err := self.Code()
 	if err != nil {
 		return err
 	}
-	err = utils.AtomicUpdateFile(path, bytes.NewReader(utils.UnsafeStringToBytes(code)), 0o644)
-	if err != nil {
+	return utils.AtomicUpdateFile(path, bytes.NewReader(utils.UnsafeStringToBytes(code)), 0o644)
+}
+
+func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (err error) {
+	if err = self.SaveInFile(config_dir, `current-theme.conf`); err != nil {
 		return err
 	}
 	confpath := config_file_name
