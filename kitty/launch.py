@@ -441,9 +441,10 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
             if callable(w):
                 try:
                     w(boss, {})
-                except Exception:
+                except Exception as err:
                     import traceback
-                    traceback.print_exc()
+                    log_error(traceback.format_exc())
+                    log_error(f'Failed to call on_load() in watcher from {path} with error: {err}')
         if m is False:
             continue
         w = m.get('on_close')
