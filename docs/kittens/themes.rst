@@ -47,9 +47,33 @@ Once that's done, the kitten sends kitty a signal to make it reload its config.
 
    If you want to have some color settings in your :file:`kitty.conf` that the
    theme kitten does not override, move them into a separate conf file and
-   ``include`` it into kitty.conf. The include should be places after the
+   ``include`` it into kitty.conf. The include should be placed after the
    inclusion of :file:`current-theme.conf` so that the settings in it override
    conflicting settings from :file:`current-theme.conf`.
+
+
+.. _auto_color_scheme:
+
+Change color themes automatically when the OS switches between light and dark
+--------------------------------------------------------------------------------
+
+You can have kitty automatically change its color theme when the OS switches
+between dark, light and no-preference modes. In order to do this, run the theme
+kitten as normal and at the final screen select the option to save your chosen
+theme as either light, dark, or no-preference. Repeat until you have chosen
+a theme for each of the three modes. Then, once you restart kitty, it will
+automatically use your chosen themes depending on the OS color scheme.
+
+This works by creating three files: :file:`dark-theme.auto.conf`,
+:file:`light-theme.auto.conf` and :file:`no-preference-theme.auto.conf` in the
+kitty config directory. When these files exist, kitty queries the OS for its color scheme
+and uses the appropriate file. Note that the colors in these files override all other
+colors, even those specified using the :option:`kitty --override` command line flag.
+kitty will also automatically change colors when the OS color scheme changes,
+for example, during night/day transitions.
+
+When using these colors, you can still dynamically change colors, but the next
+time the OS changes its color mode, any dynamics changes will be overridden.
 
 
 Using your own themes

@@ -17,8 +17,9 @@ from kittens.tui.operations import colored, styled
 
 from .child import cmdline_of_pid
 from .cli import version
+from .colors import theme_colors
 from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
-from .fast_data_types import Color, SingleKey, current_fonts, num_users, opengl_version_string, wayland_compositor_data
+from .fast_data_types import Color, SingleKey, current_fonts, glfw_get_system_color_theme, num_users, opengl_version_string, wayland_compositor_data
 from .options.types import Options as KittyOpts
 from .options.types import defaults
 from .options.utils import KeyboardMode, KeyDefinition
@@ -275,6 +276,7 @@ def debug_config(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None 
     p(yellow('  base dir:'), kitty_base_dir)
     p(yellow('  extensions dir:'), extensions_dir)
     p(yellow('  system shell:'), shell_path)
+    p(f'System color scheme: {green(glfw_get_system_color_theme())}. Applied color theme type: {yellow(theme_colors.applied_theme or "none")}')
     if opts.config_paths:
         p(green('Loaded config files:'))
         p(' ', '\n  '.join(opts.config_paths))
