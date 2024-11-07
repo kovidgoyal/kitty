@@ -15,6 +15,7 @@
 #define DESKTOP_INTERFACE "org.freedesktop.portal.Settings"
 #define GNOME_DESKTOP_NAMESPACE "org.gnome.desktop.interface"
 #define FDO_DESKTOP_NAMESPACE "org.freedesktop.appearance"
+static const char* supported_namespaces[2] = {FDO_DESKTOP_NAMESPACE, GNOME_DESKTOP_NAMESPACE};
 #define FDO_APPEARANCE_KEY "color-scheme"
 
 
@@ -126,6 +127,9 @@ read_desktop_settings(DBusConnection *session_bus) {
     DBusMessageIter iter, array_iter;
     dbus_message_iter_init_append(msg, &iter);
     if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &array_iter)) { return false; }
+    for (unsigned i = 0; i < arraysz(supported_namespaces); ++i) {
+        if (!dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &supported_namespaces[i])) return false;
+    }
     if (!dbus_message_iter_close_container(&iter, &array_iter)) { return false; }
     return call_method_with_msg(session_bus, msg, DBUS_TIMEOUT_USE_DEFAULT, process_desktop_settings, NULL);
 }
