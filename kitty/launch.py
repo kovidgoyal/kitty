@@ -439,7 +439,11 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
             watcher_modules[path] = m
             w = m.get('on_load')
             if callable(w):
-                w(boss)
+                try:
+                    w(boss, {})
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
         if m is False:
             continue
         w = m.get('on_close')
