@@ -467,8 +467,8 @@ face_has_codepoint(const void* face, char_type cp) {
 
 static bool
 has_emoji_presentation(const GPUCell *gpu_cell, const ListOfChars *lc) {
-    if (gpu_cell->attrs.width != 2) return false;
-    return lc->count > 1 && is_emoji(lc->chars[0]) && lc->chars[1] != VS15;
+    if (gpu_cell->attrs.width != 2 || !lc->count) return false;
+    return  is_emoji(lc->chars[0]) && (lc->count == 1 || lc->chars[1] != VS15);
 }
 
 bool
