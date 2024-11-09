@@ -834,7 +834,7 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.prev_was_empty = false;
     group_state.current_cell_data.cpu_cell = first_cpu_cell;
     group_state.current_cell_data.gpu_cell = first_gpu_cell;
-    group_state.current_cell_data.num_codepoints = MAX(1, lc.count);
+    group_state.current_cell_data.num_codepoints = MAX(1u, lc.count);
     group_state.current_cell_data.codepoints_consumed = 0;
     group_state.current_cell_data.current_codepoint = lc.chars[0];
     zero_at_ptr_count(group_state.groups, group_state.groups_capacity);

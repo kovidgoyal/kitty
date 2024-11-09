@@ -260,7 +260,7 @@ unicode_in_range(const Line *self, const index_type start, const index_type limi
     for (index_type i = start; i < limit; i++) {
         lc.chars = global_unicode_in_range_buf.chars + n; lc.capacity = global_unicode_in_range_buf.capacity - n;
         while (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) {
-            size_t ns = MAX(4096, 2 * global_unicode_in_range_buf.capacity);
+            size_t ns = MAX(4096u, 2 * global_unicode_in_range_buf.capacity);
             char_type *np = realloc(global_unicode_in_range_buf.chars, ns);
             if (!np) return PyErr_NoMemory();
             global_unicode_in_range_buf.capacity = ns; global_unicode_in_range_buf.chars = np;
