@@ -1,4 +1,4 @@
-44995 18283
+50187 22651
 0 null
 1 start of heading
 2 start of text
@@ -2120,6 +2120,7 @@
 2190 arabic vertical tail
 2192 arabic pound mark above
 2193 arabic piastre mark above
+2199 arabic pepet
 2200 arabic small high word al-juz
 2201 arabic small low word ishmaam
 2202 arabic small low word imaala
@@ -6210,6 +6211,8 @@
 6986 balinese letter zal sasak
 6987 balinese letter asyura sasak
 6988 balinese letter archaic jnya
+6990 balinese inverted carik siki
+6991 balinese inverted carik pareren
 6992 balinese digit zero
 6993 balinese digit one
 6994 balinese digit two
@@ -6257,6 +6260,7 @@
 7036 balinese musical symbol left-hand open ping
 7037 balinese panti lantang
 7038 balinese pamada lantang
+7039 balinese panti bawak
 7040 sundanese sign panyecek
 7041 sundanese sign panglayar
 7042 sundanese sign pangwisad
@@ -6508,6 +6512,8 @@
 7302 cyrillic small letter tall hard sign
 7303 cyrillic small letter tall yat
 7304 cyrillic small letter unblended uk
+7305 cyrillic capital letter tje
+7306 cyrillic small letter tje
 7312 georgian mtavruli capital letter an
 7313 georgian mtavruli capital letter ban
 7314 georgian mtavruli capital letter gan
@@ -8372,6 +8378,9 @@
 9252 symbol for newline
 9253 symbol for delete form two
 9254 symbol for substitute form two
+9255 symbol for delete square checker board form
+9256 symbol for delete rectangular checker board form
+9257 symbol for delete medium shade form
 9280 ocr hook
 9281 ocr chair
 9282 ocr fork
@@ -11228,6 +11237,10 @@
 12281 ideographic description character surround from upper right
 12282 ideographic description character surround from lower left
 12283 ideographic description character overlaid
+12284 ideographic description character surround from right
+12285 ideographic description character surround from lower right
+12286 ideographic description character horizontal reflection
+12287 ideographic description character rotation
 12288 ideographic space
 12289 ideographic comma
 12290 ideographic full stop
@@ -11702,6 +11715,9 @@
 12769 cjk stroke hzzzg
 12770 cjk stroke pg
 12771 cjk stroke q
+12772 cjk stroke hxg
+12773 cjk stroke szp
+12783 ideographic description character subtraction
 12784 katakana letter small ku
 12785 katakana letter small si
 12786 katakana letter small su
@@ -14252,6 +14268,9 @@
 42952 latin small letter d with short stroke overlay
 42953 latin capital letter s with short stroke overlay
 42954 latin small letter s with short stroke overlay
+42955 latin capital letter rams horn
+42956 latin capital letter s with diagonal stroke
+42957 latin small letter s with diagonal stroke
 42960 latin capital letter closed insular g
 42961 latin small letter closed insular g
 42963 latin small letter double thorn
@@ -14260,6 +14279,9 @@
 42967 latin small letter middle scots s
 42968 latin capital letter sigmoid s
 42969 latin small letter sigmoid s
+42970 latin capital letter lambda	lamda
+42971 latin small letter lambda	lamda
+42972 latin capital letter lambda with stroke	lamda
 42994 modifier letter capital c
 42995 modifier letter capital f
 42996 modifier letter capital q
@@ -21188,6 +21210,58 @@
 67001 vithkuqi small letter xe
 67003 vithkuqi small letter y
 67004 vithkuqi small letter ze
+67008 todhri letter a
+67009 todhri letter as
+67010 todhri letter ba
+67011 todhri letter mba
+67012 todhri letter ca
+67013 todhri letter cha
+67014 todhri letter da
+67015 todhri letter nda
+67016 todhri letter dha
+67017 todhri letter ei
+67018 todhri letter e
+67019 todhri letter fa
+67020 todhri letter ga
+67021 todhri letter nga
+67022 todhri letter gja
+67023 todhri letter ngja
+67024 todhri letter ha
+67025 todhri letter hja
+67026 todhri letter i
+67027 todhri letter ja
+67028 todhri letter ka
+67029 todhri letter la
+67030 todhri letter lla
+67031 todhri letter ma
+67032 todhri letter na
+67033 todhri letter njan
+67034 todhri letter o
+67035 todhri letter pa
+67036 todhri letter qa
+67037 todhri letter ra
+67038 todhri letter rra
+67039 todhri letter sa
+67040 todhri letter sha
+67041 todhri letter shta
+67042 todhri letter ta
+67043 todhri letter tha
+67044 todhri letter u
+67045 todhri letter va
+67046 todhri letter xa
+67047 todhri letter nxa
+67048 todhri letter xha
+67049 todhri letter nxha
+67050 todhri letter y
+67051 todhri letter jy
+67052 todhri letter za
+67053 todhri letter zha
+67054 todhri letter gha
+67055 todhri letter sta
+67056 todhri letter skan
+67057 todhri letter kha
+67058 todhri letter psa
+67059 todhri letter oo
 67072 linear a sign ab001
 67073 linear a sign ab002
 67074 linear a sign ab003
@@ -22509,6 +22583,75 @@
 68919 hanifi rohingya digit seven
 68920 hanifi rohingya digit eight
 68921 hanifi rohingya digit nine
+68928 garay digit zero
+68929 garay digit one
+68930 garay digit two
+68931 garay digit three
+68932 garay digit four
+68933 garay digit five
+68934 garay digit six
+68935 garay digit seven
+68936 garay digit eight
+68937 garay digit nine
+68938 garay vowel sign a
+68939 garay vowel sign i
+68940 garay vowel sign o
+68941 garay vowel sign ee
+68942 garay vowel length mark
+68943 garay sukun
+68944 garay capital letter a
+68945 garay capital letter ca
+68946 garay capital letter ma
+68947 garay capital letter ka
+68948 garay capital letter ba
+68949 garay capital letter ja
+68950 garay capital letter sa
+68951 garay capital letter wa
+68952 garay capital letter la
+68953 garay capital letter ga
+68954 garay capital letter da
+68955 garay capital letter xa
+68956 garay capital letter ya
+68957 garay capital letter ta
+68958 garay capital letter ra
+68959 garay capital letter nya
+68960 garay capital letter fa
+68961 garay capital letter na
+68962 garay capital letter pa
+68963 garay capital letter ha
+68964 garay capital letter old ka
+68965 garay capital letter old na
+68969 garay vowel sign e
+68970 garay consonant gemination mark
+68971 garay combining dot above
+68972 garay combining double dot above
+68973 garay consonant nasalization mark
+68974 garay hyphen
+68975 garay reduplication mark
+68976 garay small letter a
+68977 garay small letter ca
+68978 garay small letter ma
+68979 garay small letter ka
+68980 garay small letter ba
+68981 garay small letter ja
+68982 garay small letter sa
+68983 garay small letter wa
+68984 garay small letter la
+68985 garay small letter ga
+68986 garay small letter da
+68987 garay small letter xa
+68988 garay small letter ya
+68989 garay small letter ta
+68990 garay small letter ra
+68991 garay small letter nya
+68992 garay small letter fa
+68993 garay small letter na
+68994 garay small letter pa
+68995 garay small letter ha
+68996 garay small letter old ka
+68997 garay small letter old na
+69006 garay plus sign
+69007 garay minus sign
 69216 rumi digit one
 69217 rumi digit two
 69218 rumi digit three
@@ -22587,6 +22730,10 @@
 69293 yezidi hyphenation mark
 69296 yezidi letter lam with dot above
 69297 yezidi letter yot with circumflex above
+69314 arabic letter dal with two dots vertically below
+69315 arabic letter tah with two dots vertically below
+69316 arabic letter kaf with two dots vertically below
+69372 arabic combining alef overlay
 69373 arabic small low word sakta
 69374 arabic small low word qasr
 69375 arabic small low word madda
@@ -23451,6 +23598,86 @@
 70514 combining grantha letter na
 70515 combining grantha letter vi
 70516 combining grantha letter pa
+70528 tulu-tigalari letter a
+70529 tulu-tigalari letter aa
+70530 tulu-tigalari letter i
+70531 tulu-tigalari letter ii
+70532 tulu-tigalari letter u
+70533 tulu-tigalari letter uu
+70534 tulu-tigalari letter vocalic r
+70535 tulu-tigalari letter vocalic rr
+70536 tulu-tigalari letter vocalic l
+70537 tulu-tigalari letter vocalic ll
+70539 tulu-tigalari letter ee
+70542 tulu-tigalari letter ai
+70544 tulu-tigalari letter oo
+70545 tulu-tigalari letter au
+70546 tulu-tigalari letter ka
+70547 tulu-tigalari letter kha
+70548 tulu-tigalari letter ga
+70549 tulu-tigalari letter gha
+70550 tulu-tigalari letter nga
+70551 tulu-tigalari letter ca
+70552 tulu-tigalari letter cha
+70553 tulu-tigalari letter ja
+70554 tulu-tigalari letter jha
+70555 tulu-tigalari letter nya
+70556 tulu-tigalari letter tta
+70557 tulu-tigalari letter ttha
+70558 tulu-tigalari letter dda
+70559 tulu-tigalari letter ddha
+70560 tulu-tigalari letter nna
+70561 tulu-tigalari letter ta
+70562 tulu-tigalari letter tha
+70563 tulu-tigalari letter da
+70564 tulu-tigalari letter dha
+70565 tulu-tigalari letter na
+70566 tulu-tigalari letter pa
+70567 tulu-tigalari letter pha
+70568 tulu-tigalari letter ba
+70569 tulu-tigalari letter bha
+70570 tulu-tigalari letter ma
+70571 tulu-tigalari letter ya
+70572 tulu-tigalari letter ra
+70573 tulu-tigalari letter la
+70574 tulu-tigalari letter va
+70575 tulu-tigalari letter sha
+70576 tulu-tigalari letter ssa
+70577 tulu-tigalari letter sa
+70578 tulu-tigalari letter ha
+70579 tulu-tigalari letter lla
+70580 tulu-tigalari letter rra
+70581 tulu-tigalari letter llla
+70583 tulu-tigalari sign avagraha
+70584 tulu-tigalari vowel sign aa
+70585 tulu-tigalari vowel sign i
+70586 tulu-tigalari vowel sign ii
+70587 tulu-tigalari vowel sign u
+70588 tulu-tigalari vowel sign uu
+70589 tulu-tigalari vowel sign vocalic r
+70590 tulu-tigalari vowel sign vocalic rr
+70591 tulu-tigalari vowel sign vocalic l
+70592 tulu-tigalari vowel sign vocalic ll
+70594 tulu-tigalari vowel sign ee
+70597 tulu-tigalari vowel sign ai
+70599 tulu-tigalari vowel sign oo
+70600 tulu-tigalari vowel sign au
+70601 tulu-tigalari au length mark
+70602 tulu-tigalari sign candra anunasika
+70604 tulu-tigalari sign anusvara
+70605 tulu-tigalari sign visarga
+70606 tulu-tigalari sign virama
+70607 tulu-tigalari sign looped virama
+70608 tulu-tigalari conjoiner
+70609 tulu-tigalari repha
+70610 tulu-tigalari gemination mark
+70611 tulu-tigalari sign pluta
+70612 tulu-tigalari danda
+70613 tulu-tigalari double danda
+70615 tulu-tigalari sign om pushpika
+70616 tulu-tigalari sign shrii pushpika
+70625 tulu-tigalari vedic tone svarita
+70626 tulu-tigalari vedic tone anudatta
 70656 newa letter a
 70657 newa letter aa
 70658 newa letter i
@@ -23882,6 +24109,26 @@
 71367 takri digit seven
 71368 takri digit eight
 71369 takri digit nine
+71376 myanmar pao digit zero
+71377 myanmar pao digit one
+71378 myanmar pao digit two
+71379 myanmar pao digit three
+71380 myanmar pao digit four
+71381 myanmar pao digit five
+71382 myanmar pao digit six
+71383 myanmar pao digit seven
+71384 myanmar pao digit eight
+71385 myanmar pao digit nine
+71386 myanmar eastern pwo karen digit zero
+71387 myanmar eastern pwo karen digit one
+71388 myanmar eastern pwo karen digit two
+71389 myanmar eastern pwo karen digit three
+71390 myanmar eastern pwo karen digit four
+71391 myanmar eastern pwo karen digit five
+71392 myanmar eastern pwo karen digit six
+71393 myanmar eastern pwo karen digit seven
+71394 myanmar eastern pwo karen digit eight
+71395 myanmar eastern pwo karen digit nine
 71424 ahom letter ka
 71425 ahom letter kha
 71426 ahom letter nga
@@ -24466,6 +24713,50 @@
 72455 devanagari sign western nine-like bhale
 72456 devanagari sign reversed nine-like bhale
 72457 devanagari sign mindu
+72640 sunuwar letter devi
+72641 sunuwar letter tasla
+72642 sunuwar letter eko
+72643 sunuwar letter imar
+72644 sunuwar letter reu
+72645 sunuwar letter utthi
+72646 sunuwar letter kik
+72647 sunuwar letter ma
+72648 sunuwar letter appho
+72649 sunuwar letter pip
+72650 sunuwar letter gil
+72651 sunuwar letter hamso
+72652 sunuwar letter carmi
+72653 sunuwar letter nah
+72654 sunuwar letter bur
+72655 sunuwar letter jyah
+72656 sunuwar letter loacha
+72657 sunuwar letter otthi
+72658 sunuwar letter shyele
+72659 sunuwar letter varca
+72660 sunuwar letter yat
+72661 sunuwar letter ava
+72662 sunuwar letter aal
+72663 sunuwar letter donga
+72664 sunuwar letter thari
+72665 sunuwar letter phar
+72666 sunuwar letter ngar
+72667 sunuwar letter kha
+72668 sunuwar letter shyer
+72669 sunuwar letter chelap
+72670 sunuwar letter tentu
+72671 sunuwar letter thele
+72672 sunuwar letter kloko
+72673 sunuwar sign pvo
+72688 sunuwar digit zero
+72689 sunuwar digit one
+72690 sunuwar digit two
+72691 sunuwar digit three
+72692 sunuwar digit four
+72693 sunuwar digit five
+72694 sunuwar digit six
+72695 sunuwar digit seven
+72696 sunuwar digit eight
+72697 sunuwar digit nine
 72704 bhaiksuki letter a
 72705 bhaiksuki letter aa
 72706 bhaiksuki letter i
@@ -24880,6 +25171,7 @@
 73559 kawi digit seven
 73560 kawi digit eight
 73561 kawi digit nine
+73562 kawi sign nukta
 73648 lisu letter yha
 73664 tamil fraction one three-hundred-and-twentieth
 73665 tamil fraction one one-hundred-and-sixtieth
@@ -27375,6 +27667,4001 @@
 78931 egyptian hieroglyph modifier damaged at top and end
 78932 egyptian hieroglyph modifier damaged at bottom and end
 78933 egyptian hieroglyph modifier damaged
+78944 egyptian hieroglyph-13460
+78945 egyptian hieroglyph-13461
+78946 egyptian hieroglyph-13462
+78947 egyptian hieroglyph-13463
+78948 egyptian hieroglyph-13464
+78949 egyptian hieroglyph-13465
+78950 egyptian hieroglyph-13466
+78951 egyptian hieroglyph-13467
+78952 egyptian hieroglyph-13468
+78953 egyptian hieroglyph-13469
+78954 egyptian hieroglyph-1346a
+78955 egyptian hieroglyph-1346b
+78956 egyptian hieroglyph-1346c
+78957 egyptian hieroglyph-1346d
+78958 egyptian hieroglyph-1346e
+78959 egyptian hieroglyph-1346f
+78960 egyptian hieroglyph-13470
+78961 egyptian hieroglyph-13471
+78962 egyptian hieroglyph-13472
+78963 egyptian hieroglyph-13473
+78964 egyptian hieroglyph-13474
+78965 egyptian hieroglyph-13475
+78966 egyptian hieroglyph-13476
+78967 egyptian hieroglyph-13477
+78968 egyptian hieroglyph-13478
+78969 egyptian hieroglyph-13479
+78970 egyptian hieroglyph-1347a
+78971 egyptian hieroglyph-1347b
+78972 egyptian hieroglyph-1347c
+78973 egyptian hieroglyph-1347d
+78974 egyptian hieroglyph-1347e
+78975 egyptian hieroglyph-1347f
+78976 egyptian hieroglyph-13480
+78977 egyptian hieroglyph-13481
+78978 egyptian hieroglyph-13482
+78979 egyptian hieroglyph-13483
+78980 egyptian hieroglyph-13484
+78981 egyptian hieroglyph-13485
+78982 egyptian hieroglyph-13486
+78983 egyptian hieroglyph-13487
+78984 egyptian hieroglyph-13488
+78985 egyptian hieroglyph-13489
+78986 egyptian hieroglyph-1348a
+78987 egyptian hieroglyph-1348b
+78988 egyptian hieroglyph-1348c
+78989 egyptian hieroglyph-1348d
+78990 egyptian hieroglyph-1348e
+78991 egyptian hieroglyph-1348f
+78992 egyptian hieroglyph-13490
+78993 egyptian hieroglyph-13491
+78994 egyptian hieroglyph-13492
+78995 egyptian hieroglyph-13493
+78996 egyptian hieroglyph-13494
+78997 egyptian hieroglyph-13495
+78998 egyptian hieroglyph-13496
+78999 egyptian hieroglyph-13497
+79000 egyptian hieroglyph-13498
+79001 egyptian hieroglyph-13499
+79002 egyptian hieroglyph-1349a
+79003 egyptian hieroglyph-1349b
+79004 egyptian hieroglyph-1349c
+79005 egyptian hieroglyph-1349d
+79006 egyptian hieroglyph-1349e
+79007 egyptian hieroglyph-1349f
+79008 egyptian hieroglyph-134a0
+79009 egyptian hieroglyph-134a1
+79010 egyptian hieroglyph-134a2
+79011 egyptian hieroglyph-134a3
+79012 egyptian hieroglyph-134a4
+79013 egyptian hieroglyph-134a5
+79014 egyptian hieroglyph-134a6
+79015 egyptian hieroglyph-134a7
+79016 egyptian hieroglyph-134a8
+79017 egyptian hieroglyph-134a9
+79018 egyptian hieroglyph-134aa
+79019 egyptian hieroglyph-134ab
+79020 egyptian hieroglyph-134ac
+79021 egyptian hieroglyph-134ad
+79022 egyptian hieroglyph-134ae
+79023 egyptian hieroglyph-134af
+79024 egyptian hieroglyph-134b0
+79025 egyptian hieroglyph-134b1
+79026 egyptian hieroglyph-134b2
+79027 egyptian hieroglyph-134b3
+79028 egyptian hieroglyph-134b4
+79029 egyptian hieroglyph-134b5
+79030 egyptian hieroglyph-134b6
+79031 egyptian hieroglyph-134b7
+79032 egyptian hieroglyph-134b8
+79033 egyptian hieroglyph-134b9
+79034 egyptian hieroglyph-134ba
+79035 egyptian hieroglyph-134bb
+79036 egyptian hieroglyph-134bc
+79037 egyptian hieroglyph-134bd
+79038 egyptian hieroglyph-134be
+79039 egyptian hieroglyph-134bf
+79040 egyptian hieroglyph-134c0
+79041 egyptian hieroglyph-134c1
+79042 egyptian hieroglyph-134c2
+79043 egyptian hieroglyph-134c3
+79044 egyptian hieroglyph-134c4
+79045 egyptian hieroglyph-134c5
+79046 egyptian hieroglyph-134c6
+79047 egyptian hieroglyph-134c7
+79048 egyptian hieroglyph-134c8
+79049 egyptian hieroglyph-134c9
+79050 egyptian hieroglyph-134ca
+79051 egyptian hieroglyph-134cb
+79052 egyptian hieroglyph-134cc
+79053 egyptian hieroglyph-134cd
+79054 egyptian hieroglyph-134ce
+79055 egyptian hieroglyph-134cf
+79056 egyptian hieroglyph-134d0
+79057 egyptian hieroglyph-134d1
+79058 egyptian hieroglyph-134d2
+79059 egyptian hieroglyph-134d3
+79060 egyptian hieroglyph-134d4
+79061 egyptian hieroglyph-134d5
+79062 egyptian hieroglyph-134d6
+79063 egyptian hieroglyph-134d7
+79064 egyptian hieroglyph-134d8
+79065 egyptian hieroglyph-134d9
+79066 egyptian hieroglyph-134da
+79067 egyptian hieroglyph-134db
+79068 egyptian hieroglyph-134dc
+79069 egyptian hieroglyph-134dd
+79070 egyptian hieroglyph-134de
+79071 egyptian hieroglyph-134df
+79072 egyptian hieroglyph-134e0
+79073 egyptian hieroglyph-134e1
+79074 egyptian hieroglyph-134e2
+79075 egyptian hieroglyph-134e3
+79076 egyptian hieroglyph-134e4
+79077 egyptian hieroglyph-134e5
+79078 egyptian hieroglyph-134e6
+79079 egyptian hieroglyph-134e7
+79080 egyptian hieroglyph-134e8
+79081 egyptian hieroglyph-134e9
+79082 egyptian hieroglyph-134ea
+79083 egyptian hieroglyph-134eb
+79084 egyptian hieroglyph-134ec
+79085 egyptian hieroglyph-134ed
+79086 egyptian hieroglyph-134ee
+79087 egyptian hieroglyph-134ef
+79088 egyptian hieroglyph-134f0
+79089 egyptian hieroglyph-134f1
+79090 egyptian hieroglyph-134f2
+79091 egyptian hieroglyph-134f3
+79092 egyptian hieroglyph-134f4
+79093 egyptian hieroglyph-134f5
+79094 egyptian hieroglyph-134f6
+79095 egyptian hieroglyph-134f7
+79096 egyptian hieroglyph-134f8
+79097 egyptian hieroglyph-134f9
+79098 egyptian hieroglyph-134fa
+79099 egyptian hieroglyph-134fb
+79100 egyptian hieroglyph-134fc
+79101 egyptian hieroglyph-134fd
+79102 egyptian hieroglyph-134fe
+79103 egyptian hieroglyph-134ff
+79104 egyptian hieroglyph-13500
+79105 egyptian hieroglyph-13501
+79106 egyptian hieroglyph-13502
+79107 egyptian hieroglyph-13503
+79108 egyptian hieroglyph-13504
+79109 egyptian hieroglyph-13505
+79110 egyptian hieroglyph-13506
+79111 egyptian hieroglyph-13507
+79112 egyptian hieroglyph-13508
+79113 egyptian hieroglyph-13509
+79114 egyptian hieroglyph-1350a
+79115 egyptian hieroglyph-1350b
+79116 egyptian hieroglyph-1350c
+79117 egyptian hieroglyph-1350d
+79118 egyptian hieroglyph-1350e
+79119 egyptian hieroglyph-1350f
+79120 egyptian hieroglyph-13510
+79121 egyptian hieroglyph-13511
+79122 egyptian hieroglyph-13512
+79123 egyptian hieroglyph-13513
+79124 egyptian hieroglyph-13514
+79125 egyptian hieroglyph-13515
+79126 egyptian hieroglyph-13516
+79127 egyptian hieroglyph-13517
+79128 egyptian hieroglyph-13518
+79129 egyptian hieroglyph-13519
+79130 egyptian hieroglyph-1351a
+79131 egyptian hieroglyph-1351b
+79132 egyptian hieroglyph-1351c
+79133 egyptian hieroglyph-1351d
+79134 egyptian hieroglyph-1351e
+79135 egyptian hieroglyph-1351f
+79136 egyptian hieroglyph-13520
+79137 egyptian hieroglyph-13521
+79138 egyptian hieroglyph-13522
+79139 egyptian hieroglyph-13523
+79140 egyptian hieroglyph-13524
+79141 egyptian hieroglyph-13525
+79142 egyptian hieroglyph-13526
+79143 egyptian hieroglyph-13527
+79144 egyptian hieroglyph-13528
+79145 egyptian hieroglyph-13529
+79146 egyptian hieroglyph-1352a
+79147 egyptian hieroglyph-1352b
+79148 egyptian hieroglyph-1352c
+79149 egyptian hieroglyph-1352d
+79150 egyptian hieroglyph-1352e
+79151 egyptian hieroglyph-1352f
+79152 egyptian hieroglyph-13530
+79153 egyptian hieroglyph-13531
+79154 egyptian hieroglyph-13532
+79155 egyptian hieroglyph-13533
+79156 egyptian hieroglyph-13534
+79157 egyptian hieroglyph-13535
+79158 egyptian hieroglyph-13536
+79159 egyptian hieroglyph-13537
+79160 egyptian hieroglyph-13538
+79161 egyptian hieroglyph-13539
+79162 egyptian hieroglyph-1353a
+79163 egyptian hieroglyph-1353b
+79164 egyptian hieroglyph-1353c
+79165 egyptian hieroglyph-1353d
+79166 egyptian hieroglyph-1353e
+79167 egyptian hieroglyph-1353f
+79168 egyptian hieroglyph-13540
+79169 egyptian hieroglyph-13541
+79170 egyptian hieroglyph-13542
+79171 egyptian hieroglyph-13543
+79172 egyptian hieroglyph-13544
+79173 egyptian hieroglyph-13545
+79174 egyptian hieroglyph-13546
+79175 egyptian hieroglyph-13547
+79176 egyptian hieroglyph-13548
+79177 egyptian hieroglyph-13549
+79178 egyptian hieroglyph-1354a
+79179 egyptian hieroglyph-1354b
+79180 egyptian hieroglyph-1354c
+79181 egyptian hieroglyph-1354d
+79182 egyptian hieroglyph-1354e
+79183 egyptian hieroglyph-1354f
+79184 egyptian hieroglyph-13550
+79185 egyptian hieroglyph-13551
+79186 egyptian hieroglyph-13552
+79187 egyptian hieroglyph-13553
+79188 egyptian hieroglyph-13554
+79189 egyptian hieroglyph-13555
+79190 egyptian hieroglyph-13556
+79191 egyptian hieroglyph-13557
+79192 egyptian hieroglyph-13558
+79193 egyptian hieroglyph-13559
+79194 egyptian hieroglyph-1355a
+79195 egyptian hieroglyph-1355b
+79196 egyptian hieroglyph-1355c
+79197 egyptian hieroglyph-1355d
+79198 egyptian hieroglyph-1355e
+79199 egyptian hieroglyph-1355f
+79200 egyptian hieroglyph-13560
+79201 egyptian hieroglyph-13561
+79202 egyptian hieroglyph-13562
+79203 egyptian hieroglyph-13563
+79204 egyptian hieroglyph-13564
+79205 egyptian hieroglyph-13565
+79206 egyptian hieroglyph-13566
+79207 egyptian hieroglyph-13567
+79208 egyptian hieroglyph-13568
+79209 egyptian hieroglyph-13569
+79210 egyptian hieroglyph-1356a
+79211 egyptian hieroglyph-1356b
+79212 egyptian hieroglyph-1356c
+79213 egyptian hieroglyph-1356d
+79214 egyptian hieroglyph-1356e
+79215 egyptian hieroglyph-1356f
+79216 egyptian hieroglyph-13570
+79217 egyptian hieroglyph-13571
+79218 egyptian hieroglyph-13572
+79219 egyptian hieroglyph-13573
+79220 egyptian hieroglyph-13574
+79221 egyptian hieroglyph-13575
+79222 egyptian hieroglyph-13576
+79223 egyptian hieroglyph-13577
+79224 egyptian hieroglyph-13578
+79225 egyptian hieroglyph-13579
+79226 egyptian hieroglyph-1357a
+79227 egyptian hieroglyph-1357b
+79228 egyptian hieroglyph-1357c
+79229 egyptian hieroglyph-1357d
+79230 egyptian hieroglyph-1357e
+79231 egyptian hieroglyph-1357f
+79232 egyptian hieroglyph-13580
+79233 egyptian hieroglyph-13581
+79234 egyptian hieroglyph-13582
+79235 egyptian hieroglyph-13583
+79236 egyptian hieroglyph-13584
+79237 egyptian hieroglyph-13585
+79238 egyptian hieroglyph-13586
+79239 egyptian hieroglyph-13587
+79240 egyptian hieroglyph-13588
+79241 egyptian hieroglyph-13589
+79242 egyptian hieroglyph-1358a
+79243 egyptian hieroglyph-1358b
+79244 egyptian hieroglyph-1358c
+79245 egyptian hieroglyph-1358d
+79246 egyptian hieroglyph-1358e
+79247 egyptian hieroglyph-1358f
+79248 egyptian hieroglyph-13590
+79249 egyptian hieroglyph-13591
+79250 egyptian hieroglyph-13592
+79251 egyptian hieroglyph-13593
+79252 egyptian hieroglyph-13594
+79253 egyptian hieroglyph-13595
+79254 egyptian hieroglyph-13596
+79255 egyptian hieroglyph-13597
+79256 egyptian hieroglyph-13598
+79257 egyptian hieroglyph-13599
+79258 egyptian hieroglyph-1359a
+79259 egyptian hieroglyph-1359b
+79260 egyptian hieroglyph-1359c
+79261 egyptian hieroglyph-1359d
+79262 egyptian hieroglyph-1359e
+79263 egyptian hieroglyph-1359f
+79264 egyptian hieroglyph-135a0
+79265 egyptian hieroglyph-135a1
+79266 egyptian hieroglyph-135a2
+79267 egyptian hieroglyph-135a3
+79268 egyptian hieroglyph-135a4
+79269 egyptian hieroglyph-135a5
+79270 egyptian hieroglyph-135a6
+79271 egyptian hieroglyph-135a7
+79272 egyptian hieroglyph-135a8
+79273 egyptian hieroglyph-135a9
+79274 egyptian hieroglyph-135aa
+79275 egyptian hieroglyph-135ab
+79276 egyptian hieroglyph-135ac
+79277 egyptian hieroglyph-135ad
+79278 egyptian hieroglyph-135ae
+79279 egyptian hieroglyph-135af
+79280 egyptian hieroglyph-135b0
+79281 egyptian hieroglyph-135b1
+79282 egyptian hieroglyph-135b2
+79283 egyptian hieroglyph-135b3
+79284 egyptian hieroglyph-135b4
+79285 egyptian hieroglyph-135b5
+79286 egyptian hieroglyph-135b6
+79287 egyptian hieroglyph-135b7
+79288 egyptian hieroglyph-135b8
+79289 egyptian hieroglyph-135b9
+79290 egyptian hieroglyph-135ba
+79291 egyptian hieroglyph-135bb
+79292 egyptian hieroglyph-135bc
+79293 egyptian hieroglyph-135bd
+79294 egyptian hieroglyph-135be
+79295 egyptian hieroglyph-135bf
+79296 egyptian hieroglyph-135c0
+79297 egyptian hieroglyph-135c1
+79298 egyptian hieroglyph-135c2
+79299 egyptian hieroglyph-135c3
+79300 egyptian hieroglyph-135c4
+79301 egyptian hieroglyph-135c5
+79302 egyptian hieroglyph-135c6
+79303 egyptian hieroglyph-135c7
+79304 egyptian hieroglyph-135c8
+79305 egyptian hieroglyph-135c9
+79306 egyptian hieroglyph-135ca
+79307 egyptian hieroglyph-135cb
+79308 egyptian hieroglyph-135cc
+79309 egyptian hieroglyph-135cd
+79310 egyptian hieroglyph-135ce
+79311 egyptian hieroglyph-135cf
+79312 egyptian hieroglyph-135d0
+79313 egyptian hieroglyph-135d1
+79314 egyptian hieroglyph-135d2
+79315 egyptian hieroglyph-135d3
+79316 egyptian hieroglyph-135d4
+79317 egyptian hieroglyph-135d5
+79318 egyptian hieroglyph-135d6
+79319 egyptian hieroglyph-135d7
+79320 egyptian hieroglyph-135d8
+79321 egyptian hieroglyph-135d9
+79322 egyptian hieroglyph-135da
+79323 egyptian hieroglyph-135db
+79324 egyptian hieroglyph-135dc
+79325 egyptian hieroglyph-135dd
+79326 egyptian hieroglyph-135de
+79327 egyptian hieroglyph-135df
+79328 egyptian hieroglyph-135e0
+79329 egyptian hieroglyph-135e1
+79330 egyptian hieroglyph-135e2
+79331 egyptian hieroglyph-135e3
+79332 egyptian hieroglyph-135e4
+79333 egyptian hieroglyph-135e5
+79334 egyptian hieroglyph-135e6
+79335 egyptian hieroglyph-135e7
+79336 egyptian hieroglyph-135e8
+79337 egyptian hieroglyph-135e9
+79338 egyptian hieroglyph-135ea
+79339 egyptian hieroglyph-135eb
+79340 egyptian hieroglyph-135ec
+79341 egyptian hieroglyph-135ed
+79342 egyptian hieroglyph-135ee
+79343 egyptian hieroglyph-135ef
+79344 egyptian hieroglyph-135f0
+79345 egyptian hieroglyph-135f1
+79346 egyptian hieroglyph-135f2
+79347 egyptian hieroglyph-135f3
+79348 egyptian hieroglyph-135f4
+79349 egyptian hieroglyph-135f5
+79350 egyptian hieroglyph-135f6
+79351 egyptian hieroglyph-135f7
+79352 egyptian hieroglyph-135f8
+79353 egyptian hieroglyph-135f9
+79354 egyptian hieroglyph-135fa
+79355 egyptian hieroglyph-135fb
+79356 egyptian hieroglyph-135fc
+79357 egyptian hieroglyph-135fd
+79358 egyptian hieroglyph-135fe
+79359 egyptian hieroglyph-135ff
+79360 egyptian hieroglyph-13600
+79361 egyptian hieroglyph-13601
+79362 egyptian hieroglyph-13602
+79363 egyptian hieroglyph-13603
+79364 egyptian hieroglyph-13604
+79365 egyptian hieroglyph-13605
+79366 egyptian hieroglyph-13606
+79367 egyptian hieroglyph-13607
+79368 egyptian hieroglyph-13608
+79369 egyptian hieroglyph-13609
+79370 egyptian hieroglyph-1360a
+79371 egyptian hieroglyph-1360b
+79372 egyptian hieroglyph-1360c
+79373 egyptian hieroglyph-1360d
+79374 egyptian hieroglyph-1360e
+79375 egyptian hieroglyph-1360f
+79376 egyptian hieroglyph-13610
+79377 egyptian hieroglyph-13611
+79378 egyptian hieroglyph-13612
+79379 egyptian hieroglyph-13613
+79380 egyptian hieroglyph-13614
+79381 egyptian hieroglyph-13615
+79382 egyptian hieroglyph-13616
+79383 egyptian hieroglyph-13617
+79384 egyptian hieroglyph-13618
+79385 egyptian hieroglyph-13619
+79386 egyptian hieroglyph-1361a
+79387 egyptian hieroglyph-1361b
+79388 egyptian hieroglyph-1361c
+79389 egyptian hieroglyph-1361d
+79390 egyptian hieroglyph-1361e
+79391 egyptian hieroglyph-1361f
+79392 egyptian hieroglyph-13620
+79393 egyptian hieroglyph-13621
+79394 egyptian hieroglyph-13622
+79395 egyptian hieroglyph-13623
+79396 egyptian hieroglyph-13624
+79397 egyptian hieroglyph-13625
+79398 egyptian hieroglyph-13626
+79399 egyptian hieroglyph-13627
+79400 egyptian hieroglyph-13628
+79401 egyptian hieroglyph-13629
+79402 egyptian hieroglyph-1362a
+79403 egyptian hieroglyph-1362b
+79404 egyptian hieroglyph-1362c
+79405 egyptian hieroglyph-1362d
+79406 egyptian hieroglyph-1362e
+79407 egyptian hieroglyph-1362f
+79408 egyptian hieroglyph-13630
+79409 egyptian hieroglyph-13631
+79410 egyptian hieroglyph-13632
+79411 egyptian hieroglyph-13633
+79412 egyptian hieroglyph-13634
+79413 egyptian hieroglyph-13635
+79414 egyptian hieroglyph-13636
+79415 egyptian hieroglyph-13637
+79416 egyptian hieroglyph-13638
+79417 egyptian hieroglyph-13639
+79418 egyptian hieroglyph-1363a
+79419 egyptian hieroglyph-1363b
+79420 egyptian hieroglyph-1363c
+79421 egyptian hieroglyph-1363d
+79422 egyptian hieroglyph-1363e
+79423 egyptian hieroglyph-1363f
+79424 egyptian hieroglyph-13640
+79425 egyptian hieroglyph-13641
+79426 egyptian hieroglyph-13642
+79427 egyptian hieroglyph-13643
+79428 egyptian hieroglyph-13644
+79429 egyptian hieroglyph-13645
+79430 egyptian hieroglyph-13646
+79431 egyptian hieroglyph-13647
+79432 egyptian hieroglyph-13648
+79433 egyptian hieroglyph-13649
+79434 egyptian hieroglyph-1364a
+79435 egyptian hieroglyph-1364b
+79436 egyptian hieroglyph-1364c
+79437 egyptian hieroglyph-1364d
+79438 egyptian hieroglyph-1364e
+79439 egyptian hieroglyph-1364f
+79440 egyptian hieroglyph-13650
+79441 egyptian hieroglyph-13651
+79442 egyptian hieroglyph-13652
+79443 egyptian hieroglyph-13653
+79444 egyptian hieroglyph-13654
+79445 egyptian hieroglyph-13655
+79446 egyptian hieroglyph-13656
+79447 egyptian hieroglyph-13657
+79448 egyptian hieroglyph-13658
+79449 egyptian hieroglyph-13659
+79450 egyptian hieroglyph-1365a
+79451 egyptian hieroglyph-1365b
+79452 egyptian hieroglyph-1365c
+79453 egyptian hieroglyph-1365d
+79454 egyptian hieroglyph-1365e
+79455 egyptian hieroglyph-1365f
+79456 egyptian hieroglyph-13660
+79457 egyptian hieroglyph-13661
+79458 egyptian hieroglyph-13662
+79459 egyptian hieroglyph-13663
+79460 egyptian hieroglyph-13664
+79461 egyptian hieroglyph-13665
+79462 egyptian hieroglyph-13666
+79463 egyptian hieroglyph-13667
+79464 egyptian hieroglyph-13668
+79465 egyptian hieroglyph-13669
+79466 egyptian hieroglyph-1366a
+79467 egyptian hieroglyph-1366b
+79468 egyptian hieroglyph-1366c
+79469 egyptian hieroglyph-1366d
+79470 egyptian hieroglyph-1366e
+79471 egyptian hieroglyph-1366f
+79472 egyptian hieroglyph-13670
+79473 egyptian hieroglyph-13671
+79474 egyptian hieroglyph-13672
+79475 egyptian hieroglyph-13673
+79476 egyptian hieroglyph-13674
+79477 egyptian hieroglyph-13675
+79478 egyptian hieroglyph-13676
+79479 egyptian hieroglyph-13677
+79480 egyptian hieroglyph-13678
+79481 egyptian hieroglyph-13679
+79482 egyptian hieroglyph-1367a
+79483 egyptian hieroglyph-1367b
+79484 egyptian hieroglyph-1367c
+79485 egyptian hieroglyph-1367d
+79486 egyptian hieroglyph-1367e
+79487 egyptian hieroglyph-1367f
+79488 egyptian hieroglyph-13680
+79489 egyptian hieroglyph-13681
+79490 egyptian hieroglyph-13682
+79491 egyptian hieroglyph-13683
+79492 egyptian hieroglyph-13684
+79493 egyptian hieroglyph-13685
+79494 egyptian hieroglyph-13686
+79495 egyptian hieroglyph-13687
+79496 egyptian hieroglyph-13688
+79497 egyptian hieroglyph-13689
+79498 egyptian hieroglyph-1368a
+79499 egyptian hieroglyph-1368b
+79500 egyptian hieroglyph-1368c
+79501 egyptian hieroglyph-1368d
+79502 egyptian hieroglyph-1368e
+79503 egyptian hieroglyph-1368f
+79504 egyptian hieroglyph-13690
+79505 egyptian hieroglyph-13691
+79506 egyptian hieroglyph-13692
+79507 egyptian hieroglyph-13693
+79508 egyptian hieroglyph-13694
+79509 egyptian hieroglyph-13695
+79510 egyptian hieroglyph-13696
+79511 egyptian hieroglyph-13697
+79512 egyptian hieroglyph-13698
+79513 egyptian hieroglyph-13699
+79514 egyptian hieroglyph-1369a
+79515 egyptian hieroglyph-1369b
+79516 egyptian hieroglyph-1369c
+79517 egyptian hieroglyph-1369d
+79518 egyptian hieroglyph-1369e
+79519 egyptian hieroglyph-1369f
+79520 egyptian hieroglyph-136a0
+79521 egyptian hieroglyph-136a1
+79522 egyptian hieroglyph-136a2
+79523 egyptian hieroglyph-136a3
+79524 egyptian hieroglyph-136a4
+79525 egyptian hieroglyph-136a5
+79526 egyptian hieroglyph-136a6
+79527 egyptian hieroglyph-136a7
+79528 egyptian hieroglyph-136a8
+79529 egyptian hieroglyph-136a9
+79530 egyptian hieroglyph-136aa
+79531 egyptian hieroglyph-136ab
+79532 egyptian hieroglyph-136ac
+79533 egyptian hieroglyph-136ad
+79534 egyptian hieroglyph-136ae
+79535 egyptian hieroglyph-136af
+79536 egyptian hieroglyph-136b0
+79537 egyptian hieroglyph-136b1
+79538 egyptian hieroglyph-136b2
+79539 egyptian hieroglyph-136b3
+79540 egyptian hieroglyph-136b4
+79541 egyptian hieroglyph-136b5
+79542 egyptian hieroglyph-136b6
+79543 egyptian hieroglyph-136b7
+79544 egyptian hieroglyph-136b8
+79545 egyptian hieroglyph-136b9
+79546 egyptian hieroglyph-136ba
+79547 egyptian hieroglyph-136bb
+79548 egyptian hieroglyph-136bc
+79549 egyptian hieroglyph-136bd
+79550 egyptian hieroglyph-136be
+79551 egyptian hieroglyph-136bf
+79552 egyptian hieroglyph-136c0
+79553 egyptian hieroglyph-136c1
+79554 egyptian hieroglyph-136c2
+79555 egyptian hieroglyph-136c3
+79556 egyptian hieroglyph-136c4
+79557 egyptian hieroglyph-136c5
+79558 egyptian hieroglyph-136c6
+79559 egyptian hieroglyph-136c7
+79560 egyptian hieroglyph-136c8
+79561 egyptian hieroglyph-136c9
+79562 egyptian hieroglyph-136ca
+79563 egyptian hieroglyph-136cb
+79564 egyptian hieroglyph-136cc
+79565 egyptian hieroglyph-136cd
+79566 egyptian hieroglyph-136ce
+79567 egyptian hieroglyph-136cf
+79568 egyptian hieroglyph-136d0
+79569 egyptian hieroglyph-136d1
+79570 egyptian hieroglyph-136d2
+79571 egyptian hieroglyph-136d3
+79572 egyptian hieroglyph-136d4
+79573 egyptian hieroglyph-136d5
+79574 egyptian hieroglyph-136d6
+79575 egyptian hieroglyph-136d7
+79576 egyptian hieroglyph-136d8
+79577 egyptian hieroglyph-136d9
+79578 egyptian hieroglyph-136da
+79579 egyptian hieroglyph-136db
+79580 egyptian hieroglyph-136dc
+79581 egyptian hieroglyph-136dd
+79582 egyptian hieroglyph-136de
+79583 egyptian hieroglyph-136df
+79584 egyptian hieroglyph-136e0
+79585 egyptian hieroglyph-136e1
+79586 egyptian hieroglyph-136e2
+79587 egyptian hieroglyph-136e3
+79588 egyptian hieroglyph-136e4
+79589 egyptian hieroglyph-136e5
+79590 egyptian hieroglyph-136e6
+79591 egyptian hieroglyph-136e7
+79592 egyptian hieroglyph-136e8
+79593 egyptian hieroglyph-136e9
+79594 egyptian hieroglyph-136ea
+79595 egyptian hieroglyph-136eb
+79596 egyptian hieroglyph-136ec
+79597 egyptian hieroglyph-136ed
+79598 egyptian hieroglyph-136ee
+79599 egyptian hieroglyph-136ef
+79600 egyptian hieroglyph-136f0
+79601 egyptian hieroglyph-136f1
+79602 egyptian hieroglyph-136f2
+79603 egyptian hieroglyph-136f3
+79604 egyptian hieroglyph-136f4
+79605 egyptian hieroglyph-136f5
+79606 egyptian hieroglyph-136f6
+79607 egyptian hieroglyph-136f7
+79608 egyptian hieroglyph-136f8
+79609 egyptian hieroglyph-136f9
+79610 egyptian hieroglyph-136fa
+79611 egyptian hieroglyph-136fb
+79612 egyptian hieroglyph-136fc
+79613 egyptian hieroglyph-136fd
+79614 egyptian hieroglyph-136fe
+79615 egyptian hieroglyph-136ff
+79616 egyptian hieroglyph-13700
+79617 egyptian hieroglyph-13701
+79618 egyptian hieroglyph-13702
+79619 egyptian hieroglyph-13703
+79620 egyptian hieroglyph-13704
+79621 egyptian hieroglyph-13705
+79622 egyptian hieroglyph-13706
+79623 egyptian hieroglyph-13707
+79624 egyptian hieroglyph-13708
+79625 egyptian hieroglyph-13709
+79626 egyptian hieroglyph-1370a
+79627 egyptian hieroglyph-1370b
+79628 egyptian hieroglyph-1370c
+79629 egyptian hieroglyph-1370d
+79630 egyptian hieroglyph-1370e
+79631 egyptian hieroglyph-1370f
+79632 egyptian hieroglyph-13710
+79633 egyptian hieroglyph-13711
+79634 egyptian hieroglyph-13712
+79635 egyptian hieroglyph-13713
+79636 egyptian hieroglyph-13714
+79637 egyptian hieroglyph-13715
+79638 egyptian hieroglyph-13716
+79639 egyptian hieroglyph-13717
+79640 egyptian hieroglyph-13718
+79641 egyptian hieroglyph-13719
+79642 egyptian hieroglyph-1371a
+79643 egyptian hieroglyph-1371b
+79644 egyptian hieroglyph-1371c
+79645 egyptian hieroglyph-1371d
+79646 egyptian hieroglyph-1371e
+79647 egyptian hieroglyph-1371f
+79648 egyptian hieroglyph-13720
+79649 egyptian hieroglyph-13721
+79650 egyptian hieroglyph-13722
+79651 egyptian hieroglyph-13723
+79652 egyptian hieroglyph-13724
+79653 egyptian hieroglyph-13725
+79654 egyptian hieroglyph-13726
+79655 egyptian hieroglyph-13727
+79656 egyptian hieroglyph-13728
+79657 egyptian hieroglyph-13729
+79658 egyptian hieroglyph-1372a
+79659 egyptian hieroglyph-1372b
+79660 egyptian hieroglyph-1372c
+79661 egyptian hieroglyph-1372d
+79662 egyptian hieroglyph-1372e
+79663 egyptian hieroglyph-1372f
+79664 egyptian hieroglyph-13730
+79665 egyptian hieroglyph-13731
+79666 egyptian hieroglyph-13732
+79667 egyptian hieroglyph-13733
+79668 egyptian hieroglyph-13734
+79669 egyptian hieroglyph-13735
+79670 egyptian hieroglyph-13736
+79671 egyptian hieroglyph-13737
+79672 egyptian hieroglyph-13738
+79673 egyptian hieroglyph-13739
+79674 egyptian hieroglyph-1373a
+79675 egyptian hieroglyph-1373b
+79676 egyptian hieroglyph-1373c
+79677 egyptian hieroglyph-1373d
+79678 egyptian hieroglyph-1373e
+79679 egyptian hieroglyph-1373f
+79680 egyptian hieroglyph-13740
+79681 egyptian hieroglyph-13741
+79682 egyptian hieroglyph-13742
+79683 egyptian hieroglyph-13743
+79684 egyptian hieroglyph-13744
+79685 egyptian hieroglyph-13745
+79686 egyptian hieroglyph-13746
+79687 egyptian hieroglyph-13747
+79688 egyptian hieroglyph-13748
+79689 egyptian hieroglyph-13749
+79690 egyptian hieroglyph-1374a
+79691 egyptian hieroglyph-1374b
+79692 egyptian hieroglyph-1374c
+79693 egyptian hieroglyph-1374d
+79694 egyptian hieroglyph-1374e
+79695 egyptian hieroglyph-1374f
+79696 egyptian hieroglyph-13750
+79697 egyptian hieroglyph-13751
+79698 egyptian hieroglyph-13752
+79699 egyptian hieroglyph-13753
+79700 egyptian hieroglyph-13754
+79701 egyptian hieroglyph-13755
+79702 egyptian hieroglyph-13756
+79703 egyptian hieroglyph-13757
+79704 egyptian hieroglyph-13758
+79705 egyptian hieroglyph-13759
+79706 egyptian hieroglyph-1375a
+79707 egyptian hieroglyph-1375b
+79708 egyptian hieroglyph-1375c
+79709 egyptian hieroglyph-1375d
+79710 egyptian hieroglyph-1375e
+79711 egyptian hieroglyph-1375f
+79712 egyptian hieroglyph-13760
+79713 egyptian hieroglyph-13761
+79714 egyptian hieroglyph-13762
+79715 egyptian hieroglyph-13763
+79716 egyptian hieroglyph-13764
+79717 egyptian hieroglyph-13765
+79718 egyptian hieroglyph-13766
+79719 egyptian hieroglyph-13767
+79720 egyptian hieroglyph-13768
+79721 egyptian hieroglyph-13769
+79722 egyptian hieroglyph-1376a
+79723 egyptian hieroglyph-1376b
+79724 egyptian hieroglyph-1376c
+79725 egyptian hieroglyph-1376d
+79726 egyptian hieroglyph-1376e
+79727 egyptian hieroglyph-1376f
+79728 egyptian hieroglyph-13770
+79729 egyptian hieroglyph-13771
+79730 egyptian hieroglyph-13772
+79731 egyptian hieroglyph-13773
+79732 egyptian hieroglyph-13774
+79733 egyptian hieroglyph-13775
+79734 egyptian hieroglyph-13776
+79735 egyptian hieroglyph-13777
+79736 egyptian hieroglyph-13778
+79737 egyptian hieroglyph-13779
+79738 egyptian hieroglyph-1377a
+79739 egyptian hieroglyph-1377b
+79740 egyptian hieroglyph-1377c
+79741 egyptian hieroglyph-1377d
+79742 egyptian hieroglyph-1377e
+79743 egyptian hieroglyph-1377f
+79744 egyptian hieroglyph-13780
+79745 egyptian hieroglyph-13781
+79746 egyptian hieroglyph-13782
+79747 egyptian hieroglyph-13783
+79748 egyptian hieroglyph-13784
+79749 egyptian hieroglyph-13785
+79750 egyptian hieroglyph-13786
+79751 egyptian hieroglyph-13787
+79752 egyptian hieroglyph-13788
+79753 egyptian hieroglyph-13789
+79754 egyptian hieroglyph-1378a
+79755 egyptian hieroglyph-1378b
+79756 egyptian hieroglyph-1378c
+79757 egyptian hieroglyph-1378d
+79758 egyptian hieroglyph-1378e
+79759 egyptian hieroglyph-1378f
+79760 egyptian hieroglyph-13790
+79761 egyptian hieroglyph-13791
+79762 egyptian hieroglyph-13792
+79763 egyptian hieroglyph-13793
+79764 egyptian hieroglyph-13794
+79765 egyptian hieroglyph-13795
+79766 egyptian hieroglyph-13796
+79767 egyptian hieroglyph-13797
+79768 egyptian hieroglyph-13798
+79769 egyptian hieroglyph-13799
+79770 egyptian hieroglyph-1379a
+79771 egyptian hieroglyph-1379b
+79772 egyptian hieroglyph-1379c
+79773 egyptian hieroglyph-1379d
+79774 egyptian hieroglyph-1379e
+79775 egyptian hieroglyph-1379f
+79776 egyptian hieroglyph-137a0
+79777 egyptian hieroglyph-137a1
+79778 egyptian hieroglyph-137a2
+79779 egyptian hieroglyph-137a3
+79780 egyptian hieroglyph-137a4
+79781 egyptian hieroglyph-137a5
+79782 egyptian hieroglyph-137a6
+79783 egyptian hieroglyph-137a7
+79784 egyptian hieroglyph-137a8
+79785 egyptian hieroglyph-137a9
+79786 egyptian hieroglyph-137aa
+79787 egyptian hieroglyph-137ab
+79788 egyptian hieroglyph-137ac
+79789 egyptian hieroglyph-137ad
+79790 egyptian hieroglyph-137ae
+79791 egyptian hieroglyph-137af
+79792 egyptian hieroglyph-137b0
+79793 egyptian hieroglyph-137b1
+79794 egyptian hieroglyph-137b2
+79795 egyptian hieroglyph-137b3
+79796 egyptian hieroglyph-137b4
+79797 egyptian hieroglyph-137b5
+79798 egyptian hieroglyph-137b6
+79799 egyptian hieroglyph-137b7
+79800 egyptian hieroglyph-137b8
+79801 egyptian hieroglyph-137b9
+79802 egyptian hieroglyph-137ba
+79803 egyptian hieroglyph-137bb
+79804 egyptian hieroglyph-137bc
+79805 egyptian hieroglyph-137bd
+79806 egyptian hieroglyph-137be
+79807 egyptian hieroglyph-137bf
+79808 egyptian hieroglyph-137c0
+79809 egyptian hieroglyph-137c1
+79810 egyptian hieroglyph-137c2
+79811 egyptian hieroglyph-137c3
+79812 egyptian hieroglyph-137c4
+79813 egyptian hieroglyph-137c5
+79814 egyptian hieroglyph-137c6
+79815 egyptian hieroglyph-137c7
+79816 egyptian hieroglyph-137c8
+79817 egyptian hieroglyph-137c9
+79818 egyptian hieroglyph-137ca
+79819 egyptian hieroglyph-137cb
+79820 egyptian hieroglyph-137cc
+79821 egyptian hieroglyph-137cd
+79822 egyptian hieroglyph-137ce
+79823 egyptian hieroglyph-137cf
+79824 egyptian hieroglyph-137d0
+79825 egyptian hieroglyph-137d1
+79826 egyptian hieroglyph-137d2
+79827 egyptian hieroglyph-137d3
+79828 egyptian hieroglyph-137d4
+79829 egyptian hieroglyph-137d5
+79830 egyptian hieroglyph-137d6
+79831 egyptian hieroglyph-137d7
+79832 egyptian hieroglyph-137d8
+79833 egyptian hieroglyph-137d9
+79834 egyptian hieroglyph-137da
+79835 egyptian hieroglyph-137db
+79836 egyptian hieroglyph-137dc
+79837 egyptian hieroglyph-137dd
+79838 egyptian hieroglyph-137de
+79839 egyptian hieroglyph-137df
+79840 egyptian hieroglyph-137e0
+79841 egyptian hieroglyph-137e1
+79842 egyptian hieroglyph-137e2
+79843 egyptian hieroglyph-137e3
+79844 egyptian hieroglyph-137e4
+79845 egyptian hieroglyph-137e5
+79846 egyptian hieroglyph-137e6
+79847 egyptian hieroglyph-137e7
+79848 egyptian hieroglyph-137e8
+79849 egyptian hieroglyph-137e9
+79850 egyptian hieroglyph-137ea
+79851 egyptian hieroglyph-137eb
+79852 egyptian hieroglyph-137ec
+79853 egyptian hieroglyph-137ed
+79854 egyptian hieroglyph-137ee
+79855 egyptian hieroglyph-137ef
+79856 egyptian hieroglyph-137f0
+79857 egyptian hieroglyph-137f1
+79858 egyptian hieroglyph-137f2
+79859 egyptian hieroglyph-137f3
+79860 egyptian hieroglyph-137f4
+79861 egyptian hieroglyph-137f5
+79862 egyptian hieroglyph-137f6
+79863 egyptian hieroglyph-137f7
+79864 egyptian hieroglyph-137f8
+79865 egyptian hieroglyph-137f9
+79866 egyptian hieroglyph-137fa
+79867 egyptian hieroglyph-137fb
+79868 egyptian hieroglyph-137fc
+79869 egyptian hieroglyph-137fd
+79870 egyptian hieroglyph-137fe
+79871 egyptian hieroglyph-137ff
+79872 egyptian hieroglyph-13800
+79873 egyptian hieroglyph-13801
+79874 egyptian hieroglyph-13802
+79875 egyptian hieroglyph-13803
+79876 egyptian hieroglyph-13804
+79877 egyptian hieroglyph-13805
+79878 egyptian hieroglyph-13806
+79879 egyptian hieroglyph-13807
+79880 egyptian hieroglyph-13808
+79881 egyptian hieroglyph-13809
+79882 egyptian hieroglyph-1380a
+79883 egyptian hieroglyph-1380b
+79884 egyptian hieroglyph-1380c
+79885 egyptian hieroglyph-1380d
+79886 egyptian hieroglyph-1380e
+79887 egyptian hieroglyph-1380f
+79888 egyptian hieroglyph-13810
+79889 egyptian hieroglyph-13811
+79890 egyptian hieroglyph-13812
+79891 egyptian hieroglyph-13813
+79892 egyptian hieroglyph-13814
+79893 egyptian hieroglyph-13815
+79894 egyptian hieroglyph-13816
+79895 egyptian hieroglyph-13817
+79896 egyptian hieroglyph-13818
+79897 egyptian hieroglyph-13819
+79898 egyptian hieroglyph-1381a
+79899 egyptian hieroglyph-1381b
+79900 egyptian hieroglyph-1381c
+79901 egyptian hieroglyph-1381d
+79902 egyptian hieroglyph-1381e
+79903 egyptian hieroglyph-1381f
+79904 egyptian hieroglyph-13820
+79905 egyptian hieroglyph-13821
+79906 egyptian hieroglyph-13822
+79907 egyptian hieroglyph-13823
+79908 egyptian hieroglyph-13824
+79909 egyptian hieroglyph-13825
+79910 egyptian hieroglyph-13826
+79911 egyptian hieroglyph-13827
+79912 egyptian hieroglyph-13828
+79913 egyptian hieroglyph-13829
+79914 egyptian hieroglyph-1382a
+79915 egyptian hieroglyph-1382b
+79916 egyptian hieroglyph-1382c
+79917 egyptian hieroglyph-1382d
+79918 egyptian hieroglyph-1382e
+79919 egyptian hieroglyph-1382f
+79920 egyptian hieroglyph-13830
+79921 egyptian hieroglyph-13831
+79922 egyptian hieroglyph-13832
+79923 egyptian hieroglyph-13833
+79924 egyptian hieroglyph-13834
+79925 egyptian hieroglyph-13835
+79926 egyptian hieroglyph-13836
+79927 egyptian hieroglyph-13837
+79928 egyptian hieroglyph-13838
+79929 egyptian hieroglyph-13839
+79930 egyptian hieroglyph-1383a
+79931 egyptian hieroglyph-1383b
+79932 egyptian hieroglyph-1383c
+79933 egyptian hieroglyph-1383d
+79934 egyptian hieroglyph-1383e
+79935 egyptian hieroglyph-1383f
+79936 egyptian hieroglyph-13840
+79937 egyptian hieroglyph-13841
+79938 egyptian hieroglyph-13842
+79939 egyptian hieroglyph-13843
+79940 egyptian hieroglyph-13844
+79941 egyptian hieroglyph-13845
+79942 egyptian hieroglyph-13846
+79943 egyptian hieroglyph-13847
+79944 egyptian hieroglyph-13848
+79945 egyptian hieroglyph-13849
+79946 egyptian hieroglyph-1384a
+79947 egyptian hieroglyph-1384b
+79948 egyptian hieroglyph-1384c
+79949 egyptian hieroglyph-1384d
+79950 egyptian hieroglyph-1384e
+79951 egyptian hieroglyph-1384f
+79952 egyptian hieroglyph-13850
+79953 egyptian hieroglyph-13851
+79954 egyptian hieroglyph-13852
+79955 egyptian hieroglyph-13853
+79956 egyptian hieroglyph-13854
+79957 egyptian hieroglyph-13855
+79958 egyptian hieroglyph-13856
+79959 egyptian hieroglyph-13857
+79960 egyptian hieroglyph-13858
+79961 egyptian hieroglyph-13859
+79962 egyptian hieroglyph-1385a
+79963 egyptian hieroglyph-1385b
+79964 egyptian hieroglyph-1385c
+79965 egyptian hieroglyph-1385d
+79966 egyptian hieroglyph-1385e
+79967 egyptian hieroglyph-1385f
+79968 egyptian hieroglyph-13860
+79969 egyptian hieroglyph-13861
+79970 egyptian hieroglyph-13862
+79971 egyptian hieroglyph-13863
+79972 egyptian hieroglyph-13864
+79973 egyptian hieroglyph-13865
+79974 egyptian hieroglyph-13866
+79975 egyptian hieroglyph-13867
+79976 egyptian hieroglyph-13868
+79977 egyptian hieroglyph-13869
+79978 egyptian hieroglyph-1386a
+79979 egyptian hieroglyph-1386b
+79980 egyptian hieroglyph-1386c
+79981 egyptian hieroglyph-1386d
+79982 egyptian hieroglyph-1386e
+79983 egyptian hieroglyph-1386f
+79984 egyptian hieroglyph-13870
+79985 egyptian hieroglyph-13871
+79986 egyptian hieroglyph-13872
+79987 egyptian hieroglyph-13873
+79988 egyptian hieroglyph-13874
+79989 egyptian hieroglyph-13875
+79990 egyptian hieroglyph-13876
+79991 egyptian hieroglyph-13877
+79992 egyptian hieroglyph-13878
+79993 egyptian hieroglyph-13879
+79994 egyptian hieroglyph-1387a
+79995 egyptian hieroglyph-1387b
+79996 egyptian hieroglyph-1387c
+79997 egyptian hieroglyph-1387d
+79998 egyptian hieroglyph-1387e
+79999 egyptian hieroglyph-1387f
+80000 egyptian hieroglyph-13880
+80001 egyptian hieroglyph-13881
+80002 egyptian hieroglyph-13882
+80003 egyptian hieroglyph-13883
+80004 egyptian hieroglyph-13884
+80005 egyptian hieroglyph-13885
+80006 egyptian hieroglyph-13886
+80007 egyptian hieroglyph-13887
+80008 egyptian hieroglyph-13888
+80009 egyptian hieroglyph-13889
+80010 egyptian hieroglyph-1388a
+80011 egyptian hieroglyph-1388b
+80012 egyptian hieroglyph-1388c
+80013 egyptian hieroglyph-1388d
+80014 egyptian hieroglyph-1388e
+80015 egyptian hieroglyph-1388f
+80016 egyptian hieroglyph-13890
+80017 egyptian hieroglyph-13891
+80018 egyptian hieroglyph-13892
+80019 egyptian hieroglyph-13893
+80020 egyptian hieroglyph-13894
+80021 egyptian hieroglyph-13895
+80022 egyptian hieroglyph-13896
+80023 egyptian hieroglyph-13897
+80024 egyptian hieroglyph-13898
+80025 egyptian hieroglyph-13899
+80026 egyptian hieroglyph-1389a
+80027 egyptian hieroglyph-1389b
+80028 egyptian hieroglyph-1389c
+80029 egyptian hieroglyph-1389d
+80030 egyptian hieroglyph-1389e
+80031 egyptian hieroglyph-1389f
+80032 egyptian hieroglyph-138a0
+80033 egyptian hieroglyph-138a1
+80034 egyptian hieroglyph-138a2
+80035 egyptian hieroglyph-138a3
+80036 egyptian hieroglyph-138a4
+80037 egyptian hieroglyph-138a5
+80038 egyptian hieroglyph-138a6
+80039 egyptian hieroglyph-138a7
+80040 egyptian hieroglyph-138a8
+80041 egyptian hieroglyph-138a9
+80042 egyptian hieroglyph-138aa
+80043 egyptian hieroglyph-138ab
+80044 egyptian hieroglyph-138ac
+80045 egyptian hieroglyph-138ad
+80046 egyptian hieroglyph-138ae
+80047 egyptian hieroglyph-138af
+80048 egyptian hieroglyph-138b0
+80049 egyptian hieroglyph-138b1
+80050 egyptian hieroglyph-138b2
+80051 egyptian hieroglyph-138b3
+80052 egyptian hieroglyph-138b4
+80053 egyptian hieroglyph-138b5
+80054 egyptian hieroglyph-138b6
+80055 egyptian hieroglyph-138b7
+80056 egyptian hieroglyph-138b8
+80057 egyptian hieroglyph-138b9
+80058 egyptian hieroglyph-138ba
+80059 egyptian hieroglyph-138bb
+80060 egyptian hieroglyph-138bc
+80061 egyptian hieroglyph-138bd
+80062 egyptian hieroglyph-138be
+80063 egyptian hieroglyph-138bf
+80064 egyptian hieroglyph-138c0
+80065 egyptian hieroglyph-138c1
+80066 egyptian hieroglyph-138c2
+80067 egyptian hieroglyph-138c3
+80068 egyptian hieroglyph-138c4
+80069 egyptian hieroglyph-138c5
+80070 egyptian hieroglyph-138c6
+80071 egyptian hieroglyph-138c7
+80072 egyptian hieroglyph-138c8
+80073 egyptian hieroglyph-138c9
+80074 egyptian hieroglyph-138ca
+80075 egyptian hieroglyph-138cb
+80076 egyptian hieroglyph-138cc
+80077 egyptian hieroglyph-138cd
+80078 egyptian hieroglyph-138ce
+80079 egyptian hieroglyph-138cf
+80080 egyptian hieroglyph-138d0
+80081 egyptian hieroglyph-138d1
+80082 egyptian hieroglyph-138d2
+80083 egyptian hieroglyph-138d3
+80084 egyptian hieroglyph-138d4
+80085 egyptian hieroglyph-138d5
+80086 egyptian hieroglyph-138d6
+80087 egyptian hieroglyph-138d7
+80088 egyptian hieroglyph-138d8
+80089 egyptian hieroglyph-138d9
+80090 egyptian hieroglyph-138da
+80091 egyptian hieroglyph-138db
+80092 egyptian hieroglyph-138dc
+80093 egyptian hieroglyph-138dd
+80094 egyptian hieroglyph-138de
+80095 egyptian hieroglyph-138df
+80096 egyptian hieroglyph-138e0
+80097 egyptian hieroglyph-138e1
+80098 egyptian hieroglyph-138e2
+80099 egyptian hieroglyph-138e3
+80100 egyptian hieroglyph-138e4
+80101 egyptian hieroglyph-138e5
+80102 egyptian hieroglyph-138e6
+80103 egyptian hieroglyph-138e7
+80104 egyptian hieroglyph-138e8
+80105 egyptian hieroglyph-138e9
+80106 egyptian hieroglyph-138ea
+80107 egyptian hieroglyph-138eb
+80108 egyptian hieroglyph-138ec
+80109 egyptian hieroglyph-138ed
+80110 egyptian hieroglyph-138ee
+80111 egyptian hieroglyph-138ef
+80112 egyptian hieroglyph-138f0
+80113 egyptian hieroglyph-138f1
+80114 egyptian hieroglyph-138f2
+80115 egyptian hieroglyph-138f3
+80116 egyptian hieroglyph-138f4
+80117 egyptian hieroglyph-138f5
+80118 egyptian hieroglyph-138f6
+80119 egyptian hieroglyph-138f7
+80120 egyptian hieroglyph-138f8
+80121 egyptian hieroglyph-138f9
+80122 egyptian hieroglyph-138fa
+80123 egyptian hieroglyph-138fb
+80124 egyptian hieroglyph-138fc
+80125 egyptian hieroglyph-138fd
+80126 egyptian hieroglyph-138fe
+80127 egyptian hieroglyph-138ff
+80128 egyptian hieroglyph-13900
+80129 egyptian hieroglyph-13901
+80130 egyptian hieroglyph-13902
+80131 egyptian hieroglyph-13903
+80132 egyptian hieroglyph-13904
+80133 egyptian hieroglyph-13905
+80134 egyptian hieroglyph-13906
+80135 egyptian hieroglyph-13907
+80136 egyptian hieroglyph-13908
+80137 egyptian hieroglyph-13909
+80138 egyptian hieroglyph-1390a
+80139 egyptian hieroglyph-1390b
+80140 egyptian hieroglyph-1390c
+80141 egyptian hieroglyph-1390d
+80142 egyptian hieroglyph-1390e
+80143 egyptian hieroglyph-1390f
+80144 egyptian hieroglyph-13910
+80145 egyptian hieroglyph-13911
+80146 egyptian hieroglyph-13912
+80147 egyptian hieroglyph-13913
+80148 egyptian hieroglyph-13914
+80149 egyptian hieroglyph-13915
+80150 egyptian hieroglyph-13916
+80151 egyptian hieroglyph-13917
+80152 egyptian hieroglyph-13918
+80153 egyptian hieroglyph-13919
+80154 egyptian hieroglyph-1391a
+80155 egyptian hieroglyph-1391b
+80156 egyptian hieroglyph-1391c
+80157 egyptian hieroglyph-1391d
+80158 egyptian hieroglyph-1391e
+80159 egyptian hieroglyph-1391f
+80160 egyptian hieroglyph-13920
+80161 egyptian hieroglyph-13921
+80162 egyptian hieroglyph-13922
+80163 egyptian hieroglyph-13923
+80164 egyptian hieroglyph-13924
+80165 egyptian hieroglyph-13925
+80166 egyptian hieroglyph-13926
+80167 egyptian hieroglyph-13927
+80168 egyptian hieroglyph-13928
+80169 egyptian hieroglyph-13929
+80170 egyptian hieroglyph-1392a
+80171 egyptian hieroglyph-1392b
+80172 egyptian hieroglyph-1392c
+80173 egyptian hieroglyph-1392d
+80174 egyptian hieroglyph-1392e
+80175 egyptian hieroglyph-1392f
+80176 egyptian hieroglyph-13930
+80177 egyptian hieroglyph-13931
+80178 egyptian hieroglyph-13932
+80179 egyptian hieroglyph-13933
+80180 egyptian hieroglyph-13934
+80181 egyptian hieroglyph-13935
+80182 egyptian hieroglyph-13936
+80183 egyptian hieroglyph-13937
+80184 egyptian hieroglyph-13938
+80185 egyptian hieroglyph-13939
+80186 egyptian hieroglyph-1393a
+80187 egyptian hieroglyph-1393b
+80188 egyptian hieroglyph-1393c
+80189 egyptian hieroglyph-1393d
+80190 egyptian hieroglyph-1393e
+80191 egyptian hieroglyph-1393f
+80192 egyptian hieroglyph-13940
+80193 egyptian hieroglyph-13941
+80194 egyptian hieroglyph-13942
+80195 egyptian hieroglyph-13943
+80196 egyptian hieroglyph-13944
+80197 egyptian hieroglyph-13945
+80198 egyptian hieroglyph-13946
+80199 egyptian hieroglyph-13947
+80200 egyptian hieroglyph-13948
+80201 egyptian hieroglyph-13949
+80202 egyptian hieroglyph-1394a
+80203 egyptian hieroglyph-1394b
+80204 egyptian hieroglyph-1394c
+80205 egyptian hieroglyph-1394d
+80206 egyptian hieroglyph-1394e
+80207 egyptian hieroglyph-1394f
+80208 egyptian hieroglyph-13950
+80209 egyptian hieroglyph-13951
+80210 egyptian hieroglyph-13952
+80211 egyptian hieroglyph-13953
+80212 egyptian hieroglyph-13954
+80213 egyptian hieroglyph-13955
+80214 egyptian hieroglyph-13956
+80215 egyptian hieroglyph-13957
+80216 egyptian hieroglyph-13958
+80217 egyptian hieroglyph-13959
+80218 egyptian hieroglyph-1395a
+80219 egyptian hieroglyph-1395b
+80220 egyptian hieroglyph-1395c
+80221 egyptian hieroglyph-1395d
+80222 egyptian hieroglyph-1395e
+80223 egyptian hieroglyph-1395f
+80224 egyptian hieroglyph-13960
+80225 egyptian hieroglyph-13961
+80226 egyptian hieroglyph-13962
+80227 egyptian hieroglyph-13963
+80228 egyptian hieroglyph-13964
+80229 egyptian hieroglyph-13965
+80230 egyptian hieroglyph-13966
+80231 egyptian hieroglyph-13967
+80232 egyptian hieroglyph-13968
+80233 egyptian hieroglyph-13969
+80234 egyptian hieroglyph-1396a
+80235 egyptian hieroglyph-1396b
+80236 egyptian hieroglyph-1396c
+80237 egyptian hieroglyph-1396d
+80238 egyptian hieroglyph-1396e
+80239 egyptian hieroglyph-1396f
+80240 egyptian hieroglyph-13970
+80241 egyptian hieroglyph-13971
+80242 egyptian hieroglyph-13972
+80243 egyptian hieroglyph-13973
+80244 egyptian hieroglyph-13974
+80245 egyptian hieroglyph-13975
+80246 egyptian hieroglyph-13976
+80247 egyptian hieroglyph-13977
+80248 egyptian hieroglyph-13978
+80249 egyptian hieroglyph-13979
+80250 egyptian hieroglyph-1397a
+80251 egyptian hieroglyph-1397b
+80252 egyptian hieroglyph-1397c
+80253 egyptian hieroglyph-1397d
+80254 egyptian hieroglyph-1397e
+80255 egyptian hieroglyph-1397f
+80256 egyptian hieroglyph-13980
+80257 egyptian hieroglyph-13981
+80258 egyptian hieroglyph-13982
+80259 egyptian hieroglyph-13983
+80260 egyptian hieroglyph-13984
+80261 egyptian hieroglyph-13985
+80262 egyptian hieroglyph-13986
+80263 egyptian hieroglyph-13987
+80264 egyptian hieroglyph-13988
+80265 egyptian hieroglyph-13989
+80266 egyptian hieroglyph-1398a
+80267 egyptian hieroglyph-1398b
+80268 egyptian hieroglyph-1398c
+80269 egyptian hieroglyph-1398d
+80270 egyptian hieroglyph-1398e
+80271 egyptian hieroglyph-1398f
+80272 egyptian hieroglyph-13990
+80273 egyptian hieroglyph-13991
+80274 egyptian hieroglyph-13992
+80275 egyptian hieroglyph-13993
+80276 egyptian hieroglyph-13994
+80277 egyptian hieroglyph-13995
+80278 egyptian hieroglyph-13996
+80279 egyptian hieroglyph-13997
+80280 egyptian hieroglyph-13998
+80281 egyptian hieroglyph-13999
+80282 egyptian hieroglyph-1399a
+80283 egyptian hieroglyph-1399b
+80284 egyptian hieroglyph-1399c
+80285 egyptian hieroglyph-1399d
+80286 egyptian hieroglyph-1399e
+80287 egyptian hieroglyph-1399f
+80288 egyptian hieroglyph-139a0
+80289 egyptian hieroglyph-139a1
+80290 egyptian hieroglyph-139a2
+80291 egyptian hieroglyph-139a3
+80292 egyptian hieroglyph-139a4
+80293 egyptian hieroglyph-139a5
+80294 egyptian hieroglyph-139a6
+80295 egyptian hieroglyph-139a7
+80296 egyptian hieroglyph-139a8
+80297 egyptian hieroglyph-139a9
+80298 egyptian hieroglyph-139aa
+80299 egyptian hieroglyph-139ab
+80300 egyptian hieroglyph-139ac
+80301 egyptian hieroglyph-139ad
+80302 egyptian hieroglyph-139ae
+80303 egyptian hieroglyph-139af
+80304 egyptian hieroglyph-139b0
+80305 egyptian hieroglyph-139b1
+80306 egyptian hieroglyph-139b2
+80307 egyptian hieroglyph-139b3
+80308 egyptian hieroglyph-139b4
+80309 egyptian hieroglyph-139b5
+80310 egyptian hieroglyph-139b6
+80311 egyptian hieroglyph-139b7
+80312 egyptian hieroglyph-139b8
+80313 egyptian hieroglyph-139b9
+80314 egyptian hieroglyph-139ba
+80315 egyptian hieroglyph-139bb
+80316 egyptian hieroglyph-139bc
+80317 egyptian hieroglyph-139bd
+80318 egyptian hieroglyph-139be
+80319 egyptian hieroglyph-139bf
+80320 egyptian hieroglyph-139c0
+80321 egyptian hieroglyph-139c1
+80322 egyptian hieroglyph-139c2
+80323 egyptian hieroglyph-139c3
+80324 egyptian hieroglyph-139c4
+80325 egyptian hieroglyph-139c5
+80326 egyptian hieroglyph-139c6
+80327 egyptian hieroglyph-139c7
+80328 egyptian hieroglyph-139c8
+80329 egyptian hieroglyph-139c9
+80330 egyptian hieroglyph-139ca
+80331 egyptian hieroglyph-139cb
+80332 egyptian hieroglyph-139cc
+80333 egyptian hieroglyph-139cd
+80334 egyptian hieroglyph-139ce
+80335 egyptian hieroglyph-139cf
+80336 egyptian hieroglyph-139d0
+80337 egyptian hieroglyph-139d1
+80338 egyptian hieroglyph-139d2
+80339 egyptian hieroglyph-139d3
+80340 egyptian hieroglyph-139d4
+80341 egyptian hieroglyph-139d5
+80342 egyptian hieroglyph-139d6
+80343 egyptian hieroglyph-139d7
+80344 egyptian hieroglyph-139d8
+80345 egyptian hieroglyph-139d9
+80346 egyptian hieroglyph-139da
+80347 egyptian hieroglyph-139db
+80348 egyptian hieroglyph-139dc
+80349 egyptian hieroglyph-139dd
+80350 egyptian hieroglyph-139de
+80351 egyptian hieroglyph-139df
+80352 egyptian hieroglyph-139e0
+80353 egyptian hieroglyph-139e1
+80354 egyptian hieroglyph-139e2
+80355 egyptian hieroglyph-139e3
+80356 egyptian hieroglyph-139e4
+80357 egyptian hieroglyph-139e5
+80358 egyptian hieroglyph-139e6
+80359 egyptian hieroglyph-139e7
+80360 egyptian hieroglyph-139e8
+80361 egyptian hieroglyph-139e9
+80362 egyptian hieroglyph-139ea
+80363 egyptian hieroglyph-139eb
+80364 egyptian hieroglyph-139ec
+80365 egyptian hieroglyph-139ed
+80366 egyptian hieroglyph-139ee
+80367 egyptian hieroglyph-139ef
+80368 egyptian hieroglyph-139f0
+80369 egyptian hieroglyph-139f1
+80370 egyptian hieroglyph-139f2
+80371 egyptian hieroglyph-139f3
+80372 egyptian hieroglyph-139f4
+80373 egyptian hieroglyph-139f5
+80374 egyptian hieroglyph-139f6
+80375 egyptian hieroglyph-139f7
+80376 egyptian hieroglyph-139f8
+80377 egyptian hieroglyph-139f9
+80378 egyptian hieroglyph-139fa
+80379 egyptian hieroglyph-139fb
+80380 egyptian hieroglyph-139fc
+80381 egyptian hieroglyph-139fd
+80382 egyptian hieroglyph-139fe
+80383 egyptian hieroglyph-139ff
+80384 egyptian hieroglyph-13a00
+80385 egyptian hieroglyph-13a01
+80386 egyptian hieroglyph-13a02
+80387 egyptian hieroglyph-13a03
+80388 egyptian hieroglyph-13a04
+80389 egyptian hieroglyph-13a05
+80390 egyptian hieroglyph-13a06
+80391 egyptian hieroglyph-13a07
+80392 egyptian hieroglyph-13a08
+80393 egyptian hieroglyph-13a09
+80394 egyptian hieroglyph-13a0a
+80395 egyptian hieroglyph-13a0b
+80396 egyptian hieroglyph-13a0c
+80397 egyptian hieroglyph-13a0d
+80398 egyptian hieroglyph-13a0e
+80399 egyptian hieroglyph-13a0f
+80400 egyptian hieroglyph-13a10
+80401 egyptian hieroglyph-13a11
+80402 egyptian hieroglyph-13a12
+80403 egyptian hieroglyph-13a13
+80404 egyptian hieroglyph-13a14
+80405 egyptian hieroglyph-13a15
+80406 egyptian hieroglyph-13a16
+80407 egyptian hieroglyph-13a17
+80408 egyptian hieroglyph-13a18
+80409 egyptian hieroglyph-13a19
+80410 egyptian hieroglyph-13a1a
+80411 egyptian hieroglyph-13a1b
+80412 egyptian hieroglyph-13a1c
+80413 egyptian hieroglyph-13a1d
+80414 egyptian hieroglyph-13a1e
+80415 egyptian hieroglyph-13a1f
+80416 egyptian hieroglyph-13a20
+80417 egyptian hieroglyph-13a21
+80418 egyptian hieroglyph-13a22
+80419 egyptian hieroglyph-13a23
+80420 egyptian hieroglyph-13a24
+80421 egyptian hieroglyph-13a25
+80422 egyptian hieroglyph-13a26
+80423 egyptian hieroglyph-13a27
+80424 egyptian hieroglyph-13a28
+80425 egyptian hieroglyph-13a29
+80426 egyptian hieroglyph-13a2a
+80427 egyptian hieroglyph-13a2b
+80428 egyptian hieroglyph-13a2c
+80429 egyptian hieroglyph-13a2d
+80430 egyptian hieroglyph-13a2e
+80431 egyptian hieroglyph-13a2f
+80432 egyptian hieroglyph-13a30
+80433 egyptian hieroglyph-13a31
+80434 egyptian hieroglyph-13a32
+80435 egyptian hieroglyph-13a33
+80436 egyptian hieroglyph-13a34
+80437 egyptian hieroglyph-13a35
+80438 egyptian hieroglyph-13a36
+80439 egyptian hieroglyph-13a37
+80440 egyptian hieroglyph-13a38
+80441 egyptian hieroglyph-13a39
+80442 egyptian hieroglyph-13a3a
+80443 egyptian hieroglyph-13a3b
+80444 egyptian hieroglyph-13a3c
+80445 egyptian hieroglyph-13a3d
+80446 egyptian hieroglyph-13a3e
+80447 egyptian hieroglyph-13a3f
+80448 egyptian hieroglyph-13a40
+80449 egyptian hieroglyph-13a41
+80450 egyptian hieroglyph-13a42
+80451 egyptian hieroglyph-13a43
+80452 egyptian hieroglyph-13a44
+80453 egyptian hieroglyph-13a45
+80454 egyptian hieroglyph-13a46
+80455 egyptian hieroglyph-13a47
+80456 egyptian hieroglyph-13a48
+80457 egyptian hieroglyph-13a49
+80458 egyptian hieroglyph-13a4a
+80459 egyptian hieroglyph-13a4b
+80460 egyptian hieroglyph-13a4c
+80461 egyptian hieroglyph-13a4d
+80462 egyptian hieroglyph-13a4e
+80463 egyptian hieroglyph-13a4f
+80464 egyptian hieroglyph-13a50
+80465 egyptian hieroglyph-13a51
+80466 egyptian hieroglyph-13a52
+80467 egyptian hieroglyph-13a53
+80468 egyptian hieroglyph-13a54
+80469 egyptian hieroglyph-13a55
+80470 egyptian hieroglyph-13a56
+80471 egyptian hieroglyph-13a57
+80472 egyptian hieroglyph-13a58
+80473 egyptian hieroglyph-13a59
+80474 egyptian hieroglyph-13a5a
+80475 egyptian hieroglyph-13a5b
+80476 egyptian hieroglyph-13a5c
+80477 egyptian hieroglyph-13a5d
+80478 egyptian hieroglyph-13a5e
+80479 egyptian hieroglyph-13a5f
+80480 egyptian hieroglyph-13a60
+80481 egyptian hieroglyph-13a61
+80482 egyptian hieroglyph-13a62
+80483 egyptian hieroglyph-13a63
+80484 egyptian hieroglyph-13a64
+80485 egyptian hieroglyph-13a65
+80486 egyptian hieroglyph-13a66
+80487 egyptian hieroglyph-13a67
+80488 egyptian hieroglyph-13a68
+80489 egyptian hieroglyph-13a69
+80490 egyptian hieroglyph-13a6a
+80491 egyptian hieroglyph-13a6b
+80492 egyptian hieroglyph-13a6c
+80493 egyptian hieroglyph-13a6d
+80494 egyptian hieroglyph-13a6e
+80495 egyptian hieroglyph-13a6f
+80496 egyptian hieroglyph-13a70
+80497 egyptian hieroglyph-13a71
+80498 egyptian hieroglyph-13a72
+80499 egyptian hieroglyph-13a73
+80500 egyptian hieroglyph-13a74
+80501 egyptian hieroglyph-13a75
+80502 egyptian hieroglyph-13a76
+80503 egyptian hieroglyph-13a77
+80504 egyptian hieroglyph-13a78
+80505 egyptian hieroglyph-13a79
+80506 egyptian hieroglyph-13a7a
+80507 egyptian hieroglyph-13a7b
+80508 egyptian hieroglyph-13a7c
+80509 egyptian hieroglyph-13a7d
+80510 egyptian hieroglyph-13a7e
+80511 egyptian hieroglyph-13a7f
+80512 egyptian hieroglyph-13a80
+80513 egyptian hieroglyph-13a81
+80514 egyptian hieroglyph-13a82
+80515 egyptian hieroglyph-13a83
+80516 egyptian hieroglyph-13a84
+80517 egyptian hieroglyph-13a85
+80518 egyptian hieroglyph-13a86
+80519 egyptian hieroglyph-13a87
+80520 egyptian hieroglyph-13a88
+80521 egyptian hieroglyph-13a89
+80522 egyptian hieroglyph-13a8a
+80523 egyptian hieroglyph-13a8b
+80524 egyptian hieroglyph-13a8c
+80525 egyptian hieroglyph-13a8d
+80526 egyptian hieroglyph-13a8e
+80527 egyptian hieroglyph-13a8f
+80528 egyptian hieroglyph-13a90
+80529 egyptian hieroglyph-13a91
+80530 egyptian hieroglyph-13a92
+80531 egyptian hieroglyph-13a93
+80532 egyptian hieroglyph-13a94
+80533 egyptian hieroglyph-13a95
+80534 egyptian hieroglyph-13a96
+80535 egyptian hieroglyph-13a97
+80536 egyptian hieroglyph-13a98
+80537 egyptian hieroglyph-13a99
+80538 egyptian hieroglyph-13a9a
+80539 egyptian hieroglyph-13a9b
+80540 egyptian hieroglyph-13a9c
+80541 egyptian hieroglyph-13a9d
+80542 egyptian hieroglyph-13a9e
+80543 egyptian hieroglyph-13a9f
+80544 egyptian hieroglyph-13aa0
+80545 egyptian hieroglyph-13aa1
+80546 egyptian hieroglyph-13aa2
+80547 egyptian hieroglyph-13aa3
+80548 egyptian hieroglyph-13aa4
+80549 egyptian hieroglyph-13aa5
+80550 egyptian hieroglyph-13aa6
+80551 egyptian hieroglyph-13aa7
+80552 egyptian hieroglyph-13aa8
+80553 egyptian hieroglyph-13aa9
+80554 egyptian hieroglyph-13aaa
+80555 egyptian hieroglyph-13aab
+80556 egyptian hieroglyph-13aac
+80557 egyptian hieroglyph-13aad
+80558 egyptian hieroglyph-13aae
+80559 egyptian hieroglyph-13aaf
+80560 egyptian hieroglyph-13ab0
+80561 egyptian hieroglyph-13ab1
+80562 egyptian hieroglyph-13ab2
+80563 egyptian hieroglyph-13ab3
+80564 egyptian hieroglyph-13ab4
+80565 egyptian hieroglyph-13ab5
+80566 egyptian hieroglyph-13ab6
+80567 egyptian hieroglyph-13ab7
+80568 egyptian hieroglyph-13ab8
+80569 egyptian hieroglyph-13ab9
+80570 egyptian hieroglyph-13aba
+80571 egyptian hieroglyph-13abb
+80572 egyptian hieroglyph-13abc
+80573 egyptian hieroglyph-13abd
+80574 egyptian hieroglyph-13abe
+80575 egyptian hieroglyph-13abf
+80576 egyptian hieroglyph-13ac0
+80577 egyptian hieroglyph-13ac1
+80578 egyptian hieroglyph-13ac2
+80579 egyptian hieroglyph-13ac3
+80580 egyptian hieroglyph-13ac4
+80581 egyptian hieroglyph-13ac5
+80582 egyptian hieroglyph-13ac6
+80583 egyptian hieroglyph-13ac7
+80584 egyptian hieroglyph-13ac8
+80585 egyptian hieroglyph-13ac9
+80586 egyptian hieroglyph-13aca
+80587 egyptian hieroglyph-13acb
+80588 egyptian hieroglyph-13acc
+80589 egyptian hieroglyph-13acd
+80590 egyptian hieroglyph-13ace
+80591 egyptian hieroglyph-13acf
+80592 egyptian hieroglyph-13ad0
+80593 egyptian hieroglyph-13ad1
+80594 egyptian hieroglyph-13ad2
+80595 egyptian hieroglyph-13ad3
+80596 egyptian hieroglyph-13ad4
+80597 egyptian hieroglyph-13ad5
+80598 egyptian hieroglyph-13ad6
+80599 egyptian hieroglyph-13ad7
+80600 egyptian hieroglyph-13ad8
+80601 egyptian hieroglyph-13ad9
+80602 egyptian hieroglyph-13ada
+80603 egyptian hieroglyph-13adb
+80604 egyptian hieroglyph-13adc
+80605 egyptian hieroglyph-13add
+80606 egyptian hieroglyph-13ade
+80607 egyptian hieroglyph-13adf
+80608 egyptian hieroglyph-13ae0
+80609 egyptian hieroglyph-13ae1
+80610 egyptian hieroglyph-13ae2
+80611 egyptian hieroglyph-13ae3
+80612 egyptian hieroglyph-13ae4
+80613 egyptian hieroglyph-13ae5
+80614 egyptian hieroglyph-13ae6
+80615 egyptian hieroglyph-13ae7
+80616 egyptian hieroglyph-13ae8
+80617 egyptian hieroglyph-13ae9
+80618 egyptian hieroglyph-13aea
+80619 egyptian hieroglyph-13aeb
+80620 egyptian hieroglyph-13aec
+80621 egyptian hieroglyph-13aed
+80622 egyptian hieroglyph-13aee
+80623 egyptian hieroglyph-13aef
+80624 egyptian hieroglyph-13af0
+80625 egyptian hieroglyph-13af1
+80626 egyptian hieroglyph-13af2
+80627 egyptian hieroglyph-13af3
+80628 egyptian hieroglyph-13af4
+80629 egyptian hieroglyph-13af5
+80630 egyptian hieroglyph-13af6
+80631 egyptian hieroglyph-13af7
+80632 egyptian hieroglyph-13af8
+80633 egyptian hieroglyph-13af9
+80634 egyptian hieroglyph-13afa
+80635 egyptian hieroglyph-13afb
+80636 egyptian hieroglyph-13afc
+80637 egyptian hieroglyph-13afd
+80638 egyptian hieroglyph-13afe
+80639 egyptian hieroglyph-13aff
+80640 egyptian hieroglyph-13b00
+80641 egyptian hieroglyph-13b01
+80642 egyptian hieroglyph-13b02
+80643 egyptian hieroglyph-13b03
+80644 egyptian hieroglyph-13b04
+80645 egyptian hieroglyph-13b05
+80646 egyptian hieroglyph-13b06
+80647 egyptian hieroglyph-13b07
+80648 egyptian hieroglyph-13b08
+80649 egyptian hieroglyph-13b09
+80650 egyptian hieroglyph-13b0a
+80651 egyptian hieroglyph-13b0b
+80652 egyptian hieroglyph-13b0c
+80653 egyptian hieroglyph-13b0d
+80654 egyptian hieroglyph-13b0e
+80655 egyptian hieroglyph-13b0f
+80656 egyptian hieroglyph-13b10
+80657 egyptian hieroglyph-13b11
+80658 egyptian hieroglyph-13b12
+80659 egyptian hieroglyph-13b13
+80660 egyptian hieroglyph-13b14
+80661 egyptian hieroglyph-13b15
+80662 egyptian hieroglyph-13b16
+80663 egyptian hieroglyph-13b17
+80664 egyptian hieroglyph-13b18
+80665 egyptian hieroglyph-13b19
+80666 egyptian hieroglyph-13b1a
+80667 egyptian hieroglyph-13b1b
+80668 egyptian hieroglyph-13b1c
+80669 egyptian hieroglyph-13b1d
+80670 egyptian hieroglyph-13b1e
+80671 egyptian hieroglyph-13b1f
+80672 egyptian hieroglyph-13b20
+80673 egyptian hieroglyph-13b21
+80674 egyptian hieroglyph-13b22
+80675 egyptian hieroglyph-13b23
+80676 egyptian hieroglyph-13b24
+80677 egyptian hieroglyph-13b25
+80678 egyptian hieroglyph-13b26
+80679 egyptian hieroglyph-13b27
+80680 egyptian hieroglyph-13b28
+80681 egyptian hieroglyph-13b29
+80682 egyptian hieroglyph-13b2a
+80683 egyptian hieroglyph-13b2b
+80684 egyptian hieroglyph-13b2c
+80685 egyptian hieroglyph-13b2d
+80686 egyptian hieroglyph-13b2e
+80687 egyptian hieroglyph-13b2f
+80688 egyptian hieroglyph-13b30
+80689 egyptian hieroglyph-13b31
+80690 egyptian hieroglyph-13b32
+80691 egyptian hieroglyph-13b33
+80692 egyptian hieroglyph-13b34
+80693 egyptian hieroglyph-13b35
+80694 egyptian hieroglyph-13b36
+80695 egyptian hieroglyph-13b37
+80696 egyptian hieroglyph-13b38
+80697 egyptian hieroglyph-13b39
+80698 egyptian hieroglyph-13b3a
+80699 egyptian hieroglyph-13b3b
+80700 egyptian hieroglyph-13b3c
+80701 egyptian hieroglyph-13b3d
+80702 egyptian hieroglyph-13b3e
+80703 egyptian hieroglyph-13b3f
+80704 egyptian hieroglyph-13b40
+80705 egyptian hieroglyph-13b41
+80706 egyptian hieroglyph-13b42
+80707 egyptian hieroglyph-13b43
+80708 egyptian hieroglyph-13b44
+80709 egyptian hieroglyph-13b45
+80710 egyptian hieroglyph-13b46
+80711 egyptian hieroglyph-13b47
+80712 egyptian hieroglyph-13b48
+80713 egyptian hieroglyph-13b49
+80714 egyptian hieroglyph-13b4a
+80715 egyptian hieroglyph-13b4b
+80716 egyptian hieroglyph-13b4c
+80717 egyptian hieroglyph-13b4d
+80718 egyptian hieroglyph-13b4e
+80719 egyptian hieroglyph-13b4f
+80720 egyptian hieroglyph-13b50
+80721 egyptian hieroglyph-13b51
+80722 egyptian hieroglyph-13b52
+80723 egyptian hieroglyph-13b53
+80724 egyptian hieroglyph-13b54
+80725 egyptian hieroglyph-13b55
+80726 egyptian hieroglyph-13b56
+80727 egyptian hieroglyph-13b57
+80728 egyptian hieroglyph-13b58
+80729 egyptian hieroglyph-13b59
+80730 egyptian hieroglyph-13b5a
+80731 egyptian hieroglyph-13b5b
+80732 egyptian hieroglyph-13b5c
+80733 egyptian hieroglyph-13b5d
+80734 egyptian hieroglyph-13b5e
+80735 egyptian hieroglyph-13b5f
+80736 egyptian hieroglyph-13b60
+80737 egyptian hieroglyph-13b61
+80738 egyptian hieroglyph-13b62
+80739 egyptian hieroglyph-13b63
+80740 egyptian hieroglyph-13b64
+80741 egyptian hieroglyph-13b65
+80742 egyptian hieroglyph-13b66
+80743 egyptian hieroglyph-13b67
+80744 egyptian hieroglyph-13b68
+80745 egyptian hieroglyph-13b69
+80746 egyptian hieroglyph-13b6a
+80747 egyptian hieroglyph-13b6b
+80748 egyptian hieroglyph-13b6c
+80749 egyptian hieroglyph-13b6d
+80750 egyptian hieroglyph-13b6e
+80751 egyptian hieroglyph-13b6f
+80752 egyptian hieroglyph-13b70
+80753 egyptian hieroglyph-13b71
+80754 egyptian hieroglyph-13b72
+80755 egyptian hieroglyph-13b73
+80756 egyptian hieroglyph-13b74
+80757 egyptian hieroglyph-13b75
+80758 egyptian hieroglyph-13b76
+80759 egyptian hieroglyph-13b77
+80760 egyptian hieroglyph-13b78
+80761 egyptian hieroglyph-13b79
+80762 egyptian hieroglyph-13b7a
+80763 egyptian hieroglyph-13b7b
+80764 egyptian hieroglyph-13b7c
+80765 egyptian hieroglyph-13b7d
+80766 egyptian hieroglyph-13b7e
+80767 egyptian hieroglyph-13b7f
+80768 egyptian hieroglyph-13b80
+80769 egyptian hieroglyph-13b81
+80770 egyptian hieroglyph-13b82
+80771 egyptian hieroglyph-13b83
+80772 egyptian hieroglyph-13b84
+80773 egyptian hieroglyph-13b85
+80774 egyptian hieroglyph-13b86
+80775 egyptian hieroglyph-13b87
+80776 egyptian hieroglyph-13b88
+80777 egyptian hieroglyph-13b89
+80778 egyptian hieroglyph-13b8a
+80779 egyptian hieroglyph-13b8b
+80780 egyptian hieroglyph-13b8c
+80781 egyptian hieroglyph-13b8d
+80782 egyptian hieroglyph-13b8e
+80783 egyptian hieroglyph-13b8f
+80784 egyptian hieroglyph-13b90
+80785 egyptian hieroglyph-13b91
+80786 egyptian hieroglyph-13b92
+80787 egyptian hieroglyph-13b93
+80788 egyptian hieroglyph-13b94
+80789 egyptian hieroglyph-13b95
+80790 egyptian hieroglyph-13b96
+80791 egyptian hieroglyph-13b97
+80792 egyptian hieroglyph-13b98
+80793 egyptian hieroglyph-13b99
+80794 egyptian hieroglyph-13b9a
+80795 egyptian hieroglyph-13b9b
+80796 egyptian hieroglyph-13b9c
+80797 egyptian hieroglyph-13b9d
+80798 egyptian hieroglyph-13b9e
+80799 egyptian hieroglyph-13b9f
+80800 egyptian hieroglyph-13ba0
+80801 egyptian hieroglyph-13ba1
+80802 egyptian hieroglyph-13ba2
+80803 egyptian hieroglyph-13ba3
+80804 egyptian hieroglyph-13ba4
+80805 egyptian hieroglyph-13ba5
+80806 egyptian hieroglyph-13ba6
+80807 egyptian hieroglyph-13ba7
+80808 egyptian hieroglyph-13ba8
+80809 egyptian hieroglyph-13ba9
+80810 egyptian hieroglyph-13baa
+80811 egyptian hieroglyph-13bab
+80812 egyptian hieroglyph-13bac
+80813 egyptian hieroglyph-13bad
+80814 egyptian hieroglyph-13bae
+80815 egyptian hieroglyph-13baf
+80816 egyptian hieroglyph-13bb0
+80817 egyptian hieroglyph-13bb1
+80818 egyptian hieroglyph-13bb2
+80819 egyptian hieroglyph-13bb3
+80820 egyptian hieroglyph-13bb4
+80821 egyptian hieroglyph-13bb5
+80822 egyptian hieroglyph-13bb6
+80823 egyptian hieroglyph-13bb7
+80824 egyptian hieroglyph-13bb8
+80825 egyptian hieroglyph-13bb9
+80826 egyptian hieroglyph-13bba
+80827 egyptian hieroglyph-13bbb
+80828 egyptian hieroglyph-13bbc
+80829 egyptian hieroglyph-13bbd
+80830 egyptian hieroglyph-13bbe
+80831 egyptian hieroglyph-13bbf
+80832 egyptian hieroglyph-13bc0
+80833 egyptian hieroglyph-13bc1
+80834 egyptian hieroglyph-13bc2
+80835 egyptian hieroglyph-13bc3
+80836 egyptian hieroglyph-13bc4
+80837 egyptian hieroglyph-13bc5
+80838 egyptian hieroglyph-13bc6
+80839 egyptian hieroglyph-13bc7
+80840 egyptian hieroglyph-13bc8
+80841 egyptian hieroglyph-13bc9
+80842 egyptian hieroglyph-13bca
+80843 egyptian hieroglyph-13bcb
+80844 egyptian hieroglyph-13bcc
+80845 egyptian hieroglyph-13bcd
+80846 egyptian hieroglyph-13bce
+80847 egyptian hieroglyph-13bcf
+80848 egyptian hieroglyph-13bd0
+80849 egyptian hieroglyph-13bd1
+80850 egyptian hieroglyph-13bd2
+80851 egyptian hieroglyph-13bd3
+80852 egyptian hieroglyph-13bd4
+80853 egyptian hieroglyph-13bd5
+80854 egyptian hieroglyph-13bd6
+80855 egyptian hieroglyph-13bd7
+80856 egyptian hieroglyph-13bd8
+80857 egyptian hieroglyph-13bd9
+80858 egyptian hieroglyph-13bda
+80859 egyptian hieroglyph-13bdb
+80860 egyptian hieroglyph-13bdc
+80861 egyptian hieroglyph-13bdd
+80862 egyptian hieroglyph-13bde
+80863 egyptian hieroglyph-13bdf
+80864 egyptian hieroglyph-13be0
+80865 egyptian hieroglyph-13be1
+80866 egyptian hieroglyph-13be2
+80867 egyptian hieroglyph-13be3
+80868 egyptian hieroglyph-13be4
+80869 egyptian hieroglyph-13be5
+80870 egyptian hieroglyph-13be6
+80871 egyptian hieroglyph-13be7
+80872 egyptian hieroglyph-13be8
+80873 egyptian hieroglyph-13be9
+80874 egyptian hieroglyph-13bea
+80875 egyptian hieroglyph-13beb
+80876 egyptian hieroglyph-13bec
+80877 egyptian hieroglyph-13bed
+80878 egyptian hieroglyph-13bee
+80879 egyptian hieroglyph-13bef
+80880 egyptian hieroglyph-13bf0
+80881 egyptian hieroglyph-13bf1
+80882 egyptian hieroglyph-13bf2
+80883 egyptian hieroglyph-13bf3
+80884 egyptian hieroglyph-13bf4
+80885 egyptian hieroglyph-13bf5
+80886 egyptian hieroglyph-13bf6
+80887 egyptian hieroglyph-13bf7
+80888 egyptian hieroglyph-13bf8
+80889 egyptian hieroglyph-13bf9
+80890 egyptian hieroglyph-13bfa
+80891 egyptian hieroglyph-13bfb
+80892 egyptian hieroglyph-13bfc
+80893 egyptian hieroglyph-13bfd
+80894 egyptian hieroglyph-13bfe
+80895 egyptian hieroglyph-13bff
+80896 egyptian hieroglyph-13c00
+80897 egyptian hieroglyph-13c01
+80898 egyptian hieroglyph-13c02
+80899 egyptian hieroglyph-13c03
+80900 egyptian hieroglyph-13c04
+80901 egyptian hieroglyph-13c05
+80902 egyptian hieroglyph-13c06
+80903 egyptian hieroglyph-13c07
+80904 egyptian hieroglyph-13c08
+80905 egyptian hieroglyph-13c09
+80906 egyptian hieroglyph-13c0a
+80907 egyptian hieroglyph-13c0b
+80908 egyptian hieroglyph-13c0c
+80909 egyptian hieroglyph-13c0d
+80910 egyptian hieroglyph-13c0e
+80911 egyptian hieroglyph-13c0f
+80912 egyptian hieroglyph-13c10
+80913 egyptian hieroglyph-13c11
+80914 egyptian hieroglyph-13c12
+80915 egyptian hieroglyph-13c13
+80916 egyptian hieroglyph-13c14
+80917 egyptian hieroglyph-13c15
+80918 egyptian hieroglyph-13c16
+80919 egyptian hieroglyph-13c17
+80920 egyptian hieroglyph-13c18
+80921 egyptian hieroglyph-13c19
+80922 egyptian hieroglyph-13c1a
+80923 egyptian hieroglyph-13c1b
+80924 egyptian hieroglyph-13c1c
+80925 egyptian hieroglyph-13c1d
+80926 egyptian hieroglyph-13c1e
+80927 egyptian hieroglyph-13c1f
+80928 egyptian hieroglyph-13c20
+80929 egyptian hieroglyph-13c21
+80930 egyptian hieroglyph-13c22
+80931 egyptian hieroglyph-13c23
+80932 egyptian hieroglyph-13c24
+80933 egyptian hieroglyph-13c25
+80934 egyptian hieroglyph-13c26
+80935 egyptian hieroglyph-13c27
+80936 egyptian hieroglyph-13c28
+80937 egyptian hieroglyph-13c29
+80938 egyptian hieroglyph-13c2a
+80939 egyptian hieroglyph-13c2b
+80940 egyptian hieroglyph-13c2c
+80941 egyptian hieroglyph-13c2d
+80942 egyptian hieroglyph-13c2e
+80943 egyptian hieroglyph-13c2f
+80944 egyptian hieroglyph-13c30
+80945 egyptian hieroglyph-13c31
+80946 egyptian hieroglyph-13c32
+80947 egyptian hieroglyph-13c33
+80948 egyptian hieroglyph-13c34
+80949 egyptian hieroglyph-13c35
+80950 egyptian hieroglyph-13c36
+80951 egyptian hieroglyph-13c37
+80952 egyptian hieroglyph-13c38
+80953 egyptian hieroglyph-13c39
+80954 egyptian hieroglyph-13c3a
+80955 egyptian hieroglyph-13c3b
+80956 egyptian hieroglyph-13c3c
+80957 egyptian hieroglyph-13c3d
+80958 egyptian hieroglyph-13c3e
+80959 egyptian hieroglyph-13c3f
+80960 egyptian hieroglyph-13c40
+80961 egyptian hieroglyph-13c41
+80962 egyptian hieroglyph-13c42
+80963 egyptian hieroglyph-13c43
+80964 egyptian hieroglyph-13c44
+80965 egyptian hieroglyph-13c45
+80966 egyptian hieroglyph-13c46
+80967 egyptian hieroglyph-13c47
+80968 egyptian hieroglyph-13c48
+80969 egyptian hieroglyph-13c49
+80970 egyptian hieroglyph-13c4a
+80971 egyptian hieroglyph-13c4b
+80972 egyptian hieroglyph-13c4c
+80973 egyptian hieroglyph-13c4d
+80974 egyptian hieroglyph-13c4e
+80975 egyptian hieroglyph-13c4f
+80976 egyptian hieroglyph-13c50
+80977 egyptian hieroglyph-13c51
+80978 egyptian hieroglyph-13c52
+80979 egyptian hieroglyph-13c53
+80980 egyptian hieroglyph-13c54
+80981 egyptian hieroglyph-13c55
+80982 egyptian hieroglyph-13c56
+80983 egyptian hieroglyph-13c57
+80984 egyptian hieroglyph-13c58
+80985 egyptian hieroglyph-13c59
+80986 egyptian hieroglyph-13c5a
+80987 egyptian hieroglyph-13c5b
+80988 egyptian hieroglyph-13c5c
+80989 egyptian hieroglyph-13c5d
+80990 egyptian hieroglyph-13c5e
+80991 egyptian hieroglyph-13c5f
+80992 egyptian hieroglyph-13c60
+80993 egyptian hieroglyph-13c61
+80994 egyptian hieroglyph-13c62
+80995 egyptian hieroglyph-13c63
+80996 egyptian hieroglyph-13c64
+80997 egyptian hieroglyph-13c65
+80998 egyptian hieroglyph-13c66
+80999 egyptian hieroglyph-13c67
+81000 egyptian hieroglyph-13c68
+81001 egyptian hieroglyph-13c69
+81002 egyptian hieroglyph-13c6a
+81003 egyptian hieroglyph-13c6b
+81004 egyptian hieroglyph-13c6c
+81005 egyptian hieroglyph-13c6d
+81006 egyptian hieroglyph-13c6e
+81007 egyptian hieroglyph-13c6f
+81008 egyptian hieroglyph-13c70
+81009 egyptian hieroglyph-13c71
+81010 egyptian hieroglyph-13c72
+81011 egyptian hieroglyph-13c73
+81012 egyptian hieroglyph-13c74
+81013 egyptian hieroglyph-13c75
+81014 egyptian hieroglyph-13c76
+81015 egyptian hieroglyph-13c77
+81016 egyptian hieroglyph-13c78
+81017 egyptian hieroglyph-13c79
+81018 egyptian hieroglyph-13c7a
+81019 egyptian hieroglyph-13c7b
+81020 egyptian hieroglyph-13c7c
+81021 egyptian hieroglyph-13c7d
+81022 egyptian hieroglyph-13c7e
+81023 egyptian hieroglyph-13c7f
+81024 egyptian hieroglyph-13c80
+81025 egyptian hieroglyph-13c81
+81026 egyptian hieroglyph-13c82
+81027 egyptian hieroglyph-13c83
+81028 egyptian hieroglyph-13c84
+81029 egyptian hieroglyph-13c85
+81030 egyptian hieroglyph-13c86
+81031 egyptian hieroglyph-13c87
+81032 egyptian hieroglyph-13c88
+81033 egyptian hieroglyph-13c89
+81034 egyptian hieroglyph-13c8a
+81035 egyptian hieroglyph-13c8b
+81036 egyptian hieroglyph-13c8c
+81037 egyptian hieroglyph-13c8d
+81038 egyptian hieroglyph-13c8e
+81039 egyptian hieroglyph-13c8f
+81040 egyptian hieroglyph-13c90
+81041 egyptian hieroglyph-13c91
+81042 egyptian hieroglyph-13c92
+81043 egyptian hieroglyph-13c93
+81044 egyptian hieroglyph-13c94
+81045 egyptian hieroglyph-13c95
+81046 egyptian hieroglyph-13c96
+81047 egyptian hieroglyph-13c97
+81048 egyptian hieroglyph-13c98
+81049 egyptian hieroglyph-13c99
+81050 egyptian hieroglyph-13c9a
+81051 egyptian hieroglyph-13c9b
+81052 egyptian hieroglyph-13c9c
+81053 egyptian hieroglyph-13c9d
+81054 egyptian hieroglyph-13c9e
+81055 egyptian hieroglyph-13c9f
+81056 egyptian hieroglyph-13ca0
+81057 egyptian hieroglyph-13ca1
+81058 egyptian hieroglyph-13ca2
+81059 egyptian hieroglyph-13ca3
+81060 egyptian hieroglyph-13ca4
+81061 egyptian hieroglyph-13ca5
+81062 egyptian hieroglyph-13ca6
+81063 egyptian hieroglyph-13ca7
+81064 egyptian hieroglyph-13ca8
+81065 egyptian hieroglyph-13ca9
+81066 egyptian hieroglyph-13caa
+81067 egyptian hieroglyph-13cab
+81068 egyptian hieroglyph-13cac
+81069 egyptian hieroglyph-13cad
+81070 egyptian hieroglyph-13cae
+81071 egyptian hieroglyph-13caf
+81072 egyptian hieroglyph-13cb0
+81073 egyptian hieroglyph-13cb1
+81074 egyptian hieroglyph-13cb2
+81075 egyptian hieroglyph-13cb3
+81076 egyptian hieroglyph-13cb4
+81077 egyptian hieroglyph-13cb5
+81078 egyptian hieroglyph-13cb6
+81079 egyptian hieroglyph-13cb7
+81080 egyptian hieroglyph-13cb8
+81081 egyptian hieroglyph-13cb9
+81082 egyptian hieroglyph-13cba
+81083 egyptian hieroglyph-13cbb
+81084 egyptian hieroglyph-13cbc
+81085 egyptian hieroglyph-13cbd
+81086 egyptian hieroglyph-13cbe
+81087 egyptian hieroglyph-13cbf
+81088 egyptian hieroglyph-13cc0
+81089 egyptian hieroglyph-13cc1
+81090 egyptian hieroglyph-13cc2
+81091 egyptian hieroglyph-13cc3
+81092 egyptian hieroglyph-13cc4
+81093 egyptian hieroglyph-13cc5
+81094 egyptian hieroglyph-13cc6
+81095 egyptian hieroglyph-13cc7
+81096 egyptian hieroglyph-13cc8
+81097 egyptian hieroglyph-13cc9
+81098 egyptian hieroglyph-13cca
+81099 egyptian hieroglyph-13ccb
+81100 egyptian hieroglyph-13ccc
+81101 egyptian hieroglyph-13ccd
+81102 egyptian hieroglyph-13cce
+81103 egyptian hieroglyph-13ccf
+81104 egyptian hieroglyph-13cd0
+81105 egyptian hieroglyph-13cd1
+81106 egyptian hieroglyph-13cd2
+81107 egyptian hieroglyph-13cd3
+81108 egyptian hieroglyph-13cd4
+81109 egyptian hieroglyph-13cd5
+81110 egyptian hieroglyph-13cd6
+81111 egyptian hieroglyph-13cd7
+81112 egyptian hieroglyph-13cd8
+81113 egyptian hieroglyph-13cd9
+81114 egyptian hieroglyph-13cda
+81115 egyptian hieroglyph-13cdb
+81116 egyptian hieroglyph-13cdc
+81117 egyptian hieroglyph-13cdd
+81118 egyptian hieroglyph-13cde
+81119 egyptian hieroglyph-13cdf
+81120 egyptian hieroglyph-13ce0
+81121 egyptian hieroglyph-13ce1
+81122 egyptian hieroglyph-13ce2
+81123 egyptian hieroglyph-13ce3
+81124 egyptian hieroglyph-13ce4
+81125 egyptian hieroglyph-13ce5
+81126 egyptian hieroglyph-13ce6
+81127 egyptian hieroglyph-13ce7
+81128 egyptian hieroglyph-13ce8
+81129 egyptian hieroglyph-13ce9
+81130 egyptian hieroglyph-13cea
+81131 egyptian hieroglyph-13ceb
+81132 egyptian hieroglyph-13cec
+81133 egyptian hieroglyph-13ced
+81134 egyptian hieroglyph-13cee
+81135 egyptian hieroglyph-13cef
+81136 egyptian hieroglyph-13cf0
+81137 egyptian hieroglyph-13cf1
+81138 egyptian hieroglyph-13cf2
+81139 egyptian hieroglyph-13cf3
+81140 egyptian hieroglyph-13cf4
+81141 egyptian hieroglyph-13cf5
+81142 egyptian hieroglyph-13cf6
+81143 egyptian hieroglyph-13cf7
+81144 egyptian hieroglyph-13cf8
+81145 egyptian hieroglyph-13cf9
+81146 egyptian hieroglyph-13cfa
+81147 egyptian hieroglyph-13cfb
+81148 egyptian hieroglyph-13cfc
+81149 egyptian hieroglyph-13cfd
+81150 egyptian hieroglyph-13cfe
+81151 egyptian hieroglyph-13cff
+81152 egyptian hieroglyph-13d00
+81153 egyptian hieroglyph-13d01
+81154 egyptian hieroglyph-13d02
+81155 egyptian hieroglyph-13d03
+81156 egyptian hieroglyph-13d04
+81157 egyptian hieroglyph-13d05
+81158 egyptian hieroglyph-13d06
+81159 egyptian hieroglyph-13d07
+81160 egyptian hieroglyph-13d08
+81161 egyptian hieroglyph-13d09
+81162 egyptian hieroglyph-13d0a
+81163 egyptian hieroglyph-13d0b
+81164 egyptian hieroglyph-13d0c
+81165 egyptian hieroglyph-13d0d
+81166 egyptian hieroglyph-13d0e
+81167 egyptian hieroglyph-13d0f
+81168 egyptian hieroglyph-13d10
+81169 egyptian hieroglyph-13d11
+81170 egyptian hieroglyph-13d12
+81171 egyptian hieroglyph-13d13
+81172 egyptian hieroglyph-13d14
+81173 egyptian hieroglyph-13d15
+81174 egyptian hieroglyph-13d16
+81175 egyptian hieroglyph-13d17
+81176 egyptian hieroglyph-13d18
+81177 egyptian hieroglyph-13d19
+81178 egyptian hieroglyph-13d1a
+81179 egyptian hieroglyph-13d1b
+81180 egyptian hieroglyph-13d1c
+81181 egyptian hieroglyph-13d1d
+81182 egyptian hieroglyph-13d1e
+81183 egyptian hieroglyph-13d1f
+81184 egyptian hieroglyph-13d20
+81185 egyptian hieroglyph-13d21
+81186 egyptian hieroglyph-13d22
+81187 egyptian hieroglyph-13d23
+81188 egyptian hieroglyph-13d24
+81189 egyptian hieroglyph-13d25
+81190 egyptian hieroglyph-13d26
+81191 egyptian hieroglyph-13d27
+81192 egyptian hieroglyph-13d28
+81193 egyptian hieroglyph-13d29
+81194 egyptian hieroglyph-13d2a
+81195 egyptian hieroglyph-13d2b
+81196 egyptian hieroglyph-13d2c
+81197 egyptian hieroglyph-13d2d
+81198 egyptian hieroglyph-13d2e
+81199 egyptian hieroglyph-13d2f
+81200 egyptian hieroglyph-13d30
+81201 egyptian hieroglyph-13d31
+81202 egyptian hieroglyph-13d32
+81203 egyptian hieroglyph-13d33
+81204 egyptian hieroglyph-13d34
+81205 egyptian hieroglyph-13d35
+81206 egyptian hieroglyph-13d36
+81207 egyptian hieroglyph-13d37
+81208 egyptian hieroglyph-13d38
+81209 egyptian hieroglyph-13d39
+81210 egyptian hieroglyph-13d3a
+81211 egyptian hieroglyph-13d3b
+81212 egyptian hieroglyph-13d3c
+81213 egyptian hieroglyph-13d3d
+81214 egyptian hieroglyph-13d3e
+81215 egyptian hieroglyph-13d3f
+81216 egyptian hieroglyph-13d40
+81217 egyptian hieroglyph-13d41
+81218 egyptian hieroglyph-13d42
+81219 egyptian hieroglyph-13d43
+81220 egyptian hieroglyph-13d44
+81221 egyptian hieroglyph-13d45
+81222 egyptian hieroglyph-13d46
+81223 egyptian hieroglyph-13d47
+81224 egyptian hieroglyph-13d48
+81225 egyptian hieroglyph-13d49
+81226 egyptian hieroglyph-13d4a
+81227 egyptian hieroglyph-13d4b
+81228 egyptian hieroglyph-13d4c
+81229 egyptian hieroglyph-13d4d
+81230 egyptian hieroglyph-13d4e
+81231 egyptian hieroglyph-13d4f
+81232 egyptian hieroglyph-13d50
+81233 egyptian hieroglyph-13d51
+81234 egyptian hieroglyph-13d52
+81235 egyptian hieroglyph-13d53
+81236 egyptian hieroglyph-13d54
+81237 egyptian hieroglyph-13d55
+81238 egyptian hieroglyph-13d56
+81239 egyptian hieroglyph-13d57
+81240 egyptian hieroglyph-13d58
+81241 egyptian hieroglyph-13d59
+81242 egyptian hieroglyph-13d5a
+81243 egyptian hieroglyph-13d5b
+81244 egyptian hieroglyph-13d5c
+81245 egyptian hieroglyph-13d5d
+81246 egyptian hieroglyph-13d5e
+81247 egyptian hieroglyph-13d5f
+81248 egyptian hieroglyph-13d60
+81249 egyptian hieroglyph-13d61
+81250 egyptian hieroglyph-13d62
+81251 egyptian hieroglyph-13d63
+81252 egyptian hieroglyph-13d64
+81253 egyptian hieroglyph-13d65
+81254 egyptian hieroglyph-13d66
+81255 egyptian hieroglyph-13d67
+81256 egyptian hieroglyph-13d68
+81257 egyptian hieroglyph-13d69
+81258 egyptian hieroglyph-13d6a
+81259 egyptian hieroglyph-13d6b
+81260 egyptian hieroglyph-13d6c
+81261 egyptian hieroglyph-13d6d
+81262 egyptian hieroglyph-13d6e
+81263 egyptian hieroglyph-13d6f
+81264 egyptian hieroglyph-13d70
+81265 egyptian hieroglyph-13d71
+81266 egyptian hieroglyph-13d72
+81267 egyptian hieroglyph-13d73
+81268 egyptian hieroglyph-13d74
+81269 egyptian hieroglyph-13d75
+81270 egyptian hieroglyph-13d76
+81271 egyptian hieroglyph-13d77
+81272 egyptian hieroglyph-13d78
+81273 egyptian hieroglyph-13d79
+81274 egyptian hieroglyph-13d7a
+81275 egyptian hieroglyph-13d7b
+81276 egyptian hieroglyph-13d7c
+81277 egyptian hieroglyph-13d7d
+81278 egyptian hieroglyph-13d7e
+81279 egyptian hieroglyph-13d7f
+81280 egyptian hieroglyph-13d80
+81281 egyptian hieroglyph-13d81
+81282 egyptian hieroglyph-13d82
+81283 egyptian hieroglyph-13d83
+81284 egyptian hieroglyph-13d84
+81285 egyptian hieroglyph-13d85
+81286 egyptian hieroglyph-13d86
+81287 egyptian hieroglyph-13d87
+81288 egyptian hieroglyph-13d88
+81289 egyptian hieroglyph-13d89
+81290 egyptian hieroglyph-13d8a
+81291 egyptian hieroglyph-13d8b
+81292 egyptian hieroglyph-13d8c
+81293 egyptian hieroglyph-13d8d
+81294 egyptian hieroglyph-13d8e
+81295 egyptian hieroglyph-13d8f
+81296 egyptian hieroglyph-13d90
+81297 egyptian hieroglyph-13d91
+81298 egyptian hieroglyph-13d92
+81299 egyptian hieroglyph-13d93
+81300 egyptian hieroglyph-13d94
+81301 egyptian hieroglyph-13d95
+81302 egyptian hieroglyph-13d96
+81303 egyptian hieroglyph-13d97
+81304 egyptian hieroglyph-13d98
+81305 egyptian hieroglyph-13d99
+81306 egyptian hieroglyph-13d9a
+81307 egyptian hieroglyph-13d9b
+81308 egyptian hieroglyph-13d9c
+81309 egyptian hieroglyph-13d9d
+81310 egyptian hieroglyph-13d9e
+81311 egyptian hieroglyph-13d9f
+81312 egyptian hieroglyph-13da0
+81313 egyptian hieroglyph-13da1
+81314 egyptian hieroglyph-13da2
+81315 egyptian hieroglyph-13da3
+81316 egyptian hieroglyph-13da4
+81317 egyptian hieroglyph-13da5
+81318 egyptian hieroglyph-13da6
+81319 egyptian hieroglyph-13da7
+81320 egyptian hieroglyph-13da8
+81321 egyptian hieroglyph-13da9
+81322 egyptian hieroglyph-13daa
+81323 egyptian hieroglyph-13dab
+81324 egyptian hieroglyph-13dac
+81325 egyptian hieroglyph-13dad
+81326 egyptian hieroglyph-13dae
+81327 egyptian hieroglyph-13daf
+81328 egyptian hieroglyph-13db0
+81329 egyptian hieroglyph-13db1
+81330 egyptian hieroglyph-13db2
+81331 egyptian hieroglyph-13db3
+81332 egyptian hieroglyph-13db4
+81333 egyptian hieroglyph-13db5
+81334 egyptian hieroglyph-13db6
+81335 egyptian hieroglyph-13db7
+81336 egyptian hieroglyph-13db8
+81337 egyptian hieroglyph-13db9
+81338 egyptian hieroglyph-13dba
+81339 egyptian hieroglyph-13dbb
+81340 egyptian hieroglyph-13dbc
+81341 egyptian hieroglyph-13dbd
+81342 egyptian hieroglyph-13dbe
+81343 egyptian hieroglyph-13dbf
+81344 egyptian hieroglyph-13dc0
+81345 egyptian hieroglyph-13dc1
+81346 egyptian hieroglyph-13dc2
+81347 egyptian hieroglyph-13dc3
+81348 egyptian hieroglyph-13dc4
+81349 egyptian hieroglyph-13dc5
+81350 egyptian hieroglyph-13dc6
+81351 egyptian hieroglyph-13dc7
+81352 egyptian hieroglyph-13dc8
+81353 egyptian hieroglyph-13dc9
+81354 egyptian hieroglyph-13dca
+81355 egyptian hieroglyph-13dcb
+81356 egyptian hieroglyph-13dcc
+81357 egyptian hieroglyph-13dcd
+81358 egyptian hieroglyph-13dce
+81359 egyptian hieroglyph-13dcf
+81360 egyptian hieroglyph-13dd0
+81361 egyptian hieroglyph-13dd1
+81362 egyptian hieroglyph-13dd2
+81363 egyptian hieroglyph-13dd3
+81364 egyptian hieroglyph-13dd4
+81365 egyptian hieroglyph-13dd5
+81366 egyptian hieroglyph-13dd6
+81367 egyptian hieroglyph-13dd7
+81368 egyptian hieroglyph-13dd8
+81369 egyptian hieroglyph-13dd9
+81370 egyptian hieroglyph-13dda
+81371 egyptian hieroglyph-13ddb
+81372 egyptian hieroglyph-13ddc
+81373 egyptian hieroglyph-13ddd
+81374 egyptian hieroglyph-13dde
+81375 egyptian hieroglyph-13ddf
+81376 egyptian hieroglyph-13de0
+81377 egyptian hieroglyph-13de1
+81378 egyptian hieroglyph-13de2
+81379 egyptian hieroglyph-13de3
+81380 egyptian hieroglyph-13de4
+81381 egyptian hieroglyph-13de5
+81382 egyptian hieroglyph-13de6
+81383 egyptian hieroglyph-13de7
+81384 egyptian hieroglyph-13de8
+81385 egyptian hieroglyph-13de9
+81386 egyptian hieroglyph-13dea
+81387 egyptian hieroglyph-13deb
+81388 egyptian hieroglyph-13dec
+81389 egyptian hieroglyph-13ded
+81390 egyptian hieroglyph-13dee
+81391 egyptian hieroglyph-13def
+81392 egyptian hieroglyph-13df0
+81393 egyptian hieroglyph-13df1
+81394 egyptian hieroglyph-13df2
+81395 egyptian hieroglyph-13df3
+81396 egyptian hieroglyph-13df4
+81397 egyptian hieroglyph-13df5
+81398 egyptian hieroglyph-13df6
+81399 egyptian hieroglyph-13df7
+81400 egyptian hieroglyph-13df8
+81401 egyptian hieroglyph-13df9
+81402 egyptian hieroglyph-13dfa
+81403 egyptian hieroglyph-13dfb
+81404 egyptian hieroglyph-13dfc
+81405 egyptian hieroglyph-13dfd
+81406 egyptian hieroglyph-13dfe
+81407 egyptian hieroglyph-13dff
+81408 egyptian hieroglyph-13e00
+81409 egyptian hieroglyph-13e01
+81410 egyptian hieroglyph-13e02
+81411 egyptian hieroglyph-13e03
+81412 egyptian hieroglyph-13e04
+81413 egyptian hieroglyph-13e05
+81414 egyptian hieroglyph-13e06
+81415 egyptian hieroglyph-13e07
+81416 egyptian hieroglyph-13e08
+81417 egyptian hieroglyph-13e09
+81418 egyptian hieroglyph-13e0a
+81419 egyptian hieroglyph-13e0b
+81420 egyptian hieroglyph-13e0c
+81421 egyptian hieroglyph-13e0d
+81422 egyptian hieroglyph-13e0e
+81423 egyptian hieroglyph-13e0f
+81424 egyptian hieroglyph-13e10
+81425 egyptian hieroglyph-13e11
+81426 egyptian hieroglyph-13e12
+81427 egyptian hieroglyph-13e13
+81428 egyptian hieroglyph-13e14
+81429 egyptian hieroglyph-13e15
+81430 egyptian hieroglyph-13e16
+81431 egyptian hieroglyph-13e17
+81432 egyptian hieroglyph-13e18
+81433 egyptian hieroglyph-13e19
+81434 egyptian hieroglyph-13e1a
+81435 egyptian hieroglyph-13e1b
+81436 egyptian hieroglyph-13e1c
+81437 egyptian hieroglyph-13e1d
+81438 egyptian hieroglyph-13e1e
+81439 egyptian hieroglyph-13e1f
+81440 egyptian hieroglyph-13e20
+81441 egyptian hieroglyph-13e21
+81442 egyptian hieroglyph-13e22
+81443 egyptian hieroglyph-13e23
+81444 egyptian hieroglyph-13e24
+81445 egyptian hieroglyph-13e25
+81446 egyptian hieroglyph-13e26
+81447 egyptian hieroglyph-13e27
+81448 egyptian hieroglyph-13e28
+81449 egyptian hieroglyph-13e29
+81450 egyptian hieroglyph-13e2a
+81451 egyptian hieroglyph-13e2b
+81452 egyptian hieroglyph-13e2c
+81453 egyptian hieroglyph-13e2d
+81454 egyptian hieroglyph-13e2e
+81455 egyptian hieroglyph-13e2f
+81456 egyptian hieroglyph-13e30
+81457 egyptian hieroglyph-13e31
+81458 egyptian hieroglyph-13e32
+81459 egyptian hieroglyph-13e33
+81460 egyptian hieroglyph-13e34
+81461 egyptian hieroglyph-13e35
+81462 egyptian hieroglyph-13e36
+81463 egyptian hieroglyph-13e37
+81464 egyptian hieroglyph-13e38
+81465 egyptian hieroglyph-13e39
+81466 egyptian hieroglyph-13e3a
+81467 egyptian hieroglyph-13e3b
+81468 egyptian hieroglyph-13e3c
+81469 egyptian hieroglyph-13e3d
+81470 egyptian hieroglyph-13e3e
+81471 egyptian hieroglyph-13e3f
+81472 egyptian hieroglyph-13e40
+81473 egyptian hieroglyph-13e41
+81474 egyptian hieroglyph-13e42
+81475 egyptian hieroglyph-13e43
+81476 egyptian hieroglyph-13e44
+81477 egyptian hieroglyph-13e45
+81478 egyptian hieroglyph-13e46
+81479 egyptian hieroglyph-13e47
+81480 egyptian hieroglyph-13e48
+81481 egyptian hieroglyph-13e49
+81482 egyptian hieroglyph-13e4a
+81483 egyptian hieroglyph-13e4b
+81484 egyptian hieroglyph-13e4c
+81485 egyptian hieroglyph-13e4d
+81486 egyptian hieroglyph-13e4e
+81487 egyptian hieroglyph-13e4f
+81488 egyptian hieroglyph-13e50
+81489 egyptian hieroglyph-13e51
+81490 egyptian hieroglyph-13e52
+81491 egyptian hieroglyph-13e53
+81492 egyptian hieroglyph-13e54
+81493 egyptian hieroglyph-13e55
+81494 egyptian hieroglyph-13e56
+81495 egyptian hieroglyph-13e57
+81496 egyptian hieroglyph-13e58
+81497 egyptian hieroglyph-13e59
+81498 egyptian hieroglyph-13e5a
+81499 egyptian hieroglyph-13e5b
+81500 egyptian hieroglyph-13e5c
+81501 egyptian hieroglyph-13e5d
+81502 egyptian hieroglyph-13e5e
+81503 egyptian hieroglyph-13e5f
+81504 egyptian hieroglyph-13e60
+81505 egyptian hieroglyph-13e61
+81506 egyptian hieroglyph-13e62
+81507 egyptian hieroglyph-13e63
+81508 egyptian hieroglyph-13e64
+81509 egyptian hieroglyph-13e65
+81510 egyptian hieroglyph-13e66
+81511 egyptian hieroglyph-13e67
+81512 egyptian hieroglyph-13e68
+81513 egyptian hieroglyph-13e69
+81514 egyptian hieroglyph-13e6a
+81515 egyptian hieroglyph-13e6b
+81516 egyptian hieroglyph-13e6c
+81517 egyptian hieroglyph-13e6d
+81518 egyptian hieroglyph-13e6e
+81519 egyptian hieroglyph-13e6f
+81520 egyptian hieroglyph-13e70
+81521 egyptian hieroglyph-13e71
+81522 egyptian hieroglyph-13e72
+81523 egyptian hieroglyph-13e73
+81524 egyptian hieroglyph-13e74
+81525 egyptian hieroglyph-13e75
+81526 egyptian hieroglyph-13e76
+81527 egyptian hieroglyph-13e77
+81528 egyptian hieroglyph-13e78
+81529 egyptian hieroglyph-13e79
+81530 egyptian hieroglyph-13e7a
+81531 egyptian hieroglyph-13e7b
+81532 egyptian hieroglyph-13e7c
+81533 egyptian hieroglyph-13e7d
+81534 egyptian hieroglyph-13e7e
+81535 egyptian hieroglyph-13e7f
+81536 egyptian hieroglyph-13e80
+81537 egyptian hieroglyph-13e81
+81538 egyptian hieroglyph-13e82
+81539 egyptian hieroglyph-13e83
+81540 egyptian hieroglyph-13e84
+81541 egyptian hieroglyph-13e85
+81542 egyptian hieroglyph-13e86
+81543 egyptian hieroglyph-13e87
+81544 egyptian hieroglyph-13e88
+81545 egyptian hieroglyph-13e89
+81546 egyptian hieroglyph-13e8a
+81547 egyptian hieroglyph-13e8b
+81548 egyptian hieroglyph-13e8c
+81549 egyptian hieroglyph-13e8d
+81550 egyptian hieroglyph-13e8e
+81551 egyptian hieroglyph-13e8f
+81552 egyptian hieroglyph-13e90
+81553 egyptian hieroglyph-13e91
+81554 egyptian hieroglyph-13e92
+81555 egyptian hieroglyph-13e93
+81556 egyptian hieroglyph-13e94
+81557 egyptian hieroglyph-13e95
+81558 egyptian hieroglyph-13e96
+81559 egyptian hieroglyph-13e97
+81560 egyptian hieroglyph-13e98
+81561 egyptian hieroglyph-13e99
+81562 egyptian hieroglyph-13e9a
+81563 egyptian hieroglyph-13e9b
+81564 egyptian hieroglyph-13e9c
+81565 egyptian hieroglyph-13e9d
+81566 egyptian hieroglyph-13e9e
+81567 egyptian hieroglyph-13e9f
+81568 egyptian hieroglyph-13ea0
+81569 egyptian hieroglyph-13ea1
+81570 egyptian hieroglyph-13ea2
+81571 egyptian hieroglyph-13ea3
+81572 egyptian hieroglyph-13ea4
+81573 egyptian hieroglyph-13ea5
+81574 egyptian hieroglyph-13ea6
+81575 egyptian hieroglyph-13ea7
+81576 egyptian hieroglyph-13ea8
+81577 egyptian hieroglyph-13ea9
+81578 egyptian hieroglyph-13eaa
+81579 egyptian hieroglyph-13eab
+81580 egyptian hieroglyph-13eac
+81581 egyptian hieroglyph-13ead
+81582 egyptian hieroglyph-13eae
+81583 egyptian hieroglyph-13eaf
+81584 egyptian hieroglyph-13eb0
+81585 egyptian hieroglyph-13eb1
+81586 egyptian hieroglyph-13eb2
+81587 egyptian hieroglyph-13eb3
+81588 egyptian hieroglyph-13eb4
+81589 egyptian hieroglyph-13eb5
+81590 egyptian hieroglyph-13eb6
+81591 egyptian hieroglyph-13eb7
+81592 egyptian hieroglyph-13eb8
+81593 egyptian hieroglyph-13eb9
+81594 egyptian hieroglyph-13eba
+81595 egyptian hieroglyph-13ebb
+81596 egyptian hieroglyph-13ebc
+81597 egyptian hieroglyph-13ebd
+81598 egyptian hieroglyph-13ebe
+81599 egyptian hieroglyph-13ebf
+81600 egyptian hieroglyph-13ec0
+81601 egyptian hieroglyph-13ec1
+81602 egyptian hieroglyph-13ec2
+81603 egyptian hieroglyph-13ec3
+81604 egyptian hieroglyph-13ec4
+81605 egyptian hieroglyph-13ec5
+81606 egyptian hieroglyph-13ec6
+81607 egyptian hieroglyph-13ec7
+81608 egyptian hieroglyph-13ec8
+81609 egyptian hieroglyph-13ec9
+81610 egyptian hieroglyph-13eca
+81611 egyptian hieroglyph-13ecb
+81612 egyptian hieroglyph-13ecc
+81613 egyptian hieroglyph-13ecd
+81614 egyptian hieroglyph-13ece
+81615 egyptian hieroglyph-13ecf
+81616 egyptian hieroglyph-13ed0
+81617 egyptian hieroglyph-13ed1
+81618 egyptian hieroglyph-13ed2
+81619 egyptian hieroglyph-13ed3
+81620 egyptian hieroglyph-13ed4
+81621 egyptian hieroglyph-13ed5
+81622 egyptian hieroglyph-13ed6
+81623 egyptian hieroglyph-13ed7
+81624 egyptian hieroglyph-13ed8
+81625 egyptian hieroglyph-13ed9
+81626 egyptian hieroglyph-13eda
+81627 egyptian hieroglyph-13edb
+81628 egyptian hieroglyph-13edc
+81629 egyptian hieroglyph-13edd
+81630 egyptian hieroglyph-13ede
+81631 egyptian hieroglyph-13edf
+81632 egyptian hieroglyph-13ee0
+81633 egyptian hieroglyph-13ee1
+81634 egyptian hieroglyph-13ee2
+81635 egyptian hieroglyph-13ee3
+81636 egyptian hieroglyph-13ee4
+81637 egyptian hieroglyph-13ee5
+81638 egyptian hieroglyph-13ee6
+81639 egyptian hieroglyph-13ee7
+81640 egyptian hieroglyph-13ee8
+81641 egyptian hieroglyph-13ee9
+81642 egyptian hieroglyph-13eea
+81643 egyptian hieroglyph-13eeb
+81644 egyptian hieroglyph-13eec
+81645 egyptian hieroglyph-13eed
+81646 egyptian hieroglyph-13eee
+81647 egyptian hieroglyph-13eef
+81648 egyptian hieroglyph-13ef0
+81649 egyptian hieroglyph-13ef1
+81650 egyptian hieroglyph-13ef2
+81651 egyptian hieroglyph-13ef3
+81652 egyptian hieroglyph-13ef4
+81653 egyptian hieroglyph-13ef5
+81654 egyptian hieroglyph-13ef6
+81655 egyptian hieroglyph-13ef7
+81656 egyptian hieroglyph-13ef8
+81657 egyptian hieroglyph-13ef9
+81658 egyptian hieroglyph-13efa
+81659 egyptian hieroglyph-13efb
+81660 egyptian hieroglyph-13efc
+81661 egyptian hieroglyph-13efd
+81662 egyptian hieroglyph-13efe
+81663 egyptian hieroglyph-13eff
+81664 egyptian hieroglyph-13f00
+81665 egyptian hieroglyph-13f01
+81666 egyptian hieroglyph-13f02
+81667 egyptian hieroglyph-13f03
+81668 egyptian hieroglyph-13f04
+81669 egyptian hieroglyph-13f05
+81670 egyptian hieroglyph-13f06
+81671 egyptian hieroglyph-13f07
+81672 egyptian hieroglyph-13f08
+81673 egyptian hieroglyph-13f09
+81674 egyptian hieroglyph-13f0a
+81675 egyptian hieroglyph-13f0b
+81676 egyptian hieroglyph-13f0c
+81677 egyptian hieroglyph-13f0d
+81678 egyptian hieroglyph-13f0e
+81679 egyptian hieroglyph-13f0f
+81680 egyptian hieroglyph-13f10
+81681 egyptian hieroglyph-13f11
+81682 egyptian hieroglyph-13f12
+81683 egyptian hieroglyph-13f13
+81684 egyptian hieroglyph-13f14
+81685 egyptian hieroglyph-13f15
+81686 egyptian hieroglyph-13f16
+81687 egyptian hieroglyph-13f17
+81688 egyptian hieroglyph-13f18
+81689 egyptian hieroglyph-13f19
+81690 egyptian hieroglyph-13f1a
+81691 egyptian hieroglyph-13f1b
+81692 egyptian hieroglyph-13f1c
+81693 egyptian hieroglyph-13f1d
+81694 egyptian hieroglyph-13f1e
+81695 egyptian hieroglyph-13f1f
+81696 egyptian hieroglyph-13f20
+81697 egyptian hieroglyph-13f21
+81698 egyptian hieroglyph-13f22
+81699 egyptian hieroglyph-13f23
+81700 egyptian hieroglyph-13f24
+81701 egyptian hieroglyph-13f25
+81702 egyptian hieroglyph-13f26
+81703 egyptian hieroglyph-13f27
+81704 egyptian hieroglyph-13f28
+81705 egyptian hieroglyph-13f29
+81706 egyptian hieroglyph-13f2a
+81707 egyptian hieroglyph-13f2b
+81708 egyptian hieroglyph-13f2c
+81709 egyptian hieroglyph-13f2d
+81710 egyptian hieroglyph-13f2e
+81711 egyptian hieroglyph-13f2f
+81712 egyptian hieroglyph-13f30
+81713 egyptian hieroglyph-13f31
+81714 egyptian hieroglyph-13f32
+81715 egyptian hieroglyph-13f33
+81716 egyptian hieroglyph-13f34
+81717 egyptian hieroglyph-13f35
+81718 egyptian hieroglyph-13f36
+81719 egyptian hieroglyph-13f37
+81720 egyptian hieroglyph-13f38
+81721 egyptian hieroglyph-13f39
+81722 egyptian hieroglyph-13f3a
+81723 egyptian hieroglyph-13f3b
+81724 egyptian hieroglyph-13f3c
+81725 egyptian hieroglyph-13f3d
+81726 egyptian hieroglyph-13f3e
+81727 egyptian hieroglyph-13f3f
+81728 egyptian hieroglyph-13f40
+81729 egyptian hieroglyph-13f41
+81730 egyptian hieroglyph-13f42
+81731 egyptian hieroglyph-13f43
+81732 egyptian hieroglyph-13f44
+81733 egyptian hieroglyph-13f45
+81734 egyptian hieroglyph-13f46
+81735 egyptian hieroglyph-13f47
+81736 egyptian hieroglyph-13f48
+81737 egyptian hieroglyph-13f49
+81738 egyptian hieroglyph-13f4a
+81739 egyptian hieroglyph-13f4b
+81740 egyptian hieroglyph-13f4c
+81741 egyptian hieroglyph-13f4d
+81742 egyptian hieroglyph-13f4e
+81743 egyptian hieroglyph-13f4f
+81744 egyptian hieroglyph-13f50
+81745 egyptian hieroglyph-13f51
+81746 egyptian hieroglyph-13f52
+81747 egyptian hieroglyph-13f53
+81748 egyptian hieroglyph-13f54
+81749 egyptian hieroglyph-13f55
+81750 egyptian hieroglyph-13f56
+81751 egyptian hieroglyph-13f57
+81752 egyptian hieroglyph-13f58
+81753 egyptian hieroglyph-13f59
+81754 egyptian hieroglyph-13f5a
+81755 egyptian hieroglyph-13f5b
+81756 egyptian hieroglyph-13f5c
+81757 egyptian hieroglyph-13f5d
+81758 egyptian hieroglyph-13f5e
+81759 egyptian hieroglyph-13f5f
+81760 egyptian hieroglyph-13f60
+81761 egyptian hieroglyph-13f61
+81762 egyptian hieroglyph-13f62
+81763 egyptian hieroglyph-13f63
+81764 egyptian hieroglyph-13f64
+81765 egyptian hieroglyph-13f65
+81766 egyptian hieroglyph-13f66
+81767 egyptian hieroglyph-13f67
+81768 egyptian hieroglyph-13f68
+81769 egyptian hieroglyph-13f69
+81770 egyptian hieroglyph-13f6a
+81771 egyptian hieroglyph-13f6b
+81772 egyptian hieroglyph-13f6c
+81773 egyptian hieroglyph-13f6d
+81774 egyptian hieroglyph-13f6e
+81775 egyptian hieroglyph-13f6f
+81776 egyptian hieroglyph-13f70
+81777 egyptian hieroglyph-13f71
+81778 egyptian hieroglyph-13f72
+81779 egyptian hieroglyph-13f73
+81780 egyptian hieroglyph-13f74
+81781 egyptian hieroglyph-13f75
+81782 egyptian hieroglyph-13f76
+81783 egyptian hieroglyph-13f77
+81784 egyptian hieroglyph-13f78
+81785 egyptian hieroglyph-13f79
+81786 egyptian hieroglyph-13f7a
+81787 egyptian hieroglyph-13f7b
+81788 egyptian hieroglyph-13f7c
+81789 egyptian hieroglyph-13f7d
+81790 egyptian hieroglyph-13f7e
+81791 egyptian hieroglyph-13f7f
+81792 egyptian hieroglyph-13f80
+81793 egyptian hieroglyph-13f81
+81794 egyptian hieroglyph-13f82
+81795 egyptian hieroglyph-13f83
+81796 egyptian hieroglyph-13f84
+81797 egyptian hieroglyph-13f85
+81798 egyptian hieroglyph-13f86
+81799 egyptian hieroglyph-13f87
+81800 egyptian hieroglyph-13f88
+81801 egyptian hieroglyph-13f89
+81802 egyptian hieroglyph-13f8a
+81803 egyptian hieroglyph-13f8b
+81804 egyptian hieroglyph-13f8c
+81805 egyptian hieroglyph-13f8d
+81806 egyptian hieroglyph-13f8e
+81807 egyptian hieroglyph-13f8f
+81808 egyptian hieroglyph-13f90
+81809 egyptian hieroglyph-13f91
+81810 egyptian hieroglyph-13f92
+81811 egyptian hieroglyph-13f93
+81812 egyptian hieroglyph-13f94
+81813 egyptian hieroglyph-13f95
+81814 egyptian hieroglyph-13f96
+81815 egyptian hieroglyph-13f97
+81816 egyptian hieroglyph-13f98
+81817 egyptian hieroglyph-13f99
+81818 egyptian hieroglyph-13f9a
+81819 egyptian hieroglyph-13f9b
+81820 egyptian hieroglyph-13f9c
+81821 egyptian hieroglyph-13f9d
+81822 egyptian hieroglyph-13f9e
+81823 egyptian hieroglyph-13f9f
+81824 egyptian hieroglyph-13fa0
+81825 egyptian hieroglyph-13fa1
+81826 egyptian hieroglyph-13fa2
+81827 egyptian hieroglyph-13fa3
+81828 egyptian hieroglyph-13fa4
+81829 egyptian hieroglyph-13fa5
+81830 egyptian hieroglyph-13fa6
+81831 egyptian hieroglyph-13fa7
+81832 egyptian hieroglyph-13fa8
+81833 egyptian hieroglyph-13fa9
+81834 egyptian hieroglyph-13faa
+81835 egyptian hieroglyph-13fab
+81836 egyptian hieroglyph-13fac
+81837 egyptian hieroglyph-13fad
+81838 egyptian hieroglyph-13fae
+81839 egyptian hieroglyph-13faf
+81840 egyptian hieroglyph-13fb0
+81841 egyptian hieroglyph-13fb1
+81842 egyptian hieroglyph-13fb2
+81843 egyptian hieroglyph-13fb3
+81844 egyptian hieroglyph-13fb4
+81845 egyptian hieroglyph-13fb5
+81846 egyptian hieroglyph-13fb6
+81847 egyptian hieroglyph-13fb7
+81848 egyptian hieroglyph-13fb8
+81849 egyptian hieroglyph-13fb9
+81850 egyptian hieroglyph-13fba
+81851 egyptian hieroglyph-13fbb
+81852 egyptian hieroglyph-13fbc
+81853 egyptian hieroglyph-13fbd
+81854 egyptian hieroglyph-13fbe
+81855 egyptian hieroglyph-13fbf
+81856 egyptian hieroglyph-13fc0
+81857 egyptian hieroglyph-13fc1
+81858 egyptian hieroglyph-13fc2
+81859 egyptian hieroglyph-13fc3
+81860 egyptian hieroglyph-13fc4
+81861 egyptian hieroglyph-13fc5
+81862 egyptian hieroglyph-13fc6
+81863 egyptian hieroglyph-13fc7
+81864 egyptian hieroglyph-13fc8
+81865 egyptian hieroglyph-13fc9
+81866 egyptian hieroglyph-13fca
+81867 egyptian hieroglyph-13fcb
+81868 egyptian hieroglyph-13fcc
+81869 egyptian hieroglyph-13fcd
+81870 egyptian hieroglyph-13fce
+81871 egyptian hieroglyph-13fcf
+81872 egyptian hieroglyph-13fd0
+81873 egyptian hieroglyph-13fd1
+81874 egyptian hieroglyph-13fd2
+81875 egyptian hieroglyph-13fd3
+81876 egyptian hieroglyph-13fd4
+81877 egyptian hieroglyph-13fd5
+81878 egyptian hieroglyph-13fd6
+81879 egyptian hieroglyph-13fd7
+81880 egyptian hieroglyph-13fd8
+81881 egyptian hieroglyph-13fd9
+81882 egyptian hieroglyph-13fda
+81883 egyptian hieroglyph-13fdb
+81884 egyptian hieroglyph-13fdc
+81885 egyptian hieroglyph-13fdd
+81886 egyptian hieroglyph-13fde
+81887 egyptian hieroglyph-13fdf
+81888 egyptian hieroglyph-13fe0
+81889 egyptian hieroglyph-13fe1
+81890 egyptian hieroglyph-13fe2
+81891 egyptian hieroglyph-13fe3
+81892 egyptian hieroglyph-13fe4
+81893 egyptian hieroglyph-13fe5
+81894 egyptian hieroglyph-13fe6
+81895 egyptian hieroglyph-13fe7
+81896 egyptian hieroglyph-13fe8
+81897 egyptian hieroglyph-13fe9
+81898 egyptian hieroglyph-13fea
+81899 egyptian hieroglyph-13feb
+81900 egyptian hieroglyph-13fec
+81901 egyptian hieroglyph-13fed
+81902 egyptian hieroglyph-13fee
+81903 egyptian hieroglyph-13fef
+81904 egyptian hieroglyph-13ff0
+81905 egyptian hieroglyph-13ff1
+81906 egyptian hieroglyph-13ff2
+81907 egyptian hieroglyph-13ff3
+81908 egyptian hieroglyph-13ff4
+81909 egyptian hieroglyph-13ff5
+81910 egyptian hieroglyph-13ff6
+81911 egyptian hieroglyph-13ff7
+81912 egyptian hieroglyph-13ff8
+81913 egyptian hieroglyph-13ff9
+81914 egyptian hieroglyph-13ffa
+81915 egyptian hieroglyph-13ffb
+81916 egyptian hieroglyph-13ffc
+81917 egyptian hieroglyph-13ffd
+81918 egyptian hieroglyph-13ffe
+81919 egyptian hieroglyph-13fff
+81920 egyptian hieroglyph-14000
+81921 egyptian hieroglyph-14001
+81922 egyptian hieroglyph-14002
+81923 egyptian hieroglyph-14003
+81924 egyptian hieroglyph-14004
+81925 egyptian hieroglyph-14005
+81926 egyptian hieroglyph-14006
+81927 egyptian hieroglyph-14007
+81928 egyptian hieroglyph-14008
+81929 egyptian hieroglyph-14009
+81930 egyptian hieroglyph-1400a
+81931 egyptian hieroglyph-1400b
+81932 egyptian hieroglyph-1400c
+81933 egyptian hieroglyph-1400d
+81934 egyptian hieroglyph-1400e
+81935 egyptian hieroglyph-1400f
+81936 egyptian hieroglyph-14010
+81937 egyptian hieroglyph-14011
+81938 egyptian hieroglyph-14012
+81939 egyptian hieroglyph-14013
+81940 egyptian hieroglyph-14014
+81941 egyptian hieroglyph-14015
+81942 egyptian hieroglyph-14016
+81943 egyptian hieroglyph-14017
+81944 egyptian hieroglyph-14018
+81945 egyptian hieroglyph-14019
+81946 egyptian hieroglyph-1401a
+81947 egyptian hieroglyph-1401b
+81948 egyptian hieroglyph-1401c
+81949 egyptian hieroglyph-1401d
+81950 egyptian hieroglyph-1401e
+81951 egyptian hieroglyph-1401f
+81952 egyptian hieroglyph-14020
+81953 egyptian hieroglyph-14021
+81954 egyptian hieroglyph-14022
+81955 egyptian hieroglyph-14023
+81956 egyptian hieroglyph-14024
+81957 egyptian hieroglyph-14025
+81958 egyptian hieroglyph-14026
+81959 egyptian hieroglyph-14027
+81960 egyptian hieroglyph-14028
+81961 egyptian hieroglyph-14029
+81962 egyptian hieroglyph-1402a
+81963 egyptian hieroglyph-1402b
+81964 egyptian hieroglyph-1402c
+81965 egyptian hieroglyph-1402d
+81966 egyptian hieroglyph-1402e
+81967 egyptian hieroglyph-1402f
+81968 egyptian hieroglyph-14030
+81969 egyptian hieroglyph-14031
+81970 egyptian hieroglyph-14032
+81971 egyptian hieroglyph-14033
+81972 egyptian hieroglyph-14034
+81973 egyptian hieroglyph-14035
+81974 egyptian hieroglyph-14036
+81975 egyptian hieroglyph-14037
+81976 egyptian hieroglyph-14038
+81977 egyptian hieroglyph-14039
+81978 egyptian hieroglyph-1403a
+81979 egyptian hieroglyph-1403b
+81980 egyptian hieroglyph-1403c
+81981 egyptian hieroglyph-1403d
+81982 egyptian hieroglyph-1403e
+81983 egyptian hieroglyph-1403f
+81984 egyptian hieroglyph-14040
+81985 egyptian hieroglyph-14041
+81986 egyptian hieroglyph-14042
+81987 egyptian hieroglyph-14043
+81988 egyptian hieroglyph-14044
+81989 egyptian hieroglyph-14045
+81990 egyptian hieroglyph-14046
+81991 egyptian hieroglyph-14047
+81992 egyptian hieroglyph-14048
+81993 egyptian hieroglyph-14049
+81994 egyptian hieroglyph-1404a
+81995 egyptian hieroglyph-1404b
+81996 egyptian hieroglyph-1404c
+81997 egyptian hieroglyph-1404d
+81998 egyptian hieroglyph-1404e
+81999 egyptian hieroglyph-1404f
+82000 egyptian hieroglyph-14050
+82001 egyptian hieroglyph-14051
+82002 egyptian hieroglyph-14052
+82003 egyptian hieroglyph-14053
+82004 egyptian hieroglyph-14054
+82005 egyptian hieroglyph-14055
+82006 egyptian hieroglyph-14056
+82007 egyptian hieroglyph-14057
+82008 egyptian hieroglyph-14058
+82009 egyptian hieroglyph-14059
+82010 egyptian hieroglyph-1405a
+82011 egyptian hieroglyph-1405b
+82012 egyptian hieroglyph-1405c
+82013 egyptian hieroglyph-1405d
+82014 egyptian hieroglyph-1405e
+82015 egyptian hieroglyph-1405f
+82016 egyptian hieroglyph-14060
+82017 egyptian hieroglyph-14061
+82018 egyptian hieroglyph-14062
+82019 egyptian hieroglyph-14063
+82020 egyptian hieroglyph-14064
+82021 egyptian hieroglyph-14065
+82022 egyptian hieroglyph-14066
+82023 egyptian hieroglyph-14067
+82024 egyptian hieroglyph-14068
+82025 egyptian hieroglyph-14069
+82026 egyptian hieroglyph-1406a
+82027 egyptian hieroglyph-1406b
+82028 egyptian hieroglyph-1406c
+82029 egyptian hieroglyph-1406d
+82030 egyptian hieroglyph-1406e
+82031 egyptian hieroglyph-1406f
+82032 egyptian hieroglyph-14070
+82033 egyptian hieroglyph-14071
+82034 egyptian hieroglyph-14072
+82035 egyptian hieroglyph-14073
+82036 egyptian hieroglyph-14074
+82037 egyptian hieroglyph-14075
+82038 egyptian hieroglyph-14076
+82039 egyptian hieroglyph-14077
+82040 egyptian hieroglyph-14078
+82041 egyptian hieroglyph-14079
+82042 egyptian hieroglyph-1407a
+82043 egyptian hieroglyph-1407b
+82044 egyptian hieroglyph-1407c
+82045 egyptian hieroglyph-1407d
+82046 egyptian hieroglyph-1407e
+82047 egyptian hieroglyph-1407f
+82048 egyptian hieroglyph-14080
+82049 egyptian hieroglyph-14081
+82050 egyptian hieroglyph-14082
+82051 egyptian hieroglyph-14083
+82052 egyptian hieroglyph-14084
+82053 egyptian hieroglyph-14085
+82054 egyptian hieroglyph-14086
+82055 egyptian hieroglyph-14087
+82056 egyptian hieroglyph-14088
+82057 egyptian hieroglyph-14089
+82058 egyptian hieroglyph-1408a
+82059 egyptian hieroglyph-1408b
+82060 egyptian hieroglyph-1408c
+82061 egyptian hieroglyph-1408d
+82062 egyptian hieroglyph-1408e
+82063 egyptian hieroglyph-1408f
+82064 egyptian hieroglyph-14090
+82065 egyptian hieroglyph-14091
+82066 egyptian hieroglyph-14092
+82067 egyptian hieroglyph-14093
+82068 egyptian hieroglyph-14094
+82069 egyptian hieroglyph-14095
+82070 egyptian hieroglyph-14096
+82071 egyptian hieroglyph-14097
+82072 egyptian hieroglyph-14098
+82073 egyptian hieroglyph-14099
+82074 egyptian hieroglyph-1409a
+82075 egyptian hieroglyph-1409b
+82076 egyptian hieroglyph-1409c
+82077 egyptian hieroglyph-1409d
+82078 egyptian hieroglyph-1409e
+82079 egyptian hieroglyph-1409f
+82080 egyptian hieroglyph-140a0
+82081 egyptian hieroglyph-140a1
+82082 egyptian hieroglyph-140a2
+82083 egyptian hieroglyph-140a3
+82084 egyptian hieroglyph-140a4
+82085 egyptian hieroglyph-140a5
+82086 egyptian hieroglyph-140a6
+82087 egyptian hieroglyph-140a7
+82088 egyptian hieroglyph-140a8
+82089 egyptian hieroglyph-140a9
+82090 egyptian hieroglyph-140aa
+82091 egyptian hieroglyph-140ab
+82092 egyptian hieroglyph-140ac
+82093 egyptian hieroglyph-140ad
+82094 egyptian hieroglyph-140ae
+82095 egyptian hieroglyph-140af
+82096 egyptian hieroglyph-140b0
+82097 egyptian hieroglyph-140b1
+82098 egyptian hieroglyph-140b2
+82099 egyptian hieroglyph-140b3
+82100 egyptian hieroglyph-140b4
+82101 egyptian hieroglyph-140b5
+82102 egyptian hieroglyph-140b6
+82103 egyptian hieroglyph-140b7
+82104 egyptian hieroglyph-140b8
+82105 egyptian hieroglyph-140b9
+82106 egyptian hieroglyph-140ba
+82107 egyptian hieroglyph-140bb
+82108 egyptian hieroglyph-140bc
+82109 egyptian hieroglyph-140bd
+82110 egyptian hieroglyph-140be
+82111 egyptian hieroglyph-140bf
+82112 egyptian hieroglyph-140c0
+82113 egyptian hieroglyph-140c1
+82114 egyptian hieroglyph-140c2
+82115 egyptian hieroglyph-140c3
+82116 egyptian hieroglyph-140c4
+82117 egyptian hieroglyph-140c5
+82118 egyptian hieroglyph-140c6
+82119 egyptian hieroglyph-140c7
+82120 egyptian hieroglyph-140c8
+82121 egyptian hieroglyph-140c9
+82122 egyptian hieroglyph-140ca
+82123 egyptian hieroglyph-140cb
+82124 egyptian hieroglyph-140cc
+82125 egyptian hieroglyph-140cd
+82126 egyptian hieroglyph-140ce
+82127 egyptian hieroglyph-140cf
+82128 egyptian hieroglyph-140d0
+82129 egyptian hieroglyph-140d1
+82130 egyptian hieroglyph-140d2
+82131 egyptian hieroglyph-140d3
+82132 egyptian hieroglyph-140d4
+82133 egyptian hieroglyph-140d5
+82134 egyptian hieroglyph-140d6
+82135 egyptian hieroglyph-140d7
+82136 egyptian hieroglyph-140d8
+82137 egyptian hieroglyph-140d9
+82138 egyptian hieroglyph-140da
+82139 egyptian hieroglyph-140db
+82140 egyptian hieroglyph-140dc
+82141 egyptian hieroglyph-140dd
+82142 egyptian hieroglyph-140de
+82143 egyptian hieroglyph-140df
+82144 egyptian hieroglyph-140e0
+82145 egyptian hieroglyph-140e1
+82146 egyptian hieroglyph-140e2
+82147 egyptian hieroglyph-140e3
+82148 egyptian hieroglyph-140e4
+82149 egyptian hieroglyph-140e5
+82150 egyptian hieroglyph-140e6
+82151 egyptian hieroglyph-140e7
+82152 egyptian hieroglyph-140e8
+82153 egyptian hieroglyph-140e9
+82154 egyptian hieroglyph-140ea
+82155 egyptian hieroglyph-140eb
+82156 egyptian hieroglyph-140ec
+82157 egyptian hieroglyph-140ed
+82158 egyptian hieroglyph-140ee
+82159 egyptian hieroglyph-140ef
+82160 egyptian hieroglyph-140f0
+82161 egyptian hieroglyph-140f1
+82162 egyptian hieroglyph-140f2
+82163 egyptian hieroglyph-140f3
+82164 egyptian hieroglyph-140f4
+82165 egyptian hieroglyph-140f5
+82166 egyptian hieroglyph-140f6
+82167 egyptian hieroglyph-140f7
+82168 egyptian hieroglyph-140f8
+82169 egyptian hieroglyph-140f9
+82170 egyptian hieroglyph-140fa
+82171 egyptian hieroglyph-140fb
+82172 egyptian hieroglyph-140fc
+82173 egyptian hieroglyph-140fd
+82174 egyptian hieroglyph-140fe
+82175 egyptian hieroglyph-140ff
+82176 egyptian hieroglyph-14100
+82177 egyptian hieroglyph-14101
+82178 egyptian hieroglyph-14102
+82179 egyptian hieroglyph-14103
+82180 egyptian hieroglyph-14104
+82181 egyptian hieroglyph-14105
+82182 egyptian hieroglyph-14106
+82183 egyptian hieroglyph-14107
+82184 egyptian hieroglyph-14108
+82185 egyptian hieroglyph-14109
+82186 egyptian hieroglyph-1410a
+82187 egyptian hieroglyph-1410b
+82188 egyptian hieroglyph-1410c
+82189 egyptian hieroglyph-1410d
+82190 egyptian hieroglyph-1410e
+82191 egyptian hieroglyph-1410f
+82192 egyptian hieroglyph-14110
+82193 egyptian hieroglyph-14111
+82194 egyptian hieroglyph-14112
+82195 egyptian hieroglyph-14113
+82196 egyptian hieroglyph-14114
+82197 egyptian hieroglyph-14115
+82198 egyptian hieroglyph-14116
+82199 egyptian hieroglyph-14117
+82200 egyptian hieroglyph-14118
+82201 egyptian hieroglyph-14119
+82202 egyptian hieroglyph-1411a
+82203 egyptian hieroglyph-1411b
+82204 egyptian hieroglyph-1411c
+82205 egyptian hieroglyph-1411d
+82206 egyptian hieroglyph-1411e
+82207 egyptian hieroglyph-1411f
+82208 egyptian hieroglyph-14120
+82209 egyptian hieroglyph-14121
+82210 egyptian hieroglyph-14122
+82211 egyptian hieroglyph-14123
+82212 egyptian hieroglyph-14124
+82213 egyptian hieroglyph-14125
+82214 egyptian hieroglyph-14126
+82215 egyptian hieroglyph-14127
+82216 egyptian hieroglyph-14128
+82217 egyptian hieroglyph-14129
+82218 egyptian hieroglyph-1412a
+82219 egyptian hieroglyph-1412b
+82220 egyptian hieroglyph-1412c
+82221 egyptian hieroglyph-1412d
+82222 egyptian hieroglyph-1412e
+82223 egyptian hieroglyph-1412f
+82224 egyptian hieroglyph-14130
+82225 egyptian hieroglyph-14131
+82226 egyptian hieroglyph-14132
+82227 egyptian hieroglyph-14133
+82228 egyptian hieroglyph-14134
+82229 egyptian hieroglyph-14135
+82230 egyptian hieroglyph-14136
+82231 egyptian hieroglyph-14137
+82232 egyptian hieroglyph-14138
+82233 egyptian hieroglyph-14139
+82234 egyptian hieroglyph-1413a
+82235 egyptian hieroglyph-1413b
+82236 egyptian hieroglyph-1413c
+82237 egyptian hieroglyph-1413d
+82238 egyptian hieroglyph-1413e
+82239 egyptian hieroglyph-1413f
+82240 egyptian hieroglyph-14140
+82241 egyptian hieroglyph-14141
+82242 egyptian hieroglyph-14142
+82243 egyptian hieroglyph-14143
+82244 egyptian hieroglyph-14144
+82245 egyptian hieroglyph-14145
+82246 egyptian hieroglyph-14146
+82247 egyptian hieroglyph-14147
+82248 egyptian hieroglyph-14148
+82249 egyptian hieroglyph-14149
+82250 egyptian hieroglyph-1414a
+82251 egyptian hieroglyph-1414b
+82252 egyptian hieroglyph-1414c
+82253 egyptian hieroglyph-1414d
+82254 egyptian hieroglyph-1414e
+82255 egyptian hieroglyph-1414f
+82256 egyptian hieroglyph-14150
+82257 egyptian hieroglyph-14151
+82258 egyptian hieroglyph-14152
+82259 egyptian hieroglyph-14153
+82260 egyptian hieroglyph-14154
+82261 egyptian hieroglyph-14155
+82262 egyptian hieroglyph-14156
+82263 egyptian hieroglyph-14157
+82264 egyptian hieroglyph-14158
+82265 egyptian hieroglyph-14159
+82266 egyptian hieroglyph-1415a
+82267 egyptian hieroglyph-1415b
+82268 egyptian hieroglyph-1415c
+82269 egyptian hieroglyph-1415d
+82270 egyptian hieroglyph-1415e
+82271 egyptian hieroglyph-1415f
+82272 egyptian hieroglyph-14160
+82273 egyptian hieroglyph-14161
+82274 egyptian hieroglyph-14162
+82275 egyptian hieroglyph-14163
+82276 egyptian hieroglyph-14164
+82277 egyptian hieroglyph-14165
+82278 egyptian hieroglyph-14166
+82279 egyptian hieroglyph-14167
+82280 egyptian hieroglyph-14168
+82281 egyptian hieroglyph-14169
+82282 egyptian hieroglyph-1416a
+82283 egyptian hieroglyph-1416b
+82284 egyptian hieroglyph-1416c
+82285 egyptian hieroglyph-1416d
+82286 egyptian hieroglyph-1416e
+82287 egyptian hieroglyph-1416f
+82288 egyptian hieroglyph-14170
+82289 egyptian hieroglyph-14171
+82290 egyptian hieroglyph-14172
+82291 egyptian hieroglyph-14173
+82292 egyptian hieroglyph-14174
+82293 egyptian hieroglyph-14175
+82294 egyptian hieroglyph-14176
+82295 egyptian hieroglyph-14177
+82296 egyptian hieroglyph-14178
+82297 egyptian hieroglyph-14179
+82298 egyptian hieroglyph-1417a
+82299 egyptian hieroglyph-1417b
+82300 egyptian hieroglyph-1417c
+82301 egyptian hieroglyph-1417d
+82302 egyptian hieroglyph-1417e
+82303 egyptian hieroglyph-1417f
+82304 egyptian hieroglyph-14180
+82305 egyptian hieroglyph-14181
+82306 egyptian hieroglyph-14182
+82307 egyptian hieroglyph-14183
+82308 egyptian hieroglyph-14184
+82309 egyptian hieroglyph-14185
+82310 egyptian hieroglyph-14186
+82311 egyptian hieroglyph-14187
+82312 egyptian hieroglyph-14188
+82313 egyptian hieroglyph-14189
+82314 egyptian hieroglyph-1418a
+82315 egyptian hieroglyph-1418b
+82316 egyptian hieroglyph-1418c
+82317 egyptian hieroglyph-1418d
+82318 egyptian hieroglyph-1418e
+82319 egyptian hieroglyph-1418f
+82320 egyptian hieroglyph-14190
+82321 egyptian hieroglyph-14191
+82322 egyptian hieroglyph-14192
+82323 egyptian hieroglyph-14193
+82324 egyptian hieroglyph-14194
+82325 egyptian hieroglyph-14195
+82326 egyptian hieroglyph-14196
+82327 egyptian hieroglyph-14197
+82328 egyptian hieroglyph-14198
+82329 egyptian hieroglyph-14199
+82330 egyptian hieroglyph-1419a
+82331 egyptian hieroglyph-1419b
+82332 egyptian hieroglyph-1419c
+82333 egyptian hieroglyph-1419d
+82334 egyptian hieroglyph-1419e
+82335 egyptian hieroglyph-1419f
+82336 egyptian hieroglyph-141a0
+82337 egyptian hieroglyph-141a1
+82338 egyptian hieroglyph-141a2
+82339 egyptian hieroglyph-141a3
+82340 egyptian hieroglyph-141a4
+82341 egyptian hieroglyph-141a5
+82342 egyptian hieroglyph-141a6
+82343 egyptian hieroglyph-141a7
+82344 egyptian hieroglyph-141a8
+82345 egyptian hieroglyph-141a9
+82346 egyptian hieroglyph-141aa
+82347 egyptian hieroglyph-141ab
+82348 egyptian hieroglyph-141ac
+82349 egyptian hieroglyph-141ad
+82350 egyptian hieroglyph-141ae
+82351 egyptian hieroglyph-141af
+82352 egyptian hieroglyph-141b0
+82353 egyptian hieroglyph-141b1
+82354 egyptian hieroglyph-141b2
+82355 egyptian hieroglyph-141b3
+82356 egyptian hieroglyph-141b4
+82357 egyptian hieroglyph-141b5
+82358 egyptian hieroglyph-141b6
+82359 egyptian hieroglyph-141b7
+82360 egyptian hieroglyph-141b8
+82361 egyptian hieroglyph-141b9
+82362 egyptian hieroglyph-141ba
+82363 egyptian hieroglyph-141bb
+82364 egyptian hieroglyph-141bc
+82365 egyptian hieroglyph-141bd
+82366 egyptian hieroglyph-141be
+82367 egyptian hieroglyph-141bf
+82368 egyptian hieroglyph-141c0
+82369 egyptian hieroglyph-141c1
+82370 egyptian hieroglyph-141c2
+82371 egyptian hieroglyph-141c3
+82372 egyptian hieroglyph-141c4
+82373 egyptian hieroglyph-141c5
+82374 egyptian hieroglyph-141c6
+82375 egyptian hieroglyph-141c7
+82376 egyptian hieroglyph-141c8
+82377 egyptian hieroglyph-141c9
+82378 egyptian hieroglyph-141ca
+82379 egyptian hieroglyph-141cb
+82380 egyptian hieroglyph-141cc
+82381 egyptian hieroglyph-141cd
+82382 egyptian hieroglyph-141ce
+82383 egyptian hieroglyph-141cf
+82384 egyptian hieroglyph-141d0
+82385 egyptian hieroglyph-141d1
+82386 egyptian hieroglyph-141d2
+82387 egyptian hieroglyph-141d3
+82388 egyptian hieroglyph-141d4
+82389 egyptian hieroglyph-141d5
+82390 egyptian hieroglyph-141d6
+82391 egyptian hieroglyph-141d7
+82392 egyptian hieroglyph-141d8
+82393 egyptian hieroglyph-141d9
+82394 egyptian hieroglyph-141da
+82395 egyptian hieroglyph-141db
+82396 egyptian hieroglyph-141dc
+82397 egyptian hieroglyph-141dd
+82398 egyptian hieroglyph-141de
+82399 egyptian hieroglyph-141df
+82400 egyptian hieroglyph-141e0
+82401 egyptian hieroglyph-141e1
+82402 egyptian hieroglyph-141e2
+82403 egyptian hieroglyph-141e3
+82404 egyptian hieroglyph-141e4
+82405 egyptian hieroglyph-141e5
+82406 egyptian hieroglyph-141e6
+82407 egyptian hieroglyph-141e7
+82408 egyptian hieroglyph-141e8
+82409 egyptian hieroglyph-141e9
+82410 egyptian hieroglyph-141ea
+82411 egyptian hieroglyph-141eb
+82412 egyptian hieroglyph-141ec
+82413 egyptian hieroglyph-141ed
+82414 egyptian hieroglyph-141ee
+82415 egyptian hieroglyph-141ef
+82416 egyptian hieroglyph-141f0
+82417 egyptian hieroglyph-141f1
+82418 egyptian hieroglyph-141f2
+82419 egyptian hieroglyph-141f3
+82420 egyptian hieroglyph-141f4
+82421 egyptian hieroglyph-141f5
+82422 egyptian hieroglyph-141f6
+82423 egyptian hieroglyph-141f7
+82424 egyptian hieroglyph-141f8
+82425 egyptian hieroglyph-141f9
+82426 egyptian hieroglyph-141fa
+82427 egyptian hieroglyph-141fb
+82428 egyptian hieroglyph-141fc
+82429 egyptian hieroglyph-141fd
+82430 egyptian hieroglyph-141fe
+82431 egyptian hieroglyph-141ff
+82432 egyptian hieroglyph-14200
+82433 egyptian hieroglyph-14201
+82434 egyptian hieroglyph-14202
+82435 egyptian hieroglyph-14203
+82436 egyptian hieroglyph-14204
+82437 egyptian hieroglyph-14205
+82438 egyptian hieroglyph-14206
+82439 egyptian hieroglyph-14207
+82440 egyptian hieroglyph-14208
+82441 egyptian hieroglyph-14209
+82442 egyptian hieroglyph-1420a
+82443 egyptian hieroglyph-1420b
+82444 egyptian hieroglyph-1420c
+82445 egyptian hieroglyph-1420d
+82446 egyptian hieroglyph-1420e
+82447 egyptian hieroglyph-1420f
+82448 egyptian hieroglyph-14210
+82449 egyptian hieroglyph-14211
+82450 egyptian hieroglyph-14212
+82451 egyptian hieroglyph-14213
+82452 egyptian hieroglyph-14214
+82453 egyptian hieroglyph-14215
+82454 egyptian hieroglyph-14216
+82455 egyptian hieroglyph-14217
+82456 egyptian hieroglyph-14218
+82457 egyptian hieroglyph-14219
+82458 egyptian hieroglyph-1421a
+82459 egyptian hieroglyph-1421b
+82460 egyptian hieroglyph-1421c
+82461 egyptian hieroglyph-1421d
+82462 egyptian hieroglyph-1421e
+82463 egyptian hieroglyph-1421f
+82464 egyptian hieroglyph-14220
+82465 egyptian hieroglyph-14221
+82466 egyptian hieroglyph-14222
+82467 egyptian hieroglyph-14223
+82468 egyptian hieroglyph-14224
+82469 egyptian hieroglyph-14225
+82470 egyptian hieroglyph-14226
+82471 egyptian hieroglyph-14227
+82472 egyptian hieroglyph-14228
+82473 egyptian hieroglyph-14229
+82474 egyptian hieroglyph-1422a
+82475 egyptian hieroglyph-1422b
+82476 egyptian hieroglyph-1422c
+82477 egyptian hieroglyph-1422d
+82478 egyptian hieroglyph-1422e
+82479 egyptian hieroglyph-1422f
+82480 egyptian hieroglyph-14230
+82481 egyptian hieroglyph-14231
+82482 egyptian hieroglyph-14232
+82483 egyptian hieroglyph-14233
+82484 egyptian hieroglyph-14234
+82485 egyptian hieroglyph-14235
+82486 egyptian hieroglyph-14236
+82487 egyptian hieroglyph-14237
+82488 egyptian hieroglyph-14238
+82489 egyptian hieroglyph-14239
+82490 egyptian hieroglyph-1423a
+82491 egyptian hieroglyph-1423b
+82492 egyptian hieroglyph-1423c
+82493 egyptian hieroglyph-1423d
+82494 egyptian hieroglyph-1423e
+82495 egyptian hieroglyph-1423f
+82496 egyptian hieroglyph-14240
+82497 egyptian hieroglyph-14241
+82498 egyptian hieroglyph-14242
+82499 egyptian hieroglyph-14243
+82500 egyptian hieroglyph-14244
+82501 egyptian hieroglyph-14245
+82502 egyptian hieroglyph-14246
+82503 egyptian hieroglyph-14247
+82504 egyptian hieroglyph-14248
+82505 egyptian hieroglyph-14249
+82506 egyptian hieroglyph-1424a
+82507 egyptian hieroglyph-1424b
+82508 egyptian hieroglyph-1424c
+82509 egyptian hieroglyph-1424d
+82510 egyptian hieroglyph-1424e
+82511 egyptian hieroglyph-1424f
+82512 egyptian hieroglyph-14250
+82513 egyptian hieroglyph-14251
+82514 egyptian hieroglyph-14252
+82515 egyptian hieroglyph-14253
+82516 egyptian hieroglyph-14254
+82517 egyptian hieroglyph-14255
+82518 egyptian hieroglyph-14256
+82519 egyptian hieroglyph-14257
+82520 egyptian hieroglyph-14258
+82521 egyptian hieroglyph-14259
+82522 egyptian hieroglyph-1425a
+82523 egyptian hieroglyph-1425b
+82524 egyptian hieroglyph-1425c
+82525 egyptian hieroglyph-1425d
+82526 egyptian hieroglyph-1425e
+82527 egyptian hieroglyph-1425f
+82528 egyptian hieroglyph-14260
+82529 egyptian hieroglyph-14261
+82530 egyptian hieroglyph-14262
+82531 egyptian hieroglyph-14263
+82532 egyptian hieroglyph-14264
+82533 egyptian hieroglyph-14265
+82534 egyptian hieroglyph-14266
+82535 egyptian hieroglyph-14267
+82536 egyptian hieroglyph-14268
+82537 egyptian hieroglyph-14269
+82538 egyptian hieroglyph-1426a
+82539 egyptian hieroglyph-1426b
+82540 egyptian hieroglyph-1426c
+82541 egyptian hieroglyph-1426d
+82542 egyptian hieroglyph-1426e
+82543 egyptian hieroglyph-1426f
+82544 egyptian hieroglyph-14270
+82545 egyptian hieroglyph-14271
+82546 egyptian hieroglyph-14272
+82547 egyptian hieroglyph-14273
+82548 egyptian hieroglyph-14274
+82549 egyptian hieroglyph-14275
+82550 egyptian hieroglyph-14276
+82551 egyptian hieroglyph-14277
+82552 egyptian hieroglyph-14278
+82553 egyptian hieroglyph-14279
+82554 egyptian hieroglyph-1427a
+82555 egyptian hieroglyph-1427b
+82556 egyptian hieroglyph-1427c
+82557 egyptian hieroglyph-1427d
+82558 egyptian hieroglyph-1427e
+82559 egyptian hieroglyph-1427f
+82560 egyptian hieroglyph-14280
+82561 egyptian hieroglyph-14281
+82562 egyptian hieroglyph-14282
+82563 egyptian hieroglyph-14283
+82564 egyptian hieroglyph-14284
+82565 egyptian hieroglyph-14285
+82566 egyptian hieroglyph-14286
+82567 egyptian hieroglyph-14287
+82568 egyptian hieroglyph-14288
+82569 egyptian hieroglyph-14289
+82570 egyptian hieroglyph-1428a
+82571 egyptian hieroglyph-1428b
+82572 egyptian hieroglyph-1428c
+82573 egyptian hieroglyph-1428d
+82574 egyptian hieroglyph-1428e
+82575 egyptian hieroglyph-1428f
+82576 egyptian hieroglyph-14290
+82577 egyptian hieroglyph-14291
+82578 egyptian hieroglyph-14292
+82579 egyptian hieroglyph-14293
+82580 egyptian hieroglyph-14294
+82581 egyptian hieroglyph-14295
+82582 egyptian hieroglyph-14296
+82583 egyptian hieroglyph-14297
+82584 egyptian hieroglyph-14298
+82585 egyptian hieroglyph-14299
+82586 egyptian hieroglyph-1429a
+82587 egyptian hieroglyph-1429b
+82588 egyptian hieroglyph-1429c
+82589 egyptian hieroglyph-1429d
+82590 egyptian hieroglyph-1429e
+82591 egyptian hieroglyph-1429f
+82592 egyptian hieroglyph-142a0
+82593 egyptian hieroglyph-142a1
+82594 egyptian hieroglyph-142a2
+82595 egyptian hieroglyph-142a3
+82596 egyptian hieroglyph-142a4
+82597 egyptian hieroglyph-142a5
+82598 egyptian hieroglyph-142a6
+82599 egyptian hieroglyph-142a7
+82600 egyptian hieroglyph-142a8
+82601 egyptian hieroglyph-142a9
+82602 egyptian hieroglyph-142aa
+82603 egyptian hieroglyph-142ab
+82604 egyptian hieroglyph-142ac
+82605 egyptian hieroglyph-142ad
+82606 egyptian hieroglyph-142ae
+82607 egyptian hieroglyph-142af
+82608 egyptian hieroglyph-142b0
+82609 egyptian hieroglyph-142b1
+82610 egyptian hieroglyph-142b2
+82611 egyptian hieroglyph-142b3
+82612 egyptian hieroglyph-142b4
+82613 egyptian hieroglyph-142b5
+82614 egyptian hieroglyph-142b6
+82615 egyptian hieroglyph-142b7
+82616 egyptian hieroglyph-142b8
+82617 egyptian hieroglyph-142b9
+82618 egyptian hieroglyph-142ba
+82619 egyptian hieroglyph-142bb
+82620 egyptian hieroglyph-142bc
+82621 egyptian hieroglyph-142bd
+82622 egyptian hieroglyph-142be
+82623 egyptian hieroglyph-142bf
+82624 egyptian hieroglyph-142c0
+82625 egyptian hieroglyph-142c1
+82626 egyptian hieroglyph-142c2
+82627 egyptian hieroglyph-142c3
+82628 egyptian hieroglyph-142c4
+82629 egyptian hieroglyph-142c5
+82630 egyptian hieroglyph-142c6
+82631 egyptian hieroglyph-142c7
+82632 egyptian hieroglyph-142c8
+82633 egyptian hieroglyph-142c9
+82634 egyptian hieroglyph-142ca
+82635 egyptian hieroglyph-142cb
+82636 egyptian hieroglyph-142cc
+82637 egyptian hieroglyph-142cd
+82638 egyptian hieroglyph-142ce
+82639 egyptian hieroglyph-142cf
+82640 egyptian hieroglyph-142d0
+82641 egyptian hieroglyph-142d1
+82642 egyptian hieroglyph-142d2
+82643 egyptian hieroglyph-142d3
+82644 egyptian hieroglyph-142d4
+82645 egyptian hieroglyph-142d5
+82646 egyptian hieroglyph-142d6
+82647 egyptian hieroglyph-142d7
+82648 egyptian hieroglyph-142d8
+82649 egyptian hieroglyph-142d9
+82650 egyptian hieroglyph-142da
+82651 egyptian hieroglyph-142db
+82652 egyptian hieroglyph-142dc
+82653 egyptian hieroglyph-142dd
+82654 egyptian hieroglyph-142de
+82655 egyptian hieroglyph-142df
+82656 egyptian hieroglyph-142e0
+82657 egyptian hieroglyph-142e1
+82658 egyptian hieroglyph-142e2
+82659 egyptian hieroglyph-142e3
+82660 egyptian hieroglyph-142e4
+82661 egyptian hieroglyph-142e5
+82662 egyptian hieroglyph-142e6
+82663 egyptian hieroglyph-142e7
+82664 egyptian hieroglyph-142e8
+82665 egyptian hieroglyph-142e9
+82666 egyptian hieroglyph-142ea
+82667 egyptian hieroglyph-142eb
+82668 egyptian hieroglyph-142ec
+82669 egyptian hieroglyph-142ed
+82670 egyptian hieroglyph-142ee
+82671 egyptian hieroglyph-142ef
+82672 egyptian hieroglyph-142f0
+82673 egyptian hieroglyph-142f1
+82674 egyptian hieroglyph-142f2
+82675 egyptian hieroglyph-142f3
+82676 egyptian hieroglyph-142f4
+82677 egyptian hieroglyph-142f5
+82678 egyptian hieroglyph-142f6
+82679 egyptian hieroglyph-142f7
+82680 egyptian hieroglyph-142f8
+82681 egyptian hieroglyph-142f9
+82682 egyptian hieroglyph-142fa
+82683 egyptian hieroglyph-142fb
+82684 egyptian hieroglyph-142fc
+82685 egyptian hieroglyph-142fd
+82686 egyptian hieroglyph-142fe
+82687 egyptian hieroglyph-142ff
+82688 egyptian hieroglyph-14300
+82689 egyptian hieroglyph-14301
+82690 egyptian hieroglyph-14302
+82691 egyptian hieroglyph-14303
+82692 egyptian hieroglyph-14304
+82693 egyptian hieroglyph-14305
+82694 egyptian hieroglyph-14306
+82695 egyptian hieroglyph-14307
+82696 egyptian hieroglyph-14308
+82697 egyptian hieroglyph-14309
+82698 egyptian hieroglyph-1430a
+82699 egyptian hieroglyph-1430b
+82700 egyptian hieroglyph-1430c
+82701 egyptian hieroglyph-1430d
+82702 egyptian hieroglyph-1430e
+82703 egyptian hieroglyph-1430f
+82704 egyptian hieroglyph-14310
+82705 egyptian hieroglyph-14311
+82706 egyptian hieroglyph-14312
+82707 egyptian hieroglyph-14313
+82708 egyptian hieroglyph-14314
+82709 egyptian hieroglyph-14315
+82710 egyptian hieroglyph-14316
+82711 egyptian hieroglyph-14317
+82712 egyptian hieroglyph-14318
+82713 egyptian hieroglyph-14319
+82714 egyptian hieroglyph-1431a
+82715 egyptian hieroglyph-1431b
+82716 egyptian hieroglyph-1431c
+82717 egyptian hieroglyph-1431d
+82718 egyptian hieroglyph-1431e
+82719 egyptian hieroglyph-1431f
+82720 egyptian hieroglyph-14320
+82721 egyptian hieroglyph-14321
+82722 egyptian hieroglyph-14322
+82723 egyptian hieroglyph-14323
+82724 egyptian hieroglyph-14324
+82725 egyptian hieroglyph-14325
+82726 egyptian hieroglyph-14326
+82727 egyptian hieroglyph-14327
+82728 egyptian hieroglyph-14328
+82729 egyptian hieroglyph-14329
+82730 egyptian hieroglyph-1432a
+82731 egyptian hieroglyph-1432b
+82732 egyptian hieroglyph-1432c
+82733 egyptian hieroglyph-1432d
+82734 egyptian hieroglyph-1432e
+82735 egyptian hieroglyph-1432f
+82736 egyptian hieroglyph-14330
+82737 egyptian hieroglyph-14331
+82738 egyptian hieroglyph-14332
+82739 egyptian hieroglyph-14333
+82740 egyptian hieroglyph-14334
+82741 egyptian hieroglyph-14335
+82742 egyptian hieroglyph-14336
+82743 egyptian hieroglyph-14337
+82744 egyptian hieroglyph-14338
+82745 egyptian hieroglyph-14339
+82746 egyptian hieroglyph-1433a
+82747 egyptian hieroglyph-1433b
+82748 egyptian hieroglyph-1433c
+82749 egyptian hieroglyph-1433d
+82750 egyptian hieroglyph-1433e
+82751 egyptian hieroglyph-1433f
+82752 egyptian hieroglyph-14340
+82753 egyptian hieroglyph-14341
+82754 egyptian hieroglyph-14342
+82755 egyptian hieroglyph-14343
+82756 egyptian hieroglyph-14344
+82757 egyptian hieroglyph-14345
+82758 egyptian hieroglyph-14346
+82759 egyptian hieroglyph-14347
+82760 egyptian hieroglyph-14348
+82761 egyptian hieroglyph-14349
+82762 egyptian hieroglyph-1434a
+82763 egyptian hieroglyph-1434b
+82764 egyptian hieroglyph-1434c
+82765 egyptian hieroglyph-1434d
+82766 egyptian hieroglyph-1434e
+82767 egyptian hieroglyph-1434f
+82768 egyptian hieroglyph-14350
+82769 egyptian hieroglyph-14351
+82770 egyptian hieroglyph-14352
+82771 egyptian hieroglyph-14353
+82772 egyptian hieroglyph-14354
+82773 egyptian hieroglyph-14355
+82774 egyptian hieroglyph-14356
+82775 egyptian hieroglyph-14357
+82776 egyptian hieroglyph-14358
+82777 egyptian hieroglyph-14359
+82778 egyptian hieroglyph-1435a
+82779 egyptian hieroglyph-1435b
+82780 egyptian hieroglyph-1435c
+82781 egyptian hieroglyph-1435d
+82782 egyptian hieroglyph-1435e
+82783 egyptian hieroglyph-1435f
+82784 egyptian hieroglyph-14360
+82785 egyptian hieroglyph-14361
+82786 egyptian hieroglyph-14362
+82787 egyptian hieroglyph-14363
+82788 egyptian hieroglyph-14364
+82789 egyptian hieroglyph-14365
+82790 egyptian hieroglyph-14366
+82791 egyptian hieroglyph-14367
+82792 egyptian hieroglyph-14368
+82793 egyptian hieroglyph-14369
+82794 egyptian hieroglyph-1436a
+82795 egyptian hieroglyph-1436b
+82796 egyptian hieroglyph-1436c
+82797 egyptian hieroglyph-1436d
+82798 egyptian hieroglyph-1436e
+82799 egyptian hieroglyph-1436f
+82800 egyptian hieroglyph-14370
+82801 egyptian hieroglyph-14371
+82802 egyptian hieroglyph-14372
+82803 egyptian hieroglyph-14373
+82804 egyptian hieroglyph-14374
+82805 egyptian hieroglyph-14375
+82806 egyptian hieroglyph-14376
+82807 egyptian hieroglyph-14377
+82808 egyptian hieroglyph-14378
+82809 egyptian hieroglyph-14379
+82810 egyptian hieroglyph-1437a
+82811 egyptian hieroglyph-1437b
+82812 egyptian hieroglyph-1437c
+82813 egyptian hieroglyph-1437d
+82814 egyptian hieroglyph-1437e
+82815 egyptian hieroglyph-1437f
+82816 egyptian hieroglyph-14380
+82817 egyptian hieroglyph-14381
+82818 egyptian hieroglyph-14382
+82819 egyptian hieroglyph-14383
+82820 egyptian hieroglyph-14384
+82821 egyptian hieroglyph-14385
+82822 egyptian hieroglyph-14386
+82823 egyptian hieroglyph-14387
+82824 egyptian hieroglyph-14388
+82825 egyptian hieroglyph-14389
+82826 egyptian hieroglyph-1438a
+82827 egyptian hieroglyph-1438b
+82828 egyptian hieroglyph-1438c
+82829 egyptian hieroglyph-1438d
+82830 egyptian hieroglyph-1438e
+82831 egyptian hieroglyph-1438f
+82832 egyptian hieroglyph-14390
+82833 egyptian hieroglyph-14391
+82834 egyptian hieroglyph-14392
+82835 egyptian hieroglyph-14393
+82836 egyptian hieroglyph-14394
+82837 egyptian hieroglyph-14395
+82838 egyptian hieroglyph-14396
+82839 egyptian hieroglyph-14397
+82840 egyptian hieroglyph-14398
+82841 egyptian hieroglyph-14399
+82842 egyptian hieroglyph-1439a
+82843 egyptian hieroglyph-1439b
+82844 egyptian hieroglyph-1439c
+82845 egyptian hieroglyph-1439d
+82846 egyptian hieroglyph-1439e
+82847 egyptian hieroglyph-1439f
+82848 egyptian hieroglyph-143a0
+82849 egyptian hieroglyph-143a1
+82850 egyptian hieroglyph-143a2
+82851 egyptian hieroglyph-143a3
+82852 egyptian hieroglyph-143a4
+82853 egyptian hieroglyph-143a5
+82854 egyptian hieroglyph-143a6
+82855 egyptian hieroglyph-143a7
+82856 egyptian hieroglyph-143a8
+82857 egyptian hieroglyph-143a9
+82858 egyptian hieroglyph-143aa
+82859 egyptian hieroglyph-143ab
+82860 egyptian hieroglyph-143ac
+82861 egyptian hieroglyph-143ad
+82862 egyptian hieroglyph-143ae
+82863 egyptian hieroglyph-143af
+82864 egyptian hieroglyph-143b0
+82865 egyptian hieroglyph-143b1
+82866 egyptian hieroglyph-143b2
+82867 egyptian hieroglyph-143b3
+82868 egyptian hieroglyph-143b4
+82869 egyptian hieroglyph-143b5
+82870 egyptian hieroglyph-143b6
+82871 egyptian hieroglyph-143b7
+82872 egyptian hieroglyph-143b8
+82873 egyptian hieroglyph-143b9
+82874 egyptian hieroglyph-143ba
+82875 egyptian hieroglyph-143bb
+82876 egyptian hieroglyph-143bc
+82877 egyptian hieroglyph-143bd
+82878 egyptian hieroglyph-143be
+82879 egyptian hieroglyph-143bf
+82880 egyptian hieroglyph-143c0
+82881 egyptian hieroglyph-143c1
+82882 egyptian hieroglyph-143c2
+82883 egyptian hieroglyph-143c3
+82884 egyptian hieroglyph-143c4
+82885 egyptian hieroglyph-143c5
+82886 egyptian hieroglyph-143c6
+82887 egyptian hieroglyph-143c7
+82888 egyptian hieroglyph-143c8
+82889 egyptian hieroglyph-143c9
+82890 egyptian hieroglyph-143ca
+82891 egyptian hieroglyph-143cb
+82892 egyptian hieroglyph-143cc
+82893 egyptian hieroglyph-143cd
+82894 egyptian hieroglyph-143ce
+82895 egyptian hieroglyph-143cf
+82896 egyptian hieroglyph-143d0
+82897 egyptian hieroglyph-143d1
+82898 egyptian hieroglyph-143d2
+82899 egyptian hieroglyph-143d3
+82900 egyptian hieroglyph-143d4
+82901 egyptian hieroglyph-143d5
+82902 egyptian hieroglyph-143d6
+82903 egyptian hieroglyph-143d7
+82904 egyptian hieroglyph-143d8
+82905 egyptian hieroglyph-143d9
+82906 egyptian hieroglyph-143da
+82907 egyptian hieroglyph-143db
+82908 egyptian hieroglyph-143dc
+82909 egyptian hieroglyph-143dd
+82910 egyptian hieroglyph-143de
+82911 egyptian hieroglyph-143df
+82912 egyptian hieroglyph-143e0
+82913 egyptian hieroglyph-143e1
+82914 egyptian hieroglyph-143e2
+82915 egyptian hieroglyph-143e3
+82916 egyptian hieroglyph-143e4
+82917 egyptian hieroglyph-143e5
+82918 egyptian hieroglyph-143e6
+82919 egyptian hieroglyph-143e7
+82920 egyptian hieroglyph-143e8
+82921 egyptian hieroglyph-143e9
+82922 egyptian hieroglyph-143ea
+82923 egyptian hieroglyph-143eb
+82924 egyptian hieroglyph-143ec
+82925 egyptian hieroglyph-143ed
+82926 egyptian hieroglyph-143ee
+82927 egyptian hieroglyph-143ef
+82928 egyptian hieroglyph-143f0
+82929 egyptian hieroglyph-143f1
+82930 egyptian hieroglyph-143f2
+82931 egyptian hieroglyph-143f3
+82932 egyptian hieroglyph-143f4
+82933 egyptian hieroglyph-143f5
+82934 egyptian hieroglyph-143f6
+82935 egyptian hieroglyph-143f7
+82936 egyptian hieroglyph-143f8
+82937 egyptian hieroglyph-143f9
+82938 egyptian hieroglyph-143fa
 82944 anatolian hieroglyph a001
 82945 anatolian hieroglyph a002
 82946 anatolian hieroglyph a003
@@ -27958,6 +32245,64 @@
 83524 anatolian hieroglyph a528
 83525 anatolian hieroglyph a529
 83526 anatolian hieroglyph a530
+90368 gurung khema letter a
+90369 gurung khema letter ka
+90370 gurung khema letter kha
+90371 gurung khema letter ga
+90372 gurung khema letter gha
+90373 gurung khema letter nga
+90374 gurung khema letter ca
+90375 gurung khema letter cha
+90376 gurung khema letter ja
+90377 gurung khema letter jha
+90378 gurung khema letter ha
+90379 gurung khema letter tta
+90380 gurung khema letter ttha
+90381 gurung khema letter dda
+90382 gurung khema letter ddha
+90383 gurung khema letter va
+90384 gurung khema letter ta
+90385 gurung khema letter tha
+90386 gurung khema letter da
+90387 gurung khema letter dha
+90388 gurung khema letter na
+90389 gurung khema letter pa
+90390 gurung khema letter pha
+90391 gurung khema letter ba
+90392 gurung khema letter bha
+90393 gurung khema letter ma
+90394 gurung khema letter ya
+90395 gurung khema letter ra
+90396 gurung khema letter la
+90397 gurung khema letter sa
+90398 gurung khema vowel sign aa
+90399 gurung khema vowel sign i
+90400 gurung khema vowel sign ii
+90401 gurung khema vowel sign u
+90402 gurung khema vowel sign uu
+90403 gurung khema vowel sign e
+90404 gurung khema vowel sign ee
+90405 gurung khema vowel sign ai
+90406 gurung khema vowel sign o
+90407 gurung khema vowel sign oo
+90408 gurung khema vowel sign au
+90409 gurung khema vowel length mark
+90410 gurung khema consonant sign medial ya
+90411 gurung khema consonant sign medial va
+90412 gurung khema consonant sign medial ha
+90413 gurung khema sign anusvara
+90414 gurung khema consonant sign medial ra
+90415 gurung khema sign tholhoma
+90416 gurung khema digit zero
+90417 gurung khema digit one
+90418 gurung khema digit two
+90419 gurung khema digit three
+90420 gurung khema digit four
+90421 gurung khema digit five
+90422 gurung khema digit six
+90423 gurung khema digit seven
+90424 gurung khema digit eight
+90425 gurung khema digit nine
 92160 bamum letter phase-a ngkue mfon
 92161 bamum letter phase-a gbiee fon
 92162 bamum letter phase-a pon mfon pipaemgbiee
@@ -28822,6 +33167,64 @@
 93069 pahawh hmong clan sign tswb
 93070 pahawh hmong clan sign kwm
 93071 pahawh hmong clan sign vwj
+93504 kirat rai sign anusvara
+93505 kirat rai sign tonpi
+93506 kirat rai sign visarga
+93507 kirat rai letter a
+93508 kirat rai letter ka
+93509 kirat rai letter kha
+93510 kirat rai letter ga
+93511 kirat rai letter gha
+93512 kirat rai letter nga
+93513 kirat rai letter ca
+93514 kirat rai letter cha
+93515 kirat rai letter ja
+93516 kirat rai letter jha
+93517 kirat rai letter nya
+93518 kirat rai letter tta
+93519 kirat rai letter ttha
+93520 kirat rai letter dda
+93521 kirat rai letter ddha
+93522 kirat rai letter ta
+93523 kirat rai letter tha
+93524 kirat rai letter da
+93525 kirat rai letter dha
+93526 kirat rai letter na
+93527 kirat rai letter pa
+93528 kirat rai letter pha
+93529 kirat rai letter ba
+93530 kirat rai letter bha
+93531 kirat rai letter ma
+93532 kirat rai letter ya
+93533 kirat rai letter ra
+93534 kirat rai letter la
+93535 kirat rai letter va
+93536 kirat rai letter sa
+93537 kirat rai letter sha
+93538 kirat rai letter ha
+93539 kirat rai vowel sign aa
+93540 kirat rai vowel sign i
+93541 kirat rai vowel sign u
+93542 kirat rai vowel sign ue
+93543 kirat rai vowel sign e
+93544 kirat rai vowel sign ai
+93545 kirat rai vowel sign o
+93546 kirat rai vowel sign au
+93547 kirat rai sign virama
+93548 kirat rai sign saat
+93549 kirat rai sign yupi
+93550 kirat rai danda
+93551 kirat rai double danda
+93552 kirat rai digit zero
+93553 kirat rai digit one
+93554 kirat rai digit two
+93555 kirat rai digit three
+93556 kirat rai digit four
+93557 kirat rai digit five
+93558 kirat rai digit six
+93559 kirat rai digit seven
+93560 kirat rai digit eight
+93561 kirat rai digit nine
 93760 medefaidrin capital letter m
 93761 medefaidrin capital letter s
 93762 medefaidrin capital letter v
@@ -30309,6 +34712,7 @@
 101587 khitan small script character-18cd3
 101588 khitan small script character-18cd4
 101589 khitan small script character-18cd5
+101631 khitan small script character-18cff
 101632 <tangut ideograph supplement, first>
 101640 <tangut ideograph supplement, last>
 110576 katakana letter minnan tone-2
@@ -31167,6 +35571,692 @@
 113825 shorthand format continuing overlap
 113826 shorthand format down step
 113827 shorthand format up step
+117760 up-pointing go-kart
+117761 right-pointing go-kart
+117762 left-pointing stick figure
+117763 right-pointing stick figure
+117764 down-pointing stick figure
+117765 lower horizontal ruler segment
+117766 right vertical ruler segment
+117767 lower right ruler segment
+117768 antenna
+117769 horizontal resistor segment
+117770 vertical resistor segment
+117771 left third inductor
+117772 middle third inductor
+117773 right third inductor
+117774 left-pointing diode
+117775 right-pointing diode
+117776 npn transistor
+117777 pnp transistor
+117778 receptacle
+117779 horizontal capacitor
+117780 vertical capacitor
+117781 logic gate or
+117782 logic gate and
+117783 logic gate inverted inputs
+117784 logic gate inverted output
+117785 logic gate buffer
+117786 logic gate buffer with inverted input
+117787 box drawings light horizontal and upper right
+117788 box drawings light horizontal and lower right
+117789 box drawings light top and upper left
+117790 box drawings light bottom and lower left
+117791 box drawings double diagonal upper right to lower left
+117792 box drawings double diagonal upper left to lower right
+117793 separated block quadrant-1
+117794 separated block quadrant-2
+117795 separated block quadrant-12
+117796 separated block quadrant-3
+117797 separated block quadrant-13
+117798 separated block quadrant-23
+117799 separated block quadrant-123
+117800 separated block quadrant-4
+117801 separated block quadrant-14
+117802 separated block quadrant-24
+117803 separated block quadrant-124
+117804 separated block quadrant-34
+117805 separated block quadrant-134
+117806 separated block quadrant-234
+117807 separated block quadrant-1234
+117808 upper left twelfth circle
+117809 upper centre left twelfth circle
+117810 upper centre right twelfth circle
+117811 upper right twelfth circle
+117812 upper middle left twelfth circle
+117813 upper left quarter circle
+117814 upper right quarter circle
+117815 upper middle right twelfth circle
+117816 lower middle left twelfth circle
+117817 lower left quarter circle
+117818 lower right quarter circle
+117819 lower middle right twelfth circle
+117820 lower left twelfth circle
+117821 lower centre left twelfth circle
+117822 lower centre right twelfth circle
+117823 lower right twelfth circle
+117824 sparse horizontal fill
+117825 sparse vertical fill
+117826 orthogonal crosshatch fill
+117827 diagonal crosshatch fill
+117828 dense vertical fill
+117829 dense horizontal fill
+117830 speckle fill frame-1
+117831 speckle fill frame-2
+117832 left-facing bassinet
+117833 right-facing bassinet
+117834 flying saucer with beams
+117835 flying saucer without beams
+117836 alien monster open jaws
+117837 alien monster closed jaws
+117838 alien squid open tentacles
+117839 alien squid closed tentacles
+117840 alien crab stepping right
+117841 alien crab stepping left
+117842 alien spider crouching
+117843 alien spider spread
+117844 alien monster step-1
+117845 alien monster step-2
+117846 left-pointing rocket ship
+117847 up-pointing rocket ship
+117848 right-pointing rocket ship
+117849 down-pointing rocket ship
+117850 top half left-facing robot
+117851 top half forward-facing robot
+117852 top half right-facing robot
+117853 bottom half left-facing robot
+117854 bottom half forward-facing robot
+117855 bottom half right-facing robot
+117856 left-pointing atomic bomb
+117857 up-pointing atomic bomb
+117858 right-pointing atomic bomb
+117859 down-pointing atomic bomb
+117860 mushroom cloud
+117861 left-pointing rifle
+117862 up-pointing rifle
+117863 right-pointing rifle
+117864 down-pointing rifle
+117865 eight rays inward
+117866 eight rays outward
+117867 black large circle minus left quarter section
+117868 black large circle minus upper quarter section
+117869 black large circle minus right quarter section
+117870 black large circle minus lower quarter section
+117871 black neutral face
+117872 left-facing snake head with open mouth
+117873 up-facing snake head with open mouth
+117874 right-facing snake head with open mouth
+117875 down-facing snake head with open mouth
+117876 left-facing snake head with closed mouth
+117877 up-facing snake head with closed mouth
+117878 right-facing snake head with closed mouth
+117879 down-facing snake head with closed mouth
+117880 left-pointing energy wave
+117881 up-pointing energy wave
+117882 right-pointing energy wave
+117883 down-pointing energy wave
+117884 square spiral from top left
+117885 square spiral from top right
+117886 square spiral from bottom right
+117887 square spiral from bottom left
+117888 striped left-pointing triangle
+117889 striped up-pointing triangle
+117890 striped right-pointing triangle
+117891 striped down-pointing triangle
+117892 vertical ladder
+117893 horizontal ladder
+117894 white lower left pointer
+117895 white lower right pointer
+117896 two rings aligned horizontally
+117897 square four corner saltires
+117898 square four corner diagonals
+117899 square four corner black triangles
+117900 square aperture
+117901 inverse black diamond
+117902 left and upper one eighth block containing black small square
+117903 inverse black small square
+117904 vertical line with four tick marks
+117905 horizontal line with four tick marks
+117906 left-facing fish
+117907 right-facing fish
+117908 left-facing fish with open mouth
+117909 right-facing fish with open mouth
+117910 flapping bird
+117911 left-pointing racing car
+117912 up-pointing racing car
+117913 right-pointing racing car
+117914 down-pointing racing car
+117915 horizontal racing car
+117916 vertical racing car
+117917 vertical go-kart
+117918 left-pointing tank
+117919 right-pointing tank
+117920 left-pointing rocket booster
+117921 right-pointing rocket booster
+117922 left-pointing roller coaster car
+117923 right-pointing roller coaster car
+117924 left half flying saucer
+117925 right half flying saucer
+117926 upper left quadrant face with open eyes
+117927 upper right quadrant face with open eyes
+117928 upper left quadrant face with closed eyes
+117929 upper right quadrant face with closed eyes
+117930 lower left quadrant smiling face
+117931 lower right quadrant smiling face
+117932 lower left quadrant neutral face
+117933 lower right quadrant neutral face
+117934 lower left quadrant face with open mouth
+117935 lower right quadrant face with open mouth
+117936 lower left quadrant frowning face
+117937 lower right quadrant frowning face
+117938 upper left quadrant television
+117939 upper right quadrant television
+117940 lower left quadrant television
+117941 lower right quadrant television
+117942 upper left quadrant microcomputer
+117943 upper right quadrant microcomputer
+117944 lower left quadrant microcomputer
+117945 lower right quadrant microcomputer
+117946 upper left quadrant chess king
+117947 upper right quadrant chess king
+117948 lower left quadrant chess king
+117949 lower right quadrant chess king
+117950 upper left quadrant chess queen
+117951 upper right quadrant chess queen
+117952 lower left quadrant chess queen
+117953 lower right quadrant chess queen
+117954 upper left quadrant chess rook
+117955 upper right quadrant chess rook
+117956 lower left quadrant chess rook
+117957 lower right quadrant chess rook
+117958 upper left quadrant chess bishop
+117959 upper right quadrant chess bishop
+117960 lower left quadrant chess bishop
+117961 lower right quadrant chess bishop
+117962 upper left quadrant chess knight
+117963 upper right quadrant chess knight
+117964 lower left quadrant chess knight
+117965 lower right quadrant chess knight
+117966 upper left quadrant chess pawn
+117967 upper right quadrant chess pawn
+117968 lower left quadrant chess pawn
+117969 lower right quadrant chess pawn
+117970 upper left quadrant standing knight
+117971 upper right quadrant standing knight
+117972 lower left quadrant standing knight
+117973 lower right quadrant standing knight
+117974 outlined latin capital letter a
+117975 outlined latin capital letter b
+117976 outlined latin capital letter c
+117977 outlined latin capital letter d
+117978 outlined latin capital letter e
+117979 outlined latin capital letter f
+117980 outlined latin capital letter g
+117981 outlined latin capital letter h
+117982 outlined latin capital letter i
+117983 outlined latin capital letter j
+117984 outlined latin capital letter k
+117985 outlined latin capital letter l
+117986 outlined latin capital letter m
+117987 outlined latin capital letter n
+117988 outlined latin capital letter o
+117989 outlined latin capital letter p
+117990 outlined latin capital letter q
+117991 outlined latin capital letter r
+117992 outlined latin capital letter s
+117993 outlined latin capital letter t
+117994 outlined latin capital letter u
+117995 outlined latin capital letter v
+117996 outlined latin capital letter w
+117997 outlined latin capital letter x
+117998 outlined latin capital letter y
+117999 outlined latin capital letter z
+118000 outlined digit zero
+118001 outlined digit one
+118002 outlined digit two
+118003 outlined digit three
+118004 outlined digit four
+118005 outlined digit five
+118006 outlined digit six
+118007 outlined digit seven
+118008 outlined digit eight
+118009 outlined digit nine
+118016 block octant-3
+118017 block octant-23
+118018 block octant-123
+118019 block octant-4
+118020 block octant-14
+118021 block octant-124
+118022 block octant-34
+118023 block octant-134
+118024 block octant-234
+118025 block octant-5
+118026 block octant-15
+118027 block octant-25
+118028 block octant-125
+118029 block octant-135
+118030 block octant-235
+118031 block octant-1235
+118032 block octant-45
+118033 block octant-145
+118034 block octant-245
+118035 block octant-1245
+118036 block octant-345
+118037 block octant-1345
+118038 block octant-2345
+118039 block octant-12345
+118040 block octant-6
+118041 block octant-16
+118042 block octant-26
+118043 block octant-126
+118044 block octant-36
+118045 block octant-136
+118046 block octant-236
+118047 block octant-1236
+118048 block octant-146
+118049 block octant-246
+118050 block octant-1246
+118051 block octant-346
+118052 block octant-1346
+118053 block octant-2346
+118054 block octant-12346
+118055 block octant-56
+118056 block octant-156
+118057 block octant-256
+118058 block octant-1256
+118059 block octant-356
+118060 block octant-1356
+118061 block octant-2356
+118062 block octant-12356
+118063 block octant-456
+118064 block octant-1456
+118065 block octant-2456
+118066 block octant-12456
+118067 block octant-3456
+118068 block octant-13456
+118069 block octant-23456
+118070 block octant-17
+118071 block octant-27
+118072 block octant-127
+118073 block octant-37
+118074 block octant-137
+118075 block octant-237
+118076 block octant-1237
+118077 block octant-47
+118078 block octant-147
+118079 block octant-247
+118080 block octant-1247
+118081 block octant-347
+118082 block octant-1347
+118083 block octant-2347
+118084 block octant-12347
+118085 block octant-157
+118086 block octant-257
+118087 block octant-1257
+118088 block octant-357
+118089 block octant-2357
+118090 block octant-12357
+118091 block octant-457
+118092 block octant-1457
+118093 block octant-12457
+118094 block octant-3457
+118095 block octant-13457
+118096 block octant-23457
+118097 block octant-67
+118098 block octant-167
+118099 block octant-267
+118100 block octant-1267
+118101 block octant-367
+118102 block octant-1367
+118103 block octant-2367
+118104 block octant-12367
+118105 block octant-467
+118106 block octant-1467
+118107 block octant-2467
+118108 block octant-12467
+118109 block octant-3467
+118110 block octant-13467
+118111 block octant-23467
+118112 block octant-123467
+118113 block octant-567
+118114 block octant-1567
+118115 block octant-2567
+118116 block octant-12567
+118117 block octant-3567
+118118 block octant-13567
+118119 block octant-23567
+118120 block octant-123567
+118121 block octant-4567
+118122 block octant-14567
+118123 block octant-24567
+118124 block octant-124567
+118125 block octant-34567
+118126 block octant-134567
+118127 block octant-234567
+118128 block octant-1234567
+118129 block octant-18
+118130 block octant-28
+118131 block octant-128
+118132 block octant-38
+118133 block octant-138
+118134 block octant-238
+118135 block octant-1238
+118136 block octant-48
+118137 block octant-148
+118138 block octant-248
+118139 block octant-1248
+118140 block octant-348
+118141 block octant-1348
+118142 block octant-2348
+118143 block octant-12348
+118144 block octant-58
+118145 block octant-158
+118146 block octant-258
+118147 block octant-1258
+118148 block octant-358
+118149 block octant-1358
+118150 block octant-2358
+118151 block octant-12358
+118152 block octant-458
+118153 block octant-1458
+118154 block octant-2458
+118155 block octant-12458
+118156 block octant-3458
+118157 block octant-13458
+118158 block octant-23458
+118159 block octant-123458
+118160 block octant-168
+118161 block octant-268
+118162 block octant-1268
+118163 block octant-368
+118164 block octant-2368
+118165 block octant-12368
+118166 block octant-468
+118167 block octant-1468
+118168 block octant-12468
+118169 block octant-3468
+118170 block octant-13468
+118171 block octant-23468
+118172 block octant-568
+118173 block octant-1568
+118174 block octant-2568
+118175 block octant-12568
+118176 block octant-3568
+118177 block octant-13568
+118178 block octant-23568
+118179 block octant-123568
+118180 block octant-4568
+118181 block octant-14568
+118182 block octant-24568
+118183 block octant-124568
+118184 block octant-34568
+118185 block octant-134568
+118186 block octant-234568
+118187 block octant-1234568
+118188 block octant-178
+118189 block octant-278
+118190 block octant-1278
+118191 block octant-378
+118192 block octant-1378
+118193 block octant-2378
+118194 block octant-12378
+118195 block octant-478
+118196 block octant-1478
+118197 block octant-2478
+118198 block octant-12478
+118199 block octant-3478
+118200 block octant-13478
+118201 block octant-23478
+118202 block octant-123478
+118203 block octant-578
+118204 block octant-1578
+118205 block octant-2578
+118206 block octant-12578
+118207 block octant-3578
+118208 block octant-13578
+118209 block octant-23578
+118210 block octant-123578
+118211 block octant-4578
+118212 block octant-14578
+118213 block octant-24578
+118214 block octant-124578
+118215 block octant-34578
+118216 block octant-134578
+118217 block octant-234578
+118218 block octant-1234578
+118219 block octant-678
+118220 block octant-1678
+118221 block octant-2678
+118222 block octant-12678
+118223 block octant-3678
+118224 block octant-13678
+118225 block octant-23678
+118226 block octant-123678
+118227 block octant-4678
+118228 block octant-14678
+118229 block octant-24678
+118230 block octant-124678
+118231 block octant-34678
+118232 block octant-134678
+118233 block octant-234678
+118234 block octant-1234678
+118235 block octant-15678
+118236 block octant-25678
+118237 block octant-125678
+118238 block octant-35678
+118239 block octant-235678
+118240 block octant-1235678
+118241 block octant-45678
+118242 block octant-145678
+118243 block octant-1245678
+118244 block octant-1345678
+118245 block octant-2345678
+118246 top half standing person
+118247 bottom half standing person
+118248 top half right-facing runner frame-1
+118249 bottom half right-facing runner frame-1
+118250 top half right-facing runner frame-2
+118251 bottom half right-facing runner frame-2
+118252 top half left-facing runner frame-1
+118253 bottom half left-facing runner frame-1
+118254 top half left-facing runner frame-2
+118255 bottom half left-facing runner frame-2
+118256 top half forward-facing runner
+118257 bottom half forward-facing runner frame-1
+118258 bottom half forward-facing runner frame-2
+118259 bottom half forward-facing runner frame-3
+118260 bottom half forward-facing runner frame-4
+118261 moon lander
+118262 top half flailing robot frame-1
+118263 top half flailing robot frame-2
+118264 down-pointing airplane
+118265 left-pointing airplane
+118266 small up-pointing airplane
+118267 up-pointing frog
+118268 down-pointing frog
+118269 explosion frame-1
+118270 explosion frame-2
+118271 explosion frame-3
+118272 right half and left half white circle
+118273 lower half and upper half white circle
+118274 explosion at horizon
+118275 upper half heavy white square
+118276 lower half heavy white square
+118277 heavy white square containing black very small square
+118278 white vertical rectangle with horizontal bar
+118279 top left black left-pointing small triangle
+118280 funnel
+118281 box drawings double diagonal lower left to middle centre to lower right
+118282 box drawings double diagonal upper left to middle centre to upper right
+118283 left half white ellipse
+118284 right half white ellipse
+118285 left half triple dash horizontal
+118286 right half triple dash horizontal
+118287 horizontal line with tick mark
+118288 left half horizontal line with three tick marks
+118289 right half horizontal line with three tick marks
+118290 horizontal line with three tick marks
+118291 lower half vertical line with three tick marks
+118292 upper half vertical line with three tick marks
+118293 vertical line with three tick marks
+118294 box drawings light vertical and top right
+118295 box drawings light vertical and bottom right
+118296 box drawings light vertical and top left
+118297 box drawings light vertical and bottom left
+118298 large type piece upper left arc
+118299 large type piece upper left corner
+118300 large type piece upper terminal
+118301 large type piece upper left crotch
+118302 large type piece left arm
+118303 large type piece crossbar
+118304 large type piece crossbar with lower stem
+118305 large type piece upper half vertex of m
+118306 large type piece diagonal lower left
+118307 large type piece short upper terminal
+118308 large type piece upper right arc
+118309 large type piece right arm
+118310 large type piece upper right crotch
+118311 large type piece upper right corner
+118312 large type piece stem with right crossbar
+118313 large type piece stem
+118314 large type piece diagonal upper right and lower right
+118315 large type piece diagonal upper right
+118316 large type piece diagonal lower right
+118317 large type piece short lower terminal
+118318 large type piece lower left and upper left arc
+118319 large type piece centre of k
+118320 large type piece lower half vertex of m
+118321 large type piece upper half vertex of w
+118322 large type piece centre of x
+118323 large type piece centre of y
+118324 large type piece centre of z with crossbar
+118325 large type piece raised upper left arc
+118326 large type piece stem with left crossbar
+118327 large type piece lower right and upper right arc
+118328 large type piece diagonal upper left and lower left
+118329 large type piece stem with left joint
+118330 large type piece stem with crossbar
+118331 large type piece diagonal upper left
+118332 large type piece lower terminal
+118333 large type piece lower left corner
+118334 large type piece lower left arc
+118335 large type piece lower left crotch
+118336 large type piece crossbar with upper stem
+118337 large type piece vertex of v
+118338 large type piece lower half vertex of w
+118339 large type piece lower right arc
+118340 large type piece lower right corner
+118341 large type piece lower right arc with tail
+118342 large type piece lower right crotch
+118343 large type piece stem-45
+118344 large type piece stem-2345
+118345 large type piece stem-4
+118346 large type piece stem-34
+118347 large type piece stem-234
+118348 large type piece stem-1234
+118349 large type piece stem-3
+118350 large type piece stem-23
+118351 large type piece stem-2
+118352 large type piece stem-12
+118353 separated block sextant-1
+118354 separated block sextant-2
+118355 separated block sextant-12
+118356 separated block sextant-3
+118357 separated block sextant-13
+118358 separated block sextant-23
+118359 separated block sextant-123
+118360 separated block sextant-4
+118361 separated block sextant-14
+118362 separated block sextant-24
+118363 separated block sextant-124
+118364 separated block sextant-34
+118365 separated block sextant-134
+118366 separated block sextant-234
+118367 separated block sextant-1234
+118368 separated block sextant-5
+118369 separated block sextant-15
+118370 separated block sextant-25
+118371 separated block sextant-125
+118372 separated block sextant-35
+118373 separated block sextant-135
+118374 separated block sextant-235
+118375 separated block sextant-1235
+118376 separated block sextant-45
+118377 separated block sextant-145
+118378 separated block sextant-245
+118379 separated block sextant-1245
+118380 separated block sextant-345
+118381 separated block sextant-1345
+118382 separated block sextant-2345
+118383 separated block sextant-12345
+118384 separated block sextant-6
+118385 separated block sextant-16
+118386 separated block sextant-26
+118387 separated block sextant-126
+118388 separated block sextant-36
+118389 separated block sextant-136
+118390 separated block sextant-236
+118391 separated block sextant-1236
+118392 separated block sextant-46
+118393 separated block sextant-146
+118394 separated block sextant-246
+118395 separated block sextant-1246
+118396 separated block sextant-346
+118397 separated block sextant-1346
+118398 separated block sextant-2346
+118399 separated block sextant-12346
+118400 separated block sextant-56
+118401 separated block sextant-156
+118402 separated block sextant-256
+118403 separated block sextant-1256
+118404 separated block sextant-356
+118405 separated block sextant-1356
+118406 separated block sextant-2356
+118407 separated block sextant-12356
+118408 separated block sextant-456
+118409 separated block sextant-1456
+118410 separated block sextant-2456
+118411 separated block sextant-12456
+118412 separated block sextant-3456
+118413 separated block sextant-13456
+118414 separated block sextant-23456
+118415 separated block sextant-123456
+118416 upper left one sixteenth block
+118417 upper centre left one sixteenth block
+118418 upper centre right one sixteenth block
+118419 upper right one sixteenth block
+118420 upper middle left one sixteenth block
+118421 upper middle centre left one sixteenth block
+118422 upper middle centre right one sixteenth block
+118423 upper middle right one sixteenth block
+118424 lower middle left one sixteenth block
+118425 lower middle centre left one sixteenth block
+118426 lower middle centre right one sixteenth block
+118427 lower middle right one sixteenth block
+118428 lower left one sixteenth block
+118429 lower centre left one sixteenth block
+118430 lower centre right one sixteenth block
+118431 lower right one sixteenth block
+118432 right half lower one quarter block
+118433 right three quarters lower one quarter block
+118434 left three quarters lower one quarter block
+118435 left half lower one quarter block
+118436 lower half left one quarter block
+118437 lower three quarters left one quarter block
+118438 upper three quarters left one quarter block
+118439 upper half left one quarter block
+118440 left half upper one quarter block
+118441 left three quarters upper one quarter block
+118442 right three quarters upper one quarter block
+118443 right half upper one quarter block
+118444 upper half right one quarter block
+118445 upper three quarters right one quarter block
+118446 lower three quarters right one quarter block
+118447 lower half right one quarter block
+118448 horizontal zigzag line
+118449 keyhole
+118450 old personal computer with monitor in portrait orientation
+118451 black right triangle caret
 118528 znamenny combining mark gorazdo nizko s kryzhem on left
 118529 znamenny combining mark nizko s kryzhem on left
 118530 znamenny combining mark tsata on left
@@ -34062,6 +39152,50 @@
 124151 nag mundari digit seven
 124152 nag mundari digit eight
 124153 nag mundari digit nine
+124368 ol onal letter o
+124369 ol onal letter om
+124370 ol onal letter ong
+124371 ol onal letter orr
+124372 ol onal letter oo
+124373 ol onal letter oy
+124374 ol onal letter a
+124375 ol onal letter ad
+124376 ol onal letter ab
+124377 ol onal letter ah
+124378 ol onal letter al
+124379 ol onal letter aw
+124380 ol onal letter i
+124381 ol onal letter it
+124382 ol onal letter ip
+124383 ol onal letter itt
+124384 ol onal letter id
+124385 ol onal letter in
+124386 ol onal letter u
+124387 ol onal letter uk
+124388 ol onal letter udd
+124389 ol onal letter uj
+124390 ol onal letter uny
+124391 ol onal letter ur
+124392 ol onal letter e
+124393 ol onal letter es
+124394 ol onal letter eh
+124395 ol onal letter ec
+124396 ol onal letter enn
+124397 ol onal letter eg
+124398 ol onal sign mu
+124399 ol onal sign ikir
+124400 ol onal sign hoddond
+124401 ol onal digit zero
+124402 ol onal digit one
+124403 ol onal digit two
+124404 ol onal digit three
+124405 ol onal digit four
+124406 ol onal digit five
+124407 ol onal digit six
+124408 ol onal digit seven
+124409 ol onal digit eight
+124410 ol onal digit nine
+124415 ol onal abbreviation sign
 124896 ethiopic syllable hhya
 124897 ethiopic syllable hhyu
 124898 ethiopic syllable hhyi
@@ -36544,6 +41678,18 @@
 129197 white arrow shaft width two thirds
 129200 arrow pointing upwards then north west
 129201 arrow pointing rightwards then curving south west
+129202 rightwards arrow with lower hook
+129203 downwards black arrow to bar
+129204 negative squared leftwards arrow
+129205 negative squared upwards arrow
+129206 negative squared rightwards arrow
+129207 negative squared downwards arrow
+129208 north west arrow from bar
+129209 north east arrow from bar
+129210 south east arrow from bar
+129211 south west arrow from bar
+129216 leftwards arrow from downwards arrow
+129217 rightwards arrow from downwards arrow
 129280 circled cross formee with four dots
 129281 circled cross formee with two dots
 129282 circled cross formee
@@ -36920,6 +42066,8 @@
 129670 nesting dolls
 129671 maracas
 129672 flute
+129673 harp
+129679 shovel
 129680 ringed planet
 129681 chair
 129682 razor
@@ -36966,6 +42114,7 @@
 129723 hyacinth
 129724 jellyfish
 129725 wing
+129726 leafless tree
 129727 goose
 129728 anatomical heart
 129729 lungs
@@ -36973,6 +42122,7 @@
 129731 pregnant man
 129732 pregnant person
 129733 person with crown
+129734 fingerprint
 129742 moose
 129743 donkey
 129744 blueberries
@@ -36987,6 +42137,8 @@
 129753 jar
 129754 ginger root
 129755 pea pod
+129756 root vegetable
+129759 splatter
 129760 melting face
 129761 saluting face
 129762 face with open eyes and hand over mouth
@@ -36996,6 +42148,7 @@
 129766 biting lip
 129767 bubbles
 129768 shaking face
+129769 face with bags under eyes
 129776 hand with index finger and thumb crossed
 129777 rightwards hand
 129778 leftwards hand
@@ -37207,6 +42360,43 @@
 129992 stick figure leaning right
 129993 stick figure with dress
 129994 white up-pointing chevron
+129995 white cross mark
+129996 raised small left square bracket
+129997 black small up-pointing chevron
+129998 left two thirds block
+129999 left one third block
+130000 box drawings light diagonal middle right to lower left
+130001 box drawings light diagonal upper right to middle left
+130002 box drawings light diagonal upper left to middle right
+130003 box drawings light diagonal middle left to lower right
+130004 box drawings light diagonal upper left to lower centre
+130005 box drawings light diagonal upper centre to lower right
+130006 box drawings light diagonal upper right to lower centre
+130007 box drawings light diagonal upper centre to lower left
+130008 box drawings light diagonal upper left to middle centre to upper right
+130009 box drawings light diagonal upper right to middle centre to lower right
+130010 box drawings light diagonal lower left to middle centre to lower right
+130011 box drawings light diagonal upper left to middle centre to lower left
+130012 box drawings light diagonal upper left to lower centre to upper right
+130013 box drawings light diagonal upper right to middle left to lower right
+130014 box drawings light diagonal lower left to upper centre to lower right
+130015 box drawings light diagonal upper left to middle right to lower left
+130016 top justified lower half white circle
+130017 right justified left half white circle
+130018 bottom justified upper half white circle
+130019 left justified right half white circle
+130020 upper centre one quarter block
+130021 lower centre one quarter block
+130022 middle left one quarter block
+130023 middle right one quarter block
+130024 top justified lower half black circle
+130025 right justified left half black circle
+130026 bottom justified upper half black circle
+130027 left justified right half black circle
+130028 top right justified lower left quarter black circle
+130029 bottom left justified upper right quarter black circle
+130030 bottom right justified upper left quarter black circle
+130031 top left justified lower right quarter black circle
 130032 segmented digit zero
 130033 segmented digit one
 130034 segmented digit two
@@ -37227,6 +42417,8 @@
 183969 <cjk ideograph extension e, last>
 183984 <cjk ideograph extension f, first>
 191456 <cjk ideograph extension f, last>
+191472 <cjk ideograph extension i, first>
+192093 <cjk ideograph extension i, last>
 194560 cjk compatibility ideograph-2f800
 194561 cjk compatibility ideograph-2f801
 194562 cjk compatibility ideograph-2f802
