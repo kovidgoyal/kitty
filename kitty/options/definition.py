@@ -357,7 +357,7 @@ Set this to a value larger than zero to enable a "cursor trail" animation.
 This is an animation that shows a "trail" following the movement of the text cursor.
 It makes it easy to follow large cursor jumps and makes for a cool visual effect
 of the cursor zooming around the screen. The actual value of this option
-controls when the animation is trigerred. It is a number of milliseconds. The
+controls when the animation is triggered. It is a number of milliseconds. The
 trail animation only follows cursors that have stayed in their position for longer
 than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
@@ -1213,7 +1213,7 @@ faded and one being fully opaque.
 
 opt('window_logo_scale', '0', option_type='window_logo_scale', ctype='!window_logo_scale', long_text='''
 The percentage (0-100] of the window size to which the logo should scale. Using a single
-number means the logo is scaled to that percentage of the shortest window dimension, while preseving
+number means the logo is scaled to that percentage of the shortest window dimension, while preserving
 aspect ratio of the logo image.
 
 Using two numbers means the width and height of the logo are scaled to the respective
@@ -1578,7 +1578,7 @@ to be rendered as transparent, for instance, for a cursor highlight line backgro
 Terminal applications can set this color using :ref:`The kitty color control <color_control>`
 escape code.
 
-The syntax for specifiying colors is: :code:`color@opacity`, where the :code:`@opacity`
+The syntax for specifying colors is: :code:`color@opacity`, where the :code:`@opacity`
 part is optional. When unspecified, the value of :opt:`background_opacity` is used. For example::
 
     transparent_background_colors red@0.5 #00ff00@0.3
@@ -3106,7 +3106,7 @@ using Boolean operators. Some examples::
 
     filter_notification title:hello or body:"abc.*def"
     # filter out notification from vim except for ones about updates, (?i)
-    # makes matching case insesitive.
+    # makes matching case insensitive.
     filter_notification app:"[ng]?vim" and not body:"(?i)update"
     # filter out all notifications
     filter_notification all
