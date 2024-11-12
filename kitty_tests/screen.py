@@ -691,8 +691,8 @@ class TestScreen(BaseTest):
     def test_wrapping_serialization(self):
         from kitty.window import as_text
         s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
-        s.draw('äabbccddeefü')
-        self.ae(as_text(s, add_history=True), 'äabbccddeefü')
+        s.draw('ū̀abbccddeefū̀')
+        self.ae(as_text(s, add_history=True), 'ū̀abbccddeefū̀')
         self.assertNotIn('\n', as_text(s, add_history=True, as_ansi=True))
 
         s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
