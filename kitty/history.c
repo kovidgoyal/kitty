@@ -265,7 +265,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     PagerHistoryBuf *ph = self->pagerhist;
     if (!ph) return;
     const GPUCell *prev_cell = NULL;
-    Line l = {.xnum=self->xnum};
+    Line l = {.xnum=self->xnum, .text_cache=self->text_cache};
     init_line(self, self->start_of_data, &l);
     line_as_ansi(&l, as_ansi_buf, &prev_cell, 0, l.xnum, 0);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
@@ -352,7 +352,7 @@ push(HistoryBuf *self, PyObject *args) {
 static PyObject*
 as_ansi(HistoryBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
-    Line l = {.xnum=self->xnum};
+    Line l = {.xnum=self->xnum, .text_cache=self->text_cache};
     const GPUCell *prev_cell = NULL;
     ANSIBuf output = {0};
     for(unsigned int i = 0; i < self->count; i++) {
@@ -374,9 +374,6 @@ end:
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
-
-static Line*
-get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(self, self->count - y - 1), l); return l; }
 
 static char_type
 pagerhist_remove_char(PagerHistoryBuf *ph, unsigned *count, uint8_t record[8]) {
@@ -504,6 +501,12 @@ typedef struct {
 } GetLineWrapper;
 
 static Line*
+get_line(HistoryBuf *self, index_type y, Line *l) {
+    init_line(self, index_of(self, self->count - y - 1), l);
+    return l;
+}
+
+static Line*
 get_line_wrapper(void *x, int y) {
     GetLineWrapper *glw = x;
     get_line(glw->self, y, &glw->line);
@@ -514,6 +517,7 @@ PyObject*
 as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output) {
     GetLineWrapper glw = {.self=self};
     glw.line.xnum = self->xnum;
+    glw.line.text_cache = self->text_cache;
     PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, output, true);
     return ans;
 }
