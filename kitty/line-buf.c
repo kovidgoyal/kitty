@@ -446,13 +446,13 @@ linebuf_copy_line_to(LineBuf *self, Line *line, index_type where) {
 static PyObject*
 as_ansi(LineBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
-    Line l = {.xnum=self->xnum};
+    Line l = {.xnum=self->xnum, .text_cache=self->text_cache};
     // remove trailing empty lines
     index_type ylimit = self->ynum - 1;
     const GPUCell *prev_cell = NULL;
     ANSIBuf output = {0};
     do {
-        init_line(self, (&l), self->line_map[ylimit]);
+        init_line(self, &l, self->line_map[ylimit]);
         line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
         if (output.len) break;
         ylimit--;
@@ -460,7 +460,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
 
     for(index_type i = 0; i <= ylimit; i++) {
         bool output_newline = !linebuf_line_ends_with_continuation(self, i);
-        init_line(self, (&l), self->line_map[i]);
+        init_line(self, &l, self->line_map[i]);
         line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
         if (output_newline) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
@@ -566,7 +566,7 @@ copy_old(LineBuf *self, PyObject *y) {
     if (!PyObject_TypeCheck(y, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
     LineBuf *other = (LineBuf*)y;
     if (other->xnum != self->xnum) { PyErr_SetString(PyExc_ValueError, "LineBuf has a different number of columns"); return NULL; }
-    Line sl = {0}, ol = {0};
+    Line sl = {.text_cache=self->text_cache}, ol = {.text_cache=self->text_cache};
     sl.xnum = self->xnum; ol.xnum = other->xnum;
 
     for (index_type i = 0; i < MIN(self->ynum, other->ynum); i++) {
