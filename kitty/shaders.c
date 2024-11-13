@@ -372,8 +372,14 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         screen->last_rendered.cursor_bg = rd->cursor_bg;
     } else rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;
     rd->cursor_w = rd->cursor_x;
-    if ((rd->cursor_fg_sprite_idx == BLOCK_IDX || rd->cursor_fg_sprite_idx == UNDERLINE_IDX) && line_for_cursor && line_for_cursor->gpu_cells[cursor->x].attrs.width > 1) {
-        rd->cursor_w += 1;
+    const CPUCell *cursor_cell;
+    if (
+            (rd->cursor_fg_sprite_idx == BLOCK_IDX || rd->cursor_fg_sprite_idx == UNDERLINE_IDX) &&
+            line_for_cursor && (cursor_cell = line_for_cursor->cpu_cells + cursor->x)->is_multicell &&
+            cursor_cell->x == 0
+    ) {
+        MultiCellData mcd = cell_multicell_data(cursor_cell, screen->text_cache);
+        rd->cursor_w = mcd.width * mcd.scale;
     }
 
     rd->xnum = screen->columns; rd->ynum = screen->lines;

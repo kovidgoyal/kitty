@@ -170,7 +170,7 @@ init_line(HistoryBuf *self, index_type num, Line *l) {
     l->gpu_cells = gpu_lineptr(self, num);
     l->attrs = *attrptr(self, num);
     if (num > 0) {
-        l->attrs.is_continued = gpu_lineptr(self, num - 1)[self->xnum-1].attrs.next_char_was_wrapped;
+        l->attrs.is_continued = cpu_lineptr(self, num - 1)[self->xnum-1].next_char_was_wrapped;
     } else {
         l->attrs.is_continued = false;
         size_t sz;
@@ -188,7 +188,7 @@ historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
 
 bool
 history_buf_endswith_wrap(HistoryBuf *self) {
-    return gpu_lineptr(self, index_of(self, 0))[self->xnum-1].attrs.next_char_was_wrapped;
+    return cpu_lineptr(self, index_of(self, 0))[self->xnum-1].next_char_was_wrapped;
 }
 
 CPUCell*
@@ -272,7 +272,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) {
         char line_end[2]; size_t num = 0;
         line_end[num++] = '\r';
-        if (!l.gpu_cells[l.xnum - 1].attrs.next_char_was_wrapped) line_end[num++] = '\n';
+        if (!l.cpu_cells[l.xnum - 1].next_char_was_wrapped) line_end[num++] = '\n';
         pagerhist_write_bytes(ph, (const uint8_t*)line_end, num);
     }
 }
@@ -307,7 +307,7 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
 static void
 history_buf_set_last_char_as_continuation(HistoryBuf *self, index_type y, bool wrapped) {
     if (self->count > 0) {
-        gpu_lineptr(self, index_of(self, y))[self->xnum-1].attrs.next_char_was_wrapped = wrapped;
+        cpu_lineptr(self, index_of(self, y))[self->xnum-1].next_char_was_wrapped = wrapped;
     }
 }
 
@@ -358,7 +358,7 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
-        if (!l.gpu_cells[l.xnum - 1].attrs.next_char_was_wrapped) {
+        if (!l.cpu_cells[l.xnum - 1].next_char_was_wrapped) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = '\n';
         }

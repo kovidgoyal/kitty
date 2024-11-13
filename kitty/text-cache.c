@@ -75,6 +75,12 @@ tc_first_char_at_index(const TextCache *self, char_type idx) {
     return 0;
 }
 
+char_type
+tc_last_char_at_index(const TextCache *self, char_type idx) {
+    if (self->array.count > idx) return self->array.items[idx].chars[self->array.items[idx].count-1];
+    return 0;
+}
+
 
 void
 tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans) {

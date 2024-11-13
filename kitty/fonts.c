@@ -466,8 +466,8 @@ face_has_codepoint(const void* face, char_type cp) {
 }
 
 static bool
-has_emoji_presentation(const GPUCell *gpu_cell, const ListOfChars *lc) {
-    if (gpu_cell->attrs.width != 2 || !lc->count) return false;
+has_emoji_presentation(const ListOfChars *lc) {
+    if (!lc->is_multicell || !lc->is_topleft || !lc->count) return false;
     return  is_emoji(lc->chars[0]) && (lc->count == 1 || lc->chars[1] != VS15);
 }
 
@@ -569,7 +569,7 @@ static ssize_t
 fallback_font(FontGroup *fg, const GPUCell *gpu_cell, const ListOfChars *lc) {
     bool bold = gpu_cell->attrs.bold;
     bool italic = gpu_cell->attrs.italic;
-    bool emoji_presentation = has_emoji_presentation(gpu_cell, lc);
+    bool emoji_presentation = has_emoji_presentation(lc);
     char style = emoji_presentation ? 'a' : 'A';
     if (bold) style += italic ? 3 : 2; else style += italic ? 1 : 0;
     char cell_text[4 * 32] = {style};
@@ -625,7 +625,7 @@ START_ALLOW_CASE_RANGE
         case 0xf5d0 ... 0xf60d:    // branch drawing characters
             return BOX_FONT;
         default:
-            *is_emoji_presentation = has_emoji_presentation(gpu_cell, lc);
+            *is_emoji_presentation = has_emoji_presentation(lc);
             ans = in_symbol_maps(fg, lc->chars[0]);
             if (ans > -1) return ans;
             switch(gpu_cell->attrs.bold | (gpu_cell->attrs.italic << 1)) {
@@ -718,14 +718,12 @@ load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_
     hb_buffer_clear_contents(harfbuzz_buffer);
     RAII_ListOfChars(lc);
     while (num_cells) {
-        uint16_t prev_width = 0;
         for (num = 0; num_cells; first_cpu_cell++, first_gpu_cell++, num_cells--) {
-            if (prev_width == 2) { prev_width = 0; continue; }
             text_in_cell(first_cpu_cell, tc, &lc);
+            if (lc.is_multicell && !lc.is_topleft) continue;
             if (lc.count + num > arraysz(shape_buffer)) break;
             memcpy(shape_buffer + num, lc.chars, lc.count * sizeof(shape_buffer[0]));
             num += lc.count;
-            prev_width = first_gpu_cell->attrs.width;
         }
         hb_buffer_add_utf32(harfbuzz_buffer, shape_buffer, num, 0, num);
     }
@@ -752,6 +750,7 @@ typedef struct GlyphRenderScratch {
     SpritePosition* *sprite_positions;
     glyph_index *glyphs;
     size_t sz;
+    ListOfChars *lc;
 } GlyphRenderScratch;
 static GlyphRenderScratch global_glyph_render_scratch = {0};
 
@@ -777,7 +776,8 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     }
 
     ensure_canvas_can_fit(fg, num_cells + 1);
-    bool was_colored = gpu_cells->attrs.width == 2 && is_emoji(cell_first_char(cpu_cells, tc));
+    text_in_cell(cpu_cells, tc, global_glyph_render_scratch.lc);
+    bool was_colored = has_emoji_presentation(global_glyph_render_scratch.lc);
     render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
@@ -891,9 +891,13 @@ static unsigned int
 check_cell_consumed(CellData *cell_data, CPUCell *last_cpu_cell, const TextCache *tc) {
     cell_data->codepoints_consumed++;
     if (cell_data->codepoints_consumed >= cell_data->num_codepoints) {
-        uint16_t width = cell_data->gpu_cell->attrs.width;
-        cell_data->cpu_cell += MAX(1, width);
-        cell_data->gpu_cell += MAX(1, width);
+        uint16_t width = 1;
+        if (cell_data->cpu_cell->is_multicell) {
+            MultiCellData mcd = cell_multicell_data(cell_data->cpu_cell, tc);
+            width = mcd.width * mcd.scale;
+        }
+        cell_data->cpu_cell += width;
+        cell_data->gpu_cell += width;
         cell_data->codepoints_consumed = 0;
         if (cell_data->cpu_cell <= last_cpu_cell) {
             cell_data->num_codepoints = num_codepoints_in_cell(cell_data->cpu_cell, tc);
@@ -943,7 +947,7 @@ static void
 detect_spacer_strategy(hb_font_t *hbf, Font *font, const TextCache *tc) {
     CPUCell cpu_cells[3] = {0};
     for (unsigned i = 0; i < arraysz(cpu_cells); i++) cell_set_char(&cpu_cells[i], '=');
-    const CellAttrs w1 = {.width=1};
+    const CellAttrs w1 = {0};
     GPUCell gpu_cells[3] = {{.attrs = w1}, {.attrs = w1}, {.attrs = w1}};
     shape(cpu_cells, gpu_cells, arraysz(cpu_cells), hbf, font, false, tc);
     font->spacer_strategy = SPACERS_BEFORE;
@@ -1150,13 +1154,7 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc) {
             current_group->first_glyph_idx = G(glyph_idx);
             current_group->first_cell_idx = G(cell_idx);
         }
-#define MOVE_GLYPH_TO_NEXT_GROUP(start_cell_idx) { \
-    current_group->num_glyphs--; \
-    G(group_idx)++; current_group = G(groups) + G(group_idx); \
-    current_group->first_cell_idx = start_cell_idx; \
-    current_group->num_glyphs = 1; \
-    current_group->first_glyph_idx = G(glyph_idx); \
-}
+
         if (is_special) current_group->has_special_glyph = true;
         if (is_last_glyph) {
             // soak up all remaining cells
@@ -1216,22 +1214,21 @@ collapse_pua_space_ligature(index_type num_cells) {
     g->num_glyphs = 1;
 }
 
-#undef MOVE_GLYPH_TO_NEXT_GROUP
-
 static bool
-is_group_calt_ligature(const Group *group) {
-    GPUCell *first_cell = G(first_gpu_cell) + group->first_cell_idx;
-    return group->num_cells > 1 && group->has_special_glyph && first_cell->attrs.width == 1;
+is_group_calt_ligature(const Group *group, const TextCache *tc) {
+    if (group->num_cells < 2 || !group->has_special_glyph) return false;
+    const CPUCell *first_cell = G(first_cpu_cell) + group->first_cell_idx;
+    return !first_cell->is_multicell || cell_multicell_data(first_cell, tc).width == 1;
 }
 
 
 static void
-split_run_at_offset(index_type cursor_offset, index_type *left, index_type *right) {
+split_run_at_offset(index_type cursor_offset, index_type *left, index_type *right, const TextCache *tc) {
     *left = 0; *right = 0;
     for (unsigned idx = 0; idx < G(group_idx) + 1; idx++) {
         Group *group = G(groups) + idx;
         if (group->first_cell_idx <= cursor_offset && cursor_offset < group->first_cell_idx + group->num_cells) {
-            if (is_group_calt_ligature(group)) {
+            if (is_group_calt_ligature(group, tc)) {
                 // likely a calt ligature
                 *left = group->first_cell_idx; *right = group->first_cell_idx + group->num_cells;
             }
@@ -1256,6 +1253,7 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph, const TextCache *tc)
                 a(glyphs); a(sprite_positions);
 #undef a
                 global_glyph_render_scratch.sz = sz;
+                if (!global_glyph_render_scratch.lc) global_glyph_render_scratch.lc = alloc_list_of_chars();
             }
             for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
             render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, global_glyph_render_scratch.glyphs, group->num_glyphs, center_glyph, tc);
@@ -1271,7 +1269,15 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     int index = 0;
     if(!PyArg_ParseTuple(args, "O!|zi", &Line_Type, &line, &path, &index)) return NULL;
     index_type num = 0;
-    while(num < line->xnum && cell_has_text(line->cpu_cells + num)) num += line->gpu_cells[num].attrs.width;
+    const CPUCell *c;
+    while(num < line->xnum && cell_has_text(line->cpu_cells + num)) {
+        index_type width = 1;
+        if ((c = line->cpu_cells + num)->is_multicell) {
+            MultiCellData mcd = cell_multicell_data(c, line->text_cache);
+            width = mcd.width * mcd.scale;
+        }
+        num += width;
+    }
     PyObject *face = NULL;
     Font *font;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create at least one font group first"); return NULL; }
@@ -1313,7 +1319,7 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
             if (pua_space_ligature) collapse_pua_space_ligature(num_cells);
             else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
-                split_run_at_offset(cursor_offset, &left, &right);
+                split_run_at_offset(cursor_offset, &left, &right, tc);
                 if (right > left) {
                     if (left) {
                         shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[font_idx], false, tc);
@@ -1377,12 +1383,11 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
     bool center_glyph = false;
     bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR && lnum == cursor->y;
     index_type first_cell_in_run, i;
-    uint16_t prev_width = 0;
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
-        if (prev_width == 2) { prev_width = 0; continue; }
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
         text_in_cell(cpu_cell, line->text_cache, lc);
+        if (lc->is_multicell && !lc->is_topleft) continue;
         bool is_main_font, is_emoji_presentation;
         ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
         const char_type first_ch = lc->chars[0];
@@ -1425,12 +1430,10 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph, -1, disable_ligature_strategy, line->text_cache);
                 run_font_idx = NO_FONT;
                 first_cell_in_run = i + num_spaces + 1;
-                prev_width = line->gpu_cells[i+num_spaces].attrs.width;
                 i += num_spaces;
                 continue;
             }
         }
-        prev_width = gpu_cell->attrs.width;
         if (run_font_idx == NO_FONT) run_font_idx = cell_font_idx;
         if (run_font_idx == cell_font_idx) continue;
         RENDER
@@ -1592,6 +1595,7 @@ finalize(void) {
     free(group_state.groups); group_state.groups = NULL; group_state.groups_capacity = 0;
     free(global_glyph_render_scratch.glyphs);
     free(global_glyph_render_scratch.sprite_positions);
+    if (global_glyph_render_scratch.lc) { cleanup_list_of_chars(global_glyph_render_scratch.lc); free(global_glyph_render_scratch.lc); }
     global_glyph_render_scratch = (GlyphRenderScratch){0};
 }
 

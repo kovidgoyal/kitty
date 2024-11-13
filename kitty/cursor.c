@@ -223,7 +223,7 @@ END_ALLOW_CASE_RANGE
 const char*
 cursor_as_sgr(const Cursor *self) {
     GPUCell blank_cell = { 0 }, cursor_cell = {
-        .attrs = cursor_to_attrs(self, 1),
+        .attrs = cursor_to_attrs(self),
         .fg = self->fg & COL_MASK,
         .bg = self->bg & COL_MASK,
         .decoration_fg = self->decoration_fg & COL_MASK,

@@ -233,3 +233,5 @@
 #define FILE_TRANSFER_CODE 5113
 // Pending mode CSI code
 #define PENDING_MODE 2026
+// Text size OSC number
+#define TEXT_SIZE_CODE 66

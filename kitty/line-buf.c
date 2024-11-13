@@ -131,6 +131,12 @@ linebuf_init_cells(LineBuf *lb, index_type idx, CPUCell **c, GPUCell **g) {
     *g = gpu_lineptr(lb, ynum);
 }
 
+CPUCell*
+linebuf_cpu_cells_for_line(LineBuf *lb, index_type idx) {
+    const index_type ynum = lb->line_map[idx];
+    return cpu_lineptr(lb, ynum);
+}
+
 static void
 init_line(LineBuf *lb, Line *l, index_type ynum) {
     l->cpu_cells = cpu_lineptr(lb, ynum);
@@ -142,7 +148,7 @@ linebuf_init_line(LineBuf *self, index_type idx) {
     self->line->ynum = idx;
     self->line->xnum = self->xnum;
     self->line->attrs = self->line_attrs[idx];
-    self->line->attrs.is_continued = idx > 0 ? gpu_lineptr(self, self->line_map[idx - 1])[self->xnum - 1].attrs.next_char_was_wrapped : false;
+    self->line->attrs.is_continued = idx > 0 ? cpu_lineptr(self, self->line_map[idx - 1])[self->xnum - 1].next_char_was_wrapped : false;
     init_line(self, self->line, self->line_map[idx]);
 }
 
@@ -180,20 +186,20 @@ line(LineBuf *self, PyObject *y) {
     return (PyObject*)self->line;
 }
 
-unsigned int
-linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
-    return gpu_lineptr(self, self->line_map[y])[x].attrs.width;
+CPUCell*
+linebuf_cpu_cell_at(LineBuf *self, index_type x, index_type y) {
+    return &cpu_lineptr(self, self->line_map[y])[x];
 }
 
 bool
 linebuf_line_ends_with_continuation(LineBuf *self, index_type y) {
-    return y < self->ynum ? gpu_lineptr(self, self->line_map[y])[self->xnum - 1].attrs.next_char_was_wrapped : false;
+    return y < self->ynum ? cpu_lineptr(self, self->line_map[y])[self->xnum - 1].next_char_was_wrapped : false;
 }
 
 void
 linebuf_set_last_char_as_continuation(LineBuf *self, index_type y, bool continued) {
     if (y < self->ynum) {
-        gpu_lineptr(self, self->line_map[y])[self->xnum - 1].attrs.next_char_was_wrapped = continued;
+        cpu_lineptr(self, self->line_map[y])[self->xnum - 1].next_char_was_wrapped = continued;
     }
 }
 

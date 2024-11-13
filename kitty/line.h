@@ -9,9 +9,16 @@
 
 #include "text-cache.h"
 
+// TODO: Test setting of ch_and_idx to make sure the right ch_is_idx bit is set
+// TODO: Test handling of calt ligatures with scale see is_group_calt_ligature()
+// TODO: Font Rendering of scale > 1 and width > 1
+// TODO: Handle selection with multicell
+// TODO: URL detection with multicell
+// TODO: Cursor rendering over multicell
+// TODO: Test the escape codes to delete and insert characters and lines with multicell
+
 typedef union CellAttrs {
     struct {
-        uint16_t width : 2;
         uint16_t decoration : 3;
         uint16_t bold : 1;
         uint16_t italic : 1;
@@ -19,8 +26,7 @@ typedef union CellAttrs {
         uint16_t strike : 1;
         uint16_t dim : 1;
         uint16_t mark : 2;
-        uint16_t next_char_was_wrapped : 1;
-        uint16_t : 3;
+        uint16_t : 6;
     };
     uint16_t val;
 } CellAttrs;
@@ -29,7 +35,7 @@ static_assert(sizeof(CellAttrs) == sizeof(uint16_t), "Fix the ordering of CellAt
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
 #define NUM_UNDERLINE_STYLES (5u)
-#define SGR_MASK (~(((CellAttrs){.width=WIDTH_MASK, .mark=MARK_MASK, .next_char_was_wrapped=1}).val))
+#define SGR_MASK (~(((CellAttrs){.mark=MARK_MASK}).val))
 // Text presentation selector
 #define VS15 0xfe0e
 // Emoji presentation selector
@@ -42,12 +48,33 @@ typedef struct {
 } GPUCell;
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 
+typedef union MultiCellData {
+    struct {
+        char_type scale: 3;
+        char_type width: 3;
+        char_type subscale: 2;
+        char_type vertical_align: 2;
+        char_type : 21;
+        char_type msb : 1;
+    };
+    char_type val;
+} MultiCellData;
+static_assert(sizeof(MultiCellData) == sizeof(char_type), "Fix the ordering of MultiCellData");
+
 typedef union CPUCell {
     struct {
-        bool ch_is_idx: 1;
         char_type ch_or_idx: sizeof(char_type) * 8 - 1;
-        hyperlink_id_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
-        uint16_t : 16;
+        char_type ch_is_idx: 1;
+        char_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
+        char_type x : 8;
+        char_type y : 3;
+        char_type is_multicell : 1;
+        char_type next_char_was_wrapped : 1;
+        char_type : 3;
+    };
+    struct {
+        char_type ch_and_idx: sizeof(char_type) * 8;
+        char_type : sizeof(char_type) * 8;
     };
     uint64_t val;
 } CPUCell;
@@ -80,17 +107,33 @@ typedef struct {
 Line* alloc_line(TextCache *text_cache);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);
 const char* cell_as_sgr(const GPUCell *, const GPUCell *);
-static inline bool cell_has_text(const CPUCell *c) { return c->ch_is_idx || c->ch_or_idx; }
-static inline void cell_set_char(CPUCell *c, char_type ch) { c->ch_is_idx = false; c->ch_or_idx = ch; }
-static inline bool cell_is_char(const CPUCell *c, char_type ch) { return !c->ch_is_idx && c->ch_or_idx == ch; }
+static inline bool cell_has_text(const CPUCell *c) { return c->ch_and_idx != 0; }
+static inline void cell_set_char(CPUCell *c, char_type ch) { c->ch_and_idx = ch & 0x7fffffff; }
+static inline bool cell_is_char(const CPUCell *c, char_type ch) { return c->ch_and_idx == ch; }
 static inline unsigned num_codepoints_in_cell(const CPUCell *c, const TextCache *tc) {
-    return c->ch_is_idx ? tc_num_codepoints(tc, c->ch_or_idx) : (c->ch_or_idx ? 1 : 0);
+    unsigned ans;
+    if (c->ch_is_idx) {
+        ans = tc_num_codepoints(tc, c->ch_or_idx);
+        if (c->is_multicell) ans--;
+    } else ans = c->ch_or_idx ? 1 : 0;
+    return ans;
 }
+static inline MultiCellData cell_multicell_data(const CPUCell *c, const TextCache *tc) {
+    return (MultiCellData){.val = tc_last_char_at_index(tc, c->ch_or_idx)};
+}
+static inline unsigned mcd_x_limit(MultiCellData mcd) { return mcd.scale * mcd.width; }
 
 static inline void
 text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
-    if (c->ch_is_idx) tc_chars_at_index(tc, c->ch_or_idx, ans);
-    else {
+    ans->is_multicell = false;
+    if (c->ch_is_idx) {
+        tc_chars_at_index(tc, c->ch_or_idx, ans);
+        if (c->is_multicell) {
+            ans->is_multicell = true;
+            ans->is_topleft = c->x + c->y == 0;
+            if (ans->count > 0) { ans->count--; }
+        }
+    } else {
         ans->count = 1;
         ans->chars[0] = c->ch_or_idx;
     }
@@ -98,7 +141,16 @@ text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
 
 static inline bool
 text_in_cell_without_alloc(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
-    if (c->ch_is_idx) return tc_chars_at_index_without_alloc(tc, c->ch_or_idx, ans);
+    ans->is_multicell = false;
+    if (c->ch_is_idx) {
+        if (!tc_chars_at_index_without_alloc(tc, c->ch_or_idx, ans)) return false;
+        if (c->is_multicell) {
+            ans->is_multicell = true;
+            ans->is_topleft = c->x + c->y == 0;
+            if (ans->count > 0) { ans->count--; }
+        }
+        return true;
+    }
     ans->count = 1;
     if (ans->capacity < 1) return false;
     ans->chars[0] = c->ch_or_idx;
@@ -116,15 +168,18 @@ cell_set_chars(CPUCell *c, TextCache *tc, const ListOfChars *lc) {
 
 static inline char_type
 cell_first_char(const CPUCell *c, const TextCache *tc) {
-    if (c->ch_is_idx) return tc_first_char_at_index(tc, c->ch_or_idx);
+    if (c->ch_is_idx) {
+        if (c->is_multicell && (c->x || c->y)) return 0;
+        return tc_first_char_at_index(tc, c->ch_or_idx);
+    }
     return c->ch_or_idx;
 }
 
 
 static inline CellAttrs
-cursor_to_attrs(const Cursor *c, const uint16_t width) {
+cursor_to_attrs(const Cursor *c) {
     CellAttrs ans = {
-        .width=width, .decoration=c->decoration, .bold=c->bold, .italic=c->italic, .reverse=c->reverse,
+        .decoration=c->decoration, .bold=c->bold, .italic=c->italic, .reverse=c->reverse,
         .strike=c->strikethrough, .dim=c->dim};
     return ans;
 }
@@ -135,6 +190,6 @@ attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
     c->reverse = attrs.reverse; c->strikethrough = attrs.strike; c->dim = attrs.dim;
 }
 
-#define cursor_as_gpu_cell(cursor) {.attrs=cursor_to_attrs(cursor, 0), .fg=(cursor->fg & COL_MASK), .bg=(cursor->bg & COL_MASK), .decoration_fg=cursor->decoration_fg & COL_MASK}
+#define cursor_as_gpu_cell(cursor) {.attrs=cursor_to_attrs(cursor), .fg=(cursor->fg & COL_MASK), .bg=(cursor->bg & COL_MASK), .decoration_fg=cursor->decoration_fg & COL_MASK}
 
 

@@ -38,7 +38,7 @@
 #endif
 
 #ifndef is_src_line_continued
-#define is_src_line_continued() (src->line->gpu_cells[src->xnum-1].attrs.next_char_was_wrapped)
+#define is_src_line_continued() (src->line->cpu_cells[src->xnum-1].next_char_was_wrapped)
 #endif
 
 static inline void
@@ -69,7 +69,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
             // Trim trailing blanks since there is a hard line break at the end of this line
             while(src_x_limit && src->line->cpu_cells[src_x_limit - 1].ch_or_idx == BLANK_CHAR && !src->line->cpu_cells[src_x_limit - 1].ch_is_idx) src_x_limit--;
         } else {
-            src->line->gpu_cells[src->xnum-1].attrs.next_char_was_wrapped = false;
+            src->line->cpu_cells[src->xnum-1].next_char_was_wrapped = false;
         }
         for (TrackCursor *t = track; !t->is_sentinel; t++) {
             if (t->is_tracked_line && t->x >= src_x_limit) t->x = MAX(1u, src_x_limit) - 1;

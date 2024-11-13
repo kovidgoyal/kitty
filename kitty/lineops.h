@@ -16,7 +16,7 @@ static inline bool
 set_named_attribute_on_line(GPUCell *cells, const char* which, uint16_t val, index_type xnum) {
     // Set a single attribute on all cells in the line
 #define s(q) if (strcmp(#q, which) == 0) { set_attribute_on_line(cells, q, val, xnum); return true; }
-    s(reverse); s(width); s(strike); s(dim); s(mark); s(bold); s(italic); s(decoration);
+    s(reverse); s(strike); s(dim); s(mark); s(bold); s(italic); s(decoration);
     return false;
 #undef s
 }
@@ -32,19 +32,16 @@ static inline void
 clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, char_type ch) {
     // Clear only the char part of each cell, the rest must have been cleared by a memset or similar
     if (ch) {
-        static const CellAttrs empty = {.width=1};
-        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].val = 0; cpu_cells[i].ch_or_idx = ch; gpu_cells[i].attrs = empty; }
+        static const CellAttrs empty = {0};
+        const CPUCell c = {.ch_or_idx=ch};
+        for (index_type i = 0; i < xnum; i++) { cpu_cells[i] = c; gpu_cells[i].attrs = empty; }
     }
 }
 
 static inline index_type
 xlimit_for_line(const Line *line) {
     index_type xlimit = line->xnum;
-    if (BLANK_CHAR == 0) {
-        const CPUCell *c;
-        while (xlimit > 0 && !((c = line->cpu_cells + xlimit - 1)->ch_is_idx) && c->ch_or_idx == BLANK_CHAR) xlimit--;
-        if (xlimit < line->xnum && line->gpu_cells[xlimit > 0 ? xlimit - 1 : xlimit].attrs.width == 2) xlimit++;
-    }
+    while (xlimit > 0 && !line->cpu_cells[xlimit - 1].ch_and_idx) xlimit--;
     return xlimit;
 }
 
@@ -60,20 +57,6 @@ line_reset_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cell
     memcpy(line->cpu_cells + start, cpu_cells + start, sizeof(CPUCell) * num);
 }
 
-static inline void
-left_shift_line(Line *line, index_type at, index_type num) {
-    for (index_type i = at; i < line->xnum - num; i++) {
-        COPY_CELL(line, i + num, line, i);
-    }
-    const CellAttrs empty = {.width=1};
-    const CellAttrs zero = {{0}};
-    if (at < line->xnum && line->gpu_cells[at].attrs.width != 1) {
-        line->cpu_cells[at].val = 0;
-        line->gpu_cells[at].attrs = BLANK_CHAR ? empty : zero;
-        clear_sprite_position(line->gpu_cells[at]);
-    }
-}
-
 static inline bool
 line_is_empty(const Line *line) {
     for (index_type i = 0; i < line->xnum; i++) {
@@ -86,9 +69,7 @@ typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 char_type line_get_char(Line *self, index_type at);
-void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, hyperlink_id_type);
-void line_right_shift(Line *, unsigned int , unsigned int );
-bool line_add_combining_char(CPUCell *, GPUCell *, TextCache*, ListOfChars*, uint32_t , unsigned int );
+void line_set_char(Line *, unsigned int , uint32_t , Cursor *, hyperlink_id_type);
 index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool, bool, index_type);
 bool line_startswith_url_chars(Line*, bool);
@@ -101,6 +82,7 @@ PyObject* line_as_unicode(Line *, bool);
 
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_init_cells(LineBuf *lb, index_type ynum, CPUCell **c, GPUCell **g);
+CPUCell* linebuf_cpu_cells_for_line(LineBuf *lb, index_type idx);
 void linebuf_clear(LineBuf *, char_type ch);
 void linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index_type end);
 void linebuf_index(LineBuf* self, index_type top, index_type bottom);
@@ -114,8 +96,8 @@ void linebuf_mark_line_dirty(LineBuf *self, index_type y);
 void linebuf_clear_attrs_and_dirty(LineBuf *self, index_type y);
 void linebuf_mark_line_clean(LineBuf *self, index_type y);
 void linebuf_set_line_has_image_placeholders(LineBuf *self, index_type y, bool val);
-unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_set_last_char_as_continuation(LineBuf *self, index_type y, bool continued);
+CPUCell* linebuf_cpu_cell_at(LineBuf *self, index_type x, index_type y);
 bool linebuf_line_ends_with_continuation(LineBuf *self, index_type y);
 void linebuf_refresh_sprite_positions(LineBuf *self);
 void historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf*);
