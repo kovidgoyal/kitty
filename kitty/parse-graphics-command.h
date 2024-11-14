@@ -3,17 +3,19 @@
 #pragma once
 
 #include "base64.h"
+
 static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
                                        const size_t parser_buf_pos) {
   unsigned int pos = 1;
+
   enum PARSER_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE, PAYLOAD };
   enum PARSER_STATES state = KEY, value_state = FLAG;
-  static GraphicsCommand g;
+  GraphicsCommand g = {0};
   unsigned int i, code;
   uint64_t lcode;
   int64_t accumulator;
   bool is_negative;
-  memset(&g, 0, sizeof(g));
+  (void)is_negative;
   size_t sz;
 
   enum KEYS {
@@ -327,8 +329,8 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
       if (!base64_decode8(parser_buf + pos, sz, parser_buf, &g.payload_sz)) {
         g.payload_sz = MAX(BUF_EXTRA, sz);
         REPORT_ERROR("Failed to parse GraphicsCommand command payload with "
-                     "error: invalid base64 data in chunk of size: %zu with "
-                     "output buffer size: %zu",
+                     "error:     invalid base64 data in chunk of size: %zu "
+                     "with output buffer size: %zu",
                      sz, g.payload_sz);
         return;
       }
@@ -336,7 +338,7 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
     } break;
 
     } // end switch
-  }   // end while
+  } // end while
 
   switch (state) {
   case EQUAL:
@@ -358,26 +360,31 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
   REPORT_VA_COMMAND(
       "K s {sc sc sc sc sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI "
       "sI sI sI sI si si si sI} y#",
-      self->window_id, "graphics_command", "action", g.action, "delete_action",
-      g.delete_action, "transmission_type", g.transmission_type, "compressed",
-      g.compressed, "format", (unsigned int)g.format, "more",
-      (unsigned int)g.more, "id", (unsigned int)g.id, "image_number",
-      (unsigned int)g.image_number, "placement_id",
-      (unsigned int)g.placement_id, "quiet", (unsigned int)g.quiet, "width",
-      (unsigned int)g.width, "height", (unsigned int)g.height, "x_offset",
-      (unsigned int)g.x_offset, "y_offset", (unsigned int)g.y_offset,
-      "data_height", (unsigned int)g.data_height, "data_width",
-      (unsigned int)g.data_width, "data_sz", (unsigned int)g.data_sz,
-      "data_offset", (unsigned int)g.data_offset, "num_cells",
-      (unsigned int)g.num_cells, "num_lines", (unsigned int)g.num_lines,
-      "cell_x_offset", (unsigned int)g.cell_x_offset, "cell_y_offset",
-      (unsigned int)g.cell_y_offset, "cursor_movement",
+      self->window_id, "graphics_command",
+
+      "action", g.action, "delete_action", g.delete_action, "transmission_type",
+      g.transmission_type, "compressed", g.compressed,
+
+      "format", (unsigned int)g.format, "more", (unsigned int)g.more, "id",
+      (unsigned int)g.id, "image_number", (unsigned int)g.image_number,
+      "placement_id", (unsigned int)g.placement_id, "quiet",
+      (unsigned int)g.quiet, "width", (unsigned int)g.width, "height",
+      (unsigned int)g.height, "x_offset", (unsigned int)g.x_offset, "y_offset",
+      (unsigned int)g.y_offset, "data_height", (unsigned int)g.data_height,
+      "data_width", (unsigned int)g.data_width, "data_sz",
+      (unsigned int)g.data_sz, "data_offset", (unsigned int)g.data_offset,
+      "num_cells", (unsigned int)g.num_cells, "num_lines",
+      (unsigned int)g.num_lines, "cell_x_offset", (unsigned int)g.cell_x_offset,
+      "cell_y_offset", (unsigned int)g.cell_y_offset, "cursor_movement",
       (unsigned int)g.cursor_movement, "unicode_placement",
       (unsigned int)g.unicode_placement, "parent_id", (unsigned int)g.parent_id,
-      "parent_placement_id", (unsigned int)g.parent_placement_id, "z_index",
-      (int)g.z_index, "offset_from_parent_x", (int)g.offset_from_parent_x,
-      "offset_from_parent_y", (int)g.offset_from_parent_y, "payload_sz",
-      g.payload_sz, parser_buf, g.payload_sz);
+      "parent_placement_id", (unsigned int)g.parent_placement_id,
+
+      "z_index", (int)g.z_index, "offset_from_parent_x",
+      (int)g.offset_from_parent_x, "offset_from_parent_y",
+      (int)g.offset_from_parent_y,
+
+      "payload_sz", g.payload_sz, parser_buf, g.payload_sz);
 
   screen_handle_graphics_command(self->screen, &g, parser_buf);
 }

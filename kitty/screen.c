@@ -879,7 +879,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
                     self->lc->chars[self->lc->count++] = mcd.val;
                 } else {
                     ensure_space_for_chars(self->lc, self->lc->count + 1);
-                    MultiCellData mcd = {.width=2, .scale=1};
+                    MultiCellData mcd = {.width=2, .scale=1, .msb=1};
                     self->lc->chars[self->lc->count++] = mcd.val;
                     cpu_cell->is_multicell = true;
                 }
@@ -1040,7 +1040,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
         CPUCell *fc = s->cp + self->cursor->x;
         zero_cells(s, fc, s->gp + self->cursor->x);
         if (char_width == 2) {
-            MultiCellData mcd = {.width = 2, .scale = 1};
+            MultiCellData mcd = {.width = 2, .scale = 1, .msb = 1};
             RAII_ListOfChars(lc);
             lc.chars[lc.count++] = ch;
             lc.chars[lc.count++] = mcd.val;
@@ -1092,6 +1092,48 @@ screen_align(Screen *self) {
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_cursor_position(self, 1, 1);
     linebuf_clear(self->linebuf, 'E');
+}
+
+static size_t
+decode_utf8_safe_string(const uint8_t *src, size_t sz, uint32_t *dest) {
+    // dest must be an array of size at least sz
+    uint32_t codep = 0;
+    UTF8State state = 0, prev = UTF8_ACCEPT;
+    size_t i, d;
+    for (i = 0, d = 0; i < sz; i++) {
+        switch(decode_utf8(&state, &codep, src[i])) {
+            case UTF8_ACCEPT:
+                // Ignore C0 and C1 chars
+                if (codep >= ' ' && !(codep >= DEL && codep <= 159)) dest[d++] = codep;
+                break;
+            case UTF8_REJECT:
+                state = UTF8_ACCEPT;
+                if (prev != UTF8_ACCEPT && i > 0) i--;
+                break;
+        }
+        prev = state;
+    }
+    return d;
+}
+
+void
+screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload) {
+    if (!cmd->payload_sz) return;
+    ensure_space_for_chars(self->lc, cmd->payload_sz + 1);
+    self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
+    if (!self->lc->count) return;
+    unsigned width = cmd->width;
+    if (!width) {
+        self->lc->chars[self->lc->count] = 0;
+        width = wcswidth_string(self->lc->chars);
+    }
+    if (!width) return;
+    MultiCellData mcd = {
+        .width=MIN(width, 15), .scale=MAX(1, MIN(cmd->scale, 15)), .subscale=MIN(cmd->subscale, 3),
+        .explicitly_set=1, .msb=1
+    };
+    self->lc->chars[self->lc->count++] = mcd.val;
+    width = mcd.width * mcd.scale;
 }
 
 // }}}

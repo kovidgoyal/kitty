@@ -377,6 +377,8 @@ find_st_terminator(PS *self, size_t *end_pos) {
 
 // OSC {{{
 
+#include "parse-multicell-command.h"
+
 static bool
 is_osc_52(PS *self) {
     return memcmp(self->buf + self->read.consumed, "52;", 3) == 0;
@@ -537,6 +539,9 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             if (is_extended_osc && code == 52) code = -52;
             DISPATCH_OSC_WITH_CODE(clipboard_control);
             END_DISPATCH
+        case 66:
+            parse_multicell_code(self, buf + i, limit - 1);
+            break;
         case 133:
 #ifdef DUMP_COMMANDS
             START_DISPATCH

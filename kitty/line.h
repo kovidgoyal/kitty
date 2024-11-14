@@ -16,6 +16,7 @@
 // TODO: URL detection with multicell
 // TODO: Cursor rendering over multicell
 // TODO: Test the escape codes to delete and insert characters and lines with multicell
+// TODO: Handle replay of dumped graphics_command and multicell_command
 
 typedef union CellAttrs {
     struct {
@@ -54,7 +55,8 @@ typedef union MultiCellData {
         char_type width: 3;
         char_type subscale: 2;
         char_type vertical_align: 2;
-        char_type : 21;
+        char_type explicitly_set: 1;
+        char_type : 20;
         char_type msb : 1;
     };
     char_type val;
@@ -67,10 +69,10 @@ typedef union CPUCell {
         char_type ch_is_idx: 1;
         char_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
         char_type x : 8;
-        char_type y : 3;
+        char_type y : 4;
         char_type is_multicell : 1;
         char_type next_char_was_wrapped : 1;
-        char_type : 3;
+        char_type : 2;
     };
     struct {
         char_type ch_and_idx: sizeof(char_type) * 8;
@@ -103,6 +105,11 @@ typedef struct {
     LineAttrs attrs;
     TextCache *text_cache;
 } Line;
+
+typedef struct MultiCellCommand {
+    unsigned int width, scale, subscale;
+    size_t payload_sz;
+} MultiCellCommand;
 
 Line* alloc_line(TextCache *text_cache);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);

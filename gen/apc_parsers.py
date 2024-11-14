@@ -85,12 +85,17 @@ def cmd_for_report(report_name: str, keymap: KeymapType, type_map: dict[str, Any
 
     fmt = f'{flag_fmt} {uint_fmt} {int_fmt}'
     if payload_allowed:
-        ans = [f'REPORT_VA_COMMAND("K s {{{fmt} sI}} y#", self->window_id, "{report_name}", ']
+        ans = [f'REPORT_VA_COMMAND("K s {{{fmt} sI}} y#", self->window_id, "{report_name}",\n']
     else:
-        ans = [f'REPORT_VA_COMMAND("K s {{{fmt}}}", self->window_id, "{report_name}", ']
-    ans.append(',\n     '.join((flag_attrs, uint_attrs, int_attrs)))
+        ans = [f'REPORT_VA_COMMAND("K s {{{fmt}}}", self->window_id, "{report_name}",\n']
+    if flag_attrs:
+        ans.append(f'{flag_attrs},\n')
+    if uint_attrs:
+        ans.append(f'{uint_attrs},\n')
+    if int_attrs:
+        ans.append(f'{int_attrs},\n')
     if payload_allowed:
-        ans.append(', "payload_sz", g.payload_sz, parser_buf, g.payload_sz')
+        ans.append('"payload_sz", g.payload_sz, parser_buf, g.payload_sz')
     ans.append(');')
     return '\n'.join(ans)
 
@@ -102,7 +107,9 @@ def generate(
     keymap: KeymapType,
     command_class: str,
     initial_key: str = 'a',
-    payload_allowed: bool = True
+    payload_allowed: bool = True,
+    payload_is_base64: bool = True,
+    start_parsing_at: int = 1,
 ) -> str:
     type_map = resolve_keys(keymap)
     keys_enum = enum(keymap)
@@ -110,38 +117,51 @@ def generate(
     flag_keys = parse_flag(keymap, type_map, command_class)
     int_keys, uint_keys = parse_number(keymap)
     report_cmd = cmd_for_report(report_name, keymap, type_map, payload_allowed)
+    extra_init = ''
     if payload_allowed:
         payload_after_value = "case ';': state = PAYLOAD; break;"
         payload = ', PAYLOAD'
-        payload_case = f'''
-            case PAYLOAD: {{
-                sz = parser_buf_pos - pos;
-                g.payload_sz = MAX(BUF_EXTRA, sz);
-                if (!base64_decode8(parser_buf + pos, sz, parser_buf, &g.payload_sz)) {{
+        if payload_is_base64:
+            payload_case = f'''
+                case PAYLOAD: {{
+                    sz = parser_buf_pos - pos;
                     g.payload_sz = MAX(BUF_EXTRA, sz);
-                    REPORT_ERROR("Failed to parse {command_class} command payload with error: \
-invalid base64 data in chunk of size: %zu with output buffer size: %zu", sz, g.payload_sz); return; }}
-                pos = parser_buf_pos;
-                }}
-                break;
-        '''
-        callback = f'{callback_name}(self->screen, &g, parser_buf)'
+                    if (!base64_decode8(parser_buf + pos, sz, parser_buf, &g.payload_sz)) {{
+                        g.payload_sz = MAX(BUF_EXTRA, sz);
+                        REPORT_ERROR("Failed to parse {command_class} command payload with error: \
+    invalid base64 data in chunk of size: %zu with output buffer size: %zu", sz, g.payload_sz); return; }}
+                    pos = parser_buf_pos;
+                    }} break;
+            '''
+            callback = f'{callback_name}(self->screen, &g, parser_buf)'
+        else:
+            payload_case = '''
+                case PAYLOAD: {
+                    sz = parser_buf_pos - pos;
+                    payload_start = pos;
+                    g.payload_sz = MAX(BUF_EXTRA, sz);
+                } break;
+            '''
+            extra_init = 'size_t payload_start = 0;'
+            callback = f'{callback_name}(self->screen, &g, parser_buf + payload_start)'
+
     else:
         payload_after_value = payload = payload_case = ''
         callback = f'{callback_name}(self->screen, &g)'
 
     return f'''
     #include "base64.h"
+
 static inline void
 {function_name}(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {{
-    unsigned int pos = 1;
+    unsigned int pos = {start_parsing_at};
+    {extra_init}
     enum PARSER_STATES {{ KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE {payload} }};
     enum PARSER_STATES state = KEY, value_state = FLAG;
-    static {command_class} g;
+    {command_class} g = {{0}};
     unsigned int i, code;
     uint64_t lcode; int64_t accumulator;
-    bool is_negative;
-    memset(&g, 0, sizeof(g));
+    bool is_negative; (void)is_negative;
     size_t sz;
     {keys_enum}
     enum KEYS key = '{initial_key}';
@@ -256,7 +276,7 @@ def write_header(text: str, path: str) -> None:
     subprocess.check_call(['clang-format', '-i', path])
 
 
-def graphics_parser() -> None:
+def parsers() -> None:
     flag = frozenset
     keymap: KeymapType = {
         'a': ('action', flag('tTqpdfac')),
@@ -291,10 +311,19 @@ def graphics_parser() -> None:
     }
     text = generate('parse_graphics_code', 'screen_handle_graphics_command', 'graphics_command', keymap, 'GraphicsCommand')
     write_header(text, 'kitty/parse-graphics-command.h')
+    keymap = {
+        'w': ('width', 'uint'),
+        's': ('scale', 'uint'),
+        'f': ('subscale', 'uint'),
+    }
+    text = generate(
+        'parse_multicell_code', 'screen_handle_multicell_command', 'multicell_command', keymap, 'MultiCellCommand',
+        payload_is_base64=False, start_parsing_at=0)
+    write_header(text, 'kitty/parse-multicell-command.h')
 
 
 def main(args: list[str]=sys.argv) -> None:
-    graphics_parser()
+    parsers()
 
 
 if __name__ == '__main__':

@@ -4,6 +4,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#pragma once
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
