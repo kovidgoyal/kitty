@@ -19,6 +19,7 @@
 // TODO: Handle replay of dumped graphics_command and multicell_command
 // TODO: Handle rewrap of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
+// TODO: Test serialization to ansi only using escape code for explicitly set multicells
 
 typedef union CellAttrs {
     struct {

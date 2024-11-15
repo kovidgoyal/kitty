@@ -1044,9 +1044,11 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             RAII_ListOfChars(lc);
             lc.chars[lc.count++] = ch;
             lc.chars[lc.count++] = mcd.val;
+            CPUCell *second = fc + 1;
+            if (second->is_multicell) nuke_multicell_char_at(self, self->cursor->x + 1, self->cursor->y, true);
             cell_set_chars(fc, self->text_cache, &lc);
             fc->x = 0; fc->y = 0; fc->is_multicell = true;
-            *(fc + 1) = *fc; (fc + 1)->x = 1;
+            *second = *fc; second->x = 1;
             s->gp[self->cursor->x + 1] = s->gp[self->cursor->x];
             self->cursor->x += 2;
         } else {
@@ -1167,6 +1169,7 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     CPUCell c = s.cc;
     c.ch_is_idx = true; c.ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
     c.is_multicell = true;
+    nuke_multicell_char_intersecting_with(self, self->cursor->x, self->cursor->x + width, self->cursor->y, self->cursor->y + height, true);
     for (index_type y = self->cursor->y; y < self->cursor->y + height; y++) {
         linebuf_init_cells(self->linebuf, y, &s.cp, &s.gp);
         linebuf_mark_line_dirty(self->linebuf, y);

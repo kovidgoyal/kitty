@@ -611,7 +611,7 @@ class TestParser(BaseTest):
         e('s', 'Malformed GraphicsCommand control block, no = after key')
         e('s=', 'Malformed GraphicsCommand control block, expecting an integer value')
         e('s==', 'Malformed GraphicsCommand control block, expecting an integer value for key: s')
-        e('s=1=', 'Malformed GraphicsCommand control block, expecting a comma or semi-colon after a value, found: 0x3d')
+        e('s=1=', 'Malformed GraphicsCommand control block, expecting a , or semi-colon after a value, found: 0x3d')
 
     def test_deccara(self):
         s = self.create_screen()
