@@ -110,6 +110,7 @@ def generate(
     payload_allowed: bool = True,
     payload_is_base64: bool = True,
     start_parsing_at: int = 1,
+    field_sep: str = ',',
 ) -> str:
     type_map = resolve_keys(keymap)
     keys_enum = enum(keymap)
@@ -140,6 +141,7 @@ def generate(
                     sz = parser_buf_pos - pos;
                     payload_start = pos;
                     g.payload_sz = MAX(BUF_EXTRA, sz);
+                    pos = parser_buf_pos;
                 } break;
             '''
             extra_init = 'size_t payload_start = 0;'
@@ -234,10 +236,10 @@ static inline void
             case AFTER_VALUE:
                 switch (parser_buf[pos++]) {{
                     default:
-                        REPORT_ERROR("Malformed {command_class} control block, expecting a comma or semi-colon after a value, found: 0x%x",
+                        REPORT_ERROR("Malformed {command_class} control block, expecting a {field_sep} or semi-colon after a value, found: 0x%x",
                                      parser_buf[pos - 1]);
                         return;
-                    case ',':
+                    case '{field_sep}':
                         state = KEY;
                         break;
                     {payload_after_value}
@@ -318,7 +320,7 @@ def parsers() -> None:
     }
     text = generate(
         'parse_multicell_code', 'screen_handle_multicell_command', 'multicell_command', keymap, 'MultiCellCommand',
-        payload_is_base64=False, start_parsing_at=0)
+        payload_is_base64=False, start_parsing_at=0, field_sep=':')
     write_header(text, 'kitty/parse-multicell-command.h')
 
 

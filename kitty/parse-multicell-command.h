@@ -128,11 +128,11 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
     case AFTER_VALUE:
       switch (parser_buf[pos++]) {
       default:
-        REPORT_ERROR("Malformed MultiCellCommand control block, expecting a "
-                     "comma or semi-colon after a value, found: 0x%x",
+        REPORT_ERROR("Malformed MultiCellCommand control block, expecting a : "
+                     "or semi-colon after a value, found: 0x%x",
                      parser_buf[pos - 1]);
         return;
-      case ',':
+      case ':':
         state = KEY;
         break;
       case ';':
@@ -145,6 +145,7 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
       sz = parser_buf_pos - pos;
       payload_start = pos;
       g.payload_sz = MAX(BUF_EXTRA, sz);
+      pos = parser_buf_pos;
     } break;
 
     } // end switch

@@ -1057,20 +1057,23 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
 #undef init_line
 }
 
+#define PREPARE_FOR_DRAW_TEXT \
+    const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0; \
+    CellAttrs attrs = cursor_to_attrs(self->cursor); \
+    if (force_underline) attrs.decoration = OPT(url_style); \
+    text_loop_state s={ \
+        .cc=(CPUCell){.hyperlink_id=self->active_hyperlink_id}, \
+        .g=(GPUCell){ \
+            .attrs=attrs, \
+            .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK, \
+            .decoration_fg=force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->decoration_fg & COL_MASK, \
+        } \
+    };
+
 static void
 draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
+    PREPARE_FOR_DRAW_TEXT;
     self->is_dirty = true;
-    const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0;
-    CellAttrs attrs = cursor_to_attrs(self->cursor);
-    if (force_underline) attrs.decoration = OPT(url_style);
-    text_loop_state s={
-        .cc=(CPUCell){.hyperlink_id=self->active_hyperlink_id},
-        .g=(GPUCell){
-            .attrs=attrs,
-            .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK,
-            .decoration_fg=force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->decoration_fg & COL_MASK,
-        }
-    };
     draw_text_loop(self, chars, num_chars, &s);
 }
 
@@ -1118,11 +1121,12 @@ decode_utf8_safe_string(const uint8_t *src, size_t sz, uint32_t *dest) {
 
 void
 screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload) {
+    screen_on_input(self);
     if (!cmd->payload_sz) return;
     ensure_space_for_chars(self->lc, cmd->payload_sz + 1);
     self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
     if (!self->lc->count) return;
-    unsigned width = cmd->width;
+    index_type width = cmd->width;
     if (!width) {
         self->lc->chars[self->lc->count] = 0;
         width = wcswidth_string(self->lc->chars);
@@ -1134,6 +1138,45 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     };
     self->lc->chars[self->lc->count++] = mcd.val;
     width = mcd.width * mcd.scale;
+    index_type height = mcd.scale;
+    index_type max_height = self->margin_bottom - self->margin_top + 1;
+    if (width > self->columns || height > max_height) return;
+    PREPARE_FOR_DRAW_TEXT;
+    if (self->columns < self->cursor->x + width) {
+        if (self->modes.mDECAWM) {
+            continue_to_next_line(self);
+        } else {
+            self->cursor->x = self->columns - width;
+            CPUCell *cp = linebuf_cpu_cell_at(self->linebuf, self->cursor->x, self->cursor->y);
+            if (cp->is_multicell) replace_multicell_char_under_cursor_with_spaces(self);
+        }
+    }
+    if (height > 1) {
+        index_type available_height = self->margin_bottom - self->cursor->y + 1;
+        if (height > available_height) {
+            index_type extra_lines = height - available_height;
+            screen_scroll(self, extra_lines);
+            self->cursor->y -= extra_lines;
+        }
+    }
+    if (self->modes.mIRM) {
+        for (index_type y = self->cursor->y; y < self->cursor->y + height; y++) {
+            if (self->modes.mIRM) insert_characters(self, self->cursor->x, width, y, true);
+        }
+    }
+    CPUCell c = s.cc;
+    c.ch_is_idx = true; c.ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
+    c.is_multicell = true;
+    for (index_type y = self->cursor->y; y < self->cursor->y + height; y++) {
+        linebuf_init_cells(self->linebuf, y, &s.cp, &s.gp);
+        linebuf_mark_line_dirty(self->linebuf, y);
+        c.x = 0; c.y = y - self->cursor->y;
+        for (index_type x = self->cursor->x; x < self->cursor->x + width; x++, c.x++) {
+            s.cp[x] = c; s.gp[x] = s.g;
+        }
+    }
+    self->cursor->x += width;
+    self->is_dirty = true;
 }
 
 // }}}
@@ -5068,6 +5111,47 @@ test_parse_written_data(Screen *screen, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+multicell_data_as_dict(MultiCellData mcd) {
+    if (!mcd.msb) { PyErr_SetString(PyExc_RuntimeError, "mcd does not have its msb set"); return NULL; }
+    return Py_BuildValue("{sI sI sI sO sI}", "scale", (unsigned int)mcd.scale, "width", (unsigned int)mcd.width, "subscale", (unsigned int)mcd.subscale, "explicitly_set", mcd.explicitly_set ? Py_True : Py_False, "vertical_align", mcd.vertical_align);
+}
+
+static PyObject*
+cpu_cell_as_dict(CPUCell *c, TextCache *tc, ListOfChars *lc, HYPERLINK_POOL_HANDLE h) {
+    text_in_cell(c, tc, lc);
+    RAII_PyObject(mcd, lc->is_multicell ? multicell_data_as_dict((MultiCellData){.val=lc->chars[lc->count]}) : Py_NewRef(Py_None));
+    if ((lc->is_multicell && !lc->is_topleft) || (lc->count == 1 && lc->chars[0] == 0)) lc->count = 0;
+    RAII_PyObject(text, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, lc->chars, lc->count));
+    const char *url = c->hyperlink_id ? get_hyperlink_for_id(h, c->hyperlink_id, false) : NULL;
+    RAII_PyObject(hyperlink, url ? PyUnicode_FromString(url) : Py_NewRef(Py_None));
+    return Py_BuildValue("{sO sO sI sI sO sO}",
+        "text", text, "hyperlink", hyperlink, "x", (unsigned int)c->x, "y", (unsigned int)c->y,
+        "mcd", mcd, "next_char_was_wrapped", c->next_char_was_wrapped ? Py_True : Py_False
+    );
+}
+
+static PyObject*
+cpu_cells(Screen *self, PyObject *args) {
+    int y, x = -1;
+    if (!PyArg_ParseTuple(args, "i|i", &y, &x)) return NULL;
+    if (y < 0 || y >= (int)self->lines) { PyErr_SetString(PyExc_IndexError, "y out of bounds"); return NULL; }
+    if (x > -1) {
+        if (x >= (int)self->columns) { PyErr_SetString(PyExc_IndexError, "x out of bounds"); return NULL; }
+        return cpu_cell_as_dict(linebuf_cpu_cell_at(self->linebuf, x, y), self->text_cache, self->lc, self->hyperlink_pool);
+    }
+    index_type start_x = 0, x_limit = self->columns;
+    RAII_PyObject(ans, PyTuple_New(x_limit - start_x));
+    if (ans) {
+        for (index_type x = start_x; x < x_limit; x++) {
+            PyObject *d = cpu_cell_as_dict(linebuf_cpu_cell_at(self->linebuf, x, y), self->text_cache, self->lc, self->hyperlink_pool);
+            if (!d) return NULL;
+            PyTuple_SET_ITEM(ans, x, d);
+        }
+    }
+    return Py_NewRef(ans);
+}
+
 static PyMethodDef methods[] = {
     METHODB(test_create_write_buffer, METH_NOARGS),
     METHODB(test_commit_write_buffer, METH_VARARGS),
@@ -5075,6 +5159,7 @@ static PyMethodDef methods[] = {
     MND(line_edge_colors, METH_NOARGS)
     MND(line, METH_O)
     MND(dump_lines_with_attrs, METH_VARARGS)
+    MND(cpu_cells, METH_VARARGS)
     MND(cursor_at_prompt, METH_NOARGS)
     MND(visual_line, METH_VARARGS)
     MND(current_url_text, METH_NOARGS)

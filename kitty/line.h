@@ -17,6 +17,8 @@
 // TODO: Cursor rendering over multicell
 // TODO: Test the escape codes to delete and insert characters and lines with multicell
 // TODO: Handle replay of dumped graphics_command and multicell_command
+// TODO: Handle rewrap of multiline chars
+// TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
 
 typedef union CellAttrs {
     struct {

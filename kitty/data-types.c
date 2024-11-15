@@ -783,6 +783,7 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, ESC_APC);
     PyModule_AddIntMacro(m, ESC_DCS);
     PyModule_AddIntMacro(m, ESC_PM);
+    PyModule_AddIntMacro(m, TEXT_SIZE_CODE);
 #ifdef __APPLE__
     // Apple says its SHM_NAME_MAX but SHM_NAME_MAX is not actually declared in typical CrApple style.
     // This value is based on experimentation and from qsharedmemory.cpp in Qt

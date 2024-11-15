@@ -310,8 +310,8 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
     case AFTER_VALUE:
       switch (parser_buf[pos++]) {
       default:
-        REPORT_ERROR("Malformed GraphicsCommand control block, expecting a "
-                     "comma or semi-colon after a value, found: 0x%x",
+        REPORT_ERROR("Malformed GraphicsCommand control block, expecting a , "
+                     "or semi-colon after a value, found: 0x%x",
                      parser_buf[pos - 1]);
         return;
       case ',':
