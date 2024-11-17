@@ -224,7 +224,6 @@ def test_multicell(self: TestMulticell) -> None:
     s.cursor.x = 2
     s.delete_characters(1)
     assert_line('a\0c\0\0\0')
-
     # multiline
     s.reset()
     s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
@@ -241,3 +240,16 @@ def test_multicell(self: TestMulticell) -> None:
     assert_line('a_\0\0\0\0')
     assert_line('__\0\0\0\0', 1)
 
+    # Erase characters (aka replace with null)
+    s.reset()
+    s.cursor.x = 1
+    s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+    s.cursor.x = 0
+    s.erase_characters(1)
+    assert_line('\0ab_c\0')
+    s.erase_characters(2)
+    assert_line('\0\0b_c\0')
+    assert_line('\0\0__\0\0', 1)
+    s.erase_characters(3)
+    assert_line('\0\0\0\0c\0')
+    assert_line('\0\0\0\0\0\0', 1)

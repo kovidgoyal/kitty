@@ -2438,11 +2438,11 @@ screen_delete_characters(Screen *self, unsigned int count) {
 
 void
 screen_erase_characters(Screen *self, unsigned int count) {
-    // Delete characters replacing them by spaces
+    // Delete characters clearing the cells
     if (count == 0) count = 1;
     unsigned int x = self->cursor->x;
     unsigned int num = MIN(self->columns - x, count);
-    nuke_multicell_char_intersecting_with(self, x, x + num, self->cursor->y, self->cursor->y + 1, true);
+    nuke_multicell_char_intersecting_with(self, x, x + num, self->cursor->y, self->cursor->y + 1, false);
     linebuf_init_line(self->linebuf, self->cursor->y);
     line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
