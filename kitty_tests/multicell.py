@@ -80,8 +80,10 @@ def test_multicell(self: TestMulticell) -> None:
             y = s.cursor.y
         self.ae(text, line_text(y))
 
-    # Test basic multicell drawing
     s = self.create_screen(cols=6, lines=6)
+
+    # Test basic multicell drawing
+    s.reset()
     ac(0, 0, is_multicell=False)
     multicell(s, 'a')
     ac(0, 0, is_multicell=True, width=1, scale=1, subscale=0, x=0, y=0, text='a', explicitly_set=True, cursor=(1, 0))
@@ -133,7 +135,7 @@ def test_multicell(self: TestMulticell) -> None:
             ac(x, 4, text=' ')
     big_a(0, 0), big_a(1, 1), big_a(2, 2), big_a(5, 1)
 
-    # Test insert chars with multicell
+    # Test insert chars with multicell (aka right shift)
     s.reset()
     s.draw('a')
     s.cursor.x = 0
@@ -166,6 +168,7 @@ def test_multicell(self: TestMulticell) -> None:
     s.cursor.x = 0
     s.insert_characters(1)
     assert_line('\0\0\0\0\0\0')
+    # multiline
     s.reset()
     s.draw('a')
     multicell(s, 'b', scale=2)
@@ -179,6 +182,62 @@ def test_multicell(self: TestMulticell) -> None:
     multicell(s, 'a', scale=2)
     s.cursor.x = 3
     s.insert_characters(1)
+    assert_line('a_\0\0\0\0')
+    assert_line('__\0\0\0\0', 1)
+
+    # Test delete chars with multicell (aka left shift)
+    s.reset()
+    multicell(s, 'a', width=2)
+    s.cursor.x = 0
+    s.delete_characters(1)
+    assert_line('\0\0\0\0\0\0')
+    s.reset()
+    multicell(s, 'a', width=2)
+    s.cursor.x = 1
+    s.delete_characters(1)
+    assert_line('\0\0\0\0\0\0')
+    s.reset()
+    s.draw('ab')
+    multicell(s, 'a', width=2)
+    s.cursor.x = 0
+    s.delete_characters(2)
+    assert_line('a_\0\0\0\0')
+    s.reset()
+    s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
+    s.cursor.x = 0
+    s.delete_characters(1)
+    assert_line('b_c\0\0\0')
+    s.reset()
+    s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
+    s.cursor.x = 0
+    s.delete_characters(1)
+    assert_line('b_c\0\0\0')
+    s.reset(), s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
+    s.cursor.x = 0
+    s.delete_characters(2)
+    assert_line('\0c\0\0\0\0')
+    s.reset(), s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
+    s.cursor.x = 1
+    s.delete_characters(1)
+    assert_line('a\0c\0\0\0')
+    s.reset(), s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
+    s.cursor.x = 2
+    s.delete_characters(1)
+    assert_line('a\0c\0\0\0')
+
+    # multiline
+    s.reset()
+    s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+    assert_line('ab_c\0\0')
+    assert_line('\0__\0\0\0', 1)
+    s.cursor.x, s.cursor.y = 0, 0
+    s.delete_characters(1)
+    assert_line('\0\0c\0\0\0')
+    assert_line('\0\0\0\0\0\0', 1)
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.cursor.x = 3
+    s.delete_characters(1)
     assert_line('a_\0\0\0\0')
     assert_line('__\0\0\0\0', 1)
 

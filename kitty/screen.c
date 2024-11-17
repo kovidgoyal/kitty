@@ -721,9 +721,9 @@ nuke_incomplete_single_line_multicell_chars_in_range(
     for (index_type x = start; x < limit; x++) {
         if (cpu_cells[x].is_multicell) {
             MultiCellData mcd = cell_multicell_data(cpu_cells + x, self->text_cache);
-            index_type last_x = x + mcd.width;
-            if (last_x > limit) nuke_in_line(cpu_cells, gpu_cells, x, limit, replace_with_spaces ? ' ': 0);
-            x = last_x + 1;
+            index_type mcd_x_limit = x + mcd.width - cpu_cells[x].x;
+            if (cpu_cells[x].x || mcd_x_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(mcd_x_limit, limit), replace_with_spaces ? ' ': 0);
+            x = mcd_x_limit;
         }
     }
 }
@@ -2410,14 +2410,13 @@ remove_characters(Screen *self, index_type at, index_type num, index_type y, boo
     // and x=at + num - 1 are deleted
     nuke_multiline_char_intersecting_with(self, at, self->columns, y, y + 1, replace_with_spaces);
     nuke_split_multicell_char_at_left_boundary(self, at, y, replace_with_spaces);
-    nuke_split_multicell_char_at_right_boundary(self, at + num - 1, y, replace_with_spaces);
     CPUCell *cp; GPUCell *gp;
     linebuf_init_cells(self->linebuf, y, &cp, &gp);
     // left shift
     for (index_type i = at; i < self->columns - num; i++) {
         cp[i] = cp[i+num]; gp[i] = gp[i+num];
     }
-    nuke_split_multicell_char_at_right_boundary(self, at + num - 1, y, replace_with_spaces);
+    nuke_incomplete_single_line_multicell_chars_in_range(self, at, self->columns, y, replace_with_spaces);
 }
 
 void
