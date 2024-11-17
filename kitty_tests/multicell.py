@@ -66,6 +66,20 @@ def test_multicell(self: TestMulticell) -> None:
                     ans += 1
         return ans
 
+    def line_text(y):
+        def ct(c):
+            if c['text']:
+                return c['text']
+            if c['mcd']:
+                return '_'
+            return '\0'
+        return ''.join(ct(c) for c in s.cpu_cells(y))
+
+    def assert_line(text, y=None):
+        if y is None:
+            y = s.cursor.y
+        self.ae(text, line_text(y))
+
     # Test basic multicell drawing
     s = self.create_screen(cols=6, lines=6)
     ac(0, 0, is_multicell=False)
@@ -119,4 +133,52 @@ def test_multicell(self: TestMulticell) -> None:
             ac(x, 4, text=' ')
     big_a(0, 0), big_a(1, 1), big_a(2, 2), big_a(5, 1)
 
+    # Test insert chars with multicell
+    s.reset()
+    s.draw('a')
+    s.cursor.x = 0
+    s.insert_characters(1)
+    assert_line('\0a\0\0\0\0')
+    s.reset()
+    multicell(s, 'a', width=2)
+    s.cursor.x = 0
+    s.insert_characters(1)
+    assert_line('\0a_\0\0\0')
+    s.reset()
+    multicell(s, 'a', width=2)
+    s.cursor.x = 0
+    s.insert_characters(2)
+    assert_line('\0\0a_\0\0')
+    s.reset()
+    multicell(s, 'a', width=2)
+    s.cursor.x = 1
+    s.insert_characters(1)
+    assert_line('\0\0\0\0\0\0')
+    s.reset()
+    s.cursor.x = 3
+    multicell(s, 'a', width=2)
+    s.cursor.x = 0
+    s.insert_characters(1)
+    assert_line('\0\0\0\0a_')
+    s.reset()
+    s.cursor.x = s.columns - 2
+    multicell(s, 'a', width=2)
+    s.cursor.x = 0
+    s.insert_characters(1)
+    assert_line('\0\0\0\0\0\0')
+    s.reset()
+    s.draw('a')
+    multicell(s, 'b', scale=2)
+    assert_line('ab_\0\0\0')
+    assert_line('\0__\0\0\0', 1)
+    s.cursor.x, s.cursor.y = 0, 0
+    s.insert_characters(1)
+    assert_line('\0a\0\0\0\0')
+    assert_line('\0\0\0\0\0\0', 1)
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.cursor.x = 3
+    s.insert_characters(1)
+    assert_line('a_\0\0\0\0')
+    assert_line('__\0\0\0\0', 1)
 

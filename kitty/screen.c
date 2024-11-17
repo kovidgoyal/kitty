@@ -638,6 +638,13 @@ checked_range_line(Screen *self, int y) {
     return range_line_(self, y);
 }
 
+static void
+nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit, char_type ch) {
+    for (index_type x = start; x < x_limit; x++) {
+        cell_set_char(cp + x, ch); cp[x].is_multicell = false;
+        clear_sprite_position(gp[x]);
+    }
+}
 
 static void
 nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
@@ -648,19 +655,17 @@ nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_
     while (cp[x_].x && x_ > 0) x_--;
     index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(mcd));
     char_type ch = replace_with_spaces ? ' ' : 0;
-#define nuke_in_line for (index_type x = x_; x < x_limit; x++) { cell_set_char(cp + x, ch); cp[x].is_multicell = false; clear_sprite_position(gp[x]); }
     for (index_type y = y_; y < y_max_limit; y++) {
         linebuf_init_cells(self->linebuf, y, &cp, &gp);
-        nuke_in_line; linebuf_mark_line_dirty(self->linebuf, y);
+        nuke_in_line(cp, gp, x_, x_limit, ch); linebuf_mark_line_dirty(self->linebuf, y);
     }
     int y_min_limit = -1;
     if (self->linebuf == self->main_linebuf) y_min_limit = -(self->historybuf->count + 1);
     for (int y = y_ - 1; y > y_min_limit; y--) {
         Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
-        nuke_in_line; if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
+        nuke_in_line(cp, gp, x_, x_limit, ch); linebuf_mark_line_dirty(self->linebuf, y);
     }
     self->is_dirty = true;
-#undef nuke_in_line
 }
 
 static void
@@ -708,19 +713,35 @@ nuke_split_multicell_char_at_right_boundary(Screen *self, index_type x, index_ty
 }
 
 static void
+nuke_incomplete_single_line_multicell_chars_in_range(
+    Screen *self, index_type start, index_type limit, index_type y, bool replace_with_spaces
+) {
+    CPUCell *cpu_cells; GPUCell *gpu_cells;
+    linebuf_init_cells(self->linebuf, y, &cpu_cells, &gpu_cells);
+    for (index_type x = start; x < limit; x++) {
+        if (cpu_cells[x].is_multicell) {
+            MultiCellData mcd = cell_multicell_data(cpu_cells + x, self->text_cache);
+            index_type last_x = x + mcd.width;
+            if (last_x > limit) nuke_in_line(cpu_cells, gpu_cells, x, limit, replace_with_spaces ? ' ': 0);
+            x = last_x + 1;
+        }
+    }
+}
+
+static void
 insert_characters(Screen *self, index_type at, index_type num, index_type y, bool replace_with_spaces) {
     // insert num chars at x=at setting them to the value of the num chars at [at, at + num)
     // multiline chars at x >= at are deleted and multicell chars split at x=at
     // and x=at + num - 1 are deleted
     nuke_multiline_char_intersecting_with(self, at, self->columns, y, y + 1, replace_with_spaces);
     nuke_split_multicell_char_at_left_boundary(self, at, y, replace_with_spaces);
-    nuke_split_multicell_char_at_right_boundary(self, at + num - 1, y, replace_with_spaces);
     CPUCell *cp; GPUCell *gp;
     linebuf_init_cells(self->linebuf, y, &cp, &gp);
     // right shift
     for(index_type i = self->columns - 1; i >= at + num; i--) {
         cp[i] = cp[i - num]; gp[i] = gp[i - num];
     }
+    nuke_incomplete_single_line_multicell_chars_in_range(self, at, at + num, y, replace_with_spaces);
     nuke_split_multicell_char_at_right_boundary(self, self->columns - 1, y, replace_with_spaces);
 }
 
