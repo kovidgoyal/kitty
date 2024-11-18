@@ -91,6 +91,8 @@ Detailed list of changes
 
 - Discard OSC 9 notifications that start with :code:`4;` because some misguided software is using it for "progress reporting" (:iss:`8011`)
 
+- Wayland GNOME: Workaround bug in mutter causing double tap on titlebar to not always work (:iss:`8054`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

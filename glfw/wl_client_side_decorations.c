@@ -759,6 +759,7 @@ handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
     }
 #undef c
     decs.focus = CENTRAL_WINDOW;
+    decs.dragging = false;
 }
 
 
@@ -768,7 +769,11 @@ handle_pointer_move(_GLFWwindow *window) {
     switch (decs.focus)
     {
         case CENTRAL_WINDOW: break;
-        case CSD_titlebar: if (update_hovered_button(window)) cursorShape = GLFW_POINTER_CURSOR; break;
+        case CSD_titlebar: {
+            if (decs.dragging) {
+                if (window->wl.xdg.toplevel) xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
+            } else if (update_hovered_button(window)) cursorShape = GLFW_POINTER_CURSOR;
+        } break;
         case CSD_shadow_top: cursorShape = GLFW_N_RESIZE_CURSOR; break;
         case CSD_shadow_bottom: cursorShape = GLFW_S_RESIZE_CURSOR; break;
         case CSD_shadow_left: cursorShape = GLFW_W_RESIZE_CURSOR; break;
@@ -789,6 +794,7 @@ handle_pointer_enter(_GLFWwindow *window, struct wl_surface *surface) {
     all_surfaces(Q)
 #undef Q
     decs.focus = CENTRAL_WINDOW;
+    decs.dragging = false;
 }
 
 static void
@@ -816,9 +822,7 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                         decs.maximize.hovered = false; decs.titlebar_needs_update = true;
                     } else if (decs.close.hovered) _glfwInputWindowCloseRequest(window);
                 }
-                if (!has_hovered_button(window)) {
-                    if (window->wl.xdg.toplevel) xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
-                }
+                decs.dragging = !has_hovered_button(window);
                 break;
             case CSD_shadow_left: edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT; break;
             case CSD_shadow_upper_left: edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT; break;
