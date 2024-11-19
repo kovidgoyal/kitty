@@ -106,10 +106,19 @@ base application that uses kitty's graphics protocol for images.
 A text mode WWW browser that supports kitty's graphics protocol to display
 images.
 
+.. _tool_awrit:
+
 `awrit <https://github.com/chase/awrit>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A full Chromium based web browser running in the terminal using kitty's
 graphics protocol.
+
+.. _tool_chawan:
+
+`chawan <https://sr.ht/~bptato/chawan/`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A text mode WWW browser that supports kitty's graphics protocol to display
+images.
 
 .. _tool_mpv:
 
