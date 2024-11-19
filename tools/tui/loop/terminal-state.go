@@ -169,6 +169,9 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 	} else {
 		sb.WriteString(SAVE_CURSOR)
 	}
+	if self.in_band_resize_notification {
+		reset_modes(&sb, INBAND_RESIZE_NOTIFICATION)
+	}
 	sb.WriteString(RESTORE_PRIVATE_MODE_VALUES)
 	if self.restore_colors {
 		sb.WriteString(RESTORE_COLORS)
