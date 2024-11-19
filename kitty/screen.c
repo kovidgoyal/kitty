@@ -2231,6 +2231,7 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
             break;
     }
     if (n > 0) {
+        nuke_multicell_char_intersecting_with(self, s, n, self->cursor->y, self->cursor->y + 1, false);
         screen_dirty_line_graphics(self, self->cursor->y, self->cursor->y, self->linebuf == self->main_linebuf);
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (private) {
@@ -2257,6 +2258,15 @@ screen_clear_scrollback(Screen *self) {
         self->scrolled_by = 0;
         dirty_scroll(self);
     }
+    LineBuf *orig = self->linebuf; self->linebuf = self->main_linebuf;
+    CPUCell *cells = linebuf_cpu_cells_for_line(self->linebuf, 0);
+    for (index_type x = 0; x < self->columns; x++) {
+        CPUCell *c = cells + x;
+        if (c->is_multicell && c->y > 0) {  // multiline char that extended into scrollback
+            nuke_multicell_char_at(self, x, 0, false);
+        }
+    }
+    self->linebuf = orig;
 }
 
 static Line* visual_line_(Screen *self, int y_);
@@ -2298,6 +2308,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         :param bool private: when ``True`` character attributes are left unchanged
     */
     unsigned int a, b;
+    bool nuke_multicell_chars = true;
     switch(how) {
         case 0:
             a = self->cursor->y + 1; b = self->lines; break;
@@ -2305,12 +2316,14 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             a = 0; b = self->cursor->y; break;
         case 22:
             screen_move_into_scrollback(self);
+            nuke_multicell_chars = false;  // they have been moved into scrollback and we would get double deletions
             how = 2;
             /* fallthrough */
         case 2:
         case 3:
             grman_clear(self->grman, how == 3, self->cell_size);
-            a = 0; b = self->lines; break;
+            a = 0; b = self->lines; nuke_multicell_chars = false;
+            break;
         default:
             return;
     }
@@ -2324,6 +2337,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
                 linebuf_clear_attrs_and_dirty(self->linebuf, i);
             }
         } else linebuf_clear_lines(self->linebuf, self->cursor, a, b);
+        if (nuke_multicell_chars) nuke_multicell_char_intersecting_with(self, 0, self->columns, a, b, false);
         self->is_dirty = true;
         if (selection_intersects_screen_lines(&self->selections, a, b)) clear_selection(&self->selections);
     }
@@ -2341,11 +2355,30 @@ screen_insert_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
+        // remove split multiline chars at top edge
+        CPUCell *cells = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y);
+        for (index_type x = 0; x < self->columns; x++) {
+            if (cells[x].is_multicell && cells[x].y) nuke_multicell_char_at(self, x, self->cursor->y, false);
+        }
         screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
         clear_selection(&self->selections);
         screen_carriage_return(self);
+        // remove split multiline chars at bottom of screen
+        cells = linebuf_cpu_cells_for_line(self->linebuf, bottom);
+        for (index_type x = 0; x < self->columns; x++) {
+            if (cells[x].is_multicell) {
+                MultiCellData mcd = cell_multicell_data(cells + x, self->text_cache);
+                index_type y_limit = mcd.scale;
+                if (cells[x].y + 1u < y_limit) {
+                    index_type orig = self->lines;
+                    self->lines = bottom + 1;
+                    nuke_multicell_char_at(self, x, bottom, false);
+                    self->lines = orig;
+                }
+            }
+        }
     }
 }
 
@@ -2368,6 +2401,11 @@ screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
+        index_type y = self->cursor->y;
+        nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
+        y += count;
+        y = MIN(bottom, y);
+        nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
         screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
@@ -5158,16 +5196,23 @@ static PyObject*
 cpu_cells(Screen *self, PyObject *args) {
     int y, x = -1;
     if (!PyArg_ParseTuple(args, "i|i", &y, &x)) return NULL;
-    if (y < 0 || y >= (int)self->lines) { PyErr_SetString(PyExc_IndexError, "y out of bounds"); return NULL; }
+    if (y >= (int)self->lines) { PyErr_SetString(PyExc_IndexError, "y out of bounds"); return NULL; }
+    CPUCell *cells;
+    if (y >= 0) cells = linebuf_cpu_cells_for_line(self->linebuf, y);
+    else {
+        Line *l = self->linebuf == self->main_linebuf ? checked_range_line(self, y) : NULL;
+        if (!l) { PyErr_SetString(PyExc_IndexError, "y out of bounds"); return NULL; }
+        cells = l->cpu_cells;
+    }
     if (x > -1) {
         if (x >= (int)self->columns) { PyErr_SetString(PyExc_IndexError, "x out of bounds"); return NULL; }
-        return cpu_cell_as_dict(linebuf_cpu_cell_at(self->linebuf, x, y), self->text_cache, self->lc, self->hyperlink_pool);
+        return cpu_cell_as_dict(cells + x, self->text_cache, self->lc, self->hyperlink_pool);
     }
     index_type start_x = 0, x_limit = self->columns;
     RAII_PyObject(ans, PyTuple_New(x_limit - start_x));
     if (ans) {
         for (index_type x = start_x; x < x_limit; x++) {
-            PyObject *d = cpu_cell_as_dict(linebuf_cpu_cell_at(self->linebuf, x, y), self->text_cache, self->lc, self->hyperlink_pool);
+            PyObject *d = cpu_cell_as_dict(cells + x, self->text_cache, self->lc, self->hyperlink_pool);
             if (!d) return NULL;
             PyTuple_SET_ITEM(ans, x, d);
         }

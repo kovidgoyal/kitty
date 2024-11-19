@@ -83,8 +83,8 @@ text_in_cell_ansi(const CPUCell *c, TextCache *tc, ANSIBuf *output) {
         if (c->x || c->y) return 0;
         MultiCellData mcd = cell_multicell_data(c, tc);
         unsigned n = write_multicell_ansi_prefix(mcd, output);
-        n += tc_chars_at_index_ansi(tc, c->ch_or_idx, output);
-        output->buf[output->len] = '\a';
+        n += tc_chars_at_index_ansi(tc, c->ch_or_idx, output) - 1;
+        output->buf[output->len - 1] = '\a';
         return n;
     }
     ensure_space_for(output, buf, output->buf[0], output->len + 1, capacity, 2048, false);
@@ -955,7 +955,6 @@ hyperlink_ids(Line *self, PyObject *args UNUSED) {
     }
     return ans;
 }
-
 
 static PyObject *
 richcmp(PyObject *obj1, PyObject *obj2, int op);

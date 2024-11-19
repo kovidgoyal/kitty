@@ -253,3 +253,81 @@ def test_multicell(self: TestMulticell) -> None:
     s.erase_characters(3)
     assert_line('\0\0\0\0c\0')
     assert_line('\0\0\0\0\0\0', 1)
+
+    # Erase in line
+    for x in (1, 2):
+        s.reset()
+        s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+        s.cursor.x = x
+        s.erase_in_line(0)
+        assert_line('a\0\0\0\0\0')
+        s.reset()
+        s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
+        s.cursor.x = x
+        s.erase_in_line(1)
+        assert_line('\0\0\0c\0\0')
+    s.reset()
+    s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+    s.erase_in_line(2)
+    for y in (0, 1):
+        assert_line('\0\0\0\0\0\0', y)
+    s.reset()
+    s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+    s.cursor.y = 1
+    s.erase_in_line(2)
+    assert_line('a\0\0c\0\0', 0)
+    assert_line('\0\0\0\0\0\0', 1)
+
+    # Clear scrollback
+    s.reset()
+    s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+    for i in range(s.lines):
+        s.index()
+    s.cursor.y = 0
+    assert_line('\0__\0\0\0')
+    s.clear_scrollback()
+    assert_line('\0\0\0\0\0\0')
+
+    # Erase in display
+    for x in (1, 2):
+        s.reset(), s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+        s.cursor.x = x
+        s.erase_in_display(0)
+        assert_line('a\0\0\0\0\0')
+    s.reset(), s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+    s.cursor.x, s.cursor.y = 2, 1
+    s.erase_in_display(0)
+    assert_line('a\0\0c\0\0', 0)
+    assert_line('\0\0\0\0\0\0', 1)
+    s.reset(), s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
+    for i in range(s.lines):
+        s.index()
+    s.erase_in_display(22)
+    assert_line('ab_c\0\0', -2)
+    assert_line('\0__\0\0\0', -1)
+    self.ae(s.historybuf.line(1).as_ansi(), f'a\x1b]{TEXT_SIZE_CODE};s=2;b\x07c')
+    self.ae(s.historybuf.line(0).as_ansi(), ' ')
+
+    # Insert lines
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.cursor.x, s.cursor.y = 0, s.lines - 2
+    multicell(s, 'b', scale=2)
+    s.cursor.x, s.cursor.y = 0, 1
+    s.insert_lines(1)
+    for y in range(s.lines):
+        assert_line('\0' * s.columns, y)
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.insert_lines(2)
+    assert_line('\0' * s.columns, 0)
+    assert_line('a_\0\0\0\0', 2)
+
+    # Delete lines
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.cursor.y = 1
+    multicell(s, 'b', scale=2)
+    s.delete_lines(1)
+    for y in range(s.lines):
+        assert_line('\0' * s.columns, y)

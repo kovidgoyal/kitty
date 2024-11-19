@@ -185,7 +185,6 @@ cell_first_char(const CPUCell *c, const TextCache *tc) {
     return c->ch_or_idx;
 }
 
-
 static inline CellAttrs
 cursor_to_attrs(const Cursor *c) {
     CellAttrs ans = {
