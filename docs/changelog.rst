@@ -93,6 +93,8 @@ Detailed list of changes
 
 - Wayland GNOME: Workaround bug in mutter causing double tap on titlebar to not always work (:iss:`8054`)
 
+- clipboard kitten: Fix a bug causing kitten to hang in filter mode when input data size is not divisible by 3 and larger than 8KB (:iss:`8059`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
