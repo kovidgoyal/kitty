@@ -34,3 +34,4 @@ please do so by opening issues in the `GitHub bug tracker
    color-stack
    deccara
    clipboard
+   misc-protocol
