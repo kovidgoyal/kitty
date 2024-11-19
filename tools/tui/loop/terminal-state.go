@@ -169,6 +169,10 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 	} else {
 		sb.WriteString(SAVE_CURSOR)
 	}
+	// Explictly turn off this mode as there are some terminals that dont
+	// support restoring all modes and people tend to use the show-key kitten
+	// in other terminals. Since I do want to encourage adoption of the kitty
+	// keyboard protocol, the extra bytes are worth it in this case.
 	if self.in_band_resize_notification {
 		reset_modes(&sb, INBAND_RESIZE_NOTIFICATION)
 	}
