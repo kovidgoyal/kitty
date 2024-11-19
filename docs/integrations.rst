@@ -115,7 +115,7 @@ graphics protocol.
 
 .. _tool_chawan:
 
-`chawan <https://sr.ht/~bptato/chawan/`__
+`chawan <https://sr.ht/~bptato/chawan/>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A text mode WWW browser that supports kitty's graphics protocol to display
 images.
