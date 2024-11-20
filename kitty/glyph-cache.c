@@ -8,9 +8,11 @@
 #include "glyph-cache.h"
 
 typedef struct SpritePosKey {
-    size_t keysz_in_bytes;
+    glyph_index ligature_index, count, cell_count, keysz_in_bytes;
+    uint8_t scale, subscale, multicell_y, vertical_align;
     glyph_index key[];
 } SpritePosKey;
+static_assert(sizeof(SpritePosKey) == sizeof(glyph_index) * 4 + sizeof(uint8_t) * 4, "Fix the ordering of SpritePosKey");
 
 #define NAME sprite_pos_map
 #define KEY_TY const SpritePosKey*
@@ -27,12 +29,12 @@ static void free_const(const void* x) { free((void*)x); }
 
 static uint64_t
 sprite_pos_map_hash(const SpritePosKey *key) {
-    return vt_hash_bytes(key->key, key->keysz_in_bytes);
+    return vt_hash_bytes(key, key->keysz_in_bytes + sizeof(SpritePosKey));
 }
 
 static bool
 sprite_pos_map_cmpr(const SpritePosKey *a, const SpritePosKey *b) {
-    return a->keysz_in_bytes == b->keysz_in_bytes && memcmp(a->key, b->key, a->keysz_in_bytes) == 0;
+    return a->keysz_in_bytes == b->keysz_in_bytes && memcmp(a, b, a->keysz_in_bytes + sizeof(SpritePosKey)) == 0;
 }
 
 
@@ -46,9 +48,6 @@ free_glyph_cache_global_resources(void) {
 }
 
 
-static unsigned
-key_size_for_glyph_count(unsigned count) { return count + 3; }
-
 SPRITE_POSITION_MAP_HANDLE
 create_sprite_position_hash_table(void) {
     sprite_pos_map *ans = calloc(1, sizeof(sprite_pos_map));
@@ -59,21 +58,23 @@ create_sprite_position_hash_table(void) {
 SpritePosition*
 find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created) {
     sprite_pos_map *map = (sprite_pos_map*)map_;
-    const size_t keysz_in_bytes = key_size_for_glyph_count(count) * sizeof(glyph_index);
+    const size_t keysz_in_bytes = count * sizeof(glyph_index);
     if (!scratch || keysz_in_bytes > scratch_key_capacity) {
-        scratch = realloc(scratch, sizeof(scratch[0]) + keysz_in_bytes + 64);
+        const size_t newsz = sizeof(scratch[0]) + keysz_in_bytes + 64;
+        scratch = realloc(scratch, newsz);
         if (!scratch) { scratch_key_capacity = 0; return NULL; }
-        scratch_key_capacity = keysz_in_bytes + 64;
+        scratch_key_capacity = newsz - sizeof(scratch[0]);
+        memset(scratch, 0, newsz);
     }
     scratch->keysz_in_bytes = keysz_in_bytes;
-    scratch->key[0] = count; scratch->key[1] = ligature_index; scratch->key[2] = cell_count;
-    memcpy(scratch->key + 3, glyphs, count * sizeof(glyph_index));
+    scratch->count = count; scratch->ligature_index = ligature_index; scratch->cell_count = cell_count;
+    memcpy(scratch->key, glyphs, keysz_in_bytes);
     sprite_pos_map_itr n = vt_get(map, scratch);
     if (!vt_is_end(n)) { *created = false; return n.data->val; }
 
     SpritePosition *val = calloc(1, sizeof(SpritePosition));
     SpritePosKey *key = malloc(sizeof(SpritePosKey) + scratch->keysz_in_bytes);
-    if (!val || ! key) return NULL;
+    if (!val || !key) return NULL;
     memcpy(key, scratch, sizeof(scratch[0]) + scratch->keysz_in_bytes);
     if (vt_is_end(vt_insert(map, key, val))) return NULL;
     *created = true;
