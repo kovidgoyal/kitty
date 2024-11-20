@@ -62,6 +62,11 @@ typedef struct {
     SpacerStrategy spacer_strategy;
 } Font;
 
+typedef struct RunFont {
+    unsigned scale, subscale, vertical_align, multicell_y;
+    ssize_t font_idx;
+} RunFont;
+
 typedef struct Canvas {
     pixel *buf;
     unsigned current_cells, alloced_cells;
@@ -755,11 +760,12 @@ typedef struct GlyphRenderScratch {
 static GlyphRenderScratch global_glyph_render_scratch = {0};
 
 static void
-render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index *glyphs, unsigned glyph_count, bool center_glyph, const TextCache *tc) {
+render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, RunFont rf, glyph_index *glyphs, unsigned glyph_count, bool center_glyph, const TextCache *tc) {
 #define sp global_glyph_render_scratch.sprite_positions
     int error = 0;
     bool all_rendered = true;
     bool is_infinite_ligature = num_cells > 9 && num_glyphs == num_cells;
+    Font *font = fg->fonts + rf.font_idx;
     for (unsigned i = 0, ligature_index = 0; i < num_cells; i++) {
         bool is_repeat_glyph = is_infinite_ligature && i > 1 && i + 1 < num_cells && glyphs[i] == glyphs[i-1] && glyphs[i] == glyphs[i-2] && glyphs[i] == glyphs[i+1];
         if (is_repeat_glyph) {
@@ -1239,7 +1245,7 @@ split_run_at_offset(index_type cursor_offset, index_type *left, index_type *righ
 
 
 static void
-render_groups(FontGroup *fg, Font *font, bool center_glyph, const TextCache *tc) {
+render_groups(FontGroup *fg, RunFont rf, bool center_glyph, const TextCache *tc) {
     unsigned idx = 0;
     while (idx <= G(group_idx)) {
         Group *group = G(groups) + idx;
@@ -1256,7 +1262,7 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph, const TextCache *tc)
                 if (!global_glyph_render_scratch.lc) global_glyph_render_scratch.lc = alloc_list_of_chars();
             }
             for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
-            render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, global_glyph_render_scratch.glyphs, group->num_glyphs, center_glyph, tc);
+            render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, rf, global_glyph_render_scratch.glyphs, group->num_glyphs, center_glyph, tc);
         }
         idx++;
     }
@@ -1312,29 +1318,29 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
 #undef G
 
 static void
-render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature, bool center_glyph, int cursor_offset, DisableLigature disable_ligature_strategy, const TextCache *tc) {
-    switch(font_idx) {
+render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, RunFont rf, bool pua_space_ligature, bool center_glyph, int cursor_offset, DisableLigature disable_ligature_strategy, const TextCache *tc) {
+    switch(rf.font_idx) {
         default:
-            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx], disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc);
+            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[rf.font_idx], disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc);
             if (pua_space_ligature) collapse_pua_space_ligature(num_cells);
             else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
                 split_run_at_offset(cursor_offset, &left, &right, tc);
                 if (right > left) {
                     if (left) {
-                        shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[font_idx], false, tc);
-                        render_groups(fg, &fg->fonts[font_idx], center_glyph, tc);
+                        shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[rf.font_idx], false, tc);
+                        render_groups(fg, rf, center_glyph, tc);
                     }
-                        shape_run(first_cpu_cell + left, first_gpu_cell + left, right - left, &fg->fonts[font_idx], true, tc);
-                        render_groups(fg, &fg->fonts[font_idx], center_glyph, tc);
+                        shape_run(first_cpu_cell + left, first_gpu_cell + left, right - left, &fg->fonts[rf.font_idx], true, tc);
+                        render_groups(fg, rf, center_glyph, tc);
                     if (right < num_cells) {
-                        shape_run(first_cpu_cell + right, first_gpu_cell + right, num_cells - right, &fg->fonts[font_idx], false, tc);
-                        render_groups(fg, &fg->fonts[font_idx], center_glyph, tc);
+                        shape_run(first_cpu_cell + right, first_gpu_cell + right, num_cells - right, &fg->fonts[rf.font_idx], false, tc);
+                        render_groups(fg, rf, center_glyph, tc);
                     }
                     break;
                 }
             }
-            render_groups(fg, &fg->fonts[font_idx], center_glyph, tc);
+            render_groups(fg, rf, center_glyph, tc);
             break;
         case BLANK_FONT:
             while(num_cells--) { set_sprite(first_gpu_cell, 0, 0, 0); first_cpu_cell++; first_gpu_cell++; }
@@ -1370,35 +1376,49 @@ cell_cap_for_codepoint(const char_type cp) {
     return ans;
 }
 
+static bool
+run_fonts_are_equal(const RunFont *a, const RunFont *b) {
+    return a->font_idx == b->font_idx && a->scale == b->scale && a->subscale == b->subscale && a->vertical_align == b->vertical_align && a->multicell_y == b->multicell_y;
+}
 
 void
 render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc) {
-#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) { \
+#define RENDER if (run_font.font_idx != NO_FONT && i > first_cell_in_run) { \
     int cursor_offset = -1; \
     if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x <= i) cursor_offset = cursor->x - first_cell_in_run; \
-    render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false, center_glyph, cursor_offset, disable_ligature_strategy, line->text_cache); \
+    render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font, false, center_glyph, cursor_offset, disable_ligature_strategy, line->text_cache); \
 }
     FontGroup *fg = (FontGroup*)fg_;
-    ssize_t run_font_idx = NO_FONT;
+    RunFont basic_font = {.scale=1, .font_idx = NO_FONT}, run_font = basic_font, cell_font = basic_font;
     bool center_glyph = false;
     bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR && lnum == cursor->y;
     index_type first_cell_in_run, i;
+    MultiCellData mcd;
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
+        cell_font = basic_font;
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
+        if (cpu_cell->is_multicell) {
+            mcd = cell_multicell_data(cpu_cell, line->text_cache);
+            if (cpu_cell->x) {
+                i += mcd_x_limit(mcd);
+                continue;
+            }
+            cell_font.scale = mcd.scale; cell_font.subscale = mcd.subscale; cell_font.vertical_align = mcd.vertical_align;
+            cell_font.multicell_y = cpu_cell->y;
+        }
         text_in_cell(cpu_cell, line->text_cache, lc);
-        if (lc->is_multicell && !lc->is_topleft) continue;
         bool is_main_font, is_emoji_presentation;
-        ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
+        cell_font.font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
         const char_type first_ch = lc->chars[0];
 
         if (
-                cell_font_idx != MISSING_FONT &&
-                ((!is_main_font && !is_emoji_presentation && is_symbol(first_ch)) || (cell_font_idx != BOX_FONT && (is_private_use(first_ch))) || is_non_emoji_dingbat(first_ch))
+                cell_font.font_idx != MISSING_FONT &&
+                ((!is_main_font && !is_emoji_presentation && is_symbol(first_ch)) || (cell_font.font_idx != BOX_FONT && (is_private_use(first_ch))) || is_non_emoji_dingbat(first_ch))
         ) {
             unsigned int desired_cells = 1;
-            if (cell_font_idx > 0) {
-                Font *font = (fg->fonts + cell_font_idx);
+            if (cell_font.font_idx > 0) {
+                Font *font = (fg->fonts + cell_font.font_idx);
                 glyph_index glyph_id = glyph_id_for_codepoint(font->face, first_ch);
 
                 int width = get_glyph_width(font->face, glyph_id);
@@ -1427,17 +1447,17 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 center_glyph = true;
                 RENDER
                 center_glyph = false;
-                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph, -1, disable_ligature_strategy, line->text_cache);
-                run_font_idx = NO_FONT;
+                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font, true, center_glyph, -1, disable_ligature_strategy, line->text_cache);
+                run_font = basic_font;
                 first_cell_in_run = i + num_spaces + 1;
                 i += num_spaces;
                 continue;
             }
         }
-        if (run_font_idx == NO_FONT) run_font_idx = cell_font_idx;
-        if (run_font_idx == cell_font_idx) continue;
+        if (run_font.font_idx == NO_FONT) run_font = cell_font;
+        if (run_fonts_are_equal(&run_font, &cell_font)) continue;
         RENDER
-        run_font_idx = cell_font_idx;
+        run_font = cell_font;
         first_cell_in_run = i;
     }
     RENDER
