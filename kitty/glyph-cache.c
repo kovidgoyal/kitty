@@ -56,7 +56,10 @@ create_sprite_position_hash_table(void) {
 }
 
 SpritePosition*
-find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created) {
+find_or_create_sprite_position(
+    SPRITE_POSITION_MAP_HANDLE map_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count,
+    uint8_t scale, uint8_t subscale, uint8_t multicell_y, uint8_t vertical_align, bool *created
+) {
     sprite_pos_map *map = (sprite_pos_map*)map_;
     const size_t keysz_in_bytes = count * sizeof(glyph_index);
     if (!scratch || keysz_in_bytes > scratch_key_capacity) {
@@ -68,6 +71,7 @@ find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map_, glyph_index *gly
     }
     scratch->keysz_in_bytes = keysz_in_bytes;
     scratch->count = count; scratch->ligature_index = ligature_index; scratch->cell_count = cell_count;
+    scratch->scale = scale; scratch->subscale = subscale; scratch->multicell_y = multicell_y; scratch->vertical_align = vertical_align;
     memcpy(scratch->key, glyphs, keysz_in_bytes);
     sprite_pos_map_itr n = vt_get(map, scratch);
     if (!vt_is_end(n)) { *created = false; return n.data->val; }

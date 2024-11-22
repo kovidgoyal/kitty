@@ -19,7 +19,7 @@ from typing import Optional
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
-from kitty.fast_data_types import Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
+from kitty.fast_data_types import TEXT_SIZE_CODE, Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.rgb import to_color
@@ -35,6 +35,11 @@ def parse_bytes(screen, data, dump_callback=None):
         s = screen.test_commit_write_buffer(data, dest)
         data = data[s:]
         screen.test_parse_written_data(dump_callback)
+
+
+def draw_multicell(screen: Screen, text: str, width: int = 0, scale: int = 1, subscale: int = 0, vertical_align: int = 0) -> None:
+    cmd = f'\x1b]{TEXT_SIZE_CODE};w={width}:s={scale}:f={subscale}:v={vertical_align};{text}\a'
+    parse_bytes(screen, cmd.encode())
 
 
 class Callbacks:

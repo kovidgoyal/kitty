@@ -20,6 +20,8 @@
 // TODO: Handle rewrap of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
 // TODO: Test serialization to ansi only using escape code for explicitly set multicells
+// TODO: Test rendering of box drawing at various scales and subscales and alignments
+// TODO: Implement baseline align for box drawing
 
 typedef union CellAttrs {
     struct {
@@ -57,9 +59,9 @@ typedef union MultiCellData {
         char_type scale: 3;
         char_type width: 3;
         char_type subscale: 2;
-        char_type vertical_align: 2;
+        char_type vertical_align: 3;
         char_type explicitly_set: 1;
-        char_type : 20;
+        char_type : 19;
         char_type msb : 1;
     };
     char_type val;
@@ -110,7 +112,7 @@ typedef struct {
 } Line;
 
 typedef struct MultiCellCommand {
-    unsigned int width, scale, subscale;
+    unsigned int width, scale, subscale, vertical_align;
     size_t payload_sz;
 } MultiCellCommand;
 

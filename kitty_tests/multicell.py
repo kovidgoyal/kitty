@@ -2,20 +2,16 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.fast_data_types import TEXT_SIZE_CODE, Screen
+from kitty.fast_data_types import TEXT_SIZE_CODE
 
-from . import BaseTest, parse_bytes
+from . import BaseTest
+from . import draw_multicell as multicell
 
 
 class TestMulticell(BaseTest):
 
     def test_multicell(self):
         test_multicell(self)
-
-
-def multicell(screen: Screen, text: str, width: int = 0, scale: int = 1, subscale: int = 0) -> None:
-    cmd = f'\x1b]{TEXT_SIZE_CODE};w={width}:s={scale}:f={subscale};{text}\a'
-    parse_bytes(screen, cmd.encode())
 
 
 def test_multicell(self: TestMulticell) -> None:

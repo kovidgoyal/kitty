@@ -69,7 +69,8 @@ typedef struct RunFont {
 
 typedef struct Canvas {
     pixel *buf;
-    unsigned current_cells, alloced_cells;
+    unsigned current_cells, alloced_cells, alloced_scale, current_scale;
+    size_t size_in_bytes;
 } Canvas;
 
 #define NAME fallback_font_map_t
@@ -98,15 +99,21 @@ static id_type font_group_id_counter = 0;
 static void initialize_font_group(FontGroup *fg);
 
 static void
-ensure_canvas_can_fit(FontGroup *fg, unsigned cells) {
-    if (fg->canvas.alloced_cells < cells) {
+ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
+#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->cell_width * fg->cell_height * scale * scale)
+    size_t size_in_bytes = cs(cells, scale);
+    if (size_in_bytes > fg->canvas.size_in_bytes) {
         free(fg->canvas.buf);
-        fg->canvas.alloced_cells = cells + 4;
-        fg->canvas.buf = malloc(sizeof(fg->canvas.buf[0]) * 3u * fg->canvas.alloced_cells * fg->cell_width * fg->cell_height);
+        fg->canvas.alloced_cells = MAX(8u, cells + 4u);
+        fg->canvas.alloced_scale = MAX(scale, 4u);
+        fg->canvas.size_in_bytes = cs(fg->canvas.alloced_cells, fg->canvas.alloced_scale);
+        fg->canvas.buf = malloc(fg->canvas.size_in_bytes);
         if (!fg->canvas.buf) fatal("Out of memory allocating canvas");
     }
     fg->canvas.current_cells = cells;
-    if (fg->canvas.buf) memset(fg->canvas.buf, 0, sizeof(fg->canvas.buf[0]) * fg->canvas.current_cells * 3u * fg->cell_width * fg->cell_height);
+    fg->canvas.current_scale = scale;
+    if (fg->canvas.buf) memset(fg->canvas.buf, 0, cs(fg->canvas.current_cells, fg->canvas.alloced_scale));
+#undef cs
 }
 
 
@@ -246,9 +253,12 @@ do_increment(FontGroup *fg, int *error) {
 
 
 static SpritePosition*
-sprite_position_for(FontGroup *fg, Font *font, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, unsigned cell_count, int *error) {
+sprite_position_for(FontGroup *fg, RunFont rf, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, unsigned cell_count, int *error) {
     bool created;
-    SpritePosition *s = find_or_create_sprite_position(font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, cell_count, &created);
+    Font *font = fg->fonts + rf.font_idx;
+    SpritePosition *s = find_or_create_sprite_position(
+        font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, cell_count,
+        rf.scale, rf.subscale, rf.multicell_y, rf.vertical_align, &created);
     if (!s) { *error = 1; return NULL; }
     if (created) {
         s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
@@ -462,7 +472,7 @@ calc_cell_metrics(FontGroup *fg) {
     sprite_tracker_set_layout(&fg->sprite_tracker, cell_width, cell_height);
     fg->cell_width = cell_width; fg->cell_height = cell_height;
     fg->baseline = baseline; fg->underline_position = underline_position; fg->underline_thickness = underline_thickness, fg->strikethrough_position = strikethrough_position, fg->strikethrough_thickness = strikethrough_thickness;
-    ensure_canvas_can_fit(fg, 8);
+    ensure_canvas_can_fit(fg, 8, 1);
 }
 
 static bool
@@ -692,29 +702,118 @@ render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Regi
     }
 }
 
+typedef struct GlyphRenderScratch {
+    SpritePosition* *sprite_positions;
+    glyph_index *glyphs;
+    size_t sz;
+    ListOfChars *lc;
+} GlyphRenderScratch;
+static GlyphRenderScratch global_glyph_render_scratch = {0};
+
 static void
-render_box_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell, const TextCache *tc) {
-    int error = 0;
-    char_type ch = cell_first_char(cpu_cell, tc);
-    glyph_index glyph = box_glyph_id(ch);
-    SpritePosition *sp = sprite_position_for(fg, &fg->fonts[BOX_FONT], &glyph, 1, 0, 1, &error);
-    if (sp == NULL) {
-        sprite_map_set_error(error); PyErr_Print();
-        set_sprite(gpu_cell, 0, 0, 0);
-        return;
+ensure_glyph_render_scratch_space(size_t sz) {
+#define a global_glyph_render_scratch
+    sz += 16;
+    if (a.sz < sz) {
+        free(a.glyphs); a.glyphs = malloc(sz * sizeof(a.glyphs[0])); if (!a.glyphs) fatal("Out of memory");
+        free(a.sprite_positions); a.sprite_positions = malloc(sz * sizeof(SpritePosition*)); if (!a.sprite_positions) fatal("Out of memory");
+        a.sz = sz;
+        if (!a.lc) {
+            a.lc = alloc_list_of_chars();
+            if (!a.lc) fatal("Out of memory");
+        }
     }
-    set_sprite(gpu_cell, sp->x, sp->y, sp->z);
-    if (sp->rendered) return;
-    sp->rendered = true;
-    sp->colored = false;
-    PyObject *ret = PyObject_CallFunction(box_drawing_function, "IIId", (unsigned int)ch, fg->cell_width, fg->cell_height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0);
+#undef a
+}
+
+static void
+scaled_cell_dimensions(RunFont rf, unsigned *width, unsigned *height) {
+    *width *= rf.scale;
+    *height *= rf.scale;
+    if (rf.subscale) {
+        double frac = 1. / (rf.subscale + 1);
+        *width = (unsigned)ceil(frac * *width);
+        *height = (unsigned)ceil(frac * *height);
+    }
+}
+
+static pixel*
+extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) {
+    pixel *ans = fg->canvas.buf + (fg->canvas.size_in_bytes / sizeof(fg->canvas.buf[0]) - fg->cell_width * fg->cell_height);
+    pixel *dest = ans, *src = fg->canvas.buf + (i * fg->cell_width);
+    unsigned int stride = fg->cell_width * num_cells;
+    for (unsigned int r = 0; r < fg->cell_height; r++, dest += fg->cell_width, src += stride) memcpy(dest, src, fg->cell_width * sizeof(fg->canvas.buf[0]));
+    return ans;
+}
+
+static void
+calculate_regions_for_line(RunFont rf, unsigned cell_height, Region *src, Region *dest) {
+    unsigned src_height = src->bottom;
+    Region src_in_full_coords = *src; unsigned full_dest_height = cell_height * rf.scale;
+    if (rf.subscale) {
+        switch(rf.vertical_align) {
+            case 0: break; // top aligned no change
+            case 1: // bottom aligned
+                src_in_full_coords.top = full_dest_height - src_height;
+                src_in_full_coords.bottom = full_dest_height;
+                break;
+            case 2: // centered
+                src_in_full_coords.top = (full_dest_height - src_height) / 2;
+                src_in_full_coords.bottom = src_in_full_coords.top + src_height;
+                break;
+        }
+    }
+    Region dest_in_full_coords = {.top = rf.multicell_y * cell_height, .bottom = (rf.multicell_y + 1) * cell_height};
+    unsigned intersetion_top = MAX(src_in_full_coords.top, dest_in_full_coords.top);
+    unsigned intersetion_bottom = MIN(src_in_full_coords.bottom, dest_in_full_coords.bottom);
+    unsigned src_top_delta = intersetion_top - src_in_full_coords.top, src_bottom_delta = src_in_full_coords.bottom - intersetion_bottom;
+    src->top += src_top_delta; src->bottom = src->bottom > src_bottom_delta ? src->bottom - src_bottom_delta : 0;
+    unsigned dest_top_delta = intersetion_top - dest_in_full_coords.top, dest_bottom_delta = dest_in_full_coords.bottom - intersetion_bottom;
+    dest->top = dest_top_delta; dest->bottom = cell_height > dest_bottom_delta ? cell_height - dest_bottom_delta : 0;
+}
+
+static void
+render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell, const TextCache *tc) {
+    int error = 0;
+    // We need to render multicell chars for multicell_y > 0 cell_first_char() returns 0 for such cells
+    char_type ch = cpu_cell->is_multicell ? tc_first_char_at_index(tc, cpu_cell->ch_or_idx) : cell_first_char(cpu_cell, tc);
+    glyph_index glyph = box_glyph_id(ch);
+    ensure_glyph_render_scratch_space(rf.scale);
+    bool all_rendered = true;
+#define sp global_glyph_render_scratch.sprite_positions
+    for (unsigned ligature_index = 0; ligature_index < rf.scale; ligature_index++) {
+        sp[ligature_index] = sprite_position_for(fg, rf, &glyph, 1, ligature_index, rf.scale, &error);
+        if (sp[ligature_index] == NULL) {
+            sprite_map_set_error(error); PyErr_Print();
+            set_sprite(gpu_cell + ligature_index, 0, 0, 0);
+            return;
+        }
+        set_sprite(gpu_cell + ligature_index, sp[ligature_index]->x, sp[ligature_index]->y, sp[ligature_index]->z);
+        sp[ligature_index]->colored = false;
+        if (!sp[ligature_index]->rendered) {
+            all_rendered = false; sp[ligature_index]->rendered = true;
+        }
+    }
+    if (all_rendered) return;
+    unsigned width = fg->cell_width, height = fg->cell_height;
+    scaled_cell_dimensions(rf, &width, &height);
+    RAII_PyObject(ret, PyObject_CallFunction(box_drawing_function, "IIId", (unsigned int)ch, width, height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0));
     if (ret == NULL) { PyErr_Print(); return; }
     uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
-    ensure_canvas_can_fit(fg, 1);
-    Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
-    render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width, 0xffffff);
-    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp->x, sp->y, sp->z, fg->canvas.buf);
-    Py_DECREF(ret);
+    ensure_canvas_can_fit(fg, 2, rf.scale);
+    Region src = { .right = width, .bottom = height }, dest = src;
+    unsigned dest_stride = rf.scale * fg->cell_width, src_stride = width;
+    calculate_regions_for_line(rf, fg->cell_height, &src, &dest);
+    render_alpha_mask(alpha_mask, fg->canvas.buf, &src, &dest, src_stride, dest_stride, 0xffffff);
+    if (rf.scale == 1) {
+        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[0]->x, sp[0]->y, sp[0]->z, fg->canvas.buf);
+    } else {
+        for (unsigned i = 0; i < rf.scale; i++) {
+            pixel *b = extract_cell_from_canvas(fg, i, rf.scale);
+            current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b);
+        }
+    }
+#undef sp
 }
 
 static void
@@ -743,22 +842,6 @@ set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
     if (sp->colored) cell->sprite_z |= 0x4000;
 }
 
-static pixel*
-extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) {
-    pixel *ans = fg->canvas.buf + (fg->cell_width * fg->cell_height * (fg->canvas.current_cells - 1)), *dest = ans, *src = fg->canvas.buf + (i * fg->cell_width);
-    unsigned int stride = fg->cell_width * num_cells;
-    for (unsigned int r = 0; r < fg->cell_height; r++, dest += fg->cell_width, src += stride) memcpy(dest, src, fg->cell_width * sizeof(fg->canvas.buf[0]));
-    return ans;
-}
-
-typedef struct GlyphRenderScratch {
-    SpritePosition* *sprite_positions;
-    glyph_index *glyphs;
-    size_t sz;
-    ListOfChars *lc;
-} GlyphRenderScratch;
-static GlyphRenderScratch global_glyph_render_scratch = {0};
-
 static void
 render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, RunFont rf, glyph_index *glyphs, unsigned glyph_count, bool center_glyph, const TextCache *tc) {
 #define sp global_glyph_render_scratch.sprite_positions
@@ -771,7 +854,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
         if (is_repeat_glyph) {
             sp[i] = sp[i-1];
         } else {
-            sp[i] = sprite_position_for(fg, font, glyphs, glyph_count, ligature_index++, num_cells, &error);
+            sp[i] = sprite_position_for(fg, rf, glyphs, glyph_count, ligature_index++, num_cells, &error);
         }
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
         if (!sp[i]->rendered) all_rendered = false;
@@ -781,7 +864,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
         return;
     }
 
-    ensure_canvas_can_fit(fg, num_cells + 1);
+    ensure_canvas_can_fit(fg, num_cells + 1, rf.scale);
     text_in_cell(cpu_cells, tc, global_glyph_render_scratch.lc);
     bool was_colored = has_emoji_presentation(global_glyph_render_scratch.lc);
     render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
@@ -1243,7 +1326,6 @@ split_run_at_offset(index_type cursor_offset, index_type *left, index_type *righ
     }
 }
 
-
 static void
 render_groups(FontGroup *fg, RunFont rf, bool center_glyph, const TextCache *tc) {
     unsigned idx = 0;
@@ -1253,14 +1335,7 @@ render_groups(FontGroup *fg, RunFont rf, bool center_glyph, const TextCache *tc)
         /* printf("Group: idx: %u num_cells: %u num_glyphs: %u first_glyph_idx: %u first_cell_idx: %u total_num_glyphs: %zu\n", */
         /*         idx, group->num_cells, group->num_glyphs, group->first_glyph_idx, group->first_cell_idx, group_state.num_glyphs); */
         if (group->num_glyphs) {
-            size_t sz = MAX(group->num_glyphs, group->num_cells) + 16;
-            if (global_glyph_render_scratch.sz < sz) {
-#define a(what) free(global_glyph_render_scratch.what); global_glyph_render_scratch.what = malloc(sz * sizeof(global_glyph_render_scratch.what[0])); if (!global_glyph_render_scratch.what) fatal("Out of memory");
-                a(glyphs); a(sprite_positions);
-#undef a
-                global_glyph_render_scratch.sz = sz;
-                if (!global_glyph_render_scratch.lc) global_glyph_render_scratch.lc = alloc_list_of_chars();
-            }
+            ensure_glyph_render_scratch_space(MAX(group->num_glyphs, group->num_cells));
             for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
             render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, rf, global_glyph_render_scratch.glyphs, group->num_glyphs, center_glyph, tc);
         }
@@ -1346,7 +1421,12 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
             while(num_cells--) { set_sprite(first_gpu_cell, 0, 0, 0); first_cpu_cell++; first_gpu_cell++; }
             break;
         case BOX_FONT:
-            while(num_cells--) { render_box_cell(fg, first_cpu_cell, first_gpu_cell, tc); first_cpu_cell++; first_gpu_cell++; }
+            while(num_cells) {
+                render_box_cell(fg, rf, first_cpu_cell, first_gpu_cell, tc);
+                num_cells -= rf.scale;
+                first_cpu_cell += rf.scale;
+                first_gpu_cell += rf.scale;
+            }
             break;
         case MISSING_FONT:
             while(num_cells--) { set_sprite(first_gpu_cell, MISSING_GLYPH, 0, 0); first_cpu_cell++; first_gpu_cell++; }
@@ -1397,11 +1477,10 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
         cell_font = basic_font;
         CPUCell *cpu_cell = line->cpu_cells + i;
-        GPUCell *gpu_cell = line->gpu_cells + i;
         if (cpu_cell->is_multicell) {
             mcd = cell_multicell_data(cpu_cell, line->text_cache);
             if (cpu_cell->x) {
-                i += mcd_x_limit(mcd);
+                i += mcd_x_limit(mcd) - cpu_cell->x - 1;
                 continue;
             }
             cell_font.scale = mcd.scale; cell_font.subscale = mcd.subscale; cell_font.vertical_align = mcd.vertical_align;
@@ -1409,9 +1488,9 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         }
         text_in_cell(cpu_cell, line->text_cache, lc);
         bool is_main_font, is_emoji_presentation;
+        GPUCell *gpu_cell = line->gpu_cells + i;
         cell_font.font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
         const char_type first_ch = lc->chars[0];
-
         if (
                 cell_font.font_idx != MISSING_FONT &&
                 ((!is_main_font && !is_emoji_presentation && is_symbol(first_ch)) || (cell_font.font_idx != BOX_FONT && (is_private_use(first_ch))) || is_non_emoji_dingbat(first_ch))
@@ -1519,7 +1598,7 @@ send_prerendered_sprites(FontGroup *fg) {
     int error = 0;
     sprite_index x = 0, y = 0, z = 0;
     // blank cell
-    ensure_canvas_can_fit(fg, 1);
+    ensure_canvas_can_fit(fg, 1, 1);
     current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
     do_increment(fg, &error);
     if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
@@ -1532,7 +1611,7 @@ send_prerendered_sprites(FontGroup *fg) {
         do_increment(fg, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
         uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(cell_addresses, i));
-        ensure_canvas_can_fit(fg, 1);  // clear canvas
+        ensure_canvas_can_fit(fg, 1, 1);  // clear canvas
         Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
         render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width, 0xffffff);
         current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
@@ -1642,7 +1721,8 @@ test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     }
     FontGroup *fg = font_groups;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create font group first"); return NULL; }
-    SpritePosition *pos = sprite_position_for(fg, &fg->fonts[fg->medium_font_idx], glyphs, PyTuple_GET_SIZE(args), 0, 1, &error);
+    RunFont rf = {.scale = 1, .font_idx=fg->medium_font_idx};
+    SpritePosition *pos = sprite_position_for(fg, rf, glyphs, PyTuple_GET_SIZE(args), 0, 1, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }

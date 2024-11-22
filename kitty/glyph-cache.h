@@ -22,7 +22,7 @@ create_sprite_position_hash_table(void);
 void
 free_sprite_position_hash_table(SPRITE_POSITION_MAP_HANDLE *handle);
 SpritePosition*
-find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created);
+find_or_create_sprite_position(SPRITE_POSITION_MAP_HANDLE map, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, uint8_t scale, uint8_t subscale, uint8_t multicell_y, uint8_t vertical_align, bool *created);
 
 
 typedef union GlyphProperties {

@@ -23,7 +23,7 @@ from kitty.fonts.common import FontSpec, all_fonts_map, face_from_descriptor, ge
 from kitty.fonts.render import coalesce_symbol_maps, render_string, setup_for_testing, shape_string
 from kitty.options.types import Options
 
-from . import BaseTest
+from . import BaseTest, draw_multicell
 
 
 def parse_font_spec(spec):
@@ -206,6 +206,30 @@ class Rendering(BaseTest):
         line = s.line(0)
         test_render_line(line)
         self.assertEqual(len(self.sprites) - prerendered, len(box_chars))
+
+    def test_scaled_box_drawing(self):
+        full_block = b'\xff' * len(next(iter(self.sprites.values())))
+        empty_block = b'\0' * len(full_block)
+        upper_half_block = (b'\xff' * (len(full_block) // 2)) + (b'\0' * (len(full_block) // 2))
+        lower_half_block = (b'\0' * (len(full_block) // 2)) + (b'\xff' * (len(full_block) // 2))
+        s = self.create_screen(cols=8, lines=8, scrollback=0)
+
+        def block_test(a=empty_block, b=empty_block, c=empty_block, d=empty_block, scale=2, subscale=1, vertical_align=0):
+            s.reset()
+            before = len(self.sprites)
+            draw_multicell(s, '█', scale=scale, subscale=subscale, vertical_align=vertical_align)
+            test_render_line(s.line(0))
+            self.ae(len(self.sprites), before + 2)
+            test_render_line(s.line(1))
+            self.ae(len(self.sprites), before + 4)
+            blocks = tuple(self.sprites)[before:]
+            for expected, actual in zip((a, b, c, d), blocks):
+                self.ae(self.sprites[actual], expected)
+
+        block_test(full_block, full_block, full_block, full_block, subscale=0)
+        block_test(a=full_block)
+        block_test(c=full_block, vertical_align=1)
+        block_test(a=lower_half_block, c=upper_half_block, vertical_align=2)
 
     def test_font_rendering(self):
         render_string('ab\u0347\u0305你好|\U0001F601|\U0001F64f|\U0001F63a|')

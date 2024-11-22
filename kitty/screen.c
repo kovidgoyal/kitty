@@ -1157,7 +1157,7 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     if (!width) return;
     MultiCellData mcd = {
         .width=MIN(width, 15), .scale=MAX(1, MIN(cmd->scale, 15)), .subscale=MIN(cmd->subscale, 3),
-        .explicitly_set=1, .msb=1
+        .explicitly_set=1, .msb=1, .vertical_align=MIN(cmd->vertical_align, 7u)
     };
     self->lc->chars[self->lc->count++] = mcd.val;
     width = mcd.width * mcd.scale;
