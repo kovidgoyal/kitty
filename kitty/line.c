@@ -568,7 +568,7 @@ set_text(Line* self, PyObject *args) {
     color_type dfg = cursor->decoration_fg & COL_MASK;
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
-        self->cpu_cells[i].val = 0;
+        self->cpu_cells[i] = (CPUCell){0};
         self->cpu_cells[i].ch_or_idx = PyUnicode_READ(kind, buf, offset);
         self->gpu_cells[i].attrs = attrs;
         self->gpu_cells[i].fg = fg;
@@ -684,7 +684,7 @@ line_get_char(Line *self, index_type at) {
 }
 
 
-void
+static void
 line_set_char(Line *self, unsigned int at, uint32_t ch, Cursor *cursor, hyperlink_id_type hyperlink_id) {
     GPUCell *g = self->gpu_cells + at;
     if (cursor != NULL) {
@@ -694,7 +694,7 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, Cursor *cursor, hyperlin
         g->decoration_fg = cursor->decoration_fg & COL_MASK;
     }
     CPUCell *c = self->cpu_cells + at;
-    c->val = 0;
+    *c = (CPUCell){0};
     cell_set_char(c, ch);
     c->hyperlink_id = hyperlink_id;
     if (OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && hyperlink_id) {

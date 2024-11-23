@@ -769,7 +769,7 @@ halve_multicell_width(Screen *self, index_type x_, index_type y_) {
         Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
         for (index_type x = 0; x < half_x_limit; x++) cp[x].ch_or_idx = idx;
         for (index_type x = half_x_limit; x < x_limit; x++) {
-            cp[x].val = 0; clear_sprite_position(gp[x]);
+            cp[x] = (CPUCell){0}; clear_sprite_position(gp[x]);
         }
         if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
     }

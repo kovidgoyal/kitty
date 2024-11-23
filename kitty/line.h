@@ -81,9 +81,9 @@ typedef union CPUCell {
     };
     struct {
         char_type ch_and_idx: sizeof(char_type) * 8;
-        char_type : sizeof(char_type) * 8;
+        char_type : sizeof(hyperlink_id_type) * 8;
+        char_type : 16;
     };
-    uint64_t val;
 } CPUCell;
 static_assert(sizeof(CPUCell) == sizeof(uint64_t), "Fix the ordering of CPUCell");
 

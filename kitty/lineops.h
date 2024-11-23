@@ -69,7 +69,6 @@ typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 char_type line_get_char(Line *self, index_type at);
-void line_set_char(Line *, unsigned int , uint32_t , Cursor *, hyperlink_id_type);
 index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool, bool, index_type);
 bool line_startswith_url_chars(Line*, bool);
