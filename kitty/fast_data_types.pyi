@@ -14,6 +14,8 @@ from kitty.typing import EdgeLiteral, NotRequired, ReadableBuffer, WriteableBuff
 # Constants {{{
 GLFW_LAYER_SHELL_NONE: int
 GLFW_LAYER_SHELL_PANEL: int
+GLFW_LAYER_SHELL_TOP: int
+GLFW_LAYER_SHELL_OVERLAY: int
 GLFW_LAYER_SHELL_BACKGROUND: int
 GLFW_EDGE_TOP: int
 GLFW_EDGE_BOTTOM: int

@@ -974,6 +974,8 @@ layer_set_properties(_GLFWwindow *window) {
     int panel_width = 0, panel_height = 0;
     switch (window->wl.layer_shell.config.type) {
         case GLFW_LAYER_SHELL_BACKGROUND: break; case GLFW_LAYER_SHELL_NONE: break;
+        case GLFW_LAYER_SHELL_TOP:
+        case GLFW_LAYER_SHELL_OVERLAY:
         case GLFW_LAYER_SHELL_PANEL:
             switch (window->wl.layer_shell.config.edge) {
                 case GLFW_EDGE_TOP:
@@ -1057,8 +1059,13 @@ create_layer_shell_surface(_GLFWwindow *window) {
     }
     window->decorated = false;  // shell windows must not have decorations
     struct wl_output *wl_output = find_output_by_name(window->wl.layer_shell.config.output_name);
-    enum zwlr_layer_shell_v1_layer which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND;
-    if (window->wl.layer_shell.config.type == GLFW_LAYER_SHELL_PANEL) which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
+    enum zwlr_layer_shell_v1_layer which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND; // Default to background
+    switch (window->wl.layer_shell.config.type) {
+        case GLFW_LAYER_SHELL_BACKGROUND: break; case GLFW_LAYER_SHELL_NONE: break;
+        case GLFW_LAYER_SHELL_PANEL: which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM; break;
+        case GLFW_LAYER_SHELL_TOP: which_layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP; break;
+        case GLFW_LAYER_SHELL_OVERLAY: which_layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY; break;
+    }
 #define ls window->wl.layer_shell.zwlr_layer_surface_v1
     ls = zwlr_layer_shell_v1_get_layer_surface(
             _glfw.wl.zwlr_layer_shell_v1, window->wl.surface, wl_output, which_layer, "kitty");

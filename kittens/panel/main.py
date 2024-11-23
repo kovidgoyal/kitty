@@ -14,6 +14,8 @@ from kitty.fast_data_types import (
     GLFW_EDGE_TOP,
     GLFW_LAYER_SHELL_BACKGROUND,
     GLFW_LAYER_SHELL_PANEL,
+    GLFW_LAYER_SHELL_TOP,
+    GLFW_LAYER_SHELL_OVERLAY,
     glfw_primary_monitor_size,
     make_x11_window_a_dock_window,
 )
@@ -37,6 +39,14 @@ The value :code:`background` means make the panel the "desktop wallpaper". This
 is only supported on Wayland, not X11 and note that when using sway if you set
 a background in your sway config it will cover the background drawn using this
 kitten.
+
+
+--layer
+choices=background, bottom, top, overlay
+default=bottom
+On a compositor that supports the wlr layer shell protocol, specifies the layer
+on which the panel should be drawn. This parameter is ignored and set to
+:code:`background` if --edge is set to :code:`background`.
 
 
 --config -c
@@ -150,7 +160,11 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]
 
 
 def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
-    ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else GLFW_LAYER_SHELL_PANEL
+    ltype = {'background': GLFW_LAYER_SHELL_BACKGROUND,
+             'bottom': GLFW_LAYER_SHELL_PANEL,
+             'top': GLFW_LAYER_SHELL_TOP,
+             'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
+    ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
     edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT}.get(opts.edge, GLFW_EDGE_TOP)
     return LayerShellConfig(type=ltype, edge=edge, size_in_cells=max(1, opts.lines), output_name=opts.output_name or '')
 
