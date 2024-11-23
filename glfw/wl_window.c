@@ -998,6 +998,10 @@ layer_set_properties(_GLFWwindow *window) {
                     panel_width = window->wl.width;
                     exclusive_zone = window->wl.width;
                     break;
+                case GLFW_EDGE_NONE:
+                    panel_width = window->wl.width;
+                    panel_width = window->wl.height;
+                    break;
             }
     }
 #define surface window->wl.layer_shell.zwlr_layer_surface_v1

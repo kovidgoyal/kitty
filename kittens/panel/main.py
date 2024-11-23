@@ -12,6 +12,7 @@ from kitty.fast_data_types import (
     GLFW_EDGE_LEFT,
     GLFW_EDGE_RIGHT,
     GLFW_EDGE_TOP,
+    GLFW_EDGE_NONE,
     GLFW_LAYER_SHELL_BACKGROUND,
     GLFW_LAYER_SHELL_PANEL,
     GLFW_LAYER_SHELL_TOP,
@@ -24,14 +25,20 @@ from kitty.types import LayerShellConfig
 from kitty.typing import EdgeLiteral
 
 OPTIONS = r'''
---lines --columns
+--lines
 type=int
 default=1
-The number of lines shown in the panel if horizontal otherwise the number of columns shown in the panel. Ignored for background panels.
+The number of lines shown in the panel if horizontal. Ignored for background panels.
+
+
+--columns
+type=int
+default=1
+The number of columns shown in the panel if vertical. Ignored for background panels.
 
 
 --edge
-choices=top,bottom,left,right,background
+choices=top,bottom,left,right,background,none
 default=top
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
@@ -165,8 +172,8 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
              'top': GLFW_LAYER_SHELL_TOP,
              'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
-    edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT}.get(opts.edge, GLFW_EDGE_TOP)
-    return LayerShellConfig(type=ltype, edge=edge, size_in_cells=max(1, opts.lines), output_name=opts.output_name or '')
+    edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'none': GLFW_EDGE_NONE}.get(opts.edge, GLFW_EDGE_TOP)
+    return LayerShellConfig(type=ltype, edge=edge, x_size_in_cells=max(1, opts.columns), y_size_in_cells=max(1, opts.lines), output_name=opts.output_name or '')
 
 
 def main(sys_args: List[str]) -> None:
