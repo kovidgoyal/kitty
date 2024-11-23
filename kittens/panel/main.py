@@ -17,6 +17,9 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_PANEL,
     GLFW_LAYER_SHELL_TOP,
     GLFW_LAYER_SHELL_OVERLAY,
+    GLFW_FOCUS_NOT_ALLOWED,
+    GLFW_FOCUS_EXCLUSIVE,
+    GLFW_FOCUS_ON_DEMAND,
     glfw_primary_monitor_size,
     make_x11_window_a_dock_window,
 )
@@ -74,7 +77,7 @@ when combined with explicit margin parameters.
 
 
 --layer
-choices=background, bottom, top, overlay
+choices=background,bottom,top,overlay
 default=bottom
 On a compositor that supports the wlr layer shell protocol, specifies the layer
 on which the panel should be drawn. This parameter is ignored and set to
@@ -108,6 +111,13 @@ Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it set
 --name
 condition=not is_macos
 Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
+
+
+--focus-policy
+choices=not-allowed,exclusive,on-demand
+default=not-allowed
+On a Wayland compositor that supports the wlr layer shell protocol, specify the focus policy for keyboard
+interactivity with the panel. Please refer to the wlr layer shell protocol documentation for more details.
 
 
 --debug-rendering
@@ -198,14 +208,16 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
              'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
     edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'none': GLFW_EDGE_NONE}.get(opts.edge, GLFW_EDGE_TOP)
+    focus_policy = {'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND}.get(opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED);
     return LayerShellConfig(type=ltype,
                             edge=edge,
                             x_size_in_cells=max(1, opts.columns),
                             y_size_in_cells=max(1, opts.lines),
-                            requested_top_margin=max(0, opts.margin-top),
-                            requested_left_margin=max(0, opts.margin-left),
-                            requested_bottom_margin=max(0, opts.margin-bottom),
-                            requested_right_margin=max(0,opts.margin-right),
+                            requested_top_margin=max(0, opts.margin_top),
+                            requested_left_margin=max(0, opts.margin_left),
+                            requested_bottom_margin=max(0, opts.margin_bottom),
+                            requested_right_margin=max(0, opts.margin_right),
+                            focus_policy=focus_policy,
                             output_name=opts.output_name or '')
 
 
