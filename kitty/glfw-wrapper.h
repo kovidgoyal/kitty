@@ -1051,6 +1051,10 @@ typedef struct GLFWLayerShellConfig {
     GLFWFocusPolicy focus_policy;
     unsigned x_size_in_cells;
     unsigned y_size_in_cells;
+    unsigned requested_top_margin;
+    unsigned requested_left_margin;
+    unsigned requested_bottom_margin;
+    unsigned requested_right_margin;
     void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
 } GLFWLayerShellConfig;
 

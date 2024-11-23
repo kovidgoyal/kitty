@@ -1029,7 +1029,7 @@ edge_spacing(GLFWEdge which) {
         case GLFW_EDGE_BOTTOM: edge = "bottom"; break;
         case GLFW_EDGE_LEFT: edge = "left"; break;
         case GLFW_EDGE_RIGHT: edge = "right"; break;
-        case GLFW_EDGE_NONE: edge = "top"; break;
+        case GLFW_EDGE_NONE: edge = "left"; break; // GLFW_EDGE_NONE is considered as "top left"
     }
     if (!edge_spacing_func) {
         log_error("Attempt to call edge_spacing() without first setting edge_spacing_func");
@@ -1069,10 +1069,10 @@ calculate_layer_shell_window_size(
         spacing += (fonts_data->cell_height * config->y_size_in_cells) / yscale;
         *height = (uint32_t)(1. + spacing);
     } else {
-        double spacing_x = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
+        double spacing_x = edge_spacing(GLFW_EDGE_LEFT);
         spacing_x *= xdpi / 72.;
         spacing_x += (fonts_data->cell_width * config->x_size_in_cells) / xscale;
-        double spacing_y = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
+        double spacing_y = edge_spacing(GLFW_EDGE_TOP);
         spacing_y *= ydpi / 72.;
         spacing_y += (fonts_data->cell_height * config->y_size_in_cells) / yscale;
         *width = (uint32_t)(1. + spacing_x);
@@ -1090,6 +1090,10 @@ translate_layer_shell_config(PyObject *p, GLFWLayerShellConfig *ans) {
     A(focus_policy, PyLong_Check, PyLong_AsLong);
     A(x_size_in_cells, PyLong_Check, PyLong_AsLong);
     A(y_size_in_cells, PyLong_Check, PyLong_AsLong);
+    A(requested_top_margin, PyLong_Check, PyLong_AsLong);
+    A(requested_left_margin, PyLong_Check, PyLong_AsLong);
+    A(requested_bottom_margin, PyLong_Check, PyLong_AsLong);
+    A(requested_right_margin, PyLong_Check, PyLong_AsLong);
 #undef A
 #define A(attr) { \
     RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; \

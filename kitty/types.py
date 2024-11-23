@@ -74,6 +74,10 @@ class LayerShellConfig(NamedTuple):
     output_name: str = ''
     x_size_in_cells: int = 0
     y_size_in_cells: int = 0
+    requested_top_margin: int = 0
+    requested_left_margin: int = 0
+    requested_bottom_margin: int = 0
+    requested_right_margin: int = 0
 
 
 def mod_to_names(mods: int, has_kitty_mod: bool = False, kitty_mod: int = 0) -> Iterator[str]:

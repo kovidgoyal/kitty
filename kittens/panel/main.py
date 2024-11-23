@@ -28,13 +28,37 @@ OPTIONS = r'''
 --lines
 type=int
 default=1
-The number of lines shown in the panel if horizontal. Ignored for background panels.
+The number of lines shown in the panel. Ignored for background and vertical panels.
 
 
 --columns
 type=int
 default=1
-The number of columns shown in the panel if vertical. Ignored for background panels.
+The number of columns shown in the panel. Ignored for background and horizontal panels.
+
+
+--margin-top
+type=int
+default=0
+Request a given top margin to the compositor.
+
+
+--margin-left
+type=int
+default=0
+Request a given left margin to the compositor.
+
+
+--margin-bottom
+type=int
+default=0
+Request a given bottom margin to the compositor.
+
+
+--margin-right
+type=int
+default=0
+Request a given right margin to the compositor.
 
 
 --edge
@@ -45,7 +69,8 @@ Which edge of the screen to place the panel on. Note that some window managers
 The value :code:`background` means make the panel the "desktop wallpaper". This
 is only supported on Wayland, not X11 and note that when using sway if you set
 a background in your sway config it will cover the background drawn using this
-kitten.
+kitten. The value :code:`none` allow free placement of the window
+when combined with explicit margin parameters.
 
 
 --layer
@@ -53,7 +78,7 @@ choices=background, bottom, top, overlay
 default=bottom
 On a compositor that supports the wlr layer shell protocol, specifies the layer
 on which the panel should be drawn. This parameter is ignored and set to
-:code:`background` if --edge is set to :code:`background`.
+:code:`background` if :option:`--edge` is set to :code:`background`.
 
 
 --config -c
@@ -173,7 +198,15 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
              'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
     edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'none': GLFW_EDGE_NONE}.get(opts.edge, GLFW_EDGE_TOP)
-    return LayerShellConfig(type=ltype, edge=edge, x_size_in_cells=max(1, opts.columns), y_size_in_cells=max(1, opts.lines), output_name=opts.output_name or '')
+    return LayerShellConfig(type=ltype,
+                            edge=edge,
+                            x_size_in_cells=max(1, opts.columns),
+                            y_size_in_cells=max(1, opts.lines),
+                            requested_top_margin=max(0, opts.margin-top),
+                            requested_left_margin=max(0, opts.margin-left),
+                            requested_bottom_margin=max(0, opts.margin-bottom),
+                            requested_right_margin=max(0,opts.margin-right),
+                            output_name=opts.output_name or '')
 
 
 def main(sys_args: List[str]) -> None:

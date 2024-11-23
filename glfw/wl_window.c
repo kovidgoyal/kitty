@@ -999,6 +999,7 @@ layer_set_properties(_GLFWwindow *window) {
                     exclusive_zone = window->wl.width;
                     break;
                 case GLFW_EDGE_NONE:
+                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM; // None is anchored to "top left"
                     panel_width = window->wl.width;
                     panel_width = window->wl.height;
                     break;
@@ -1010,7 +1011,7 @@ layer_set_properties(_GLFWwindow *window) {
     debug("Compositor will be informed that layer size: %dx%d viewport: %dx%d at next surface commit\n", panel_width, panel_height, window->wl.width, window->wl.height);
     zwlr_layer_surface_v1_set_anchor(surface, which_anchor);
     zwlr_layer_surface_v1_set_exclusive_zone(surface, exclusive_zone);
-    zwlr_layer_surface_v1_set_margin(surface, 0, 0, 0, 0);
+    zwlr_layer_surface_v1_set_margin(surface, window->wl.layer_shell.config.requested_top_margin, window->wl.layer_shell.config.requested_right_margin, window->wl.layer_shell.config.requested_bottom_margin, window->wl.layer_shell.config.requested_left_margin);
     zwlr_layer_surface_v1_set_keyboard_interactivity(surface, focus_policy);
 #undef surface
 }
