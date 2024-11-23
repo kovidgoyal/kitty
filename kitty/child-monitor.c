@@ -753,6 +753,8 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 *active_window_bg = window_bg;
                 if (OPT(cursor_trail) && update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
                     needs_render = true;
+                    // A max wait of zero causes key input processing to be
+                    // slow so handle the case of OPT(repaint_delay) == 0, see https://github.com/kovidgoyal/kitty/pull/8066
                     set_maximum_wait(MAX(OPT(repaint_delay), ms_to_monotonic_t(1ll)));
                 }
             } else {
