@@ -44,6 +44,7 @@ const misc_unicode = `
 …µ¢£€¿¡¨´¸ˆ˜ ÀÁÂÃÄÅÆÇÈÉÊË ÌÍÎÏÐÑÒÓÔÕÖØ ŒŠÙÚÛÜÝŸÞßàá âãäåæçèéêëìí
 îïðñòóôõöøœš ùúûüýÿþªºαΩ∞
 `
+const combining_chars = "ū̀n̂o᷵H̨a\u0300b\u0321\u0310\u0353c\u0321\u0310\u0353"
 
 var opts Options
 
@@ -141,7 +142,7 @@ func simple_ascii() (r result, err error) {
 
 func unicode() (r result, err error) {
 	const desc = "Unicode chars"
-	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 1024)
+	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode+combining_chars, 1024)
 	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
 	if err != nil {
 		return result{}, err
