@@ -1,4 +1,3 @@
-brew "pkg-config"
 brew "zlib"
 brew "xxhash"
 brew "simde"
