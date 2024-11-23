@@ -753,7 +753,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 *active_window_bg = window_bg;
                 if (OPT(cursor_trail) && update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
                     needs_render = true;
-                    set_maximum_wait(OPT(repaint_delay));
+                    set_maximum_wait(MAX(OPT(repaint_delay), ms_to_monotonic_t(1ll)));
                 }
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {
