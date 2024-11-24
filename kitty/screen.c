@@ -10,6 +10,7 @@
     if (PyModule_AddFunctions(module, module_methods) != 0) return false; \
 }
 
+#include "data-types.h"
 #include "control-codes.h"
 #include "state.h"
 #include "iqsort.h"

@@ -6,6 +6,8 @@
  */
 
 #define PY_SSIZE_T_CLEAN
+#include <Python.h>
+
 #include <libgen.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -18,7 +20,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <wchar.h>
-#include <Python.h>
 #include <fcntl.h>
 #include "launcher.h"
 
