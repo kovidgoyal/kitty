@@ -67,11 +67,17 @@ def install_fonts() -> None:
     fonts_dir = os.path.expanduser('~/Library/Fonts' if is_macos else '~/.local/share/fonts')
     os.makedirs(fonts_dir, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
-        tf.extractall(fonts_dir)
+        try:
+            tf.extractall(fonts_dir, filter='fully_trusted')
+        except TypeError:
+            tf.extractall(fonts_dir)
     with urlopen(NERD_URL) as f:
         data = f.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
-        tf.extractall(fonts_dir)
+        try:
+            tf.extractall(fonts_dir, filter='fully_trusted')
+        except TypeError:
+            tf.extractall(fonts_dir)
 
 
 def install_deps() -> None:
@@ -155,7 +161,10 @@ def install_bundle() -> None:
     with urlopen(BUNDLE_URL.format('macos' if is_macos else 'linux')) as f:
         data = f.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
-        tf.extractall()
+        try:
+            tf.extractall(filter='fully_trusted')
+        except TypeError:
+            tf.extractall()
     if not is_macos:
         replaced = 0
         for dirpath, dirnames, filenames in os.walk('.'):
