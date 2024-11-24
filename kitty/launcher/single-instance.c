@@ -5,16 +5,9 @@
  * Distributed under terms of the GPL3 license.
  */
 
+// We rely on data-types.h including Python.h which defines _DARWIN_C_SOURCE
+// which we need for _CS_DARWIN_USER_CACHE_DIR
 #include "../data-types.h"
-
-#ifdef __APPLE__
-// Needed for _CS_DARWIN_USER_CACHE_DIR
-#define _DARWIN_C_SOURCE
-#include <unistd.h>
-#undef _DARWIN_C_SOURCE
-#else
-#include <unistd.h>
-#endif
 
 #include "launcher.h"
 #include "../safe-wrappers.h"
