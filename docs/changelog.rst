@@ -97,6 +97,8 @@ Detailed list of changes
 
 - Wayland: Fix an abort when a client program tries to set an invalid title containing interleaved escape codes and UTF-8 multi-byte characters (:iss:`8067`)
 
+- Graphics protocol: Fix delete by number not deleting newest image with the specified number (:iss:`8071`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

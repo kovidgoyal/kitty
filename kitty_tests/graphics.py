@@ -582,6 +582,16 @@ class TestGraphics(BaseTest):
         self.ae(s.grman.image_count, count - 1)
         delete(I=1)
         self.ae(s.grman.image_count, count - 2)
+        cn = 1117
+        li('abc', s=1, v=1, f=24, I=cn)
+        first_id = g.image_for_client_number(cn)['internal_id']
+        li('abc', s=1, v=1, f=24, I=cn)
+        second_id = g.image_for_client_number(cn)['internal_id']
+        self.assertNotEqual(first_id, second_id)
+        count = s.grman.image_count
+        delete(I=cn)
+        self.ae(g.image_for_client_number(cn)['internal_id'], first_id)
+        self.ae(s.grman.image_count, count - 1)
         s.reset()
         self.assertEqual(g.disk_cache.total_size, 0)
 
