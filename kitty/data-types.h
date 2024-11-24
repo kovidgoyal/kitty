@@ -7,8 +7,12 @@
 
 #pragma once
 
+#ifdef _POSIX_C_SOURCE
+#error "Must include \"data-types.h\" before any system headers"
+#endif
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
