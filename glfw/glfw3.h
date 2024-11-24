@@ -1317,6 +1317,8 @@ typedef struct GLFWLayerShellConfig {
     unsigned requested_left_margin;
     unsigned requested_bottom_margin;
     unsigned requested_right_margin;
+    int requested_exclusive_zone;
+    unsigned override_exclusive_zone;
     void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
 } GLFWLayerShellConfig;
 

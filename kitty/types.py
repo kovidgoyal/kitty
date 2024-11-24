@@ -78,6 +78,8 @@ class LayerShellConfig(NamedTuple):
     requested_left_margin: int = 0
     requested_bottom_margin: int = 0
     requested_right_margin: int = 0
+    requested_exclusive_zone: int = -1
+    override_exclusive_zone: bool = False
 
 
 def mod_to_names(mods: int, has_kitty_mod: bool = False, kitty_mod: int = 0) -> Iterator[str]:

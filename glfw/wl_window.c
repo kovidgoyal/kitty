@@ -964,7 +964,7 @@ find_output_by_name(const char* name) {
 static void
 layer_set_properties(_GLFWwindow *window) {
     enum zwlr_layer_surface_v1_anchor which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-    int exclusive_zone = -1;
+    int exclusive_zone = window->wl.layer_shell.config.requested_exclusive_zone;
     enum zwlr_layer_surface_v1_keyboard_interactivity focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
     switch(window->wl.layer_shell.config.focus_policy) {
         case GLFW_FOCUS_NOT_ALLOWED: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE; break;
@@ -973,7 +973,8 @@ layer_set_properties(_GLFWwindow *window) {
     }
     int panel_width = 0, panel_height = 0;
     switch (window->wl.layer_shell.config.type) {
-        case GLFW_LAYER_SHELL_BACKGROUND: break; case GLFW_LAYER_SHELL_NONE: break;
+        case GLFW_LAYER_SHELL_NONE: break;
+        case GLFW_LAYER_SHELL_BACKGROUND: exclusive_zone = -1; break;
         case GLFW_LAYER_SHELL_TOP:
         case GLFW_LAYER_SHELL_OVERLAY:
         case GLFW_LAYER_SHELL_PANEL:
@@ -981,27 +982,27 @@ layer_set_properties(_GLFWwindow *window) {
                 case GLFW_EDGE_TOP:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
                     panel_height = window->wl.height;
-                    exclusive_zone = window->wl.height;
+                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.height;
                     break;
                 case GLFW_EDGE_BOTTOM:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
                     panel_height = window->wl.height;
-                    exclusive_zone = window->wl.height;
+                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.height;
                     break;
                 case GLFW_EDGE_LEFT:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
                     panel_width = window->wl.width;
-                    exclusive_zone = window->wl.width;
+                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.width;
                     break;
                 case GLFW_EDGE_RIGHT:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
                     panel_width = window->wl.width;
-                    exclusive_zone = window->wl.width;
+                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.width;
                     break;
                 case GLFW_EDGE_NONE:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM; // None is anchored to "top left"
                     panel_width = window->wl.width;
-                    panel_width = window->wl.height;
+                    panel_height = window->wl.height;
                     break;
             }
     }

@@ -1094,6 +1094,8 @@ translate_layer_shell_config(PyObject *p, GLFWLayerShellConfig *ans) {
     A(requested_left_margin, PyLong_Check, PyLong_AsLong);
     A(requested_bottom_margin, PyLong_Check, PyLong_AsLong);
     A(requested_right_margin, PyLong_Check, PyLong_AsLong);
+    A(requested_exclusive_zone, PyLong_Check, PyLong_AsLong);
+    A(override_exclusive_zone, PyBool_Check, PyLong_AsLong);
 #undef A
 #define A(attr) { \
     RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; \
