@@ -87,7 +87,7 @@ strip_csi_(const char *title, char *buf, size_t bufsz) {
             } break;
             case IN_CSI: {
                 if (!(('0' <= ch && ch <= '9') || ch == ';' || ch == ':')) {
-                    if (ch >= ' ' && ch != DEL) *(dest++) = ch;
+                    if (ch > DEL) *(dest++) = ch;  // UTF-8 multibyte
                     state = NORMAL;
                 }
             } break;

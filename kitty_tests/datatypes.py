@@ -560,9 +560,10 @@ class TestDataTypes(BaseTest):
         def q(x, y=''):
             self.ae(y or x, strip_csi(x))
         q('test')
-        q('a\x1bbc', 'ac')
+        q('a\x1bbc', 'abc')
         q('a\x1b[bc', 'ac')
         q('a\x1b[12;34:43mbc', 'abc')
+        q('a\x1b[12;34:43\U0001f638', 'a\U0001f638')
 
     def test_single_key(self):
         from kitty.fast_data_types import GLFW_MOD_KITTY, GLFW_MOD_SHIFT, SingleKey
