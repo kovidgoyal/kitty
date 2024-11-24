@@ -8,6 +8,7 @@
 #include "cleanup.h"
 #include "monotonic.h"
 #include "charsets.h"
+#include "control-codes.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
 #include "gl.h"
@@ -71,7 +72,7 @@ strip_csi_(const char *title, char *buf, size_t bufsz) {
     *dest = 0; *last = 0;
 
     for (; *title && dest < last; title++) {
-        const char ch = *title;
+        const unsigned char ch = *title;
         switch (state) {
             case NORMAL: {
                 if (ch == 0x1b) { state = IN_ESC; }
@@ -79,10 +80,16 @@ strip_csi_(const char *title, char *buf, size_t bufsz) {
             } break;
             case IN_ESC: {
                 if (ch == '[') { state = IN_CSI; }
-                else { state = NORMAL; }
+                else {
+                    if (ch >= ' ' && ch != DEL) *(dest++) = ch;
+                    state = NORMAL;
+                }
             } break;
             case IN_CSI: {
-                if (!(('0' <= ch && ch <= '9') || ch == ';' || ch == ':')) state = NORMAL;
+                if (!(('0' <= ch && ch <= '9') || ch == ';' || ch == ':')) {
+                    if (ch >= ' ' && ch != DEL) *(dest++) = ch;
+                    state = NORMAL;
+                }
             } break;
         }
     }

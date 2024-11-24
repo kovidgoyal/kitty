@@ -95,6 +95,8 @@ Detailed list of changes
 
 - clipboard kitten: Fix a bug causing kitten to hang in filter mode when input data size is not divisible by 3 and larger than 8KB (:iss:`8059`)
 
+- Wayland: Fix an abort when a client program tries to set an invalid title containing interleaved escape codes and UTF-8 multi-byte characters (:iss:`8067`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
