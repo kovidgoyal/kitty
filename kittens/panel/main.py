@@ -12,8 +12,14 @@ from kitty.fast_data_types import (
     GLFW_EDGE_LEFT,
     GLFW_EDGE_RIGHT,
     GLFW_EDGE_TOP,
+    GLFW_EDGE_NONE,
     GLFW_LAYER_SHELL_BACKGROUND,
     GLFW_LAYER_SHELL_PANEL,
+    GLFW_LAYER_SHELL_TOP,
+    GLFW_LAYER_SHELL_OVERLAY,
+    GLFW_FOCUS_NOT_ALLOWED,
+    GLFW_FOCUS_EXCLUSIVE,
+    GLFW_FOCUS_ON_DEMAND,
     glfw_primary_monitor_size,
     make_x11_window_a_dock_window,
 )
@@ -22,14 +28,48 @@ from kitty.types import LayerShellConfig
 from kitty.typing import EdgeLiteral
 
 OPTIONS = r'''
---lines --columns
+--lines
 type=int
 default=1
-The number of lines shown in the panel if horizontal otherwise the number of columns shown in the panel. Ignored for background panels.
+The number of lines shown in the panel. Ignored for background and vertical panels.
+
+
+--columns
+type=int
+default=1
+The number of columns shown in the panel. Ignored for background and horizontal panels.
+
+
+--margin-top
+type=int
+default=0
+Request a given top margin to the compositor.
+Only works on a Wayland compositor that supports the wlr layer shell protocol.
+
+
+--margin-left
+type=int
+default=0
+Request a given left margin to the compositor.
+Only works on a Wayland compositor that supports the wlr layer shell protocol.
+
+
+--margin-bottom
+type=int
+default=0
+Request a given bottom margin to the compositor.
+Only works on a Wayland compositor that supports the wlr layer shell protocol.
+
+
+--margin-right
+type=int
+default=0
+Request a given right margin to the compositor.
+Only works on a Wayland compositor that supports the wlr layer shell protocol.
 
 
 --edge
-choices=top,bottom,left,right,background
+choices=top,bottom,left,right,background,none
 default=top
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
@@ -37,6 +77,16 @@ The value :code:`background` means make the panel the "desktop wallpaper". This
 is only supported on Wayland, not X11 and note that when using sway if you set
 a background in your sway config it will cover the background drawn using this
 kitten.
+The value :code:`none` anchors the panel to the top left corner by default
+and the panel should be placed using margins parameters.
+
+
+--layer
+choices=background,bottom,top,overlay
+default=bottom
+On a Wayland compositor that supports the wlr layer shell protocol, specifies the layer
+on which the panel should be drawn. This parameter is ignored and set to
+:code:`background` if :option:`--edge` is set to :code:`background`.
 
 
 --config -c
@@ -66,6 +116,29 @@ Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it set
 --name
 condition=not is_macos
 Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
+
+
+--focus-policy
+choices=not-allowed,exclusive,on-demand
+default=not-allowed
+On a Wayland compositor that supports the wlr layer shell protocol, specify the focus policy for keyboard
+interactivity with the panel. Please refer to the wlr layer shell protocol documentation for more details.
+
+
+--exclusive-zone
+type=int
+default=-1
+On a Wayland compositor that supports the wlr layer shell protocol, request a given exclusive zone for the panel.
+Please refer to the wlr layer shell documentation for more details on the meaning of exclusive and its value.
+If :option:`--edge` is set to anything else than :code:`none`, this flag will not have any effect unless
+the flag :option:`--override-exclusive-zone` is also set.
+If :option:`--edge` is set to :code:`background`, this option has no effect.
+
+
+--override-exclusive-zone
+type=bool-set
+On a Wayland compositor that supports the wlr layer shell protocol, override the default exclusive zone.
+This has effect only if :option:`--edge` is set to :code:`top`, :code:`left`, :code:`bottom` or :code:`right`.
 
 
 --debug-rendering
@@ -150,9 +223,25 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]
 
 
 def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
-    ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else GLFW_LAYER_SHELL_PANEL
-    edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT}.get(opts.edge, GLFW_EDGE_TOP)
-    return LayerShellConfig(type=ltype, edge=edge, size_in_cells=max(1, opts.lines), output_name=opts.output_name or '')
+    ltype = {'background': GLFW_LAYER_SHELL_BACKGROUND,
+             'bottom': GLFW_LAYER_SHELL_PANEL,
+             'top': GLFW_LAYER_SHELL_TOP,
+             'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
+    ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
+    edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'none': GLFW_EDGE_NONE}.get(opts.edge, GLFW_EDGE_TOP)
+    focus_policy = {'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND}.get(opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED);
+    return LayerShellConfig(type=ltype,
+                            edge=edge,
+                            x_size_in_cells=max(1, opts.columns),
+                            y_size_in_cells=max(1, opts.lines),
+                            requested_top_margin=max(0, opts.margin_top),
+                            requested_left_margin=max(0, opts.margin_left),
+                            requested_bottom_margin=max(0, opts.margin_bottom),
+                            requested_right_margin=max(0, opts.margin_right),
+                            focus_policy=focus_policy,
+                            requested_exclusive_zone=opts.exclusive_zone,
+                            override_exclusive_zone=opts.override_exclusive_zone,
+                            output_name=opts.output_name or '')
 
 
 def main(sys_args: List[str]) -> None:
