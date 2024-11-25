@@ -99,6 +99,8 @@ Detailed list of changes
 
 - Graphics protocol: Fix delete by number not deleting newest image with the specified number (:iss:`8071`)
 
+- Fix dashed and dotted underlines not being drawn at the same y position as straight underlines at all font sizes (:iss:`8074`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

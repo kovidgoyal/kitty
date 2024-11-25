@@ -281,19 +281,28 @@ def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell
 
 def add_dots(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     spacing, size = distribute_dots(cell_width, cell_width // (2 * thickness))
-
-    y = 1 + position - thickness // 2
-    for i in range(y, min(y + thickness, cell_height)):
+    y = position - thickness // 2
+    buf_addr = ctypes.addressof(buf)
+    while thickness > 0 and -1 < y < cell_height:
+        offset = buf_addr + cell_width * y
         for j, s in enumerate(spacing):
-            buf[cell_width * i + j * size + s: cell_width * i + (j + 1) * size + s] = [255] * size
+            ctypes.memset(offset + j * size + s, 255, size)
+        thickness -= 1
+        y += 1
 
 
 def add_dashes(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     halfspace_width = cell_width // 4
-    y = 1 + position - thickness // 2
-    for i in range(y, min(y + thickness, cell_height)):
-        buf[cell_width * i:cell_width * i + (cell_width - 3 * halfspace_width)] = [255] * (cell_width - 3 * halfspace_width)
-        buf[cell_width * i + 3 * halfspace_width:cell_width * (i + 1)] = [255] * (cell_width - 3 * halfspace_width)
+    y = position - thickness // 2
+    dash_width = cell_width - 3 * halfspace_width
+    second_dash_start = 3 * halfspace_width
+    buf_addr = ctypes.addressof(buf)
+    while thickness > 0 and -1 < y < cell_height:
+        offset = buf_addr + cell_width * y
+        ctypes.memset(offset, 255, dash_width)
+        ctypes.memset(offset + second_dash_start, 255, dash_width)
+        thickness -= 1
+        y += 1
 
 
 def render_special(
