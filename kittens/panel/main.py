@@ -10,16 +10,16 @@ from kitty.constants import appname, is_macos, is_wayland
 from kitty.fast_data_types import (
     GLFW_EDGE_BOTTOM,
     GLFW_EDGE_LEFT,
+    GLFW_EDGE_NONE,
     GLFW_EDGE_RIGHT,
     GLFW_EDGE_TOP,
-    GLFW_EDGE_NONE,
+    GLFW_FOCUS_EXCLUSIVE,
+    GLFW_FOCUS_NOT_ALLOWED,
+    GLFW_FOCUS_ON_DEMAND,
     GLFW_LAYER_SHELL_BACKGROUND,
+    GLFW_LAYER_SHELL_OVERLAY,
     GLFW_LAYER_SHELL_PANEL,
     GLFW_LAYER_SHELL_TOP,
-    GLFW_LAYER_SHELL_OVERLAY,
-    GLFW_FOCUS_NOT_ALLOWED,
-    GLFW_FOCUS_EXCLUSIVE,
-    GLFW_FOCUS_ON_DEMAND,
     glfw_primary_monitor_size,
     make_x11_window_a_dock_window,
 )
@@ -228,8 +228,12 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
              'top': GLFW_LAYER_SHELL_TOP,
              'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
-    edge = {'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'none': GLFW_EDGE_NONE}.get(opts.edge, GLFW_EDGE_TOP)
-    focus_policy = {'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND}.get(opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED);
+    edge = {
+        'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'none': GLFW_EDGE_NONE
+    }.get(opts.edge, GLFW_EDGE_TOP)
+    focus_policy = {
+        'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND
+    }.get(opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED)
     return LayerShellConfig(type=ltype,
                             edge=edge,
                             x_size_in_cells=max(1, opts.columns),

@@ -101,6 +101,8 @@ Detailed list of changes
 
 - Fix dashed and dotted underlines not being drawn at the same y position as straight underlines at all font sizes (:iss:`8074`)
 
+- panel kitten: Allow creating floating and on-top panels with arbitrary placement and size on Wayland (:pull:`8068`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
