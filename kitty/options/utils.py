@@ -811,7 +811,7 @@ def remote_control_password(val: str, current_val: Dict[str, str]) -> Iterable[T
             # line of remote_control_password
             raise ValueError('Passwords are not allowed to start with hyphens, ignoring this password')
         if len(parts) == 1:
-            yield "", (parts[0],)
+            yield parts[0], ()
         else:
             yield parts[0], tuple(parts[1:])
 

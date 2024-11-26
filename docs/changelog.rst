@@ -103,6 +103,8 @@ Detailed list of changes
 
 - panel kitten: Allow creating floating and on-top panels with arbitrary placement and size on Wayland (:pull:`8068`)
 
+- :opt:`remote_control_password`: Fix using a password without any actions not working (:iss:`8082`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -127,7 +127,7 @@ def remote_control_allowed(
 
 class PasswordAuthorizer:
 
-    def __init__(self, auth_items: frozenset[str]) -> None:
+    def __init__(self, auth_items: Iterable[str]) -> None:
         self.command_patterns = []
         self.function_checkers = []
         self.name = ''
