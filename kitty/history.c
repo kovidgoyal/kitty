@@ -543,6 +543,24 @@ pagerhist_rewrap(HistoryBuf *self, PyObject *xnum) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+is_continued(HistoryBuf *self, PyObject *val) {
+#define is_continued_doc "is_continued(y) -> Whether the line y is continued or not"
+    unsigned long y = PyLong_AsUnsignedLong(val);
+    if (y >= self->count) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
+    get_line(self, y, self->line);
+    if (self->line->attrs.is_continued) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
+endswith_wrap(HistoryBuf *self, PyObject *val UNUSED) {
+#define endswith_wrap_doc "endswith_wrap() -> Whether the last line is wrapped at the end of the buffer"
+    if (history_buf_endswith_wrap(self)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
+
 
 // Boilerplate {{{
 static PyObject* rewrap(HistoryBuf *self, PyObject *args);
@@ -550,6 +568,8 @@ static PyObject* rewrap(HistoryBuf *self, PyObject *args);
 
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
+    METHOD(is_continued, METH_O)
+    METHOD(endswith_wrap, METH_NOARGS)
     METHOD(as_ansi, METH_O)
     METHODB(pagerhist_write, METH_O),
     METHODB(pagerhist_rewrap, METH_O),

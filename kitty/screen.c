@@ -234,12 +234,12 @@ typedef struct CursorTrack {
 } CursorTrack;
 
 static LineBuf*
-realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, CursorTrack *a, CursorTrack *b, ANSIBuf *as_ansi_buf) {
+realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, CursorTrack *a, CursorTrack *b, ANSIBuf *as_ansi_buf, bool history_buf_last_line_is_split) {
     LineBuf *ans = alloc_linebuf(lines, columns, old->text_cache);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     a->temp.x = a->before.x; a->temp.y = a->before.y;
     b->temp.x = b->before.x; b->temp.y = b->before.y;
-    linebuf_rewrap(old, ans, nclb, ncla, hb, &a->temp.x, &a->temp.y, &b->temp.x, &b->temp.y, as_ansi_buf);
+    linebuf_rewrap(old, ans, nclb, ncla, hb, &a->temp.x, &a->temp.y, &b->temp.x, &b->temp.y, as_ansi_buf, history_buf_last_line_is_split);
     return ans;
 }
 
@@ -395,6 +395,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (!init_overlay_line(self, columns, true)) return false;
 
     // Resize main linebuf
+    bool history_buf_last_line_is_split = history_buf_endswith_wrap(self->historybuf);
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
@@ -404,7 +405,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         prompt_copy = (PyObject*)alloc_linebuf(self->lines, self->columns, self->text_cache);
         num_of_prompt_lines = prevent_current_prompt_from_rewrapping(self, (LineBuf*)prompt_copy, &num_of_prompt_lines_above_cursor);
     }
-    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf);
+    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf, history_buf_last_line_is_split);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     if (is_main) setup_cursor(cursor);
@@ -414,7 +415,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     grman_resize(self->main_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
 
     // Resize alt linebuf
-    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &cursor, &alt_saved_cursor, &self->as_ansi_buf);
+    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &cursor, &alt_saved_cursor, &self->as_ansi_buf, false);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
     if (!is_main) setup_cursor(cursor);

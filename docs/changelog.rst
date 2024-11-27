@@ -105,6 +105,8 @@ Detailed list of changes
 
 - :opt:`remote_control_password`: Fix using a password without any actions not working (:iss:`8082`)
 
+- Fix enlarging window when a long line is wrapped between the first line of the scrollback buffer and the screen inserting a spurious newline (:iss:`7033`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

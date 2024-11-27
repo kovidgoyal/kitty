@@ -581,8 +581,87 @@ copy_old(LineBuf *self, PyObject *y) {
 
 #include "rewrap.h"
 
+static index_type
+restitch(Line *dest, index_type at, LineBuf *src, const index_type src_y, TrackCursor *cursors) {
+    index_type y = src_y, num_of_lines_removed = 0, num_cells_removed_on_last_line = 0;
+    bool last_char_has_wrapped_flag = true;
+    CPUCell *cp; GPUCell *gp;
+    // copy the cells into dest
+    while (at < dest->xnum && y < src->ynum) {
+        linebuf_init_cells(src, y, &cp, &gp);
+        index_type x = 0;
+        bool found_text = false;
+        while (at < dest->xnum && x < src->xnum) {
+            if (!found_text && cell_has_text(&cp[x])) found_text = true;
+            if (gp[x].attrs.width == 2) {
+                if (dest->xnum - at > 1) {
+                    dest->cpu_cells[at] = cp[x];
+                    dest->gpu_cells[at++] = gp[x++];
+                    dest->cpu_cells[at] = cp[x];
+                    dest->gpu_cells[at] = gp[x];
+                    at++; x++;
+                } else {
+                    dest->cpu_cells[at] = (CPUCell){0};
+                    dest->gpu_cells[at] = (GPUCell){0};
+                    at++;
+                }
+            } else {
+                dest->cpu_cells[at] = cp[x];
+                dest->gpu_cells[at] = gp[x];
+                at++; x++;
+            }
+        }
+        if (!found_text) {
+            last_char_has_wrapped_flag = false;
+            break;
+        }
+        if (x >= src->xnum) {  // Entire line was copied
+            num_of_lines_removed++;
+            bool line_ends_with_newline = !linebuf_line_ends_with_continuation(src, y);
+            if (line_ends_with_newline) {
+                last_char_has_wrapped_flag = false;
+                break;
+            }
+        } else {
+            num_cells_removed_on_last_line = x;
+            break;
+        }
+        y++;
+    }
+    dest->gpu_cells[dest->xnum - 1].attrs.next_char_was_wrapped = last_char_has_wrapped_flag;
+    // remove the copied lines and cells from src
+    if (num_of_lines_removed) {
+        for (index_type i = 0; i < num_of_lines_removed; i++) {
+            linebuf_clear_line(src, src_y, true);
+            linebuf_index(src, src_y, src->ynum - 1);
+        }
+        for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) if (tc->y >= src_y) tc->y -= num_of_lines_removed;
+    }
+    if (num_cells_removed_on_last_line) {
+        bool line_is_continued_to_next = linebuf_line_ends_with_continuation(src, src_y);
+        linebuf_init_cells(src, src_y, &cp, &gp);
+        for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) if (tc->y == src_y && tc->x >= num_cells_removed_on_last_line) tc->x -= num_cells_removed_on_last_line;
+        index_type remaining_cells = src->xnum - num_cells_removed_on_last_line;
+        memmove(cp, cp + num_cells_removed_on_last_line, remaining_cells * sizeof(cp[0]));
+        memset(cp + remaining_cells, 0, num_cells_removed_on_last_line * sizeof(cp[0]));
+        memmove(gp, gp + num_cells_removed_on_last_line, remaining_cells * sizeof(gp[0]));
+        memset(gp + remaining_cells, 0, num_cells_removed_on_last_line * sizeof(gp[0]));
+        if (line_is_continued_to_next && remaining_cells < src->xnum && src->ynum > src_y + 1) {
+            Line next_dest = {.xnum=src->xnum};
+            init_line(src, &next_dest, src_y);
+            num_of_lines_removed += restitch(&next_dest, remaining_cells, src, src_y + 1, cursors);
+        }
+    }
+    return num_of_lines_removed;
+}
+
+
 void
-linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after, HistoryBuf *historybuf, index_type *track_x, index_type *track_y, index_type *track_x2, index_type *track_y2, ANSIBuf *as_ansi_buf) {
+linebuf_rewrap(
+    LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after,
+    HistoryBuf *historybuf, index_type *track_x, index_type *track_y, index_type *track_x2, index_type *track_y2,
+    ANSIBuf *as_ansi_buf, bool history_buf_last_line_is_split
+) {
     index_type first, i;
     bool is_empty = true;
 
@@ -617,6 +696,17 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     *track_x = tcarr[0].x; *track_y = tcarr[0].y;
     *track_x2 = tcarr[1].x; *track_y2 = tcarr[1].y;
     *num_content_lines_after = other->line->ynum + 1;
+    if (history_buf_last_line_is_split && historybuf) {
+        historybuf_init_line(historybuf, 0, historybuf->line);
+        index_type xlimit = xlimit_for_line(historybuf->line);
+        if (xlimit < historybuf->line->xnum) {
+            TrackCursor tcarr[3] = {{.x = *track_x, .y = *track_y }, {.x = *track_x2, .y = *track_y2}, {.is_sentinel = true}};
+            index_type num_of_lines_removed = restitch(historybuf->line, xlimit, other, 0, tcarr);
+            *track_x = tcarr[0].x; *track_y = tcarr[0].y;
+            *track_x2 = tcarr[1].x; *track_y2 = tcarr[1].y;
+            *num_content_lines_after -= num_of_lines_removed;
+        }
+    }
     for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i].has_dirty_text = true;
 }
 
@@ -629,7 +719,7 @@ rewrap(LineBuf *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!O!", &LineBuf_Type, &other, &HistoryBuf_Type, &historybuf)) return NULL;
     index_type x = 0, y = 0, x2 = 0, y2 = 0;
     ANSIBuf as_ansi_buf = {0};
-    linebuf_rewrap(self, other, &nclb, &ncla, historybuf, &x, &y, &x2, &y2, &as_ansi_buf);
+    linebuf_rewrap(self, other, &nclb, &ncla, historybuf, &x, &y, &x2, &y2, &as_ansi_buf, false);
     free(as_ansi_buf.buf);
 
     return Py_BuildValue("II", nclb, ncla);

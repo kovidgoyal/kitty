@@ -109,7 +109,7 @@ void linebuf_clear_line(LineBuf *self, index_type y, bool clear_attrs);
 void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_copy_line_to(LineBuf *, Line *, index_type);
-void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, HistoryBuf *, index_type *, index_type *, index_type *, index_type *, ANSIBuf*);
+void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, HistoryBuf *, index_type *, index_type *, index_type *, index_type *, ANSIBuf*, bool);
 void linebuf_mark_line_dirty(LineBuf *self, index_type y);
 void linebuf_clear_attrs_and_dirty(LineBuf *self, index_type y);
 void linebuf_mark_line_clean(LineBuf *self, index_type y);
