@@ -84,7 +84,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.37.1 [future]
+0.38.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow :ref:`specifying individual color themes <auto_color_scheme>` to use so that kitty changes colors automatically following the OS dark/light mode
