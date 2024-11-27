@@ -283,17 +283,28 @@ class TestScreen(BaseTest):
         from kitty.window import as_text
         def at():
             return as_text(s, add_history=True)
+        def ac():
+            return s.line(s.cursor.y)[s.cursor.x]
+
         # test that a wrapped line split by the history buffer is re-stitched
         s = self.create_screen(cols=4, lines=4, scrollback=4)
         text = ''
         for i in range(s.lines + 1):
-            text += str(i + 1) * s.columns
+            if i == 2:
+                text += 'abcd'
+            else:
+                text += str(i + 1) * s.columns
         s.draw(text)
         self.assertTrue(s.historybuf.endswith_wrap())
+        s.cursor.x, s.cursor.y = 1, 1
+        self.ae(ac(), 'b')
         s.resize(s.lines, s.columns + 2)
         self.assertTrue(s.historybuf.endswith_wrap())
         self.ae(str(s.historybuf), '111122')
         self.ae(at(), text + '\n')
+        # for some reason rewrap_inner moves the cursor by one cell to the right
+        self.ae((s.cursor.x, s.cursor.y), (4, 0))
+        self.ae(ac(), 'c')
         s = self.create_screen(cols=4, lines=4, scrollback=4)
         s.draw('1111222'), s.linefeed(), s.carriage_return()
         s.draw('333344445555')
@@ -308,6 +319,15 @@ class TestScreen(BaseTest):
         self.ae(str(s.historybuf), '1111')
         self.assertTrue(s.historybuf.endswith_wrap())
         self.ae(at(), '1111😸2\n\n\n')
+        s = self.create_screen(cols=4, lines=4, scrollback=4)
+        s.draw(text)
+        s.cursor.x, s.cursor.y = 1, 1
+        self.ae(ac(), 'b')
+        s.resize(s.lines, s.columns * 2)
+        self.ae(ac(), 'c')
+        self.ae(str(s.historybuf), '11112222')
+        self.ae(at(), text + '\n\n')
+        self.ae((s.cursor.x, s.cursor.y), (2, 0))
 
         # test that trailing blank line is preserved on resize
         s = self.create_screen(cols=5, lines=5, scrollback=15)
