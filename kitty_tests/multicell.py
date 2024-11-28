@@ -302,7 +302,7 @@ def test_multicell(self: TestMulticell) -> None:
     assert_line('ab_c\0\0', -2)
     assert_line('\0__\0\0\0', -1)
     self.ae(s.historybuf.line(1).as_ansi(), f'a\x1b]{TEXT_SIZE_CODE};s=2;b\x07c')
-    self.ae(s.historybuf.line(0).as_ansi(), ' ')
+    self.ae(s.historybuf.line(0).as_ansi(), '')
 
     # Insert lines
     s.reset()

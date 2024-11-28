@@ -599,17 +599,17 @@ restitch(Line *dest, index_type at, LineBuf *src, const index_type src_y, TrackC
         bool found_text = false;
         while (at < dest->xnum && x < src->xnum) {
             if (!found_text && cell_has_text(&cp[x])) found_text = true;
-            if (gp[x].attrs.width == 2) {
-                if (dest->xnum - at > 1) {
-                    dest->cpu_cells[at] = cp[x];
-                    dest->gpu_cells[at++] = gp[x++];
-                    dest->cpu_cells[at] = cp[x];
-                    dest->gpu_cells[at] = gp[x];
-                    at++; x++;
+            if (cp[x].is_multicell) {
+                // TODO: handle multiline chars
+                if (dest->xnum - at > cp[x].width) {
+                    for (index_type i = 0; i < cp[x].width; i++) {
+                        dest->cpu_cells[at] = cp[x];
+                        dest->gpu_cells[at++] = gp[x++];
+                    }
                 } else {
                     dest->cpu_cells[at] = (CPUCell){0};
                     dest->gpu_cells[at] = (GPUCell){0};
-                    at++;
+                    at = dest->xnum;
                 }
             } else {
                 dest->cpu_cells[at] = cp[x];
@@ -634,7 +634,7 @@ restitch(Line *dest, index_type at, LineBuf *src, const index_type src_y, TrackC
         }
         y++;
     }
-    dest->gpu_cells[dest->xnum - 1].attrs.next_char_was_wrapped = last_char_has_wrapped_flag;
+    dest->cpu_cells[dest->xnum - 1].next_char_was_wrapped = last_char_has_wrapped_flag;
     // remove the copied lines and cells from src
     if (num_of_lines_removed) {
         for (index_type i = 0; i < num_of_lines_removed; i++) {

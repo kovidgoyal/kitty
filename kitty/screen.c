@@ -650,10 +650,9 @@ static void
 nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
     CPUCell *cp; GPUCell *gp;
     linebuf_init_cells(self->linebuf, y_, &cp, &gp);
-    MultiCellData mcd = cell_multicell_data(cp + x_, self->text_cache);
-    index_type y_max_limit = MIN(self->lines, y_ + mcd.scale);
+    index_type y_max_limit = MIN(self->lines, y_ + cp[x_].scale);
     while (cp[x_].x && x_ > 0) x_--;
-    index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(mcd));
+    index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
     char_type ch = replace_with_spaces ? ' ' : 0;
     for (index_type y = y_; y < y_max_limit; y++) {
         linebuf_init_cells(self->linebuf, y, &cp, &gp);
@@ -674,7 +673,7 @@ nuke_multiline_char_intersecting_with(Screen *self, index_type x_start, index_ty
         CPUCell *cp; GPUCell *gp;
         linebuf_init_cells(self->linebuf, y, &cp, &gp);
         for (index_type x = x_start; x < x_limit; x++) {
-            if (cp[x].is_multicell && cell_multicell_data(cp + x, self->text_cache).scale > 1) nuke_multicell_char_at(self, x, y, replace_with_spaces);
+            if (cp[x].is_multicell && cp[x].scale > 1) nuke_multicell_char_at(self, x, y, replace_with_spaces);
         }
     }
 }
@@ -704,8 +703,7 @@ nuke_split_multicell_char_at_right_boundary(Screen *self, index_type x, index_ty
     CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y);
     CPUCell *c = cp + x;
     if (c->is_multicell) {
-        MultiCellData mcd = cell_multicell_data(c, self->text_cache);
-        unsigned max_x = mcd_x_limit(mcd) - 1;
+        unsigned max_x = mcd_x_limit(c) - 1;
         if (c->x < max_x) {
             nuke_multicell_char_at(self, x, y, replace_with_spaces);
         }
@@ -720,8 +718,7 @@ nuke_incomplete_single_line_multicell_chars_in_range(
     linebuf_init_cells(self->linebuf, y, &cpu_cells, &gpu_cells);
     for (index_type x = start; x < limit; x++) {
         if (cpu_cells[x].is_multicell) {
-            MultiCellData mcd = cell_multicell_data(cpu_cells + x, self->text_cache);
-            index_type mcd_x_limit = x + mcd.width - cpu_cells[x].x;
+            index_type mcd_x_limit = x + cpu_cells[x].width - cpu_cells[x].x;
             if (cpu_cells[x].x || mcd_x_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(mcd_x_limit, limit), replace_with_spaces ? ' ': 0);
             x = mcd_x_limit;
         }
@@ -749,25 +746,19 @@ static bool
 halve_multicell_width(Screen *self, index_type x_, index_type y_) {
     CPUCell *cp; GPUCell *gp;
     linebuf_init_cells(self->linebuf, y_, &cp, &gp);
-    MultiCellData mcd = cell_multicell_data(cp + x_, self->text_cache);
     int y_min_limit = -1;
     if (self->linebuf == self->main_linebuf) y_min_limit = -(self->historybuf->count + 1);
-    int expected_y_min_limit = ((int)y_) - mcd.scale;
+    int expected_y_min_limit = ((int)y_) - cp[x_].scale;
     if (expected_y_min_limit < y_min_limit) return false;
     y_min_limit = expected_y_min_limit;
-    MultiCellData new_mcd = mcd; new_mcd.width = mcd.width / 2;
+    unsigned new_width = cp[x_].width / 2;
     while (cp[x_].x && x_ > 0) x_--;
-    index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(mcd));
+    index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
     index_type half_x_limit = x_limit / 2;
-    int y_max_limit = MIN(self->lines, y_ + mcd.scale);
-    RAII_ListOfChars(lc);
-    text_in_cell(cp + x_, self->text_cache, &lc);
-    lc.chars[lc.count++] = new_mcd.val;
-    cell_set_chars(cp + x_, self->text_cache, &lc);
-    char_type idx = cp[x_].ch_or_idx;
+    int y_max_limit = MIN(self->lines, y_ + cp[x_].scale);
     for (int y = y_min_limit + 1; y < y_max_limit; y++) {
         Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
-        for (index_type x = 0; x < half_x_limit; x++) cp[x].ch_or_idx = idx;
+        for (index_type x = 0; x < half_x_limit; x++) cp[x].width = new_width;
         for (index_type x = half_x_limit; x < x_limit; x++) {
             cp[x] = (CPUCell){0}; clear_sprite_position(gp[x]);
         }
@@ -823,29 +814,21 @@ static bool
 add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
     CPUCell *cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, y);
     CPUCell *cell = cpu_cells + x;
-    if (!cell_has_text(cell)) return false; // don't allow adding combining chars to a null cell
+    if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return false; // don't allow adding combining chars to a null cell
+    text_in_cell(cell, self->text_cache, self->lc);
+    ensure_space_for_chars(self->lc, self->lc->count + 1);
+    self->lc->chars[self->lc->count++] = ch;
+    cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
+    cell->ch_is_idx = true;
     if (cell->is_multicell) {
+        char_type ch_and_idx = cell->ch_and_idx;
         while (cell->x && x) cell = cpu_cells + --x;
-        if (cell->y) return false; // not the top left cell
-        text_in_cell(cell, self->text_cache, self->lc);
-        MultiCellData mcd = {.val=self->lc->chars[self->lc->count]};
-        ensure_space_for_chars(self->lc, self->lc->count + 2);
-        self->lc->chars[self->lc->count++] = ch;
-        self->lc->chars[self->lc->count++] = mcd.val;
-        const char_type idx = tc_get_or_insert_chars(self->text_cache, self->lc);
-        self->lc->count--;
-        index_type x_limit = MIN(x + mcd_x_limit(mcd), self->columns);
-        for (index_type v = y; v < y + mcd.scale; v++) {
+        index_type x_limit = MIN(x + mcd_x_limit(cell), self->columns);
+        for (index_type v = y; v < y + cell->scale; v++) {
             cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, v);
-            for (index_type h = x; h < x_limit; h++) cpu_cells[h].ch_or_idx = idx;
+            for (index_type h = x; h < x_limit; h++) cpu_cells[h].ch_and_idx = ch_and_idx;
             linebuf_mark_line_dirty(self->linebuf, v);
         }
-    } else {
-        text_in_cell(cell, self->text_cache, self->lc);
-        ensure_space_for_chars(self->lc, self->lc->count + 1);
-        self->lc->chars[self->lc->count++] = ch;
-        cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
-        cell->ch_is_idx = true;
     }
     return true;
 }
@@ -892,38 +875,23 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
         if (ch == VS16) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
             CPUCell *cpu_cell = cp + xpos;
             GPUCell *gpu_cell = gp + xpos;
-            if (self->lc->chars[base_pos + 1] == VS16 && (!cpu_cell->is_multicell || cell_multicell_data(cpu_cell, self->text_cache).width < 2) && is_emoji_presentation_base(self->lc->chars[base_pos])) {
-                bool already_multicell = cpu_cell->is_multicell;
-                if (already_multicell) {
-                    MultiCellData mcd = {.val=self->lc->chars[self->lc->count]};
-                    mcd.width *= 2;
-                    self->lc->chars[self->lc->count++] = mcd.val;
-                } else {
-                    ensure_space_for_chars(self->lc, self->lc->count + 1);
-                    MultiCellData mcd = {.width=2, .scale=1, .msb=1};
-                    self->lc->chars[self->lc->count++] = mcd.val;
-                    cpu_cell->is_multicell = true;
-                }
-                cpu_cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
-                if (!already_multicell) {
-                    if (xpos + 1 < self->columns) {
-                        CPUCell *second = cp + xpos + 1;
-                        if (second->is_multicell) nuke_multicell_char_at(self, xpos, ypos, false);
-                        zero_cells(s, second, gp + xpos + 1);
-                        self->cursor->x++;
-                        second->is_multicell = true; second->ch_or_idx = cpu_cell->ch_or_idx; second->ch_is_idx = true; second->x = 1;
-                    } else move_widened_char(self, s, cpu_cell, gpu_cell, xpos, ypos);
-                }
+            if (self->lc->chars[base_pos + 1] == VS16 && (!cpu_cell->is_multicell || cpu_cell->width < 2) && is_emoji_presentation_base(self->lc->chars[base_pos])) {
+                cpu_cell->is_multicell = true;
+                cpu_cell->width = 2;
+                if (!cpu_cell->scale) cpu_cell->scale = 1;
+                if (xpos + 1 < self->columns) {
+                    CPUCell *second = cp + xpos + 1;
+                    if (second->is_multicell) nuke_multicell_char_at(self, xpos, ypos, false);
+                    zero_cells(s, second, gp + xpos + 1);
+                    self->cursor->x++;
+                    *second = *cpu_cell; second->x = 1;
+                } else move_widened_char(self, s, cpu_cell, gpu_cell, xpos, ypos);
             }
         } else if (ch == VS15) {
             const CPUCell *cpu_cell = cp + xpos;
-            if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
-                MultiCellData mcd = {.val=self->lc->chars[self->lc->count]};
-                if (mcd.width == 2) {
-                    if (halve_multicell_width(self, xpos, ypos)) {
-                        self->cursor->x -= (mcd.scale * mcd.width / 2);
-                    }
-                }
+            if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->width == 2 && is_emoji_presentation_base(self->lc->chars[base_pos])) {
+                index_type deltax = (cpu_cell->scale * cpu_cell->width) / 2;
+                if (halve_multicell_width(self, xpos, ypos)) self->cursor->x -= deltax;
             }
         }
     }
@@ -1061,14 +1029,9 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
         CPUCell *fc = s->cp + self->cursor->x;
         zero_cells(s, fc, s->gp + self->cursor->x);
         if (char_width == 2) {
-            MultiCellData mcd = {.width = 2, .scale = 1, .msb = 1};
-            RAII_ListOfChars(lc);
-            lc.chars[lc.count++] = ch;
-            lc.chars[lc.count++] = mcd.val;
+            *fc = (CPUCell){.ch_or_idx=ch, .is_multicell=true, .width=2, .scale=1};
             CPUCell *second = fc + 1;
             if (second->is_multicell) nuke_multicell_char_at(self, self->cursor->x + 1, self->cursor->y, true);
-            cell_set_chars(fc, self->text_cache, &lc);
-            fc->x = 0; fc->y = 0; fc->is_multicell = true;
             *second = *fc; second->x = 1;
             s->gp[self->cursor->x + 1] = s->gp[self->cursor->x];
             self->cursor->x += 2;
@@ -1155,16 +1118,17 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
         width = wcswidth_string(self->lc->chars);
     }
     if (!width) return;
-    MultiCellData mcd = {
-        .width=MIN(width, 15), .scale=MAX(1, MIN(cmd->scale, 15)), .subscale=MIN(cmd->subscale, 3),
-        .explicitly_set=1, .msb=1, .vertical_align=MIN(cmd->vertical_align, 7u)
+    CPUCell mcd = {
+        .width=MIN(width, 15u), .scale=MAX(1, MIN(cmd->scale, 15u)), .subscale=MIN(cmd->subscale, 3u),
+        .explicitly_set=1u, .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
     };
-    self->lc->chars[self->lc->count++] = mcd.val;
     width = mcd.width * mcd.scale;
     index_type height = mcd.scale;
     index_type max_height = self->margin_bottom - self->margin_top + 1;
     if (width > self->columns || height > max_height) return;
     PREPARE_FOR_DRAW_TEXT;
+    mcd.hyperlink_id = s.cc.hyperlink_id;
+    cell_set_chars(&mcd, self->text_cache, self->lc);
     if (self->columns < self->cursor->x + width) {
         if (self->modes.mDECAWM) {
             continue_to_next_line(self);
@@ -1187,16 +1151,13 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
             if (self->modes.mIRM) insert_characters(self, self->cursor->x, width, y, true);
         }
     }
-    CPUCell c = s.cc;
-    c.ch_is_idx = true; c.ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
-    c.is_multicell = true;
     nuke_multicell_char_intersecting_with(self, self->cursor->x, self->cursor->x + width, self->cursor->y, self->cursor->y + height, true);
     for (index_type y = self->cursor->y; y < self->cursor->y + height; y++) {
         linebuf_init_cells(self->linebuf, y, &s.cp, &s.gp);
         linebuf_mark_line_dirty(self->linebuf, y);
-        c.x = 0; c.y = y - self->cursor->y;
-        for (index_type x = self->cursor->x; x < self->cursor->x + width; x++, c.x++) {
-            s.cp[x] = c; s.gp[x] = s.g;
+        mcd.x = 0; mcd.y = y - self->cursor->y;
+        for (index_type x = self->cursor->x; x < self->cursor->x + width; x++, mcd.x++) {
+            s.cp[x] = mcd; s.gp[x] = s.g;
         }
     }
     self->cursor->x += width;
@@ -2172,8 +2133,7 @@ screen_fake_move_cursor_to_position(Screen *self, index_type start_x, index_type
             }
             found_non_empty_cell = true;
             if (c->is_multicell) {
-                MultiCellData mcd = cell_multicell_data(c, self->text_cache);
-                x += mcd_x_limit(mcd);
+                x += mcd_x_limit(c);
             } else x++;
             count += 1;  // zsh requires a single arrow press to move past dualwidth chars
         }
@@ -2369,8 +2329,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
         cells = linebuf_cpu_cells_for_line(self->linebuf, bottom);
         for (index_type x = 0; x < self->columns; x++) {
             if (cells[x].is_multicell) {
-                MultiCellData mcd = cell_multicell_data(cells + x, self->text_cache);
-                index_type y_limit = mcd.scale;
+                index_type y_limit = cells[x].scale;
                 if (cells[x].y + 1u < y_limit) {
                     index_type orig = self->lines;
                     self->lines = bottom + 1;
@@ -3753,8 +3712,7 @@ screen_draw_overlay_line(Screen *self) {
                     // When the last character is a split multicell, make sure the next character is visible.
                     CPUCell *c = self->linebuf->line->cpu_cells + len - 1;
                     if (c->is_multicell) {
-                        MultiCellData mcd = cell_multicell_data(c, self->text_cache);
-                        if (c->x < mcd_x_limit(mcd) - 1) {
+                        if (c->x < mcd_x_limit(c) - 1) {
                             do {
                                 c->is_multicell = false; c->ch_is_idx = false; c->ch_or_idx = ' ';
                                 if (!c->x) break;
@@ -4819,7 +4777,7 @@ current_char_width(Screen *self, PyObject *a UNUSED) {
         const CPUCell *c = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y) + self->cursor->x;
         if (c->is_multicell) {
             if (c->x || c->y) ans = 0;
-            else ans = cell_multicell_data(c, self->text_cache).width;
+            else ans = c->width;
         }
     }
     return PyLong_FromUnsignedLong(ans);
@@ -5173,16 +5131,15 @@ test_parse_written_data(Screen *screen, PyObject *args) {
 }
 
 static PyObject*
-multicell_data_as_dict(MultiCellData mcd) {
-    if (!mcd.msb) { PyErr_SetString(PyExc_RuntimeError, "mcd does not have its msb set"); return NULL; }
+multicell_data_as_dict(CPUCell mcd) {
     return Py_BuildValue("{sI sI sI sO sI}", "scale", (unsigned int)mcd.scale, "width", (unsigned int)mcd.width, "subscale", (unsigned int)mcd.subscale, "explicitly_set", mcd.explicitly_set ? Py_True : Py_False, "vertical_align", mcd.vertical_align);
 }
 
 static PyObject*
 cpu_cell_as_dict(CPUCell *c, TextCache *tc, ListOfChars *lc, HYPERLINK_POOL_HANDLE h) {
     text_in_cell(c, tc, lc);
-    RAII_PyObject(mcd, lc->is_multicell ? multicell_data_as_dict((MultiCellData){.val=lc->chars[lc->count]}) : Py_NewRef(Py_None));
-    if ((lc->is_multicell && !lc->is_topleft) || (lc->count == 1 && lc->chars[0] == 0)) lc->count = 0;
+    RAII_PyObject(mcd, c->is_multicell ? multicell_data_as_dict(*c) : Py_NewRef(Py_None));
+    if ((c->is_multicell && (c->x + c->y)) || (lc->count == 1 && lc->chars[0] == 0)) lc->count = 0;
     RAII_PyObject(text, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, lc->chars, lc->count));
     const char *url = c->hyperlink_id ? get_hyperlink_for_id(h, c->hyperlink_id, false) : NULL;
     RAII_PyObject(hyperlink, url ? PyUnicode_FromString(url) : Py_NewRef(Py_None));

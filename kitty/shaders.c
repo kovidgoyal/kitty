@@ -378,8 +378,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
             line_for_cursor && (cursor_cell = line_for_cursor->cpu_cells + cursor->x)->is_multicell &&
             cursor_cell->x == 0
     ) {
-        MultiCellData mcd = cell_multicell_data(cursor_cell, screen->text_cache);
-        rd->cursor_w = mcd.width * mcd.scale;
+        rd->cursor_w = mcd_x_limit(cursor_cell);
     }
 
     rd->xnum = screen->columns; rd->ynum = screen->lines;

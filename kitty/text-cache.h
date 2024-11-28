@@ -12,7 +12,6 @@
 typedef struct ListOfChars {
     char_type *chars;
     size_t count, capacity;
-    bool is_multicell, is_topleft;
 } ListOfChars;
 
 #define LIST_OF_CHARS_STACK_SIZE 4

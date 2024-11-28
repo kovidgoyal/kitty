@@ -54,21 +54,21 @@ nonnegative_integer_as_utf32(unsigned num, ANSIBuf *output) {
 }
 
 static unsigned
-write_multicell_ansi_prefix(MultiCellData mcd, ANSIBuf *output) {
+write_multicell_ansi_prefix(const CPUCell *mcd, ANSIBuf *output) {
     unsigned pos = output->len;
     ensure_space_for(output, buf, output->buf[0], output->len + 128, capacity, 2048, false);
 #define w(x) output->buf[output->len++] = x
     w(0x1b); w(']');
     for (unsigned i = 0; i < sizeof(xstr(TEXT_SIZE_CODE)) - 1; i++) w(xstr(TEXT_SIZE_CODE)[i]);
     w(';');
-    if (mcd.width > 1) {
-        w('w'); w('='); nonnegative_integer_as_utf32(mcd.width, output); w(':');
+    if (mcd->width > 1) {
+        w('w'); w('='); nonnegative_integer_as_utf32(mcd->width, output); w(':');
     }
-    if (mcd.scale > 1) {
-        w('s'); w('='); nonnegative_integer_as_utf32(mcd.scale, output); w(':');
+    if (mcd->scale > 1) {
+        w('s'); w('='); nonnegative_integer_as_utf32(mcd->scale, output); w(':');
     }
-    if (mcd.subscale) {
-        w('S'); w('='); nonnegative_integer_as_utf32(mcd.subscale, output); w(':');
+    if (mcd->subscale) {
+        w('S'); w('='); nonnegative_integer_as_utf32(mcd->subscale, output); w(':');
     }
     if (output->buf[output->len - 1] == ':') output->len--;
     w(';');
@@ -78,18 +78,25 @@ write_multicell_ansi_prefix(MultiCellData mcd, ANSIBuf *output) {
 
 static unsigned
 text_in_cell_ansi(const CPUCell *c, TextCache *tc, ANSIBuf *output) {
-    if (c->ch_is_idx) {
-        if (!c->is_multicell) return tc_chars_at_index_ansi(tc, c->ch_or_idx, output);
+    unsigned n = 0;
+    if (c->is_multicell) {
         if (c->x || c->y) return 0;
-        MultiCellData mcd = cell_multicell_data(c, tc);
-        unsigned n = write_multicell_ansi_prefix(mcd, output);
-        n += tc_chars_at_index_ansi(tc, c->ch_or_idx, output) - 1;
-        output->buf[output->len - 1] = '\a';
-        return n;
+        n = write_multicell_ansi_prefix(c, output);
     }
-    ensure_space_for(output, buf, output->buf[0], output->len + 1, capacity, 2048, false);
-    output->buf[output->len++] = c->ch_or_idx;
-    return 1;
+    if (c->ch_is_idx) {
+        n += tc_chars_at_index_ansi(tc, c->ch_or_idx, output);
+    } else {
+        ensure_space_for(output, buf, output->buf[0], output->len + 2, capacity, 2048, false);
+        if (c->ch_or_idx) {
+            output->buf[output->len++] = c->ch_or_idx;
+            n += 1;
+        }
+    }
+    if (c->is_multicell) {
+        output->buf[output->len++] = '\a';
+        n++;
+    }
+    return n;
 }
 
 
@@ -326,7 +333,7 @@ unicode_in_range(const Line *self, const index_type start, const index_type limi
             global_unicode_in_range_buf.capacity = ns; global_unicode_in_range_buf.chars = np;
             lc.chars = global_unicode_in_range_buf.chars + n; lc.capacity = global_unicode_in_range_buf.capacity - n;
         }
-        if (lc.is_multicell && !lc.is_topleft) continue;
+        if (self->cpu_cells[i].is_multicell && (self->cpu_cells[i].x || self->cpu_cells[i].y)) continue;
         if (!lc.chars[0]) {
             if (skip_zero_cells) continue;
             lc.chars[0] = ' ';
@@ -449,9 +456,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
         }
 
         unsigned n = text_in_cell_ansi(self->cpu_cells + pos, self->text_cache, output);
-        if (output->buf[output->len - n] == 0) {
-            output->buf[output->len - n] = ' ';
-        }
+        if (output->buf[output->len - n] == 0) output->buf[output->len - n] = ' ';
 
         if (output->buf[output->len - n] == '\t') {
             unsigned num_cells_to_skip_for_tab = 0;
@@ -516,7 +521,7 @@ width(Line *self, PyObject *val) {
     const CPUCell *c = self->cpu_cells + x;
     if (!cell_has_text(c)) return 0;
     unsigned long ans = 1;
-    if (c->is_multicell) ans = c->x || c->y ? 0 : cell_multicell_data(c, self->text_cache).width;
+    if (c->is_multicell) ans = c->x || c->y ? 0 : c->width;
     return PyLong_FromUnsignedLong(ans);
 }
 
@@ -678,7 +683,7 @@ line_get_char(Line *self, index_type at) {
     if (self->cpu_cells[at].ch_is_idx) {
         RAII_ListOfChars(lc);
         text_in_cell(self->cpu_cells + at, self->text_cache, &lc);
-        if (lc.is_multicell && !lc.is_topleft) return 0;
+        if (self->cpu_cells[at].is_multicell && (self->cpu_cells[at].x || self->cpu_cells[at].y)) return 0;
         return lc.chars[0];
     } else return self->cpu_cells[at].ch_or_idx;
 }
@@ -839,9 +844,8 @@ apply_mark(Line *line, const uint16_t mark, index_type *cell_pos, unsigned int *
                 MARK;
             }
         } else if (line->cpu_cells[x].is_multicell) {
-            MultiCellData mcd = {.val=lc.chars[lc.count]};
             *match_pos += lc.count - 1;
-            index_type x_limit = MIN(line->xnum, mcd_x_limit(mcd));
+            index_type x_limit = MIN(line->xnum, mcd_x_limit(line->cpu_cells + x));
             for (; x < x_limit; x++) { MARK; }
             x--;
         } else {

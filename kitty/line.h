@@ -17,7 +17,7 @@
 // TODO: Cursor rendering over multicell
 // TODO: Test the escape codes to delete and insert characters and lines with multicell
 // TODO: Handle replay of dumped graphics_command and multicell_command
-// TODO: Handle rewrap of multiline chars
+// TODO: Handle rewrap and restitch of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
 // TODO: Test serialization to ansi only using escape code for explicitly set multicells
 // TODO: Test rendering of box drawing at various scales and subscales and alignments
@@ -54,38 +54,29 @@ typedef struct {
 } GPUCell;
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 
-typedef union MultiCellData {
-    struct {
-        char_type scale: 3;
-        char_type width: 3;
-        char_type subscale: 2;
-        char_type vertical_align: 3;
-        char_type explicitly_set: 1;
-        char_type : 19;
-        char_type msb : 1;
-    };
-    char_type val;
-} MultiCellData;
-static_assert(sizeof(MultiCellData) == sizeof(char_type), "Fix the ordering of MultiCellData");
-
 typedef union CPUCell {
     struct {
         char_type ch_or_idx: sizeof(char_type) * 8 - 1;
         char_type ch_is_idx: 1;
         char_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
+        char_type next_char_was_wrapped : 1;
+        char_type is_multicell : 1;
+        char_type explicitly_set: 1;
         char_type x : 8;
         char_type y : 4;
-        char_type is_multicell : 1;
-        char_type next_char_was_wrapped : 1;
-        char_type : 2;
+        char_type subscale: 2;
+        char_type scale: 3;
+        char_type width: 3;
+        char_type vertical_align: 3;
+        char_type : 21;
     };
     struct {
         char_type ch_and_idx: sizeof(char_type) * 8;
-        char_type : sizeof(hyperlink_id_type) * 8;
-        char_type : 16;
+        char_type : 32;
+        char_type : 32;
     };
 } CPUCell;
-static_assert(sizeof(CPUCell) == sizeof(uint64_t), "Fix the ordering of CPUCell");
+static_assert(sizeof(CPUCell) == 12, "Fix the ordering of CPUCell");
 
 typedef union LineAttrs {
     struct {
@@ -130,21 +121,12 @@ static inline unsigned num_codepoints_in_cell(const CPUCell *c, const TextCache 
     } else ans = c->ch_or_idx ? 1 : 0;
     return ans;
 }
-static inline MultiCellData cell_multicell_data(const CPUCell *c, const TextCache *tc) {
-    return (MultiCellData){.val = tc_last_char_at_index(tc, c->ch_or_idx)};
-}
-static inline unsigned mcd_x_limit(MultiCellData mcd) { return mcd.scale * mcd.width; }
+static inline unsigned mcd_x_limit(const CPUCell* mcd) { return mcd->scale * mcd->width; }
 
 static inline void
 text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
-    ans->is_multicell = false;
     if (c->ch_is_idx) {
         tc_chars_at_index(tc, c->ch_or_idx, ans);
-        if (c->is_multicell) {
-            ans->is_multicell = true;
-            ans->is_topleft = c->x + c->y == 0;
-            if (ans->count > 0) { ans->count--; }
-        }
     } else {
         ans->count = 1;
         ans->chars[0] = c->ch_or_idx;
@@ -153,14 +135,8 @@ text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
 
 static inline bool
 text_in_cell_without_alloc(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
-    ans->is_multicell = false;
     if (c->ch_is_idx) {
         if (!tc_chars_at_index_without_alloc(tc, c->ch_or_idx, ans)) return false;
-        if (c->is_multicell) {
-            ans->is_multicell = true;
-            ans->is_topleft = c->x + c->y == 0;
-            if (ans->count > 0) { ans->count--; }
-        }
         return true;
     }
     ans->count = 1;

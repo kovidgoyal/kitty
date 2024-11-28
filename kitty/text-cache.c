@@ -116,7 +116,8 @@ tc_chars_at_index_ansi(const TextCache *self, char_type idx, ANSIBuf *output) {
     unsigned count = 0;
     if (self->array.count > idx) {
         count = self->array.items[idx].count;
-        ensure_space_for(output, buf, output->buf[0], output->len + count, capacity, 2048, false);
+        // we ensure space for one extra byte for ANSI escape code trailer if multicell
+        ensure_space_for(output, buf, output->buf[0], output->len + count + 1, capacity, 2048, false);
         memcpy(output->buf + output->len, self->array.items[idx].chars, sizeof(output->buf[0]) * count);
         output->len += count;
     }
