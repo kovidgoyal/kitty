@@ -13,7 +13,7 @@ import time
 from pty import CHILD, fork
 
 from kitty.constants import kitten_exe
-from kitty.fast_data_types import Screen
+from kitty.fast_data_types import Screen, safe_pipe
 from kitty.utils import read_screen_size
 
 
@@ -39,7 +39,7 @@ def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollbac
     fcntl.ioctl(master_fd, termios.TIOCSWINSZ, s)
 
     write_buf = b''
-    r_pipe, w_pipe = os.pipe2(os.O_CLOEXEC | os.O_NONBLOCK)
+    r_pipe, w_pipe = safe_pipe(True)
     class ToChild:
         def write(self, x: bytes | str) -> None:
             nonlocal write_buf
