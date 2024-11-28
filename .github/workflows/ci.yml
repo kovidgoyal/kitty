@@ -190,7 +190,7 @@ jobs:
             run: python3 .github/workflows/ci.py package
 
     linux-dev:
-        name: Test ./dev.sh
+        name: Test ./dev.sh and benchmark
         runs-on: ubuntu-latest
         steps:
           - name: Checkout source code
@@ -208,3 +208,6 @@ jobs:
 
           - name: Build kitty
             run: ./dev.sh build
+
+          - name: Run benchmarks
+            run: ./benchmark.py
