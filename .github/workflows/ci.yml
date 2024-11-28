@@ -189,6 +189,9 @@ jobs:
           - name: Build kitty package
             run: python3 .github/workflows/ci.py package
 
+          - name: Run benchmarks
+            run: ./benchmark.py
+
     linux-dev:
         name: Test ./dev.sh and benchmark
         runs-on: ubuntu-latest
