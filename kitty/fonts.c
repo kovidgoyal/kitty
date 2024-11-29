@@ -764,11 +764,11 @@ calculate_regions_for_line(RunFont rf, unsigned cell_height, Region *src, Region
         }
     }
     Region dest_in_full_coords = {.top = rf.multicell_y * cell_height, .bottom = (rf.multicell_y + 1) * cell_height};
-    unsigned intersetion_top = MAX(src_in_full_coords.top, dest_in_full_coords.top);
-    unsigned intersetion_bottom = MIN(src_in_full_coords.bottom, dest_in_full_coords.bottom);
-    unsigned src_top_delta = intersetion_top - src_in_full_coords.top, src_bottom_delta = src_in_full_coords.bottom - intersetion_bottom;
+    unsigned intersection_top = MAX(src_in_full_coords.top, dest_in_full_coords.top);
+    unsigned intersection_bottom = MIN(src_in_full_coords.bottom, dest_in_full_coords.bottom);
+    unsigned src_top_delta = intersection_top - src_in_full_coords.top, src_bottom_delta = src_in_full_coords.bottom - intersection_bottom;
     src->top += src_top_delta; src->bottom = src->bottom > src_bottom_delta ? src->bottom - src_bottom_delta : 0;
-    unsigned dest_top_delta = intersetion_top - dest_in_full_coords.top, dest_bottom_delta = dest_in_full_coords.bottom - intersetion_bottom;
+    unsigned dest_top_delta = intersection_top - dest_in_full_coords.top, dest_bottom_delta = dest_in_full_coords.bottom - intersection_bottom;
     dest->top = dest_top_delta; dest->bottom = cell_height > dest_bottom_delta ? cell_height - dest_bottom_delta : 0;
 }
 

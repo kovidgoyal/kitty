@@ -5,6 +5,7 @@ import os
 import tempfile
 import unittest
 from functools import partial
+from math import ceil
 
 from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import (
@@ -208,10 +209,26 @@ class Rendering(BaseTest):
         self.assertEqual(len(self.sprites) - prerendered, len(box_chars))
 
     def test_scaled_box_drawing(self):
-        full_block = b'\xff' * len(next(iter(self.sprites.values())))
-        empty_block = b'\0' * len(full_block)
-        upper_half_block = (b'\xff' * (len(full_block) // 2)) + (b'\0' * (len(full_block) // 2))
-        lower_half_block = (b'\0' * (len(full_block) // 2)) + (b'\xff' * (len(full_block) // 2))
+        block_size = self.cell_width * self.cell_height * 4
+
+        def full_block(subscale):
+            return b'\xff' * block_size
+
+        def empty_block(subscale):
+            return b'\0' * block_size
+
+        def half_block(subscale, first=b'\xff', second=b'\0'):
+            frac = 1 / (subscale + 1)
+            height = ceil(frac * self.cell_height)
+            rest = self.cell_height - height
+            return (first * (rest * self.cell_width * 4)) + (second * height * self.cell_width * 4)
+
+        def upper_half_block(subscale):
+            return half_block(subscale)
+
+        def lower_half_block(subscale):
+            return half_block(subscale, b'\0', b'\xff')
+
         s = self.create_screen(cols=8, lines=8, scrollback=0)
 
         def block_test(a=empty_block, b=empty_block, c=empty_block, d=empty_block, scale=2, subscale=1, vertical_align=0):
@@ -223,8 +240,8 @@ class Rendering(BaseTest):
             test_render_line(s.line(1))
             self.ae(len(self.sprites), before + 4)
             blocks = tuple(self.sprites)[before:]
-            for expected, actual in zip((a, b, c, d), blocks):
-                self.ae(self.sprites[actual], expected)
+            for i, (expected, actual) in enumerate(zip((a(subscale), b(subscale), c(subscale), d(subscale)), blocks)):
+                self.ae(self.sprites[actual], expected, f'The {i} block differs')
 
         block_test(full_block, full_block, full_block, full_block, subscale=0)
         block_test(a=full_block)
