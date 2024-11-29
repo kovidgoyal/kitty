@@ -650,7 +650,8 @@ static void
 nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
     CPUCell *cp; GPUCell *gp;
     linebuf_init_cells(self->linebuf, y_, &cp, &gp);
-    index_type y_max_limit = MIN(self->lines, y_ + cp[x_].scale);
+    index_type num_lines_above = cp[x_].y;
+    index_type y_max_limit = MIN(self->lines, y_ + cp[x_].scale - num_lines_above);
     while (cp[x_].x && x_ > 0) x_--;
     index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
     char_type ch = replace_with_spaces ? ' ' : 0;
@@ -660,9 +661,11 @@ nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_
     }
     int y_min_limit = -1;
     if (self->linebuf == self->main_linebuf) y_min_limit = -(self->historybuf->count + 1);
-    for (int y = y_ - 1; y > y_min_limit; y--) {
+    for (int y = (int)y_ - 1; y > y_min_limit && num_lines_above; y--, num_lines_above--) {
         Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
-        nuke_in_line(cp, gp, x_, x_limit, ch); linebuf_mark_line_dirty(self->linebuf, y);
+        nuke_in_line(cp, gp, x_, x_limit, ch);
+        if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
+        else historybuf_mark_line_dirty(self->historybuf, -(y + 1));
     }
     self->is_dirty = true;
 }
