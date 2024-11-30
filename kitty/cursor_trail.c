@@ -157,7 +157,7 @@ update_cursor_trail_needs_render(CursorTrail *ct, Window *w) {
 bool
 update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
 
-    if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) < now - WD.screen->cursor->position_changed_by_client_at) {
+    if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail)) {
         update_cursor_trail_target(ct, w);
     }
 
