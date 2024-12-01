@@ -771,33 +771,6 @@ halve_multicell_width(Screen *self, index_type x_, index_type y_) {
     return true;
 }
 
-static void
-move_widened_char(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
-    self->cursor->x = xpos; self->cursor->y = ypos;
-    CPUCell src_cpu = *cpu_cell, *dest_cpu;
-    GPUCell src_gpu = *gpu_cell, *dest_gpu;
-    zero_cells(s, cpu_cell, gpu_cell);
-    index_type dest_x = xpos, dest_y = ypos;
-
-    if (self->modes.mDECAWM) {  // overflow goes onto next line
-        continue_to_next_line(self);
-        init_text_loop_line(self, s);
-        dest_y = self->cursor->y; dest_x = self->cursor->x;
-        dest_cpu = s->cp; dest_gpu = s->gp;
-        self->cursor->x = MIN(2u, self->columns);
-    } else {
-        dest_x--;
-        dest_cpu = cpu_cell - 1;
-        dest_gpu = gpu_cell - 1;
-        self->cursor->x = self->columns;
-    }
-    if (dest_cpu->is_multicell) nuke_multicell_char_at(self, dest_x, dest_y, false);
-    *dest_cpu = src_cpu; *dest_gpu = src_gpu;
-    CPUCell *second_cpu = dest_cpu + 1; GPUCell *second_gpu = dest_gpu + 1;
-    *second_cpu = *dest_cpu; *second_gpu = *dest_gpu;
-    second_cpu->x = 1;
-}
-
 void
 set_active_hyperlink(Screen *self, char *id, char *url) {
     if (OPT(allow_hyperlinks)) {
@@ -856,6 +829,54 @@ draw_second_flag_codepoint(Screen *self, char_type ch) {
     return true;
 }
 
+static bool
+has_multiline_cells_in_span(const CPUCell *cells, const index_type start, const index_type count) {
+    for (index_type x = start; x < start + count; x++) if (cells[x].y) return true;
+    return false;
+}
+
+static bool
+move_cursor_past_multicell(Screen *self, index_type required_width) {
+    if (required_width > self->columns) return false;
+    index_type orig_x = self->cursor->x, orig_y = self->cursor->y;
+    while(true) {
+        CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y);
+        while (self->cursor->x + required_width <= self->columns) {
+            if (!has_multiline_cells_in_span(cp, self->cursor->x, required_width)) {
+                if (cp[self->cursor->x].is_multicell) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, cp[self->cursor->x].x != 0);
+                return true;
+            }
+            self->cursor->x++;
+        }
+        if (self->modes.mDECAWM || has_multiline_cells_in_span(cp, self->columns - required_width, required_width)) {
+            self->cursor->x = 0;
+            screen_index(self);
+        } else {
+            self->cursor->x = self->columns - required_width;
+            if (cp[self->cursor->x].is_multicell) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, cp[self->cursor->x].x != 0);
+            return true;
+        }
+    }
+    self->cursor->x = orig_x; self->cursor->y = orig_y;
+    return false;
+}
+
+static void
+move_widened_char_past_multiline_chars(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
+    self->cursor->x = xpos; self->cursor->y = ypos;
+    if (move_cursor_past_multicell(self, 2)) {
+        CPUCell *cp; GPUCell *gp;
+        clear_sprite_position(*gpu_cell);
+        linebuf_init_cells(self->linebuf, self->cursor->y, &cp, &gp);
+        cp[self->cursor->x] = *cpu_cell; gp[self->cursor->x] = *gpu_cell;
+        self->cursor->x++;
+        cp[self->cursor->x] = *cpu_cell; gp[self->cursor->x] = *gpu_cell;
+        cp[self->cursor->x].x = 1;
+        self->cursor->x++;
+    }
+    *cpu_cell = (CPUCell){0}; *gpu_cell = (GPUCell){0};
+}
+
 static void
 draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     bool has_prev_char = false;
@@ -869,33 +890,38 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
         xpos = self->columns - 1;
         has_prev_char = true;
     }
-    if (has_prev_char) {
-        CPUCell *cp; GPUCell *gp;
-        linebuf_init_cells(self->linebuf, ypos, &cp, &gp);
-        while (xpos > 0 && cp[xpos].is_multicell && cp[xpos].x) xpos--;
-        if (!add_combining_char(self, ch, xpos, ypos)) return;
-        unsigned base_pos = self->lc->count -  2;
-        if (ch == VS16) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
-            CPUCell *cpu_cell = cp + xpos;
-            GPUCell *gpu_cell = gp + xpos;
-            if (self->lc->chars[base_pos + 1] == VS16 && (!cpu_cell->is_multicell || cpu_cell->width < 2) && is_emoji_presentation_base(self->lc->chars[base_pos])) {
-                cpu_cell->is_multicell = true;
-                cpu_cell->width = 2;
-                if (!cpu_cell->scale) cpu_cell->scale = 1;
-                if (xpos + 1 < self->columns) {
-                    CPUCell *second = cp + xpos + 1;
-                    if (second->is_multicell) nuke_multicell_char_at(self, xpos, ypos, false);
-                    zero_cells(s, second, gp + xpos + 1);
-                    self->cursor->x++;
-                    *second = *cpu_cell; second->x = 1;
-                } else move_widened_char(self, s, cpu_cell, gpu_cell, xpos, ypos);
-            }
-        } else if (ch == VS15) {
-            const CPUCell *cpu_cell = cp + xpos;
-            if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->width == 2 && is_emoji_presentation_base(self->lc->chars[base_pos])) {
-                index_type deltax = (cpu_cell->scale * cpu_cell->width) / 2;
-                if (halve_multicell_width(self, xpos, ypos)) self->cursor->x -= deltax;
-            }
+    if (!has_prev_char) return;
+    CPUCell *cp; GPUCell *gp;
+    linebuf_init_cells(self->linebuf, ypos, &cp, &gp);
+    while (xpos && cp[xpos].is_multicell && cp[xpos].x) xpos--;
+    if (!add_combining_char(self, ch, xpos, ypos) || self->lc->count < 2) return;
+    unsigned base_pos = self->lc->count -  2;
+    if (ch == VS16) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
+        CPUCell *cpu_cell = cp + xpos;
+        GPUCell *gpu_cell = gp + xpos;
+        if (self->lc->chars[base_pos + 1] == VS16 && !cpu_cell->is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
+            cpu_cell->is_multicell = true;
+            cpu_cell->width = 2;
+            if (!cpu_cell->scale) cpu_cell->scale = 1;
+            if (xpos + 1 < self->columns) {
+                CPUCell *second = cp + xpos + 1;
+                if (second->is_multicell) {
+                    if (second->y) {
+                        move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, ypos);
+                        return;
+                    }
+                    nuke_multicell_char_at(self, xpos + 1, ypos, false);
+                }
+                zero_cells(s, second, gp + xpos + 1);
+                self->cursor->x++;
+                *second = *cpu_cell; second->x = 1;
+            } else move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, ypos);
+        }
+    } else if (ch == VS15) {
+        const CPUCell *cpu_cell = cp + xpos;
+        if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->width == 2 && is_emoji_presentation_base(self->lc->chars[base_pos])) {
+            index_type deltax = (cpu_cell->scale * cpu_cell->width) / 2;
+            if (halve_multicell_width(self, xpos, ypos)) self->cursor->x -= deltax;
         }
     }
 }
@@ -960,7 +986,13 @@ static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
     const uint32_t first_char = map_char(self, chars[0]);
-    if (ts_cursor_on_multicell(self, s) && ' ' <= first_char && first_char != DEL && !is_combining_char(first_char)) replace_multicell_char_under_cursor_with_spaces(self);
+    if (ts_cursor_on_multicell(self, s) && ' ' <= first_char && first_char != DEL) {
+        if (s->cp[self->cursor->x].y) {
+            move_cursor_past_multicell(self, 1);
+        } else {
+            if (!is_combining_char(first_char)) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, s->cp[self->cursor->x].x != 0);
+        }
+    }
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = map_char(self, chars[i]);
         if (ch < ' ') {
@@ -977,7 +1009,10 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                             init_text_loop_line(self, s);
                         } else if (self->columns > 0){
                             self->cursor->x = self->columns - 1;
-                            if (ts_cursor_on_multicell(self, s)) replace_multicell_char_under_cursor_with_spaces(self);
+                            if (ts_cursor_on_multicell(self, s)) {
+                                if (s->cp[self->cursor->x].y) move_cursor_past_multicell(self, 1);
+                                else replace_multicell_char_under_cursor_with_spaces(self);
+                            }
                             screen_tab(self);
                         }
                     } else screen_tab(self);
@@ -1030,15 +1065,22 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             s->image_placeholder_marked = true;
         }
         CPUCell *fc = s->cp + self->cursor->x;
-        zero_cells(s, fc, s->gp + self->cursor->x);
         if (char_width == 2) {
-            *fc = (CPUCell){.ch_or_idx=ch, .is_multicell=true, .width=2, .scale=1};
             CPUCell *second = fc + 1;
-            if (second->is_multicell) nuke_multicell_char_at(self, self->cursor->x + 1, self->cursor->y, true);
+            if (second->is_multicell) {
+                if (second->y) {
+                    self->cursor->x++;
+                    move_cursor_past_multicell(self, 2);
+                    fc = s->cp + self->cursor->x; second = fc + 1;
+                } else nuke_multicell_char_at(self, self->cursor->x + 1, self->cursor->y, true);
+            }
+            zero_cells(s, fc, s->gp + self->cursor->x);
+            *fc = (CPUCell){.ch_or_idx=ch, .is_multicell=true, .width=2, .scale=1};
             *second = *fc; second->x = 1;
             s->gp[self->cursor->x + 1] = s->gp[self->cursor->x];
             self->cursor->x += 2;
         } else {
+            zero_cells(s, fc, s->gp + self->cursor->x);
             cell_set_char(fc, ch); self->cursor->x++;
             fc->is_multicell = false;
         }

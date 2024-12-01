@@ -76,6 +76,9 @@ def test_multicell(self: TestMulticell) -> None:
             y = s.cursor.y
         self.ae(text, line_text(y))
 
+    def assert_cursor_at(x, y):
+        self.ae((s.cursor.x, s.cursor.y), (x, y))
+
     s = self.create_screen(cols=6, lines=6)
 
     # Test basic multicell drawing
@@ -111,13 +114,38 @@ def test_multicell(self: TestMulticell) -> None:
     multicell(s, 'a', width=2, scale=2, subscale=3)
     s.cursor.x, s.cursor.y = 1, 1
     s.draw('b')
-    self.ae(0, count_multicells())
+    self.ae(8, count_multicells())
+    assert_cursor_at(5, 1)
+    self.assertIn('b', str(s.linebuf))
     s.reset()
     s.cursor.x = 1
     s.draw('莊')
     s.cursor.x = 0
     s.draw('莊')
     ac(2, 0, is_multicell=False, text=' ')
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.cursor.x += 1
+    multicell(s, 'b', scale=2)
+    s.draw('莊')
+    assert_cursor_at(2, 2)
+    self.assertIn('莊', str(s.linebuf))
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.cursor.x += 1
+    multicell(s, 'b', scale=2)
+    s.draw('\u2716\ufe0f')
+    assert_cursor_at(2, 2)
+    s.reset()
+    s.draw('莊')
+    s.cursor.x = 0
+    s.draw('b')
+    self.ae(str(s.line(0)), 'b')
+    s.reset()
+    s.draw('莊')
+    s.cursor.x = 1
+    s.draw('b')
+    self.ae(str(s.line(0)), ' b')
 
     # Test multicell with cursor in a multicell
     def big_a(x, y):
