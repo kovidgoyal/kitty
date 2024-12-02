@@ -290,6 +290,14 @@ Keyboard based text selection for the kitty scrollback buffer.
 Miscellaneous
 ------------------
 
+.. tool_gattino:
+
+`gattino <https://github.com/salvozappa/gattino>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Integrate kitty with an LLM to convert plain language prompts into shell
+commands.
+
 .. tool_kitty_smart_tab:
 
 `kitty-smart-tab <https://github.com/yurikhan/kitty-smart-tab>`_
