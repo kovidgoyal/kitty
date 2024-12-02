@@ -53,50 +53,90 @@ nonnegative_integer_as_utf32(unsigned num, ANSIBuf *output) {
     return num_digits;
 }
 
-static unsigned
-write_multicell_ansi_prefix(const CPUCell *mcd, ANSIBuf *output) {
-    unsigned pos = output->len;
-    ensure_space_for(output, buf, output->buf[0], output->len + 128, capacity, 2048, false);
-#define w(x) output->buf[output->len++] = x
-    w(0x1b); w(']');
-    for (unsigned i = 0; i < sizeof(xstr(TEXT_SIZE_CODE)) - 1; i++) w(xstr(TEXT_SIZE_CODE)[i]);
-    w(';');
-    if (mcd->width > 1) {
-        w('w'); w('='); nonnegative_integer_as_utf32(mcd->width, output); w(':');
-    }
-    if (mcd->scale > 1) {
-        w('s'); w('='); nonnegative_integer_as_utf32(mcd->scale, output); w(':');
-    }
-    if (mcd->subscale) {
-        w('S'); w('='); nonnegative_integer_as_utf32(mcd->subscale, output); w(':');
-    }
-    if (output->buf[output->len - 1] == ':') output->len--;
-    w(';');
-#undef w
-    return output->len - pos;
+static void
+ensure_space_in_ansi_output_buf(ANSILineState *s, size_t extra) {
+    ensure_space_for(s->output_buf, buf, s->output_buf->buf[0], s->output_buf->len + extra, capacity, 2048, false);
 }
 
 static unsigned
-text_in_cell_ansi(const CPUCell *c, TextCache *tc, ANSIBuf *output) {
-    unsigned n = 0;
-    if (c->is_multicell) {
-        if (c->x || c->y) return 0;
-        n = write_multicell_ansi_prefix(c, output);
+write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
+    ensure_space_in_ansi_output_buf(s, 128);
+    s->current_multicell_state = mcd;
+    s->escape_code_written = true;
+    unsigned pos = s->output_buf->len;
+#define w(x) s->output_buf->buf[s->output_buf->len++] = x
+    w(0x1b); w(']');
+    for (unsigned i = 0; i < sizeof(xstr(TEXT_SIZE_CODE)) - 1; i++) w(xstr(TEXT_SIZE_CODE)[i]);
+    w(';');
+    w('w'); w('='); nonnegative_integer_as_utf32(mcd->width, s->output_buf); w(':');
+    if (mcd->scale > 1) {
+        w('s'); w('='); nonnegative_integer_as_utf32(mcd->scale, s->output_buf); w(':');
     }
+    if (mcd->subscale) {
+        w('S'); w('='); nonnegative_integer_as_utf32(mcd->subscale, s->output_buf); w(':');
+    }
+    if (s->output_buf->buf[s->output_buf->len - 1] == ':') s->output_buf->len--;
+    w(';');
+#undef w
+    return s->output_buf->len - pos;
+}
+
+static void
+close_multicell(ANSILineState *s) {
+    if (s->current_multicell_state) {
+        ensure_space_in_ansi_output_buf(s, 1);
+        s->output_buf->buf[s->output_buf->len++] = '\a';
+        s->current_multicell_state = NULL;
+    }
+}
+
+static void
+start_multicell_if_needed(ANSILineState *s, const CPUCell *c) {
+    if (!c->natural_width || c->scale > 1 || c->subscale || c->vertical_align) write_multicell_ansi_prefix(s, c);
+}
+
+static bool
+multicell_is_continuation_of_previous(const CPUCell *prev, const CPUCell *curr) {
+    if (prev->scale != curr->scale || prev->subscale != curr->subscale || prev->vertical_align != curr->vertical_align) return false;
+    if (prev->natural_width) return curr->natural_width;
+    return prev->width == curr->width && !curr->natural_width;
+}
+
+static void
+text_in_cell_ansi(ANSILineState *s, const CPUCell *c, TextCache *tc) {
+    if (c->is_multicell) {
+        if (c->x || c->y) return;
+        if (s->current_multicell_state) {
+            if (!multicell_is_continuation_of_previous(s->current_multicell_state, c)) {
+                close_multicell(s);
+                start_multicell_if_needed(s, c);
+            }
+        } else start_multicell_if_needed(s, c);
+    } else close_multicell(s);
+
+    size_t pos = s->output_buf->len;
     if (c->ch_is_idx) {
-        n += tc_chars_at_index_ansi(tc, c->ch_or_idx, output);
+        tc_chars_at_index_ansi(tc, c->ch_or_idx, s->output_buf);
     } else {
-        ensure_space_for(output, buf, output->buf[0], output->len + 2, capacity, 2048, false);
-        if (c->ch_or_idx) {
-            output->buf[output->len++] = c->ch_or_idx;
-            n += 1;
+        ensure_space_in_ansi_output_buf(s, 2);
+        s->output_buf->buf[s->output_buf->len++] = c->ch_or_idx;
+    }
+    if (s->output_buf->len > pos) {
+        switch (s->output_buf->buf[pos]) {
+            case 0: s->output_buf->buf[pos] = ' '; break;
+            case '\t': {
+                unsigned num_cells_to_skip_for_tab = 0, n = s->output_buf->len - pos;
+                if (n - pos > 1) {
+                    num_cells_to_skip_for_tab = s->output_buf->buf[s->output_buf->len - n + 1];
+                    s->output_buf->len -= n - 1;
+                }
+                const CPUCell *next = c + 1;
+                while (num_cells_to_skip_for_tab && pos + 1 < s->limit && cell_is_char(next, ' ')) {
+                    num_cells_to_skip_for_tab--; pos++; next++;
+                }
+            } break;
         }
     }
-    if (c->is_multicell) {
-        output->buf[output->len++] = '\a';
-        n++;
-    }
-    return n;
 }
 
 
@@ -407,85 +447,87 @@ write_mark(const char *mark, ANSIBuf *output) {
 
 }
 
+static void
+write_sgr_to_ansi_buf(ANSILineState *s, const char *val) {
+    close_multicell(s);
+    ensure_space_in_ansi_output_buf(s, 128);
+    s->escape_code_written = true;
+    write_sgr(val, s->output_buf);
+}
+
+static void
+write_ch_to_ansi_buf(ANSILineState *s, char_type ch) {
+    close_multicell(s);
+    ensure_space_in_ansi_output_buf(s, 1);
+    s->output_buf->buf[s->output_buf->len++] = ch;
+}
+
+static void
+write_hyperlink_to_ansi_buf(ANSILineState *s, hyperlink_id_type hid) {
+    close_multicell(s);
+    ensure_space_in_ansi_output_buf(s, 2256);
+    s->escape_code_written = true;
+    write_hyperlink(hid, s->output_buf);
+}
+
+static void
+write_mark_to_ansi_buf(ANSILineState *s, const char *m) {
+    close_multicell(s);
+    ensure_space_in_ansi_output_buf(s, 64);
+    s->escape_code_written = true;
+    write_mark(m, s->output_buf);
+}
+
 bool
-line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type start_at, index_type stop_before, char_type prefix_char) {
-#define ENSURE_SPACE(extra) ensure_space_for(output, buf, output->buf[0], output->len + extra, capacity, 2048, false);
-#define WRITE_SGR(val) { ENSURE_SPACE(128); escape_code_written = true; write_sgr(val, output); }
-#define WRITE_CH(val) { ENSURE_SPACE(1); output->buf[output->len++] = val; }
-#define WRITE_HYPERLINK(val) { ENSURE_SPACE(2256); escape_code_written = true; write_hyperlink(val, output); }
-#define WRITE_MARK(val) { ENSURE_SPACE(64); escape_code_written = true; write_mark(val, output); }
-    bool escape_code_written = false;
-    output->len = 0;
-    index_type limit = MIN(stop_before, xlimit_for_line(self));
-    if (prefix_char) { WRITE_CH(prefix_char); }
+line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char) {
+    s->output_buf->len = 0;
+    s->limit = MIN(stop_before, xlimit_for_line(self));
+    s->current_multicell_state = NULL;
+    s->escape_code_written = false;
+    if (prefix_char) write_ch_to_ansi_buf(s, prefix_char);
 
     switch (self->attrs.prompt_kind) {
         case UNKNOWN_PROMPT_KIND:
             break;
-        case PROMPT_START:
-            WRITE_MARK("A");
-            break;
-        case SECONDARY_PROMPT:
-            WRITE_MARK("A;k=s");
-            break;
-        case OUTPUT_START:
-            WRITE_MARK("C");
-            break;
+        case PROMPT_START: write_mark_to_ansi_buf(s, "A"); break;
+        case SECONDARY_PROMPT: write_mark_to_ansi_buf(s, "A;k=s"); break;
+        case OUTPUT_START: write_mark_to_ansi_buf(s, "C"); break;
     }
-    if (limit <= start_at) return escape_code_written;
+    if (s->limit <= start_at) return s->escape_code_written;
 
     static const GPUCell blank_cell = { 0 };
     GPUCell *cell;
-    if (*prev_cell == NULL) *prev_cell = &blank_cell;
+    if (s->prev_gpu_cell == NULL) s->prev_gpu_cell = &blank_cell;
     const CellAttrs mask_for_sgr = {.val=SGR_MASK};
 
-#define CMP_ATTRS (cell->attrs.val & mask_for_sgr.val) != ((*prev_cell)->attrs.val & mask_for_sgr.val)
-#define CMP(x) cell->x != (*prev_cell)->x
+#define CMP_ATTRS (cell->attrs.val & mask_for_sgr.val) != (s->prev_gpu_cell->attrs.val & mask_for_sgr.val)
+#define CMP(x) (cell->x != s->prev_gpu_cell->x)
 
-    for (index_type pos=start_at; pos < limit; pos++) {
-        if (output->hyperlink_pool) {
-            hyperlink_id_type hid = self->cpu_cells[pos].hyperlink_id;
-            if (hid != output->active_hyperlink_id) {
-                WRITE_HYPERLINK(hid);
-            }
+    for (s->pos=start_at; s->pos < s->limit; s->pos++) {
+        if (s->output_buf->hyperlink_pool) {
+            hyperlink_id_type hid = self->cpu_cells[s->pos].hyperlink_id;
+            if (hid != s->output_buf->active_hyperlink_id) write_hyperlink_to_ansi_buf(s, hid);
         }
-        cell = &self->gpu_cells[pos];
+        cell = &self->gpu_cells[s->pos];
         if (CMP_ATTRS || CMP(fg) || CMP(bg) || CMP(decoration_fg)) {
-            const char *sgr = cell_as_sgr(cell, *prev_cell);
-            if (*sgr) WRITE_SGR(sgr);
+            const char *sgr = cell_as_sgr(cell, s->prev_gpu_cell);
+            if (*sgr) write_sgr_to_ansi_buf(s, sgr);
         }
 
-        unsigned n = text_in_cell_ansi(self->cpu_cells + pos, self->text_cache, output);
-        if (output->buf[output->len - n] == 0) output->buf[output->len - n] = ' ';
-
-        if (output->buf[output->len - n] == '\t') {
-            unsigned num_cells_to_skip_for_tab = 0;
-            if (n > 1) {
-                num_cells_to_skip_for_tab = output->buf[output->len - n + 1];
-                output->len -= n - 1;
-            }
-            while (num_cells_to_skip_for_tab && pos + 1 < limit && cell_is_char(self->cpu_cells + pos + 1, ' ')) {
-                num_cells_to_skip_for_tab--; pos++;
-            }
-        }
-        *prev_cell = cell;
+        text_in_cell_ansi(s, self->cpu_cells + s->pos, self->text_cache);
+        s->prev_gpu_cell = cell;
     }
-    return escape_code_written;
+    close_multicell(s);
+    return s->escape_code_written;
 #undef CMP_ATTRS
 #undef CMP
-#undef WRITE_SGR
-#undef WRITE_CH
-#undef ENSURE_SPACE
-#undef WRITE_HYPERLINK
-#undef WRITE_MARK
 }
 
 static PyObject*
 as_ansi(Line* self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
-    const GPUCell *prev_cell = NULL;
-    ANSIBuf output = {0};
-    line_as_ansi(self, &output, &prev_cell, 0, self->xnum, 0);
+    ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
+    line_as_ansi(self, &s, 0, self->xnum, 0);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
     free(output.buf);
     return ans;
@@ -910,7 +952,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     RAII_PyObject(cr, PyUnicode_FromString("\r"));
     RAII_PyObject(sgr_reset, PyUnicode_FromString("\x1b[m"));
     if (nl == NULL || cr == NULL || sgr_reset == NULL) return NULL;
-    const GPUCell *prev_cell = NULL;
+    ANSILineState s = {.output_buf=ansibuf};
     ansibuf->active_hyperlink_id = 0;
     bool need_newline = false;
     for (index_type y = 0; y < lines; y++) {
@@ -920,11 +962,11 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         if (as_ansi) {
             // less has a bug where it resets colors when it sees a \r, so work
             // around it by resetting SGR at the start of every line. This is
-            // pretty sad performance wise, but I guess it will remain till I
-            // get around to writing a nice pager kitten.
+            // pretty sad performance wise, but I guess it will remain as it
+            // makes writing pagers easier.
             // see https://github.com/kovidgoyal/kitty/issues/2381
-            prev_cell = NULL;
-            line_as_ansi(line, ansibuf, &prev_cell, 0, line->xnum, 0);
+            s.prev_gpu_cell = NULL;
+            line_as_ansi(line, &s, 0, line->xnum, 0);
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
             if (t && ansibuf->len > 0) APPEND(sgr_reset);
         } else {

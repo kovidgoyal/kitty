@@ -902,6 +902,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
         if (self->lc->chars[base_pos + 1] == VS16 && !cpu_cell->is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
             cpu_cell->is_multicell = true;
             cpu_cell->width = 2;
+            cpu_cell->natural_width = true;
             if (!cpu_cell->scale) cpu_cell->scale = 1;
             if (xpos + 1 < self->columns) {
                 CPUCell *second = cp + xpos + 1;
@@ -1075,7 +1076,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 } else nuke_multicell_char_at(self, self->cursor->x + 1, self->cursor->y, true);
             }
             zero_cells(s, fc, s->gp + self->cursor->x);
-            *fc = (CPUCell){.ch_or_idx=ch, .is_multicell=true, .width=2, .scale=1};
+            *fc = (CPUCell){.ch_or_idx=ch, .is_multicell=true, .width=2, .scale=1, .natural_width=true};
             *second = *fc; second->x = 1;
             s->gp[self->cursor->x + 1] = s->gp[self->cursor->x];
             self->cursor->x += 2;
@@ -1133,12 +1134,12 @@ decode_utf8_safe_string(const uint8_t *src, size_t sz, uint32_t *dest) {
     // dest must be an array of size at least sz
     uint32_t codep = 0;
     UTF8State state = 0, prev = UTF8_ACCEPT;
-    size_t i, d;
-    for (i = 0, d = 0; i < sz; i++) {
+    size_t i = 0, d = 0;
+    for (; i < sz; i++) {
         switch(decode_utf8(&state, &codep, src[i])) {
             case UTF8_ACCEPT:
                 // Ignore C0 and C1 chars
-                if (codep >= ' ' && !(codep >= DEL && codep <= 159)) dest[d++] = codep;
+                if (codep >= ' ' && !(DEL <= codep && codep <= 159)) dest[d++] = codep;
                 break;
             case UTF8_REJECT:
                 state = UTF8_ACCEPT;
@@ -1150,39 +1151,16 @@ decode_utf8_safe_string(const uint8_t *src, size_t sz, uint32_t *dest) {
     return d;
 }
 
-void
-screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload) {
-    screen_on_input(self);
-    if (!cmd->payload_sz) return;
-    ensure_space_for_chars(self->lc, cmd->payload_sz + 1);
-    self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
-    if (!self->lc->count) return;
-    index_type width = cmd->width;
-    if (!width) {
-        self->lc->chars[self->lc->count] = 0;
-        width = wcswidth_string(self->lc->chars);
-    }
-    if (!width) return;
-    CPUCell mcd = {
-        .width=MIN(width, 15u), .scale=MAX(1, MIN(cmd->scale, 15u)), .subscale=MIN(cmd->subscale, 3u),
-        .explicitly_set=1u, .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
-    };
-    width = mcd.width * mcd.scale;
+static void
+handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, const ListOfChars *lc) {
+    index_type width = mcd.width * mcd.scale;
     index_type height = mcd.scale;
     index_type max_height = self->margin_bottom - self->margin_top + 1;
     if (width > self->columns || height > max_height) return;
     PREPARE_FOR_DRAW_TEXT;
     mcd.hyperlink_id = s.cc.hyperlink_id;
-    cell_set_chars(&mcd, self->text_cache, self->lc);
-    if (self->columns < self->cursor->x + width) {
-        if (self->modes.mDECAWM) {
-            continue_to_next_line(self);
-        } else {
-            self->cursor->x = self->columns - width;
-            CPUCell *cp = linebuf_cpu_cell_at(self->linebuf, self->cursor->x, self->cursor->y);
-            if (cp->is_multicell) replace_multicell_char_under_cursor_with_spaces(self);
-        }
-    }
+    cell_set_chars(&mcd, self->text_cache, lc);
+    move_cursor_past_multicell(self, width);
     if (height > 1) {
         index_type available_height = self->margin_bottom - self->cursor->y + 1;
         if (height > available_height) {
@@ -1196,17 +1174,68 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
             if (self->modes.mIRM) insert_characters(self, self->cursor->x, width, y, true);
         }
     }
-    nuke_multicell_char_intersecting_with(self, self->cursor->x, self->cursor->x + width, self->cursor->y, self->cursor->y + height, true);
     for (index_type y = self->cursor->y; y < self->cursor->y + height; y++) {
         linebuf_init_cells(self->linebuf, y, &s.cp, &s.gp);
         linebuf_mark_line_dirty(self->linebuf, y);
         mcd.x = 0; mcd.y = y - self->cursor->y;
         for (index_type x = self->cursor->x; x < self->cursor->x + width; x++, mcd.x++) {
+            if (s.cp[x].is_multicell) nuke_multicell_char_at(self, x, y, s.cp[x].x + s.cp[x].y > 0);
             s.cp[x] = mcd; s.gp[x] = s.g;
         }
     }
     self->cursor->x += width;
     self->is_dirty = true;
+}
+
+static void
+handle_variable_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc) {
+    ensure_space_for_chars(lc, lc->count + 1); lc->chars[lc->count] = 0;
+    mcd.width = wcswidth_string(lc->chars);
+    if (!mcd.width) { lc->count = 0; return; }
+    handle_fixed_width_multicell_command(self, mcd, lc);
+    lc->count = 0;
+}
+
+void
+screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload) {
+    screen_on_input(self);
+    if (!cmd->payload_sz) return;
+    ensure_space_for_chars(self->lc, cmd->payload_sz + 1);
+    self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
+    if (!self->lc->count) return;
+    CPUCell mcd = {
+        .width=MIN(cmd->width, 15u), .scale=MAX(1, MIN(cmd->scale, 15u)), .subscale=MIN(cmd->subscale, 3u),
+        .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
+    };
+    if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);
+    else {
+        RAII_ListOfChars(lc);
+        mcd.natural_width = true;
+        for (unsigned i = 0; i < self->lc->count; i++) {
+            char_type ch = self->lc->chars[i];
+            if (is_ignored_char(ch)) continue;
+            if (is_combining_char(ch)) {
+                if (is_flag_codepoint(ch)) {
+                    if (lc.count == 1) {
+                        if (is_flag_pair(lc.chars[0], ch)) {
+                            lc.chars[lc.count++] = ch; handle_variable_width_multicell_command(self, mcd, &lc);
+                        } else {
+                            handle_variable_width_multicell_command(self, mcd, &lc); lc.chars[lc.count++] = ch;
+                        }
+                    } else {
+                        handle_variable_width_multicell_command(self, mcd, &lc); lc.chars[lc.count++] = ch;
+                    }
+                } else {
+                    if (!lc.count) continue;
+                    lc.chars[lc.count++] = ch;
+                }
+            } else {
+                if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
+                lc.chars[lc.count++] = ch;
+            }
+        }
+        if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
+    }
 }
 
 // }}}
@@ -3437,9 +3466,9 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     RAII_PyObject(nl, PyUnicode_FromString("\n"));
     if (!ans || !nl) return NULL;
     ANSIBuf output = {0};
-    const GPUCell *prev_cell = NULL;
     bool has_escape_codes = false;
     bool need_newline = false;
+    ANSILineState s = {.output_buf=&output};
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
@@ -3456,7 +3485,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
                 }
             }
         }
-        if (line_as_ansi(line, &output, &prev_cell, xr.x, x_limit, prefix_char)) has_escape_codes = true;
+        if (line_as_ansi(line, &s, xr.x, x_limit, prefix_char)) has_escape_codes = true;
         need_newline = insert_newlines && !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
         PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
         if (!t) return NULL;
@@ -5177,7 +5206,7 @@ test_parse_written_data(Screen *screen, PyObject *args) {
 
 static PyObject*
 multicell_data_as_dict(CPUCell mcd) {
-    return Py_BuildValue("{sI sI sI sO sI}", "scale", (unsigned int)mcd.scale, "width", (unsigned int)mcd.width, "subscale", (unsigned int)mcd.subscale, "explicitly_set", mcd.explicitly_set ? Py_True : Py_False, "vertical_align", mcd.vertical_align);
+    return Py_BuildValue("{sI sI sI sO sI}", "scale", (unsigned int)mcd.scale, "width", (unsigned int)mcd.width, "subscale", (unsigned int)mcd.subscale, "natural_width", mcd.natural_width ? Py_True : Py_False, "vertical_align", mcd.vertical_align);
 }
 
 static PyObject*

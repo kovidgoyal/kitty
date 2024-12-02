@@ -540,7 +540,7 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             DISPATCH_OSC_WITH_CODE(clipboard_control);
             END_DISPATCH
         case 66:
-            parse_multicell_code(self, buf + i, limit - 1);
+            parse_multicell_code(self, buf + i, limit - i);
             break;
         case 133:
 #ifdef DUMP_COMMANDS

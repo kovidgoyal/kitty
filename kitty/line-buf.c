@@ -455,11 +455,10 @@ as_ansi(LineBuf *self, PyObject *callback) {
     Line l = {.xnum=self->xnum, .text_cache=self->text_cache};
     // remove trailing empty lines
     index_type ylimit = self->ynum - 1;
-    const GPUCell *prev_cell = NULL;
-    ANSIBuf output = {0};
+    ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
     do {
         init_line(self, &l, self->line_map[ylimit]);
-        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
+        line_as_ansi(&l, &s, 0, l.xnum, 0);
         if (output.len) break;
         ylimit--;
     } while(ylimit > 0);
@@ -467,7 +466,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     for(index_type i = 0; i <= ylimit; i++) {
         bool output_newline = !linebuf_line_ends_with_continuation(self, i);
         init_line(self, &l, self->line_map[i]);
-        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
+        line_as_ansi(&l, &s, 0, l.xnum, 0);
         if (output_newline) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n

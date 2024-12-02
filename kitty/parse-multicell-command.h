@@ -148,7 +148,7 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
     case PAYLOAD: {
       sz = parser_buf_pos - pos;
       payload_start = pos;
-      g.payload_sz = MAX(BUF_EXTRA, sz);
+      g.payload_sz = sz;
       pos = parser_buf_pos;
     } break;
 

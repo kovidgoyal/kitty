@@ -72,7 +72,7 @@ char_type line_get_char(Line *self, index_type at);
 index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool, bool, index_type);
 bool line_startswith_url_chars(Line*, bool);
-bool line_as_ansi(Line *self, ANSIBuf *output, const GPUCell**, index_type start_at, index_type stop_before, char_type prefix_char) __attribute__((nonnull));
+bool line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char) __attribute__((nonnull));
 unsigned int line_length(Line *self);
 size_t cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf);
 size_t cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf);

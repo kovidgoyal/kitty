@@ -264,10 +264,10 @@ static void
 pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     PagerHistoryBuf *ph = self->pagerhist;
     if (!ph) return;
-    const GPUCell *prev_cell = NULL;
     Line l = {.xnum=self->xnum, .text_cache=self->text_cache};
     init_line(self, self->start_of_data, &l);
-    line_as_ansi(&l, as_ansi_buf, &prev_cell, 0, l.xnum, 0);
+    ANSILineState s = {.output_buf=as_ansi_buf};
+    line_as_ansi(&l, &s, 0, l.xnum, 0);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) {
         char line_end[2]; size_t num = 0;
@@ -353,11 +353,10 @@ static PyObject*
 as_ansi(HistoryBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
     Line l = {.xnum=self->xnum, .text_cache=self->text_cache};
-    const GPUCell *prev_cell = NULL;
-    ANSIBuf output = {0};
+    ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
-        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
+        line_as_ansi(&l, &s, 0, l.xnum, 0);
         if (!l.cpu_cells[l.xnum - 1].next_char_was_wrapped) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = '\n';

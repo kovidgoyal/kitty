@@ -61,7 +61,7 @@ typedef union CPUCell {
         char_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
         char_type next_char_was_wrapped : 1;
         char_type is_multicell : 1;
-        char_type explicitly_set: 1;
+        char_type natural_width: 1;
         char_type x : 8;
         char_type y : 4;
         char_type subscale: 2;
@@ -106,6 +106,15 @@ typedef struct MultiCellCommand {
     unsigned int width, scale, subscale, vertical_align;
     size_t payload_sz;
 } MultiCellCommand;
+
+typedef struct ANSILineOutput {
+    const GPUCell *prev_gpu_cell;
+    const CPUCell *current_multicell_state;
+    index_type pos, limit;
+    ANSIBuf *output_buf;
+    bool escape_code_written;
+} ANSILineState;
+
 
 Line* alloc_line(TextCache *text_cache);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);

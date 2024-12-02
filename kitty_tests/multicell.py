@@ -2,9 +2,9 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.fast_data_types import TEXT_SIZE_CODE
+from kitty.fast_data_types import TEXT_SIZE_CODE, wcswidth
 
-from . import BaseTest
+from . import BaseTest, parse_bytes
 from . import draw_multicell as multicell
 
 
@@ -15,6 +15,11 @@ class TestMulticell(BaseTest):
 
 
 def test_multicell(self: TestMulticell) -> None:
+    from kitty.tab_bar import as_rgb
+    from kitty.window import as_text
+
+    def as_ansi():
+        return as_text(s, as_ansi=True)
 
     def ac(x_, y_, **assertions):  # assert cell
         cell = s.cpu_cells(y_, x_)
@@ -39,7 +44,7 @@ def test_multicell(self: TestMulticell) -> None:
         ae('subscale')
         ae('vertical_align')
         ae('text')
-        ae('explicitly_set')
+        ae('natural_width')
 
         if 'cursor' in assertions:
             self.ae(assertions['cursor'], (s.cursor.x, s.cursor.y), msg)
@@ -85,21 +90,21 @@ def test_multicell(self: TestMulticell) -> None:
     s.reset()
     ac(0, 0, is_multicell=False)
     multicell(s, 'a')
-    ac(0, 0, is_multicell=True, width=1, scale=1, subscale=0, x=0, y=0, text='a', explicitly_set=True, cursor=(1, 0))
+    ac(0, 0, is_multicell=True, width=1, scale=1, subscale=0, x=0, y=0, text='a', natural_width=True, cursor=(1, 0))
     ac(0, 1, is_multicell=False), ac(1, 0, is_multicell=False), ac(1, 1, is_multicell=False)
     s.draw('莊')
-    ac(0, 0, is_multicell=True, width=1, scale=1, subscale=0, x=0, y=0, text='a', explicitly_set=True)
-    ac(1, 0, is_multicell=True, width=2, scale=1, subscale=0, x=0, y=0, text='莊', explicitly_set=False, cursor=(3, 0))
-    ac(2, 0, is_multicell=True, width=2, scale=1, subscale=0, x=1, y=0, text='', explicitly_set=False)
+    ac(0, 0, is_multicell=True, width=1, scale=1, subscale=0, x=0, y=0, text='a', natural_width=True)
+    ac(1, 0, is_multicell=True, width=2, scale=1, subscale=0, x=0, y=0, text='莊', natural_width=True, cursor=(3, 0))
+    ac(2, 0, is_multicell=True, width=2, scale=1, subscale=0, x=1, y=0, text='', natural_width=True)
     for x in range(s.columns):
         ac(x, 1, is_multicell=False)
     s.cursor.x = 0
     multicell(s, 'a', width=2, scale=2, subscale=3)
-    ac(0, 0, is_multicell=True, width=2, scale=2, subscale=3, x=0, y=0, text='a', explicitly_set=True, cursor=(4, 0))
+    ac(0, 0, is_multicell=True, width=2, scale=2, subscale=3, x=0, y=0, text='a', natural_width=False, cursor=(4, 0))
     for x in range(1, 4):
-        ac(x, 0, is_multicell=True, width=2, scale=2, subscale=3, x=x, y=0, text='', explicitly_set=True)
+        ac(x, 0, is_multicell=True, width=2, scale=2, subscale=3, x=x, y=0, text='', natural_width=False)
     for x in range(0, 4):
-        ac(x, 1, is_multicell=True, width=2, scale=2, subscale=3, x=x, y=1, text='', explicitly_set=True)
+        ac(x, 1, is_multicell=True, width=2, scale=2, subscale=3, x=x, y=1, text='', natural_width=False)
 
     # Test draw with cursor in a multicell
     s.reset()
@@ -148,16 +153,42 @@ def test_multicell(self: TestMulticell) -> None:
     self.ae(str(s.line(0)), ' b')
 
     # Test multicell with cursor in a multicell
-    def big_a(x, y):
+    def big_a(x, y=0, spaces=False, skip=False):
         s.reset()
         s.cursor.x, s.cursor.y = 1, 1
         multicell(s, 'a', scale=4)
+        ac(1, 1, x=0, y=0, text='a', scale=4, width=1)
         s.cursor.x, s.cursor.y = x, y
         multicell(s, 'b', scale=2)
-        self.ae(4, count_multicells())
-        for x in range(1, 5):
-            ac(x, 4, text=' ')
-    big_a(0, 0), big_a(1, 1), big_a(2, 2), big_a(5, 1)
+        if skip:
+            self.ae(20, count_multicells())
+            assert_cursor_at(2, 4)
+            self.assertIn('a', str(s.linebuf))
+        else:
+            ac(x, y, text='b')
+            self.ae(4, count_multicells())
+            for x_ in range(1, 5):
+                ac(x_, 4, text=' ' if spaces else '')
+    for y in (0, 1):
+        big_a(0, y), big_a(1, y), big_a(2, y, spaces=True)
+    big_a(2, 2, skip=True), big_a(5, 1, skip=True)
+
+    # Test multicell with combining and flag codepoints and default width
+    def seq(text, *expected):
+        s.reset()
+        multicell(s, text)
+        i = iter(expected)
+        for x in range(s.cursor.x):
+            cell = s.cpu_cells(0, x)
+            if cell['x'] == 0:
+                q = next(i)
+                ac(x, 0, text=q, width=wcswidth(q))
+    seq('ab', 'a', 'b')
+    flag = '\U0001f1ee\U0001f1f3'
+    seq(flag + 'CD', flag, 'C', 'D')
+    seq('àn̂X', 'à', 'n̂', 'X')
+    seq('\U0001f1eea', '\U0001f1ee', 'a')
+    del flag, seq
 
     # Test insert chars with multicell (aka right shift)
     s.reset()
@@ -329,8 +360,8 @@ def test_multicell(self: TestMulticell) -> None:
     s.erase_in_display(22)
     assert_line('ab_c\0\0', -2)
     assert_line('\0__\0\0\0', -1)
-    self.ae(s.historybuf.line(1).as_ansi(), f'a\x1b]{TEXT_SIZE_CODE};s=2;b\x07c')
-    self.ae(s.historybuf.line(0).as_ansi(), '')
+    self.ae(s.historybuf.line(1).as_ansi(), f'a\x1b]{TEXT_SIZE_CODE};w=1:s=2;b\x07c')
+    self.ae(s.historybuf.line(0).as_ansi(), ' ')
 
     # Insert lines
     s.reset()
@@ -355,3 +386,33 @@ def test_multicell(self: TestMulticell) -> None:
     s.delete_lines(1)
     for y in range(s.lines):
         assert_line('\0' * s.columns, y)
+
+    # ansi output
+    def ta(expected):
+        actual = as_ansi().rstrip()[3:]
+        self.ae(expected, actual)
+        s.reset()
+        parse_bytes(s, actual.encode())
+        actual2 = as_ansi().rstrip()[3:]
+        self.ae(expected, actual2)
+        s.reset()
+
+    s.reset()
+    s.draw('a')
+    multicell(s, 'b', width=2)
+    s.draw('c')
+    ta('a\x1b]66;w=2;b\x07c')
+    multicell(s, 'a')
+    s.cursor.fg = as_rgb(0xffffff)
+    multicell(s, 'b')
+    ta('a\x1b[38:2:255:255:255mb')
+    multicell(s, 'a', scale=2)
+    multicell(s, 'b', scale=2)
+    ta('\x1b]66;w=1:s=2;ab\x07')
+    multicell(s, 'a', scale=2)
+    s.cursor.fg = as_rgb(0xffffff)
+    multicell(s, 'b', scale=2)
+    ta('\x1b]66;w=1:s=2;a\x07\x1b[38:2:255:255:255m\x1b]66;w=1:s=2;b\x07\n\x1b[m\x1b[38:2:255:255:255m')
+    multicell(s, 'a', scale=3)
+    multicell(s, 'b', scale=2)
+    ta('\x1b]66;w=1:s=3;a\x07\x1b]66;w=1:s=2;b\x07')
