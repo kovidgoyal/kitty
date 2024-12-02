@@ -421,6 +421,8 @@ apply_scale_changes(_GLFWwindow *window, bool resize_framebuffer, bool update_cs
 
 static bool
 dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
+    if (window->heightincr != GLFW_DONT_CARE) height = height / window->heightincr * window->heightincr;
+    if (window->widthincr != GLFW_DONT_CARE) width = width / window->widthincr * window->widthincr;
     bool size_changed = width != window->wl.width || height != window->wl.height;
     bool scale_changed = checkScaleChange(window);
 
@@ -1529,7 +1531,6 @@ void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window UNUSED,
 void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window UNUSED,
                                           int widthincr UNUSED, int heightincr UNUSED)
 {
-    // TODO: find out how to trigger a resize.
     // The actual limits are checked in the xdg_toplevel::configure handler.
 }
 
