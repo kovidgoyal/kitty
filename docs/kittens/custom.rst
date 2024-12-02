@@ -418,6 +418,10 @@ Kittens created by kitty users
 `smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
     Makes the kitty scroll bindings work in full screen applications
 
+
+`gattino <https://github.com/salvozappa/gattino>`__
+    Integrate kitty with an LLM to convert plain language prompts into shell commands.
+
 :iss:`insert password <1222>`
     Insert a password from a CLI password manager, taking care to only do it at
     a password prompt.
