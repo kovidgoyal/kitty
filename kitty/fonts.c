@@ -62,11 +62,6 @@ typedef struct {
     SpacerStrategy spacer_strategy;
 } Font;
 
-typedef struct RunFont {
-    unsigned scale, subscale_n, subscale_d, vertical_align, multicell_y;
-    ssize_t font_idx;
-} RunFont;
-
 typedef struct Canvas {
     pixel *buf;
     unsigned current_cells, alloced_cells, alloced_scale, current_scale;
@@ -83,7 +78,6 @@ static void free_const(const void* x) { free((void*)x); }
 typedef struct {
     FONTS_DATA_HEAD
     id_type id;
-    unsigned int baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     size_t fonts_capacity, fonts_count, fallback_fonts_count;
     ssize_t medium_font_idx, bold_font_idx, italic_font_idx, bi_font_idx, first_symbol_font_idx, first_fallback_font_idx;
     Font *fonts;
@@ -100,7 +94,7 @@ static void initialize_font_group(FontGroup *fg);
 
 static void
 ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
-#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->cell_width * fg->cell_height * scale * scale)
+#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->fcm.cell_width * fg->fcm.cell_height * scale * scale)
     size_t size_in_bytes = cs(cells, scale);
     if (size_in_bytes > fg->canvas.size_in_bytes) {
         free(fg->canvas.buf);
@@ -396,7 +390,7 @@ static void
 python_send_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigned int z, pixel* buf) {
     if (python_send_to_gpu_impl) {
         if (!num_font_groups) fatal("Cannot call send to gpu with no font groups");
-        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, sizeof(pixel) * fg->cell_width * fg->cell_height));
+        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, sizeof(pixel) * fg->fcm.cell_width * fg->fcm.cell_height));
         if (ret == NULL) PyErr_Print();
         else Py_DECREF(ret);
     }
@@ -426,53 +420,50 @@ adjust_ypos(unsigned int pos, unsigned int cell_height, int adjustment) {
 
 static void
 calc_cell_metrics(FontGroup *fg) {
-    unsigned int cell_height, cell_width, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
-    cell_metrics(fg->fonts[fg->medium_font_idx].face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
-    if (!cell_width) fatal("Failed to calculate cell width for the specified font");
-    unsigned int before_cell_height = cell_height;
-    unsigned int cw = cell_width, ch = cell_height;
+    fg->fcm = cell_metrics(fg->fonts[fg->medium_font_idx].face);
+    if (!fg->fcm.cell_width) fatal("Failed to calculate cell width for the specified font");
+    unsigned int before_cell_height = fg->fcm.cell_height;
+    unsigned int cw = fg->fcm.cell_width, ch = fg->fcm.cell_height;
     adjust_metric(&cw, OPT(cell_width).val, OPT(cell_width).unit, fg->logical_dpi_x);
     adjust_metric(&ch, OPT(cell_height).val, OPT(cell_height).unit, fg->logical_dpi_y);
 #define MAX_DIM 1000
 #define MIN_WIDTH 2
 #define MIN_HEIGHT 4
-    if (cw >= MIN_WIDTH && cw <= MAX_DIM) cell_width = cw;
+    if (cw >= MIN_WIDTH && cw <= MAX_DIM) fg->fcm.cell_width = cw;
     else log_error("Cell width invalid after adjustment, ignoring modify_font cell_width");
-    if (ch >= MIN_HEIGHT && ch <= MAX_DIM) cell_height = ch;
+    if (ch >= MIN_HEIGHT && ch <= MAX_DIM) fg->fcm.cell_height = ch;
     else log_error("Cell height invalid after adjustment, ignoring modify_font cell_height");
-    int line_height_adjustment = cell_height - before_cell_height;
-    if (cell_height < MIN_HEIGHT) fatal("Line height too small: %u", cell_height);
-    if (cell_height > MAX_DIM) fatal("Line height too large: %u", cell_height);
-    if (cell_width < MIN_WIDTH) fatal("Cell width too small: %u", cell_width);
-    if (cell_width > MAX_DIM) fatal("Cell width too large: %u", cell_width);
+    int line_height_adjustment = fg->fcm.cell_height - before_cell_height;
+    if (fg->fcm.cell_height < MIN_HEIGHT) fatal("Line height too small: %u", fg->fcm.cell_height);
+    if (fg->fcm.cell_height > MAX_DIM) fatal("Line height too large: %u", fg->fcm.cell_height);
+    if (fg->fcm.cell_width < MIN_WIDTH) fatal("Cell width too small: %u", fg->fcm.cell_width);
+    if (fg->fcm.cell_width > MAX_DIM) fatal("Cell width too large: %u", fg->fcm.cell_width);
 #undef MIN_WIDTH
 #undef MIN_HEIGHT
 #undef MAX_DIM
 
-    unsigned int baseline_before = baseline;
-#define A(which, dpi) adjust_metric(&which, OPT(which).val, OPT(which).unit, fg->logical_dpi_##dpi);
+    unsigned int baseline_before = fg->fcm.baseline;
+#define A(which, dpi) adjust_metric(&fg->fcm.which, OPT(which).val, OPT(which).unit, fg->logical_dpi_##dpi);
     A(underline_thickness, y); A(underline_position, y); A(strikethrough_thickness, y); A(strikethrough_position, y); A(baseline, y);
 #undef A
 
-    if (baseline_before != baseline) {
-        int adjustment = baseline - baseline_before;
-        baseline = adjust_ypos(baseline_before, cell_height, adjustment);
-        underline_position = adjust_ypos(underline_position, cell_height, adjustment);
-        strikethrough_position = adjust_ypos(strikethrough_position, cell_height, adjustment);
+    if (baseline_before != fg->fcm.baseline) {
+        int adjustment = fg->fcm.baseline - baseline_before;
+        fg->fcm.baseline = adjust_ypos(baseline_before, fg->fcm.cell_height, adjustment);
+        fg->fcm.underline_position = adjust_ypos(fg->fcm.underline_position, fg->fcm.cell_height, adjustment);
+        fg->fcm.strikethrough_position = adjust_ypos(fg->fcm.strikethrough_position, fg->fcm.cell_height, adjustment);
     }
 
-    underline_position = MIN(cell_height - 1, underline_position);
+    fg->fcm.underline_position = MIN(fg->fcm.cell_height - 1, fg->fcm.underline_position);
     // ensure there is at least a couple of pixels available to render styled underlines
     // there should be at least one pixel on either side of the underline_position
-    if (underline_position > baseline + 1 && underline_position > cell_height - 1)
-      underline_position = MAX(baseline + 1, cell_height - 1);
+    if (fg->fcm.underline_position > fg->fcm.baseline + 1 && fg->fcm.underline_position > fg->fcm.cell_height - 1)
+      fg->fcm.underline_position = MAX(fg->fcm.baseline + 1, fg->fcm.cell_height - 1);
     if (line_height_adjustment > 1) {
-        baseline += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
-        underline_position += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
+        fg->fcm.baseline += MIN(fg->fcm.cell_height - 1, (unsigned)line_height_adjustment / 2);
+        fg->fcm.underline_position += MIN(fg->fcm.cell_height - 1, (unsigned)line_height_adjustment / 2);
     }
-    sprite_tracker_set_layout(&fg->sprite_tracker, cell_width, cell_height);
-    fg->cell_width = cell_width; fg->cell_height = cell_height;
-    fg->baseline = baseline; fg->underline_position = underline_position; fg->underline_thickness = underline_thickness, fg->strikethrough_position = strikethrough_position, fg->strikethrough_thickness = strikethrough_thickness;
+    sprite_tracker_set_layout(&fg->sprite_tracker, fg->fcm.cell_width, fg->fcm.cell_height);
     ensure_canvas_can_fit(fg, 8, 1);
 }
 
@@ -557,7 +548,7 @@ load_fallback_font(FontGroup *fg, const ListOfChars *lc, bool bold, bool italic,
     if (face == Py_None) { Py_DECREF(face); return MISSING_FONT; }
     if (global_state.debug_font_fallback) output_cell_fallback_data(lc, bold, italic, emoji_presentation, face);
     if (PyLong_Check(face)) { ssize_t ans = fg->first_fallback_font_idx + PyLong_AsSsize_t(face); Py_DECREF(face); return ans; }
-    set_size_for_face(face, fg->cell_height, true, (FONTS_DATA_HANDLE)fg);
+    set_size_for_face(face, fg->fcm.cell_height, true, (FONTS_DATA_HANDLE)fg);
 
     ensure_space_for(fg, fonts, Font, fg->fonts_count + 1, fonts_capacity, 5, true);
     ssize_t ans = fg->first_fallback_font_idx + fg->fallback_fonts_count;
@@ -740,10 +731,10 @@ scaled_cell_dimensions(RunFont rf, unsigned *width, unsigned *height) {
 
 static pixel*
 extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) {
-    pixel *ans = fg->canvas.buf + (fg->canvas.size_in_bytes / sizeof(fg->canvas.buf[0]) - fg->cell_width * fg->cell_height);
-    pixel *dest = ans, *src = fg->canvas.buf + (i * fg->cell_width);
-    unsigned int stride = fg->cell_width * num_cells;
-    for (unsigned int r = 0; r < fg->cell_height; r++, dest += fg->cell_width, src += stride) memcpy(dest, src, fg->cell_width * sizeof(fg->canvas.buf[0]));
+    pixel *ans = fg->canvas.buf + (fg->canvas.size_in_bytes / sizeof(fg->canvas.buf[0]) - fg->fcm.cell_width * fg->fcm.cell_height);
+    pixel *dest = ans, *src = fg->canvas.buf + (i * fg->fcm.cell_width);
+    unsigned int stride = fg->fcm.cell_width * num_cells;
+    for (unsigned int r = 0; r < fg->fcm.cell_height; r++, dest += fg->fcm.cell_width, src += stride) memcpy(dest, src, fg->fcm.cell_width * sizeof(fg->canvas.buf[0]));
     return ans;
 }
 
@@ -796,15 +787,15 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
         }
     }
     if (all_rendered) return;
-    unsigned width = fg->cell_width, height = fg->cell_height;
+    unsigned width = fg->fcm.cell_width, height = fg->fcm.cell_height;
     scaled_cell_dimensions(rf, &width, &height);
     RAII_PyObject(ret, PyObject_CallFunction(box_drawing_function, "IIId", (unsigned int)ch, width, height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0));
     if (ret == NULL) { PyErr_Print(); return; }
     uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
     ensure_canvas_can_fit(fg, 2, rf.scale);
     Region src = { .right = width, .bottom = height }, dest = src;
-    unsigned dest_stride = rf.scale * fg->cell_width, src_stride = width;
-    calculate_regions_for_line(rf, fg->cell_height, &src, &dest);
+    unsigned dest_stride = rf.scale * fg->fcm.cell_width, src_stride = width;
+    calculate_regions_for_line(rf, fg->fcm.cell_height, &src, &dest);
     render_alpha_mask(alpha_mask, fg->canvas.buf, &src, &dest, src_stride, dest_stride, 0xffffff);
     if (rf.scale == 1) {
         current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[0]->x, sp[0]->y, sp[0]->z, fg->canvas.buf);
@@ -868,7 +859,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     ensure_canvas_can_fit(fg, num_cells + 1, rf.scale);
     text_in_cell(cpu_cells, tc, global_glyph_render_scratch.lc);
     bool was_colored = has_emoji_presentation(cpu_cells, global_glyph_render_scratch.lc);
-    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
+    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->fcm.cell_width, fg->fcm.cell_height, num_cells, fg->fcm.baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
     for (unsigned i = 0; i < num_cells; i++) {
@@ -1278,7 +1269,8 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc) {
 
 
 static void
-shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, bool disable_ligature, const TextCache *tc) {
+shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, RunFont rf, bool disable_ligature, const TextCache *tc) {
+    face_apply_scaling(font->face, rf);
     hb_font_t *hbf = harfbuzz_font_for_face(font->face);
     if (font->spacer_strategy == SPACER_STRATEGY_UNKNOWN) detect_spacer_strategy(hbf, font, tc);
     shape(first_cpu_cell, first_gpu_cell, num_cells, hbf, font, disable_ligature, tc);
@@ -1371,7 +1363,8 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         FontGroup *fg = font_groups;
         font = fg->fonts + fg->medium_font_idx;
     }
-    shape_run(line->cpu_cells, line->gpu_cells, num, font, false, line->text_cache);
+    RunFont rf = {0};
+    shape_run(line->cpu_cells, line->gpu_cells, num, font, rf, false, line->text_cache);
 
     PyObject *ans = PyList_New(0);
     unsigned int idx = 0;
@@ -1395,20 +1388,20 @@ static void
 render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, RunFont rf, bool pua_space_ligature, bool center_glyph, int cursor_offset, DisableLigature disable_ligature_strategy, const TextCache *tc) {
     switch(rf.font_idx) {
         default:
-            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[rf.font_idx], disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc);
+            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[rf.font_idx], rf, disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc);
             if (pua_space_ligature) collapse_pua_space_ligature(num_cells);
             else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
                 split_run_at_offset(cursor_offset, &left, &right);
                 if (right > left) {
                     if (left) {
-                        shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[rf.font_idx], false, tc);
+                        shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[rf.font_idx], rf, false, tc);
                         render_groups(fg, rf, center_glyph, tc);
                     }
-                        shape_run(first_cpu_cell + left, first_gpu_cell + left, right - left, &fg->fonts[rf.font_idx], true, tc);
+                        shape_run(first_cpu_cell + left, first_gpu_cell + left, right - left, &fg->fonts[rf.font_idx], rf, true, tc);
                         render_groups(fg, rf, center_glyph, tc);
                     if (right < num_cells) {
-                        shape_run(first_cpu_cell + right, first_gpu_cell + right, num_cells - right, &fg->fonts[rf.font_idx], false, tc);
+                        shape_run(first_cpu_cell + right, first_gpu_cell + right, num_cells - right, &fg->fonts[rf.font_idx], rf, false, tc);
                         render_groups(fg, rf, center_glyph, tc);
                     }
                     break;
@@ -1498,7 +1491,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 glyph_index glyph_id = glyph_id_for_codepoint(font->face, first_ch);
 
                 int width = get_glyph_width(font->face, glyph_id);
-                desired_cells = (unsigned int)ceilf((float)width / fg->cell_width);
+                desired_cells = (unsigned int)ceilf((float)width / fg->fcm.cell_width);
             }
             desired_cells = MIN(desired_cells, cell_cap_for_codepoint(first_ch));
 
@@ -1543,7 +1536,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
 StringCanvas
 render_simple_text(FONTS_DATA_HANDLE fg_, const char *text) {
     FontGroup *fg = (FontGroup*)fg_;
-    if (fg->fonts_count && fg->medium_font_idx) return render_simple_text_impl(fg->fonts[fg->medium_font_idx].face, text, fg->baseline);
+    if (fg->fonts_count && fg->medium_font_idx) return render_simple_text_impl(fg->fonts[fg->medium_font_idx].face, text, fg->fcm.baseline);
     StringCanvas ans = {0};
     return ans;
 }
@@ -1599,7 +1592,7 @@ send_prerendered_sprites(FontGroup *fg) {
     current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
     do_increment(fg, &error);
     if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
-    PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIIIffdd", fg->cell_width, fg->cell_height, fg->baseline, fg->underline_position, fg->underline_thickness, fg->strikethrough_position, fg->strikethrough_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
+    PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIIIffdd", fg->fcm.cell_width, fg->fcm.cell_height, fg->fcm.baseline, fg->fcm.underline_position, fg->fcm.underline_thickness, fg->fcm.strikethrough_position, fg->fcm.strikethrough_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
     if (args == NULL) { PyErr_Print(); fatal("Failed to pre-render cells"); }
     PyObject *cell_addresses = PyTuple_GET_ITEM(args, 0);
     for (ssize_t i = 0; i < PyTuple_GET_SIZE(cell_addresses); i++) {
@@ -1609,8 +1602,8 @@ send_prerendered_sprites(FontGroup *fg) {
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
         uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(cell_addresses, i));
         ensure_canvas_can_fit(fg, 1, 1);  // clear canvas
-        Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
-        render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width, 0xffffff);
+        Region r = { .right = fg->fcm.cell_width, .bottom = fg->fcm.cell_height };
+        render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->fcm.cell_width, fg->fcm.cell_width, 0xffffff);
         current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
     }
     Py_CLEAR(args);
@@ -1658,7 +1651,7 @@ initialize_font_group(FontGroup *fg) {
     // rescale the symbol_map faces for the desired cell height, this is how fallback fonts are sized as well
     for (size_t i = 0; i < descriptor_indices.num_symbol_fonts; i++) {
         Font *font = fg->fonts + i + fg->first_symbol_font_idx;
-        set_size_for_face(font->face, fg->cell_height, true, (FONTS_DATA_HANDLE)fg);
+        set_size_for_face(font->face, fg->fcm.cell_height, true, (FONTS_DATA_HANDLE)fg);
     }
 }
 
@@ -1667,7 +1660,7 @@ void
 send_prerendered_sprites_for_window(OSWindow *w) {
     FontGroup *fg = (FontGroup*)w->fonts_data;
     if (!fg->sprite_map) {
-        fg->sprite_map = alloc_sprite_map(fg->cell_width, fg->cell_height);
+        fg->sprite_map = alloc_sprite_map(fg->fcm.cell_width, fg->fcm.cell_height);
         send_prerendered_sprites(fg);
     }
 }
@@ -1847,7 +1840,7 @@ create_test_font_group(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ddd", &sz, &dpix, &dpiy)) return NULL;
     FontGroup *fg = font_group_for(sz, dpix, dpiy);
     if (!fg->sprite_map) send_prerendered_sprites(fg);
-    return Py_BuildValue("II", fg->cell_width, fg->cell_height);
+    return Py_BuildValue("II", fg->fcm.cell_width, fg->fcm.cell_height);
 }
 
 static PyObject*

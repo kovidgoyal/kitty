@@ -116,8 +116,8 @@ request_tick_callback(void) {
 
 static void
 min_size_for_os_window(OSWindow *window, int *min_width, int *min_height) {
-    *min_width = MAX(8u, window->fonts_data->cell_width + 1);
-    *min_height = MAX(8u, window->fonts_data->cell_height + 1);
+    *min_width = MAX(8u, window->fonts_data->fcm.cell_width + 1);
+    *min_height = MAX(8u, window->fonts_data->fcm.cell_height + 1);
 }
 
 
@@ -1067,21 +1067,21 @@ calculate_layer_shell_window_size(
         if (!*height) *height = monitor_height;
         double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
         spacing *= xdpi / 72.;
-        spacing += (fonts_data->cell_width * config->x_size_in_cells) / xscale;
+        spacing += (fonts_data->fcm.cell_width * config->x_size_in_cells) / xscale;
         *width = (uint32_t)(1. + spacing);
     } else if (config->edge == GLFW_EDGE_TOP || config->edge == GLFW_EDGE_BOTTOM) {
         if (!*width) *width = monitor_width;
         double spacing = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
         spacing *= ydpi / 72.;
-        spacing += (fonts_data->cell_height * config->y_size_in_cells) / yscale;
+        spacing += (fonts_data->fcm.cell_height * config->y_size_in_cells) / yscale;
         *height = (uint32_t)(1. + spacing);
     } else {
         double spacing_x = edge_spacing(GLFW_EDGE_LEFT);
         spacing_x *= xdpi / 72.;
-        spacing_x += (fonts_data->cell_width * config->x_size_in_cells) / xscale;
+        spacing_x += (fonts_data->fcm.cell_width * config->x_size_in_cells) / xscale;
         double spacing_y = edge_spacing(GLFW_EDGE_TOP);
         spacing_y *= ydpi / 72.;
-        spacing_y += (fonts_data->cell_height * config->y_size_in_cells) / yscale;
+        spacing_y += (fonts_data->fcm.cell_height * config->y_size_in_cells) / yscale;
         *width = (uint32_t)(1. + spacing_x);
         *height = (uint32_t)(1. + spacing_y);
     }
@@ -1213,7 +1213,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
     }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
-    PyObject *ret = PyObject_CallFunction(get_window_size, "IIddff", fonts_data->cell_width, fonts_data->cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y, xscale, yscale);
+    PyObject *ret = PyObject_CallFunction(get_window_size, "IIddff", fonts_data->fcm.cell_width, fonts_data->fcm.cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y, xscale, yscale);
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
@@ -1343,7 +1343,7 @@ void
 os_window_update_size_increments(OSWindow *window) {
     if (OPT(resize_in_steps)) {
         if (window->handle && window->fonts_data) glfwSetWindowSizeIncrements(
-                window->handle, window->fonts_data->cell_width, window->fonts_data->cell_height);
+                window->handle, window->fonts_data->fcm.cell_width, window->fonts_data->fcm.cell_height);
     } else {
         if (window->handle) glfwSetWindowSizeIncrements(
                 window->handle, GLFW_DONT_CARE, GLFW_DONT_CARE);

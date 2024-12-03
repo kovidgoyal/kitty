@@ -269,7 +269,11 @@ typedef struct {
 } CellPixelSize;
 
 typedef struct {int x;} *SPRITE_MAP_HANDLE;
-#define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; unsigned int cell_width, cell_height;
+
+typedef struct FontCellMetrics {
+    unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
+} FontCellMetrics;
+#define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; FontCellMetrics fcm;
 typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0;

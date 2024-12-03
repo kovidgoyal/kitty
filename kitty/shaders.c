@@ -674,7 +674,7 @@ static GLfloat
 render_a_bar(OSWindow *os_window, Screen *screen, const CellRenderData *crd, WindowBarData *bar, PyObject *title, bool along_bottom) {
     GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
     GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
-    unsigned bar_height = os_window->fonts_data->cell_height + 2;
+    unsigned bar_height = os_window->fonts_data->fcm.cell_height + 2;
     if (!bar_height || right <= left) return 0;
     unsigned bar_width = (unsigned)ceilf(right - left);
     if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
@@ -801,7 +801,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
     GLfloat title_bar_height = 0;
     size_t requested_height = (size_t)(os_window->viewport_height * crd->gl.height / 2.f);
-    if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->cell_height + 1) * 2)) {
+    if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->fcm.cell_height + 1) * 2)) {
         title_bar_height = render_a_bar(os_window, screen, crd, &window->title_bar_data, window->title, false);
     }
     GLfloat ystart = crd->gl.ystart, height = crd->gl.height, xstart = crd->gl.xstart, width = crd->gl.width;

@@ -793,7 +793,7 @@ draw_resizing_text(OSWindow *w) {
     if (monotonic() - w->created_at > ms_to_monotonic_t(1000) && w->live_resize.num_of_resize_events > 1) {
         char text[32] = {0};
         unsigned int width = w->live_resize.width, height = w->live_resize.height;
-        snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
+        snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->fcm.cell_width, height / w->fonts_data->fcm.cell_height);
         StringCanvas rendered = render_simple_text(w->fonts_data, text);
         if (rendered.canvas) {
             draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas, OPT(background_opacity));

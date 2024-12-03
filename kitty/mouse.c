@@ -245,13 +245,13 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
         qx = screen->columns - 1;
         in_left_half = false;
     } else if (mouse_x >= g->left) {
-        double xval = (double)(mouse_x - g->left) / os_window->fonts_data->cell_width;
+        double xval = (double)(mouse_x - g->left) / os_window->fonts_data->fcm.cell_width;
         double fxval = floor(xval);
         qx = (unsigned int)fxval;
         in_left_half = (xval - fxval <= 0.5) ? true : false;
     }
     if (mouse_y >= g->bottom) qy = screen->lines - 1;
-    else if (mouse_y >= g->top) qy = (unsigned int)((double)(mouse_y - g->top) / os_window->fonts_data->cell_height);
+    else if (mouse_y >= g->top) qy = (unsigned int)((double)(mouse_y - g->top) / os_window->fonts_data->fcm.cell_height);
     if (qx < screen->columns && qy < screen->lines) {
         *x = qx; *y = qy;
         *in_left_half_of_cell = in_left_half;
@@ -296,7 +296,7 @@ do_drag_scroll(Window *w, bool upwards) {
 
 bool
 drag_scroll(Window *w, OSWindow *frame) {
-    unsigned int margin = frame->fonts_data->cell_height / 2;
+    unsigned int margin = frame->fonts_data->fcm.cell_height / 2;
     double y = frame->mouse_y;
     bool upwards = y <= (w->geometry.top + margin);
     if (upwards || y >= w->geometry.bottom - margin) {
@@ -410,7 +410,7 @@ clear_click_queue(Window *w, int button) {
 
 static double
 radius_for_multiclick(void) {
-    return 0.5 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 8);
+    return 0.5 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->fcm.cell_height : 8);
 }
 
 static bool
@@ -955,7 +955,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
     bool is_high_resolution = flags & 1;
 
     if (yoffset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, yoffset, is_high_resolution, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->cell_height);
+        s = scale_scroll(screen->modes.mouse_tracking_mode, yoffset, is_high_resolution, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
         if (s) {
             bool upwards = s > 0;
             if (screen->modes.mouse_tracking_mode) {
@@ -976,7 +976,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
         }
     }
     if (xoffset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, xoffset, is_high_resolution, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->cell_width);
+        s = scale_scroll(screen->modes.mouse_tracking_mode, xoffset, is_high_resolution, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
         if (s) {
             if (screen->modes.mouse_tracking_mode) {
                 int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, modifiers);

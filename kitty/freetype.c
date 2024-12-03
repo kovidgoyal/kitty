@@ -194,7 +194,7 @@ set_size_for_face(PyObject *s, unsigned int desired_height, bool force, FONTS_DA
     FT_UInt xdpi = (FT_UInt)fg->logical_dpi_x, ydpi = (FT_UInt)fg->logical_dpi_y;
     if (!force && (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi)) return true;
     ((Face*)self)->size_in_pts = (float)fg->font_sz_in_pts;
-    return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->cell_height);
+    return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->fcm.cell_height);
 }
 
 static PyObject*
@@ -391,25 +391,27 @@ calc_cell_width(Face *self) {
 }
 
 
-void
-cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness) {
+FontCellMetrics
+cell_metrics(PyObject *s) {
     Face *self = (Face*)s;
-    *cell_width = calc_cell_width(self);
-    *cell_height = calc_cell_height(self, true);
-    *baseline = font_units_to_pixels_y(self, self->ascender);
-    *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
-    *underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
+    FontCellMetrics ans = {0};
+    ans.cell_width = calc_cell_width(self);
+    ans.cell_height = calc_cell_height(self, true);
+    ans.baseline = font_units_to_pixels_y(self, self->ascender);
+    ans.underline_position = MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
+    ans.underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
 
     if (self->strikethrough_position != 0) {
-      *strikethrough_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->strikethrough_position)));
+      ans.strikethrough_position = MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->strikethrough_position)));
     } else {
-      *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
+      ans.strikethrough_position = (unsigned int)floor(ans.baseline * 0.65);
     }
     if (self->strikethrough_thickness > 0) {
-      *strikethrough_thickness = MAX(1, font_units_to_pixels_y(self, self->strikethrough_thickness));
+      ans.strikethrough_thickness = MAX(1, font_units_to_pixels_y(self, self->strikethrough_thickness));
     } else {
-      *strikethrough_thickness = *underline_thickness;
+      ans.strikethrough_thickness = ans.underline_thickness;
     }
+    return ans;
 }
 
 unsigned int
@@ -537,10 +539,10 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
         } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)ans->width;
-            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0, fg->cell_height)) {
+            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0, fg->fcm.cell_height)) {
                 free_processed_bitmap(ans);
                 if (!render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, false, fg)) return false;
-                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0, fg->cell_height)) return false;
+                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0, fg->fcm.cell_height)) return false;
             } else return false;
         }
     }
@@ -976,14 +978,13 @@ render_sample_text(Face *self, PyObject *args) {
     unsigned long fg = 0xffffff;
     PyObject *ptext;
     if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
-    unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
-    cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
+    FontCellMetrics fcm = cell_metrics((PyObject*)self);
     RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
     if (!pbuf) return NULL;
     memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
-    if (!cell_width || !cell_height) return Py_BuildValue("OII", pbuf, cell_width, cell_height);
-    int num_chars_per_line = canvas_width / cell_width, num_of_lines = (int)ceil((float)PyUnicode_GET_LENGTH(ptext) / (float)num_chars_per_line);
-    canvas_height = MIN(canvas_height, num_of_lines * cell_height);
+    if (!fcm.cell_width || !fcm.cell_height) return Py_BuildValue("OII", pbuf, fcm.cell_width, fcm.cell_height);
+    int num_chars_per_line = canvas_width / fcm.cell_width, num_of_lines = (int)ceil((float)PyUnicode_GET_LENGTH(ptext) / (float)num_chars_per_line);
+    canvas_height = MIN(canvas_height, num_of_lines * fcm.cell_height);
 
     __attribute__((cleanup(destroy_hb_buffer))) hb_buffer_t *hb_buffer = hb_buffer_create();
     if (!hb_buffer_pre_allocate(hb_buffer, 4*PyUnicode_GET_LENGTH(ptext))) { PyErr_NoMemory(); return NULL; }
@@ -998,7 +999,7 @@ render_sample_text(Face *self, PyObject *args) {
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
 
-    if (cell_width > canvas_width) goto end;
+    if (fcm.cell_width > canvas_width) goto end;
     pixel *canvas = (pixel*)PyBytes_AS_STRING(pbuf);
     int load_flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
     int error;
@@ -1007,7 +1008,7 @@ render_sample_text(Face *self, PyObject *args) {
     for (unsigned int i = 0; i < len; i++) {
         float advance = (float)positions[i].x_advance / 64.0f;
         if (pen_x + advance > canvas_width) {
-            pen_y += cell_height;
+            pen_y += fcm.cell_height;
             pen_x = 0;
             if (pen_y >= canvas_height) break;
         }
@@ -1019,7 +1020,7 @@ render_sample_text(Face *self, PyObject *args) {
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
         ProcessedBitmap pbm = EMPTY_PBM;
         populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
-        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, x, 0, baseline, 99999, fg, 0, y);
+        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, x, 0, fcm.baseline, 99999, fg, 0, y);
     }
 
     const uint8_t *last_pixel = (uint8_t*)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
@@ -1028,7 +1029,7 @@ render_sample_text(Face *self, PyObject *args) {
         p[0] = r; p[1] = g; p[2] = b; p[3] = a;
     }
 end:
-    return Py_BuildValue("OII", pbuf, cell_width, cell_height);
+    return Py_BuildValue("OII", pbuf, fcm.cell_width, fcm.cell_height);
 }
 
 

@@ -124,7 +124,7 @@ update_ime_focus(OSWindow *osw, bool focused) {
 
 void
 prepare_ime_position_update_event(OSWindow *osw, Window *w, Screen *screen, GLFWIMEUpdateEvent *ev) {
-    unsigned int cell_width = osw->fonts_data->cell_width, cell_height = osw->fonts_data->cell_height;
+    unsigned int cell_width = osw->fonts_data->fcm.cell_width, cell_height = osw->fonts_data->fcm.cell_height;
     unsigned int left = w->geometry.left, top = w->geometry.top;
     if (screen_is_overlay_active(screen)) {
         left += screen->overlay_line.cursor_x * cell_width;

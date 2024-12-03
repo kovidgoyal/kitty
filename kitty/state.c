@@ -418,8 +418,8 @@ detach_window(id_type os_window_id, id_type tab_id, id_type id) {
 static void
 resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
     if (screen) {
-        screen->cell_size.width = os_window->fonts_data->cell_width;
-        screen->cell_size.height = os_window->fonts_data->cell_height;
+        screen->cell_size.width = os_window->fonts_data->fcm.cell_width;
+        screen->cell_size.height = os_window->fonts_data->fcm.cell_height;
         screen_dirty_sprite_positions(screen);
         if (has_graphics) screen_rescale_images(screen);
     }
@@ -438,8 +438,8 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
                 make_os_window_context_current(osw);
                 create_gpu_resources_for_window(w);
                 if (
-                    w->render_data.screen->cell_size.width != osw->fonts_data->cell_width ||
-                    w->render_data.screen->cell_size.height != osw->fonts_data->cell_height
+                    w->render_data.screen->cell_size.width != osw->fonts_data->fcm.cell_width ||
+                    w->render_data.screen->cell_size.height != osw->fonts_data->fcm.cell_height
                 ) resize_screen(osw, w->render_data.screen, true);
                 else screen_dirty_sprite_positions(w->render_data.screen);
                 w->render_data.screen->reload_all_gpu_data = true;
@@ -587,20 +587,20 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0;  central->right = os_window->viewport_width - 1;
-                central->top = os_window->fonts_data->cell_height + margin_inner + margin_outer;
+                central->top = os_window->fonts_data->fcm.cell_height + margin_inner + margin_outer;
                 central->bottom = os_window->viewport_height - 1;
                 central->top = MIN(central->top, central->bottom);
                 tab_bar->top = margin_outer;
                 break;
             default:
                 central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
-                long bottom = os_window->viewport_height - os_window->fonts_data->cell_height - 1 - margin_inner - margin_outer;
+                long bottom = os_window->viewport_height - os_window->fonts_data->fcm.cell_height - 1 - margin_inner - margin_outer;
                 central->bottom = MAX(0, bottom);
                 tab_bar->top = central->bottom + 1 + margin_inner;
                 break;
         }
         tab_bar->left = central->left; tab_bar->right = central->right;
-        tab_bar->bottom = tab_bar->top + os_window->fonts_data->cell_height - 1;
+        tab_bar->bottom = tab_bar->top + os_window->fonts_data->fcm.cell_height - 1;
     } else {
         zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
@@ -789,8 +789,8 @@ PYWRAP1(set_ignore_os_keyboard_processing) {
 
 static void
 init_window_render_data(OSWindow *osw, const WindowGeometry *g, WindowRenderData *d) {
-    d->dx = gl_size(osw->fonts_data->cell_width, osw->viewport_width);
-    d->dy = gl_size(osw->fonts_data->cell_height, osw->viewport_height);
+    d->dx = gl_size(osw->fonts_data->fcm.cell_width, osw->viewport_width);
+    d->dy = gl_size(osw->fonts_data->fcm.cell_height, osw->viewport_height);
     d->xstart = gl_pos_x(g->left, osw->viewport_width);
     d->ystart = gl_pos_y(g->top, osw->viewport_height);
 }
@@ -839,7 +839,7 @@ PYWRAP1(viewport_for_window) {
     WITH_OS_WINDOW(os_window_id)
         os_window_regions(os_window, &central, &tab_bar);
         vw = os_window->viewport_width; vh = os_window->viewport_height;
-        cell_width = os_window->fonts_data->cell_width; cell_height = os_window->fonts_data->cell_height;
+        cell_width = os_window->fonts_data->fcm.cell_width; cell_height = os_window->fonts_data->fcm.cell_height;
         goto end;
     END_WITH_OS_WINDOW
 end:
@@ -851,7 +851,7 @@ PYWRAP1(cell_size_for_window) {
     unsigned int cell_width = 0, cell_height = 0;
     PA("K", &os_window_id);
     WITH_OS_WINDOW(os_window_id)
-        cell_width = os_window->fonts_data->cell_width; cell_height = os_window->fonts_data->cell_height;
+        cell_width = os_window->fonts_data->fcm.cell_width; cell_height = os_window->fonts_data->fcm.cell_height;
         goto end;
     END_WITH_OS_WINDOW
 end:
@@ -1112,7 +1112,7 @@ PYWRAP1(get_os_window_size) {
         int width, height, fw, fh;
         get_os_window_size(os_window, &width, &height, &fw, &fh);
         get_os_window_content_scale(os_window, &xdpi, &ydpi, &xscale, &yscale);
-        unsigned int cell_width = os_window->fonts_data->cell_width, cell_height = os_window->fonts_data->cell_height;
+        unsigned int cell_width = os_window->fonts_data->fcm.cell_width, cell_height = os_window->fonts_data->fcm.cell_height;
         return Py_BuildValue("{si si si si sf sf sd sd sI sI}",
             "width", width, "height", height, "framebuffer_width", fw, "framebuffer_height", fh,
             "xscale", xscale, "yscale", yscale, "xdpi", xdpi, "ydpi", ydpi,

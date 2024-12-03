@@ -579,10 +579,11 @@ harfbuzz_font_for_face(PyObject* s) {
     return self->hb_font;
 }
 
-void
-cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness) {
+FontCellMetrics
+cell_metrics(PyObject *s) {
     // See https://developer.apple.com/library/content/documentation/StringsTextFonts/Conceptual/TextAndWebiPhoneOS/TypoFeatures/TextSystemFeatures.html
     CTFace *self = (CTFace*)s;
+    FontCellMetrics fcm = {0};
 #define count (128 - 32)
     unichar chars[count+1] = {0};
     CGGlyph glyphs[count+1] = {0};
@@ -596,9 +597,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
             if (w > width) width = w;
         }
     }
-    *cell_width = MAX(1u, width);
-    *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
-    *strikethrough_thickness = *underline_thickness;
+    fcm.cell_width = MAX(1u, width);
+    fcm.underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
+    fcm.strikethrough_thickness = fcm.underline_thickness;
     // float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
     // Let CoreText's layout engine calculate the line height. Slower, but hopefully more accurate.
 #define W "AQWMH_gyl "
@@ -623,13 +624,13 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CGRect bounds_without_leading = CTLineGetBoundsWithOptions(line, kCTLineBoundsExcludeTypographicLeading);
     CGFloat typographic_ascent, typographic_descent, typographic_leading;
     CTLineGetTypographicBounds(line, &typographic_ascent, &typographic_descent, &typographic_leading);
-    *cell_height = MAX(4u, (unsigned int)ceilf(line_height));
+    fcm.cell_height = MAX(4u, (unsigned int)ceilf(line_height));
     CGFloat bounds_ascent = bounds_without_leading.size.height + bounds_without_leading.origin.y;
-    *baseline = (unsigned int)floor(bounds_ascent + 0.5);
+    fcm.baseline = (unsigned int)floor(bounds_ascent + 0.5);
     // Not sure if we should add this to bounds ascent and then round it or add
     // it to already rounded baseline and round again.
-    *underline_position = (unsigned int)floor(bounds_ascent - self->underline_position + 0.5);
-    *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
+    fcm.underline_position = (unsigned int)floor(bounds_ascent - self->underline_position + 0.5);
+    fcm.strikethrough_position = (unsigned int)floor(fcm.baseline * 0.65);
 
     debug("Cell height calculation:\n");
     debug("\tline height from line origins: %f\n", line_height);
@@ -638,8 +639,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     debug("\tbounds metrics: ascent: %f\n", bounds_ascent);
     debug("\tline metrics: ascent: %f descent: %f leading: %f\n", typographic_ascent, typographic_descent, typographic_leading);
     debug("\tfont metrics: ascent: %f descent: %f leading: %f underline_position: %f\n", self->ascent, self->descent, self->leading, self->underline_position);
-    debug("\tcell_height: %u baseline: %u underline_position: %u strikethrough_position: %u\n", *cell_height, *baseline, *underline_position, *strikethrough_position);
+    debug("\tcell_height: %u baseline: %u underline_position: %u strikethrough_position: %u\n", fcm.cell_height, fcm.baseline, fcm.underline_position, fcm.strikethrough_position);
     CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
+    return fcm;
 
 #undef count
 }
@@ -818,12 +820,11 @@ render_sample_text(CTFace *self, PyObject *args) {
     CTFontRef font = self->ct_font;
     PyObject *ptext;
     if (!PyArg_ParseTuple(args, "Ukk|k", &ptext, &canvas_width, &canvas_height, &fg)) return NULL;
-    unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
-    cell_metrics((PyObject*)self, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
-    if (!cell_width || !cell_height) return Py_BuildValue("yII", "", cell_width, cell_height);
+    FontCellMetrics fcm = cell_metrics((PyObject*)self);
+    if (!fcm.cell_width || !fcm.cell_height) return Py_BuildValue("yII", "", fcm.cell_width, fcm.cell_height);
     size_t num_chars = PyUnicode_GET_LENGTH(ptext);
-    int num_chars_per_line = canvas_width / cell_width, num_of_lines = (int)ceil((float)num_chars / (float)num_chars_per_line);
-    canvas_height = MIN(canvas_height, num_of_lines * cell_height);
+    int num_chars_per_line = canvas_width / fcm.cell_width, num_of_lines = (int)ceil((float)num_chars / (float)num_chars_per_line);
+    canvas_height = MIN(canvas_height, num_of_lines * fcm.cell_height);
     RAII_PyObject(pbuf, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_width * canvas_height));
     if (!pbuf) return NULL;
     memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
@@ -842,7 +843,7 @@ render_sample_text(CTFace *self, PyObject *args) {
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
 
     memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
-    if (cell_width > canvas_width) goto end;
+    if (fcm.cell_width > canvas_width) goto end;
 
     ensure_render_space(canvas_width, canvas_height, len);
     float pen_x = 0, pen_y = 0;
@@ -851,7 +852,7 @@ render_sample_text(CTFace *self, PyObject *args) {
     for (unsigned int i = 0; i < len; i++) {
         float advance = (float)positions[i].x_advance * scale;
         if (pen_x + advance > canvas_width) {
-            pen_y += cell_height;
+            pen_y += fcm.cell_height;
             pen_x = 0;
             if (pen_y >= canvas_height) break;
         }
@@ -862,7 +863,7 @@ render_sample_text(CTFace *self, PyObject *args) {
         buffers.glyphs[i] = info[i].codepoint;
         num_glyphs++;
     }
-    render_glyphs(font, canvas_width, canvas_height, baseline, num_glyphs);
+    render_glyphs(font, canvas_width, canvas_height, fcm.baseline, num_glyphs);
     uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
     const uint8_t *last_pixel = (uint8_t*)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
     const uint8_t *s_limit = buffers.render_buf + canvas_width * canvas_height;
@@ -874,7 +875,7 @@ render_sample_text(CTFace *self, PyObject *args) {
         p[0] = r; p[1] = g; p[2] = b; p[3] = s[0];
     }
 end:
-    return Py_BuildValue("OII", pbuf, cell_width, cell_height);
+    return Py_BuildValue("OII", pbuf, fcm.cell_width, fcm.cell_height);
 
 }
 
