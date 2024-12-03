@@ -63,7 +63,7 @@ typedef struct {
 } Font;
 
 typedef struct RunFont {
-    unsigned scale, subscale, vertical_align, multicell_y;
+    unsigned scale, subscale_n, subscale_d, vertical_align, multicell_y;
     ssize_t font_idx;
 } RunFont;
 
@@ -256,9 +256,10 @@ static SpritePosition*
 sprite_position_for(FontGroup *fg, RunFont rf, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, unsigned cell_count, int *error) {
     bool created;
     Font *font = fg->fonts + rf.font_idx;
+    uint8_t subscale = ((rf.subscale_n & 0xf) << 4) | (rf.subscale_d & 0xf);
     SpritePosition *s = find_or_create_sprite_position(
         font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, cell_count,
-        rf.scale, rf.subscale, rf.multicell_y, rf.vertical_align, &created);
+        rf.scale, subscale, rf.multicell_y, rf.vertical_align, &created);
     if (!s) { *error = 1; return NULL; }
     if (created) {
         s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
@@ -730,8 +731,8 @@ static void
 scaled_cell_dimensions(RunFont rf, unsigned *width, unsigned *height) {
     *width *= rf.scale;
     *height *= rf.scale;
-    if (rf.subscale) {
-        double frac = 1. / (rf.subscale + 1);
+    if (rf.subscale_n && rf.subscale_d && rf.subscale_n < rf.subscale_d) {
+        double frac = ((double)rf.subscale_n) / rf.subscale_d;
         *width = (unsigned)ceil(frac * *width);
         *height = (unsigned)ceil(frac * *height);
     }
@@ -750,7 +751,7 @@ static void
 calculate_regions_for_line(RunFont rf, unsigned cell_height, Region *src, Region *dest) {
     unsigned src_height = src->bottom;
     Region src_in_full_coords = *src; unsigned full_dest_height = cell_height * rf.scale;
-    if (rf.subscale) {
+    if (rf.subscale_n && rf.subscale_d) {
         switch(rf.vertical_align) {
             case 0: break; // top aligned no change
             case 1: // bottom aligned
@@ -1456,7 +1457,7 @@ cell_cap_for_codepoint(const char_type cp) {
 
 static bool
 run_fonts_are_equal(const RunFont *a, const RunFont *b) {
-    return a->font_idx == b->font_idx && a->scale == b->scale && a->subscale == b->subscale && a->vertical_align == b->vertical_align && a->multicell_y == b->multicell_y;
+    return a->font_idx == b->font_idx && a->scale == b->scale && a->subscale_n == b->subscale_n && a->subscale_d == b->subscale_d && a->vertical_align == b->vertical_align && a->multicell_y == b->multicell_y;
 }
 
 void
@@ -1479,7 +1480,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 i += mcd_x_limit(cpu_cell) - cpu_cell->x - 1;
                 continue;
             }
-            cell_font.scale = cpu_cell->scale; cell_font.subscale = cpu_cell->subscale; cell_font.vertical_align = cpu_cell->vertical_align;
+            cell_font.scale = cpu_cell->scale; cell_font.subscale_n = cpu_cell->subscale_n; cell_font.subscale_d = cpu_cell->subscale_d; cell_font.vertical_align = cpu_cell->vertical_align;
             cell_font.multicell_y = cpu_cell->y;
         }
         text_in_cell(cpu_cell, line->text_cache, lc);

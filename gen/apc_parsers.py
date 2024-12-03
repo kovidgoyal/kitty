@@ -316,7 +316,8 @@ def parsers() -> None:
     keymap = {
         'w': ('width', 'uint'),
         's': ('scale', 'uint'),
-        'f': ('subscale', 'uint'),
+        'n': ('subscale_n', 'uint'),
+        'd': ('subscale_d', 'uint'),
         'v': ('vertical_align', 'uint'),
     }
     text = generate(

@@ -15,12 +15,9 @@
 // TODO: Handle selection with multicell
 // TODO: URL detection with multicell
 // TODO: Cursor rendering over multicell
-// TODO: Test the escape codes to delete and insert characters and lines with multicell
 // TODO: Handle replay of dumped graphics_command and multicell_command
 // TODO: Handle rewrap and restitch of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
-// TODO: Test serialization to ansi only using escape code for explicitly set multicells
-// TODO: Test rendering of box drawing at various scales and subscales and alignments
 // TODO: Implement baseline align for box drawing
 
 typedef union CellAttrs {
@@ -64,11 +61,12 @@ typedef union CPUCell {
         char_type natural_width: 1;
         char_type x : 8;
         char_type y : 4;
-        char_type subscale: 2;
+        char_type subscale_n: 4;
+        char_type subscale_d: 4;
         char_type scale: 3;
         char_type width: 3;
         char_type vertical_align: 3;
-        char_type : 21;
+        char_type : 15;
     };
     struct {
         char_type ch_and_idx: sizeof(char_type) * 8;
@@ -103,7 +101,7 @@ typedef struct {
 } Line;
 
 typedef struct MultiCellCommand {
-    unsigned int width, scale, subscale, vertical_align;
+    unsigned int width, scale, subscale_n, subscale_d, vertical_align;
     size_t payload_sz;
 } MultiCellCommand;
 

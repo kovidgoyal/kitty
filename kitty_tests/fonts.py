@@ -211,39 +211,42 @@ class Rendering(BaseTest):
     def test_scaled_box_drawing(self):
         block_size = self.cell_width * self.cell_height * 4
 
-        def full_block(subscale):
+        def full_block():
             return b'\xff' * block_size
 
-        def empty_block(subscale):
+        def empty_block():
             return b'\0' * block_size
 
-        def half_block(subscale, first=b'\xff', second=b'\0'):
-            frac = 1 / (subscale + 1)
+        def half_block(first=b'\xff', second=b'\0'):
+            frac = 0.5
             height = ceil(frac * self.cell_height)
             rest = self.cell_height - height
             return (first * (rest * self.cell_width * 4)) + (second * height * self.cell_width * 4)
 
-        def upper_half_block(subscale):
-            return half_block(subscale)
+        def upper_half_block():
+            return half_block()
 
-        def lower_half_block(subscale):
-            return half_block(subscale, b'\0', b'\xff')
+        def lower_half_block():
+            return half_block(b'\0', b'\xff')
 
         s = self.create_screen(cols=8, lines=8, scrollback=0)
 
-        def block_test(a=empty_block, b=empty_block, c=empty_block, d=empty_block, scale=2, subscale=1, vertical_align=0):
+        def block_test(a=empty_block, b=empty_block, c=empty_block, d=empty_block, scale=2, half_block=True, vertical_align=0):
             s.reset()
             before = len(self.sprites)
-            draw_multicell(s, '█', scale=scale, subscale=subscale, vertical_align=vertical_align)
+            subscale_n = subscale_d = 0
+            if half_block:
+                subscale_n, subscale_d = 1, 2
+            draw_multicell(s, '█', scale=scale, subscale_n=subscale_n, subscale_d=subscale_d, vertical_align=vertical_align)
             test_render_line(s.line(0))
             self.ae(len(self.sprites), before + 2)
             test_render_line(s.line(1))
             self.ae(len(self.sprites), before + 4)
             blocks = tuple(self.sprites)[before:]
-            for i, (expected, actual) in enumerate(zip((a(subscale), b(subscale), c(subscale), d(subscale)), blocks)):
+            for i, (expected, actual) in enumerate(zip((a(), b(), c(), d()), blocks)):
                 self.ae(self.sprites[actual], expected, f'The {i} block differs')
 
-        block_test(full_block, full_block, full_block, full_block, subscale=0)
+        block_test(full_block, full_block, full_block, full_block, half_block=False)
         block_test(a=full_block)
         block_test(c=full_block, vertical_align=1)
         block_test(a=lower_half_block, c=upper_half_block, vertical_align=2)

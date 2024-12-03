@@ -41,7 +41,8 @@ def test_multicell(self: TestMulticell) -> None:
         ae('y')
         ae('width')
         ae('scale')
-        ae('subscale')
+        ae('subscale_n')
+        ae('subscale_d')
         ae('vertical_align')
         ae('text')
         ae('natural_width')
@@ -90,21 +91,21 @@ def test_multicell(self: TestMulticell) -> None:
     s.reset()
     ac(0, 0, is_multicell=False)
     multicell(s, 'a')
-    ac(0, 0, is_multicell=True, width=1, scale=1, subscale=0, x=0, y=0, text='a', natural_width=True, cursor=(1, 0))
+    ac(0, 0, is_multicell=True, width=1, scale=1, subscale_n=0, x=0, y=0, text='a', natural_width=True, cursor=(1, 0))
     ac(0, 1, is_multicell=False), ac(1, 0, is_multicell=False), ac(1, 1, is_multicell=False)
     s.draw('莊')
-    ac(0, 0, is_multicell=True, width=1, scale=1, subscale=0, x=0, y=0, text='a', natural_width=True)
-    ac(1, 0, is_multicell=True, width=2, scale=1, subscale=0, x=0, y=0, text='莊', natural_width=True, cursor=(3, 0))
-    ac(2, 0, is_multicell=True, width=2, scale=1, subscale=0, x=1, y=0, text='', natural_width=True)
+    ac(0, 0, is_multicell=True, width=1, scale=1, subscale_n=0, x=0, y=0, text='a', natural_width=True)
+    ac(1, 0, is_multicell=True, width=2, scale=1, subscale_n=0, x=0, y=0, text='莊', natural_width=True, cursor=(3, 0))
+    ac(2, 0, is_multicell=True, width=2, scale=1, subscale_n=0, x=1, y=0, text='', natural_width=True)
     for x in range(s.columns):
         ac(x, 1, is_multicell=False)
     s.cursor.x = 0
-    multicell(s, 'a', width=2, scale=2, subscale=3)
-    ac(0, 0, is_multicell=True, width=2, scale=2, subscale=3, x=0, y=0, text='a', natural_width=False, cursor=(4, 0))
+    multicell(s, 'a', width=2, scale=2, subscale_n=3)
+    ac(0, 0, is_multicell=True, width=2, scale=2, subscale_n=3, x=0, y=0, text='a', natural_width=False, cursor=(4, 0))
     for x in range(1, 4):
-        ac(x, 0, is_multicell=True, width=2, scale=2, subscale=3, x=x, y=0, text='', natural_width=False)
+        ac(x, 0, is_multicell=True, width=2, scale=2, subscale_n=3, x=x, y=0, text='', natural_width=False)
     for x in range(0, 4):
-        ac(x, 1, is_multicell=True, width=2, scale=2, subscale=3, x=x, y=1, text='', natural_width=False)
+        ac(x, 1, is_multicell=True, width=2, scale=2, subscale_n=3, x=x, y=1, text='', natural_width=False)
 
     # Test draw with cursor in a multicell
     s.reset()
@@ -116,7 +117,7 @@ def test_multicell(self: TestMulticell) -> None:
     s.cursor.x = 0
     s.draw('a'), ac(0, 0, is_multicell=False), ac(1, 0, is_multicell=False)
     s.reset()
-    multicell(s, 'a', width=2, scale=2, subscale=3)
+    multicell(s, 'a', width=2, scale=2, subscale_n=3, subscale_d=4)
     s.cursor.x, s.cursor.y = 1, 1
     s.draw('b')
     self.ae(8, count_multicells())
@@ -398,6 +399,8 @@ def test_multicell(self: TestMulticell) -> None:
         s.reset()
 
     s.reset()
+    multicell(s, 'a', width=2, scale=3, subscale_n=1, subscale_d=2, vertical_align=1)
+    ta('\x1b]66;w=2:s=3:n=1:d=2;a\x07')
     s.draw('a')
     multicell(s, 'b', width=2)
     s.draw('c')

@@ -37,8 +37,8 @@ def parse_bytes(screen, data, dump_callback=None):
         screen.test_parse_written_data(dump_callback)
 
 
-def draw_multicell(screen: Screen, text: str, width: int = 0, scale: int = 1, subscale: int = 0, vertical_align: int = 0) -> None:
-    cmd = f'\x1b]{TEXT_SIZE_CODE};w={width}:s={scale}:f={subscale}:v={vertical_align};{text}\a'
+def draw_multicell(screen: Screen, text: str, width: int = 0, scale: int = 1, subscale_n: int = 0, subscale_d: int = 0, vertical_align: int = 0) -> None:
+    cmd = f'\x1b]{TEXT_SIZE_CODE};w={width}:s={scale}:n={subscale_n}:d={subscale_d}:v={vertical_align};{text}\a'
     parse_bytes(screen, cmd.encode())
 
 

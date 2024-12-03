@@ -1204,8 +1204,8 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
     if (!self->lc->count) return;
     CPUCell mcd = {
-        .width=MIN(cmd->width, 15u), .scale=MAX(1, MIN(cmd->scale, 15u)), .subscale=MIN(cmd->subscale, 3u),
-        .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
+        .width=MIN(cmd->width, 15u), .scale=MAX(1, MIN(cmd->scale, 15u)), .subscale_n=MIN(cmd->subscale_n, 15u),
+        .subscale_d=MIN(cmd->subscale_d, 15), .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
     };
     if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);
     else {
@@ -5206,7 +5206,10 @@ test_parse_written_data(Screen *screen, PyObject *args) {
 
 static PyObject*
 multicell_data_as_dict(CPUCell mcd) {
-    return Py_BuildValue("{sI sI sI sO sI}", "scale", (unsigned int)mcd.scale, "width", (unsigned int)mcd.width, "subscale", (unsigned int)mcd.subscale, "natural_width", mcd.natural_width ? Py_True : Py_False, "vertical_align", mcd.vertical_align);
+    return Py_BuildValue("{sI sI sI sI sO sI}",
+            "scale", (unsigned int)mcd.scale, "width", (unsigned int)mcd.width,
+            "subscale_n", (unsigned int)mcd.subscale_n, "subscale_d", (unsigned int)mcd.subscale_d,
+            "natural_width", mcd.natural_width ? Py_True : Py_False, "vertical_align", mcd.vertical_align);
 }
 
 static PyObject*

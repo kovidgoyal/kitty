@@ -18,7 +18,13 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
   (void)is_negative;
   size_t sz;
 
-  enum KEYS { width = 'w', scale = 's', subscale = 'f', vertical_align = 'v' };
+  enum KEYS {
+    width = 'w',
+    scale = 's',
+    subscale_n = 'n',
+    subscale_d = 'd',
+    vertical_align = 'v'
+  };
 
   enum KEYS key = 'a';
   if (parser_buf[pos] == ';')
@@ -36,7 +42,10 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
       case scale:
         value_state = UINT;
         break;
-      case subscale:
+      case subscale_n:
+        value_state = UINT;
+        break;
+      case subscale_d:
         value_state = UINT;
         break;
       case vertical_align:
@@ -119,7 +128,8 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
       switch (key) {
         U(width);
         U(scale);
-        U(subscale);
+        U(subscale_n);
+        U(subscale_d);
         U(vertical_align);
       default:
         break;
@@ -172,14 +182,15 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
     break;
   }
 
-  REPORT_VA_COMMAND("K s { sI sI sI sI  sI} y#", self->window_id,
-                    "multicell_command",
+  REPORT_VA_COMMAND(
+      "K s { sI sI sI sI sI  sI} y#", self->window_id, "multicell_command",
 
-                    "width", (unsigned int)g.width, "scale",
-                    (unsigned int)g.scale, "subscale", (unsigned int)g.subscale,
-                    "vertical_align", (unsigned int)g.vertical_align,
+      "width", (unsigned int)g.width, "scale", (unsigned int)g.scale,
+      "subscale_n", (unsigned int)g.subscale_n, "subscale_d",
+      (unsigned int)g.subscale_d, "vertical_align",
+      (unsigned int)g.vertical_align,
 
-                    "payload_sz", g.payload_sz, parser_buf, g.payload_sz);
+      "payload_sz", g.payload_sz, parser_buf, g.payload_sz);
 
   screen_handle_multicell_command(self->screen, &g, parser_buf + payload_start);
 }
