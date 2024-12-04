@@ -68,6 +68,7 @@ from .fast_data_types import (
     get_mouse_data_for_window,
     get_options,
     is_css_pointer_name_valid,
+    is_modifier_key,
     last_focused_os_window_id,
     mark_os_window_dirty,
     monotonic,
@@ -987,11 +988,16 @@ class Window:
             sk = sk.resolve_kitty_mod(km)
             events.append(KeyEvent(key=sk.key, mods=sk.mods, action=GLFW_REPEAT if human_key == prev else GLFW_PRESS))
             prev = human_key
+        scroll_needed = False
         for ev in events + [KeyEvent(key=x.key, mods=x.mods, action=GLFW_RELEASE) for x in reversed(events)]:
             enc = self.encoded_key(ev)
             if enc:
                 self.write_to_child(enc)
+                if ev.action != GLFW_RELEASE and not is_modifier_key(ev.key):
+                    scroll_needed = True
                 passthrough = False
+        if scroll_needed:
+            self.scroll_end()
         return passthrough
 
     def send_key_sequence(self, *keys: KeyEvent, synthesize_release_events: bool = True) -> None:
