@@ -1062,5 +1062,8 @@ class NotificationManager:
             n.title, n.body = parts[0], (parts[1] if len(parts) > 1 else '')
             self.notify_with_command(n, channel_id)
 
+    def close_notification(self, desktop_notification_id: int) -> None:
+        self.desktop_integration.close_notification(desktop_notification_id)
+
     def cleanup(self) -> None:
         del self.icon_data_cache

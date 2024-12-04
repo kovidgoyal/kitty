@@ -629,6 +629,7 @@ class Window:
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.last_cmd_output_start_time = 0.
+        self.last_notification_id: Optional[int] = None
         self.open_url_handler: 'OpenUrlHandler' = None
         self.last_cmd_cmdline = ''
         self.last_cmd_exit_status = 0
@@ -1200,6 +1201,13 @@ class Window:
                 tab = self.tabref()
                 if tab is not None:
                     tab.relayout_borders()
+            if self.last_notification_id:
+                # Notification id is saved withing handle_cmd_end so it
+                # configured to be close upon focus is gained and visibility
+                # change. When window is focused, it is visible for sure.
+                nm = get_boss().notification_manager
+                nm.close_notification(self.last_notification_id)
+                self.last_notification_id = None
         elif self.os_window_id == current_focused_os_window_id():
             # Cancel IME composition after loses focus
             update_ime_position_for_window(self.id, False, -1)
@@ -1510,7 +1518,20 @@ class Window:
             if not nm.is_notification_allowed(cmd, self.id):
                 return
             if action == 'notify':
-                nm.notify_with_command(cmd, self.id)
+                # Notification id is saved, so configuration was checked on
+                # previous pass and saved to be cleared upon focus. But that
+                # action was missed somehow and we should clear it here.
+                if self.last_notification_id:
+                    nm.close_notification(self.last_notification_id)
+                    self.last_notification_id = None
+                notification_id = nm.notify_with_command(cmd, self.id)
+                # Saving notification id only when we are going to close it in
+                # future.
+                # TODO(Shvedov): We should close notification not only when
+                # gather focus, but when window become visible if `when` equals
+                # to "invisible".
+                if cmd.only_when is OnlyWhen.unfocused or cmd.only_when is OnlyWhen.invisible:
+                    self.last_notification_id = notification_id
             elif action == 'bell':
                 self.screen.bell()
             elif action == 'command':
