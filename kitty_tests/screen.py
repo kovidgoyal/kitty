@@ -687,6 +687,10 @@ class TestScreen(BaseTest):
         # narrow + VS15
         t('\u25b6', 1, '\ufe0e', 1)
         t('\u25b6\ufe0e', 1)
+        # narrow + VS16 + VS15
+        t('\u25b6', 1, '\ufe0f', 2, '\ufe0e', 2)
+        # wide + VS15 + VS16
+        t('\U0001f610', 2, '\ufe0e', 1, '\ufe0f', 1)
 
     def test_writing_with_cursor_on_trailer_of_wide_character(self):
         s = self.create_screen()
