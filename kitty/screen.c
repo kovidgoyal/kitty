@@ -674,6 +674,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     if (has_prev_char) {
         CPUCell *cp; GPUCell *gp;
         linebuf_init_cells(self->linebuf, ypos, &cp, &gp);
+        if (xpos > 0 && gp[xpos].attrs.width == 0 && gp[xpos-1].attrs.width == 2) xpos--;
         bool added = line_add_combining_char(cp, gp, self->text_cache, self->lc, ch, xpos);
         unsigned base_pos = self->lc->count - (added ? 2 : 1);
         if (ch == VS16) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
