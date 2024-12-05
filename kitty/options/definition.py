@@ -3304,7 +3304,13 @@ and exits will spam a notification.
 Second, the action to perform. The default is :code:`notify`. The possible values are:
 
 :code:`notify`
-    Send a desktop notification.
+    Send a desktop notification. The subsequent arguments are optional and specify when
+    the notification is automatically cleared. The set of possible events when the notification is
+    cleared are: :code:`focus` and :code:`next`. :code:`focus` means that when the notification
+    policy is :code:`unfocused` or :code:`invisible` the notification is automatically cleared
+    when the window regains focus. The value of :code:`next` means that the previous notification
+    is cleared when the next notification is shown. The default when no arguments are specified
+    is: :code:`focus next`.
 
 :code:`bell`
     Ring the terminal bell.
@@ -3323,6 +3329,9 @@ Some more examples::
     # Run 'notify-send' when a command takes more than 10 seconds in a invisible window
     # Here %c is replaced by the current command line and %s by the job exit code
     notify_on_cmd_finish invisible 10.0 command notify-send "job finished with status: %s" %c
+    # Do not clear previous notification when next command finishes or window regains focus
+    notify_on_cmd_finish invisible 5.0 notify
+
 '''
     )
 

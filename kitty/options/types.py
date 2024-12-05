@@ -565,7 +565,7 @@ class Options:
     mark3_background: Color = Color(242, 116, 188)
     mark3_foreground: Color = Color(0, 0, 0)
     mouse_hide_wait: float = 0.0 if is_macos else 3.0
-    notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=())
+    notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
     open_url_with: typing.List[str] = ['default']
     paste_actions: typing.FrozenSet[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     placement_strategy: choices_for_placement_strategy = 'center'

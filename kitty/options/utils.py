@@ -26,6 +26,7 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    cast,
     get_args,
 )
 
@@ -763,11 +764,17 @@ def active_tab_title_template(x: str) -> Optional[str]:
     return None if x == 'none' else x
 
 
+ClearOn = Literal['next', 'focus']
+default_clear_on: tuple[ClearOn, ...] = 'focus', 'next'
+all_clear_on = get_args(ClearOn)
+
+
 class NotifyOnCmdFinish(NamedTuple):
-    when: str
-    duration: float
-    action: str
-    cmdline: Tuple[str, ...]
+    when: str = 'never'
+    duration: float = 5.0
+    action: str = 'notify'
+    cmdline: Tuple[str, ...] = ()
+    clear_on: tuple[ClearOn, ...] = default_clear_on
 
 
 def notify_on_cmd_finish(x: str) -> NotifyOnCmdFinish:
@@ -780,16 +787,26 @@ def notify_on_cmd_finish(x: str) -> NotifyOnCmdFinish:
         duration = float(parts[1])
     action = 'notify'
     cmdline: Tuple[str, ...] = ()
+    clear_on = default_clear_on
     if len(parts) > 2:
         if parts[2] not in ('notify', 'bell', 'command'):
             raise ValueError(f'Unknown notify_on_cmd_finish action: {parts[2]}')
         action = parts[2]
-        if action == 'command':
+        if action == 'notify':
+            if len(parts) > 3:
+                con: list[ClearOn] = []
+                for x in parts[3].split():
+                    if x not in all_clear_on:
+                        raise ValueError(
+                            f'notify_on_cmd_finish: notify clear_on value "{x}" is invalid. Valid values are: {", ".join(all_clear_on)}')
+                    con.append(cast(ClearOn, x))
+                clear_on = tuple(con)
+        elif action == 'command':
             if len(parts) > 3:
                 cmdline = tuple(to_cmdline(parts[3]))
             else:
                 raise ValueError('notify_on_cmd_finish `command` action needs a command line')
-    return NotifyOnCmdFinish(when, duration, action, cmdline)
+    return NotifyOnCmdFinish(when, duration, action, cmdline, clear_on)
 
 
 def config_or_absolute_path(x: str, env: Optional[Dict[str, str]] = None) -> Optional[str]:

@@ -89,6 +89,8 @@ Detailed list of changes
 
 - Allow :ref:`specifying individual color themes <auto_color_scheme>` to use so that kitty changes colors automatically following the OS dark/light mode
 
+- :opt:`notify_on_cmd_finish`: Automatically remove notifications when the window gains focus or the next notification is shown. Clearing behavior can be configured (:pull:`8100`)
+
 - Discard OSC 9 notifications that start with :code:`4;` because some misguided software is using it for "progress reporting" (:iss:`8011`)
 
 - Wayland GNOME: Workaround bug in mutter causing double tap on titlebar to not always work (:iss:`8054`)
