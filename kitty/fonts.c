@@ -809,7 +809,7 @@ extract_scaled_cell_from_canvas(
     unsigned src_row_size = scaled_cell_width * num_cells;
     if (xoff >= src_row_size) return ans;  // nothing to copy
     unsigned width = MIN(src_row_size - xoff, unscaled_cell_width);
-    /*printf("\n");*/
+    /*printf("extracting width: %u ------------------------\n", width);*/
     for (unsigned src_y=src.top, dest_y=dest.top; src_y < src.bottom && src_y < scaled_cell_height && dest_y < dest.bottom && dest_y < unscaled_cell_height; src_y++, dest_y++) {
         pixel *srcp = canvas->buf + src_row_size * src_y;
         pixel *destp = ans + unscaled_cell_width * dest_y;
@@ -869,21 +869,22 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     }
     if (all_rendered) return;
     unsigned width = fg->fcm.cell_width, height = fg->fcm.cell_height;
-    scaled_cell_dimensions(rf, &width, &height);
+    float scale = scaled_cell_dimensions(rf, &width, &height);
     RAII_PyObject(ret, PyObject_CallFunction(box_drawing_function, "IIId", (unsigned int)ch, width, height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0));
     if (ret == NULL) { PyErr_Print(); return; }
     uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
     ensure_canvas_can_fit(fg, 2, rf.scale);
     Region src = { .right = width, .bottom = height }, dest = src;
     render_alpha_mask(alpha_mask, fg->canvas.buf, &src, &dest, width, width, 0xffffff);
-    /*for (unsigned y = 0; y < height; y++) { for (unsigned x = 0; x < width; x++) { printf("%d ", (fg->canvas.buf + width * y)[0] != 0); } printf("\n"); }*/
-    if (rf.scale == 1) {
+    /*printf("Rendered char sz: (%u, %u)\n", width, height); for (unsigned y = 0; y < height; y++) { for (unsigned x = 0; x < width; x++) { printf("%d ", (fg->canvas.buf + width * y)[x] != 0); } printf("\n"); }*/
+    if (scale == 1.f && rf.scale == 1 && !rf.subscale_n) {
         current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[0]->x, sp[0]->y, sp[0]->z, fg->canvas.buf);
     } else {
         calculate_regions_for_line(rf, fg->fcm.cell_height, &src, &dest);
-        /*printf("width: %u height: %u src.top: %u src.bottom: %u\n", width, height, src.top, src.bottom);*/
+        /*printf("width: %u height: %u unscaled_cell_width: %u unscaled_cell_height: %u src.top: %u src.bottom: %u rf.scale: %u\n", width, height, fg->fcm.cell_width, fg->fcm.cell_height, src.top, src.bottom, rf.scale);*/
         for (unsigned i = 0; i < rf.scale; i++) {
             pixel *b = extract_scaled_cell_from_canvas(&fg->canvas, i, 1, src, dest, fg->fcm.cell_width, fg->fcm.cell_height, width, height);
+            /*printf("Sprite %u: pos: (%u, %u, %u) sz: (%u, %u)\n", i, sp[i]->x, sp[i]->y, sp[i]->z, fg->fcm.cell_width, fg->fcm.cell_height); for (unsigned y = 0; y < fg->fcm.cell_height; y++) { for (unsigned x = 0; x < fg->fcm.cell_width; x++) { printf("%d ", (b + fg->fcm.cell_width * y)[x] != 0); } printf("\n"); }*/
             current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b);
         }
     }
@@ -948,13 +949,15 @@ render_group(
     render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->fcm.cell_width, fg->fcm.cell_height, num_cells, fg->fcm.baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
+#define sendtogpu { FontCellMetrics scaled = fg->fcm; current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b); fg->fcm = scaled; }
+
     if (scale == 1.f) {
         for (unsigned i = 0; i < num_cells; i++) {
             if (!sp[i]->rendered) {
                 sp[i]->rendered = true;
                 sp[i]->colored = was_colored;
-                pixel *buf = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
-                current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, buf);
+                pixel *b = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
+                sendtogpu;
             }
             set_cell_sprite(gpu_cells + i, sp[i]);
         }
@@ -964,7 +967,7 @@ render_group(
         for (unsigned i = 0; i < num_cells; i++) {
             if (!sp[i]->rendered) {
                 pixel *b = extract_scaled_cell_from_canvas(&fg->canvas, i, num_cells, src, dest, unscaled_metrics.cell_width, unscaled_metrics.cell_height, fg->fcm.cell_width, fg->fcm.cell_height);
-                current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b);
+                sendtogpu;
             }
             set_cell_sprite(gpu_cells + i, sp[i]);
         }

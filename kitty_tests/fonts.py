@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import array
 import os
 import tempfile
 import unittest
@@ -223,13 +224,45 @@ class Rendering(BaseTest):
             rest = self.cell_height - height
             return (first * (rest * self.cell_width * 4)) + (second * height * self.cell_width * 4)
 
+        def quarter_block():
+            frac = 0.5
+            height = ceil(frac * self.cell_height)
+            width = ceil(frac * self.cell_width)
+            ans = array.array('I', b'\0' * block_size)
+            self.ae(len(ans), self.cell_width * self.cell_height)
+            for y in range(height):
+                pos = self.cell_width * y
+                for x in range(width):
+                    ans[pos + x] = 0xffffffff
+            return ans.tobytes()
+
         def upper_half_block():
             return half_block()
 
         def lower_half_block():
             return half_block(b'\0', b'\xff')
 
+        def block_as_str(a):
+            pixels = array.array('I', a)
+            def row(y):
+                pos = y * self.cell_width
+                return ' '.join(f'{int(pixels[pos + x] != 0)}' for x in range(self.cell_width))
+            return '\n'.join(row(y) for y in range(self.cell_height))
+
+        def assert_blocks(a, b, msg=''):
+            if a != b:
+                assert_blocks.__msg = (msg or 'block not equal') + '\n' + block_as_str(a) + '\n\n' + block_as_str(b)
+                del a, b
+                raise AssertionError(assert_blocks.__msg)
+
         s = self.create_screen(cols=8, lines=8, scrollback=0)
+
+        s.reset()
+        before = len(self.sprites)
+        draw_multicell(s, '█', scale=1, subscale_n=1, subscale_d=2, vertical_align=0)
+        test_render_line(s.line(0))
+        self.ae(len(self.sprites), before + 1)
+        assert_blocks(quarter_block(), self.sprites[tuple(self.sprites)[before]])
 
         def block_test(a=empty_block, b=empty_block, c=empty_block, d=empty_block, scale=2, half_block=True, vertical_align=0):
             s.reset()
@@ -244,7 +277,7 @@ class Rendering(BaseTest):
             self.ae(len(self.sprites), before + 4)
             blocks = tuple(self.sprites)[before:]
             for i, (expected, actual) in enumerate(zip((a(), b(), c(), d()), blocks)):
-                self.ae(self.sprites[actual], expected, f'The {i} block differs')
+                assert_blocks(expected, self.sprites[actual], f'The {i} block differs')
 
         block_test(full_block, full_block, full_block, full_block, half_block=False)
         block_test(a=full_block)
