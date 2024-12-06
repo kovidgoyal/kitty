@@ -259,6 +259,13 @@ class Rendering(BaseTest):
 
         s.reset()
         before = len(self.sprites)
+        draw_multicell(s, '██', scale=1, subscale_n=1, subscale_d=2, vertical_align=0, width=1)
+        test_render_line(s.line(0))
+        self.ae(len(self.sprites), before + 1)
+        assert_blocks(upper_half_block(), self.sprites[tuple(self.sprites)[before]])
+
+        s.reset()
+        before = len(self.sprites)
         draw_multicell(s, '█', scale=1, subscale_n=1, subscale_d=2, vertical_align=0)
         test_render_line(s.line(0))
         self.ae(len(self.sprites), before + 1)
