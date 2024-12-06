@@ -30,15 +30,20 @@ typedef union FaceIndex {
     FT_Long val;
 } FaceIndex;
 
+typedef struct FaceMetrics {
+    float size_in_pts;
+    unsigned int units_per_EM;
+    // The following are in font units use font_units_to_pixels_x/y to convert to pixels
+    int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
+} FaceMetrics;
+
 typedef struct {
     PyObject_HEAD
 
     FT_Face face;
-    unsigned int units_per_EM;
-    int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
+    FaceMetrics metrics;
     int hinting, hintstyle;
     bool is_scalable, has_color, is_variable, has_svg;
-    float size_in_pts;
     FT_F26Dot6 char_width, char_height;
     FT_UInt xdpi, ydpi;
     PyObject *path;
@@ -46,7 +51,6 @@ typedef struct {
     hb_codepoint_t space_glyph_id;
     void *extra_data;
     free_extra_data_func free_extra_data;
-    float apple_leading;
     PyObject *name_lookup_table;
     FontFeatures font_features;
 } Face;
@@ -128,7 +132,7 @@ get_height_for_char(Face *self, char ch) {
     unsigned int ans = 0;
     int glyph_index = FT_Get_Char_Index(self->face, ch);
     if (load_glyph(self, glyph_index, FT_LOAD_DEFAULT)) {
-        unsigned int baseline = font_units_to_pixels_y(self, self->ascender);
+        unsigned int baseline = font_units_to_pixels_y(self, self->metrics.ascender);
         FT_GlyphSlotRec *glyph = self->face->glyph;
         FT_Bitmap *bm = &glyph->bitmap;
         if (glyph->bitmap_top <= 0 || (glyph->bitmap_top > 0 && (unsigned int)glyph->bitmap_top < baseline)) {
@@ -140,7 +144,7 @@ get_height_for_char(Face *self, char ch) {
 
 static unsigned int
 calc_cell_height(Face *self, bool for_metrics) {
-    unsigned int ans = font_units_to_pixels_y(self, self->height);
+    unsigned int ans = font_units_to_pixels_y(self, self->metrics.height);
     if (for_metrics) {
         unsigned int underscore_height = get_height_for_char(self, '_');
         if (underscore_height > ans) {
@@ -193,7 +197,7 @@ set_size_for_face(PyObject *s, unsigned int desired_height, bool force, FONTS_DA
     FT_F26Dot6 w = (FT_F26Dot6)(ceil(fg->font_sz_in_pts * 64.0));
     FT_UInt xdpi = (FT_UInt)fg->logical_dpi_x, ydpi = (FT_UInt)fg->logical_dpi_y;
     if (!force && (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi)) return true;
-    ((Face*)self)->size_in_pts = (float)fg->font_sz_in_pts;
+    self->metrics.size_in_pts = (float)fg->font_sz_in_pts;
     return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->fcm.cell_height);
 }
 
@@ -204,16 +208,32 @@ set_size(Face *self, PyObject *args) {
     FT_F26Dot6 w = (FT_F26Dot6)(ceil(font_sz_in_pts * 64.0));
     FT_UInt xdpi = (FT_UInt)dpi_x, ydpi = (FT_UInt)dpi_y;
     if (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi) { Py_RETURN_NONE; }
-    self->size_in_pts = (float)font_sz_in_pts;
+    self->metrics.size_in_pts = (float)font_sz_in_pts;
     if (!set_font_size(self, w, w, xdpi, ydpi, 0, 0)) return NULL;
     Py_RETURN_NONE;
 }
 
-static bool
-init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_HANDLE fg) {
-#define CPY(n) self->n = self->face->n;
+static void
+copy_face_metrics(Face *self) {
+#define CPY(n) self->metrics.n = self->face->n;
     CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
+}
+
+bool
+face_apply_scaling(PyObject *f, const FONTS_DATA_HANDLE fg) {
+    Face *self = (Face*)f;
+    if (set_size_for_face(f, 0, false, fg)) {
+        if (self->harfbuzz_font) hb_ft_font_changed(self->harfbuzz_font);
+        copy_face_metrics(self);
+        return true;
+    }
+    return false;
+}
+
+static bool
+init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_HANDLE fg) {
+    copy_face_metrics(self);
     self->is_scalable = FT_IS_SCALABLE(self->face);
     self->has_color = FT_HAS_COLOR(self->face);
     self->is_variable = FT_HAS_MULTIPLE_MASTERS(self->face);
@@ -230,8 +250,8 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
 
     TT_OS2 *os2 = (TT_OS2*)FT_Get_Sfnt_Table(self->face, FT_SFNT_OS2);
     if (os2 != NULL) {
-      self->strikethrough_position = os2->yStrikeoutPosition;
-      self->strikethrough_thickness = os2->yStrikeoutSize;
+      self->metrics.strikethrough_position = os2->yStrikeoutPosition;
+      self->metrics.strikethrough_thickness = os2->yStrikeoutSize;
     }
 
     self->path = path; Py_INCREF(self->path);
@@ -397,17 +417,17 @@ cell_metrics(PyObject *s) {
     FontCellMetrics ans = {0};
     ans.cell_width = calc_cell_width(self);
     ans.cell_height = calc_cell_height(self, true);
-    ans.baseline = font_units_to_pixels_y(self, self->ascender);
-    ans.underline_position = MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
-    ans.underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
+    ans.baseline = font_units_to_pixels_y(self, self->metrics.ascender);
+    ans.underline_position = MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->metrics.ascender - self->metrics.underline_position)));
+    ans.underline_thickness = MAX(1, font_units_to_pixels_y(self, self->metrics.underline_thickness));
 
-    if (self->strikethrough_position != 0) {
-      ans.strikethrough_position = MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->strikethrough_position)));
+    if (self->metrics.strikethrough_position != 0) {
+      ans.strikethrough_position = MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->metrics.ascender - self->metrics.strikethrough_position)));
     } else {
       ans.strikethrough_position = (unsigned int)floor(ans.baseline * 0.65);
     }
-    if (self->strikethrough_thickness > 0) {
-      ans.strikethrough_thickness = MAX(1, font_units_to_pixels_y(self, self->strikethrough_thickness));
+    if (self->metrics.strikethrough_thickness > 0) {
+      ans.strikethrough_thickness = MAX(1, font_units_to_pixels_y(self, self->metrics.strikethrough_thickness));
     } else {
       ans.strikethrough_thickness = ans.underline_thickness;
     }
@@ -1037,22 +1057,26 @@ end:
 
 static PyMemberDef members[] = {
 #define MEM(name, type) {#name, type, offsetof(Face, name), READONLY, #name}
-    MEM(units_per_EM, T_UINT),
-    MEM(ascender, T_INT),
-    MEM(descender, T_INT),
-    MEM(height, T_INT),
-    MEM(max_advance_width, T_INT),
-    MEM(max_advance_height, T_INT),
-    MEM(underline_position, T_INT),
-    MEM(underline_thickness, T_INT),
-    MEM(strikethrough_position, T_INT),
-    MEM(strikethrough_thickness, T_INT),
+#define MMEM(name, type) {#name, type, offsetof(Face, metrics) + offsetof(FaceMetrics, name), READONLY, #name}
+    MMEM(units_per_EM, T_UINT),
+    MMEM(size_in_pts, T_FLOAT),
+    MMEM(ascender, T_INT),
+    MMEM(descender, T_INT),
+    MMEM(height, T_INT),
+    MMEM(max_advance_width, T_INT),
+    MMEM(max_advance_height, T_INT),
+    MMEM(underline_position, T_INT),
+    MMEM(underline_thickness, T_INT),
+    MMEM(strikethrough_position, T_INT),
+    MMEM(strikethrough_thickness, T_INT),
     MEM(is_scalable, T_BOOL),
     MEM(is_variable, T_BOOL),
     MEM(has_svg, T_BOOL),
     MEM(has_color, T_BOOL),
     MEM(path, T_OBJECT_EX),
     {NULL}  /* Sentinel */
+#undef MEM
+#undef MMEM
 };
 
 static PyMethodDef methods[] = {

@@ -31,12 +31,6 @@ typedef struct ParsedFontFeature {
     bool hash_computed;
 } ParsedFontFeature;
 
-typedef struct RunFont {
-    unsigned scale, subscale_n, subscale_d, vertical_align, multicell_y;
-    ssize_t font_idx;
-} RunFont;
-
-
 ParsedFontFeature* parse_font_feature(const char *spec);
 
 // API that font backends need to implement
@@ -62,7 +56,7 @@ void sprite_tracker_set_limits(size_t max_texture_size, size_t max_array_len);
 typedef void (*free_extra_data_func)(void*);
 StringCanvas render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline);
 StringCanvas render_simple_text(FONTS_DATA_HANDLE fg_, const char *text);
-static inline void face_apply_scaling(PyObject*face, RunFont rf) {(void)face; (void)rf;}
+bool face_apply_scaling(PyObject*face, const FONTS_DATA_HANDLE fg);
 
 bool
 add_font_name_record(PyObject *table, uint16_t platform_id, uint16_t encoding_id, uint16_t language_id, uint16_t name_id, const char *string, uint16_t string_len);

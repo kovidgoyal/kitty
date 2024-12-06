@@ -18,6 +18,8 @@ vt_hash_bytes(const void *data, const size_t size) {
     return hash;
 }
 
+static inline uint64_t vt_hash_float(float x) { return vt_hash_integer((uint64_t)x); }
+static inline bool vt_cmpr_float(float a, float b) { return a == b; }
 #define vt_create_for_loop(itr_type, itr, table) for (itr_type itr = vt_first(table); !vt_is_end(itr); itr = vt_next(itr))
 
 #endif
