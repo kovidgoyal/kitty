@@ -184,9 +184,14 @@ class Tab:  # {{{
     def take_over_from(self, other_tab: 'Tab') -> None:
         self.name, self.cwd = other_tab.name, other_tab.cwd
         self.enabled_layouts = list(other_tab.enabled_layouts)
-        if other_tab._current_layout_name:
-            self._set_current_layout(other_tab._current_layout_name)
         self._last_used_layout = other_tab._last_used_layout
+        if clname := other_tab._current_layout_name:
+            cl = other_tab.current_layout
+            other_tab._set_current_layout(clname)
+            cl.set_owner(self.os_window_id, self.id)
+            self.current_layout: Layout = cl
+            self._current_layout_name = clname
+            self.mark_tab_bar_dirty()
         for window in other_tab.windows:
             detach_window(other_tab.os_window_id, other_tab.id, window.id)
         self.windows = other_tab.windows

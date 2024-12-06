@@ -223,9 +223,7 @@ class Layout:
     only_active_window_visible = False
 
     def __init__(self, os_window_id: int, tab_id: int, layout_opts: str = '') -> None:
-        self.os_window_id = os_window_id
-        self.tab_id = tab_id
-        self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
+        self.set_owner(os_window_id, tab_id)
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects: List[Rect] = []
@@ -233,6 +231,12 @@ class Layout:
         assert self.name is not None
         self.full_name = f'{self.name}:{layout_opts}' if layout_opts else self.name
         self.remove_all_biases()
+
+    def set_owner(self, os_window_id: int, tab_id: int) -> None:
+        # Useful when moving a layout from one tab to another typically a detached tab being re-attached
+        self.os_window_id = os_window_id
+        self.tab_id = tab_id
+        self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
 
     def bias_increment_for_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
         self._set_dimensions()

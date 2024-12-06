@@ -109,6 +109,8 @@ Detailed list of changes
 
 - Fix enlarging window when a long line is wrapped between the first line of the scrollback buffer and the screen inserting a spurious newline (:iss:`7033`)
 
+- When re-attaching a detached tab preserve internal layout state such as biases and orientations (:iss:`8106`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
