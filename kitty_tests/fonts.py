@@ -13,6 +13,7 @@ from kitty.fast_data_types import (
     DECAWM,
     ParsedFontFeature,
     get_fallback_font,
+    set_allow_use_of_box_fonts,
     sprite_map_set_layout,
     sprite_map_set_limits,
     test_render_line,
@@ -216,7 +217,7 @@ def block_helpers(s, sprites, cell_width, cell_height):
         if a != b:
             msg = msg or 'block not equal'
             if len(a) != len(b):
-                assert_blocks.__msg = msg + f'block lengths not equal: {len(a)/4} != {len(b)/4}'
+                assert_blocks.__msg = msg + f' block lengths not equal: {len(a)/4} != {len(b)/4}'
             else:
                 assert_blocks.__msg = msg + '\n' + block_as_str(a) + '\n\n' + block_as_str(b)
             del a, b
@@ -297,6 +298,16 @@ class Rendering(FontBaseTest):
         self.assertEqual(len(self.sprites) - prerendered, len(box_chars))
 
     def test_scaled_box_drawing(self):
+        self.scaled_drawing_test()
+
+    def test_scaled_font_drawing(self):
+        set_allow_use_of_box_fonts(False)
+        try:
+            self.scaled_drawing_test()
+        finally:
+            set_allow_use_of_box_fonts(True)
+
+    def scaled_drawing_test(self):
         s = self.create_screen(cols=8, lines=8, scrollback=0)
         full_block, empty_block, upper_half_block, lower_half_block, quarter_block, block_as_str, block_test = block_helpers(
                 s, self.sprites, self.cell_width, self.cell_height)
