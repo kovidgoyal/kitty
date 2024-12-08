@@ -5,7 +5,7 @@ import array
 import os
 import tempfile
 import unittest
-from functools import partial
+from functools import lru_cache, partial
 from math import ceil
 
 from kitty.constants import is_macos, read_kitty_resource
@@ -30,6 +30,11 @@ from . import BaseTest, draw_multicell
 
 def parse_font_spec(spec):
     return FontSpec.from_setting(spec)
+
+
+@lru_cache(maxsize=64)
+def testing_font_data(name):
+    return read_kitty_resource(name, __name__.rpartition('.')[0])
 
 
 class Selection(BaseTest):
@@ -165,27 +170,109 @@ class Selection(BaseTest):
             self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
             self.ae(face_from_descriptor(ff['bold']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
+def block_helpers(s, sprites, cell_width, cell_height):
+    block_size = cell_width * cell_height * 4
 
-class Rendering(BaseTest):
+    def full_block():
+        return b'\xff' * block_size
+
+    def empty_block():
+        return b'\0' * block_size
+
+    def half_block(first=b'\xff', second=b'\0', swap=False):
+        frac = 0.5
+        height = ceil(frac * cell_height)
+        rest = cell_height - height
+        if swap:
+            height, rest = rest, height
+            first, second = second, first
+        return (first * (height * cell_width * 4)) + (second * rest * cell_width * 4)
+
+    def quarter_block():
+        frac = 0.5
+        height = ceil(frac * cell_height)
+        width = ceil(frac * cell_width)
+        ans = array.array('I', b'\0' * block_size)
+        for y in range(height):
+            pos = cell_width * y
+            for x in range(width):
+                ans[pos + x] = 0xffffffff
+        return ans.tobytes()
+
+    def upper_half_block():
+        return half_block()
+
+    def lower_half_block():
+        return half_block(swap=True)
+
+    def block_as_str(a):
+        pixels = array.array('I', a)
+        def row(y):
+            pos = y * cell_width
+            return ' '.join(f'{int(pixels[pos + x] != 0)}' for x in range(cell_width))
+        return '\n'.join(row(y) for y in range(cell_height))
+
+    def assert_blocks(a, b, msg=''):
+        if a != b:
+            msg = msg or 'block not equal'
+            if len(a) != len(b):
+                assert_blocks.__msg = msg + f'block lengths not equal: {len(a)/4} != {len(b)/4}'
+            else:
+                assert_blocks.__msg = msg + '\n' + block_as_str(a) + '\n\n' + block_as_str(b)
+            del a, b
+            raise AssertionError(assert_blocks.__msg)
+
+    def multiline_render(text, scale=1, width=1, **kw):
+        s.reset()
+        draw_multicell(s, text, scale=scale, width=width, **kw)
+        ans = []
+        for y in range(scale):
+            line = s.line(y)
+            test_render_line(line)
+            for x in range(width * scale):
+                ans.append(sprites[line.sprite_at(x)])
+        return ans
+
+    def block_test(*expected, **kw):
+        for i, (expected, actual) in enumerate(zip(expected, multiline_render(kw.pop('text', '█'), **kw), strict=True)):
+            assert_blocks(expected(), actual, f'Block {i} is not equal')
+
+
+    return full_block, empty_block, upper_half_block, lower_half_block, quarter_block, block_as_str, block_test
+
+
+class FontBaseTest(BaseTest):
+
+    font_size = 5.0
+    dpi = 72.
+    font_name = 'FiraCode-Medium.otf'
+
+    def path_for_font(self, name):
+        if name not in self.font_path_cache:
+            with open(os.path.join(self.tdir, name), 'wb') as f:
+                self.font_path_cache[name] = f.name
+                f.write(testing_font_data(name))
+        return self.font_path_cache[name]
 
     def setUp(self):
         super().setUp()
-        self.test_ctx = setup_for_testing()
-        self.test_ctx.__enter__()
-        self.sprites, self.cell_width, self.cell_height = self.test_ctx.__enter__()
-        try:
-            self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-        except Exception:
-            self.test_ctx.__exit__()
-            del self.test_ctx
-            raise
+        self.font_path_cache = {}
         self.tdir = tempfile.mkdtemp()
+        self.addCleanup(self.rmtree_ignoring_errors, self.tdir)
+        path = self.path_for_font(self.font_name) if self.font_name else ''
+        tc = setup_for_testing(size=self.font_size, dpi=self.dpi, main_face_path=path)
+        self.sprites, self.cell_width, self.cell_height = tc.__enter__()
+        self.addCleanup(tc.__exit__)
+        self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
     def tearDown(self):
-        self.test_ctx.__exit__()
-        del self.sprites, self.cell_width, self.cell_height, self.test_ctx
-        self.rmtree_ignoring_errors(self.tdir)
+        del self.sprites, self.cell_width, self.cell_height
+        self.font_path_cache = {}
         super().tearDown()
+
+
+
+class Rendering(FontBaseTest):
 
     def test_sprite_map(self):
         sprite_map_set_limits(10, 2)
@@ -210,86 +297,17 @@ class Rendering(BaseTest):
         self.assertEqual(len(self.sprites) - prerendered, len(box_chars))
 
     def test_scaled_box_drawing(self):
-        block_size = self.cell_width * self.cell_height * 4
-
-        def full_block():
-            return b'\xff' * block_size
-
-        def empty_block():
-            return b'\0' * block_size
-
-        def half_block(first=b'\xff', second=b'\0'):
-            frac = 0.5
-            height = ceil(frac * self.cell_height)
-            rest = self.cell_height - height
-            return (first * (rest * self.cell_width * 4)) + (second * height * self.cell_width * 4)
-
-        def quarter_block():
-            frac = 0.5
-            height = ceil(frac * self.cell_height)
-            width = ceil(frac * self.cell_width)
-            ans = array.array('I', b'\0' * block_size)
-            self.ae(len(ans), self.cell_width * self.cell_height)
-            for y in range(height):
-                pos = self.cell_width * y
-                for x in range(width):
-                    ans[pos + x] = 0xffffffff
-            return ans.tobytes()
-
-        def upper_half_block():
-            return half_block()
-
-        def lower_half_block():
-            return half_block(b'\0', b'\xff')
-
-        def block_as_str(a):
-            pixels = array.array('I', a)
-            def row(y):
-                pos = y * self.cell_width
-                return ' '.join(f'{int(pixels[pos + x] != 0)}' for x in range(self.cell_width))
-            return '\n'.join(row(y) for y in range(self.cell_height))
-
-        def assert_blocks(a, b, msg=''):
-            if a != b:
-                assert_blocks.__msg = (msg or 'block not equal') + '\n' + block_as_str(a) + '\n\n' + block_as_str(b)
-                del a, b
-                raise AssertionError(assert_blocks.__msg)
-
         s = self.create_screen(cols=8, lines=8, scrollback=0)
-
-        s.reset()
-        before = len(self.sprites)
-        draw_multicell(s, '██', scale=1, subscale_n=1, subscale_d=2, vertical_align=0, width=1)
-        test_render_line(s.line(0))
-        self.ae(len(self.sprites), before + 1)
-        assert_blocks(upper_half_block(), self.sprites[tuple(self.sprites)[before]])
-
-        s.reset()
-        before = len(self.sprites)
-        draw_multicell(s, '█', scale=1, subscale_n=1, subscale_d=2, vertical_align=0)
-        test_render_line(s.line(0))
-        self.ae(len(self.sprites), before + 1)
-        assert_blocks(quarter_block(), self.sprites[tuple(self.sprites)[before]])
-
-        def block_test(a=empty_block, b=empty_block, c=empty_block, d=empty_block, scale=2, half_block=True, vertical_align=0):
-            s.reset()
-            before = len(self.sprites)
-            subscale_n = subscale_d = 0
-            if half_block:
-                subscale_n, subscale_d = 1, 2
-            draw_multicell(s, '█', scale=scale, subscale_n=subscale_n, subscale_d=subscale_d, vertical_align=vertical_align)
-            test_render_line(s.line(0))
-            self.ae(len(self.sprites), before + 2)
-            test_render_line(s.line(1))
-            self.ae(len(self.sprites), before + 4)
-            blocks = tuple(self.sprites)[before:]
-            for i, (expected, actual) in enumerate(zip((a(), b(), c(), d()), blocks)):
-                assert_blocks(expected, self.sprites[actual], f'The {i} block differs')
-
-        block_test(full_block, full_block, full_block, full_block, half_block=False)
-        block_test(a=full_block)
-        block_test(c=full_block, vertical_align=1)
-        block_test(a=lower_half_block, c=upper_half_block, vertical_align=2)
+        full_block, empty_block, upper_half_block, lower_half_block, quarter_block, block_as_str, block_test = block_helpers(
+                s, self.sprites, self.cell_width, self.cell_height)
+        block_test(full_block)
+        block_test(full_block, full_block, full_block, full_block, scale=2)
+        block_test(full_block, empty_block, empty_block, empty_block, scale=2, subscale_n=1, subscale_d=2)
+        block_test(full_block, full_block, empty_block, empty_block, scale=2, subscale_n=1, subscale_d=2, text='██')
+        block_test(empty_block, empty_block, full_block, empty_block, scale=2, subscale_n=1, subscale_d=2, vertical_align=1)
+        block_test(quarter_block, scale=1, subscale_n=1, subscale_d=2)
+        block_test(upper_half_block, scale=1, subscale_n=1, subscale_d=2, text='██')
+        block_test(lower_half_block, scale=1, subscale_n=1, subscale_d=2, text='██', vertical_align=1)
 
     def test_font_rendering(self):
         render_string('ab\u0347\u0305你好|\U0001F601|\U0001F64f|\U0001F63a|')
@@ -306,18 +324,8 @@ class Rendering(BaseTest):
 
     def test_shaping(self):
 
-        font_path_cache = {}
-
-        def path_for_font(name):
-            if name not in font_path_cache:
-                with open(os.path.join(self.tdir, name), 'wb') as f:
-                    font_path_cache[name] = f.name
-                    data = read_kitty_resource(name, __name__.rpartition('.')[0])
-                    f.write(data)
-            return font_path_cache[name]
-
         def ss(text, font=None):
-            path = path_for_font(font) if font else None
+            path = self.path_for_font(font) if font else None
             return shape_string(text, path=path)
 
         def groups(text, font=None):

@@ -163,8 +163,14 @@ def create_narrow_symbols(opts: Options) -> tuple[tuple[int, int, int], ...]:
     return tuple((a, b, v) for (a, b), v in coalesce_symbol_maps(opts.narrow_symbols).items())
 
 
-def descriptor_for_idx(idx: int) -> tuple[FontObject, bool, bool]:
-    return current_faces[idx]
+descriptor_overrides: dict[int, tuple[str, bool, bool]] = {}
+
+
+def descriptor_for_idx(idx: int) -> tuple[Union[FontObject | str], bool, bool]:
+    ans = descriptor_overrides.get(idx)
+    if ans is None:
+        return current_faces[idx]
+    return ans
 
 
 def dump_font_debug() -> None:
@@ -431,10 +437,12 @@ def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: f
 
 class setup_for_testing:
 
-    def __init__(self, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0):
+    def __init__(self, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, main_face_path: str = ''):
         self.family, self.size, self.dpi = family, size, dpi
+        self.main_face_path = main_face_path
 
     def __enter__(self) -> tuple[dict[tuple[int, int, int], bytes], int, int]:
+        global descriptor_overrides
         opts = defaults._replace(font_family=parse_font_spec(self.family), font_size=self.size)
         set_options(opts)
         sprites = {}
@@ -444,6 +452,10 @@ class setup_for_testing:
 
         sprite_map_set_limits(100000, 100)
         set_send_sprite_to_gpu(send_to_gpu)
+        self.orig_desc_overrides = descriptor_overrides
+        descriptor_overrides = {}
+        if self.main_face_path:
+            descriptor_overrides[0] = self.main_face_path, False, False
         try:
             set_font_family(opts)
             cell_width, cell_height = create_test_font_group(self.size, self.dpi, self.dpi)
@@ -453,6 +465,8 @@ class setup_for_testing:
             raise
 
     def __exit__(self, *args: Any) -> None:
+        global descriptor_overrides
+        descriptor_overrides = self.orig_desc_overrides
         set_send_sprite_to_gpu(None)
 
 

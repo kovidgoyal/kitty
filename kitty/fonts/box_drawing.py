@@ -28,11 +28,11 @@ def thickness(level: int = 1, horizontal: bool = True) -> int:
     return int(math.ceil(pts * (_dpi / 72.0)))
 
 
-def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int, supersample_factor: int = 1) -> None:
+def draw_hline(buf: BufType, width: int, height: int, x1: int, x2: int, y: int, level: int, supersample_factor: int = 1) -> None:
     ' Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and supersample factor '
     sz = int(supersample_factor * thickness(level=level, horizontal=False))
-    start = y - sz // 2
-    for y in range(start, start + sz):
+    start = max(0, y - sz // 2)
+    for y in range(start, min(start + sz, height)):
         offset = y * width
         for x in range(x1, x2):
             buf[offset + x] = 255
@@ -41,15 +41,15 @@ def draw_hline(buf: BufType, width: int, x1: int, x2: int, y: int, level: int, s
 def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int, supersample_factor: float = 1.0) -> None:
     ' Draw a vertical line between [y1, y2) centered at x with the thickness given by level and supersample factor '
     sz = int(supersample_factor * thickness(level=level, horizontal=True))
-    start = x - sz // 2
-    for x in range(start, start + sz):
+    start = max(0, x - sz // 2)
+    for x in range(start, min(start + sz, width)):
         for y in range(y1, y2):
             buf[x + y * width] = 255
 
 
 def half_hline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', extend_by: int = 0) -> None:
     x1, x2 = (0, extend_by + width // 2) if which == 'left' else (width // 2 - extend_by, width)
-    draw_hline(buf, width, x1, x2, height // 2, level)
+    draw_hline(buf, width, height, x1, x2, height // 2, level)
 
 
 def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', extend_by: int = 0) -> None:
@@ -59,7 +59,7 @@ def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str
 
 def get_holes(sz: int, hole_sz: int, num: int) -> list[tuple[int, ...]]:
     all_holes_use = (num + 1) * hole_sz
-    individual_block_size = (sz - all_holes_use) // (num + 1)
+    individual_block_size = max(1, (sz - all_holes_use) // (num + 1))
     half_hole_sz = hole_sz // 2
     pos = - half_hole_sz
     holes = []
@@ -354,7 +354,7 @@ def fading_hline(buf: SSByteArray, width: int, height: int, level: int = 1, num:
     factor = buf.supersample_factor
     y = (height // 2 // factor) * factor
     for x1, x2 in get_fading_lines(width, num, fade):
-        draw_hline(buf, width, x1, x2, y, level, supersample_factor = factor)
+        draw_hline(buf, width, height, x1, x2, y, level, supersample_factor = factor)
 
 
 @supersampled()
@@ -622,9 +622,9 @@ def commit(buf: SSByteArray, width: int, height: int, level: int = 1, scale: flo
 
     for line in lines:
         if line == 'horizontal' or line == 'right':
-            draw_hline(buf, width, hwidth, width, hheight, level, supersample_factor=factor)
+            draw_hline(buf, width, height, hwidth, width, hheight, level, supersample_factor=factor)
         if line == 'horizontal' or line == 'left':
-            draw_hline(buf, width, 0, hwidth, hheight, level, supersample_factor=factor)
+            draw_hline(buf, width, height, 0, hwidth, hheight, level, supersample_factor=factor)
         if line == 'vertical' or line == 'down':
             draw_vline(buf, width, hheight, height, hwidth, level, supersample_factor=factor)
         if line == 'vertical' or line == 'up':
@@ -639,9 +639,9 @@ def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: st
     x1, x2 = (0, width // 2) if which == 'left' else (width // 2, width)
     gap = thickness(level + 1, horizontal=False)
     if only != 'bottom':
-        draw_hline(buf, width, x1, x2, height // 2 - gap, level)
+        draw_hline(buf, width, height, x1, x2, height // 2 - gap, level)
     if only != 'top':
-        draw_hline(buf, width, x1, x2, height // 2 + gap, level)
+        draw_hline(buf, width, height, x1, x2, height // 2 + gap, level)
     return height // 2 - gap, height // 2 + gap
 
 
@@ -692,12 +692,12 @@ def dcorner(buf: BufType, width: int, height: int, level: int = 1, which: str = 
         x2 += vgap
     else:
         x1 -= vgap
-    draw_hline(buf, width, x1, x2, height // 2 + ydelta, level)
+    draw_hline(buf, width, height, x1, x2, height // 2 + ydelta, level)
     if hw == 'left':
         x2 -= 2 * vgap
     else:
         x1 += 2 * vgap
-    draw_hline(buf, width, x1, x2, height // 2 - ydelta, level)
+    draw_hline(buf, width, height, x1, x2, height // 2 - ydelta, level)
     y1, y2 = (0, height // 2) if vw == 'top' else (height // 2, height)
     xdelta = vgap if hw == 'right' else -vgap
     yd = thickness(level, horizontal=True) // 2
@@ -717,7 +717,7 @@ def dpip(buf: BufType, width: int, height: int, level: int = 1, which: str = '�
     if which in '╟╢':
         left, right = dvline(buf, width, height)
         x1, x2 = (0, left) if which == '╢' else (right, width)
-        draw_hline(buf, width, x1, x2, height // 2, level)
+        draw_hline(buf, width, height, x1, x2, height // 2, level)
     else:
         top, bottom = dhline(buf, width, height)
         y1, y2 = (0, top) if which == '╧' else (bottom, height)
@@ -730,7 +730,7 @@ def inner_corner(buf: BufType, width: int, height: int, which: str = 'tl', level
     vthick = thickness(level, horizontal=True) // 2
     x1, x2 = (0, width // 2 - hgap + vthick + 1) if 'l' in which else (width // 2 + hgap - vthick, width)
     yd = -1 if 't' in which else 1
-    draw_hline(buf, width, x1, x2, height // 2 + (yd * vgap), level)
+    draw_hline(buf, width, height, x1, x2, height // 2 + (yd * vgap), level)
     y1, y2 = (0, height // 2 - vgap) if 't' in which else (height // 2 + vgap, height)
     xd = -1 if 'l' in which else 1
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)

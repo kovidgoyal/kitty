@@ -979,7 +979,7 @@ render_group(
 
 #define sendtogpu { FontCellMetrics scaled = fg->fcm; current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b); fg->fcm = scaled; }
 
-    if (scale == 1.f) {
+    if (scale == 1.f && rf.scale == 1 && !rf.subscale_n) {
         for (unsigned i = 0; i < num_cells; i++) {
             if (!sp[i]->rendered) {
                 sp[i]->rendered = true;
@@ -1757,7 +1757,8 @@ initialize_font(FontGroup *fg, unsigned int desc_idx, const char *ftype) {
     if (d == NULL) { PyErr_Print(); fatal("Failed for %s font", ftype); }
     bool bold = PyObject_IsTrue(PyTuple_GET_ITEM(d, 1));
     bool italic = PyObject_IsTrue(PyTuple_GET_ITEM(d, 2));
-    PyObject *face = desc_to_face(PyTuple_GET_ITEM(d, 0), (FONTS_DATA_HANDLE)fg);
+    PyObject *x = PyTuple_GET_ITEM(d, 0);
+    PyObject *face  = PyUnicode_Check(x) ? face_from_path(PyUnicode_AsUTF8(x), 0, (FONTS_DATA_HANDLE)fg) : desc_to_face(x, (FONTS_DATA_HANDLE)fg);
     Py_CLEAR(d);
     if (face == NULL) { PyErr_Print(); fatal("Failed to convert descriptor to face for %s font", ftype); }
     size_t idx = fg->fonts_count++;
