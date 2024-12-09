@@ -235,7 +235,12 @@ def block_helpers(s, sprites, cell_width, cell_height):
         return ans
 
     def block_test(*expected, **kw):
-        for i, (expected, actual) in enumerate(zip(expected, multiline_render(kw.pop('text', '█'), **kw), strict=True)):
+        mr = multiline_render(kw.pop('text', '█'), **kw)
+        try:
+            z = zip(expected, mr, strict=True)
+        except TypeError:
+            z = zip(expected, mr)
+        for i, (expected, actual) in enumerate(z):
             assert_blocks(expected(), actual, f'Block {i} is not equal')
 
 

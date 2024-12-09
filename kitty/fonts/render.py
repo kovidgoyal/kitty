@@ -166,7 +166,7 @@ def create_narrow_symbols(opts: Options) -> tuple[tuple[int, int, int], ...]:
 descriptor_overrides: dict[int, tuple[str, bool, bool]] = {}
 
 
-def descriptor_for_idx(idx: int) -> tuple[Union[FontObject | str], bool, bool]:
+def descriptor_for_idx(idx: int) -> tuple[Union[FontObject, str], bool, bool]:
     ans = descriptor_overrides.get(idx)
     if ans is None:
         return current_faces[idx]
