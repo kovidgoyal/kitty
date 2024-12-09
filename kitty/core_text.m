@@ -517,6 +517,11 @@ set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force, F
     return _set_size_for_face(self, force, fg->font_sz_in_pts, fg->logical_dpi_x, fg->logical_dpi_y);
 }
 
+bool
+face_apply_scaling(PyObject *f, const FONTS_DATA_HANDLE fg) {
+    return set_size_for_face(f, 0, false, fg);
+}
+
 static PyObject*
 set_size(CTFace *self, PyObject *args) {
     double font_sz_in_pts, dpi_x, dpi_y;
