@@ -330,7 +330,7 @@ void request_window_attention(id_type, bool);
 #ifndef __APPLE__
 void play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *role, const char *theme_name);
 #endif
-SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
+SPRITE_MAP_HANDLE alloc_sprite_map(void);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
 const char* get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
 

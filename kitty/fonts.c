@@ -1839,7 +1839,7 @@ void
 send_prerendered_sprites_for_window(OSWindow *w) {
     FontGroup *fg = (FontGroup*)w->fonts_data;
     if (!fg->sprite_map) {
-        fg->sprite_map = alloc_sprite_map(fg->fcm.cell_width, fg->fcm.cell_height);
+        fg->sprite_map = alloc_sprite_map();
         send_prerendered_sprites(fg);
     }
 }

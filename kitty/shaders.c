@@ -23,7 +23,6 @@ enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
 typedef struct {
-    unsigned int cell_width, cell_height;
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
     GLuint texture_id;
     GLint max_texture_size, max_array_texture_layers;
@@ -49,7 +48,7 @@ color_vec4_premult(GLint location, color_type color, GLfloat alpha) {
 
 
 SPRITE_MAP_HANDLE
-alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
+alloc_sprite_map(void) {
     if (!max_texture_size) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(max_texture_size));
         glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
@@ -66,7 +65,6 @@ alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
     *ans = NEW_SPRITE_MAP;
     ans->max_texture_size = max_texture_size;
     ans->max_array_texture_layers = max_array_texture_layers;
-    ans->cell_width = cell_width; ans->cell_height = cell_height;
     return (SPRITE_MAP_HANDLE)ans;
 }
 
@@ -120,12 +118,12 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     sprite_tracker_current_layout(fg, &xnum, &ynum, &z);
     znum = z + 1;
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
-    width = xnum * sprite_map->cell_width; height = ynum * sprite_map->cell_height;
+    width = xnum * fg->fcm.cell_width; height = ynum * fg->fcm.cell_height;
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_SRGB8_ALPHA8, width, height, znum);
     if (sprite_map->texture_id) {
         // need to re-alloc
         src_ynum = MAX(1, sprite_map->last_ynum);
-        copy_image_sub_data(sprite_map->texture_id, tex, width, src_ynum * sprite_map->cell_height, sprite_map->last_num_of_layers);
+        copy_image_sub_data(sprite_map->texture_id, tex, width, src_ynum * fg->fcm.cell_height, sprite_map->last_num_of_layers);
         glDeleteTextures(1, &sprite_map->texture_id);
     }
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
@@ -152,8 +150,8 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigne
     if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) realloc_sprite_texture(fg);
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    x *= sprite_map->cell_width; y *= sprite_map->cell_height;
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, sprite_map->cell_width, sprite_map->cell_height, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
+    x *= fg->fcm.cell_width; y *= fg->fcm.cell_height;
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
 }
 
 void
