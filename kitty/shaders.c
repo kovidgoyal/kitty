@@ -291,11 +291,11 @@ pick_cursor_color(Line *line, const ColorProfile *color_profile, color_type cell
 static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CellRenderData *crd, CursorRenderInfo *cursor, OSWindow *os_window) {
     struct GPUCellRenderData {
-        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
+        GLfloat xstart, ystart, dx, dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
         GLuint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-        GLuint xnum, ynum, cursor_fg_sprite_idx;
+        GLuint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx;
         GLfloat cursor_x, cursor_y, cursor_w, cursor_opacity;
         GLuint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
         GLfloat bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
@@ -384,7 +384,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     rd->xstart = crd->gl.xstart; rd->ystart = crd->gl.ystart; rd->dx = crd->gl.dx; rd->dy = crd->gl.dy;
     unsigned int x, y, z;
     sprite_tracker_current_layout(os_window->fonts_data, &x, &y, &z);
-    rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
+    rd->sprites_xnum = x; rd->sprites_ynum = y;
     rd->inverted = screen_invert_colors(screen) ? 1 : 0;
 
 #undef COLOR

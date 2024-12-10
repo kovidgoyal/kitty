@@ -4,11 +4,11 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
+    float xstart, ystart, dx, dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
     uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-    uint xnum, ynum, cursor_fg_sprite_idx;
+    uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx;
     float cursor_x, cursor_y, cursor_w, cursor_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
@@ -96,8 +96,8 @@ vec3 to_color(uint c, uint defval) {
 }
 
 vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
-    vec2 s_xpos = vec2(x, float(x) + 1.0) * sprite_dx;
-    vec2 s_ypos = vec2(y, float(y) + 1.0) * sprite_dy;
+    vec2 s_xpos = vec2(x, float(x) + 1.0f) * (1.0f / float(sprites_xnum));
+    vec2 s_ypos = vec2(y, float(y) + 1.0f) * (1.0f / float(sprites_ynum));
     return vec3(s_xpos[pos.x], s_ypos[pos.y], z);
 }
 
