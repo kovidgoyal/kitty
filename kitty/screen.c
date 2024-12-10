@@ -941,7 +941,7 @@ screen_on_input(Screen *self) {
 
 static bool
 ts_cursor_on_multicell(Screen *self, text_loop_state *s) {
-    return s->cp[self->cursor->x].is_multicell;
+    return self->cursor->x < self->columns && s->cp[self->cursor->x].is_multicell;
 }
 
 static void
@@ -984,55 +984,61 @@ map_char(Screen *self, const uint32_t ch) {
 }
 
 static void
+draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
+    switch (ch) {
+        case BEL:
+            screen_bell(self); break;
+        case BS:
+            screen_backspace(self); break;
+        case HT:
+            if (UNLIKELY(self->cursor->x >= self->columns)) {
+                if (self->modes.mDECAWM) {
+                    // xterm discards the TAB in this case so match its behavior
+                    continue_to_next_line(self);
+                    init_text_loop_line(self, s);
+                } else if (self->columns > 0){
+                    self->cursor->x = self->columns - 1;
+                    if (ts_cursor_on_multicell(self, s)) {
+                        if (s->cp[self->cursor->x].y) move_cursor_past_multicell(self, 1);
+                        else replace_multicell_char_under_cursor_with_spaces(self);
+                    }
+                    screen_tab(self);
+                }
+            } else screen_tab(self);
+            break;
+        case SI:
+            screen_change_charset(self, 0); break;
+        case SO:
+            screen_change_charset(self, 1); break;
+        case LF:
+        case VT:
+        case FF:
+            screen_linefeed(self); init_text_loop_line(self, s); break;
+        case CR:
+            screen_carriage_return(self); break;
+        default:
+            break;
+    }
+}
+
+static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
-    const uint32_t first_char = map_char(self, chars[0]);
-    if (ts_cursor_on_multicell(self, s) && ' ' <= first_char && first_char != DEL) {
-        if (s->cp[self->cursor->x].y) {
-            move_cursor_past_multicell(self, 1);
-        } else {
-            if (!is_combining_char(first_char)) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, s->cp[self->cursor->x].x != 0);
-        }
-    }
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = map_char(self, chars[i]);
         if (ch < ' ') {
-            switch (ch) {
-                case BEL:
-                    screen_bell(self); break;
-                case BS:
-                    screen_backspace(self); break;
-                case HT:
-                    if (UNLIKELY(self->cursor->x >= self->columns)) {
-                        if (self->modes.mDECAWM) {
-                            // xterm discards the TAB in this case so match its behavior
-                            continue_to_next_line(self);
-                            init_text_loop_line(self, s);
-                        } else if (self->columns > 0){
-                            self->cursor->x = self->columns - 1;
-                            if (ts_cursor_on_multicell(self, s)) {
-                                if (s->cp[self->cursor->x].y) move_cursor_past_multicell(self, 1);
-                                else replace_multicell_char_under_cursor_with_spaces(self);
-                            }
-                            screen_tab(self);
-                        }
-                    } else screen_tab(self);
-                    break;
-                case SI:
-                    screen_change_charset(self, 0); break;
-                case SO:
-                    screen_change_charset(self, 1); break;
-                case LF:
-                case VT:
-                case FF:
-                    screen_linefeed(self); init_text_loop_line(self, s); break;
-                case CR:
-                    screen_carriage_return(self); break;
-                default:
-                    break;
-            }
+            draw_control_char(self, s, ch);
             continue;
         }
+        if (ts_cursor_on_multicell(self, s)) {
+            if (s->cp[self->cursor->x].y) {
+                move_cursor_past_multicell(self, 1);
+                init_text_loop_line(self, s);
+            } else {
+                if (!is_combining_char(ch)) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, s->cp[self->cursor->x].x != 0);
+            }
+        }
+
         int char_width = 1;
         if (ch > DEL) {  // not printable ASCII
             if (is_ignored_char(ch)) continue;
@@ -1055,9 +1061,11 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             if (self->modes.mDECAWM) {
                 continue_to_next_line(self);
                 init_text_loop_line(self, s);
-            } else {
-                self->cursor->x = self->columns - char_width;
-                if (ts_cursor_on_multicell(self, s)) replace_multicell_char_under_cursor_with_spaces(self);
+            } else self->cursor->x = self->columns - char_width;
+            CPUCell *c = &s->cp[self->cursor->x];
+            if (c->is_multicell) {
+                if (c->y) { move_cursor_past_multicell(self, char_width); init_text_loop_line(self, s); }
+                nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, c->x > 0);
             }
         }
         if (self->modes.mIRM) insert_characters(self, self->cursor->x, char_width, self->cursor->y, true);

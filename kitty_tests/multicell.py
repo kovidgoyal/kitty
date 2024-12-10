@@ -107,7 +107,23 @@ def test_multicell(self: TestMulticell) -> None:
     for x in range(0, 4):
         ac(x, 1, is_multicell=True, width=2, scale=2, subscale_n=3, x=x, y=1, text='', natural_width=False)
 
+    # Test wrapping
+    s.reset()
+    multicell(s, 'a', scale=2)
+    s.draw('x' * s.columns)
+    ac(s.cursor.x-1, s.cursor.y, is_multicell=False, text='x')
+    ac(0, 0, is_multicell=True, text='a')
+    ac(0, 1, is_multicell=True, text='', y=1)
+
     # Test draw with cursor in a multicell
+    s.reset()
+    multicell(s, '12', scale=2)
+    s.draw('\rx')
+    ac(0, 0, is_multicell=False, text='x')
+    ac(1, 0, is_multicell=False, text='')
+    ac(0, 1, is_multicell=False, text='')
+    ac(1, 1, is_multicell=False, text='')
+    ac(2, 0, is_multicell=True, text='2')
     s.reset()
     s.draw('莊')
     s.cursor.x -= 1
@@ -140,6 +156,7 @@ def test_multicell(self: TestMulticell) -> None:
     multicell(s, 'a', scale=2)
     s.cursor.x += 1
     multicell(s, 'b', scale=2)
+    assert_cursor_at(5, 0)
     s.draw('\u2716\ufe0f')
     assert_cursor_at(2, 2)
     s.reset()
