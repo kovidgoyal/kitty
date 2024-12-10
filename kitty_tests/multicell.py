@@ -400,7 +400,7 @@ def test_multicell(self: TestMulticell) -> None:
 
     s.reset()
     multicell(s, 'a', width=2, scale=3, subscale_n=1, subscale_d=2, vertical_align=1)
-    ta('\x1b]66;w=2:s=3:n=1:d=2;a\x07')
+    ta('\x1b]66;w=2:s=3:n=1:d=2:v=1;a\x07')
     s.draw('a')
     multicell(s, 'b', width=2)
     s.draw('c')

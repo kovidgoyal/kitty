@@ -78,6 +78,9 @@ write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
     if (mcd->subscale_d) {
         w('d'); w('='); nonnegative_integer_as_utf32(mcd->subscale_d, s->output_buf); w(':');
     }
+    if (mcd->vertical_align) {
+        w('v'); w('='); nonnegative_integer_as_utf32(mcd->vertical_align, s->output_buf); w(':');
+    }
     if (s->output_buf->buf[s->output_buf->len - 1] == ':') s->output_buf->len--;
     w(';');
 #undef w

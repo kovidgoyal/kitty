@@ -274,14 +274,18 @@ def multicell_command(payload: str) -> None:
     c = json.loads(payload)
     text = c.pop('', '')
     m = ''
-    if (w := c.get('width')) is not None and w > 0:
+    if (w := c.pop('width', None)) is not None and w > 0:
         m += f'w={w}:'
-    if (s := c.get('scale')) is not None and s > 1:
+    if (s := c.pop('scale', None)) is not None and s > 1:
         m += f's={s}:'
-    if (n := c.get('subscale_n')) is not None and n > 0:
+    if (n := c.pop('subscale_n', None)) is not None and n > 0:
         m += f'n={n}:'
-    if (d := c.get('subscale_d')) is not None and d > 0:
+    if (d := c.pop('subscale_d', None)) is not None and d > 0:
         m += f'd={d}:'
+    if (v := c.pop('vertical_align', None)) is not None and v > 0:
+        m += f'v={v}:'
+    if c:
+        raise Exception('Unknown keys in multicell_command: ' + ', '.join(c))
     write(f'{OSC}{TEXT_SIZE_CODE};{m.rstrip(":")};{text}\a')
 
 
