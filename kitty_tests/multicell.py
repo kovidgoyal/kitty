@@ -106,6 +106,14 @@ def test_multicell(self: TestMulticell) -> None:
         ac(x, 0, is_multicell=True, width=2, scale=2, subscale_n=3, x=x, y=0, text='', natural_width=False)
     for x in range(0, 4):
         ac(x, 1, is_multicell=True, width=2, scale=2, subscale_n=3, x=x, y=1, text='', natural_width=False)
+    for y in range(2):
+        for x in range(1, 3):
+            s.reset()
+            multicell(s, 'a', scale=2)
+            s.cursor.x, s.cursor.y = x, y
+            s.draw('\u0301')
+            assert_cursor_at(x, y)
+            ac(0, 0, text='a' if y else 'a\u0301', is_multicell=True)
 
     # Test wrapping
     s.reset()

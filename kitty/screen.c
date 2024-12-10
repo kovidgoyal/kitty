@@ -1030,13 +1030,11 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             draw_control_char(self, s, ch);
             continue;
         }
-        if (ts_cursor_on_multicell(self, s)) {
+        if (ts_cursor_on_multicell(self, s) && !is_combining_char(ch)) {
             if (s->cp[self->cursor->x].y) {
                 move_cursor_past_multicell(self, 1);
                 init_text_loop_line(self, s);
-            } else {
-                if (!is_combining_char(ch)) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, s->cp[self->cursor->x].x != 0);
-            }
+            } else nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, s->cp[self->cursor->x].x != 0);
         }
 
         int char_width = 1;
