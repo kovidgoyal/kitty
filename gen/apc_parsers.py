@@ -69,7 +69,7 @@ def parse_number(keymap: KeymapType) -> tuple[str, str]:
     return '; '.join(int_keys), '; '.join(uint_keys)
 
 
-def cmd_for_report(report_name: str, keymap: KeymapType, type_map: dict[str, Any], payload_allowed: bool) -> str:
+def cmd_for_report(report_name: str, keymap: KeymapType, type_map: dict[str, Any], payload_allowed: bool, payload_is_base64: bool) -> str:
     def group(atype: str, conv: str) -> tuple[str, str]:
         flag_fmt, flag_attrs = [], []
         cv = {'flag': 'c', 'int': 'i', 'uint': 'I'}[atype]
@@ -85,7 +85,7 @@ def cmd_for_report(report_name: str, keymap: KeymapType, type_map: dict[str, Any
 
     fmt = f'{flag_fmt} {uint_fmt} {int_fmt}'
     if payload_allowed:
-        ans = [f'REPORT_VA_COMMAND("K s {{{fmt} sI}} y#", self->window_id, "{report_name}",\n']
+        ans = [f'REPORT_VA_COMMAND("K s {{{fmt} ss#}}", self->window_id, "{report_name}",\n']
     else:
         ans = [f'REPORT_VA_COMMAND("K s {{{fmt}}}", self->window_id, "{report_name}",\n']
     if flag_attrs:
@@ -95,7 +95,10 @@ def cmd_for_report(report_name: str, keymap: KeymapType, type_map: dict[str, Any
     if int_attrs:
         ans.append(f'{int_attrs},\n')
     if payload_allowed:
-        ans.append('"payload_sz", g.payload_sz, parser_buf, g.payload_sz')
+        if payload_is_base64:
+            ans.append('"", (char*)parser_buf, g.payload_sz')
+        else:
+            ans.append('"", (char*)parser_buf + payload_start, g.payload_sz')
     ans.append(');')
     return '\n'.join(ans)
 
@@ -117,7 +120,7 @@ def generate(
     handle_key = parse_key(keymap)
     flag_keys = parse_flag(keymap, type_map, command_class)
     int_keys, uint_keys = parse_number(keymap)
-    report_cmd = cmd_for_report(report_name, keymap, type_map, payload_allowed)
+    report_cmd = cmd_for_report(report_name, keymap, type_map, payload_allowed, payload_is_base64)
     extra_init = ''
     if payload_allowed:
         payload_after_value = "case ';': state = PAYLOAD; break;"

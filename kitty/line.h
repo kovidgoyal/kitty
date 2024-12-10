@@ -11,11 +11,9 @@
 
 // TODO: Test setting of ch_and_idx to make sure the right ch_is_idx bit is set
 // TODO: Test handling of calt ligatures with scale see is_group_calt_ligature()
-// TODO: Font Rendering of scale > 1 and width > 1
 // TODO: Handle selection with multicell
 // TODO: URL detection with multicell
 // TODO: Cursor rendering over multicell
-// TODO: Handle replay of dumped graphics_command and multicell_command
 // TODO: Handle rewrap and restitch of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
 // TODO: Implement baseline align for box drawing

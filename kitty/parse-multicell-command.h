@@ -183,14 +183,14 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
   }
 
   REPORT_VA_COMMAND(
-      "K s { sI sI sI sI sI  sI} y#", self->window_id, "multicell_command",
+      "K s { sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
 
       "width", (unsigned int)g.width, "scale", (unsigned int)g.scale,
       "subscale_n", (unsigned int)g.subscale_n, "subscale_d",
       (unsigned int)g.subscale_d, "vertical_align",
       (unsigned int)g.vertical_align,
 
-      "payload_sz", g.payload_sz, parser_buf, g.payload_sz);
+      "", (char *)parser_buf + payload_start, g.payload_sz);
 
   screen_handle_multicell_command(self->screen, &g, parser_buf + payload_start);
 }

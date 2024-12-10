@@ -359,7 +359,7 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
 
   REPORT_VA_COMMAND(
       "K s {sc sc sc sc sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI "
-      "sI sI sI sI si si si sI} y#",
+      "sI sI sI sI si si si ss#}",
       self->window_id, "graphics_command",
 
       "action", g.action, "delete_action", g.delete_action, "transmission_type",
@@ -384,7 +384,7 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
       (int)g.offset_from_parent_x, "offset_from_parent_y",
       (int)g.offset_from_parent_y,
 
-      "payload_sz", g.payload_sz, parser_buf, g.payload_sz);
+      "", (char *)parser_buf, g.payload_sz);
 
   screen_handle_graphics_command(self->screen, &g, parser_buf);
 }

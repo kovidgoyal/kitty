@@ -268,8 +268,13 @@ class DumpCommands:  # {{{
             if self.draw_dump_buf:
                 safe_print('draw', ''.join(self.draw_dump_buf))
                 self.draw_dump_buf = []
-            a = tuple(str(x, 'utf-8', 'replace') if isinstance(x, memoryview) else x for x in a)
-            safe_print(what, *a)
+            def fmt(x: Any) -> Any:
+                if isinstance(x, (bytes, memoryview)):
+                    return str(x, 'utf-8', 'replace')
+                if isinstance(x, dict):
+                    return json.dumps(x)
+                return x
+            safe_print(what, *map(fmt, a))
 # }}}
 
 

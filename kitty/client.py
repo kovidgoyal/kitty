@@ -7,9 +7,12 @@
 # kitty --replay-commands file.txt
 # will replay the commands and pause at the end waiting for user to press enter
 
+import json
 import sys
 from contextlib import suppress
 from typing import Any
+
+from .fast_data_types import TEXT_SIZE_CODE
 
 CSI = '\x1b['
 OSC = '\x1b]'
@@ -74,8 +77,8 @@ def screen_designate_charset(which: int, to: int) -> None:
     write(f'\x1b{w}{t}')
 
 
-def select_graphic_rendition(*a: int) -> None:
-    write(f'{CSI}{";".join(map(str, a))}m')
+def select_graphic_rendition(payload: str) -> None:
+    write(f'{CSI}{payload}m')
 
 
 def deccara(*a: int) -> None:
@@ -267,11 +270,26 @@ def clipboard_control(payload: str) -> None:
     write(f'{OSC}{payload}\x07')
 
 
+def multicell_command(payload: str) -> None:
+    c = json.loads(payload)
+    text = c.pop('', '')
+    m = ''
+    if (w := c.get('width')) is not None and w > 0:
+        m += f'w={w}:'
+    if (s := c.get('scale')) is not None and s > 1:
+        m += f's={s}:'
+    if (n := c.get('subscale_n')) is not None and n > 0:
+        m += f'n={n}:'
+    if (d := c.get('subscale_d')) is not None and d > 0:
+        m += f'd={d}:'
+    write(f'{OSC}{TEXT_SIZE_CODE};{m.rstrip(":")};{text}\a')
+
+
 def replay(raw: str) -> None:
-    specials = {
-        'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color',
-        'process_cwd_notification', 'clipboard_control', 'shell_prompt_marking'
-    }
+    specials = frozenset({
+        'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color', 'select_graphic_rendition',
+        'process_cwd_notification', 'clipboard_control', 'shell_prompt_marking', 'multicell_command',
+    })
     for line in raw.splitlines():
         if line.strip() and not line.startswith('#'):
             cmd, rest = line.partition(' ')[::2]

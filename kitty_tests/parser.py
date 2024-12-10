@@ -385,7 +385,7 @@ class TestParser(BaseTest):
         def sgr(*params):
             return (('select_graphic_rendition', f'{x}') for x in params)
 
-        pb('\033[1;2;3;4;7;9;34;44m', *sgr('1 2 3 4 7 9 34 44'))
+        pb('\033[1;2;3;4;7;9;34;44m', *sgr('1;2;3;4;7;9;34;44'))
         for attr in 'bold italic reverse strikethrough dim'.split():
             self.assertTrue(getattr(s.cursor, attr), attr)
         self.ae(s.cursor.decoration, 1)
@@ -397,10 +397,10 @@ class TestParser(BaseTest):
         pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38:2:1:2:3'), ('select_graphic_rendition', '48:2:7:8:9'))
         self.ae(s.cursor.fg, 1 << 24 | 2 << 16 | 3 << 8 | 2)
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 2)
-        pb('\033[0;2m', *sgr('0 2'))
-        pb('\033[;2m', *sgr('0 2'))
+        pb('\033[0;2m', *sgr('0;2'))
+        pb('\033[;2m', *sgr('0;2'))
         pb('\033[m', *sgr('0'))
-        pb('\033[1;;2m', *sgr('1 0 2'))
+        pb('\033[1;;2m', *sgr('1;0;2'))
         pb('\033[38;5;1m', ('select_graphic_rendition', '38:5:1'))
         pb('\033[58;2;1;2;3m', ('select_graphic_rendition', '58:2:1:2:3'))
         pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38:2:1:2:3'))
@@ -408,7 +408,7 @@ class TestParser(BaseTest):
         pb('\033[38:2:1:2:3;48:5:9;58;5;7m', (
             'select_graphic_rendition', '38:2:1:2:3'), ('select_graphic_rendition', '48:5:9'), ('select_graphic_rendition', '58:5:7'))
         s.reset()
-        pb('\033[1;2;3;4:5;7;9;34;44m', *sgr('1 2 3', '4:5', '7 9 34 44'))
+        pb('\033[1;2;3;4:5;7;9;34;44m', *sgr('1;2;3', '4:5', '7;9;34;44'))
         for attr in 'bold italic reverse strikethrough dim'.split():
             self.assertTrue(getattr(s.cursor, attr), attr)
         self.ae(s.cursor.decoration, 5)
@@ -584,9 +584,9 @@ class TestParser(BaseTest):
                       ' parent_id parent_placement_id offset_from_parent_x offset_from_parent_y'
             ).split():
                 k.setdefault(f, 0)
-            p = k.pop('payload', '').encode('utf-8')
-            k['payload_sz'] = len(p)
-            return ('graphics_command', k, p)
+            p = k.pop('payload', '')
+            k[''] = p
+            return ('graphics_command', k)
 
         def t(cmd, **kw):
             pb('\033_G{};{}\033\\'.format(cmd, enc(kw.get('payload', ''))), c(**kw))
@@ -601,8 +601,8 @@ class TestParser(BaseTest):
         t('i=3,p=4', id=3, placement_id=4)
         e('i=%d' % (uint32_max + 1), 'Malformed GraphicsCommand control block, number is too large')
         pb('\033_Gi=12\033\\', c(id=12))
-        t('a=t,t=d,s=100,z=-9', payload='X', action='t', transmission_type='d', data_width=100, z_index=-9, payload_sz=1)
-        t('a=t,t=d,s=100,z=9', payload='payload', action='t', transmission_type='d', data_width=100, z_index=9, payload_sz=7)
+        t('a=t,t=d,s=100,z=-9', payload='X', action='t', transmission_type='d', data_width=100, z_index=-9)
+        t('a=t,t=d,s=100,z=9', payload='payload', action='t', transmission_type='d', data_width=100, z_index=9)
         t('a=t,t=d,s=100,z=9,q=2', action='t', transmission_type='d', data_width=100, z_index=9, quiet=2)
         e(',s=1', 'Malformed GraphicsCommand control block, invalid key character: 0x2c')
         e('W=1', 'Malformed GraphicsCommand control block, invalid key character: 0x57')
@@ -616,9 +616,9 @@ class TestParser(BaseTest):
     def test_deccara(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('\033[$r', ('deccara', '0 0 0 0 0'))
+        pb('\033[$r', ('deccara', '0;0;0;0;0'))
         pb('\033[;;;;4:3;38:5:10;48:2:1:2:3;1$r',
-           ('deccara', '0 0 0 0 4:3'), ('deccara', '0 0 0 0 38:5:10'), ('deccara', '0 0 0 0 48:2:1:2:3'), ('deccara', '0 0 0 0 1'))
+           ('deccara', '0;0;0;0;4:3'), ('deccara', '0;0;0;0;38:5:10'), ('deccara', '0;0;0;0;48:2:1:2:3'), ('deccara', '0;0;0;0;1'))
         for y in range(s.lines):
             line = s.line(y)
             for x in range(s.columns):
@@ -629,7 +629,7 @@ class TestParser(BaseTest):
                 self.ae(c.fg, (10 << 8) | 1)
                 self.ae(c.bg, (1 << 24 | 2 << 16 | 3 << 8 | 2))
         self.ae(s.line(0).cursor_from(0).bold, True)
-        pb('\033[1;2;2;3;22;39$r', ('deccara', '1 2 2 3 22 39'))
+        pb('\033[1;2;2;3;22;39$r', ('deccara', '1;2;2;3;22;39'))
         self.ae(s.line(0).cursor_from(0).bold, True)
         line = s.line(0)
         for x in range(1, s.columns):
@@ -641,7 +641,7 @@ class TestParser(BaseTest):
             c = line.cursor_from(x)
             self.ae(c.bold, False)
         self.ae(line.cursor_from(3).bold, True)
-        pb('\033[2*x\033[3;2;4;3;34$r\033[*x', ('screen_decsace', 2), ('deccara', '3 2 4 3 34'), ('screen_decsace', 0))
+        pb('\033[2*x\033[3;2;4;3;34$r\033[*x', ('screen_decsace', 2), ('deccara', '3;2;4;3;34'), ('screen_decsace', 0))
         for y in range(2, 4):
             line = s.line(y)
             for x in range(s.columns):
