@@ -21,7 +21,7 @@ in vec3 decoration_fg;
 in float colored_sprite;
 #endif
 
-out vec4 final_color;
+out vec4 output_color;
 
 // Util functions {{{
 vec4 vec4_premul(vec3 rgb, float a) {
@@ -163,6 +163,7 @@ float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, flo
 }
 
 void main() {
+    vec4 final_color;
 #if (PHASE == PHASE_BOTH)
     vec4 text_fg = load_text_foreground_color();
     text_fg = adjust_foreground_contrast_with_background(text_fg, background);
@@ -200,5 +201,5 @@ void main() {
     final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
 #endif
 #endif
-
+    output_color = final_color;
 }
