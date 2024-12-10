@@ -123,7 +123,7 @@ ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
     }
     fg->canvas.current_cells = cells;
     fg->canvas.current_scale = scale;
-    if (fg->canvas.buf) memset(fg->canvas.buf, 0, cs(fg->canvas.current_cells, fg->canvas.alloced_scale));
+    if (fg->canvas.buf) memset(fg->canvas.buf, 0, cs(cells, scale));
 #undef cs
 }
 
@@ -490,8 +490,7 @@ face_has_codepoint(const void* face, char_type cp) {
 
 static bool
 has_emoji_presentation(const CPUCell *c, const ListOfChars *lc) {
-    if (!c->is_multicell || c->x || c->y || !lc->count) return false;
-    return is_emoji(lc->chars[0]) && (lc->count == 1 || lc->chars[1] != VS15);
+    return c->is_multicell && lc->count && is_emoji(lc->chars[0]) && (lc->count == 1 || lc->chars[1] != VS15);
 }
 
 bool
