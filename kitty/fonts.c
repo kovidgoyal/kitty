@@ -30,8 +30,7 @@ typedef enum {
 
 
 typedef struct {
-    size_t max_y;
-    unsigned int x, y, z, xnum, ynum;
+    unsigned x, y, z, xnum, ynum, max_y;
 } GPUSpriteTracker;
 
 typedef struct RunFont {
@@ -263,6 +262,10 @@ do_increment(FontGroup *fg, int *error) {
     }
 }
 
+static uint32_t
+current_sprite_index(GPUSpriteTracker *sprite_tracker) {
+    return sprite_tracker->z * (sprite_tracker->xnum * sprite_tracker->ynum) + sprite_tracker->y * sprite_tracker->xnum + sprite_tracker->x;
+}
 
 static SpritePosition*
 sprite_position_for(FontGroup *fg, RunFont rf, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, unsigned cell_count, int *error) {
@@ -274,7 +277,7 @@ sprite_position_for(FontGroup *fg, RunFont rf, glyph_index *glyphs, unsigned gly
         rf.scale, subscale, rf.multicell_y, rf.vertical_align, &created);
     if (!s) { *error = 1; return NULL; }
     if (created) {
-        s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
+        s->idx = current_sprite_index(&fg->sprite_tracker);
         do_increment(fg, error);
     }
     return s;
@@ -405,9 +408,12 @@ free_font_groups(void) {
 }
 
 static void
-python_send_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigned int z, pixel* buf) {
+python_send_to_gpu(FONTS_DATA_HANDLE fg_, unsigned int idx, pixel *buf) {
+    FontGroup *fg = (FontGroup*)fg_;
     if (python_send_to_gpu_impl) {
         if (!num_font_groups) fatal("Cannot call send to gpu with no font groups");
+        unsigned int x, y, z;
+        sprite_index_to_pos(idx, fg->sprite_tracker.xnum, fg->sprite_tracker.ynum, &x, &y, &z);
         PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, sizeof(pixel) * fg->fcm.cell_width * fg->fcm.cell_height));
         if (ret == NULL) PyErr_Print();
         else Py_DECREF(ret);
@@ -670,11 +676,6 @@ START_ALLOW_CASE_RANGE
 END_ALLOW_CASE_RANGE
 }
 
-static void
-set_sprite(GPUCell *cell, sprite_index x, sprite_index y, sprite_index z) {
-    cell->sprite_x = x; cell->sprite_y = y; cell->sprite_z = z;
-}
-
 // Gives a unique (arbitrary) id to a box glyph
 static glyph_index
 box_glyph_id(char_type ch) {
@@ -856,6 +857,12 @@ dump_sprite(pixel *b, unsigned width, unsigned height, bool actual_pixel_values)
 }
 
 static void
+set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
+    cell->sprite_idx = sp->idx & 0x7fffffff;
+    if (sp->colored) cell->sprite_idx |= 0x80000000;
+}
+
+static void
 render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell, const TextCache *tc) {
     int error = 0;
     ensure_glyph_render_scratch_space(64);
@@ -869,7 +876,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
         else global_glyph_render_scratch.lc->chars[i] = 0;
     }
     if (!num_glyphs) {
-        for (unsigned i = 0; i < rf.scale; i++) set_sprite(gpu_cell + i, 0, 0, 0);
+        for (unsigned i = 0; i < rf.scale; i++) gpu_cell[i].sprite_idx = 0;
         return;
     }
     bool all_rendered = true;
@@ -878,11 +885,11 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
         sp[ligature_index] = sprite_position_for(fg, rf, global_glyph_render_scratch.glyphs, num_glyphs, ligature_index, rf.scale, &error);
         if (sp[ligature_index] == NULL) {
             sprite_map_set_error(error); PyErr_Print();
-            for (unsigned i = 0; i < rf.scale; i++) set_sprite(gpu_cell + i, 0, 0, 0);
+            for (unsigned i = 0; i < rf.scale; i++) gpu_cell[i].sprite_idx = 0;
             return;
         }
-        set_sprite(gpu_cell + ligature_index, sp[ligature_index]->x, sp[ligature_index]->y, sp[ligature_index]->z);
         sp[ligature_index]->colored = false;
+        set_cell_sprite(gpu_cell + ligature_index, sp[ligature_index]);
         if (!sp[ligature_index]->rendered) all_rendered = false;
     }
     if (all_rendered) return;
@@ -915,7 +922,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     /*printf("Rendered char sz: (%u, %u)\n", width, height); dump_sprite(fg->canvas.buf, width, height, false);*/
     if (scale == 1.f && rf.scale == 1 && !rf.subscale_n) {
         sp[0]->rendered = true;
-        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[0]->x, sp[0]->y, sp[0]->z, fg->canvas.buf);
+        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[0]->idx, fg->canvas.buf);
     } else {
         calculate_regions_for_line(rf, fg->fcm.cell_height, &src, &dest);
         /*printf("width: %u height: %u unscaled_cell_width: %u unscaled_cell_height: %u src.top: %u src.bottom: %u rf.scale: %u\n", width, height, fg->fcm.cell_width, fg->fcm.cell_height, src.top, src.bottom, rf.scale);*/
@@ -923,7 +930,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
             pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, width, fg->fcm);
             /*printf("Sprite %u: pos: (%u, %u, %u) sz: (%u, %u)\n", i, sp[i]->x, sp[i]->y, sp[i]->z, fg->fcm.cell_width, fg->fcm.cell_height); dump_sprite(b, fg->fcm.cell_width, fg->fcm.cell_height, false);*/
             sp[i]->rendered = true;
-            current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b);
+            current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->idx, b);
         }
     }
 #undef sp
@@ -947,12 +954,6 @@ load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_
     if (OPT(force_ltr)) hb_buffer_set_direction(harfbuzz_buffer, HB_DIRECTION_LTR);
 }
 
-
-static void
-set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
-    cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
-    if (sp->colored) cell->sprite_z |= 0x4000;
-}
 
 static void
 render_filled_sprite(pixel *buf, unsigned num_glyphs, FontCellMetrics scaled_metrics, unsigned num_scaled_cells) {
@@ -1014,10 +1015,10 @@ render_group(
     if (num_cells == num_scaled_cells && rf.scale == 1.f) {
         for (unsigned i = 0; i < num_cells; i++) {
             if (!sp[i]->rendered) {
-                bool is_repeat_sprite = is_infinite_ligature && i > 0 && sp[i]->x == sp[i-1]->x && sp[i]->y == sp[i-1]->y && sp[i]->z == sp[i-1]->z;
+                bool is_repeat_sprite = is_infinite_ligature && i > 0 && sp[i]->idx == sp[i-1]->idx;
                 if (!is_repeat_sprite) {
                     pixel *b = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
-                    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b);
+                    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->idx, b);
                 }
                 sp[i]->rendered = true; sp[i]->colored = was_colored;
             }
@@ -1031,7 +1032,7 @@ render_group(
             if (!sp[i]->rendered) {
                 pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, scaled_metrics.cell_width * num_scaled_cells, unscaled_metrics);
                 /*printf("cell %u src -> dest: (%u %u) -> (%u %u)\n", i, src.left, src.right, dest.left, dest.right);*/
-                current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->x, sp[i]->y, sp[i]->z, b);
+                current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp[i]->idx, b);
                 /*dump_sprite(b, unscaled_metrics.cell_width, unscaled_metrics.cell_height, false);*/
                 sp[i]->rendered = true; sp[i]->colored = was_colored;
             }
@@ -1583,7 +1584,7 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
             render_groups(fg, rf, center_glyph, tc);
             break;
         case BLANK_FONT:
-            while(num_cells--) { set_sprite(first_gpu_cell, 0, 0, 0); first_cpu_cell++; first_gpu_cell++; }
+            while(num_cells--) { first_gpu_cell->sprite_idx = 0; first_cpu_cell++; first_gpu_cell++; }
             break;
         case BOX_FONT:
             while(num_cells) {
@@ -1594,7 +1595,7 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
             }
             break;
         case MISSING_FONT:
-            while(num_cells--) { set_sprite(first_gpu_cell, MISSING_GLYPH, 0, 0); first_cpu_cell++; first_gpu_cell++; }
+            while(num_cells--) { first_gpu_cell->sprite_idx = MISSING_GLYPH; first_cpu_cell++; first_gpu_cell++; }
             break;
     }
 }
@@ -1759,26 +1760,24 @@ set_font_data(PyObject UNUSED *m, PyObject *args) {
 static void
 send_prerendered_sprites(FontGroup *fg) {
     int error = 0;
-    sprite_index x = 0, y = 0, z = 0;
     // blank cell
     ensure_canvas_can_fit(fg, 1, 1);
-    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
-    do_increment(fg, &error);
+    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, 0, fg->canvas.buf);
     if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
     PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIIIffdd", fg->fcm.cell_width, fg->fcm.cell_height, fg->fcm.baseline, fg->fcm.underline_position, fg->fcm.underline_thickness, fg->fcm.strikethrough_position, fg->fcm.strikethrough_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
     if (args == NULL) { PyErr_Print(); fatal("Failed to pre-render cells"); }
     PyObject *cell_addresses = PyTuple_GET_ITEM(args, 0);
     for (ssize_t i = 0; i < PyTuple_GET_SIZE(cell_addresses); i++) {
-        x = fg->sprite_tracker.x; y = fg->sprite_tracker.y; z = fg->sprite_tracker.z;
-        if (y > 0) { fatal("Too many pre-rendered sprites for your GPU or the font size is too large"); }
         do_increment(fg, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
         uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(cell_addresses, i));
         ensure_canvas_can_fit(fg, 1, 1);  // clear canvas
         Region r = { .right = fg->fcm.cell_width, .bottom = fg->fcm.cell_height };
         render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->fcm.cell_width, fg->fcm.cell_width, 0xffffff);
-        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
+        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, current_sprite_index(&fg->sprite_tracker), fg->canvas.buf);
     }
+    do_increment(fg, &error);
+    if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
     Py_CLEAR(args);
 }
 
@@ -1893,7 +1892,9 @@ test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     RunFont rf = {.scale = 1, .font_idx=fg->medium_font_idx};
     SpritePosition *pos = sprite_position_for(fg, rf, glyphs, PyTuple_GET_SIZE(args), 0, 1, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
-    return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
+    unsigned int x, y, z;
+    sprite_index_to_pos(pos->idx, fg->sprite_tracker.xnum, fg->sprite_tracker.ynum, &x, &y, &z);
+    return Py_BuildValue("III", x, y, z);
 }
 
 static PyObject*
@@ -2125,8 +2126,17 @@ set_allow_use_of_box_fonts(PyObject *self UNUSED, PyObject *val) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+sprite_idx_to_pos(PyObject *self UNUSED, PyObject *args) {
+    unsigned x, y, z, idx, xnum, ynum;
+    if (!PyArg_ParseTuple(args, "III", &idx, &xnum, &ynum)) return NULL;
+    sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
+    return Py_BuildValue("III", x, y, z);
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_data, METH_VARARGS),
+    METHODB(sprite_idx_to_pos, METH_VARARGS),
     METHODB(free_font_data, METH_NOARGS),
     METHODB(create_test_font_group, METH_VARARGS),
     METHODB(sprite_map_set_layout, METH_VARARGS),

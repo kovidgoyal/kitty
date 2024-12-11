@@ -73,7 +73,7 @@ typedef uint16_t combining_type;
 typedef uint16_t glyph_index;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
-typedef uint16_t sprite_index;
+typedef uint32_t sprite_index;
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, CURSOR_HOLLOW, NUM_OF_CURSOR_SHAPES } CursorShape;
 typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATURES_ALWAYS } DisableLigature;
 
@@ -276,7 +276,7 @@ typedef struct FontCellMetrics {
 #define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; FontCellMetrics fcm;
 typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
-#define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0;
+#define clear_sprite_position(cell) (cell).sprite_idx = 0;
 
 #define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
     if ((base)->capacity < num) { \

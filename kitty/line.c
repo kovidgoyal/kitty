@@ -408,7 +408,7 @@ sprite_at(Line* self, PyObject *x) {
     unsigned long xval = PyLong_AsUnsignedLong(x);
     if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
     GPUCell *c = self->gpu_cells + xval;
-    return Py_BuildValue("HHH", c->sprite_x, c->sprite_y, c->sprite_z);
+    return Py_BuildValue("I", (unsigned int)c->sprite_idx);
 }
 
 static void
@@ -682,7 +682,7 @@ line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned in
     } else {
         for (index_type i = at; i < self->xnum && i < at + num; i++) {
             gc.attrs.mark = self->gpu_cells[i].attrs.mark;
-            gc.sprite_x = self->gpu_cells[i].sprite_x; gc.sprite_y = self->gpu_cells[i].sprite_y; gc.sprite_z = self->gpu_cells[i].sprite_z;
+            gc.sprite_idx = self->gpu_cells[i].sprite_idx;
             memcpy(self->gpu_cells + i, &gc, sizeof(gc));
         }
     }

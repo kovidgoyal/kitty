@@ -710,11 +710,6 @@ shift_to_first_set_bit(CellAttrs x) {
 EXPORTED PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
     PyObject *m;
-    if (sizeof(CellAttrs) != 2u) {
-        PyErr_SetString(PyExc_RuntimeError, "Size of CellAttrs is not 2 on this platform");
-        return NULL;
-    }
-
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
     init_monotonic();

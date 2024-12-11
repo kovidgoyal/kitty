@@ -21,6 +21,7 @@ from kitty.fast_data_types import (
     set_font_data,
     set_options,
     set_send_sprite_to_gpu,
+    sprite_idx_to_pos,
     sprite_map_set_limits,
     test_render_line,
     test_shape,
@@ -437,6 +438,9 @@ def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: f
 
 class setup_for_testing:
 
+    xnum = 100000
+    ynum = 100
+
     def __init__(self, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, main_face_path: str = ''):
         self.family, self.size, self.dpi = family, size, dpi
         self.main_face_path = main_face_path
@@ -450,7 +454,7 @@ class setup_for_testing:
         def send_to_gpu(x: int, y: int, z: int, data: bytes) -> None:
             sprites[(x, y, z)] = data
 
-        sprite_map_set_limits(100000, 100)
+        sprite_map_set_limits(self.xnum, self.ynum)
         set_send_sprite_to_gpu(send_to_gpu)
         self.orig_desc_overrides = descriptor_overrides
         descriptor_overrides = {}
@@ -479,13 +483,12 @@ def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi:
     cells = []
     found_content = False
     for i in reversed(range(s.columns)):
-        sp = list(line.sprite_at(i))
-        sp[2] &= 0xfff
-        tsp = sp[0], sp[1], sp[2]
-        if tsp == (0, 0, 0) and not found_content:
+        sp = line.sprite_at(i)
+        sp &= 0x7fffffff
+        if not sp and not found_content:
             continue
         found_content = True
-        cells.append(sprites[tsp])
+        cells.append(sprites[sprite_idx_to_pos(sp, setup_for_testing.xnum, setup_for_testing.ynum)])
     return cell_width, cell_height, list(reversed(cells))
 
 

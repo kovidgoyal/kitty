@@ -27,11 +27,11 @@ typedef union CellAttrs {
         uint16_t strike : 1;
         uint16_t dim : 1;
         uint16_t mark : 2;
-        uint16_t : 6;
+        uint32_t : 22;
     };
-    uint16_t val;
+    uint32_t val;
 } CellAttrs;
-static_assert(sizeof(CellAttrs) == sizeof(uint16_t), "Fix the ordering of CellAttrs");
+static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAttrs");
 
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
@@ -44,7 +44,7 @@ static_assert(sizeof(CellAttrs) == sizeof(uint16_t), "Fix the ordering of CellAt
 
 typedef struct {
     color_type fg, bg, decoration_fg;
-    sprite_index sprite_x, sprite_y, sprite_z;
+    sprite_index sprite_idx;
     CellAttrs attrs;
 } GPUCell;
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");

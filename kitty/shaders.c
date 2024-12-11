@@ -143,13 +143,17 @@ ensure_sprite_map(FONTS_DATA_HANDLE fg) {
 }
 
 void
-send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigned int z, pixel *buf) {
+send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int idx, pixel *buf) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
-    unsigned int xnum, ynum, znum;
+    unsigned int xnum, ynum, znum, x, y, z;
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
-    if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) realloc_sprite_texture(fg);
+    if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) {
+        realloc_sprite_texture(fg);
+        sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
+    }
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
     x *= fg->fcm.cell_width; y *= fg->fcm.cell_height;
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
 }
@@ -228,7 +232,7 @@ init_cell_program(void) {
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
     for (int p = CELL_PROGRAM; p < BORDERS_PROGRAM; p++) {
-        C(p, colors, 0); C(p, sprite_coords, 1); C(p, is_selected, 2);
+        C(p, colors, 0); C(p, sprite_idx, 1); C(p, is_selected, 2);
     }
 #undef C
     for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_ALPHA_MASK_PROGRAM; i++) {
@@ -249,7 +253,7 @@ create_cell_vao(void) {
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(GPUCell, offset)), sizeof(GPUCell))
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    A1(sprite_coords, 4, GL_UNSIGNED_SHORT, sprite_x);
+    A1(sprite_idx, 2, GL_UNSIGNED_INT, sprite_idx);
     A1(colors, 3, GL_UNSIGNED_INT, fg);
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);

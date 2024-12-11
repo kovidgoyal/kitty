@@ -14,6 +14,7 @@ from kitty.fast_data_types import (
     ParsedFontFeature,
     get_fallback_font,
     set_allow_use_of_box_fonts,
+    sprite_idx_to_pos,
     sprite_map_set_layout,
     sprite_map_set_limits,
     test_render_line,
@@ -231,7 +232,7 @@ def block_helpers(s, sprites, cell_width, cell_height):
             line = s.line(y)
             test_render_line(line)
             for x in range(width * scale):
-                ans.append(sprites[line.sprite_at(x)])
+                ans.append(sprites[sprite_idx_to_pos(line.sprite_at(x), setup_for_testing.xnum, setup_for_testing.ynum)])
         return ans
 
     def block_test(*expected, **kw):

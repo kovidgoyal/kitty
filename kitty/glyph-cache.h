@@ -12,7 +12,7 @@ void free_glyph_cache_global_resources(void);
 
 typedef struct SpritePosition {
     bool rendered, colored;
-    sprite_index x, y, z;
+    sprite_index idx;
 } SpritePosition;
 
 typedef struct {int x;} *SPRITE_POSITION_MAP_HANDLE;
