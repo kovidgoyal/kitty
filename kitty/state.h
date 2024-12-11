@@ -123,6 +123,7 @@ typedef struct {
         } *entries;
     } font_features;
     struct { Animation *cursor, *visual_bell; } animation;
+    unsigned undercurl_style;
 } Options;
 
 typedef struct WindowLogoRenderData {

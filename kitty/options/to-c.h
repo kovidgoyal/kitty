@@ -58,6 +58,23 @@ window_title_in(PyObject *title_in) {
     return ALL;
 }
 
+static inline unsigned
+undercurl_style(PyObject *x) {
+    RAII_PyObject(thick, PyUnicode_FromString("thick"));
+    RAII_PyObject(dense, PyUnicode_FromString("dense"));
+    unsigned ans = 0;
+    int ret;
+    switch ((ret = PyUnicode_Find(x, dense, 0, PyUnicode_GET_LENGTH(x), 1))) {
+        case -2: PyErr_Clear(); case -1: break;
+        default: ans |= 1;
+    }
+    switch ((ret = PyUnicode_Find(x, thick, 0, PyUnicode_GET_LENGTH(x), 1))) {
+        case -2: PyErr_Clear(); case -1: break;
+        default: ans |= 2;
+    }
+    return ans;
+}
+
 static inline UnderlineHyperlinks
 underline_hyperlinks(PyObject *x) {
     const char *in = PyUnicode_AsUTF8(x);
@@ -440,7 +457,7 @@ tab_bar_margin_height(PyObject *val, Options *opts) {
     opts->tab_bar_margin_height.inner = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 1));
 }
 
-static void
+static inline void
 window_logo_scale(PyObject *src, Options *opts) {
     opts->window_logo_scale.width = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 0));
     opts->window_logo_scale.height = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));

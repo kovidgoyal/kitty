@@ -208,7 +208,7 @@ lines.
 '''
     )
 
-opt('undercurl_style', 'thin-sparse',
+opt('undercurl_style', 'thin-sparse', ctype='undercurl_style',
     choices=('thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense'),
     long_text='''
 The style with which undercurls are rendered. This option takes the form
