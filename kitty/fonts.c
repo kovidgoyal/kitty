@@ -12,6 +12,7 @@
 #include "state.h"
 #include "emoji.h"
 #include "unicode-data.h"
+#include "decorations.h"
 #include "glyph-cache.h"
 
 #define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
@@ -697,10 +698,10 @@ START_ALLOW_CASE_RANGE
 END_ALLOW_CASE_RANGE
 }
 
-static PyObject* box_drawing_function = NULL, *prerender_function = NULL, *descriptor_for_idx = NULL;
+static PyObject* box_drawing_function = NULL, *descriptor_for_idx = NULL;
 
 void
-render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride, pixel color_rgb) {
+render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, const Region *src_rect, const Region *dest_rect, size_t src_stride, size_t dest_stride, pixel color_rgb) {
     pixel col = color_rgb << 8;
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
         pixel *d = dest + dest_stride * dr;
@@ -1744,12 +1745,12 @@ set_symbol_maps(SymbolMap **maps, size_t *num, const PyObject *sm) {
 static PyObject*
 set_font_data(PyObject UNUSED *m, PyObject *args) {
     PyObject *sm, *ns;
-    Py_CLEAR(box_drawing_function); Py_CLEAR(prerender_function); Py_CLEAR(descriptor_for_idx);
-    if (!PyArg_ParseTuple(args, "OOOIIIIO!dO!",
-                &box_drawing_function, &prerender_function, &descriptor_for_idx,
+    Py_CLEAR(box_drawing_function); Py_CLEAR(descriptor_for_idx);
+    if (!PyArg_ParseTuple(args, "OOIIIIO!dO!",
+                &box_drawing_function, &descriptor_for_idx,
                 &descriptor_indices.bold, &descriptor_indices.italic, &descriptor_indices.bi, &descriptor_indices.num_symbol_fonts,
                 &PyTuple_Type, &sm, &OPT(font_size), &PyTuple_Type, &ns)) return NULL;
-    Py_INCREF(box_drawing_function); Py_INCREF(prerender_function); Py_INCREF(descriptor_for_idx);
+    Py_INCREF(box_drawing_function); Py_INCREF(descriptor_for_idx);
     free_font_groups();
     clear_symbol_maps();
     set_symbol_maps(&symbol_maps, &num_symbol_maps, sm);
@@ -1763,22 +1764,37 @@ send_prerendered_sprites(FontGroup *fg) {
     // blank cell
     ensure_canvas_can_fit(fg, 1, 1);
     current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, 0, fg->canvas.buf);
-    if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
-    PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIIIffdd", fg->fcm.cell_width, fg->fcm.cell_height, fg->fcm.baseline, fg->fcm.underline_position, fg->fcm.underline_thickness, fg->fcm.strikethrough_position, fg->fcm.strikethrough_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
-    if (args == NULL) { PyErr_Print(); fatal("Failed to pre-render cells"); }
-    PyObject *cell_addresses = PyTuple_GET_ITEM(args, 0);
-    for (ssize_t i = 0; i < PyTuple_GET_SIZE(cell_addresses); i++) {
-        do_increment(fg, &error);
-        if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
-        uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(cell_addresses, i));
-        ensure_canvas_can_fit(fg, 1, 1);  // clear canvas
-        Region r = { .right = fg->fcm.cell_width, .bottom = fg->fcm.cell_height };
-        render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->fcm.cell_width, fg->fcm.cell_width, 0xffffff);
-        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, current_sprite_index(&fg->sprite_tracker), fg->canvas.buf);
-    }
-    do_increment(fg, &error);
-    if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
-    Py_CLEAR(args);
+    const unsigned cell_area = fg->fcm.cell_height * fg->fcm.cell_width;
+    RAII_ALLOC(uint8_t, alpha_mask, malloc(cell_area));
+    if (!alpha_mask) fatal("Out of memory");
+    Region r = { .right = fg->fcm.cell_width, .bottom = fg->fcm.cell_height };
+#define increment_sprite_index do_increment(fg, &error); if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
+#define do_one(call) \
+    memset(alpha_mask, 0, cell_area); \
+    call; \
+    ensure_canvas_can_fit(fg, 1, 1);  /* clear canvas */ \
+    render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->fcm.cell_width, fg->fcm.cell_width, 0xffffff); \
+    increment_sprite_index; \
+    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, current_sprite_index(&fg->sprite_tracker), fg->canvas.buf);
+
+    // If you change the mapping of these cells you will need to change
+    // NUM_UNDERLINE_STYLES and BEAM_IDX in shader.c and STRIKE_SPRITE_INDEX in
+    // window.py and MISSING_GLYPH in font.c
+    do_one(add_straight_underline(alpha_mask, fg->fcm));
+    do_one(add_double_underline(alpha_mask, fg->fcm));
+    do_one(add_curl_underline(alpha_mask, fg->fcm));
+    do_one(add_dotted_underline(alpha_mask, fg->fcm));
+    do_one(add_dashed_underline(alpha_mask, fg->fcm));
+    do_one(add_strikethrough(alpha_mask, fg->fcm));
+    do_one(add_missing_glyph(alpha_mask, fg->fcm));
+    do_one(add_beam_cursor(alpha_mask, fg->fcm, fg->logical_dpi_x));
+    do_one(add_underline_cursor(alpha_mask, fg->fcm, fg->logical_dpi_y));
+    do_one(add_hollow_cursor(alpha_mask, fg->fcm, fg->logical_dpi_x, fg->logical_dpi_y));
+
+    increment_sprite_index;
+
+#undef increment_sprite_index
+#undef do_one
 }
 
 static size_t
@@ -1854,7 +1870,6 @@ finalize(void) {
     Py_CLEAR(python_send_to_gpu_impl);
     clear_symbol_maps();
     Py_CLEAR(box_drawing_function);
-    Py_CLEAR(prerender_function);
     Py_CLEAR(descriptor_for_idx);
     free_font_groups();
     free(ligature_types);

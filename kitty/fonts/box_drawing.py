@@ -1434,10 +1434,6 @@ def render_box_char(ch: str, buf: BufType, width: int, height: int, dpi: float =
     return buf
 
 
-def render_missing_glyph(buf: BufType, width: int, height: int) -> None:
-    frame(buf, width, height)
-
-
 def test_char(ch: str, sz: int = 48) -> None:
     # kitty +runpy "from kitty.fonts.box_drawing import test_char; test_char('XXX')"
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu

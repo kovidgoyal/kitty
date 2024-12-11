@@ -1132,11 +1132,7 @@ def set_send_sprite_to_gpu(
 
 
 def set_font_data(
-    box_drawing_func: Callable[[int, int, int, float],
-                               Tuple[int, Union[bytearray, bytes, Array[c_ubyte]]]],
-    prerender_func: Callable[
-        [int, int, int, int, int, int, int, float, float, float, float],
-        Tuple[Tuple[int, ...], Tuple[Array[c_ubyte], ...]]],
+    box_drawing_func: Callable[[int, int, int, float], Tuple[int, Union[bytearray, bytes, Array[c_ubyte]]]],
     descriptor_for_idx: Callable[[int], Tuple[Union[FontObject|str], bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
