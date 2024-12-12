@@ -323,6 +323,50 @@ pyencode_key_for_tty(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
 }
 
 static PyObject*
+pyinject_key(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
+    static char *kwds[] = {"key", "shifted_key", "alternate_key", "mods", "action", "text", "os_window_id", NULL};
+    unsigned int key = 0, shifted_key = 0, alternate_key = 0, mods = 0, action = GLFW_PRESS;
+    unsigned long long os_window_id = 0;
+    const char *text = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "I|IIIIzK", kwds, &key, &shifted_key, &alternate_key, &mods, &action, &text, &os_window_id)) return NULL;
+    id_type orig = global_state.callback_os_window ? global_state.callback_os_window->id : 0;
+    bool found = false;
+    if (os_window_id) {
+        for (size_t i = 0; i < global_state.num_os_windows && !found; i++) {
+            if (global_state.os_windows[i].id == os_window_id) {
+                global_state.callback_os_window = global_state.os_windows + i;
+                found = true;
+            }
+        }
+        if (!found) { PyErr_Format(PyExc_IndexError, "Could not find OS Window with id: %llu", os_window_id); return NULL; }
+    } else {
+        if (!global_state.callback_os_window) {
+            for (size_t i = 0; i < global_state.num_os_windows && !found; i++) {
+                if (global_state.os_windows[i].is_focused) {
+                    global_state.callback_os_window = global_state.os_windows + i;
+                    found = true;
+                }
+            }
+            if (!found && ! global_state.num_os_windows) { PyErr_SetString(PyExc_Exception, "No OS Windows available to inject key presses into"); return NULL; }
+            global_state.callback_os_window = global_state.os_windows;
+            found = true;
+        }
+    }
+    GLFWkeyevent ev = { .key = key, .shifted_key = shifted_key, .alternate_key = alternate_key, .text = text, .action = action, .mods = mods };
+    on_key_input(&ev);
+    if (orig) {
+        found = false;
+        for (size_t i = 0; i < global_state.num_os_windows && !found; i++) {
+            if (global_state.os_windows[i].id == orig) {
+                global_state.callback_os_window = global_state.os_windows + i; found = true;
+            }
+        }
+        if (!found) global_state.callback_os_window = NULL;
+    } else global_state.callback_os_window = NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 pyis_modifier_key(PyObject *self UNUSED, PyObject *a) {
     unsigned long key = PyLong_AsUnsignedLong(a);
     if (PyErr_Occurred()) return NULL;
@@ -333,6 +377,7 @@ pyis_modifier_key(PyObject *self UNUSED, PyObject *a) {
 static PyMethodDef module_methods[] = {
     M(key_for_native_key_name, METH_VARARGS),
     M(encode_key_for_tty, METH_VARARGS | METH_KEYWORDS),
+    M(inject_key, METH_VARARGS | METH_KEYWORDS),
     M(is_modifier_key, METH_O),
     {0}
 };
