@@ -118,12 +118,12 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     sprite_tracker_current_layout(fg, &xnum, &ynum, &z);
     znum = z + 1;
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
-    width = xnum * fg->fcm.cell_width; height = ynum * fg->fcm.cell_height;
+    width = xnum * fg->fcm.cell_width; height = ynum * (fg->fcm.cell_height + 1);
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_SRGB8_ALPHA8, width, height, znum);
     if (sprite_map->texture_id) {
         // need to re-alloc
         src_ynum = MAX(1, sprite_map->last_ynum);
-        copy_image_sub_data(sprite_map->texture_id, tex, width, src_ynum * fg->fcm.cell_height, sprite_map->last_num_of_layers);
+        copy_image_sub_data(sprite_map->texture_id, tex, width, src_ynum * (fg->fcm.cell_height + 1), sprite_map->last_num_of_layers);
         glDeleteTextures(1, &sprite_map->texture_id);
     }
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
@@ -154,8 +154,8 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int idx, pixel *buf) {
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
-    x *= fg->fcm.cell_width; y *= fg->fcm.cell_height;
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
+    x *= fg->fcm.cell_width; y *= fg->fcm.cell_height + 1;
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
 }
 
 void
@@ -299,7 +299,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
 
         GLuint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-        GLuint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx;
+        GLuint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
         GLfloat cursor_x, cursor_y, cursor_w, cursor_opacity;
         GLuint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
         GLfloat bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
@@ -389,6 +389,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     unsigned int x, y, z;
     sprite_tracker_current_layout(os_window->fonts_data, &x, &y, &z);
     rd->sprites_xnum = x; rd->sprites_ynum = y;
+    rd->cell_height = os_window->fonts_data->fcm.cell_height;
     rd->inverted = screen_invert_colors(screen) ? 1 : 0;
 
 #undef COLOR

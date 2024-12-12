@@ -111,7 +111,7 @@ static void initialize_font_group(FontGroup *fg);
 
 static void
 ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
-#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->fcm.cell_width * fg->fcm.cell_height * scale * scale)
+#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->fcm.cell_width * (fg->fcm.cell_height + 1) * scale * scale)
     size_t size_in_bytes = cs(cells, scale);
     if (size_in_bytes > fg->canvas.size_in_bytes) {
         free(fg->canvas.buf);
@@ -294,7 +294,7 @@ sprite_tracker_current_layout(FONTS_DATA_HANDLE data, unsigned int *x, unsigned 
 static void
 sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_width, unsigned int cell_height) {
     sprite_tracker->xnum = MIN(MAX(1u, max_texture_size / cell_width), (size_t)UINT16_MAX);
-    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / cell_height), (size_t)UINT16_MAX);
+    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / (cell_height + 1)), (size_t)UINT16_MAX);
     sprite_tracker->ynum = 1;
     sprite_tracker->x = 0; sprite_tracker->y = 0; sprite_tracker->z = 0;
 }
@@ -415,7 +415,8 @@ python_send_to_gpu(FONTS_DATA_HANDLE fg_, unsigned int idx, pixel *buf) {
         if (!num_font_groups) fatal("Cannot call send to gpu with no font groups");
         unsigned int x, y, z;
         sprite_index_to_pos(idx, fg->sprite_tracker.xnum, fg->sprite_tracker.ynum, &x, &y, &z);
-        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, sizeof(pixel) * fg->fcm.cell_width * fg->fcm.cell_height));
+        const size_t sprite_size = fg->fcm.cell_width * fg->fcm.cell_height;
+        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#y#", x, y, z, buf, sprite_size * sizeof(pixel), buf + sprite_size, fg->fcm.cell_width * sizeof(pixel));
         if (ret == NULL) PyErr_Print();
         else Py_DECREF(ret);
     }
@@ -796,8 +797,13 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
 }
 
 static pixel*
+pointer_to_space_for_last_sprite(Canvas *canvas, FontCellMetrics fcm) {
+    return canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - fcm.cell_width * (fcm.cell_height + 1));
+}
+
+static pixel*
 extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) {
-    pixel *ans = fg->canvas.buf + (fg->canvas.size_in_bytes / sizeof(fg->canvas.buf[0]) - fg->fcm.cell_width * fg->fcm.cell_height);
+    pixel *ans = pointer_to_space_for_last_sprite(&fg->canvas, fg->fcm);
     pixel *dest = ans, *src = fg->canvas.buf + (i * fg->fcm.cell_width);
     unsigned int stride = fg->fcm.cell_width * num_cells;
     for (unsigned int r = 0; r < fg->fcm.cell_height; r++, dest += fg->fcm.cell_width, src += stride) memcpy(dest, src, fg->fcm.cell_width * sizeof(fg->canvas.buf[0]));
@@ -834,7 +840,7 @@ static pixel*
 extract_cell_region(Canvas *canvas, unsigned i, Region *src, const Region *dest, unsigned src_width, FontCellMetrics unscaled_metrics) {
     src->left = i * unscaled_metrics.cell_width; src->right = MIN(src_width, src->left + unscaled_metrics.cell_width);
     unsigned unscaled_cell_area = unscaled_metrics.cell_width * unscaled_metrics.cell_height;
-    pixel *ans = canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - unscaled_cell_area);
+    pixel *ans = pointer_to_space_for_last_sprite(canvas, unscaled_metrics);
     memset(ans, 0, sizeof(ans[0]) * unscaled_cell_area);
     unsigned width = MIN(src->right - src->left, unscaled_metrics.cell_width);
     for (unsigned srcy = src->top, desty = dest->top; srcy < src->bottom && desty < dest->bottom; srcy++, desty++) {

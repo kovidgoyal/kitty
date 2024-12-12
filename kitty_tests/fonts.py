@@ -268,7 +268,7 @@ class FontBaseTest(BaseTest):
         self.addCleanup(self.rmtree_ignoring_errors, self.tdir)
         path = self.path_for_font(self.font_name) if self.font_name else ''
         tc = setup_for_testing(size=self.font_size, dpi=self.dpi, main_face_path=path)
-        self.sprites, self.cell_width, self.cell_height = tc.__enter__()
+        self.sprites, self.sprite_metadata, self.cell_width, self.cell_height = tc.__enter__()
         self.addCleanup(tc.__exit__)
         self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
@@ -283,7 +283,7 @@ class Rendering(FontBaseTest):
 
     def test_sprite_map(self):
         sprite_map_set_limits(10, 2)
-        sprite_map_set_layout(5, 5)
+        sprite_map_set_layout(5, 4)  # 4 because of metadata row
         self.ae(test_sprite_position_for(0), (0, 0, 0))
         self.ae(test_sprite_position_for(1), (1, 0, 0))
         self.ae(test_sprite_position_for(2), (0, 1, 0))
