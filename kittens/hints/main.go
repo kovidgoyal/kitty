@@ -217,11 +217,11 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	}
 
 	lp.OnInitialize = func() (string, error) {
-		lp.SendOverlayReady()
 		lp.SetCursorVisible(false)
 		lp.SetWindowTitle(window_title)
 		lp.AllowLineWrapping(false)
 		draw_screen()
+		lp.SendOverlayReady()
 		return "", nil
 	}
 	lp.OnFinalize = func() string {

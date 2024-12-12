@@ -30,6 +30,7 @@ from .fast_data_types import (
     GLFW_RELEASE,
     add_tab,
     attach_window,
+    buffer_keys_in_window,
     current_focused_os_window_id,
     detach_window,
     focus_os_window,
@@ -45,6 +46,7 @@ from .fast_data_types import (
     ring_bell,
     set_active_tab,
     set_active_window,
+    set_redirect_keys_to_overlay,
     swap_tabs,
     sync_os_window_title,
 )
@@ -518,6 +520,10 @@ class Tab:  # {{{
         overlay_behind: bool = False, bias: Optional[float] = None
     ) -> None:
         self.current_layout.add_window(self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind, bias=bias)
+        if overlay_behind and (w := self.active_window):
+            set_redirect_keys_to_overlay(self.os_window_id, self.id, w.id, window.id)
+            buffer_keys_in_window(self.os_window_id, self.id, window.id, True)
+            window.keys_redirected_till_ready_from = w.id
         self.mark_tab_bar_dirty()
         self.relayout()
 

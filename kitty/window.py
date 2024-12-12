@@ -58,6 +58,7 @@ from .fast_data_types import (
     add_timer,
     add_window,
     base64_decode,
+    buffer_keys_in_window,
     cell_size_for_window,
     click_mouse_cmd_output,
     click_mouse_url,
@@ -77,6 +78,7 @@ from .fast_data_types import (
     pointer_name_to_css_name,
     pt_to_px,
     replace_c0_codes_except_nl_space_tab,
+    set_redirect_keys_to_overlay,
     set_window_logo,
     set_window_padding,
     set_window_render_data,
@@ -622,6 +624,7 @@ class Window:
             self.watchers.add(global_watchers())
         else:
             self.watchers = global_watchers().copy()
+        self.keys_redirected_till_ready_from: int = 0
         self.last_focused_at = 0.
         self.is_focused: bool = False
         self.last_resized_at = 0.
@@ -1407,6 +1410,10 @@ class Window:
         tab = boss.tab_for_window(self)
         if tab is not None:
             tab.move_window_to_top_of_group(self)
+        if self.keys_redirected_till_ready_from:
+            set_redirect_keys_to_overlay(self.os_window_id, self.tab_id, self.keys_redirected_till_ready_from, 0)
+            buffer_keys_in_window(self.os_window_id, self.tab_id, self.id, False)
+            self.keys_redirected_till_ready_from = 0
 
     def append_remote_data(self, msgb: memoryview) -> str:
         if not msgb:

@@ -348,7 +348,8 @@ update_os_window_title(OSWindow *os_window) {
 
 static void
 destroy_window(Window *w) {
-    free(w->pending_clicks.clicks); w->pending_clicks.clicks = NULL; w->pending_clicks.num = 0; w->pending_clicks.capacity = 0;
+    free(w->pending_clicks.clicks); zero_at_ptr(&w->pending_clicks);
+    free(w->buffered_keys.key_data); zero_at_ptr(&w->buffered_keys);
     Py_CLEAR(w->render_data.screen); Py_CLEAR(w->title);
     Py_CLEAR(w->title_bar_data.last_drawn_title_object_id);
     free(w->title_bar_data.buf); w->title_bar_data.buf = NULL;
@@ -531,6 +532,26 @@ set_active_window(id_type os_window_id, id_type tab_id, id_type window_id) {
         set_os_window_chrome(osw);
     END_WITH_WINDOW;
 }
+
+static bool
+buffer_keys_in_window(id_type os_window_id, id_type tab_id, id_type window_id, bool enable) {
+    WITH_WINDOW(os_window_id, tab_id, window_id)
+        window->buffered_keys.enabled = enable;
+        if (!enable) dispatch_buffered_keys(window);
+        return true;
+    END_WITH_WINDOW;
+    return false;
+}
+
+static bool
+set_redirect_keys_to_overlay(id_type os_window_id, id_type tab_id, id_type window_id, id_type overlay_id) {
+    WITH_WINDOW(os_window_id, tab_id, window_id)
+        window->redirect_keys_to_overlay = overlay_id;
+        return true;
+    END_WITH_WINDOW;
+    return false;
+}
+
 
 static void
 swap_tabs(id_type os_window_id, unsigned int a, unsigned int b) {
@@ -1359,6 +1380,13 @@ PYWRAP1(redirect_mouse_handling) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(buffer_keys_in_window) {
+    int enabled = 1;
+    id_type a, b, c; PA("KKK|p", &a, &b, &c, &enabled);
+    if (buffer_keys_in_window(a, b, c, enabled)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
@@ -1372,6 +1400,7 @@ K(mark_os_window_dirty)
 KKK(set_active_window)
 KII(swap_tabs)
 KK5I(add_borders_rect)
+KKKK(set_redirect_keys_to_overlay)
 
 static PyObject*
 os_window_focus_counters(PyObject *self UNUSED, PyObject *args UNUSED) {
@@ -1430,6 +1459,8 @@ static PyMethodDef module_methods[] = {
     MW(attach_window, METH_VARARGS),
     MW(set_active_tab, METH_VARARGS),
     MW(mark_os_window_dirty, METH_VARARGS),
+    MW(set_redirect_keys_to_overlay, METH_VARARGS),
+    MW(buffer_keys_in_window, METH_VARARGS),
     MW(set_active_window, METH_VARARGS),
     MW(swap_tabs, METH_VARARGS),
     MW(add_borders_rect, METH_VARARGS),

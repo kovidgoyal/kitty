@@ -111,6 +111,8 @@ Detailed list of changes
 
 - When re-attaching a detached tab preserve internal layout state such as biases and orientations (:iss:`8106`)
 
+- hints/unicode_input kittens: Do not lose keypresses that are sent very rapidly via an automation tool immediately after the kitten is launched (:iss:`7089`)
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

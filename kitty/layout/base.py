@@ -294,16 +294,17 @@ class Layout:
     def add_window(
         self, all_windows: WindowList, window: WindowType, location: Optional[str] = None,
         overlay_for: Optional[int] = None, put_overlay_behind: bool = False, bias: Optional[float] = None,
-    ) -> None:
+    ) -> Optional[WindowType]:
         if overlay_for is not None:
             underlay = all_windows.id_map.get(overlay_for)
             if underlay is not None:
                 window.margin, window.padding = underlay.margin.copy(), underlay.padding.copy()
                 all_windows.add_window(window, group_of=overlay_for, head_of_group=put_overlay_behind)
-                return
+                return underlay
         if location == 'neighbor':
             location = 'after'
         self.add_non_overlay_window(all_windows, window, location, bias)
+        return None
 
     def add_non_overlay_window(self, all_windows: WindowList, window: WindowType, location: Optional[str], bias: Optional[float] = None) -> None:
         next_to: Optional[WindowType] = None
