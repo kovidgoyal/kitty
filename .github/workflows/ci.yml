@@ -202,7 +202,7 @@ jobs:
               fetch-depth: 10
 
           - name: Install build deps
-            run: sudo apt-get install -y curl xz-utils build-essential git pkg-config libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libxkbcommon-x11-dev libfontconfig-dev libx11-xcb-dev libdbus-1-dev
+            run: sudo apt-get update && sudo apt-get install -y curl xz-utils build-essential git pkg-config libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libxkbcommon-x11-dev libfontconfig-dev libx11-xcb-dev libdbus-1-dev
 
           - name: Install Go
             uses: actions/setup-go@v4
