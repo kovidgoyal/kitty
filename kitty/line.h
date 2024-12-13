@@ -14,6 +14,7 @@
 // TODO: Handle selection with multicell
 // TODO: URL detection with multicell
 // TODO: Cursor rendering over multicell
+// TODO: Wrapping of multicell draw commands
 // TODO: Handle rewrap and restitch of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
 // TODO: Implement baseline align for box drawing
@@ -35,7 +36,6 @@ static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAt
 
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
-#define NUM_UNDERLINE_STYLES (5u)
 #define SGR_MASK (~(((CellAttrs){.mark=MARK_MASK}).val))
 // Text presentation selector
 #define VS15 0xfe0e

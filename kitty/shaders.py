@@ -23,7 +23,6 @@ from .fast_data_types import (
     GRAPHICS_PROGRAM,
     MARK,
     MARK_MASK,
-    NUM_UNDERLINE_STYLES,
     REVERSE,
     STRIKETHROUGH,
     TINT_PROGRAM,
@@ -162,7 +161,7 @@ class LoadShaderPrograms:
                 MARK_SHIFT=MARK,
                 MARK_MASK=MARK_MASK,
                 DECORATION_MASK=DECORATION_MASK,
-                STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
+                STRIKE_SPRITE_INDEX=0,
             )
 
         def resolve_cell_defines(which: str, src: str) -> str:

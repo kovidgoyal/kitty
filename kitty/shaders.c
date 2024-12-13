@@ -143,7 +143,7 @@ ensure_sprite_map(FONTS_DATA_HANDLE fg) {
 }
 
 void
-send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int idx, pixel *buf) {
+send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     unsigned int xnum, ynum, znum, x, y, z;
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
@@ -330,7 +330,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     }
     rd->use_cell_for_selection_bg = IS_SPECIAL_COLOR(highlight_bg) ? 1. : 0.;
     // Cursor position
-    enum { BLOCK_IDX = 0, BEAM_IDX = NUM_UNDERLINE_STYLES + 3, UNDERLINE_IDX = NUM_UNDERLINE_STYLES + 4, UNFOCUSED_IDX = NUM_UNDERLINE_STYLES + 5 };
+    enum { BLOCK_IDX = 0, BEAM_IDX = 2, UNDERLINE_IDX = 3, UNFOCUSED_IDX = 4 };
     Line *line_for_cursor = NULL;
     if (cursor->opacity > 0) {
         rd->cursor_x = cursor->x, rd->cursor_y = cursor->y;

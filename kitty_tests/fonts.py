@@ -270,7 +270,7 @@ class FontBaseTest(BaseTest):
         tc = setup_for_testing(size=self.font_size, dpi=self.dpi, main_face_path=path)
         self.sprites, self.sprite_metadata, self.cell_width, self.cell_height = tc.__enter__()
         self.addCleanup(tc.__exit__)
-        self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual([k[0] for k in self.sprites], list(range(11)))
 
     def tearDown(self):
         del self.sprites, self.cell_width, self.cell_height
@@ -296,8 +296,8 @@ class Rendering(FontBaseTest):
         self.ae(test_sprite_position_for(0, 2), (1, 0, 2))
 
     def test_box_drawing(self):
-        prerendered = len(self.sprites)
         s = self.create_screen(cols=len(box_chars) + 1, lines=1, scrollback=0)
+        prerendered = len(self.sprites)
         s.draw(''.join(box_chars))
         line = s.line(0)
         test_render_line(line)
