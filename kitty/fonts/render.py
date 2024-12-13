@@ -236,16 +236,14 @@ class setup_for_testing:
         self.family, self.size, self.dpi = family, size, dpi
         self.main_face_path = main_face_path
 
-    def __enter__(self) -> tuple[dict[tuple[int, int, int], bytes], dict[tuple[int, int, int], bytes], int, int]:
+    def __enter__(self) -> tuple[dict[tuple[int, int, int], bytes], int, int]:
         global descriptor_overrides
         opts = defaults._replace(font_family=parse_font_spec(self.family), font_size=self.size)
         set_options(opts)
         sprites = {}
-        sprite_metadata = {}
 
-        def send_to_gpu(x: int, y: int, z: int, data: bytes, metadata: bytes) -> None:
+        def send_to_gpu(x: int, y: int, z: int, data: bytes) -> None:
             sprites[(x, y, z)] = data
-            sprite_metadata[(x, y, z)] = metadata
 
         sprite_map_set_limits(self.xnum, self.ynum)
         set_send_sprite_to_gpu(send_to_gpu)
@@ -256,7 +254,7 @@ class setup_for_testing:
         try:
             set_font_family(opts)
             cell_width, cell_height = create_test_font_group(self.size, self.dpi, self.dpi)
-            return sprites, sprite_metadata, cell_width, cell_height
+            return sprites, cell_width, cell_height
         except Exception:
             set_send_sprite_to_gpu(None)
             raise
@@ -268,7 +266,7 @@ class setup_for_testing:
 
 
 def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0) -> tuple[int, int, list[bytes]]:
-    with setup_for_testing(family, size, dpi) as (sprites, sprite_metadata, cell_width, cell_height):
+    with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
         s.draw(text)
@@ -288,7 +286,7 @@ def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi:
 def shape_string(
     text: str = "abcd", family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, path: Optional[str] = None
 ) -> list[tuple[int, int, int, tuple[int, ...]]]:
-    with setup_for_testing(family, size, dpi) as (sprites, sprite_metadata, cell_width, cell_height):
+    with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
         s.draw(text)

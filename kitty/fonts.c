@@ -130,23 +130,21 @@ python_send_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf) {
     unsigned int x, y, z;
     sprite_index_to_pos(idx, fg->sprite_tracker.xnum, fg->sprite_tracker.ynum, &x, &y, &z);
     const size_t sprite_size = fg->fcm.cell_width * fg->fcm.cell_height;
-    PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#y#", x, y, z, buf, sprite_size * sizeof(buf[0]), buf + sprite_size, fg->fcm.cell_width * sizeof(buf[0]));
+    PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#", x, y, z, buf, sprite_size * sizeof(buf[0]));
     if (ret == NULL) PyErr_Print();
     else Py_DECREF(ret);
 }
 
 static void
 current_send_sprite_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf, sprite_index decorations_idx) {
-    pixel *metadata = buf + fg->fcm.cell_width * fg->fcm.cell_height;
-    metadata[0] = decorations_idx;
-    memset(metadata + 1, 0, (fg->fcm.cell_width - 1) * sizeof(metadata[0]));
+    (void)decorations_idx;
     if (python_send_to_gpu_impl) python_send_to_gpu(fg, idx, buf);
     else send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, idx, buf);
 }
 
 static void
 ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
-#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->fcm.cell_width * (fg->fcm.cell_height + 1) * scale * scale)
+#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->fcm.cell_width * fg->fcm.cell_height * scale * scale)
     size_t size_in_bytes = cs(cells, scale);
     if (size_in_bytes > fg->canvas.size_in_bytes) {
         free(fg->canvas.buf);
@@ -330,7 +328,7 @@ sprite_tracker_current_layout(FONTS_DATA_HANDLE data, unsigned int *x, unsigned 
 static void
 sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_width, unsigned int cell_height) {
     sprite_tracker->xnum = MIN(MAX(1u, max_texture_size / cell_width), (size_t)UINT16_MAX);
-    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / (cell_height + 1)), (size_t)UINT16_MAX);
+    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / cell_height), (size_t)UINT16_MAX);
     sprite_tracker->ynum = 1;
     sprite_tracker->x = 0; sprite_tracker->y = 0; sprite_tracker->z = 0;
 }
@@ -820,7 +818,7 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
 
 static pixel*
 pointer_to_space_for_last_sprite(Canvas *canvas, FontCellMetrics fcm) {
-    return canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - fcm.cell_width * (fcm.cell_height + 1));
+    return canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - fcm.cell_width * fcm.cell_height);
 }
 
 static pixel*

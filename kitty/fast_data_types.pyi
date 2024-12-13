@@ -1125,7 +1125,7 @@ def sprite_map_set_limits(w: int, h: int) -> None:
 
 
 def set_send_sprite_to_gpu(
-    func: Optional[Callable[[int, int, int, bytes, bytes], None]]
+    func: Optional[Callable[[int, int, int, bytes], None]]
 ) -> None:
     pass
 

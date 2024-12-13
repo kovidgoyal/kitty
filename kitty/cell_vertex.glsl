@@ -8,7 +8,7 @@ layout(std140) uniform CellRenderData {
 
     uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-    uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
+    uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx;
     float cursor_x, cursor_y, cursor_w, cursor_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
@@ -109,9 +109,6 @@ vec3 to_sprite_pos(uvec2 pos, uint idx) {
     uvec3 c = to_sprite_coords(idx);
     vec2 s_xpos = vec2(c.x, float(c.x) + 1.0f) * (1.0f / float(sprites_xnum));
     vec2 s_ypos = vec2(c.y, float(c.y) + 1.0f) * (1.0f / float(sprites_ynum));
-    uint texture_height_px = (cell_height + 1u) * sprites_ynum;
-    float row_height = 1.0f / float(texture_height_px);
-    s_ypos[1] -= row_height;  // skip the metadata row
     return vec3(s_xpos[pos.x], s_ypos[pos.y], c.z);
 }
 

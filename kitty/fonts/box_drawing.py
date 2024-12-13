@@ -1439,7 +1439,7 @@ def test_char(ch: str, sz: int = 48) -> None:
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
 
     from .render import display_bitmap, setup_for_testing
-    with setup_for_testing('monospace', sz) as (_, _, width, height):
+    with setup_for_testing('monospace', sz) as (_, width, height):
         buf = bytearray(width * height)
         try:
             render_box_char(ch, buf, width, height)
@@ -1460,7 +1460,7 @@ def test_drawing(sz: int = 48, family: str = 'monospace', start: int = 0x2500, n
 
     from .render import display_bitmap, setup_for_testing
 
-    with setup_for_testing(family, sz) as (_, _, width, height):
+    with setup_for_testing(family, sz) as (_, width, height):
         space = bytearray(width * height)
 
         def join_cells(cells: Iterable[bytes]) -> bytes:
