@@ -16,16 +16,18 @@ layout(std140) uniform CellRenderData {
     float bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
     uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
+uniform float gamma_lut[256];
+#ifdef NEEDS_FOREGROUND
+uniform usampler2D sprite_decorations_map;
+#endif
 #if (PHASE == PHASE_BACKGROUND)
 uniform uint draw_bg_bitfield;
 #endif
 
-// Have to use fixed locations here as all variants of the cell program share the same VAO
+// Have to use fixed locations here as all variants of the cell program share the same VAOs
 layout(location=0) in uvec3 colors;
 layout(location=1) in uvec2 sprite_idx;
 layout(location=2) in uint is_selected;
-uniform float gamma_lut[256];
-
 
 const int fg_index_map[] = int[3](0, 1, 0);
 const uvec2 cell_pos_map[] = uvec2[4](
@@ -58,13 +60,12 @@ out float effective_text_alpha;
 
 // Utility functions {{{
 const uint BYTE_MASK = uint(0xFF);
-const uint Z_MASK = uint(0x7fffffff);
-const uint COLOR_MASK = uint(0x80000000);
-const uint COLOR_SHIFT = uint(31);
+const uint SPRITE_INDEX_MASK = uint(0x7fffffff);
+const uint SPRITE_COLORED_MASK = uint(0x80000000);
+const uint SPRITE_COLORED_SHIFT = uint(31);
 const uint ZERO = uint(0);
 const uint ONE = uint(1);
 const uint TWO = uint(2);
-const uint STRIKE_SPRITE_INDEX = uint({STRIKE_SPRITE_INDEX});
 const uint DECORATION_MASK = uint({DECORATION_MASK});
 
 vec3 color_to_vec(uint c) {
@@ -112,6 +113,26 @@ vec3 to_sprite_pos(uvec2 pos, uint idx) {
     return vec3(s_xpos[pos.x], s_ypos[pos.y], c.z);
 }
 
+#ifdef NEEDS_FOREGROUND
+uint read_sprite_decorations_idx() {
+    int idx = int(sprite_idx[0] & SPRITE_INDEX_MASK);
+    ivec2 sz = textureSize(sprite_decorations_map, 0);
+    int y = idx / sz[0];
+    int x = idx % sz[0];
+    return texelFetch(sprite_decorations_map, ivec2(x, y), 0).r;
+}
+
+uvec2 get_decorations_indices(uint in_url /* [0, 1] */, uint text_attrs) {
+    uint decorations_idx = read_sprite_decorations_idx();
+    uint strike_style = ((text_attrs >> STRIKE_SHIFT) & ONE); // 0 or 1
+    uint strike_idx = decorations_idx * strike_style;
+    uint underline_style = ((text_attrs >> DECORATION_SHIFT) & DECORATION_MASK);
+    underline_style = in_url * url_style + (1u - in_url) * underline_style; // [0, 5]
+    uint has_underline = uint(step(0.5f, float(underline_style)));  // [0, 1]
+    return uvec2(strike_idx, has_underline * (decorations_idx + underline_style));
+}
+#endif
+
 vec3 choose_color(float q, vec3 a, vec3 b) {
     return mix(b, a, q);
 }
@@ -151,8 +172,8 @@ CellData set_vertex_position() {
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 #ifdef NEEDS_FOREGROUND
     // The character sprite being rendered
-    sprite_pos = to_sprite_pos(pos, sprite_idx[0] & Z_MASK);
-    colored_sprite = float((sprite_idx[0] & COLOR_MASK) >> COLOR_SHIFT);
+    sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
+    colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 #endif
     float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
     float has_cursor = is_cursor(c, r);
@@ -198,8 +219,6 @@ void main() {
 
     // Foreground {{{
 #ifdef NEEDS_FOREGROUND
-
-
     // Foreground
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (ONE - has_mark) * fg_as_uint;
     foreground = color_to_vec(fg_as_uint);
@@ -213,8 +232,9 @@ void main() {
     foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
     decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
     // Underline and strike through (rendered via sprites)
-    underline_pos = choose_color(in_url, to_sprite_pos(cell_data.pos, url_style), to_sprite_pos(cell_data.pos, (text_attrs >> DECORATION_SHIFT) & DECORATION_MASK));
-    strike_pos = to_sprite_pos(cell_data.pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * STRIKE_SPRITE_INDEX);
+    uvec2 decs = get_decorations_indices(uint(in_url), text_attrs);
+    strike_pos = to_sprite_pos(cell_data.pos, decs[0]);
+    underline_pos = to_sprite_pos(cell_data.pos, decs[1]);
 
     // Cursor
     cursor_color_premult = vec4(color_to_vec(cursor_bg) * cursor_opacity, cursor_opacity);

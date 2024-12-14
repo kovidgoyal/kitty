@@ -137,9 +137,8 @@ python_send_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf) {
 
 static void
 current_send_sprite_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf, sprite_index decorations_idx) {
-    (void)decorations_idx;
-    if (python_send_to_gpu_impl) python_send_to_gpu(fg, idx, buf);
-    else send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, idx, buf);
+    if (python_send_to_gpu_impl) { python_send_to_gpu(fg, idx, buf); return; }
+    send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, idx, buf, decorations_idx);
 }
 
 static void
@@ -209,7 +208,7 @@ del_font(Font *f) {
 static void
 del_font_group(FontGroup *fg) {
     free(fg->canvas.buf); fg->canvas.buf = NULL; fg->canvas = (Canvas){0};
-    fg->sprite_map = free_sprite_map(fg->sprite_map);
+    free_sprite_data((FONTS_DATA_HANDLE)fg);
     vt_cleanup(&fg->fallback_font_map);
     vt_cleanup(&fg->scaled_font_map);
     vt_cleanup(&fg->decorations_index_map);

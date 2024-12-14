@@ -19,13 +19,18 @@
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
 enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, TRAIL_PROGRAM, NUM_PROGRAMS };
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT };
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
 
 // Sprites {{{
 typedef struct {
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
     GLuint texture_id;
     GLint max_texture_size, max_array_texture_layers;
+    struct decorations_map {
+        GLuint texture_id;
+        unsigned width, height;
+        size_t count;
+    } decorations_map;
 } SpriteMap;
 
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
@@ -68,65 +73,115 @@ alloc_sprite_map(void) {
     return (SPRITE_MAP_HANDLE)ans;
 }
 
-SPRITE_MAP_HANDLE
-free_sprite_map(SPRITE_MAP_HANDLE sm) {
-    SpriteMap *sprite_map = (SpriteMap*)sm;
+void
+free_sprite_data(FONTS_DATA_HANDLE fg) {
+    SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     if (sprite_map) {
         if (sprite_map->texture_id) free_texture(&sprite_map->texture_id);
+        if (sprite_map->decorations_map.texture_id) free_texture(&sprite_map->texture_id);
         free(sprite_map);
+        fg->sprite_map = NULL;
     }
-    return NULL;
 }
 
-static bool copy_image_warned = false;
 
 static void
-copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int width, unsigned int height, unsigned int num_levels) {
-    if (!GLAD_GL_ARB_copy_image) {
-        // ARB_copy_image not available, do a slow roundtrip copy
-        if (!copy_image_warned) {
-            copy_image_warned = true;
-            log_error("WARNING: Your system's OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation");
-        }
-        size_t sz = (size_t)width * height * num_levels;
-        pixel *src = malloc(sz * sizeof(pixel));
-        if (src == NULL) { fatal("Out of memory."); }
-        glBindTexture(GL_TEXTURE_2D_ARRAY, src_texture_id);
-        glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, src);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, dest_texture_id);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels, GL_RGBA, GL_UNSIGNED_BYTE, src);
-        free(src);
-    } else {
-        glCopyImageSubData(src_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, dest_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels);
+copy_32bit_texture(GLuint old_texture, GLuint new_texture, GLenum texture_type) {
+    // requires new texture to be at least as big as old texture. Assumes textures are 32bits per pixel
+    GLint width, height, layers;
+    glBindTexture(texture_type, old_texture);
+    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_HEIGHT, &height);
+    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_DEPTH, &layers);
+    if (GLAD_GL_ARB_copy_image) { glCopyImageSubData(old_texture, texture_type, 0, 0, 0, 0, new_texture, texture_type, 0, 0, 0, 0, width, height, layers); return; }
+
+    static bool copy_image_warned = false;
+    // ARB_copy_image not available, do a slow roundtrip copy
+    if (!copy_image_warned) {
+        copy_image_warned = true;
+        log_error("WARNING: Your system's OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation");
     }
+
+    GLint internal_format;
+    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal_format);
+    GLenum format, type;
+    switch(internal_format) {
+        case GL_R8UI: case GL_R8I: case GL_R16UI: case GL_R16I: case GL_R32UI: case GL_R32I: case GL_RG8UI: case GL_RG8I:
+        case GL_RG16UI: case GL_RG16I: case GL_RG32UI: case GL_RG32I: case GL_RGB8UI: case GL_RGB8I: case GL_RGB16UI:
+        case GL_RGB16I: case GL_RGB32UI: case GL_RGB32I: case GL_RGBA8UI: case GL_RGBA8I: case GL_RGBA16UI: case GL_RGBA16I:
+        case GL_RGBA32UI: case GL_RGBA32I:
+            format = GL_RED_INTEGER;
+            type = GL_UNSIGNED_INT;
+            break;
+        default:
+            format = GL_RGBA;
+            type = GL_UNSIGNED_INT_8_8_8_8;
+            break;
+    }
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    RAII_ALLOC(uint8_t, pixels, malloc(width * height * layers * 4));
+    if (!pixels) fatal("Out of memory");
+    glGetTexImage(texture_type, 0, format, type, pixels);
+    glBindTexture(texture_type, new_texture);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    if (texture_type == GL_TEXTURE_2D_ARRAY) glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, layers, format, type, pixels);
+    else glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, pixels);
 }
 
+static GLuint
+setup_new_sprites_texture(GLenum texture_type) {
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(texture_type, tex);
+    // We use GL_NEAREST otherwise glyphs that touch the edge of the cell
+    // often show a border between cells
+    glTexParameteri(texture_type, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(texture_type, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(texture_type, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(texture_type, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    return tex;
+}
+
+static void
+realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
+#define dm (sm->decorations_map)
+    SpriteMap *sm = (SpriteMap*)fg->sprite_map;
+    size_t current_capacity = dm.width * dm.height;
+    if (dm.count < current_capacity && dm.texture_id) return;
+    GLint new_capacity = dm.count + 256;
+    GLint width = new_capacity, height = 1;
+    if (new_capacity > sm->max_texture_size) {
+        width = sm->max_texture_size;
+        height = 1 + new_capacity / width;
+    }
+    if (height > sm->max_texture_size) fatal("Max texture size too small for sprite decorations map, maybe switch to using a GL_TEXTURE_2D_ARRAY");
+    const GLenum texture_type = GL_TEXTURE_2D;
+    GLuint tex = setup_new_sprites_texture(texture_type);
+    glTexImage2D(texture_type, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+    if (dm.texture_id) {  // copy data from old texture
+        copy_32bit_texture(dm.texture_id, tex, texture_type);
+        glDeleteTextures(1, &dm.texture_id);
+    }
+    glBindTexture(texture_type, 0);
+    dm.texture_id = tex; dm.width = width; dm.height = height;
+#undef dm
+}
 
 static void
 realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
-    GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
-    // We use GL_NEAREST otherwise glyphs that touch the edge of the cell
-    // often show a border between cells
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    unsigned int xnum, ynum, z, znum, width, height, src_ynum;
+    unsigned int xnum, ynum, z, znum, width, height;
     sprite_tracker_current_layout(fg, &xnum, &ynum, &z);
     znum = z + 1;
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     width = xnum * fg->fcm.cell_width; height = ynum * fg->fcm.cell_height;
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_SRGB8_ALPHA8, width, height, znum);
-    if (sprite_map->texture_id) {
-        // need to re-alloc
-        src_ynum = MAX(1, sprite_map->last_ynum);
-        copy_image_sub_data(sprite_map->texture_id, tex, width, src_ynum * fg->fcm.cell_height, sprite_map->last_num_of_layers);
+    const GLenum texture_type = GL_TEXTURE_2D_ARRAY;
+    GLuint tex = setup_new_sprites_texture(texture_type);
+    glTexStorage3D(texture_type, 1, GL_SRGB8_ALPHA8, width, height, znum);
+    if (sprite_map->texture_id) { // copy old texture data into new texture
+        copy_32bit_texture(sprite_map->texture_id, tex, texture_type);
         glDeleteTextures(1, &sprite_map->texture_id);
     }
-    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    glBindTexture(texture_type, 0);
     sprite_map->last_num_of_layers = znum;
     sprite_map->last_ynum = ynum;
     sprite_map->texture_id = tex;
@@ -136,21 +191,37 @@ static void
 ensure_sprite_map(FONTS_DATA_HANDLE fg) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     if (!sprite_map->texture_id) realloc_sprite_texture(fg);
+    if (!sprite_map->decorations_map.texture_id) realloc_sprite_decorations_texture_if_needed(fg);
     // We have to rebind since we don't know if the texture was ever bound
     // in the context of the current OSWindow
+    glActiveTexture(GL_TEXTURE0 + SPRITE_DECORATIONS_MAP_UNIT);
+    glBindTexture(GL_TEXTURE_2D, sprite_map->decorations_map.texture_id);
     glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT);
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
 }
 
 void
-send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf) {
+send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_index decoration_idx) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     unsigned int xnum, ynum, znum, x, y, z;
+#define dm (sprite_map->decorations_map)
+    realloc_sprite_decorations_texture_if_needed(fg);
+    if (idx >= dm.count) {
+        dm.count = idx + 1;
+        div_t d = div(idx, dm.width);
+        x = d.rem; y = d.quot;
+        glActiveTexture(GL_TEXTURE0 + SPRITE_DECORATIONS_MAP_UNIT);
+        glBindTexture(GL_TEXTURE_2D, dm.texture_id);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &decoration_idx);
+    }
+#undef dm
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
     if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) {
         realloc_sprite_texture(fg);
         sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
     }
+    glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT);
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
@@ -232,7 +303,7 @@ init_cell_program(void) {
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
     for (int p = CELL_PROGRAM; p < BORDERS_PROGRAM; p++) {
-        C(p, colors, 0); C(p, sprite_idx, 1); C(p, is_selected, 2);
+        C(p, colors, 0); C(p, sprite_idx, 1); C(p, is_selected, 2); C(p, decorations_sprite_map, 3);
     }
 #undef C
     for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_ALPHA_MASK_PROGRAM; i++) {
@@ -455,6 +526,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 #undef update_cell_data
     screen->last_rendered.columns = screen->columns;
     screen->last_rendered.lines = screen->lines;
+
     return changed;
 }
 
@@ -653,6 +725,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
             switch(i) {
                 case CELL_PROGRAM: case CELL_FG_PROGRAM:
                     glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
+                    glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
                     glUniform1f(cu->dim_opacity, OPT(dim_opacity));
                     glUniform1f(cu->text_contrast, text_contrast);
                     glUniform1f(cu->text_gamma_adjustment, text_gamma_adjustment);

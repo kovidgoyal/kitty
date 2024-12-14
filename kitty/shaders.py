@@ -161,7 +161,6 @@ class LoadShaderPrograms:
                 MARK_SHIFT=MARK,
                 MARK_MASK=MARK_MASK,
                 DECORATION_MASK=DECORATION_MASK,
-                STRIKE_SPRITE_INDEX=0,
             )
 
         def resolve_cell_defines(which: str, src: str) -> str:
