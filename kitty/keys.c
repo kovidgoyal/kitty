@@ -297,7 +297,7 @@ on_key_input(const GLFWkeyevent *ev) {
     }
     if (w->buffered_keys.enabled) {
         if (w->buffered_keys.capacity < w->buffered_keys.count + 1) {
-            w->buffered_keys.capacity = MAX(16, w->buffered_keys.capacity + 8);
+            w->buffered_keys.capacity = MAX(16u, w->buffered_keys.capacity + 8);
             GLFWkeyevent *new = malloc(w->buffered_keys.capacity * sizeof(GLFWkeyevent));
             if (!new) fatal("Out of memory");
             memcpy(new, w->buffered_keys.key_data, w->buffered_keys.count * sizeof(new[0]));
