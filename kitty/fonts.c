@@ -96,11 +96,16 @@ typedef union DecorationsKey {
 } DecorationsKey;
 static_assert(sizeof(DecorationsKey) == sizeof(uint64_t), "Fix the ordering of DecorationsKey");
 
+typedef struct DecorationMetadata {
+    sprite_index start_idx;
+    DecorationGeometry underline_region;
+} DecorationMetadata;
+
 static uint64_t hash_decorations_key(DecorationsKey k) { return vt_hash_integer(k.val); }
 static bool cmpr_decorations_key(DecorationsKey a, DecorationsKey b) { return a.val == b.val; }
 #define NAME decorations_index_map_t
 #define KEY_TY DecorationsKey
-#define VAL_TY sprite_index
+#define VAL_TY DecorationMetadata
 #define HASH_FN hash_decorations_key
 #define CMPR_FN cmpr_decorations_key
 #include "kitty-verstable.h"
@@ -131,7 +136,7 @@ display_rgba_data(const pixel *b, unsigned width, unsigned height) {
     RAII_PyObject(f, PyObject_GetAttrString(m, "show"));
     RAII_PyObject(data, PyMemoryView_FromMemory((char*)b, width * height * sizeof(b[0]), PyBUF_READ));
     RAII_PyObject(ret, PyObject_CallFunction(f, "OII", data, width, height));
-    if (PyErr_Occurred()) PyErr_Print();
+    if (ret == NULL) PyErr_Print();
 }
 
 static void
@@ -895,21 +900,30 @@ set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
     if (sp->colored) cell->sprite_idx |= 0x80000000;
 }
 
+static Region
+map_scaled_decoration_geometry(DecorationGeometry sdg, Region src, Region dest) {
+    unsigned scaled_top = MAX(sdg.top, src.top), scaled_bottom = MIN(sdg.top + sdg.height, src.bottom);
+    unsigned unscaled_top = dest.top + (scaled_top - src.top);
+    unsigned unscaled_bottom = unscaled_top + (scaled_bottom > scaled_top ? scaled_bottom - scaled_top : 0);
+    unscaled_bottom = MIN(unscaled_bottom, dest.bottom);
+    return (Region){.top=unscaled_top, .bottom=MAX(unscaled_top, unscaled_bottom)};
+}
+
 static void
 render_scaled_decoration(FontCellMetrics unscaled_metrics, FontCellMetrics scaled_metrics, uint8_t *alpha_mask, pixel *output, Region src, Region dest) {
     memset(output, 0, unscaled_metrics.cell_width * unscaled_metrics.cell_height * sizeof(output[0]));
-    pixel col = 0xffffff00;
     unsigned src_limit = MIN(scaled_metrics.cell_height, src.bottom), dest_limit = MIN(unscaled_metrics.cell_height, dest.bottom);
     unsigned cell_width = MIN(scaled_metrics.cell_width, unscaled_metrics.cell_width);
     for (unsigned srcy = src.top, desty=dest.top; srcy < src_limit && desty < dest_limit; srcy++, desty++) {
         uint8_t *srcp = alpha_mask + cell_width * srcy;
         pixel *destp = output + cell_width * desty;
-        for (unsigned x = 0; x < cell_width; x++) destp[x] = col | srcp[x];
+        for (unsigned x = 0; x < cell_width; x++) destp[x] = 0xffffff00 | srcp[x];
     }
 }
 
 static sprite_index
-render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scaled_metrics) {
+render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scaled_metrics, DecorationGeometry *underline_region) {
+    *underline_region = (DecorationGeometry){0};
     if ((src.bottom == src.top) || (dest.bottom == dest.top)) return 0;   // no overlap
     const FontCellMetrics unscaled_metrics = fg->fcm;
     scaled_metrics.cell_width = unscaled_metrics.cell_width;
@@ -918,34 +932,47 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
     if (!alpha_mask || !buf) fatal("Out of memory");
     int error = 0;
     sprite_index idx = current_sprite_index(&fg->sprite_tracker);
+    bool is_underline = false; uint32_t underline_top = unscaled_metrics.cell_height, underline_bottom = 0;
 #define increment_sprite_index do_increment(fg, &error); if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
-#define do_one(call) \
+#define do_one(call) { \
     memset(alpha_mask, 0, scaled_metrics.cell_width * scaled_metrics.cell_height * sizeof(alpha_mask[0])); \
-    call; \
+    DecorationGeometry sdg = call; \
     render_scaled_decoration(unscaled_metrics, scaled_metrics, alpha_mask, buf, src, dest); \
     current_send_sprite_to_gpu(fg, current_sprite_index(&fg->sprite_tracker), buf, 0); \
-    increment_sprite_index;
+    increment_sprite_index; \
+    if (is_underline) { \
+        Region r = map_scaled_decoration_geometry(sdg, src, dest); \
+        if (r.top < underline_top) underline_top = r.top; \
+        if (r.bottom > underline_bottom) underline_bottom = r.bottom; \
+    }; \
+}
 
     do_one(add_strikethrough(alpha_mask, scaled_metrics));
+    is_underline = true;
     do_one(add_straight_underline(alpha_mask, scaled_metrics));
     do_one(add_double_underline(alpha_mask, scaled_metrics));
     do_one(add_curl_underline(alpha_mask, scaled_metrics));
     do_one(add_dotted_underline(alpha_mask, scaled_metrics));
     do_one(add_dashed_underline(alpha_mask, scaled_metrics));
 
+    if (underline_top < underline_bottom) {
+        underline_region->top = underline_top;
+        underline_region->height = underline_bottom - underline_top;
+    }
     return idx;
 #undef increment_sprite_index
 #undef do_one
 }
 
-static sprite_index
+static DecorationMetadata
 index_for_decorations(FontGroup *fg, RunFont rf, Region src, Region dest, FontCellMetrics scaled_metrics) {
     DecorationsKey key = {.scale=rf.scale, .subscale_n = rf.subscale_n, .subscale_d = rf.subscale_d, .vertical_align = rf.vertical_align, .multicell_y = rf.multicell_y };
     decorations_index_map_t_itr i = vt_get(&fg->decorations_index_map, key);
     if (!vt_is_end(i)) return i.data->val;
-    sprite_index idx = render_decorations(fg, src, dest, scaled_metrics);
-    if (vt_is_end(vt_insert(&fg->decorations_index_map, key, idx))) fatal("Out of memory");
-    return idx;
+    DecorationMetadata val;
+    val.start_idx = render_decorations(fg, src, dest, scaled_metrics, &val.underline_region);
+    if (vt_is_end(vt_insert(&fg->decorations_index_map, key, val))) fatal("Out of memory");
+    return val;
 }
 
 static void
@@ -1010,7 +1037,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     /*printf("Rendered char sz: (%u, %u)\n", width, height); dump_sprite(fg->canvas.buf, width, height);*/
     if (scale == 1.f && rf.scale == 1 && !rf.subscale_n) {
         sp[0]->rendered = true;
-        current_send_sprite_to_gpu(fg, sp[0]->idx, fg->canvas.buf, index_for_decorations(fg, rf, src, dest, scaled_metrics));
+        current_send_sprite_to_gpu(fg, sp[0]->idx, fg->canvas.buf, index_for_decorations(fg, rf, src, dest, scaled_metrics).start_idx);
     } else {
         calculate_regions_for_line(rf, fg->fcm.cell_height, &src, &dest);
         /*printf("width: %u height: %u unscaled_cell_width: %u unscaled_cell_height: %u src.top: %u src.bottom: %u rf.scale: %u\n", width, height, fg->fcm.cell_width, fg->fcm.cell_height, src.top, src.bottom, rf.scale);*/
@@ -1018,7 +1045,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
             pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, width, fg->fcm);
             /*printf("Sprite %u: pos: (%u, %u, %u) sz: (%u, %u)\n", i, sp[i]->x, sp[i]->y, sp[i]->z, fg->fcm.cell_width, fg->fcm.cell_height); dump_sprite(b, fg->fcm.cell_width, fg->fcm.cell_height);*/
             sp[i]->rendered = true;
-            current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics));
+            current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics).start_idx);
         }
     }
 #undef sp
@@ -1107,7 +1134,7 @@ render_group(
                 if (!is_repeat_sprite) {
                     pixel *b = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
                     Region src = {.bottom=unscaled_metrics.cell_height, .right=unscaled_metrics.cell_width}, dest = src;
-                    current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics));
+                    current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics).start_idx);
                 }
                 sp[i]->rendered = true; sp[i]->colored = was_colored;
             }
@@ -1121,7 +1148,7 @@ render_group(
             if (!sp[i]->rendered) {
                 pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, scaled_metrics.cell_width * num_scaled_cells, unscaled_metrics);
                 /*printf("cell %u src -> dest: (%u %u) -> (%u %u)\n", i, src.left, src.right, dest.left, dest.right);*/
-                current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics));
+                current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics).start_idx);
                 /*dump_sprite(b, unscaled_metrics.cell_width, unscaled_metrics.cell_height);*/
                 sp[i]->rendered = true; sp[i]->colored = was_colored;
             }
@@ -1876,7 +1903,7 @@ send_prerendered_sprites(FontGroup *fg) {
     increment_sprite_index;
     RunFont rf = {.scale=1};
     Region rg = {.bottom = fg->fcm.cell_height, .right = fg->fcm.cell_width};
-    sprite_index actual_dec_idx = index_for_decorations(fg, rf, rg, rg, fg->fcm);
+    sprite_index actual_dec_idx = index_for_decorations(fg, rf, rg, rg, fg->fcm).start_idx;
     if (actual_dec_idx != dec_idx) fatal("dec_idx: %u != actual_dec_idx: %u", dec_idx, actual_dec_idx);
 
 #undef increment_sprite_index
