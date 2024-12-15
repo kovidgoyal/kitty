@@ -1210,8 +1210,8 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
     if (!self->lc->count) return;
     CPUCell mcd = {
-        .width=MIN(cmd->width, 15u), .scale=MAX(1, MIN(cmd->scale, 15u)), .subscale_n=MIN(cmd->subscale_n, 15u),
-        .subscale_d=MIN(cmd->subscale_d, 15), .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
+        .width=MIN(cmd->width, 15u), .scale=MAX(1u, MIN(cmd->scale, 15u)), .subscale_n=MIN(cmd->subscale_n, 15u),
+        .subscale_d=MIN(cmd->subscale_d, 15u), .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
     };
     if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);
     else {

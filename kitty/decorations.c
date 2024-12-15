@@ -62,8 +62,8 @@ add_double_underline(uint8_t *buf, FontCellMetrics fcm) {
             if (deficit > 1) top -= deficit - 1;
         } else top -= deficit;
     }
-    top = MAX(0, MIN(top, fcm.cell_height - 1));
-    bottom = MAX(0, MIN(bottom, fcm.cell_height - 1));
+    top = MAX(0u, MIN(top, fcm.cell_height - 1u));
+    bottom = MAX(0u, MIN(bottom, fcm.cell_height - 1u));
     memset(buf + fcm.cell_width * top, 0xff, fcm.cell_width);
     memset(buf + fcm.cell_width * bottom, 0xff, fcm.cell_width);
     DecorationGeometry ans = {.top=top, .height = bottom + 1 - top};
@@ -72,7 +72,7 @@ add_double_underline(uint8_t *buf, FontCellMetrics fcm) {
 
 static unsigned
 distribute_dots(unsigned available_space, unsigned num_of_dots, unsigned *summed_gaps, unsigned *gaps) {
-    unsigned dot_size = MAX(1, available_space / (2 * num_of_dots));
+    unsigned dot_size = MAX(1u, available_space / (2u * num_of_dots));
     unsigned extra = 2 * num_of_dots * dot_size;
     extra = available_space > extra ? available_space - extra : 0;
     for (unsigned i = 0; i < num_of_dots; i++) gaps[i] = dot_size;
@@ -136,10 +136,10 @@ add_curl_underline(uint8_t *buf, FontCellMetrics fcm) {
     unsigned half_thickness = fcm.underline_thickness / 2;
     unsigned top = fcm.underline_position > half_thickness ? fcm.underline_position - half_thickness : 0;
     unsigned max_height = fcm.cell_height - top;  // descender from the font
-    unsigned half_height = MAX(1, max_height / 4);
+    unsigned half_height = MAX(1u, max_height / 4u);
     unsigned thickness;
     if (OPT(undercurl_style) & 2) thickness = MAX(half_height, fcm.underline_thickness);
-    else thickness = MAX(1, fcm.underline_thickness) - (fcm.underline_thickness < 3 ? 1 : 2);
+    else thickness = MAX(1u, fcm.underline_thickness) - (fcm.underline_thickness < 3u ? 1u : 2u);
     unsigned position = fcm.underline_position;
 
     // Ensure curve doesn't exceed cell boundary at the bottom
@@ -165,8 +165,8 @@ add_curl_underline(uint8_t *buf, FontCellMetrics fcm) {
 
 static void
 vert(uint8_t *ans, bool is_left_edge, double width_pt, double dpi_x, FontCellMetrics fcm) {
-    unsigned width = MAX(1, MIN((unsigned)(round(width_pt * dpi_x / 72.0)), fcm.cell_width));
-    const unsigned left = is_left_edge ? 0 : MAX(0, fcm.cell_width - width);
+    unsigned width = MAX(1u, MIN((unsigned)(round(width_pt * dpi_x / 72.0)), fcm.cell_width));
+    const unsigned left = is_left_edge ? 0 : MAX(0u, fcm.cell_width - width);
     for (unsigned y = 0; y < fcm.cell_height; y++) {
         const unsigned offset = y * fcm.cell_width + left;
         for (unsigned x = offset; x < offset + width; x++) ans[x] = 0xff;
@@ -175,8 +175,8 @@ vert(uint8_t *ans, bool is_left_edge, double width_pt, double dpi_x, FontCellMet
 
 static unsigned
 horz(uint8_t *ans, bool is_top_edge, double height_pt, double dpi_y, FontCellMetrics fcm) {
-    unsigned height = MAX(1, MIN((unsigned)(round(height_pt * dpi_y / 72.0)), fcm.cell_height));
-    const unsigned top = is_top_edge ? 0 : MAX(0, fcm.cell_height - height);
+    unsigned height = MAX(1u, MIN((unsigned)(round(height_pt * dpi_y / 72.0)), fcm.cell_height));
+    const unsigned top = is_top_edge ? 0 : MAX(0u, fcm.cell_height - height);
     for (unsigned y = top; y < top + height; y++) {
         const unsigned offset = y * fcm.cell_width;
         for (unsigned x = 0; x < fcm.cell_width; x++) ans[offset + x] = 0xff;
