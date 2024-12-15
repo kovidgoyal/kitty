@@ -97,6 +97,8 @@ vec3 to_color(uint c, uint defval) {
     return color_to_vec(resolve_color(c, defval));
 }
 
+#ifdef NEEDS_FOREGROUND
+
 uvec3 to_sprite_coords(uint idx) {
     uint sprites_per_page = sprites_xnum * sprites_ynum;
     uint z = idx / sprites_per_page;
@@ -113,7 +115,6 @@ vec3 to_sprite_pos(uvec2 pos, uint idx) {
     return vec3(s_xpos[pos.x], s_ypos[pos.y], c.z);
 }
 
-#ifdef NEEDS_FOREGROUND
 uint read_sprite_decorations_idx() {
     int idx = int(sprite_idx[0] & SPRITE_INDEX_MASK);
     ivec2 sz = textureSize(sprite_decorations_map, 0);

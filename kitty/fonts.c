@@ -91,7 +91,7 @@ typedef struct ScaledFontData {
 #include "kitty-verstable.h"
 
 typedef union DecorationsKey {
-    struct { uint8_t scale, subscale_n, subscale_d, vertical_align, multicell_y; };
+    struct { uint8_t scale : 8, subscale_n : 8, subscale_d : 8, vertical_align : 8, multicell_y : 8, u1 : 8, u2 : 8, u3 : 8; };
     uint64_t val;
 } DecorationsKey;
 static_assert(sizeof(DecorationsKey) == sizeof(uint64_t), "Fix the ordering of DecorationsKey");
@@ -954,7 +954,7 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
 
 static DecorationMetadata
 index_for_decorations(FontGroup *fg, RunFont rf, Region src, Region dest, FontCellMetrics scaled_metrics) {
-    DecorationsKey key = {.scale=rf.scale, .subscale_n = rf.subscale_n, .subscale_d = rf.subscale_d, .vertical_align = rf.vertical_align, .multicell_y = rf.multicell_y };
+    const DecorationsKey key = {.scale=rf.scale, .subscale_n = rf.subscale_n, .subscale_d = rf.subscale_d, .vertical_align = rf.vertical_align, .multicell_y = rf.multicell_y, .u1 = 0, .u2 = 0, .u3 = 0 };
     decorations_index_map_t_itr i = vt_get(&fg->decorations_index_map, key);
     if (!vt_is_end(i)) return i.data->val;
     DecorationMetadata val;
