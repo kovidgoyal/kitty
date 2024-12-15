@@ -18,7 +18,7 @@ from kitty.fast_data_types import (
     sprite_map_set_layout,
     sprite_map_set_limits,
     test_render_line,
-    test_sprite_position_for,
+    test_sprite_position_increment,
     wcwidth,
 )
 from kitty.fonts import family_name_to_key
@@ -282,18 +282,18 @@ class FontBaseTest(BaseTest):
 class Rendering(FontBaseTest):
 
     def test_sprite_map(self):
-        sprite_map_set_limits(10, 2)
+        sprite_map_set_limits(10, 3)
         sprite_map_set_layout(5, 5)
-        self.ae(test_sprite_position_for(0), (0, 0, 0))
-        self.ae(test_sprite_position_for(1), (1, 0, 0))
-        self.ae(test_sprite_position_for(2), (0, 1, 0))
-        self.ae(test_sprite_position_for(3), (1, 1, 0))
-        self.ae(test_sprite_position_for(4), (0, 0, 1))
-        self.ae(test_sprite_position_for(5), (1, 0, 1))
-        self.ae(test_sprite_position_for(6), (0, 1, 1))
-        self.ae(test_sprite_position_for(7), (1, 1, 1))
-        self.ae(test_sprite_position_for(0, 1), (0, 0, 2))
-        self.ae(test_sprite_position_for(0, 2), (1, 0, 2))
+        self.ae(test_sprite_position_increment(), (0, 0, 0))
+        self.ae(test_sprite_position_increment(), (1, 0, 0))
+        self.ae(test_sprite_position_increment(), (0, 1, 0))
+        self.ae(test_sprite_position_increment(), (1, 1, 0))
+        self.ae(test_sprite_position_increment(), (0, 0, 1))
+        self.ae(test_sprite_position_increment(), (1, 0, 1))
+        self.ae(test_sprite_position_increment(), (0, 1, 1))
+        self.ae(test_sprite_position_increment(), (1, 1, 1))
+        self.ae(test_sprite_position_increment(), (0, 0, 2))
+        self.ae(test_sprite_position_increment(), (1, 0, 2))
 
     def test_box_drawing(self):
         s = self.create_screen(cols=len(box_chars) + 1, lines=1, scrollback=0)
