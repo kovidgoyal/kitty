@@ -195,7 +195,7 @@ add_beam_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_x) {
 DecorationGeometry
 add_underline_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_y) {
     DecorationGeometry ans = {0};
-    ans.top = horz(buf, true, OPT(cursor_underline_thickness), dpi_y, fcm);
+    ans.top = horz(buf, false, OPT(cursor_underline_thickness), dpi_y, fcm);
     ans.height = fcm.cell_height - ans.top;
     return ans;
 }

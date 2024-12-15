@@ -293,7 +293,7 @@ def shape_string(
         return test_shape(line, path)
 
 
-def show(rgba_data: bytes, width: int, height: int, fmt: int = 32) -> None:
+def show(rgba_data: Union[bytes, memoryview], width: int, height: int, fmt: int = 32) -> None:
     from base64 import standard_b64encode
 
     from kittens.tui.images import GraphicsCommand
@@ -305,12 +305,12 @@ def show(rgba_data: bytes, width: int, height: int, fmt: int = 32) -> None:
     cmd.s = width
     cmd.v = height
 
+    sys.stdout.flush()
     while data:
         chunk, data = data[:4096], data[4096:]
         cmd.m = 1 if data else 0
         sys.stdout.buffer.write(cmd.serialize(chunk))
         cmd.clear()
-    sys.stdout.flush()
     sys.stdout.buffer.flush()
 
 

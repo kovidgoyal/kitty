@@ -100,9 +100,9 @@ vec3 to_color(uint c, uint defval) {
 uvec3 to_sprite_coords(uint idx) {
     uint sprites_per_page = sprites_xnum * sprites_ynum;
     uint z = idx / sprites_per_page;
-    uint num_on_last_page = idx % sprites_per_page;
+    uint num_on_last_page = idx - sprites_per_page * z;
     uint y = num_on_last_page / sprites_xnum;
-    uint x = num_on_last_page % sprites_xnum;
+    uint x = num_on_last_page - sprites_xnum * y;
     return uvec3(x, y, z);
 }
 
@@ -118,7 +118,7 @@ uint read_sprite_decorations_idx() {
     int idx = int(sprite_idx[0] & SPRITE_INDEX_MASK);
     ivec2 sz = textureSize(sprite_decorations_map, 0);
     int y = idx / sz[0];
-    int x = idx % sz[0];
+    int x = idx - y * sz[0];
     return texelFetch(sprite_decorations_map, ivec2(x, y), 0).r;
 }
 

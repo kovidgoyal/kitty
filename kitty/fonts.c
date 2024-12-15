@@ -126,7 +126,26 @@ static id_type font_group_id_counter = 0;
 static void initialize_font_group(FontGroup *fg);
 
 static void
+display_rgba_data(const pixel *b, unsigned width, unsigned height) {
+    RAII_PyObject(m, PyImport_ImportModule("kitty.fonts.render"));
+    RAII_PyObject(f, PyObject_GetAttrString(m, "show"));
+    RAII_PyObject(data, PyMemoryView_FromMemory((char*)b, width * height * sizeof(b[0]), PyBUF_READ));
+    RAII_PyObject(ret, PyObject_CallFunction(f, "OII", data, width, height));
+    if (PyErr_Occurred()) PyErr_Print();
+}
+
+static void
+dump_sprite(pixel *b, unsigned width, unsigned height) {
+    for (unsigned y = 0; y < height; y++) {
+        pixel *p = b + y * width;
+        for (unsigned x = 0; x < width; x++) printf("%d ", p[x] != 0);
+        printf("\n");
+    }
+}
+
+static void
 python_send_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf) {
+    if (0) dump_sprite(buf, fg->fcm.cell_width, fg->fcm.cell_height);
     unsigned int x, y, z;
     sprite_index_to_pos(idx, fg->sprite_tracker.xnum, fg->sprite_tracker.ynum, &x, &y, &z);
     const size_t sprite_size = fg->fcm.cell_width * fg->fcm.cell_height;
@@ -137,6 +156,7 @@ python_send_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf) {
 
 static void
 current_send_sprite_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf, sprite_index decorations_idx) {
+    if (0) { printf("Sprite: %u dec_idx: %u\n", idx, decorations_idx); display_rgba_data(buf, fg->fcm.cell_width, fg->fcm.cell_height); printf("\n"); }
     if (python_send_to_gpu_impl) { python_send_to_gpu(fg, idx, buf); return; }
     send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, idx, buf, decorations_idx);
 }
@@ -297,7 +317,7 @@ do_increment(FontGroup *fg, int *error) {
 }
 
 static uint32_t
-current_sprite_index(GPUSpriteTracker *sprite_tracker) {
+current_sprite_index(const GPUSpriteTracker *sprite_tracker) {
     return sprite_tracker->z * (sprite_tracker->xnum * sprite_tracker->ynum) + sprite_tracker->y * sprite_tracker->xnum + sprite_tracker->x;
 }
 
@@ -869,19 +889,6 @@ extract_cell_region(Canvas *canvas, unsigned i, Region *src, const Region *dest,
     return ans;
 }
 
-__attribute__((unused))
-static void
-dump_sprite(pixel *b, unsigned width, unsigned height, bool actual_pixel_values) {
-    for (unsigned y = 0; y < height; y++) {
-        pixel *p = b + y * width;
-        for (unsigned x = 0; x < width; x++) {
-            if (actual_pixel_values) printf("%08x ", p[x]);
-            else printf("%d ", p[x] != 0);
-        }
-        printf("\n");
-    }
-}
-
 static void
 set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
     cell->sprite_idx = sp->idx & 0x7fffffff;
@@ -890,6 +897,7 @@ set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
 
 static void
 render_scaled_decoration(FontCellMetrics unscaled_metrics, FontCellMetrics scaled_metrics, uint8_t *alpha_mask, pixel *output, Region src, Region dest) {
+    memset(output, 0, unscaled_metrics.cell_width * unscaled_metrics.cell_height * sizeof(output[0]));
     pixel col = 0xffffff00;
     unsigned src_limit = MIN(scaled_metrics.cell_height, src.bottom), dest_limit = MIN(unscaled_metrics.cell_height, dest.bottom);
     unsigned cell_width = MIN(scaled_metrics.cell_width, unscaled_metrics.cell_width);
@@ -906,7 +914,7 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
     const FontCellMetrics unscaled_metrics = fg->fcm;
     scaled_metrics.cell_width = unscaled_metrics.cell_width;
     RAII_ALLOC(uint8_t, alpha_mask, malloc(scaled_metrics.cell_height * scaled_metrics.cell_width));
-    RAII_ALLOC(pixel, buf, malloc(unscaled_metrics.cell_width * (unscaled_metrics.cell_height + 1) * sizeof(pixel)));
+    RAII_ALLOC(pixel, buf, malloc(unscaled_metrics.cell_width * unscaled_metrics.cell_height * sizeof(pixel)));
     if (!alpha_mask || !buf) fatal("Out of memory");
     int error = 0;
     sprite_index idx = current_sprite_index(&fg->sprite_tracker);
@@ -914,7 +922,6 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
 #define do_one(call) \
     memset(alpha_mask, 0, scaled_metrics.cell_width * scaled_metrics.cell_height * sizeof(alpha_mask[0])); \
     call; \
-    memset(buf, 0, unscaled_metrics.cell_width * unscaled_metrics.cell_height * sizeof(buf[0])); \
     render_scaled_decoration(unscaled_metrics, scaled_metrics, alpha_mask, buf, src, dest); \
     current_send_sprite_to_gpu(fg, current_sprite_index(&fg->sprite_tracker), buf, 0); \
     increment_sprite_index;
@@ -1000,7 +1007,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     width *= num_glyphs;
     Region src = { .right = width, .bottom = height }, dest = src;
     render_alpha_mask(alpha_mask, fg->canvas.buf, &src, &dest, width, width, 0xffffff);
-    /*printf("Rendered char sz: (%u, %u)\n", width, height); dump_sprite(fg->canvas.buf, width, height, false);*/
+    /*printf("Rendered char sz: (%u, %u)\n", width, height); dump_sprite(fg->canvas.buf, width, height);*/
     if (scale == 1.f && rf.scale == 1 && !rf.subscale_n) {
         sp[0]->rendered = true;
         current_send_sprite_to_gpu(fg, sp[0]->idx, fg->canvas.buf, index_for_decorations(fg, rf, src, dest, scaled_metrics));
@@ -1009,7 +1016,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
         /*printf("width: %u height: %u unscaled_cell_width: %u unscaled_cell_height: %u src.top: %u src.bottom: %u rf.scale: %u\n", width, height, fg->fcm.cell_width, fg->fcm.cell_height, src.top, src.bottom, rf.scale);*/
         for (unsigned i = 0; i < rf.scale; i++) {
             pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, width, fg->fcm);
-            /*printf("Sprite %u: pos: (%u, %u, %u) sz: (%u, %u)\n", i, sp[i]->x, sp[i]->y, sp[i]->z, fg->fcm.cell_width, fg->fcm.cell_height); dump_sprite(b, fg->fcm.cell_width, fg->fcm.cell_height, false);*/
+            /*printf("Sprite %u: pos: (%u, %u, %u) sz: (%u, %u)\n", i, sp[i]->x, sp[i]->y, sp[i]->z, fg->fcm.cell_width, fg->fcm.cell_height); dump_sprite(b, fg->fcm.cell_width, fg->fcm.cell_height);*/
             sp[i]->rendered = true;
             current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics));
         }
@@ -1087,7 +1094,7 @@ render_group(
     if (is_only_filled_boxes) { // special case rendering of █ for tests
         render_filled_sprite(fg->canvas.buf, num_glyphs, scaled_metrics, num_scaled_cells);
         was_colored = false;
-        /*dump_sprite(fg->canvas.buf, scaled_metrics.cell_width * num_scaled_cells, scaled_metrics.cell_height, false);*/
+        /*dump_sprite(fg->canvas.buf, scaled_metrics.cell_width * num_scaled_cells, scaled_metrics.cell_height);*/
     } else render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, scaled_metrics.cell_width, scaled_metrics.cell_height, num_scaled_cells, scaled_metrics.baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
@@ -1115,7 +1122,7 @@ render_group(
                 pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, scaled_metrics.cell_width * num_scaled_cells, unscaled_metrics);
                 /*printf("cell %u src -> dest: (%u %u) -> (%u %u)\n", i, src.left, src.right, dest.left, dest.right);*/
                 current_send_sprite_to_gpu(fg, sp[i]->idx, b, index_for_decorations(fg, rf, src, dest, scaled_metrics));
-                /*dump_sprite(b, unscaled_metrics.cell_width, unscaled_metrics.cell_height, false);*/
+                /*dump_sprite(b, unscaled_metrics.cell_width, unscaled_metrics.cell_height);*/
                 sp[i]->rendered = true; sp[i]->colored = was_colored;
             }
             set_cell_sprite(gpu_cells + i, sp[i]);

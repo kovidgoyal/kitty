@@ -205,16 +205,14 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     unsigned int xnum, ynum, znum, x, y, z;
 #define dm (sprite_map->decorations_map)
+    if (idx >= dm.count) dm.count = idx + 1;
     realloc_sprite_decorations_texture_if_needed(fg);
-    if (idx >= dm.count) {
-        dm.count = idx + 1;
-        div_t d = div(idx, dm.width);
-        x = d.rem; y = d.quot;
-        glActiveTexture(GL_TEXTURE0 + SPRITE_DECORATIONS_MAP_UNIT);
-        glBindTexture(GL_TEXTURE_2D, dm.texture_id);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &decoration_idx);
-    }
+    div_t d = div(idx, dm.width);
+    x = d.rem; y = d.quot;
+    glActiveTexture(GL_TEXTURE0 + SPRITE_DECORATIONS_MAP_UNIT);
+    glBindTexture(GL_TEXTURE_2D, dm.texture_id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &decoration_idx);
 #undef dm
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
     if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) {
