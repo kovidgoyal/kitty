@@ -23,7 +23,7 @@ class Version(NamedTuple):
 
 appname: str = 'kitty'
 kitty_face = '🐱'
-version: Version = Version(0, 37, 0)
+version: Version = Version(0, 38, 0)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat

@@ -113,6 +113,7 @@ Detailed list of changes
 
 - hints/unicode_input kittens: Do not lose keypresses that are sent very rapidly via an automation tool immediately after the kitten is launched (:iss:`7089`)
 
+
 0.37.0 [2024-10-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
