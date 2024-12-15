@@ -76,21 +76,17 @@ vec3 color_to_vec(uint c) {
     return vec3(gamma_lut[r], gamma_lut[g], gamma_lut[b]);
 }
 
+float one_if_equal_zero_otherwise(int a, int b) {
+    return 1.0f - clamp(abs(float(a) - float(b)), 0.0f, 1.0f);
+}
+
 uint resolve_color(uint c, uint defval) {
     // Convert a cell color to an actual color based on the color table
     int t = int(c & BYTE_MASK);
-    uint r;
-    switch(t) {
-        case 1:
-            r = color_table[(c >> 8) & BYTE_MASK];
-            break;
-        case 2:
-            r = c >> 8;
-            break;
-        default:
-            r = defval;
-    }
-    return r;
+    uint is_one = uint(one_if_equal_zero_otherwise(t, 1));
+    uint is_two = uint(one_if_equal_zero_otherwise(t, 2));
+    uint is_neither_one_nor_two = 1u - is_one - is_two;
+    return is_one * color_table[(c >> 8) & BYTE_MASK] + is_two * (c >> 8) + is_neither_one_nor_two * defval;
 }
 
 vec3 to_color(uint c, uint defval) {
