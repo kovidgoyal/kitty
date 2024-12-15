@@ -130,7 +130,7 @@ def sign_app(app_dir, notarize):
     with make_certificate_useable():
         do_sign(app_dir)
         if notarize:
-            notarize_app(app_dir)
+            notarize_app(app_dir, 'kitty')
 
 
 class Freeze(object):
