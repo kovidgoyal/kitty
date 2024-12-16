@@ -22,8 +22,10 @@ import (
 	"sync"
 	"time"
 
+	"kitty"
 	"kitty/tools/cli"
 	"kitty/tools/config"
+	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/subseq"
 	"kitty/tools/utils"
@@ -541,6 +543,7 @@ type Theme struct {
 	zip_reader                  *zip.File
 	is_user_defined             bool
 	path_for_user_defined_theme string
+	generate_default_settings   bool
 }
 
 func (self *Theme) Name() string        { return self.metadata.Name }
@@ -548,6 +551,14 @@ func (self *Theme) Author() string      { return self.metadata.Author }
 func (self *Theme) Blurb() string       { return self.metadata.Blurb }
 func (self *Theme) IsDark() bool        { return self.metadata.Is_dark }
 func (self *Theme) IsUserDefined() bool { return self.is_user_defined }
+
+func (self *Theme) GenerateDefaultSettings() func() {
+	orig := self.generate_default_settings
+	self.generate_default_settings = true
+	return func() {
+		self.generate_default_settings = orig
+	}
+}
 
 func (self *Theme) load_code() (string, error) {
 	if self.zip_reader != nil {
@@ -586,6 +597,8 @@ func (self *Theme) SaveInDir(dirpath string) (err error) {
 	return utils.AtomicUpdateFile(path, bytes.NewReader(utils.UnsafeStringToBytes(code)), 0o644)
 }
 
+var debugprintln = tty.DebugPrintln
+
 func (self *Theme) SaveInFile(config_dir, config_file_name string) (err error) {
 	_ = os.MkdirAll(config_dir, 0o755)
 	path := filepath.Join(config_dir, config_file_name)
@@ -593,6 +606,10 @@ func (self *Theme) SaveInFile(config_dir, config_file_name string) (err error) {
 	if err != nil {
 		return err
 	}
+	if self.generate_default_settings && self.Name() == "Default" {
+		code += "\n" + kitty.DefaultColorTheme
+	}
+
 	return utils.AtomicUpdateFile(path, bytes.NewReader(utils.UnsafeStringToBytes(code)), 0o644)
 }
 

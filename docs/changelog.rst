@@ -84,6 +84,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.38.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- themes kitten: When using the *Default* theme as an auto switch theme include all the actual settings values (:iss:`8124`)
+
 0.38.0 [2024-12-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

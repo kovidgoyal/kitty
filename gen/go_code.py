@@ -583,7 +583,7 @@ def load_ref_map() -> dict[str, dict[str, str]]:
 def generate_constants() -> str:
     from kittens.hints.main import DEFAULT_REGEX
     from kittens.query_terminal.main import all_queries
-    from kitty.colors import ThemeFile
+    from kitty.colors import ThemeFile, default_theme
     from kitty.config import option_names_for_completion
     from kitty.fast_data_types import FILE_TRANSFER_CODE
     from kitty.options.utils import allowed_shell_integration_values, url_style_map
@@ -629,6 +629,7 @@ var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var QueryNames = []string{{ {query_names} }}
 var CommentedOutDefaultConfig = "{serialize_as_go_string(commented_out_default_config())}"
+var DefaultColorTheme = `{default_theme()}`
 var KittyConfigDefaults = struct {{
 Term, Shell_integration, Select_by_word_characters, Url_excluded_characters, Shell string
 Wheel_scroll_multiplier int

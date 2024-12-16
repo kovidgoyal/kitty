@@ -187,3 +187,16 @@ def patch_colors(
             if default_bg_changed:
                 boss.default_bg_changed_for(w.id)
             w.refresh()
+
+
+def default_theme() -> str:
+    from kitty.options.definition import definition
+    from kitty.options.types import defaults, option_names
+    ans = []
+
+    for name in option_names:
+        defval = getattr(defaults, name)
+        if isinstance(defval, Color) or name in nullable_colors or name == 'transparent_background_colors':
+            defval = definition.option_map[name].defval_as_string
+            ans.append(f'{name} {defval}')
+    return '\n'.join(ans)
