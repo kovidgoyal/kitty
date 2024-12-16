@@ -384,7 +384,7 @@ static inline void
 underline_exclusion(PyObject *val, Options *opts) {
     if (!PyTuple_Check(val)) { PyErr_SetString(PyExc_TypeError, "underline_exclusion must be a tuple"); return; }
     opts->underline_exclusion.thickness = PyFloat_AsFloat(PyTuple_GET_ITEM(val, 0));
-    if (PyUnicode_CompareWithASCIIString(PyTuple_GET_ITEM(val, 1), "%")) opts->underline_exclusion.unit = 0;
+    if (!PyUnicode_GET_LENGTH(PyTuple_GET_ITEM(val, 1))) opts->underline_exclusion.unit = 0;
     else if (PyUnicode_CompareWithASCIIString(PyTuple_GET_ITEM(val, 1), "px")) opts->underline_exclusion.unit = 1;
     else if (PyUnicode_CompareWithASCIIString(PyTuple_GET_ITEM(val, 1), "pt")) opts->underline_exclusion.unit = 2;
     else opts->underline_exclusion.unit = 0;

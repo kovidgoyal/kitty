@@ -336,21 +336,23 @@ sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_wi
 }
 
 static void
-calculate_underline_exclusion_zones(pixel *buf, const FontGroup *fg, DecorationGeometry dg) {
+calculate_underline_exclusion_zones(pixel *buf, const FontGroup *fg, DecorationGeometry dg, FontCellMetrics scaled_metrics) {
     pixel *ans = buf + fg->fcm.cell_height * fg->fcm.cell_width;
     const unsigned bottom = MIN(dg.top + dg.height, fg->fcm.cell_height);
-    unsigned thickness;
+    unsigned thickness = scaled_metrics.underline_thickness;
     switch(OPT(underline_exclusion.unit)) {
         case 2:
             thickness = ((long)round((OPT(underline_exclusion).thickness * (fg->logical_dpi_x / 72.0)))); break;
         case 1:
             thickness = (unsigned)OPT(underline_exclusion).thickness; break;
         default:
-            thickness = (unsigned)(OPT(underline_exclusion).thickness * fg->fcm.underline_thickness); break;
+            thickness = (unsigned)(OPT(underline_exclusion).thickness * thickness); break;
     }
     thickness = MAX(1u, thickness);
+    if (0) printf("dg: %u %u cell_height: %u scaled_cell_height: %u\n", dg.top, dg.height, fg->fcm.cell_height, scaled_metrics.cell_height);
+    if (0) { display_rgba_data(buf, fg->fcm.cell_width, fg->fcm.cell_height); printf("\n"); }
     for (unsigned x = 0; x < fg->fcm.cell_width; x++) {
-        for (unsigned y = dg.top + 2; y < bottom && !ans[x]; y++) {
+        for (unsigned y = dg.top; y < bottom && !ans[x]; y++) {
             if ((buf[y * fg->fcm.cell_width + x] & 0x000000ff) > 0) {
                 unsigned start_x = x > thickness ? x - thickness : 0;
                 for (unsigned dx = start_x; dx < MIN(x + thickness, fg->fcm.cell_width); dx++) ans[dx] = 0xffffffff;
@@ -358,15 +360,16 @@ calculate_underline_exclusion_zones(pixel *buf, const FontGroup *fg, DecorationG
             }
         }
     }
+    if (0) dump_sprite(ans, fg->fcm.cell_width, 1);
 }
 
 static sprite_index
-current_send_sprite_to_gpu(FontGroup *fg, pixel *buf, DecorationMetadata dec) {
+current_send_sprite_to_gpu(FontGroup *fg, pixel *buf, DecorationMetadata dec, FontCellMetrics scaled_metrics) {
     sprite_index ans = current_sprite_index(&fg->sprite_tracker);
     if (!do_increment(fg)) return 0;
     if (python_send_to_gpu_impl) { python_send_to_gpu(fg, ans, buf); return ans; }
     if (dec.underline_region.height && OPT(underline_exclusion).thickness > 0) calculate_underline_exclusion_zones(
-            buf, fg, dec.underline_region);
+            buf, fg, dec.underline_region, scaled_metrics);
     send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, ans, buf, dec.start_idx);
     if (0) { printf("Sprite: %u dec_idx: %u\n", ans, dec.start_idx); display_rgba_data(buf, fg->fcm.cell_width, fg->fcm.cell_height); printf("\n"); }
     return ans;
@@ -858,16 +861,19 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
 }
 
 static pixel*
-pointer_to_space_for_last_sprite(Canvas *canvas, FontCellMetrics fcm) {
-    return canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - fcm.cell_width * (fcm.cell_height + 1));
+pointer_to_space_for_last_sprite(Canvas *canvas, FontCellMetrics fcm, unsigned *sz) {
+    *sz = fcm.cell_width * (fcm.cell_height + 1);
+    return canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - *sz);
 }
 
 static pixel*
 extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) {
-    pixel *ans = pointer_to_space_for_last_sprite(&fg->canvas, fg->fcm);
+    unsigned sz;
+    pixel *ans = pointer_to_space_for_last_sprite(&fg->canvas, fg->fcm, &sz);
     pixel *dest = ans, *src = fg->canvas.buf + (i * fg->fcm.cell_width);
     unsigned int stride = fg->fcm.cell_width * num_cells;
     for (unsigned int r = 0; r < fg->fcm.cell_height; r++, dest += fg->fcm.cell_width, src += stride) memcpy(dest, src, fg->fcm.cell_width * sizeof(fg->canvas.buf[0]));
+    memset(ans + sz - fg->fcm.cell_width, 0, fg->fcm.cell_width * sizeof(ans[0]));  // underline_exclusion
     return ans;
 }
 
@@ -900,9 +906,9 @@ calculate_regions_for_line(RunFont rf, unsigned cell_height, Region *src, Region
 static pixel*
 extract_cell_region(Canvas *canvas, unsigned i, Region *src, const Region *dest, unsigned src_width, FontCellMetrics unscaled_metrics) {
     src->left = i * unscaled_metrics.cell_width; src->right = MIN(src_width, src->left + unscaled_metrics.cell_width);
-    unsigned unscaled_cell_area = unscaled_metrics.cell_width * unscaled_metrics.cell_height;
-    pixel *ans = pointer_to_space_for_last_sprite(canvas, unscaled_metrics);
-    memset(ans, 0, sizeof(ans[0]) * unscaled_cell_area);
+    unsigned sz;
+    pixel *ans = pointer_to_space_for_last_sprite(canvas, unscaled_metrics, &sz);
+    memset(ans, 0, sz * sizeof(ans[0]));
     unsigned width = MIN(src->right - src->left, unscaled_metrics.cell_width);
     for (unsigned srcy = src->top, desty = dest->top; srcy < src->bottom && desty < dest->bottom; srcy++, desty++) {
         pixel *srcp = canvas->buf + srcy * src_width, *destp = ans + desty * unscaled_metrics.cell_width;
@@ -955,7 +961,7 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
     memset(alpha_mask, 0, scaled_metrics.cell_width * scaled_metrics.cell_height * sizeof(alpha_mask[0])); \
     DecorationGeometry sdg = call; \
     render_scaled_decoration(unscaled_metrics, scaled_metrics, alpha_mask, buf, src, dest); \
-    sprite_index q = current_send_sprite_to_gpu(fg, buf, (DecorationMetadata){0}); \
+    sprite_index q = current_send_sprite_to_gpu(fg, buf, (DecorationMetadata){0}, scaled_metrics); \
     if (!ans) ans = q; \
     if (is_underline) { \
         Region r = map_scaled_decoration_geometry(sdg, src, dest); \
@@ -972,6 +978,7 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
     do_one(add_dotted_underline(alpha_mask, scaled_metrics));
     do_one(add_dashed_underline(alpha_mask, scaled_metrics));
 
+    underline_bottom = MIN(underline_bottom, unscaled_metrics.cell_height);
     if (underline_top < underline_bottom) {
         underline_region->top = underline_top;
         underline_region->height = underline_bottom - underline_top;
@@ -1052,7 +1059,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     render_alpha_mask(alpha_mask, fg->canvas.buf, &src, &dest, width, width, 0xffffff);
     /*printf("Rendered char sz: (%u, %u)\n", width, height); dump_sprite(fg->canvas.buf, width, height);*/
     if (scale == 1.f && rf.scale == 1 && !rf.subscale_n) {
-        sp[0]->idx = current_send_sprite_to_gpu(fg, fg->canvas.buf, index_for_decorations(fg, rf, src, dest, scaled_metrics));
+        sp[0]->idx = current_send_sprite_to_gpu(fg, fg->canvas.buf, index_for_decorations(fg, rf, src, dest, scaled_metrics), scaled_metrics);
         if (!sp[0]->idx) failed;
         sp[0]->rendered = true;
         set_cell_sprite(gpu_cell, sp[0]);
@@ -1062,7 +1069,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
         /*printf("width: %u height: %u unscaled_cell_width: %u unscaled_cell_height: %u src.top: %u src.bottom: %u rf.scale: %u\n", width, height, fg->fcm.cell_width, fg->fcm.cell_height, src.top, src.bottom, rf.scale);*/
         for (unsigned i = 0; i < rf.scale; i++) {
             pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, width, fg->fcm);
-            sp[i]->idx = current_send_sprite_to_gpu(fg, b, dm);
+            sp[i]->idx = current_send_sprite_to_gpu(fg, b, dm, scaled_metrics);
             if (!sp[i]->idx) failed;
             sp[i]->rendered = true;
             set_cell_sprite(gpu_cell + i, sp[i]);
@@ -1162,7 +1169,7 @@ render_group(
                 bool is_repeat_sprite = is_infinite_ligature && i > 0 && sp[i]->idx == sp[i-1]->idx;
                 if (!is_repeat_sprite) {
                     pixel *b = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
-                    sp[i]->idx = current_send_sprite_to_gpu(fg, b, dm);
+                    sp[i]->idx = current_send_sprite_to_gpu(fg, b, dm, scaled_metrics);
                     if (!sp[i]->idx) failed;
                 } else sp[i]->idx = sp[i-1]->idx;
                 sp[i]->rendered = true; sp[i]->colored = was_colored;
@@ -1178,7 +1185,7 @@ render_group(
             if (!sp[i]->rendered) {
                 pixel *b = extract_cell_region(&fg->canvas, i, &src, &dest, scaled_metrics.cell_width * num_scaled_cells, unscaled_metrics);
                 /*printf("cell %u src -> dest: (%u %u) -> (%u %u)\n", i, src.left, src.right, dest.left, dest.right);*/
-                sp[i]->idx = current_send_sprite_to_gpu(fg, b, dm);
+                sp[i]->idx = current_send_sprite_to_gpu(fg, b, dm, scaled_metrics);
                 if (!sp[i]->idx) failed;
                 /*dump_sprite(b, unscaled_metrics.cell_width, unscaled_metrics.cell_height);*/
                 sp[i]->rendered = true; sp[i]->colored = was_colored;
@@ -1909,7 +1916,7 @@ send_prerendered_sprites(FontGroup *fg) {
     // blank cell
     ensure_canvas_can_fit(fg, 1, 1);
     DecorationMetadata dm = {.start_idx=5};
-    current_send_sprite_to_gpu(fg, fg->canvas.buf, dm);
+    current_send_sprite_to_gpu(fg, fg->canvas.buf, dm, fg->fcm);
     const unsigned cell_area = fg->fcm.cell_height * fg->fcm.cell_width;
     RAII_ALLOC(uint8_t, alpha_mask, malloc(cell_area));
     if (!alpha_mask) fatal("Out of memory");
@@ -1919,7 +1926,7 @@ send_prerendered_sprites(FontGroup *fg) {
     call; \
     ensure_canvas_can_fit(fg, 1, 1);  /* clear canvas */ \
     render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->fcm.cell_width, fg->fcm.cell_width, 0xffffff); \
-    current_send_sprite_to_gpu(fg, fg->canvas.buf, dm);
+    current_send_sprite_to_gpu(fg, fg->canvas.buf, dm, fg->fcm);
 
     // If you change the mapping of these cells you will need to change
     // BEAM_IDX in shader.c and STRIKE_SPRITE_INDEX in
