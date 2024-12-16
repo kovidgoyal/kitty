@@ -8,12 +8,16 @@
 
 #include "data-types.h"
 
-void free_glyph_cache_global_resources(void);
-
-typedef struct SpritePosition {
-    bool rendered, colored;
-    sprite_index idx;
+typedef union SpritePosition {
+    struct {
+        sprite_index idx : sizeof(sprite_index) * 8;
+        bool rendered : 1;
+        bool colored : 1;
+        uint32_t : 30;
+    };
+    uint64_t val;
 } SpritePosition;
+static_assert(sizeof(SpritePosition) == sizeof(uint64_t), "Fix ordering of SpritePosition");
 
 typedef struct {int x;} *SPRITE_POSITION_MAP_HANDLE;
 

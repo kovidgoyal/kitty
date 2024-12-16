@@ -6,7 +6,6 @@
  */
 
 #include "glyph-cache.h"
-
 typedef struct SpritePosKey {
     glyph_index ligature_index, count, cell_count, keysz_in_bytes;
     uint8_t scale, subscale, multicell_y, vertical_align;
@@ -21,9 +20,17 @@ static uint64_t sprite_pos_map_hash(KEY_TY key);
 #define HASH_FN sprite_pos_map_hash
 static bool sprite_pos_map_cmpr(KEY_TY a, KEY_TY b);
 #define CMPR_FN sprite_pos_map_cmpr
-static void free_const(const void* x) { free((void*)x); }
-#define KEY_DTOR_FN free_const
-#define VAL_DTOR_FN free_const
+#define MA_NAME Key
+#define MA_BLOCK_SIZE 16u
+static_assert(MA_BLOCK_SIZE > sizeof(SpritePosKey) + 2, "increase arena block size");
+#define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
+#include "arena.h"
+#define MA_NAME Val
+#define MA_BLOCK_SIZE sizeof(VAL_TY)
+#define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
+#define MA_ZERO_MEMORY
+#include "arena.h"
+
 
 #include "kitty-verstable.h"
 
@@ -38,20 +45,17 @@ sprite_pos_map_cmpr(const SpritePosKey *a, const SpritePosKey *b) {
 }
 
 
-static SpritePosKey *scratch = NULL;
-static size_t scratch_key_capacity = 0;
-
-
-void
-free_glyph_cache_global_resources(void) {
-    free(scratch); scratch = NULL; scratch_key_capacity = 0;
-}
-
+typedef struct HashTable {
+    sprite_pos_map table;
+    KeyMonotonicArena keys;
+    ValMonotonicArena vals;
+    struct { SpritePosKey *key; size_t capacity; } scratch;
+} HashTable;
 
 SPRITE_POSITION_MAP_HANDLE
 create_sprite_position_hash_table(void) {
-    sprite_pos_map *ans = calloc(1, sizeof(sprite_pos_map));
-    if (ans) vt_init(ans);
+    HashTable *ans = calloc(1, sizeof(HashTable));
+    if (ans) vt_init(&ans->table);
     return (SPRITE_POSITION_MAP_HANDLE)ans;
 }
 
@@ -60,15 +64,17 @@ find_or_create_sprite_position(
     SPRITE_POSITION_MAP_HANDLE map_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count,
     uint8_t scale, uint8_t subscale, uint8_t multicell_y, uint8_t vertical_align, bool *created
 ) {
-    sprite_pos_map *map = (sprite_pos_map*)map_;
+    HashTable *ht = (HashTable*)map_;
+    sprite_pos_map *map = &ht->table;
     const size_t keysz_in_bytes = count * sizeof(glyph_index);
-    if (!scratch || keysz_in_bytes > scratch_key_capacity) {
-        const size_t newsz = sizeof(scratch[0]) + keysz_in_bytes + 64;
-        scratch = realloc(scratch, newsz);
-        if (!scratch) { scratch_key_capacity = 0; return NULL; }
-        scratch_key_capacity = newsz - sizeof(scratch[0]);
-        memset(scratch, 0, newsz);
+    if (!ht->scratch.key || keysz_in_bytes > ht->scratch.capacity) {
+        const size_t newsz = sizeof(ht->scratch.key[0]) + keysz_in_bytes + 64;
+        ht->scratch.key = realloc(ht->scratch.key, newsz);
+        if (!ht->scratch.key) { ht->scratch.capacity = 0; return NULL; }
+        ht->scratch.capacity = newsz - sizeof(ht->scratch.key[0]);
+        memset(ht->scratch.key, 0, newsz);
     }
+#define scratch ht->scratch.key
     scratch->keysz_in_bytes = keysz_in_bytes;
     scratch->count = count; scratch->ligature_index = ligature_index; scratch->cell_count = cell_count;
     scratch->scale = scale; scratch->subscale = subscale; scratch->multicell_y = multicell_y; scratch->vertical_align = vertical_align;
@@ -76,20 +82,26 @@ find_or_create_sprite_position(
     sprite_pos_map_itr n = vt_get(map, scratch);
     if (!vt_is_end(n)) { *created = false; return n.data->val; }
 
-    SpritePosition *val = calloc(1, sizeof(SpritePosition));
-    SpritePosKey *key = malloc(sizeof(SpritePosKey) + scratch->keysz_in_bytes);
-    if (!val || !key) return NULL;
+    SpritePosKey *key = Key_get(&ht->keys, sizeof(SpritePosKey) + scratch->keysz_in_bytes);
+    if (!key) return NULL;
+    SpritePosition *val = Val_get(&ht->vals, sizeof(SpritePosition));
+    if (!val) return NULL;
     memcpy(key, scratch, sizeof(scratch[0]) + scratch->keysz_in_bytes);
     if (vt_is_end(vt_insert(map, key, val))) return NULL;
     *created = true;
     return val;
+#undef scratch
 }
 
 void
 free_sprite_position_hash_table(SPRITE_POSITION_MAP_HANDLE *map) {
-    sprite_pos_map **mapref = (sprite_pos_map**)map;
+    HashTable **mapref = (HashTable**)map;
     if (*mapref) {
-        vt_cleanup(*mapref); free(*mapref); *mapref = NULL;
+        vt_cleanup(&mapref[0]->table);
+        Key_free_all(&mapref[0]->keys);
+        Val_free_all(&mapref[0]->vals);
+        free(mapref[0]->scratch.key);
+        free(mapref[0]); mapref[0] = NULL;
     }
 }
 

@@ -483,7 +483,6 @@ free_font_groups(void) {
         free(font_groups); font_groups = NULL;
         font_groups_capacity = 0; num_font_groups = 0;
     }
-    free_glyph_cache_global_resources();
 }
 
 static void
