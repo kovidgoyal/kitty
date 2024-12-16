@@ -89,10 +89,10 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         from kitty.colors import patch_colors
         windows = self.windows_for_payload(boss, window, payload_get)
-        colors: Dict[str, int | None] = payload_get('colors')
-        tbc = colors.get('transparent_background_colors')
+        colors: Dict[str, int | None] = payload_get('colors') or {}
         if payload_get('reset'):
             colors = {k: None if v is None else int(v) for k, v in boss.color_settings_at_startup.items()}
+        tbc = colors.get('transparent_background_colors')
         if tbc:
             from kitty.options.utils import transparent_background_colors
             parsed_tbc = transparent_background_colors(str(tbc))
