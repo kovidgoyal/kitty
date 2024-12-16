@@ -983,7 +983,6 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
         underline_region->height = underline_bottom - underline_top;
     }
     return ans;
-#undef increment_sprite_index
 #undef do_one
 }
 
