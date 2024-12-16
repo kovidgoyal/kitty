@@ -14,7 +14,7 @@
 static inline uint64_t
 vt_hash_bytes(const void *data, const size_t size) {
     uint64_t hash = 0xcbf29ce484222325ull;
-    for (size_t i = 0; i < size; i++) hash = ( ((unsigned char*)data)[i] ^ hash ) * 0x100000001b3ull;
+    for (size_t i = 0; i < size; i++) hash = ( (uint64_t)(((unsigned char*)data)[i] ^ hash )) * 0x100000001b3ull;
     return hash;
 }
 
