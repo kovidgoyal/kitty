@@ -48,7 +48,6 @@ typedef struct {int x; } *TextCache;
 TextCache* tc_alloc(void);
 TextCache* tc_incref(TextCache *self);
 TextCache* tc_decref(TextCache *self);
-void tc_clear(TextCache *ans);
 void tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans);
 unsigned tc_chars_at_index_ansi(const TextCache *self, char_type idx, ANSIBuf *output);
 char_type tc_get_or_insert_chars(TextCache *self, const ListOfChars *chars);

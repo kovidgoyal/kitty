@@ -20,10 +20,16 @@ static bool cmpr_chars(Chars a, Chars b);
 #define CMPR_FN cmpr_chars
 #include "kitty-verstable.h"
 
+#define MA_NAME Chars
+#define MA_BLOCK_SIZE 16u
+#define MA_ARENA_NUM_BLOCKS 128u
+#include "arena.h"
+
 typedef struct TextCache {
     struct { Chars *items; size_t capacity; char_type count; } array;
     chars_map map;
     unsigned refcnt;
+    CharsMonotonicArena arena;
 } TextCache;
 static uint64_t hash_chars(Chars k) { return vt_hash_bytes(k.chars, sizeof(k.chars[0]) * k.count); }
 static bool cmpr_chars(Chars a, Chars b) { return a.count == b.count && memcmp(a.chars, b.chars, sizeof(a.chars[0]) * a.count) == 0; }
@@ -43,16 +49,10 @@ tc_alloc(void) {
     return ans;
 }
 
-void
-tc_clear(TextCache *ans) {
-    ans->array.count = 0;
-    vt_cleanup(&ans->map);
-}
-
 static void
 free_text_cache(TextCache *self) {
     vt_cleanup(&self->map);
-    for (char_type i = 0; i < self->array.count; i++) free((char_type*)self->array.items[i].chars);
+    Chars_free_all(&self->arena);
     free(self->array.items);
     free(self);
 }
@@ -128,7 +128,7 @@ static char_type
 copy_and_insert(TextCache *self, const Chars key) {
     if (self->array.count > MAX_CHAR_TYPE_VALUE) fatal("Too many items in TextCache");
     ensure_space_for(&(self->array), items, Chars, self->array.count + 1, capacity, 256, false);
-    char_type *copy = malloc(key.count * sizeof(key.chars[0]));
+    char_type *copy = Chars_get(&self->arena, key.count * sizeof(key.chars[0]));
     if (!copy) fatal("Out of memory");
     memcpy(copy, key.chars, key.count * sizeof(key.chars[0]));
     char_type ans = self->array.count;
