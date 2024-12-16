@@ -8,7 +8,7 @@ layout(std140) uniform CellRenderData {
 
     uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-    uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx;
+    uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
     float cursor_x, cursor_y, cursor_w, cursor_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
@@ -51,6 +51,7 @@ out vec3 underline_pos;
 out vec3 cursor_pos;
 out vec4 cursor_color_premult;
 out vec3 strike_pos;
+out vec3 underline_exclusion_pos;
 out vec3 foreground;
 out vec3 decoration_fg;
 out float colored_sprite;
@@ -108,7 +109,16 @@ vec3 to_sprite_pos(uvec2 pos, uint idx) {
     uvec3 c = to_sprite_coords(idx);
     vec2 s_xpos = vec2(c.x, float(c.x) + 1.0f) * (1.0f / float(sprites_xnum));
     vec2 s_ypos = vec2(c.y, float(c.y) + 1.0f) * (1.0f / float(sprites_ynum));
+    uint texture_height_px = (cell_height + 1u) * sprites_ynum;
+    float row_height = 1.0f / float(texture_height_px);
+    s_ypos[1] -= row_height;  // skip the decorations_exclude row
     return vec3(s_xpos[pos.x], s_ypos[pos.y], c.z);
+}
+
+vec3 to_underline_exclusion_pos(uvec2 pos, vec3 sprite_pos) {
+    uvec3 c = to_sprite_coords(sprite_idx[0]);
+    float y = (float(c.y) + 1.0f) * (1.0f / float(sprites_ynum));
+    return vec3(sprite_pos.x, y, sprite_pos.z);
 }
 
 uint read_sprite_decorations_idx() {
@@ -232,6 +242,7 @@ void main() {
     uvec2 decs = get_decorations_indices(uint(in_url), text_attrs);
     strike_pos = to_sprite_pos(cell_data.pos, decs[0]);
     underline_pos = to_sprite_pos(cell_data.pos, decs[1]);
+    underline_exclusion_pos = to_underline_exclusion_pos(cell_data.pos, sprite_pos);
 
     // Cursor
     cursor_color_premult = vec4(color_to_vec(cursor_bg) * cursor_opacity, cursor_opacity);

@@ -121,12 +121,13 @@ add_dashed_underline(uint8_t *buf, FontCellMetrics fcm) {
     return ans;
 }
 
-static void
+static unsigned
 add_intensity(uint8_t *buf, unsigned x, unsigned y, uint8_t val, unsigned max_y, unsigned position, unsigned cell_width) {
     y += position;
     y = MIN(y, max_y);
     unsigned idx = cell_width * y + x;
     buf[idx] = MIN(255, buf[idx] + val);
+    return y;
 }
 
 DecorationGeometry
@@ -152,10 +153,12 @@ add_curl_underline(uint8_t *buf, FontCellMetrics fcm) {
     for (unsigned x = 0; x < fcm.cell_width; x++) {
         double y = half_height * cos(x * xfactor);
         unsigned y1 = (unsigned)floor(y - thickness), y2 = (unsigned)ceil(y);
-        unsigned i1 = (unsigned)(255. * fabs(y - floor(y)));
-        miny = MIN(miny, y1); maxy = MAX(maxy, y2);
-        add_intensity(buf, x, y1, 255 - i1, max_y, position, fcm.cell_width);  // upper bound
-        add_intensity(buf, x, y2, i1, max_y, position, fcm.cell_width);  // lower bound
+        unsigned intensity = (unsigned)(255. * fabs(y - floor(y)));
+        unsigned i1 = 255 - intensity, i2 = intensity;
+        unsigned yc = add_intensity(buf, x, y1, i1, max_y, position, fcm.cell_width);  // upper bound
+        if (i1) { if (yc < miny) miny = yc; if (yc > maxy) maxy = yc; }
+        yc = add_intensity(buf, x, y2, i2, max_y, position, fcm.cell_width);  // lower bound
+        if (i2) { if (yc < miny) miny = yc; if (yc > maxy) maxy = yc; }
         // fill between upper and lower bound
         for (unsigned t = 1; t <= thickness; t++) add_intensity(buf, x, y1 + t, 255, max_y, position, fcm.cell_width);
     }

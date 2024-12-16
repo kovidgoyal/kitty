@@ -161,7 +161,7 @@ python_send_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf) {
 
 static void
 ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
-#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->fcm.cell_width * fg->fcm.cell_height * scale * scale)
+#define cs(cells, scale) (sizeof(fg->canvas.buf[0]) * 3u * cells * fg->fcm.cell_width * (fg->fcm.cell_height + 1) * scale * scale)
     size_t size_in_bytes = cs(cells, scale);
     if (size_in_bytes > fg->canvas.size_in_bytes) {
         free(fg->canvas.buf);
@@ -335,11 +335,28 @@ sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_wi
     sprite_tracker->x = 0; sprite_tracker->y = 0; sprite_tracker->z = 0;
 }
 
+static void
+calculate_underline_exclusion_zones(pixel *buf, const FontGroup *fg, DecorationGeometry dg) {
+    pixel *ans = buf + fg->fcm.cell_height * fg->fcm.cell_width;
+    const unsigned bottom = MIN(dg.top + dg.height, fg->fcm.cell_height);
+    const unsigned thickness = MAX(1u, fg->fcm.underline_thickness / 1);
+    for (unsigned x = 0; x < fg->fcm.cell_width; x++) {
+        for (unsigned y = dg.top + 2; y < bottom && !ans[x]; y++) {
+            if ((buf[y * fg->fcm.cell_width + x] & 0x000000ff) > 0) {
+                unsigned start_x = x > thickness ? x - thickness : 0;
+                for (unsigned dx = start_x; dx < MIN(x + thickness, fg->fcm.cell_width); dx++) ans[dx] = 0xffffffff;
+                break;
+            }
+        }
+    }
+}
+
 static sprite_index
 current_send_sprite_to_gpu(FontGroup *fg, pixel *buf, DecorationMetadata dec) {
     sprite_index ans = current_sprite_index(&fg->sprite_tracker);
     if (!do_increment(fg)) return 0;
     if (python_send_to_gpu_impl) { python_send_to_gpu(fg, ans, buf); return ans; }
+    if (dec.underline_region.height) calculate_underline_exclusion_zones(buf, fg, dec.underline_region);
     send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, ans, buf, dec.start_idx);
     if (0) { printf("Sprite: %u dec_idx: %u\n", ans, dec.start_idx); display_rgba_data(buf, fg->fcm.cell_width, fg->fcm.cell_height); printf("\n"); }
     return ans;
@@ -832,7 +849,7 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
 
 static pixel*
 pointer_to_space_for_last_sprite(Canvas *canvas, FontCellMetrics fcm) {
-    return canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - fcm.cell_width * fcm.cell_height);
+    return canvas->buf + (canvas->size_in_bytes / sizeof(canvas->buf[0]) - fcm.cell_width * (fcm.cell_height + 1));
 }
 
 static pixel*
@@ -896,12 +913,14 @@ map_scaled_decoration_geometry(DecorationGeometry sdg, Region src, Region dest) 
     unsigned unscaled_top = dest.top + (scaled_top - src.top);
     unsigned unscaled_bottom = unscaled_top + (scaled_bottom > scaled_top ? scaled_bottom - scaled_top : 0);
     unscaled_bottom = MIN(unscaled_bottom, dest.bottom);
+    /*printf("111111 src: (%u, %u) dest: (%u, %u) sdg: (%u, %u) scaled: (%u, %u) unscaled: (%u, %u)\n",*/
+    /*    src.top, src.bottom, dest.top, dest.bottom, sdg.top, sdg.top + sdg.height, scaled_top, scaled_bottom, unscaled_top, unscaled_bottom);*/
     return (Region){.top=unscaled_top, .bottom=MAX(unscaled_top, unscaled_bottom)};
 }
 
 static void
 render_scaled_decoration(FontCellMetrics unscaled_metrics, FontCellMetrics scaled_metrics, uint8_t *alpha_mask, pixel *output, Region src, Region dest) {
-    memset(output, 0, unscaled_metrics.cell_width * unscaled_metrics.cell_height * sizeof(output[0]));
+    memset(output, 0, unscaled_metrics.cell_width * (unscaled_metrics.cell_height + 1) * sizeof(output[0]));
     unsigned src_limit = MIN(scaled_metrics.cell_height, src.bottom), dest_limit = MIN(unscaled_metrics.cell_height, dest.bottom);
     unsigned cell_width = MIN(scaled_metrics.cell_width, unscaled_metrics.cell_width);
     for (unsigned srcy = src.top, desty=dest.top; srcy < src_limit && desty < dest_limit; srcy++, desty++) {
@@ -918,7 +937,7 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
     const FontCellMetrics unscaled_metrics = fg->fcm;
     scaled_metrics.cell_width = unscaled_metrics.cell_width;
     RAII_ALLOC(uint8_t, alpha_mask, malloc(scaled_metrics.cell_height * scaled_metrics.cell_width));
-    RAII_ALLOC(pixel, buf, malloc(unscaled_metrics.cell_width * unscaled_metrics.cell_height * sizeof(pixel)));
+    RAII_ALLOC(pixel, buf, malloc(unscaled_metrics.cell_width * (unscaled_metrics.cell_height + 1) * sizeof(pixel)));
     if (!alpha_mask || !buf) fatal("Out of memory");
     sprite_index ans = 0;
     bool is_underline = false; uint32_t underline_top = unscaled_metrics.cell_height, underline_bottom = 0;

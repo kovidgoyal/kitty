@@ -283,7 +283,7 @@ class Rendering(FontBaseTest):
 
     def test_sprite_map(self):
         sprite_map_set_limits(10, 3)
-        sprite_map_set_layout(5, 5)
+        sprite_map_set_layout(5, 4)  # 4 because of underline_exclusion row
         self.ae(test_sprite_position_increment(), (0, 0, 0))
         self.ae(test_sprite_position_increment(), (1, 0, 0))
         self.ae(test_sprite_position_increment(), (0, 1, 0))
