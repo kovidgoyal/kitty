@@ -279,6 +279,12 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
     return cflags, ldflags
 
 
+@lru_cache(maxsize=2)
+def xxhash_flags() -> tuple[list[str], list[str]]:
+    return pkg_config('libxxhash', '--cflags-only-I'), pkg_config('libxxhash', '--libs')
+
+
+
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
     q = f'{major}.{minor}'
     if subprocess.run([PKGCONFIG, package, f'--atleast-version={q}']
@@ -606,9 +612,11 @@ def kitty_env(args: Options) -> Env:
     ans.secondary_version = version[1]
     ans.xt_version = '.'.join(map(str, version))
 
+    xxhash = xxhash_flags()
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
+    cflags.extend(xxhash[0])
     # simde doesnt come with pkg-config files but some Linux distros add
     # them and on macOS when building with homebrew it is required
     with suppress(SystemExit, subprocess.CalledProcessError):
@@ -640,7 +648,7 @@ def kitty_env(args: Options) -> Env:
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
-    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libcrypto_ldflags
+    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libcrypto_ldflags + xxhash[1]
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:
@@ -1015,8 +1023,9 @@ def compile_kittens(args: Options) -> None:
         headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
         return kitten, sources, headers, f'kittens/{kitten}/{output}', includes, libraries
 
+    xxhash = xxhash_flags()
     for kitten, sources, all_headers, dest, includes, libraries in (
-        files('transfer', 'rsync', libraries=pkg_config('libxxhash', '--libs'), includes=pkg_config('libxxhash', '--cflags-only-I')),
+        files('transfer', 'rsync', libraries=xxhash[1], includes=xxhash[0]),
     ):
         final_env = kenv.copy()
         final_env.cflags.extend(includes)
