@@ -124,6 +124,7 @@ typedef struct {
     } font_features;
     struct { Animation *cursor, *visual_bell; } animation;
     unsigned undercurl_style;
+    struct { float thickness; int unit; } underline_exclusion;
 } Options;
 
 typedef struct WindowLogoRenderData {

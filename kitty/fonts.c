@@ -339,7 +339,16 @@ static void
 calculate_underline_exclusion_zones(pixel *buf, const FontGroup *fg, DecorationGeometry dg) {
     pixel *ans = buf + fg->fcm.cell_height * fg->fcm.cell_width;
     const unsigned bottom = MIN(dg.top + dg.height, fg->fcm.cell_height);
-    const unsigned thickness = MAX(1u, fg->fcm.underline_thickness / 1);
+    unsigned thickness;
+    switch(OPT(underline_exclusion.unit)) {
+        case 2:
+            thickness = ((long)round((OPT(underline_exclusion).thickness * (fg->logical_dpi_x / 72.0)))); break;
+        case 1:
+            thickness = (unsigned)OPT(underline_exclusion).thickness; break;
+        default:
+            thickness = (unsigned)(OPT(underline_exclusion).thickness * fg->fcm.underline_thickness); break;
+    }
+    thickness = MAX(1u, thickness);
     for (unsigned x = 0; x < fg->fcm.cell_width; x++) {
         for (unsigned y = dg.top + 2; y < bottom && !ans[x]; y++) {
             if ((buf[y * fg->fcm.cell_width + x] & 0x000000ff) > 0) {
@@ -356,7 +365,8 @@ current_send_sprite_to_gpu(FontGroup *fg, pixel *buf, DecorationMetadata dec) {
     sprite_index ans = current_sprite_index(&fg->sprite_tracker);
     if (!do_increment(fg)) return 0;
     if (python_send_to_gpu_impl) { python_send_to_gpu(fg, ans, buf); return ans; }
-    if (dec.underline_region.height) calculate_underline_exclusion_zones(buf, fg, dec.underline_region);
+    if (dec.underline_region.height && OPT(underline_exclusion).thickness > 0) calculate_underline_exclusion_zones(
+            buf, fg, dec.underline_region);
     send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, ans, buf, dec.start_idx);
     if (0) { printf("Sprite: %u dec_idx: %u\n", ans, dec.start_idx); display_rgba_data(buf, fg->fcm.cell_width, fg->fcm.cell_height); printf("\n"); }
     return ans;

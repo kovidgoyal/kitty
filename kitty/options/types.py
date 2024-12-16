@@ -447,6 +447,7 @@ option_names = (
     'touch_scroll_multiplier',
     'transparent_background_colors',
     'undercurl_style',
+    'underline_exclusion',
     'underline_hyperlinks',
     'update_check_interval',
     'url_color',
@@ -615,6 +616,7 @@ class Options:
     touch_scroll_multiplier: float = 1.0
     transparent_background_colors: typing.Tuple[typing.Tuple[kitty.fast_data_types.Color, float], ...] = ()
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
+    underline_exclusion: tuple[float, typing.Literal['%', 'px', 'pt']] = (1.0, '%')
     underline_hyperlinks: choices_for_underline_hyperlinks = 'hover'
     update_check_interval: float = 24.0
     url_color: Color = Color(0, 135, 189)

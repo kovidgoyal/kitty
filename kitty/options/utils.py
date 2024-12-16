@@ -1017,6 +1017,20 @@ def shell_integration(x: str) -> FrozenSet[str]:
     return q
 
 
+def underline_exclusion(x: str) -> tuple[float, Literal['%', 'px', 'pt']]:
+    try:
+        return float(x), '%'
+    except Exception:
+        unit: Literal['%', 'pt', 'px'] = x[-2:]  # type: ignore
+        if unit not in ('px', 'pt', '%'):
+            raise ValueError(f'Invalid underline_exclusion with unrecognized unit: {x}')
+        try:
+            val = float(x[:-2])
+        except Exception:
+            raise ValueError(f'Invalid underline_exclusion with non numberic value: {x}')
+        return val, unit
+
+
 def paste_actions(x: str) -> FrozenSet[str]:
     s = frozenset({'quote-urls-at-prompt', 'confirm', 'filter', 'confirm-if-large', 'replace-dangerous-control-codes', 'replace-newline', 'no-op'})
     q = frozenset(x.lower().split(','))

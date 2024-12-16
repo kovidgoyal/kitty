@@ -84,6 +84,19 @@ convert_from_opts_undercurl_style(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_underline_exclusion(PyObject *val, Options *opts) {
+    underline_exclusion(val, opts);
+}
+
+static void
+convert_from_opts_underline_exclusion(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "underline_exclusion");
+    if (ret == NULL) return;
+    convert_from_python_underline_exclusion(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_text_composition_strategy(PyObject *val, Options *opts) {
     text_composition_strategy(val, opts);
 }
@@ -1162,6 +1175,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_modify_font(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_undercurl_style(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_underline_exclusion(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_text_composition_strategy(py_opts, opts);
     if (PyErr_Occurred()) return false;

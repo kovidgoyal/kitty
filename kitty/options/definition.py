@@ -218,6 +218,14 @@ the curl will peak once per character, with dense twice.
 '''
     )
 
+opt('underline_exclusion', '1', option_type='underline_exclusion', ctype='!underline_exclusion', long_text='''
+By default kitty renders gaps in underlines when they overlap with descenders
+(the parts of letters below the baseline, such as for y, q, p etc.). This option
+controls the thickness of the gaps. It can be either a unitless number in which
+case it is a fraction of the underline thickness as specified in the font or
+it can have a suffix of :code:`px` for pixels or :code:`pt` for points.
+''')
+
 opt('text_composition_strategy', 'platform',
     ctype='!text_composition_strategy',
     long_text='''

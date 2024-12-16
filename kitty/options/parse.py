@@ -19,9 +19,9 @@ from kitty.options.utils import (
     shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
     tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
     tab_title_template, titlebar_color, to_cursor_shape, to_cursor_unfocused_shape, to_font_size,
-    to_layout_names, to_modifiers, transparent_background_colors, url_prefixes, url_style,
-    visual_bell_duration, visual_window_select_characters, window_border_width, window_logo_scale,
-    window_size
+    to_layout_names, to_modifiers, transparent_background_colors, underline_exclusion, url_prefixes,
+    url_style, visual_bell_duration, visual_window_select_characters, window_border_width,
+    window_logo_scale, window_size
 )
 
 
@@ -1343,6 +1343,9 @@ class Parser:
         ans["undercurl_style"] = val
 
     choices_for_undercurl_style = frozenset(('thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense'))
+
+    def underline_exclusion(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['underline_exclusion'] = underline_exclusion(val)
 
     def underline_hyperlinks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()
