@@ -28,7 +28,6 @@ static_assert(MA_BLOCK_SIZE > sizeof(SpritePosKey) + 2, "increase arena block si
 #define MA_NAME Val
 #define MA_BLOCK_SIZE sizeof(VAL_TY)
 #define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
-#define MA_ZERO_MEMORY
 #include "arena.h"
 
 

@@ -51,11 +51,9 @@ MA_CAT(MA_NAME, _get)(MA_TYPE_NAME *self, size_t sz) {
         void *chunk = NULL;
         if (MA_BLOCK_SIZE >= sizeof(void*) && MA_BLOCK_SIZE % sizeof(void*) == 0) {
             if (posix_memalign(&chunk, MA_BLOCK_SIZE, block_sz) != 0) chunk = NULL;
-        } else chunk = malloc(block_sz);
+            memset(chunk, 0, block_sz);
+        } else chunk = calloc(1, block_sz);
         if (!chunk) { return NULL; }
-#ifdef MA_ZERO_MEMORY
-        memset(chunk, 0, block_sz);
-#endif
         if (count > self->capacity) {
             size_t capacity = MAX(8u, 2 * self->capacity);
             MA_BLOCK_TYPE_NAME *blocks = realloc(self->blocks, capacity * sizeof(MA_BLOCK_TYPE_NAME));
@@ -75,6 +73,5 @@ MA_CAT(MA_NAME, _get)(MA_TYPE_NAME *self, size_t sz) {
 #undef MA_ARENA_NUM_BLOCKS
 #undef MA_TYPE_NAME
 #undef MA_BLOCK_TYPE_NAME
-#undef MA_ZERO_MEMORY
 #undef MA_CAT
 #undef MA_CAT_

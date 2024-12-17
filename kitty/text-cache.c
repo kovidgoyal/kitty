@@ -7,9 +7,10 @@
 
 #include "data-types.h"
 typedef struct Chars {
-    size_t count;
     const char_type *chars;
+    size_t count;
 } Chars;
+static_assert(sizeof(Chars) == sizeof(void*) + sizeof(size_t), "reorder Chars");
 
 #define NAME chars_map
 #define KEY_TY Chars
