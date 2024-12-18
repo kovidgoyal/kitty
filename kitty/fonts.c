@@ -473,23 +473,23 @@ has_emoji_presentation(const GPUCell *gpu_cell, const ListOfChars *lc) {
 
 bool
 has_cell_text(bool(*has_codepoint)(const void*, char_type ch), const void* face, bool do_debug, const ListOfChars *lc) {
+    RAII_ListOfChars(llc);
     if (!has_codepoint(face, lc->chars[0])) goto not_found;
-    unsigned num_cc = 0;
     for (unsigned i = 1; i < lc->count; i++) {
-        if (!is_non_rendered_char(lc->chars[i])) lc->chars[i] = 0;
-        else num_cc++;
+        if (!is_non_rendered_char(lc->chars[i])) {
+            ensure_space_for_chars(&llc, llc.count+1);
+            llc.chars[llc.count++] = lc->chars[i];
+        }
     }
-    if (num_cc == 0) return true;
-    if (num_cc == 1) {
-        char_type cc = 0;
-        for (unsigned i = 1; i < lc->count && cc; i++) cc = lc->chars[i];
-        if (has_codepoint(face, cc)) return true;
+    if (llc.count == 0) return true;
+    if (llc.count == 1) {
+        if (has_codepoint(face, llc.chars[0])) return true;
         char_type ch = 0;
-        if (hb_unicode_compose(hb_unicode_funcs_get_default(), lc->chars[0], cc, &ch) && face_has_codepoint(face, ch)) return true;
+        if (hb_unicode_compose(hb_unicode_funcs_get_default(), lc->chars[0], llc.chars[0], &ch) && face_has_codepoint(face, ch)) return true;
         goto not_found;
     }
-    for (unsigned i = 1; i < lc->count; i++) {
-        if (lc->chars[i] && !has_codepoint(face, lc->chars[i])) goto not_found;
+    for (unsigned i = 0; i < llc.count; i++) {
+        if (!has_codepoint(face, llc.chars[i])) goto not_found;
     }
     return true;
 not_found:
