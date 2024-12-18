@@ -5260,6 +5260,20 @@ cpu_cells(Screen *self, PyObject *args) {
     return Py_NewRef(ans);
 }
 
+static PyObject*
+test_ch_and_idx(PyObject *self UNUSED, PyObject *val) {
+    CPUCell c = {0};
+    if (PyLong_Check(val)) {
+        unsigned long x = PyLong_AsUnsignedLong(val);
+        c.ch_and_idx = x;
+    } else if (PyTuple_Check(val)) {
+        c.ch_is_idx = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(val, 0));
+        c.ch_or_idx = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(val, 1));
+    }
+    unsigned long is_idx = c.ch_is_idx, idx = c.ch_or_idx, ca = c.ch_and_idx;
+    return Py_BuildValue("kkk", is_idx, idx, ca);
+}
+
 static PyMethodDef methods[] = {
     METHODB(test_create_write_buffer, METH_NOARGS),
     METHODB(test_commit_write_buffer, METH_VARARGS),
@@ -5411,6 +5425,7 @@ PyTypeObject Screen_Type = {
 static PyMethodDef module_methods[] = {
     {"is_emoji_presentation_base", (PyCFunction)screen_is_emoji_presentation_base, METH_O, ""},
     {"truncate_point_for_length", (PyCFunction)screen_truncate_point_for_length, METH_VARARGS, ""},
+    {"test_ch_and_idx", test_ch_and_idx, METH_O, ""},
     {NULL}  /* Sentinel */
 };
 

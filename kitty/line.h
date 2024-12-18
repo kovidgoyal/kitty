@@ -9,7 +9,6 @@
 
 #include "text-cache.h"
 
-// TODO: Test setting of ch_and_idx to make sure the right ch_is_idx bit is set
 // TODO: Test multiple OS windows with decorations also with changing font size and test on macOS and Linux for re-alloc
 // TODO: Test handling of calt ligatures with scale see is_group_calt_ligature()
 // TODO: Handle selection with multicell

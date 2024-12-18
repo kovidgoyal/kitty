@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.fast_data_types import TEXT_SIZE_CODE, wcswidth
+from kitty.fast_data_types import TEXT_SIZE_CODE, wcswidth, test_ch_and_idx
 
 from . import BaseTest, parse_bytes
 from . import draw_multicell as multicell
@@ -36,6 +36,13 @@ def test_multicell(self: TestMulticell) -> None:
                 val = mcd[key]
             if assertions[key] != val:
                 raise AssertionError(f'{msg}{assertions[key]!r} != {val!r}')
+
+        self.ae(test_ch_and_idx(0), (0, 0, 0))
+        self.ae(test_ch_and_idx(1), (0, 1, 1))
+        self.ae(test_ch_and_idx(0x80000000), (1, 0, 0x80000000))
+        self.ae(test_ch_and_idx(0x80000001), (1, 1, 0x80000001))
+        self.ae(test_ch_and_idx((1, 0)), (1, 0, 0x80000000))
+        self.ae(test_ch_and_idx((1, 3)), (1, 3, 0x80000003))
 
         ae('x')
         ae('y')
