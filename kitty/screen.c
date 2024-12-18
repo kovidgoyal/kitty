@@ -184,7 +184,8 @@ screen_reset(Screen *self) {
     linebuf_clear(self->linebuf, BLANK_CHAR);
     historybuf_clear(self->historybuf);
     clear_hyperlink_pool(self->hyperlink_pool);
-    grman_clear(self->grman, false, self->cell_size);
+    grman_clear(self->main_grman, false, self->cell_size);  // dont delete images in scrollback
+    grman_clear(self->alt_grman, true, self->cell_size);
     self->modes = empty_modes;
     self->saved_modes = empty_modes;
     self->active_hyperlink_id = 0;

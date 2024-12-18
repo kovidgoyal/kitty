@@ -1055,6 +1055,11 @@ class TestGraphics(BaseTest):
         delete()
         self.ae(s.grman.image_count, 1)
         self.ae(len(layers(s)), 0)
+        delete('A')
+        self.ae(s.grman.image_count, 1)
+        s.reset()
+        self.ae(s.grman.image_count, 0)
+        put_image(s, cw, ch)
         self.ae(s.grman.image_count, 1)
         delete('A')
         self.ae(s.grman.image_count, 0)
@@ -1103,6 +1108,18 @@ class TestGraphics(BaseTest):
         self.ae(put_ref(s, id=iid), (iid, ('ENOENT', f'i={iid}')))
         self.ae(s.grman.image_count, 0)
         self.assertEqual(s.grman.disk_cache.total_size, 0)
+
+        # test delete but not free
+        s.reset()
+        iid = 9999999
+        self.ae(put_image(s, cw, ch, id=iid), (iid, 'OK'))
+        self.ae(put_ref(s, id=iid), (iid, ('OK', f'i={iid}')))
+        self.ae(put_image(s, cw, ch, id=iid+1), (iid+1, 'OK'))
+        self.ae(put_ref(s, id=iid+1), (iid+1, ('OK', f'i={iid+1}')))
+        delete('i', i=iid)
+        self.ae(s.grman.image_count, 2)
+        delete('I', i=iid+1)
+        self.ae(s.grman.image_count, 1)
 
     def test_animation_frame_loading(self):
         s = self.create_screen()
@@ -1210,6 +1227,7 @@ class TestGraphics(BaseTest):
         self.assertIsNone(li(a='d', d='f', i=1))
         img = g.image_for_client_id(1)
         self.assertEqual(img['data'], b'5' * 36)
+        self.ae(g.image_count, 1)
         self.assertIsNone(li(a='d', d='F', i=1))
         self.ae(g.image_count, 0)
         self.assertEqual(g.disk_cache.total_size, 0)

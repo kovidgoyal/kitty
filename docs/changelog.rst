@@ -91,6 +91,8 @@ Detailed list of changes
 
 - themes kitten: When using the *Default* theme as an auto switch theme include all the actual settings values (:iss:`8124`)
 
+- Graphics: Fix deleted but not freed images without any references being incorrectly freed on a subsequent delete command (:disc:`8129`)
+
 0.38.0 [2024-12-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
