@@ -1580,7 +1580,7 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
 }
 
 
-static void
+static float
 shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, RunFont rf, FontGroup *fg, bool disable_ligature, const TextCache *tc, ListOfChars *lc) {
     float scale = apply_scale_to_font_group(fg, &rf);
     if (scale != 1.f) if (!face_apply_scaling(font->face, (FONTS_DATA_HANDLE)fg) && PyErr_Occurred()) PyErr_Print();
@@ -1599,6 +1599,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
         apply_scale_to_font_group(fg, NULL);
         if (!face_apply_scaling(font->face, (FONTS_DATA_HANDLE)fg) && PyErr_Occurred()) PyErr_Print();
     }
+    return scale;
 }
 
 static void
@@ -1613,20 +1614,18 @@ collapse_pua_space_ligature(index_type num_cells) {
 }
 
 static bool
-is_group_calt_ligature(const Group *group) {
-    if (group->num_cells < 2 || !group->has_special_glyph) return false;
-    const CPUCell *first_cell = G(first_cpu_cell) + group->first_cell_idx;
-    return !first_cell->is_multicell || first_cell->width == 1;
+group_has_more_than_one_scaled_cell(const Group *group, float scale) {
+    return group->num_cells / scale > 1.0f;
 }
 
 
 static void
-split_run_at_offset(index_type cursor_offset, index_type *left, index_type *right) {
+split_run_at_offset(index_type cursor_offset, index_type *left, index_type *right, float scale) {
     *left = 0; *right = 0;
     for (unsigned idx = 0; idx < G(group_idx) + 1; idx++) {
         Group *group = G(groups) + idx;
         if (group->first_cell_idx <= cursor_offset && cursor_offset < group->first_cell_idx + group->num_cells) {
-            if (is_group_calt_ligature(group)) {
+            if (group->has_special_glyph && group_has_more_than_one_scaled_cell(group, scale)) {
                 // likely a calt ligature
                 *left = group->first_cell_idx; *right = group->first_cell_idx + group->num_cells;
             }
@@ -1712,13 +1711,14 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
 
 static void
 render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, RunFont rf, bool pua_space_ligature, bool center_glyph, int cursor_offset, DisableLigature disable_ligature_strategy, const TextCache *tc, ListOfChars *lc) {
+    float scale;
     switch(rf.font_idx) {
         default:
-            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[rf.font_idx], rf, fg, disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc, lc);
+            scale = shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[rf.font_idx], rf, fg, disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc, lc);
             if (pua_space_ligature) collapse_pua_space_ligature(num_cells);
             else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
-                split_run_at_offset(cursor_offset, &left, &right);
+                split_run_at_offset(cursor_offset, &left, &right, scale);
                 if (right > left) {
                     if (left) {
                         shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[rf.font_idx], rf, fg, false, tc, lc);
@@ -1779,17 +1779,28 @@ run_fonts_are_equal(const RunFont *a, const RunFont *b) {
     return a->font_idx == b->font_idx && a->scale == b->scale && a->subscale_n == b->subscale_n && a->subscale_d == b->subscale_d && a->vertical_align == b->vertical_align && a->multicell_y == b->multicell_y;
 }
 
+static bool
+multicell_intersects_cursor(const Line *line, index_type lnum, const Cursor *cursor) {
+    const CPUCell *c = line->cpu_cells + cursor->x;
+    if (c->is_multicell) {
+        index_type min_y = lnum > c->y ? lnum - c->y : 0;
+        index_type max_y = lnum + (c->scale - c->y - 1);
+        return min_y <= cursor->y && cursor->y <= max_y;
+    } else return lnum == cursor->y;
+}
+
 void
 render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc) {
 #define RENDER if (run_font.font_idx != NO_FONT && i > first_cell_in_run) { \
     int cursor_offset = -1; \
-    if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x <= i) cursor_offset = cursor->x - first_cell_in_run; \
+    if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x <= i && cursor->x < line->xnum && \
+            multicell_intersects_cursor(line, lnum, cursor)) cursor_offset = cursor->x - first_cell_in_run; \
     render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font, false, center_glyph, cursor_offset, disable_ligature_strategy, line->text_cache, lc); \
 }
     FontGroup *fg = (FontGroup*)fg_;
     RunFont basic_font = {.scale=1, .font_idx = NO_FONT}, run_font = basic_font, cell_font = basic_font;
     bool center_glyph = false;
-    bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR && lnum == cursor->y;
+    bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR;
     index_type first_cell_in_run, i;
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
         cell_font = basic_font;
