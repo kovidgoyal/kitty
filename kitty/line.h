@@ -13,7 +13,6 @@
 // TODO: Test handling of calt ligatures with scale see is_group_calt_ligature()
 // TODO: Handle selection with multicell
 // TODO: URL detection with multicell
-// TODO: Cursor rendering over multicell
 // TODO: Wrapping of multicell draw commands
 // TODO: Handle rewrap and restitch of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen

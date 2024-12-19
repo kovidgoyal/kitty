@@ -369,7 +369,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         GLuint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
         GLuint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
-        GLfloat cursor_x, cursor_y, cursor_w, cursor_opacity;
+        GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
+        GLfloat cursor_opacity;
+
         GLuint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
         GLfloat bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
     };
@@ -402,7 +404,8 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     enum { BLOCK_IDX = 0, BEAM_IDX = 2, UNDERLINE_IDX = 3, UNFOCUSED_IDX = 4 };
     Line *line_for_cursor = NULL;
     if (cursor->opacity > 0) {
-        rd->cursor_x = cursor->x, rd->cursor_y = cursor->y;
+        rd->cursor_x1 = cursor->x, rd->cursor_y1 = cursor->y;
+        rd->cursor_x2 = cursor->x, rd->cursor_y2 = cursor->y;
         rd->cursor_opacity = cursor->opacity;
         CursorShape cs = (cursor->is_focused || OPT(cursor_shape_unfocused) == NO_CURSOR_SHAPE) ? cursor->shape : OPT(cursor_shape_unfocused);
         switch(cs) {
@@ -427,6 +430,24 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         }
         if (line_for_cursor) {
             colors_for_cell(line_for_cursor, cp, &cell_color_x, &cell_fg, &cell_bg, &reversed);
+            const CPUCell *cursor_cell;
+            const bool large_cursor = ((cursor_cell = &line_for_cursor->cpu_cells[cursor->x])->is_multicell) && cursor_cell->x == 0 && cursor_cell->y == 0;
+            if (large_cursor) {
+                switch(cs) {
+                    case CURSOR_BEAM:
+                        rd->cursor_y2 += cursor_cell->scale - 1; break;
+                    case CURSOR_UNDERLINE:
+                        rd->cursor_y1 += cursor_cell->scale - 1;
+                        rd->cursor_y2 = rd->cursor_y1;
+                        rd->cursor_x2 += mcd_x_limit(cursor_cell) - 1;
+                        break;
+                    case CURSOR_BLOCK:
+                        rd->cursor_y2 += cursor_cell->scale - 1;
+                        rd->cursor_x2 += mcd_x_limit(cursor_cell) - 1;
+                        break;
+                    case CURSOR_HOLLOW: case NUM_OF_CURSOR_SHAPES: case NO_CURSOR_SHAPE: break;
+                };
+            }
         }
         if (IS_SPECIAL_COLOR(cursor_color)) {
             if (line_for_cursor) pick_cursor_color(line_for_cursor, cp, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->bg_colors0);
@@ -441,15 +462,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         }
         // store last rendered cursor color for trail rendering
         screen->last_rendered.cursor_bg = rd->cursor_bg;
-    } else rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;
-    rd->cursor_w = rd->cursor_x;
-    const CPUCell *cursor_cell;
-    if (
-            (rd->cursor_fg_sprite_idx == BLOCK_IDX || rd->cursor_fg_sprite_idx == UNDERLINE_IDX) &&
-            line_for_cursor && (cursor_cell = line_for_cursor->cpu_cells + cursor->x)->is_multicell &&
-            cursor_cell->x == 0
-    ) {
-        rd->cursor_w = mcd_x_limit(cursor_cell);
+    } else {
+        rd->cursor_x1 = screen->columns + 1; rd->cursor_x2 = screen->columns;
+        rd->cursor_y1 = screen->lines + 1; rd->cursor_y2 = screen->lines;
     }
 
     rd->xnum = screen->columns; rd->ynum = screen->lines;

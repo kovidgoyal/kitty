@@ -9,7 +9,8 @@ layout(std140) uniform CellRenderData {
     uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
     uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
-    float cursor_x, cursor_y, cursor_w, cursor_opacity;
+    uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
+    float cursor_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
     uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
@@ -81,6 +82,11 @@ float one_if_equal_zero_otherwise(int a, int b) {
     return 1.0f - clamp(abs(float(a) - float(b)), 0.0f, 1.0f);
 }
 
+float one_if_equal_zero_otherwise(uint a, uint b) {
+    return 1.0f - clamp(abs(float(a) - float(b)), 0.0f, 1.0f);
+}
+
+
 uint resolve_color(uint c, uint defval) {
     // Convert a cell color to an actual color based on the color table
     int t = int(c & BYTE_MASK);
@@ -144,18 +150,10 @@ vec3 choose_color(float q, vec3 a, vec3 b) {
     return mix(b, a, q);
 }
 
-float are_integers_equal(float a, float b) { // return 1 if equal otherwise 0
-    float delta = abs(a - b);  // delta can be 0, 1 or larger
-    return step(delta, 0.5); // 0 if 0.5 < delta else 1
-}
-
-float is_cursor(uint xi, uint y) {
-    float x = float(xi);
-    float y_equal = are_integers_equal(float(y), cursor_y);
-    float x1_equal = are_integers_equal(x, cursor_x);
-    float x2_equal = are_integers_equal(x, cursor_w);
-    float x_equal = step(0.5, x1_equal + x2_equal);
-    return step(2.0, x_equal + y_equal);
+float is_cursor(uint x, uint y) {
+    uint clamped_x = clamp(x, cursor_x1, cursor_x2);
+    uint clamped_y = clamp(y, cursor_y1, cursor_y2);
+    return one_if_equal_zero_otherwise(x, clamped_x) * one_if_equal_zero_otherwise(y, clamped_y);
 }
 // }}}
 

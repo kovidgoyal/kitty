@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.fast_data_types import TEXT_SIZE_CODE, wcswidth, test_ch_and_idx
+from kitty.fast_data_types import TEXT_SIZE_CODE, test_ch_and_idx, wcswidth
 
 from . import BaseTest, parse_bytes
 from . import draw_multicell as multicell
