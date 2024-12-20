@@ -1325,6 +1325,15 @@ class Window:
         if default_bg_changed:
             get_boss().default_bg_changed_for(self.id)
 
+    def on_color_scheme_preference_change(self) -> None:
+        if self.screen.color_preference_notification:
+            self.report_color_scheme_preference()
+
+    def report_color_scheme_preference(self) -> None:
+        cp = self.screen.color_profile
+        n = 1 if cp.default_bg.is_dark else 2
+        self.screen.send_escape_code_to_child(ESC_CSI, f'?997;{n}n')
+
     def set_color_table_color(self, code: int, bvalue: Optional[memoryview] = None) -> None:
         value = str(bvalue or b'', 'utf-8', 'replace')
         cp = self.screen.color_profile

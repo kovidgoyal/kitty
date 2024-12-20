@@ -747,6 +747,10 @@ class Color:
         pass
 
     @property
+    def is_dark(self) -> bool:
+        pass
+
+    @property
     def as_sgr(self) -> str:
         pass
 
@@ -1191,6 +1195,7 @@ class Screen:
     linebuf: LineBuf
     in_bracketed_paste_mode: bool
     in_band_resize_notification: bool
+    color_preference_notification: bool
     cursor_visible: bool
     scrolled_by: int
     cursor: Cursor

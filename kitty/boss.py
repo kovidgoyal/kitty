@@ -1550,6 +1550,7 @@ class Boss:
     def default_bg_changed_for(self, window_id: int) -> None:
         w = self.window_id_map.get(window_id)
         if w is not None:
+            w.on_color_scheme_preference_change()
             tm = self.os_window_map.get(w.os_window_id)
             if tm is not None:
                 tm.update_tab_bar_data()

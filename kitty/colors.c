@@ -673,7 +673,13 @@ rgb_get(Color *self, void *closure UNUSED) {
 
 static PyObject*
 luminance_get(Color *self, void *closure UNUSED) {
-    return PyFloat_FromDouble(rgb_luminance(self->color));
+    return PyFloat_FromDouble(rgb_luminance(self->color) / 255.0);
+}
+
+static PyObject*
+is_dark_get(Color *self, void *closure UNUSED) {
+    if (rgb_luminance(self->color) / 255.0 < 0.5) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 static PyObject*
@@ -721,6 +727,7 @@ static PyGetSetDef color_getsetters[] = {
     {"luminance", (getter) luminance_get, NULL, "luminance", NULL},
     {"as_sgr", (getter) sgr_get, NULL, "as_sgr", NULL},
     {"as_sharp", (getter) sharp_get, NULL, "as_sharp", NULL},
+    {"is_dark", (getter) is_dark_get, NULL, "is_dark", NULL},
     {NULL}  /* Sentinel */
 };
 

@@ -1116,6 +1116,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
         SIMPLE_MODE(FOCUS_TRACKING)
+        SIMPLE_MODE(COLOR_PREFERENCE_NOTIFICATION)
         SIMPLE_MODE(HANDLE_TERMIOS_SIGNALS)
         MOUSE_MODE(MOUSE_BUTTON_TRACKING, mouse_tracking_mode, BUTTON_MODE)
         MOUSE_MODE(MOUSE_MOTION_TRACKING, mouse_tracking_mode, MOTION_MODE)
@@ -1691,6 +1692,7 @@ copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, Scre
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
         SIMPLE_MODE(FOCUS_TRACKING)
+        SIMPLE_MODE(COLOR_PREFERENCE_NOTIFICATION)
         SIMPLE_MODE(INBAND_RESIZE_NOTIFICATION)
         SIMPLE_MODE(DECCKM)
         SIMPLE_MODE(DECTCEM)
@@ -1732,6 +1734,7 @@ copy_specific_modes(Screen *self, const ScreenModes *src, ScreenModes *dest) {
     copy_specific_mode(self, DECARM, src, dest);
     copy_specific_mode(self, BRACKETED_PASTE, src, dest);
     copy_specific_mode(self, FOCUS_TRACKING, src, dest);
+    copy_specific_mode(self, COLOR_PREFERENCE_NOTIFICATION, src, dest);
     copy_specific_mode(self, INBAND_RESIZE_NOTIFICATION, src, dest);
     copy_specific_mode(self, DECCKM, src, dest);
     copy_specific_mode(self, DECTCEM, src, dest);
@@ -2191,8 +2194,6 @@ screen_manipulate_title_stack(Screen *self, unsigned int op, unsigned int which)
 
 void
 report_device_status(Screen *self, unsigned int which, bool private) {
-    // We don't implement the private device status codes, since I haven't come
-    // across any programs that use them
     unsigned int x, y;
     static char buf[64];
     switch(which) {
@@ -2210,6 +2211,10 @@ report_device_status(Screen *self, unsigned int which, bool private) {
             int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%uR", (private ? "?": ""), y + 1, x + 1);
             if (sz > 0) write_escape_code_to_child(self, ESC_CSI, buf);
             break;
+        case 996: // https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md
+            if (private) {
+                CALLBACK("report_color_scheme_preference", NULL);
+            } break;
     }
 }
 
@@ -2233,6 +2238,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(DECCKM);
         KNOWN_MODE(BRACKETED_PASTE);
         KNOWN_MODE(FOCUS_TRACKING);
+        KNOWN_MODE(COLOR_PREFERENCE_NOTIFICATION);
         KNOWN_MODE(INBAND_RESIZE_NOTIFICATION);
 #undef KNOWN_MODE
         case ALTERNATE_SCREEN:
@@ -3872,6 +3878,7 @@ WRAP0(clear_scrollback)
 
 MODE_GETSET(in_bracketed_paste_mode, BRACKETED_PASTE)
 MODE_GETSET(focus_tracking_enabled, FOCUS_TRACKING)
+MODE_GETSET(color_preference_notification, COLOR_PREFERENCE_NOTIFICATION)
 MODE_GETSET(in_band_resize_notification, INBAND_RESIZE_NOTIFICATION)
 MODE_GETSET(auto_repeat_enabled, DECARM)
 MODE_GETSET(cursor_visible, DECTCEM)
@@ -4898,6 +4905,7 @@ static PyMethodDef methods[] = {
 
 static PyGetSetDef getsetters[] = {
     GETSET(in_bracketed_paste_mode)
+    GETSET(color_preference_notification)
     GETSET(auto_repeat_enabled)
     GETSET(focus_tracking_enabled)
     GETSET(in_band_resize_notification)
