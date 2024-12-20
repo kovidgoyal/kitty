@@ -599,6 +599,7 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
 
     switch(ch) {
         default: log_error("Unknown box drawing character: U+%x rendered as blank", ch); break;
+        case L'█': memset(canvas.mask, 255, width * height * sizeof(canvas.mask[0])); break;
 
         C(L'─', hline, 1);
         C(L'━', hline, 3);
