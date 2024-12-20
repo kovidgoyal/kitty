@@ -84,7 +84,6 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-<<<<<<< HEAD
 0.38.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
