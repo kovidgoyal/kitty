@@ -443,10 +443,16 @@ triangle(Canvas *self, bool left, bool inverted) {
 }
 
 typedef enum Corner {
-    TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
+    TOP_LEFT = LEFT_EDGE | TOP_EDGE, TOP_RIGHT = TOP_EDGE | RIGHT_EDGE,
+    BOTTOM_LEFT = BOTTOM_EDGE | LEFT_EDGE, BOTTOM_RIGHT = BOTTOM_EDGE | RIGHT_EDGE,
 } Corner;
 
-typedef struct Point { int x, y; } Point;
+typedef union Point {
+    struct {
+        int32_t x: 32, y: 32;
+    };
+    int64_t val;
+} Point;
 
 static void
 thick_line(Canvas *self, uint thickness_in_pixels, Point p1, Point p2) {
@@ -463,6 +469,44 @@ thick_line(Canvas *self, uint thickness_in_pixels, Point p1, Point p2) {
 }
 
 static void
+frame(Canvas *self, uint level, Edge edges) {
+    uint h = thickness(self, level, true), v = thickness(self, level, false);
+#define line(x1, x2, y1, y2) { \
+    for (uint y=y1; y < min(y2, self->height); y++) memset(self->mask + y * self->width + x1, 255, minus(min(x2, self->width), x1)); }
+#define hline(y1, y2) line(0, self->width, y1, y2)
+#define vline(x1, x2) line(x1, x2, 0, self->height)
+    if (edges & TOP_EDGE) hline(0, h + 1);
+    if (edges & BOTTOM_EDGE) hline(self->height - h - 1, self->height);
+    if (edges & LEFT_EDGE) vline(0, v + 1);
+    if (edges & RIGHT_EDGE) vline(self->width - v - 1, self->width);
+#undef hline
+#undef vline
+#undef line
+}
+
+typedef enum Segment { LEFT, MIDDLE, RIGHT } Segment;
+
+static void
+progress_bar(Canvas *self, Segment which, bool filled) {
+    const Edge edges = TOP_EDGE | BOTTOM_EDGE;
+    switch(which) {
+        case LEFT: frame(self, 1, LEFT_EDGE | edges); break;
+        case MIDDLE: frame(self, 1, edges); break;
+        case RIGHT: frame(self, 1, RIGHT_EDGE | edges); break;
+    }
+    if (!filled) return;
+    uint h = thickness(self, 1, true), v = thickness(self, 1, false);
+    static const uint gap_factor = 3;
+    uint y1 = gap_factor * h, y2 = minus(self->height, gap_factor*h), x1 = 0, x2 = 0;
+    switch(which) {
+        case LEFT: x1 = gap_factor * v; x2 = self->width; break;
+        case MIDDLE: x2 = self->width; break;
+        case RIGHT: x2 = minus(self->width, gap_factor * v); break;
+    }
+    for (uint y = y1; y < y2; y++) memset(self->mask + y * self->width + x1, 255, minus(min(x2, self->width), x1));
+}
+
+static void
 half_cross_line(Canvas *self, uint level, Corner corner) {
     uint my = minus(self->height, 1) / 2; Point p1 = {0}, p2 = {0};
     switch (corner) {
@@ -471,6 +515,14 @@ half_cross_line(Canvas *self, uint level, Corner corner) {
         case TOP_RIGHT: p1.x = minus(self->width, 1); p2.y = my; break;
         case BOTTOM_RIGHT: p2.x = minus(self->width, 1), p2.y = minus(self->height, 1); p1.y = my; break;
     }
+    thick_line(self, thickness(self, level, true), p1, p2);
+}
+
+static void
+cross_line(Canvas *self, uint level, bool left) {
+    uint w = minus(self->width, 1), h = minus(self->height, 1);
+    Point p1 = {0}, p2 = {0};
+    if (left) p2 = (Point){.x=w, .y=h}; else { p1.x = w; p2.y = h; }
     thick_line(self, thickness(self, level, true), p1, p2);
 }
 
@@ -493,7 +545,7 @@ bezier_y(CubicBezier cb, double t) { bezier_eq(y); }
 static int
 find_bezier_for_D(int width, int height) {
     int cx = width - 1, last_cx = cx;
-    CubicBezier cb = {.end={0, height - 1}, .c2={0, height - 1}};
+    CubicBezier cb = {.end={.x=0, .y=height - 1}, .c2={.x=0, .y=height - 1}};
     while (true) {
         cb.c1.x = cx; cb.c2.x = cx;
         if (bezier_x(cb, 0.5) > width - 1) return last_cx;
@@ -537,52 +589,81 @@ get_bezier_limits(Canvas *self, CubicBezier cb) {
     }
 }
 
+#define mirror_horizontally(expr) { \
+    RAII_ALLOC(uint8_t, mbuf, calloc(self->width, self->height)); \
+    if (!mbuf) fatal("Out of memory"); \
+    uint8_t *buf = self->mask; \
+    self->mask = mbuf; \
+    expr; \
+    self->mask = buf; \
+    for (uint y = 0; y < self->height; y++) { \
+        uint offset = y * self->width; \
+        for (uint src_x = 0; src_x < self->width; src_x++) { \
+            uint dest_x = self->width - 1 - src_x; \
+            buf[offset + dest_x] = mbuf[offset + src_x]; \
+        } \
+    } \
+}
+
 static void
 filled_D(Canvas *self, bool left) {
     int c1x = find_bezier_for_D(self->width, self->height);
-    CubicBezier cb = {.end={0, self->height-1}, .c1 = {c1x, 0}, .c2 = {c1x, self->height - 1}};
+    CubicBezier cb = {.end={.y=self->height-1}, .c1 = {.x=c1x}, .c2 = {.x=c1x, .y=self->height - 1}};
     get_bezier_limits(self, cb);
     if (left) fill_region(self, false);
-    else {
-        RAII_ALLOC(uint8_t, mbuf, calloc(self->width, self->height));
-        if (!mbuf) fatal("Out of memory");
-        uint8_t *buf = self->mask;
-        self->mask = mbuf;
-        fill_region(self, false);
-        self->mask = buf;
-        for (uint y = 0; y < self->height; y++) {
-            uint offset = y * self->width;
-            for (uint src_x = 0; src_x < self->width; src_x++) {
-                uint dest_x = self->width - 1 - src_x;
-                buf[offset + dest_x] = mbuf[offset + src_x];
-            }
-        }
-
-    }
+    else mirror_horizontally(fill_region(self, false));
 }
 
 #define NAME position_set
-#define KEY_TY int64_t
+#define KEY_TY Point
+#define HASH_FN hash_point
+#define CMPR_FN cmpr_point
+static uint64_t hash_point(Point p);
+static bool cmpr_point(Point, Point);
 #include "kitty-verstable.h"
+static uint64_t hash_point(Point p) { return vt_hash_integer(p.val); }
+static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
 
 #define draw_parametrized_curve(self, level, xfunc, yfunc) { \
-    div_t d = div(thickness(self, level, true)); \
+    div_t d = div(thickness(self, level, true), 2u); \
     int delta = d.quot, extra = d.rem; \
     uint num_samples = self->height * 8; \
     position_set seen; vt_init(&seen); \
     for (uint i = 0; i < num_samples; i++) { \
         double t = i / (double)num_samples; \
-        int32_t x_p = xfunc, y_p = yfunc;  \
-        int64_t key = (x_p << 32) | y_p; \
-        position_set_itr q = vt_get(&seen, key); \
+        Point p = {.x=(int32_t)xfunc, .y=(int32_t)yfunc};  \
+        position_set_itr q = vt_get(&seen, p); \
         if (!vt_is_end(q)) continue; \
-        if (vt_is_end(vt_insert(&seen, key))) fatal("Out of memory"); \
-        for (int y = MAX(0, y_p - delta); y < MIN(y_p + delta + extra, (int)self->height); y++) { \
-            uint offset = y * self->width, start = MAX(0, x_p - delta); \
-            memset(self->mask + offset + start, 255, minus((uint)MIN(x_p + delta + extra, self->width), start)); \
+        if (vt_is_end(vt_insert(&seen, p))) fatal("Out of memory"); \
+        for (int y = MAX(0, p.y - delta); y < MIN(p.y + delta + extra, (int)self->height); y++) { \
+            uint offset = y * self->width, start = MAX(0, p.x - delta); \
+            memset(self->mask + offset + start, 255, minus((uint)MIN(p.x + delta + extra, (int)self->width), start)); \
         } \
     } \
     vt_cleanup(&seen); \
+}
+
+static void
+rounded_separator(Canvas *self, uint level, bool left) {
+    uint gap = thickness(self, level, true);
+    int c1x = find_bezier_for_D(minus(self->width, gap), self->height);
+    CubicBezier cb = {.end={.y=self->height - 1}, .c1={.x=c1x}, .c2={.x=c1x, .y=self->height - 1}};
+    if (left) { draw_parametrized_curve(self, level, bezier_x(cb, t), bezier_y(cb, t)); }
+    else { mirror_horizontally(draw_parametrized_curve(self, level, bezier_x(cb, t), bezier_y(cb, t))); }
+}
+
+static void
+corner_triangle(Canvas *self, const Corner corner) {
+    StraightLine diag;
+    const uint w = minus(self->width, 1), h = minus(self->height, 1);
+    bool top = corner == TOP_RIGHT || corner == TOP_LEFT;
+    if (corner == TOP_RIGHT || corner == BOTTOM_LEFT) diag = line_from_points(0, 0, w, h);
+    else diag = line_from_points(w, 0, 0, h);
+    for (uint x = 0; x < self->width; x++) {
+        if (top) append_limit(self, line_y(diag, x), 0);
+        else append_limit(self, h, line_y(diag, x));
+    }
+    fill_region(self, false);
 }
 
 void
@@ -644,6 +725,30 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         S(L'◗', filled_D, true);
         S(L'', filled_D, false);
         S(L'◖', filled_D, false);
+        S(L'', rounded_separator, 1, true);
+        S(L'', rounded_separator, 1, false);
+
+        S(L'', cross_line, 1, true);
+        S(L'', cross_line, 1, true);
+        S(L'', cross_line, 1, false);
+        S(L'', cross_line, 1, false);
+
+        S(L'', corner_triangle, BOTTOM_LEFT);
+        S(L'◣', corner_triangle, BOTTOM_LEFT);
+        S(L'', corner_triangle, BOTTOM_RIGHT);
+        S(L'◢', corner_triangle, BOTTOM_RIGHT);
+        S(L'', corner_triangle, TOP_LEFT);
+        S(L'◤', corner_triangle, TOP_LEFT);
+        S(L'', corner_triangle, TOP_RIGHT);
+        S(L'◥', corner_triangle, TOP_RIGHT);
+
+        C(L'', progress_bar, LEFT, false);
+        C(L'', progress_bar, MIDDLE, false);
+        C(L'', progress_bar, RIGHT, false);
+        C(L'', progress_bar, LEFT, true);
+        C(L'', progress_bar, MIDDLE, true);
+        C(L'', progress_bar, RIGHT, true);
+
     }
 #undef CC
 #undef SS
