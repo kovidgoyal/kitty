@@ -251,8 +251,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: late cursor load failed; proceeding with existing cursor");
             }
         }
-        if (!cursorWayland->cursor || !cursorWayland->cursor->image_count)
-            return;
+        if (!cursorWayland->cursor || !cursorWayland->cursor->image_count || !cursorWayland->cursor->images) return;
         if (cursorWayland->currentImage >= cursorWayland->cursor->image_count) cursorWayland->currentImage = 0;
         image = cursorWayland->cursor->images[cursorWayland->currentImage];
         if (!image) image = cursorWayland->cursor->images[0];

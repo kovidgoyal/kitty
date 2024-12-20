@@ -702,7 +702,7 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
     struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
     if (!theme) return;
     cursor = _glfwLoadCursor(shape, theme);
-    if (!cursor) return;
+    if (!cursor || !cursor->images) return;
     image = cursor->images[0];
     if (!image) return;
     if (image->width % scale || image->height % scale) {
