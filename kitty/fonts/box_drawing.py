@@ -474,9 +474,7 @@ def draw_parametrized_curve(
 ) -> None:
     supersample_factor = buf.supersample_factor
     num_samples = height * 8
-    delta, extra = divmod(thickness(level), 2)
-    delta *= supersample_factor
-    extra *= supersample_factor
+    delta, extra = divmod(thickness(level) * supersample_factor, 2)
     seen = set()
     for i in range(num_samples + 1):
         t = i / num_samples

@@ -629,7 +629,7 @@ static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
     int delta = d.quot, extra = d.rem; \
     uint num_samples = self->height * 8; \
     position_set seen; vt_init(&seen); \
-    for (uint i = 0; i < num_samples; i++) { \
+    for (uint i = 0; i < num_samples + 1; i++) { \
         double t = i / (double)num_samples; \
         Point p = {.x=(int32_t)xfunc, .y=(int32_t)yfunc};  \
         position_set_itr q = vt_get(&seen, p); \
@@ -665,6 +665,60 @@ corner_triangle(Canvas *self, const Corner corner) {
     }
     fill_region(self, false);
 }
+
+typedef struct Circle {
+    Point origin;
+    double radius;
+
+    double start, end, amt;
+} Circle;
+
+static Circle
+circle(Point origin, double radius, double start_at, double end_at) {
+    double conv = M_PI / 180.;
+    Circle ans = {.origin=origin, .radius=radius, .start=start_at*conv, .end=end_at*conv};
+    ans.amt = ans.end - ans.start;
+    return ans;
+}
+
+static double
+circle_x(Circle c, double t) { return c.origin.x + c.radius * cos(c.start + c.amt * t); }
+static double
+circle_y(Circle c, double t) { return c.origin.y + c.radius * sin(c.start + c.amt * t); }
+
+static void
+spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
+    uint w = self->width / 2, h = self->height / 2;
+    uint radius = minus(min(w, h), thickness(self, level, true) / 2);
+    Circle c = circle((Point){.x=w, .y=h}, radius, start_degrees, end_degrees);
+    draw_parametrized_curve(self, level, circle_x(c, t), circle_y(c, t));
+}
+
+static void
+draw_circle(Canvas *self, double scale, double gap, bool invert) {
+    const uint w = self->width / 2, h = self->height / 2;
+    const double radius = (int)(scale * min(w, h) - gap / 2);
+    const uint8_t fill = invert ? 0 : 255;
+    const double limit = radius * radius;
+    for (uint y = 0; y < self->height; y++) {
+        for (uint x = 0; x < self->width; x++) {
+            double xw = (double)x - w, yh = (double)y - h;
+            if (xw * xw + yh * yh <= limit) self->mask[y * self->width + x] = fill;
+        }
+    }
+}
+
+static void
+draw_fish_eye(Canvas *self, uint level) {
+    uint w = self->width / 2, h = self->height / 2;
+    uint line_width = thickness(self, level, true) / 2;
+    uint radius = minus(min(w, h), line_width);
+    Circle c = circle((Point){.x=w, .y=h}, radius, 0, 360);
+    draw_parametrized_curve(self, level, circle_x(c, t), circle_y(c, t));
+    uint gap = minus(radius, radius / 10);
+    draw_circle(self, 1.0, gap, false);
+}
+
 
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
@@ -748,6 +802,22 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         C(L'', progress_bar, LEFT, true);
         C(L'', progress_bar, MIDDLE, true);
         C(L'', progress_bar, RIGHT, true);
+
+        S(L'', spinner, 1, 235, 305);
+        S(L'', spinner, 1, 270, 390);
+        S(L'', spinner, 1, 315, 470);
+        S(L'', spinner, 1, 360, 540);
+        S(L'', spinner, 1, 80, 220);
+        S(L'', spinner, 1, 170, 270);
+        S(L'○', spinner, 0, 0, 360);
+        S(L'◜', spinner, 1, 180, 270);
+        S(L'◝', spinner, 1, 270, 360);
+        S(L'◞', spinner, 1, 360, 450);
+        S(L'◟', spinner, 1, 450, 540);
+        S(L'◠', spinner, 1, 180, 360);
+        S(L'◡', spinner, 1, 0, 180);
+        S(L'●', draw_circle, 1.0, 0, false);
+        S(L'◉', draw_fish_eye, 0);
 
     }
 #undef CC
