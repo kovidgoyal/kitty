@@ -148,7 +148,7 @@ class Mappings:
                     matches = matches[last_terminal_idx+1:]
             q = matches[-1].options.when_focus_on
             matches = [x for x in matches if x.options.when_focus_on == q]
-        else:
+        elif matches:
             matches = [matches[-1]]
         return matches
 
