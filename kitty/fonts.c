@@ -1038,7 +1038,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     FontCellMetrics scaled_metrics = fg->fcm;
     unsigned width = fg->fcm.cell_width, height = fg->fcm.cell_height;
     if (scale != 1) apply_scale_to_font_group(fg, NULL);
-    RAII_PyObject(ret, NULL); uint8_t *alpha_mask = NULL;
+    uint8_t *alpha_mask = NULL;
     ensure_canvas_can_fit(fg, num_glyphs + 1, rf.scale);
     if (num_glyphs == 1) {
         render_box_char(ch, fg->canvas.alpha_mask, width, height, fg->logical_dpi_x, fg->logical_dpi_y);

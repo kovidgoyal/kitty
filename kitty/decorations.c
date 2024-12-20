@@ -598,6 +598,8 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
 #define S(ch, func, ...) case ch: SS(func(c, __VA_ARGS__))
 
     switch(ch) {
+        default: log_error("Unknown box drawing character: U+%x rendered as blank", ch); break;
+
         C(L'─', hline, 1);
         C(L'━', hline, 3);
         C(L'│', vline, 1);
