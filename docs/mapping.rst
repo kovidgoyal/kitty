@@ -201,8 +201,8 @@ In order to make this work, you need to configure your editor as show below:
    In :file:`~/.vimrc` add:
     .. code-block:: vim
 
-        let &t_ti = &t_ti . "\\033]1337;SetUserVar=in_editor=MQo\\007"
-        let &t_te = &t_te . "\\033]1337;SetUserVar=in_editor\\007"
+        let &t_ti = &t_ti . "\033]1337;SetUserVar=in_editor=MQo\007"
+        let &t_te = &t_te . "\033]1337;SetUserVar=in_editor\007"
 
 .. tab:: neovim
 
