@@ -391,6 +391,13 @@ underline_exclusion(PyObject *val, Options *opts) {
 }
 
 static inline void
+box_drawing_scale(PyObject *val, Options *opts) {
+    for (unsigned i = 0; i < MIN(arraysz(opts->box_drawing_scale), (size_t)PyTuple_GET_SIZE(val)); i++) {
+        opts->box_drawing_scale[i] = PyFloat_AsFloat(PyTuple_GET_ITEM(val, i));
+    }
+}
+
+static inline void
 text_composition_strategy(PyObject *val, Options *opts) {
     if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "text_rendering_strategy must be a string"); return; }
     opts->text_old_gamma = false;

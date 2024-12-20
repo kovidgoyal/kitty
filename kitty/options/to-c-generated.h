@@ -71,6 +71,19 @@ convert_from_opts_modify_font(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_box_drawing_scale(PyObject *val, Options *opts) {
+    box_drawing_scale(val, opts);
+}
+
+static void
+convert_from_opts_box_drawing_scale(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "box_drawing_scale");
+    if (ret == NULL) return;
+    convert_from_python_box_drawing_scale(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_undercurl_style(PyObject *val, Options *opts) {
     opts->undercurl_style = undercurl_style(val);
 }
@@ -1173,6 +1186,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_font_features(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_modify_font(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_box_drawing_scale(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_undercurl_style(py_opts, opts);
     if (PyErr_Occurred()) return false;

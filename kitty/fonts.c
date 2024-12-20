@@ -67,8 +67,9 @@ typedef struct {
 
 typedef struct Canvas {
     pixel *buf;
+    uint8_t *alpha_mask;
     unsigned current_cells, alloced_cells, alloced_scale, current_scale;
-    size_t size_in_bytes;
+    size_t size_in_bytes, alpha_mask_sz_in_bytes;
 } Canvas;
 
 #define NAME fallback_font_map_t
@@ -175,6 +176,12 @@ ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
     fg->canvas.current_scale = scale;
     if (fg->canvas.buf) memset(fg->canvas.buf, 0, cs(cells, scale));
 #undef cs
+    size_in_bytes = (sizeof(fg->canvas.alpha_mask[0]) * SUPERSAMPLE_FACTOR * SUPERSAMPLE_FACTOR * 2 * fg->fcm.cell_width * fg->fcm.cell_height * scale * scale);
+    if (size_in_bytes > fg->canvas.alpha_mask_sz_in_bytes) {
+        fg->canvas.alpha_mask_sz_in_bytes = size_in_bytes;
+        fg->canvas.alpha_mask = malloc(fg->canvas.alpha_mask_sz_in_bytes * sizeof(fg->canvas.alpha_mask[0]));
+        if (!fg->canvas.alpha_mask) fatal("Out of memory allocating canvas");
+    }
 }
 
 
@@ -225,7 +232,7 @@ del_font(Font *f) {
 
 static void
 del_font_group(FontGroup *fg) {
-    free(fg->canvas.buf); fg->canvas.buf = NULL; fg->canvas = (Canvas){0};
+    free(fg->canvas.buf); free(fg->canvas.alpha_mask); fg->canvas = (Canvas){0};
     free_sprite_data((FONTS_DATA_HANDLE)fg);
     vt_cleanup(&fg->fallback_font_map);
     vt_cleanup(&fg->scaled_font_map);
@@ -1034,18 +1041,16 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     RAII_PyObject(ret, NULL); uint8_t *alpha_mask = NULL;
     ensure_canvas_can_fit(fg, num_glyphs + 1, rf.scale);
     if (num_glyphs == 1) {
-        ret = PyObject_CallFunction(box_drawing_function, "IIId", ch, width, height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0);
-        if (ret == NULL) failed;
-        alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
+        render_box_char(ch, fg->canvas.alpha_mask, width, height, fg->logical_dpi_x, fg->logical_dpi_y);
+        alpha_mask = fg->canvas.alpha_mask;
     } else {
         alpha_mask = ((uint8_t*)fg->canvas.buf) + fg->canvas.size_in_bytes - (num_glyphs * width * height);
         unsigned cnum = 0;
         for (unsigned i = 0; i < num_glyphs; i++) {
             unsigned int ch = global_glyph_render_scratch.lc->chars[cnum++];
             while (!ch) ch = global_glyph_render_scratch.lc->chars[cnum++];
-            RAII_PyObject(r, PyObject_CallFunction(box_drawing_function, "IIId", ch, width, height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0));
-            if (r == NULL) failed;
-            uint8_t *src = PyLong_AsVoidPtr(PyTuple_GET_ITEM(r, 0));
+            render_box_char(ch, fg->canvas.alpha_mask, width, height, fg->logical_dpi_x, fg->logical_dpi_y);
+            uint8_t *src = fg->canvas.alpha_mask;
             for (unsigned y = 0; y < height; y++) {
                 uint8_t *dest_row = alpha_mask + y*num_glyphs*width + i*width;
                 memcpy(dest_row, src + y * width, width);
@@ -2076,13 +2081,27 @@ test_render_line(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static uint32_t
+alpha_blend(uint32_t fg, uint32_t bg) {
+    uint32_t r1 = (fg >> 16) & 0xFF, g1 = (fg >> 8) & 0xFF, b1 = fg & 0xFF, a = (fg >> 24) & 0xff;
+    uint32_t r2 = (bg >> 16) & 0xFF, g2 = (bg >> 8) & 0xFF, b2 = bg & 0xFF;
+    float alpha = a / 255.f;
+
+#define mix(x) uint32_t x = ((uint32_t)(alpha * x##1 + (1.0f - alpha) * x##2)) & 0xff;
+    mix(r); mix(g); mix(b);
+#undef mix
+    // Combine components into result color
+    return (0xff000000) | (r << 16) | (g << 8) | b;
+}
+
 static PyObject*
 concat_cells(PyObject UNUSED *self, PyObject *args) {
     // Concatenate cells returning RGBA data
     unsigned int cell_width, cell_height;
     int is_32_bit;
     PyObject *cells;
-    if (!PyArg_ParseTuple(args, "IIpO!", &cell_width, &cell_height, &is_32_bit, &PyTuple_Type, &cells)) return NULL;
+    unsigned long bgcolor = 0;
+    if (!PyArg_ParseTuple(args, "IIpO!|k", &cell_width, &cell_height, &is_32_bit, &PyTuple_Type, &cells, &bgcolor)) return NULL;
     size_t num_cells = PyTuple_GET_SIZE(cells), r, c, i;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (size_t)4 * cell_width * cell_height * num_cells);
     if (ans == NULL) return PyErr_NoMemory();
@@ -2092,22 +2111,11 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
             void *s = ((uint8_t*)PyBytes_AS_STRING(PyTuple_GET_ITEM(cells, c)));
             if (is_32_bit) {
                 pixel *src = (pixel*)s + cell_width * r;
-                for (i = 0; i < cell_width; i++, dest++) {
-                    uint8_t *rgba = (uint8_t*)dest;
-                    rgba[0] = (src[i] >> 24) & 0xff;
-                    rgba[1] = (src[i] >> 16) & 0xff;
-                    rgba[2] = (src[i] >> 8) & 0xff;
-                    rgba[3] = src[i] & 0xff;
-                }
+                for (i = 0; i < cell_width; i++, dest++) dest[0] = alpha_blend(src[0], bgcolor);
             } else {
                 uint8_t *src = (uint8_t*)s + cell_width * r;
-                for (i = 0; i < cell_width; i++, dest++) {
-                    uint8_t *rgba = (uint8_t*)dest;
-                    if (src[i]) { memset(rgba, 0xff, 3); rgba[3] = src[i]; }
-                    else *dest = 0;
-                }
+                for (i = 0; i < cell_width; i++, dest++) dest[0] = alpha_blend(0x00ffffff | ((src[i] & 0xff) << 24), bgcolor);
             }
-
         }
     }
     return ans;
@@ -2293,6 +2301,18 @@ sprite_idx_to_pos(PyObject *self UNUSED, PyObject *args) {
     return Py_BuildValue("III", x, y, z);
 }
 
+static PyObject*
+pyrender_box_char(PyObject *self UNUSED, PyObject *args) {
+    unsigned int ch;
+    unsigned long width, height; double dpi_x = 96., dpi_y = 96.;
+    if (!PyArg_ParseTuple(args, "Ikk|dd", &ch, &width, &height, &dpi_x, &dpi_y)) return NULL;
+    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, width*16 * height*16));
+    if (!ans) return NULL;
+    render_box_char(ch, (uint8_t*)PyBytes_AS_STRING(ans), width, height, dpi_x, dpi_y);
+    if (_PyBytes_Resize(&ans, width * height) != 0) return NULL;
+    return Py_NewRef(ans);
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_data, METH_VARARGS),
     METHODB(sprite_idx_to_pos, METH_VARARGS),
@@ -2308,6 +2328,7 @@ static PyMethodDef module_methods[] = {
     METHODB(test_render_line, METH_VARARGS),
     METHODB(get_fallback_font, METH_VARARGS),
     {"specialize_font_descriptor", (PyCFunction)pyspecialize_font_descriptor, METH_VARARGS, ""},
+    {"render_box_char", (PyCFunction)pyrender_box_char, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

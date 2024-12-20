@@ -998,7 +998,7 @@ def ring_bell() -> None:
     pass
 
 
-def concat_cells(cell_width: int, cell_height: int, is_32_bit: bool, cells: Tuple[bytes, ...]) -> bytes:
+def concat_cells(cell_width: int, cell_height: int, is_32_bit: bool, cells: Tuple[bytes, ...], bgcolor: int = 0) -> bytes:
     pass
 
 
@@ -1715,6 +1715,7 @@ def glfw_get_system_color_theme(query_if_unintialized: bool = True) -> Literal['
 def set_redirect_keys_to_overlay(os_window_id: int, tab_id: int, window_id: int, overlay_window_id: int) -> None: ...
 def buffer_keys_in_window(os_window_id: int, tab_id: int, window_id: int, enabled: bool = True) -> bool: ...
 def sprite_idx_to_pos(idx: int, xnum: int, ynum: int) -> tuple[int, int, int]: ...
+def render_box_char(ch: int, width: int, height: int, dpi_x: float = 96.0, dpi_y: float = 96.0) -> bytes: ...
 
 class MousePosition(TypedDict):
     cell_x: int

@@ -8,14 +8,20 @@
 
 import math
 from collections.abc import Iterable, Iterator, MutableSequence, Sequence
-from functools import lru_cache, wraps
-from functools import partial as p
+from functools import lru_cache, partial
 from itertools import repeat
 from typing import Any, Callable, Literal, Optional
 
 scale = (0.001, 1., 1.5, 2.)
 _dpi = 96.0
 BufType = MutableSequence[int]
+
+
+def p(f: Any, *a: Any, **kw: Any) -> Any:
+    ans = partial(f, *a, **kw)
+    if hasattr(f, 'supersample_factor'):
+        setattr(ans, 'supersample_factor', f.supersample_factor)
+    return ans
 
 
 def set_scale(new_scale: Sequence[float]) -> None:
@@ -144,6 +150,11 @@ def cross(buf: BufType, width: int, height: int, a: int = 1, b: int = 1, c: int 
     half_vline(buf, width, height, level=d, which='bottom')
 
 
+def print_hash(x: bytes, prefix: str = 'native:') -> None:
+    from hashlib import sha256
+    print(prefix, sha256(x).hexdigest())
+
+
 def downsample(src: BufType, dest: BufType, dest_width: int, dest_height: int, factor: int = 4) -> None:
     src_width = factor * dest_width
 
@@ -167,19 +178,23 @@ class SSByteArray(bytearray):
     supersample_factor = 1
 
 
+def ss(buf: BufType, width: int, height: int, *funcs: Callable[..., None]) -> None:
+    supersample_factor = getattr(funcs[0], 'supersample_factor')
+    w, h = supersample_factor * width, supersample_factor * height
+    ssbuf = SSByteArray(w * h)
+    ssbuf.supersample_factor = supersample_factor
+    for f in funcs:
+        f(ssbuf, w, h)
+    downsample(ssbuf, buf, width, height, factor=supersample_factor)
+
+
 def supersampled(supersample_factor: int = 4) -> Callable[[Callable[..., None]], Callable[..., None]]:
     # Anti-alias the drawing performed by the wrapped function by
     # using supersampling
 
     def create_wrapper(f: Callable[..., None]) -> Callable[..., None]:
-        @wraps(f)
-        def supersampled_wrapper(buf: BufType, width: int, height: int, *args: Any, **kw: Any) -> None:
-            w, h = supersample_factor * width, supersample_factor * height
-            ssbuf = SSByteArray(w * h)
-            ssbuf.supersample_factor = supersample_factor
-            f(ssbuf, w, h, *args, **kw)
-            downsample(ssbuf, buf, width, height, factor=supersample_factor)
-        return supersampled_wrapper
+        setattr(f, 'supersample_factor', supersample_factor)
+        return f
     return create_wrapper
 
 
@@ -1429,30 +1444,82 @@ for i in range(1, 7):
 def render_box_char(ch: str, buf: BufType, width: int, height: int, dpi: float = 96.0) -> BufType:
     global _dpi
     _dpi = dpi
-    for func in box_chars[ch]:
-        func(buf, width, height)
+    funcs = box_chars[ch]
+    if hasattr(funcs[0], 'supersample_factor'):
+        ss(buf, width, height, *funcs)
+    else:
+        for func in box_chars[ch]:
+            func(buf, width, height)
     return buf
 
 
-def test_char(ch: str, sz: int = 48) -> None:
-    # kitty +runpy "from kitty.fonts.box_drawing import test_char; test_char('XXX')"
+def test_chars(chars: str = '╌', sz: int = 128) -> None:
+    # kitty +runpy "from kitty.fonts.box_drawing import test_chars; test_chars('XXX')"
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
+    from kitty.fast_data_types import render_box_char as native_render_box_char
 
     from .render import display_bitmap, setup_for_testing
+    if not chars:
+        import sys
+        chars = sys.argv[-1]
     with setup_for_testing('monospace', sz) as (_, width, height):
-        buf = bytearray(width * height)
         try:
-            render_box_char(ch, buf, width, height)
+            for ch in chars:
+                print('Rendering', ch)
+                buf = bytearray(width * height)
+                render_box_char(ch, buf, width, height)
 
-            def join_cells(*cells: bytes) -> bytes:
-                cells = tuple(bytes(x) for x in cells)
-                return concat_cells(width, height, False, cells)
+                def join_cells(*cells: bytes) -> bytes:
+                    cells = tuple(bytes(x) for x in cells)
+                    return concat_cells(width, height, False, cells)
 
-            rgb_data = join_cells(buf)
-            display_bitmap(rgb_data, width, height)
-            print()
+                rgb_data = join_cells(buf)
+                display_bitmap(rgb_data, width, height)
+                print()
+
+                nb = native_render_box_char(ord(ch), width, height)
+                rgb_data = concat_cells(width, height, False, (nb,))
+                display_bitmap(rgb_data, width, height)
+                print()
         finally:
             set_send_sprite_to_gpu(None)
+
+
+def port_chars() -> None:
+    from kitty.fast_data_types import concat_cells
+    from kitty.fast_data_types import render_box_char as native_render_box_char
+
+    from .render import display_bitmap, setup_for_testing
+
+    def join_cells(*cells: bytes) -> bytes:
+        cells = tuple(bytes(x) for x in cells)
+        return concat_cells(width, height, False, cells)
+
+    for sz in (127, 8, 11, 12, 13):
+        with setup_for_testing('monospace', sz) as (_, width, height):
+            for ch in box_chars:
+                buf = bytearray(width * height)
+                render_box_char(ch, buf, width, height)
+                nb = native_render_box_char(ord(ch), width, height)
+                if bytes(buf) != nb:
+                    print(f'Failed to match for char: {ch=} ({hex(ord(ch))}) at {width=} {height=}')
+                    count = 0
+                    for y in range(height):
+                        for x in range(width):
+                            if buf[y*width + x] != nb[y*width + x]:
+                                print(f'differing byte at {x=} {y=}. Expected: {buf[y*width + x]} Actual: {nb[y*width + x]}')
+                                count += 1
+                                if count > 5:
+                                    break
+                        if count > 5:
+                            break
+                    rgb_data = join_cells(buf)
+                    display_bitmap(rgb_data, width, height)
+                    print()
+                    rgb_data = concat_cells(width, height, False, (nb,))
+                    display_bitmap(rgb_data, width, height)
+                    print()
+                    raise SystemExit(1)
 
 
 def test_drawing(sz: int = 48, family: str = 'monospace', start: int = 0x2500, num_rows: int = 10, num_cols: int = 16) -> None:

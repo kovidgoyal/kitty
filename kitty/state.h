@@ -125,6 +125,7 @@ typedef struct {
     struct { Animation *cursor, *visual_bell; } animation;
     unsigned undercurl_style;
     struct { float thickness; int unit; } underline_exclusion;
+    float box_drawing_scale[4];
 } Options;
 
 typedef struct WindowLogoRenderData {

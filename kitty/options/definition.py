@@ -199,7 +199,7 @@ might cause rendering artifacts, so use with care.
 ''')
 
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',
-    option_type='box_drawing_scale',
+    option_type='box_drawing_scale', ctype='!box_drawing_scale',
     long_text='''
 The sizes of the lines used for the box drawing Unicode characters. These values
 are in pts. They will be scaled by the monitor DPI to arrive at a pixel value.
