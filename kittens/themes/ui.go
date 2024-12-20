@@ -525,11 +525,7 @@ func (self *handler) on_accepting_key_event(ev *loop.KeyEvent) error {
 
 	scheme := func(name string) error {
 		ev.Handled = true
-		{
-			theme := self.themes_list.CurrentTheme()
-			theme.GenerateDefaultSettings()
-			theme.SaveInFile(utils.ConfigDir(), name)
-		}
+		self.themes_list.CurrentTheme().SaveInFile(utils.ConfigDir(), name)
 		self.update_recent()
 		self.lp.Quit(0)
 		return nil
