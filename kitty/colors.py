@@ -16,6 +16,7 @@ from .typing import WindowType
 ColorsSpec = dict[str, Optional[int]]
 TransparentBackgroundColors = tuple[tuple[Color, float], ...]
 ColorSchemes = Literal['light', 'dark', 'no_preference']
+Colors = tuple[ColorsSpec, TransparentBackgroundColors]
 
 
 class ThemeFile(Enum):
@@ -30,6 +31,29 @@ class ThemeColors:
     light_mtime: int = -1
     no_preference_mtime: int = -1
     applied_theme: Literal['light', 'dark', 'no_preference', ''] = ''
+    default_colors: Optional[ColorsSpec] = None
+
+    def get_default_colors(self) -> ColorsSpec:
+        if self.default_colors is None:
+            from kitty.options.types import defaults, option_names
+            ans: ColorsSpec = dict.fromkeys(nullable_colors)
+
+            for name in option_names:
+                defval = getattr(defaults, name)
+                if isinstance(defval, Color):
+                    ans[name] = int(defval)
+            self.default_colors = ans
+        return self.default_colors
+
+    def parse_colors(self, f: Iterable[str]) -> Colors:
+        # When parsing the theme file we first apply the default theme so that
+        # all colors are reset to default values first. This is needed for themes
+        # that don't specify all colors.
+        spec, tbc = parse_colors((f,))
+        dc_spec = self.get_default_colors()
+        ans = dc_spec.copy()
+        ans.update(spec)
+        return ans, tbc
 
     def refresh(self) -> bool:
         found = False
@@ -39,21 +63,21 @@ class ThemeColors:
                     mtime = x.stat().st_mtime_ns
                     if mtime > self.dark_mtime:
                         with open(x.path) as f:
-                            self.dark_spec, self.dark_tbc = parse_colors((f,))
+                            self.dark_spec, self.dark_tbc = self.parse_colors(f)
                         self.dark_mtime = mtime
                         found = True
                 elif x.name == ThemeFile.light.value:
                     mtime = x.stat().st_mtime_ns
                     if mtime > self.light_mtime:
                         with open(x.path) as f:
-                            self.light_spec, self.light_tbc = parse_colors((f,))
+                            self.light_spec, self.light_tbc = self.parse_colors(f)
                         self.light_mtime = mtime
                         found = True
                 elif x.name == ThemeFile.no_preference.value:
                     mtime = x.stat().st_mtime_ns
                     if mtime > self.no_preference_mtime:
                         with open(x.path) as f:
-                            self.no_preference_spec, self.no_preference_tbc = parse_colors((f,))
+                            self.no_preference_spec, self.no_preference_tbc = self.parse_colors(f)
                         self.no_preference_mtime = mtime
                         found = True
         return found
@@ -123,7 +147,7 @@ class ThemeColors:
 theme_colors = ThemeColors()
 
 
-def parse_colors(args: Iterable[Union[str, Iterable[str]]]) -> tuple[ColorsSpec, TransparentBackgroundColors]:
+def parse_colors(args: Iterable[Union[str, Iterable[str]]]) -> Colors:
     colors: dict[str, Optional[Color]] = {}
     nullable_color_map: dict[str, Optional[int]] = {}
     transparent_background_colors = ()

@@ -90,7 +90,9 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that broke rendering of Emoji using the VS16 variation selector (:iss:`8130`)
 
-- themes kitten: When using the *Default* theme as an auto switch theme include all the actual settings values (:iss:`8124`)
+- When automatically changing colors based on OS color preference, first reset
+  all colors to default before applying the new theme so that even colors not
+  specified in the theme are correct (:iss:`8124`)
 
 - Graphics: Fix deleted but not freed images without any references being incorrectly freed on a subsequent delete command (:disc:`8129`)
 
