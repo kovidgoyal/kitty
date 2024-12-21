@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
-from typing import TYPE_CHECKING, DefaultDict, Optional
+from typing import TYPE_CHECKING, DefaultDict, Optional, TypedDict
 
 import kitty.fast_data_types as fast_data_types
 
@@ -15,10 +15,6 @@ from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_
 from .types import run_once
 from .utils import cmdline_for_hold, log_error, which
 
-try:
-    from typing import TypedDict
-except ImportError:
-    TypedDict = dict
 if TYPE_CHECKING:
     from .window import CwdRequest
 
