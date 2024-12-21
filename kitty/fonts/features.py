@@ -6,9 +6,9 @@ from typing import NamedTuple
 
 
 class Type(IntEnum):
-    boolean: int = 1
-    index: int = 2
-    hidden: int = 3
+    boolean = 1
+    index = 2
+    hidden = 3
 
 
 class FeatureDefinition(NamedTuple):

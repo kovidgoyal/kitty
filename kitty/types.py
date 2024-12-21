@@ -23,8 +23,8 @@ class SingleInstanceData(TypedDict):
 
 
 class OverlayType(Enum):
-    transient: str = 'transient'
-    main: str = 'main'
+    transient = 'transient'
+    main = 'main'
 
 
 class ParsedShortcut(NamedTuple):

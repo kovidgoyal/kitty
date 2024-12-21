@@ -118,7 +118,7 @@ def iter_file_metadata(file_specs: Iterable[tuple[str, str]]) -> Iterator[Union[
             sr = os.stat(path, follow_symlinks=False)
             read_ok = os.access(path, os.R_OK, follow_symlinks=False)
         except OSError as err:
-            errname = errno.errorcode.get(err.errno, 'EFAIL')
+            errname = errno.errorcode.get(err.errno, 'EFAIL') if err.errno is not None else 'EFAIL'
             yield TransmissionError(file_id=spec_id, code=errname, msg='Failed to read spec')
             continue
         if not read_ok:
@@ -1222,7 +1222,7 @@ class FileTransmission:
     def send_fail_on_os_error(self, err: OSError, msg: str, ar: Union[ActiveSend, ActiveReceive], file_id: str = '') -> None:
         if not ar.send_errors:
             return
-        errname = errno.errorcode.get(err.errno, 'EFAIL')
+        errname = errno.errorcode.get(err.errno, 'EFAIL') if err.errno is not None else 'EFAIL'
         self.send_status_response(code=errname, msg=msg, request_id=ar.id, file_id=file_id)
 
     def active_file(self, rid: str = '', file_id: str = '') -> DestFile:

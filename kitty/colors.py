@@ -20,9 +20,9 @@ Colors = tuple[ColorsSpec, TransparentBackgroundColors]
 
 
 class ThemeFile(Enum):
-    dark: str = 'dark-theme.auto.conf'
-    light: str = 'light-theme.auto.conf'
-    no_preference: str = 'no-preference-theme.auto.conf'
+    dark = 'dark-theme.auto.conf'
+    light = 'light-theme.auto.conf'
+    no_preference = 'no-preference-theme.auto.conf'
 
 
 class ThemeColors:

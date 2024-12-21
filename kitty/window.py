@@ -123,10 +123,10 @@ if TYPE_CHECKING:
 
 
 class CwdRequestType(Enum):
-    current: int = auto()
-    last_reported: int = auto()
-    oldest: int = auto()
-    root: int = auto()
+    current = auto()
+    last_reported = auto()
+    oldest = auto()
+    root = auto()
 
 
 class CwdRequest:

@@ -6,7 +6,7 @@ import os
 import shutil
 from collections.abc import Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple, Optional, TypedDict
 
 from .boss import Boss
 from .child import Child
@@ -19,11 +19,6 @@ from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
-
-try:
-    from typing import TypedDict
-except ImportError:
-    TypedDict = dict
 
 
 class LaunchSpec(NamedTuple):

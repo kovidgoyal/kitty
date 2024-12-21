@@ -118,9 +118,9 @@ class IconDataCache:
 
 
 class Urgency(Enum):
-    Low: int = 0
-    Normal: int = 1
-    Critical: int = 2
+    Low = 0
+    Normal = 1
+    Critical = 2
 
 
 class PayloadType(Enum):
