@@ -206,7 +206,7 @@ def fill_region(buf: BufType, width: int, height: int, xlimits: Iterable[Iterabl
             buf[x + offset] = full if upper <= y <= lower else empty
 
 
-def line_equation(x1: int, y1: int, x2: int, y2: int) -> Callable[[int], float]:
+def line_equation(x1: int | float, y1: int | float, x2: int | float, y2: int | float) -> Callable[[int], float]:
     m = (y2 - y1) / (x2 - x1)
     c = y1 - m * x1
 
@@ -936,8 +936,8 @@ def smooth_mosaic(
     buf: SSByteArray, width: int, height: int, level: int = 1,
     lower: bool = True, a: tuple[float, float] = (0, 0), b: tuple[float, float] = (0, 0)
 ) -> None:
-    ax, ay = int(a[0] * (width - 1)), int(a[1] * (height - 1))
-    bx, by = int(b[0] * (width - 1)), int(b[1] * (height - 1))
+    ax, ay = (a[0] * (width - 1)), (a[1] * (height - 1))
+    bx, by = (b[0] * (width - 1)), (b[1] * (height - 1))
     line = line_equation(ax, ay, bx, by)
 
     def lower_condition(x: int, y: int) -> bool:

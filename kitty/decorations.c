@@ -447,8 +447,8 @@ typedef struct StraightLine {
 
 
 static StraightLine
-line_from_points(int x1, int y1, int x2, int y2) {
-    StraightLine ans = {.m = (y2 - y1) / ((double)(x2 - x1))};
+line_from_points(double x1, double y1, double x2, double y2) {
+    StraightLine ans = {.m = (y2 - y1) / (x2 - x1)};
     ans.c = y1 - ans.m * x1;
     return ans;
 }
@@ -977,6 +977,19 @@ quads(Canvas *self, ...) {
     va_end(args);
 }
 
+static void
+smooth_mosaic(Canvas *self, bool lower, double ax, double ay, double bx, double by) {
+    StraightLine l = line_from_points(
+        ax * minus(self->width, 1), ay * minus(self->height, 1), bx * minus(self->width, 1), by * minus(self->height, 1));
+    for (uint y = 0; y < self->height; y++) {
+        uint offset = y * self->width;
+        for (uint x = 0; x < self->width; x++) {
+            double edge = line_y(l, x);
+            if ((lower && y >= edge) || (!lower && y <= edge)) self->mask[offset + x] = 255;
+        }
+    }
+}
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
@@ -1155,12 +1168,64 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         C(L'▜', quads, TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, 0);
         C(L'▞', quads, TOP_RIGHT, BOTTOM_LEFT, 0);
         C(L'▟', quads, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, 0);
+
+        S(L'🬼', smooth_mosaic, true, 0, 2. / 3, 0.5, 1);
+        S(L'🬽', smooth_mosaic, true, 0, 2. / 3, 1, 1);
+        S(L'🬾', smooth_mosaic, true, 0, 1. / 3, 0.5, 1);
+        S(L'🬿', smooth_mosaic, true, 0, 1. / 3, 1, 1);
+        S(L'🭀', smooth_mosaic, true, 0, 0, 0.5, 1);
+
+        S(L'🭁', smooth_mosaic, true, 0, 1. / 3, 0.5, 0);
+        S(L'🭂', smooth_mosaic, true, 0, 1. / 3, 1, 0);
+        S(L'🭃', smooth_mosaic, true, 0, 2. / 3, 0.5, 0);
+        S(L'🭄', smooth_mosaic, true, 0, 2. / 3, 1, 0);
+        S(L'🭅', smooth_mosaic, true, 0, 1, 0.5, 0);
+        S(L'🭆', smooth_mosaic, true, 0, 2. / 3, 1, 1. / 3);
+
+        S(L'🭇', smooth_mosaic, true, 0.5, 1, 1, 2. / 3);
+        S(L'🭈', smooth_mosaic, true, 0, 1, 1, 2. / 3);
+        S(L'🭉', smooth_mosaic, true, 0.5, 1, 1, 1. / 3);
+        S(L'🭊', smooth_mosaic, true, 0, 1, 1, 1. / 3);
+        S(L'🭋', smooth_mosaic, true, 0.5, 1, 1, 0);
+
+        S(L'🭌', smooth_mosaic, true, 0.5, 0, 1, 1. / 3);
+        S(L'🭍', smooth_mosaic, true, 0, 0, 1, 1. / 3);
+        S(L'🭎', smooth_mosaic, true, 0.5, 0, 1, 2. / 3);
+        S(L'🭏', smooth_mosaic, true, 0, 0, 1, 2. / 3);
+        S(L'🭐', smooth_mosaic, true, 0.5, 0, 1, 1);
+        S(L'🭑', smooth_mosaic, true, 0, 1. / 3, 1, 2. / 3);
+
+        S(L'🭒', smooth_mosaic, false, 0, 2. / 3, 0.5, 1);
+        S(L'🭓', smooth_mosaic, false, 0, 2. / 3, 1, 1);
+        S(L'🭔', smooth_mosaic, false, 0, 1. / 3, 0.5, 1);
+        S(L'🭕', smooth_mosaic, false, 0, 1. / 3, 1, 1);
+        S(L'🭖', smooth_mosaic, false, 0, 0, 0.5, 1);
+
+        S(L'🭗', smooth_mosaic, false, 0, 1. / 3, 0.5, 0);
+        S(L'🭘', smooth_mosaic, false, 0, 1. / 3, 1, 0);
+        S(L'🭙', smooth_mosaic, false, 0, 2. / 3, 0.5, 0);
+        S(L'🭚', smooth_mosaic, false, 0, 2. / 3, 1, 0);
+        S(L'🭛', smooth_mosaic, false, 0, 1, 0.5, 0);
+
+        S(L'🭜', smooth_mosaic, false, 0, 2. / 3, 1, 1. / 3);
+        S(L'🭝', smooth_mosaic, false, 0.5, 1, 1, 2. / 3);
+        S(L'🭞', smooth_mosaic, false, 0, 1, 1, 2. / 3);
+        S(L'🭟', smooth_mosaic, false, 0.5, 1, 1, 1. / 3);
+        S(L'🭠', smooth_mosaic, false, 0, 1, 1, 1. / 3);
+        S(L'🭡', smooth_mosaic, false, 0.5, 1, 1, 0);
+
+        S(L'🭢', smooth_mosaic, false, 0.5, 0, 1, 1. / 3);
+        S(L'🭣', smooth_mosaic, false, 0, 0, 1, 1. / 3);
+        S(L'🭤', smooth_mosaic, false, 0.5, 0, 1, 2. / 3);
+        S(L'🭥', smooth_mosaic, false, 0, 0, 1, 2. / 3);
+        S(L'🭦', smooth_mosaic, false, 0.5, 0, 1, 1);
+        S(L'🭧', smooth_mosaic, false, 0, 1. / 3, 1, 2. / 3);
     }
+    free(canvas.holes); free(canvas.y_limits);
+    free(ss.holes); free(ss.y_limits);
 #undef CC
 #undef SS
 #undef C
 #undef S
 #undef SB
-    free(canvas.holes); free(canvas.y_limits);
-    free(ss.holes); free(ss.y_limits);
 }
