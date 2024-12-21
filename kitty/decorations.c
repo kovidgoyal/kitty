@@ -941,6 +941,42 @@ apply_mask(Canvas *self, uint8_t *mask) {
     }
 }
 
+static void
+cross_shade(Canvas *self, bool rotate) {
+    static const uint num_of_lines = 7;
+    uint line_thickness = max(self->supersample_factor, self->width / num_of_lines);
+    uint delta = 2 * line_thickness;
+    uint y1 = 0, y2 = self->height;
+    if (rotate) SWAP(y1, y2);
+    for (uint x = 0; x < self->width; x += delta) {
+        thick_line(self, line_thickness, (Point){.x=0 + x, .y=y1}, (Point){.x=self->width + x, .y=y2});
+        thick_line(self, line_thickness, (Point){.x=0 - x, .y=y1}, (Point){.x=self->width - x, .y=y2});
+    }
+}
+
+static void
+quad(Canvas *self, Corner which) {
+    uint x = which & LEFT_EDGE ? 0 : 1, y = which & TOP_EDGE ? 0 : 1;
+    uint num_cols = self->width / 2;
+    uint left = x * num_cols;
+    uint right = x ? self->width : num_cols;
+    uint num_rows = self->height / 2;
+    uint top = y * num_rows;
+    uint bottom = y ? self->height : num_rows;
+    for (uint r = top; r < bottom; r++) {
+        uint off = r * self->width;
+        memset(self->mask + off + left, 255, right - left);
+    }
+}
+
+static void
+quads(Canvas *self, ...) {
+    va_list args; va_start(args, self);
+    int which;
+    while ((which = va_arg(args, int))) quad(self, which);
+    va_end(args);
+}
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
@@ -1106,7 +1142,19 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         M(L'🮟', BOTTOM_LEFT);
 #undef M
 #undef SH
+        S(L'🮘', cross_shade, false);
+        S(L'🮙', cross_shade, true);
 
+        C(L'▖', quad, BOTTOM_LEFT);
+        C(L'▗', quad, BOTTOM_RIGHT);
+        C(L'▘', quad, TOP_LEFT);
+        C(L'▝', quad, TOP_RIGHT);
+        C(L'▙', quads, TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT, 0);
+        C(L'▚', quads, TOP_LEFT, BOTTOM_RIGHT, 0);
+        C(L'▛', quads, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, 0);
+        C(L'▜', quads, TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, 0);
+        C(L'▞', quads, TOP_RIGHT, BOTTOM_LEFT, 0);
+        C(L'▟', quads, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, 0);
     }
 #undef CC
 #undef SS
