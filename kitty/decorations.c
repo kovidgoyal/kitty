@@ -228,6 +228,9 @@ typedef struct Canvas {
 } Canvas;
 
 static void
+fill_canvas(Canvas *self, int byte) { memset(self->mask, byte, self->width * self->height * sizeof(self->mask[0])); }
+
+static void
 append_hole(Canvas *self, Range hole) {
     ensure_space_for(self, holes, self->holes[0], self->holes_count + 1, holes_capacity, self->width, false);
     self->holes[self->holes_count++] = hole;
@@ -330,6 +333,48 @@ half_hline(Canvas *self, uint level, bool right_half, uint extend_by) {
         x1 = 0; x2 = self->width / 2 + extend_by;
     }
     draw_hline(self, x1, x2, self->height / 2, level);
+}
+
+typedef union Point {
+    struct {
+        int32_t x: 32, y: 32;
+    };
+    int64_t val;
+} Point;
+
+
+static Point
+half_dhline(Canvas *self, uint level, bool right_half, Edge which) {
+    uint x1 = 0, x2 = 0;
+    if (right_half) { x1 = self->width / 2; x2 = self->width; } else x2 = self->width / 2;
+    uint gap = thickness(self, level + 1, false);
+    Point ans = {.x=self->height / 2 - gap, .y=self->height / 2 + gap};
+    if (which & TOP_EDGE) draw_hline(self, x1, x2, ans.x, level);
+    if (which & BOTTOM_EDGE) draw_hline(self, x1, x2, ans.y, level);
+    return ans;
+}
+
+static Point
+half_dvline(Canvas *self, uint level, bool bottom_half, Edge which) {
+    uint y1 = 0, y2 = 0;
+    if (bottom_half) { y1 = self->height / 2; y2 = self->height; } else y2 = self->height / 2;
+    uint gap = thickness(self, level + 1, true);
+    Point ans = {.x=self->width / 2 - gap, .y=self->width / 2 + gap};
+    if (which & LEFT_EDGE) draw_vline(self, y1, y2, ans.x, level);
+    if (which & RIGHT_EDGE) draw_vline(self, y1, y2, ans.y, level);
+    return ans;
+}
+
+static Point
+dhline(Canvas *self, uint level, Edge which) {
+    half_dhline(self, level, false, which);
+    return half_dhline(self, level, true, which);
+}
+
+static Point
+dvline(Canvas *self, uint level, Edge which) {
+    half_dvline(self, level, false, which);
+    return half_dvline(self, level, true, which);
 }
 
 
@@ -446,13 +491,6 @@ typedef enum Corner {
     TOP_LEFT = LEFT_EDGE | TOP_EDGE, TOP_RIGHT = TOP_EDGE | RIGHT_EDGE,
     BOTTOM_LEFT = BOTTOM_EDGE | LEFT_EDGE, BOTTOM_RIGHT = BOTTOM_EDGE | RIGHT_EDGE,
 } Corner;
-
-typedef union Point {
-    struct {
-        int32_t x: 32, y: 32;
-    };
-    int64_t val;
-} Point;
 
 static void
 thick_line(Canvas *self, uint thickness_in_pixels, Point p1, Point p2) {
@@ -719,22 +757,206 @@ draw_fish_eye(Canvas *self, uint level) {
     draw_circle(self, 1.0, gap, false);
 }
 
+static void
+inner_corner(Canvas *self, uint level, Corner corner) {
+    uint hgap = thickness(self, level + 1, true), vgap = thickness(self, level + 1, false);
+    uint vthick = thickness(self, level, true) / 2;
+    uint x1 = 0, x2 = self->width, y1 = 0, y2 = self->height; int xd = 1, yd = 1;
+    if (corner & LEFT_EDGE) {
+        x2 = minus(self->width / 2 + vthick + 1, hgap); xd = -1;
+    } else x1 = minus(self->width / 2 + hgap, vthick);
+    if (corner & TOP_EDGE) {
+        y2 = minus(self->height / 2, vgap); yd = -1;
+    } else y1 = self->height / 2 + vgap;
+    draw_hline(self, x1, x2, self->height / 2 + (yd * vgap), level);
+    draw_vline(self, y1, y2, self->width / 2 + (xd * hgap), level);
+}
+
+static Range
+eight_range(uint size, uint which) {
+    uint thickness = max(1, size / 8);
+    uint block = thickness * 8;
+    if (block == size) return (Range){.start=thickness * which, .end=thickness * (which + 1)};
+    if (block > size) {
+        uint start = min(which * thickness, minus(size, thickness));
+        return (Range){.start=start, .end=start + thickness};
+    }
+    uint extra = minus(size, block);
+    uint thicknesses[8] = {thickness, thickness, thickness, thickness, thickness, thickness, thickness, thickness};
+    uint pos = 0;
+    if (extra) {
+#define d(i) thicknesses[i]++; if (!--extra) goto done;
+        // ensures the thickness of first and last are least likely to be changed
+        d(3); d(4); d(2); d(5); d(6); d(1); d(7); d(0);
+#undef d
+    }
+done:
+    for (uint i = 0; i < which; i++) pos += thicknesses[i];
+    return (Range){.start=pos, .end=pos + thicknesses[which]};
+}
+
+static void
+eight_bar(Canvas *self, uint which, bool horizontal) {
+    Range x_range, y_range;
+    if (horizontal) {
+        x_range = (Range){0, self->width};
+        y_range = eight_range(self->height, which);
+    } else {
+        y_range = (Range){0, self->height};
+        x_range = eight_range(self->width, which);
+    }
+    for (uint y = y_range.start; y < y_range.end; y++) {
+        uint offset = y * self->width;
+        memset(self->mask + offset + x_range.start, 255, minus(x_range.end, x_range.start));
+    }
+}
+
+static void
+eight_block(Canvas *self, int horizontal, ...) {
+    va_list args; va_start(args, horizontal);
+    int which;
+    while ((which = va_arg(args, int)) >= 0) eight_bar(self, which, horizontal);
+    va_end(args);
+}
+
+typedef struct Shade {
+    bool light, invert, fill_blank;
+    Edge which_half;
+    uint xnum, ynum;
+} Shade;
+
+#define is_odd(x) ((x) & 1u)
+
+static void
+shade(Canvas *self, Shade s) {
+    const uint square_width = max(1, self->width / s.xnum);
+    const uint square_height = max(1, s.ynum ? (self->height / s.ynum) : square_width);
+    uint number_of_rows = self->height / square_height;
+    uint number_of_cols = self->width / square_width;
+
+    // Make sure the parity is correct
+    // (except when that would cause division by zero)
+    if (number_of_cols > 1 && is_odd(number_of_cols) != is_odd(s.xnum)) number_of_cols--;
+    if (number_of_rows > 1 && is_odd(number_of_rows) != is_odd(s.ynum)) number_of_rows--;
+
+    // Calculate how much space remains unused, and how frequently
+    // to insert an extra column/row to fill all of it
+    uint excess_cols = minus(self->width, square_width * number_of_cols);
+    double square_width_extension = (double)excess_cols / number_of_cols;
+
+    uint excess_rows = minus(self->height, square_height * number_of_rows);
+    double square_height_extension = (double)excess_rows / number_of_rows;
+
+    Range rows = {.end=number_of_rows}, cols = {.end=number_of_cols};
+    switch(s.which_half) {
+        // this is to remove gaps between half-filled characters
+        case TOP_EDGE: rows.end /= 2; square_height_extension *= 2; break;
+        case BOTTOM_EDGE: rows.start = number_of_rows / 2; square_height_extension *= 2; break;
+        case LEFT_EDGE: cols.end /= 2; square_width_extension *= 2; break;
+        case RIGHT_EDGE: cols.start = number_of_cols / 2; square_width_extension *= 2; break;
+    }
+
+    bool extra_row = false;
+    uint ey = 0, old_ey = 0, drawn_rows = 0;
+
+    for (uint r = rows.start; r < rows.end; r++) {
+        // Keep track of how much extra height has accumulated, and add an extra row at every passed integer, including 0
+        old_ey = ey;
+        ey = (uint)ceil(drawn_rows * square_height_extension);
+        extra_row = ey != old_ey;
+        drawn_rows += 1;
+        bool extra_col = false;
+        uint ex = 0, old_ex = 0, drawn_cols = 0;
+        for (uint c = cols.start; c < cols.end; c++) {
+            old_ex = ex;
+            ex = (uint)ceil(drawn_cols * square_width_extension);
+            extra_col = ex != old_ex;
+            drawn_cols += 1;
+
+            // Fill extra rows with semi-transparent pixels that match the pattern
+            if (extra_row) {
+                uint y = r * square_height + old_ey;
+                uint offset = self->width * y;
+                for (uint xc = 0; xc < square_width; xc++) {
+                    uint x = c * square_width + xc + ex;
+                    if (s.light) {
+                        if (s.invert) self->mask[offset + x] = is_odd(c) ? 255 : 70;
+                        else self->mask[offset + x] = is_odd(c) ? 0 : 70;
+                    } else self->mask[offset + x] = is_odd(c) == s.invert ? 120 : 30;
+                }
+            }
+            // Do the same for the extra columns
+            if (extra_col) {
+                uint x = c * square_width + old_ex;
+                for (uint yr = 0; yr < square_height; yr++) {
+                    uint y = r * square_height + yr + ey;
+                    uint offset = self->width * y;
+                    if (s.light) {
+                        if (s.invert) self->mask[offset + x] = is_odd(r) ? 255 : 70;
+                        else self->mask[offset + x] = is_odd(r) ? 0 : 70;
+                    } else self->mask[offset + x] = is_odd(r) == s.invert ? 120 : 30;
+                }
+            }
+            // And in case they intersect, set the corner pixel too
+            if (extra_row && extra_col) {
+                uint x = c * square_width + old_ex;
+                uint y = r * square_height + old_ey;
+                uint offset = self->width * y;
+                self->mask[offset + x] = 50;
+            }
+
+            const bool is_blank = s.invert ^ (is_odd(r) != is_odd(c) || (s.light && is_odd(r)));
+            if (!is_blank) {
+                // Fill the square
+                for (uint yr = 0; yr < square_height; yr++) {
+                    uint y = r * square_height + yr + ey;
+                    uint offset = self->width * y;
+                    for (uint xc = 0; xc < square_width; xc++) {
+                        uint x = c * square_width + xc + ex;
+                        self->mask[offset + x] = 255;
+                    }
+                }
+            }
+        }
+    }
+    if (!s.fill_blank) return;
+    cols = (Range){.end=self->width}; rows = (Range){.end=self->height};
+    switch(s.which_half) {
+        case BOTTOM_EDGE: rows.end = self->height / 2; break;
+        case TOP_EDGE: rows.start = minus(self->height / 2, 1); break;
+        case RIGHT_EDGE: cols.end = self->width / 2; break;
+        case LEFT_EDGE: cols.start = minus(self->width / 2, 1); break;
+    }
+    for (uint r = rows.start; r < rows.end; r++) memset(self->mask + r * self->width + cols.start, 255, cols.end - cols.start);
+}
+
+static void
+apply_mask(Canvas *self, uint8_t *mask) {
+    for (uint y = 0; y < self->height; y++) {
+        uint offset = y * self->width;
+        for (uint x = 0; x < self->width; x++) {
+            uint p = offset + x;
+            self->mask[p] = (uint8_t)round((mask[p] / 255.0) * self->mask[p]);
+        }
+    }
+}
 
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
     ss.mask = buf + width*height; ss.supersample_factor = SUPERSAMPLE_FACTOR; ss.width *= SUPERSAMPLE_FACTOR; ss.height *= SUPERSAMPLE_FACTOR;
-    memset(canvas.mask, 0, width * height * sizeof(canvas.mask[0]));
+    fill_canvas(&canvas, 0);
     Canvas *c = &canvas;
 
-#define CC(expr) expr; break
-#define SS(expr) memset(ss.mask, 0, ss.width * ss.height * sizeof(ss.mask[0])); c = &ss, expr; downsample(&ss, &canvas); break
-#define C(ch, func, ...) case ch: CC(func(c, __VA_ARGS__))
-#define S(ch, func, ...) case ch: SS(func(c, __VA_ARGS__))
+#define SB(ch, ...) case ch: fill_canvas(&ss, 0); c = &ss, __VA_ARGS__; downsample(&ss, &canvas);
+#define CC(ch, ...) case ch: __VA_ARGS__; break
+#define SS(ch, ...) SB(ch, __VA_ARGS__); break
+#define C(ch, func, ...) CC(ch, func(c, __VA_ARGS__))
+#define S(ch, func, ...) SS(ch, func(c, __VA_ARGS__))
 
     switch(ch) {
         default: log_error("Unknown box drawing character: U+%x rendered as blank", ch); break;
-        case L'█': memset(canvas.mask, 255, width * height * sizeof(canvas.mask[0])); break;
+        case L'█': fill_canvas(c, 255); break;
 
         C(L'─', hline, 1);
         C(L'━', hline, 3);
@@ -763,17 +985,17 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         C(L'╹', half_vline, 3, false, 0);
         C(L'╺', half_hline, 3, true, 0);
         C(L'╻', half_vline, 3, true, 0);
-        case L'╾': CC(half_hline(c, 3, false, 0); half_hline(c, 1, true, 0));
-        case L'╼': CC(half_hline(c, 1, false, 0); half_hline(c, 3, true, 0));
-        case L'╿': CC(half_vline(c, 3, false, 0); half_vline(c, 1, true, 0));
-        case L'╽': CC(half_vline(c, 1, false, 0); half_vline(c, 3, true, 0));
+        CC(L'╾', half_hline(c, 3, false, 0); half_hline(c, 1, true, 0));
+        CC(L'╼', half_hline(c, 1, false, 0); half_hline(c, 3, true, 0));
+        CC(L'╿', half_vline(c, 3, false, 0); half_vline(c, 1, true, 0));
+        CC(L'╽', half_vline(c, 1, false, 0); half_vline(c, 3, true, 0));
 
         S(L'', triangle, true, false);
         S(L'', triangle, true, true);
-        case L'': SS(half_cross_line(c, 1, TOP_LEFT); half_cross_line(c, 1, BOTTOM_LEFT));
+        SS(L'', half_cross_line(c, 1, TOP_LEFT); half_cross_line(c, 1, BOTTOM_LEFT));
         S(L'', triangle, false, false);
         S(L'', triangle, false, true);
-        case L'': SS(half_cross_line(c, 1, TOP_RIGHT); half_cross_line(c, 1, BOTTOM_RIGHT));
+        SS(L'', half_cross_line(c, 1, TOP_RIGHT); half_cross_line(c, 1, BOTTOM_RIGHT));
 
         S(L'', filled_D, true);
         S(L'◗', filled_D, true);
@@ -784,8 +1006,11 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
 
         S(L'', cross_line, 1, true);
         S(L'', cross_line, 1, true);
+        S(L'╲', cross_line, 1, true);
         S(L'', cross_line, 1, false);
         S(L'', cross_line, 1, false);
+        S(L'╱', cross_line, 1, false);
+        SS(L'╳', cross_line(c, 1, false); cross_line(c, 1, true));
 
         S(L'', corner_triangle, BOTTOM_LEFT);
         S(L'◣', corner_triangle, BOTTOM_LEFT);
@@ -819,11 +1044,75 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         S(L'●', draw_circle, 1.0, 0, false);
         S(L'◉', draw_fish_eye, 0);
 
+        C(L'═', dhline, 1, TOP_EDGE | BOTTOM_EDGE);
+        C(L'║', dvline, 1, LEFT_EDGE | RIGHT_EDGE);
+        CC(L'╞', vline(c, 1); half_dhline(c, 1, true, TOP_EDGE | BOTTOM_EDGE));
+        CC(L'╡', vline(c, 1); half_dhline(c, 1, false, TOP_EDGE | BOTTOM_EDGE));
+        CC(L'╥', hline(c, 1); half_dvline(c, 1, true, LEFT_EDGE | RIGHT_EDGE));
+        CC(L'╨', hline(c, 1); half_dvline(c, 1, false, LEFT_EDGE | RIGHT_EDGE));
+        CC(L'╪', vline(c, 1); dhline(c, 1, TOP_EDGE | BOTTOM_EDGE));
+        CC(L'╫', hline(c, 1), dvline(c, 1, LEFT_EDGE | RIGHT_EDGE));
+        CC(L'╬', inner_corner(c, 1, TOP_LEFT); inner_corner(c, 1, TOP_RIGHT); inner_corner(c, 1, BOTTOM_LEFT); inner_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'╠', inner_corner(c, 1, TOP_RIGHT); inner_corner(c, 1, BOTTOM_RIGHT); dvline(c, 1, LEFT_EDGE));
+        CC(L'╣', inner_corner(c, 1, TOP_LEFT); inner_corner(c, 1, BOTTOM_LEFT); dvline(c, 1, RIGHT_EDGE));
+        CC(L'╦', inner_corner(c, 1, BOTTOM_LEFT); inner_corner(c, 1, BOTTOM_RIGHT); dhline(c, 1, TOP_EDGE));
+        CC(L'╩', inner_corner(c, 1, TOP_LEFT); inner_corner(c, 1, TOP_RIGHT); dhline(c, 1, BOTTOM_EDGE));
+
+#define EH(ch, ...) C(ch, eight_block, true, __VA_ARGS__, -1);
+        EH(L'▔', 0);
+        EH(L'▀', 0, 1, 2, 3);
+        EH(L'▁', 7);
+        EH(L'▂', 6, 7);
+        EH(L'▃', 5, 6, 7);
+        EH(L'▄', 4, 5, 6, 7);
+        EH(L'▅', 3, 4, 5, 6, 7);
+        EH(L'▆', 2, 3, 4, 5, 6, 7);
+        EH(L'▇', 1, 2, 3, 4, 5, 6, 7);
+#undef EH
+#define EV(ch, ...) C(ch, eight_block, false, __VA_ARGS__, -1);
+        EV(L'▉', 0, 1, 2, 3, 4, 5, 6);
+        EV(L'▊', 0, 1, 2, 3, 4, 5);
+        EV(L'▋', 0, 1, 2, 3, 4);
+        EV(L'▌', 0, 1, 2, 3);
+        EV(L'▍', 0, 1, 2);
+        EV(L'▎', 0, 1);
+        EV(L'▏', 0);
+        EV(L'▕', 7);
+        EV(L'▐', 4, 5, 6, 7);
+#undef EV
+#define SH(ch, ...) C(ch, shade, (Shade){ __VA_ARGS__ });
+        SH(L'░', .xnum=12, .light=true);
+        SH(L'▒', .xnum=12);
+        SH(L'▓', .xnum=12, .light=true, .invert=true);
+        SH(L'🮌', .xnum=12, .which_half=LEFT_EDGE);
+        SH(L'🮍', .xnum=12, .which_half=RIGHT_EDGE);
+        SH(L'🮎', .xnum=12, .which_half=TOP_EDGE);
+        SH(L'🮏', .xnum=12, .which_half=BOTTOM_EDGE);
+        SH(L'🮐', .xnum=12, .invert=true);
+        SH(L'🮑', .xnum=12, .invert=true, .fill_blank=true, .which_half=BOTTOM_EDGE);
+        SH(L'🮒', .xnum=12, .invert=true, .fill_blank=true, .which_half=TOP_EDGE);
+        SH(L'🮓', .xnum=12, .invert=true, .fill_blank=true, .which_half=RIGHT_EDGE);
+        SH(L'🮔', .xnum=12, .invert=true, .fill_blank=true, .which_half=LEFT_EDGE);
+        SH(L'🮕', .xnum=4, .ynum=4);
+        SH(L'🮖', .xnum=4, .ynum=4, .invert=true);
+        SH(L'🮗', .xnum=1, .ynum=4, .invert=true);
+#define M(ch, corner) SB(ch, corner_triangle(c, corner)); \
+            memcpy(ss.mask, canvas.mask, canvas.width * canvas.height * sizeof(canvas.mask[0])); \
+            fill_canvas(&canvas, 0); shade(&canvas, (Shade){.xnum=12}); \
+            apply_mask(&canvas, ss.mask); break;
+        M(L'🮜', TOP_LEFT);
+        M(L'🮝', TOP_RIGHT);
+        M(L'🮞', BOTTOM_RIGHT);
+        M(L'🮟', BOTTOM_LEFT);
+#undef M
+#undef SH
+
     }
 #undef CC
 #undef SS
 #undef C
 #undef S
+#undef SB
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
 }

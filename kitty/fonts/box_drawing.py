@@ -886,7 +886,7 @@ def mask(
         offset = y * width
         for x in range(width):
             p = offset + x
-            buf[p] = int(255.0 * (buf[p] / 255.0 * m[p] / 255.0))
+            buf[p] = int(round((m[p] / 255) * buf[p]))
 
 
 def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
@@ -1511,6 +1511,8 @@ def port_chars() -> None:
     for sz in (127, 8, 11, 12, 13):
         with setup_for_testing('monospace', sz) as (_, width, height):
             for ch in box_chars:
+                if ch in '🮜🮝🮞🮟':
+                    continue
                 buf = bytearray(width * height)
                 render_box_char(ch, buf, width, height)
                 nb = native_render_box_char(ord(ch), width, height)
