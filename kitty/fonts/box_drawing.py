@@ -1479,9 +1479,24 @@ def test_chars(chars: str = '╌', sz: int = 128) -> None:
                 rgb_data = concat_cells(width, height, False, (nb,))
                 display_bitmap(rgb_data, width, height)
                 print()
+                if bytes(nb) != bytes(buf):
+                    print_first_few_differing_bytes(buf, nb, width, height)
+                    raise SystemExit('Native did not match python rendering')
         finally:
             set_send_sprite_to_gpu(None)
 
+
+def print_first_few_differing_bytes(expected: bytes, actual: bytes, width: int, height: int, count: int = 5) -> None:
+    if expected != actual:
+        for y in range(height):
+            for x in range(width):
+                if expected[y*width + x] != actual[y*width + x]:
+                    print(f'differing byte at {x=} {y=}. Expected: {expected[y*width + x]} Actual: {actual[y*width + x]}')
+                    count -= 1
+                    if not count:
+                        break
+            if not count:
+                break
 
 def port_chars() -> None:
     from kitty.fast_data_types import concat_cells
@@ -1501,16 +1516,7 @@ def port_chars() -> None:
                 nb = native_render_box_char(ord(ch), width, height)
                 if bytes(buf) != nb:
                     print(f'Failed to match for char: {ch=} ({hex(ord(ch))}) at {width=} {height=}')
-                    count = 0
-                    for y in range(height):
-                        for x in range(width):
-                            if buf[y*width + x] != nb[y*width + x]:
-                                print(f'differing byte at {x=} {y=}. Expected: {buf[y*width + x]} Actual: {nb[y*width + x]}')
-                                count += 1
-                                if count > 5:
-                                    break
-                        if count > 5:
-                            break
+                    print_first_few_differing_bytes(buf, nb, width, height)
                     rgb_data = join_cells(buf)
                     display_bitmap(rgb_data, width, height)
                     print()
