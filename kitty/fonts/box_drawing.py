@@ -1321,7 +1321,7 @@ box_chars: dict[str, list[Callable[[BufType, int, int], Any]]] = {
     '🮋': [p(eight_block, which=(1, 2, 3, 4, 5, 6, 7))],
 
     '🮠': [mid_lines],
-    '🮡': [p(mid_lines, pts=('tr',))],
+    '🮡': [p(mid_lines, pts=('rt',))],
     '🮢': [p(mid_lines, pts=('lb',))],
     '🮣': [p(mid_lines, pts=('br',))],
     '🮤': [p(mid_lines, pts=('lt', 'lb'))],

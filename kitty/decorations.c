@@ -13,6 +13,7 @@ typedef uint32_t uint;
 static uint max(uint a, uint b) { return a > b ? a : b; }
 static uint min(uint a, uint b) { return a < b ? a : b; }
 
+// Decorations {{{
 #define STRAIGHT_UNDERLINE_LOOP \
     unsigned half = fcm.underline_thickness / 2; \
     DecorationGeometry ans = {.top = half > fcm.underline_position ? 0 : fcm.underline_position - half}; \
@@ -215,16 +216,21 @@ add_hollow_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_x, double dpi_y)
     DecorationGeometry ans = {.height=fcm.cell_height};
     return ans;
 }
+
+// }}}
+
 typedef struct Range {
     uint start, end;
 } Range;
+
+typedef struct Limit { double upper, lower; } Limit;
 
 typedef struct Canvas {
     uint8_t *mask;
     uint width, height, supersample_factor;
     struct { double x, y; } dpi;
     Range *holes; uint holes_count, holes_capacity;
-    struct { double upper, lower; } *y_limits; uint y_limits_count, y_limits_capacity;
+    Limit *y_limits; uint y_limits_count, y_limits_capacity;
 } Canvas;
 
 static void
@@ -990,6 +996,61 @@ smooth_mosaic(Canvas *self, bool lower, double ax, double ay, double bx, double 
     }
 }
 
+static void
+half_triangle(Canvas *self, Edge which, bool inverted) {
+    uint mid_x = self->width / 2, mid_y = self->height / 2;
+    StraightLine u, l;
+    append_limit(self, 0, 0); // ensure space for limits
+#define set_limits(startx, endx, a, b) for (uint x = startx; x < endx; x++) self->y_limits[x] = (Limit){.upper=b, .lower=a};
+    switch (which) {
+        case LEFT_EDGE:
+            u = line_from_points(0, 0, mid_x, mid_y);
+            l = line_from_points(0, minus(self->height, 1), mid_x, mid_y);
+            set_limits(0, self->width, line_y(u, x), line_y(l, x));
+            break;
+        case TOP_EDGE:
+            l = line_from_points(0, 0, mid_x, mid_y);
+            set_limits(0, mid_x, 0, line_y(l, x));
+            l = line_from_points(mid_x, mid_y, minus(self->width, 1), 0);
+            set_limits(mid_x, self->width, 0, line_y(l, x));
+            break;
+        case RIGHT_EDGE:
+            u = line_from_points(mid_x, mid_y, minus(self->width, 1), 0);
+            l = line_from_points(mid_x, mid_y, minus(self->width, 1), minus(self->height, 1));
+            set_limits(0, self->width, line_y(u, x), line_y(l, x));
+            break;
+        case BOTTOM_EDGE:
+            l = line_from_points(0, minus(self->height, 1), mid_x, mid_y);
+            set_limits(0, mid_x, line_y(l, x), minus(self->height, 1));
+            l = line_from_points(mid_x, mid_y, minus(self->width, 1), minus(self->height, 1));
+            set_limits(mid_x, self->width, line_y(l, x), minus(self->height, 1));
+            break;
+    }
+    self->y_limits_count = self->width;
+    fill_region(self, inverted);
+#undef set_limits
+}
+
+static void
+mid_lines(Canvas *self, uint level, ...) {
+    uint mid_x = self->width / 2, mid_y = self->height / 2;
+    const uint th = thickness(self, level, true);
+    const Point l = {.x=0, .y=mid_y}, t={.x=mid_x, .y=0}, r={.x=minus(self->width, 1), .y=mid_y}, b={.x=mid_x, .y=minus(self->height, 1)};
+    va_list args; va_start(args, level);
+    Corner which;
+    while ((which = va_arg(args, int)) > 0) {
+        Point p1, p2;
+        switch(which) {
+            case TOP_LEFT: p1 = l; p2 = t; break;
+            case TOP_RIGHT: p1 = r; p2 = t; break;
+            case BOTTOM_LEFT: p1 = l; p2 = b; break;
+            case BOTTOM_RIGHT: p1 = r; p2 = b; break;
+        }
+        thick_line(self, th, p1, p2);
+    }
+    va_end(args);
+}
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
@@ -1220,6 +1281,51 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         S(L'🭥', smooth_mosaic, false, 0, 0, 1, 2. / 3);
         S(L'🭦', smooth_mosaic, false, 0.5, 0, 1, 1);
         S(L'🭧', smooth_mosaic, false, 0, 1. / 3, 1, 2. / 3);
+
+        S(L'🭨', half_triangle, LEFT_EDGE, true);
+        S(L'🭩', half_triangle, TOP_EDGE, true);
+        S(L'🭪', half_triangle, RIGHT_EDGE, true);
+        S(L'🭫', half_triangle, BOTTOM_EDGE, true);
+        S(L'🭬', half_triangle, LEFT_EDGE, false);
+        SS(L'🮛', half_triangle(c, LEFT_EDGE, false), half_triangle(c, RIGHT_EDGE, false));
+        S(L'🭭', half_triangle, TOP_EDGE, false);
+        S(L'🭮', half_triangle, RIGHT_EDGE, false);
+        S(L'🭯', half_triangle, BOTTOM_EDGE, false);
+        SS(L'🮚', half_triangle(c, BOTTOM_EDGE, false), half_triangle(c, TOP_EDGE, false));
+
+        CC(L'🭼', eight_bar(c, 0, false); eight_bar(c, 7, true));
+        CC(L'🭽', eight_bar(c, 0, false); eight_bar(c, 0, true));
+        CC(L'🭾', eight_bar(c, 7, false); eight_bar(c, 0, true));
+        CC(L'🭿', eight_bar(c, 7, false); eight_bar(c, 7, true));
+        CC(L'🮀', eight_bar(c, 0, true); eight_bar(c, 7, true));
+        CC(L'🮁', eight_bar(c, 0, true); eight_bar(c, 2, true); eight_bar(c, 4, true); eight_bar(c, 7, true));
+
+        C(L'🮂', eight_block, true, 0, 1, -1);
+        C(L'🮃', eight_block, true, 0, 1, 2, -1);
+        C(L'🮄', eight_block, true, 0, 1, 2, 3, 4, -1);
+        C(L'🮅', eight_block, true, 0, 1, 2, 3, 4, 5, -1);
+        C(L'🮆', eight_block, true, 0, 1, 2, 3, 4, 5, 6, -1);
+        C(L'🮇', eight_block, false, 6, 7, -1);
+        C(L'🮈', eight_block, false, 5, 6, 7, -1);
+        C(L'🮉', eight_block, false, 3, 4, 5, 6, 7, -1);
+        C(L'🮊', eight_block, false, 2, 3, 4, 5, 6, 7, -1);
+        C(L'🮋', eight_block, false, 1, 2, 3, 4, 5, 6, 7, -1);
+
+        S(L'🮠', mid_lines, 1, TOP_LEFT, 0);
+        S(L'🮡', mid_lines, 1, TOP_RIGHT, 0);
+        S(L'🮢', mid_lines, 1, BOTTOM_LEFT, 0);
+        S(L'🮣', mid_lines, 1, BOTTOM_RIGHT, 0);
+        S(L'🮤', mid_lines, 1, TOP_LEFT, BOTTOM_LEFT, 0);
+        S(L'🮥', mid_lines, 1, TOP_RIGHT, BOTTOM_RIGHT, 0);
+        S(L'🮦', mid_lines, 1, BOTTOM_RIGHT, BOTTOM_LEFT, 0);
+        S(L'🮧', mid_lines, 1, TOP_RIGHT, TOP_LEFT, 0);
+        S(L'🮨', mid_lines, 1, BOTTOM_RIGHT, TOP_LEFT, 0);
+        S(L'🮩', mid_lines, 1, BOTTOM_LEFT, TOP_RIGHT, 0);
+        S(L'🮪', mid_lines, 1, BOTTOM_LEFT, TOP_RIGHT, BOTTOM_RIGHT, 0);
+        S(L'🮫', mid_lines, 1, BOTTOM_LEFT, TOP_LEFT, BOTTOM_RIGHT, 0);
+        S(L'🮬', mid_lines, 1, TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, 0);
+        S(L'🮭', mid_lines, 1, TOP_RIGHT, TOP_LEFT, BOTTOM_LEFT, 0);
+        S(L'🮮', mid_lines, 1, TOP_RIGHT, BOTTOM_RIGHT, TOP_LEFT, BOTTOM_LEFT, 0);
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
