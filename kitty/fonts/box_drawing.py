@@ -54,13 +54,15 @@ def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int, s
 
 
 def half_hline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', extend_by: int = 0, ssf: int = 1) -> None:
-    x1, x2 = (0, extend_by + width // 2) if which == 'left' else (width // 2 - extend_by, width)
-    draw_hline(buf, width, height, x1, x2, height // 2, level, supersample_factor=ssf)
+    hw, hh = ssf * (width // 2 // ssf), ssf * (height // 2 // ssf)
+    x1, x2 = (0, extend_by + hw) if which == 'left' else (hw - extend_by, width)
+    draw_hline(buf, width, height, x1, x2, hh, level, supersample_factor=ssf)
 
 
 def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', extend_by: int = 0, ssf: int = 1) -> None:
-    y1, y2 = (0, height // 2 + extend_by) if which == 'top' else (height // 2 - extend_by, height)
-    draw_vline(buf, width, y1, y2, width // 2, level, supersample_factor=ssf)
+    hw, hh = ssf * (width // 2 // ssf), ssf * (height // 2 // ssf)
+    y1, y2 = (0, hh + extend_by) if which == 'top' else (hh - extend_by, height)
+    draw_vline(buf, width, y1, y2, hw, level, supersample_factor=ssf)
 
 
 def get_holes(sz: int, hole_sz: int, num: int) -> list[tuple[int, ...]]:

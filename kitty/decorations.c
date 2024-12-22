@@ -330,15 +330,26 @@ draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
     }
 }
 
+static uint
+half_width(Canvas *self) {  // align with non-supersampled co-ords
+    return self->supersample_factor * (self->width / 2 / self->supersample_factor);
+}
+
+static uint
+half_height(Canvas *self) { // align with non-supersampled co-ords
+    return self->supersample_factor * (self->height / 2 / self->supersample_factor);
+}
+
+
 static void
 half_hline(Canvas *self, uint level, bool right_half, uint extend_by) {
     uint x1, x2;
     if (right_half) {
-        x1 = minus(self->width / 2u, extend_by); x2 = self->width;
+        x1 = minus(half_width(self), extend_by); x2 = self->width;
     } else {
-        x1 = 0; x2 = self->width / 2 + extend_by;
+        x1 = 0; x2 = half_width(self) + extend_by;
     }
-    draw_hline(self, x1, x2, self->height / 2, level);
+    draw_hline(self, x1, x2, half_height(self), level);
 }
 
 typedef union Point {
@@ -388,11 +399,11 @@ static void
 half_vline(Canvas *self, uint level, bool bottom_half, uint extend_by) {
     uint y1, y2;
     if (bottom_half) {
-        y1 = minus(self->height / 2u, extend_by); y2 = self->height;
+        y1 = minus(half_height(self), extend_by); y2 = self->height;
     } else {
-        y1 = 0; y2 = self->height / 2 + extend_by;
+        y1 = 0; y2 = half_height(self) + extend_by;
     }
-    draw_vline(self, y1, y2, self->width / 2, level);
+    draw_vline(self, y1, y2, half_width(self), level);
 }
 
 static void
@@ -1144,8 +1155,7 @@ rectcircle(Canvas *self, Corner which) {
     double radius = self->width / 2.;
     uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
     Rectircle ans = {
-        .a = ((self->width / self->supersample_factor) / 2) * self->supersample_factor,
-        .b = ((self->height / self->supersample_factor) / 2) * self->supersample_factor,
+        .a = half_width(self), .b = half_height(self),
         .yexp = self->height / radius,
         .xexp = radius / self->width,
         .cell_width = self->width,
@@ -1161,6 +1171,18 @@ static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     Rectircle r = rectcircle(self, which);
     draw_parametrized_curve(self, level, r.x(r, t), r.y(r, t));
+}
+
+static void
+commit(Canvas *self, Edge lines, bool solid) {
+    static const uint level = 1; static const double scale = 0.9;
+    uint hw = half_width(self), hh = half_height(self);
+    if (lines & RIGHT_EDGE) draw_hline(self, hw, self->width, hh, level);
+    if (lines & LEFT_EDGE) draw_hline(self, 0, hw, hh, level);
+    if (lines & TOP_EDGE) draw_vline(self, 0, hh, hw, level);
+    if (lines & BOTTOM_EDGE) draw_vline(self, hh, self->height, hw, level);
+    draw_circle(self, scale, 0, false);
+    if (!solid) draw_circle(self, scale, thickness(self, level, true), true);
 }
 
 void
@@ -1471,6 +1493,25 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
         SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
         SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
+
+#define P(ch, lines) S(ch, commit, lines, true); S(ch+1, commit, lines, false);
+        P(L'', 0);
+        P(L'', RIGHT_EDGE);
+        P(L'', LEFT_EDGE);
+        P(L'', LEFT_EDGE | RIGHT_EDGE);
+        P(L'', BOTTOM_EDGE);
+        P(L'', TOP_EDGE);
+        P(L'', BOTTOM_EDGE | TOP_EDGE);
+        P(L'', RIGHT_EDGE | BOTTOM_EDGE);
+        P(L'', LEFT_EDGE | BOTTOM_EDGE);
+        P(L'', RIGHT_EDGE | TOP_EDGE);
+        P(L'', LEFT_EDGE | TOP_EDGE);
+        P(L'', TOP_EDGE | BOTTOM_EDGE | RIGHT_EDGE);
+        P(L'', TOP_EDGE | BOTTOM_EDGE | LEFT_EDGE);
+        P(L'', LEFT_EDGE | RIGHT_EDGE | BOTTOM_EDGE);
+        P(L'', LEFT_EDGE | RIGHT_EDGE | TOP_EDGE);
+        P(L'', LEFT_EDGE | RIGHT_EDGE | TOP_EDGE | BOTTOM_EDGE);
+#undef P
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
