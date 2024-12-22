@@ -1206,6 +1206,29 @@ cross(Canvas *self, uint which) {
     half_vline(self, m[2], false, 0); half_vline(self, m[3], true, 0);
 }
 
+static void
+vert_t(Canvas *self, uint base_char, uint variation) {
+    static const uint level_map[8][3] = {
+        {t, t, t}, {t, f, t}, {f, t, t}, {t, t, f}, {f, t, f}, {f, f, t}, {t, f, f}, {f, f, f}
+    };
+    const uint *m = level_map[variation];
+    half_vline(self, m[0], false, 0);
+    half_hline(self, m[1], base_char != L'┤', 0);
+    half_vline(self, m[2], true, 0);
+}
+
+static void
+horz_t(Canvas *self, uint base_char, uint variation) {
+    static const uint level_map[8][3] = {
+        {t, t, t}, {f, t, t}, {t, f, t}, {f, f, t}, {t, t, f}, {f, t, f}, {t, f, f}, {f, f, f}
+    };
+    const uint *m = level_map[variation];
+    half_hline(self, m[0], false, 0);
+    half_hline(self, m[1], true, 0);
+    half_vline(self, m[2], base_char != L'┴', 0);
+}
+
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
@@ -1542,7 +1565,11 @@ START_ALLOW_CASE_RANGE
         S(L'╰', rounded_corner, 1, BOTTOM_LEFT);
         S(L'╯', rounded_corner, 1, BOTTOM_RIGHT);
 
-        case L'┼' ... L'┼' + 15: cross(c, ch - L'┼');
+        case L'┼' ... L'┼' + 15: cross(c, ch - L'┼'); break;
+#define T(q, func) case q ... q + 7: func(c, q, ch - q); break;
+        T(L'├', vert_t); T(L'┤', vert_t);
+        T(L'┬', horz_t); T(L'┴', horz_t);
+#undef T
 
     }
     free(canvas.holes); free(canvas.y_limits);
