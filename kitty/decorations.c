@@ -1185,6 +1185,27 @@ commit(Canvas *self, Edge lines, bool solid) {
     if (!solid) draw_circle(self, scale, thickness(self, level, true), true);
 }
 
+// thin and fat line levels
+static const uint t = 1, f = 3;
+
+static void
+corner(Canvas *self, uint hlevel, uint vlevel, Corner which) {
+    half_hline(self, hlevel, which & RIGHT_EDGE, thickness(self, vlevel, true) / 2);
+    half_vline(self, vlevel, which & BOTTOM_EDGE, 0);
+}
+
+static void
+cross(Canvas *self, uint which) {
+    static const uint level_map[16][4] = {
+        {t, t, t, t}, {f, t, t, t}, {t, f, t, t}, {f, f, t, t}, {t, t, f, t}, {t, t, t, f}, {t, t, f, f},
+        {f, t, f, t}, {t, f, f, t}, {f, t, t, f}, {t, f, t, f}, {f, f, f, t}, {f, f, t, f}, {f, t, f, f},
+        {t, f, f, f}, {f, f, f, f}
+    };
+    const uint *m = level_map[which];
+    half_hline(self, m[0], false, 0); half_hline(self, m[1], true, 0);
+    half_vline(self, m[2], false, 0); half_vline(self, m[3], true, 0);
+}
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
@@ -1197,6 +1218,7 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
 #define SS(ch, ...) SB(ch, __VA_ARGS__); break
 #define C(ch, func, ...) CC(ch, func(c, __VA_ARGS__))
 #define S(ch, func, ...) SS(ch, func(c, __VA_ARGS__))
+START_ALLOW_CASE_RANGE
 
     switch(ch) {
         default: log_error("Unknown box drawing character: U+%x rendered as blank", ch); break;
@@ -1512,9 +1534,20 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         P(L'', LEFT_EDGE | RIGHT_EDGE | TOP_EDGE);
         P(L'', LEFT_EDGE | RIGHT_EDGE | TOP_EDGE | BOTTOM_EDGE);
 #undef P
+#define Q(ch, which) C(ch, corner, t, t, which); C(ch + 1, corner, f, t, which); C(ch + 2, corner, t, f, which); C(ch + 3, corner, f, f, which);
+        Q(L'┌', BOTTOM_RIGHT); Q(L'┐', BOTTOM_LEFT); Q(L'└', TOP_RIGHT); Q(L'┘', TOP_LEFT);
+#undef Q
+        S(L'╭', rounded_corner, 1, TOP_LEFT);
+        S(L'╮', rounded_corner, 1, TOP_RIGHT);
+        S(L'╰', rounded_corner, 1, BOTTOM_LEFT);
+        S(L'╯', rounded_corner, 1, BOTTOM_RIGHT);
+
+        case L'┼' ... L'┼' + 15: cross(c, ch - L'┼');
+
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
+END_ALLOW_CASE_RANGE
 #undef CC
 #undef SS
 #undef C
