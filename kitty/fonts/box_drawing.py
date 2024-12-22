@@ -53,14 +53,14 @@ def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int, s
             buf[x + y * width] = 255
 
 
-def half_hline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', extend_by: int = 0) -> None:
+def half_hline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', extend_by: int = 0, ssf: int = 1) -> None:
     x1, x2 = (0, extend_by + width // 2) if which == 'left' else (width // 2 - extend_by, width)
-    draw_hline(buf, width, height, x1, x2, height // 2, level)
+    draw_hline(buf, width, height, x1, x2, height // 2, level, supersample_factor=ssf)
 
 
-def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', extend_by: int = 0) -> None:
+def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', extend_by: int = 0, ssf: int = 1) -> None:
     y1, y2 = (0, height // 2 + extend_by) if which == 'top' else (height // 2 - extend_by, height)
-    draw_vline(buf, width, y1, y2, width // 2, level)
+    draw_vline(buf, width, y1, y2, width // 2, level, supersample_factor=ssf)
 
 
 def get_holes(sz: int, hole_sz: int, num: int) -> list[tuple[int, ...]]:
@@ -104,15 +104,20 @@ def add_vholes(buf: BufType, width: int, height: int, level: int = 1, num: int =
                 buf[x + width * y] = 0
 
 
-def hline(buf: BufType, width: int, height: int, level: int = 1) -> None:
-    half_hline(buf, width, height, level=level)
-    half_hline(buf, width, height, level=level, which='right')
+def hline(buf: BufType, width: int, height: int, level: int = 1, ssf: int = 1) -> None:
+    half_hline(buf, width, height, level=level, ssf=ssf)
+    half_hline(buf, width, height, level=level, which='right', ssf=ssf)
 
 
-def vline(buf: BufType, width: int, height: int, level: int = 1) -> None:
-    half_vline(buf, width, height, level=level)
-    half_vline(buf, width, height, level=level, which='bottom')
+def vline(buf: BufType, width: int, height: int, level: int = 1, ssf: int = 1) -> None:
+    half_vline(buf, width, height, level=level, ssf=ssf)
+    half_vline(buf, width, height, level=level, which='bottom', ssf=ssf)
 
+def svline(buf: BufType, width: int, height: int, level: int = 1) -> None:
+    vline(buf, width, height, level, getattr(buf, 'supersample_factor'))
+
+def shline(buf: BufType, width: int, height: int, level: int = 1) -> None:
+    hline(buf, width, height, level, getattr(buf, 'supersample_factor'))
 
 def hholes(buf: BufType, width: int, height: int, level: int = 1, num: int = 1) -> None:
     hline(buf, width, height, level=level)
@@ -178,8 +183,7 @@ class SSByteArray(bytearray):
     supersample_factor = 1
 
 
-def ss(buf: BufType, width: int, height: int, *funcs: Callable[..., None]) -> None:
-    supersample_factor = getattr(funcs[0], 'supersample_factor')
+def ss(buf: BufType, width: int, height: int, supersample_factor: int, *funcs: Callable[..., None]) -> None:
     w, h = supersample_factor * width, supersample_factor * height
     ssbuf = SSByteArray(w * h)
     ssbuf.supersample_factor = supersample_factor
@@ -366,20 +370,16 @@ def get_fading_lines(total_length: int, num: int = 1, fade: str = 'right') -> It
         d1 += step * dir
 
 
-@supersampled()
 def fading_hline(buf: SSByteArray, width: int, height: int, level: int = 1, num: int = 1, fade: str = 'right') -> None:
-    factor = buf.supersample_factor
-    y = (height // 2 // factor) * factor
+    y = height // 2
     for x1, x2 in get_fading_lines(width, num, fade):
-        draw_hline(buf, width, height, x1, x2, y, level, supersample_factor = factor)
+        draw_hline(buf, width, height, x1, x2, y, level)
 
 
-@supersampled()
 def fading_vline(buf: SSByteArray, width: int, height: int, level: int = 1, num: int = 1, fade: str = 'down') -> None:
-    factor = buf.supersample_factor
-    x = (width // 2 // factor) * factor
+    x = width // 2
     for y1, y2 in get_fading_lines(height, num, fade):
-        draw_vline(buf, width, y1, y2, x, level, supersample_factor = factor)
+        draw_vline(buf, width, y1, y2, x, level)
 
 
 ParameterizedFunc = Callable[[float], float]
@@ -1346,26 +1346,26 @@ box_chars: dict[str, list[Callable[[BufType, int, int], Any]]] = {
     '': [p(rounded_corner, which='╮')],
     '': [p(rounded_corner, which='╰')],
     '': [p(rounded_corner, which='╯')],
-    '': [vline, p(rounded_corner, which='╰')],
-    '': [vline, p(rounded_corner, which='╭')],
+    '': [svline, p(rounded_corner, which='╰')],
+    '': [svline, p(rounded_corner, which='╭')],
     '': [p(rounded_corner, which='╰'), p(rounded_corner, which='╭')],
-    '': [vline, p(rounded_corner, which='╯')],
-    '': [vline, p(rounded_corner, which='╮')],
+    '': [svline, p(rounded_corner, which='╯')],
+    '': [svline, p(rounded_corner, which='╮')],
     '': [p(rounded_corner, which='╮'), p(rounded_corner, which='╯')],
-    '': [hline, p(rounded_corner, which='╮')],
-    '': [hline, p(rounded_corner, which='╭')],
+    '': [shline, p(rounded_corner, which='╮')],
+    '': [shline, p(rounded_corner, which='╭')],
     '': [p(rounded_corner, which='╭'), p(rounded_corner, which='╮')],
-    '': [hline, p(rounded_corner, which='╯')],
-    '': [hline, p(rounded_corner, which='╰')],
+    '': [shline, p(rounded_corner, which='╯')],
+    '': [shline, p(rounded_corner, which='╰')],
     '': [p(rounded_corner, which='╰'), p(rounded_corner, which='╯')],
-    '': [vline, p(rounded_corner, which='╰'), p(rounded_corner, which='╯')],
-    '': [vline, p(rounded_corner, which='╭'), p(rounded_corner, which='╮')],
-    '': [hline, p(rounded_corner, which='╮'), p(rounded_corner, which='╯')],
-    '': [hline, p(rounded_corner, which='╰'), p(rounded_corner, which='╭')],
-    '': [vline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
-    '': [vline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
-    '': [hline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
-    '': [hline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
+    '': [svline, p(rounded_corner, which='╰'), p(rounded_corner, which='╯')],
+    '': [svline, p(rounded_corner, which='╭'), p(rounded_corner, which='╮')],
+    '': [shline, p(rounded_corner, which='╮'), p(rounded_corner, which='╯')],
+    '': [shline, p(rounded_corner, which='╰'), p(rounded_corner, which='╭')],
+    '': [svline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
+    '': [svline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
+    '': [shline, p(rounded_corner, which='╭'), p(rounded_corner, which='╯')],
+    '': [shline, p(rounded_corner, which='╮'), p(rounded_corner, which='╰')],
     '': [commit],
     '': [p(commit, solid=False)],
     '': [p(commit, lines=['right'])],
@@ -1445,8 +1445,13 @@ def render_box_char(ch: str, buf: BufType, width: int, height: int, dpi: float =
     global _dpi
     _dpi = dpi
     funcs = box_chars[ch]
-    if hasattr(funcs[0], 'supersample_factor'):
-        ss(buf, width, height, *funcs)
+    ssf = 0
+    for x in funcs:
+        if hasattr(x, 'supersample_factor'):
+            ssf = getattr(x, 'supersample_factor')
+            break
+    if ssf:
+        ss(buf, width, height, ssf, *funcs)
     else:
         for func in box_chars[ch]:
             func(buf, width, height)

@@ -1051,6 +1051,118 @@ mid_lines(Canvas *self, uint level, ...) {
     va_end(args);
 }
 
+static Point*
+get_fading_lines(uint total_length, uint num, Edge fade) {
+    uint step = total_length / num, d1 = 0; int dir = 1;
+    if (fade == LEFT_EDGE || fade == TOP_EDGE) { dir = -1; d1 = total_length; }
+    Point *ans = malloc(num * sizeof(Point));
+    if (!ans) fatal("Out of memory");
+    for (uint i = 0; i < num; i++) {
+        uint sz = step * (num - i) / (num + 1);
+        if (step > 2 && sz >= step - 1) sz = step - 2;
+        int d2 = d1 + dir * sz; if (d2 < 0) d2 = 0;
+        if (d1 <= (uint)d2) { ans[i].x = d1; ans[i].y = d2; }
+        else { ans[i].x = d2; ans[i].y = d1; }
+        d1 += step * dir;
+    }
+    return ans;
+}
+
+static void
+fading_hline(Canvas *self, uint level, uint num, Edge fade) {
+    uint y = self->height / 2;
+    RAII_ALLOC(Point, pts, get_fading_lines(self->width, num, fade));
+    for (uint i = 0; i < num; i++) {
+        uint x1 = pts[i].x, x2 = pts[i].y;
+        draw_hline(self, x1, x2, y, level);
+    }
+}
+
+static void
+fading_vline(Canvas *self, uint level, uint num, Edge fade) {
+    uint x = self->width / 2;
+    RAII_ALLOC(Point, pts, get_fading_lines(self->height, num, fade));
+    for (uint i = 0; i < num; i++) {
+        uint y1 = pts[i].x, y2 = pts[i].y;
+        draw_vline(self, y1, y2, x, level);
+    }
+}
+
+typedef struct Rectircle Rectircle;
+typedef double (*Rectircle_equation)(Rectircle r, double t);
+
+typedef struct Rectircle {
+    uint a, b;
+    double yexp, xexp, adjust_x;
+    uint cell_width;
+    Rectircle_equation x, y;
+} Rectircle;
+
+static double
+rectircle_lower_quadrant_y(Rectircle r, double t) {
+    return r.b * t; // 0 -> top of cell, 1 -> middle of cell
+}
+
+static double
+rectircle_upper_quadrant_y(Rectircle r, double t) {
+    return r.b * (2. - t); // 0 -> bottom of cell, 1 -> middle of cell
+}
+
+// x(t). To get this we first need |y(t)|/b. This is just t since as t goes
+// from 0 to 1 y goes from either 0 to b or 0 to -b
+
+static double
+rectircle_left_quadrant_x(Rectircle r, double t) {
+    double xterm = 1 - pow(t, r.yexp);
+    return floor(r.cell_width - fabs(r.a * pow(xterm, r.xexp)) - r.adjust_x);
+}
+
+static double
+rectircle_right_quadrant_x(Rectircle r, double t) {
+    double xterm = 1 - pow(t, r.yexp);
+    return ceil(fabs(r.a * pow(xterm, r.xexp)));
+}
+
+static Rectircle
+rectcircle(Canvas *self, Corner which) {
+    /*
+    Return two functions, x(t) and y(t) that map the parameter t which must be
+    in the range [0, 1] to x and y coordinates in the cell. The rectircle equation
+    we use is:
+
+    (|x| / a) ^ (2a / r) + (|y| / a) ^ (2b / r) = 1
+
+    where 2a = width, 2b = height and r is radius
+
+    The entire rectircle fits in four cells, each cell being one quadrant
+    of the full rectircle and the origin being the center of the rectircle.
+    The functions we return do the mapping for the specified cell.
+    ╭╮
+    ╰╯
+    See https://math.stackexchange.com/questions/1649714
+    */
+    double radius = self->width / 2.;
+    uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
+    Rectircle ans = {
+        .a = ((self->width / self->supersample_factor) / 2) * self->supersample_factor,
+        .b = ((self->height / self->supersample_factor) / 2) * self->supersample_factor,
+        .yexp = self->height / radius,
+        .xexp = radius / self->width,
+        .cell_width = self->width,
+        .adjust_x = cell_width_is_odd * self->supersample_factor,
+        .x = which & LEFT_EDGE ? rectircle_left_quadrant_x : rectircle_right_quadrant_x,
+        .y = which & TOP_EDGE ? rectircle_upper_quadrant_y : rectircle_lower_quadrant_y,
+    };
+
+    return ans;
+}
+
+static void
+rounded_corner(Canvas *self, uint level, Corner which) {
+    Rectircle r = rectcircle(self, which);
+    draw_parametrized_curve(self, level, r.x(r, t), r.y(r, t));
+}
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
@@ -1326,6 +1438,39 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
         S(L'🮬', mid_lines, 1, TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, 0);
         S(L'🮭', mid_lines, 1, TOP_RIGHT, TOP_LEFT, BOTTOM_LEFT, 0);
         S(L'🮮', mid_lines, 1, TOP_RIGHT, BOTTOM_RIGHT, TOP_LEFT, BOTTOM_LEFT, 0);
+
+        C(L'', hline, 1);
+        C(L'', vline, 1);
+        C(L'', fading_hline, 1, 4, RIGHT_EDGE);
+        C(L'', fading_hline, 1, 4, LEFT_EDGE);
+        C(L'', fading_vline, 1, 5, BOTTOM_EDGE);
+        C(L'', fading_vline, 1, 5, TOP_EDGE);
+
+        S(L'', rounded_corner, 1, TOP_LEFT);
+        S(L'', rounded_corner, 1, TOP_RIGHT);
+        S(L'', rounded_corner, 1, BOTTOM_LEFT);
+        S(L'', rounded_corner, 1, BOTTOM_RIGHT);
+
+        SS(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT));
+        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT));
+        SS(L'', rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, TOP_LEFT));
+        SS(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_RIGHT));
+        SS(L'', rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT));
+        SS(L'', rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, TOP_RIGHT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT));
+        SS(L'', rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, TOP_RIGHT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, TOP_LEFT));
+        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
