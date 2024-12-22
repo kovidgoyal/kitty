@@ -147,9 +147,13 @@ protocol
 
 .. _tool_matplotlib:
 
-`matplotlib <https://github.com/jktr/matplotlib-backend-kitty>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Show matplotlib plots directly in kitty
+matplotlib
+^^^^^^^^^^^^^^
+
+There exist multiple backends for matplotlib to draw images directly in kitty.
+
+* `matplotlib-backend-kitty <https://github.com/jktr/matplotlib-backend-kitty>`__
+* `kitcat <https://github.com/mil-ad/kitcat>`__
 
 .. _tool_KittyTerminalImage:
 
