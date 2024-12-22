@@ -10,7 +10,7 @@ import math
 from collections.abc import Iterable, Iterator, MutableSequence, Sequence
 from functools import lru_cache, partial
 from itertools import repeat
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal, Optional, Union
 
 scale = (0.001, 1., 1.5, 2.)
 _dpi = 96.0
@@ -206,7 +206,9 @@ def fill_region(buf: BufType, width: int, height: int, xlimits: Iterable[Iterabl
             buf[x + offset] = full if upper <= y <= lower else empty
 
 
-def line_equation(x1: int | float, y1: int | float, x2: int | float, y2: int | float) -> Callable[[int], float]:
+N = Union[int, float]
+
+def line_equation(x1: N, y1: N, x2: N, y2: N) -> Callable[[int], float]:
     m = (y2 - y1) / (x2 - x1)
     c = y1 - m * x1
 
