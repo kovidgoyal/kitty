@@ -97,6 +97,8 @@ Detailed list of changes
 
 - Add support for `escape code protocol <https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md>`__ for notifying applications on dark/light color scheme change
 
+- Cursor trails: Fix pure vertical movement sometimes not triggering a trail (:pull:`8152`)
+
 0.38.0 [2024-12-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
