@@ -1280,6 +1280,63 @@ dpip(Canvas *self, uint level, Edge which) {
     }
 }
 
+static void
+braille_dot(Canvas *self, uint col, uint row) {
+    static const uint num_x_dots = 2, num_y_dots = 4;
+    unsigned x_gaps[num_x_dots * 2], y_gaps[num_y_dots * 2];
+    unsigned dot_width = distribute_dots(self->width, num_x_dots, x_gaps, x_gaps + num_x_dots);
+    unsigned dot_height = distribute_dots(self->height, num_y_dots, y_gaps, y_gaps + num_y_dots);
+    uint x_start = x_gaps[col] + col * dot_width;
+    uint y_start = y_gaps[row] + row * dot_height;
+    if (y_start < self->height && x_start < self->width) {
+        for (uint y = y_start; y < min(self->height, y_start + dot_height); y++) {
+            uint offset = y * self->width;
+            memset(self->mask + offset + x_start, 255, minus(min(self->width, x_start + dot_width), x_start));
+        }
+    }
+}
+
+
+static void
+braille(Canvas *self, uint8_t which) {
+    if (!which) return;
+    for (uint8_t i = 0, mask = 1; i < 8; i++, mask <<= 1) {
+        if (which & mask) {
+            uint q = i + 1, col, row;
+            switch(q) { case 1: case 2: case 3: case 7: col = 0; break; default: col = 1; break; }
+            switch(q) { case 1: case 4: row = 0; break; case 2: case 5: row = 1; break; case 3: case 6: row = 2; break; default: row = 3; }
+            braille_dot(self, col, row);
+        }
+    }
+}
+
+static void
+draw_sextant(Canvas *self, uint row, uint col) {
+    Point start = {0}, end = {.x=self->width, .y = self->height};
+    switch(row) {
+        case 0: end.y = self->height / 3; break;
+        case 1: start.y = self->height / 3; end.y = 2 * self->height / 3; break;
+        case 2: start.y = 2 * self->height / 3; break;
+    }
+    switch(col) {
+        case 0: end.x = self->width / 2; break;
+        default: start.x = self->width / 2; break;
+    }
+    for (int r = start.y; r < end.y; r++) {
+        uint off = r * self->width;
+        memset(self->mask + off + start.x, 255, end.x - start.x);
+    }
+}
+
+static void
+sextant(Canvas *self, uint which) {
+#define add_row(q, r) if (q & 1) { draw_sextant(self, r, 0); } if (q & 2) { draw_sextant(self, r, 1); }
+    add_row(which % 4, 0)
+    add_row(which / 4, 1)
+    add_row(which / 16, 2)
+#undef add_row
+}
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
@@ -1637,6 +1694,13 @@ START_ALLOW_CASE_RANGE
         C(L'╢', dpip, 1, LEFT_EDGE);
         C(L'╤', dpip, 1, BOTTOM_EDGE);
         C(L'╧', dpip, 1, TOP_EDGE);
+
+        case 0x2800 ... 0x2800 + 255: braille(c, ch - 0x2800); break;
+        case 0x1fb00 ... 0x1fb00 + 19: sextant(c, ch - 0x1fb00 + 1); break;
+        case 0x1fb14 ... 0x1fb14 + 19: sextant(c, ch - 0x1fb00 + 2); break;
+        case 0x1fb28 ... 0x1fb28 + 19: sextant(c, ch - 0x1fb00 + 3); break;
+        case 0x1fb70 ... 0x1fb70 + 5: eight_bar(c, ch - 0x1fb6f, false); break;
+        case 0x1fb76 ... 0x1fb76 + 5: eight_bar(c, ch - 0x1fb75, true); break;
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
