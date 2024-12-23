@@ -57,6 +57,8 @@ Once that's done, the kitten sends kitty a signal to make it reload its config.
 Change color themes automatically when the OS switches between light and dark
 --------------------------------------------------------------------------------
 
+.. versionadded:: 0.38.0
+
 You can have kitty automatically change its color theme when the OS switches
 between dark, light and no-preference modes. In order to do this, run the theme
 kitten as normal and at the final screen select the option to save your chosen
