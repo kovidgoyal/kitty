@@ -315,7 +315,7 @@ draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
     uint start = minus(y, sz / 2);
     for (uint y = start; y < min(start + sz, self->height); y++) {
         uint8_t *py = self->mask + y * self->width;
-        memset(py + x1, 255, minus(x2, x1));
+        memset(py + x1, 255, minus(min(x2, self->width), x1));
     }
 }
 
@@ -324,7 +324,7 @@ draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
     // Draw a vertical line between [y1, y2) centered at x with the thickness given by level and self->supersample_factor
     uint sz = thickness(self, level, true);
     uint start = minus(x, sz / 2), end = min(start + sz, self->width), xsz = minus(end, start);
-    for (uint y = y1; y < y2; y++) {
+    for (uint y = y1; y < min(y2, self->height); y++) {
         uint8_t *py = self->mask + y * self->width;
         memset(py + start, 255, xsz);
     }
@@ -1228,6 +1228,57 @@ horz_t(Canvas *self, uint base_char, uint variation) {
     half_vline(self, m[2], base_char != L'┴', 0);
 }
 
+static void
+dvcorner(Canvas *self, uint level, Corner which) {
+    half_dhline(self, level, which & LEFT_EDGE, TOP_EDGE | BOTTOM_EDGE);
+    uint gap = thickness(self, level + 1, false);
+    half_vline(self, level, which & TOP_EDGE, gap / 2 + thickness(self, level, false));
+}
+
+static void
+dhcorner(Canvas *self, uint level, Corner which) {
+    half_dvline(self, level, which & TOP_EDGE, LEFT_EDGE | RIGHT_EDGE);
+    uint gap = thickness(self, level + 1, true);
+    half_hline(self, level, which & LEFT_EDGE, gap / 2 + thickness(self, level, true));
+}
+
+static void
+dcorner(Canvas *self, uint level, Corner which) {
+    uint hgap = thickness(self, level + 1, false);
+    uint vgap = thickness(self, level + 1, true);
+    uint x1 = self->width / 2, x2 = self->width / 2;
+    if (which & RIGHT_EDGE) x1 = 0; else x2 = self->width;
+    uint ypos = self->height / 2;
+    int ydelta = which & BOTTOM_EDGE ? hgap : -hgap;
+    if (which & RIGHT_EDGE) x2 += vgap; else x1 = minus(x1, vgap);
+    draw_hline(self, x1, x2, ypos + ydelta, level);
+    if (which & RIGHT_EDGE) x2 = minus(x2, 2 * vgap); else x1 += 2 * vgap;
+    draw_hline(self, x1, x2, ypos - ydelta, level);
+    uint y1 = self->height / 2, y2 = self->height / 2;
+    if (which & BOTTOM_EDGE) y1 = 0; else y2 = self->height;
+    uint xpos = self->width / 2;
+    int xdelta = (which & LEFT_EDGE) ? vgap : -vgap;
+    uint yd = thickness(self, level, true) / 2;
+    if (which & BOTTOM_EDGE) y2 += hgap + yd; else y1 -= hgap + yd;
+    draw_vline(self, y1, y2, xpos - xdelta, level);
+    if (which & BOTTOM_EDGE) y2 -= 2 * hgap; else y1 += 2 * hgap;
+    draw_vline(self, y1, y2, xpos + xdelta, level);
+}
+
+
+static void
+dpip(Canvas *self, uint level, Edge which) {
+    uint x1, x2, y1, y2;
+    if (which & (LEFT_EDGE | RIGHT_EDGE)) {
+        Point p = dvline(self, level, LEFT_EDGE | RIGHT_EDGE);
+        if (which & LEFT_EDGE) { x1 = 0; x2 = p.x; } else { x1 = p.y; x2 =self->width; }
+        draw_hline(self, x1, x2, self->height / 2, level);
+    } else {
+        Point p = dhline(self, level, TOP_EDGE | BOTTOM_EDGE);
+        if (which & TOP_EDGE) { y1 = 0; y2 = p.x; } else { y1 = p.y; y2 = self->height; }
+        draw_vline(self, y1, y2, self->width / 2, level);
+    }
+}
 
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
@@ -1570,7 +1621,22 @@ START_ALLOW_CASE_RANGE
         T(L'├', vert_t); T(L'┤', vert_t);
         T(L'┬', horz_t); T(L'┴', horz_t);
 #undef T
-
+        C(L'╒', dvcorner, 1, TOP_LEFT);
+        C(L'╕', dvcorner, 1, TOP_RIGHT);
+        C(L'╘', dvcorner, 1, BOTTOM_LEFT);
+        C(L'╛', dvcorner, 1, BOTTOM_RIGHT);
+        C(L'╓', dhcorner, 1, TOP_LEFT);
+        C(L'╖', dhcorner, 1, TOP_RIGHT);
+        C(L'╙', dhcorner, 1, BOTTOM_LEFT);
+        C(L'╜', dhcorner, 1, BOTTOM_RIGHT);
+        C(L'╔', dcorner, 1, TOP_LEFT);
+        C(L'╗', dcorner, 1, TOP_RIGHT);
+        C(L'╚', dcorner, 1, BOTTOM_LEFT);
+        C(L'╝', dcorner, 1, BOTTOM_RIGHT);
+        C(L'╟', dpip, 1, RIGHT_EDGE);
+        C(L'╢', dpip, 1, LEFT_EDGE);
+        C(L'╤', dpip, 1, BOTTOM_EDGE);
+        C(L'╧', dpip, 1, TOP_EDGE);
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
