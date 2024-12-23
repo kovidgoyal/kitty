@@ -5,7 +5,7 @@ import ctypes
 import os
 import sys
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, Union
 
 from kitty.constants import fonts_dir, is_macos
 from kitty.fast_data_types import (
@@ -22,7 +22,6 @@ from kitty.fast_data_types import (
     test_render_line,
     test_shape,
 )
-from kitty.fonts.box_drawing import BufType, render_box_char
 from kitty.options.types import Options, defaults
 from kitty.options.utils import parse_font_spec
 from kitty.types import _T
@@ -205,7 +204,7 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     ns = create_narrow_symbols(opts)
     num_symbol_fonts = len(current_faces) - before
     set_font_data(
-        render_box_drawing, descriptor_for_idx,
+        descriptor_for_idx,
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
         sm, sz, ns
     )
@@ -216,15 +215,6 @@ if TYPE_CHECKING:
 else:
     CBufType = None
 UnderlineCallback = Callable[[CBufType, int, int, int, int], None]
-
-
-def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> tuple[int, CBufType]:
-    CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-    buf = CharTexture()
-    render_box_char(
-        chr(codepoint), cast(BufType, buf), cell_width, cell_height, dpi
-    )
-    return ctypes.addressof(buf), buf
 
 
 class setup_for_testing:

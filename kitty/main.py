@@ -45,7 +45,6 @@ from .fast_data_types import (
     set_default_window_icon,
     set_options,
 )
-from .fonts.box_drawing import set_scale
 from .fonts.render import dump_font_debug, set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
@@ -253,7 +252,6 @@ class AppRunner:
         self.initial_window_size_func = initial_window_size_func
 
     def __call__(self, opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
-        set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
         if theme_colors.refresh():
             theme_colors.patch_opts(opts, args.debug_rendering)

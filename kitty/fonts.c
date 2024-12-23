@@ -769,7 +769,7 @@ START_ALLOW_CASE_RANGE
 END_ALLOW_CASE_RANGE
 }
 
-static PyObject* box_drawing_function = NULL, *descriptor_for_idx = NULL;
+static PyObject *descriptor_for_idx = NULL;
 
 void
 render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, const Region *src_rect, const Region *dest_rect, size_t src_stride, size_t dest_stride, pixel color_rgb) {
@@ -1912,12 +1912,12 @@ set_symbol_maps(SymbolMap **maps, size_t *num, const PyObject *sm) {
 static PyObject*
 set_font_data(PyObject UNUSED *m, PyObject *args) {
     PyObject *sm, *ns;
-    Py_CLEAR(box_drawing_function); Py_CLEAR(descriptor_for_idx);
-    if (!PyArg_ParseTuple(args, "OOIIIIO!dO!",
-                &box_drawing_function, &descriptor_for_idx,
+    Py_CLEAR(descriptor_for_idx);
+    if (!PyArg_ParseTuple(args, "OIIIIO!dO!",
+                &descriptor_for_idx,
                 &descriptor_indices.bold, &descriptor_indices.italic, &descriptor_indices.bi, &descriptor_indices.num_symbol_fonts,
                 &PyTuple_Type, &sm, &OPT(font_size), &PyTuple_Type, &ns)) return NULL;
-    Py_INCREF(box_drawing_function); Py_INCREF(descriptor_for_idx);
+    Py_INCREF(descriptor_for_idx);
     free_font_groups();
     clear_symbol_maps();
     set_symbol_maps(&symbol_maps, &num_symbol_maps, sm);
@@ -2030,7 +2030,6 @@ static void
 finalize(void) {
     Py_CLEAR(python_send_to_gpu_impl);
     clear_symbol_maps();
-    Py_CLEAR(box_drawing_function);
     Py_CLEAR(descriptor_for_idx);
     free_font_groups();
     free(ligature_types);

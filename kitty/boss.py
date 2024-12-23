@@ -2678,7 +2678,6 @@ class Boss:
             window.refresh()
 
     def apply_new_options(self, opts: Options) -> None:
-        from .fonts.box_drawing import set_scale
         bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in self.all_windows}
         # Update options storage
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
@@ -2686,7 +2685,6 @@ class Boss:
         set_layout_options(opts)
         set_default_env(opts.env.copy())
         # Update font data
-        set_scale(opts.box_drawing_scale)
         from .fonts.render import set_font_family
         set_font_family(opts)
         for os_window_id, tm in self.os_window_map.items():
