@@ -939,7 +939,7 @@ cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
 }
 
 static PyObject*
-cocoa_get_lang(PyObject UNUSED *self) {
+cocoa_get_lang(PyObject UNUSED *self, PyObject *args UNUSED) {
     @autoreleasepool {
     NSString* lang_code = [[NSLocale currentLocale] languageCode];
     NSString* country_code = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];

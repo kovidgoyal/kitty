@@ -42,14 +42,14 @@
 #include <xlocale.h>
 
 static PyObject*
-user_cache_dir(void) {
+user_cache_dir(PyObject *self UNUSED, PyObject *args UNUSED) {
     static char buf[1024];
     if (!confstr(_CS_DARWIN_USER_CACHE_DIR, buf, sizeof(buf) - 1)) return PyErr_SetFromErrno(PyExc_OSError);
     return PyUnicode_FromString(buf);
 }
 
 static PyObject*
-process_group_map(void) {
+process_group_map(PyObject *self UNUSED, PyObject *args UNUSED) {
     int num_of_processes = proc_listallpids(NULL, 0);
     size_t bufsize = sizeof(pid_t) * (num_of_processes + 1024);
     RAII_ALLOC(pid_t, buf, malloc(bufsize));

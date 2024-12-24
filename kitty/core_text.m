@@ -1035,7 +1035,7 @@ get_best_name(CTFace *self, PyObject *nameid) {
 }
 
 static PyObject*
-get_variation(CTFace *self) {
+get_variation(CTFace *self, PyObject *args UNUSED) {
     RAII_CoreFoundation(CFDictionaryRef, src, CTFontCopyVariation(self->ct_font));
     return variation_to_python(src);
 }
@@ -1062,7 +1062,7 @@ get_features(CTFace *self, PyObject *a UNUSED) {
 
 
 static PyObject*
-get_variable_data(CTFace *self) {
+get_variable_data(CTFace *self, PyObject *args UNUSED) {
     if (!ensure_name_table(self)) return NULL;
     RAII_PyObject(output, PyDict_New());
     if (!output) return NULL;
@@ -1078,7 +1078,7 @@ get_variable_data(CTFace *self) {
 }
 
 static PyObject*
-identify_for_debug(CTFace *self) {
+identify_for_debug(CTFace *self, PyObject *args UNUSED) {
     RAII_PyObject(features, PyTuple_New(self->font_features.count)); if (!features) return NULL;
     char buf[128];
     for (unsigned i = 0; i < self->font_features.count; i++) {
@@ -1095,13 +1095,13 @@ identify_for_debug(CTFace *self) {
 // Boilerplate {{{
 
 static PyObject*
-display_name(CTFace *self) {
+display_name(CTFace *self, PyObject *args UNUSED) {
     CFStringRef dn = CTFontCopyDisplayName(self->ct_font);
     return convert_cfstring(dn, true);
 }
 
 static PyObject*
-postscript_name(CTFace *self) {
+postscript_name(CTFace *self, PyObject *args UNUSED) {
     return self->postscript_name ? Py_BuildValue("O", self->postscript_name) : PyUnicode_FromString("");
 }
 
