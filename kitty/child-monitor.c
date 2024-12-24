@@ -751,12 +751,20 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 WD.screen->cursor_render_info.is_focused = os_window->is_focused;
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
-                if (OPT(cursor_trail) && update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
-                    needs_render = true;
-                    // A max wait of zero causes key input processing to be
-                    // slow so handle the case of OPT(repaint_delay) == 0, see https://github.com/kovidgoyal/kitty/pull/8066
-                    set_maximum_wait(MAX(OPT(repaint_delay), ms_to_monotonic_t(1ll)));
+                if (OPT(cursor_trail)) {
+                    if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
+                        needs_render = true;
+                        // A max wait of zero causes key input processing to be
+                        // slow so handle the case of OPT(repaint_delay) == 0, see https://github.com/kovidgoyal/kitty/pull/8066
+                        set_maximum_wait(MAX(OPT(repaint_delay), ms_to_monotonic_t(1ll)));
+                    } else if (OPT(cursor_trail) > now - WD.screen->cursor->position_changed_by_client_at) {
+                        // If update_cursor_trail failed due to time threshold, the trail animation
+                        // should be evaluated again shortly. Schedule next update when enough time
+                        // has passed since the cursor was last moved.
+                        set_maximum_wait(OPT(cursor_trail) - now + WD.screen->cursor->position_changed_by_client_at);
+                    }
                 }
+
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
