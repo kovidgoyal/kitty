@@ -2090,6 +2090,23 @@ static void
 handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, CellPixelSize cell) {
     if (self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);
     GraphicsCommand d;
+    if (!g->placement_id) {
+        // special case freeing of images with no refs by id or number as
+        // filter_refs doesnt handle this
+        Image *img = NULL;
+        switch(g->delete_action) {
+            case 'I': img = img_by_client_id(self, g->id); break;
+            case 'N': img = img_by_client_number(self, g->image_number); break;
+            case 'R': {
+                for (image_map_itr ii = vt_first(&self->images_by_internal_id); !vt_is_end(ii); ) {
+                    img = ii.data->val;
+                    if (id_range_filter_func(NULL, img, g, cell) && !vt_size(&img->refs_by_internal_id)) ii = remove_image_itr(self, ii);
+                    else ii = vt_next(ii);
+                }
+            } img = NULL; break;
+        }
+        if (img && !vt_size(&img->refs_by_internal_id)) remove_image(self, img);
+    }
     switch (g->delete_action) {
 #define I(u, data, func) filter_refs(self, data, g->delete_action == u, func, cell, false, true); *is_dirty = true; break
 #define D(l, u, data, func) case l: case u: I(u, data, func)

@@ -99,6 +99,8 @@ Detailed list of changes
 
 - Cursor trails: Fix pure vertical movement sometimes not triggering a trail and holding down a key in nvim causing the trail to be glitchy (:pull:`8152`, :pull:`8153`)
 
+- Graphics: Fix deletion of images by id not working for images with no placements
+
 0.38.0 [2024-12-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
