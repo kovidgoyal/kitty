@@ -2105,7 +2105,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
                 }
             } img = NULL; break;
         }
-        if (img && !vt_size(&img->refs_by_internal_id)) remove_image(self, img);
+        if (img && !vt_size(&img->refs_by_internal_id)) { remove_image(self, img); goto end; }
     }
     switch (g->delete_action) {
 #define I(u, data, func) filter_refs(self, data, g->delete_action == u, func, cell, false, true); *is_dirty = true; break
@@ -2153,6 +2153,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 #undef D
 #undef I
     }
+end:
     if (!vt_size(&self->images_by_internal_id) && self->render_data.count) self->render_data.count = 0;
 }
 
