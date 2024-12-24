@@ -354,7 +354,7 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
 static PyObject *notification_activated_callback = NULL;
 
 static PyObject*
-set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
+cocoa_set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_CLEAR(notification_activated_callback);
     if (callback != Py_None) notification_activated_callback = Py_NewRef(callback);
     Py_RETURN_NONE;
@@ -595,6 +595,7 @@ set_notification_categories(UNUserNotificationCenter *center, PyObject *categori
     [center setNotificationCategories:[NSSet setWithArray:ans]];
     return true;
 }
+
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
@@ -939,7 +940,7 @@ cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
 }
 
 static PyObject*
-cocoa_get_lang(PyObject UNUSED *self) {
+cocoa_get_lang(PyObject UNUSED *_self, PyObject UNUSED *_args) {
     @autoreleasepool {
     NSString* lang_code = [[NSLocale currentLocale] languageCode];
     NSString* country_code = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
@@ -1154,7 +1155,7 @@ render_emoji(NSString *text, unsigned image_size, const char *output_path) {
 
 
 static PyObject*
-bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autoreleasepool {
+cocoa_bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autoreleasepool {
     const char *b, *output_path = NULL; int image_type = 1; unsigned image_size = 256;
     static const char* kwlist[] = {"path_or_identifier", "output_path", "image_size", "image_type", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sIi", (char**)kwlist, &b, &output_path, &image_size, &image_type)) return NULL;
@@ -1187,25 +1188,25 @@ bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {@autor
 }}
 
 static PyObject*
-play_system_sound_by_id_async(PyObject *self UNUSED, PyObject *which) {
+cocoa_play_system_sound_by_id_async(PyObject *self UNUSED, PyObject *which) {
     if (!PyLong_Check(which)) { PyErr_SetString(PyExc_TypeError, "system sound id must be an integer"); return NULL; }
     AudioServicesPlaySystemSound(PyLong_AsUnsignedLong(which));
     Py_RETURN_NONE;
 }
 
 static PyMethodDef module_methods[] = {
-    {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
-    {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
-    {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
-    {"cocoa_send_notification", (PyCFunction)(void(*)(void))cocoa_send_notification, METH_VARARGS | METH_KEYWORDS, ""},
-    {"cocoa_remove_delivered_notification", (PyCFunction)cocoa_remove_delivered_notification, METH_O, ""},
-    {"cocoa_live_delivered_notifications", (PyCFunction)cocoa_live_delivered_notifications, METH_NOARGS, ""},
-    {"cocoa_set_notification_activated_callback", (PyCFunction)set_notification_activated_callback, METH_O, ""},
-    {"cocoa_set_url_handler", (PyCFunction)cocoa_set_url_handler, METH_VARARGS, ""},
-    {"cocoa_set_app_icon", (PyCFunction)cocoa_set_app_icon, METH_VARARGS, ""},
-    {"cocoa_set_dock_icon", (PyCFunction)cocoa_set_dock_icon, METH_VARARGS, ""},
-    {"cocoa_bundle_image_as_png", (PyCFunction)(void(*)(void))bundle_image_as_png, METH_VARARGS | METH_KEYWORDS, ""},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    METHODB(cocoa_play_system_sound_by_id_async, METH_O),
+    METHODB(cocoa_get_lang, METH_NOARGS),
+    METHODB(cocoa_set_global_shortcut, METH_VARARGS),
+    METHODKW(cocoa_send_notification, METH_VARARGS | METH_KEYWORDS),
+    METHODB(cocoa_remove_delivered_notification, METH_O),
+    METHODB(cocoa_live_delivered_notifications, METH_NOARGS),
+    METHODB(cocoa_set_notification_activated_callback, METH_O),
+    METHODB(cocoa_set_url_handler, METH_VARARGS),
+    METHODB(cocoa_set_app_icon,  METH_VARARGS),
+    METHODB(cocoa_set_dock_icon, METH_VARARGS),
+    METHODKW(cocoa_bundle_image_as_png,  METH_VARARGS | METH_KEYWORDS),
+    {NULL}  /* Sentinel */
 };
 
 bool

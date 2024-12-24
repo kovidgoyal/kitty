@@ -139,6 +139,23 @@ typedef struct ImageAnchorPosition {
 
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 #define METHODB(name, arg_type) {#name, (PyCFunction)name, arg_type, ""}
+#define METHODKW(name, arg_type) \
+    { \
+        #name, \
+        /* Suppress warnings for casting function types */ \
+        /* Handle Clang-specific warnings */ \
+        _Pragma("clang diagnostic push") \
+        _Pragma("clang diagnostic ignored \"-Wcast-function-type-mismatch\"") \
+        /* Handle GCC-specific warnings */ \
+        _Pragma("GCC diagnostic push") \
+        _Pragma("GCC diagnostic ignored \"-Wcast-function-type\"") \
+        (PyCFunction)(PyCFunctionWithKeywords)(name), \
+        /* Restore warnings after the cast */ \
+        _Pragma("clang diagnostic pop") \
+        _Pragma("GCC diagnostic pop") \
+        arg_type, \
+        "" \
+    }
 
 #define BOOL_GETSET(type, x) \
     static PyObject* x##_get(type *self, void UNUSED *closure) { PyObject *ans = self->x ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
