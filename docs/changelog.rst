@@ -93,13 +93,14 @@ Detailed list of changes
   all colors to default before applying the new theme so that even colors not
   specified in the theme are correct (:iss:`8124`)
 
-- Graphics: Fix deleted but not freed images without any references being incorrectly freed on a subsequent delete command (:disc:`8129`)
+- Graphics: Fix deleted but not freed images without any placements being incorrectly freed on a subsequent delete command (:disc:`8129`)
+
+- Graphics: Fix deletion of images by id not working for images with no placements (:disc:`8129`)
 
 - Add support for `escape code protocol <https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md>`__ for notifying applications on dark/light color scheme change
 
 - Cursor trails: Fix pure vertical movement sometimes not triggering a trail and holding down a key in nvim causing the trail to be glitchy (:pull:`8152`, :pull:`8153`)
 
-- Graphics: Fix deletion of images by id not working for images with no placements
 
 0.38.0 [2024-12-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
