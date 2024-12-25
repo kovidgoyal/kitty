@@ -103,6 +103,8 @@ Detailed list of changes
 
 - macOS: Fix mouse cursor shape not always being reset to text cursor when mouse re-enters kitty (:iss:`8155`)
 
+- clone-in-kitty: Fix :envvar:`KITTY_WINDOW_ID` being cloned and thus having incorrect value (:iss:`8161`)
+
 
 0.38.0 [2024-12-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

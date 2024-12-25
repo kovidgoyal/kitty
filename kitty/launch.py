@@ -912,6 +912,8 @@ class CloneCmd:
                     # skip SSH environment variables
                     'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
                     'SSH_TUNNEL', 'SSH_USER_AUTH', 'SSH_AUTH_SOCK',
+                    # Dont clone KITTY_WINDOW_ID
+                    'KITTY_WINDOW_ID',
                 } and not k.startswith((
                     # conda state env vars for multi-level virtual environments
                     'CONDA_PREFIX_',
