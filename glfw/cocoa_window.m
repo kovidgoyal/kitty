@@ -940,6 +940,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     (void)event;
     if (!window) return;
     _glfwInputCursorEnter(window, false);
+    [[NSCursor arrowCursor] set];
 }
 
 - (void)mouseEntered:(NSEvent *)event
@@ -947,6 +948,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     (void)event;
     if (!window) return;
     _glfwInputCursorEnter(window, true);
+    updateCursorImage(window);
 }
 
 - (void)viewDidChangeEffectiveAppearance
