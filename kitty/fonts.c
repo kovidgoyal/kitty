@@ -1041,7 +1041,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
     uint8_t *alpha_mask = NULL;
     ensure_canvas_can_fit(fg, num_glyphs + 1, rf.scale);
     if (num_glyphs == 1) {
-        render_box_char(ch, fg->canvas.alpha_mask, width, height, fg->logical_dpi_x, fg->logical_dpi_y);
+        render_box_char(ch, fg->canvas.alpha_mask, width, height, fg->logical_dpi_x, fg->logical_dpi_y, scale);
         alpha_mask = fg->canvas.alpha_mask;
     } else {
         alpha_mask = ((uint8_t*)fg->canvas.buf) + fg->canvas.size_in_bytes - (num_glyphs * width * height);
@@ -1049,7 +1049,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
         for (unsigned i = 0; i < num_glyphs; i++) {
             unsigned int ch = global_glyph_render_scratch.lc->chars[cnum++];
             while (!ch) ch = global_glyph_render_scratch.lc->chars[cnum++];
-            render_box_char(ch, fg->canvas.alpha_mask, width, height, fg->logical_dpi_x, fg->logical_dpi_y);
+            render_box_char(ch, fg->canvas.alpha_mask, width, height, fg->logical_dpi_x, fg->logical_dpi_y, scale);
             uint8_t *src = fg->canvas.alpha_mask;
             for (unsigned y = 0; y < height; y++) {
                 uint8_t *dest_row = alpha_mask + y*num_glyphs*width + i*width;
@@ -2303,11 +2303,11 @@ sprite_idx_to_pos(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 pyrender_box_char(PyObject *self UNUSED, PyObject *args) {
     unsigned int ch;
-    unsigned long width, height; double dpi_x = 96., dpi_y = 96.;
-    if (!PyArg_ParseTuple(args, "Ikk|dd", &ch, &width, &height, &dpi_x, &dpi_y)) return NULL;
+    unsigned long width, height; double dpi_x = 96., dpi_y = 96., scale = 1.;
+    if (!PyArg_ParseTuple(args, "Ikk|ddd", &ch, &width, &height, &scale, &dpi_x, &dpi_y)) return NULL;
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, width*16 * height*16));
     if (!ans) return NULL;
-    render_box_char(ch, (uint8_t*)PyBytes_AS_STRING(ans), width, height, dpi_x, dpi_y);
+    render_box_char(ch, (uint8_t*)PyBytes_AS_STRING(ans), width, height, dpi_x, dpi_y, scale);
     if (_PyBytes_Resize(&ans, width * height) != 0) return NULL;
     return Py_NewRef(ans);
 }

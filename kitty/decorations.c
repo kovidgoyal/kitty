@@ -229,6 +229,7 @@ typedef struct Canvas {
     uint8_t *mask;
     uint width, height, supersample_factor;
     struct { double x, y; } dpi;
+    double scale;  // used to scale line thickness with font size for multicell rendering
     Range *holes; uint holes_count, holes_capacity;
     Limit *y_limits; uint y_limits_count, y_limits_capacity;
 } Canvas;
@@ -255,7 +256,7 @@ thickness(Canvas *self, uint level, bool horizontal) {
     level = min(level, arraysz(OPT(box_drawing_scale)));
     double pts = OPT(box_drawing_scale)[level];
     double dpi = horizontal ? self->dpi.x : self->dpi.y;
-    return self->supersample_factor * (uint)ceil(pts * dpi / 72.0);
+    return (uint)ceil(self->supersample_factor * self->scale * pts * dpi / 72.0);
 }
 
 static uint
@@ -1338,8 +1339,8 @@ sextant(Canvas *self, uint which) {
 }
 
 void
-render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y) {
-    Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u}, ss = canvas;
+render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y, double scale) {
+    Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u, .scale=scale}, ss = canvas;
     ss.mask = buf + width*height; ss.supersample_factor = SUPERSAMPLE_FACTOR; ss.width *= SUPERSAMPLE_FACTOR; ss.height *= SUPERSAMPLE_FACTOR;
     fill_canvas(&canvas, 0);
     Canvas *c = &canvas;
