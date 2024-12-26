@@ -435,15 +435,24 @@ class Rendering(FontBaseTest):
 def test_chars(chars: str = '╌', sz: int = 128) -> None:
     # kitty +runpy "from kitty.fonts.box_drawing import test_chars; test_chars('XXX')"
     from kitty.fast_data_types import concat_cells, render_box_char, set_send_sprite_to_gpu
-
-    from .render import display_bitmap, setup_for_testing
+    from kitty.fonts.render import display_bitmap, setup_for_testing
     if not chars:
         import sys
         chars = sys.argv[-1]
+
+    def as_ord(x: str) -> int:
+        if x.lower().startswith('u+'):
+            return int(x[2:], 16)
+        return ord(x)
+
+    if '...' in chars:
+        start, end = chars.partition('...')[::2]
+        chars = ''.join(map(chr, range(as_ord(start), as_ord(end)+1)))
+
     with setup_for_testing('monospace', sz) as (_, width, height):
         try:
             for ch in chars:
-                nb = render_box_char(ord(ch), width, height)
+                nb = render_box_char(as_ord(ch), width, height)
                 rgb_data = concat_cells(width, height, False, (nb,))
                 display_bitmap(rgb_data, width, height)
                 print()
@@ -1188,3 +1197,5 @@ box_chars = {  # {{{
  '🮬',
  '🮭',
  '🮮'}  # }}}
+for ch in range(0x1cd00, 0x1cde5+1):  # octants
+    box_chars.add(chr(ch))

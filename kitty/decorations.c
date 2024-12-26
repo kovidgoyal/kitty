@@ -791,6 +791,30 @@ inner_corner(Canvas *self, uint level, Corner corner) {
 }
 
 static Range
+fourth_range(uint size, uint which) {
+    uint thickness = max(1, size / 4);
+    uint block = thickness * 4;
+    if (block == size) return (Range){.start=thickness * which, .end=thickness * (which + 1)};
+    if (block > size) {
+        uint start = min(which * thickness, minus(size, thickness));
+        return (Range){.start=start, .end=start + thickness};
+    }
+    uint extra = minus(size, block);
+    uint thicknesses[4] = {thickness, thickness, thickness, thickness};
+    uint pos = 0;
+    if (extra) {
+#define d(i) thicknesses[i]++; if (!--extra) goto done;
+        // ensures the thickness of first and last are least likely to be changed
+        d(1); d(2); d(3); d(0);
+#undef d
+    }
+done:
+    for (uint i = 0; i < which; i++) pos += thicknesses[i];
+    return (Range){.start=pos, .end=pos + thicknesses[which]};
+}
+
+
+static Range
 eight_range(uint size, uint which) {
     uint thickness = max(1, size / 8);
     uint block = thickness * 8;
@@ -827,6 +851,67 @@ eight_bar(Canvas *self, uint which, bool horizontal) {
         uint offset = y * self->width;
         memset(self->mask + offset + x_range.start, 255, minus(x_range.end, x_range.start));
     }
+}
+
+
+static void
+octant_segment(Canvas *self, uint8_t which, bool left) {
+    Range x_range = left ? (Range){0, self->width / 2} : (Range){self->width/2, self->width};
+    Range y_range = fourth_range(self->height, which);
+    for (uint y = y_range.start; y < y_range.end; y++) {
+        uint offset = y * self->width;
+        memset(self->mask + offset + x_range.start, 255, minus(x_range.end, x_range.start));
+    }
+}
+
+static void
+octant(Canvas *self, uint8_t which) {
+    enum flags { a = 1, b = 2, c = 4, d = 8, m = 16, n = 32, o = 64, p = 128 };
+    static const enum flags mapping[230] = {
+        // 00 - 0f
+        b,     b|m,   a|b|m, n,       a|n,   a|m|n,   b|n,     a|b|n,     b|m|n, c,   a|c, c|m,   a|c|m, a|b|c, b|c|m, a|b|c|m,
+        // 10 - 1f
+        c|n,   a|c|n, c|m|n, a|c|m|n, b|c|n, a|b|c|n, b|c|m|n, a|b|c|m|n, o,     a|o, m|o, a|m|o, b|o,   a|b|o, b|m|o, a|b|m|o,
+        // 20 - 2f
+        a|n|o, m|n|o, a|m|n|o, b|n|o, a|b|n|o, b|m|n|o, a|b|m|n|o, c|o, a|c|o, c|m|o, a|c|m|o, b|c|o, a|b|c|o, b|c|m|o, a|b|c|m|o, c|n|o,
+        // 30 - 3f
+        a|c|n|o, c|m|n|o, a|c|m|n|o, b|c|n|o, a|b|c|n|o, b|c|m|n|o, a|d, d|m, a|d|m, b|d, a|b|d, b|d|m, a|b|d|m, d|n, a|d|n, d|m|n,
+        // 40 - 4f
+        a|d|m|n, b|d|n, a|b|d|n, b|d|m|n, a|b|d|m|n, a|c|d, c|d|m, a|c|d|m, b|c|d, b|c|d|m, a|b|c|d|m, c|d|n, a|c|d|n, a|c|d|m|n, b|c|d|n, a|b|c|d|n,
+        // 50 - 5f
+        b|c|d|m|n, d|o, a|d|o, d|m|o, a|d|m|o, b|d|o, a|b|d|o, b|d|m|o, a|b|d|m|o, d|n|o, a|d|n|o, d|m|n|o, a|d|m|n|o, b|d|n|o, a|b|d|n|o, b|d|m|n|o,
+        // 60 - 6f
+        ~(c|p), c|d|o, a|c|d|o, c|d|m|o, a|c|d|m|o, b|c|d|o, ~(m|n|p), b|c|d|m|o, ~(n|p), c|d|n|o, a|c|d|n|o, c|d|m|n|o, ~(b|p), b|c|d|n|o, ~(m|p), ~(a|p),
+        // 70 - 7f
+        ~p, a|p, m|p, a|m|p, b|p, a|b|p, b|m|p, a|b|m|p, n|p, a|n|p, m|n|p, a|m|n|p, b|n|p, a|b|n|p, b|m|n|p, ~(c|d|o),
+        // 80 - 8f
+        c|p, a|c|p, c|m|p, a|c|m|p, b|c|p, a|b|c|p, b|c|m|p, ~(d|n|o), c|n|p, a|c|n|p, c|m|n|p, ~(b|d|o), b|c|n|p, ~(d|m|o), ~(a|d|o), ~(d|o),
+        // 90 - 9f
+        a|o|p, m|o|p, a|m|o|p, b|o|p, b|m|o|p, a|b|m|o|p, n|o|p, a|n|o|p, a|m|n|o|p, b|n|o|p, a|b|n|o|p, b|m|n|o|p, c|o|p, a|c|o|p, c|m|o|p, a|c|m|o|p,
+        // a0 - af
+        b|c|o|p, a|b|c|o|p, b|c|m|o|p, ~(n|d), c|n|o|p, a|c|n|o|p, c|m|n|o|p, ~(b|d), b|c|n|o|p, ~(d|m), ~(a|d), ~d, a|d|p, d|m|p, a|d|m|p, b|d|p,
+        // b0 - bf
+        a|b|d|p, b|d|m|p, a|b|d|m|p, d|n|p, a|d|n|p, d|m|n|p, a|d|m|n|p, b|d|n|p, a|b|d|n|p, b|d|m|n|p, ~(c|o), c|d|p, a|c|d|p, c|d|m|p, a|c|d|m|p, b|c|d|p,
+
+        // c0 -cf
+        a|b|c|d|p, b|c|d|m|p, ~(n|o), c|d|n|p, a|c|d|n|p, c|d|m|n|p, ~(b|o), b|c|d|n|p, ~(m|o), ~(a|o), ~o, d|o|p, a|d|o|p, d|m|o|p, a|d|m|o|p, b|d|o|p,
+
+        // d0 - df
+        a|b|d|o|p, b|d|m|o|p, ~(c|n), d|n|o|p, a|d|n|o|p, d|m|n|o|p, ~(b|c), b|d|n|o|p, ~(c|m), ~(a|c), ~c, a|c|d|o|p, c|d|m|o|p, ~(b|n), b|c|d|o|p, ~(a|n),
+        // e0 - e5
+        ~n, c|d|n|o|p, ~(b|m), ~b, ~m, ~a,
+
+    };
+    which = mapping[which];
+    if (which & a) octant_segment(self, 0, true);
+    if (which & b) octant_segment(self, 1, true);
+    if (which & c) octant_segment(self, 2, true);
+    if (which & d) octant_segment(self, 3, true);
+    if (which & m) octant_segment(self, 0, false);
+    if (which & n) octant_segment(self, 1, false);
+    if (which & o) octant_segment(self, 2, false);
+    if (which & p) octant_segment(self, 3, false);
+
 }
 
 static void
@@ -1702,6 +1787,7 @@ START_ALLOW_CASE_RANGE
         case 0x1fb28 ... 0x1fb28 + 19: sextant(c, ch - 0x1fb00 + 3); break;
         case 0x1fb70 ... 0x1fb70 + 5: eight_bar(c, ch - 0x1fb6f, false); break;
         case 0x1fb76 ... 0x1fb76 + 5: eight_bar(c, ch - 0x1fb75, true); break;
+        case 0x1cd00 ... 0x1cde5: octant(c, ch - 0x1cd00); true;
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);

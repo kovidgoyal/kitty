@@ -724,6 +724,7 @@ START_ALLOW_CASE_RANGE
         case 0xe0b0 ... 0xe0bf: case 0xe0d6 ... 0xe0d7:    // powerline box drawing
         case 0xee00 ... 0xee0b:    // fira code progress bar/spinner
         case 0x1fb00 ... 0x1fbae:  // symbols for legacy computing
+        case 0x1cd00 ... 0x1cde5:  // octants
         case 0xf5d0 ... 0xf60d:    // branch drawing characters
             if (allow_use_of_box_fonts) return BOX_FONT;
             /* fallthrough */
@@ -761,6 +762,8 @@ START_ALLOW_CASE_RANGE
             return 0xf00 + ch - 0x2800; // IDs from 0xf00 to 0xfff
         case 0x1fb00 ... 0x1fbae:
             return 0x1000 + ch - 0x1fb00; // IDs from 0x1000 to 0x10ae
+        case 0x1cd00 ... 0x1cde5:
+            return 0x1100 + ch - 0x1cd00; // IDs from 0x1100 to 0x11e5
         case 0xf5d0 ... 0xf60d:
             return 0x2000 + ch - 0xf5d0; // IDs from 0x2000 to 0x203d
         default:
