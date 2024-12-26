@@ -867,7 +867,7 @@ octant_segment(Canvas *self, uint8_t which, bool left) {
 static void
 octant(Canvas *self, uint8_t which) {
     enum flags { a = 1, b = 2, c = 4, d = 8, m = 16, n = 32, o = 64, p = 128 };
-    static const enum flags mapping[230] = {
+    static const enum flags mapping[232] = {
         // 00 - 0f
         b,     b|m,   a|b|m, n,       a|n,   a|m|n,   b|n,     a|b|n,     b|m|n, c,   a|c, c|m,   a|c|m, a|b|c, b|c|m, a|b|c|m,
         // 10 - 1f
@@ -898,8 +898,8 @@ octant(Canvas *self, uint8_t which) {
 
         // d0 - df
         a|b|d|o|p, b|d|m|o|p, ~(c|n), d|n|o|p, a|d|n|o|p, d|m|n|o|p, ~(b|c), b|d|n|o|p, ~(c|m), ~(a|c), ~c, a|c|d|o|p, c|d|m|o|p, ~(b|n), b|c|d|o|p, ~(a|n),
-        // e0 - e5
-        ~n, c|d|n|o|p, ~(b|m), ~b, ~m, ~a,
+        // e0 - e7
+        ~n, c|d|n|o|p, ~(b|m), ~b, ~m, ~a, b|c, n|o,
 
     };
     which = mapping[which];
@@ -1787,7 +1787,9 @@ START_ALLOW_CASE_RANGE
         case 0x1fb28 ... 0x1fb28 + 19: sextant(c, ch - 0x1fb00 + 3); break;
         case 0x1fb70 ... 0x1fb70 + 5: eight_bar(c, ch - 0x1fb6f, false); break;
         case 0x1fb76 ... 0x1fb76 + 5: eight_bar(c, ch - 0x1fb75, true); break;
-        case 0x1cd00 ... 0x1cde5: octant(c, ch - 0x1cd00); true;
+        case 0x1fbe6: octant(c, 0xe6); break;
+        case 0x1fbe7: octant(c, 0xe7); break;
+        case 0x1cd00 ... 0x1cde5: octant(c, ch - 0x1cd00); break;
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);

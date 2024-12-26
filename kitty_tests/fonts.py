@@ -1196,6 +1196,8 @@ box_chars = {  # {{{
  '🮫',
  '🮬',
  '🮭',
- '🮮'}  # }}}
+ '🮮',
+ '\U0001fbe6', '\U0001fbe7',
+ }  # }}}
 for ch in range(0x1cd00, 0x1cde5+1):  # octants
     box_chars.add(chr(ch))
