@@ -35,3 +35,4 @@ typedef struct {
 
 
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int, TextCache *tc);
+index_type historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line, index_type dest_y, Line *dest_line, bool continued);

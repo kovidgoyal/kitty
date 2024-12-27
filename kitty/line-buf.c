@@ -7,6 +7,8 @@
 
 #include "data-types.h"
 #include "lineops.h"
+#include "rewrap.h"
+
 #include <structmember.h>
 
 extern PyTypeObject Line_Type;
@@ -144,12 +146,17 @@ init_line(LineBuf *lb, Line *l, index_type ynum) {
 }
 
 void
+linebuf_init_line_at(LineBuf *self, index_type idx, Line *line) {
+    line->ynum = idx;
+    line->xnum = self->xnum;
+    line->attrs = self->line_attrs[idx];
+    line->attrs.is_continued = idx > 0 ? cpu_lineptr(self, self->line_map[idx - 1])[self->xnum - 1].next_char_was_wrapped : false;
+    init_line(self, line, self->line_map[idx]);
+}
+
+void
 linebuf_init_line(LineBuf *self, index_type idx) {
-    self->line->ynum = idx;
-    self->line->xnum = self->xnum;
-    self->line->attrs = self->line_attrs[idx];
-    self->line->attrs.is_continued = idx > 0 ? cpu_lineptr(self, self->line_map[idx - 1])[self->xnum - 1].next_char_was_wrapped : false;
-    init_line(self, self->line, self->line_map[idx]);
+    linebuf_init_line_at(self, idx, self->line);
 }
 
 void
@@ -584,8 +591,6 @@ copy_old(LineBuf *self, PyObject *y) {
     Py_RETURN_NONE;
 }
 
-#include "rewrap.h"
-
 static index_type
 restitch(Line *dest, index_type at, LineBuf *src, const index_type src_y, TrackCursor *cursors) {
     index_type y = src_y, num_of_lines_removed = 0, num_cells_removed_on_last_line = 0;
@@ -697,10 +702,9 @@ linebuf_rewrap(
     }
     *num_content_lines_before = first + 1;
     TrackCursor tcarr[3] = {{.x = *track_x, .y = *track_y }, {.x = *track_x2, .y = *track_y2}, {.is_sentinel = true}};
-    rewrap_inner(self, other, *num_content_lines_before, historybuf, (TrackCursor*)tcarr, as_ansi_buf);
+    *num_content_lines_after = 1 + linebuf_rewrap_inner(self, other, *num_content_lines_before, historybuf, (TrackCursor*)tcarr, as_ansi_buf);
     *track_x = tcarr[0].x; *track_y = tcarr[0].y;
     *track_x2 = tcarr[1].x; *track_y2 = tcarr[1].y;
-    *num_content_lines_after = other->line->ynum + 1;
     if (history_buf_last_line_is_split && historybuf) {
         historybuf_init_line(historybuf, 0, historybuf->line);
         index_type xlimit = xlimit_for_line(historybuf->line);

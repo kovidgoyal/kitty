@@ -8,6 +8,7 @@
 #include "wcswidth.h"
 #include "lineops.h"
 #include "charsets.h"
+#include "rewrap.h"
 #include <structmember.h>
 #include "../3rdparty/ringbuf/ringbuf.h"
 
@@ -278,9 +279,9 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
 }
 
 static index_type
-historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
+historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *line) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
-    init_line(self, idx, self->line);
+    init_line(self, idx, line);
     if (self->count == self->ynum) {
         pagerhist_push(self, as_ansi_buf);
         self->start_of_data = (self->start_of_data + 1) % self->ynum;
@@ -290,7 +291,7 @@ historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
 
 void
 historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
-    index_type idx = historybuf_push(self, as_ansi_buf);
+    index_type idx = historybuf_push(self, as_ansi_buf, self->line);
     copy_line(line, self->line);
     *attrptr(self, idx) = line->attrs;
 }
@@ -607,17 +608,12 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 }
 // }}}
 
-#define BufType HistoryBuf
-
-#define map_src_index(y) ((src->start_of_data + y) % src->ynum)
-
-#define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
-
-#define next_dest_line(cont) { history_buf_set_last_char_as_continuation(dest, 0, cont); LineAttrs *lap = attrptr(dest, historybuf_push(dest, as_ansi_buf)); *lap = src->line->attrs; }
-
-#define first_dest_line next_dest_line(false);
-
-#include "rewrap.h"
+index_type
+historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line, index_type dest_y, Line *dest_line, bool continued) {
+    history_buf_set_last_char_as_continuation(self, dest_y, continued);
+    *attrptr(self, historybuf_push(self, as_ansi_buf, dest_line)) = src_line->attrs;
+    return dest_y + 1;
+}
 
 void
 historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf) {
@@ -636,7 +632,7 @@ historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf) {
         other->pagerhist->rewrap_needed = true;
     other->count = 0; other->start_of_data = 0;
     if (self->count > 0) {
-        rewrap_inner(self, other, self->count, NULL, NULL, as_ansi_buf);
+        historybuf_rewrap_inner(self, other, self->count, as_ansi_buf);
         for (index_type i = 0; i < other->count; i++) attrptr(other, (other->start_of_data + i) % other->ynum)->has_dirty_text = true;
     }
 }

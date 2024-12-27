@@ -80,6 +80,7 @@ PyObject* unicode_in_range(const Line *self, const index_type start, const index
 PyObject* line_as_unicode(Line *, bool);
 
 void linebuf_init_line(LineBuf *, index_type);
+void linebuf_init_line_at(LineBuf *, index_type, Line*);
 void linebuf_init_cells(LineBuf *lb, index_type ynum, CPUCell **c, GPUCell **g);
 CPUCell* linebuf_cpu_cells_for_line(LineBuf *lb, index_type idx);
 void linebuf_clear(LineBuf *, char_type ch);
