@@ -57,6 +57,7 @@ Libraries:
 
 Other terminals that have implemented the graphics protocol:
 
+* `Ghostty <https://github.com/ghostty-org/ghostty/blob/a8e5eef11cc67f87f445626f9ca2993373774bf8/src/terminal/kitty/graphics.zig#L4>`_
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
 * `wayst <https://github.com/91861/wayst>`_
 * `WezTerm <https://github.com/wez/wezterm/issues/986>`_
