@@ -9,14 +9,10 @@
 
 #include "text-cache.h"
 
-// TODO: Test multiple OS windows with decorations also with changing font size and test on macOS and Linux for re-alloc
-// TODO: Test handling of calt ligatures with scale see is_group_calt_ligature()
 // TODO: Handle selection with multicell
 // TODO: URL detection with multicell
-// TODO: Wrapping of multicell draw commands
 // TODO: Handle rewrap and restitch of multiline chars
 // TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
-// TODO: Implement baseline align for box drawing
 
 typedef union CellAttrs {
     struct {

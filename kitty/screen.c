@@ -849,8 +849,7 @@ move_cursor_past_multicell(Screen *self, index_type required_width) {
             self->cursor->x++;
         }
         if (self->modes.mDECAWM || has_multiline_cells_in_span(cp, self->columns - required_width, required_width)) {
-            self->cursor->x = 0;
-            screen_index(self);
+            continue_to_next_line(self);
         } else {
             self->cursor->x = self->columns - required_width;
             if (cp[self->cursor->x].is_multicell) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, cp[self->cursor->x].x != 0);

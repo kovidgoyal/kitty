@@ -53,6 +53,7 @@ def test_multicell(self: TestMulticell) -> None:
         ae('vertical_align')
         ae('text')
         ae('natural_width')
+        ae('next_char_was_wrapped')
 
         if 'cursor' in assertions:
             self.ae(assertions['cursor'], (s.cursor.x, s.cursor.y), msg)
@@ -127,9 +128,13 @@ def test_multicell(self: TestMulticell) -> None:
 
     # Test wrapping
     s.reset()
+    s.draw('x' * (s.columns - 1))
+    multicell(s, 'a', scale=2)
+    ac(s.columns - 1, 0, is_multicell=False, text='', next_char_was_wrapped=True)
+    s.reset()
     multicell(s, 'a', scale=2)
     s.draw('x' * s.columns)
-    ac(s.cursor.x-1, s.cursor.y, is_multicell=False, text='x')
+    ac(s.cursor.x-1, s.cursor.y, is_multicell=False, text='x', next_char_was_wrapped=False)
     ac(0, 0, is_multicell=True, text='a')
     ac(0, 1, is_multicell=True, text='', y=1)
 
