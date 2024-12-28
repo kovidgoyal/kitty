@@ -303,17 +303,22 @@ copy_line_to(LineBuf *self, PyObject *args) {
 
 static void
 clear_line_(Line *l, index_type xnum) {
+#if BLANK_CHAR != 0
+#error This implementation is incorrect for BLANK_CHAR != 0
+#endif
     zero_at_ptr_count(l->cpu_cells, xnum);
     zero_at_ptr_count(l->gpu_cells, xnum);
-    if (BLANK_CHAR != 0) clear_chars_in_line(l->cpu_cells, l->gpu_cells, xnum, BLANK_CHAR);
     l->attrs.has_dirty_text = false;
 }
 
 void
 linebuf_clear_line(LineBuf *self, index_type y, bool clear_attrs) {
-    Line l;
-    init_line(self, &l, self->line_map[y]);
-    clear_line_(&l, self->xnum);
+#if BLANK_CHAR != 0
+#error This implementation is incorrect for BLANK_CHAR != 0
+#endif
+    index_type ym = self->line_map[y];
+    CPUCell *c = cpu_lineptr(self, ym); GPUCell *g = gpu_lineptr(self, ym);
+    zero_at_ptr_count(c, self->xnum); zero_at_ptr_count(g, self->xnum);
     if (clear_attrs) self->line_attrs[y].val = 0;
 }
 
@@ -336,7 +341,7 @@ linebuf_index(LineBuf* self, index_type top, index_type bottom) {
         self->line_attrs[i] = self->line_attrs[i + 1];
     }
     self->line_map[bottom] = old_top;
-    self->line_attrs[bottom]= old_attrs;
+    self->line_attrs[bottom] = old_attrs;
 }
 
 static PyObject*
