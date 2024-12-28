@@ -279,9 +279,8 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
 }
 
 static index_type
-historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *line) {
+historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
-    init_line(self, idx, line);
     if (self->count == self->ynum) {
         pagerhist_push(self, as_ansi_buf);
         self->start_of_data = (self->start_of_data + 1) % self->ynum;
@@ -291,7 +290,8 @@ historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *line) {
 
 void
 historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
-    index_type idx = historybuf_push(self, as_ansi_buf, self->line);
+    index_type idx = historybuf_push(self, as_ansi_buf);
+    init_line(self, idx, self->line);
     copy_line(line, self->line);
     *attrptr(self, idx) = line->attrs;
 }
@@ -611,7 +611,9 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 index_type
 historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line, index_type dest_y, Line *dest_line, bool continued) {
     history_buf_set_last_char_as_continuation(self, dest_y, continued);
-    *attrptr(self, historybuf_push(self, as_ansi_buf, dest_line)) = src_line->attrs;
+    index_type idx = historybuf_push(self, as_ansi_buf);
+    *attrptr(self, idx) = src_line->attrs;
+    init_line(self, idx, dest_line);
     return dest_y + 1;
 }
 

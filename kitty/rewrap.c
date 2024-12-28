@@ -96,7 +96,17 @@ static void
 init_line(TextCache *tc, index_type xnum, Line *l) {
     l->text_cache = tc;
     l->xnum = xnum;
+}
 
+static void
+next_dest_line(Rewrap *r, bool continued) {
+    r->dest_y = r->next_dest_line(r->dest_buf, r->historybuf, r->as_ansi_buf, &r->src, r->dest_y, &r->dest, continued);
+    r->dest_x = 0;
+}
+
+static void
+first_dest_line(Rewrap *r) {
+    r->dest_y = r->first_dest_line(r->dest_buf, r->as_ansi_buf, &r->src, &r->dest);
 }
 
 static index_type
@@ -110,13 +120,8 @@ rewrap_inner(Rewrap r) {
         r.init_line(r.src_buf, r.src_y, &r.src);
         r.src_x_limit = r.src.xnum;
         if (!src_line_is_continued) {
-            r.dest_x = 0;
-            if (is_first_line) {
-                is_first_line = false;
-                r.dest_y = r.first_dest_line(r.dest_buf, r.as_ansi_buf, &r.src, &r.dest);
-            } else {
-                r.dest_y = r.next_dest_line(r.dest_buf, r.historybuf, r.as_ansi_buf, &r.src, r.dest_y, &r.dest, false);
-            }
+            if (is_first_line) { is_first_line = false; first_dest_line(&r); }
+            else next_dest_line(&r, false);
         }
         src_line_is_continued = r.src.cpu_cells[r.src.xnum-1].next_char_was_wrapped;
         if (!src_line_is_continued) {
@@ -130,10 +135,7 @@ rewrap_inner(Rewrap r) {
                 if (t->is_tracked_line && t->x >= r.src_x_limit) t->x = MAX(1u, r.src_x_limit) - 1;
             }
             while (r.src_x < r.src_x_limit) {
-                if (r.dest_x >= r.dest.xnum) {
-                    r.dest_x = 0;
-                    r.dest_y = r.next_dest_line(r.dest_buf, r.historybuf, r.as_ansi_buf, &r.src, r.dest_y, &r.dest, true);
-                }
+                if (r.dest_x >= r.dest.xnum) next_dest_line(&r, true);
                 index_type num = MIN(r.src.xnum - r.src_x, r.dest.xnum - r.dest_x);
                 copy_range(&r.src, r.src_x, &r.dest, r.dest_x, num);
                 for (TrackCursor *t = r.cursors; !t->is_sentinel; t++) {
