@@ -305,13 +305,6 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
     return true;
 }
 
-static void
-history_buf_set_last_char_as_continuation(HistoryBuf *self, index_type y, bool wrapped) {
-    if (self->count > 0) {
-        cpu_lineptr(self, index_of(self, y))[self->xnum-1].next_char_was_wrapped = wrapped;
-    }
-}
-
 static PyObject*
 line(HistoryBuf *self, PyObject *val) {
 #define line_doc "Return the line with line number val. This buffer grows upwards, i.e. 0 is the most recently added line"
@@ -608,9 +601,16 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 }
 // }}}
 
+static void
+history_buf_set_last_char_as_continuation(HistoryBuf *self, index_type y, bool wrapped) {
+    if (self->count > 0) {
+        cpu_lineptr(self, index_of(self, y))[self->xnum-1].next_char_was_wrapped = wrapped;
+    }
+}
+
 index_type
 historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line, index_type dest_y, Line *dest_line, bool continued) {
-    history_buf_set_last_char_as_continuation(self, dest_y, continued);
+    history_buf_set_last_char_as_continuation(self, 0, continued);
     index_type idx = historybuf_push(self, as_ansi_buf);
     *attrptr(self, idx) = src_line->attrs;
     init_line(self, idx, dest_line);

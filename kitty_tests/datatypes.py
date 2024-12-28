@@ -486,6 +486,18 @@ class TestDataTypes(BaseTest):
             self.ae(str(hb.line(i)).rstrip(), str(3000 - 1 - i))
 
         # rewrap
+        def as_ansi(hb):
+            lines = []
+            hb.as_ansi(lines.append)
+            return ''.join(lines)
+        hb = filled_history_buf(5, 5)
+        for i in range(hb.ynum):
+            hb.line(i).set_wrapped_flag(True)
+        hb2 = HistoryBuf(3, 10)
+        before = as_ansi(hb)
+        hb.rewrap(hb2)
+        self.ae(before, as_ansi(hb2).rstrip())
+
         hb = filled_history_buf(5, 5)
         hb2 = HistoryBuf(hb.ynum, hb.xnum)
         hb.rewrap(hb2)

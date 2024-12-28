@@ -547,6 +547,12 @@ last_char_has_wrapped_flag(Line* self, PyObject *a UNUSED) {
 }
 
 static PyObject*
+set_wrapped_flag(Line* self, PyObject *is_wrapped) {
+    self->cpu_cells[self->xnum-1].next_char_was_wrapped = PyObject_IsTrue(is_wrapped);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 __repr__(Line* self) {
     PyObject *s = line_as_unicode(self, false);
     if (s == NULL) return NULL;
@@ -1028,6 +1034,7 @@ static PyMethodDef methods[] = {
     METHOD(set_attribute, METH_VARARGS)
     METHOD(as_ansi, METH_NOARGS)
     METHOD(last_char_has_wrapped_flag, METH_NOARGS)
+    METHODB(set_wrapped_flag, METH_O),
     METHOD(hyperlink_ids, METH_NOARGS)
     METHOD(width, METH_O)
     METHOD(url_start_at, METH_O)
