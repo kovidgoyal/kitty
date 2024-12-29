@@ -128,10 +128,8 @@ init_src_line(Rewrap *r) {
     bool newline_needed = !r->prev_src_line_ended_with_wrap;
     r->init_line(r->src_buf, r->src_y, &r->src);
     r->src_x_limit = r->src_xnum;
-    if (!r->src.cpu_cells[r->src_xnum-1].next_char_was_wrapped) {
-        // Trim trailing blanks since there is a hard line break at the end of this line
-        while(r->src_x_limit && r->src.cpu_cells[r->src_x_limit - 1].ch_and_idx == BLANK_CHAR) r->src_x_limit--;
-    }
+    // Trim trailing blanks
+    while(r->src_x_limit && r->src.cpu_cells[r->src_x_limit - 1].ch_and_idx == BLANK_CHAR) r->src_x_limit--;
     r->prev_src_line_ended_with_wrap = r->src.cpu_cells[r->src_xnum - 1].next_char_was_wrapped;
     r->src.cpu_cells[r->src_xnum - 1].next_char_was_wrapped = false;
     r->src_x = 0;

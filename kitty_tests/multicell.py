@@ -486,10 +486,29 @@ def test_multicell(self: TestMulticell) -> None:
     self.ae('\x1b[maaa\x1b[ma😛\x1b[mbb', as_ansi().rstrip()) # ]]]]]]]
 
     reset()
-    multicell(s, 'a', scale=3)
-    s.draw('b'*(s.columns-3))
+    multicell(s, 'a', scale=3), s.draw('b'*(s.columns-3))
     s.resize(s.lines, s.columns-1)
     self.ae('\x1b[m\x1b]66;w=1:s=3;a\x07bb\x1b[mb', as_ansi().rstrip())  # ]]
     ac(0, 0, is_multicell=True)
     ac(0, 1, is_multicell=True)
     ac(3, 1, is_multicell=False, text='b')
+    reset()
+    s.draw('X'), multicell(s, 'a', scale=3), s.draw('12345')
+    s.resize(s.lines, s.columns-1)
+    self.ae('\x1b[mX\x1b]66;w=1:s=3;a\x071\x1b[m23\x1b[m45', as_ansi().rstrip())  # ]]
+    for y in (0, 1):
+        ac(0, y, is_multicell=False), ac(1, y, is_multicell=True), ac(3, y, is_multicell=True)
+    ac(0, 1, is_multicell=False, text='2'), ac(4, 1, is_multicell=False, text='3')
+
+    reset()
+    s.draw('a'*(s.columns - 1)), s.draw('😛'), s.draw('bcd')
+    s.resize(s.lines, s.columns + 1)
+    self.ae('\x1b[maaaaa😛\x1b[mbcd', as_ansi().rstrip()) # ]]]]]]]
+
+    reset()
+    s.draw('a'*s.columns), s.draw('😛'), s.draw('bcd')
+    s.resize(s.lines, s.columns + 1)
+    self.ae('\x1b[maaaaaa\x1b[m😛bcd', as_ansi().rstrip()) # ]]]]]]]
+    ac(s.columns-1, 0, next_char_was_wrapped=True)
+    s.resize(s.lines, s.columns + 1)
+    self.ae('\x1b[maaaaaa😛\x1b[mbcd', as_ansi().rstrip()) # ]]]]]]]
