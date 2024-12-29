@@ -10,8 +10,9 @@
 #include "history.h"
 
 typedef struct TrackCursor {
-    index_type x, y;
-    bool is_tracked_line, is_sentinel;
+    const index_type x, y;
+    index_type dest_x, dest_y;
+    bool is_sentinel;
 } TrackCursor;
 
 

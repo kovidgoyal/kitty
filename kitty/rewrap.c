@@ -79,7 +79,7 @@ typedef struct Rewrap {
     TrackCursor *cursors;
     index_type src_limit;
 
-    Line src, dest;
+    Line src, dest, src_scratch, dest_scratch;
     index_type src_y, src_x, dest_x, dest_y, num, src_x_limit;
     init_line_func_t init_line;
     first_dest_line_func_t first_dest_line;
@@ -135,42 +135,119 @@ init_src_line(Rewrap *r) {
     r->prev_src_line_ended_with_wrap = r->src.cpu_cells[r->src_xnum - 1].next_char_was_wrapped;
     r->src.cpu_cells[r->src_xnum - 1].next_char_was_wrapped = false;
     r->src_x = 0;
-    for (TrackCursor *t = r->cursors; !t->is_sentinel; t++) {
-        if (r->src_y == t->y) {
-            t->is_tracked_line = true;
-            if (t->x >= r->src_x_limit) t->x = MAX(1u, r->src_x_limit) - 1;
-        } else t->is_tracked_line = false;
+    r->current_src_line_has_multline_cells = false;
+    for (index_type i = 0; i < r->src_x_limit; i++) if (r->src.cpu_cells[i].is_multicell && r->src.cpu_cells[i].scale > 1) {
+        r->current_src_line_has_multline_cells = true;
+        break;
     }
     return newline_needed;
 }
 
-static index_type
-rewrap_inner(Rewrap r) {
-    setup_line(r.text_cache, r.src_xnum, &r.src); setup_line(r.text_cache, r.dest_xnum, &r.dest);
-    static TrackCursor tc_end = {.is_sentinel = true };
-    if (!r.cursors) r.cursors = &tc_end;
-    r.scratch = alloc_linebuf(SCALE_BITS << 1, r.dest_xnum, r.text_cache);
-    if (!r.scratch) fatal("Out of memory");
-    RAII_PyObject(scratch, (PyObject*)r.scratch);
-    for (; r.src_y < r.src_limit; r.src_y++) {
-        if (init_src_line(&r)) {
-            if (r.src_y) next_dest_line(&r, false);
-            else first_dest_line(&r);
-        }
-        while (r.src_x < r.src_x_limit) {
-            if (r.dest_x >= r.dest_xnum) next_dest_line(&r, true);
-            index_type num = MIN(r.src.xnum - r.src_x, r.dest_xnum - r.dest_x);
-            copy_range(&r.src, r.src_x, &r.dest, r.dest_x, num);
-            for (TrackCursor *t = r.cursors; !t->is_sentinel; t++) {
-                if (t->is_tracked_line && r.src_x <= t->x && t->x < r.src_x + num) {
-                    t->y = r.dest_y;
-                    t->x = r.dest_x + (t->x - r.src_x + (t->x > 0));
-                }
-            }
-            r.src_x += num; r.dest_x += num;
+static void
+update_tracked_cursors(Rewrap *r, index_type num_cells, index_type y, index_type x_limit) {
+    for (TrackCursor *t = r->cursors; !t->is_sentinel; t++) {
+        if (t->y == y && r->src_x <= t->x && (t->x < r->src_x + num_cells || t->x >= x_limit)) {
+            index_type x = t->x;
+            if (x >= x_limit) x = MAX(1u, x_limit) - 1;
+            t->dest_y = r->dest_y;
+            t->dest_x = r->dest_x + (x - r->src_x + (x > 0));
         }
     }
-    return r.dest_y;
+}
+
+static void
+fast_copy_src_to_dest(Rewrap *r) {
+    CPUCell *c; index_type mc_width;
+    while (r->src_x < r->src_x_limit) {
+        if (r->dest_x >= r->dest_xnum) next_dest_line(r, true);
+        index_type num = MIN(r->src_x_limit - r->src_x, r->dest_xnum - r->dest_x);
+        bool do_copy = true;
+        if (num && (c = &r->src.cpu_cells[r->src_x + num - 1])->is_multicell && c->x != (mc_width = mcd_x_limit(c)) - 1) {
+            // we have a split multicell at the right edge of the copy region
+            if (num > mc_width) num -= mc_width;
+            else {
+                if (mc_width > r->dest_xnum) do_copy = false;
+                else {
+                    r->dest_x = r->dest_xnum;
+                    continue;
+                }
+            }
+        }
+        if (do_copy) copy_range(&r->src, r->src_x, &r->dest, r->dest_x, num);
+        update_tracked_cursors(r, num, r->src_y, r->src_x_limit);
+        r->src_x += num; r->dest_x += num;
+    }
+}
+
+static bool
+find_space_in_dest_line(Rewrap *r, index_type num_cells) {
+    while (r->dest_x + num_cells <= r->dest_xnum) {
+        index_type before = r->dest_x;
+        for (index_type x = r->dest_x; x < r->dest_x + num_cells; x++) {
+            if (r->dest.cpu_cells[x].is_multicell) {
+                r->dest_x = x + mcd_x_limit(r->dest.cpu_cells + x);
+                break;
+            }
+        }
+        if (before == r->dest_x) return true;
+    }
+    return false;
+}
+
+static void
+find_space_in_dest(Rewrap *r, index_type num_cells) {
+    while (!find_space_in_dest_line(r, num_cells)) next_dest_line(r, true);
+}
+
+static void
+copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
+    for (index_type i = 1; i < src_cell->scale; i++) {
+        r->init_line(r->src_buf, r->src_y + i, &r->src_scratch);
+        linebuf_init_line_at(r->scratch, i - 1, &r->dest_scratch);
+        linebuf_mark_line_dirty(r->scratch, i - 1);
+        copy_range(&r->src_scratch, r->src_x, &r->dest_scratch, r->dest_x, mc_width);
+        update_tracked_cursors(r, mc_width, r->src_y + i, r->src_xnum + 10000 /* ensure cursor is moved only if in region being copied */);
+    }
+}
+
+static void
+multiline_copy_src_to_dest(Rewrap *r) {
+    CPUCell *c; index_type mc_width;
+    while (r->src_x < r->src_x_limit) {
+        c = &r->src.cpu_cells[r->src_x];
+        if (c->is_multicell) {
+            mc_width = mcd_x_limit(c);
+            if (c->y || mc_width > r->dest_xnum) {
+                update_tracked_cursors(r, mc_width, r->src_y, r->src_x_limit);
+                r->src_x += mc_width;
+                continue;
+            }
+        } else mc_width = 1;
+        find_space_in_dest(r, mc_width);
+        copy_range(&r->src, r->src_x, &r->dest, r->dest_x, mc_width);
+        update_tracked_cursors(r, mc_width, r->src_y, r->src_x_limit);
+        if (c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
+        r->src_x += mc_width; r->dest_x += mc_width;
+    }
+}
+
+static index_type
+rewrap_inner(Rewrap *r) {
+    setup_line(r->text_cache, r->src_xnum, &r->src); setup_line(r->text_cache, r->dest_xnum, &r->dest);
+    setup_line(r->text_cache, r->src_xnum, &r->src_scratch); setup_line(r->text_cache, r->dest_xnum, &r->dest_scratch);
+
+    r->scratch = alloc_linebuf(SCALE_BITS << 1, r->dest_xnum, r->text_cache);
+    if (!r->scratch) fatal("Out of memory");
+    RAII_PyObject(scratch, (PyObject*)r->scratch); (void)scratch;
+    for (; r->src_y < r->src_limit; r->src_y++) {
+        if (init_src_line(r)) {
+            if (r->src_y) next_dest_line(r, false);
+            else first_dest_line(r);
+        }
+        if (r->current_src_line_has_multline_cells || r->current_dest_line_has_multiline_cells) multiline_copy_src_to_dest(r);
+        else fast_copy_src_to_dest(r);
+    }
+    return r->dest_y;
 }
 
 index_type
@@ -181,16 +258,17 @@ linebuf_rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, Hi
 
         .init_line = LineBuf_init_line, .next_dest_line = LineBuf_next_dest_line, .first_dest_line = LineBuf_first_dest_line,
     };
-    return rewrap_inner(r);
+    return rewrap_inner(&r);
 }
 
 index_type
 historybuf_rewrap_inner(HistoryBuf *src, HistoryBuf *dest, const index_type src_limit, ANSIBuf *as_ansi_buf) {
+    static TrackCursor t = {.is_sentinel = true };
     Rewrap r = {
         .src_buf = src, .dest_buf = dest, .as_ansi_buf = as_ansi_buf, .text_cache = src->text_cache,
-        .src_limit = src_limit, .src_xnum = src->xnum, .dest_xnum = dest->xnum,
+        .src_limit = src_limit, .src_xnum = src->xnum, .dest_xnum = dest->xnum, .cursors=&t,
 
         .init_line = HistoryBuf_init_line, .next_dest_line = HistoryBuf_next_dest_line, .first_dest_line = HistoryBuf_first_dest_line,
     };
-    return rewrap_inner(r);
+    return rewrap_inner(&r);
 }

@@ -650,12 +650,12 @@ restitch(Line *dest, index_type at, LineBuf *src, const index_type src_y, TrackC
             linebuf_clear_line(src, src_y, true);
             linebuf_index(src, src_y, src->ynum - 1);
         }
-        for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) if (tc->y >= src_y) tc->y -= num_of_lines_removed;
+        for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) if (tc->dest_y >= src_y) tc->dest_y -= num_of_lines_removed;
     }
     if (num_cells_removed_on_last_line) {
         bool line_is_continued_to_next = linebuf_line_ends_with_continuation(src, src_y);
         linebuf_init_cells(src, src_y, &cp, &gp);
-        for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) if (tc->y == src_y && tc->x >= num_cells_removed_on_last_line) tc->x -= num_cells_removed_on_last_line;
+        for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) if (tc->dest_y == src_y && tc->dest_x >= num_cells_removed_on_last_line) tc->dest_x -= num_cells_removed_on_last_line;
         index_type remaining_cells = src->xnum - num_cells_removed_on_last_line;
         memmove(cp, cp + num_cells_removed_on_last_line, remaining_cells * sizeof(cp[0]));
         memset(cp + remaining_cells, 0, num_cells_removed_on_last_line * sizeof(cp[0]));
@@ -706,18 +706,26 @@ linebuf_rewrap(
         return;
     }
     *num_content_lines_before = first + 1;
-    TrackCursor tcarr[3] = {{.x = *track_x, .y = *track_y }, {.x = *track_x2, .y = *track_y2}, {.is_sentinel = true}};
+    TrackCursor tcarr[3] = {
+        {.x = *track_x, .y = *track_y, .dest_x=*track_x, .dest_y = *track_y },
+        {.x = *track_x2, .y = *track_y2, .dest_x=*track_x2, .dest_y = *track_y2 },
+        {.is_sentinel = true}
+    };
     *num_content_lines_after = 1 + linebuf_rewrap_inner(self, other, *num_content_lines_before, historybuf, (TrackCursor*)tcarr, as_ansi_buf);
-    *track_x = tcarr[0].x; *track_y = tcarr[0].y;
-    *track_x2 = tcarr[1].x; *track_y2 = tcarr[1].y;
+    *track_x = tcarr[0].dest_x; *track_y = tcarr[0].dest_y;
+    *track_x2 = tcarr[1].dest_x; *track_y2 = tcarr[1].dest_y;
     if (history_buf_last_line_is_split && historybuf) {
         historybuf_init_line(historybuf, 0, historybuf->line);
         index_type xlimit = xlimit_for_line(historybuf->line);
         if (xlimit < historybuf->line->xnum) {
-            TrackCursor tcarr[3] = {{.x = *track_x, .y = *track_y }, {.x = *track_x2, .y = *track_y2}, {.is_sentinel = true}};
+            TrackCursor tcarr[3] = {
+                {.x = *track_x, .y = *track_y, .dest_x=*track_x, .dest_y = *track_y },
+                {.x = *track_x2, .y = *track_y2, .dest_x=*track_x2, .dest_y = *track_y2 },
+                {.is_sentinel = true}
+            };
             index_type num_of_lines_removed = restitch(historybuf->line, xlimit, other, 0, tcarr);
-            *track_x = tcarr[0].x; *track_y = tcarr[0].y;
-            *track_x2 = tcarr[1].x; *track_y2 = tcarr[1].y;
+            *track_x = tcarr[0].dest_x; *track_y = tcarr[0].dest_y;
+            *track_x2 = tcarr[1].dest_x; *track_y2 = tcarr[1].dest_y;
             *num_content_lines_after -= num_of_lines_removed;
         }
     }
