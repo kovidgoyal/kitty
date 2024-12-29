@@ -501,6 +501,11 @@ def test_multicell(self: TestMulticell) -> None:
     ac(0, 1, is_multicell=False, text='2'), ac(4, 1, is_multicell=False, text='3')
 
     reset()
+    s.draw('a'*(s.columns - 2)), s.draw('😛'), s.linefeed(), s.carriage_return(), s.draw('123')
+    s.resize(s.lines, s.columns-1)
+    self.ae('\x1b[maaaa\x1b[m😛\n\x1b[m123', as_ansi().rstrip()) # ]]]]]]]
+
+    reset()
     s.draw('a'*(s.columns - 1)), s.draw('😛'), s.draw('bcd')
     s.resize(s.lines, s.columns + 1)
     self.ae('\x1b[maaaaa😛\x1b[mbcd', as_ansi().rstrip()) # ]]]]]]]
@@ -512,3 +517,22 @@ def test_multicell(self: TestMulticell) -> None:
     ac(s.columns-1, 0, next_char_was_wrapped=True)
     s.resize(s.lines, s.columns + 1)
     self.ae('\x1b[maaaaaa😛\x1b[mbcd', as_ansi().rstrip()) # ]]]]]]]
+
+    reset()
+    s.draw('a'*(s.columns - 1)), multicell(s, 'X', scale=2), s.draw('bcd')
+    s.resize(s.lines, s.columns + 1)
+    self.ae('\x1b[maaaaa\x1b]66;w=1:s=2;X\x07\x1b[mbcd', as_ansi().rstrip()) # ]]]]]]]
+    for y in (0, 1):
+        for x in (1, 2):
+            ac(s.columns-x, y, is_multicell=True)
+        for x in (0, 1):
+            ac(x, y, is_multicell=False)
+    reset()
+    s.draw('a'*(s.columns - 1)), multicell(s, 'X', scale=2), s.draw('bcd1234!')
+    s.resize(s.lines, s.columns + 2)
+    self.ae('\x1b[maaaaa\x1b]66;w=1:s=2;X\x07b\x1b[mcd1234\x1b[m!', as_ansi().rstrip()) # ]]]]]]]
+    for y in (0, 1):
+        for x in (1, 2):
+            ac(s.columns-x -1, y, is_multicell=True)
+        for x in (0, 1):
+            ac(x, y, is_multicell=False)
