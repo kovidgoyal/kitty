@@ -155,30 +155,6 @@ update_tracked_cursors(Rewrap *r, index_type num_cells, index_type y, index_type
     }
 }
 
-static void
-fast_copy_src_to_dest(Rewrap *r) {
-    CPUCell *c; index_type mc_width;
-    while (r->src_x < r->src_x_limit) {
-        if (r->dest_x >= r->dest_xnum) next_dest_line(r, true);
-        index_type num = MIN(r->src_x_limit - r->src_x, r->dest_xnum - r->dest_x);
-        bool do_copy = true;
-        if (num && (c = &r->src.cpu_cells[r->src_x + num - 1])->is_multicell && c->x != (mc_width = mcd_x_limit(c)) - 1) {
-            // we have a split multicell at the right edge of the copy region
-            if (num > mc_width) num -= mc_width;
-            else {
-                if (mc_width > r->dest_xnum) do_copy = false;
-                else {
-                    r->dest_x = r->dest_xnum;
-                    continue;
-                }
-            }
-        }
-        if (do_copy) copy_range(&r->src, r->src_x, &r->dest, r->dest_x, num);
-        update_tracked_cursors(r, num, r->src_y, r->src_x_limit);
-        r->src_x += num; r->dest_x += num;
-    }
-}
-
 static bool
 find_space_in_dest_line(Rewrap *r, index_type num_cells) {
     while (r->dest_x + num_cells <= r->dest_xnum) {
@@ -210,6 +186,7 @@ copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
     }
 }
 
+
 static void
 multiline_copy_src_to_dest(Rewrap *r) {
     CPUCell *c; index_type mc_width;
@@ -228,6 +205,37 @@ multiline_copy_src_to_dest(Rewrap *r) {
         update_tracked_cursors(r, mc_width, r->src_y, r->src_x_limit);
         if (c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
         r->src_x += mc_width; r->dest_x += mc_width;
+    }
+}
+
+
+static void
+fast_copy_src_to_dest(Rewrap *r) {
+    CPUCell *c; index_type mc_width;
+    while (r->src_x < r->src_x_limit) {
+        if (r->dest_x >= r->dest_xnum) {
+            next_dest_line(r, true);
+            if (r->current_dest_line_has_multiline_cells) {
+                multiline_copy_src_to_dest(r);
+                return;
+            }
+        }
+        index_type num = MIN(r->src_x_limit - r->src_x, r->dest_xnum - r->dest_x);
+        bool do_copy = true;
+        if (num && (c = &r->src.cpu_cells[r->src_x + num - 1])->is_multicell && c->x != (mc_width = mcd_x_limit(c)) - 1) {
+            // we have a split multicell at the right edge of the copy region
+            if (num > mc_width) num = MIN(r->src_x_limit - r->src_x - mc_width, num);
+            else {
+                if (mc_width > r->dest_xnum) do_copy = false;
+                else {
+                    r->dest_x = r->dest_xnum;
+                    continue;
+                }
+            }
+        }
+        if (do_copy) copy_range(&r->src, r->src_x, &r->dest, r->dest_x, num);
+        update_tracked_cursors(r, num, r->src_y, r->src_x_limit);
+        r->src_x += num; r->dest_x += num;
     }
 }
 
