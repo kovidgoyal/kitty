@@ -80,12 +80,13 @@ typedef struct Rewrap {
     index_type src_limit;
 
     Line src, dest, src_scratch, dest_scratch;
-    index_type src_y, src_x, dest_x, dest_y, num, src_x_limit;
+    index_type src_y, src_x, dest_x, dest_y, num, src_x_limit, history_buf_last_line_xlimit;
     init_line_func_t init_line;
     first_dest_line_func_t first_dest_line;
     next_dest_line_func_t next_dest_line;
     LineBuf *scratch;
     bool current_dest_line_has_multiline_cells, current_src_line_has_multline_cells, prev_src_line_ended_with_wrap;
+    bool current_dest_line_is_last_history_line;
 } Rewrap;
 
 static void
@@ -102,9 +103,13 @@ setup_line(TextCache *tc, index_type xnum, Line *l) {
 
 static void
 next_dest_line(Rewrap *r, bool continued) {
-    r->dest_y = r->next_dest_line(r->dest_buf, r->historybuf, r->as_ansi_buf, &r->src, r->dest_y, &r->dest, continued);
     r->dest_x = 0;
     r->current_dest_line_has_multiline_cells = false;
+    if (r->current_dest_line_is_last_history_line) {
+        r->dest.cpu_cells[r->dest_xnum-1].next_char_was_wrapped = continued;
+        r->current_dest_line_is_last_history_line = false;
+        r->dest_y = r->first_dest_line(r->dest_buf, r->as_ansi_buf, &r->src, &r->dest);
+    } else r->dest_y = r->next_dest_line(r->dest_buf, r->historybuf, r->as_ansi_buf, &r->src, r->dest_y, &r->dest, continued);
     if (r->scratch->line_attrs[0].has_dirty_text) {
         CPUCell *cpu_cells; GPUCell *gpu_cells;
         linebuf_init_cells(r->scratch, 0, &cpu_cells, &gpu_cells);
@@ -120,7 +125,15 @@ next_dest_line(Rewrap *r, bool continued) {
 
 static void
 first_dest_line(Rewrap *r) {
-    r->dest_y = r->first_dest_line(r->dest_buf, r->as_ansi_buf, &r->src, &r->dest);
+    if (r->history_buf_last_line_xlimit < r->dest_xnum && r->historybuf) {
+        r->dest_y = 0;
+        r->dest_x = r->history_buf_last_line_xlimit;
+        r->current_dest_line_has_multiline_cells = true;
+        r->current_dest_line_is_last_history_line = true;
+        historybuf_init_line(r->historybuf, 0, &r->dest);
+    } else {
+        r->dest_y = r->first_dest_line(r->dest_buf, r->as_ansi_buf, &r->src, &r->dest);
+    }
 }
 
 static bool
@@ -145,10 +158,14 @@ static void
 update_tracked_cursors(Rewrap *r, index_type num_cells, index_type y, index_type x_limit) {
     for (TrackCursor *t = r->cursors; !t->is_sentinel; t++) {
         if (t->y == y && r->src_x <= t->x && (t->x < r->src_x + num_cells || t->x >= x_limit)) {
-            index_type x = t->x;
-            if (x >= x_limit) x = MAX(1u, x_limit) - 1;
-            t->dest_y = r->dest_y;
-            t->dest_x = r->dest_x + (x - r->src_x + (x > 0));
+            if (r->current_dest_line_is_last_history_line) {
+                t->dest_x = 0; t->dest_y = 0;
+            } else {
+                index_type x = t->x;
+                if (x >= x_limit) x = MAX(1u, x_limit) - 1;
+                t->dest_y = r->dest_y;
+                t->dest_x = r->dest_x + (x - r->src_x + (x > 0));
+            }
         }
     }
 }
@@ -257,10 +274,16 @@ rewrap_inner(Rewrap *r) {
 }
 
 index_type
-linebuf_rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, HistoryBuf *historybuf, TrackCursor *track, ANSIBuf *as_ansi_buf) {
+linebuf_rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, HistoryBuf *historybuf, TrackCursor *track, ANSIBuf *as_ansi_buf, bool history_buf_last_line_is_split) {
+    index_type xlimit = dest->xnum;
+    if (history_buf_last_line_is_split && historybuf) {
+        historybuf_init_line(historybuf, 0, historybuf->line);
+        xlimit = xlimit_for_line(historybuf->line);
+    }
     Rewrap r = {
         .src_buf = src, .dest_buf = dest, .as_ansi_buf = as_ansi_buf, .text_cache = src->text_cache, .cursors = track,
         .src_limit = src_limit, .historybuf=historybuf, .src_xnum = src->xnum, .dest_xnum = dest->xnum,
+        .history_buf_last_line_xlimit = xlimit,
 
         .init_line = LineBuf_init_line, .next_dest_line = LineBuf_next_dest_line, .first_dest_line = LineBuf_first_dest_line,
     };
@@ -272,7 +295,7 @@ historybuf_rewrap_inner(HistoryBuf *src, HistoryBuf *dest, const index_type src_
     static TrackCursor t = {.is_sentinel = true };
     Rewrap r = {
         .src_buf = src, .dest_buf = dest, .as_ansi_buf = as_ansi_buf, .text_cache = src->text_cache,
-        .src_limit = src_limit, .src_xnum = src->xnum, .dest_xnum = dest->xnum, .cursors=&t,
+        .src_limit = src_limit, .src_xnum = src->xnum, .dest_xnum = dest->xnum, .cursors=&t, .history_buf_last_line_xlimit = dest->xnum,
 
         .init_line = HistoryBuf_init_line, .next_dest_line = HistoryBuf_next_dest_line, .first_dest_line = HistoryBuf_first_dest_line,
     };
