@@ -219,19 +219,19 @@ fast_copy_src_to_dest(Rewrap *r) {
             }
         }
         index_type num = MIN(r->src_x_limit - r->src_x, r->dest_xnum - r->dest_x);
-        bool do_copy = true;
         if (num && (c = &r->src.cpu_cells[r->src_x + num - 1])->is_multicell && c->x != (mc_width = mcd_x_limit(c)) - 1) {
             // we have a split multicell at the right edge of the copy region
             if (num > mc_width) num = MIN(r->src_x_limit - r->src_x - mc_width, num);
             else {
-                if (mc_width > r->dest_xnum) do_copy = false;
-                else {
-                    r->dest_x = r->dest_xnum;
-                    continue;
+                if (mc_width > r->dest_xnum) {
+                    multiline_copy_src_to_dest(r);
+                    return;
                 }
+                r->dest_x = r->dest_xnum;
+                continue;
             }
         }
-        if (do_copy) copy_range(&r->src, r->src_x, &r->dest, r->dest_x, num);
+        copy_range(&r->src, r->src_x, &r->dest, r->dest_x, num);
         update_tracked_cursors(r, num, r->src_y, r->src_x_limit);
         r->src_x += num; r->dest_x += num;
     }

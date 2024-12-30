@@ -11,8 +11,7 @@
 
 // TODO: Handle selection with multicell
 // TODO: URL detection with multicell
-// TODO: Handle rewrap and restitch of multiline chars
-// TODO: Handle rewrap when a character is too wide/tall to fit on resized screen
+// TODO: Handle restitch of multiline chars
 
 typedef union CellAttrs {
     struct {

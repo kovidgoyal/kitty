@@ -536,3 +536,16 @@ def test_multicell(self: TestMulticell) -> None:
             ac(s.columns-x -1, y, is_multicell=True)
         for x in (0, 1):
             ac(x, y, is_multicell=False)
+
+    reset()
+    multicell(s, 'X', scale=4), s.draw('abc')
+    s.resize(3, 3)
+    self.ae('\x1b[mabc', as_ansi().rstrip()) # ]]]]]]]
+    reset()
+    multicell(s, 'X', width=4), s.draw('abc')
+    s.resize(3, 3)
+    self.ae('\x1b[mabc', as_ansi().rstrip()) # ]]]]]]]
+    reset()
+    s.draw('1'), multicell(s, 'X', width=4), s.draw('abc')
+    s.resize(3, 3)
+    self.ae('\x1b[m1ab\x1b[mc', as_ansi().rstrip()) # ]]]]]]]
