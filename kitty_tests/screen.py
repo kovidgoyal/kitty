@@ -302,9 +302,8 @@ class TestScreen(BaseTest):
         self.assertTrue(s.historybuf.endswith_wrap())
         self.ae(str(s.historybuf), '111122')
         self.ae(at(), text + '\n')
-        # for some reason rewrap_inner moves the cursor by one cell to the right
-        self.ae((s.cursor.x, s.cursor.y), (4, 0))
-        self.ae(ac(), 'c')
+        self.ae((s.cursor.x, s.cursor.y), (3, 0))
+        self.ae(ac(), 'b')
         s = self.create_screen(cols=4, lines=4, scrollback=4)
         s.draw('1111222'), s.linefeed(), s.carriage_return()
         s.draw('333344445555')
@@ -324,10 +323,10 @@ class TestScreen(BaseTest):
         s.cursor.x, s.cursor.y = 1, 1
         self.ae(ac(), 'b')
         s.resize(s.lines, s.columns * 2)
-        self.ae(ac(), 'c')
+        self.ae(ac(), 'b')
         self.ae(str(s.historybuf), '11112222')
         self.ae(at(), text + '\n\n')
-        self.ae((s.cursor.x, s.cursor.y), (2, 0))
+        self.ae((s.cursor.x, s.cursor.y), (1, 0))
 
         # test that trailing blank line is preserved on resize
         s = self.create_screen(cols=5, lines=5, scrollback=15)

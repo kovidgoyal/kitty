@@ -466,6 +466,12 @@ def test_multicell(self: TestMulticell) -> None:
         s.resize(*o)
         s.reset()
 
+    def mc(x=None, y=None):
+        if x is not None:
+            s.cursor.x = x
+        if y is not None:
+            s.cursor.y = y
+
     reset()
     multicell(s, 'a', scale=2)
     before = as_ansi()
@@ -474,27 +480,43 @@ def test_multicell(self: TestMulticell) -> None:
 
     reset()
     s.draw('a' * (s.columns - 2) + '😛' + 'bb')
+    mc(4, 0)
     s.resize(s.lines, s.columns-1)
     self.ae('\x1b[maaaa\x1b[m😛bb', as_ansi().rstrip())
+    assert_cursor_at(0, 1)
     reset()
     s.draw('a' * (s.columns - 2) + '😛' + 'bb')
+    mc(0, 1)
     s.resize(s.lines, s.columns-2)
+    assert_cursor_at(2, 1)
     self.ae('\x1b[maaaa\x1b[m😛bb', as_ansi().rstrip())
     reset()
     s.draw('a' * (s.columns - 2) + '😛' + 'bb')
+    mc(5, 0)
     s.resize(s.lines, s.columns-3)
     self.ae('\x1b[maaa\x1b[ma😛\x1b[mbb', as_ansi().rstrip()) # ]]]]]]]
+    assert_cursor_at(2, 1)
+
+    def resize(lines, cols, cursorx=None, cursory=None):
+        mc(cursorx, cursory)
+        before = s.cursor.x, s.cursor.y
+        cell = s.cpu_cells(s.cursor.y, s.cursor.x)
+        cell.pop('next_char_was_wrapped')
+        s.resize(lines, cols)
+        ncell = s.cpu_cells(s.cursor.y, s.cursor.x)
+        ncell.pop('next_char_was_wrapped')
+        self.ae(cell, ncell, f'Cursor moved from: {before} to {(s.cursor.x, s.cursor.y)}')
 
     reset()
     multicell(s, 'a', scale=3), s.draw('b'*(s.columns-3))
-    s.resize(s.lines, s.columns-1)
+    resize(s.lines, s.columns-1, 5, 0)
     self.ae('\x1b[m\x1b]66;w=1:s=3;a\x07bb\x1b[mb', as_ansi().rstrip())  # ]]
     ac(0, 0, is_multicell=True)
     ac(0, 1, is_multicell=True)
     ac(3, 1, is_multicell=False, text='b')
     reset()
     s.draw('X'), multicell(s, 'a', scale=3), s.draw('12345')
-    s.resize(s.lines, s.columns-1)
+    resize(s.lines, s.columns-1, 4, 0)
     self.ae('\x1b[mX\x1b]66;w=1:s=3;a\x071\x1b[m23\x1b[m45', as_ansi().rstrip())  # ]]
     for y in (0, 1):
         ac(0, y, is_multicell=False), ac(1, y, is_multicell=True), ac(3, y, is_multicell=True)
@@ -502,17 +524,17 @@ def test_multicell(self: TestMulticell) -> None:
 
     reset()
     s.draw('a'*(s.columns - 2)), s.draw('😛'), s.linefeed(), s.carriage_return(), s.draw('123')
-    s.resize(s.lines, s.columns-1)
+    resize(s.lines, s.columns-1, 5, 0)
     self.ae('\x1b[maaaa\x1b[m😛\n\x1b[m123', as_ansi().rstrip()) # ]]]]]]]
 
     reset()
     s.draw('a'*(s.columns - 1)), s.draw('😛'), s.draw('bcd')
-    s.resize(s.lines, s.columns + 1)
+    resize(s.lines, s.columns + 1, 0, 1)
     self.ae('\x1b[maaaaa😛\x1b[mbcd', as_ansi().rstrip()) # ]]]]]]]
 
     reset()
     s.draw('a'*s.columns), s.draw('😛'), s.draw('bcd')
-    s.resize(s.lines, s.columns + 1)
+    resize(s.lines, s.columns + 1, 0, 1)
     self.ae('\x1b[maaaaaa\x1b[m😛bcd', as_ansi().rstrip()) # ]]]]]]]
     ac(s.columns-1, 0, next_char_was_wrapped=True)
     s.resize(s.lines, s.columns + 1)
@@ -520,7 +542,7 @@ def test_multicell(self: TestMulticell) -> None:
 
     reset()
     s.draw('a'*(s.columns - 1)), multicell(s, 'X', scale=2), s.draw('bcd')
-    s.resize(s.lines, s.columns + 1)
+    resize(s.lines, s.columns + 1, 0, 2)
     self.ae('\x1b[maaaaa\x1b]66;w=1:s=2;X\x07\x1b[mbcd', as_ansi().rstrip()) # ]]]]]]]
     for y in (0, 1):
         for x in (1, 2):
@@ -539,13 +561,13 @@ def test_multicell(self: TestMulticell) -> None:
 
     reset()
     multicell(s, 'X', scale=4), s.draw('abc')
-    s.resize(3, 3)
+    resize(3, 3, 5, 0)
     self.ae('\x1b[mabc', as_ansi().rstrip()) # ]]]]]]]
     reset()
     multicell(s, 'X', width=4), s.draw('abc')
-    s.resize(3, 3)
+    resize(3, 3, 4, 0)
     self.ae('\x1b[mabc', as_ansi().rstrip()) # ]]]]]]]
     reset()
     s.draw('1'), multicell(s, 'X', width=4), s.draw('abc')
-    s.resize(3, 3)
+    resize(3, 3, 5, 0)
     self.ae('\x1b[m1ab\x1b[mc', as_ansi().rstrip()) # ]]]]]]]

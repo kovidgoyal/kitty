@@ -155,16 +155,15 @@ init_src_line(Rewrap *r) {
 }
 
 static void
-update_tracked_cursors(Rewrap *r, index_type num_cells, index_type y, index_type x_limit) {
+update_tracked_cursors(Rewrap *r, index_type num_cells, index_type src_y, index_type dest_y, index_type x_limit) {
     for (TrackCursor *t = r->cursors; !t->is_sentinel; t++) {
-        if (t->y == y && r->src_x <= t->x && (t->x < r->src_x + num_cells || t->x >= x_limit)) {
+        if (t->y == src_y && r->src_x <= t->x && (t->x < r->src_x + num_cells || t->x >= x_limit)) {
             if (r->current_dest_line_is_last_history_line) {
                 t->dest_x = 0; t->dest_y = 0;
             } else {
-                index_type x = t->x;
-                if (x >= x_limit) x = MAX(1u, x_limit) - 1;
-                t->dest_y = r->dest_y;
-                t->dest_x = r->dest_x + (x - r->src_x + (x > 0));
+                t->dest_y = dest_y;
+                t->dest_x = r->dest_x + (t->x - r->src_x);
+                if (t->dest_x > r->dest_xnum) t->dest_x = r->dest_xnum;
             }
         }
     }
@@ -197,7 +196,7 @@ copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
         linebuf_init_line_at(r->scratch, i - 1, &r->dest_scratch);
         linebuf_mark_line_dirty(r->scratch, i - 1);
         copy_range(&r->src_scratch, r->src_x, &r->dest_scratch, r->dest_x, mc_width);
-        update_tracked_cursors(r, mc_width, r->src_y + i, r->src_xnum + 10000 /* ensure cursor is moved only if in region being copied */);
+        update_tracked_cursors(r, mc_width, r->src_y + i, r->dest_y + i, r->src_xnum + 10000 /* ensure cursor is moved only if in region being copied */);
     }
 }
 
@@ -209,15 +208,18 @@ multiline_copy_src_to_dest(Rewrap *r) {
         c = &r->src.cpu_cells[r->src_x];
         if (c->is_multicell) {
             mc_width = mcd_x_limit(c);
-            if (c->y || mc_width > r->dest_xnum) {
-                update_tracked_cursors(r, mc_width, r->src_y, r->src_x_limit);
+            if (mc_width > r->dest_xnum) {
+                update_tracked_cursors(r, mc_width, r->src_y, r->dest_y, r->src_x_limit);
+                r->src_x += mc_width;
+                continue;
+            } else if (c->y) {
                 r->src_x += mc_width;
                 continue;
             }
         } else mc_width = 1;
         find_space_in_dest(r, mc_width);
         copy_range(&r->src, r->src_x, &r->dest, r->dest_x, mc_width);
-        update_tracked_cursors(r, mc_width, r->src_y, r->src_x_limit);
+        update_tracked_cursors(r, mc_width, r->src_y, r->dest_y, r->src_x_limit);
         if (c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
         r->src_x += mc_width; r->dest_x += mc_width;
     }
@@ -249,7 +251,7 @@ fast_copy_src_to_dest(Rewrap *r) {
             }
         }
         copy_range(&r->src, r->src_x, &r->dest, r->dest_x, num);
-        update_tracked_cursors(r, num, r->src_y, r->src_x_limit);
+        update_tracked_cursors(r, num, r->src_y, r->dest_y, r->src_x_limit);
         r->src_x += num; r->dest_x += num;
     }
 }

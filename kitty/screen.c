@@ -217,8 +217,8 @@ screen_dirty_sprite_positions(Screen *self) {
 }
 
 static HistoryBuf*
-realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns, ANSIBuf *as_ansi_buf) {
-    HistoryBuf *ans = alloc_historybuf(lines, columns, 0, old->text_cache);
+realloc_hb(HistoryBuf *old, unsigned int columns, ANSIBuf *as_ansi_buf) {
+    HistoryBuf *ans = alloc_historybuf(old->ynum, columns, 0, old->text_cache);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->pagerhist = old->pagerhist; old->pagerhist = NULL;
     historybuf_rewrap(old, ans, as_ansi_buf);
@@ -397,7 +397,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
     // Resize main linebuf
     bool history_buf_last_line_is_split = history_buf_endswith_wrap(self->historybuf);
-    HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
+    HistoryBuf *nh = realloc_hb(self->historybuf, columns, &self->as_ansi_buf);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
     RAII_PyObject(prompt_copy, NULL);
