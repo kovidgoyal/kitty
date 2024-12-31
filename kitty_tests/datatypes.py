@@ -314,28 +314,25 @@ class TestDataTypes(BaseTest):
         self.ae(l4.url_end_at(0), len(l4) - 2)
         self.ae(l4.url_end_at(0, 0, True), len(l4) - 1)
 
-    def rewrap(self, lb, lb2):
-        hb = HistoryBuf(lb2.ynum, lb2.xnum)
-        cy = lb.rewrap(lb2, hb)
-        return hb, cy[1]
+    def rewrap(self, lb, lines, columns):
+        return lb.rewrap(lines, columns)
 
     def test_rewrap_simple(self):
         ' Same width buffers '
         lb = filled_line_buf(5, 5)
         lb2 = LineBuf(lb.ynum, lb.xnum)
-        self.rewrap(lb, lb2)
+        lb2 = self.rewrap(lb, lb.ynum, lb.xnum)[0]
         for i in range(lb.ynum):
             self.ae(lb2.line(i), lb.line(i))
-        lb2 = LineBuf(8, 5)
-        cy = self.rewrap(lb, lb2)[1]
+        lb2, _, cy = self.rewrap(lb, 8, 5)
         self.ae(cy, 5)
         for i in range(lb.ynum):
-            self.ae(lb2.line(i), lb.line(i))
+            self.ae(lb2.line(i), lb.line(i), i)
         empty = LineBuf(1, lb2.xnum)
         for i in range(lb.ynum, lb2.ynum):
             self.ae(str(lb2.line(i)), str(empty.line(0)))
         lb2 = LineBuf(3, 5)
-        cy = self.rewrap(lb, lb2)[1]
+        lb2, _, cy = self.rewrap(lb, 3, 5)
         self.ae(cy, 3)
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
@@ -348,8 +345,7 @@ class TestDataTypes(BaseTest):
             self.ae(l0, str(l2))
 
     def line_comparison_rewrap(self, lb, *lines):
-        lb2 = LineBuf(len(lines), max(map(len, lines)))
-        self.rewrap(lb, lb2)
+        lb2 = self.rewrap(lb, len(lines), max(map(len, lines)))[0]
         self.line_comparison(lb2, *lines)
         return lb2
 
@@ -493,40 +489,24 @@ class TestDataTypes(BaseTest):
         hb = filled_history_buf(5, 5)
         for i in range(hb.ynum):
             hb.line(i).set_wrapped_flag(True)
-        hb2 = HistoryBuf(3, 10)
         before = as_ansi(hb)
-        hb.rewrap(hb2)
+        hb2 = hb.rewrap(10)
         self.ae(before, as_ansi(hb2).rstrip())
 
         hb = filled_history_buf(5, 5)
-        hb2 = HistoryBuf(hb.ynum, hb.xnum)
-        hb.rewrap(hb2)
+        hb2 = hb.rewrap(hb.xnum)
         for i in range(hb.ynum):
             self.ae(hb2.line(i), hb.line(i))
-        hb2 = HistoryBuf(8, 5)
-        hb.rewrap(hb2)
-        for i in range(hb.ynum):
-            self.ae(hb2.line(i), hb.line(i))
-        for i in range(hb.ynum, hb2.ynum):
-            with self.assertRaises(IndexError):
-                hb2.line(i)
-        hb2 = HistoryBuf(3, 5)
-        hb.rewrap(hb2)
-        for i in range(hb2.ynum):
-            self.ae(hb2.line(i), hb.line(i))
-        self.ae(hb2.dirty_lines(), list(range(hb2.ynum)))
         hb = filled_history_buf(5, 5)
-        hb2 = HistoryBuf(hb.ynum, hb.xnum * 2)
-        hb.rewrap(hb2)
+        hb2 = hb.rewrap(hb.xnum * 2)
         hb3 = HistoryBuf(hb.ynum, hb.xnum)
-        hb2.rewrap(hb3)
+        hb3 = hb2.rewrap(hb.xnum)
         for i in range(hb.ynum):
             self.ae(hb.line(i), hb3.line(i))
 
         hb2 = HistoryBuf(hb.ynum, hb.xnum)
-        large_hb.rewrap(hb2)
-        hb2 = HistoryBuf(large_hb.ynum, large_hb.xnum)
-        large_hb.rewrap(hb2)
+        hb2 = large_hb.rewrap(hb.xnum)
+        hb2.rewrap(large_hb.xnum)
 
     def test_ansi_repr(self):
         lb = filled_line_buf()

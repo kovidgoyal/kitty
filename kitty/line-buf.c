@@ -7,7 +7,7 @@
 
 #include "data-types.h"
 #include "lineops.h"
-#include "rewrap.h"
+#include "resize.h"
 
 #include <structmember.h>
 
@@ -596,65 +596,16 @@ copy_old(LineBuf *self, PyObject *y) {
     Py_RETURN_NONE;
 }
 
-void
-linebuf_rewrap(
-    LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after,
-    HistoryBuf *historybuf, index_type *track_x, index_type *track_y, index_type *track_x2, index_type *track_y2,
-    ANSIBuf *as_ansi_buf, bool history_buf_last_line_is_split
-) {
-    index_type first, i;
-    bool is_empty = true;
-
-    // Fast path
-    if (other->xnum == self->xnum && other->ynum == self->ynum) {
-        memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
-        memcpy(other->line_attrs, self->line_attrs, sizeof(LineAttrs) * self->ynum);
-        memcpy(other->cpu_cell_buf, self->cpu_cell_buf, (size_t)self->xnum * self->ynum * sizeof(CPUCell));
-        memcpy(other->gpu_cell_buf, self->gpu_cell_buf, (size_t)self->xnum * self->ynum * sizeof(GPUCell));
-        *num_content_lines_before = self->ynum; *num_content_lines_after = self->ynum;
-        return;
-    }
-
-    // Find the first line that contains some content
-    first = self->ynum;
-    do {
-        first--;
-        CPUCell *cells = cpu_lineptr(self, self->line_map[first]);
-        for(i = 0; i < self->xnum; i++) {
-            if (cells[i].ch_or_idx || cells[i].ch_is_idx) { is_empty = false; break; }
-        }
-    } while(is_empty && first > 0);
-
-    if (is_empty) {  // All lines are empty
-        *num_content_lines_after = 0;
-        *num_content_lines_before = 0;
-        return;
-    }
-    *num_content_lines_before = first + 1;
-    TrackCursor tcarr[3] = {
-        {.x = *track_x, .y = *track_y, .dest_x=*track_x, .dest_y = *track_y },
-        {.x = *track_x2, .y = *track_y2, .dest_x=*track_x2, .dest_y = *track_y2 },
-        {.is_sentinel = true}
-    };
-    *num_content_lines_after = 1 + linebuf_rewrap_inner(self, other, *num_content_lines_before, historybuf, (TrackCursor*)tcarr, as_ansi_buf, history_buf_last_line_is_split && historybuf != NULL);
-    *track_x = tcarr[0].dest_x; *track_y = tcarr[0].dest_y;
-    *track_x2 = tcarr[1].dest_x; *track_y2 = tcarr[1].dest_y;
-    for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i].has_dirty_text = true;
-}
-
 static PyObject*
 rewrap(LineBuf *self, PyObject *args) {
-    LineBuf* other;
-    HistoryBuf *historybuf;
-    unsigned int nclb, ncla;
-
-    if (!PyArg_ParseTuple(args, "O!O!", &LineBuf_Type, &other, &HistoryBuf_Type, &historybuf)) return NULL;
-    index_type x = 0, y = 0, x2 = 0, y2 = 0;
+    unsigned int lines, columns;
+    if (!PyArg_ParseTuple(args, "II", &lines, &columns)) return NULL;
+    TrackCursor cursors[1] = {{.is_sentinel=true}};
     ANSIBuf as_ansi_buf = {0};
-    linebuf_rewrap(self, other, &nclb, &ncla, historybuf, &x, &y, &x2, &y2, &as_ansi_buf, false);
+    ResizeResult r = resize_screen_buffers(self, NULL, lines, columns, &as_ansi_buf, cursors);
     free(as_ansi_buf.buf);
-
-    return Py_BuildValue("II", nclb, ncla);
+    if (!r.ok) return PyErr_NoMemory();
+    return Py_BuildValue("NII", r.lb, r.num_content_lines_before, r.num_content_lines_after);
 }
 
 

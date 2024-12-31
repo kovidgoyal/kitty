@@ -30,6 +30,7 @@
 #include <stdalign.h>
 #include "keys.h"
 #include "vt-parser.h"
+#include "resize.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 
@@ -216,16 +217,6 @@ screen_dirty_sprite_positions(Screen *self) {
     for (index_type i = 0; i < self->historybuf->count; i++) historybuf_mark_line_dirty(self->historybuf, i);
 }
 
-static HistoryBuf*
-realloc_hb(HistoryBuf *old, unsigned int columns, ANSIBuf *as_ansi_buf) {
-    HistoryBuf *ans = alloc_historybuf(old->ynum, columns, 0, old->text_cache);
-    if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    ans->pagerhist = old->pagerhist; old->pagerhist = NULL;
-    historybuf_rewrap(old, ans, as_ansi_buf);
-    return ans;
-}
-
-
 typedef struct CursorTrack {
     index_type num_content_lines;
     bool is_beyond_content;
@@ -234,14 +225,37 @@ typedef struct CursorTrack {
     struct { index_type x, y; } temp;
 } CursorTrack;
 
-static LineBuf*
-realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, CursorTrack *a, CursorTrack *b, ANSIBuf *as_ansi_buf, bool history_buf_last_line_is_split) {
-    LineBuf *ans = alloc_linebuf(lines, columns, old->text_cache);
-    if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    a->temp.x = a->before.x; a->temp.y = a->before.y;
-    b->temp.x = b->before.x; b->temp.y = b->before.y;
-    linebuf_rewrap(old, ans, nclb, ncla, hb, &a->temp.x, &a->temp.y, &b->temp.x, &b->temp.y, as_ansi_buf, history_buf_last_line_is_split);
-    return ans;
+static bool
+rewrap(Screen *screen, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, CursorTrack *cursor, CursorTrack *main_saved_cursor, CursorTrack *alt_saved_cursor, bool main_is_active) {
+    TrackCursor cursors[3];
+    cursors[2].is_sentinel = true;
+    cursors[0] = (TrackCursor){.x=main_saved_cursor->before.x, .y=main_saved_cursor->before.y};
+    if (main_is_active) cursors[1] = (TrackCursor){.x=cursor->before.x, .y=cursor->before.y};
+    else cursors[1].is_sentinel = true;
+    ResizeResult mr = resize_screen_buffers(screen->main_linebuf, screen->historybuf, lines, columns, &screen->as_ansi_buf, cursors);
+    if (!mr.ok) { PyErr_NoMemory(); return false; }
+    main_saved_cursor->temp.x = cursors[0].dest_x; main_saved_cursor->temp.y = cursors[0].dest_y;
+    if (main_is_active) { cursor->temp.x = cursors[1].dest_x; cursor->temp.y = cursors[1].dest_y; }
+
+    cursors[0] = (TrackCursor){.x=alt_saved_cursor->before.x, .y=alt_saved_cursor->before.y};
+    if (!main_is_active) cursors[1] = (TrackCursor){.x=cursor->before.x, .y=cursor->before.y};
+    else cursors[1].is_sentinel = true;
+    ResizeResult ar = resize_screen_buffers(screen->alt_linebuf, NULL, lines, columns, &screen->as_ansi_buf, cursors);
+    if (!ar.ok) {
+        Py_DecRef((PyObject*)mr.lb); Py_DecRef((PyObject*)mr.hb);
+        PyErr_NoMemory(); return false;
+    }
+    alt_saved_cursor->temp.x = cursors[0].dest_x; alt_saved_cursor->temp.y = cursors[0].dest_y;
+    if (!main_is_active) { cursor->temp.x = cursors[1].dest_x; cursor->temp.y = cursors[1].dest_y; }
+    Py_CLEAR(screen->main_linebuf); Py_CLEAR(screen->alt_linebuf); Py_CLEAR(screen->historybuf);
+    screen->main_linebuf = mr.lb; screen->historybuf = mr.hb; screen->alt_linebuf = ar.lb;
+    screen->linebuf = main_is_active ? screen->main_linebuf : screen->alt_linebuf;
+    if (main_is_active) {
+        *nclb = mr.num_content_lines_before; *ncla = mr.num_content_lines_after;
+    } else {
+        *nclb = ar.num_content_lines_before; *ncla = ar.num_content_lines_after;
+    }
+    return true;
 }
 
 static bool
@@ -396,36 +410,22 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (!init_overlay_line(self, columns, true)) return false;
 
     // Resize main linebuf
-    bool history_buf_last_line_is_split = history_buf_endswith_wrap(self->historybuf);
-    HistoryBuf *nh = realloc_hb(self->historybuf, columns, &self->as_ansi_buf);
-    if (nh == NULL) return false;
-    Py_CLEAR(self->historybuf); self->historybuf = nh;
     RAII_PyObject(prompt_copy, NULL);
     index_type num_of_prompt_lines = 0, num_of_prompt_lines_above_cursor = 0;
     if (is_main) {
         prompt_copy = (PyObject*)alloc_linebuf(self->lines, self->columns, self->text_cache);
         num_of_prompt_lines = prevent_current_prompt_from_rewrapping(self, (LineBuf*)prompt_copy, &num_of_prompt_lines_above_cursor);
     }
-    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf, history_buf_last_line_is_split);
-    if (n == NULL) return false;
-    Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
-    if (is_main) setup_cursor(cursor);
+    if (!rewrap(self, lines, columns, &num_content_lines_before, &num_content_lines_after, &cursor, &main_saved_cursor, &alt_saved_cursor, is_main)) return false;
+    setup_cursor(cursor);
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor.after.x, cursor.after.y, cursor.is_beyond_content); */
     setup_cursor(main_saved_cursor);
     grman_remove_all_cell_images(self->main_grman);
     grman_resize(self->main_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
-
-    // Resize alt linebuf
-    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &cursor, &alt_saved_cursor, &self->as_ansi_buf, false);
-    if (n == NULL) return false;
-    Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
-    if (!is_main) setup_cursor(cursor);
     setup_cursor(alt_saved_cursor);
     grman_remove_all_cell_images(self->alt_grman);
     grman_resize(self->alt_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
 #undef setup_cursor
-
-    self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
     /* printf("\nold_size: (%u, %u) new_size: (%u, %u)\n", self->columns, self->lines, columns, lines); */
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
