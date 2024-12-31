@@ -54,11 +54,11 @@ typedef union CPUCell {
         char_type next_char_was_wrapped : 1;
         char_type is_multicell : 1;
         char_type natural_width: 1;
-        char_type x : WIDTH_BITS + SCALE_BITS + 1;
-        char_type y : SCALE_BITS + 1;
+        char_type scale: SCALE_BITS;
         char_type subscale_n: SUBSCALE_BITS;
         char_type subscale_d: SUBSCALE_BITS;
-        char_type scale: SCALE_BITS;
+        char_type x : WIDTH_BITS + SCALE_BITS + 1;
+        char_type y : SCALE_BITS + 1;
         char_type width: WIDTH_BITS;
         char_type vertical_align: 3;
         char_type : 15;
