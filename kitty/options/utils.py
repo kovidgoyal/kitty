@@ -122,12 +122,10 @@ def send_key(func: str, rest: str) -> FuncArgsType:
 
 @func_with_args('run_kitten', 'run_simple_kitten', 'kitten')
 def kitten_parse(func: str, rest: str) -> FuncArgsType:
+    parts = to_cmdline(rest)
     if func == 'kitten':
-        args = rest.split(maxsplit=1)
-    else:
-        args = rest.split(maxsplit=2)[1:]
-        func = 'kitten'
-    return func, [args[0]] + (to_cmdline(args[1]) if len(args) > 1 else [])
+        return func, parts
+    return 'kitten', args[1:]
 
 
 @func_with_args('open_url')

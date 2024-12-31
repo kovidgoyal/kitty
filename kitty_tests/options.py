@@ -114,6 +114,9 @@ class TestConfParsing(BaseTest):
         self.ae((ac().func, ac(1).func), ('new_window', 'launch'))
         self.ae(ac(1).args, ('--moo', 'XXX'))
 
+        opts = p('clear_all_shortcuts y', 'action_alias ss kitten "space 1"', 'map f1 ss "space 2"')
+        self.ae(ac().args, ('space 1', 'space 2'))
+
         opts = p('kitty_mod alt')
         self.ae(opts.kitty_mod, to_modifiers('alt'))
         self.ae(next(keys_for_func(opts, 'next_layout')).mods, opts.kitty_mod)

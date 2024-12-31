@@ -84,6 +84,10 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.38.2 [future]
+
+- When mapping a custom kitten allow using shell escaping for the kitten path (:iss:`8178`)
+
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
