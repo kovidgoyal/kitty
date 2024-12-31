@@ -125,7 +125,7 @@ def kitten_parse(func: str, rest: str) -> FuncArgsType:
     parts = to_cmdline(rest)
     if func == 'kitten':
         return func, parts
-    return 'kitten', args[1:]
+    return 'kitten', parts[1:]
 
 
 @func_with_args('open_url')
