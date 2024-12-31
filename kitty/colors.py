@@ -103,16 +103,19 @@ class ThemeColors:
             log_error('Current system color scheme:', which)
         if which == 'dark' and self.has_dark_theme:
             patch_options_with_color_spec(opts, self.dark_spec, self.dark_tbc)
+            patch_global_colors(self.dark_spec, True)
             if debug_rendering:
                 log_error(f'Applied {which} color theme')
             self.applied_theme = which
         elif which == 'light' and self.has_light_theme:
             patch_options_with_color_spec(opts, self.light_spec, self.light_tbc)
+            patch_global_colors(self.dark_spec, True)
             if debug_rendering:
                 log_error(f'Applied {which} color theme')
             self.applied_theme = which
         elif which == 'no_preference' and self.has_no_preference_theme:
             patch_options_with_color_spec(opts, self.no_preference_spec, self.no_preference_tbc)
+            patch_global_colors(self.dark_spec, True)
             if debug_rendering:
                 log_error(f'Applied {which} color theme')
             self.applied_theme = which

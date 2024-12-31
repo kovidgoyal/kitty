@@ -88,6 +88,8 @@ Detailed list of changes
 
 - When mapping a custom kitten allow using shell escaping for the kitten path (:iss:`8178`)
 
+- Fix border colors not being changed by auto light/dark themes at startup (:iss:`8180`)
+
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
