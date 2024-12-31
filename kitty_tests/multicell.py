@@ -461,10 +461,12 @@ def test_multicell(self: TestMulticell) -> None:
     ta('\x1b]66;w=1:s=3;a\x07\x1b]66;w=1:s=2;b\x07')
 
     # rewrap with multicells
+    s = self.create_screen(cols=6, lines=6, scrollback=20)
     o = s.lines, s.columns
     def reset():
         s.resize(*o)
         s.reset()
+        s.clear_scrollback()
 
     def mc(x=None, y=None):
         if x is not None:
@@ -571,3 +573,21 @@ def test_multicell(self: TestMulticell) -> None:
     s.draw('1'), multicell(s, 'X', width=4), s.draw('abc')
     resize(3, 3, 5, 0)
     self.ae('\x1b[m1ab\x1b[mc', as_ansi().rstrip()) # ]]]]]]]
+
+    reset()
+    multicell(s, 'X', scale=4), s.draw('112233445555556666667')
+    self.ae(str(s.historybuf), 'X11')  # X is split between the buffers
+    resize(6, s.columns+1, 0, 5)
+    self.ae(str(s.historybuf), 'X112')
+    self.ae(str(s.linebuf.line(0)), 'X233')
+    for y in range(3):
+        for x in range(4):
+            ac(x, y, is_multicell=True)
+    reset()
+    multicell(s, 'X', scale=4), s.draw('112233445555556666667')
+    resize(6, s.columns-1, 0, 5)
+    self.ae(str(s.historybuf), 'X1\nX1')
+    self.ae(str(s.linebuf.line(0)), 'X2')
+    for y in range(2):
+        for x in range(4):
+            ac(x, y, is_multicell=True)
