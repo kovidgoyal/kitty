@@ -441,6 +441,9 @@ class TestKeys(BaseTest):
         tq = partial(enc, key_encoding_flags=0b11)
         ae(tq(defines.GLFW_FKEY_BACKSPACE), '\x7f')
         ae(tq(defines.GLFW_FKEY_BACKSPACE, action=release), '')
+        tq = partial(enc, key_encoding_flags=0b11, mods=num_lock|caps_lock)
+        ae(tq(defines.GLFW_FKEY_ENTER), '\r')
+        ae(tq(defines.GLFW_FKEY_ENTER, action=release), '')
 
         # test alternate key reporting
         aq = partial(enc, key_encoding_flags=0b100)

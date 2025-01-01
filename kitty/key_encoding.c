@@ -10,6 +10,7 @@
 
 typedef enum { SHIFT=1, ALT=2, CTRL=4, SUPER=8, HYPER=16, META=32, CAPS_LOCK=64, NUM_LOCK=128} ModifierMasks;
 typedef enum { PRESS = 0, REPEAT = 1, RELEASE = 2} KeyAction;
+#define LOCK_MASK (CAPS_LOCK | NUM_LOCK)
 typedef struct {
     uint32_t key, shifted_key, alternate_key;
     struct {
@@ -185,6 +186,14 @@ encode_function_key(const KeyEvent *ev, char *output) {
     } else if (legacy_mode) {
         int num = legacy_functional_key_encoding_with_modifiers(key_number, ev, output);
         if (num > -1) return num;
+    }
+    if (!(ev->mods.value & ~LOCK_MASK) && !ev->report_text) {
+        switch(key_number) {
+            case GLFW_FKEY_ENTER: if (ev->action == RELEASE) return -1; SIMPLE("\r");
+            case GLFW_FKEY_BACKSPACE: if (ev->action == RELEASE) return -1; SIMPLE("\x7f");
+            case GLFW_FKEY_TAB: if (ev->action == RELEASE) return -1; SIMPLE("\t");
+            default: break;
+        }
     }
 #undef SIMPLE
 #define S(number, trailer) key_number = number; csi_trailer = trailer; break
