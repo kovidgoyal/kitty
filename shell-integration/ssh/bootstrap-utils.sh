@@ -177,10 +177,11 @@ fi' > "$sh_script"
 }
 
 install_kitty_bootstrap() {
+    kitty_dir="$data_dir/kitty/bin"
+    export SSH_KITTEN_KITTY_DIR="$kitty_dir"
     kitty_exists="n"
     command -v kitty 2> /dev/null > /dev/null && kitty_exists="y"
     if [ "$kitty_remote" = "yes" -o "$kitty_remote-$kitty_exists" = "if-needed-n" ]; then
-        kitty_dir="$data_dir/kitty/bin"
         if [ "$kitty_exists" = "y" ]; then
             export PATH="$kitty_dir:$PATH"
         else

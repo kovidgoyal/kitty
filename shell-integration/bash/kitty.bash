@@ -115,6 +115,12 @@ _ksi_main() {
     IFS="$ifs"
 
     builtin unset KITTY_SHELL_INTEGRATION
+    if [[ -n "$SSH_KITTEN_KITTY_DIR" ]]; then
+        if [[ ! "$PATH" =~ (^|:)${SSH_KITTEN_KITTY_DIR}(:|$) ]] && [[ -z "$(builtin command -v kitten)" ]]; then
+            builtin export PATH="${PATH}:${SSH_KITTEN_KITTY_DIR}"
+        fi
+        builtin unset SSH_KITTEN_KITTY_DIR
+    fi
 
     _ksi_debug_print() {
         # print a line to STDERR of parent kitty process

@@ -29,6 +29,14 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     test -n "$KITTY_SHELL_INTEGRATION" || return 0
     set --local _ksi (string split " " -- "$KITTY_SHELL_INTEGRATION")
     set --erase KITTY_SHELL_INTEGRATION
+    if test -n "$SSH_KITTEN_KITTY_DIR"
+        if not contains -- "$SSH_KITTEN_KITTY_DIR" "$PATH"
+            if not type kitten 2> /dev/null > /dev/null
+                set -gx PATH "$PATH" "$SSH_KITTEN_KITTY_DIR"
+            end
+        end
+        set --erase SSH_KITTEN_KITTY_DIR
+    end
 
     # Enable cursor shape changes for default mode and vi mode
     if not contains "no-cursor" $_ksi

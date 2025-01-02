@@ -89,6 +89,13 @@ _ksi_deferred_init() {
     opt=(${(s: :)KITTY_SHELL_INTEGRATION})
     builtin unset KITTY_SHELL_INTEGRATION
 
+    if [[ -n "$SSH_KITTEN_KITTY_DIR" ]]; then
+        if [[ ! "$PATH" =~ (^|:)${SSH_KITTEN_KITTY_DIR}(:|$) ]] && [[ -z "$(builtin command -v kitten)" ]]; then
+            builtin export PATH="${PATH}:${SSH_KITTEN_KITTY_DIR}"
+        fi
+        builtin unset SSH_KITTEN_KITTY_DIR
+    fi
+
     # The directory where kitty-integration is located: /.../shell-integration/zsh.
     builtin local self_dir="${functions_source[_ksi_deferred_init]:A:h}"
     # The directory with _kitty. We store it in a directory of its own rather than
