@@ -91,7 +91,7 @@ Detailed list of changes
 
 - Fix border colors not being changed by auto light/dark themes at startup (:iss:`8180`)
 
-- ssh kitten: Fix kitten not being on PATH when sshing into Debian systems (:iss:`7160`)
+- ssh kitten: Fix kitten not being on PATH when SSHing into Debian systems (:iss:`7160`)
 
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
