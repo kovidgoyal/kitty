@@ -117,7 +117,7 @@ type Loop struct {
 	OnSIGTERM func() (bool, error)
 
 	// Called when capabilities response is received
-	OnCapabilitiesReceived func(TerminalCapabilities)
+	OnCapabilitiesReceived func(TerminalCapabilities) error
 }
 
 func New(options ...func(self *Loop)) (*Loop, error) {

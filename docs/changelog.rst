@@ -93,6 +93,8 @@ Detailed list of changes
 
 - ssh kitten: Fix kitten not being on PATH when SSHing into Debian systems (:iss:`7160`)
 
+- diff kitten: Abort when run inside a terminal that does not support the kitty keyboard protocol (:iss:`8185`)
+
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

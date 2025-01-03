@@ -128,7 +128,9 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 		if strings.HasPrefix(csi, "?") && strings.HasSuffix(csi, "c") {
 			self.waiting_for_capabilities_response = false
 			if self.OnCapabilitiesReceived != nil {
-				self.OnCapabilitiesReceived(self.TerminalCapabilities)
+				if err = self.OnCapabilitiesReceived(self.TerminalCapabilities); err != nil {
+					return err
+				}
 			}
 		} else if strings.HasPrefix(csi, "?997;") && strings.HasSuffix(csi, "n") {
 			switch csi[len(csi)-2] {

@@ -146,8 +146,15 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		lp.SetCursorShape(loop.BAR_CURSOR, true)
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(fmt.Sprintf("%s vs. %s", left, right))
+		lp.QueryCapabilities()
 		h.initialize()
 		return "", nil
+	}
+	lp.OnCapabilitiesReceived = func(tc loop.TerminalCapabilities) error {
+		if !tc.KeyboardProtocol {
+			return fmt.Errorf("This terminal does not support the kitty keyboard protocol, or you are running inside a terminal multiplexer that is blocking querying for kitty keyboard protocol support. The diff kitten cannot function without it.")
+		}
+		return nil
 	}
 	lp.OnWakeup = h.on_wakeup
 	lp.OnFinalize = func() string {
