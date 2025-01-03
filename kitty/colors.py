@@ -101,24 +101,19 @@ class ThemeColors:
         which = glfw_get_system_color_theme()
         if debug_rendering:
             log_error('Current system color scheme:', which)
+        cols: Optional[Colors] = None
         if which == 'dark' and self.has_dark_theme:
-            patch_options_with_color_spec(opts, self.dark_spec, self.dark_tbc)
-            patch_global_colors(self.dark_spec, True)
-            if debug_rendering:
-                log_error(f'Applied {which} color theme')
-            self.applied_theme = which
+            cols = self.dark_spec, self.dark_tbc
         elif which == 'light' and self.has_light_theme:
-            patch_options_with_color_spec(opts, self.light_spec, self.light_tbc)
-            patch_global_colors(self.light_spec, True)
-            if debug_rendering:
-                log_error(f'Applied {which} color theme')
-            self.applied_theme = which
+            cols = self.light_spec, self.light_tbc
         elif which == 'no_preference' and self.has_no_preference_theme:
-            patch_options_with_color_spec(opts, self.no_preference_spec, self.no_preference_tbc)
-            patch_global_colors(self.no_preference_spec, True)
-            if debug_rendering:
-                log_error(f'Applied {which} color theme')
+            cols = self.no_preference_spec, self.no_preference_tbc
+        if cols is not None:
+            patch_options_with_color_spec(opts, *cols)
+            patch_global_colors(cols[0], True)
             self.applied_theme = which
+            if debug_rendering:
+                log_error(f'Applied {self.applied_theme} color theme')
 
     def on_system_color_scheme_change(self, new_value: ColorSchemes, is_initial_value: bool = False) -> bool:
         if is_initial_value:
