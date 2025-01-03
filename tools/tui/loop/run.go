@@ -124,6 +124,25 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 			return self.handle_mouse_event(me)
 		}
 	}
+	if self.waiting_for_capabilities_response {
+		if strings.HasPrefix(csi, "?") && strings.HasSuffix(csi, "c") {
+			self.waiting_for_capabilities_response = false
+			if self.OnCapabilitiesReceived != nil {
+				self.OnCapabilitiesReceived(self.TerminalCapabilities)
+			}
+		} else if strings.HasPrefix(csi, "?997;") && strings.HasSuffix(csi, "n") {
+			switch csi[len(csi)-2] {
+			case '1':
+				self.TerminalCapabilities.ColorPreference = DARK_COLOR_PREFERENCE
+			case '2':
+				self.TerminalCapabilities.ColorPreference = LIGHT_COLOR_PREFERENCE
+			}
+			self.TerminalCapabilities.ColorPreferenceResponseReceived = true
+		} else if strings.HasPrefix(csi, "?") && strings.HasSuffix(csi, "u") {
+			self.TerminalCapabilities.KeyboardProtocol = true
+			self.TerminalCapabilities.KeyboardProtocolResponseReceived = true
+		}
+	}
 	if self.OnEscapeCode != nil {
 		return self.OnEscapeCode(CSI, raw)
 	}
@@ -368,6 +387,7 @@ func (self *Loop) run() (err error) {
 	var r_r, r_w, w_r, w_w *os.File
 	var tty_reading_done_channel chan byte
 	var tty_read_channel chan []byte
+	var tty_leftover_read_channel chan []byte
 
 	start_tty_reader := func() (err error) {
 		r_r, r_w, err = os.Pipe()
@@ -376,7 +396,8 @@ func (self *Loop) run() (err error) {
 		}
 		tty_read_channel = make(chan []byte)
 		tty_reading_done_channel = make(chan byte)
-		go read_from_tty(r_r, controlling_term, tty_read_channel, err_channel, tty_reading_done_channel)
+		tty_leftover_read_channel = make(chan []byte, 1)
+		go read_from_tty(r_r, controlling_term, tty_read_channel, err_channel, tty_reading_done_channel, tty_leftover_read_channel)
 		return
 	}
 	err = start_tty_reader()
@@ -404,6 +425,19 @@ func (self *Loop) run() (err error) {
 		// wait for tty reader to exit cleanly
 		for range tty_read_channel {
 		}
+		if !self.waiting_for_capabilities_response {
+			close(tty_leftover_read_channel)
+			return
+		}
+		var pending_bytes []byte
+		select {
+		case msg, ok := <-tty_leftover_read_channel:
+			if ok {
+				pending_bytes = msg
+			}
+		default:
+		}
+		read_until_primary_device_attributes_response(controlling_term, pending_bytes, 2*time.Second)
 	}
 
 	defer func() {

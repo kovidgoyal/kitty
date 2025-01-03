@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
+	"strings"
+	"time"
 
 	"golang.org/x/sys/unix"
 
@@ -40,7 +43,7 @@ func read_ignoring_temporary_errors(f *tty.Term, buf []byte) (int, error) {
 	return n, err
 }
 
-func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byte, err_channel chan<- error, quit_channel <-chan byte) {
+func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byte, err_channel chan<- error, quit_channel <-chan byte, leftover_channel chan<- []byte) {
 	keep_going := true
 	pipe_fd := int(pipe_r.Fd())
 	tty_fd := term.Fd()
@@ -94,7 +97,39 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 		select {
 		case results_channel <- send:
 		case <-quit_channel:
+			leftover_channel <- send
 			keep_going = false
 		}
+	}
+}
+
+func has_da1_response(s string) bool {
+	pat := regexp.MustCompile("\x1b\\[\\?[0-9:;]+c")
+	return pat.FindString(s) != ""
+}
+
+func read_until_primary_device_attributes_response(term *tty.Term, initial_bytes []byte, timeout time.Duration) {
+	s := strings.Builder{}
+	if initial_bytes != nil {
+		s.Write(initial_bytes)
+	}
+	received := make(chan error)
+	go func() {
+		buf := make([]byte, 1024)
+		n, err := read_ignoring_temporary_errors(term, buf)
+		if n > 0 {
+			s.Write(buf[:n])
+			if has_da1_response(s.String()) {
+				received <- nil
+				return
+			}
+		}
+		if err != nil {
+			received <- err
+		}
+	}()
+	select {
+	case <-received:
+	case <-time.After(timeout):
 	}
 }
