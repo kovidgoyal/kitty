@@ -23,7 +23,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment details**
 ```
 Press Ctrl+Shift+F6 (cmd+option+comma on macOS) in kitty, to copy debug output about kitty and its
-configuration to the clipboard and paste it here. 
+configuration to the clipboard and paste it here.
 
 On older versions of kitty, run kitty --debug-config instead
 ```

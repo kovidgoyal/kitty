@@ -302,7 +302,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             else:
                 for val in func(text):
                     a(f'    # {sc.name}')
-                    a(f'    {val!r}, ')
+                    a(f'    {val!r},')
         a(']')
         if only:
             imports.add(('kitty.constants', 'is_macos'))

@@ -42,7 +42,7 @@ A choice for the choices type. Can be specified multiple times. Every choice has
 the syntax: ``letter[;color]:text``, where :italic:`text` is the choice
 text and :italic:`letter` is the selection key. :italic:`letter` is a single letter
 belonging to :italic:`text`. This letter is highlighted within the choice text.
-There can be an optional color specification after the letter 
+There can be an optional color specification after the letter
 to indicate what color it should be.
 For example: :code:`y:Yes` and :code:`n;red:No`
 
