@@ -182,7 +182,19 @@ func resolved_chroma_style() *chroma.Style {
 	return style
 }
 
+var tokens_map map[string][]chroma.Token
+var mu sync.Mutex
+
 func highlight_file(path string) (highlighted string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			e, ok := r.(error)
+			if !ok {
+				e = fmt.Errorf("%v", r)
+			}
+			err = e
+		}
+	}()
 	filename_for_detection := filepath.Base(path)
 	ext := filepath.Ext(filename_for_detection)
 	if ext != "" {
@@ -196,22 +208,34 @@ func highlight_file(path string) (highlighted string, err error) {
 	if err != nil {
 		return "", err
 	}
-	lexer := lexers.Match(filename_for_detection)
-	if lexer == nil {
-		lexer = lexers.Analyse(text)
+	mu.Lock()
+	if tokens_map == nil {
+		tokens_map = make(map[string][]chroma.Token)
 	}
-	if lexer == nil {
-		return "", fmt.Errorf("Cannot highlight %#v: %w", path, ErrNoLexer)
-	}
-	lexer = chroma.Coalesce(lexer)
-	iterator, err := lexer.Tokenise(nil, text)
-	if err != nil {
-		return "", err
+	tokens := tokens_map[path]
+	mu.Unlock()
+	if tokens == nil {
+		lexer := lexers.Match(filename_for_detection)
+		if lexer == nil {
+			lexer = lexers.Analyse(text)
+		}
+		if lexer == nil {
+			return "", fmt.Errorf("Cannot highlight %#v: %w", path, ErrNoLexer)
+		}
+		lexer = chroma.Coalesce(lexer)
+		iterator, err := lexer.Tokenise(nil, text)
+		if err != nil {
+			return "", err
+		}
+		tokens = iterator.Tokens()
+		mu.Lock()
+		tokens_map[path] = tokens
+		mu.Unlock()
 	}
 	formatter := chroma.FormatterFunc(ansi_formatter)
 	w := strings.Builder{}
 	w.Grow(len(text) * 2)
-	err = formatter.Format(&w, resolved_chroma_style(), iterator)
+	err = formatter.Format(&w, resolved_chroma_style(), chroma.Literator(tokens...))
 	// os.WriteFile(filepath.Base(path+".highlighted"), []byte(w.String()), 0o600)
 	return w.String(), err
 }
