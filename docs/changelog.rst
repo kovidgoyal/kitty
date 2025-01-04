@@ -87,6 +87,8 @@ Detailed list of changes
 0.38.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- diff kitten: Automatically use dark/light color scheme based on the color scheme of the parent terminal. Can be controlled via the new :opt:`kitten-diff.color_scheme` option. Note that this is a **behavior change** by default. (:iss:`8170`)
+
 - When mapping a custom kitten allow using shell escaping for the kitten path (:iss:`8178`)
 
 - Fix border colors not being changed by auto light/dark themes at startup (:iss:`8180`)

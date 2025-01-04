@@ -158,6 +158,30 @@ func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) (err e
 	return nil
 }
 
+func resolved_chroma_style() *chroma.Style {
+	name := utils.IfElse(use_dark_colors, conf.Dark_pygments_style, conf.Pygments_style)
+	var style *chroma.Style
+	if name == "default" {
+		style = DefaultStyle()
+	} else {
+		style = styles.Get(name)
+	}
+	if style == nil {
+		if resolved_colors.Background.IsDark() && !resolved_colors.Foreground.IsDark() {
+			style = styles.Get("monokai")
+			if style == nil {
+				style = styles.Get("github-dark")
+			}
+		} else {
+			style = DefaultStyle()
+		}
+		if style == nil {
+			style = styles.Fallback
+		}
+	}
+	return style
+}
+
 func highlight_file(path string) (highlighted string, err error) {
 	filename_for_detection := filepath.Base(path)
 	ext := filepath.Ext(filename_for_detection)
@@ -174,34 +198,12 @@ func highlight_file(path string) (highlighted string, err error) {
 	}
 	lexer := lexers.Match(filename_for_detection)
 	if lexer == nil {
-		if err == nil {
-			lexer = lexers.Analyse(text)
-		}
+		lexer = lexers.Analyse(text)
 	}
 	if lexer == nil {
 		return "", fmt.Errorf("Cannot highlight %#v: %w", path, ErrNoLexer)
 	}
 	lexer = chroma.Coalesce(lexer)
-	name := conf.Pygments_style
-	var style *chroma.Style
-	if name == "default" {
-		style = DefaultStyle()
-	} else {
-		style = styles.Get(name)
-	}
-	if style == nil {
-		if conf.Background.IsDark() && !conf.Foreground.IsDark() {
-			style = styles.Get("monokai")
-			if style == nil {
-				style = styles.Get("github-dark")
-			}
-		} else {
-			style = DefaultStyle()
-		}
-		if style == nil {
-			style = styles.Fallback
-		}
-	}
 	iterator, err := lexer.Tokenise(nil, text)
 	if err != nil {
 		return "", err
@@ -209,7 +211,7 @@ func highlight_file(path string) (highlighted string, err error) {
 	formatter := chroma.FormatterFunc(ansi_formatter)
 	w := strings.Builder{}
 	w.Grow(len(text) * 2)
-	err = formatter.Format(&w, style, iterator)
+	err = formatter.Format(&w, resolved_chroma_style(), iterator)
 	// os.WriteFile(filepath.Base(path+".highlighted"), []byte(w.String()), 0o600)
 	return w.String(), err
 }

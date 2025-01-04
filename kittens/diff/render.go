@@ -160,37 +160,107 @@ var format_as_sgr struct {
 }
 
 var statusline_format, added_count_format, removed_count_format, message_format func(...any) string
+var use_dark_colors bool = true
+
+type ResolvedColors struct {
+	Added_bg             style.RGBA
+	Added_margin_bg      style.RGBA
+	Background           style.RGBA
+	Filler_bg            style.RGBA
+	Foreground           style.RGBA
+	Highlight_added_bg   style.RGBA
+	Highlight_removed_bg style.RGBA
+	Hunk_bg              style.RGBA
+	Hunk_margin_bg       style.RGBA
+	Margin_bg            style.RGBA
+	Margin_fg            style.RGBA
+	Margin_filler_bg     style.NullableColor
+	Removed_bg           style.RGBA
+	Removed_margin_bg    style.RGBA
+	Search_bg            style.RGBA
+	Search_fg            style.RGBA
+	Select_bg            style.RGBA
+	Select_fg            style.NullableColor
+	Title_bg             style.RGBA
+	Title_fg             style.RGBA
+}
+
+var resolved_colors ResolvedColors
 
 func create_formatters() {
+	rc := &resolved_colors
+	if use_dark_colors {
+		rc.Added_bg = conf.Dark_added_bg
+		rc.Added_margin_bg = conf.Dark_added_margin_bg
+		rc.Background = conf.Dark_background
+		rc.Filler_bg = conf.Dark_filler_bg
+		rc.Foreground = conf.Dark_foreground
+		rc.Highlight_added_bg = conf.Dark_highlight_added_bg
+		rc.Highlight_removed_bg = conf.Dark_highlight_removed_bg
+		rc.Hunk_bg = conf.Dark_hunk_bg
+		rc.Hunk_margin_bg = conf.Dark_hunk_margin_bg
+		rc.Margin_bg = conf.Dark_margin_bg
+		rc.Margin_fg = conf.Dark_margin_fg
+		rc.Margin_filler_bg = conf.Dark_margin_filler_bg
+		rc.Removed_bg = conf.Dark_removed_bg
+		rc.Removed_margin_bg = conf.Dark_removed_margin_bg
+		rc.Search_bg = conf.Dark_search_bg
+		rc.Search_fg = conf.Dark_search_fg
+		rc.Select_bg = conf.Dark_select_bg
+		rc.Select_fg = conf.Dark_select_fg
+		rc.Title_bg = conf.Dark_title_bg
+		rc.Title_fg = conf.Dark_title_fg
+	} else {
+		rc.Added_bg = conf.Added_bg
+		rc.Added_margin_bg = conf.Added_margin_bg
+		rc.Background = conf.Background
+		rc.Filler_bg = conf.Filler_bg
+		rc.Foreground = conf.Foreground
+		rc.Highlight_added_bg = conf.Highlight_added_bg
+		rc.Highlight_removed_bg = conf.Highlight_removed_bg
+		rc.Hunk_bg = conf.Hunk_bg
+		rc.Hunk_margin_bg = conf.Hunk_margin_bg
+		rc.Margin_bg = conf.Margin_bg
+		rc.Margin_fg = conf.Margin_fg
+		rc.Margin_filler_bg = conf.Margin_filler_bg
+		rc.Removed_bg = conf.Removed_bg
+		rc.Removed_margin_bg = conf.Removed_margin_bg
+		rc.Search_bg = conf.Search_bg
+		rc.Search_fg = conf.Search_fg
+		rc.Select_bg = conf.Select_bg
+		rc.Select_fg = conf.Select_fg
+		rc.Title_bg = conf.Title_bg
+		rc.Title_fg = conf.Title_fg
+	}
 	ctx := style.Context{AllowEscapeCodes: true}
 	only_open := func(x string) string {
 		ans := ctx.SprintFunc(x)("|")
 		ans, _, _ = strings.Cut(ans, "|")
 		return ans
 	}
-	format_as_sgr.filler = only_open("bg=" + conf.Filler_bg.AsRGBSharp())
-	if conf.Margin_filler_bg.IsSet {
-		format_as_sgr.margin_filler = only_open("bg=" + conf.Margin_filler_bg.Color.AsRGBSharp())
+	format_as_sgr.filler = only_open("bg=" + rc.Filler_bg.AsRGBSharp())
+	if rc.Margin_filler_bg.IsSet {
+		format_as_sgr.margin_filler = only_open("bg=" + rc.Margin_filler_bg.Color.AsRGBSharp())
 	} else {
-		format_as_sgr.margin_filler = only_open("bg=" + conf.Filler_bg.AsRGBSharp())
+		format_as_sgr.margin_filler = only_open("bg=" + rc.Filler_bg.AsRGBSharp())
 	}
-	format_as_sgr.added = only_open("bg=" + conf.Added_bg.AsRGBSharp())
-	format_as_sgr.added_margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Added_margin_bg.AsRGBSharp()))
-	format_as_sgr.removed = only_open("bg=" + conf.Removed_bg.AsRGBSharp())
-	format_as_sgr.removed_margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Removed_margin_bg.AsRGBSharp()))
-	format_as_sgr.title = only_open(fmt.Sprintf("fg=%s bg=%s bold", conf.Title_fg.AsRGBSharp(), conf.Title_bg.AsRGBSharp()))
-	format_as_sgr.margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Margin_bg.AsRGBSharp()))
-	format_as_sgr.hunk = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
-	format_as_sgr.hunk_margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
-	format_as_sgr.search = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Search_fg.AsRGBSharp(), conf.Search_bg.AsRGBSharp()))
-	statusline_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Margin_fg.AsRGBSharp()))
-	added_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_added_bg.AsRGBSharp()))
-	removed_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_removed_bg.AsRGBSharp()))
+	format_as_sgr.added = only_open("bg=" + rc.Added_bg.AsRGBSharp())
+	format_as_sgr.added_margin = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Added_margin_bg.AsRGBSharp()))
+	format_as_sgr.removed = only_open("bg=" + rc.Removed_bg.AsRGBSharp())
+	format_as_sgr.removed_margin = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Removed_margin_bg.AsRGBSharp()))
+	format_as_sgr.title = only_open(fmt.Sprintf("fg=%s bg=%s bold", rc.Title_fg.AsRGBSharp(), rc.Title_bg.AsRGBSharp()))
+	format_as_sgr.margin = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Margin_bg.AsRGBSharp()))
+	format_as_sgr.hunk = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Hunk_bg.AsRGBSharp()))
+	format_as_sgr.hunk_margin = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Hunk_margin_bg.AsRGBSharp()))
+	format_as_sgr.search = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Search_fg.AsRGBSharp(), rc.Search_bg.AsRGBSharp()))
+	statusline_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", rc.Margin_fg.AsRGBSharp()))
+	added_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", rc.Highlight_added_bg.AsRGBSharp()))
+	removed_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", rc.Highlight_removed_bg.AsRGBSharp()))
 	message_format = ctx.SprintFunc("bold")
-	if conf.Select_fg.IsSet {
-		format_as_sgr.selection = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Select_fg.Color.AsRGBSharp(), conf.Select_bg.AsRGBSharp()))
+	if rc.Select_fg.IsSet {
+		format_as_sgr.selection = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Select_fg.Color.AsRGBSharp(), rc.Select_bg.AsRGBSharp()))
 	} else {
-		format_as_sgr.selection = only_open("bg=" + conf.Select_bg.AsRGBSharp())
+		format_as_sgr.selection = only_open("bg=" + rc.Select_bg.AsRGBSharp())
 	}
 }
 
@@ -198,9 +268,9 @@ func center_span(ltype string, offset, size int) *sgr.Span {
 	ans := sgr.NewSpan(offset, size)
 	switch ltype {
 	case "add":
-		ans.SetBackground(conf.Highlight_added_bg).SetClosingBackground(conf.Added_bg)
+		ans.SetBackground(resolved_colors.Highlight_added_bg).SetClosingBackground(resolved_colors.Added_bg)
 	case "remove":
-		ans.SetBackground(conf.Highlight_removed_bg).SetClosingBackground(conf.Removed_bg)
+		ans.SetBackground(resolved_colors.Highlight_removed_bg).SetClosingBackground(resolved_colors.Removed_bg)
 	}
 	return ans
 }
@@ -469,7 +539,7 @@ func hunk_title(hunk *Hunk) string {
 	return fmt.Sprintf("@@ -%d,%d +%d,%d @@ %s", hunk.left_start+1, hunk.left_count, hunk.right_start+1, hunk.right_count, hunk.title)
 }
 
-func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num int, ans []*LogicalLine) []*LogicalLine {
+func lines_for_context_chunk(data *DiffData, _ int, chunk *Chunk, _ int, ans []*LogicalLine) []*LogicalLine {
 	for i := 0; i < chunk.left_count; i++ {
 		left_line_number := chunk.left_start + i
 		right_line_number := chunk.right_start + i
@@ -514,7 +584,7 @@ func render_half_line(line_number int, line, ltype string, available_cols int, c
 	return ans
 }
 
-func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num int, ans []*LogicalLine) []*LogicalLine {
+func lines_for_diff_chunk(data *DiffData, _ int, chunk *Chunk, _ int, ans []*LogicalLine) []*LogicalLine {
 	common := utils.Min(chunk.left_count, chunk.right_count)
 	ll, rl := make([]HalfScreenLine, 0, 32), make([]HalfScreenLine, 0, 32)
 	for i := 0; i < utils.Max(chunk.left_count, chunk.right_count); i++ {

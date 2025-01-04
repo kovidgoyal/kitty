@@ -71,103 +71,90 @@ egr()  # }}}
 # colors {{{
 agr('colors', 'Colors')
 
-opt('pygments_style', 'default',
-    long_text='''
+opt('color_scheme', 'auto', choices=('auto', 'light', 'dark'), long_text='''
+Whether to use the light or dark colors. The default of :code:`auto` means
+to follow the parent terminal color scheme.
+''')
+
+opt('pygments_style', 'default', long_text='''
 The pygments color scheme to use for syntax highlighting. See :link:`pygments
 builtin styles <https://pygments.org/styles/>` for a list of schemes. Note that
 this **does not** change the colors used for diffing,
 only the colors used for syntax highlighting. To change the general colors use the settings below.
+This sets the colors used for light color schemes, use :opt:`dark_pygments_style` to change the
+colors for dark color schemes.
 '''
     )
 
-opt('foreground', 'black',
-    option_type='to_color',
-    long_text='Basic colors'
-    )
+opt('dark_pygments_style', 'github-dark', long_text='''
+The pygments color scheme to use for syntax highlighting with dark colors. See :link:`pygments
+builtin styles <https://pygments.org/styles/>` for a list of schemes. Note that
+this **does not** change the colors used for diffing,
+only the colors used for syntax highlighting. To change the general colors use the settings below.
+This sets the colors used for dark color schemes, use :opt:`pygments_style` to change the
+colors for light color schemes.''')
 
-opt('background', 'white',
-    option_type='to_color',
-    )
+opt('foreground', 'black', option_type='to_color', long_text='Basic colors')
+opt('dark_foreground', '#f8f8f2', option_type='to_color', long_text='Basic colors')
 
-opt('title_fg', 'black',
-    option_type='to_color',
-    long_text='Title colors'
-    )
+dark_bg = '#212830'
+opt('background', 'white', option_type='to_color',)
+opt('dark_background', dark_bg, option_type='to_color',)
 
-opt('title_bg', 'white',
-    option_type='to_color',
-    )
+opt('title_fg', 'black', option_type='to_color', long_text='Title colors')
+opt('dark_title_fg', 'white', option_type='to_color')
 
-opt('margin_bg', '#fafbfc',
-    option_type='to_color',
-    long_text='Margin colors'
-    )
+opt('title_bg', 'white', option_type='to_color',)
+opt('dark_title_bg', dark_bg, option_type='to_color',)
 
-opt('margin_fg', '#aaaaaa',
-    option_type='to_color',
-    )
+opt('margin_bg', '#fafbfc', option_type='to_color', long_text='Margin colors')
+opt('dark_margin_bg', dark_bg, option_type='to_color')
 
-opt('removed_bg', '#ffeef0',
-    option_type='to_color',
-    long_text='Removed text backgrounds'
-    )
+opt('margin_fg', '#aaaaaa', option_type='to_color')
+opt('dark_margin_fg', '#aaaaaa', option_type='to_color')
 
-opt('highlight_removed_bg', '#fdb8c0',
-    option_type='to_color',
-    )
+opt('removed_bg', '#ffeef0', option_type='to_color', long_text='Removed text backgrounds')
+opt('dark_removed_bg', '#352c33', option_type='to_color')
 
-opt('removed_margin_bg', '#ffdce0',
-    option_type='to_color',
-    )
+opt('highlight_removed_bg', '#fdb8c0', option_type='to_color')
+opt('dark_highlight_removed_bg', '#5c3539', option_type='to_color')
 
-opt('added_bg', '#e6ffed',
-    option_type='to_color',
-    long_text='Added text backgrounds'
-    )
+opt('removed_margin_bg', '#ffdce0', option_type='to_color')
+opt('dark_removed_margin_bg', '#5c3539', option_type='to_color')
 
-opt('highlight_added_bg', '#acf2bd',
-    option_type='to_color',
-    )
+opt('added_bg', '#e6ffed', option_type='to_color', long_text='Added text backgrounds')
+opt('dark_added_bg', '#263834', option_type='to_color')
 
-opt('added_margin_bg', '#cdffd8',
-    option_type='to_color',
-    )
+opt('highlight_added_bg', '#acf2bd', option_type='to_color')
+opt('dark_highlight_added_bg', '#31503d', option_type='to_color')
 
-opt('filler_bg', '#fafbfc',
-    option_type='to_color',
-    long_text='Filler (empty) line background'
-    )
+opt('added_margin_bg', '#cdffd8', option_type='to_color')
+opt('dark_added_margin_bg', '#31503d', option_type='to_color')
 
-opt('margin_filler_bg', 'none',
-    option_type='to_color_or_none',
-    long_text='Filler (empty) line background in margins, defaults to the filler background'
-    )
+opt('filler_bg', '#fafbfc', option_type='to_color', long_text='Filler (empty) line background')
+opt('dark_filler_bg', '#262c36', option_type='to_color')
 
-opt('hunk_margin_bg', '#dbedff',
-    option_type='to_color',
-    long_text='Hunk header colors'
-    )
+opt('margin_filler_bg', 'none', option_type='to_color_or_none', long_text='Filler (empty) line background in margins, defaults to the filler background')
+opt('dark_margin_filler_bg', 'none', option_type='to_color_or_none')
 
-opt('hunk_bg', '#f1f8ff',
-    option_type='to_color',
-    )
 
-opt('search_bg', '#444',
-    option_type='to_color',
-    long_text='Highlighting'
-    )
+opt('hunk_margin_bg', '#dbedff', option_type='to_color', long_text='Hunk header colors')
+opt('dark_hunk_margin_bg', '#0c2d6b', option_type='to_color')
 
-opt('search_fg', 'white',
-    option_type='to_color',
-    )
+opt('hunk_bg', '#f1f8ff', option_type='to_color')
+opt('dark_hunk_bg', '#253142', option_type='to_color')
 
-opt('select_bg', '#b4d5fe',
-    option_type='to_color',
-    )
+opt('search_bg', '#444', option_type='to_color', long_text='Highlighting')
+opt('dark_search_bg', '#2c599c', option_type='to_color')
 
-opt('select_fg', 'black',
-    option_type='to_color_or_none',
-    )
+opt('search_fg', 'white', option_type='to_color')
+opt('dark_search_fg', 'white', option_type='to_color')
+
+opt('select_bg', '#b4d5fe', option_type='to_color')
+opt('dark_select_bg', '#2c599c', option_type='to_color')
+
+opt('select_fg', 'black', option_type='to_color_or_none')
+opt('dark_select_fg', 'white', option_type='to_color_or_none')
 egr()  # }}}
 
 # shortcuts {{{
