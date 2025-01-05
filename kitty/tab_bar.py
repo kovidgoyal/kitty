@@ -232,14 +232,14 @@ class TabAccessor:
         if w is None:
             return ''
         if w.progress.state is ProgressState.error:
-            return '\u26a0\ufe0f '
+            return '  '
         if w.progress.state is ProgressState.unset:
             return ''
         if w.progress.state is ProgressState.indeterminate:
-            return '🔄 '
+            return '  '
         p = f'{w.progress.percent}% '
         if w.progress.state is ProgressState.paused:
-            return f'⏸  {p}'
+            return f'  {p}'
         return p
 
     @property
