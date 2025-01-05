@@ -268,10 +268,15 @@ _ksi_deferred_init() {
 
         if [[ "$is_ssh_session" == "y" ]]; then
             # show the hostname via %m for SSH sessions
+            builtin local hostname="$(builtin print -Pn "%m")"
+            # The variable `hostname` is used such that we don't have to use
+            # the -P option in the two print commands below. This mitigating
+            # accidental variable expansion, e.g. of the variables in the
+            # command string (V).
             functions[_ksi_precmd]+="
-                builtin print -Prnu $_ksi_fd \$'\\e]2;'\"%m: \${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
+                builtin print -rnu $_ksi_fd \$'\\e]2;'\"$hostname: \${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
             functions[_ksi_preexec]+="
-                builtin print -Prnu $_ksi_fd \$'\\e]2;'\"%m: \${(V)1}\"\$'\\a'"
+                builtin print -rnu $_ksi_fd \$'\\e]2;'\"$hostname: \${(V)1}\"\$'\\a'"
         else
             functions[_ksi_precmd]+="
                 builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
