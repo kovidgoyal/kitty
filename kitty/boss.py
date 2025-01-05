@@ -1264,7 +1264,7 @@ class Boss:
                 w.clear_screen(reset=True, scrollback=True)
         elif action == 'scrollback':
             for w in windows:
-                w.clear_screen(scrollback=True)
+                w.screen.clear_scrollback()
         elif action == 'clear':
             for w in windows:
                 w.clear_screen()
