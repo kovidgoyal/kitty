@@ -755,6 +755,13 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(appMenu, ([NSString stringWithFormat:@"Quit %@", app_name]), quit);
     [appMenu release];
 
+    NSMenuItem* editMenuItem = [bar addItemWithTitle:@"Edit"
+                                              action:NULL
+                                       keyEquivalent:@""];
+    NSMenu* editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+    [editMenuItem setSubmenu:editMenu];
+    [editMenu addItem:[NSMenuItem separatorItem]];  // forces macOS to show the AutoFill submenu
+
     NSMenuItem* shellMenuItem =
         [bar addItemWithTitle:@"Shell"
                        action:NULL
