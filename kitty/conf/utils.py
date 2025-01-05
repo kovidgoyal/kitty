@@ -203,7 +203,8 @@ def parse_line(
     parse_conf_item: ItemParser,
     ans: Dict[str, Any],
     base_path_for_includes: str,
-    accumulate_bad_lines: Optional[List[BadLine]] = None
+    effective_config_lines: Callable[[str, str], None],
+    accumulate_bad_lines: Optional[List[BadLine]] = None,
 ) -> None:
     line = line.strip()
     if not line or line.startswith('#'):
@@ -225,9 +226,7 @@ def parse_line(
                     with currently_parsing.set_file(f'<env var: {x}>'):
                         _parse(
                             NamedLineIterator(os.path.join(base_path_for_includes, ''), iter(os.environ[x].splitlines())),
-                            parse_conf_item,
-                            ans,
-                            accumulate_bad_lines
+                            parse_conf_item, ans, accumulate_bad_lines, effective_config_lines,
                         )
             return
         else:
@@ -238,7 +237,7 @@ def parse_line(
             try:
                 with open(val, encoding='utf-8', errors='replace') as include:
                     with currently_parsing.set_file(val):
-                        _parse(include, parse_conf_item, ans, accumulate_bad_lines)
+                        _parse(include, parse_conf_item, ans, accumulate_bad_lines, effective_config_lines)
             except FileNotFoundError:
                 log_error(
                     'Could not find included config file: {}, ignoring'.
@@ -250,17 +249,22 @@ def parse_line(
                     format(val)
                 )
         return
-    if not parse_conf_item(key, val, ans):
+    if parse_conf_item(key, val, ans):
+        effective_config_lines(key, line)
+    else:
         log_error(f'Ignoring unknown config key: {key}')
+
 
 
 def _parse(
     lines: Iterable[str],
     parse_conf_item: ItemParser,
     ans: Dict[str, Any],
-    accumulate_bad_lines: Optional[List[BadLine]] = None
+    accumulate_bad_lines: Optional[List[BadLine]] = None,
+    effective_config_lines: Optional[Callable[[str, str], None]] = None,
 ) -> None:
     name = getattr(lines, 'name', None)
+    effective_config_lines = effective_config_lines or (lambda a, b: None)
     if name:
         base_path_for_includes = os.path.abspath(name) if name.endswith(os.path.sep) else os.path.dirname(os.path.abspath(name))
     else:
@@ -297,7 +301,7 @@ def _parse(
                 next_line = ''
             try:
                 with currently_parsing.set_line(line, line_num):
-                    parse_line(line, parse_conf_item, ans, base_path_for_includes, accumulate_bad_lines)
+                    parse_line(line, parse_conf_item, ans, base_path_for_includes, effective_config_lines, accumulate_bad_lines)
             except Exception as e:
                 if accumulate_bad_lines is None:
                     raise
@@ -310,11 +314,10 @@ def parse_config_base(
     lines: Iterable[str],
     parse_conf_item: ItemParser,
     ans: Dict[str, Any],
-    accumulate_bad_lines: Optional[List[BadLine]] = None
+    accumulate_bad_lines: Optional[List[BadLine]] = None,
+    effective_config_lines: Optional[Callable[[str, str], None]] = None,
 ) -> None:
-    _parse(
-        lines, parse_conf_item, ans, accumulate_bad_lines
-    )
+    _parse(lines, parse_conf_item, ans, accumulate_bad_lines, effective_config_lines)
 
 
 def merge_dicts(defaults: Dict[str, Any], newvals: Dict[str, Any]) -> Dict[str, Any]:

@@ -220,7 +220,8 @@ class Option:
 
     def __init__(
         self, name: str, defval: str, macos_default: Union[Unset, str], parser_func: ParserFuncType,
-        long_text: str, documented: bool, group: 'Group', choices: Tuple[str, ...], ctype: str
+        long_text: str, documented: bool, group: 'Group', choices: Tuple[str, ...], ctype: str,
+        has_secret: bool = False,
     ):
         self.name = name
         self.ctype = ctype
@@ -231,6 +232,7 @@ class Option:
         self.group = group
         self.parser_func = parser_func
         self.choices = choices
+        self.has_secret = has_secret
 
     @property
     def needs_coalescing(self) -> bool:
@@ -292,12 +294,13 @@ class MultiVal:
 
 class MultiOption:
 
-    def __init__(self, name: str, parser_func: ParserFuncType, long_text: str, group: 'Group', ctype: str):
+    def __init__(self, name: str, parser_func: ParserFuncType, long_text: str, group: 'Group', ctype: str, has_secret: bool = False):
         self.name = name
         self.ctype = ctype
         self.parser_func = parser_func
         self.long_text = long_text
         self.group = group
+        self.has_secret = has_secret
         self.items: List[MultiVal] = []
 
     def add_value(self, val_as_str: str, add_to_default: bool, documented: bool, only: Only) -> None:
@@ -701,7 +704,7 @@ class Definition:
         documented: bool = True, add_to_default: bool = False,
         only: Only = '', macos_default: Union[Unset, str] = unset,
         choices: Tuple[str, ...] = (),
-        ctype: str = '',
+        ctype: str = '', has_secret: bool = False,
     ) -> None:
         if isinstance(defval, bool):
             defval = 'yes' if defval else 'no'
@@ -715,13 +718,13 @@ class Definition:
                 raise TypeError(f'Cannot specify macos_default for is_multiple option: {name} use only instead')
             is_new = name not in self.multi_option_map
             if is_new:
-                self.multi_option_map[name] = MultiOption(name, self.parser_func(option_type), long_text, self.current_group, ctype)
+                self.multi_option_map[name] = MultiOption(name, self.parser_func(option_type), long_text, self.current_group, ctype, has_secret)
             mopt = self.multi_option_map[name]
             if is_new:
                 self.current_group.append(mopt)
             mopt.add_value(defval, add_to_default, documented, only)
             return
-        opt = Option(name, defval, macos_default, self.parser_func(option_type), long_text, documented, self.current_group, choices, ctype)
+        opt = Option(name, defval, macos_default, self.parser_func(option_type), long_text, documented, self.current_group, choices, ctype, has_secret)
         self.current_group.append(opt)
         self.option_map[name] = opt
 

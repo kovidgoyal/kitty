@@ -37,7 +37,7 @@ from .clipboard import (
 )
 from .colors import ColorSchemes, theme_colors
 from .conf.utils import BadLine, KeyAction, to_cmdline
-from .config import common_opts_as_dict, prepare_config_file_for_editing
+from .config import common_opts_as_dict, prepare_config_file_for_editing, store_effective_config
 from .constants import (
     RC_ENCRYPTION_PROTOCOL_VERSION,
     appname,
@@ -398,6 +398,7 @@ class Boss:
         set_boss(self)
         self.mappings: Mappings = Mappings(global_shortcuts, self.refresh_active_tab_bar)
         self.notification_manager: NotificationManager = NotificationManager(debug=self.args.debug_keyboard or self.args.debug_rendering)
+        self.atexit.unlink(store_effective_config())
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
@@ -2730,6 +2731,7 @@ class Boss:
         clear_caches()
         from .guess_mime_type import clear_mime_cache
         clear_mime_cache()
+        store_effective_config()
 
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):

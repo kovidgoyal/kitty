@@ -442,15 +442,20 @@ def generate_c_conversion(loc: str, ctypes: List[Union[Option, MultiOption]]) ->
 
 def write_output(loc: str, defn: Definition, extra_after_type_defn: str = '') -> None:
     cls, tc = generate_class(defn, loc)
-    with open(os.path.join(*loc.split('.'), 'options', 'types.py'), 'w') as f:
-        f.write(f'{cls}\n')
-        f.write(extra_after_type_defn)
-    with open(os.path.join(*loc.split('.'), 'options', 'parse.py'), 'w') as f:
-        f.write(f'{tc}\n')
     ctypes = []
+    has_secret = []
     for opt in defn.root_group.iter_all_non_groups():
         if isinstance(opt, (Option, MultiOption)) and opt.ctype:
             ctypes.append(opt)
+        if getattr(opt, 'has_secret', False):
+            has_secret.append(opt.name)
+    with open(os.path.join(*loc.split('.'), 'options', 'types.py'), 'w') as f:
+        f.write(f'{cls}\n')
+        f.write(extra_after_type_defn)
+        if has_secret:
+            f.write('\n\nsecret_options = ' + repr(tuple(has_secret)))
+    with open(os.path.join(*loc.split('.'), 'options', 'parse.py'), 'w') as f:
+        f.write(f'{tc}\n')
     if ctypes:
         c = generate_c_conversion(loc, ctypes)
         with open(os.path.join(*loc.split('.'), 'options', 'to-c-generated.h'), 'w') as f:

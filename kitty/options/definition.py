@@ -3002,7 +3002,7 @@ their stdout/stderr/stdin no longer work.
 
 opt('+remote_control_password', '',
     option_type='remote_control_password',
-    add_to_default=False,
+    add_to_default=False, has_secret=True,
     long_text='''
 Allow other programs to control kitty using passwords. This option can be
 specified multiple times to add multiple passwords. If no passwords are present
@@ -3210,8 +3210,7 @@ is applied. See also :opt:`clipboard_control`.
 '''
     )
 
-opt('file_transfer_confirmation_bypass', '',
-    long_text='''
+opt('file_transfer_confirmation_bypass', '', has_secret=True, long_text='''
 The password that can be supplied to the :doc:`file transfer kitten
 </kittens/transfer>` to skip the transfer confirmation prompt. This should only
 be used when initiating transfers from trusted computers, over trusted networks

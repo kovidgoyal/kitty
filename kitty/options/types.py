@@ -1052,3 +1052,6 @@ nullable_colors = frozenset({
     'selection_foreground'
     'selection_background'
 })
+
+
+secret_options = ('remote_control_password', 'file_transfer_confirmation_bypass')
