@@ -27,6 +27,10 @@ can be turned off for specific symbols using :opt:`narrow_symbols`.
 Using a color theme with a background color does not work well in vim?
 -----------------------------------------------------------------------
 
+First, be sure to `use a color scheme in vim <https://github.com/kovidgoyal/kitty/discussions/8196#discussioncomment-11739991>`__
+instead of relying on the terminal theme. Otherwise, background and text selection colours
+may be difficult to read.
+
 Sadly, vim has very poor out-of-the-box detection for modern terminal features.
 Furthermore, it `recently broke detection even more <https://github.com/vim/vim/issues/11729>`__.
 It kind of, but not really, supports terminfo, except it overrides it with its own hard-coded
