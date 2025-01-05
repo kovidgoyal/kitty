@@ -35,7 +35,7 @@ from .constants import (
 from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, Shlex, get_options, monotonic, open_tty
 from .fast_data_types import timed_debug_print as _timed_debug_print
 from .types import run_once
-from .typing import AddressFamily, PopenType, Socket, StartupCtx
+from .typing import AddressFamily, PopenType, StartupCtx
 
 if TYPE_CHECKING:
     import tarfile

@@ -16,7 +16,6 @@ from gettext import gettext as _
 from gettext import ngettext
 from time import sleep
 from typing import (
-    IO,
     TYPE_CHECKING,
     Any,
     Callable,
