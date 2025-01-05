@@ -224,7 +224,7 @@ type KittyOpts struct {
 	Term, Shell_integration string
 }
 
-func read_relevant_kitty_opts() KittyOpts {
+func read_relevant_kitty_opts(override_conf_path ...string) KittyOpts {
 	ans := KittyOpts{Term: kitty.KittyConfigDefaults.Term, Shell_integration: kitty.KittyConfigDefaults.Shell_integration}
 	handle_line := func(key, val string) error {
 		switch key {
@@ -235,7 +235,7 @@ func read_relevant_kitty_opts() KittyOpts {
 		}
 		return nil
 	}
-	config.ReadKittyConfig(handle_line)
+	config.ReadKittyConfig(handle_line, override_conf_path...)
 	return ans
 }
 
