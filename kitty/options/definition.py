@@ -4331,10 +4331,22 @@ map('Reset the terminal',
     only='macos',
     )
 
-map('Clear up to cursor line',
+map('Clear to start',
     'clear_terminal_and_scrollback cmd+k clear_terminal to_cursor active',
     only='macos',
     )
+
+map('Clear scrollback',
+    'clear_scrollback option+cmd+k clear_terminal scrollback active',
+    only='macos',
+    )
+
+map('Clear screen',
+    'clear_screen cmd+ctrl+l clear_terminal to_cursor_scroll active',
+    only='macos',
+    )
+
+
 
 map('Reload kitty.conf',
     'reload_config_file kitty_mod+f5 load_config_file',

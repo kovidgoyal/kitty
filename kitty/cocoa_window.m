@@ -252,6 +252,8 @@ PENDING(new_window, NEW_WINDOW)
 PENDING(close_window, CLOSE_WINDOW)
 PENDING(reset_terminal, RESET_TERMINAL)
 PENDING(clear_terminal_and_scrollback, CLEAR_TERMINAL_AND_SCROLLBACK)
+PENDING(clear_scrollback, CLEAR_SCROLLBACK)
+PENDING(clear_screen, CLEAR_SCREEN)
 PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 PENDING(toggle_fullscreen, TOGGLE_FULLSCREEN)
@@ -275,6 +277,8 @@ PENDING(quit, QUIT)
         item.action == @selector(close_window:) ||
         item.action == @selector(reset_terminal:) ||
         item.action == @selector(clear_terminal_and_scrollback:) ||
+        item.action == @selector(clear_scrollback:) ||
+        item.action == @selector(clear_screen:) ||
         item.action == @selector(previous_tab:) ||
         item.action == @selector(next_tab:) ||
         item.action == @selector(detach_tab:))
@@ -308,7 +312,8 @@ typedef struct {
 } GlobalShortcut;
 typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file, reload_config;
-    GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal, clear_terminal_and_scrollback;
+    GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal;
+    GlobalShortcut clear_terminal_and_scrollback, clear_screen, clear_scrollback;
     GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen, open_kitty_website;
     GlobalShortcut hide_macos_app, hide_macos_other_apps, minimize_macos_window, quit;
 } GlobalShortcuts;
@@ -324,7 +329,8 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
 #define Q(x) if (strcmp(name, #x) == 0) gs = &global_shortcuts.x
     Q(new_os_window); else Q(close_os_window); else Q(close_tab); else Q(edit_config_file);
     else Q(new_tab); else Q(next_tab); else Q(previous_tab);
-    else Q(new_window); else Q(close_window); else Q(reset_terminal); else Q(clear_terminal_and_scrollback); else Q(reload_config);
+    else Q(new_window); else Q(close_window); else Q(reset_terminal);
+    else Q(clear_terminal_and_scrollback); else Q(clear_scrollback); else Q(clear_screen); else Q(reload_config);
     else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen); else Q(open_kitty_website);
     else Q(hide_macos_app); else Q(hide_macos_other_apps); else Q(minimize_macos_window); else Q(quit);
 #undef Q
@@ -772,6 +778,8 @@ cocoa_create_global_menu(void) {
     NSMenu* editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
     [editMenuItem setSubmenu:editMenu];
     MENU_ITEM(editMenu, @"Clear to Start", clear_terminal_and_scrollback);
+    MENU_ITEM(editMenu, @"Clear Scrollback", clear_scrollback);
+    MENU_ITEM(editMenu, @"Clear Screen", clear_screen);
     [editMenu release];
 
     NSMenuItem* windowMenuItem =

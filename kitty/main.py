@@ -192,6 +192,12 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
         val = get_macos_shortcut_for(func_map, 'clear_terminal to_cursor active', lookup_name='clear_terminal_and_scrollback')
         if val is not None:
             global_shortcuts['clear_terminal_and_scrollback'] = val
+        val = get_macos_shortcut_for(func_map, 'clear_terminal scrollback active', lookup_name='clear_scrollback')
+        if val is not None:
+            global_shortcuts['clear_scrollback'] = val
+        val = get_macos_shortcut_for(func_map, 'clear_terminal to_cursor_scroll active', lookup_name='clear_screen')
+        if val is not None:
+            global_shortcuts['clear_screen'] = val
         val = get_macos_shortcut_for(func_map, 'load_config_file', lookup_name='reload_config')
         if val is not None:
             global_shortcuts['reload_config'] = val

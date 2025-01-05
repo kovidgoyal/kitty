@@ -101,6 +101,8 @@ Detailed list of changes
 
 - macOS: Allow using the Passwords app to autofill passwords via the Edit->Autofill menu mimicking other macOS applications (:pull:`8195`)
 
+- macOS: Add menu items to the Edit menu to clear the screen and scrollback
+
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
