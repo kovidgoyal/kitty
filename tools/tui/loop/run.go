@@ -27,6 +27,7 @@ func new_loop() *Loop {
 	l.terminal_options.Alternate_screen = true
 	l.terminal_options.restore_colors = true
 	l.terminal_options.in_band_resize_notification = true
+	l.terminal_options.color_scheme_change_notification = false
 	l.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
@@ -143,6 +144,17 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 		} else if strings.HasPrefix(csi, "?") && strings.HasSuffix(csi, "u") {
 			self.TerminalCapabilities.KeyboardProtocol = true
 			self.TerminalCapabilities.KeyboardProtocolResponseReceived = true
+		}
+	} else if self.terminal_options.color_scheme_change_notification && strings.HasPrefix(csi, "?997;") && strings.HasSuffix(csi, "n") {
+		switch csi[len(csi)-2] {
+		case '1':
+			self.TerminalCapabilities.ColorPreference = DARK_COLOR_PREFERENCE
+		case '2':
+			self.TerminalCapabilities.ColorPreference = LIGHT_COLOR_PREFERENCE
+		}
+		self.TerminalCapabilities.ColorPreferenceResponseReceived = true
+		if self.OnColorSchemeChange != nil {
+			return self.OnColorSchemeChange(self.TerminalCapabilities.ColorPreference)
 		}
 	}
 	if self.OnEscapeCode != nil {

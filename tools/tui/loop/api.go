@@ -118,6 +118,9 @@ type Loop struct {
 
 	// Called when capabilities response is received
 	OnCapabilitiesReceived func(TerminalCapabilities) error
+
+	// Called when the terminal's color scheme changes
+	OnColorSchemeChange func(ColorPreference) error
 }
 
 func New(options ...func(self *Loop)) (*Loop, error) {
@@ -201,6 +204,15 @@ func (self *Loop) NoRestoreColors() *Loop {
 
 func NoRestoreColors(self *Loop) {
 	self.terminal_options.restore_colors = false
+}
+
+func (self *Loop) ColorSchemeChangeNotifications() *Loop {
+	self.terminal_options.color_scheme_change_notification = true
+	return self
+}
+
+func ColorSchemeChangeNotifications(self *Loop) {
+	self.terminal_options.color_scheme_change_notification = true
 }
 
 func NoInBandResizeNotifications(self *Loop) {

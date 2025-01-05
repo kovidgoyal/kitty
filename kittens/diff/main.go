@@ -139,6 +139,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
+	lp.ColorSchemeChangeNotifications()
 	h := Handler{left: left, right: right, lp: lp}
 	lp.OnInitialize = func() (string, error) {
 		lp.SetCursorVisible(false)

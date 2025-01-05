@@ -158,8 +158,8 @@ func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) (err e
 	return nil
 }
 
-func resolved_chroma_style() *chroma.Style {
-	name := utils.IfElse(use_dark_colors, conf.Dark_pygments_style, conf.Pygments_style)
+func resolved_chroma_style(use_light_colors bool) *chroma.Style {
+	name := utils.IfElse(use_light_colors, conf.Pygments_style, conf.Dark_pygments_style)
 	var style *chroma.Style
 	if name == "default" {
 		style = DefaultStyle()
@@ -185,7 +185,7 @@ func resolved_chroma_style() *chroma.Style {
 var tokens_map map[string][]chroma.Token
 var mu sync.Mutex
 
-func highlight_file(path string) (highlighted string, err error) {
+func highlight_file(path string, use_light_colors bool) (highlighted string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			e, ok := r.(error)
@@ -235,19 +235,24 @@ func highlight_file(path string) (highlighted string, err error) {
 	formatter := chroma.FormatterFunc(ansi_formatter)
 	w := strings.Builder{}
 	w.Grow(len(text) * 2)
-	err = formatter.Format(&w, resolved_chroma_style(), chroma.Literator(tokens...))
+	err = formatter.Format(&w, resolved_chroma_style(use_light_colors), chroma.Literator(tokens...))
 	// os.WriteFile(filepath.Base(path+".highlighted"), []byte(w.String()), 0o600)
 	return w.String(), err
 }
 
-func highlight_all(paths []string) {
+func highlight_all(paths []string, light bool) {
 	ctx := images.Context{}
 	ctx.Parallel(0, len(paths), func(nums <-chan int) {
 		for i := range nums {
 			path := paths[i]
-			raw, err := highlight_file(path)
-			if err == nil {
-				highlighted_lines_cache.Set(path, text_to_lines(raw))
+			raw, err := highlight_file(path, light)
+			if err != nil {
+				continue
+			}
+			if light {
+				light_highlighted_lines_cache.Set(path, text_to_lines(raw))
+			} else {
+				dark_highlighted_lines_cache.Set(path, text_to_lines(raw))
 			}
 		}
 	})

@@ -20,7 +20,8 @@ var path_name_map, remote_dirs map[string]string
 var mimetypes_cache, data_cache, hash_cache *utils.LRUCache[string, string]
 var size_cache *utils.LRUCache[string, int64]
 var lines_cache *utils.LRUCache[string, []string]
-var highlighted_lines_cache *utils.LRUCache[string, []string]
+var light_highlighted_lines_cache *utils.LRUCache[string, []string]
+var dark_highlighted_lines_cache *utils.LRUCache[string, []string]
 var is_text_cache *utils.LRUCache[string, bool]
 
 func init_caches() {
@@ -32,7 +33,8 @@ func init_caches() {
 	data_cache = utils.NewLRUCache[string, string](sz)
 	is_text_cache = utils.NewLRUCache[string, bool](sz)
 	lines_cache = utils.NewLRUCache[string, []string](sz)
-	highlighted_lines_cache = utils.NewLRUCache[string, []string](sz)
+	light_highlighted_lines_cache = utils.NewLRUCache[string, []string](sz)
+	dark_highlighted_lines_cache = utils.NewLRUCache[string, []string](sz)
 	hash_cache = utils.NewLRUCache[string, string](sz)
 }
 
@@ -150,7 +152,14 @@ func highlighted_lines_for_path(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ans, found := highlighted_lines_cache.Get(path); found && len(ans) == len(plain_lines) {
+	var ans []string
+	var found bool
+	if use_light_colors {
+		ans, found = light_highlighted_lines_cache.Get(path)
+	} else {
+		ans, found = dark_highlighted_lines_cache.Get(path)
+	}
+	if found && len(ans) == len(plain_lines) {
 		return ans, nil
 	}
 	return plain_lines, nil

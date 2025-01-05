@@ -46,27 +46,28 @@ type Mode uint32
 const private Mode = 1 << 31
 
 const (
-	LNM                        Mode = 20
-	IRM                        Mode = 4
-	DECKM                      Mode = 1 | private
-	DECSCNM                    Mode = 5 | private
-	DECOM                      Mode = 6 | private
-	DECAWM                     Mode = 7 | private
-	DECARM                     Mode = 8 | private
-	DECTCEM                    Mode = 25 | private
-	MOUSE_BUTTON_TRACKING      Mode = 1000 | private
-	MOUSE_MOTION_TRACKING      Mode = 1002 | private
-	MOUSE_MOVE_TRACKING        Mode = 1003 | private
-	FOCUS_TRACKING             Mode = 1004 | private
-	MOUSE_UTF8_MODE            Mode = 1005 | private
-	MOUSE_SGR_MODE             Mode = 1006 | private
-	MOUSE_URXVT_MODE           Mode = 1015 | private
-	MOUSE_SGR_PIXEL_MODE       Mode = 1016 | private
-	ALTERNATE_SCREEN           Mode = 1049 | private
-	BRACKETED_PASTE            Mode = 2004 | private
-	PENDING_UPDATE             Mode = 2026 | private
-	INBAND_RESIZE_NOTIFICATION Mode = 2048 | private
-	HANDLE_TERMIOS_SIGNALS     Mode = kitty.HandleTermiosSignals | private
+	LNM                              Mode = 20
+	IRM                              Mode = 4
+	DECKM                            Mode = 1 | private
+	DECSCNM                          Mode = 5 | private
+	DECOM                            Mode = 6 | private
+	DECAWM                           Mode = 7 | private
+	DECARM                           Mode = 8 | private
+	DECTCEM                          Mode = 25 | private
+	MOUSE_BUTTON_TRACKING            Mode = 1000 | private
+	MOUSE_MOTION_TRACKING            Mode = 1002 | private
+	MOUSE_MOVE_TRACKING              Mode = 1003 | private
+	FOCUS_TRACKING                   Mode = 1004 | private
+	MOUSE_UTF8_MODE                  Mode = 1005 | private
+	MOUSE_SGR_MODE                   Mode = 1006 | private
+	MOUSE_URXVT_MODE                 Mode = 1015 | private
+	MOUSE_SGR_PIXEL_MODE             Mode = 1016 | private
+	ALTERNATE_SCREEN                 Mode = 1049 | private
+	BRACKETED_PASTE                  Mode = 2004 | private
+	PENDING_UPDATE                   Mode = 2026 | private
+	COLOR_SCHEME_CHANGE_NOTIFICATION Mode = 2031 | private
+	INBAND_RESIZE_NOTIFICATION       Mode = 2048 | private
+	HANDLE_TERMIOS_SIGNALS           Mode = kitty.HandleTermiosSignals | private
 )
 
 func (self Mode) escape_code(which string) string {
@@ -101,6 +102,7 @@ type TerminalStateOptions struct {
 	mouse_tracking                   MouseTracking
 	kitty_keyboard_mode              KeyboardStateBits
 	in_band_resize_notification      bool
+	color_scheme_change_notification bool
 }
 
 func set_modes(sb *strings.Builder, modes ...Mode) {
@@ -132,6 +134,9 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	set_modes(&sb, DECARM, DECAWM, DECTCEM)
 	if self.in_band_resize_notification {
 		set_modes(&sb, INBAND_RESIZE_NOTIFICATION)
+	}
+	if self.color_scheme_change_notification {
+		set_modes(&sb, COLOR_SCHEME_CHANGE_NOTIFICATION)
 	}
 	if self.Alternate_screen {
 		set_modes(&sb, ALTERNATE_SCREEN)

@@ -124,6 +124,7 @@ func set_terminal_colors(lp *loop.Loop) {
 }
 
 func (self *Handler) on_capabilities_received(tc loop.TerminalCapabilities) {
+	var use_dark_colors bool
 	switch conf.Color_scheme {
 	case Color_scheme_auto:
 		use_dark_colors = tc.ColorPreference != loop.LIGHT_COLOR_PREFERENCE
@@ -132,14 +133,30 @@ func (self *Handler) on_capabilities_received(tc loop.TerminalCapabilities) {
 	case Color_scheme_dark:
 		use_dark_colors = true
 	}
+	use_light_colors = !use_dark_colors
 	set_terminal_colors(self.lp)
 	self.terminal_capabilities_received = true
 	self.draw_screen()
 }
 
+func (self *Handler) on_color_scheme_change(cp loop.ColorPreference) error {
+	if conf.Color_scheme != Color_scheme_auto {
+		return nil
+	}
+	light := cp == loop.LIGHT_COLOR_PREFERENCE
+	if use_light_colors != light {
+		use_light_colors = light
+		set_terminal_colors(self.lp)
+		self.highlight_all()
+		self.draw_screen()
+	}
+	return nil
+}
+
 func (self *Handler) initialize() {
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
 	self.lp.OnEscapeCode = self.on_escape_code
+	self.lp.OnColorSchemeChange = self.on_color_scheme_change
 	image_collection = graphics.NewImageCollection()
 	self.current_context_count = opts.Context
 	if self.current_context_count < 0 {
@@ -195,11 +212,22 @@ func (self *Handler) on_wakeup() error {
 	}
 }
 
+var dark_highlight_started bool
+var light_highlight_started bool
+
 func (self *Handler) highlight_all() {
+	if (use_light_colors && light_highlight_started) || (!use_light_colors && dark_highlight_started) {
+		return
+	}
+	if use_light_colors {
+		light_highlight_started = true
+	} else {
+		dark_highlight_started = true
+	}
 	text_files := utils.Filter(self.collection.paths_to_highlight.AsSlice(), is_path_text)
 	go func() {
 		r := AsyncResult{rtype: HIGHLIGHT}
-		highlight_all(text_files)
+		highlight_all(text_files, use_light_colors)
 		self.async_results <- r
 		self.lp.WakeupMainThread()
 	}()

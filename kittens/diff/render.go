@@ -160,7 +160,7 @@ var format_as_sgr struct {
 }
 
 var statusline_format, added_count_format, removed_count_format, message_format func(...any) string
-var use_dark_colors bool = true
+var use_light_colors bool = false
 
 type ResolvedColors struct {
 	Added_bg             style.RGBA
@@ -189,7 +189,7 @@ var resolved_colors ResolvedColors
 
 func create_formatters() {
 	rc := &resolved_colors
-	if use_dark_colors {
+	if !use_light_colors {
 		rc.Added_bg = conf.Dark_added_bg
 		rc.Added_margin_bg = conf.Dark_added_margin_bg
 		rc.Background = conf.Dark_background
