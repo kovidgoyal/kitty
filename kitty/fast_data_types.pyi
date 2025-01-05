@@ -1591,10 +1591,6 @@ def sigqueue(pid: int, signal: int, value: int) -> None:
     pass
 
 
-def random_unix_socket() -> int:
-    pass
-
-
 def read_signals(fd: int, callback: Callable[[SignalInfo], None]) -> None:
     pass
 
