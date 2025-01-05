@@ -1421,12 +1421,12 @@ use :code:`{sup.index}`. All data available is:
     The number of window groups (a window group is a window and all of its overlay windows) in the tab.
 :code:`tab.active_wd`
     The working directory of the currently active window in the tab
-    (expensive, requires syscall). Use :code:`active_oldest_wd` to get
+    (expensive, requires syscall). Use :code:`tab.active_oldest_wd` to get
     the directory of the oldest foreground process rather than the newest.
 :code:`tab.active_exe`
     The name of the executable running in the foreground of the currently
     active window in the tab (expensive, requires syscall). Use
-    :code:`active_oldest_exe` for the oldest foreground process.
+    :code:`tab.active_oldest_exe` for the oldest foreground process.
 :code:`max_title_length`
     The maximum title length available.
 :code:`keyboard_mode`
