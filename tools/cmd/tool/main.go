@@ -21,6 +21,7 @@ import (
 	"kitty/kittens/unicode_input"
 	"kitty/tools/cli"
 	"kitty/tools/cmd/at"
+	"kitty/tools/cmd/atexit"
 	"kitty/tools/cmd/benchmark"
 	"kitty/tools/cmd/edit_in_kitty"
 	"kitty/tools/cmd/mouse_demo"
@@ -109,6 +110,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	})
 	// __convert_image__
 	images.ConvertEntryPoint(root)
+	// __atexit__
+	atexit.EntryPoint(root)
 	// __generate_man_pages__
 	root.AddSubCommand(&cli.Command{
 		Name:            "__generate_man_pages__",
