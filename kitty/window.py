@@ -1323,10 +1323,10 @@ class Window:
         if dirtied:
             self.screen.mark_as_dirty()
         if default_bg_changed:
-            get_boss().default_bg_changed_for(self.id)
+            get_boss().default_bg_changed_for(self.id, via_escape_code=True)
 
-    def on_color_scheme_preference_change(self) -> None:
-        if self.screen.color_preference_notification:
+    def on_color_scheme_preference_change(self, via_escape_code: bool = False) -> None:
+        if self.screen.color_preference_notification and not via_escape_code:
             self.report_color_scheme_preference()
 
     def report_color_scheme_preference(self) -> None:

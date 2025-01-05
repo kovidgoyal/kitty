@@ -1547,10 +1547,10 @@ class Boss:
                 return tab
         return None
 
-    def default_bg_changed_for(self, window_id: int) -> None:
+    def default_bg_changed_for(self, window_id: int, via_escape_code: bool = False) -> None:
         w = self.window_id_map.get(window_id)
         if w is not None:
-            w.on_color_scheme_preference_change()
+            w.on_color_scheme_preference_change(via_escape_code=via_escape_code)
             tm = self.os_window_map.get(w.os_window_id)
             if tm is not None:
                 tm.update_tab_bar_data()
