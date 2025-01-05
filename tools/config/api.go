@@ -401,10 +401,12 @@ func ReloadConfigInKitty(in_parent_only bool) error {
 	return nil
 }
 
+var OverrideEffectiveConfigPath string
+
 func ReadKittyConfig(line_handler func(key, val string) error) error {
-	kitty_conf_path := ""
 	kp := os.Getenv("KITTY_PID")
-	if _, err := strconv.Atoi(kp); err == nil {
+	kitty_conf_path := OverrideEffectiveConfigPath
+	if _, err := strconv.Atoi(kp); err == nil && kitty_conf_path == "" {
 		effective_config_path := filepath.Join(utils.CacheDir(), "effective-config", kp)
 		if unix.Access(effective_config_path, unix.R_OK) == nil {
 			kitty_conf_path = effective_config_path

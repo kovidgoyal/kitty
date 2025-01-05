@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"kitty/tools/config"
 	"kitty/tools/utils/shlex"
 
 	"github.com/google/go-cmp/cmp"
@@ -66,8 +67,10 @@ func TestParseSSHArgs(t *testing.T) {
 func TestRelevantKittyOpts(t *testing.T) {
 	tdir := t.TempDir()
 	path := filepath.Join(tdir, "kitty.conf")
+	config.OverrideEffectiveConfigPath = path
+	defer func() { config.OverrideEffectiveConfigPath = "" }()
 	os.WriteFile(path, []byte("term XXX\nshell_integration changed\nterm abcd"), 0o600)
-	rko := read_relevant_kitty_opts(path)
+	rko := read_relevant_kitty_opts()
 	if rko.Term != "abcd" {
 		t.Fatalf("Unexpected TERM: %s", RelevantKittyOpts().Term)
 	}
