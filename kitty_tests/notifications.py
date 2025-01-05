@@ -91,7 +91,7 @@ class NotificationManager(NotificationManager):
 def do_test(self: 'TestNotifications', tdir: str) -> None:
     di = DesktopIntegration(None)
     ch = Channel()
-    nm = NotificationManager(di, ch, lambda *a, **kw: None, base_cache_dir=tdir, cleanup_at_exit=False)
+    nm = NotificationManager(di, ch, lambda *a, **kw: None, base_cache_dir=tdir)
     di.notification_manager = nm
 
     def reset():

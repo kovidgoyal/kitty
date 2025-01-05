@@ -2,12 +2,12 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 # Imports {{{
-import atexit
 import base64
 import json
 import os
 import re
 import socket
+import subprocess
 import sys
 from collections.abc import Container, Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager, suppress
@@ -16,6 +16,7 @@ from gettext import gettext as _
 from gettext import ngettext
 from time import sleep
 from typing import (
+    IO,
     TYPE_CHECKING,
     Any,
     Callable,
@@ -137,7 +138,6 @@ from .utils import (
     parse_os_window_state,
     parse_uri_list,
     platform_window_id,
-    remove_socket_file,
     safe_print,
     sanitize_url_for_dispay_to_user,
     startup_notification_handler,
@@ -147,6 +147,7 @@ from .utils import (
 from .window import CommandOutput, CwdRequest, Window
 
 if TYPE_CHECKING:
+
     from .rc.base import ResponseType
 # }}}
 
@@ -165,16 +166,46 @@ class OSWindowDict(TypedDict):
     background_opacity: float
 
 
-def listen_on(spec: str) -> tuple[int, str]:
+class Atexit:
+
+    def __init__(self) -> None:
+        self.worker: Optional[subprocess.Popen[bytes]] = None
+
+    def _write_line(self, line: str) -> None:
+        if '\n' in line:
+            raise ValueError('Newlines not allowed in atexit arguments: {path!r}')
+        w = self.worker
+        if w is None:
+            w = self.worker = subprocess.Popen([kitten_exe(), '__atexit__'], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, close_fds=True)
+            assert w.stdin is not None
+            os.set_inheritable(w.stdin.fileno(), False)
+        assert w.stdin is not None
+        w.stdin.write((line + '\n').encode())
+        w.stdin.flush()
+
+    def unlink(self, path: str) -> None:
+        self._write_line(f'unlink {path}')
+
+    def shm_unlink(self, path: str) -> None:
+        self._write_line(f'shm_unlink {path}')
+
+    def rmtree(self, path: str) -> None:
+        self._write_line(f'rmtree {path}')
+
+
+def listen_on(spec: str, robust_atexit: Atexit) -> tuple[int, str]:
     import socket
     family, address, socket_path = parse_address_spec(spec)
     s = socket.socket(family)
-    atexit.register(remove_socket_file, s, socket_path)
     s.bind(address)
+    if family == socket.AF_UNIX and socket_path:
+        robust_atexit.unlink(socket_path)
     s.listen()
     if isinstance(address, tuple):  # tcp socket
         h, resolved_port = s.getsockname()[:2]
         spec = spec.rpartition(':')[0] + f':{resolved_port}'
+    import atexit
+    atexit.register(s.close)  # prevents s from being garbage collected
     return s.fileno(), spec
 
 
@@ -320,6 +351,7 @@ class Boss:
         global_shortcuts: dict[str, SingleKey],
         talk_fd: int = -1,
     ):
+        self.atexit = Atexit()
         set_layout_options(opts)
         self.clipboard = Clipboard()
         self.window_for_dispatch: Optional[Window] = None
@@ -353,7 +385,7 @@ class Boss:
         listen_fd = -1
         if args.listen_on and self.allow_remote_control in ('y', 'socket', 'socket-only', 'password'):
             try:
-                listen_fd, self.listening_on = listen_on(args.listen_on)
+                listen_fd, self.listening_on = listen_on(args.listen_on, self.atexit)
             except Exception:
                 self.misc_config_errors.append(f'Invalid listen_on={args.listen_on}, ignoring')
                 log_error(self.misc_config_errors[-1])
@@ -2393,7 +2425,6 @@ class Boss:
         notify_on_death: Optional[Callable[[int, Optional[Exception]], None]] = None,  # guaranteed to be called only after event loop tick
         stdout: Optional[int] = None, stderr: Optional[int] = None,
     ) -> None:
-        import subprocess
         env = env or None
         if env:
             env_ = default_env().copy()

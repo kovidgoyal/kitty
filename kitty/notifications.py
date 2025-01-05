@@ -47,6 +47,9 @@ class IconDataCache:
         if not self.cache_dir:
             self.cache_dir = os.path.join(self.base_cache_dir or cache_dir(), 'notifications-icons', str(os.getpid()))
             os.makedirs(self.cache_dir, exist_ok=True, mode=0o700)
+            b = get_boss()
+            if hasattr(b, 'atexit'):
+                b.atexit.rmtree(self.cache_dir)
         return self.cache_dir
 
     def __del__(self) -> None:
@@ -834,7 +837,6 @@ class NotificationManager:
         log: Log = Log(),
         debug: bool = False,
         base_cache_dir: str = '',
-        cleanup_at_exit: bool = True,
     ):
         global debug_desktop_integration
         debug_desktop_integration = debug
@@ -856,9 +858,6 @@ class NotificationManager:
             except Exception as e:
                 self.log(f'Failed to load {script_path} with error: {e}')
         self.reset()
-        if cleanup_at_exit:
-            import atexit
-            atexit.register(self.cleanup)
 
     def reset(self) -> None:
         self.icon_data_cache.clear()

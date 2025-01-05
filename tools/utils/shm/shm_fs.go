@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"kitty/tools/utils"
 
@@ -26,6 +27,16 @@ type file_based_mmap struct {
 	region       []byte
 	unlinked     bool
 	special_name string
+}
+
+func ShmUnlink(name string) error {
+	if runtime.GOOS == "openbsd" {
+		return os.Remove(openbsd_shm_path(name))
+	}
+	if strings.HasPrefix(name, "/") {
+		name = name[1:]
+	}
+	return os.Remove(filepath.Join(SHM_DIR, name))
 }
 
 func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool, special_name string) (MMap, error) {
@@ -106,11 +117,15 @@ func (self *file_based_mmap) Unlink() (err error) {
 
 func (self *file_based_mmap) IsFileSystemBacked() bool { return true }
 
+func openbsd_shm_path(name string) string {
+	hash := sha256.Sum256(utils.UnsafeStringToBytes(name))
+	return filepath.Join(SHM_DIR, utils.UnsafeBytesToString(hash[:])+".shm")
+}
+
 func file_path_from_name(name string) string {
 	// See https://github.com/openbsd/src/blob/master/lib/libc/gen/shm_open.c
 	if runtime.GOOS == "openbsd" {
-		hash := sha256.Sum256(utils.UnsafeStringToBytes(name))
-		return filepath.Join(SHM_DIR, utils.UnsafeBytesToString(hash[:])+".shm")
+		return openbsd_shm_path(name)
 	}
 	return filepath.Join(SHM_DIR, name)
 }

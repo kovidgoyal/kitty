@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import atexit
 import fcntl
 import math
 import os
@@ -348,17 +347,6 @@ class startup_notification_handler:
     def __exit__(self, *a: Any) -> None:
         if self.ctx is not None:
             end_startup_notification(self.ctx)
-
-
-def remove_socket_file(s: 'Socket', path: Optional[str] = None, is_dir: Optional[Callable[[str], None]] = None) -> None:
-    with suppress(OSError):
-        s.close()
-    if path:
-        with suppress(OSError):
-            if is_dir:
-                is_dir(path)
-            else:
-                os.unlink(path)
 
 
 def unix_socket_directories() -> Iterator[str]:

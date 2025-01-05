@@ -2,12 +2,15 @@ package atexit
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
 	"strings"
 
 	"kitty/tools/cli"
+	"kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print
@@ -40,13 +43,18 @@ func main() (rc int, err error) {
 		if action, rest, found := strings.Cut(line, " "); found {
 			switch action {
 			case "unlink":
-				if err := os.Remove(rest); err != nil {
-					fmt.Fprintln(os.Stderr, "Failed to remove:", rest, "with error:", err)
+				if err := os.Remove(rest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					fmt.Fprintln(os.Stderr, "Failed to unlink:", rest, "with error:", err)
+					rc = 1
+				}
+			case "shm_unlink":
+				if err := shm.ShmUnlink(rest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					fmt.Fprintln(os.Stderr, "Failed to shm_unlink:", rest, "with error:", err)
 					rc = 1
 				}
 			case "rmtree":
-				if err := os.RemoveAll(rest); err != nil {
-					fmt.Fprintln(os.Stderr, "Failed to remove:", rest, "with error:", err)
+				if err := os.RemoveAll(rest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					fmt.Fprintln(os.Stderr, "Failed to rmtree:", rest, "with error:", err)
 					rc = 1
 				}
 			}

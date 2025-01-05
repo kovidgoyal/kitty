@@ -37,12 +37,20 @@ func shm_unlink(name string) (err error) {
 		_, _, errno := unix.Syscall(unix.SYS_SHM_UNLINK, uintptr(unsafe.Pointer(bname)), 0, 0)
 		if errno != unix.EINTR {
 			if errno != 0 {
-				err = fmt.Errorf("shm_unlink() failed with error: %w", errno)
+				if errno == unix.ENOENT {
+					err = fs.ErrNotExist
+				} else {
+					err = fmt.Errorf("shm_unlink() failed with error: %w", errno)
+				}
 			}
 			break
 		}
 	}
 	return
+}
+
+func ShmUnlink(name string) error {
+	return shm_unlink(name)
 }
 
 func shm_open(name string, flags, perm int) (ans *os.File, err error) {

@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 
 from kitty.constants import kitten_exe, kitty_exe
+from kitty.shm import SharedMemory
 
 from . import BaseTest
 
@@ -51,8 +52,16 @@ raise SystemExit(p.wait())
             open(os.path.join(sdir, 'f'), 'w').close()
             select.select(readers, [], [], 10)
             self.ae(read(), str(i+2))
+            shm = SharedMemory(size=64)
+            shm.write(b'1' * 64)
+            shm.flush()
+            p.stdin.write(f'shm_unlink {shm.name}\n'.encode())
+            p.stdin.flush()
+            self.ae(read(), str(i+3))
 
             self.assertTrue(os.listdir(self.tdir))
+            shm2 = SharedMemory(shm.name)
+            self.ae(shm2.read()[:64], b'1' * 64)
 
             # Ensure child is ignoring signals
             os.kill(atexit_pid, signal.SIGINT)
@@ -74,6 +83,7 @@ raise SystemExit(p.wait())
                 os.waitpid(atexit_pid, 0)
             except ChildProcessError:
                 pass
+            self.assertRaises(FileNotFoundError, lambda: SharedMemory(shm.name))
 
         r('close')
         r('terminate')
