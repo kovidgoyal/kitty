@@ -84,10 +84,12 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.38.2 [future]
+0.39.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- diff kitten: Automatically use dark/light color scheme based on the color scheme of the parent terminal. Can be controlled via the new :opt:`kitten-diff.color_scheme` option. Note that this is a **behavior change** by default. (:iss:`8170`)
+- diff kitten: Automatically use dark/light color scheme based on the color scheme of the parent terminal. Can be controlled via the new :opt:`kitten-diff.color_scheme` option. Note that this is a **default behavior change** (:iss:`8170`)
+
+- When a program running in kitty reports progress of a task display it as a percentage in the tab title. Controlled by the :opt:`tab_title_template` option
 
 - When mapping a custom kitten allow using shell escaping for the kitten path (:iss:`8178`)
 

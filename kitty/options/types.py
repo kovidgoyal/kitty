@@ -607,7 +607,7 @@ class Options:
     tab_separator: str = ' ┇'
     tab_switch_strategy: choices_for_tab_switch_strategy = 'previous'
     tab_title_max_length: int = 0
-    tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
+    tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}'
     term: str = 'xterm-kitty'
     terminfo_type: choices_for_terminfo_type = 'path'
     text_composition_strategy: str = 'platform'
@@ -1038,6 +1038,7 @@ defaults.mouse_map = [
     # show_clicked_cmd_output_ungrabbed
     MouseMapping(button=1, mods=5, definition='mouse_show_command_output'),
 ]
+
 
 nullable_colors = frozenset({
     'cursor'

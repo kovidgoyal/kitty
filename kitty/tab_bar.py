@@ -29,6 +29,7 @@ from .fast_data_types import (
     viewport_for_window,
     wcswidth,
 )
+from .progress import ProgressState
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .typing import EdgeLiteral, PowerlineStyle
@@ -48,6 +49,9 @@ class TabBarData(NamedTuple):
     active_bg: Optional[int]
     inactive_fg: Optional[int]
     inactive_bg: Optional[int]
+    num_of_windows_with_progress: int
+    total_progress: int
+    last_focused_window_with_progress_id: int
 
 
 class DrawData(NamedTuple):
@@ -218,6 +222,36 @@ class TabAccessor:
     def active_oldest_exe(self) -> str:
         tab = get_boss().tab_for_id(self.tab_id)
         return os.path.basename((tab.get_exe_of_active_window(oldest=True) if tab else '') or '')
+
+    @property
+    def last_focused_progress_percent(self) -> str:
+        tab = get_boss().tab_for_id(self.tab_id)
+        if not tab or not tab.last_focused_window_with_progress_id:
+            return ''
+        w = get_boss().window_id_map.get(tab.last_focused_window_with_progress_id)
+        if w is None:
+            return ''
+        if w.progress.state is ProgressState.error:
+            return '\u26a0\ufe0f '
+        if w.progress.state is ProgressState.unset:
+            return ''
+        if w.progress.state is ProgressState.indeterminate:
+            return '🔄 '
+        p = f'{w.progress.percent}% '
+        if w.progress.state is ProgressState.paused:
+            return f'⏸  {p}'
+        return p
+
+    @property
+    def progress_percent(self) -> str:
+        tab = get_boss().tab_for_id(self.tab_id)
+        if not tab or not tab.last_focused_window_with_progress_id:
+            return ''
+        if tab.num_of_windows_with_progress <= 1:
+            return self.last_focused_progress_percent
+        p = int(tab.total_progress / tab.num_of_windows_with_progress)
+        return f'{p}% '
+
 
 
 safe_builtins = {

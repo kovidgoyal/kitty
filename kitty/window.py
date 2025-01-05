@@ -93,6 +93,7 @@ from .rgb import to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
+from .progress import Progress
 from .utils import (
     color_as_int,
     docs_url,
@@ -627,6 +628,7 @@ class Window:
         self.keys_redirected_till_ready_from: int = 0
         self.last_focused_at = 0.
         self.is_focused: bool = False
+        self.progress = Progress()
         self.last_resized_at = 0.
         self.started_at = monotonic()
         self.created_at = time_ns()
@@ -1107,13 +1109,29 @@ class Window:
                 return  # unknown OSC 777
             raw_data = raw_data[len('notify;'):]
         if osc_code == 9 and raw_data.startswith('4;'):
-            # This is probably the Windows Terminal "progress reporting" conflicting
+            # This is probably the ConEmu "progress reporting" conflicting
             # implementation which sadly some thoughtless people have
-            # implemented in unix CLI programs. So ignore it rather than
-            # spamming the user with continuous notifications. See for example:
-            # https://github.com/kovidgoyal/kitty/issues/8011
+            # implemented in unix CLI programs.
+            # See for example: https://github.com/kovidgoyal/kitty/issues/8011
+            try:
+                parts = tuple(map(int, raw_data.split(';')))[1:]
+            except Exception:
+                log_error(f'Ignoring malmormed OSC 9;4 progress report: {raw_data!r}')
+                return
+            self.progress.update(*parts[:2])
+            if (tab := self.tabref()) is not None:
+                tab.update_progress()
+            self.clear_progress_if_needed()
             return
         get_boss().notification_manager.handle_notification_cmd(self.id, osc_code, raw_data)
+
+    def clear_progress_if_needed(self, timer_id: Optional[int] = None) -> None:
+        # Clear stuck or completed progress
+        if self.progress.clear_progress():
+            if (tab := self.tabref()) is not None:
+                tab.update_progress()
+        else:
+            add_timer(self.clear_progress_if_needed, 1.0, False)
 
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask

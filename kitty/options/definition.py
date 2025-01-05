@@ -1400,7 +1400,7 @@ A value of zero means that no limit is applied.
 '''
     )
 
-opt('tab_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}"',
+opt('tab_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}"',
     option_type='tab_title_template',
     long_text='''
 A template to render the tab title. The default just renders the title with
@@ -1431,6 +1431,12 @@ use :code:`{sup.index}`. All data available is:
     The maximum title length available.
 :code:`keyboard_mode`
     The name of the current :ref:`keyboard mode <modal_mappings>` or the empty string if no keyboard mode is active.
+:code:`tab.last_focused_progress_percent`
+    If a command running in a window reports the progress for a task, show this progress as a percentage
+    from the most recently focused window in the tab. Empty string if no progress is reported.
+:code:`tab.progress_percent`
+    If a command running in a window reports the progress for a task, show this progress as a percentage
+    from all windows in the tab, averaged. Empty string is no progress is reported.
 
 Note that formatting is done by Python's string formatting machinery, so you can
 use, for instance, :code:`{layout_name[:2].upper()}` to show only the first two

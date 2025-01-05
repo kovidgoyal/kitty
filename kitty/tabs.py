@@ -52,6 +52,7 @@ from .fast_data_types import (
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
+from .progress import ProgressState
 from .tab_bar import TabBar, TabBarData
 from .types import ac
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
@@ -125,6 +126,9 @@ class Tab:  # {{{
     inactive_fg: Optional[int] = None
     inactive_bg: Optional[int] = None
     confirm_close_window_id: int = 0
+    num_of_windows_with_progress: int = 0
+    total_progress: int = 0
+    last_focused_window_with_progress_id: int = 0
 
     def __init__(
         self,
@@ -162,6 +166,23 @@ class Tab:  # {{{
             l0 = session_tab.layout
             self._set_current_layout(l0)
             self.startup(session_tab)
+
+    def update_progress(self) -> None:
+        self.num_of_windows_with_progress = 0
+        self.total_progress = 0
+        self.last_focused_window_with_progress_id = 0
+        focused_at = 0.
+        for window in self:
+            p = window.progress
+            if p.state is ProgressState.unset:
+                continue
+            if p.state in (ProgressState.set, ProgressState.paused):
+                self.total_progress += p.percent
+                self.num_of_windows_with_progress += 1
+            if window.last_focused_at > focused_at or (not window.last_focused_at and window.id > self.last_focused_window_with_progress_id):
+                focused_at = window.last_focused_at
+                self.last_focused_window_with_progress_id = window.id
+        self.mark_tab_bar_dirty()
 
     def has_single_window_visible(self) -> bool:
         if self.current_layout.only_active_window_visible:
@@ -1245,7 +1266,8 @@ class TabManager:  # {{{
                 title, t is at, needs_attention, t.id,
                 len(t), t.num_window_groups, t.current_layout.name or '',
                 has_activity_since_last_focus, t.active_fg, t.active_bg,
-                t.inactive_fg, t.inactive_bg
+                t.inactive_fg, t.inactive_bg, t.num_of_windows_with_progress,
+                t.total_progress, t.last_focused_window_with_progress_id,
             ))
         return ans
 
