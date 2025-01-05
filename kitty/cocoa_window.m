@@ -755,10 +755,7 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(appMenu, ([NSString stringWithFormat:@"Quit %@", app_name]), quit);
     [appMenu release];
 
-    NSMenuItem* shellMenuItem =
-        [bar addItemWithTitle:@"Shell"
-                       action:NULL
-                keyEquivalent:@""];
+    NSMenuItem* shellMenuItem = [bar addItemWithTitle:@"Shell" action:NULL keyEquivalent:@""];
     NSMenu* shellMenu = [[NSMenu alloc] initWithTitle:@"Shell"];
     [shellMenuItem setSubmenu:shellMenu];
     MENU_ITEM(shellMenu, @"New OS Window", new_os_window);
@@ -770,8 +767,12 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(shellMenu, @"Close Window", close_window);
     [shellMenu addItem:[NSMenuItem separatorItem]];
     MENU_ITEM(shellMenu, @"Reset", reset_terminal);
-    MENU_ITEM(shellMenu, @"Clear to Cursor Line", clear_terminal_and_scrollback);
     [shellMenu release];
+    NSMenuItem* editMenuItem = [bar addItemWithTitle:@"Edit" action:NULL keyEquivalent:@""];
+    NSMenu* editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+    [editMenuItem setSubmenu:editMenu];
+    MENU_ITEM(editMenu, @"Clear to Start", clear_terminal_and_scrollback);
+    [editMenu release];
 
     NSMenuItem* windowMenuItem =
         [bar addItemWithTitle:@"Window"

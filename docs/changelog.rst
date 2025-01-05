@@ -99,6 +99,8 @@ Detailed list of changes
 
 - diff kitten: Abort when run inside a terminal that does not support the kitty keyboard protocol (:iss:`8185`)
 
+- macOS: Allow using the Passwords app to autofill passwords via the Edit->Autofill menu mimicking other macOS applications (:pull:`8195`)
+
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
