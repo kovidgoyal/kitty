@@ -44,6 +44,11 @@ func main() (rc int, err error) {
 					fmt.Fprintln(os.Stderr, "Failed to remove:", rest, "with error:", err)
 					rc = 1
 				}
+			case "rmtree":
+				if err := os.RemoveAll(rest); err != nil {
+					fmt.Fprintln(os.Stderr, "Failed to remove:", rest, "with error:", err)
+					rc = 1
+				}
 			}
 		}
 	}

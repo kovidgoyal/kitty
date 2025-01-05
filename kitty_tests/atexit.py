@@ -44,6 +44,14 @@ raise SystemExit(p.wait())
                     p.stdin.flush()
                 select.select(readers, [], [], 10)
                 self.ae(read(), str(i+1))
+            sdir = os.path.join(self.tdir, 'd')
+            os.mkdir(sdir)
+            p.stdin.write(f'rmtree {sdir}\n'.encode())
+            p.stdin.flush()
+            open(os.path.join(sdir, 'f'), 'w').close()
+            select.select(readers, [], [], 10)
+            self.ae(read(), str(i+2))
+
             self.assertTrue(os.listdir(self.tdir))
 
             # Ensure child is ignoring signals
