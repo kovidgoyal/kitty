@@ -4,7 +4,6 @@ package tui
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"kitty"
@@ -268,9 +267,8 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 	if len(style) == 0 {
 		if !m.default_url_style.loaded {
 			m.default_url_style.loaded = true
-			conf := filepath.Join(utils.ConfigDir(), "kitty.conf")
 			color, style := kitty.DefaultUrlColor, kitty.DefaultUrlStyle
-			cp := config.ConfigParser{LineHandler: func(key, val string) error {
+			line_handler := func(key, val string) error {
 				switch key {
 				case "url_color":
 					color = val
@@ -278,9 +276,8 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 					style = val
 				}
 				return nil
-			},
 			}
-			_ = cp.ParseFiles(conf) // ignore errors and use defaults
+			config.ReadKittyConfig(line_handler)
 			if style != "none" && style != "" {
 				m.default_url_style.value = fmt.Sprintf("u=%s uc=%s", style, color)
 			}

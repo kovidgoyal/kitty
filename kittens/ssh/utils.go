@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -225,7 +224,7 @@ type KittyOpts struct {
 	Term, Shell_integration string
 }
 
-func read_relevant_kitty_opts(path string) KittyOpts {
+func read_relevant_kitty_opts() KittyOpts {
 	ans := KittyOpts{Term: kitty.KittyConfigDefaults.Term, Shell_integration: kitty.KittyConfigDefaults.Shell_integration}
 	handle_line := func(key, val string) error {
 		switch key {
@@ -236,11 +235,10 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 		}
 		return nil
 	}
-	cp := config.ConfigParser{LineHandler: handle_line}
-	cp.ParseFiles(path)
+	config.ReadKittyConfig(handle_line)
 	return ans
 }
 
 var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
-	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
+	return read_relevant_kitty_opts()
 })

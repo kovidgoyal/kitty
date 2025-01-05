@@ -7,7 +7,6 @@ import (
 	"io"
 	"kitty"
 	"maps"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -170,8 +169,7 @@ func ReadKittyColorSettings() map[string]string {
 		}
 		return nil
 	}
-	cp := config.ConfigParser{LineHandler: handle_line}
-	cp.ParseFiles(filepath.Join(utils.ConfigDir(), "kitty.conf"))
+	config.ReadKittyConfig(handle_line)
 	return settings
 }
 

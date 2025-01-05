@@ -30,7 +30,7 @@ type KittyOpts struct {
 	Shell, Shell_integration string
 }
 
-func read_relevant_kitty_opts(path string) KittyOpts {
+func read_relevant_kitty_opts() KittyOpts {
 	ans := KittyOpts{Shell: kitty.KittyConfigDefaults.Shell, Shell_integration: kitty.KittyConfigDefaults.Shell_integration}
 	handle_line := func(key, val string) error {
 		switch key {
@@ -41,8 +41,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 		}
 		return nil
 	}
-	cp := config.ConfigParser{LineHandler: handle_line}
-	_ = cp.ParseFiles(path)
+	config.ReadKittyConfig(handle_line)
 	if ans.Shell == "" {
 		ans.Shell = kitty.KittyConfigDefaults.Shell
 	}
@@ -63,7 +62,7 @@ func get_effective_ksi_env_var(x string) string {
 }
 
 var relevant_kitty_opts = sync.OnceValue(func() KittyOpts {
-	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
+	return read_relevant_kitty_opts()
 })
 
 func get_shell_from_kitty_conf() (shell string) {

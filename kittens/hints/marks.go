@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -211,7 +210,7 @@ type KittyOpts struct {
 	Select_by_word_characters string
 }
 
-func read_relevant_kitty_opts(path string) KittyOpts {
+func read_relevant_kitty_opts() KittyOpts {
 	ans := KittyOpts{
 		Select_by_word_characters: kitty.KittyConfigDefaults.Select_by_word_characters,
 		Url_excluded_characters:   kitty.KittyConfigDefaults.Url_excluded_characters}
@@ -228,8 +227,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 		}
 		return nil
 	}
-	cp := config.ConfigParser{LineHandler: handle_line}
-	_ = cp.ParseFiles(path) // ignore errors and use defaults
+	config.ReadKittyConfig(handle_line)
 	if ans.Url_prefixes == nil {
 		ans.Url_prefixes = utils.NewSetWithItems(kitty.KittyConfigDefaults.Url_prefixes...)
 	}
@@ -237,7 +235,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 }
 
 var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
-	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
+	return read_relevant_kitty_opts()
 })
 
 var debugprintln = tty.DebugPrintln
