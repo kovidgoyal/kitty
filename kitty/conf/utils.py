@@ -198,12 +198,67 @@ class NamedLineIterator:
         return self.lines
 
 
+def pygeninclude(path: str) -> list[str]:
+    import io
+    import runpy
+    before = sys.stdout
+    buf = sys.stdout = io.StringIO()
+    try:
+        runpy.run_path(path, run_name='__main__')
+    finally:
+        sys.stdout = before
+    return buf.getvalue().splitlines()
+
+
+def geninclude(path: str) -> list[str]:
+    old = os.environ.get('KITTY_OS')
+    os.environ['KITTY_OS'] = os_name()
+    try:
+        if path.endswith('.py'):
+            return pygeninclude(path)
+        import subprocess
+        cp = subprocess.run([path], stdout=subprocess.PIPE, text=True)
+        return cp.stdout.splitlines()
+    finally:
+        if old is None:
+            os.environ.pop('KITTY_OS', None)
+        else:
+            os.environ['KITTY_OS'] = old
+
+
+
+include_keys = 'include', 'globinclude', 'envinclude', 'geninclude'
+
+
+class RecursiveInclude(Exception):
+    pass
+
+
+class Memory:
+
+    def __init__(self, accumulate_bad_lines: Optional[List[BadLine]]) -> None:
+        self.s: set[str] = set()
+        if accumulate_bad_lines is None:
+            accumulate_bad_lines = []
+        self.accumulate_bad_lines = accumulate_bad_lines
+
+    def seen(self, path: str) -> bool:
+        key = os.path.normpath(path)
+        if key in self.s:
+            self.accumulate_bad_lines.append(BadLine(currently_parsing.number, currently_parsing.line.rstrip(), RecursiveInclude(
+                f'The file {path} has already been included, ignoring'), currently_parsing.file))
+            return True
+        self.s.add(key)
+        return False
+
+
 def parse_line(
     line: str,
     parse_conf_item: ItemParser,
     ans: Dict[str, Any],
     base_path_for_includes: str,
     effective_config_lines: Callable[[str, str], None],
+    memory: Memory,
     accumulate_bad_lines: Optional[List[BadLine]] = None,
 ) -> None:
     line = line.strip()
@@ -214,7 +269,7 @@ def parse_line(
         log_error(f'Ignoring invalid config line: {line!r}')
         return
     key, val = m.groups()
-    if key in ('include', 'globinclude', 'envinclude'):
+    if key.endswith('include') and key in include_keys:
         val = expandvars(os.path.expanduser(val.strip()), {'KITTY_OS': os_name()})
         if key == 'globinclude':
             from pathlib import Path
@@ -226,7 +281,22 @@ def parse_line(
                     with currently_parsing.set_file(f'<env var: {x}>'):
                         _parse(
                             NamedLineIterator(os.path.join(base_path_for_includes, ''), iter(os.environ[x].splitlines())),
-                            parse_conf_item, ans, accumulate_bad_lines, effective_config_lines,
+                            parse_conf_item, ans, memory, accumulate_bad_lines, effective_config_lines
+                        )
+            return
+        elif key == 'geninclude':
+            if not os.path.isabs(val):
+                val = os.path.join(base_path_for_includes, val)
+            if not memory.seen(val):
+                try:
+                    lines = geninclude(val)
+                except Exception:
+                    log_error(f'Could not process geninclude {val}, ignoring')
+                else:
+                    with currently_parsing.set_file(f'<get: {val}>'):
+                        _parse(
+                            NamedLineIterator(os.path.join(base_path_for_includes, ''), iter(lines)),
+                            parse_conf_item, ans, memory, accumulate_bad_lines, effective_config_lines
                         )
             return
         else:
@@ -234,15 +304,14 @@ def parse_line(
                 val = os.path.join(base_path_for_includes, val)
             vals = (val,)
         for val in vals:
+            if memory.seen(val):
+                continue
             try:
                 with open(val, encoding='utf-8', errors='replace') as include:
                     with currently_parsing.set_file(val):
-                        _parse(include, parse_conf_item, ans, accumulate_bad_lines, effective_config_lines)
+                        _parse(include, parse_conf_item, ans, memory, accumulate_bad_lines, effective_config_lines)
             except FileNotFoundError:
-                log_error(
-                    'Could not find included config file: {}, ignoring'.
-                    format(val)
-                )
+                log_error(f'Could not find included config file: {val}, ignoring')
             except OSError:
                 log_error(
                     'Could not read from included config file: {}, ignoring'.
@@ -260,6 +329,7 @@ def _parse(
     lines: Iterable[str],
     parse_conf_item: ItemParser,
     ans: Dict[str, Any],
+    memory: Memory,
     accumulate_bad_lines: Optional[List[BadLine]] = None,
     effective_config_lines: Optional[Callable[[str, str], None]] = None,
 ) -> None:
@@ -301,7 +371,7 @@ def _parse(
                 next_line = ''
             try:
                 with currently_parsing.set_line(line, line_num):
-                    parse_line(line, parse_conf_item, ans, base_path_for_includes, effective_config_lines, accumulate_bad_lines)
+                    parse_line(line, parse_conf_item, ans, base_path_for_includes, effective_config_lines, memory, accumulate_bad_lines)
             except Exception as e:
                 if accumulate_bad_lines is None:
                     raise
@@ -317,7 +387,7 @@ def parse_config_base(
     accumulate_bad_lines: Optional[List[BadLine]] = None,
     effective_config_lines: Optional[Callable[[str, str], None]] = None,
 ) -> None:
-    _parse(lines, parse_conf_item, ans, accumulate_bad_lines, effective_config_lines)
+    _parse(lines, parse_conf_item, ans, Memory(accumulate_bad_lines), accumulate_bad_lines, effective_config_lines)
 
 
 def merge_dicts(defaults: Dict[str, Any], newvals: Dict[str, Any]) -> Dict[str, Any]:

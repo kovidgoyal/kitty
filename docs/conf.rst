@@ -45,13 +45,21 @@ expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
 to detect the operating system. It is ``linux``, ``macos`` or ``bsd``.
 Also, you can use :code:`globinclude` to include files
 matching a shell glob pattern and :code:`envinclude` to include configuration
-from environment variables. For example::
+from environment variables. Finally, you can dynamically generate configuration
+by running a program using :code:`geninclude`. For example::
 
+     # Include other.conf
      include other.conf
      # Include *.conf files from all subdirs of kitty.d inside the kitty config dir
      globinclude kitty.d/**/*.conf
      # Include the *contents* of all env vars starting with KITTY_CONF_
      envinclude KITTY_CONF_*
+     # Run the script dynamic.py placed in the same directory as this config file
+     # and include its :file:`STDOUT`. Note that Python scripts are fastest
+     # as they use the embedded Python interpreter, but any executable script
+     # or program is supported, in any language. Remember to mark the script
+     # file executable.
+     geninclude dynamic.py
 
 
 .. note:: Syntax highlighting for :file:`kitty.conf` in vim is available via

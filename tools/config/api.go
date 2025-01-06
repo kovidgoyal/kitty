@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -61,6 +62,55 @@ var key_pat = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$`)
 })
 
+var kitty_os = sync.OnceValue(func() string {
+	switch runtime.GOOS {
+	case "linux":
+		return "linux"
+	case "freebsd", "netbsd", "openbsd":
+		return "bsd"
+	case "darwin":
+		return "macos"
+	}
+	return "unknown"
+})
+
+func geninclude(path string) (string, error) {
+	cmd := exec.Command(path)
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "KITTY_OS="+kitty_os())
+	if strings.HasSuffix(path, ".py") && unix.Access(path, unix.X_OK) != nil {
+		if utils.KittyExe() == "" || strings.HasPrefix(path, ":") {
+			cmd = exec.Command("python", path)
+		} else {
+			cmd = exec.Command(utils.KittyExe(), "+launch", path)
+		}
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+	if err = cmd.Start(); err != nil {
+		return "", err
+	}
+	data, err := io.ReadAll(stdout)
+	if err != nil {
+		return "", err
+	}
+	if err = cmd.Wait(); err != nil {
+		return "", err
+	}
+	return utils.UnsafeBytesToString(data), nil
+}
+
+func ExpandVars(x string) string {
+	return os.Expand(x, func(k string) string {
+		if k == "KITTY_OS" {
+			return kitty_os()
+		}
+		return os.Getenv(k)
+	})
+}
+
 func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes string, depth int) error {
 	if self.seen_includes[name] { // avoid include loops
 		return nil
@@ -89,6 +139,10 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 	next_line_num := 0
 	next_line := ""
 	var line string
+
+	add_bad_line := func(err error) {
+		self.bad_lines = append(self.bad_lines, ConfigLine{Src_file: name, Line: line, Line_number: lnum, Err: err})
+	}
 
 	for {
 		if next_line != "" {
@@ -124,16 +178,15 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 
 		if line[0] == '#' {
 			if self.CommentsHandler != nil {
-				err := self.CommentsHandler(line)
-				if err != nil {
-					self.bad_lines = append(self.bad_lines, ConfigLine{Src_file: name, Line: line, Line_number: lnum, Err: err})
+				if err := self.CommentsHandler(line); err != nil {
+					add_bad_line(err)
 				}
 			}
 			continue
 		}
 		m := key_pat().FindStringSubmatch(line)
 		if len(m) < 3 {
-			self.bad_lines = append(self.bad_lines, ConfigLine{Src_file: name, Line: line, Line_number: lnum, Err: fmt.Errorf("Invalid config line: %#v", line)})
+			add_bad_line(fmt.Errorf("Invalid config line: %#v", line))
 			continue
 		}
 		key, val := m[1], m[2]
@@ -146,17 +199,18 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 		}
 		switch key {
 		default:
-			err := self.LineHandler(key, val)
-			if err != nil {
-				self.bad_lines = append(self.bad_lines, ConfigLine{Src_file: name, Line: line, Line_number: lnum, Err: err})
+			if err := self.LineHandler(key, val); err != nil {
+				add_bad_line(err)
 			}
-		case "include", "globinclude", "envinclude":
+		case "include", "globinclude", "envinclude", "geninclude":
 			var includes []string
+			val = ExpandVars(val)
 			switch key {
 			case "include":
-				aval, err := make_absolute(val)
-				if err == nil {
+				if aval, err := make_absolute(val); err == nil {
 					includes = []string{aval}
+				} else {
+					add_bad_line(err)
 				}
 			case "globinclude":
 				aval, err := make_absolute(val)
@@ -164,13 +218,26 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 					matches, err := filepath.Glob(aval)
 					if err == nil {
 						includes = matches
+					} else {
+						add_bad_line(err)
 					}
+				} else {
+					add_bad_line(err)
+				}
+			case "geninclude":
+				if aval, err := make_absolute(val); err == nil {
+					if g, err := geninclude(aval); err == nil {
+						if err := recurse(strings.NewReader(g), "<gen: "+val+">", base_path_for_includes); err != nil {
+							return err
+						}
+					} else {
+						add_bad_line(err)
+					}
+				} else {
+					add_bad_line(err)
 				}
 			case "envinclude":
-				env := self.override_env
-				if env == nil {
-					env = os.Environ()
-				}
+				env := utils.IfElse(self.override_env == nil, os.Environ(), self.override_env)
 				for _, x := range env {
 					key, eval, _ := strings.Cut(x, "=")
 					is_match, err := filepath.Match(val, key)
@@ -184,14 +251,12 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 			}
 			if len(includes) > 0 {
 				for _, incpath := range includes {
-					raw, err := os.ReadFile(incpath)
-					if err == nil {
-						err := recurse(bytes.NewReader(raw), incpath, filepath.Dir(incpath))
-						if err != nil {
+					if raw, err := os.ReadFile(incpath); err == nil {
+						if err := recurse(bytes.NewReader(raw), incpath, filepath.Dir(incpath)); err != nil {
 							return err
 						}
 					} else if !errors.Is(err, fs.ErrNotExist) {
-						return fmt.Errorf("Failed to process include %#v with error: %w", incpath, err)
+						add_bad_line(err)
 					}
 				}
 			}

@@ -24,6 +24,10 @@ func TestConfigParsing(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	w(filepath.Join(tdir, "g.py"), []byte(`
+print('gpy 1')
+print('gpy 2')
+`))
 	w(conf_file, []byte(
 		`error main
 # igno
@@ -39,6 +43,7 @@ globin
 \clude sub/c?.c
    \onf
 badline
+geninclude g.py
 `))
 	w(filepath.Join(tdir, "sub/b.conf"), []byte("incb cool\ninclude a.conf"))
 	w(filepath.Join(tdir, "sub/c1.conf"), []byte("inc1 cool"))
@@ -62,7 +67,7 @@ badline
 	if err = p.ParseOverrides("over one", "over two"); err != nil {
 		t.Fatal(err)
 	}
-	diff := cmp.Diff([]string{"a one", "incb cool", "b x", "inc1 cool", "inc2 cool", "env cool", "inc notcool", "over one", "over two"}, parsed_lines)
+	diff := cmp.Diff([]string{"a one", "incb cool", "b x", "inc1 cool", "inc2 cool", "env cool", "inc notcool", "gpy 1", "gpy 2", "over one", "over two"}, parsed_lines)
 	if diff != "" {
 		t.Fatalf("Unexpected parsed config values:\n%s", diff)
 	}
