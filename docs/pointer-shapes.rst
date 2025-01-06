@@ -166,7 +166,7 @@ Legacy xterm compatibility
 ----------------------------
 
 The original xterm proposal for this escape code used shape names from the
-file:`X11/cursorfont.h` header on X11 based systems. Terminal implementations
+:file:`X11/cursorfont.h` header on X11 based systems. Terminal implementations
 wishing to maintain compatibility with xterm can also implement these names as
 aliases for the CSS based names defined in the :ref:`pointer_shape_names` table.
 

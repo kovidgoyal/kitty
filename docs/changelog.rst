@@ -105,7 +105,7 @@ Detailed list of changes
 
 - macOS: Add menu items to the Edit menu to clear the screen and scrollback
 
-- Fix the :ac:`clear_terminal` scrollback action also clearing screen, not just scrollback
+- Fix the :ac:`clear_terminal scrollback <clear_terminal>` action also clearing screen, not just the scrollback
 
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
