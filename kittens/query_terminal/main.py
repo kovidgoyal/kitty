@@ -230,7 +230,7 @@ class ClipboardControl(Query):
 @query
 class OSName(Query):
     name: str = 'os_name'
-    help_text: str = f'The name of the OS the terminal is running on. Kitty returns values: {", ".join(sorted(get_args(OSNames)))}'
+    help_text: str = f'The name of the OS the terminal is running on. kitty returns values: {", ".join(sorted(get_args(OSNames)))}'
 
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> OSNames:
