@@ -5,7 +5,7 @@ import re
 import sys
 from binascii import hexlify, unhexlify
 from contextlib import suppress
-from typing import Dict, Optional, Type
+from typing import Dict, Literal, Optional, Type
 
 from kitty.constants import appname, str_version
 from kitty.options.types import Options
@@ -232,7 +232,7 @@ class OSName(Query):
     help_text: str = 'The name of the OS the terminal is running on. Kitty supports values: linux, macos, bsd or unknown'
 
     @staticmethod
-    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> Literal['macos', 'bsd', 'linux', 'unknown']:
         from kitty.conf.utils import os_name
         return os_name()
 
