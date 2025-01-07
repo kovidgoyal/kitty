@@ -23,15 +23,15 @@ jobs:
                 cc: [gcc, clang]
                 include:
                     - python: a
-                      pyver: "3.9"
+                      pyver: "3.10"
                       sanitize: 0
 
                     - python: b
-                      pyver: "3.10"
+                      pyver: "3.11"
                       sanitize: 1
 
                     - python: c
-                      pyver: "3.11"
+                      pyver: "3.12"
                       sanitize: 1
 
 
@@ -82,7 +82,7 @@ jobs:
           - name: Set up Python
             uses: actions/setup-python@v4
             with:
-              python-version: "3.12"
+              python-version: "3.13"
 
           - name: Install Go
             uses: actions/setup-go@v4
@@ -167,7 +167,7 @@ jobs:
           - name: Set up Python
             uses: actions/setup-python@v4
             with:
-              python-version: "3.10"
+              python-version: "3.11"
 
           - name: Install Go
             uses: actions/setup-go@v4

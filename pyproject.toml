@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [tool.mypy]
 files = 'kitty,kittens,glfw,*.py,docs/conf.py,gen'
