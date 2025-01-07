@@ -226,6 +226,17 @@ class ClipboardControl(Query):
         return ' '.join(opts.clipboard_control)
 
 
+@query
+class OSName(Query):
+    name: str = 'os_name'
+    help_text: str = 'The name of the OS the terminal is running on. Kitty supports values: linux, macos, bsd or unknown'
+
+    @staticmethod
+    def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
+        from kitty.conf.utils import os_name
+        return os_name()
+
+
 def get_result(name: str, window_id: int, os_window_id: int) -> Optional[str]:
     from kitty.fast_data_types import get_options
     q = all_queries.get(name)

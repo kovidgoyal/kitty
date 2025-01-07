@@ -14,6 +14,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Sequence,
@@ -178,7 +179,7 @@ currently_parsing = CurrentlyParsing()
 
 
 @run_once
-def os_name() -> str:
+def os_name() -> Literal['macos', 'bsd', 'linux', 'unknown']:
     if is_macos:
         return 'macos'
     if 'bsd' in _plat:
