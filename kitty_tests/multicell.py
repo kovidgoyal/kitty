@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.fast_data_types import TEXT_SIZE_CODE, test_ch_and_idx, wcswidth
+from kitty.fast_data_types import EXTEND_CELL, TEXT_SIZE_CODE, test_ch_and_idx, wcswidth
 
 from . import BaseTest, parse_bytes
 from . import draw_multicell as multicell
@@ -591,3 +591,45 @@ def test_multicell(self: TestMulticell) -> None:
     for y in range(2):
         for x in range(4):
             ac(x, y, is_multicell=True)
+
+    # selections
+    s = self.create_screen(lines=5, cols=8)
+
+    def p(x=0, y=0, in_left_half_of_cell=True):
+        return (x, y, in_left_half_of_cell)
+
+    def ss(start, end, rectangle_select=False, extend_mode=EXTEND_CELL):
+        s.start_selection(start[0], start[1], rectangle_select, extend_mode, start[2])
+        s.update_selection(end[0], end[1], end[2])
+
+    def asl(*ranges, bp=1):
+        actual = s.current_selections()
+        def as_lists(x):
+            a = []
+            for y in range(s.lines):
+                a.append(x[y*s.columns: (y+1)*s.columns ])
+            return a
+
+        expected = bytearray(s.lines * s.columns)
+        for (y, x1, x2) in ranges:
+            pos = y * s.columns
+            for x in range(x1, x2 + 1):
+                expected[pos + x] = bp
+        for i, (e, a) in enumerate(zip(as_lists(bytes(expected)), as_lists(actual))):
+            self.ae(e, a, f'Row: {i}')
+
+    s.reset()
+    s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
+    ss(p(), p(x=1, in_left_half_of_cell=False))
+    asl((0, 0, 2))
+    ss(p(x=2), p(x=3, in_left_half_of_cell=False))
+    asl((0, 1, 3))
+
+    s.reset()
+    s.draw('a'), multicell(s, 'b', scale=2), s.draw('c'), multicell(s, 'd', scale=2)
+    ss(p(), p(x=4, in_left_half_of_cell=False))
+    asl((0, 0, 5), (1, 1, 2), (1, 4, 5))
+    ss(p(y=1, x=1), p(y=1, x=1, in_left_half_of_cell=False))
+    asl((0, 1, 2), (1, 1, 2))
+    ss(p(y=1, x=0), p(y=1, x=1, in_left_half_of_cell=False))  # empty leading cell before multiline on y=1
+    asl((0, 1, 2), (1, 0, 2))

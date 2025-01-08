@@ -7,11 +7,13 @@
 
 #define EXTRA_INIT { \
     PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL); \
+    PyModule_AddIntMacro(module, EXTEND_CELL); PyModule_AddIntMacro(module, EXTEND_WORD); PyModule_AddIntMacro(module, EXTEND_LINE); \
     if (PyModule_AddFunctions(module, module_methods) != 0) return false; \
 }
 
 #include "data-types.h"
 #include "control-codes.h"
+#include "screen.h"
 #include "state.h"
 #include "iqsort.h"
 #include "fonts.h"
@@ -3359,6 +3361,19 @@ xrange_for_iteration(const IterationData *idata, const int y, const Line *line) 
     return ans;
 }
 
+static XRange
+xrange_for_iteration_with_multicells(const IterationData *idata, const int y, const Line *line) {
+    XRange ans = xrange_for_iteration(idata, y, line);
+    if (ans.x_limit > ans.x) {
+        CPUCell *c; index_type ml;
+        if (ans.x && (c = &line->cpu_cells[ans.x])->is_multicell && c->x) ans.x = ans.x > c->x ? ans.x - c->x : 0;
+        if (ans.x_limit < line->xnum && (c = &line->cpu_cells[ans.x_limit-1])->is_multicell && c->x + 1u < (ml = mcd_x_limit(c))) {
+            ans.x_limit += ml - 1 - c->x; if (ans.x_limit > line->xnum) ans.x_limit = line->xnum;
+        }
+    }
+    return ans;
+}
+
 static bool
 iteration_data_is_empty(const Screen *self, const IterationData *idata) {
     if (idata->y >= idata->y_limit) return true;
@@ -3375,15 +3390,22 @@ static void
 apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask) {
     iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, self->scrolled_by);
     Line *line;
-
-    for (int y = MAX(0, s->last_rendered.y); y < s->last_rendered.y_limit && y < (int)self->lines; y++) {
+    const int y_min = MAX(0, s->last_rendered.y), y_limit = MIN(s->last_rendered.y_limit, (int)self->lines);
+    for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
             linebuf_init_line(self->paused_rendering.linebuf, y);
             line = self->paused_rendering.linebuf->line;
         } else line = visual_line_(self, y);
         uint8_t *line_start = data + self->columns * y;
-        XRange xr = xrange_for_iteration(&s->last_rendered, y, line);
-        for (index_type x = xr.x; x < xr.x_limit; x++) line_start[x] |= set_mask;
+        XRange xr = xrange_for_iteration_with_multicells(&s->last_rendered, y, line);
+        for (index_type x = xr.x; x < xr.x_limit; x++) {
+            line_start[x] |= set_mask;
+            CPUCell *c = &line->cpu_cells[x];
+            if (c->is_multicell && c->scale > 1) {
+                for (int ym = MAX(0, y - c->y); ym < y; ym++) data[self->columns * ym + x] |= set_mask;
+                for (int ym = y + 1; ym < MIN((int)self->lines, y + c->scale - c->y); ym++) data[self->columns * ym + x] |= set_mask;
+            }
+        }
     }
     s->last_rendered.y = MAX(0, s->last_rendered.y);
 }
@@ -5178,6 +5200,14 @@ line_edge_colors(Screen *self, PyObject *a UNUSED) {
     return Py_BuildValue("kk", (unsigned long)left, (unsigned long)right);
 }
 
+static PyObject*
+current_selections(Screen *self, PyObject *a UNUSED) {
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, self->lines * self->columns);
+    if (!ans) return NULL;
+    screen_apply_selection(self, PyBytes_AS_STRING(ans), PyBytes_GET_SIZE(ans));
+    return ans;
+}
+
 WRAP0(update_only_line_graphics_data)
 WRAP0(bell)
 
@@ -5364,6 +5394,7 @@ static PyMethodDef methods[] = {
     MND(scroll_to_next_mark, METH_VARARGS)
     MND(update_only_line_graphics_data, METH_NOARGS)
     MND(bell, METH_NOARGS)
+    MND(current_selections, METH_NOARGS)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */
