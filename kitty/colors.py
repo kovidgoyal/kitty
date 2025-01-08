@@ -118,23 +118,26 @@ class ThemeColors:
     def on_system_color_scheme_change(self, new_value: ColorSchemes, is_initial_value: bool = False) -> bool:
         if is_initial_value:
             return False
-        from .utils import log_error
         self.refresh()
+        return self.apply_theme(new_value)
+
+    def apply_theme(self, new_value: ColorSchemes, notify_on_bg_change: bool = True) -> bool:
+        from .utils import log_error
         boss = get_boss()
         if new_value == 'dark' and self.has_dark_theme:
-            patch_colors(self.dark_spec, self.dark_tbc, True)
+            patch_colors(self.dark_spec, self.dark_tbc, True, notify_on_bg_change=notify_on_bg_change)
             self.applied_theme = new_value
             if boss.args.debug_rendering:
                 log_error(f'Applied color theme {new_value}')
             return True
         if new_value == 'light' and self.has_light_theme:
-            patch_colors(self.light_spec, self.light_tbc, True)
+            patch_colors(self.light_spec, self.light_tbc, True, notify_on_bg_change=notify_on_bg_change)
             self.applied_theme = new_value
             if boss.args.debug_rendering:
                 log_error(f'Applied color theme {new_value}')
             return True
         if new_value == 'no_preference' and self.has_no_preference_theme:
-            patch_colors(self.no_preference_spec, self.no_preference_tbc, True)
+            patch_colors(self.no_preference_spec, self.no_preference_tbc, True, notify_on_bg_change=notify_on_bg_change)
             self.applied_theme = new_value
             if boss.args.debug_rendering:
                 log_error(f'Applied color theme {new_value}')
@@ -183,11 +186,12 @@ def patch_options_with_color_spec(opts: Options, spec: ColorsSpec, transparent_b
 
 def patch_colors(
     spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, configured: bool = False,
-    windows: Optional[Sequence[WindowType]] = None
+    windows: Optional[Sequence[WindowType]] = None, notify_on_bg_change: bool = True,
 ) -> None:
     boss = get_boss()
     if windows is None:
         windows = tuple(boss.all_windows)
+    bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in windows}
     profiles = tuple(w.screen.color_profile for w in windows if w)
     patch_color_profiles(spec, transparent_background_colors, profiles, configured)
     opts = get_options()
@@ -203,9 +207,10 @@ def patch_colors(
         set_os_window_chrome(tm.os_window_id)
     patch_global_colors(spec, configured)
     default_bg_changed = 'background' in spec
+    notify_bg = notify_on_bg_change and default_bg_changed
     boss = get_boss()
     for w in windows:
         if w:
-            if default_bg_changed:
+            if notify_bg and w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
                 boss.default_bg_changed_for(w.id)
             w.refresh()

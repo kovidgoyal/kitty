@@ -2670,6 +2670,7 @@ class Boss:
 
     def apply_new_options(self, opts: Options) -> None:
         from .fonts.box_drawing import set_scale
+        bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in self.all_windows}
         # Update options storage
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
         apply_options_update()
@@ -2699,8 +2700,11 @@ class Boss:
         for tm in self.all_tab_managers:
             tm.apply_options()
         # Update colors
+        if theme_colors.applied_theme and theme_colors.refresh():
+            theme_colors.apply_theme(theme_colors.applied_theme, notify_on_bg_change=False)
         for w in self.all_windows:
-            self.default_bg_changed_for(w.id)
+            if w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
+                self.default_bg_changed_for(w.id)
             w.refresh(reload_all_gpu_data=True)
         load_shader_programs.recompile_if_needed()
 

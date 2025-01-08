@@ -109,6 +109,8 @@ Detailed list of changes
 
 - Fix the :ac:`clear_terminal scrollback <clear_terminal>` action also clearing screen, not just the scrollback
 
+- When reloading configuration fix auto color themes not being re-applied (:iss:`8203`)
+
 0.38.1 [2024-12-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
