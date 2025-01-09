@@ -40,6 +40,7 @@ Some applications that use the kitty graphics protocol:
 * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
 * `tpix <https://github.com/jesvedberg/tpix>`_ - a statically compiled binary that can be used to display images and easily installed on remote servers without root access
 * `twitch-tui <https://github.com/Xithrius/twitch-tui>`_ - Twitch chat in the terminal
+* `vat <https://github.com/jzbrooks/vat>`_ - a terminal image viewer for vector graphics, including Android Vector Drawables
 * `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
 * `Yazi <https://github.com/sxyazi/yazi>`_ - Blazing fast terminal file manager written in Rust, based on async I/O
 
