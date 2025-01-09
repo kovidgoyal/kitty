@@ -111,6 +111,14 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	if err = set_diff_command(conf.Diff_cmd); err != nil {
 		return 1, err
 	}
+	switch conf.Color_scheme {
+	case Color_scheme_light:
+		use_light_colors = true
+	case Color_scheme_dark:
+		use_light_colors = false
+	case Color_scheme_auto:
+		use_light_colors = false
+	}
 	init_caches()
 	defer func() {
 		for tdir := range remote_dirs {

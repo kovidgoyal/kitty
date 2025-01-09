@@ -125,6 +125,7 @@ func set_terminal_colors(lp *loop.Loop) {
 
 func (self *Handler) on_capabilities_received(tc loop.TerminalCapabilities) {
 	var use_dark_colors bool
+	prev := use_light_colors
 	switch conf.Color_scheme {
 	case Color_scheme_auto:
 		use_dark_colors = tc.ColorPreference != loop.LIGHT_COLOR_PREFERENCE
@@ -134,6 +135,9 @@ func (self *Handler) on_capabilities_received(tc loop.TerminalCapabilities) {
 		use_dark_colors = true
 	}
 	use_light_colors = !use_dark_colors
+	if use_light_colors != prev && (light_highlight_started || dark_highlight_started) {
+		self.highlight_all()
+	}
 	set_terminal_colors(self.lp)
 	self.terminal_capabilities_received = true
 	self.draw_screen()
