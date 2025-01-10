@@ -108,7 +108,8 @@ simpler :option:`kitty --single-instance` option, see ``kitty --help`` for that.
 
 Remote control via a socket
 --------------------------------
-First, start |kitty| as::
+To control kitty from outside kitty, it is necessary to setup a socket to
+communicate with kitty. First, start |kitty| as::
 
     kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty
 
