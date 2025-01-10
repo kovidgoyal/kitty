@@ -3,14 +3,13 @@
 
 import sys
 from functools import partial
-from typing import List
 
 from kitty.cli import CONFIG_HELP, CompletionSpec
 from kitty.conf.types import Definition
 from kitty.constants import appname
 
 
-def main(args: List[str]) -> None:
+def main(args: list[str]) -> None:
     raise SystemExit('Must be run as kitten diff')
 
 definition = Definition(

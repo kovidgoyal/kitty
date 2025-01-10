@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import List, Optional
 
 from kitty.typing import BossType
 
@@ -29,12 +28,12 @@ The initial tab to display. Defaults to using the tab from the previous kitten i
 
 
 @result_handler(has_ready_notification=True)
-def handle_result(args: List[str], current_char: str, target_window_id: int, boss: BossType) -> None:
+def handle_result(args: list[str], current_char: str, target_window_id: int, boss: BossType) -> None:
     w = boss.window_id_map.get(target_window_id)
     if w is not None:
         w.paste_text(current_char)
 
-def main(args: List[str]) -> Optional[str]:
+def main(args: list[str]) -> str | None:
     raise SystemExit('This should be run as kitten unicode_input')
 
 if __name__ == '__main__':

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Any, Collection, Dict, Generator, List, NamedTuple, Optional, Sequence, Tuple, Union
+from collections.abc import Collection, Generator, Sequence
+from typing import Any, NamedTuple, Optional, Union
 
 from kitty.borders import BorderColor
 from kitty.types import Edges, WindowGeometry
@@ -20,11 +21,11 @@ class Pair:
 
     def __init__(self, horizontal: bool = True):
         self.horizontal = horizontal
-        self.one: Optional[Union[Pair, int]] = None
-        self.two: Optional[Union[Pair, int]] = None
+        self.one: Pair | int | None = None
+        self.two: Pair | int | None = None
         self.bias = 0.5
         self.top = self.left = self.width = self.height = 0
-        self.between_borders: List[Edges] = []
+        self.between_borders: list[Edges] = []
         self.first_extent = self.second_extent = Extent()
 
     def __repr__(self) -> str:
@@ -158,19 +159,19 @@ class Pair:
     def apply_window_geometry(
         self, window_id: int,
         window_geometry: WindowGeometry,
-        id_window_map: Dict[int, WindowGroup],
+        id_window_map: dict[int, WindowGroup],
         layout_object: Layout
     ) -> None:
         wg = id_window_map[window_id]
         wg.set_geometry(window_geometry)
         layout_object.blank_rects.extend(blank_rects_for_window(window_geometry))
 
-    def effective_border(self, id_window_map: Dict[int, WindowGroup]) -> int:
+    def effective_border(self, id_window_map: dict[int, WindowGroup]) -> int:
         for wid in self.all_window_ids():
             return id_window_map[wid].effective_border()
         return 0
 
-    def minimum_width(self, id_window_map: Dict[int, WindowGroup]) -> int:
+    def minimum_width(self, id_window_map: dict[int, WindowGroup]) -> int:
         if self.one is None or self.two is None or not self.horizontal:
             return lgd.cell_width
         bw = self.effective_border(id_window_map) if lgd.draw_minimal_borders else 0
@@ -185,7 +186,7 @@ class Pair:
             ans += lgd.cell_width
         return ans
 
-    def minimum_height(self, id_window_map: Dict[int, WindowGroup]) -> int:
+    def minimum_height(self, id_window_map: dict[int, WindowGroup]) -> int:
         if self.one is None or self.two is None or self.horizontal:
             return lgd.cell_height
         bw = self.effective_border(id_window_map) if lgd.draw_minimal_borders else 0
@@ -203,7 +204,7 @@ class Pair:
     def layout_pair(
         self,
         left: int, top: int, width: int, height: int,
-        id_window_map: Dict[int, WindowGroup],
+        id_window_map: dict[int, WindowGroup],
         layout_object: Layout
     ) -> None:
         self.between_borders = []
@@ -358,7 +359,7 @@ class Pair:
 
     def neighbors_for_window(self, window_id: int, ans: NeighborsMap, layout_object: 'Splits', all_windows: WindowList) -> None:
 
-        def quadrant(is_horizontal: bool, is_first: bool) -> Tuple[EdgeLiteral, EdgeLiteral]:
+        def quadrant(is_horizontal: bool, is_first: bool) -> tuple[EdgeLiteral, EdgeLiteral]:
             if is_horizontal:
                 if is_first:
                     return 'left', 'right'
@@ -380,7 +381,7 @@ class Pair:
                     ans[which].append(other)
 
         def is_neighbouring_geometry(a: WindowGeometry, b: WindowGeometry, direction: str) -> bool:
-            def edges(g: WindowGeometry) -> Tuple[int, int]:
+            def edges(g: WindowGeometry) -> tuple[int, int]:
                 return (g.top, g.bottom) if direction in ['left', 'right'] else (g.left, g.right)
 
             a1, a2 = edges(a)
@@ -427,16 +428,16 @@ class Pair:
 
 class SplitsLayoutOpts(LayoutOpts):
 
-    default_axis_is_horizontal: Optional[bool] = True
+    default_axis_is_horizontal: bool | None = True
 
-    def __init__(self, data: Dict[str, str]):
+    def __init__(self, data: dict[str, str]):
         q = data.get('split_axis', 'horizontal')
         if q == 'auto':
             self.default_axis_is_horizontal = None
         else:
             self.default_axis_is_horizontal = q == 'horizontal'
 
-    def serialized(self) -> Dict[str, Any]:
+    def serialized(self) -> dict[str, Any]:
         return {'default_axis_is_horizontal': self.default_axis_is_horizontal}
 
 
@@ -447,12 +448,12 @@ class Splits(Layout):
     no_minimal_window_borders = True
 
     @property
-    def default_axis_is_horizontal(self) -> Optional[bool]:
+    def default_axis_is_horizontal(self) -> bool | None:
         return self.layout_opts.default_axis_is_horizontal
 
     @property
     def pairs_root(self) -> Pair:
-        root: Optional[Pair] = getattr(self, '_pairs_root', None)
+        root: Pair | None = getattr(self, '_pairs_root', None)
         if root is None:
             horizontal = self.default_axis_is_horizontal
             if horizontal is None:
@@ -499,8 +500,8 @@ class Splits(Layout):
         self,
         all_windows: WindowList,
         window: WindowType,
-        location: Optional[str],
-        bias: Optional[float] = None,
+        location: str | None,
+        bias: float | None = None,
     ) -> None:
         horizontal = self.default_axis_is_horizontal
         after = True
@@ -604,7 +605,7 @@ class Splits(Layout):
             self.pairs_root.swap_windows(before.id, after.id)
         return moved
 
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
         if action_name == 'rotate':
             args = args or ('90',)
             try:
@@ -671,10 +672,10 @@ class Splits(Layout):
 
         return None
 
-    def layout_state(self) -> Dict[str, Any]:
+    def layout_state(self) -> dict[str, Any]:
 
-        def add_pair(p: Pair) -> Dict[str, Any]:
-            ans: Dict[str, Any] = {}
+        def add_pair(p: Pair) -> dict[str, Any]:
+            ans: dict[str, Any] = {}
             ans['horizontal'] = p.horizontal
             ans['bias'] = p.bias
             if isinstance(p.one, Pair):

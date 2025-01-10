@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
@@ -41,7 +41,7 @@ using this option means that you will not be notified of failures.
         if len(args) < 1:
             self.fatal('Scroll amount must be specified')
         amt = args[0]
-        amount: Tuple[Union[str, float], Optional[str]] = (amt, None)
+        amount: tuple[str | float, str | None] = (amt, None)
         if amt not in ('start', 'end'):
             pages = 'p' in amt
             unscroll = 'u' in amt
@@ -54,7 +54,7 @@ using this option means that you will not be notified of failures.
         # defaults to scroll the window this command is run in
         return {'match': opts.match, 'amount': amount, 'self': True}
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         amt = payload_get('amount')
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:

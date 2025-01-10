@@ -3,8 +3,8 @@
 
 import os
 import stat
+from collections.abc import Generator
 from contextlib import suppress
-from typing import Dict, Generator, Optional, Tuple, Union
 
 DEFAULT_DIRCOLORS = r"""# {{{
 # Configuration file for dircolors, a utility to help you set the
@@ -236,8 +236,8 @@ CODE_MAP = {
 }
 
 
-def stat_at(file: str, cwd: Optional[Union[int, str]] = None, follow_symlinks: bool = False) -> os.stat_result:
-    dirfd: Optional[int] = None
+def stat_at(file: str, cwd: int | str | None = None, follow_symlinks: bool = False) -> os.stat_result:
+    dirfd: int | None = None
     need_to_close = False
     if isinstance(cwd, str):
         dirfd = os.open(cwd, os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0))
@@ -255,8 +255,8 @@ def stat_at(file: str, cwd: Optional[Union[int, str]] = None, follow_symlinks: b
 class Dircolors:
 
     def __init__(self) -> None:
-        self.codes: Dict[str, str] = {}
-        self.extensions: Dict[str, str] = {}
+        self.codes: dict[str, str] = {}
+        self.extensions: dict[str, str] = {}
         if not self.load_from_environ() and not self.load_from_file():
             self.load_defaults()
 
@@ -324,7 +324,7 @@ class Dircolors:
     def generate_lscolors(self) -> str:
         """ Output the database in the format used by the LS_COLORS environment variable. """
 
-        def gen_pairs() -> Generator[Tuple[str, str], None, None]:
+        def gen_pairs() -> Generator[tuple[str, str], None, None]:
             for pair in self.codes.items():
                 yield pair
             for pair in self.extensions.items():
@@ -370,7 +370,7 @@ class Dircolors:
             return self._format_ext(text, ext)
         return text
 
-    def __call__(self, path: str, text: str, cwd: Optional[Union[int, str]] = None) -> str:
+    def __call__(self, path: str, text: str, cwd: int | str | None = None) -> str:
         follow_symlinks = self.codes.get('ln') == 'target'
         try:
             sr = stat_at(path, cwd, follow_symlinks)

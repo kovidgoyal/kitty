@@ -2,7 +2,6 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
-from typing import List, Optional
 
 from kitty.conf.types import Definition
 from kitty.types import run_once
@@ -222,7 +221,7 @@ environment variable.
 egr()  # }}}
 
 
-def main(args: List[str]) -> Optional[str]:
+def main(args: list[str]) -> str | None:
     raise SystemExit('This should be run as kitten ssh')
 
 if __name__ == '__main__':

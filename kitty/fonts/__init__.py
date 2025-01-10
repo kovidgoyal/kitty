@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from enum import Enum, IntEnum, auto
-from typing import TYPE_CHECKING, Literal, NamedTuple, Optional, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Literal, NamedTuple, TypedDict, TypeVar, Union
 
 from kitty.fast_data_types import ParsedFontFeature
 from kitty.types import run_once
@@ -18,7 +18,7 @@ class ListedFont(TypedDict):
     postscript_name: str
     is_monospace: bool
     is_variable: bool
-    descriptor: Union[FontConfigPattern, CoreTextFont]
+    descriptor: FontConfigPattern | CoreTextFont
 
 
 class VariableAxis(TypedDict):
@@ -127,13 +127,13 @@ class FontModification(NamedTuple):
 
 
 class FontSpec(NamedTuple):
-    family: Optional[str] = None
-    style: Optional[str] = None
-    postscript_name: Optional[str] = None
-    full_name: Optional[str] = None
-    system: Optional[str] = None
+    family: str | None = None
+    style: str | None = None
+    postscript_name: str | None = None
+    full_name: str | None = None
+    system: str | None = None
     axes: tuple[tuple[str, float], ...] = ()
-    variable_name: Optional[str] = None
+    variable_name: str | None = None
     features: tuple[ParsedFontFeature, ...] = ()
     created_from_string: str = ''
 

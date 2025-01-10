@@ -5,10 +5,10 @@ import array
 import os
 import tempfile
 import unittest
+from collections.abc import Iterable
 from functools import lru_cache, partial
 from itertools import repeat
 from math import ceil
-from typing import Iterable
 
 from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import (

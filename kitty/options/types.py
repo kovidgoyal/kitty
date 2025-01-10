@@ -476,17 +476,17 @@ option_names = (
 
 
 class Options:
-    active_border_color: typing.Optional[kitty.fast_data_types.Color] = Color(0, 255, 0)
+    active_border_color: kitty.fast_data_types.Color | None = Color(0, 255, 0)
     active_tab_background: Color = Color(238, 238, 238)
-    active_tab_font_style: typing.Tuple[bool, bool] = (True, True)
+    active_tab_font_style: tuple[bool, bool] = (True, True)
     active_tab_foreground: Color = Color(0, 0, 0)
-    active_tab_title_template: typing.Optional[str] = None
+    active_tab_title_template: str | None = None
     allow_cloning: choices_for_allow_cloning = 'ask'
     allow_hyperlinks: int = 1
     allow_remote_control: choices_for_allow_remote_control = 'no'
     background: Color = Color(0, 0, 0)
     background_blur: int = 0
-    background_image: typing.Optional[str] = None
+    background_image: str | None = None
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
     background_opacity: float = 1.0
@@ -494,29 +494,29 @@ class Options:
     background_tint_gaps: float = 1.0
     bell_border_color: Color = Color(255, 90, 0)
     bell_on_tab: str = '🔔 '
-    bell_path: typing.Optional[str] = None
+    bell_path: str | None = None
     bold_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     bold_italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
-    box_drawing_scale: typing.Tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
+    box_drawing_scale: tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False
     click_interval: float = -1.0
-    clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary', 'read-clipboard-ask', 'read-primary-ask')
+    clipboard_control: tuple[str, ...] = ('write-clipboard', 'write-primary', 'read-clipboard-ask', 'read-primary-ask')
     clipboard_max_size: float = 512.0
-    clone_source_strategies: typing.FrozenSet[str] = frozenset({'conda', 'env_var', 'path', 'venv'})
+    clone_source_strategies: frozenset[str] = frozenset({'conda', 'env_var', 'path', 'venv'})
     close_on_child_death: bool = False
-    command_on_bell: typing.List[str] = ['none']
+    command_on_bell: list[str] = ['none']
     confirm_os_window_close: int = -1
     copy_on_select: str = ''
-    cursor: typing.Optional[kitty.fast_data_types.Color] = Color(204, 204, 204)
+    cursor: kitty.fast_data_types.Color | None = Color(204, 204, 204)
     cursor_beam_thickness: float = 1.5
-    cursor_blink_interval: typing.Tuple[float, kitty.options.utils.EasingFunction, kitty.options.utils.EasingFunction] = (-1.0, kitty.options.utils.EasingFunction(), kitty.options.utils.EasingFunction())
+    cursor_blink_interval: tuple[float, kitty.options.utils.EasingFunction, kitty.options.utils.EasingFunction] = (-1.0, kitty.options.utils.EasingFunction(), kitty.options.utils.EasingFunction())
     cursor_shape: int = 1
     cursor_shape_unfocused: int = 4
     cursor_stop_blinking_after: float = 15.0
-    cursor_text_color: typing.Optional[kitty.fast_data_types.Color] = Color(17, 17, 17)
+    cursor_text_color: kitty.fast_data_types.Color | None = Color(17, 17, 17)
     cursor_trail: int = 0
-    cursor_trail_decay: typing.Tuple[float, float] = (0.1, 0.4)
+    cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
     cursor_trail_start_threshold: int = 2
     cursor_underline_thickness: float = 2.0
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
@@ -527,7 +527,7 @@ class Options:
     dynamic_background_opacity: bool = False
     editor: str = '.'
     enable_audio_bell: bool = True
-    enabled_layouts: typing.List[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
+    enabled_layouts: list[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
     file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False
     font_family: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='monospace', axes=(), variable_name=None, features=(), created_from_string='monospace')
@@ -538,11 +538,11 @@ class Options:
     hide_window_decorations: int = 0
     inactive_border_color: Color = Color(204, 204, 204)
     inactive_tab_background: Color = Color(153, 153, 153)
-    inactive_tab_font_style: typing.Tuple[bool, bool] = (False, False)
+    inactive_tab_font_style: tuple[bool, bool] = (False, False)
     inactive_tab_foreground: Color = Color(68, 68, 68)
     inactive_text_alpha: float = 1.0
-    initial_window_height: typing.Tuple[int, str] = (400, 'px')
-    initial_window_width: typing.Tuple[int, str] = (640, 'px')
+    initial_window_height: tuple[int, str] = (400, 'px')
+    initial_window_width: tuple[int, str] = (640, 'px')
     input_delay: int = 3
     italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     kitty_mod: int = 5
@@ -568,42 +568,42 @@ class Options:
     mark3_foreground: Color = Color(0, 0, 0)
     mouse_hide_wait: float = 0.0 if is_macos else 3.0
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
-    open_url_with: typing.List[str] = ['default']
-    paste_actions: typing.FrozenSet[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
+    open_url_with: list[str] = ['default']
+    paste_actions: frozenset[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     placement_strategy: choices_for_placement_strategy = 'center'
     pointer_shape_when_dragging: choices_for_pointer_shape_when_dragging = 'beam'
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
     remember_window_size: bool = True
     repaint_delay: int = 10
-    resize_debounce_time: typing.Tuple[float, float] = (0.1, 0.5)
+    resize_debounce_time: tuple[float, float] = (0.1, 0.5)
     resize_in_steps: bool = False
     scrollback_fill_enlarged_window: bool = False
     scrollback_indicator_opacity: float = 1.0
     scrollback_lines: int = 2000
-    scrollback_pager: typing.List[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
+    scrollback_pager: list[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
     select_by_word_characters: str = '@-./_~?&=%+#'
     select_by_word_characters_forward: str = ''
-    selection_background: typing.Optional[kitty.fast_data_types.Color] = Color(255, 250, 205)
-    selection_foreground: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
+    selection_background: kitty.fast_data_types.Color | None = Color(255, 250, 205)
+    selection_foreground: kitty.fast_data_types.Color | None = Color(0, 0, 0)
     shell: str = '.'
-    shell_integration: typing.FrozenSet[str] = frozenset({'enabled'})
+    shell_integration: frozenset[str] = frozenset({'enabled'})
     show_hyperlink_targets: bool = False
     single_window_margin_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
     single_window_padding_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
-    startup_session: typing.Optional[str] = None
+    startup_session: str | None = None
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'
     sync_to_monitor: bool = True
     tab_activity_symbol: str = ''
     tab_bar_align: choices_for_tab_bar_align = 'left'
-    tab_bar_background: typing.Optional[kitty.fast_data_types.Color] = None
+    tab_bar_background: kitty.fast_data_types.Color | None = None
     tab_bar_edge: int = 3
-    tab_bar_margin_color: typing.Optional[kitty.fast_data_types.Color] = None
+    tab_bar_margin_color: kitty.fast_data_types.Color | None = None
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2
     tab_bar_style: choices_for_tab_bar_style = 'fade'
-    tab_fade: typing.Tuple[float, ...] = (0.25, 0.5, 0.75, 1.0)
+    tab_fade: tuple[float, ...] = (0.25, 0.5, 0.75, 1.0)
     tab_powerline_style: choices_for_tab_powerline_style = 'angled'
     tab_separator: str = ' ┇'
     tab_switch_strategy: choices_for_tab_switch_strategy = 'previous'
@@ -614,48 +614,48 @@ class Options:
     text_composition_strategy: str = 'platform'
     text_fg_override_threshold: float = 0.0
     touch_scroll_multiplier: float = 1.0
-    transparent_background_colors: typing.Tuple[typing.Tuple[kitty.fast_data_types.Color, float], ...] = ()
+    transparent_background_colors: tuple[tuple[kitty.fast_data_types.Color, float], ...] = ()
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     underline_exclusion: tuple[float, typing.Literal['', 'px', 'pt']] = (1.0, '')
     underline_hyperlinks: choices_for_underline_hyperlinks = 'hover'
     update_check_interval: float = 24.0
     url_color: Color = Color(0, 135, 189)
     url_excluded_characters: str = ''
-    url_prefixes: typing.Tuple[str, ...] = ('file', 'ftp', 'ftps', 'gemini', 'git', 'gopher', 'http', 'https', 'irc', 'ircs', 'kitty', 'mailto', 'news', 'sftp', 'ssh')
+    url_prefixes: tuple[str, ...] = ('file', 'ftp', 'ftps', 'gemini', 'git', 'gopher', 'http', 'https', 'irc', 'ircs', 'kitty', 'mailto', 'news', 'sftp', 'ssh')
     url_style: int = 3
-    visual_bell_color: typing.Optional[kitty.fast_data_types.Color] = None
-    visual_bell_duration: typing.Tuple[float, kitty.options.utils.EasingFunction, kitty.options.utils.EasingFunction] = (0.0, kitty.options.utils.EasingFunction(), kitty.options.utils.EasingFunction())
+    visual_bell_color: kitty.fast_data_types.Color | None = None
+    visual_bell_duration: tuple[float, kitty.options.utils.EasingFunction, kitty.options.utils.EasingFunction] = (0.0, kitty.options.utils.EasingFunction(), kitty.options.utils.EasingFunction())
     visual_window_select_characters: str = '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     wayland_enable_ime: bool = True
     wayland_titlebar_color: int = 0
     wheel_scroll_min_lines: int = 1
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True
-    window_border_width: typing.Tuple[float, str] = (0.5, 'pt')
+    window_border_width: tuple[float, str] = (0.5, 'pt')
     window_logo_alpha: float = 0.5
-    window_logo_path: typing.Optional[str] = None
+    window_logo_path: str | None = None
     window_logo_position: choices_for_window_logo_position = 'bottom-right'
-    window_logo_scale: typing.Tuple[float, float] = (0, -1.0)
+    window_logo_scale: tuple[float, float] = (0, -1.0)
     window_margin_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2
     window_resize_step_lines: int = 2
-    action_alias: typing.Dict[str, str] = {}
-    env: typing.Dict[str, str] = {}
-    exe_search_path: typing.Dict[str, str] = {}
-    filter_notification: typing.Dict[str, str] = {}
-    font_features: typing.Dict[str, typing.Tuple[kitty.fast_data_types.ParsedFontFeature, ...]] = {}
-    kitten_alias: typing.Dict[str, str] = {}
-    menu_map: typing.Dict[typing.Tuple[str, ...], str] = {}
-    modify_font: typing.Dict[str, kitty.fonts.FontModification] = {}
-    narrow_symbols: typing.Dict[typing.Tuple[int, int], int] = {}
-    remote_control_password: typing.Dict[str, typing.Sequence[str]] = {}
-    symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
-    watcher: typing.Dict[str, str] = {}
-    map: typing.List[kitty.options.utils.KeyDefinition] = []
+    action_alias: dict[str, str] = {}
+    env: dict[str, str] = {}
+    exe_search_path: dict[str, str] = {}
+    filter_notification: dict[str, str] = {}
+    font_features: dict[str, tuple[kitty.fast_data_types.ParsedFontFeature, ...]] = {}
+    kitten_alias: dict[str, str] = {}
+    menu_map: dict[tuple[str, ...], str] = {}
+    modify_font: dict[str, kitty.fonts.FontModification] = {}
+    narrow_symbols: dict[tuple[int, int], int] = {}
+    remote_control_password: dict[str, typing.Sequence[str]] = {}
+    symbol_map: dict[tuple[int, int], str] = {}
+    watcher: dict[str, str] = {}
+    map: list[kitty.options.utils.KeyDefinition] = []
     keyboard_modes: KeyboardModeMap = {}
     alias_map: AliasMap = AliasMap()
-    mouse_map: typing.List[kitty.options.utils.MouseMapping] = []
+    mouse_map: list[kitty.options.utils.MouseMapping] = []
     mousemap: MouseMap = {}
     color_table: "array[int]" = array("L", (
         0x000000, 0xcc0403, 0x19cb00, 0xcecb00, 0x0d73cc, 0xcb1ed1, 0x0dcdcd, 0xdddddd,
@@ -691,11 +691,11 @@ class Options:
         0x585858, 0x626262, 0x6c6c6c, 0x767676, 0x808080, 0x8a8a8a, 0x949494, 0x9e9e9e,
         0xa8a8a8, 0xb2b2b2, 0xbcbcbc, 0xc6c6c6, 0xd0d0d0, 0xdadada, 0xe4e4e4, 0xeeeeee,
     ))
-    config_paths: typing.Tuple[str, ...] = ()
-    all_config_paths: typing.Tuple[str, ...] = ()
-    config_overrides: typing.Tuple[str, ...] = ()
+    config_paths: tuple[str, ...] = ()
+    all_config_paths: tuple[str, ...] = ()
+    config_overrides: tuple[str, ...] = ()
 
-    def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:
+    def __init__(self, options_dict: dict[str, typing.Any] | None = None) -> None:
         self.color_table = array(self.color_table.typecode, self.color_table)
         if options_dict is not None:
             null = object()
@@ -705,7 +705,7 @@ class Options:
                     setattr(self, key, val)
 
     @property
-    def _fields(self) -> typing.Tuple[str, ...]:
+    def _fields(self) -> tuple[str, ...]:
         return option_names
 
     def __iter__(self) -> typing.Iterator[str]:
@@ -722,7 +722,7 @@ class Options:
             ans = ans[:]
         return ans
 
-    def _asdict(self) -> typing.Dict[str, typing.Any]:
+    def _asdict(self) -> dict[str, typing.Any]:
         return {k: self._copy_of_val(k) for k in self}
 
     def _replace(self, **kw: typing.Any) -> "Options":
@@ -733,7 +733,7 @@ class Options:
             setattr(ans, name, val)
         return ans
 
-    def __getitem__(self, key: typing.Union[int, str]) -> typing.Any:
+    def __getitem__(self, key: int | str) -> typing.Any:
         k = option_names[key] if isinstance(key, int) else key
         try:
             return getattr(self, k)

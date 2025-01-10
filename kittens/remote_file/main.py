@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from kitty.cli import parse_args
 from kitty.cli_stub import RemoteFileCLIOptions
@@ -129,7 +129,7 @@ class ControlMaster:
                 cmd.extend(['-i', conn_data.identity_file])
             self.batch_cmd_prefix = cmd + ['-o', 'BatchMode=yes']
 
-    def check_call(self, cmd: List[str]) -> None:
+    def check_call(self, cmd: list[str]) -> None:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
         stdout = p.communicate()[0]
         if p.wait() != 0:
@@ -228,7 +228,7 @@ class ControlMaster:
 Result = Optional[str]
 
 
-def main(args: List[str]) -> Result:
+def main(args: list[str]) -> Result:
     msg = 'Ask the user what to do with the remote file. For internal use by kitty, do not run it directly.'
     try:
         cli_opts, items = parse_args(args[1:], option_text, '', msg, 'kitty +kitten remote_file', result_class=RemoteFileCLIOptions)
@@ -355,7 +355,7 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
 
 
 @result_handler()
-def handle_result(args: List[str], data: Result, target_window_id: int, boss: BossType) -> None:
+def handle_result(args: list[str], data: Result, target_window_id: int, boss: BossType) -> None:
     if data:
         from kitty.fast_data_types import get_options
         cmd = command_for_open(get_options().open_url_with)

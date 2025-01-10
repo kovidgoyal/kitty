@@ -3,7 +3,6 @@
 
 import re
 from contextlib import suppress
-from typing import Optional
 
 from .fast_data_types import Color
 
@@ -26,7 +25,7 @@ def parse_single_color(c: str) -> int:
     return int(c[:2], 16)
 
 
-def parse_sharp(spec: str) -> Optional[Color]:
+def parse_sharp(spec: str) -> Color | None:
     if len(spec) in (3, 6, 9, 12):
         part_len = len(spec) // 3
         colors = re.findall(fr'[a-fA-F0-9]{{{part_len}}}', spec)
@@ -34,7 +33,7 @@ def parse_sharp(spec: str) -> Optional[Color]:
     return None
 
 
-def parse_rgb(spec: str) -> Optional[Color]:
+def parse_rgb(spec: str) -> Color | None:
     colors = spec.split('/')
     if len(colors) == 3:
         return Color(*map(parse_single_color, colors))
@@ -45,7 +44,7 @@ def parse_single_intensity(x: str) -> int:
     return int(max(0, min(abs(float(x)), 1)) * 255)
 
 
-def parse_rgbi(spec: str) -> Optional[Color]:
+def parse_rgbi(spec: str) -> Color | None:
     colors = spec.split('/')
     if len(colors) == 3:
         return Color(*map(parse_single_intensity, colors))
@@ -68,13 +67,13 @@ def color_as_sgr(x: Color) -> str:
     return x.as_sgr
 
 
-def to_color(raw: str, validate: bool = False) -> Optional[Color]:
+def to_color(raw: str, validate: bool = False) -> Color | None:
     # See man XParseColor
     x = raw.strip().lower()
     ans = color_names.get(x)
     if ans is not None:
         return ans
-    val: Optional[Color] = None
+    val: Color | None = None
     with suppress(Exception):
         if raw.startswith('#'):
             val = parse_sharp(raw[1:])

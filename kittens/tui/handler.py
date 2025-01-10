@@ -4,9 +4,10 @@
 
 import os
 from collections import deque
+from collections.abc import Callable, Sequence
 from contextlib import suppress
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, ContextManager, Deque, Dict, NamedTuple, Optional, Sequence, Type, Union, cast
+from typing import TYPE_CHECKING, Any, ContextManager, Deque, NamedTuple, Optional, cast
 
 from kitty.constants import kitten_exe, running_in_kitty
 from kitty.fast_data_types import monotonic, safe_pipe
@@ -51,9 +52,9 @@ def is_click(a: ButtonEvent, b: ButtonEvent) -> bool:
 
 class KittenUI:
     allow_remote_control: bool = False
-    remote_control_password: Union[bool, str] = False
+    remote_control_password: bool | str = False
 
-    def __init__(self, func: Callable[[list[str]], str], allow_remote_control: bool, remote_control_password: Union[bool, str]):
+    def __init__(self, func: Callable[[list[str]], str], allow_remote_control: bool, remote_control_password: bool | str):
         self.func = func
         self.allow_remote_control = allow_remote_control
         self.remote_control_password = remote_control_password
@@ -94,7 +95,7 @@ class KittenUI:
                 if self.password:
                     os.environ.pop('KITTY_RC_PASSWORD', None)
 
-    def remote_control(self, cmd: Union[str, Sequence[str]], **kw: Any) -> Any:
+    def remote_control(self, cmd: str | Sequence[str], **kw: Any) -> Any:
         if not self.allow_remote_control:
             raise ValueError('Remote control is not enabled, remember to use allow_remote_control=True')
         prefix = [kitten_exe(), '@']
@@ -132,7 +133,7 @@ class KittenUI:
 
 def kitten_ui(
     allow_remote_control: bool = KittenUI.allow_remote_control,
-    remote_control_password: Union[bool, str] = KittenUI.allow_remote_control,
+    remote_control_password: bool | str = KittenUI.allow_remote_control,
 ) -> Callable[[Callable[[list[str]], str]], KittenUI]:
 
     def wrapper(impl: Callable[..., Any]) -> KittenUI:
@@ -143,7 +144,7 @@ def kitten_ui(
 
 class Handler:
 
-    image_manager_class: Optional[Type[ImageManagerType]] = None
+    image_manager_class: type[ImageManagerType] | None = None
     use_alternate_screen = True
     mouse_tracking = MouseTracking.none
     terminal_io_ended = False
@@ -156,7 +157,7 @@ class Handler:
         schedule_write: Callable[[bytes], None],
         tui_loop: LoopType,
         debug: Debug,
-        image_manager: Optional[ImageManagerType] = None
+        image_manager: ImageManagerType | None = None
     ) -> None:
         from .operations import commander
         self.screen_size = screen_size
@@ -166,7 +167,7 @@ class Handler:
         self.debug = debug
         self.cmd = commander(self)
         self._image_manager = image_manager
-        self._button_events: Dict[MouseButton, Deque[ButtonEvent]] = {}
+        self._button_events: dict[MouseButton, Deque[ButtonEvent]] = {}
 
     @property
     def image_manager(self) -> ImageManagerType:
@@ -177,15 +178,15 @@ class Handler:
     def asyncio_loop(self) -> AbstractEventLoop:
         return self._tui_loop.asyncio_loop
 
-    def add_shortcut(self, action: KeyActionType, spec: Union[str, ParsedShortcut]) -> None:
+    def add_shortcut(self, action: KeyActionType, spec: str | ParsedShortcut) -> None:
         if not hasattr(self, '_key_shortcuts'):
-            self._key_shortcuts: Dict[ParsedShortcut, KeyActionType] = {}
+            self._key_shortcuts: dict[ParsedShortcut, KeyActionType] = {}
         if isinstance(spec, str):
             from kitty.key_encoding import parse_shortcut
             spec = parse_shortcut(spec)
         self._key_shortcuts[spec] = action
 
-    def shortcut_action(self, key_event: KeyEventType) -> Optional[KeyActionType]:
+    def shortcut_action(self, key_event: KeyEventType) -> KeyActionType | None:
         for sc, action in self._key_shortcuts.items():
             if key_event.matches(sc):
                 return action
@@ -213,7 +214,7 @@ class Handler:
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size
 
-    def quit_loop(self, return_code: Optional[int] = None) -> None:
+    def quit_loop(self, return_code: int | None = None) -> None:
         self._tui_loop.quit(return_code)
 
     def on_term(self) -> None:
@@ -278,7 +279,7 @@ class Handler:
     def on_writing_finished(self) -> None:
         pass
 
-    def on_kitty_cmd_response(self, response: Dict[str, Any]) -> None:
+    def on_kitty_cmd_response(self, response: dict[str, Any]) -> None:
         pass
 
     def on_clipboard_response(self, text: str, from_primary: bool = False) -> None:
@@ -290,7 +291,7 @@ class Handler:
     def on_capability_response(self, name: str, val: str) -> None:
         pass
 
-    def write(self, data: Union[bytes, str]) -> None:
+    def write(self, data: bytes | str) -> None:
         if isinstance(data, str):
             data = data.encode('utf-8')
         self._schedule_write(data)
@@ -318,10 +319,10 @@ class Handler:
 
 class HandleResult:
 
-    type_of_input: Optional[str] = None
+    type_of_input: str | None = None
     no_ui: bool = False
 
-    def __init__(self, impl: Callable[..., Any], type_of_input: Optional[str], no_ui: bool, has_ready_notification: bool, open_url_handler: OpenUrlHandler):
+    def __init__(self, impl: Callable[..., Any], type_of_input: str | None, no_ui: bool, has_ready_notification: bool, open_url_handler: OpenUrlHandler):
         self.impl = impl
         self.no_ui = no_ui
         self.type_of_input = type_of_input
@@ -334,7 +335,7 @@ class HandleResult:
 
 
 def result_handler(
-    type_of_input: Optional[str] = None,
+    type_of_input: str | None = None,
     no_ui: bool = False,
     has_ready_notification: bool = Handler.overlay_ready_report_needed,
     open_url_handler: OpenUrlHandler = None,

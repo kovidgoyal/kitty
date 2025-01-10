@@ -2,10 +2,10 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
 from ctypes import POINTER, c_uint, c_void_p, cast
 from re import Pattern
-from typing import Callable, Union
+from typing import Union
 
 from .utils import resolve_custom_file
 
@@ -79,7 +79,7 @@ def marker_from_function(func: Callable[[str], Iterable[tuple[int, int, int]]]) 
     return marker
 
 
-def marker_from_spec(ftype: str, spec: Union[str, Sequence[tuple[int, str]]], flags: int) -> MarkerFunc:
+def marker_from_spec(ftype: str, spec: str | Sequence[tuple[int, str]], flags: int) -> MarkerFunc:
     if ftype == 'regex':
         assert not isinstance(spec, str)
         if len(spec) == 1:

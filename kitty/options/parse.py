@@ -27,26 +27,26 @@ from kitty.options.utils import (
 
 class Parser:
 
-    def action_alias(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def action_alias(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in action_alias(val):
             ans["action_alias"][k] = v
 
-    def active_border_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def active_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_border_color'] = to_color_or_none(val)
 
-    def active_tab_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def active_tab_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_tab_background'] = to_color(val)
 
-    def active_tab_font_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def active_tab_font_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_tab_font_style'] = tab_font_style(val)
 
-    def active_tab_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def active_tab_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_tab_foreground'] = to_color(val)
 
-    def active_tab_title_template(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def active_tab_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_tab_title_template'] = active_tab_title_template(val)
 
-    def allow_cloning(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def allow_cloning(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_allow_cloning:
             raise ValueError(f"The value {val} is not a valid choice for allow_cloning")
@@ -54,10 +54,10 @@ class Parser:
 
     choices_for_allow_cloning = frozenset(('yes', 'y', 'true', 'no', 'n', 'false', 'ask'))
 
-    def allow_hyperlinks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def allow_hyperlinks(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['allow_hyperlinks'] = allow_hyperlinks(val)
 
-    def allow_remote_control(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def allow_remote_control(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_allow_remote_control:
             raise ValueError(f"The value {val} is not a valid choice for allow_remote_control")
@@ -65,16 +65,16 @@ class Parser:
 
     choices_for_allow_remote_control = frozenset(('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'))
 
-    def background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background'] = to_color(val)
 
-    def background_blur(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background_blur(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background_blur'] = int(val)
 
-    def background_image(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background_image(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background_image'] = config_or_absolute_path(val)
 
-    def background_image_layout(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background_image_layout(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_background_image_layout:
             raise ValueError(f"The value {val} is not a valid choice for background_image_layout")
@@ -82,868 +82,868 @@ class Parser:
 
     choices_for_background_image_layout = frozenset(('mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled'))
 
-    def background_image_linear(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background_image_linear(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background_image_linear'] = to_bool(val)
 
-    def background_opacity(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background_opacity'] = unit_float(val)
 
-    def background_tint(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background_tint(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background_tint'] = unit_float(val)
 
-    def background_tint_gaps(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def background_tint_gaps(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background_tint_gaps'] = unit_float(val)
 
-    def bell_border_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def bell_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['bell_border_color'] = to_color(val)
 
-    def bell_on_tab(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def bell_on_tab(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['bell_on_tab'] = bell_on_tab(val)
 
-    def bell_path(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def bell_path(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['bell_path'] = config_or_absolute_path(val)
 
-    def bold_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def bold_font(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['bold_font'] = parse_font_spec(val)
 
-    def bold_italic_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def bold_italic_font(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['bold_italic_font'] = parse_font_spec(val)
 
-    def box_drawing_scale(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def box_drawing_scale(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['box_drawing_scale'] = box_drawing_scale(val)
 
-    def clear_all_mouse_actions(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def clear_all_mouse_actions(self, val: str, ans: dict[str, typing.Any]) -> None:
         clear_all_mouse_actions(val, ans)
 
-    def clear_all_shortcuts(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def clear_all_shortcuts(self, val: str, ans: dict[str, typing.Any]) -> None:
         clear_all_shortcuts(val, ans)
 
-    def click_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def click_interval(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['click_interval'] = float(val)
 
-    def clipboard_control(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def clipboard_control(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['clipboard_control'] = clipboard_control(val)
 
-    def clipboard_max_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def clipboard_max_size(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['clipboard_max_size'] = positive_float(val)
 
-    def clone_source_strategies(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def clone_source_strategies(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['clone_source_strategies'] = clone_source_strategies(val)
 
-    def close_on_child_death(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def close_on_child_death(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['close_on_child_death'] = to_bool(val)
 
-    def color0(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color0(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color0'] = to_color(val)
 
-    def color1(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color1(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color1'] = to_color(val)
 
-    def color2(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color2(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color2'] = to_color(val)
 
-    def color3(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color3(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color3'] = to_color(val)
 
-    def color4(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color4(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color4'] = to_color(val)
 
-    def color5(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color5(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color5'] = to_color(val)
 
-    def color6(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color6(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color6'] = to_color(val)
 
-    def color7(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color7(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color7'] = to_color(val)
 
-    def color8(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color8(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color8'] = to_color(val)
 
-    def color9(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color9(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color9'] = to_color(val)
 
-    def color10(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color10(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color10'] = to_color(val)
 
-    def color11(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color11(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color11'] = to_color(val)
 
-    def color12(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color12(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color12'] = to_color(val)
 
-    def color13(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color13(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color13'] = to_color(val)
 
-    def color14(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color14(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color14'] = to_color(val)
 
-    def color15(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color15(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color15'] = to_color(val)
 
-    def color16(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color16(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color16'] = to_color(val)
 
-    def color17(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color17(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color17'] = to_color(val)
 
-    def color18(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color18(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color18'] = to_color(val)
 
-    def color19(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color19(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color19'] = to_color(val)
 
-    def color20(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color20(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color20'] = to_color(val)
 
-    def color21(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color21(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color21'] = to_color(val)
 
-    def color22(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color22(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color22'] = to_color(val)
 
-    def color23(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color23(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color23'] = to_color(val)
 
-    def color24(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color24(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color24'] = to_color(val)
 
-    def color25(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color25(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color25'] = to_color(val)
 
-    def color26(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color26(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color26'] = to_color(val)
 
-    def color27(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color27(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color27'] = to_color(val)
 
-    def color28(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color28(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color28'] = to_color(val)
 
-    def color29(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color29(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color29'] = to_color(val)
 
-    def color30(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color30(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color30'] = to_color(val)
 
-    def color31(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color31(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color31'] = to_color(val)
 
-    def color32(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color32(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color32'] = to_color(val)
 
-    def color33(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color33(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color33'] = to_color(val)
 
-    def color34(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color34(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color34'] = to_color(val)
 
-    def color35(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color35(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color35'] = to_color(val)
 
-    def color36(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color36(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color36'] = to_color(val)
 
-    def color37(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color37(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color37'] = to_color(val)
 
-    def color38(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color38(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color38'] = to_color(val)
 
-    def color39(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color39(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color39'] = to_color(val)
 
-    def color40(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color40(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color40'] = to_color(val)
 
-    def color41(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color41(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color41'] = to_color(val)
 
-    def color42(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color42(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color42'] = to_color(val)
 
-    def color43(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color43(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color43'] = to_color(val)
 
-    def color44(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color44(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color44'] = to_color(val)
 
-    def color45(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color45(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color45'] = to_color(val)
 
-    def color46(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color46(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color46'] = to_color(val)
 
-    def color47(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color47(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color47'] = to_color(val)
 
-    def color48(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color48(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color48'] = to_color(val)
 
-    def color49(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color49(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color49'] = to_color(val)
 
-    def color50(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color50(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color50'] = to_color(val)
 
-    def color51(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color51(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color51'] = to_color(val)
 
-    def color52(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color52(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color52'] = to_color(val)
 
-    def color53(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color53(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color53'] = to_color(val)
 
-    def color54(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color54(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color54'] = to_color(val)
 
-    def color55(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color55(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color55'] = to_color(val)
 
-    def color56(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color56(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color56'] = to_color(val)
 
-    def color57(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color57(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color57'] = to_color(val)
 
-    def color58(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color58(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color58'] = to_color(val)
 
-    def color59(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color59(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color59'] = to_color(val)
 
-    def color60(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color60(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color60'] = to_color(val)
 
-    def color61(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color61(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color61'] = to_color(val)
 
-    def color62(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color62(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color62'] = to_color(val)
 
-    def color63(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color63(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color63'] = to_color(val)
 
-    def color64(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color64(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color64'] = to_color(val)
 
-    def color65(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color65(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color65'] = to_color(val)
 
-    def color66(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color66(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color66'] = to_color(val)
 
-    def color67(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color67(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color67'] = to_color(val)
 
-    def color68(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color68(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color68'] = to_color(val)
 
-    def color69(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color69(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color69'] = to_color(val)
 
-    def color70(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color70(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color70'] = to_color(val)
 
-    def color71(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color71(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color71'] = to_color(val)
 
-    def color72(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color72(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color72'] = to_color(val)
 
-    def color73(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color73(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color73'] = to_color(val)
 
-    def color74(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color74(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color74'] = to_color(val)
 
-    def color75(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color75(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color75'] = to_color(val)
 
-    def color76(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color76(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color76'] = to_color(val)
 
-    def color77(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color77(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color77'] = to_color(val)
 
-    def color78(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color78(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color78'] = to_color(val)
 
-    def color79(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color79(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color79'] = to_color(val)
 
-    def color80(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color80(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color80'] = to_color(val)
 
-    def color81(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color81(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color81'] = to_color(val)
 
-    def color82(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color82(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color82'] = to_color(val)
 
-    def color83(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color83(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color83'] = to_color(val)
 
-    def color84(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color84(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color84'] = to_color(val)
 
-    def color85(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color85(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color85'] = to_color(val)
 
-    def color86(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color86(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color86'] = to_color(val)
 
-    def color87(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color87(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color87'] = to_color(val)
 
-    def color88(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color88(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color88'] = to_color(val)
 
-    def color89(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color89(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color89'] = to_color(val)
 
-    def color90(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color90(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color90'] = to_color(val)
 
-    def color91(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color91(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color91'] = to_color(val)
 
-    def color92(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color92(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color92'] = to_color(val)
 
-    def color93(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color93(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color93'] = to_color(val)
 
-    def color94(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color94(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color94'] = to_color(val)
 
-    def color95(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color95(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color95'] = to_color(val)
 
-    def color96(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color96(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color96'] = to_color(val)
 
-    def color97(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color97(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color97'] = to_color(val)
 
-    def color98(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color98(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color98'] = to_color(val)
 
-    def color99(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color99(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color99'] = to_color(val)
 
-    def color100(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color100(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color100'] = to_color(val)
 
-    def color101(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color101(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color101'] = to_color(val)
 
-    def color102(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color102(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color102'] = to_color(val)
 
-    def color103(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color103(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color103'] = to_color(val)
 
-    def color104(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color104(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color104'] = to_color(val)
 
-    def color105(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color105(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color105'] = to_color(val)
 
-    def color106(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color106(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color106'] = to_color(val)
 
-    def color107(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color107(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color107'] = to_color(val)
 
-    def color108(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color108(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color108'] = to_color(val)
 
-    def color109(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color109(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color109'] = to_color(val)
 
-    def color110(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color110(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color110'] = to_color(val)
 
-    def color111(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color111(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color111'] = to_color(val)
 
-    def color112(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color112(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color112'] = to_color(val)
 
-    def color113(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color113(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color113'] = to_color(val)
 
-    def color114(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color114(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color114'] = to_color(val)
 
-    def color115(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color115(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color115'] = to_color(val)
 
-    def color116(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color116(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color116'] = to_color(val)
 
-    def color117(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color117(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color117'] = to_color(val)
 
-    def color118(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color118(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color118'] = to_color(val)
 
-    def color119(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color119(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color119'] = to_color(val)
 
-    def color120(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color120(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color120'] = to_color(val)
 
-    def color121(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color121(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color121'] = to_color(val)
 
-    def color122(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color122(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color122'] = to_color(val)
 
-    def color123(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color123(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color123'] = to_color(val)
 
-    def color124(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color124(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color124'] = to_color(val)
 
-    def color125(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color125(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color125'] = to_color(val)
 
-    def color126(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color126(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color126'] = to_color(val)
 
-    def color127(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color127(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color127'] = to_color(val)
 
-    def color128(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color128(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color128'] = to_color(val)
 
-    def color129(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color129(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color129'] = to_color(val)
 
-    def color130(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color130(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color130'] = to_color(val)
 
-    def color131(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color131(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color131'] = to_color(val)
 
-    def color132(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color132(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color132'] = to_color(val)
 
-    def color133(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color133(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color133'] = to_color(val)
 
-    def color134(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color134(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color134'] = to_color(val)
 
-    def color135(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color135(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color135'] = to_color(val)
 
-    def color136(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color136(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color136'] = to_color(val)
 
-    def color137(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color137(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color137'] = to_color(val)
 
-    def color138(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color138(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color138'] = to_color(val)
 
-    def color139(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color139(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color139'] = to_color(val)
 
-    def color140(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color140(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color140'] = to_color(val)
 
-    def color141(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color141(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color141'] = to_color(val)
 
-    def color142(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color142(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color142'] = to_color(val)
 
-    def color143(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color143(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color143'] = to_color(val)
 
-    def color144(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color144(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color144'] = to_color(val)
 
-    def color145(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color145(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color145'] = to_color(val)
 
-    def color146(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color146(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color146'] = to_color(val)
 
-    def color147(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color147(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color147'] = to_color(val)
 
-    def color148(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color148(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color148'] = to_color(val)
 
-    def color149(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color149(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color149'] = to_color(val)
 
-    def color150(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color150(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color150'] = to_color(val)
 
-    def color151(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color151(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color151'] = to_color(val)
 
-    def color152(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color152(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color152'] = to_color(val)
 
-    def color153(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color153(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color153'] = to_color(val)
 
-    def color154(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color154(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color154'] = to_color(val)
 
-    def color155(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color155(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color155'] = to_color(val)
 
-    def color156(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color156(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color156'] = to_color(val)
 
-    def color157(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color157(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color157'] = to_color(val)
 
-    def color158(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color158(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color158'] = to_color(val)
 
-    def color159(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color159(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color159'] = to_color(val)
 
-    def color160(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color160(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color160'] = to_color(val)
 
-    def color161(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color161(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color161'] = to_color(val)
 
-    def color162(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color162(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color162'] = to_color(val)
 
-    def color163(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color163(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color163'] = to_color(val)
 
-    def color164(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color164(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color164'] = to_color(val)
 
-    def color165(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color165(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color165'] = to_color(val)
 
-    def color166(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color166(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color166'] = to_color(val)
 
-    def color167(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color167(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color167'] = to_color(val)
 
-    def color168(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color168(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color168'] = to_color(val)
 
-    def color169(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color169(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color169'] = to_color(val)
 
-    def color170(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color170(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color170'] = to_color(val)
 
-    def color171(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color171(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color171'] = to_color(val)
 
-    def color172(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color172(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color172'] = to_color(val)
 
-    def color173(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color173(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color173'] = to_color(val)
 
-    def color174(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color174(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color174'] = to_color(val)
 
-    def color175(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color175(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color175'] = to_color(val)
 
-    def color176(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color176(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color176'] = to_color(val)
 
-    def color177(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color177(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color177'] = to_color(val)
 
-    def color178(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color178(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color178'] = to_color(val)
 
-    def color179(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color179(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color179'] = to_color(val)
 
-    def color180(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color180(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color180'] = to_color(val)
 
-    def color181(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color181(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color181'] = to_color(val)
 
-    def color182(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color182(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color182'] = to_color(val)
 
-    def color183(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color183(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color183'] = to_color(val)
 
-    def color184(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color184(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color184'] = to_color(val)
 
-    def color185(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color185(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color185'] = to_color(val)
 
-    def color186(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color186(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color186'] = to_color(val)
 
-    def color187(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color187(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color187'] = to_color(val)
 
-    def color188(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color188(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color188'] = to_color(val)
 
-    def color189(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color189(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color189'] = to_color(val)
 
-    def color190(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color190(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color190'] = to_color(val)
 
-    def color191(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color191(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color191'] = to_color(val)
 
-    def color192(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color192(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color192'] = to_color(val)
 
-    def color193(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color193(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color193'] = to_color(val)
 
-    def color194(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color194(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color194'] = to_color(val)
 
-    def color195(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color195(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color195'] = to_color(val)
 
-    def color196(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color196(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color196'] = to_color(val)
 
-    def color197(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color197(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color197'] = to_color(val)
 
-    def color198(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color198(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color198'] = to_color(val)
 
-    def color199(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color199(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color199'] = to_color(val)
 
-    def color200(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color200(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color200'] = to_color(val)
 
-    def color201(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color201(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color201'] = to_color(val)
 
-    def color202(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color202(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color202'] = to_color(val)
 
-    def color203(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color203(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color203'] = to_color(val)
 
-    def color204(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color204(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color204'] = to_color(val)
 
-    def color205(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color205(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color205'] = to_color(val)
 
-    def color206(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color206(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color206'] = to_color(val)
 
-    def color207(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color207(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color207'] = to_color(val)
 
-    def color208(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color208(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color208'] = to_color(val)
 
-    def color209(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color209(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color209'] = to_color(val)
 
-    def color210(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color210(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color210'] = to_color(val)
 
-    def color211(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color211(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color211'] = to_color(val)
 
-    def color212(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color212(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color212'] = to_color(val)
 
-    def color213(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color213(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color213'] = to_color(val)
 
-    def color214(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color214(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color214'] = to_color(val)
 
-    def color215(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color215(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color215'] = to_color(val)
 
-    def color216(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color216(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color216'] = to_color(val)
 
-    def color217(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color217(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color217'] = to_color(val)
 
-    def color218(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color218(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color218'] = to_color(val)
 
-    def color219(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color219(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color219'] = to_color(val)
 
-    def color220(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color220(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color220'] = to_color(val)
 
-    def color221(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color221(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color221'] = to_color(val)
 
-    def color222(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color222(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color222'] = to_color(val)
 
-    def color223(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color223(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color223'] = to_color(val)
 
-    def color224(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color224(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color224'] = to_color(val)
 
-    def color225(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color225(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color225'] = to_color(val)
 
-    def color226(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color226(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color226'] = to_color(val)
 
-    def color227(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color227(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color227'] = to_color(val)
 
-    def color228(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color228(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color228'] = to_color(val)
 
-    def color229(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color229(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color229'] = to_color(val)
 
-    def color230(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color230(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color230'] = to_color(val)
 
-    def color231(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color231(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color231'] = to_color(val)
 
-    def color232(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color232(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color232'] = to_color(val)
 
-    def color233(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color233(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color233'] = to_color(val)
 
-    def color234(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color234(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color234'] = to_color(val)
 
-    def color235(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color235(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color235'] = to_color(val)
 
-    def color236(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color236(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color236'] = to_color(val)
 
-    def color237(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color237(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color237'] = to_color(val)
 
-    def color238(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color238(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color238'] = to_color(val)
 
-    def color239(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color239(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color239'] = to_color(val)
 
-    def color240(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color240(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color240'] = to_color(val)
 
-    def color241(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color241(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color241'] = to_color(val)
 
-    def color242(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color242(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color242'] = to_color(val)
 
-    def color243(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color243(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color243'] = to_color(val)
 
-    def color244(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color244(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color244'] = to_color(val)
 
-    def color245(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color245(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color245'] = to_color(val)
 
-    def color246(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color246(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color246'] = to_color(val)
 
-    def color247(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color247(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color247'] = to_color(val)
 
-    def color248(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color248(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color248'] = to_color(val)
 
-    def color249(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color249(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color249'] = to_color(val)
 
-    def color250(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color250(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color250'] = to_color(val)
 
-    def color251(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color251(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color251'] = to_color(val)
 
-    def color252(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color252(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color252'] = to_color(val)
 
-    def color253(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color253(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color253'] = to_color(val)
 
-    def color254(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color254(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color254'] = to_color(val)
 
-    def color255(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def color255(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color255'] = to_color(val)
 
-    def command_on_bell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def command_on_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['command_on_bell'] = to_cmdline(val)
 
-    def confirm_os_window_close(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def confirm_os_window_close(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['confirm_os_window_close'] = int(val)
 
-    def copy_on_select(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def copy_on_select(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['copy_on_select'] = copy_on_select(val)
 
-    def cursor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor'] = to_color_or_none(val)
 
-    def cursor_beam_thickness(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_beam_thickness(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_beam_thickness'] = positive_float(val)
 
-    def cursor_blink_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_blink_interval(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_blink_interval'] = cursor_blink_interval(val)
 
-    def cursor_shape(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_shape(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_shape'] = to_cursor_shape(val)
 
-    def cursor_shape_unfocused(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_shape_unfocused(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_shape_unfocused'] = to_cursor_unfocused_shape(val)
 
-    def cursor_stop_blinking_after(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_stop_blinking_after(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_stop_blinking_after'] = positive_float(val)
 
-    def cursor_text_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_text_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_text_color'] = cursor_text_color(val)
 
-    def cursor_trail(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_trail(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail'] = positive_int(val)
 
-    def cursor_trail_decay(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_trail_decay(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_decay'] = cursor_trail_decay(val)
 
-    def cursor_trail_start_threshold(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_trail_start_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_start_threshold'] = positive_int(val)
 
-    def cursor_underline_thickness(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def cursor_underline_thickness(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_underline_thickness'] = positive_float(val)
 
-    def default_pointer_shape(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def default_pointer_shape(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_default_pointer_shape:
             raise ValueError(f"The value {val} is not a valid choice for default_pointer_shape")
@@ -951,108 +951,108 @@ class Parser:
 
     choices_for_default_pointer_shape = frozenset(('arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'cell', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing'))
 
-    def detect_urls(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def detect_urls(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['detect_urls'] = to_bool(val)
 
-    def dim_opacity(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def dim_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['dim_opacity'] = unit_float(val)
 
-    def disable_ligatures(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def disable_ligatures(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['disable_ligatures'] = disable_ligatures(val)
 
-    def draw_minimal_borders(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def draw_minimal_borders(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['draw_minimal_borders'] = to_bool(val)
 
-    def dynamic_background_opacity(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def dynamic_background_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['dynamic_background_opacity'] = to_bool(val)
 
-    def editor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def editor(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['editor'] = str(val)
 
-    def enable_audio_bell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def enable_audio_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['enable_audio_bell'] = to_bool(val)
 
-    def enabled_layouts(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def enabled_layouts(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['enabled_layouts'] = to_layout_names(val)
 
-    def env(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def env(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in env(val, ans["env"]):
             ans["env"][k] = v
 
-    def exe_search_path(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def exe_search_path(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in store_multiple(val, ans["exe_search_path"]):
             ans["exe_search_path"][k] = v
 
-    def file_transfer_confirmation_bypass(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def file_transfer_confirmation_bypass(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['file_transfer_confirmation_bypass'] = str(val)
 
-    def filter_notification(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def filter_notification(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in filter_notification(val, ans["filter_notification"]):
             ans["filter_notification"][k] = v
 
-    def focus_follows_mouse(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def focus_follows_mouse(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['focus_follows_mouse'] = to_bool(val)
 
-    def font_family(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def font_family(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['font_family'] = parse_font_spec(val)
 
-    def font_features(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def font_features(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in font_features(val):
             ans["font_features"][k] = v
 
-    def font_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def font_size(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['font_size'] = to_font_size(val)
 
-    def force_ltr(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def force_ltr(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['force_ltr'] = to_bool(val)
 
-    def foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['foreground'] = to_color(val)
 
-    def forward_stdio(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def forward_stdio(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['forward_stdio'] = to_bool(val)
 
-    def hide_window_decorations(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def hide_window_decorations(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['hide_window_decorations'] = hide_window_decorations(val)
 
-    def inactive_border_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def inactive_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_border_color'] = to_color(val)
 
-    def inactive_tab_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def inactive_tab_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_tab_background'] = to_color(val)
 
-    def inactive_tab_font_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def inactive_tab_font_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_tab_font_style'] = tab_font_style(val)
 
-    def inactive_tab_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def inactive_tab_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_tab_foreground'] = to_color(val)
 
-    def inactive_text_alpha(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def inactive_text_alpha(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_text_alpha'] = unit_float(val)
 
-    def initial_window_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def initial_window_height(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['initial_window_height'] = window_size(val)
 
-    def initial_window_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def initial_window_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['initial_window_width'] = window_size(val)
 
-    def input_delay(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def input_delay(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['input_delay'] = positive_int(val)
 
-    def italic_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def italic_font(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['italic_font'] = parse_font_spec(val)
 
-    def kitten_alias(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def kitten_alias(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in action_alias(val):
             ans["kitten_alias"][k] = v
 
-    def kitty_mod(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def kitty_mod(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['kitty_mod'] = to_modifiers(val)
 
-    def linux_bell_theme(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def linux_bell_theme(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['linux_bell_theme'] = str(val)
 
-    def linux_display_server(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def linux_display_server(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_linux_display_server:
             raise ValueError(f"The value {val} is not a valid choice for linux_display_server")
@@ -1060,10 +1060,10 @@ class Parser:
 
     choices_for_linux_display_server = frozenset(('auto', 'wayland', 'x11'))
 
-    def listen_on(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def listen_on(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['listen_on'] = str(val)
 
-    def macos_colorspace(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_colorspace(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_macos_colorspace:
             raise ValueError(f"The value {val} is not a valid choice for macos_colorspace")
@@ -1071,22 +1071,22 @@ class Parser:
 
     choices_for_macos_colorspace = frozenset(('srgb', 'default', 'displayp3'))
 
-    def macos_custom_beam_cursor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_custom_beam_cursor(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_custom_beam_cursor'] = to_bool(val)
 
-    def macos_hide_from_tasks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_hide_from_tasks(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_hide_from_tasks'] = to_bool(val)
 
-    def macos_menubar_title_max_length(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_menubar_title_max_length(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_menubar_title_max_length'] = positive_int(val)
 
-    def macos_option_as_alt(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_option_as_alt(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_option_as_alt'] = macos_option_as_alt(val)
 
-    def macos_quit_when_last_window_closed(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_quit_when_last_window_closed(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_quit_when_last_window_closed'] = to_bool(val)
 
-    def macos_show_window_title_in(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_show_window_title_in(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_macos_show_window_title_in:
             raise ValueError(f"The value {val} is not a valid choice for macos_show_window_title_in")
@@ -1094,61 +1094,61 @@ class Parser:
 
     choices_for_macos_show_window_title_in = frozenset(('all', 'menubar', 'none', 'window'))
 
-    def macos_thicken_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_thicken_font(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_thicken_font'] = positive_float(val)
 
-    def macos_titlebar_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_titlebar_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_titlebar_color'] = macos_titlebar_color(val)
 
-    def macos_traditional_fullscreen(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_traditional_fullscreen(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_traditional_fullscreen'] = to_bool(val)
 
-    def macos_window_resizable(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_window_resizable(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_window_resizable'] = to_bool(val)
 
-    def mark1_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mark1_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark1_background'] = to_color(val)
 
-    def mark1_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mark1_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark1_foreground'] = to_color(val)
 
-    def mark2_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mark2_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark2_background'] = to_color(val)
 
-    def mark2_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mark2_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark2_foreground'] = to_color(val)
 
-    def mark3_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mark3_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark3_background'] = to_color(val)
 
-    def mark3_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mark3_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark3_foreground'] = to_color(val)
 
-    def menu_map(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def menu_map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in menu_map(val, ans["menu_map"]):
             ans["menu_map"][k] = v
 
-    def modify_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def modify_font(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in modify_font(val):
             ans["modify_font"][k] = v
 
-    def mouse_hide_wait(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mouse_hide_wait(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mouse_hide_wait'] = float(val)
 
-    def narrow_symbols(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def narrow_symbols(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in narrow_symbols(val):
             ans["narrow_symbols"][k] = v
 
-    def notify_on_cmd_finish(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def notify_on_cmd_finish(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['notify_on_cmd_finish'] = notify_on_cmd_finish(val)
 
-    def open_url_with(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def open_url_with(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['open_url_with'] = to_cmdline(val)
 
-    def paste_actions(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def paste_actions(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['paste_actions'] = paste_actions(val)
 
-    def placement_strategy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def placement_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_placement_strategy:
             raise ValueError(f"The value {val} is not a valid choice for placement_strategy")
@@ -1156,7 +1156,7 @@ class Parser:
 
     choices_for_placement_strategy = frozenset(('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'))
 
-    def pointer_shape_when_dragging(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def pointer_shape_when_dragging(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_pointer_shape_when_dragging:
             raise ValueError(f"The value {val} is not a valid choice for pointer_shape_when_dragging")
@@ -1164,7 +1164,7 @@ class Parser:
 
     choices_for_pointer_shape_when_dragging = choices_for_default_pointer_shape
 
-    def pointer_shape_when_grabbed(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def pointer_shape_when_grabbed(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_pointer_shape_when_grabbed:
             raise ValueError(f"The value {val} is not a valid choice for pointer_shape_when_grabbed")
@@ -1172,68 +1172,68 @@ class Parser:
 
     choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 
-    def remember_window_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def remember_window_size(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['remember_window_size'] = to_bool(val)
 
-    def remote_control_password(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def remote_control_password(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in remote_control_password(val, ans["remote_control_password"]):
             ans["remote_control_password"][k] = v
 
-    def repaint_delay(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def repaint_delay(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['repaint_delay'] = positive_int(val)
 
-    def resize_debounce_time(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def resize_debounce_time(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['resize_debounce_time'] = resize_debounce_time(val)
 
-    def resize_in_steps(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def resize_in_steps(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['resize_in_steps'] = to_bool(val)
 
-    def scrollback_fill_enlarged_window(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def scrollback_fill_enlarged_window(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_fill_enlarged_window'] = to_bool(val)
 
-    def scrollback_indicator_opacity(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def scrollback_indicator_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_indicator_opacity'] = unit_float(val)
 
-    def scrollback_lines(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def scrollback_lines(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_lines'] = scrollback_lines(val)
 
-    def scrollback_pager(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def scrollback_pager(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_pager'] = to_cmdline(val)
 
-    def scrollback_pager_history_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def scrollback_pager_history_size(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_pager_history_size'] = scrollback_pager_history_size(val)
 
-    def select_by_word_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def select_by_word_characters(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['select_by_word_characters'] = str(val)
 
-    def select_by_word_characters_forward(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def select_by_word_characters_forward(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['select_by_word_characters_forward'] = str(val)
 
-    def selection_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def selection_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['selection_background'] = to_color_or_none(val)
 
-    def selection_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def selection_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['selection_foreground'] = to_color_or_none(val)
 
-    def shell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def shell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['shell'] = str(val)
 
-    def shell_integration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def shell_integration(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['shell_integration'] = shell_integration(val)
 
-    def show_hyperlink_targets(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def show_hyperlink_targets(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['show_hyperlink_targets'] = to_bool(val)
 
-    def single_window_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def single_window_margin_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['single_window_margin_width'] = optional_edge_width(val)
 
-    def single_window_padding_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def single_window_padding_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['single_window_padding_width'] = optional_edge_width(val)
 
-    def startup_session(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def startup_session(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['startup_session'] = config_or_absolute_path(val)
 
-    def strip_trailing_spaces(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def strip_trailing_spaces(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_strip_trailing_spaces:
             raise ValueError(f"The value {val} is not a valid choice for strip_trailing_spaces")
@@ -1241,17 +1241,17 @@ class Parser:
 
     choices_for_strip_trailing_spaces = frozenset(('always', 'never', 'smart'))
 
-    def symbol_map(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def symbol_map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in symbol_map(val):
             ans["symbol_map"][k] = v
 
-    def sync_to_monitor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def sync_to_monitor(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['sync_to_monitor'] = to_bool(val)
 
-    def tab_activity_symbol(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_activity_symbol(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_activity_symbol'] = tab_activity_symbol(val)
 
-    def tab_bar_align(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_align(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_bar_align:
             raise ValueError(f"The value {val} is not a valid choice for tab_bar_align")
@@ -1259,25 +1259,25 @@ class Parser:
 
     choices_for_tab_bar_align = frozenset(('left', 'center', 'right'))
 
-    def tab_bar_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_background'] = to_color_or_none(val)
 
-    def tab_bar_edge(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_edge(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_edge'] = tab_bar_edge(val)
 
-    def tab_bar_margin_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_margin_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_margin_color'] = to_color_or_none(val)
 
-    def tab_bar_margin_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_margin_height(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_margin_height'] = tab_bar_margin_height(val)
 
-    def tab_bar_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_margin_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_margin_width'] = positive_float(val)
 
-    def tab_bar_min_tabs(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_min_tabs(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_min_tabs'] = tab_bar_min_tabs(val)
 
-    def tab_bar_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_bar_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_bar_style:
             raise ValueError(f"The value {val} is not a valid choice for tab_bar_style")
@@ -1285,10 +1285,10 @@ class Parser:
 
     choices_for_tab_bar_style = frozenset(('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'))
 
-    def tab_fade(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_fade(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_fade'] = tab_fade(val)
 
-    def tab_powerline_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_powerline_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_powerline_style:
             raise ValueError(f"The value {val} is not a valid choice for tab_powerline_style")
@@ -1296,10 +1296,10 @@ class Parser:
 
     choices_for_tab_powerline_style = frozenset(('angled', 'round', 'slanted'))
 
-    def tab_separator(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_separator(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_separator'] = tab_separator(val)
 
-    def tab_switch_strategy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_switch_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_switch_strategy:
             raise ValueError(f"The value {val} is not a valid choice for tab_switch_strategy")
@@ -1307,16 +1307,16 @@ class Parser:
 
     choices_for_tab_switch_strategy = frozenset(('last', 'left', 'previous', 'right'))
 
-    def tab_title_max_length(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_title_max_length(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_title_max_length'] = positive_int(val)
 
-    def tab_title_template(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def tab_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_title_template'] = tab_title_template(val)
 
-    def term(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def term(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['term'] = str(val)
 
-    def terminfo_type(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def terminfo_type(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_terminfo_type:
             raise ValueError(f"The value {val} is not a valid choice for terminfo_type")
@@ -1324,19 +1324,19 @@ class Parser:
 
     choices_for_terminfo_type = frozenset(('path', 'direct', 'none'))
 
-    def text_composition_strategy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def text_composition_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['text_composition_strategy'] = str(val)
 
-    def text_fg_override_threshold(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def text_fg_override_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['text_fg_override_threshold'] = float(val)
 
-    def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def touch_scroll_multiplier(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
 
-    def transparent_background_colors(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def transparent_background_colors(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['transparent_background_colors'] = transparent_background_colors(val)
 
-    def undercurl_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def undercurl_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_undercurl_style:
             raise ValueError(f"The value {val} is not a valid choice for undercurl_style")
@@ -1344,10 +1344,10 @@ class Parser:
 
     choices_for_undercurl_style = frozenset(('thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense'))
 
-    def underline_exclusion(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def underline_exclusion(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['underline_exclusion'] = underline_exclusion(val)
 
-    def underline_hyperlinks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def underline_hyperlinks(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_underline_hyperlinks:
             raise ValueError(f"The value {val} is not a valid choice for underline_hyperlinks")
@@ -1355,59 +1355,59 @@ class Parser:
 
     choices_for_underline_hyperlinks = frozenset(('hover', 'always', 'never'))
 
-    def update_check_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def update_check_interval(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['update_check_interval'] = float(val)
 
-    def url_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def url_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['url_color'] = to_color(val)
 
-    def url_excluded_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def url_excluded_characters(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['url_excluded_characters'] = python_string(val)
 
-    def url_prefixes(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def url_prefixes(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['url_prefixes'] = url_prefixes(val)
 
-    def url_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def url_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['url_style'] = url_style(val)
 
-    def visual_bell_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def visual_bell_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['visual_bell_color'] = to_color_or_none(val)
 
-    def visual_bell_duration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def visual_bell_duration(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['visual_bell_duration'] = visual_bell_duration(val)
 
-    def visual_window_select_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def visual_window_select_characters(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['visual_window_select_characters'] = visual_window_select_characters(val)
 
-    def watcher(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def watcher(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in store_multiple(val, ans["watcher"]):
             ans["watcher"][k] = v
 
-    def wayland_enable_ime(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def wayland_enable_ime(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['wayland_enable_ime'] = to_bool(val)
 
-    def wayland_titlebar_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def wayland_titlebar_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['wayland_titlebar_color'] = titlebar_color(val)
 
-    def wheel_scroll_min_lines(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def wheel_scroll_min_lines(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['wheel_scroll_min_lines'] = int(val)
 
-    def wheel_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def wheel_scroll_multiplier(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['wheel_scroll_multiplier'] = float(val)
 
-    def window_alert_on_bell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_alert_on_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_alert_on_bell'] = to_bool(val)
 
-    def window_border_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_border_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_border_width'] = window_border_width(val)
 
-    def window_logo_alpha(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_logo_alpha(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_logo_alpha'] = unit_float(val)
 
-    def window_logo_path(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_logo_path(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_logo_path'] = config_or_absolute_path(val)
 
-    def window_logo_position(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_logo_position(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_window_logo_position:
             raise ValueError(f"The value {val} is not a valid choice for window_logo_position")
@@ -1415,52 +1415,52 @@ class Parser:
 
     choices_for_window_logo_position = choices_for_placement_strategy
 
-    def window_logo_scale(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_logo_scale(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_logo_scale'] = window_logo_scale(val)
 
-    def window_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_margin_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_margin_width'] = edge_width(val)
 
-    def window_padding_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_padding_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_padding_width'] = edge_width(val)
 
-    def window_resize_step_cells(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_resize_step_cells(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_resize_step_cells'] = positive_int(val)
 
-    def window_resize_step_lines(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def window_resize_step_lines(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_resize_step_lines'] = positive_int(val)
 
-    def x11_hide_window_decorations(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def x11_hide_window_decorations(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_hide_window_decorations_aliases('x11_hide_window_decorations', val, ans)
 
-    def macos_hide_titlebar(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_hide_titlebar(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_hide_window_decorations_aliases('macos_hide_titlebar', val, ans)
 
-    def macos_show_window_title_in_menubar(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def macos_show_window_title_in_menubar(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_macos_show_window_title_in_menubar_alias('macos_show_window_title_in_menubar', val, ans)
 
-    def send_text(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def send_text(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_send_text('send_text', val, ans)
 
-    def adjust_line_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def adjust_line_height(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_adjust_line_height('adjust_line_height', val, ans)
 
-    def adjust_column_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def adjust_column_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_adjust_line_height('adjust_column_width', val, ans)
 
-    def adjust_baseline(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def adjust_baseline(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_adjust_line_height('adjust_baseline', val, ans)
 
-    def map(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k in parse_map(val):
             ans['map'].append(k)
 
-    def mouse_map(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+    def mouse_map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k in parse_mouse_map(val):
             ans['mouse_map'].append(k)
 
 
-def create_result_dict() -> typing.Dict[str, typing.Any]:
+def create_result_dict() -> dict[str, typing.Any]:
     return {
         'action_alias': {},
         'env': {},
@@ -1479,10 +1479,10 @@ def create_result_dict() -> typing.Dict[str, typing.Any]:
     }
 
 
-actions: typing.FrozenSet[str] = frozenset(('map', 'mouse_map'))
+actions: frozenset[str] = frozenset(('map', 'mouse_map'))
 
 
-def merge_result_dicts(defaults: typing.Dict[str, typing.Any], vals: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
+def merge_result_dicts(defaults: dict[str, typing.Any], vals: dict[str, typing.Any]) -> dict[str, typing.Any]:
     ans = {}
     for k, v in defaults.items():
         if isinstance(v, dict):
@@ -1497,7 +1497,7 @@ def merge_result_dicts(defaults: typing.Dict[str, typing.Any], vals: typing.Dict
 parser = Parser()
 
 
-def parse_conf_item(key: str, val: str, ans: typing.Dict[str, typing.Any]) -> bool:
+def parse_conf_item(key: str, val: str, ans: dict[str, typing.Any]) -> bool:
     func = getattr(parser, key, None)
     if func is not None:
         func(val, ans)

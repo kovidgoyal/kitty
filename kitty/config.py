@@ -3,10 +3,10 @@
 
 import json
 import os
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager, suppress
 from functools import partial
-from typing import Any, Callable, Optional
+from typing import Any
 
 from .conf.utils import BadLine, parse_config_base
 from .conf.utils import load_config as _load_config
@@ -78,7 +78,7 @@ def prepare_config_file_for_editing() -> str:
     return defconf
 
 
-def finalize_keys(opts: Options, accumulate_bad_lines: Optional[list[BadLine]] = None) -> None:
+def finalize_keys(opts: Options, accumulate_bad_lines: list[BadLine] | None = None) -> None:
     defns: list[KeyDefinition] = []
     for d in opts.map:
         if d is None:  # clear_all_shortcuts
@@ -117,7 +117,7 @@ def finalize_keys(opts: Options, accumulate_bad_lines: Optional[list[BadLine]] =
     opts.keyboard_modes = modes
 
 
-def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: Optional[list[BadLine]] = None) -> None:
+def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: list[BadLine] | None = None) -> None:
     defns: list[MouseMapping] = []
     for d in opts.mouse_map:
         if d is None:  # clear_all_mouse_actions
@@ -141,7 +141,7 @@ def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: Optional[list[B
 
 
 def parse_config(
-    lines: Iterable[str], accumulate_bad_lines: Optional[list[BadLine]] = None, effective_config_lines: Optional[Callable[[str, str], None]] = None
+    lines: Iterable[str], accumulate_bad_lines: list[BadLine] | None = None, effective_config_lines: Callable[[str, str], None] | None = None
 ) -> dict[str, Any]:
     from .options.parse import create_result_dict, parse_conf_item
     ans: dict[str, Any] = create_result_dict()
@@ -158,7 +158,7 @@ def parse_config(
 effective_config_lines: list[str] = []
 
 
-def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumulate_bad_lines: Optional[list[BadLine]] = None) -> Options:
+def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_bad_lines: list[BadLine] | None = None) -> Options:
     from .options.parse import merge_result_dicts
     from .options.types import secret_options
     del effective_config_lines[:]
@@ -212,7 +212,7 @@ class KittyCommonOpts(TypedDict):
     url_prefixes: tuple[str, ...]
 
 
-def common_opts_as_dict(opts: Optional[Options] = None) -> KittyCommonOpts:
+def common_opts_as_dict(opts: Options | None = None) -> KittyCommonOpts:
     if opts is None:
         opts = defaults
     return {

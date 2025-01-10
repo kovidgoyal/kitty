@@ -3,7 +3,8 @@
 
 
 import os
-from typing import Any, Callable, Dict, Generator, Optional, Sequence, Tuple
+from collections.abc import Callable, Generator, Sequence
+from typing import Any
 
 from kitty.fast_data_types import wcswidth
 from kitty.utils import ScreenSize, screen_size_function
@@ -93,7 +94,7 @@ class PathCompleter:
         readline.set_completion_display_matches_hook(self.format_completions)
         self.original_completer = readline.get_completer()
         readline.set_completer(self)
-        self.cache: Dict[str, Tuple[str, ...]] = {}
+        self.cache: dict[str, tuple[str, ...]] = {}
         self.dircolors = Dircolors()
         return self
 
@@ -126,7 +127,7 @@ class PathCompleter:
             print(f"\r\033[{pos}C", end='')
         print(sep='', end='', flush=True)
 
-    def __call__(self, text: str, state: int) -> Optional[str]:
+    def __call__(self, text: str, state: int) -> str | None:
         options = self.cache.get(text)
         if options is None:
             options = self.cache[text] = tuple(find_completions(text))

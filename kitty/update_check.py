@@ -5,7 +5,7 @@ import os
 import subprocess
 import time
 from contextlib import suppress
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 from urllib.request import urlopen
 
 from .config import atomic_save
@@ -119,7 +119,7 @@ def update_check() -> bool:
     return True
 
 
-def update_check_callback(timer_id: Optional[int]) -> None:
+def update_check_callback(timer_id: int | None) -> None:
     update_check()
 
 

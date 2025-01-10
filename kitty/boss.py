@@ -9,7 +9,7 @@ import re
 import socket
 import subprocess
 import sys
-from collections.abc import Container, Generator, Iterable, Iterator, Sequence
+from collections.abc import Callable, Container, Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager, suppress
 from functools import partial
 from gettext import gettext as _
@@ -18,7 +18,6 @@ from time import sleep
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Optional,
     Union,
 )
@@ -155,7 +154,7 @@ RCResponse = Union[dict[str, Any], None, AsyncResponse]
 
 class OSWindowDict(TypedDict):
     id: int
-    platform_window_id: Optional[int]
+    platform_window_id: int | None
     is_focused: bool
     is_active: bool
     last_focused: bool
@@ -168,7 +167,7 @@ class OSWindowDict(TypedDict):
 class Atexit:
 
     def __init__(self) -> None:
-        self.worker: Optional[subprocess.Popen[bytes]] = None
+        self.worker: subprocess.Popen[bytes] | None = None
 
     def _write_line(self, line: str) -> None:
         if '\n' in line:
@@ -208,7 +207,7 @@ def listen_on(spec: str, robust_atexit: Atexit) -> tuple[int, str]:
     return s.fileno(), spec
 
 
-def data_for_at(w: Optional[Window], arg: str, add_wrap_markers: bool = False) -> Optional[str]:
+def data_for_at(w: Window | None, arg: str, add_wrap_markers: bool = False) -> str | None:
     if not w:
         return None
 
@@ -284,10 +283,10 @@ class VisualSelect:
         self,
         tab_id: int,
         os_window_id: int,
-        prev_tab_id: Optional[int],
-        prev_os_window_id: Optional[int],
+        prev_tab_id: int | None,
+        prev_os_window_id: int | None,
         title: str,
-        callback: Callable[[Optional[Tab], Optional[Window]], None],
+        callback: Callable[[Tab | None, Window | None], None],
         reactivate_prev_tab: bool
     ) -> None:
         self.tab_id = tab_id
@@ -358,19 +357,19 @@ class Boss:
         self.atexit = Atexit()
         set_layout_options(opts)
         self.clipboard = Clipboard()
-        self.window_for_dispatch: Optional[Window] = None
+        self.window_for_dispatch: Window | None = None
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
-        self.peer_data_map: dict[int, Optional[dict[str, Sequence[str]]]] = {}
-        self.background_process_death_notify_map: dict[int, Callable[[int, Optional[Exception]], None]] = {}
+        self.peer_data_map: dict[int, dict[str, Sequence[str]] | None] = {}
+        self.background_process_death_notify_map: dict[int, Callable[[int, Exception | None], None]] = {}
         self.encryption_key = EllipticCurveKey()
         self.encryption_public_key = f'{RC_ENCRYPTION_PROTOCOL_VERSION}:{base64.b85encode(self.encryption_key.public).decode("ascii")}'
         self.clipboard_buffers: dict[str, str] = {}
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
-        self.color_settings_at_startup: dict[str, Optional[Color]] = {
+        self.color_settings_at_startup: dict[str, Color | None] = {
                 k: opts[k] for k in opts if isinstance(opts[k], Color) or k in nullable_colors}
-        self.current_visual_select: Optional[VisualSelect] = None
+        self.current_visual_select: VisualSelect | None = None
         # A list of events received so far that are potentially part of a sequence keybinding.
         self.cached_values = cached_values
         self.os_window_map: dict[int, TabManager] = {}
@@ -399,13 +398,13 @@ class Boss:
             talk_fd, listen_fd, self.listening_on.startswith('unix:')
         )
         self.args: CLIOptions = args
-        self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
+        self.mouse_handler: Callable[[WindowSystemMouseEvent], None] | None = None
         set_boss(self)
         self.mappings: Mappings = Mappings(global_shortcuts, self.refresh_active_tab_bar)
         self.notification_manager: NotificationManager = NotificationManager(debug=self.args.debug_keyboard or self.args.debug_rendering)
         self.atexit.unlink(store_effective_config())
 
-    def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
+    def startup_first_child(self, os_window_id: int | None, startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
         focused_os_window = wid = 0
         token = os.environ.pop('XDG_ACTIVATION_TOKEN', '')
@@ -426,14 +425,14 @@ class Boss:
 
     def add_os_window(
         self,
-        startup_session: Optional[Session] = None,
-        os_window_id: Optional[int] = None,
-        wclass: Optional[str] = None,
-        wname: Optional[str] = None,
-        window_state: Optional[str] = None,
-        opts_for_size: Optional[Options] = None,
-        startup_id: Optional[str] = None,
-        override_title: Optional[str] = None,
+        startup_session: Session | None = None,
+        os_window_id: int | None = None,
+        wclass: str | None = None,
+        wname: str | None = None,
+        window_state: str | None = None,
+        opts_for_size: Options | None = None,
+        startup_id: str | None = None,
+        override_title: str | None = None,
     ) -> int:
         if os_window_id is None:
             size_data = get_os_window_sizing_data(opts_for_size or get_options(), startup_session)
@@ -455,9 +454,9 @@ class Boss:
         return os_window_id
 
     def list_os_windows(
-        self, self_window: Optional[Window] = None,
-        tab_filter: Optional[Callable[[Tab], bool]] = None,
-        window_filter: Optional[Callable[[Window], bool]] = None
+        self, self_window: Window | None = None,
+        tab_filter: Callable[[Tab], bool] | None = None,
+        window_filter: Callable[[Window], bool] | None = None
     ) -> Iterator[OSWindowDict]:
         with cached_process_data():
             active_tab_manager = self.active_tab_manager
@@ -522,7 +521,7 @@ class Boss:
         ), set(self.window_id_map), get_matches):
             yield self.window_id_map[wid]
 
-    def tab_for_window(self, window: Window) -> Optional[Tab]:
+    def tab_for_window(self, window: Window) -> Tab | None:
         for tab in self.all_tabs:
             for w in tab:
                 if w.id == window.id:
@@ -567,7 +566,7 @@ class Boss:
 
     def set_active_window(
         self, window: Window, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False, activation_token: str = ''
-    ) -> Optional[int]:
+    ) -> int | None:
         for os_window_id, tm in self.os_window_map.items():
             for tab in tm:
                 for w in tab:
@@ -580,9 +579,9 @@ class Boss:
                         return os_window_id
         return None
 
-    def _new_os_window(self, args: Union[SpecialWindowInstance, Iterable[str]], cwd_from: Optional[CwdRequest] = None) -> int:
+    def _new_os_window(self, args: SpecialWindowInstance | Iterable[str], cwd_from: CwdRequest | None = None) -> int:
         if isinstance(args, SpecialWindowInstance):
-            sw: Optional[SpecialWindowInstance] = args
+            sw: SpecialWindowInstance | None = args
         else:
             sw = self.args_to_special_window(args, cwd_from) if args else None
         startup_session = next(create_sessions(get_options(), special_window=sw, cwd_from=cwd_from))
@@ -593,7 +592,7 @@ class Boss:
         self._new_os_window(args)
 
     @property
-    def active_window_for_cwd(self) -> Optional[Window]:
+    def active_window_for_cwd(self) -> Window | None:
         t = self.active_tab
         if t is not None:
             return t.active_window_for_cwd
@@ -604,7 +603,7 @@ class Boss:
         w = self.window_for_dispatch or self.active_window_for_cwd
         self._new_os_window(args, CwdRequest(w))
 
-    def new_os_window_with_wd(self, wd: Union[str, list[str]], str_is_multiple_paths: bool = False) -> None:
+    def new_os_window_with_wd(self, wd: str | list[str], str_is_multiple_paths: bool = False) -> None:
         if isinstance(wd, str):
             wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
@@ -616,7 +615,7 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def _handle_remote_command(self, cmd: memoryview, window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
+    def _handle_remote_command(self, cmd: memoryview, window: Window | None = None, peer_id: int = 0) -> RCResponse:
         from .remote_control import is_cmd_allowed, parse_cmd, remote_control_allowed
         response = None
         window = window or None
@@ -635,7 +634,7 @@ class Boss:
             return response
         if not pcmd:
             return response
-        self_window: Optional[Window] = None
+        self_window: Window | None = None
         if window is not None:
             self_window = window
         else:
@@ -674,7 +673,7 @@ class Boss:
         return response
 
     def ask_if_remote_cmd_is_allowed(
-        self, pcmd: dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
+        self, pcmd: dict[str, Any], window: Window | None = None, peer_id: int = 0, self_window: Window | None = None
     ) -> bool:
         from kittens.tui.operations import styled
         in_flight = 0
@@ -703,7 +702,7 @@ class Boss:
         overlay_window.window_custom_type = 'remote_command_permission_dialog'
         return True
 
-    def remote_cmd_permission_received(self, pcmd: dict[str, Any], window_id: int, peer_id: int, self_window: Optional[Window], choice: str) -> None:
+    def remote_cmd_permission_received(self, pcmd: dict[str, Any], window_id: int, peer_id: int, self_window: Window | None, choice: str) -> None:
         from .remote_control import encode_response_for_peer, set_user_password_allowed
         response: RCResponse = None
         window = self.window_id_map.get(window_id)
@@ -727,7 +726,7 @@ class Boss:
                 send_data_to_peer(peer_id, encode_response_for_peer(response))
 
     def _execute_remote_command(
-        self, pcmd: dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
+        self, pcmd: dict[str, Any], window: Window | None = None, peer_id: int = 0, self_window: Window | None = None
     ) -> RCResponse:
         from .remote_control import handle_cmd
         try:
@@ -771,7 +770,7 @@ class Boss:
             return
         self.run_background_process([path] + list(args), allow_remote_control=True)
 
-    def call_remote_control(self, self_window: Optional[Window], args: tuple[str, ...]) -> 'ResponseType':
+    def call_remote_control(self, self_window: Window | None, args: tuple[str, ...]) -> 'ResponseType':
         from .rc.base import PayloadGetter, command_for_name, parse_subcommand_cli
         from .remote_control import parse_rc_args
         aa = list(args)
@@ -802,7 +801,7 @@ class Boss:
                 return None
             raise
 
-    def peer_message_received(self, msg_bytes: bytes, peer_id: int, is_remote_control: bool) -> Union[bytes, bool, None]:
+    def peer_message_received(self, msg_bytes: bytes, peer_id: int, is_remote_control: bool) -> bytes | bool | None:
         if peer_id > 0 and msg_bytes == b'peer_death':
             self.peer_data_map.pop(peer_id, None)
             return False
@@ -875,7 +874,7 @@ class Boss:
             log_error('Unknown message received over single instance socket, ignoring')
         return None
 
-    def handle_remote_cmd(self, cmd: memoryview, window: Optional[Window] = None) -> None:
+    def handle_remote_cmd(self, cmd: memoryview, window: Window | None = None) -> None:
         response = self._handle_remote_command(cmd, window)
         if response is not None and not isinstance(response, AsyncResponse) and window is not None:
             window.send_cmd_response(response)
@@ -946,7 +945,7 @@ class Boss:
             if window is not None:
                 window.focus_changed(True)
 
-    def mark_window_for_close(self, q: Union[Window, None, int] = None) -> None:
+    def mark_window_for_close(self, q: Window | None | int = None) -> None:
         if isinstance(q, int):
             window = self.window_id_map.get(q)
             if window is None:
@@ -988,7 +987,7 @@ class Boss:
             self.mark_window_for_close(window_id)
 
     @ac('tab', 'Close the current tab')
-    def close_tab(self, tab: Optional[Tab] = None) -> None:
+    def close_tab(self, tab: Tab | None = None) -> None:
         if tab is None and self.window_for_dispatch:
             tab = self.window_for_dispatch.tabref()
         tab = tab or self.active_tab
@@ -996,7 +995,7 @@ class Boss:
             self.confirm_tab_close(tab)
 
     @property
-    def active_tab_manager_with_dispatch(self) -> Optional[TabManager]:
+    def active_tab_manager_with_dispatch(self) -> TabManager | None:
         if self.window_for_dispatch:
             td = self.window_for_dispatch.tabref()
             tm = td.tab_manager_ref() if td else None
@@ -1025,7 +1024,7 @@ class Boss:
         self, msg: str,  # can contain newlines and ANSI formatting
         callback: Callable[..., None],  # called with True or False and *args
         *args: Any,  # passed to the callback function
-        window: Optional[Window] = None,  # the window associated with the confirmation
+        window: Window | None = None,  # the window associated with the confirmation
         confirm_on_cancel: bool = False,  # on closing window
         confirm_on_accept: bool = True,  # on pressing enter
         title: str = ''  # window title
@@ -1052,13 +1051,13 @@ class Boss:
         self, msg: str,  # can contain newlines and ANSI formatting
         callback: Callable[..., None],  # called with the choice or empty string when aborted
         *choices: str,   # The choices, see the help for the ask kitten for format of a choice
-        window: Optional[Window] = None,  # the window associated with the confirmation
+        window: Window | None = None,  # the window associated with the confirmation
         default: str = '',  # the default choice when the user presses Enter
         hidden_text: str = '',  # text to hide in the message
         hidden_text_placeholder: str = 'HIDDEN_TEXT_PLACEHOLDER',  # placeholder text to insert in to message
         unhide_key: str = 'u',  # key to press to unhide hidden text
         title: str = '' # window title
-    ) -> Optional[Window]:
+    ) -> Window | None:
         result: str = ''
 
         def callback_(res: dict[str, Any], x: int, boss: Boss) -> None:
@@ -1094,7 +1093,7 @@ class Boss:
     def get_line(
         self, msg: str,  # can contain newlines and ANSI formatting
         callback: Callable[..., None],  # called with the answer or empty string when aborted
-        window: Optional[Window] = None,  # the window associated with the confirmation
+        window: Window | None = None,  # the window associated with the confirmation
         prompt: str = '> ',
         is_password: bool = False,
         initial_value: str = ''
@@ -1307,7 +1306,7 @@ class Boss:
 
         See :ref:`conf-kitty-shortcuts.fonts` for details.
         ''')
-    def change_font_size(self, all_windows: bool, increment_operation: Optional[str], amt: float) -> None:
+    def change_font_size(self, all_windows: bool, increment_operation: str | None, amt: float) -> None:
         def calc_new_size(old_size: float) -> float:
             new_size = old_size
             if amt == 0:
@@ -1394,7 +1393,7 @@ class Boss:
         self._set_os_window_background_opacity(os_window_id, fin_opacity)
 
     @property
-    def active_tab_manager(self) -> Optional[TabManager]:
+    def active_tab_manager(self) -> TabManager | None:
         os_window_id = current_focused_os_window_id()
         if os_window_id <= 0:
             os_window_id = last_focused_os_window_id()
@@ -1405,12 +1404,12 @@ class Boss:
         return self.os_window_map.get(os_window_id)
 
     @property
-    def active_tab(self) -> Optional[Tab]:
+    def active_tab(self) -> Tab | None:
         tm = self.active_tab_manager
         return None if tm is None else tm.active_tab
 
     @property
-    def active_window(self) -> Optional[Window]:
+    def active_window(self) -> Window | None:
         t = self.active_tab
         return None if t is None else t.active_window
 
@@ -1444,14 +1443,14 @@ class Boss:
 
     def visual_window_select_action(
         self, tab: Tab,
-        callback: Callable[[Optional[Tab], Optional[Window]], None],
+        callback: Callable[[Tab | None, Window | None], None],
         choose_msg: str,
         only_window_ids: Container[int] = (),
         reactivate_prev_tab: bool = False
     ) -> None:
         import string
         self.cancel_current_visual_select()
-        initial_tab_id: Optional[int] = None
+        initial_tab_id: int | None = None
         initial_os_window_id = current_os_window()
         tm = tab.tab_manager_ref()
         if tm is not None:
@@ -1520,8 +1519,8 @@ class Boss:
             ev = WindowSystemMouseEvent(in_tab_bar, window_id, action, modifiers, button, currently_pressed_button, x, y)
             self.mouse_handler(ev)
 
-    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> Optional[Window]:
-        windows: list[tuple[Optional[int], str]] = []
+    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> Window | None:
+        windows: list[tuple[int | None, str]] = []
         selectable_windows: list[tuple[int, str]] = []
         for i, w in tab.windows.iter_windows_with_number(only_visible=False):
             if only_window_ids and w.id not in only_window_ids:
@@ -1536,7 +1535,7 @@ class Boss:
             return None
         cvs = self.current_visual_select
 
-        def chosen(ans: Union[None, int, str]) -> None:
+        def chosen(ans: None | int | str) -> None:
             q = self.current_visual_select
             self.current_visual_select = None
             if cvs and q is cvs:
@@ -1560,7 +1559,7 @@ class Boss:
         if overlay_window is not None:
             overlay_window.allow_remote_control = True
 
-    def resize_layout_window(self, window: Window, increment: float, is_horizontal: bool, reset: bool = False) -> Union[bool, None, str]:
+    def resize_layout_window(self, window: Window, increment: float, is_horizontal: bool, reset: bool = False) -> bool | None | str:
         tab = window.tabref()
         if tab is None or not increment:
             return False
@@ -1579,7 +1578,7 @@ class Boss:
         w, h = get_new_os_window_size(metrics, width, height, unit, incremental, has_window_scaling)
         set_os_window_size(os_window_id, w, h)
 
-    def tab_for_id(self, tab_id: int) -> Optional[Tab]:
+    def tab_for_id(self, tab_id: int) -> Tab | None:
         for tm in self.os_window_map.values():
             tab = tm.tab_for_id(tab_id)
             if tab is not None:
@@ -1602,7 +1601,7 @@ class Boss:
     def dispatch_action(
         self,
         key_action: KeyAction,
-        window_for_dispatch: Optional[Window] = None,
+        window_for_dispatch: Window | None = None,
         dispatch_type: str = 'KeyPress'
     ) -> bool:
 
@@ -1656,7 +1655,7 @@ class Boss:
             map kitty_mod+e combine : new_window : next_layout
             map kitty_mod+e combine | new_tab | goto_tab -1
         ''')
-    def combine(self, action_definition: str, window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress', raise_error: bool = False) -> bool:
+    def combine(self, action_definition: str, window_for_dispatch: Window | None = None, dispatch_type: str = 'KeyPress', raise_error: bool = False) -> bool:
         consumed = False
         if action_definition:
             try:
@@ -1875,7 +1874,7 @@ class Boss:
                 s.shutdown(socket.SHUT_RDWR)
             s.close()
 
-    def display_scrollback(self, window: Window, data: Union[bytes, str], input_line_number: int = 0, title: str = '', report_cursor: bool = True) -> None:
+    def display_scrollback(self, window: Window, data: bytes | str, input_line_number: int = 0, title: str = '', report_cursor: bool = True) -> None:
 
         def prepare_arg(x: str) -> str:
             x = x.replace('INPUT_LINE_NUMBER', str(input_line_number))
@@ -1920,11 +1919,11 @@ class Boss:
         self,
         kitten: str,
         args: Iterable[str] = (),
-        input_data: Optional[Union[bytes, str]] = None,
-        window: Optional[Window] = None,
-        custom_callback: Optional[Callable[[dict[str, Any], int, 'Boss'], None]] = None,
-        action_on_removal: Optional[Callable[[int, 'Boss'], None]] = None,
-        default_data: Optional[dict[str, Any]] = None
+        input_data: bytes | str | None = None,
+        window: Window | None = None,
+        custom_callback: Callable[[dict[str, Any], int, 'Boss'], None] | None = None,
+        action_on_removal: Callable[[int, 'Boss'], None] | None = None,
+        default_data: dict[str, Any] | None = None
     ) -> Any:
         orig_args, args = list(args), list(args)
         from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler
@@ -1950,7 +1949,7 @@ class Boss:
                 type_of_input = end_kitten.type_of_input
                 q = type_of_input.split('-') if type_of_input else []
                 if not q:
-                    data: Optional[bytes] = None
+                    data: bytes | None = None
                 elif q[0] in ('text', 'history', 'ansi', 'screen'):
                     data = w.as_text(as_ansi='ansi' in q, add_history='history' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 elif type_of_input == 'selection':
@@ -1990,7 +1989,7 @@ class Boss:
                 env['PYTHONWARNINGS'] = 'ignore'
             remote_control_fd = -1
             if end_kitten.allow_remote_control:
-                remote_control_passwords: Optional[dict[str, Sequence[str]]] = None
+                remote_control_passwords: dict[str, Sequence[str]] | None = None
                 initial_data = b''
                 if end_kitten.remote_control_password:
                     from secrets import token_hex
@@ -2036,7 +2035,7 @@ class Boss:
     def on_kitten_finish(
         self, target_window_id: int, end_kitten: Callable[[dict[str, Any], int, 'Boss'], None],
         source_window: Window,
-        default_data: Optional[dict[str, Any]] = None
+        default_data: dict[str, Any] | None = None
     ) -> None:
         data, source_window.kitten_result = source_window.kitten_result, None
         if data is None:
@@ -2065,7 +2064,7 @@ class Boss:
             map f3 set_tab_title " "
         '''
     )
-    def set_tab_title(self, title: Optional[str] = None) -> None:
+    def set_tab_title(self, title: str | None = None) -> None:
         tab = self.window_for_dispatch.tabref() if self.window_for_dispatch else self.active_tab
         if tab:
             if title is not None and title not in ('" "', "' '"):
@@ -2080,7 +2079,7 @@ class Boss:
                 _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
                 tab.set_title, window=tab.active_window, initial_value=prefilled)
 
-    def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: Optional[int] = None) -> SpecialWindowInstance:
+    def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: int | None = None) -> SpecialWindowInstance:
         ec = sys.exc_info()
         tb = ''
         if ec != (None, None, None):
@@ -2173,7 +2172,7 @@ class Boss:
         self.open_url(website_url())
 
     @ac('misc', 'Open the specified URL')
-    def open_url(self, url: str, program: Optional[Union[str, list[str]]] = None, cwd: Optional[str] = None) -> None:
+    def open_url(self, url: str, program: str | list[str] | None = None, cwd: str | None = None) -> None:
         if not url:
             return
         if isinstance(program, str):
@@ -2210,9 +2209,9 @@ class Boss:
     def open_url_with_hints(self) -> None:
         self.run_kitten_with_metadata('hints', window=self.window_for_dispatch)
 
-    def drain_actions(self, actions: list[KeyAction], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> None:
+    def drain_actions(self, actions: list[KeyAction], window_for_dispatch: Window | None = None, dispatch_type: str = 'KeyPress') -> None:
 
-        def callback(timer_id: Optional[int]) -> None:
+        def callback(timer_id: int | None) -> None:
             self.dispatch_action(actions.pop(0), window_for_dispatch, dispatch_type)
             if actions:
                 self.drain_actions(actions)
@@ -2266,7 +2265,7 @@ class Boss:
                 if get_options().copy_on_select:
                     self.copy_to_buffer(get_options().copy_on_select)
 
-    def get_active_selection(self) -> Optional[str]:
+    def get_active_selection(self) -> str | None:
         w = self.active_window
         if w is not None and not w.destroyed:
             return w.text_for_selection()
@@ -2278,14 +2277,14 @@ class Boss:
             return w.has_selection()
         return False
 
-    def set_clipboard_buffer(self, buffer_name: str, text: Optional[str] = None) -> None:
+    def set_clipboard_buffer(self, buffer_name: str, text: str | None = None) -> None:
         if buffer_name:
             if text is not None:
                 self.clipboard_buffers[buffer_name] = text
             elif buffer_name in self.clipboard_buffers:
                 del self.clipboard_buffers[buffer_name]
 
-    def get_clipboard_buffer(self, buffer_name: str) -> Optional[str]:
+    def get_clipboard_buffer(self, buffer_name: str) -> str | None:
         return self.clipboard_buffers.get(buffer_name)
 
     @ac('cp', '''
@@ -2312,7 +2311,7 @@ class Boss:
         ''')
     def paste_from_buffer(self, buffer_name: str) -> None:
         if buffer_name == 'clipboard':
-            text: Optional[str] = get_clipboard_string()
+            text: str | None = get_clipboard_string()
         elif buffer_name == 'primary':
             text = get_primary_selection()
         else:
@@ -2355,9 +2354,9 @@ class Boss:
     prev_tab = previous_tab
 
     def process_stdin_source(
-        self, window: Optional[Window] = None,
-        stdin: Optional[str] = None, copy_pipe_data: Optional[dict[str, Any]] = None
-    ) -> tuple[Optional[dict[str, str]], Optional[bytes]]:
+        self, window: Window | None = None,
+        stdin: str | None = None, copy_pipe_data: dict[str, Any] | None = None
+    ) -> tuple[dict[str, str] | None, bytes | None]:
         w = window or self.active_window
         if not w:
             return None, None
@@ -2380,7 +2379,7 @@ class Boss:
                 input_data = stdin.encode('utf-8')
         return env, input_data
 
-    def data_for_at(self, which: str, window: Optional[Window] = None, add_wrap_markers: bool = False) -> Optional[str]:
+    def data_for_at(self, which: str, window: Window | None = None, add_wrap_markers: bool = False) -> str | None:
         window = window or self.active_window
         if not window:
             return None
@@ -2388,9 +2387,9 @@ class Boss:
 
     def special_window_for_cmd(
         self, cmd: list[str],
-        window: Optional[Window] = None,
-        stdin: Optional[str] = None,
-        cwd_from: Optional[CwdRequest] = None,
+        window: Window | None = None,
+        stdin: str | None = None,
+        cwd_from: CwdRequest | None = None,
         as_overlay: bool = False
     ) -> SpecialWindowInstance:
         w = window or self.active_window
@@ -2406,7 +2405,7 @@ class Boss:
         overlay_for = w.id if w and as_overlay else None
         return SpecialWindow(cmd, input_data, cwd_from=cwd_from, overlay_for=overlay_for, env=env)
 
-    def add_fd_based_remote_control(self, remote_control_passwords: Optional[dict[str, Sequence[str]]] = None, initial_data: bytes = b'') -> socket.socket:
+    def add_fd_based_remote_control(self, remote_control_passwords: dict[str, Sequence[str]] | None = None, initial_data: bytes = b'') -> socket.socket:
         local, remote = socket.socketpair()
         os.set_inheritable(remote.fileno(), True)
         if initial_data:
@@ -2425,14 +2424,14 @@ class Boss:
     def run_background_process(
         self,
         cmd: list[str],
-        cwd: Optional[str] = None,
-        env: Optional[dict[str, str]] = None,
-        stdin: Optional[bytes] = None,
-        cwd_from: Optional[CwdRequest] = None,
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        stdin: bytes | None = None,
+        cwd_from: CwdRequest | None = None,
         allow_remote_control: bool = False,
-        remote_control_passwords: Optional[dict[str, Sequence[str]]] = None,
-        notify_on_death: Optional[Callable[[int, Optional[Exception]], None]] = None,  # guaranteed to be called only after event loop tick
-        stdout: Optional[int] = None, stderr: Optional[int] = None,
+        remote_control_passwords: dict[str, Sequence[str]] | None = None,
+        notify_on_death: Callable[[int, Exception | None], None] | None = None,  # guaranteed to be called only after event loop tick
+        stdout: int | None = None, stderr: int | None = None,
     ) -> None:
         env = env or None
         if env:
@@ -2465,7 +2464,7 @@ class Boss:
             if stderr is not None and stderr > -1 and stderr not in pass_fds:
                 pass_fds.append(stderr)
 
-            def run(stdin: Optional[int], stdout: Optional[int], stderr: Optional[int]) -> None:
+            def run(stdin: int | None, stdout: int | None, stderr: int | None) -> None:
                 try:
                     p = subprocess.Popen(
                         cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals, pass_fds=pass_fds, stdin=stdin, stdout=stdout, stderr=stderr)
@@ -2477,7 +2476,7 @@ class Boss:
                         with suppress(OSError):
                             os.close(fd)
                     if notify_on_death:
-                        def callback(err: Exception, timer_id: Optional[int]) -> None:
+                        def callback(err: Exception, timer_id: int | None) -> None:
                             notify_on_death(-1, err)
                         add_timer(partial(callback, err), 0, False)
                     else:
@@ -2504,7 +2503,7 @@ class Boss:
         else:
             doit()
 
-    def pipe(self, source: str, dest: str, exe: str, *args: str) -> Optional[Window]:
+    def pipe(self, source: str, dest: str, exe: str, *args: str) -> Window | None:
         cmd = [exe] + list(args)
         window = self.active_window
         cwd_from = CwdRequest(window) if window else None
@@ -2535,7 +2534,7 @@ class Boss:
             self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)
         return None
 
-    def args_to_special_window(self, args: Iterable[str], cwd_from: Optional[CwdRequest] = None) -> SpecialWindowInstance:
+    def args_to_special_window(self, args: Iterable[str], cwd_from: CwdRequest | None = None) -> SpecialWindowInstance:
         args = list(args)
         stdin = None
         w = self.active_window
@@ -2556,7 +2555,7 @@ class Boss:
             cmd.append(arg)
         return SpecialWindow(cmd, stdin, cwd_from=cwd_from)
 
-    def _new_tab(self, args: Union[SpecialWindowInstance, Iterable[str]], cwd_from: Optional[CwdRequest] = None, as_neighbor: bool = False) -> Optional[Tab]:
+    def _new_tab(self, args: SpecialWindowInstance | Iterable[str], cwd_from: CwdRequest | None = None, as_neighbor: bool = False) -> Tab | None:
         special_window = None
         if args:
             if isinstance(args, SpecialWindowInstance):
@@ -2573,7 +2572,7 @@ class Boss:
             return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
         return None
 
-    def _create_tab(self, args: list[str], cwd_from: Optional[CwdRequest] = None) -> None:
+    def _create_tab(self, args: list[str], cwd_from: CwdRequest | None = None) -> None:
         as_neighbor = False
         if args and args[0].startswith('!'):
             as_neighbor = 'neighbor' in args[0][1:].split(',')
@@ -2588,14 +2587,14 @@ class Boss:
     def new_tab_with_cwd(self, *args: str) -> None:
         self._create_tab(list(args), cwd_from=CwdRequest(self.window_for_dispatch or self.active_window_for_cwd))
 
-    def new_tab_with_wd(self, wd: Union[str, list[str]], str_is_multiple_paths: bool = False) -> None:
+    def new_tab_with_wd(self, wd: str | list[str], str_is_multiple_paths: bool = False) -> None:
         if isinstance(wd, str):
             wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
             special_window = SpecialWindow(None, cwd=path)
             self._new_tab(special_window)
 
-    def _new_window(self, args: list[str], cwd_from: Optional[CwdRequest] = None) -> Optional[Window]:
+    def _new_window(self, args: list[str], cwd_from: CwdRequest | None = None) -> Window | None:
         if not self.os_window_map:
             os_window_id = self.add_os_window()
             tm = self.os_window_map.get(os_window_id)
@@ -2657,7 +2656,7 @@ class Boss:
 
         See :opt:`disable_ligatures` for details
         ''')
-    def disable_ligatures_in(self, where: Union[str, Iterable[Window]], strategy: int) -> None:
+    def disable_ligatures_in(self, where: str | Iterable[Window], strategy: int) -> None:
         w = self.window_for_dispatch or self.active_window
         if isinstance(where, str):
             windows: list[Window] = []
@@ -2830,9 +2829,9 @@ class Boss:
 
     def _move_window_to(
         self,
-        window: Optional[Window] = None,
-        target_tab_id: Optional[Union[str, int]] = None,
-        target_os_window_id: Optional[Union[str, int]] = None
+        window: Window | None = None,
+        target_tab_id: str | int | None = None,
+        target_os_window_id: str | int | None = None
     ) -> None:
         window = window or self.active_window
         if not window:
@@ -2873,7 +2872,7 @@ class Boss:
             self._cleanup_tab_after_window_removal(src_tab)
             target_tab.make_active()
 
-    def _move_tab_to(self, tab: Optional[Tab] = None, target_os_window_id: Optional[int] = None) -> None:
+    def _move_tab_to(self, tab: Tab | None = None, target_os_window_id: int | None = None) -> None:
         tab = tab or self.active_tab
         if tab is None:
             return
@@ -2886,14 +2885,14 @@ class Boss:
         target_tab.make_active()
 
     def choose_entry(
-        self, title: str, entries: Iterable[tuple[Union[_T, str, None], str]],
-        callback: Callable[[Union[_T, str, None]], None],
+        self, title: str, entries: Iterable[tuple[_T | str | None, str]],
+        callback: Callable[[_T | str | None], None],
         subtitle: str = '',
-        hints_args: Optional[tuple[str, ...]] = None,
-    ) -> Optional[Window]:
+        hints_args: tuple[str, ...] | None = None,
+    ) -> Window | None:
         lines = [title, subtitle, ' '] if subtitle else [title, ' ']
-        idx_map: list[Union[_T, str, None]] = []
-        ans: Union[str, _T, None] = None
+        idx_map: list[_T | str | None] = []
+        ans: str | _T | None = None
         fmt = ': {1}'
 
         for obj, text in entries:
@@ -2922,7 +2921,7 @@ class Boss:
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:
 
-        def chosen(ans: Union[None, str, int]) -> None:
+        def chosen(ans: None | str | int) -> None:
             if isinstance(ans, int):
                 for tab in self.all_tabs:
                     if tab.id == ans:
@@ -2960,12 +2959,12 @@ class Boss:
             return self._move_window_to(target_tab_id=where)
         w = self.window_for_dispatch or self.active_window
         ct = w.tabref() if w else None
-        items: list[tuple[Union[str, int], str]] = [(t.id, t.effective_title) for t in self.all_tabs if t is not ct]
+        items: list[tuple[str | int, str]] = [(t.id, t.effective_title) for t in self.all_tabs if t is not ct]
         items.append(('new_tab', 'New tab'))
         items.append(('new_os_window', 'New OS Window'))
         target_window = w
 
-        def chosen(ans: Union[None, str, int]) -> None:
+        def chosen(ans: None | str | int) -> None:
             if ans is not None:
                 if isinstance(ans, str):
                     if ans == 'new_os_window':
@@ -2986,7 +2985,7 @@ class Boss:
         if not args or args[0] == 'new':
             return self._move_tab_to()
 
-        items: list[tuple[Union[str, int], str]] = []
+        items: list[tuple[str | int, str]] = []
         ct = self.active_tab_manager_with_dispatch
         for osw_id, tm in self.os_window_map.items():
             if tm is not ct and tm.active_tab:
@@ -2995,14 +2994,14 @@ class Boss:
         w = self.window_for_dispatch or self.active_window
         target_tab = w.tabref() if w else None
 
-        def chosen(ans: Union[None, int, str]) -> None:
+        def chosen(ans: None | int | str) -> None:
             if ans is not None:
                 os_window_id = None if isinstance(ans, str) else ans
                 self._move_tab_to(tab=target_tab, target_os_window_id=os_window_id)
 
         self.choose_entry('Choose an OS window to move the tab to', items, chosen)
 
-    def set_background_image(self, path: Optional[str], os_windows: tuple[int, ...], configured: bool, layout: Optional[str], png_data: bytes = b'') -> None:
+    def set_background_image(self, path: str | None, os_windows: tuple[int, ...], configured: bool, layout: str | None, png_data: bytes = b'') -> None:
         set_background_image(path, os_windows, configured, layout, png_data)
         for os_window_id in os_windows:
             self.default_bg_changed_for(os_window_id)

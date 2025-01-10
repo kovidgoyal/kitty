@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
@@ -42,11 +42,11 @@ Keep the focus on a window in the currently focused tab after moving the specifi
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self, 'stay_in_tab': opts.stay_in_tab}
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_match_payload(boss, window, payload_get)
         match = payload_get('target_tab')
-        target_tab_id: Optional[Union[str, int]] = None
-        newval: Union[str, int] = 'new'
+        target_tab_id: str | int | None = None
+        newval: str | int = 'new'
         if match:
             if match == 'new':
                 target_tab_id = newval

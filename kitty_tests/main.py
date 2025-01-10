@@ -9,14 +9,13 @@ import subprocess
 import sys
 import time
 import unittest
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator, Sequence
 from contextlib import contextmanager
 from functools import lru_cache
 from tempfile import TemporaryDirectory
 from threading import Thread
 from typing import (
     Any,
-    Callable,
     NoReturn,
     Optional,
 )

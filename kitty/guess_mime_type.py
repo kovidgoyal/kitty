@@ -4,7 +4,6 @@
 import os
 import stat
 from contextlib import suppress
-from typing import Optional
 
 known_extensions = {
     'asciidoc': 'text/asciidoctor',
@@ -41,7 +40,7 @@ text_mimes = (
 )
 
 
-def is_special_file(path: str) -> Optional[str]:
+def is_special_file(path: str) -> str | None:
     name = os.path.basename(path)
     lname = name.lower()
     if lname == 'makefile' or lname.startswith('makefile.'):
@@ -74,7 +73,7 @@ def clear_mime_cache() -> None:
         delattr(initialize_mime_database, 'inited')
 
 
-def guess_type(path: str, allow_filesystem_access: bool = False) -> Optional[str]:
+def guess_type(path: str, allow_filesystem_access: bool = False) -> str | None:
     is_dir = is_exe = False
 
     if allow_filesystem_access:

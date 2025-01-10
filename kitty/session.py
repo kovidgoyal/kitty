@@ -4,10 +4,10 @@
 import os
 import shlex
 import sys
-from collections.abc import Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import suppress
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from .cli_stub import CLIOptions
 from .layout.interface import all_layouts
@@ -39,7 +39,7 @@ class WindowSpec:
 
     def __init__(self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance']):
         self.launch_spec = launch_spec
-        self.resize_spec: Optional[ResizeSpec] = None
+        self.resize_spec: ResizeSpec | None = None
         self.focus_matching_window_spec: str = ''
         self.is_background_process = False
         if hasattr(launch_spec, 'opts'):  # LaunchSpec
@@ -52,14 +52,14 @@ class Tab:
 
     def __init__(self, opts: Options, name: str):
         self.windows: list[WindowSpec] = []
-        self.pending_resize_spec: Optional[ResizeSpec] = None
+        self.pending_resize_spec: ResizeSpec | None = None
         self.pending_focus_matching_window: str = ''
         self.name = name.strip()
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
-        self.cwd: Optional[str] = None
-        self.next_title: Optional[str] = None
+        self.cwd: str | None = None
+        self.next_title: str | None = None
 
     @property
     def has_non_background_processes(self) -> bool:
@@ -71,13 +71,13 @@ class Tab:
 
 class Session:
 
-    def __init__(self, default_title: Optional[str] = None):
+    def __init__(self, default_title: str | None = None):
         self.tabs: list[Tab] = []
         self.active_tab_idx = 0
         self.default_title = default_title
-        self.os_window_size: Optional[WindowSizes] = None
-        self.os_window_class: Optional[str] = None
-        self.os_window_state: Optional[str] = None
+        self.os_window_size: WindowSizes | None = None
+        self.os_window_class: str | None = None
+        self.os_window_state: str | None = None
         self.focus_os_window: bool = False
 
     @property
@@ -100,7 +100,7 @@ class Session:
             raise ValueError(f'{val} is not a valid layout')
         self.tabs[-1].layout = val
 
-    def add_window(self, cmd: Union[None, str, list[str]], expand: Callable[[str], str] = lambda x: x) -> None:
+    def add_window(self, cmd: None | str | list[str], expand: Callable[[str], str] = lambda x: x) -> None:
         from .launch import parse_launch_args
         needs_expandvars = False
         if isinstance(cmd, str) and cmd:
@@ -161,7 +161,7 @@ class Session:
         self.tabs[-1].cwd = val
 
 
-def parse_session(raw: str, opts: Options, environ: Optional[Mapping[str, str]] = None) -> Generator[Session, None, None]:
+def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = None) -> Generator[Session, None, None]:
 
     def finalize_session(ans: Session) -> Session:
         from .tabs import SpecialWindow
@@ -233,17 +233,17 @@ class PreReadSession(str):
 
 def create_sessions(
     opts: Options,
-    args: Optional[CLIOptions] = None,
+    args: CLIOptions | None = None,
     special_window: Optional['SpecialWindowInstance'] = None,
     cwd_from: Optional['CwdRequest'] = None,
     respect_cwd: bool = False,
-    default_session: Optional[str] = None,
+    default_session: str | None = None,
 ) -> Iterator[Session]:
     if args and args.session:
         if args.session == "none":
             default_session = "none"
         else:
-            environ: Optional[Mapping[str, str]] = None
+            environ: Mapping[str, str] | None = None
             if isinstance(args.session, PreReadSession):
                 session_data = '' + str(args.session)
                 environ = args.session.associated_environ  # type: ignore
@@ -272,7 +272,7 @@ def create_sessions(
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
         from kitty.tabs import SpecialWindow
-        cwd: Optional[str] = args.directory if respect_cwd and args else None
+        cwd: str | None = args.directory if respect_cwd and args else None
         special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, hold=bool(args and args.hold))
     ans.add_special_window(special_window)
     yield ans

@@ -7,11 +7,11 @@ import socket
 import sys
 import termios
 import time
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import IO, Callable, Optional, TypeVar
+from typing import IO, TypeVar
 
 from kittens.tui.operations import colored, styled
 
@@ -189,7 +189,7 @@ class IssueData:
             return char
 
     def parse_issue_file(self, issue_file: IO[str]) -> Iterator[str]:
-        last_char: Optional[str] = None
+        last_char: str | None = None
         while True:
             this_char = issue_file.read(1)
             if not this_char:

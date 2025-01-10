@@ -3,7 +3,6 @@
 
 
 import sys
-from typing import List
 
 usage = 'source_files_or_directories destination_path'
 help_text = '''\
@@ -121,7 +120,7 @@ actually degrade performance on fast links or with small files, so use with care
 '''
 
 
-def main(args: List[str]) -> None:
+def main(args: list[str]) -> None:
     raise SystemExit('This should be run as kitten transfer')
 
 

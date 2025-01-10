@@ -3,7 +3,7 @@
 
 from enum import IntEnum
 from functools import lru_cache
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple
 
 from . import fast_data_types as defines
 from .fast_data_types import KeyEvent as WindowSystemKeyEvent
@@ -214,7 +214,7 @@ class KeyEvent(NamedTuple):
     caps_lock: bool = False
     num_lock: bool = False
 
-    def matches(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
+    def matches(self, spec: str | ParsedShortcut, types: int = EventType.PRESS | EventType.REPEAT) -> bool:
         mods = self.mods_without_locks
         if not self.type & types:
             return False
@@ -227,7 +227,7 @@ class KeyEvent(NamedTuple):
             return True
         return False
 
-    def matches_without_mods(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
+    def matches_without_mods(self, spec: str | ParsedShortcut, types: int = EventType.PRESS | EventType.REPEAT) -> bool:
         if not self.type & types:
             return False
         if isinstance(spec, str):
@@ -419,7 +419,7 @@ def encode_key_event(key_event: KeyEvent) -> str:
     return ans + trailer
 
 
-def decode_key_event_as_window_system_key(text: str) -> Optional[WindowSystemKeyEvent]:
+def decode_key_event_as_window_system_key(text: str) -> WindowSystemKeyEvent | None:
     csi, trailer = text[2:-1], text[-1]
     try:
         k = decode_key_event(csi, trailer)

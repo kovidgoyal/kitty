@@ -10,10 +10,11 @@ import selectors
 import signal
 import sys
 import termios
+from collections.abc import Callable, Generator
 from contextlib import contextmanager, suppress
 from enum import Enum, IntFlag, auto
 from functools import partial
-from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import FILE_TRANSFER_CODE, close_tty, normal_tty, open_tty, parse_input_from_terminal, raw_tty
@@ -50,7 +51,7 @@ def debug_write(*a: Any, **kw: Any) -> None:
 
 class Debug:
 
-    fobj: Optional[BinaryWrite] = None
+    fobj: BinaryWrite | None = None
 
     def __call__(self, *a: Any, **kw: Any) -> None:
         kw['file'] = self.fobj or sys.stdout.buffer
@@ -67,7 +68,7 @@ class TermManager:
         self, optional_actions: int = termios.TCSANOW, use_alternate_screen: bool = True,
         mouse_tracking: MouseTracking = MouseTracking.none
     ) -> None:
-        self.extra_finalize: Optional[str] = None
+        self.extra_finalize: str | None = None
         self.optional_actions = optional_actions
         self.use_alternate_screen = use_alternate_screen
         self.mouse_tracking = mouse_tracking
@@ -377,7 +378,7 @@ class Loop:
         else:
             written = 0
         if written >= total_size:
-            self.write_buf: List[bytes] = []
+            self.write_buf: list[bytes] = []
             self.asyncio_loop.remove_writer(fd)
             self.waiting_for_writes = False
             handler.on_writing_finished()
@@ -394,12 +395,12 @@ class Loop:
                 break
             del self.write_buf[:consumed]
 
-    def quit(self, return_code: Optional[int] = None) -> None:
+    def quit(self, return_code: int | None = None) -> None:
         if return_code is not None:
             self.return_code = return_code
         self.asyncio_loop.stop()
 
-    def loop_impl(self, handler: Handler, term_manager: TermManager, image_manager: Optional[ImageManagerType] = None) -> Optional[str]:
+    def loop_impl(self, handler: Handler, term_manager: TermManager, image_manager: ImageManagerType | None = None) -> str | None:
         self.write_buf = []
         tty_fd = term_manager.tty_fd
         tb = None
@@ -411,7 +412,7 @@ class Loop:
                 self.asyncio_loop.add_writer(tty_fd, self._write_ready, handler, tty_fd)
                 self.waiting_for_writes = True
 
-        def handle_exception(loop: asyncio.AbstractEventLoop, context: Dict[str, Any]) -> None:
+        def handle_exception(loop: asyncio.AbstractEventLoop, context: dict[str, Any]) -> None:
             nonlocal tb
             loop.stop()
             tb = context['message']
@@ -436,7 +437,7 @@ class Loop:
         return tb
 
     def loop(self, handler: Handler) -> None:
-        tb: Optional[str] = None
+        tb: str | None = None
 
         def _on_sigwinch() -> None:
             self._get_screen_size.changed = True

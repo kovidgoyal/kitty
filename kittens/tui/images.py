@@ -6,10 +6,11 @@ import os
 import sys
 from base64 import standard_b64encode
 from collections import defaultdict, deque
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import suppress
 from enum import IntEnum
 from itertools import count
-from typing import Any, Callable, ClassVar, DefaultDict, Deque, Dict, Generic, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Union, cast
+from typing import Any, ClassVar, DefaultDict, Deque, Generic, Optional, TypeVar, Union, cast
 
 from kitty.conf.utils import positive_float, positive_int
 from kitty.fast_data_types import create_canvas
@@ -49,7 +50,7 @@ class Frame:
     dispose: Dispose
     path: str = ''
 
-    def __init__(self, identify_data: Union['Frame', Dict[str, str]]):
+    def __init__(self, identify_data: Union['Frame', dict[str, str]]):
         if isinstance(identify_data, Frame):
             for k in Frame.__annotations__:
                 setattr(self, k, getattr(identify_data, k))
@@ -78,7 +79,7 @@ class Frame:
 
 class ImageData:
 
-    def __init__(self, fmt: str, width: int, height: int, mode: str, frames: List[Frame]):
+    def __init__(self, fmt: str, width: int, height: int, mode: str, frames: list[Frame]):
         self.width, self.height, self.fmt, self.mode = width, height, fmt, mode
         self.transmit_fmt: GRT_f = (24 if self.mode == 'rgb' else 32)
         self.frames = frames
@@ -291,9 +292,9 @@ def render_as_single_image(
     path: str, m: ImageData,
     available_width: int, available_height: int,
     scale_up: bool,
-    tdir: Optional[str] = None,
+    tdir: str | None = None,
     remove_alpha: str = '', flip: bool = False, flop: bool = False,
-) -> Tuple[str, int, int]:
+) -> tuple[str, int, int]:
     import tempfile
     fd, output = tempfile.mkstemp(prefix='tty-graphics-protocol-', suffix=f'.{m.mode}', dir=tdir)
     os.close(fd)
@@ -305,15 +306,15 @@ def render_as_single_image(
 
 
 def can_display_images() -> bool:
-    ans: Optional[bool] = getattr(can_display_images, 'ans', None)
+    ans: bool | None = getattr(can_display_images, 'ans', None)
     if ans is None:
         ans = which('convert') is not None
         setattr(can_display_images, 'ans', ans)
     return ans
 
 
-ImageKey = Tuple[str, int, int]
-SentImageKey = Tuple[int, int, int]
+ImageKey = tuple[str, int, int]
+SentImageKey = tuple[int, int, int]
 T = TypeVar('T')
 
 
@@ -325,7 +326,7 @@ class Alias(Generic[T]):
         self.name = ''
         self.defval = defval
 
-    def __get__(self, instance: Optional['GraphicsCommand'], cls: Optional[Type['GraphicsCommand']] = None) -> T:
+    def __get__(self, instance: Optional['GraphicsCommand'], cls: type['GraphicsCommand'] | None = None) -> T:
         if instance is None:
             return self.defval
         return cast(T, instance._actual_values.get(self.name, self.defval))
@@ -336,7 +337,7 @@ class Alias(Generic[T]):
         else:
             instance._actual_values[self.name] = val
 
-    def __set_name__(self, owner: Type['GraphicsCommand'], name: str) -> None:
+    def __set_name__(self, owner: type['GraphicsCommand'], name: str) -> None:
         if len(name) == 1:
             Alias.currently_processing = name
         self.name = Alias.currently_processing
@@ -369,7 +370,7 @@ class GraphicsCommand:
     d = delete_action = Alias(cast(GRT_d, 'a'))
 
     def __init__(self) -> None:
-        self._actual_values: Dict[str, Any] = {}
+        self._actual_values: dict[str, Any] = {}
 
     def __repr__(self) -> str:
         return self.serialize().decode('ascii').replace('\033', '^]')
@@ -379,12 +380,12 @@ class GraphicsCommand:
         ans._actual_values = self._actual_values.copy()
         return ans
 
-    def serialize(self, payload: Union[bytes, str] = b'') -> bytes:
+    def serialize(self, payload: bytes | str = b'') -> bytes:
         items = []
         for k, val in self._actual_values.items():
             items.append(f'{k}={val}')
 
-        ans: List[bytes] = []
+        ans: list[bytes] = []
         w = ans.append
         w(b'\033_G')
         w(','.join(items).encode('ascii'))
@@ -399,7 +400,7 @@ class GraphicsCommand:
     def clear(self) -> None:
         self._actual_values = {}
 
-    def iter_transmission_chunks(self, data: Optional[bytes] = None, level: int = -1, compression_threshold: int = 1024) -> Iterator[bytes]:
+    def iter_transmission_chunks(self, data: bytes | None = None, level: int = -1, compression_threshold: int = 1024) -> Iterator[bytes]:
         if data is None:
             yield self.serialize()
             return
@@ -436,16 +437,16 @@ class ImageManager:
     def __init__(self, handler: HandlerType):
         self.image_id_counter = count()
         self.handler = handler
-        self.filesystem_ok: Optional[bool] = None
-        self.image_data: Dict[str, ImageData] = {}
-        self.failed_images: Dict[str, Exception] = {}
-        self.converted_images: Dict[ImageKey, ImageKey] = {}
-        self.sent_images: Dict[ImageKey, int] = {}
-        self.image_id_to_image_data: Dict[int, ImageData] = {}
-        self.image_id_to_converted_data: Dict[int, ImageKey] = {}
-        self.transmission_status: Dict[int, Union[str, int]] = {}
+        self.filesystem_ok: bool | None = None
+        self.image_data: dict[str, ImageData] = {}
+        self.failed_images: dict[str, Exception] = {}
+        self.converted_images: dict[ImageKey, ImageKey] = {}
+        self.sent_images: dict[ImageKey, int] = {}
+        self.image_id_to_image_data: dict[int, ImageData] = {}
+        self.image_id_to_converted_data: dict[int, ImageKey] = {}
+        self.transmission_status: dict[int, str | int] = {}
         self.placements_in_flight: DefaultDict[int, Deque[Placement]] = defaultdict(deque)
-        self.update_image_placement_for_resend: Optional[Callable[[int, Placement], bool]]
+        self.update_image_placement_for_resend: Callable[[int, Placement], bool] | None
 
     @property
     def next_image_id(self) -> int:
@@ -518,7 +519,7 @@ class ImageManager:
             self.handler.cmd.set_cursor_position(pl.x, pl.y)
             self.handler.cmd.gr_command(pl.cmd)
 
-    def send_image(self, path: str, max_cols: Optional[int] = None, max_rows: Optional[int] = None, scale_up: bool = False) -> SentImageKey:
+    def send_image(self, path: str, max_cols: int | None = None, max_rows: int | None = None, scale_up: bool = False) -> SentImageKey:
         path = os.path.abspath(path)
         if path in self.failed_images:
             raise self.failed_images[path]
@@ -562,7 +563,7 @@ class ImageManager:
         gc.i = image_id
         self.handler.cmd.gr_command(gc)
 
-    def show_image(self, image_id: int, x: int, y: int, src_rect: Optional[Tuple[int, int, int, int]] = None) -> None:
+    def show_image(self, image_id: int, x: int, y: int, src_rect: tuple[int, int, int, int] | None = None) -> None:
         gc = GraphicsCommand()
         gc.a = 'p'
         gc.i = image_id

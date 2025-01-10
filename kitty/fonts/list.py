@@ -2,7 +2,6 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Sequence
-from typing import Optional
 
 from kitty.constants import is_macos
 
@@ -23,7 +22,7 @@ def create_family_groups(monospaced: bool = True) -> dict[str, list[ListedFont]]
     return {k: prune_family_group(v) for k, v in g.items()}
 
 
-def as_json(indent: Optional[int] = None) -> str:
+def as_json(indent: int | None = None) -> str:
     import json
     groups = create_family_groups()
     for v in groups.values():

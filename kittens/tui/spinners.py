@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Dict, Sequence
+from collections.abc import Sequence
 
 from kitty.fast_data_types import monotonic
 from kitty.typing import TypedDict
@@ -14,7 +14,7 @@ class SpinnerDef(TypedDict):
 
 # Spinner definitions are from
 # https://raw.githubusercontent.com/sindresorhus/cli-spinners/main/spinners.json
-spinners: Dict[str, SpinnerDef] = {  # {{{
+spinners: dict[str, SpinnerDef] = {  # {{{
     "dots": {
         "interval": 80,
         "frames": ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]

@@ -2,9 +2,10 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+from collections.abc import Iterable, Sequence
 from contextlib import suppress
 from enum import Enum
-from typing import Iterable, Literal, Optional, Sequence, Union
+from typing import Literal, Optional
 
 from .config import parse_config
 from .constants import config_dir
@@ -31,7 +32,7 @@ class ThemeColors:
     light_mtime: int = -1
     no_preference_mtime: int = -1
     applied_theme: Literal['light', 'dark', 'no_preference', ''] = ''
-    default_colors: Optional[ColorsSpec] = None
+    default_colors: ColorsSpec | None = None
 
     def get_default_colors(self) -> ColorsSpec:
         if self.default_colors is None:
@@ -101,7 +102,7 @@ class ThemeColors:
         which = glfw_get_system_color_theme()
         if debug_rendering:
             log_error('Current system color scheme:', which)
-        cols: Optional[Colors] = None
+        cols: Colors | None = None
         if which == 'dark' and self.has_dark_theme:
             cols = self.dark_spec, self.dark_tbc
         elif which == 'light' and self.has_light_theme:
@@ -148,9 +149,9 @@ class ThemeColors:
 theme_colors = ThemeColors()
 
 
-def parse_colors(args: Iterable[Union[str, Iterable[str]]]) -> Colors:
-    colors: dict[str, Optional[Color]] = {}
-    nullable_color_map: dict[str, Optional[int]] = {}
+def parse_colors(args: Iterable[str | Iterable[str]]) -> Colors:
+    colors: dict[str, Color | None] = {}
+    nullable_color_map: dict[str, int | None] = {}
     transparent_background_colors = ()
     for spec in args:
         if isinstance(spec, str):
@@ -168,7 +169,7 @@ def parse_colors(args: Iterable[Union[str, Iterable[str]]]) -> Colors:
         if q is not False:
             val = int(q) if isinstance(q, Color) else None
             nullable_color_map[k] = val
-    ans: dict[str, Optional[int]] = {k: int(v) for k, v in colors.items() if isinstance(v, Color)}
+    ans: dict[str, int | None] = {k: int(v) for k, v in colors.items() if isinstance(v, Color)}
     ans.update(nullable_color_map)
     return ans, transparent_background_colors
 
@@ -186,7 +187,7 @@ def patch_options_with_color_spec(opts: Options, spec: ColorsSpec, transparent_b
 
 def patch_colors(
     spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, configured: bool = False,
-    windows: Optional[Sequence[WindowType]] = None, notify_on_bg_change: bool = True,
+    windows: Sequence[WindowType] | None = None, notify_on_bg_change: bool = True,
 ) -> None:
     boss = get_boss()
     if windows is None:

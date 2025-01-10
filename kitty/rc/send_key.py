@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .base import (
     MATCH_TAB_OPTION,
@@ -56,7 +56,7 @@ Do not send text to the active window, even if it is one of the matched windows.
         ret = {'match': opts.match, 'keys': args, 'match_tab': opts.match_tab, 'all': opts.all, 'exclude_active': opts.exclude_active}
         return ret
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_payload(boss, None, payload_get, window_match_name='match')
         keys = payload_get('keys')
         for w in windows:

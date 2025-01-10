@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .base import (
     MATCH_WINDOW_OPTION,
@@ -57,7 +57,7 @@ using this option means that you will not be notified of failures.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'action': ' '.join(args), 'self': opts.self, 'match_window': opts.match}
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         w = self.windows_for_match_payload(boss, window, payload_get)
         if w:
             window = w[0]

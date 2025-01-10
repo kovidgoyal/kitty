@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from kitty.cli import emph
 from kitty.fast_data_types import Color
@@ -66,7 +66,7 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
                               completion=RemoteCommand.CompletionSpec.from_string('type:file group:"CONF files", ext:conf'))
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        final_colors: Dict[str, int | None | str] = {}
+        final_colors: dict[str, int | None | str] = {}
         transparent_background_colors: tuple[tuple[Color, float], ...] = ()
         from kitty.colors import parse_colors
         if not opts.reset:
@@ -86,10 +86,10 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
         }
         return ans
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         from kitty.colors import patch_colors
         windows = self.windows_for_payload(boss, window, payload_get)
-        colors: Dict[str, int | None] = payload_get('colors') or {}
+        colors: dict[str, int | None] = payload_get('colors') or {}
         if payload_get('reset'):
             colors = {k: None if v is None else int(v) for k, v in boss.color_settings_at_startup.items()}
         tbc = colors.get('transparent_background_colors')

@@ -7,7 +7,7 @@ import os
 import re
 import string
 import sys
-from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from re import Match, Pattern
@@ -15,10 +15,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     BinaryIO,
-    Callable,
     NamedTuple,
     Optional,
-    Union,
     cast,
 )
 
@@ -99,7 +97,7 @@ def kitty_ansi_sanitizer_pat() -> 're.Pattern[str]':
     return re.compile(r'\x1b(?:\[[0-9;:]*?m|\].*?\x1b\\)')
 
 
-def platform_window_id(os_window_id: int) -> Optional[int]:
+def platform_window_id(os_window_id: int) -> int | None:
     if is_macos:
         from .fast_data_types import cocoa_window_id
         with suppress(Exception):
@@ -178,9 +176,9 @@ def read_screen_size(fd: int = -1) -> ScreenSize:
 class ScreenSizeGetter:
     changed = True
     Size = ScreenSize
-    ans: Optional[ScreenSize] = None
+    ans: ScreenSize | None = None
 
-    def __init__(self, fd: Optional[int]):
+    def __init__(self, fd: int | None):
         if fd is None:
             fd = sys.stdout.fileno()
         self.fd = fd
@@ -193,7 +191,7 @@ class ScreenSizeGetter:
 
 
 @lru_cache(maxsize=64, typed=True)
-def screen_size_function(fd: Optional[int] = None) -> ScreenSizeGetter:
+def screen_size_function(fd: int | None = None) -> ScreenSizeGetter:
     return ScreenSizeGetter(fd)
 
 
@@ -226,7 +224,7 @@ def base64_encode(
     return ans
 
 
-def command_for_open(program: Union[str, list[str]] = 'default') -> list[str]:
+def command_for_open(program: str | list[str] = 'default') -> list[str]:
     if isinstance(program, str):
         from .conf.utils import to_cmdline
         program = to_cmdline(program)
@@ -237,8 +235,8 @@ def command_for_open(program: Union[str, list[str]] = 'default') -> list[str]:
     return cmd
 
 
-def open_cmd(cmd: Union[Iterable[str], list[str]], arg: Union[None, Iterable[str], str] = None,
-             cwd: Optional[str] = None, extra_env: Optional[dict[str, str]] = None) -> 'PopenType[bytes]':
+def open_cmd(cmd: Iterable[str] | list[str], arg: None | Iterable[str] | str = None,
+             cwd: str | None = None, extra_env: dict[str, str] | None = None) -> 'PopenType[bytes]':
     import subprocess
     if arg is not None:
         cmd = list(cmd)
@@ -246,7 +244,7 @@ def open_cmd(cmd: Union[Iterable[str], list[str]], arg: Union[None, Iterable[str
             cmd.append(arg)
         else:
             cmd.extend(arg)
-    env: Optional[dict[str, str]] = None
+    env: dict[str, str] | None = None
     if extra_env:
         env = os.environ.copy()
         env.update(extra_env)
@@ -255,7 +253,7 @@ def open_cmd(cmd: Union[Iterable[str], list[str]], arg: Union[None, Iterable[str
         preexec_fn=clear_handled_signals, env=env)
 
 
-def open_url(url: str, program: Union[str, list[str]] = 'default', cwd: Optional[str] = None, extra_env: Optional[dict[str, str]] = None) -> 'PopenType[bytes]':
+def open_url(url: str, program: str | list[str] = 'default', cwd: str | None = None, extra_env: dict[str, str] | None = None) -> 'PopenType[bytes]':
     return open_cmd(command_for_open(program), url, cwd=cwd, extra_env=extra_env)
 
 
@@ -271,7 +269,7 @@ def detach(fork: bool = True, setsid: bool = True, redirect: bool = True) -> Non
         redirect_std_streams(os.devnull)
 
 
-def init_startup_notification_x11(window_handle: int, startup_id: Optional[str] = None) -> Optional['StartupCtx']:
+def init_startup_notification_x11(window_handle: int, startup_id: str | None = None) -> Optional['StartupCtx']:
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
     from kitty.fast_data_types import init_x11_startup_notification
     sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes don't get this env var
@@ -289,7 +287,7 @@ def end_startup_notification_x11(ctx: 'StartupCtx') -> None:
     end_x11_startup_notification(ctx)
 
 
-def init_startup_notification(window_handle: Optional[int], startup_id: Optional[str] = None) -> Optional['StartupCtx']:
+def init_startup_notification(window_handle: int | None, startup_id: str | None = None) -> Optional['StartupCtx']:
     if is_macos or is_wayland():
         return None
     if window_handle is None:
@@ -328,7 +326,7 @@ class startup_notification_handler:
     # after the window is shown, not before, as they do not do two stage window
     # creation.
 
-    def __init__(self, do_notify: bool = True, startup_id: Optional[str] = None, extra_callback: Optional[Callable[[int], None]] = None):
+    def __init__(self, do_notify: bool = True, startup_id: str | None = None, extra_callback: Callable[[int], None] | None = None):
         self.do_notify = do_notify
         self.startup_id = startup_id
         self.extra_callback = extra_callback
@@ -371,14 +369,14 @@ def unix_socket_paths(name: str, ext: str = '.lock') -> Generator[str, None, Non
         yield os.path.join(loc, filename)
 
 
-def parse_address_spec(spec: str) -> tuple[AddressFamily, Union[tuple[str, int], str], Optional[str]]:
+def parse_address_spec(spec: str) -> tuple[AddressFamily, tuple[str, int] | str, str | None]:
     import socket
     try:
         protocol, rest = spec.split(':', 1)
     except ValueError:
         raise ValueError(f'Invalid listen-on value: {spec} must be of the form protocol:address')
     socket_path = None
-    address: Union[str, tuple[str, int]] = ''
+    address: str | tuple[str, int] = ''
     if protocol == 'unix':
         family = socket.AF_UNIX
         address = rest
@@ -409,7 +407,7 @@ def parse_os_window_state(state: str) -> int:
     }[state]
 
 
-def write_all(fd: int, data: Union[str, bytes], block_until_written: bool = True) -> None:
+def write_all(fd: int, data: str | bytes, block_until_written: bool = True) -> None:
     if isinstance(data, str):
         data = data.encode('utf-8')
     mvd = memoryview(data)
@@ -448,7 +446,7 @@ class TTYIO:
     def read(self, limit: int) -> bytes:
         return os.read(self.tty_fd, limit)
 
-    def send(self, data: Union[str, bytes, Iterable[Union[str, bytes]]]) -> None:
+    def send(self, data: str | bytes | Iterable[str | bytes]) -> None:
         if isinstance(data, (str, bytes)):
             write_all(self.tty_fd, data)
         else:
@@ -466,7 +464,7 @@ class TTYIO:
                 break
 
 
-def set_echo(fd: int = -1, on: bool = False) -> tuple[int, list[Union[int, list[Union[bytes, int]]]]]:
+def set_echo(fd: int = -1, on: bool = False) -> tuple[int, list[int | list[bytes | int]]]:
     import termios
     if fd < 0:
         fd = sys.stdin.fileno()
@@ -492,10 +490,10 @@ def no_echo(fd: int = -1) -> Iterator[None]:
 
 def natsort_ints(iterable: Iterable[str]) -> list[str]:
 
-    def convert(text: str) -> Union[int, str]:
+    def convert(text: str) -> int | str:
         return int(text) if text.isdigit() else text
 
-    def alphanum_key(key: str) -> tuple[Union[int, str], ...]:
+    def alphanum_key(key: str) -> tuple[int | str, ...]:
         return tuple(map(convert, re.split(r'(\d+)', key)))
 
     return sorted(iterable, key=alphanum_key)
@@ -509,7 +507,7 @@ def get_hostname(fallback: str = '') -> str:
         return fallback
 
 
-def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[str]:
+def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> str | None:
     import shlex
     editor_cmd = list(shlex_split(editor))
     editor_exe = (editor_cmd or ('',))[0]
@@ -534,7 +532,7 @@ def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[st
     return None
 
 
-def get_editor_from_env(env: Mapping[str, str]) -> Optional[str]:
+def get_editor_from_env(env: Mapping[str, str]) -> str | None:
     for var in ('VISUAL', 'EDITOR'):
         editor = env.get(var)
         if editor:
@@ -544,7 +542,7 @@ def get_editor_from_env(env: Mapping[str, str]) -> Optional[str]:
     return None
 
 
-def get_editor_from_env_vars(opts: Optional[Options] = None) -> list[str]:
+def get_editor_from_env_vars(opts: Options | None = None) -> list[str]:
     editor = get_editor_from_env(os.environ)
     if not editor:
         shell_env = read_shell_environment(opts)
@@ -558,7 +556,7 @@ def get_editor_from_env_vars(opts: Optional[Options] = None) -> list[str]:
     return list(shlex_split(ans))
 
 
-def get_editor(opts: Optional[Options] = None, path_to_edit: str = '', line_number: int = 0) -> list[str]:
+def get_editor(opts: Options | None = None, path_to_edit: str = '', line_number: int = 0) -> list[str]:
     if opts is None:
         try:
             opts = get_options()
@@ -587,7 +585,7 @@ def is_path_in_temp_dir(path: str) -> bool:
     if not path:
         return False
 
-    def abspath(x: Optional[str]) -> str:
+    def abspath(x: str | None) -> str:
         if x:
             x = os.path.abspath(os.path.realpath(x))
         return x or ''
@@ -621,7 +619,7 @@ def is_ok_to_read_image_file(path: str, fd: int) -> bool:
     return stat.S_ISREG(fd_stat.st_mode)
 
 
-def resolve_abs_or_config_path(path: str, env: Optional[Mapping[str, str]] = None, conf_dir: Optional[str] = None) -> str:
+def resolve_abs_or_config_path(path: str, env: Mapping[str, str] | None = None, conf_dir: str | None = None) -> str:
     path = os.path.expanduser(path)
     path = expandvars(path, env or {})
     if not os.path.isabs(path):
@@ -630,7 +628,7 @@ def resolve_abs_or_config_path(path: str, env: Optional[Mapping[str, str]] = Non
 
 
 def resolve_custom_file(path: str) -> str:
-    opts: Optional[Options] = None
+    opts: Options | None = None
     with suppress(RuntimeError):
         opts = get_options()
     return resolve_abs_or_config_path(path, opts.env if opts else {})
@@ -644,7 +642,7 @@ def func_name(f: Any) -> str:
     return str(f)
 
 
-def resolved_shell(opts: Optional[Options] = None) -> list[str]:
+def resolved_shell(opts: Options | None = None) -> list[str]:
     q: str = getattr(opts, 'shell', '.')
     if q == '.':
         ans = [shell_path]
@@ -691,12 +689,12 @@ def system_paths_on_macos() -> tuple[str, ...]:
     return tuple(entries)
 
 
-def which(name: str, only_system: bool = False) -> Optional[str]:
+def which(name: str, only_system: bool = False) -> str | None:
     if os.sep in name:
         return name
     import shutil
 
-    opts: Optional[Options] = None
+    opts: Options | None = None
     with suppress(RuntimeError):
         opts = get_options()
 
@@ -748,8 +746,8 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
     return None
 
 
-def read_shell_environment(opts: Optional[Options] = None) -> dict[str, str]:
-    ans: Optional[dict[str, str]] = getattr(read_shell_environment, 'ans', None)
+def read_shell_environment(opts: Options | None = None) -> dict[str, str]:
+    ans: dict[str, str] | None = getattr(read_shell_environment, 'ans', None)
     if ans is None:
         from .child import openpty
         ans = {}
@@ -775,7 +773,7 @@ def read_shell_environment(opts: Optional[Options] = None) -> dict[str, str]:
             start_time = monotonic()
             while monotonic() - start_time < 1.5:
                 try:
-                    ret: Optional[int] = p.wait(0.01)
+                    ret: int | None = p.wait(0.01)
                 except subprocess.TimeoutExpired:
                     ret = None
                 with suppress(Exception):
@@ -832,7 +830,7 @@ def edit_config_file() -> None:
 class SSHConnectionData(NamedTuple):
     binary: str
     hostname: str
-    port: Optional[int] = None
+    port: int | None = None
     identity_file: str = ''
     extra_args: tuple[tuple[str, str], ...] = ()
 
@@ -932,7 +930,7 @@ def cleanup_ssh_control_masters() -> None:
             os.remove(x)
 
 
-def path_from_osc7_url(url: Union[str, bytes]) -> str:
+def path_from_osc7_url(url: str | bytes) -> str:
     if isinstance(url, bytes):
         url = url.decode('utf-8')
     if url.startswith('kitty-shell-cwd://'):
@@ -987,7 +985,7 @@ def safer_fork() -> int:
     return pid
 
 
-def docs_url(which: str = '', local_docs_root: Optional[str] = '') -> str:
+def docs_url(which: str = '', local_docs_root: str | None = '') -> str:
     from urllib.parse import quote
 
     from .conf.types import resolve_ref
@@ -1081,14 +1079,14 @@ def cmdline_for_hold(cmd: Sequence[str] = (), opts: Optional['Options'] = None) 
     return [kitten_exe(), 'run-shell', f'--shell={shell}', f'--shell-integration={ksi}', '--env=KITTY_HOLD=1'] + list(cmd)
 
 
-def safe_mtime(path: str) -> Optional[float]:
+def safe_mtime(path: str) -> float | None:
     with suppress(OSError):
         return os.path.getmtime(path)
     return None
 
 
 @run_once
-def get_custom_window_icon() -> Union[tuple[float, str], tuple[None, None]]:
+def get_custom_window_icon() -> tuple[float, str] | tuple[None, None]:
     filenames = ['kitty.app.png']
     if is_macos:
         # On macOS, prefer icns to png.

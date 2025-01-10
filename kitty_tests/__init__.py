@@ -15,7 +15,6 @@ import time
 from contextlib import contextmanager, suppress
 from functools import wraps
 from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
-from typing import Optional
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
@@ -91,7 +90,7 @@ class Callbacks:
     def color_profile_popped(self, x) -> None:
         pass
 
-    def cmd_output_marking(self, is_start: Optional[bool], data: str = '') -> None:
+    def cmd_output_marking(self, is_start: bool | None, data: str = '') -> None:
         if is_start:
             self.last_cmd_at = monotonic()
             self.last_cmd_cmdline = decode_cmdline(data) if data else data

@@ -3,7 +3,7 @@
 
 import sys
 from base64 import standard_b64decode, standard_b64encode
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from kitty.launch import env_docs, remote_control_password_docs
 from kitty.options.utils import env as parse_env
@@ -88,7 +88,7 @@ The executed program will have privileges to run remote control commands in kitt
                     yield ret
         return pipe()
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         import os
         import tempfile
         data = payload_get('data')
@@ -106,7 +106,7 @@ The executed program will have privileges to run remote control commands in kitt
         responder = self.create_async_responder(payload_get, window)
         stdout, stderr = tempfile.TemporaryFile(), tempfile.TemporaryFile()
 
-        def on_death(exit_status: int, err: Optional[Exception]) -> None:
+        def on_death(exit_status: int, err: Exception | None) -> None:
             with stdout, stderr:
                 if err:
                     responder.send_error(f'Failed to run: {cmdline} with err: {err}')
@@ -120,7 +120,7 @@ The executed program will have privileges to run remote control commands in kitt
                         'exit_code': exit_code, 'exit_status': exit_status,
                     })
 
-        env: Dict[str, str] = {}
+        env: dict[str, str] = {}
         for x in payload_get('env') or ():
             for k, v in parse_env(x, env):
                 env[k] = v

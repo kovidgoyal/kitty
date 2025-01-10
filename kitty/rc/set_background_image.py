@@ -4,7 +4,7 @@
 import os
 from base64 import standard_b64decode, standard_b64encode
 from io import BytesIO
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from kitty.types import AsyncResponse
 from kitty.utils import is_png
@@ -107,7 +107,7 @@ failed, the command will exit with a success code.
             yield ret
         return file_pipe(path)
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         data = payload_get('data')
         windows = self.windows_for_payload(boss, window, payload_get, window_match_name='match')
         os_windows = tuple({w.os_window_id for w in windows if w})

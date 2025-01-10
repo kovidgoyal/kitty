@@ -4,8 +4,8 @@
 import ctypes
 import os
 import sys
-from collections.abc import Generator
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, Union
+from collections.abc import Callable, Generator
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 from kitty.constants import fonts_dir, is_macos
 from kitty.fast_data_types import (
@@ -38,7 +38,7 @@ else:
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: list[tuple[FontObject, bool, bool]] = []
-builtin_nerd_font_descriptor: Optional[FontObject] = None
+builtin_nerd_font_descriptor: FontObject | None = None
 
 
 def font_for_family(family: str) -> tuple[FontObject, bool, bool]:
@@ -162,7 +162,7 @@ def create_narrow_symbols(opts: Options) -> tuple[tuple[int, int, int], ...]:
 descriptor_overrides: dict[int, tuple[str, bool, bool]] = {}
 
 
-def descriptor_for_idx(idx: int) -> tuple[Union[FontObject, str], bool, bool]:
+def descriptor_for_idx(idx: int) -> tuple[FontObject | str, bool, bool]:
     ans = descriptor_overrides.get(idx)
     if ans is None:
         return current_faces[idx]
@@ -181,7 +181,7 @@ def dump_font_debug() -> None:
             log_error('  ' + s.identify_for_debug())
 
 
-def set_font_family(opts: Optional[Options] = None, override_font_size: Optional[float] = None, add_builtin_nerd_font: bool = False) -> None:
+def set_font_family(opts: Options | None = None, override_font_size: float | None = None, add_builtin_nerd_font: bool = False) -> None:
     global current_faces, builtin_nerd_font_descriptor
     opts = opts or defaults
     sz = override_font_size or opts.font_size
@@ -274,7 +274,7 @@ def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi:
 
 
 def shape_string(
-    text: str = "abcd", family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, path: Optional[str] = None
+    text: str = "abcd", family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, path: str | None = None
 ) -> list[tuple[int, int, int, tuple[int, ...]]]:
     with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
@@ -283,7 +283,7 @@ def shape_string(
         return test_shape(line, path)
 
 
-def show(rgba_data: Union[bytes, memoryview], width: int, height: int, fmt: int = 32) -> None:
+def show(rgba_data: bytes | memoryview, width: int, height: int, fmt: int = 32) -> None:
     from base64 import standard_b64encode
 
     from kittens.tui.images import GraphicsCommand
@@ -331,7 +331,7 @@ def test_render_string(
     print('\n')
 
 
-def test_fallback_font(qtext: Optional[str] = None, bold: bool = False, italic: bool = False) -> None:
+def test_fallback_font(qtext: str | None = None, bold: bool = False, italic: bool = False) -> None:
     with setup_for_testing():
         if qtext:
             trials = [qtext]

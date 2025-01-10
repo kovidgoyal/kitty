@@ -2,8 +2,9 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
+from collections.abc import Callable
 from contextlib import suppress
-from typing import Callable, Optional
+from typing import Optional
 
 from .constants import is_macos
 
@@ -53,7 +54,7 @@ character_key_name_aliases: dict[str, str] = {
 LookupFunc = Callable[[str, bool], Optional[int]]
 
 
-def null_lookup(name: str, case_sensitive: bool = False) -> Optional[int]:
+def null_lookup(name: str, case_sensitive: bool = False) -> int | None:
     return None
 
 
@@ -78,14 +79,14 @@ else:
         f.argtypes = [ctypes.c_char_p, ctypes.c_int]
         f.restype = ctypes.c_int
 
-        def xkb_lookup(name: str, case_sensitive: bool = False) -> Optional[int]:
+        def xkb_lookup(name: str, case_sensitive: bool = False) -> int | None:
             q = name.encode('utf-8')
             return f(q, int(case_sensitive)) or None
 
         return xkb_lookup
 
     def get_key_name_lookup() -> LookupFunc:
-        ans: Optional[LookupFunc] = getattr(get_key_name_lookup, 'ans', None)
+        ans: LookupFunc | None = getattr(get_key_name_lookup, 'ans', None)
         if ans is None:
             try:
                 ans = load_libxkb_lookup()

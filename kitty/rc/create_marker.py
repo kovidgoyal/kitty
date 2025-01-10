@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from kitty.options.utils import parse_marker_spec
 
@@ -40,7 +40,7 @@ Apply marker to the window this command is run in, rather than the active window
             self.fatal(f"Failed to parse marker specification {' '.join(args)} with error: {err}")
         return {'match': opts.match, 'self': opts.self, 'marker_spec': args}
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         args = payload_get('marker_spec')
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:

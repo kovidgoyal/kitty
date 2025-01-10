@@ -126,7 +126,7 @@ def weight_range_for_family(family: str) -> WeightRange:
 
 class FCScorer(Scorer):
 
-    weight_range: Optional[WeightRange] = None
+    weight_range: WeightRange | None = None
 
     def score(self, candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'fontconfig'
@@ -174,7 +174,7 @@ def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospa
 
 def find_best_match(
         family: str, bold: bool = False, italic: bool = False, monospaced: bool = True,
-        ignore_face: Optional[FontConfigPattern] = None, prefer_variable: bool = False,
+        ignore_face: FontConfigPattern | None = None, prefer_variable: bool = False,
 ) -> FontConfigPattern:
     from .common import find_best_match_in_candidates
     q = family_name_to_key(family)
@@ -203,7 +203,7 @@ def find_best_match(
     for possibility in tries:
         for key, map_key in (('postscript_name', 'ps_map'), ('full_name', 'full_map'), ('family', 'family_map')):
             map_key = cast(FontCollectionMapType, map_key)
-            val: Optional[str] = cast(Optional[str], possibility.get(key))
+            val: str | None = cast(Optional[str], possibility.get(key))
             if val:
                 candidates = font_map[map_key].get(family_name_to_key(val))
                 if candidates:

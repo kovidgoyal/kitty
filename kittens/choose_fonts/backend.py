@@ -6,7 +6,7 @@ import os
 import string
 import sys
 import tempfile
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict
 
 from kitty.cli import create_default_opts
 from kitty.conf.utils import to_color
@@ -67,10 +67,10 @@ class TextStyle(TypedDict):
 
 
 OptNames = Literal['font_family', 'bold_font', 'italic_font', 'bold_italic_font']
-FamilyKey = Tuple[OptNames, ...]
+FamilyKey = tuple[OptNames, ...]
 
 
-def opts_from_cmd(cmd: Dict[str, Any]) -> Tuple[Options, FamilyKey, float, float]:
+def opts_from_cmd(cmd: dict[str, Any]) -> tuple[Options, FamilyKey, float, float]:
     opts = Options()
     ts: TextStyle = cmd['text_style']
     opts.font_size = ts['font_size']
@@ -88,10 +88,10 @@ def opts_from_cmd(cmd: Dict[str, Any]) -> Tuple[Options, FamilyKey, float, float
     return opts, tuple(family_key), ts['dpi_x'], ts['dpi_y']
 
 
-BaseKey = Tuple[str, int, int]
-FaceKey = Tuple[str, BaseKey]
-RenderedSample = Tuple[bytes, Dict[str, Any]]
-RenderedSampleTransmit = Dict[str, Any]
+BaseKey = tuple[str, int, int]
+FaceKey = tuple[str, BaseKey]
+RenderedSample = tuple[bytes, dict[str, Any]]
+RenderedSampleTransmit = dict[str, Any]
 SAMPLE_TEXT = string.ascii_lowercase + ' ' + string.digits + ' ' + string.ascii_uppercase + ' ' + string.punctuation
 
 
@@ -100,11 +100,11 @@ class FD(TypedDict):
     name: NotRequired[str]
     tooltip: NotRequired[str]
     sample: NotRequired[str]
-    params: NotRequired[Tuple[str, ...]]
+    params: NotRequired[tuple[str, ...]]
 
 
 
-def get_features(features: Dict[str, Optional['FeatureData']]) -> Dict[str, FD]:
+def get_features(features: dict[str, Optional['FeatureData']]) -> dict[str, FD]:
     ans = {}
     for tag, data in features.items():
         kf = known_features.get(tag)
@@ -150,10 +150,10 @@ def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: flo
 
 def render_family_sample(
     opts: Options, family_key: FamilyKey, dpi_x: float, dpi_y: float, width: int, height: int, output_dir: str,
-    cache: Dict[FaceKey, RenderedSampleTransmit]
-) -> Dict[str, RenderedSampleTransmit]:
+    cache: dict[FaceKey, RenderedSampleTransmit]
+) -> dict[str, RenderedSampleTransmit]:
     base_key: BaseKey = opts.font_family.created_from_string, width, height
-    ans: Dict[str, RenderedSampleTransmit] = {}
+    ans: dict[str, RenderedSampleTransmit] = {}
     font_files = get_font_files(opts)
     for x in family_key:
         key: FaceKey = x + ': ' + str(getattr(opts, x)), base_key
@@ -177,7 +177,7 @@ def render_family_sample(
     return ans
 
 
-ResolvedFace = Dict[Literal['family', 'spec', 'setting'], str]
+ResolvedFace = dict[Literal['family', 'spec', 'setting'], str]
 
 
 def spec_for_descriptor(d: Descriptor, font_size: float) -> str:
@@ -185,9 +185,9 @@ def spec_for_descriptor(d: Descriptor, font_size: float) -> str:
     return spec_for_face(d['family'], face).as_setting
 
 
-def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:
+def resolved_faces(opts: Options) -> dict[OptNames, ResolvedFace]:
     font_files = get_font_files(opts)
-    ans: Dict[OptNames, ResolvedFace] = {}
+    ans: dict[OptNames, ResolvedFace] = {}
     def d(key: Literal['medium', 'bold', 'italic', 'bi'], opt_name: OptNames) -> None:
         descriptor = font_files[key]
         ans[opt_name] = {
@@ -203,7 +203,7 @@ def resolved_faces(opts: Options) -> Dict[OptNames, ResolvedFace]:
 
 def main() -> None:
     setup_debug_print()
-    cache: Dict[FaceKey, RenderedSampleTransmit] = {}
+    cache: dict[FaceKey, RenderedSampleTransmit] = {}
     for line in sys.stdin.buffer:
         cmd = json.loads(line)
         action = cmd.get('action', '')
@@ -222,7 +222,7 @@ def main() -> None:
             raise SystemExit(f'Unknown action: {action}')
 
 
-def query_kitty() -> Dict[str, str]:
+def query_kitty() -> dict[str, str]:
     import subprocess
     ans = {}
     for line in subprocess.check_output([kitten_exe(), 'query-terminal']).decode().splitlines():

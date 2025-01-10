@@ -6,7 +6,7 @@ import os
 import shutil
 from collections.abc import Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, NamedTuple, Optional, TypedDict
+from typing import Any, NamedTuple, TypedDict
 
 from .boss import Boss
 from .child import Child
@@ -360,7 +360,7 @@ Relative paths are resolved relative to the :ref:`kitty config directory
 '''
 
 
-def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
+def parse_launch_args(args: Sequence[str] | None = None) -> LaunchSpec:
     args = list(args or ())
     try:
         opts, args = parse_args(result_class=LaunchCLIOptions, args=args, ospec=options_spec)
@@ -369,7 +369,7 @@ def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
     return LaunchSpec(opts, args)
 
 
-def get_env(opts: LaunchCLIOptions, active_child: Optional[Child] = None, base_env: Optional[dict[str,str]] = None) -> dict[str, str]:
+def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env: dict[str,str] | None = None) -> dict[str, str]:
     env: dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
@@ -381,9 +381,9 @@ def get_env(opts: LaunchCLIOptions, active_child: Optional[Child] = None, base_e
     return env
 
 
-def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab] = None) -> Optional[Tab]:
+def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None = None) -> Tab | None:
 
-    def create_tab(tm: Optional[TabManager] = None) -> Tab:
+    def create_tab(tm: TabManager | None = None) -> Tab:
         if tm is None:
             oswid = boss.add_os_window(
                 wclass=opts.os_window_class,
@@ -413,7 +413,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
 watcher_modules: dict[str, Any] = {}
 
 
-def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
+def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
     if not watchers:
         return None
     import runpy
@@ -469,18 +469,18 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
 class LaunchKwds(TypedDict):
 
     allow_remote_control: bool
-    remote_control_passwords: Optional[dict[str, Sequence[str]]]
-    cwd_from: Optional[CwdRequest]
-    cwd: Optional[str]
-    location: Optional[str]
-    override_title: Optional[str]
-    copy_colors_from: Optional[Window]
-    marker: Optional[str]
-    cmd: Optional[list[str]]
-    overlay_for: Optional[int]
-    stdin: Optional[bytes]
+    remote_control_passwords: dict[str, Sequence[str]] | None
+    cwd_from: CwdRequest | None
+    cwd: str | None
+    location: str | None
+    override_title: str | None
+    copy_colors_from: Window | None
+    marker: str | None
+    cmd: list[str] | None
+    overlay_for: int | None
+    stdin: bytes | None
     hold: bool
-    bias: Optional[float]
+    bias: float | None
 
 
 def apply_colors(window: Window, spec: Sequence[str]) -> None:
@@ -519,8 +519,8 @@ force_window_launch = ForceWindowLaunch()
 non_window_launch_types = 'background', 'clipboard', 'primary'
 
 
-def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequence[str]) -> Optional[dict[str, Sequence[str]]]:
-    remote_control_restrictions: Optional[dict[str, Sequence[str]]] = None
+def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequence[str]) -> dict[str, Sequence[str]] | None:
+    remote_control_restrictions: dict[str, Sequence[str]] | None = None
     if allow_remote_control and passwords:
         from kitty.options.utils import remote_control_password
         remote_control_restrictions = {}
@@ -534,13 +534,13 @@ def _launch(
     boss: Boss,
     opts: LaunchCLIOptions,
     args: list[str],
-    target_tab: Optional[Tab] = None,
+    target_tab: Tab | None = None,
     force_target_tab: bool = False,
-    active: Optional[Window] = None,
+    active: Window | None = None,
     is_clone_launch: str = '',
-    rc_from_window: Optional[Window] = None,
-    base_env: Optional[dict[str, str]] = None,
-) -> Optional[Window]:
+    rc_from_window: Window | None = None,
+    base_env: dict[str, str] | None = None,
+) -> Window | None:
     active = active or boss.active_window_for_cwd
     if active:
         active_child = active.child
@@ -708,13 +708,13 @@ def launch(
     boss: Boss,
     opts: LaunchCLIOptions,
     args: list[str],
-    target_tab: Optional[Tab] = None,
+    target_tab: Tab | None = None,
     force_target_tab: bool = False,
-    active: Optional[Window] = None,
+    active: Window | None = None,
     is_clone_launch: str = '',
-    rc_from_window: Optional[Window] = None,
-    base_env: Optional[dict[str, str]] = None,
-) -> Optional[Window]:
+    rc_from_window: Window | None = None,
+    base_env: dict[str, str] | None = None,
+) -> Window | None:
     active = active or boss.active_window_for_cwd
     if opts.keep_focus and active:
         orig, active.ignore_focus_changes = active.ignore_focus_changes, True
@@ -844,7 +844,7 @@ class EditCmd:
     def on_edit_window_close(self, window: Window) -> None:
         self.check_status()
 
-    def check_status(self, timer_id: Optional[int] = None) -> None:
+    def check_status(self, timer_id: int | None = None) -> None:
         if self.abort_signaled:
             return
         boss = get_boss()
@@ -880,7 +880,7 @@ class CloneCmd:
 
     def __init__(self, msg: str) -> None:
         self.args: list[str] = []
-        self.env: Optional[dict[str, str]] = None
+        self.env: dict[str, str] | None = None
         self.cwd = ''
         self.shell = ''
         self.envfmt = 'default'

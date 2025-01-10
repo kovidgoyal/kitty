@@ -3,10 +3,11 @@
 
 import os
 import sys
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from enum import Enum, auto
 from functools import wraps
-from typing import Any, Callable, Dict, Generator, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 
 from kitty.fast_data_types import Color
 from kitty.rgb import color_as_sharp, to_color
@@ -22,7 +23,7 @@ RESTORE_PRIVATE_MODE_VALUES = '\033[?r'
 SAVE_COLORS = '\033[#P'
 RESTORE_COLORS = '\033[#Q'
 F = TypeVar('F')
-all_cmds: Dict[str, Callable[..., Any]] = {}
+all_cmds: dict[str, Callable[..., Any]] = {}
 
 
 class Mode(Enum):
@@ -146,7 +147,7 @@ def set_cursor_shape(shape: str = 'block', blink: bool = True) -> str:
 
 
 @cmd
-def set_scrolling_region(screen_size: Optional['ScreenSize'] = None, top: Optional[int] = None, bottom: Optional[int] = None) -> str:
+def set_scrolling_region(screen_size: Optional['ScreenSize'] = None, top: int | None = None, bottom: int | None = None) -> str:
     if screen_size is None:
         return '\033[r'
     if top is None:
@@ -192,7 +193,7 @@ def colored(
     text: str,
     color: ColorSpec,
     intense: bool = False,
-    reset_to: Optional[ColorSpec] = None,
+    reset_to: ColorSpec | None = None,
     reset_to_intense: bool = False
 ) -> str:
     e = color_code(color, intense)
@@ -207,16 +208,16 @@ def faint(text: str) -> str:
 @cmd
 def styled(
     text: str,
-    fg: Optional[ColorSpec] = None,
-    bg: Optional[ColorSpec] = None,
+    fg: ColorSpec | None = None,
+    bg: ColorSpec | None = None,
     fg_intense: bool = False,
     bg_intense: bool = False,
-    italic: Optional[bool] = None,
-    bold: Optional[bool] = None,
-    underline: Optional[UnderlineLiteral] = None,
-    underline_color: Optional[ColorSpec] = None,
-    reverse: Optional[bool] = None,
-    dim: Optional[bool] = None,
+    italic: bool | None = None,
+    bold: bool | None = None,
+    underline: UnderlineLiteral | None = None,
+    underline_color: ColorSpec | None = None,
+    reverse: bool | None = None,
+    dim: bool | None = None,
 ) -> str:
     start, end = [], []
     if fg is not None:
@@ -254,7 +255,7 @@ def styled(
     return '\033[{}m{}\033[{}m'.format(';'.join(start), text, ';'.join(end))
 
 
-def serialize_gr_command(cmd: Dict[str, Union[int, str]], payload: Optional[bytes] = None) -> bytes:
+def serialize_gr_command(cmd: dict[str, int | str], payload: bytes | None = None) -> bytes:
     from .images import GraphicsCommand
     gc = GraphicsCommand()
     for k, v in cmd.items():
@@ -263,7 +264,7 @@ def serialize_gr_command(cmd: Dict[str, Union[int, str]], payload: Optional[byte
 
 
 @cmd
-def gr_command(cmd: Union[Dict[str, Union[int, str]], 'GraphicsCommandType'], payload: Optional[bytes] = None) -> str:
+def gr_command(cmd: Union[dict[str, int | str], 'GraphicsCommandType'], payload: bytes | None = None) -> str:
     if isinstance(cmd, dict):
         raw = serialize_gr_command(cmd, payload)
     else:
@@ -358,7 +359,7 @@ def alternate_screen() -> Generator[None, None, None]:
 
 
 @contextmanager
-def raw_mode(fd: Optional[int] = None) -> Generator[None, None, None]:
+def raw_mode(fd: int | None = None) -> Generator[None, None, None]:
     import termios
     import tty
     if fd is None:
@@ -373,15 +374,15 @@ def raw_mode(fd: Optional[int] = None) -> Generator[None, None, None]:
 
 @cmd
 def set_default_colors(
-    fg: Optional[Union[Color, str]] = None,
-    bg: Optional[Union[Color, str]] = None,
-    cursor: Optional[Union[Color, str]] = None,
-    select_bg: Optional[Union[Color, str]] = None,
-    select_fg: Optional[Union[Color, str]] = None
+    fg: Color | str | None = None,
+    bg: Color | str | None = None,
+    cursor: Color | str | None = None,
+    select_bg: Color | str | None = None,
+    select_fg: Color | str | None = None
 ) -> str:
     ans = ''
 
-    def item(which: Optional[Union[Color, str]], num: int) -> None:
+    def item(which: Color | str | None, num: int) -> None:
         nonlocal ans
         if which is None:
             ans += f'\x1b]1{num}\x1b\\'
@@ -418,7 +419,7 @@ def overlay_ready() -> str:
 
 
 @cmd
-def write_to_clipboard(data: Union[str, bytes], use_primary: bool = False) -> str:
+def write_to_clipboard(data: str | bytes, use_primary: bool = False) -> str:
     from base64 import standard_b64encode
     fmt = 'p' if use_primary else 'c'
     if isinstance(data, str):
@@ -435,7 +436,7 @@ def request_from_clipboard(use_primary: bool = False) -> str:
 # Boilerplate to make operations available via Handler.cmd  {{{
 
 
-def writer(handler: HandlerType, func: Callable[..., Union[bytes, str]]) -> Callable[..., None]:
+def writer(handler: HandlerType, func: Callable[..., bytes | str]) -> Callable[..., None]:
     @wraps(func)
     def f(*a: Any, **kw: Any) -> None:
         handler.write(func(*a, **kw))

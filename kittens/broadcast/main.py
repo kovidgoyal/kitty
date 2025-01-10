@@ -4,7 +4,7 @@
 import sys
 from base64 import standard_b64encode
 from gettext import gettext as _
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from kitty.cli import parse_args
 from kitty.cli_stub import BroadcastCLIOptions
@@ -20,7 +20,7 @@ from ..tui.loop import Loop
 from ..tui.operations import RESTORE_CURSOR, SAVE_CURSOR, styled
 
 
-def session_command(payload: Dict[str, Any], start: bool = True) -> bytes:
+def session_command(payload: dict[str, Any], start: bool = True) -> bytes:
     payload = payload.copy()
     payload['data'] = 'session:' + ('start' if start else 'end')
     send = create_basic_command('send-text', payload, no_response=True)
@@ -29,7 +29,7 @@ def session_command(payload: Dict[str, Any], start: bool = True) -> bytes:
 
 class Broadcast(Handler):
 
-    def __init__(self, opts: BroadcastCLIOptions, initial_strings: List[str]) -> None:
+    def __init__(self, opts: BroadcastCLIOptions, initial_strings: list[str]) -> None:
         self.opts = opts
         self.hide_input = False
         self.initial_strings = initial_strings
@@ -128,11 +128,11 @@ help_text = 'Broadcast typed text to kitty windows. By default text is sent to a
 usage = '[initial text to send ...]'
 
 
-def parse_broadcast_args(args: List[str]) -> Tuple[BroadcastCLIOptions, List[str]]:
+def parse_broadcast_args(args: list[str]) -> tuple[BroadcastCLIOptions, list[str]]:
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten broadcast', result_class=BroadcastCLIOptions)
 
 
-def main(args: List[str]) -> Optional[Dict[str, Any]]:
+def main(args: list[str]) -> dict[str, Any] | None:
     try:
         opts, items = parse_broadcast_args(args[1:])
     except SystemExit as e:

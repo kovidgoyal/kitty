@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from kitty.cli_stub import LaunchCLIOptions
 from kitty.launch import launch as do_launch
@@ -80,7 +80,7 @@ instead of the active tab
             ans[attr] = val
         return ans
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         default_opts = parse_launch_args()[0]
         opts = LaunchCLIOptions()
         for key, default_value in default_opts.__dict__.items():
@@ -92,7 +92,7 @@ instead of the active tab
             setattr(opts, key, val)
         ceval = payload_get('copy_env')
         opts.copy_env = False
-        base_env: Optional[Dict[str, str]] = None
+        base_env: dict[str, str] | None = None
         if ceval:
             if isinstance(ceval, list):
                 base_env = {}

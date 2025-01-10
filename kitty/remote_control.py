@@ -15,7 +15,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Optional,
-    Union,
     cast,
 )
 
@@ -82,7 +81,7 @@ def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> d
 
 class CMDChecker:
 
-    def __call__(self, pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> Optional[bool]:
+    def __call__(self, pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> bool | None:
         return False
 
 
@@ -105,7 +104,7 @@ def fnmatch_pattern(pat: str) -> 're.Pattern[str]':
 
 
 def remote_control_allowed(
-    pcmd: dict[str, Any], remote_control_passwords: Optional[dict[str, Sequence[str]]],
+    pcmd: dict[str, Any], remote_control_passwords: dict[str, Sequence[str]] | None,
     window: Optional['Window'], extra_data: dict[str, Any]
 ) -> bool:
     if not remote_control_passwords:
@@ -168,7 +167,7 @@ def password_authorizer(auth_items: frozenset[str]) -> PasswordAuthorizer:
 user_password_allowed: dict[str, bool] = {}
 
 
-def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> Optional[bool]:
+def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> bool | None:
     sid = pcmd.get('stream_id', '')
     if sid and active_streams.get(sid, '') == pcmd['cmd']:
         return True
@@ -205,8 +204,8 @@ def close_active_stream(stream_id: str) -> None:
 
 
 def handle_cmd(
-    boss: BossType, window: Optional[WindowType], cmd: dict[str, Any], peer_id: int, self_window: Optional[WindowType]
-) -> Union[dict[str, Any], None, AsyncResponse]:
+    boss: BossType, window: WindowType | None, cmd: dict[str, Any], peer_id: int, self_window: WindowType | None
+) -> dict[str, Any] | None | AsyncResponse:
     v = cmd['version']
     no_response = cmd.get('no_response', False)
     if tuple(v)[:2] > version[:2]:
@@ -326,7 +325,7 @@ class SocketIO:
             self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
-    def send(self, data: Union[bytes, Iterable[Union[str, bytes]]]) -> None:
+    def send(self, data: bytes | Iterable[str | bytes]) -> None:
         import socket
         with self.socket.makefile('wb') as out:
             if isinstance(data, bytes):
@@ -362,11 +361,11 @@ class RCIO(TTYIO):
 
 
 def do_io(
-    to: Optional[str], original_cmd: dict[str, Any], no_response: bool, response_timeout: float, encrypter: 'CommandEncrypter'
+    to: str | None, original_cmd: dict[str, Any], no_response: bool, response_timeout: float, encrypter: 'CommandEncrypter'
 ) -> dict[str, Any]:
     payload = original_cmd.get('payload')
     if not isinstance(payload, GeneratorType):
-        send_data: Union[bytes, Iterator[bytes]] = encode_send(encrypter(original_cmd))
+        send_data: bytes | Iterator[bytes] = encode_send(encrypter(original_cmd))
     else:
         def send_generator() -> Iterator[bytes]:
             assert payload is not None
@@ -375,7 +374,7 @@ def do_io(
                 yield encode_send(encrypter(original_cmd))
         send_data = send_generator()
 
-    io: Union[SocketIO, RCIO] = SocketIO(to) if to else RCIO()
+    io: SocketIO | RCIO = SocketIO(to) if to else RCIO()
     with io:
         io.send(send_data)
         if no_response:
@@ -462,7 +461,7 @@ def send_response_to_client(data: Any = None, error: str = '', peer_id: int = 0,
     if active_async_requests.pop(async_id, None) is None:
         return
     if error:
-        response: dict[str, Union[bool, int, str]] = {'ok': False, 'error': error}
+        response: dict[str, bool | int | str] = {'ok': False, 'error': error}
     else:
         response = {'ok': True, 'data': data}
     if peer_id > 0:

@@ -5,9 +5,11 @@ import builtins
 import re
 import textwrap
 import typing
+from collections.abc import Callable, Iterable, Iterator
 from functools import lru_cache
 from importlib import import_module
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Set, Tuple, Union, cast
+from re import Match
+from typing import Any, Optional, Union, cast
 
 import kitty.conf.utils as generic_parsers
 from kitty.constants import website_url
@@ -42,11 +44,11 @@ def expand_opt_references(conf_name: str, text: str) -> str:
 
 
 @run_once
-def ref_map() -> Dict[str, Dict[str, str]]:
+def ref_map() -> dict[str, dict[str, str]]:
     import json
 
     from ..fast_data_types import get_docs_ref_map
-    ans: Dict[str, Dict[str, str]] = json.loads(get_docs_ref_map())
+    ans: dict[str, dict[str, str]] = json.loads(get_docs_ref_map())
     return ans
 
 
@@ -87,7 +89,7 @@ def remove_markup(text: str) -> str:
 
     imap = {'iss': 'issues-', 'pull': 'pull-', 'disc': 'discussions-'}
 
-    def extract(m: 'Match[str]') -> Tuple[str, str]:
+    def extract(m: 'Match[str]') -> tuple[str, str]:
         parts = m.group(2).split('<')
         t = parts[0].strip()
         q = parts[-1].rstrip('>')
@@ -123,8 +125,8 @@ def strip_inline_literal(text: str) -> str:
     return re.sub(r'``([^`]+)``', r'`\1`', text, flags=re.DOTALL)
 
 
-def iter_blocks(lines: Iterable[str]) -> Iterator[Tuple[List[str], int]]:
-    current_block: List[str] = []
+def iter_blocks(lines: Iterable[str]) -> Iterator[tuple[list[str], int]]:
+    current_block: list[str] = []
     prev_indent = 0
     for line in lines:
         indent_size = len(line) - len(line.lstrip())
@@ -171,9 +173,9 @@ def render_block(text: str, comment_symbol: str = '#: ') -> str:
 
 class CoalescedIteratorData:
 
-    option_groups: Dict[int, List['Option']] = {}
-    action_groups: Dict[str, List['Mapping']] = {}
-    coalesced: Set[int] = set()
+    option_groups: dict[int, list['Option']] = {}
+    action_groups: dict[str, list['Mapping']] = {}
+    coalesced: set[int] = set()
     initialized: bool = False
     kitty_mod: str = 'kitty_mod'
 
@@ -182,8 +184,8 @@ class CoalescedIteratorData:
             return
         self.root = root
         option_groups = self.option_groups = {}
-        current_group: List[Option] = []
-        action_groups: Dict[str, List[Mapping]] = {}
+        current_group: list[Option] = []
+        action_groups: dict[str, list[Mapping]] = {}
         self.action_groups = action_groups
         coalesced = self.coalesced = set()
         self.kitty_mod = 'kitty_mod'
@@ -209,18 +211,18 @@ class CoalescedIteratorData:
         if current_group:
             option_groups[id(current_group[0])] = current_group[1:]
 
-    def option_group_for_option(self, opt: 'Option') -> List['Option']:
+    def option_group_for_option(self, opt: 'Option') -> list['Option']:
         return self.option_groups.get(id(opt), [])
 
-    def action_group_for_action(self, ac: 'Mapping') -> List['Mapping']:
+    def action_group_for_action(self, ac: 'Mapping') -> list['Mapping']:
         return self.action_groups.get(ac.name, [])
 
 
 class Option:
 
     def __init__(
-        self, name: str, defval: str, macos_default: Union[Unset, str], parser_func: ParserFuncType,
-        long_text: str, documented: bool, group: 'Group', choices: Tuple[str, ...], ctype: str,
+        self, name: str, defval: str, macos_default: Unset | str, parser_func: ParserFuncType,
+        long_text: str, documented: bool, group: 'Group', choices: tuple[str, ...], ctype: str,
         has_secret: bool = False,
     ):
         self.name = name
@@ -242,8 +244,8 @@ class Option:
     def is_color_table_color(self) -> bool:
         return self.name.startswith('color') and self.name[5:].isdigit()
 
-    def as_conf(self, commented: bool = False, level: int = 0, option_group: List['Option'] = []) -> List[str]:
-        ans: List[str] = []
+    def as_conf(self, commented: bool = False, level: int = 0, option_group: list['Option'] = []) -> list[str]:
+        ans: list[str] = []
         a = ans.append
         if not self.documented:
             return ans
@@ -261,10 +263,10 @@ class Option:
         return ans
 
     def as_rst(
-        self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]],
-        kitty_mod: str, level: int = 0, option_group: List['Option'] = []
-    ) -> List[str]:
-        ans: List[str] = []
+        self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]],
+        kitty_mod: str, level: int = 0, option_group: list['Option'] = []
+    ) -> list[str]:
+        ans: list[str] = []
         a = ans.append
         if not self.documented:
             return ans
@@ -301,7 +303,7 @@ class MultiOption:
         self.long_text = long_text
         self.group = group
         self.has_secret = has_secret
-        self.items: List[MultiVal] = []
+        self.items: list[MultiVal] = []
 
     def add_value(self, val_as_str: str, add_to_default: bool, documented: bool, only: Only) -> None:
         self.items.append(MultiVal(val_as_str, add_to_default, documented, only))
@@ -309,8 +311,8 @@ class MultiOption:
     def __iter__(self) -> Iterator[MultiVal]:
         yield from self.items
 
-    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
-        ans: List[str] = []
+    def as_conf(self, commented: bool = False, level: int = 0) -> list[str]:
+        ans: list[str] = []
         a = ans.append
         documented = False
         for k in self.items:
@@ -330,8 +332,8 @@ class MultiOption:
             a('')
         return ans
 
-    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]], kitty_mod: str, level: int = 0) -> List[str]:
-        ans: List[str] = []
+    def as_rst(self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]], kitty_mod: str, level: int = 0) -> list[str]:
+        ans: list[str] = []
         a = ans.append
         a(f'.. opt:: {conf_name}.{self.name}')
         documented = tuple(x for x in self.items if x.documented)
@@ -374,8 +376,8 @@ class Mapping:
     def key_text(self) -> str:
         return ''
 
-    def as_conf(self, commented: bool = False, level: int = 0, action_group: List['Mapping'] = []) -> List[str]:
-        ans: List[str] = []
+    def as_conf(self, commented: bool = False, level: int = 0, action_group: list['Mapping'] = []) -> list[str]:
+        ans: list[str] = []
         if not self.documented:
             return ans
         a = ans.append
@@ -391,10 +393,10 @@ class Mapping:
         return ans
 
     def as_rst(
-        self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]],
-        kitty_mod: str, level: int = 0, action_group: List['Mapping'] = []
-    ) -> List[str]:
-        ans: List[str] = []
+        self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]],
+        kitty_mod: str, level: int = 0, action_group: list['Mapping'] = []
+    ) -> list[str]:
+        ans: list[str] = []
         a = ans.append
         if not self.documented:
             return ans
@@ -490,7 +492,7 @@ class Group:
         self.title = title
         self.start_text = start_text
         self.end_text = ''
-        self.items: List[GroupItem] = []
+        self.items: list[GroupItem] = []
         self.parent = parent
 
     def append(self, item: GroupItem) -> None:
@@ -520,8 +522,8 @@ class Group:
             else:
                 yield x
 
-    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]], kitty_mod: str = 'kitty_mod', level: int = 0) -> List[str]:
-        ans: List[str] = []
+    def as_rst(self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]], kitty_mod: str = 'kitty_mod', level: int = 0) -> list[str]:
+        ans: list[str] = []
         a = ans.append
         if level:
             a('')
@@ -553,8 +555,8 @@ class Group:
                 a(self.end_text)
         return ans
 
-    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
-        ans: List[str] = []
+    def as_conf(self, commented: bool = False, level: int = 0) -> list[str]:
+        ans: list[str] = []
         a = ans.append
         if level:
             a('#: ' + self.title + ' {{''{')
@@ -582,8 +584,8 @@ class Group:
             a('')
         else:
             map_groups = []
-            start: Optional[int] = None
-            count: Optional[int] = None
+            start: int | None = None
+            count: int | None = None
             for i, line in enumerate(ans):
                 if line.startswith('map ') or line.startswith('mouse_map '):
                     if start is None:
@@ -632,7 +634,7 @@ def resolve_import(name: str, module: Any = None) -> ParserFuncType:
 
 class Action:
 
-    def __init__(self, name: str, option_type: str, fields: Dict[str, str], imports: Iterable[str]):
+    def __init__(self, name: str, option_type: str, fields: dict[str, str], imports: Iterable[str]):
         self.name = name
         self._parser_func = option_type
         self.fields = fields
@@ -654,22 +656,22 @@ class Definition:
         self.coalesced_iterator_data = CoalescedIteratorData()
         self.root_group = Group('', '', self.coalesced_iterator_data)
         self.current_group = self.root_group
-        self.option_map: Dict[str, Option] = {}
-        self.multi_option_map: Dict[str, MultiOption] = {}
-        self.shortcut_map: Dict[str, List[ShortcutMapping]] = {}
-        self.mouse_map: Dict[str, List[MouseMapping]] = {}
+        self.option_map: dict[str, Option] = {}
+        self.multi_option_map: dict[str, MultiOption] = {}
+        self.shortcut_map: dict[str, list[ShortcutMapping]] = {}
+        self.mouse_map: dict[str, list[MouseMapping]] = {}
         self.actions = {a.name: a.resolve_imports(self.module_for_parsers) for a in actions}
-        self.deprecations: Dict[ParserFuncType, Tuple[str, ...]] = {}
+        self.deprecations: dict[ParserFuncType, tuple[str, ...]] = {}
 
     def iter_all_non_groups(self) -> Iterator[NonGroups]:
         yield from self.root_group.iter_all_non_groups()
 
-    def iter_all_options(self) -> Iterator[Union[Option, MultiOption]]:
+    def iter_all_options(self) -> Iterator[Option | MultiOption]:
         for x in self.iter_all_non_groups():
             if isinstance(x, (Option, MultiOption)):
                 yield x
 
-    def iter_all_maps(self, which: str = 'map') -> Iterator[Union[ShortcutMapping, MouseMapping]]:
+    def iter_all_maps(self, which: str = 'map') -> Iterator[ShortcutMapping | MouseMapping]:
         for x in self.iter_all_non_groups():
             if isinstance(x, ShortcutMapping) and which in ('map', '*'):
                 yield x
@@ -699,11 +701,11 @@ class Definition:
             self.current_group = self.current_group.parent
 
     def add_option(
-        self, name: str, defval: Union[str, float, int, bool],
+        self, name: str, defval: str | float | int | bool,
         option_type: str = 'str', long_text: str = '',
         documented: bool = True, add_to_default: bool = False,
-        only: Only = '', macos_default: Union[Unset, str] = unset,
-        choices: Tuple[str, ...] = (),
+        only: Only = '', macos_default: Unset | str = unset,
+        choices: tuple[str, ...] = (),
         ctype: str = '', has_secret: bool = False,
     ) -> None:
         if isinstance(defval, bool):
@@ -747,10 +749,10 @@ class Definition:
     def add_deprecation(self, parser_name: str, *aliases: str) -> None:
         self.deprecations[self.parser_func(parser_name)] = aliases
 
-    def as_conf(self, commented: bool = False) -> List[str]:
+    def as_conf(self, commented: bool = False) -> list[str]:
         self.coalesced_iterator_data.initialize(self.root_group)
         return self.root_group.as_conf(commented)
 
-    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]]) -> List[str]:
+    def as_rst(self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]]) -> list[str]:
         self.coalesced_iterator_data.initialize(self.root_group)
         return self.root_group.as_rst(conf_name, shortcut_slugs)

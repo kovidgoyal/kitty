@@ -3,14 +3,12 @@
 
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from functools import lru_cache, partial, wraps
 from string import Formatter as StringFormatter
 from typing import (
     Any,
-    Callable,
     NamedTuple,
-    Optional,
 )
 
 from .borders import Border, BorderColor
@@ -45,10 +43,10 @@ class TabBarData(NamedTuple):
     num_window_groups: int
     layout_name: str
     has_activity_since_last_focus: bool
-    active_fg: Optional[int]
-    active_bg: Optional[int]
-    inactive_fg: Optional[int]
-    inactive_bg: Optional[int]
+    active_fg: int | None
+    active_bg: int | None
+    inactive_fg: int | None
+    inactive_bg: int | None
     num_of_windows_with_progress: int
     total_progress: int
     last_focused_window_with_progress_id: int
@@ -66,7 +64,7 @@ class DrawData(NamedTuple):
     inactive_bg: Color
     default_bg: Color
     title_template: str
-    active_title_template: Optional[str]
+    active_title_template: str | None
     tab_activity_symbol: str
     powerline_style: PowerlineStyle
     tab_bar_edge: EdgeLiteral
@@ -170,8 +168,8 @@ class SupSub:
 
 
 class ExtraData:
-    prev_tab: Optional[TabBarData] = None
-    next_tab: Optional[TabBarData] = None
+    prev_tab: TabBarData | None = None
+    next_tab: TabBarData | None = None
     # true if the draw_tab function is called just for layout. In such cases,
     # if drawing is expensive the draw_tab function should avoid drawing and
     # just move the cursor to its final position, as if drawing was performed.
@@ -574,7 +572,7 @@ class TabBar:
         else:
             self.align = lambda: None
 
-    def patch_colors(self, spec: dict[str, Optional[int]]) -> None:
+    def patch_colors(self, spec: dict[str, int | None]) -> None:
         opts = get_options()
         atf = spec.get('active_tab_foreground')
         if isinstance(atf, int):
@@ -745,7 +743,7 @@ class TabBar:
         self.screen.reset_callbacks()
         del self.screen
 
-    def tab_at(self, x: int) -> Optional[int]:
+    def tab_at(self, x: int) -> int | None:
         if self.laid_out_once:
             x = (x - self.window_geometry.left) // self.cell_width
             for i, (a, b) in enumerate(self.cell_ranges):

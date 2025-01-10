@@ -6,7 +6,7 @@ import operator
 from collections import defaultdict
 from collections.abc import Generator, Iterable, Sequence
 from functools import lru_cache
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 from kitty.fast_data_types import CTFace, coretext_all_fonts
 from kitty.typing import CoreTextFont
@@ -109,7 +109,7 @@ def weight_range_for_family(family: str) -> WeightRange:
 
 
 class CTScorer(Scorer):
-    weight_range: Optional[WeightRange] = None
+    weight_range: WeightRange | None = None
 
     def score(self, candidate: Descriptor) -> Score:
         assert candidate['descriptor_type'] == 'core_text'
@@ -167,7 +167,7 @@ def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospa
 
 
 def find_best_match(
-    family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[CoreTextFont] = None,
+    family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: CoreTextFont | None = None,
     prefer_variable: bool = False
 ) -> CoreTextFont:
     q = family_name_to_key(family)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Dict, Tuple, Type
 
 from .base import Layout
 from .grid import Grid
@@ -10,7 +9,7 @@ from .stack import Stack
 from .tall import Fat, Tall
 from .vertical import Horizontal, Vertical
 
-all_layouts: Dict[str, Type[Layout]] = {
+all_layouts: dict[str, type[Layout]] = {
     Stack.name: Stack,
     Tall.name: Tall,
     Fat.name: Fat,
@@ -20,11 +19,11 @@ all_layouts: Dict[str, Type[Layout]] = {
     Splits.name: Splits,
 }
 
-KeyType = Tuple[str, int, int, str]
+KeyType = tuple[str, int, int, str]
 
 
 class CreateLayoutObjectFor:
-    cache: Dict[KeyType, Layout] = {}
+    cache: dict[KeyType, Layout] = {}
 
     def __call__(
         self,

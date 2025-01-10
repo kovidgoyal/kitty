@@ -3,7 +3,7 @@
 
 
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kitty.cli import parse_args
 from kitty.cli_stub import RCOptions, ResizeCLIOptions
@@ -22,7 +22,7 @@ global_opts = RCOptions()
 
 class Resize(Handler):
 
-    print_on_fail: Optional[str] = None
+    print_on_fail: str | None = None
 
     def __init__(self, opts: ResizeCLIOptions):
         self.opts = opts
@@ -48,7 +48,7 @@ class Resize(Handler):
         send = {'cmd': resize_window.name, 'version': version, 'payload': payload, 'no_response': False}
         self.write(encode_send(send))
 
-    def on_kitty_cmd_response(self, response: Dict[str, Any]) -> None:
+    def on_kitty_cmd_response(self, response: dict[str, Any]) -> None:
         if not response.get('ok'):
             err = response['error']
             if response.get('tb'):
@@ -114,7 +114,7 @@ The base vertical increment.
 '''.format
 
 
-def main(args: List[str]) -> None:
+def main(args: list[str]) -> None:
     msg = 'Resize the current window'
     try:
         cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'resize_window', result_class=ResizeCLIOptions)

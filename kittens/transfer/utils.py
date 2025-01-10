@@ -2,8 +2,8 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 _cwd = _home = ''
 

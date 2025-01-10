@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from kitty.constants import appname
 
@@ -62,7 +62,7 @@ using this option means that you will not be notified of failures.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'paths': args, 'override': opts.override, 'ignore_overrides': opts.ignore_overrides}
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         from kitty.cli import parse_override
         from kitty.utils import resolve_abs_or_config_path
         paths = tuple(map(resolve_abs_or_config_path, payload_get('paths', missing=())))

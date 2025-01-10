@@ -2,10 +2,10 @@
 # License: GPLv3 Copyright: 2023, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import lru_cache, partial
 from itertools import count
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from .constants import read_kitty_resource
 from .fast_data_types import (

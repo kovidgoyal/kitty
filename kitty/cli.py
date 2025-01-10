@@ -5,11 +5,11 @@ import os
 import re
 import sys
 from collections import deque
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from re import Match
-from typing import Any, Callable, Optional, TypeVar, Union, cast
+from typing import Any, TypeVar, Union, cast
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
@@ -105,7 +105,7 @@ class OptionDict(TypedDict):
     help: str
     choices: frozenset[str]
     type: str
-    default: Optional[str]
+    default: str | None
     condition: bool
     completion: CompletionSpec
 
@@ -378,7 +378,7 @@ def disc(x: str) -> str:
 OptionSpecSeq = list[Union[str, OptionDict]]
 
 
-def parse_option_spec(spec: Optional[str] = None) -> tuple[OptionSpecSeq, OptionSpecSeq]:
+def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpecSeq]:
     if spec is None:
         spec = options_spec()
     NORMAL, METADATA, HELP = 'NORMAL', 'METADATA', 'HELP'
@@ -569,7 +569,7 @@ class PrintHelpForSeq:
 
     allow_pager = True
 
-    def __call__(self, seq: OptionSpecSeq, usage: Optional[str], message: Optional[str], appname: str) -> None:
+    def __call__(self, seq: OptionSpecSeq, usage: str | None, message: str | None, appname: str) -> None:
         from kitty.utils import screen_size_function
         screen_size = screen_size_function()
         try:
@@ -579,7 +579,7 @@ class PrintHelpForSeq:
         blocks: list[str] = []
         a = blocks.append
 
-        def wa(text: str, indent: int = 0, leading_indent: Optional[int] = None) -> None:
+        def wa(text: str, indent: int = 0, leading_indent: int | None = None) -> None:
             if leading_indent is None:
                 leading_indent = indent
             j = '\n' + (' ' * indent)
@@ -644,9 +644,9 @@ print_help_for_seq = PrintHelpForSeq()
 
 def seq_as_rst(
     seq: OptionSpecSeq,
-    usage: Optional[str],
-    message: Optional[str],
-    appname: Optional[str],
+    usage: str | None,
+    message: str | None,
+    appname: str | None,
     heading_char: str = '-'
 ) -> str:
     import textwrap
@@ -742,7 +742,7 @@ def defval_for_opt(opt: OptionDict) -> Any:
 
 class Options:
 
-    def __init__(self, seq: OptionSpecSeq, usage: Optional[str], message: Optional[str], appname: Optional[str]):
+    def __init__(self, seq: OptionSpecSeq, usage: str | None, message: str | None, appname: str | None):
         self.alias_map = {}
         self.seq = seq
         self.names_map: dict[str, OptionDict] = {}
@@ -803,7 +803,7 @@ class Options:
             self.values_map[name] = val
 
 
-def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional[list[str]] = None) -> list[str]:
+def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None) -> list[str]:
     NORMAL, EXPECTING_ARG = 'NORMAL', 'EXPECTING_ARG'
     state = NORMAL
     dargs = deque(sys.argv[1:] if args is None else args)
@@ -1033,7 +1033,7 @@ def options_for_completion() -> OptionSpecSeq:
 
 def option_spec_as_rst(
     ospec: Callable[[], str] = options_spec,
-    usage: Optional[str] = None, message: Optional[str] = None, appname: Optional[str] = None,
+    usage: str | None = None, message: str | None = None, appname: str | None = None,
     heading_char: str = '-'
 ) -> str:
     options = parse_option_spec(ospec())
@@ -1046,12 +1046,12 @@ T = TypeVar('T')
 
 
 def parse_args(
-    args: Optional[list[str]] = None,
+    args: list[str] | None = None,
     ospec: Callable[[], str] = options_spec,
-    usage: Optional[str] = None,
-    message: Optional[str] = None,
-    appname: Optional[str] = None,
-    result_class: Optional[type[T]] = None,
+    usage: str | None = None,
+    message: str | None = None,
+    appname: str | None = None,
+    result_class: type[T] | None = None,
 ) -> tuple[T, list[str]]:
     options = parse_option_spec(ospec())
     seq, disabled = options
@@ -1080,7 +1080,7 @@ def parse_override(x: str) -> str:
     return override_pat().sub(r'\1 ', x.lstrip())
 
 
-def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[list[BadLineType]] = None) -> KittyOpts:
+def create_opts(args: CLIOptions, accumulate_bad_lines: list[BadLineType] | None = None) -> KittyOpts:
     from .config import load_config
     config = default_config_paths(args.config)
     overrides = map(parse_override, args.override or ())

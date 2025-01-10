@@ -2,7 +2,8 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Tuple
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from kitty.constants import appname
 
@@ -45,9 +46,9 @@ Only list the window this command is run in.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'all_env_vars': opts.all_env_vars, 'match': opts.match, 'match_tab': opts.match_tab}
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        tab_filter: Optional[Callable[[Tab], bool]] = None
-        window_filter: Optional[Callable[[Window], bool]] = None
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
+        tab_filter: Callable[[Tab], bool] | None = None
+        window_filter: Callable[[Window], bool] | None = None
 
         if payload_get('self'):
             def wf(w: Window) -> bool:
@@ -60,12 +61,12 @@ Only list the window this command is run in.
             window_filter = wf
         data = list(boss.list_os_windows(window, tab_filter, window_filter))
         if not payload_get('all_env_vars'):
-            all_env_blocks: List[Dict[str, str]] = []
-            common_env_vars: Set[Tuple[str, str]] = set()
+            all_env_blocks: list[dict[str, str]] = []
+            common_env_vars: set[tuple[str, str]] = set()
             for osw in data:
                 for tab in osw.get('tabs', ()):
                     for w in tab.get('windows', ()):
-                        env: Dict[str, str] = w.get('env', {})
+                        env: dict[str, str] = w.get('env', {})
                         frozen_env = set(env.items())
                         if all_env_blocks:
                             common_env_vars &= frozen_env

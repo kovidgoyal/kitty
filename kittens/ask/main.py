@@ -2,10 +2,6 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
-from typing import (
-    List,
-    Optional,
-)
 
 from kitty.typing import BossType, TypedDict
 
@@ -69,15 +65,15 @@ The text in the message to be replaced by hidden text. The hidden text is read v
 
 
 class Response(TypedDict):
-    items: List[str]
-    response: Optional[str]
+    items: list[str]
+    response: str | None
 
-def main(args: List[str]) -> Response:
+def main(args: list[str]) -> Response:
     raise SystemExit('This must be run as kitten ask')
 
 
 @result_handler()
-def handle_result(args: List[str], data: Response, target_window_id: int, boss: BossType) -> None:
+def handle_result(args: list[str], data: Response, target_window_id: int, boss: BossType) -> None:
     if data['response'] is not None:
         func, *args = data['items']
         getattr(boss, func)(data['response'], *args)

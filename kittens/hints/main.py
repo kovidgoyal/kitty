@@ -2,8 +2,9 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 from kitty.cli_stub import HintsCLIOptions
 from kitty.clipboard import set_clipboard_string, set_primary_selection
@@ -37,7 +38,7 @@ class Mark:
             text: str,
             groupdict: Any,
             is_hyperlink: bool = False,
-            group_id: Optional[str] = None
+            group_id: str | None = None
     ):
         self.index, self.start, self.end = index, start, end
         self.text = text
@@ -45,7 +46,7 @@ class Mark:
         self.is_hyperlink = is_hyperlink
         self.group_id = group_id
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             'index': self.index, 'start': self.start, 'end': self.end,
             'text': self.text, 'groupdict': {str(k):v for k, v in (self.groupdict or {}).items()},
@@ -53,7 +54,7 @@ class Mark:
         }
 
 
-def parse_hints_args(args: List[str]) -> Tuple[HintsCLIOptions, List[str]]:
+def parse_hints_args(args: list[str]) -> tuple[HintsCLIOptions, list[str]]:
     from kitty.cli import parse_args
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints', result_class=HintsCLIOptions)
 
@@ -255,11 +256,11 @@ help_text = 'Select text from the screen using the keyboard. Defaults to searchi
 usage = ''
 
 
-def main(args: List[str]) -> Optional[Dict[str, Any]]:
+def main(args: list[str]) -> dict[str, Any] | None:
     raise SystemExit('Should be run as kitten hints')
 
 
-def linenum_process_result(data: Dict[str, Any]) -> Tuple[str, int]:
+def linenum_process_result(data: dict[str, Any]) -> tuple[str, int]:
     for match, g in zip(data['match'], data['groupdicts']):
         path, line = g['path'], g['line']
         if path and line:
@@ -267,7 +268,7 @@ def linenum_process_result(data: Dict[str, Any]) -> Tuple[str, int]:
     return '', -1
 
 
-def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:
+def linenum_handle_result(args: list[str], data: dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:
     path, line = linenum_process_result(data)
     if not path:
         return
@@ -301,7 +302,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
                         boss.set_clipboard_buffer(program[1:], text)
             else:
                 import shlex
-                text = ' '.join(shlex.quote(arg) for arg in cmd)
+                text = shlex.join(cmd)
                 w.paste_bytes(f'{text}\r')
     elif action == 'background':
         import subprocess
@@ -320,7 +321,7 @@ def on_mark_clicked(boss: BossType, window: WindowType, url: str, hyperlink_id: 
 
 
 @result_handler(type_of_input='screen-ansi', has_ready_notification=True, open_url_handler=on_mark_clicked)
-def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
+def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, boss: BossType) -> None:
     cp = data['customize_processing']
     if data['type'] == 'linenum':
         cp = '::linenum::'
@@ -331,7 +332,7 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
             return None
 
     programs = data['programs'] or ('default',)
-    matches: List[str] = []
+    matches: list[str] = []
     groupdicts = []
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
@@ -339,12 +340,12 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
             groupdicts.append(g)
     joiner = data['multiple_joiner']
     try:
-        is_int: Optional[int] = int(joiner)
+        is_int: int | None = int(joiner)
     except Exception:
         is_int = None
     text_type = data['type']
 
-    @lru_cache()
+    @lru_cache
     def joined_text() -> str:
         if is_int is not None:
             try:

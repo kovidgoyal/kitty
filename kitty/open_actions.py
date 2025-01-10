@@ -7,7 +7,7 @@ import posixpath
 import shlex
 from collections.abc import Iterable, Iterator
 from contextlib import suppress
-from typing import Any, NamedTuple, Optional, cast
+from typing import Any, NamedTuple, cast
 from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
@@ -276,7 +276,7 @@ action launch --type=os-window ssh -- $URL
 '''.splitlines()))
 
 
-def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Iterator[KeyAction]:
+def actions_for_url(url: str, actions_spec: str | None = None) -> Iterator[KeyAction]:
     if actions_spec is None:
         actions = load_open_actions()
     else:

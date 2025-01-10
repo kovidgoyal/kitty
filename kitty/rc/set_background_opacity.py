@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .base import (
     MATCH_TAB_OPTION,
@@ -60,7 +60,7 @@ equal to the specified value, otherwise it will be set to the specified value.
             'all': opts.all, 'match_tab': opts.match_tab, 'toggle': opts.toggle,
         }
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         from kitty.fast_data_types import background_opacity_of, get_options
         opts = get_options()
         if not opts.dynamic_background_opacity:

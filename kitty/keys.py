@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from gettext import gettext as _
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from .constants import is_macos
 from .fast_data_types import (
@@ -38,7 +38,7 @@ def keyboard_mode_name(screen: ScreenType) -> str:
     return 'application' if screen.cursor_key_mode else 'normal'
 
 
-def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> Optional[list[KeyDefinition]]:
+def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> list[KeyDefinition] | None:
     mods = ev.mods & mod_mask
     ans = keymap.get(SingleKey(mods, False, ev.key))
     if ans is None and ev.shifted_key and mods & GLFW_MOD_SHIFT:
@@ -64,7 +64,7 @@ class Mappings:
 
     ' Manage all keyboard mappings '
 
-    def __init__(self, global_shortcuts:Optional[dict[str, SingleKey]] = None, callback_on_mode_change: Callable[[], Any] = lambda: None) -> None:
+    def __init__(self, global_shortcuts:dict[str, SingleKey] | None = None, callback_on_mode_change: Callable[[], Any] = lambda: None) -> None:
         self.keyboard_mode_stack: list[KeyboardMode] = []
         self.update_keymap(global_shortcuts)
         self.callback_on_mode_change = callback_on_mode_change
@@ -73,7 +73,7 @@ class Mappings:
     def current_keyboard_mode_name(self) -> str:
         return self.keyboard_mode_stack[-1].name if self.keyboard_mode_stack else ''
 
-    def update_keymap(self, global_shortcuts: Optional[dict[str, SingleKey]] = None) -> None:
+    def update_keymap(self, global_shortcuts: dict[str, SingleKey] | None = None) -> None:
         if global_shortcuts is None:
             global_shortcuts = self.set_cocoa_global_shortcuts(self.get_options()) if is_macos else {}
         self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k)] for k, v in global_shortcuts.items()}

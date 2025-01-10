@@ -2,7 +2,8 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     from kitty.options.types import Options
 
 
-def patch_window_edges(w: Window, s: Dict[str, Optional[float]]) -> None:
+def patch_window_edges(w: Window, s: dict[str, float | None]) -> None:
     for k, v in s.items():
         which, edge = k.lower().split('-', 1)
         if edge == 'left':
@@ -24,7 +25,7 @@ def patch_window_edges(w: Window, s: Dict[str, Optional[float]]) -> None:
             w.patch_edge_width(which, 'bottom', v)
 
 
-def patch_configured_edges(opts: 'Options', s: Dict[str, Optional[float]]) -> None:
+def patch_configured_edges(opts: 'Options', s: dict[str, float | None]) -> None:
     for k, val in s.items():
         if val is None:
             continue
@@ -34,15 +35,15 @@ def patch_configured_edges(opts: 'Options', s: Dict[str, Optional[float]]) -> No
         setattr(opts, q, new_edges)
 
 
-def parse_spacing_settings(args: Iterable[str]) -> Dict[str, Optional[float]]:
-    mapper: Dict[str, List[str]] = {}
+def parse_spacing_settings(args: Iterable[str]) -> dict[str, float | None]:
+    mapper: dict[str, list[str]] = {}
     for q in ('margin', 'padding'):
         mapper[q] = f'{q}-left {q}-top {q}-right {q}-bottom'.split()
         mapper[f'{q}-h'] = mapper[f'{q}-horizontal'] = f'{q}-left {q}-right'.split()
         mapper[f'{q}-v'] = mapper[f'{q}-vertical'] = f'{q}-top {q}-bottom'.split()
         for edge in ('left', 'top', 'right', 'bottom'):
             mapper[f'{q}-{edge}'] = [f'{q}-{edge}']
-    settings: Dict[str, Optional[float]] = {}
+    settings: dict[str, float | None] = {}
     for spec in args:
         parts = spec.split('=', 1)
         if len(parts) != 2:
@@ -108,9 +109,9 @@ windows).
         }
         return ans
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_payload(boss, window, payload_get)
-        settings: Dict[str, Optional[float]] = payload_get('settings')
+        settings: dict[str, float | None] = payload_get('settings')
         dirtied_tabs = {}
         from kitty.fast_data_types import get_options
         if payload_get('configured'):

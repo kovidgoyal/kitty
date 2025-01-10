@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, Union
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import ParsedFontFeature
@@ -18,11 +18,11 @@ if TYPE_CHECKING:
     def all_fonts_map(monospaced: bool) -> FontMap: ...
     def create_scorer(bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> Scorer: ...
     def find_best_match(
-        family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Optional[Descriptor] = None,
+        family: str, bold: bool = False, italic: bool = False, monospaced: bool = True, ignore_face: Descriptor | None = None,
         prefer_variable: bool = False,
         ) -> Descriptor: ...
     def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospaced: bool = True) -> Descriptor: ...
-    def face_from_descriptor(descriptor: Descriptor, font_sz_in_pts: Optional[float] = None, dpi_x: Optional[float] = None, dpi_y: Optional[float] = None
+    def face_from_descriptor(descriptor: Descriptor, font_sz_in_pts: float | None = None, dpi_x: float | None = None, dpi_y: float | None = None
                              ) -> Face: ...
     def is_monospace(descriptor: Descriptor) -> bool: ...
     def is_variable(descriptor: Descriptor) -> bool: ...
@@ -73,29 +73,29 @@ class Event:
 
 
 class FamilyAxisValues:
-    regular_weight: Optional[float] = None
-    regular_slant: Optional[float] = None
-    regular_ital: Optional[float] = None
-    regular_width: Optional[float] = None
+    regular_weight: float | None = None
+    regular_slant: float | None = None
+    regular_ital: float | None = None
+    regular_width: float | None = None
 
-    bold_weight: Optional[float] = None
+    bold_weight: float | None = None
 
-    italic_slant: Optional[float] = None
-    italic_ital: Optional[float] = None
+    italic_slant: float | None = None
+    italic_ital: float | None = None
 
-    def get_wght(self, bold: bool, italic: bool) -> Optional[float]:
+    def get_wght(self, bold: bool, italic: bool) -> float | None:
         return self.bold_weight if bold else self.regular_weight
 
-    def get_ital(self, bold: bool, italic: bool) -> Optional[float]:
+    def get_ital(self, bold: bool, italic: bool) -> float | None:
         return self.italic_ital if italic else self.regular_ital
 
-    def get_slnt(self, bold: bool, italic: bool) -> Optional[float]:
+    def get_slnt(self, bold: bool, italic: bool) -> float | None:
         return self.italic_slant if italic else self.regular_slant
 
-    def get_wdth(self, bold: bool, italic: bool) -> Optional[float]:
+    def get_wdth(self, bold: bool, italic: bool) -> float | None:
         return self.regular_width
 
-    def get(self, tag: str, bold: bool, italic: bool) -> Optional[float]:
+    def get(self, tag: str, bold: bool, italic: bool) -> float | None:
         f = getattr(self, f'get_{tag}', None)
         return None if f is None else f(bold, italic)
 
@@ -133,8 +133,8 @@ def get_variable_data_for_face(d: Face) -> VariableData:
 
 
 def find_best_match_in_candidates(
-    candidates: list[DescriptorVar], scorer: Scorer, is_medium_face: bool, ignore_face: Optional[DescriptorVar] = None
-) -> Optional[DescriptorVar]:
+    candidates: list[DescriptorVar], scorer: Scorer, is_medium_face: bool, ignore_face: DescriptorVar | None = None
+) -> DescriptorVar | None:
     if candidates:
         for x in scorer.sorted_candidates(candidates):
             if ignore_face is None or x != ignore_face:
@@ -254,7 +254,7 @@ def find_best_variable_face(spec: FontSpec, bold: bool, italic: bool, monospaced
 
 def get_fine_grained_font(
     spec: FontSpec, bold: bool = False, italic: bool = False, family_axis_values: FamilyAxisValues = FamilyAxisValues(),
-    resolved_medium_font: Optional[Descriptor] = None, monospaced: bool = True, match_is_more_specific_than_family: Event = Event()
+    resolved_medium_font: Descriptor | None = None, monospaced: bool = True, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     font_map = all_fonts_map(monospaced)
     is_medium_face = resolved_medium_font is None
@@ -318,7 +318,7 @@ def apply_variation_to_pattern(pat: Descriptor, spec: FontSpec) -> tuple[Descrip
 
 def get_font_from_spec(
     spec: FontSpec, bold: bool = False, italic: bool = False, family_axis_values: FamilyAxisValues = FamilyAxisValues(),
-    resolved_medium_font: Optional[Descriptor] = None, match_is_more_specific_than_family: Event = Event()
+    resolved_medium_font: Descriptor | None = None, match_is_more_specific_than_family: Event = Event()
 ) -> Descriptor:
     if not spec.is_system:
         ans = get_fine_grained_font(spec, bold, italic, resolved_medium_font=resolved_medium_font, family_axis_values=family_axis_values,
@@ -404,7 +404,7 @@ def axis_values_are_equal(defaults: dict[str, float], a: dict[str, float], b: di
     return ad == bd
 
 
-def _get_named_style(axis_map: dict[str, float], vd: VariableData) -> Optional[NamedStyle]:
+def _get_named_style(axis_map: dict[str, float], vd: VariableData) -> NamedStyle | None:
     defaults = {ax['tag']: ax['default'] for ax in vd['axes']}
     for ns in vd['named_styles']:
         if axis_values_are_equal(defaults, ns['axis_values'], axis_map):
@@ -412,7 +412,7 @@ def _get_named_style(axis_map: dict[str, float], vd: VariableData) -> Optional[N
     return None
 
 
-def get_named_style(face_or_descriptor: Union[Face, Descriptor]) -> Optional[NamedStyle]:
+def get_named_style(face_or_descriptor: Face | Descriptor) -> NamedStyle | None:
     if isinstance(face_or_descriptor, dict):
         d: Descriptor = face_or_descriptor
         vd = get_variable_data_for_descriptor(d)
@@ -437,7 +437,7 @@ def get_named_style(face_or_descriptor: Union[Face, Descriptor]) -> Optional[Nam
     return _get_named_style(axis_map, vd)
 
 
-def get_axis_map(face_or_descriptor: Union[Face, Descriptor]) -> dict[str, float]:
+def get_axis_map(face_or_descriptor: Face | Descriptor) -> dict[str, float]:
     base_axis_map = {}
     axis_map: dict[str, float] = {}
     if isinstance(face_or_descriptor, dict):

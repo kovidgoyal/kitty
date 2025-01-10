@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Callable, Tuple
+from collections.abc import Callable
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.key_encoding import EventType, KeyEvent
@@ -20,7 +20,7 @@ class LineEdit:
         self.cursor_pos = 0
         self.pending_bell = False
 
-    def split_at_cursor(self, delta: int = 0) -> Tuple[str, str]:
+    def split_at_cursor(self, delta: int = 0) -> tuple[str, str]:
         pos = max(0, self.cursor_pos + delta)
         x = truncate_point_for_length(self.current_input, pos) if pos else 0
         before, after = self.current_input[:x], self.current_input[x:]

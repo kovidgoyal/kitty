@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+from collections.abc import Generator, Sequence
 from itertools import islice, repeat
-from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
+from typing import Any
 
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
@@ -65,7 +66,7 @@ class TallLayoutOpts(LayoutOpts):
     full_size: int = 1
     mirrored: bool = False
 
-    def __init__(self, data: Dict[str, str]):
+    def __init__(self, data: dict[str, str]):
         try:
             self.full_size = int(data.get('full_size', 1))
         except Exception:
@@ -77,16 +78,16 @@ class TallLayoutOpts(LayoutOpts):
             self.bias = 50
         self.mirrored = to_bool(data.get('mirrored', 'false'))
 
-    def serialized(self) -> Dict[str, Any]:
+    def serialized(self) -> dict[str, Any]:
         return {'full_size': self.full_size, 'bias': self.bias, 'mirrored': self.mirrored}
 
-    def build_bias_list(self) -> Tuple[float, ...]:
+    def build_bias_list(self) -> tuple[float, ...]:
         b = self.bias / 100
         b = max(0.1, min(b, 0.9))
         return tuple(repeat(b / self.full_size, self.full_size)) + (1.0 - b,)
 
 
-def set_bias(biases: Sequence[float], idx: int, target: float) -> List[float]:
+def set_bias(biases: Sequence[float], idx: int, target: float) -> list[float]:
     remainder = 1 - target
     previous_remainder = sum(x for i, x in enumerate(biases) if i != idx)
     ans = [1. for i in range(len(biases))]
@@ -112,11 +113,11 @@ class Tall(Layout):
         return self.layout_opts.full_size
 
     def remove_all_biases(self) -> bool:
-        self.main_bias: List[float] = list(self.layout_opts.build_bias_list())
-        self.biased_map: Dict[int, float] = {}
+        self.main_bias: list[float] = list(self.layout_opts.build_bias_list())
+        self.biased_map: dict[int, float] = {}
         return True
 
-    def variable_layout(self, all_windows: WindowList, biased_map: Dict[int, float]) -> LayoutDimension:
+    def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
         num = all_windows.num_groups - self.num_full_size_windows
         bias = biased_map if num > 1 else None
         return self.perp_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias, offset=self.num_full_size_windows)
@@ -157,7 +158,7 @@ class Tall(Layout):
         self.biased_map = candidate
         return before != after
 
-    def simple_layout(self, all_windows: WindowList) -> Generator[Tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
+    def simple_layout(self, all_windows: WindowList) -> Generator[tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
         num = all_windows.num_groups
         is_fat = not self.main_is_horizontal
         mirrored = self.layout_opts.mirrored
@@ -173,7 +174,7 @@ class Tall(Layout):
                 xl, yl = yl, xl
             yield wg, xl, yl, True
 
-    def full_layout(self, all_windows: WindowList) -> Generator[Tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
+    def full_layout(self, all_windows: WindowList) -> Generator[tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
         is_fat = not self.main_is_horizontal
         mirrored = self.layout_opts.mirrored
         groups = tuple(all_windows.iter_all_layoutable_groups())
@@ -228,7 +229,7 @@ class Tall(Layout):
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         return neighbors_for_tall_window(self.num_full_size_windows, window, windows, self.layout_opts.mirrored, self.main_is_horizontal)
 
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
         if action_name == 'increase_num_full_size_windows':
             self.layout_opts.full_size += 1
             self.main_bias = list(self.layout_opts.build_bias_list())
@@ -282,8 +283,8 @@ class Tall(Layout):
             layout = (x[:3] for x in self.simple_layout(all_windows))
             yield from borders(layout, self.main_is_horizontal, all_windows)
             return
-        main_layouts: List[Tuple[WindowGroup, LayoutData, LayoutData]] = []
-        perp_borders: List[BorderLine] = []
+        main_layouts: list[tuple[WindowGroup, LayoutData, LayoutData]] = []
+        perp_borders: list[BorderLine] = []
         layouts = (self.simple_layout if num <= self.num_full_size_windows else self.full_layout)(all_windows)
         needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
         active_group = all_windows.active_group
@@ -344,7 +345,7 @@ class Tall(Layout):
         )
         yield from perp_borders[1:-1]
 
-    def layout_state(self) -> Dict[str, Any]:
+    def layout_state(self) -> dict[str, Any]:
         return {
             'num_full_size_windows': self.num_full_size_windows,
             'main_bias': self.main_bias,

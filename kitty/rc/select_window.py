@@ -62,10 +62,10 @@ be refocused.
                'reactivate_prev_tab': opts.reactivate_prev_tab}
         return ans
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         responder = self.create_async_responder(payload_get, window)
 
-        def callback(tab: Optional['Tab'], window: Optional[Window]) -> None:
+        def callback(tab: Optional['Tab'], window: Window | None) -> None:
             if window:
                 responder.send_data(window.id)
             else:

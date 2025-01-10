@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from enum import Enum
 from functools import lru_cache
 from gettext import gettext as _
-from typing import Callable, NamedTuple, Optional, TypeVar, Union
+from typing import NamedTuple, TypeVar
 
 from .types import run_once
 
@@ -151,7 +151,7 @@ class Parser:
         self.tokens: list[Token] = []
         self.allow_no_location = allow_no_location
 
-    def token(self, advance: bool = False) -> Optional[str]:
+    def token(self, advance: bool = False) -> str | None:
         if self.is_eof():
             return None
         res = self.tokens[self.current_token].val
@@ -159,7 +159,7 @@ class Parser:
             self.current_token += 1
         return res
 
-    def lcase_token(self, advance: bool = False) -> Optional[str]:
+    def lcase_token(self, advance: bool = False) -> str | None:
         if self.is_eof():
             return None
         res = self.tokens[self.current_token].val
@@ -280,7 +280,7 @@ class Parser:
 
 
 @lru_cache(maxsize=64)
-def build_tree(query: str, locations: Union[str, tuple[str, ...]], allow_no_location: bool = False) -> SearchTreeNode:
+def build_tree(query: str, locations: str | tuple[str, ...], allow_no_location: bool = False) -> SearchTreeNode:
     if isinstance(locations, str):
         locations = tuple(locations.split())
     p = Parser(allow_no_location)
@@ -291,7 +291,7 @@ def build_tree(query: str, locations: Union[str, tuple[str, ...]], allow_no_loca
 
 
 def search(
-    query: str, locations: Union[str, tuple[str, ...]], universal_set: set[T], get_matches: GetMatches[T],
+    query: str, locations: str | tuple[str, ...], universal_set: set[T], get_matches: GetMatches[T],
     allow_no_location: bool = False,
 ) -> set[T]:
     return build_tree(query, locations, allow_no_location).search(universal_set, get_matches)

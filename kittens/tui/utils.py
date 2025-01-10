@@ -3,8 +3,9 @@
 
 import os
 import sys
+from collections.abc import Sequence
 from contextlib import suppress
-from typing import TYPE_CHECKING, Optional, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 from kitty.types import run_once
 
@@ -46,7 +47,7 @@ def format_number(val: float, max_num_of_decimals: int = 2) -> str:
 def human_size(
     size: int, sep: str = ' ',
     max_num_of_decimals: int = 2,
-    unit_list: Tuple[str, ...] = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB')
+    unit_list: tuple[str, ...] = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB')
 ) -> str:
     """ Convert a size in bytes into a human readable form """
     if size < 2:

@@ -2,7 +2,6 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
-from typing import List
 
 from kitty.cli import CompletionSpec
 
@@ -46,7 +45,7 @@ to your kitty.conf and then have the kitten operate only on :file:`themes.conf`,
 allowing :code:`kitty.conf` to remain unchanged.
 '''.format
 
-def main(args: List[str]) -> None:
+def main(args: list[str]) -> None:
     raise SystemExit('This must be run as kitten themes')
 
 if __name__ == '__main__':

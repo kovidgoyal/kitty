@@ -5,10 +5,9 @@ import math
 import string
 import uuid as _uuid
 from collections.abc import Sequence
-from typing import Optional
 
 
-def num_to_string(number: int, alphabet: Sequence[str], alphabet_len: int, pad_to_length: Optional[int] = None) -> str:
+def num_to_string(number: int, alphabet: Sequence[str], alphabet_len: int, pad_to_length: int | None = None) -> str:
     ans = []
     number = max(0, number)
     while number:
@@ -38,12 +37,12 @@ class ShortUUID:
         self.alphabet_map = {c: i for i, c in enumerate(self.alphabet)}
         self.uuid_pad_len = int(math.ceil(math.log(1 << 128, self.alphabet_len)))
 
-    def uuid4(self, pad_to_length: Optional[int] = None) -> str:
+    def uuid4(self, pad_to_length: int | None = None) -> str:
         if pad_to_length is None:
             pad_to_length = self.uuid_pad_len
         return num_to_string(_uuid.uuid4().int, self.alphabet, self.alphabet_len, pad_to_length)
 
-    def uuid5(self, namespace: _uuid.UUID, name: str, pad_to_length: Optional[int] = None) -> str:
+    def uuid5(self, namespace: _uuid.UUID, name: str, pad_to_length: int | None = None) -> str:
         if pad_to_length is None:
             pad_to_length = self.uuid_pad_len
         return num_to_string(_uuid.uuid5(namespace, name).int, self.alphabet, self.alphabet_len, pad_to_length)
@@ -56,7 +55,7 @@ _global_instance = ShortUUID()
 uuid4 = _global_instance.uuid4
 uuid5 = _global_instance.uuid5
 decode = _global_instance.decode
-_escape_code_instance: Optional[ShortUUID] = None
+_escape_code_instance: ShortUUID | None = None
 
 
 def uuid4_for_escape_code() -> str:

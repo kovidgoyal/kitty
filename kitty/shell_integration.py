@@ -4,8 +4,8 @@
 
 import os
 import subprocess
+from collections.abc import Callable
 from contextlib import suppress
-from typing import Callable, Optional
 
 from .constants import shell_integration_dir
 from .fast_data_types import get_options
@@ -24,7 +24,7 @@ def setup_fish_env(env: dict[str, str], argv: list[str]) -> None:
         env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
-def is_new_zsh_install(env: dict[str, str], zdotdir: Optional[str]) -> bool:
+def is_new_zsh_install(env: dict[str, str], zdotdir: str | None) -> bool:
     # if ZDOTDIR is empty, zsh will read user rc files from /
     # if there aren't any, it'll run zsh-newuser-install
     # the latter will bail if there are rc files in $HOME
@@ -39,7 +39,7 @@ def is_new_zsh_install(env: dict[str, str], zdotdir: Optional[str]) -> bool:
     return True
 
 
-def get_zsh_zdotdir_from_global_zshenv(env: dict[str, str], argv: list[str]) -> Optional[str]:
+def get_zsh_zdotdir_from_global_zshenv(env: dict[str, str], argv: list[str]) -> str | None:
     exe = which(argv[0], only_system=True) or 'zsh'
     with suppress(Exception):
         return subprocess.check_output([exe, '--norcs', '--interactive', '-c', 'echo -n $ZDOTDIR'], env=env).decode('utf-8')
@@ -183,7 +183,7 @@ ENV_SERIALIZERS: dict[str, Callable[[dict[str, str]], str]] = {
 }
 
 
-def get_supported_shell_name(path: str) -> Optional[str]:
+def get_supported_shell_name(path: str) -> str | None:
     name = os.path.basename(path)
     if name.lower().endswith('.exe'):
         name = name.rpartition('.')[0]
@@ -205,7 +205,7 @@ def serialize_env(path: str, env: dict[str, str]) -> str:
     return ENV_SERIALIZERS[name](env)
 
 
-def get_effective_ksi_env_var(opts: Optional[Options] = None) -> str:
+def get_effective_ksi_env_var(opts: Options | None = None) -> str:
     opts = opts or get_options()
     if 'disabled' in opts.shell_integration:
         return ''

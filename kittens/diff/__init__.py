@@ -1,7 +1,4 @@
-from typing import Dict
-
-
-def syntax_aliases(x: str) -> Dict[str, str]:
+def syntax_aliases(x: str) -> dict[str, str]:
     ans = {}
     for x in x.split():
         k, _, v = x.partition(':')

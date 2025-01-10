@@ -3,11 +3,11 @@
 
 import io
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from enum import Enum, IntEnum
 from gettext import gettext as _
 from tempfile import TemporaryFile
-from typing import IO, Callable, NamedTuple, Optional, Union
+from typing import IO, NamedTuple, Union
 
 from .conf.utils import uniq
 from .constants import supports_primary_selection
@@ -28,7 +28,7 @@ from .utils import log_error
 class Tempfile:
 
     def __init__(self, max_size: int) -> None:
-        self.file: Union[io.BytesIO, IO[bytes]] = io.BytesIO()
+        self.file: io.BytesIO | IO[bytes] = io.BytesIO()
         self.max_size = max_size
 
     def rollover_if_needed(self, sz: int) -> None:
@@ -88,7 +88,7 @@ class Clipboard:
         self.clipboard_type = clipboard_type
         self.enabled = self.clipboard_type is ClipboardType.clipboard or supports_primary_selection
 
-    def set_text(self, x: Union[str, bytes]) -> None:
+    def set_text(self, x: str | bytes) -> None:
         if isinstance(x, str):
             x = x.encode('utf-8')
         self.set_mime({'text/plain': x})
@@ -153,7 +153,7 @@ class Clipboard:
         return data()
 
 
-def set_clipboard_string(x: Union[str, bytes]) -> None:
+def set_clipboard_string(x: str | bytes) -> None:
     get_boss().clipboard.set_text(x)
 
 
@@ -161,7 +161,7 @@ def get_clipboard_string() -> str:
     return get_boss().clipboard.get_text()
 
 
-def set_primary_selection(x: Union[str, bytes]) -> None:
+def set_primary_selection(x: str | bytes) -> None:
     get_boss().primary_selection.set_text(x)
 
 
@@ -270,7 +270,7 @@ class WriteRequest:
             x = {mime: self.tempfile.create_chunker(pos.start, pos.size) for mime, pos in self.mime_map.items()}
             cp.set_mime(x)
 
-    def add_base64_data(self, data: Union[str, bytes], mime: str = 'text/plain') -> None:
+    def add_base64_data(self, data: str | bytes, mime: str = 'text/plain') -> None:
         if isinstance(data, str):
             data = data.encode('ascii')
         if self.currently_writing_mime and self.currently_writing_mime != mime:
@@ -314,8 +314,8 @@ class ClipboardRequestManager:
 
     def __init__(self, window_id: int) -> None:
         self.window_id = window_id
-        self.currently_asking_permission_for: Optional[ReadRequest] = None
-        self.in_flight_write_request: Optional[WriteRequest] = None
+        self.currently_asking_permission_for: ReadRequest | None = None
+        self.in_flight_write_request: WriteRequest | None = None
 
     def parse_osc_5522(self, data: memoryview) -> None:
         import base64

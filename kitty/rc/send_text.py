@@ -3,7 +3,7 @@
 
 import base64
 import sys
-from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Union
+from typing import TYPE_CHECKING, Any
 
 from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
 from kitty.fast_data_types import get_boss
@@ -31,14 +31,14 @@ if TYPE_CHECKING:
 
 class Session:
     id: str
-    window_ids: Set[int]
+    window_ids: set[int]
 
     def __init__(self, id: str):
         self.id = id
         self.window_ids = set()
 
 
-sessions_map: Dict[str, Session] = {}
+sessions_map: dict[str, Session] = {}
 
 
 class SessionAction:
@@ -192,14 +192,14 @@ on bracketed paste mode.
                 yield from src
         return chain()
 
-    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         sid = payload_get('session_id', '')
         windows = self.windows_for_payload(boss, window, payload_get, window_match_name='match')
         pdata: str = payload_get('data')
         encoding, _, q = pdata.partition(':')
         session = ''
         if encoding == 'text':
-            data: Union[bytes, WindowSystemKeyEvent] = q.encode('utf-8')
+            data: bytes | WindowSystemKeyEvent = q.encode('utf-8')
         elif encoding == 'base64':
             data = base64.standard_b64decode(q)
         elif encoding == 'kitty-key':

@@ -2,7 +2,8 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
-from typing import Any, Callable, Dict, List, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
@@ -152,11 +153,11 @@ help_text = 'Use a command line program to draw a GPU accelerated panel on your 
 usage = 'program-to-run'
 
 
-def parse_panel_args(args: List[str]) -> Tuple[PanelCLIOptions, List[str]]:
+def parse_panel_args(args: list[str]) -> tuple[PanelCLIOptions, list[str]]:
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
 
 
-Strut = Tuple[int, int, int, int, int, int, int, int, int, int, int, int]
+Strut = tuple[int, int, int, int, int, int, int, int, int, int, int, int]
 
 
 def create_strut(
@@ -195,12 +196,12 @@ def setup_x11_window(win_id: int) -> None:
     make_x11_window_a_dock_window(win_id, strut)
 
 
-def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
+def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]) -> Callable[[int, int, float, float, float, float], tuple[int, int]]:
 
     def es(which: EdgeLiteral) -> float:
         return edge_spacing(which, opts)
 
-    def initial_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> Tuple[int, int]:
+    def initial_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> tuple[int, int]:
         if not is_macos and not is_wayland():
             # Not sure what the deal with scaling on X11 is
             xscale = yscale = 1
@@ -248,7 +249,7 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             output_name=opts.output_name or '')
 
 
-def main(sys_args: List[str]) -> None:
+def main(sys_args: list[str]) -> None:
     global args
     if is_macos:
         raise SystemExit('Currently the panel kitten is not supported on macOS')
