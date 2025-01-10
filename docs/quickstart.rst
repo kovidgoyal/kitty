@@ -18,8 +18,8 @@ package, but note that some Linux distribution packages are woefully outdated.
 |kitty| is available in a vast number of package repositories for macOS
 and Linux.
 
-.. image:: https://repology.org/badge/tiny-repos/kitty.svg
-   :target: https://repology.org/project/kitty/versions
+.. image:: https://repology.org/badge/tiny-repos/kitty-terminal.svg
+   :target: https://repology.org/project/kitty-terminal/versions
    :alt: Number of repositories kitty is available in
 
 See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
