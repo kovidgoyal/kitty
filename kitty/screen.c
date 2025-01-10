@@ -3479,7 +3479,9 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     const int limit = MIN((int)self->lines, idata.y_limit);
     if (idata.y >= limit) return PyTuple_New(0);
     RAII_PyObject(ans, PyTuple_New(limit - idata.y));
-    if (!ans) return NULL;
+    RAII_PyObject(nl, PyUnicode_FromString("\n"));
+    RAII_PyObject(empty, PyUnicode_FromString(""));
+    if (!ans || !nl || !empty) return NULL;
     range_line(self, idata.y, &next_line);
     xrn = xrange_for_iteration_with_multicells(&idata, idata.y, &next_line);
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
@@ -3492,7 +3494,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
             index_type new_limit = limit_without_trailing_whitespace(&line, x_limit);
             if (new_limit != x_limit) {
                 x_limit = new_limit;
-                is_only_whitespace_line = true;
+                is_only_whitespace_line = new_limit <= xr.x;
             }
         }
         const bool add_trailing_newline = insert_newlines && !is_last_line;
@@ -3510,7 +3512,8 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         }
         PyObject *text = NULL;
         if (x_limit <= xr.x && is_only_whitespace_line) {  // we want a newline on only whitespace lines even if they are continued
-            text = add_trailing_newline ? PyUnicode_FromString("\n") : PyUnicode_FromString("");
+            text = add_trailing_newline ? nl : empty;
+            text = Py_NewRef(text);
         } else {
             if (!unicode_in_range(&line, xr.x, x_limit, true, add_trailing_newline, false, !is_first_line, &self->as_ansi_buf)) return PyErr_NoMemory();
             if (!is_last_line) {
@@ -3539,40 +3542,63 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     RAII_PyObject(ans, PyTuple_New(limit - idata.y + 1));
     RAII_PyObject(nl, PyUnicode_FromString("\n"));
     if (!ans || !nl) return NULL;
-    ANSIBuf output = {0};
     bool has_escape_codes = false;
     bool need_newline = false;
-    ANSILineState s = {.output_buf=&output};
+    ANSILineState s = {.output_buf=&self->as_ansi_buf};
+    Line line = {.xnum=self->columns, .text_cache=self->text_cache}, next_line = line; XRange xr, xrn = {0}; CPUCell *c;
+    range_line(self, idata.y, &next_line);
+    xrn = xrange_for_iteration_with_multicells(&idata, idata.y, &next_line);
+    s.output_buf->active_hyperlink_id = 0; s.output_buf->len = 0;
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
-        Line *line = range_line_(self, y);
-        XRange xr = xrange_for_iteration_with_multicells(&idata, y, line);
-        output.len = 0;
+        const bool is_first_line = y == idata.y, is_last_line = y + 1 >= limit;
+        xr = xrn;
+        line = next_line;
+        s.output_buf->len = 0;
         char_type prefix_char = need_newline ? '\n' : 0;
         index_type x_limit = xr.x_limit;
+        bool is_only_whitespace_line = false;
         if (strip_trailing_whitespace) {
-            index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
+            index_type new_limit = limit_without_trailing_whitespace(&line, x_limit);
             if (new_limit != x_limit) {
                 x_limit = new_limit;
-                if (!x_limit) {
-                    PyTuple_SET_ITEM(ans, i, nl);
-                    continue;
+                is_only_whitespace_line = new_limit <= xr.x;
+            }
+        }
+        if (!is_last_line) {
+            range_line(self, y + 1, &next_line);
+            xrn = xrange_for_iteration_with_multicells(&idata, y+1, &next_line);
+            for (index_type x = 0; x < xr.x; x++) {
+                if ((c = &line.cpu_cells[x])->is_multicell && c->scale > 1 && c->y + 1 < c->scale && x <= xrn.x) {
+                    index_type mc_limit = x + mcd_x_limit(c);
+                    if (line_as_ansi(&line, &s, x, mc_limit, prefix_char, false)) has_escape_codes = true;
+                    x = mc_limit - 1;
+                    prefix_char = 0;
                 }
             }
         }
-        const bool is_first_line = y == idata.y;
-        if (is_first_line) {
+        if (x_limit <= xr.x && is_only_whitespace_line) {  // we want a newline on only whitespace lines even if they are continued
+            if (insert_newlines) need_newline = true;
+        } else {
+            if (line_as_ansi(&line, &s, xr.x, x_limit, prefix_char, !is_first_line)) has_escape_codes = true;
+            need_newline = insert_newlines && !line.cpu_cells[line.xnum-1].next_char_was_wrapped;
+            if (!is_last_line) {
+                for (index_type x = x_limit; x < MIN(line.xnum, xrn.x_limit); x++) {
+                    if ((c = &line.cpu_cells[x])->is_multicell && c->scale > 1 && c->y + 1 < c->scale) {
+                        index_type mc_limit = x + mcd_x_limit(c);
+                        if (line_as_ansi(&line, &s, x, mc_limit, 0, false)) has_escape_codes = true;
+                        x = mc_limit - 1;
+                    }
+                }
+            }
         }
-        if (line_as_ansi(line, &s, xr.x, x_limit, prefix_char, !is_first_line)) has_escape_codes = true;
-        need_newline = insert_newlines && !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
-        PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
+        PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, s.output_buf->buf, s.output_buf->len);
         if (!t) return NULL;
         PyTuple_SET_ITEM(ans, i, t);
     }
-    PyObject *t = PyUnicode_FromFormat("%s%s", has_escape_codes ? "\x1b[m" : "", output.active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
+    PyObject *t = PyUnicode_FromFormat("%s%s", has_escape_codes ? "\x1b[m" : "", s.output_buf->active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
     if (!t) return NULL;
     PyTuple_SET_ITEM(ans, PyTuple_GET_SIZE(ans) - 1, t);
-    Py_INCREF(ans);
-    return ans;
+    return Py_NewRef(ans);
 }
 
 

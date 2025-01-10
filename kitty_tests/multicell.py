@@ -618,18 +618,27 @@ def test_multicell(self: TestMulticell) -> None:
         for i, (e, a) in enumerate(zip(as_lists(bytes(expected)), as_lists(actual))):
             self.ae(e, a, f'Row: {i}')
 
+    def ast(*expected, as_ansi=False, strip_trailing_whitespace=False):
+        actual = s.text_for_selection(as_ansi, strip_trailing_whitespace)
+        self.ae(expected, actual)
+
     s.reset()
     s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
     ss(p(), p(x=1, in_left_half_of_cell=False))
     asl((0, 0, 2))
+    ast('ab')
     ss(p(x=2), p(x=3, in_left_half_of_cell=False))
     asl((0, 1, 3))
+    ast('bc')
 
     s.reset()
     s.draw('a'), multicell(s, 'b', scale=2), s.draw('c'), multicell(s, 'd', scale=2)
     ss(p(), p(x=4, in_left_half_of_cell=False))
     asl((0, 0, 5), (1, 1, 2), (1, 4, 5))
+    ast('abcd')
     ss(p(y=1, x=1), p(y=1, x=1, in_left_half_of_cell=False))
     asl((0, 1, 2), (1, 1, 2))
+    ast('b')
     ss(p(y=1, x=0), p(y=1, x=1, in_left_half_of_cell=False))  # empty leading cell before multiline on y=1
     asl((0, 1, 2), (1, 0, 2))
+    ast(' b')
