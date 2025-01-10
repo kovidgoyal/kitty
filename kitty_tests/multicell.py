@@ -618,9 +618,12 @@ def test_multicell(self: TestMulticell) -> None:
         for i, (e, a) in enumerate(zip(as_lists(bytes(expected)), as_lists(actual))):
             self.ae(e, a, f'Row: {i}')
 
-    def ast(*expected, as_ansi=False, strip_trailing_whitespace=False):
+    def ast(*expected, strip_trailing_whitespace=False, as_ansi=False):
         actual = s.text_for_selection(as_ansi, strip_trailing_whitespace)
         self.ae(expected, actual)
+
+    def asa(*expected, strip_trailing_whitespace=False):
+        ast(*expected, as_ansi=True, strip_trailing_whitespace=strip_trailing_whitespace)
 
     s.reset()
     s.draw('a'), multicell(s, 'b', width=2), s.draw('c')
