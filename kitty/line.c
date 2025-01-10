@@ -5,8 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "cleanup.h"
-#define EXTRA_INIT register_at_exit_cleanup_func(LINE_CLEANUP_FUNC, cleanup_module);
 
 #include "state.h"
 #include "unicode-data.h"
@@ -109,9 +107,9 @@ multicell_is_continuation_of_previous(const CPUCell *prev, const CPUCell *curr) 
 }
 
 static void
-text_in_cell_ansi(ANSILineState *s, const CPUCell *c, TextCache *tc) {
+text_in_cell_ansi(ANSILineState *s, const CPUCell *c, TextCache *tc, bool skip_multiline_non_zero_lines) {
     if (c->is_multicell) {
-        if (c->x || c->y) return;
+        if (c->x || (skip_multiline_non_zero_lines && c->y)) return;
         if (s->current_multicell_state) {
             if (!multicell_is_continuation_of_previous(s->current_multicell_state, c)) {
                 close_multicell(s);
@@ -364,42 +362,43 @@ cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf) {
     return n;
 }
 
-static ListOfChars global_unicode_in_range_buf = {0};
-
-PyObject*
-unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells) {
-    size_t n = 0;
+bool
+unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells, bool skip_multiline_non_zero_lines, ANSIBuf *buf) {
     ListOfChars lc;
     for (index_type i = start; i < limit; i++) {
-        lc.chars = global_unicode_in_range_buf.chars + n; lc.capacity = global_unicode_in_range_buf.capacity - n;
+        lc.chars = buf->buf + buf->len; lc.capacity = buf->capacity - buf->len;
         while (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) {
-            size_t ns = MAX(4096u, 2 * global_unicode_in_range_buf.capacity);
-            char_type *np = realloc(global_unicode_in_range_buf.chars, ns);
-            if (!np) return PyErr_NoMemory();
-            global_unicode_in_range_buf.capacity = ns; global_unicode_in_range_buf.chars = np;
-            lc.chars = global_unicode_in_range_buf.chars + n; lc.capacity = global_unicode_in_range_buf.capacity - n;
+            size_t ns = MAX(4096u, 2 * buf->capacity);
+            char_type *np = realloc(buf->buf, ns);
+            if (!np) return false;
+            buf->capacity = ns; buf->buf = np;
+            lc.chars = buf->buf + buf->len; lc.capacity = buf->capacity - buf->len;
         }
-        if (self->cpu_cells[i].is_multicell && (self->cpu_cells[i].x || self->cpu_cells[i].y)) continue;
+        if (self->cpu_cells[i].is_multicell && (self->cpu_cells[i].x || (skip_multiline_non_zero_lines && self->cpu_cells[i].y))) continue;
         if (!lc.chars[0]) {
             if (skip_zero_cells) continue;
             lc.chars[0] = ' ';
         }
         if (lc.chars[0] == '\t') {
-            n++;
+            buf->len++;
             unsigned num_cells_to_skip_for_tab = lc.count > 1 ? lc.chars[1] : 0;
             while (num_cells_to_skip_for_tab && i + 1 < limit && cell_is_char(self->cpu_cells+i+1, ' ')) {
                 i++;
                 num_cells_to_skip_for_tab--;
             }
-        } else n += include_cc ? lc.count : 1;
+        } else buf->len += include_cc ? lc.count : 1;
     }
-    if (add_trailing_newline && !self->cpu_cells[self->xnum-1].next_char_was_wrapped && n < global_unicode_in_range_buf.capacity) global_unicode_in_range_buf.chars[n++] = '\n';
-    return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, global_unicode_in_range_buf.chars, n);
+    if (add_trailing_newline && !self->cpu_cells[self->xnum-1].next_char_was_wrapped && buf->len < buf->capacity) buf->buf[buf->len++] = '\n';
+    return true;
 }
 
 PyObject *
-line_as_unicode(Line* self, bool skip_zero_cells) {
-    return unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells);
+line_as_unicode(Line* self, bool skip_zero_cells, ANSIBuf *buf) {
+    size_t before = buf->len;
+    if (!unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells, true, buf)) return PyErr_NoMemory();
+    PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf->buf + before, buf->len - before);
+    buf->len = before;
+    return ans;
 }
 
 static PyObject*
@@ -485,7 +484,7 @@ write_mark_to_ansi_buf(ANSILineState *s, const char *m) {
 }
 
 bool
-line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char) {
+line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char, bool skip_multiline_non_zero_lines) {
     s->output_buf->len = 0;
     s->limit = MIN(stop_before, xlimit_for_line(self));
     s->current_multicell_state = NULL;
@@ -520,7 +519,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
             if (*sgr) write_sgr_to_ansi_buf(s, sgr);
         }
 
-        text_in_cell_ansi(s, self->cpu_cells + s->pos, self->text_cache);
+        text_in_cell_ansi(s, self->cpu_cells + s->pos, self->text_cache, skip_multiline_non_zero_lines);
         s->prev_gpu_cell = cell;
     }
     close_multicell(s);
@@ -533,7 +532,7 @@ static PyObject*
 as_ansi(Line* self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
     ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
-    line_as_ansi(self, &s, 0, self->xnum, 0);
+    line_as_ansi(self, &s, 0, self->xnum, 0, true);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
     free(output.buf);
     return ans;
@@ -554,7 +553,8 @@ set_wrapped_flag(Line* self, PyObject *is_wrapped) {
 
 static PyObject*
 __repr__(Line* self) {
-    PyObject *s = line_as_unicode(self, false);
+    RAII_ANSIBuf(buf);
+    PyObject *s = line_as_unicode(self, false, &buf);
     if (s == NULL) return NULL;
     PyObject *ans = PyObject_Repr(s);
     Py_CLEAR(s);
@@ -563,7 +563,8 @@ __repr__(Line* self) {
 
 static PyObject*
 __str__(Line* self) {
-    return line_as_unicode(self, false);
+    RAII_ANSIBuf(buf);
+    return line_as_unicode(self, false, &buf);
 }
 
 
@@ -938,12 +939,12 @@ apply_marker(PyObject *marker, Line *line, const PyObject *text) {
 }
 
 void
-mark_text_in_line(PyObject *marker, Line *line) {
+mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf) {
     if (!marker) {
         for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs.mark = 0;
         return;
     }
-    PyObject *text = line_as_unicode(line, false);
+    PyObject *text = line_as_unicode(line, false, buf);
     if (PyUnicode_GET_LENGTH(text) > 0) {
         apply_marker(marker, line, text);
     } else {
@@ -978,11 +979,11 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
             // makes writing pagers easier.
             // see https://github.com/kovidgoyal/kitty/issues/2381
             s.prev_gpu_cell = NULL;
-            line_as_ansi(line, &s, 0, line->xnum, 0);
+            line_as_ansi(line, &s, 0, line->xnum, 0, true);
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
             if (t && ansibuf->len > 0) APPEND(sgr_reset);
         } else {
-            t = line_as_unicode(line, false);
+            t = line_as_unicode(line, false, ansibuf);
         }
         APPEND_AND_DECREF(t);
         if (insert_wrap_markers) APPEND(cr);
@@ -1062,12 +1063,6 @@ Line *alloc_line(TextCache *tc) {
     Line *ans = (Line*)Line_Type.tp_alloc(&Line_Type, 0);
     if (ans) ans->text_cache = tc_incref(tc);
     return ans;
-}
-
-static void
-cleanup_module(void) {
-    free(global_unicode_in_range_buf.chars);
-    global_unicode_in_range_buf = (ListOfChars){0};
 }
 
 RICHCMP(Line)

@@ -108,6 +108,8 @@ typedef struct ANSILineOutput {
     bool escape_code_written;
 } ANSILineState;
 
+static inline void cleanup_ansibuf(ANSIBuf *b) { free(b->buf); zero_at_ptr(b); }
+#define RAII_ANSIBuf(name) __attribute__((cleanup(cleanup_ansibuf))) ANSIBuf name = {0}
 
 Line* alloc_line(TextCache *text_cache);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);

@@ -470,7 +470,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
     do {
         init_line(self, &l, self->line_map[ylimit]);
-        line_as_ansi(&l, &s, 0, l.xnum, 0);
+        line_as_ansi(&l, &s, 0, l.xnum, 0, true);
         if (output.len) break;
         ylimit--;
     } while(ylimit > 0);
@@ -478,7 +478,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     for(index_type i = 0; i <= ylimit; i++) {
         bool output_newline = !linebuf_line_ends_with_continuation(self, i);
         init_line(self, &l, self->line_map[i]);
-        line_as_ansi(&l, &s, 0, l.xnum, 0);
+        line_as_ansi(&l, &s, 0, l.xnum, 0, true);
         if (output_newline) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n
@@ -515,10 +515,11 @@ as_text(LineBuf *self, PyObject *args) {
 static PyObject*
 __str__(LineBuf *self) {
     RAII_PyObject(lines, PyTuple_New(self->ynum));
+    RAII_ANSIBuf(buf);
     if (lines == NULL) return PyErr_NoMemory();
     for (index_type i = 0; i < self->ynum; i++) {
         init_line(self, self->line, self->line_map[i]);
-        PyObject *t = line_as_unicode(self->line, false);
+        PyObject *t = line_as_unicode(self->line, false, &buf);
         if (t == NULL) return NULL;
         PyTuple_SET_ITEM(lines, i, t);
     }

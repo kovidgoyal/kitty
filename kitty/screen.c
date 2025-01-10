@@ -601,12 +601,18 @@ zero_cells(text_loop_state *s, CPUCell *c, GPUCell *g) { *c = s->cc; *g = s->g; 
 
 typedef Line*(linefunc_t)(Screen*, int);
 
+static void
+init_line_(Screen *self, index_type y, Line *line) {
+    linebuf_init_line_at(self->linebuf, y, line);
+    if (y == 0 && self->linebuf == self->main_linebuf) {
+        if (history_buf_endswith_wrap(self->historybuf)) line->attrs.is_continued = true;
+    }
+}
+
+
 static Line*
 init_line(Screen *self, index_type y) {
-    linebuf_init_line(self->linebuf, y);
-    if (y == 0 && self->linebuf == self->main_linebuf) {
-        if (history_buf_endswith_wrap(self->historybuf)) self->linebuf->line->attrs.is_continued = true;
-    }
+    init_line_(self, y, self->linebuf->line);
     return self->linebuf->line;
 }
 
@@ -631,6 +637,13 @@ range_line_(Screen *self, int y) {
     }
     return init_line(self, y);
 }
+
+static void
+range_line(Screen *self, int y, Line *line) {
+    if (y < 0) historybuf_init_line(self->historybuf, -(y + 1), line);
+    else init_line_(self, y, line);
+}
+
 
 static Line*
 checked_range_line(Screen *self, int y) {
@@ -3189,7 +3202,8 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
                 if (linebuf->line->attrs.has_dirty_text) {
                     render_line(fonts_data, linebuf->line, y, &self->paused_rendering.cursor, self->disable_ligatures, self->lc);
                     screen_render_line_graphics(self, linebuf->line, y);
-                    if (linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, linebuf->line);
+                    if (linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(
+                            self->marker, linebuf->line, &self->as_ansi_buf);
                     linebuf_mark_line_clean(linebuf, y);
                 }
                 update_line_data(linebuf->line, y, address);
@@ -3213,7 +3227,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         screen_render_line_graphics(self, self->historybuf->line, y - self->scrolled_by);
         if (self->historybuf->line->attrs.has_dirty_text) {
             render_line(fonts_data, self->historybuf->line, lnum, self->cursor, self->disable_ligatures, self->lc);
-            if (screen_has_marker(self)) mark_text_in_line(self->marker, self->historybuf->line);
+            if (screen_has_marker(self)) mark_text_in_line(self->marker, self->historybuf->line, &self->as_ansi_buf);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
         update_line_data(self->historybuf->line, y, address);
@@ -3225,7 +3239,8 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
             (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor_y == lnum))) {
             render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures, self->lc);
             screen_render_line_graphics(self, self->linebuf->line, y - self->scrolled_by);
-            if (self->linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, self->linebuf->line);
+            if (self->linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(
+                    self->marker, self->linebuf->line, &self->as_ansi_buf);
             if (is_overlay_active && lnum == self->overlay_line.ynum) render_overlay_line(self, self->linebuf->line, fonts_data);
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
@@ -3459,30 +3474,61 @@ static PyObject*
 text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool strip_trailing_whitespace) {
     IterationData idata;
     iteration_data(sel, &idata, self->columns, -self->historybuf->count, 0);
-    int limit = MIN((int)self->lines, idata.y_limit);
-    PyObject *ans = PyTuple_New(limit - idata.y);
+    Line line = {.xnum=self->columns, .text_cache=self->text_cache}, next_line = line; XRange xr, xrn = {0}; CPUCell *c;
+    size_t before = self->as_ansi_buf.len;
+    const int limit = MIN((int)self->lines, idata.y_limit);
+    if (idata.y >= limit) return PyTuple_New(0);
+    RAII_PyObject(ans, PyTuple_New(limit - idata.y));
     if (!ans) return NULL;
+    range_line(self, idata.y, &next_line);
+    xrn = xrange_for_iteration_with_multicells(&idata, idata.y, &next_line);
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
-        Line *line = range_line_(self, y);
-        XRange xr = xrange_for_iteration(&idata, y, line);
+        const bool is_first_line = y == idata.y, is_last_line = y + 1 >= limit;
+        xr = xrn;
+        line = next_line;
         index_type x_limit = xr.x_limit;
+        bool is_only_whitespace_line = false;
         if (strip_trailing_whitespace) {
-            index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
+            index_type new_limit = limit_without_trailing_whitespace(&line, x_limit);
             if (new_limit != x_limit) {
                 x_limit = new_limit;
-                if (!x_limit) {
-                    PyObject *text = PyUnicode_FromString("\n");
-                    if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
-                    PyTuple_SET_ITEM(ans, i, text);
-                    continue;
+                is_only_whitespace_line = true;
+            }
+        }
+        const bool add_trailing_newline = insert_newlines && !is_last_line;
+        self->as_ansi_buf.len = before;
+        if (!is_last_line) {
+            range_line(self, y + 1, &next_line);
+            xrn = xrange_for_iteration_with_multicells(&idata, y+1, &next_line);
+            for (index_type x = 0; x < xr.x; x++) {
+                if ((c = &line.cpu_cells[x])->is_multicell && c->scale > 1 && c->y + 1 < c->scale && x <= xrn.x) {
+                    index_type mc_limit = x + mcd_x_limit(c);
+                    if (!unicode_in_range(&line, x, mc_limit, true, false, false, false, &self->as_ansi_buf)) return PyErr_NoMemory();
+                    x = mc_limit - 1;
                 }
             }
         }
-        PyObject *text = unicode_in_range(line, xr.x, x_limit, true, insert_newlines && y != limit-1, false);
-        if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
+        PyObject *text = NULL;
+        if (x_limit <= xr.x && is_only_whitespace_line) {  // we want a newline on only whitespace lines even if they are continued
+            text = add_trailing_newline ? PyUnicode_FromString("\n") : PyUnicode_FromString("");
+        } else {
+            if (!unicode_in_range(&line, xr.x, x_limit, true, add_trailing_newline, false, !is_first_line, &self->as_ansi_buf)) return PyErr_NoMemory();
+            if (!is_last_line) {
+                for (index_type x = x_limit; x < MIN(line.xnum, xrn.x_limit); x++) {
+                    if ((c = &line.cpu_cells[x])->is_multicell && c->scale > 1 && c->y + 1 < c->scale) {
+                        index_type mc_limit = x + mcd_x_limit(c);
+                        if (!unicode_in_range(&line, x, mc_limit, true, false, false, false, &self->as_ansi_buf)) return PyErr_NoMemory();
+                        x = mc_limit - 1;
+                    }
+                }
+            }
+            text = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, self->as_ansi_buf.buf + before, self->as_ansi_buf.len - before);
+        }
+        if (!text) return NULL;
         PyTuple_SET_ITEM(ans, i, text);
     }
-    return ans;
+    self->as_ansi_buf.len = before;
+    return Py_NewRef(ans);
 }
 
 static PyObject*
@@ -3499,7 +3545,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     ANSILineState s = {.output_buf=&output};
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
         Line *line = range_line_(self, y);
-        XRange xr = xrange_for_iteration(&idata, y, line);
+        XRange xr = xrange_for_iteration_with_multicells(&idata, y, line);
         output.len = 0;
         char_type prefix_char = need_newline ? '\n' : 0;
         index_type x_limit = xr.x_limit;
@@ -3513,7 +3559,10 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
                 }
             }
         }
-        if (line_as_ansi(line, &s, xr.x, x_limit, prefix_char)) has_escape_codes = true;
+        const bool is_first_line = y == idata.y;
+        if (is_first_line) {
+        }
+        if (line_as_ansi(line, &s, xr.x, x_limit, prefix_char, !is_first_line)) has_escape_codes = true;
         need_newline = insert_newlines && !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
         PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
         if (!t) return NULL;
@@ -4928,15 +4977,15 @@ static void
 screen_mark_all(Screen *self) {
     for (index_type y = 0; y < self->main_linebuf->ynum; y++) {
         linebuf_init_line(self->main_linebuf, y);
-        mark_text_in_line(self->marker, self->main_linebuf->line);
+        mark_text_in_line(self->marker, self->main_linebuf->line, &self->as_ansi_buf);
     }
     for (index_type y = 0; y < self->alt_linebuf->ynum; y++) {
         linebuf_init_line(self->alt_linebuf, y);
-        mark_text_in_line(self->marker, self->alt_linebuf->line);
+        mark_text_in_line(self->marker, self->alt_linebuf->line, &self->as_ansi_buf);
     }
     for (index_type y = 0; y < self->historybuf->count; y++) {
         historybuf_init_line(self->historybuf, y, self->historybuf->line);
-        mark_text_in_line(self->marker, self->historybuf->line);
+        mark_text_in_line(self->marker, self->historybuf->line, &self->as_ansi_buf);
     }
     self->is_dirty = true;
 }
@@ -5164,7 +5213,7 @@ dump_line_with_attrs(Screen *self, int y, PyObject *accum) {
     if (line->attrs.is_continued) call_string("continued ");
     if (line->attrs.has_dirty_text) call_string("dirty ");
     call_string("\n");
-    RAII_PyObject(t, line_as_unicode(line, false)); if (!t) return;
+    RAII_PyObject(t, line_as_unicode(line, false, &self->as_ansi_buf)); if (!t) return;
     RAII_PyObject(r2, PyObject_CallOneArg(accum, t)); if (!r2) return;
     call_string("\n");
 #undef call_string
