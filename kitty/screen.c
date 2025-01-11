@@ -3632,30 +3632,24 @@ extend_tuple(PyObject *a, PyObject *b) {
 
 static PyObject*
 current_url_text(Screen *self, PyObject *args UNUSED) {
-    PyObject *empty_string = PyUnicode_FromString(""), *ans = NULL;
+    RAII_PyObject(empty_string, PyUnicode_FromString(""));
     if (!empty_string) return NULL;
+    RAII_PyObject(ans, NULL);
     for (size_t i = 0; i < self->url_ranges.count; i++) {
         Selection *s = self->url_ranges.items + i;
         if (!is_selection_empty(s)) {
-            PyObject *temp = text_for_range(self, s, false, false);
-            if (!temp) goto error;
-            PyObject *text = PyUnicode_Join(empty_string, temp);
-            Py_CLEAR(temp);
-            if (!text) goto error;
+            RAII_PyObject(temp, text_for_range(self, s, false, false));
+            if (!temp) return NULL;
+            RAII_PyObject(text, PyUnicode_Join(empty_string, temp));
+            if (!text) return NULL;
             if (ans) {
-                PyObject *t = ans;
-                ans = PyUnicode_Concat(ans, text);
-                Py_CLEAR(text); Py_CLEAR(t);
-                if (!ans) goto error;
-            } else ans = text;
+                PyObject *t = PyUnicode_Concat(ans, text);
+                if (!t) return NULL;
+                Py_CLEAR(ans); ans = t;
+            } else ans = Py_NewRef(text);
         }
     }
-    Py_CLEAR(empty_string);
-    if (!ans) Py_RETURN_NONE;
-    return ans;
-error:
-    Py_CLEAR(empty_string); Py_CLEAR(ans);
-    return NULL;
+    return Py_NewRef(ans ? ans : Py_None);
 }
 
 
@@ -4702,12 +4696,18 @@ screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type
 }
 
 static bool
-mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id, index_type y) {
+mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id, index_type y, bool *found_nonzero_multiline) {
     index_type start = 0;
     bool found = false;
     bool in_range = false;
+    *found_nonzero_multiline = false;
     for (index_type x = 0; x < line->xnum; x++) {
         bool has_hyperlink = line->cpu_cells[x].hyperlink_id == id;
+        bool is_nonzero_multiline = line->cpu_cells[x].is_multicell && line->cpu_cells[x].y > 0;
+        if (has_hyperlink && is_nonzero_multiline) {
+            has_hyperlink = false;
+            *found_nonzero_multiline = true;
+        }
         if (in_range) {
             if (!has_hyperlink) {
                 add_url_range(self, start, y, x - 1, y, true);
@@ -4745,8 +4745,9 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
     hyperlink_id_type id = line->cpu_cells[x].hyperlink_id;
     if (!id) return 0;
     index_type ypos = y, last_marked_line = y;
+    bool found_nonzero_multiline;
     do {
-        if (mark_hyperlinks_in_line(self, line, id, ypos)) last_marked_line = ypos;
+        if (mark_hyperlinks_in_line(self, line, id, ypos, &found_nonzero_multiline) || found_nonzero_multiline) last_marked_line = ypos;
         if (ypos == 0) break;
         ypos--;
         line = screen_visual_line(self, ypos);
@@ -4754,7 +4755,7 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
     ypos = y + 1; last_marked_line = y;
     while (ypos < self->lines - 1 && ypos - last_marked_line < 5) {
         line = screen_visual_line(self, ypos);
-        if (mark_hyperlinks_in_line(self, line, id, ypos)) last_marked_line = ypos;
+        if (mark_hyperlinks_in_line(self, line, id, ypos, &found_nonzero_multiline)) last_marked_line = ypos;
         ypos++;
     }
     if (self->url_ranges.count > 1) sort_ranges(self, &self->url_ranges);

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
+from functools import partial
 
 from kitty.fast_data_types import EXTEND_CELL, TEXT_SIZE_CODE, test_ch_and_idx, wcswidth
 
@@ -662,3 +663,19 @@ def test_multicell(self: TestMulticell) -> None:
     asl((0, 0, 1), (1, 0, 3))
     ast('Xab')
     asa(f'\x1b]{TEXT_SIZE_CODE};w=1:s=2;X\x07ab', '\x1b[m')
+
+    # Hyperlinks
+    asu = partial(asl, bp=2)
+    def set_link(url=None, id=None):
+        parse_bytes(s, '\x1b]8;id={};{}\x1b\\'.format(id or '', url or '').encode('utf-8'))
+
+    s.reset()
+    set_link('url-a', 'a')
+    multicell(s, 'ab', scale=2)
+    for y in (0, 1):
+        self.ae(s.line(y).hyperlink_ids(), (1, 1, 1, 1, 0, 0, 0, 0))
+    for y in (0, 1):
+        for x in (0, 3):
+            self.ae('url-a', s.hyperlink_at(x, y))
+    asu((0, 0, 3), (1, 0, 3))
+    self.ae(s.current_url_text(), 'ab')
