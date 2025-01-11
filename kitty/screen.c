@@ -616,6 +616,19 @@ init_line(Screen *self, index_type y) {
     return self->linebuf->line;
 }
 
+static void
+visual_line(Screen *self, int y_, Line *line) {
+    index_type y = MAX(0, y_);
+    if (self->scrolled_by) {
+        if (y < self->scrolled_by) {
+            historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, line);
+            return;
+        }
+        y -= self->scrolled_by;
+    }
+    init_line_(self, y, line);
+}
+
 static Line*
 visual_line_(Screen *self, int y_) {
     index_type y = MAX(0, y_);
@@ -3750,33 +3763,37 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
     if (!line || x >= screen->columns) return 0;
+    if (line->cpu_cells[x].is_multicell && line->cpu_cells[x].scale > 1 && line->cpu_cells[x].y) {
+        if (line->cpu_cells[x].y > y) return 0;
+        y -= line->cpu_cells[x].y;
+        line = screen_visual_line(screen, y);
+    }
+    if (line->cpu_cells[x].is_multicell && line->cpu_cells[x].x) x = x > line->cpu_cells[x].x ? x - line->cpu_cells[x].x : 0;
     hyperlink_id_type hid;
     if ((hid = line->cpu_cells[x].hyperlink_id)) {
         screen_mark_hyperlink(screen, x, y);
         return hid;
     }
     char_type sentinel = 0;
-    bool newlines_allowed = !is_excluded_from_url('\n');
+    const bool newlines_allowed = !is_excluded_from_url('\n');
     index_type last_hostname_char_pos = screen->columns;
-    if (line) {
-        url_start = line_url_start_at(line, x);
-        if (url_start < line->xnum) {
-            bool next_line_starts_with_url_chars = false;
-            if (y < screen->lines - 1) {
-                line = screen_visual_line(screen, y+1);
-                next_line_starts_with_url_chars = line_startswith_url_chars(line, last_hostname_char_pos >= line->xnum);
-                if (next_line_starts_with_url_chars && !newlines_allowed && !line->attrs.is_continued) next_line_starts_with_url_chars = false;
-                line = screen_visual_line(screen, y);
-            }
-            sentinel = get_url_sentinel(line, url_start);
-            index_type slash_count = 0;
-            for (index_type i = url_start; i < line->xnum; i++) {
-                if (cell_is_char(line->cpu_cells + i, '/') && ++slash_count > 2) { last_hostname_char_pos = i - 1; break; }
-            }
-            url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars, x <= last_hostname_char_pos, last_hostname_char_pos);
+    url_start = line_url_start_at(line, x, screen->lc);
+    Line scratch = {.xnum=line->xnum, .text_cache=line->text_cache};
+    if (url_start < line->xnum) {
+        bool next_line_starts_with_url_chars = false;
+        if (y < screen->lines - 1) {
+            visual_line(screen, y + 1, &scratch);
+            next_line_starts_with_url_chars = line_startswith_url_chars(&scratch, last_hostname_char_pos >= line->xnum);
+            if (next_line_starts_with_url_chars && !newlines_allowed && !scratch.attrs.is_continued) next_line_starts_with_url_chars = false;
         }
-        has_url = url_end > url_start;
+        sentinel = get_url_sentinel(line, url_start);
+        index_type slash_count = 0;
+        for (index_type i = url_start; i < line->xnum; i++) {
+            if (cell_is_char(line->cpu_cells + i, '/') && ++slash_count > 2) { last_hostname_char_pos = i - 1; break; }
+        }
+        url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars, x <= last_hostname_char_pos, last_hostname_char_pos);
     }
+    has_url = url_end > url_start;
     if (has_url) {
         index_type y_extended = y;
         extend_url(screen, line, &url_end, &y_extended, sentinel, newlines_allowed, last_hostname_char_pos);
@@ -4260,7 +4277,7 @@ screen_visual_line(Screen *self, index_type y) {
 }
 
 static PyObject*
-visual_line(Screen *self, PyObject *args) {
+pyvisual_line(Screen *self, PyObject *args) {
     // The line corresponding to the yth visual line, taking into account scrolling
     unsigned int y;
     if (!PyArg_ParseTuple(args, "I", &y)) return NULL;
@@ -5389,7 +5406,7 @@ static PyMethodDef methods[] = {
     MND(dump_lines_with_attrs, METH_VARARGS)
     MND(cpu_cells, METH_VARARGS)
     MND(cursor_at_prompt, METH_NOARGS)
-    MND(visual_line, METH_VARARGS)
+    {"visual_line", (PyCFunction)pyvisual_line, METH_VARARGS, ""},
     MND(current_url_text, METH_NOARGS)
     MND(draw, METH_O)
     MND(apply_sgr, METH_O)

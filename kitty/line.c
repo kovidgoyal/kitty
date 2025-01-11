@@ -172,26 +172,43 @@ is_url_lc(const ListOfChars *lc) {
     return true;
 }
 
+static index_type
+next_char_pos(const Line *self, index_type x, index_type num) {
+    const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells + self->xnum;
+    while (num-- && ans < limit) ans += ans->is_multicell ? mcd_x_limit(ans) - ans->x : 1;
+    return ans - self->cpu_cells;
+}
 
 static index_type
-find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc) {
+prev_char_pos(const Line *self, index_type x, index_type num) {
+    const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells - 1;
+    if (ans->is_multicell) ans -= ans->x;
+    while (num-- && --ans > limit) if (ans->is_multicell) ans -= ans->x;
+    return ans > limit ? ans - self->cpu_cells : self->xnum;
+}
+
+
+static index_type
+find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc, index_type scale) {
     // Find :// at or before x
     index_type pos = MIN(x, self->xnum - 1);
     enum URL_PARSER_STATES {ANY, FIRST_SLASH, SECOND_SLASH};
     enum URL_PARSER_STATES state = ANY;
     limit = MAX(2u, limit);
     if (pos < limit) return 0;
+    const CPUCell *c = self->cpu_cells + pos;
+    index_type n;
+#define next_char_is(num, ch) ((n = next_char_pos(self, pos, num)) < self->xnum && cell_is_char(self->cpu_cells + n, ch) && cell_scale(self->cpu_cells + n) == scale)
+    if (cell_is_char(c, ':')) {
+        if (next_char_is(1, '/') && next_char_is(2, '/')) state = SECOND_SLASH;
+    } else if (cell_is_char(c, '/')) {
+        if (next_char_is(1, '/')) state = FIRST_SLASH;
+    }
+#undef next_char_is
+
     do {
-        const CPUCell *c = self->cpu_cells + pos;
         text_in_cell(c, self->text_cache, lc);
         if (!is_hostname_lc(lc)) return false;
-        if (pos == x) {
-            if (cell_is_char(c, ':')) {
-                if (pos + 2 < self->xnum && cell_is_char(self->cpu_cells + pos + 1, '/') && cell_is_char(self->cpu_cells + pos + 2, '/')) state = SECOND_SLASH;
-            } else if (cell_is_char(c, '/')) {
-                if (pos + 1 < self->xnum && cell_is_char(self->cpu_cells + pos + 1, '/')) state = FIRST_SLASH;
-            }
-        }
         switch(state) {
             case ANY:
                 if (cell_is_char(c, '/')) state = FIRST_SLASH;
@@ -204,7 +221,10 @@ find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc) {
                 state = cell_is_char(c, '/') ? SECOND_SLASH : ANY;
                 break;
         }
-        pos--;
+        pos = prev_char_pos(self, pos, 1);
+        if (pos >= self->xnum) break;
+        c = self->cpu_cells + pos;
+        if (cell_scale(c) != scale) break;
     } while(pos >= limit);
     return 0;
 }
@@ -249,19 +269,19 @@ has_url_beyond_colon_slash(Line *self, index_type x, ListOfChars *lc) {
 }
 
 index_type
-line_url_start_at(Line *self, index_type x) {
+line_url_start_at(Line *self, index_type x, ListOfChars *lc) {
     // Find the starting cell for a URL that contains the position x. A URL is defined as
     // known-prefix://url-chars. If no URL is found self->xnum is returned.
+    if (self->cpu_cells[x].is_multicell && self->cpu_cells[x].x) x = x > self->cpu_cells[x].x ? x - self->cpu_cells[x].x : 0;
     if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return self->xnum;
-    index_type ds_pos = 0, t;
-    RAII_ListOfChars(lc);
+    index_type ds_pos = 0, t, scale = cell_scale(self->cpu_cells + x);
     // First look for :// ahead of x
-    ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2, &lc);
-    if (ds_pos != 0 && has_url_beyond_colon_slash(self, ds_pos, &lc)) {
+    ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2, lc, scale);
+    if (ds_pos != 0 && has_url_beyond_colon_slash(self, ds_pos, lc)) {
         if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t)) return t;
     }
-    ds_pos = find_colon_slash(self, x, 0, &lc);
-    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond_colon_slash(self, ds_pos, &lc)) return self->xnum;
+    ds_pos = find_colon_slash(self, x, 0, lc, scale);
+    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond_colon_slash(self, ds_pos, lc)) return self->xnum;
     if (has_url_prefix_at(self, ds_pos, 0, &t)) return t;
     return self->xnum;
 }
@@ -302,7 +322,8 @@ line_startswith_url_chars(Line *self, bool in_hostname) {
 static PyObject*
 url_start_at(Line *self, PyObject *x) {
 #define url_start_at_doc "url_start_at(x) -> Return the start cell number for a URL containing x or self->xnum if not found"
-    return PyLong_FromUnsignedLong((unsigned long)line_url_start_at(self, PyLong_AsUnsignedLong(x)));
+    RAII_ListOfChars(lc);
+    return PyLong_FromUnsignedLong((unsigned long)line_url_start_at(self, PyLong_AsUnsignedLong(x), &lc));
 }
 
 static PyObject*

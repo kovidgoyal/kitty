@@ -116,6 +116,7 @@ const char* cell_as_sgr(const GPUCell *, const GPUCell *);
 static inline bool cell_has_text(const CPUCell *c) { return c->ch_and_idx != 0; }
 static inline void cell_set_char(CPUCell *c, char_type ch) { c->ch_and_idx = ch & 0x7fffffff; }
 static inline bool cell_is_char(const CPUCell *c, char_type ch) { return c->ch_and_idx == ch; }
+static inline index_type cell_scale(const CPUCell *c) { return c->is_multicell ? c->scale : 1; }
 static inline unsigned num_codepoints_in_cell(const CPUCell *c, const TextCache *tc) {
     unsigned ans;
     if (c->ch_is_idx) {
