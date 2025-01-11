@@ -364,11 +364,17 @@ cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf) {
 
 bool
 unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells, bool skip_multiline_non_zero_lines, ANSIBuf *buf) {
+    static const size_t initial_cap = 4096;
     ListOfChars lc;
+    if (!buf->buf) {
+        buf->buf = malloc(initial_cap * sizeof(buf->buf[0]));
+        if (!buf->buf) return false;
+        buf->capacity = initial_cap;
+    }
     for (index_type i = start; i < limit; i++) {
         lc.chars = buf->buf + buf->len; lc.capacity = buf->capacity - buf->len;
         while (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) {
-            size_t ns = MAX(4096u, 2 * buf->capacity);
+            size_t ns = MAX(initial_cap, 2 * buf->capacity);
             char_type *np = realloc(buf->buf, ns);
             if (!np) return false;
             buf->capacity = ns; buf->buf = np;
@@ -485,7 +491,6 @@ write_mark_to_ansi_buf(ANSILineState *s, const char *m) {
 
 bool
 line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char, bool skip_multiline_non_zero_lines) {
-    s->output_buf->len = 0;
     s->limit = MIN(stop_before, xlimit_for_line(self));
     s->current_multicell_state = NULL;
     s->escape_code_written = false;
@@ -554,11 +559,9 @@ set_wrapped_flag(Line* self, PyObject *is_wrapped) {
 static PyObject*
 __repr__(Line* self) {
     RAII_ANSIBuf(buf);
-    PyObject *s = line_as_unicode(self, false, &buf);
-    if (s == NULL) return NULL;
-    PyObject *ans = PyObject_Repr(s);
-    Py_CLEAR(s);
-    return ans;
+    RAII_PyObject(s, line_as_unicode(self, false, &buf));
+    if (s != NULL) return PyObject_Repr(s);
+    return NULL;
 }
 
 static PyObject*
@@ -972,6 +975,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         Line *line = get_line(container, y);
         if (!line) { if (PyErr_Occurred()) return NULL; break; }
         if (need_newline) APPEND(nl);
+        ansibuf->len = 0;
         if (as_ansi) {
             // less has a bug where it resets colors when it sees a \r, so work
             // around it by resetting SGR at the start of every line. This is

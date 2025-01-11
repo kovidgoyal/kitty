@@ -268,6 +268,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     Line l = {.xnum=self->xnum, .text_cache=self->text_cache};
     init_line(self, self->start_of_data, &l);
     ANSILineState s = {.output_buf=as_ansi_buf};
+    as_ansi_buf->len = 0;
     line_as_ansi(&l, &s, 0, l.xnum, 0, true);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) {
@@ -351,6 +352,7 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
+        output.len = 0;
         line_as_ansi(&l, &s, 0, l.xnum, 0, true);
         if (!l.cpu_cells[l.xnum - 1].next_char_was_wrapped) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);

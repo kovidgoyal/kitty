@@ -470,6 +470,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
     do {
         init_line(self, &l, self->line_map[ylimit]);
+        output.len = 0;
         line_as_ansi(&l, &s, 0, l.xnum, 0, true);
         if (output.len) break;
         ylimit--;
@@ -477,6 +478,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
 
     for(index_type i = 0; i <= ylimit; i++) {
         bool output_newline = !linebuf_line_ends_with_continuation(self, i);
+        output.len = 0;
         init_line(self, &l, self->line_map[i]);
         line_as_ansi(&l, &s, 0, l.xnum, 0, true);
         if (output_newline) {

@@ -9,7 +9,6 @@
 
 #include "text-cache.h"
 
-// TODO: Handle selection with multicell
 // TODO: URL detection with multicell
 
 typedef union CellAttrs {
