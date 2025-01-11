@@ -56,10 +56,6 @@ static inline void cleanup_free(void *p) { free(*(void**)p); }
 static inline void cleanup_decref(PyObject **p) { Py_CLEAR(*p); }
 #define RAII_PyObject(name, initializer) __attribute__((cleanup(cleanup_decref))) PyObject *name = initializer
 #define RAII_PY_BUFFER(name) __attribute__((cleanup(PyBuffer_Release))) Py_buffer name = {0}
-#if PY_VERSION_HEX < 0x030a0000
-static inline PyObject* Py_NewRef(PyObject *o) { Py_INCREF(o); return o; }
-static inline PyObject* Py_XNewRef(PyObject *o) { Py_XINCREF(o); return o; }
-#endif
 
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
