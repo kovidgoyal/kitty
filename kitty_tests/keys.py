@@ -461,6 +461,7 @@ class TestKeys(BaseTest):
         ae(kq(defines.GLFW_FKEY_UP), '\x1b[A')
         ae(kq(defines.GLFW_FKEY_LEFT_SHIFT), csi(num=defines.GLFW_FKEY_LEFT_SHIFT))
         ae(kq(defines.GLFW_FKEY_ENTER), '\x1b[13u')
+        ae(kq(defines.GLFW_FKEY_ENTER, mods=ctrl), '\x1b[13;5u')
         ae(kq(defines.GLFW_FKEY_TAB), '\x1b[9u')
         ae(kq(defines.GLFW_FKEY_BACKSPACE), '\x1b[127u')
 

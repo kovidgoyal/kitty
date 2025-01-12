@@ -150,7 +150,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
 #define SIMPLE(val) return snprintf(output, KEY_BUFFER_SIZE, "%s", val);
     char csi_trailer = 'u';
     uint32_t key_number = ev->key;
-    bool legacy_mode = !ev->report_all_event_types && !ev->disambiguate;
+    bool legacy_mode = !ev->report_all_event_types && !ev->disambiguate && !ev->report_text;
 
     if (ev->cursor_key_mode && legacy_mode && !ev->mods.value) {
         switch(key_number) {
@@ -435,7 +435,7 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
     ev.has_text = e->text && !startswith_ascii_control_char(e->text);
     if (!ev.key && !ev.has_text) return 0;
     bool send_text_standalone = !ev.report_text;
-    if (!ev.disambiguate && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_BEGIN) {
+    if (!ev.disambiguate && !ev.report_text && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_BEGIN) {
         ev.key = convert_kp_key_to_normal_key(ev.key);
     }
     switch (e->action) {
