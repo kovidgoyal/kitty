@@ -400,17 +400,19 @@ Report associated text enhancement below.
 
 Additionally, with this mode, events for pressing modifier keys are reported.
 Note that *all* keys are reported as escape codes, including :kbd:`Enter`,
-:kbd:`Tab`, :kbd:`Backspace` etc.
+:kbd:`Tab`, :kbd:`Backspace` etc. Note that this enhancement implies all keys
+are automatically disambiguated as well, since they are represented in their
+canonical escape code form.
 
 .. _report_text:
 
 Report associated text
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This progressive enhancement (``0b10000``) causes key events that generate text
-to be reported as ``CSI u`` escape codes with the text embedded in the escape
-code. See :ref:`text_as_codepoints` above for details on the mechanism.
-
+This progressive enhancement (``0b10000``) additionally causes key events that
+generate text to be reported as ``CSI u`` escape codes with the text embedded
+in the escape code. See :ref:`text_as_codepoints` above for details on the
+mechanism.
 
 .. _detection:
 
