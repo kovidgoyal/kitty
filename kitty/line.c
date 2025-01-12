@@ -230,21 +230,21 @@ find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc, in
 }
 
 static bool
-prefix_matches(Line *self, index_type at, const char_type* prefix, index_type prefix_len) {
+prefix_matches(Line *self, index_type at, const char_type* prefix, index_type prefix_len, index_type scale) {
     if (prefix_len > at) return false;
-    index_type p, i;
-    for (p = at - prefix_len, i = 0; i < prefix_len && p < self->xnum; i++, p++) {
-        if (!cell_is_char(self->cpu_cells + p, prefix[i])) return false;
+    while (prefix_len--) {
+        at = prev_char_pos(self, at, 1);
+        if (at >= self->xnum || cell_scale(self->cpu_cells + at) != scale || !cell_is_char(self->cpu_cells + at, prefix[prefix_len])) return false;
     }
-    return i == prefix_len;
+    return true;
 }
 
 static bool
-has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_type *ans) {
+has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_type *ans, index_type scale) {
     for (size_t i = 0; i < OPT(url_prefixes.num); i++) {
         index_type prefix_len = OPT(url_prefixes.values[i].len);
         if (at < prefix_len || prefix_len < min_prefix_len) continue;
-        if (prefix_matches(self, at, OPT(url_prefixes.values[i].string), prefix_len)) { *ans = at - prefix_len; return true; }
+        if (prefix_matches(self, at, OPT(url_prefixes.values[i].string), prefix_len, scale)) { *ans = at - prefix_len; return true; }
     }
     return false;
 }
@@ -252,16 +252,17 @@ has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_ty
 #define MIN_URL_LEN 5
 
 static bool
-has_url_beyond_colon_slash(Line *self, index_type x, ListOfChars *lc) {
+has_url_beyond_colon_slash(Line *self, const index_type x, ListOfChars *lc, const index_type scale) {
     unsigned num_of_slashes = 0;
-    for (index_type i = x; i < MIN(x + MIN_URL_LEN + 3, self->xnum); i++) {
-        const CPUCell *c = self->cpu_cells + i;
+    index_type pos = x, num_chars = 0;
+    while ((pos = next_char_pos(self, pos, 1)) < self->xnum && num_chars++ < MIN_URL_LEN + 2) {
+        const CPUCell *c = self->cpu_cells + pos;
+        if (cell_scale(c) != scale) return false;
         text_in_cell(c, self->text_cache, lc);
         if (num_of_slashes < 3) {
             if (!is_hostname_lc(lc)) return false;
             if (lc->count == 1 && lc->chars[0] == '/') num_of_slashes++;
-        }
-        else {
+        } else {
             for (size_t n = 0; n < lc->count; n++) if (!is_url_char(lc->chars[n])) return false;
         }
     }
@@ -277,12 +278,12 @@ line_url_start_at(Line *self, index_type x, ListOfChars *lc) {
     index_type ds_pos = 0, t, scale = cell_scale(self->cpu_cells + x);
     // First look for :// ahead of x
     ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2, lc, scale);
-    if (ds_pos != 0 && has_url_beyond_colon_slash(self, ds_pos, lc)) {
-        if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t)) return t;
+    if (ds_pos != 0 && has_url_beyond_colon_slash(self, ds_pos, lc, scale)) {
+        if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t, scale)) return t;
     }
     ds_pos = find_colon_slash(self, x, 0, lc, scale);
-    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond_colon_slash(self, ds_pos, lc)) return self->xnum;
-    if (has_url_prefix_at(self, ds_pos, 0, &t)) return t;
+    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond_colon_slash(self, ds_pos, lc, scale)) return self->xnum;
+    if (has_url_prefix_at(self, ds_pos, 0, &t, scale)) return t;
     return self->xnum;
 }
 
