@@ -3706,7 +3706,7 @@ extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type s
         bool next_line_starts_with_url_chars = false;
         line = screen_visual_line(screen, *y + 2);
         if (line) {
-            next_line_starts_with_url_chars = line_startswith_url_chars(line, in_hostname);
+            next_line_starts_with_url_chars = line_startswith_url_chars(line, in_hostname, screen->lc);
             has_newline = !line->attrs.is_continued;
             if (next_line_starts_with_url_chars && has_newline && !newlines_allowed) next_line_starts_with_url_chars = false;
             if (sentinel && next_line_starts_with_url_chars && cell_is_char(line->cpu_cells, sentinel)) next_line_starts_with_url_chars = false;
@@ -3722,8 +3722,8 @@ extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type s
                 }
             }
         }
-        index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars, in_hostname, last_hostname_char_pos);
-        if (!new_x && !line_startswith_url_chars(line, in_hostname)) break;
+        index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars, in_hostname, last_hostname_char_pos, screen->lc);
+        if (!new_x && !line_startswith_url_chars(line, in_hostname, screen->lc)) break;
         *y += 1; *x = new_x;
     }
     if (sentinel && *x == 0 && *y > orig_y) {
@@ -3732,29 +3732,6 @@ extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type s
             *y -= 1; *x = line->xnum - 1;
         }
     }
-}
-
-static char_type
-get_url_sentinel(Line *line, index_type url_start) {
-    char_type before = 0, sentinel;
-    if (url_start > 0 && url_start < line->xnum) before = cell_first_char(line->cpu_cells + url_start - 1, line->text_cache);
-    switch(before) {
-        case '"':
-        case '\'':
-        case '*':
-            sentinel = before; break;
-        case '(':
-            sentinel = ')'; break;
-        case '[':
-            sentinel = ']'; break;
-        case '{':
-            sentinel = '}'; break;
-        case '<':
-            sentinel = '>'; break;
-        default:
-            sentinel = 0; break;
-    }
-    return sentinel;
 }
 
 int
@@ -3783,7 +3760,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
         bool next_line_starts_with_url_chars = false;
         if (y < screen->lines - 1) {
             visual_line(screen, y + 1, &scratch);
-            next_line_starts_with_url_chars = line_startswith_url_chars(&scratch, last_hostname_char_pos >= line->xnum);
+            next_line_starts_with_url_chars = line_startswith_url_chars(&scratch, last_hostname_char_pos >= line->xnum, screen->lc);
             if (next_line_starts_with_url_chars && !newlines_allowed && !scratch.attrs.is_continued) next_line_starts_with_url_chars = false;
         }
         sentinel = get_url_sentinel(line, url_start);
@@ -3791,7 +3768,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
         for (index_type i = url_start; i < line->xnum; i++) {
             if (cell_is_char(line->cpu_cells + i, '/') && ++slash_count > 2) { last_hostname_char_pos = i - 1; break; }
         }
-        url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars, x <= last_hostname_char_pos, last_hostname_char_pos);
+        url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars, x <= last_hostname_char_pos, last_hostname_char_pos, screen->lc);
     }
     has_url = url_end > url_start;
     if (has_url) {

@@ -679,3 +679,12 @@ def test_multicell(self: TestMulticell) -> None:
             self.ae('url-a', s.hyperlink_at(x, y))
     asu((0, 0, 3), (1, 0, 3))
     self.ae(s.current_url_text(), 'ab')
+
+    # URL detection
+    s = self.create_screen(cols=40)
+
+    s.reset()
+    url = 'http://moo.com'
+    multicell(s, url, scale=2)
+    s.detect_url(0, 0)
+    asl((0, 0, len(url)*2), (1, 0, len(url)*2))

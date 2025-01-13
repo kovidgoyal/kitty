@@ -70,8 +70,9 @@ void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch
 void line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 char_type line_get_char(Line *self, index_type at);
 index_type line_url_start_at(Line *self, index_type x, ListOfChars *lc);
-index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool, bool, index_type);
-bool line_startswith_url_chars(Line*, bool);
+index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool, bool, index_type, ListOfChars*);
+bool line_startswith_url_chars(Line*, bool, ListOfChars*);
+char_type get_url_sentinel(Line *line, index_type url_start);
 bool line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char, bool skip_multiline_non_zero_lines) __attribute__((nonnull));
 unsigned int line_length(Line *self);
 size_t cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf);

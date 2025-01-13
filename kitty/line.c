@@ -296,28 +296,59 @@ is_pos_ok_for_url(Line *self, index_type x, bool in_hostname, index_type last_ho
 }
 
 index_type
-line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel, bool next_line_starts_with_url_chars, bool in_hostname, index_type last_hostname_char_pos) {
+line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel, bool next_line_starts_with_url_chars, bool in_hostname, index_type last_hostname_char_pos, ListOfChars *lc) {
     index_type ans = x;
-    if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3)) return 0;
-    RAII_ListOfChars(lc);
-#define pos_ok(x) is_pos_ok_for_url(self, x, in_hostname, last_hostname_char_pos, &lc)
-    if (sentinel) { while (ans < self->xnum && !cell_is_char(self->cpu_cells + ans, sentinel) && pos_ok(ans)) ans++; }
-    else { while (ans < self->xnum && pos_ok(ans)) ans++; }
-    if (ans) ans--;
-    if (ans < self->xnum - 1 || !next_line_starts_with_url_chars) {
-        while (ans > x && !self->cpu_cells[ans].ch_is_idx && can_strip_from_end_of_url(self->cpu_cells[ans].ch_or_idx)) ans--;
+#define is_not_ok(n) ((sentinel && cell_is_char(self->cpu_cells + n, sentinel)) || !is_pos_ok_for_url(self, n, in_hostname, last_hostname_char_pos, lc))
+    if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3) || is_not_ok(x)) return 0;
+    index_type n = ans;
+    while ((n = next_char_pos(self, ans, 1)) < self->xnum) {
+        if (is_not_ok(n)) break;
+        ans = n;
     }
-#undef pos_ok
+#undef is_not_ok
+    if (ans < self->xnum - 1 || !next_line_starts_with_url_chars) {
+        while (ans > x && !self->cpu_cells[ans].ch_is_idx && can_strip_from_end_of_url(self->cpu_cells[ans].ch_or_idx)) {
+            n = prev_char_pos(self, ans, 1);
+            if (n >= self->xnum || n < x) break;
+            ans = n;
+        }
+    }
     return ans;
 }
 
 bool
-line_startswith_url_chars(Line *self, bool in_hostname) {
-    RAII_ListOfChars(lc);
-    text_in_cell(self->cpu_cells, self->text_cache, &lc);
-    if (in_hostname) return is_hostname_lc(&lc);
-    return is_url_lc(&lc);
+line_startswith_url_chars(Line *self, bool in_hostname, ListOfChars *lc) {
+    text_in_cell(self->cpu_cells, self->text_cache, lc);
+    if (in_hostname) return is_hostname_lc(lc);
+    return is_url_lc(lc);
 }
+
+char_type
+get_url_sentinel(Line *line, index_type url_start) {
+    char_type before = 0, sentinel;
+    if (url_start > 0 && url_start < line->xnum) {
+        index_type n = prev_char_pos(line, url_start, 1);
+        if (n < line->xnum) before = cell_first_char(line->cpu_cells + n, line->text_cache);
+    }
+    switch(before) {
+        case '"':
+        case '\'':
+        case '*':
+            sentinel = before; break;
+        case '(':
+            sentinel = ')'; break;
+        case '[':
+            sentinel = ']'; break;
+        case '{':
+            sentinel = '}'; break;
+        case '<':
+            sentinel = '>'; break;
+        default:
+            sentinel = 0; break;
+    }
+    return sentinel;
+}
+
 
 
 static PyObject*
@@ -333,7 +364,8 @@ url_end_at(Line *self, PyObject *args) {
     unsigned int x, sentinel = 0;
     int next_line_starts_with_url_chars = 0;
     if (!PyArg_ParseTuple(args, "I|Ip", &x, &sentinel, &next_line_starts_with_url_chars)) return NULL;
-    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, x, true, sentinel, next_line_starts_with_url_chars, false, self->xnum));
+    RAII_ListOfChars(lc);
+    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, x, true, sentinel, next_line_starts_with_url_chars, false, self->xnum, &lc));
 }
 
 // }}}
