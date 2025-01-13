@@ -172,14 +172,14 @@ is_url_lc(const ListOfChars *lc) {
     return true;
 }
 
-static index_type
+index_type
 next_char_pos(const Line *self, index_type x, index_type num) {
     const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells + self->xnum;
     while (num-- && ans < limit) ans += ans->is_multicell ? mcd_x_limit(ans) - ans->x : 1;
     return ans - self->cpu_cells;
 }
 
-static index_type
+index_type
 prev_char_pos(const Line *self, index_type x, index_type num) {
     const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells - 1;
     if (ans->is_multicell) ans -= ans->x;
@@ -321,6 +321,14 @@ line_startswith_url_chars(Line *self, bool in_hostname, ListOfChars *lc) {
     text_in_cell(self->cpu_cells, self->text_cache, lc);
     if (in_hostname) return is_hostname_lc(lc);
     return is_url_lc(lc);
+}
+
+index_type
+find_char(Line *self, index_type start, char_type ch) {
+    do {
+        if (cell_is_char(self->cpu_cells + start, ch)) return start;
+    } while ((start = next_char_pos(self, start, 1)) < self->xnum);
+    return self->xnum;
 }
 
 char_type
