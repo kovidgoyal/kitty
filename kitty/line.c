@@ -240,11 +240,14 @@ prefix_matches(Line *self, index_type at, const char_type* prefix, index_type pr
 }
 
 static bool
-has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_type *ans, index_type scale) {
+has_url_prefix_at(Line *self, const index_type at, index_type *ans, index_type scale) {
     for (size_t i = 0; i < OPT(url_prefixes.num); i++) {
         index_type prefix_len = OPT(url_prefixes.values[i].len);
-        if (at < prefix_len || prefix_len < min_prefix_len) continue;
-        if (prefix_matches(self, at, OPT(url_prefixes.values[i].string), prefix_len, scale)) { *ans = at - prefix_len; return true; }
+        if (at < prefix_len) continue;
+        if (prefix_matches(self, at, OPT(url_prefixes.values[i].string), prefix_len, scale)) {
+            *ans = prev_char_pos(self, at, prefix_len);
+            if (*ans < self->xnum) return true;
+        }
     }
     return false;
 }
@@ -279,11 +282,11 @@ line_url_start_at(Line *self, index_type x, ListOfChars *lc) {
     // First look for :// ahead of x
     ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2, lc, scale);
     if (ds_pos != 0 && has_url_beyond_colon_slash(self, ds_pos, lc, scale)) {
-        if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t, scale)) return t;
+        if (has_url_prefix_at(self, ds_pos, &t, scale) && t <= x) return t;
     }
     ds_pos = find_colon_slash(self, x, 0, lc, scale);
     if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond_colon_slash(self, ds_pos, lc, scale)) return self->xnum;
-    if (has_url_prefix_at(self, ds_pos, 0, &t, scale)) return t;
+    if (has_url_prefix_at(self, ds_pos, &t, scale)) return t;
     return self->xnum;
 }
 

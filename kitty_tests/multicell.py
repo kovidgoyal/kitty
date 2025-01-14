@@ -687,4 +687,5 @@ def test_multicell(self: TestMulticell) -> None:
     url = 'http://moo.com'
     multicell(s, url, scale=2)
     s.detect_url(0, 0)
-    asl((0, 0, len(url)*2), (1, 0, len(url)*2))
+    self.ae(s.current_url_text(), url)
+    asu((0, 0, len(url)*2 - 1), (1, 0, len(url)*2 - 1))
