@@ -9,8 +9,6 @@
 
 #include "text-cache.h"
 
-// TODO: URL detection with multicell
-
 typedef union CellAttrs {
     struct {
         uint16_t decoration : 3;

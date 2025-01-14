@@ -3714,7 +3714,7 @@ extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type s
     while (count++ < 10) {
         bool in_hostname = last_hostname_char_pos >= line->xnum;
         has_newline = !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
-        if (*x != line->xnum - 1 || (!newlines_allowed && has_newline)) break;
+        if (next_char_pos(line, *x, 1) < line->xnum || (!newlines_allowed && has_newline)) break;
         bool next_line_starts_with_url_chars = false;
         line = screen_visual_line(screen, *y + 2 * scale);
         if (line) {

@@ -7,7 +7,7 @@ from kitty.marks import marker_from_function, marker_from_regex
 from kitty.rgb import color_names
 from kitty.window import pagerhist
 
-from . import BaseTest, parse_bytes
+from . import BaseTest, draw_multicell, parse_bytes
 
 
 class TestScreen(BaseTest):
@@ -1112,37 +1112,8 @@ class TestScreen(BaseTest):
         ac(9, 10)
 
     def test_detect_url(self):
-        s = self.create_screen(cols=30)
-
-        def ae(expected, x=3, y=0):
-            s.detect_url(x, y)
-            url = ''.join(s.text_for_marked_url())
-            self.assertEqual(expected, url)
-
-        def t(url, x=0, y=0, before='', after='', expected=''):
-            s.reset()
-            s.cursor.x = x
-            s.cursor.y = y
-            s.draw(before + url + after)
-            ae(expected or url, x=x + 1 + len(before), y=y)
-
-
-        t('http://moo.com')
-        t('http://moo.com/something?else=+&what-')
-        t('http://moo.com#fragme')
-        for (st, e) in '() {} [] <>'.split():
-            t('http://moo.com', before=st, after=e)
-        for trailer in ')-=':
-            t('http://moo.com' + trailer)
-        for trailer in '{}([<>':   # )]>
-            t('http://moo.com', after=trailer)
-        t('http://moo.com', x=s.columns - 9)
-        t('https://wraps-by-one-char.com', before='[', after=']')
-        t('http://[::1]:8080')
-        t('https://wr[aps-by-one-ch]ar.com')
-        t('http://[::1]:8080/x', after='[')  # ]
-        t('http://[::1]:8080/x]y34', expected='http://[::1]:8080/x')
-        t('https://wraps-by-one-char.com[]/x', after='[')  # ]
+        detect_url(self)
+        detect_url(self, scale=2)
 
     def test_prompt_marking(self):
         # ]]]]]]]]]]]]]]]]}}}}}}}}}}}}}}}}))))))))))))))))))))))
@@ -1376,3 +1347,42 @@ class TestScreen(BaseTest):
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': (Color(255, 0, 0), 126)})
         q({'transparent_background_color2': '#ffffff@-1'})
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': (Color(255, 255, 255), 255)})
+
+
+def detect_url(self, scale=1):
+    s = self.create_screen(cols=30 * scale)
+
+    def ae(expected, x=3, y=0):
+        s.detect_url(x * scale, y * scale)
+        url = ''.join(s.text_for_marked_url())
+        self.assertEqual(expected, url)
+
+    def t(url, x=0, y=0, before='', after='', expected=''):
+        s.reset()
+        s.cursor.x = x
+        s.cursor.y = y
+        text = before + url + after
+        if scale == 1:
+            s.draw(text)
+        else:
+            draw_multicell(s, text, scale=scale)
+        ae(expected or url, x=x + 1 + len(before), y=y)
+
+
+    t('http://moo.com')
+    t('http://moo.com/something?else=+&what-')
+    t('http://moo.com#fragme')
+    for (st, e) in '() {} [] <>'.split():
+        t('http://moo.com', before=st, after=e)
+    for trailer in ')-=':
+        t('http://moo.com' + trailer)
+    for trailer in '{}([<>':   # )]>
+        t('http://moo.com', after=trailer)
+    if scale == 1:
+        t('http://moo.com', x=s.columns - 9)
+    t('https://wraps-by-one-char.com', before='[', after=']')
+    t('http://[::1]:8080')
+    t('https://wr[aps-by-one-ch]ar.com')
+    t('http://[::1]:8080/x', after='[')  # ]
+    t('http://[::1]:8080/x]y34', expected='http://[::1]:8080/x')
+    t('https://wraps-by-one-char.com[]/x', after='[')  # ]

@@ -681,7 +681,7 @@ def test_multicell(self: TestMulticell) -> None:
     self.ae(s.current_url_text(), 'ab')
 
     # URL detection
-    s = self.create_screen(cols=40)
+    s = self.create_screen(cols=60)
 
     s.reset()
     url = 'http://moo.com'
@@ -689,3 +689,4 @@ def test_multicell(self: TestMulticell) -> None:
     s.detect_url(0, 0)
     self.ae(s.current_url_text(), url)
     asu((0, 0, len(url)*2 - 1), (1, 0, len(url)*2 - 1))
+    # More tests for URL detection are in screen.py in detect_url()

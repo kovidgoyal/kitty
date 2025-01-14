@@ -309,7 +309,7 @@ line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel, 
         ans = n;
     }
 #undef is_not_ok
-    if (ans < self->xnum - 1 || !next_line_starts_with_url_chars) {
+    if (next_char_pos(self, ans, 1) < self->xnum || !next_line_starts_with_url_chars) {
         while (ans > x && !self->cpu_cells[ans].ch_is_idx && can_strip_from_end_of_url(self->cpu_cells[ans].ch_or_idx)) {
             n = prev_char_pos(self, ans, 1);
             if (n >= self->xnum || n < x) break;
