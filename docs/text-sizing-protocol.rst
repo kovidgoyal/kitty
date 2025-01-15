@@ -67,7 +67,7 @@ There are only a handful of metadata keys, defined in the table below:
 
     "s", "Integer from 1 to 7",  "1", "The overall scale, the text will be rendered in a block of `s * w` by `s` cells"
 
-    "w", "Integer from 0 to 7",  "0", "The width, in cells, in which the text should be rendered. When zero, the terminal should calculate the width as it would for normal text."
+    "w", "Integer from 0 to 7",  "0", "The width, in cells, in which the text should be rendered. When zero, the terminal should calculate the width as it would for normal text, splitting it up into scaled cells."
 
     "n", "Integer from 0 to 15", "0", "The numerator for the fractional scale."
 
@@ -101,6 +101,28 @@ But, because `s=2` it instead gets split as::
 The terminal multiplies the font size by `s` when rendering these
 characters and thus ends up rendering text at twice the base size.
 
+When `w` is a non-zero value, it specifies the width in scaled cells of the
+following text. Note that **all** the text in that escape code must be rendered
+in `s * w` cells. If it does not fit, the terminal is free to do whatever it
+feels is best, including truncating the text or downsizing the font size when
+rendering it. It is up to client applications to use the `w` key wisely and not
+try to render too much text in too few cells. When sending a string of text
+with non zero `w` to the terminal emulator, the way to do it is to split up the
+text into chunks that fit in `w` cells and send one escape code per chunk. So
+for the string: `cool-🐈` the actual escape codes would be (ignoring the header
+and trailers):
+
+   w=1;c w=1;o w=1;o w=1;l w=1;- w=2:🐈
+
+Note in particular how the last character, the cat emoji, 🐈 has `w=2`.
+In practice client applications can assume that terminal emulators get the
+width of all ASCII characters correct and use the `w=0` form for efficient
+transmission, so that the above becomes:
+
+   cool- w=2:🐈
+
+The use of non-zero `w` should mainly be restricted to non-ASCII characters and
+when using fractional scaling, as described below.
 
 Fractional scaling
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -127,3 +149,35 @@ following for each pair::
     OSC _text_size_code ; n=1:d=2:w=1 ; ab <terminator>
     ... repeat for each pair of characters
 
+
+Finally fixing the character width issue for the terminal ecosystem
+---------------------------------------------------------------------
+
+Terminals create user interfaces using text displayed in a cell grid. For
+terminal software that creates sophisticated user interfaces it is particularly
+important that the client program running in the terminal and the terminal
+itself agree on how many cells a particular string should be rendered in. If
+the two disagree, then the entire user interface can be broken, leading to
+catastrophic failures.
+
+Fundamentally, this is a co-ordination problem. Both the client program and the
+terminal have to somehow share the same database of character properties and
+the same algorithm for computing string lengths in cells based on that shared
+database. Sadly, there is no such shared database in reality. The closest we
+have is the Unicode standard. Unfortunately, the Unicode standard has a new
+version almost every year and actually changes the width assigned to some
+characters in different versions. Furthermore, to actually get the "correct"
+width for a string using that standard one has to do grapheme segmentation,
+which is an `extremely complex algorithm
+<https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries>`__.
+Expecting all terminals and all terminal programs to have both up-to-date
+character databases and a bug free implementation of this algorithm is not
+realistic.
+
+So instead, this protocol solves this issue robustly by removing the
+co-ordination problem and putting only one actor in charge of determining
+string width. The client becomes responsible for doing whatever level of
+grapheme segmentation it is comfortable with using whatever unicode database is
+at its disposal and then it can transmit the segmented string to the terminal
+with the appropriate `w` values so that the terminal renders the text in the
+exact number of cells the client expects.
