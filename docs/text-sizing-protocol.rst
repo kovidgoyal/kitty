@@ -65,21 +65,65 @@ There are only a handful of metadata keys, defined in the table below:
 .. csv-table:: The text sizing metadata keys
    :header: "Key", "Value", "Default", "Description"
 
-    "s", "Integer from 1 to 7", "1", "The overall scale, the text will be rendered in a block of :code:`s * w by s` cells"
+    "s", "Integer from 1 to 7",  "1", "The overall scale, the text will be rendered in a block of `s * w` by `s` cells"
 
-    "w", "Integer from 0 to 7", "0", "The width, in cells, in which the text should be rendered. When zero, the terminal should calculate the width as it would for normal text."
+    "w", "Integer from 0 to 7",  "0", "The width, in cells, in which the text should be rendered. When zero, the terminal should calculate the width as it would for normal text."
 
     "n", "Integer from 0 to 15", "0", "The numerator for the fractional scale."
 
-    "d", "Integer from 0 to 15", "0", "The denominator for the fractional scale."
+    "d", "Integer from 0 to 15", "0", "The denominator for the fractional scale. Must be `> n` when non-zero."
 
-    "v", "Integer from 0 to 2", "0", "The vertical alignment to use for fractionally scaled text."
+    "v", "Integer from 0 to 2",  "0", "The vertical alignment to use for fractionally scaled text. `0` - top, `1` - bottom, `2` - centered"
 
 
 How it works
 ------------------
 
-This protocol works by allowing the client program to tell the terminal
-emulator to render text in multiple cells. The terminal can then adjust the
-actual font size used to render the specified text as appropriate for the
-specified space.
+This protocol works by allowing the client program to tell the terminal to
+render text in multiple cells. The terminal can then adjust the actual font
+size used to render the specified text as appropriate for the specified space.
+
+The space to render is controlled by four metadata keys, `s (scale)`, `w (width)`, `n (numerator)`
+and `d (denominator)`. The most important are the `s` and `w` keys. The text
+will be rendered in a block of `s * w` by `s` cells. A special case is `w=0`
+(the default), which means the terminal splits up the text into cells as it
+would normally without this protocol, but now each cell is an `s by s` block of
+cells instead. So, for example, if the text is `abc` and `s=2` the terminal would normally
+split it into three cells::
+
+    │a│b│c│
+
+But, because `s=2` it instead gets split as::
+
+    │a░│b░│c░│
+    │░░│░░│░░│
+
+The terminal multiplies the font size by `s` when rendering these
+characters and thus ends up rendering text at twice the base size.
+
+
+Fractional scaling
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Using the main scale parameter (`s`) gives us only 7 font sizes. Fortunately,
+this protocol allows specifying fractional scaling, fractional scaling is
+applied on top of the main scale specified by `s`. It allows niceties like:
+
+  * Normal sized text but with half a line of blank space above and half a line below (`s=2:n=1:d=2:v=2`)
+  * Superscripts (`n=1:d=2`)
+  * Subscripts (`n=1:d=2:v=1`)
+  * ...
+
+The fraction is specified using an integer numerator and denominator (`n` and
+`d`). In addition, by using the `v` key one can vertically align the
+fractionally scaled text at top, bottom or middle.
+
+When using fractional scaling one often wants to fit more than a single
+character per cell. To accommodate that, there is the `w` key. This specifies
+the number of cells in which to render the text. For example, for a superscript
+one would typically split the string into pairs of characters and use the
+following for each pair::
+
+    OSC _text_size_code ; n=1:d=2:w=1 ; ab <terminator>
+    ... repeat for each pair of characters
+
