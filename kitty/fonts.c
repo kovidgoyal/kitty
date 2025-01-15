@@ -358,14 +358,23 @@ calculate_underline_exclusion_zones(pixel *buf, const FontGroup *fg, DecorationG
     thickness = MAX(1u, thickness);
     if (0) printf("dg: %u %u cell_height: %u scaled_cell_height: %u\n", dg.top, dg.height, fg->fcm.cell_height, scaled_metrics.cell_height);
     if (0) { display_rgba_data(buf, fg->fcm.cell_width, fg->fcm.cell_height); printf("\n"); }
+    unsigned max_overlap = 0;
+#define is_rendered(x, y) ((buf[(y) * fg->fcm.cell_width + (x)] & 0x000000ff) > 0)
     for (unsigned x = 0; x < fg->fcm.cell_width; x++) {
         for (unsigned y = dg.top; y < bottom && !ans[x]; y++) {
-            if ((buf[y * fg->fcm.cell_width + x] & 0x000000ff) > 0) {
+            if (is_rendered(x, y)) {
+                while (y + 1 < bottom && is_rendered(x, y + 1)) y++;
+                max_overlap = MAX(max_overlap, y - dg.top + 1);
                 unsigned start_x = x > thickness ? x - thickness : 0;
                 for (unsigned dx = start_x; dx < MIN(x + thickness, fg->fcm.cell_width); dx++) ans[dx] = 0xffffffff;
                 break;
             }
         }
+    }
+#undef is_rendered
+    if (dg.height > 1 && max_overlap <= dg.height / 2) {
+        // ignore half thickness overlap as this is likely a false positive not an actual descender
+        memset(ans, 0, fg->fcm.cell_width * sizeof(ans[0]));
     }
     if (0) dump_sprite(ans, fg->fcm.cell_width, 1);
 }
