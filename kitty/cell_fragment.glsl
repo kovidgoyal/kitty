@@ -15,7 +15,7 @@ in vec3 sprite_pos;
 in vec3 underline_pos;
 in vec3 cursor_pos;
 in vec3 strike_pos;
-in vec3 underline_exclusion_pos;
+flat in uint underline_exclusion_pos;
 in vec3 foreground;
 in vec4 cursor_color_premult;
 in vec3 decoration_fg;
@@ -128,8 +128,10 @@ vec4 load_text_foreground_color() {
 
 vec4 calculate_premul_foreground_from_sprites(vec4 text_fg) {
     // Return premul foreground color from decorations (cursor, underline, strikethrough)
+    ivec3 sz = textureSize(sprites, 0);
     float underline_alpha = texture(sprites, underline_pos).a;
-    float underline_exclusion = texture(sprites, underline_exclusion_pos).a;
+    float underline_exclusion = texelFetch(sprites, ivec3(int(
+        sprite_pos.x * float(sz.x)), int(underline_exclusion_pos), int(sprite_pos.z)), 0).a;
     underline_alpha *= 1.0f - underline_exclusion;
     float strike_alpha = texture(sprites, strike_pos).a;
     float cursor_alpha = texture(sprites, cursor_pos).a;

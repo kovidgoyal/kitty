@@ -52,7 +52,7 @@ out vec3 underline_pos;
 out vec3 cursor_pos;
 out vec4 cursor_color_premult;
 out vec3 strike_pos;
-out vec3 underline_exclusion_pos;
+flat out uint underline_exclusion_pos;
 out vec3 foreground;
 out vec3 decoration_fg;
 out float colored_sprite;
@@ -121,10 +121,10 @@ vec3 to_sprite_pos(uvec2 pos, uint idx) {
     return vec3(s_xpos[pos.x], s_ypos[pos.y], c.z);
 }
 
-vec3 to_underline_exclusion_pos(uvec2 pos, vec3 sprite_pos) {
+uint to_underline_exclusion_pos() {
     uvec3 c = to_sprite_coords(sprite_idx[0]);
-    float y = (float(c.y) + 1.0f) * (1.0f / float(sprites_ynum));
-    return vec3(sprite_pos.x, y, sprite_pos.z);
+    uint cell_top_px = c.y * (cell_height + 1u);
+    return cell_top_px + cell_height;
 }
 
 uint read_sprite_decorations_idx() {
@@ -240,7 +240,7 @@ void main() {
     uvec2 decs = get_decorations_indices(uint(in_url), text_attrs);
     strike_pos = to_sprite_pos(cell_data.pos, decs[0]);
     underline_pos = to_sprite_pos(cell_data.pos, decs[1]);
-    underline_exclusion_pos = to_underline_exclusion_pos(cell_data.pos, sprite_pos);
+    underline_exclusion_pos = to_underline_exclusion_pos();
 
     // Cursor
     cursor_color_premult = vec4(color_to_vec(cursor_bg) * cursor_opacity, cursor_opacity);
