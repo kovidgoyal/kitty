@@ -527,7 +527,7 @@ Escape code safe UTF-8
 
 This must be valid UTF-8 as per the spec in :rfc:`3629`. In addition, in order
 to make it safe for transmission embedded inside an escape code, it must
-contain none of the C0 and C1 control characters, that is, the unicode
+contain none of the C0 and C1 control characters, that is, the Unicode
 characters: U+0000 (NUL) - U+1F (Unit separator), U+7F (DEL) and U+80 (PAD) - U+9F
 (APC). Note that in particular, this means that no newlines, carriage returns,
 tabs, etc. are allowed.

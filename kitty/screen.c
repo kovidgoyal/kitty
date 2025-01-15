@@ -1236,11 +1236,13 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     ensure_space_for_chars(self->lc, cmd->payload_sz + 1);
     self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
     if (!self->lc->count) return;
+#define M(x) ( (1u << x) - 1u)
     CPUCell mcd = {
-        .width=MIN(cmd->width, (WIDTH_BITS << 1) - 1), .scale=MAX(1u, MIN(cmd->scale, (SCALE_BITS << 1) - 1)),
-        .subscale_n=MIN(cmd->subscale_n, (SUBSCALE_BITS << 1) - 1), .subscale_d=MIN(cmd->subscale_d, (SUBSCALE_BITS << 1) - 1),
+        .width=MIN(cmd->width, M(WIDTH_BITS)), .scale=MAX(1u, MIN(cmd->scale, M(SCALE_BITS))),
+        .subscale_n=MIN(cmd->subscale_n, M(SUBSCALE_BITS)), .subscale_d=MIN(cmd->subscale_d, M(SUBSCALE_BITS)),
         .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
     };
+#undef M
     if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);
     else {
         RAII_ListOfChars(lc);

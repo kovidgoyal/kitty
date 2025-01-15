@@ -225,8 +225,9 @@ By default kitty renders gaps in underlines when they overlap with descenders
 (the parts of letters below the baseline, such as for y, q, p etc.). This option
 controls the thickness of the gaps. It can be either a unitless number in which
 case it is a fraction of the underline thickness as specified in the font or
-it can have a suffix of :code:`px` for pixels or :code:`pt` for points. Changing this
-option dynamically via reloading the config or remote control is undefined.
+it can have a suffix of :code:`px` for pixels or :code:`pt` for points. Set to zero
+to disable the gaps. Changing this option dynamically via reloading the config or remote
+control is undefined.
 ''')
 
 

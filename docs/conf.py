@@ -29,7 +29,7 @@ if kitty_src not in sys.path:
 
 from kitty.conf.types import Definition, expand_opt_references  # noqa
 from kitty.constants import str_version, website_url # noqa
-from kitty.fast_data_types import Shlex  # noqa
+from kitty.fast_data_types import Shlex, TEXT_SIZE_CODE  # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -119,6 +119,7 @@ def go_version(go_mod_path: str) -> str:  # {{{
 string_replacements = {
     '_kitty_install_cmd': 'curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin',
     '_build_go_version': go_version('../go.mod'),
+    '_text_size_code': str(TEXT_SIZE_CODE),
 }
 
 
