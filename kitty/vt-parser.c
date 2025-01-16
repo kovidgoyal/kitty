@@ -1299,11 +1299,7 @@ dispatch_csi(PS *self) {
                 break;
             }
             if (start_modifier == '>' && !end_modifier) {
-                REPORT_ERROR(
-                    "The application is trying to use xterm's modifyOtherKeys."
-                    " This is superseded by the kitty keyboard protocol: https://sw.kovidgoyal.net/kitty/keyboard-protocol/"
-                    " the application should be updated to use that"
-                );
+                CALL_CSI_HANDLER1(screen_modify_other_keys, 0);
                 break;
             }
             /* fallthrough */
