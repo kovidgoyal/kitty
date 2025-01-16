@@ -95,7 +95,7 @@ This sets the colors used for dark color schemes, use :opt:`pygments_style` to c
 colors for light color schemes.''')
 
 opt('foreground', 'black', option_type='to_color', long_text='Basic colors')
-opt('dark_foreground', '#f8f8f2', option_type='to_color', long_text='Basic colors')
+opt('dark_foreground', '#f8f8f2', option_type='to_color')
 
 dark_bg = '#212830'
 opt('background', 'white', option_type='to_color',)
