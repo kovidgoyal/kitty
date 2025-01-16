@@ -39,7 +39,7 @@ func TestParseSocketAddress(t *testing.T) {
 		test(spec)
 	}
 	teste := func(spec string, e string) {
-		eerr = fmt.Errorf(e)
+		eerr = fmt.Errorf("%s", e)
 		test(spec)
 	}
 
