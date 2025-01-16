@@ -177,7 +177,7 @@ realistic.
 So instead, this protocol solves this issue robustly by removing the
 co-ordination problem and putting only one actor in charge of determining
 string width. The client becomes responsible for doing whatever level of
-grapheme segmentation it is comfortable with using whatever unicode database is
+grapheme segmentation it is comfortable with using whatever Unicode database is
 at its disposal and then it can transmit the segmented string to the terminal
 with the appropriate `w` values so that the terminal renders the text in the
 exact number of cells the client expects.
