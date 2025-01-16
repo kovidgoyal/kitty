@@ -84,7 +84,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.39.0 [future]
+0.39.0 [2025-01-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :doc:`diff kitten <kittens/diff>`: Automatically use dark/light color scheme based on the color scheme of the parent terminal. Can be controlled via the new :opt:`kitten-diff.color_scheme` option. Note that this is a **default behavior change** (:iss:`8170`)
