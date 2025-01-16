@@ -73,7 +73,9 @@ agr('colors', 'Colors')
 
 opt('color_scheme', 'auto', choices=('auto', 'light', 'dark'), long_text='''
 Whether to use the light or dark colors. The default of :code:`auto` means
-to follow the parent terminal color scheme.
+to follow the parent terminal color scheme. Note that the actual colors used
+for dark schemes are set by the :code:`dark_*` settings below and the non-prefixed
+settings are used for light colors.
 ''')
 
 opt('pygments_style', 'default', long_text='''
