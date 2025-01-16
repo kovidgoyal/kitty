@@ -1,7 +1,7 @@
 The text sizing protocol
 ==============================================
 
-Classically, because the terminal is a grid of equally spaced characters, only
+Classically, because the terminal is a grid of equally sized characters, only
 a single text size was supported in terminals, with one minor exception, some
 characters were allowed to be rendered in two cells, to accommodate East Asian
 square aspect ratio characters and Emoji. Here, by single text size we mean the
@@ -114,7 +114,7 @@ and trailers)::
 
    w=1;c w=1;o w=1;o w=1;l w=1;- w=2:🐈
 
-Note in particular how the last character, the cat emoji, ``🐈`` has ``w=2``.
+Note, in particular, how the last character, the cat emoji, ``🐈`` has ``w=2``.
 In practice client applications can assume that terminal emulators get the
 width of all ASCII characters correct and use the ``w=0`` form for efficient
 transmission, so that the above becomes::
@@ -189,7 +189,11 @@ Detecting if the terminal supports this protocol
 To detect support for this protocol use the `CPR (Cursor Position Report)
 <https://vt100.net/docs/vt510-rm/CPR.html>`__ escape code. Send a ``CPR``
 followed by ``\e]_text_size_code;w=2;a\a`` which will draw an ``a`` character in
-two cells, followed by another ``CPR``. Then wait for the two responses form the
+two cells, followed by another ``CPR``. Then wait for the two responses from the
 terminal to the two CPR queries. If the cursor position in the two responses is
 the same, the terminal does not support this protocol, if the second response
 has a different cursor position then it is supported.
+
+
+Interaction with other terminal controls
+--------------------------------------------------
