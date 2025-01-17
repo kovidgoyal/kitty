@@ -84,6 +84,12 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.39.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Splits layout: Allow setting the bias of the current split using ``layout_action bias`` (:iss:`8222`)
+
+
 0.39.0 [2025-01-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

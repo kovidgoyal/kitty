@@ -179,6 +179,12 @@ define a few extra key bindings in :file:`kitty.conf`::
     map ctrl+up neighboring_window up
     map ctrl+down neighboring_window down
 
+    # Set the bias of the split containing the currently focused window. The
+    # currently focused window will take up the specified percent of its parent
+    # window's size.
+    map ctrl+. layout_action bias 80
+
+
 Windows can be resized using :ref:`window_resizing`. You can swap the windows
 in a split using the ``rotate`` action with an argument of ``180`` and rotate
 and swap with an argument of ``270``.

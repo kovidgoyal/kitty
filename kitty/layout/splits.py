@@ -288,6 +288,10 @@ class Pair:
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
 
+    def set_bias(self, window_id: int, bias: int) -> None:
+        b = max(0, min(bias, 100)) / 100
+        self.bias = b if window_id == self.one else (1. - b)
+
     def modify_size_of_child(self, which: int, increment: float, is_horizontal: bool, layout_object: 'Splits') -> bool:
         if is_horizontal == self.horizontal and not self.is_redundant:
             if which == 2:
@@ -641,6 +645,15 @@ class Splits(Layout):
                         new_root.one = self.pairs_root
                         new_root.two = wg.id
                     self.pairs_root = new_root
+                    return True
+        elif action_name == 'bias':
+            args = args or ('50',)
+            bias = int(args[0])
+            wg = all_windows.active_group
+            if wg is not None:
+                pair = self.pairs_root.pair_for_window(wg.id)
+                if pair is not None:
+                    pair.set_bias(wg.id, bias)
                     return True
 
         return None
