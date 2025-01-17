@@ -821,8 +821,8 @@ class ColorProfile:
 
     def __init__(self, opts: Optional[Options] = None): ...
 
-    def as_dict(self) -> Dict[str, int | None | tuple[tuple[Color, float], ...]]:
-        pass
+    def as_dict(self) -> Dict[str, int | None | tuple[tuple[Color, float], ...]]: ...
+    def basic_colors(self) -> Dict[str, int | None | tuple[tuple[Color, float], ...]]: ...
 
     def as_color(self, val: int) -> Optional[Color]:
         pass

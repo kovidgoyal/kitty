@@ -1976,6 +1976,8 @@ class Boss:
                 cmd = [kitten_exe(), kitten]
                 env['KITTEN_RUNNING_AS_UI'] = '1'
                 env['KITTY_CONFIG_DIRECTORY'] = config_dir
+                if w is not None:
+                    env['KITTY_BASIC_COLORS'] = json.dumps(w.screen.color_profile.basic_colors())
             else:
                 cmd = [kitty_exe(), '+runpy', 'from kittens.runner import main; main()']
                 env['PYTHONWARNINGS'] = 'ignore'

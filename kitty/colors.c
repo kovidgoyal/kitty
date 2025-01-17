@@ -305,32 +305,55 @@ colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, Dyna
 }
 static Color* alloc_color(unsigned char r, unsigned char g, unsigned char b, unsigned a);
 
+static bool
+colortable_colors_into_dict(ColorProfile *self, unsigned start, unsigned limit, PyObject *ans) {
+    static char buf[32] = {'c', 'o', 'l', 'o', 'r', 0};
+    for (unsigned i = start; i < limit; i++) {
+        snprintf(buf + 5, sizeof(buf) - 6, "%u", i);
+        PyObject *val = PyLong_FromUnsignedLong(self->color_table[i]);
+        if (!val) return false;
+        int ret = PyDict_SetItemString(ans, buf, val);
+        Py_DECREF(val);
+        if (ret != 0) return false;
+    }
+    return true;
+}
+
+static PyObject*
+basic_colors(ColorProfile *self, PyObject *args UNUSED) {
+#define basic_colors_doc "Return the basic colors as a dictionary of color_name to integer or None (names are the same as used in kitty.conf)"
+    RAII_PyObject(ans, PyDict_New()); if (ans == NULL) return NULL;
+    if (!colortable_colors_into_dict(self, 0, 16, ans)) return NULL;
+
+#define D(attr, name) { \
+    unsigned long c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
+    PyObject *val = PyLong_FromUnsignedLong(c); if (!val) return NULL; \
+    int ret = PyDict_SetItemString(ans, #name, val); Py_DECREF(val); \
+    if (ret != 0) return NULL; \
+}
+
+    D(default_fg, foreground); D(default_bg, background);
+#undef D
+    return Py_NewRef(ans);
+}
+
 static PyObject*
 as_dict(ColorProfile *self, PyObject *args UNUSED) {
 #define as_dict_doc "Return all colors as a dictionary of color_name to integer or None (names are the same as used in kitty.conf)"
-    RAII_PyObject(ans, PyDict_New());
-    if (ans == NULL) return PyErr_NoMemory();
-    for (unsigned i = 0; i < arraysz(self->color_table); i++) {
-        static char buf[32] = {0};
-        snprintf(buf, sizeof(buf) - 1, "color%u", i);
-        PyObject *val = PyLong_FromUnsignedLong(self->color_table[i]);
-        if (!val) { return PyErr_NoMemory(); }
-        int ret = PyDict_SetItemString(ans, buf, val);
-        Py_CLEAR(val);
-        if (ret != 0) { return NULL; }
-    }
+    RAII_PyObject(ans, PyDict_New()); if (ans == NULL) return NULL;
+    if (!colortable_colors_into_dict(self, 0, arraysz(self->color_table), ans)) return NULL;
 #define D(attr, name) { \
     if (self->overridden.attr.type != COLOR_NOT_SET) { \
         int ret; PyObject *val; \
         if (self->overridden.attr.type == COLOR_IS_SPECIAL) { \
-            val = Py_None; Py_INCREF(val); \
+            val = Py_NewRef(Py_None); \
         } else { \
-            color_type c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
+            unsigned long c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
             val = PyLong_FromUnsignedLong(c); \
         } \
         if (!val) { return NULL; } \
         ret = PyDict_SetItemString(ans, #name, val); \
-        Py_CLEAR(val); \
+        Py_DECREF(val); \
         if (ret != 0) { return NULL; } \
     }}
     D(default_fg, foreground); D(default_bg, background);
@@ -597,6 +620,7 @@ set_transparent_background_color(ColorProfile *self, PyObject *const *args, Py_s
 static PyMethodDef cp_methods[] = {
     METHOD(reset_color_table, METH_NOARGS)
     METHOD(as_dict, METH_NOARGS)
+    METHOD(basic_colors, METH_NOARGS)
     METHOD(color_table_address, METH_NOARGS)
     METHOD(as_color, METH_O)
     METHOD(reset_color, METH_O)
