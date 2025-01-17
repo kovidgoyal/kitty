@@ -1805,7 +1805,7 @@ screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
         line += self->margin_top;
         line = MAX(self->margin_top, MIN(line, self->margin_bottom));
     }
-    self->cursor->position_changed_by_client_at = monotonic();
+    self->cursor->position_changed_by_client_at = self->parsing_at;
     self->cursor->x = column; self->cursor->y = line;
     screen_ensure_bounds(self, false, in_margins);
 }

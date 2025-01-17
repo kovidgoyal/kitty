@@ -1417,6 +1417,7 @@ static void
 run_worker(void *p, ParseData *pd, bool flush) {
     Screen *screen = (Screen*)p;
     PS *self = (PS*)screen->vt_parser->state;
+    screen->parsing_at = pd->now;
     with_lock {
         self->read.sz += self->write.pending; self->write.pending = 0;
         pd->has_pending_input = self->read.pos < self->read.sz;

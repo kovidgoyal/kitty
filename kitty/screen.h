@@ -173,6 +173,7 @@ typedef struct {
     } paused_rendering;
     CharsetState charset;
     ListOfChars *lc;
+    monotonic_t parsing_at;
 } Screen;
 
 
