@@ -636,16 +636,29 @@ class Splits(Layout):
                 horizontal = which in ('left', 'right')
                 wg = all_windows.active_group
                 if wg is not None:
-                    self.remove_windows(wg.id)
-                    new_root = Pair(horizontal)
-                    if which in ('left', 'top'):
-                        new_root.balanced_add(wg.id)
-                        new_root.two = self.pairs_root
+                    if count == 2:  # special case, a single split
+                        pair = self.pairs_root.pair_for_window(wg.id)
+                        if pair is not None:
+                            if which in ('left', 'top'):
+                                if pair.one != wg.id:
+                                    pair.one, pair.two = pair.two, pair.one
+                                    pair.bias = 1. - pair.bias
+                            else:
+                                if pair.one == wg.id:
+                                    pair.one, pair.two = pair.two, pair.one
+                                    pair.bias = 1. - pair.bias
+                            return True
                     else:
-                        new_root.one = self.pairs_root
-                        new_root.two = wg.id
-                    self.pairs_root = new_root
-                    return True
+                        self.remove_windows(wg.id)
+                        new_root = Pair(horizontal)
+                        if which in ('left', 'top'):
+                            new_root.balanced_add(wg.id)
+                            new_root.two = self.pairs_root
+                        else:
+                            new_root.one = self.pairs_root
+                            new_root.two = wg.id
+                        self.pairs_root = new_root
+                        return True
         elif action_name == 'bias':
             args = args or ('50',)
             bias = int(args[0])
