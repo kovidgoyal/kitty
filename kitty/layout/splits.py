@@ -628,7 +628,7 @@ class Splits(Layout):
             count = 0
             for wid in self.pairs_root.all_window_ids():
                 count += 1
-                if count > 1:
+                if count > 2:
                     break
             if count > 1:
                 args = args or ('left',)
