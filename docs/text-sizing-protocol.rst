@@ -150,7 +150,7 @@ following for each pair::
     ... repeat for each pair of characters
 
 
-Finally fixing the character width issue for the terminal ecosystem
+Fixing the character width issue for the terminal ecosystem
 ---------------------------------------------------------------------
 
 Terminals create user interfaces using text displayed in a cell grid. For
@@ -174,7 +174,7 @@ Expecting all terminals and all terminal programs to have both up-to-date
 character databases and a bug free implementation of this algorithm is not
 realistic.
 
-So instead, this protocol solves this issue robustly by removing the
+So instead, this protocol solves the issue robustly by removing the
 co-ordination problem and putting only one actor in charge of determining
 string width. The client becomes responsible for doing whatever level of
 grapheme segmentation it is comfortable with using whatever Unicode database is
@@ -182,6 +182,41 @@ at its disposal and then it can transmit the segmented string to the terminal
 with the appropriate ``w`` values so that the terminal renders the text in the
 exact number of cells the client expects.
 
+Wrapping and overwriting behavior
+-------------------------------------
+
+If the multicell block (``s * w by s`` cells) is larger than the screen size in either
+dimension, the terminal must discard the character. Note that in particular
+this means that resizing a terminal screen so that it is too small to fit a
+multicell character can cause the character to be lost.
+
+When drawing a multicell character, if wrapping is enabled (DECAWM is set) and
+the character's width (``s * w``) does not fit on the current line, the cursor is
+moved to the start of the next line and the character is drawn there.
+If wrapping is disabled and the character's width does not fit on the current
+line, the cursor is moved back as far as needed to fit ``s * w`` cells and then
+the character is drawn, following the overwriting rules described below.
+
+When drawing text either normal text or text specified via this escape code,
+and this text would overwrite an existing multicell character, the following
+rules must be followed, in decreasing order of precedence:
+
+#. If the text is a combining character it is added to the existing multicell
+   character
+#. If the text will overwrite the top-left cell of the multicell character, the
+   entire multicell character must be erased
+#. If the text will overwrite any cell in the topmost row of the multicell
+   character, the entire multicell character must be replaced by spaces (this
+   rule is present for backwards compatibility with how overwriting works for
+   two cell characters)
+#. If the text will overwrite cells from a row after the first row, then cursor should be moved past the
+   cells of the multicell character on that row and only then the text should be
+   written. Note that this behavior is independent of the value of DECAWM. This
+   is done for simplicity of implementation.
+
+The skipping behavior of the last rule can be complex requiring the terminal to
+skip over lots of cells, but it is needed to allow wrapping in the presence of
+multicell characters that extend over more than a single line.
 
 Detecting if the terminal supports this protocol
 -----------------------------------------------------
@@ -197,3 +232,33 @@ has a different cursor position then it is supported.
 
 Interaction with other terminal controls
 --------------------------------------------------
+
+This protocol does not change the character grid based nature of the terminal.
+Most terminal controls assume one character per cell so it is important to
+specify how these controls interact with the multicell characters created by
+this protocol.
+
+Cursor movement
+^^^^^^^^^^^^^^^^^^^
+
+Cursor movement is unaffected by multicell characters, all cursor movement
+commands move the cursor position by single cell increments, as has always been
+the case for terminals. This means that the cursor can be placed at any
+individual single cell inside a larger multicell character.
+
+When a multicell character is created using this protocol, the cursor moves
+`s * w` cells to the right, in the same row it was in.
+
+Terminals *should* display a large cursor covering the entire multicell block
+when the actual cursor position is on any cell within the block. Block cursors
+cover all the cells of the multicell character, bar cursors appear in all the
+cells in the first column of the character and so on.
+
+
+Editing controls
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There are many controls used to edit existing screen content such as
+inserting characters, deleting characters and lines, etc. These were all
+originally specified for the one character per cell paradigm. Here we specify
+their interactions with multicell characters.
