@@ -89,6 +89,8 @@ Detailed list of changes
 
 - Splits layout: Allow setting the bias of the current split using ``layout_action bias`` (:iss:`8222`)
 
+- hints kitten: Workaround for some broken light color themes that make the hints text color too low contrast to read (:iss:`7330`)
+
 
 0.39.0 [2025-01-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

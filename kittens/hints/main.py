@@ -229,11 +229,11 @@ color.
 
 
 --hints-text-color
-default=bright-gray
+default=auto
 type=str
 The foreground color for text pointed to by the hints. You can use color names or hex values. For the eight basic
 named terminal colors you can also use the :code:`bright-` prefix to get the bright variant of the
-color.
+color. The default is to pick a suitable color automatically.
 
 
 --customize-processing
