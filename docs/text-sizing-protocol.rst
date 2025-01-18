@@ -1,6 +1,8 @@
 The text sizing protocol
 ==============================================
 
+.. versionadded:: 0.40.0
+
 Classically, because the terminal is a grid of equally sized characters, only
 a single text size was supported in terminals, with one minor exception, some
 characters were allowed to be rendered in two cells, to accommodate East Asian
