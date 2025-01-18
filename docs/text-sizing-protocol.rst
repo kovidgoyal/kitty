@@ -19,7 +19,7 @@ Note that this protocol is fully backwards compatible, terminals that implement
 it will continue to work just the same with applications that do not use it.
 Because of this, it is not fully flexible in the font sizes it allows, as it
 still has to work with the character cell grid based fundamental nature of the
-terminal.
+terminal. Public discussion of this protocol is :iss:`here <8226>`.
 
 Quickstart
 --------------
