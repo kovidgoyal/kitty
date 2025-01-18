@@ -138,6 +138,8 @@ applied on top of the main scale specified by ``s``. It allows niceties like:
 * Subscripts (``n=1:d=2:v=1``)
 * ...
 
+The fractional scale **does not** affect the number of cells the text occupies,
+instead, it just adjust the rendered font size within those cells.
 The fraction is specified using an integer numerator and denominator (``n`` and
 ``d``). In addition, by using the ``v`` key one can vertically align the
 fractionally scaled text at top, bottom or middle.
