@@ -186,6 +186,14 @@ at its disposal and then it can transmit the segmented string to the terminal
 with the appropriate ``w`` values so that the terminal renders the text in the
 exact number of cells the client expects.
 
+.. note::
+   It is possible for a terminal to implement only the width part of this spec
+   and ignore the scale part. This escape code works with only the `w` key as
+   well as a means of specifying how many cells each piece of text occupies.
+   See the section on :ref:`detect_text_sizing` on how client applications can
+   query for terminal emulator support.
+
+
 Wrapping and overwriting behavior
 -------------------------------------
 
@@ -227,11 +235,16 @@ Detecting if the terminal supports this protocol
 
 To detect support for this protocol use the `CPR (Cursor Position Report)
 <https://vt100.net/docs/vt510-rm/CPR.html>`__ escape code. Send a ``CPR``
-followed by ``\e]_text_size_code;w=2;a\a`` which will draw an ``a`` character in
-two cells, followed by another ``CPR``. Then wait for the two responses from the
-terminal to the two CPR queries. If the cursor position in the two responses is
-the same, the terminal does not support this protocol, if the second response
-has a different cursor position then it is supported.
+followed by ``\e]_text_size_code;w=2; \a`` which will draw a space character in
+two cells, followed by another ``CPR``. Then send ``\e]_text_size_code;s=2; \a``
+which will draw a space in a ``2 by 2`` block of cells, followed by another
+``CPR``.
+
+Then wait for the three responses from the terminal to the three CPR queries.
+If the cursor position in the three responses is the same, the terminal does
+not support this protocol at all, if the second response has a different cursor
+position then the width part is supported and if the third response has yet
+another position, the scale part is supported.
 
 
 Interaction with other terminal controls
