@@ -285,39 +285,39 @@ their interactions with multicell characters.
 **Insert characters** (``CSI @`` aka ``ICH``)
     When inserting ``n`` characters at cursor position ``x, y`` all characters
     after ``x`` on line ``y`` are supposed to be right shifted. This means
-    that any multiline character that intersects with the cells on line ``y`` at ``x``
+    that any multi-line character that intersects with the cells on line ``y`` at ``x``
     and beyond must be erased. Any single line multicell character that is
     split by the cells at ``x`` and ``x + n - 1`` must also be erased.
 
 **Delete characters** (``CSI P`` aka ``DCH``)
     When deleting ``n`` characters at cursor position ``x, y`` all characters
     after ``x`` on line ``y`` are supposed to be left shifted. This means
-    that any multiline character that intersects with the cells on line ``y`` at ``x``
+    that any multi-line character that intersects with the cells on line ``y`` at ``x``
     and beyond must be erased. Any single line multicell character that is
     split by the cells at ``x`` and ``x + n - 1`` must also be erased.
 
 **Erase characters** (``CSI X`` aka ``ECH``)
     When erasing ``n`` characters at cursor position ``x, y`` the ``n`` cells
-    starting at ``x`` are supposed ot be cleared. This means that any multicell
+    starting at ``x`` are supposed to be cleared. This means that any multicell
     character that intersects with the ``n`` cells starting at ``x`` must be
     erased.
 
 **Erase display** (``CSI J`` aka ``ED``)
     Any multicell character intersecting with the erased region of the screen
     must be erased. When using mode ``22`` the contents of the screen are first
-    copied into the scrollback, including all multicell characters.
+    copied into the history, including all multicell characters.
 
 **Erase in line** (``CSI K`` aka ``EL``)
     Works just like erase characters above. Any multicell character
     intersecting with the erased cells in the line is erased.
 
 **Insert lines** (``CSI L`` aka ``IL``)
-    When inserting ``n`` lines at cursor position ``y`` any multiline
+    When inserting ``n`` lines at cursor position ``y`` any multi-line
     characters that are split at the line ``y`` must be erased. A split happens
-    when the second or subsequent row of the multiline character is on the line
+    when the second or subsequent row of the multi-line character is on the line
     ``y``. The insertion causes ``n`` lines to be removed from the bottom of
-    the screen, any multiline characters are split at the bottom of the screen
-    must be erased. A split is when any row of the multiline character except
+    the screen, any multi-line characters are split at the bottom of the screen
+    must be erased. A split is when any row of the multi-line character except
     the last row is on the last line of the screen after the insertion of ``n``
     lines.
 
