@@ -230,6 +230,8 @@ The skipping behavior of the last rule can be complex requiring the terminal to
 skip over lots of cells, but it is needed to allow wrapping in the presence of
 multicell characters that extend over more than a single line.
 
+.. _detect_text_sizing:
+
 Detecting if the terminal supports this protocol
 -----------------------------------------------------
 
