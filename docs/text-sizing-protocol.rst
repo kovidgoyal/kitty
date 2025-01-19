@@ -220,7 +220,7 @@ rules must be followed, in decreasing order of precedence:
 #. If the text will overwrite any cell in the topmost row of the multicell
    character, the entire multicell character must be replaced by spaces (this
    rule is present for backwards compatibility with how overwriting works for
-   two cell characters)
+   wide characters)
 #. If the text will overwrite cells from a row after the first row, then cursor should be moved past the
    cells of the multicell character on that row and only then the text should be
    written. Note that this behavior is independent of the value of DECAWM. This
