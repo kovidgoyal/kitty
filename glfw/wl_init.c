@@ -903,6 +903,7 @@ void _glfwPlatformTerminate(void)
     {
         wl_display_flush(_glfw.wl.display);
         wl_display_disconnect(_glfw.wl.display);
+        _glfw.wl.display = NULL;
     }
     finalizePollData(&_glfw.wl.eventLoopData);
     if (_glfw.wl.compositor_name) {
