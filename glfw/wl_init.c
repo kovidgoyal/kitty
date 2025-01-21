@@ -668,6 +668,35 @@ GLFWAPI pid_t glfwWaylandCompositorPID(void) {
     return get_socket_peer_pid(fd);
 }
 
+const char*
+_glfwWaylandCompositorName(void) {
+    static bool probed = false;
+    if (!probed) {
+        probed = true;
+        static const size_t sz = 1024;
+        _glfw.wl.compositor_name = malloc(sz);
+        if (!_glfw.wl.compositor_name) return "";
+        char *ans = _glfw.wl.compositor_name; ans[0] = 0;
+        pid_t cpid = glfwWaylandCompositorPID();
+        if (cpid < 0) return ans;
+        snprintf(ans, sz, "/proc/%d/cmdline", cpid);
+        int fd = open(ans, O_RDONLY | O_CLOEXEC);
+        if (fd < 0) {
+            ans[0] = 0;
+        } else {
+            ssize_t n;
+            while (true) {
+                n = read(fd, ans, sz-1);
+                if (n < 0 && errno == EINTR) continue;
+                close(fd); break;
+            }
+            ans[n < 0 ? 0 : n] = 0;
+        }
+    }
+    return _glfw.wl.compositor_name ? _glfw.wl.compositor_name : "";
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
@@ -876,6 +905,10 @@ void _glfwPlatformTerminate(void)
         wl_display_disconnect(_glfw.wl.display);
     }
     finalizePollData(&_glfw.wl.eventLoopData);
+    if (_glfw.wl.compositor_name) {
+        free(_glfw.wl.compositor_name);
+        _glfw.wl.compositor_name = NULL;
+    }
 }
 
 #define GLFW_LOOP_BACKEND wl

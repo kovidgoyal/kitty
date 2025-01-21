@@ -389,6 +389,7 @@ typedef struct _GLFWlibraryWayland
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
     bool has_preferred_buffer_scale;
+    char *compositor_name;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data
@@ -432,6 +433,7 @@ int _glfwWaylandIntegerWindowScale(_GLFWwindow*);
 void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape, struct wl_cursor_theme*);
 void destroy_data_offer(_GLFWWaylandDataOffer*);
+const char* _glfwWaylandCompositorName(void);
 
 typedef struct wayland_cursor_shape {
     int which; const char *name;
