@@ -75,7 +75,7 @@ kitty will also automatically change colors when the OS color scheme changes,
 for example, during night/day transitions.
 
 When using these colors, you can still dynamically change colors, but the next
-time the OS changes its color mode, any dynamics changes will be overridden.
+time the OS changes its color mode, any dynamic changes will be overridden.
 
 
 Using your own themes
