@@ -4334,7 +4334,7 @@ the screen, instead of just clearing the screen. For ZSH, in :file:`~/.zshrc`, a
     bindkey '^l' ctrl_l
 
 Alternatively, you can just add :code:`map ctrl+l clear_terminal to_cursor_scroll active` to :file:`kitty.conf` which
-works with no changes to the shell rc files, but only clears up to the prompt, it does not clear anytext at the prompt itself.
+works with no changes to the shell rc files, but only clears up to the prompt, it does not clear any text at the prompt itself.
 '''
     )
 
