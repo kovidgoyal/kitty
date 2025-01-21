@@ -48,6 +48,11 @@ static GLFWLayerShellConfig layer_shell_config_for_next_window = {0};
 static bool
 is_layer_shell(_GLFWwindow *window) { return window->wl.layer_shell.config.type != GLFW_LAYER_SHELL_NONE; }
 
+static bool
+is_hyprland(void) {
+    return strcmp(_glfwWaylandCompositorName(), "Hyprland") == 0;
+}
+
 static void
 activation_token_done(void *data, struct xdg_activation_token_v1 *xdg_token, const char *token) {
     for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
@@ -543,15 +548,18 @@ static const struct wl_surface_listener surfaceListener = {
 static void
 fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_fractional_scale_v1 UNUSED, uint32_t scale) {
     _GLFWwindow *window = data;
-    window->wl.once.fractional_scale_received = true;
+    window->wl.once.fractional_scale_event_count++;
     if (scale == window->wl.fractional_scale && window->wl.window_fully_created) return;
     debug("Fractional scale requested: %u/120 = %.2f for window %llu\n", scale, scale / 120., window->id);
     window->wl.fractional_scale = scale;
-    // Hyprland sends a fraction scale = 1 event before configuring the xdg surface and then another after with the correct scale
-    // labwc doesnt support preferred buffer scale, so we assume it's done fucking around with scales even if the scale is 120
-    // As far as I can tell from googling labwc has no way to specify scales other
-    // than 1 anyway, so no way to test what it will do in such cases. Sigh, more half baked Wayland shit.
-    window->wl.window_fully_created = window->wl.once.surface_configured || scale != 120 || !_glfw.wl.has_preferred_buffer_scale;
+    // Hyprland sends a fractional scale = 1 event before configuring the xdg surface and then another after with the correct scale
+    // https://github.com/hyprwm/Hyprland/issues/9126
+    //
+    // labwc doesnt support preferred buffer scale, so we assume it's done fucking around with scales on first fractional scale event
+    //
+    // niri and up-to-date mutter and up-to-date kwin all send the fractional
+    // scale before configure (as of Jan 2025). sway as of 1.10 sends it after configure.
+    window->wl.window_fully_created = window->wl.once.surface_configured || !_glfw.wl.has_preferred_buffer_scale;
     apply_scale_changes(window, true, true);
 }
 
@@ -596,6 +604,7 @@ static bool createSurface(_GLFWwindow* window,
             }
         }
     }
+    // see fractional_scale_preferred_scale() for logic of setting window_fully_created
     window->wl.window_fully_created = !window->wl.expect_scale_from_compositor;
     if (_glfw.wl.org_kde_kwin_blur_manager && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 
@@ -756,6 +765,16 @@ static const struct xdg_toplevel_listener xdgToplevelListener = {
 };
 
 static void
+update_fully_created_on_configure(_GLFWwindow *window) {
+    // See fractional_scale_preferred_scale() for logic
+    if (!window->wl.window_fully_created) {
+        window->wl.window_fully_created = window->wl.once.fractional_scale_event_count > 1 || (
+            window->wl.once.fractional_scale_event_count > 0 && (window->wl.fractional_scale != 120 || !is_hyprland()));
+        if (window->wl.window_fully_created) debug("Marked window as fully created in configure event\n");
+    }
+}
+
+static void
 apply_xdg_configure_changes(_GLFWwindow *window) {
     bool suspended_changed = false;
     if (window->wl.pending_state & PENDING_STATE_TOPLEVEL) {
@@ -766,6 +785,7 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
             window->swaps_disallowed = false;
             wait_for_swap_to_commit(window);
             window->wl.once.surface_configured = true;
+            update_fully_created_on_configure(window);
         }
 
 #ifdef XDG_TOPLEVEL_STATE_SUSPENDED_SINCE_VERSION
@@ -1024,6 +1044,7 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
         window->swaps_disallowed = false;
         wait_for_swap_to_commit(window);
         window->wl.once.surface_configured = true;
+        update_fully_created_on_configure(window);
     }
     GLFWvidmode m = {0};
     if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);

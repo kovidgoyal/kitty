@@ -178,7 +178,8 @@ typedef struct _GLFWwindowWayland
     struct org_kde_kwin_blur *org_kde_kwin_blur;
     bool has_blur, expect_scale_from_compositor, window_fully_created;
     struct {
-        bool surface_configured, fractional_scale_received, preferred_scale_received;
+        bool surface_configured, preferred_scale_received;
+        unsigned fractional_scale_event_count;
     } once;
     struct wl_buffer *temp_buffer_used_during_window_creation;
     struct {

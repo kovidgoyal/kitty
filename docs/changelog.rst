@@ -91,6 +91,8 @@ Detailed list of changes
 
 - hints kitten: Workaround for some broken light color themes that make the hints text color too low contrast to read (:iss:`7330`)
 
+- Wayland niri: Fix 250ms delay on startup when using scale 1 (:iss:`8236`)
+
 
 0.39.0 [2025-01-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
