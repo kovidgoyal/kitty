@@ -604,7 +604,6 @@ static bool createSurface(_GLFWwindow* window,
             }
         }
     }
-    // see fractional_scale_preferred_scale() for logic of setting window_fully_created
     window->wl.window_fully_created = !window->wl.expect_scale_from_compositor;
     if (_glfw.wl.org_kde_kwin_blur_manager && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 
