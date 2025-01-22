@@ -48,11 +48,6 @@ static GLFWLayerShellConfig layer_shell_config_for_next_window = {0};
 static bool
 is_layer_shell(_GLFWwindow *window) { return window->wl.layer_shell.config.type != GLFW_LAYER_SHELL_NONE; }
 
-static bool
-is_hyprland(void) {
-    return strcmp(_glfwWaylandCompositorName(), "Hyprland") == 0;
-}
-
 static void
 activation_token_done(void *data, struct xdg_activation_token_v1 *xdg_token, const char *token) {
     for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
@@ -525,7 +520,7 @@ surface_preferred_buffer_scale(void *data, struct wl_surface *surface UNUSED, in
     if ((int)window->wl.integer_scale.preferred == scale && window->wl.window_fully_created) return;
     debug("Preferred integer buffer scale changed to: %d for window %llu\n", scale, window->id);
     window->wl.integer_scale.preferred = scale;
-    window->wl.window_fully_created = true;
+    window->wl.window_fully_created = window->wl.once.surface_configured;
     if (!window->wl.fractional_scale) apply_scale_changes(window, true, true);
 }
 
@@ -548,18 +543,16 @@ static const struct wl_surface_listener surfaceListener = {
 static void
 fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_fractional_scale_v1 UNUSED, uint32_t scale) {
     _GLFWwindow *window = data;
-    window->wl.once.fractional_scale_event_count++;
+    window->wl.once.fractional_scale_received = true;
     if (scale == window->wl.fractional_scale && window->wl.window_fully_created) return;
     debug("Fractional scale requested: %u/120 = %.2f for window %llu\n", scale, scale / 120., window->id);
     window->wl.fractional_scale = scale;
-    // Hyprland sends a fractional scale = 1 event before configuring the xdg surface and then another after with the correct scale
-    // https://github.com/hyprwm/Hyprland/issues/9126
-    //
-    // labwc doesnt support preferred buffer scale, so we assume it's done fucking around with scales on first fractional scale event
-    //
     // niri and up-to-date mutter and up-to-date kwin all send the fractional
-    // scale before configure (as of Jan 2025). sway as of 1.10 sends it after configure.
-    window->wl.window_fully_created = window->wl.once.surface_configured || !_glfw.wl.has_preferred_buffer_scale;
+    // scale before configure (as of Jan 2025). sway as of 1.10 and Hyprland send it after configure.
+    // https://github.com/hyprwm/Hyprland/issues/9126
+    // labwc doesnt support preferred buffer scale and seems to send only a
+    // single fraction scale event before configure https://github.com/kovidgoyal/kitty/issues/7540
+    window->wl.window_fully_created = window->wl.once.surface_configured;
     apply_scale_changes(window, true, true);
 }
 
@@ -767,8 +760,7 @@ static void
 update_fully_created_on_configure(_GLFWwindow *window) {
     // See fractional_scale_preferred_scale() for logic
     if (!window->wl.window_fully_created) {
-        window->wl.window_fully_created = window->wl.once.fractional_scale_event_count > 1 || (
-            window->wl.once.fractional_scale_event_count > 0 && (window->wl.fractional_scale != 120 || !is_hyprland()));
+        window->wl.window_fully_created = window->wl.once.fractional_scale_received;
         if (window->wl.window_fully_created) debug("Marked window as fully created in configure event\n");
     }
 }
