@@ -16,28 +16,32 @@ extern PyTypeObject Line_Type;
 #define SEGMENT_SIZE 2048
 
 static void
-add_segment(HistoryBuf *self) {
-    self->num_segments += 1;
-    self->segments = realloc(self->segments, sizeof(HistoryBufSegment) * self->num_segments);
+add_segment(HistoryBuf *self, index_type num) {
+    self->segments = realloc(self->segments, sizeof(HistoryBufSegment) * (self->num_segments + num));
     if (self->segments == NULL) fatal("Out of memory allocating new history buffer segment");
-    HistoryBufSegment *s = self->segments + self->num_segments - 1;
     const size_t cpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(CPUCell);
     const size_t gpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(GPUCell);
-    s->cpu_cells = calloc(1, cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs));
-    if (!s->cpu_cells) fatal("Out of memory allocating new history buffer segment");
-    s->gpu_cells = (GPUCell*)(((uint8_t*)s->cpu_cells) + cpu_cells_size);
-    s->line_attrs = (LineAttrs*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
+    const size_t segment_size = cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs);
+    char *mem = calloc(num, segment_size);
+    if (!mem) fatal("Out of memory allocating new history buffer segment");
+    self->segments[self->num_segments].mem = mem;
+    for (HistoryBufSegment *s = self->segments + self->num_segments; s < self->segments + self->num_segments + num; s++, mem += segment_size) {
+        s->cpu_cells = (CPUCell*)mem;
+        s->gpu_cells = (GPUCell*)(((uint8_t*)s->cpu_cells) + cpu_cells_size);
+        s->line_attrs = (LineAttrs*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
+    }
+    self->num_segments += num;
 }
 
 static void
 free_segment(HistoryBufSegment *s) {
-    free(s->cpu_cells); memset(s, 0, sizeof(HistoryBufSegment));
+    free(s->mem); zero_at_ptr(s);
 }
 
 static index_type
 segment_for(HistoryBuf *self, index_type y) {
     index_type seg_num = y / SEGMENT_SIZE;
-    while (UNLIKELY(seg_num >= self->num_segments && SEGMENT_SIZE * self->num_segments < self->ynum)) add_segment(self);
+    while (UNLIKELY(seg_num >= self->num_segments && SEGMENT_SIZE * self->num_segments < self->ynum)) add_segment(self, 1);
     if (UNLIKELY(seg_num >= self->num_segments)) fatal("Out of bounds access to history buffer line number: %u", y);
     return seg_num;
 }
@@ -125,7 +129,7 @@ create_historybuf(PyTypeObject *type, unsigned int xnum, unsigned int ynum, unsi
         self->xnum = xnum;
         self->ynum = ynum;
         self->num_segments = 0;
-        add_segment(self);
+        add_segment(self, 1);
         self->text_cache = tc_incref(tc);
         self->line = alloc_line(self->text_cache);
         self->line->xnum = xnum;
@@ -217,8 +221,10 @@ historybuf_clear(HistoryBuf *self) {
     pagerhist_clear(self);
     self->count = 0;
     self->start_of_data = 0;
-    for (size_t i = 1; i < self->num_segments; i++) free_segment(self->segments + i);
-    self->num_segments = 1;
+    for (size_t i = 0; i < self->num_segments; i++) free_segment(self->segments + i);
+    free(self->segments); self->segments = NULL;
+    self->num_segments = 0;
+    add_segment(self, 1);
 }
 
 static bool
@@ -626,7 +632,7 @@ historybuf_alloc_for_rewrap(unsigned int columns, HistoryBuf *self) {
     if (!self) return NULL;
     HistoryBuf *ans = alloc_historybuf(self->ynum, columns, 0, self->text_cache);
     if (ans) {
-        while(ans->num_segments < self->num_segments) add_segment(ans);
+        if (ans->num_segments < self->num_segments) add_segment(ans, self->num_segments - ans->num_segments);
         ans->count = 0; ans->start_of_data = 0;
     }
     return ans;

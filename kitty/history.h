@@ -13,6 +13,7 @@ typedef struct {
     GPUCell *gpu_cells;
     CPUCell *cpu_cells;
     LineAttrs *line_attrs;
+    void *mem;
 } HistoryBufSegment;
 
 typedef struct {
