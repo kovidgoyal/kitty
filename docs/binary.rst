@@ -78,6 +78,16 @@ particular desktop, but it should work for most major desktop environments.
         cd ~/.local/stow
         stow -v kitty.app
 
+.. note::
+    If you have a trouble to run kitty with Linux's run a command prompt(Alt + F2),
+    add :file:`kitty.desktop` 's Exec path($HOME/.local/kitty.app/bin) to /etc/environment file,
+    if /etc/environment file doesn't exist, then make it.
+
+    .. code-block:: sh
+
+        # add kitty.app/bin path to /etc/environment's path
+        PATH="$HOME/.local/kitty.app/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+
 
 Customizing the installation
 --------------------------------
