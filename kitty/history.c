@@ -286,18 +286,23 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
 }
 
 static index_type
-historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
+historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, bool *needs_clear) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
     if (self->count == self->ynum) {
         pagerhist_push(self, as_ansi_buf);
         self->start_of_data = (self->start_of_data + 1) % self->ynum;
-    } else self->count++;
+        *needs_clear = true;
+    } else {
+        self->count++;
+        *needs_clear = false;
+    }
     return idx;
 }
 
 void
 historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
-    index_type idx = historybuf_push(self, as_ansi_buf);
+    bool needs_clear;
+    index_type idx = historybuf_push(self, as_ansi_buf, &needs_clear);
     init_line(self, idx, self->line);
     copy_line(line, self->line);
     *attrptr(self, idx) = line->attrs;
@@ -621,9 +626,14 @@ history_buf_set_last_char_as_continuation(HistoryBuf *self, index_type y, bool w
 index_type
 historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line, index_type dest_y, Line *dest_line, bool continued) {
     history_buf_set_last_char_as_continuation(self, 0, continued);
-    index_type idx = historybuf_push(self, as_ansi_buf);
+    bool needs_clear;
+    index_type idx = historybuf_push(self, as_ansi_buf, &needs_clear);
     *attrptr(self, idx) = src_line->attrs;
     init_line(self, idx, dest_line);
+    if (needs_clear) {
+        zero_at_ptr_count(dest_line->cpu_cells, dest_line->xnum);
+        zero_at_ptr_count(dest_line->gpu_cells, dest_line->xnum);
+    }
     return dest_y + 1;
 }
 
