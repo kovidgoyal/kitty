@@ -534,7 +534,7 @@ parse_input(ChildMonitor *self) {
         DECREF_CHILD(scratch[i]);
     }
     if (reload_config_called) {
-        call_boss(load_config_file, "");
+        call_boss(load_config_file, NULL);
     }
     return input_read;
 }
