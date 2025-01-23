@@ -91,6 +91,8 @@ Run-time dependencies:
 * ``liblcms2``
 * ``libxxhash``
 * ``openssl``
+* ``pixman`` (not needed on macOS)
+* ``cairo`` (not needed on macOS)
 * ``freetype`` (not needed on macOS)
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
@@ -115,6 +117,7 @@ Build-time dependencies:
   - ``libpython3-dev``
   - ``libxxhash-dev``
   - ``libsimde-dev``
+  - ``libcairo2-dev``
 
   .. _x11-dev-libs:
 
@@ -127,6 +130,7 @@ Build-time dependencies:
   - ``libxinerama-dev``
   - ``libgl1-mesa-dev``
   - ``libxkbcommon-x11-dev``
+  - ``libfontconfig-dev``
   - ``libx11-xcb-dev``
 
 

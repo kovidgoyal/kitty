@@ -240,6 +240,16 @@
     },
 
     {
+        "name": "pixman",
+        "os": "linux",
+        "unix": {
+            "filename": "pixman-0.44.2.tar.xz",
+            "hash": "sha256:50baf820dde0c5ff9714d03d2df4970f606a3d3b1024f5404c0398a9821cc4b0",
+            "urls": ["https://www.cairographics.org/releases/pixman-0.44.2.tar.xz"]
+        }
+    },
+
+    {
         "name": "freetype",
         "os": "linux",
         "unix": {
@@ -256,6 +266,16 @@
             "filename": "fontconfig-2.13.1.tar.bz2",
             "hash": "sha256:f655dd2a986d7aa97e052261b36aa67b0a64989496361eca8d604e6414006741",
             "urls": ["https://www.fontconfig.org/release/{filename}"]
+        }
+    },
+
+    {
+        "name": "cairo",
+        "os": "linux",
+        "unix": {
+            "filename": "cairo-1.18.2.tar.xz",
+            "hash": "sha256:a62b9bb42425e844cc3d6ddde043ff39dbabedd1542eba57a2eb79f85889d45a",
+            "urls": ["https://www.cairographics.org/releases/cairo-1.18.2.tar.xz"]
         }
     },
 

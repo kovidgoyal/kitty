@@ -26,7 +26,7 @@ def binary_includes():
     return tuple(map(get_dll_path, (
             'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'ssl', 'crypto', 'crypt',
             'iconv', 'pcre2-8', 'graphite2', 'glib-2.0', 'freetype', 'xxhash',
-            'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
+            'pixman-1', 'cairo', 'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
             # fontconfig is not bundled because in typical brain dead Linux
             # distro fashion, different distros use different default config
             # paths for fontconfig.
