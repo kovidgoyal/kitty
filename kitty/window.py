@@ -294,6 +294,7 @@ class Watchers:
     on_set_user_var: list[Watcher]
     on_title_change: list[Watcher]
     on_cmd_startstop: list[Watcher]
+    on_color_scheme_preference_change: list[Watcher]
 
     def __init__(self) -> None:
         self.on_resize = []
@@ -302,6 +303,7 @@ class Watchers:
         self.on_set_user_var = []
         self.on_title_change = []
         self.on_cmd_startstop = []
+        self.on_color_scheme_preference_change = []
 
     def add(self, others: 'Watchers') -> None:
         def merge(base: list[Watcher], other: list[Watcher]) -> None:
@@ -314,10 +316,12 @@ class Watchers:
         merge(self.on_set_user_var, others.on_set_user_var)
         merge(self.on_title_change, others.on_title_change)
         merge(self.on_cmd_startstop, others.on_cmd_startstop)
+        merge(self.on_color_scheme_preference_change, others.on_color_scheme_preference_change)
 
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
         del self.on_set_user_var[:], self.on_title_change[:], self.on_cmd_startstop[:]
+        del self.on_color_scheme_preference_change[:]
 
     def copy(self) -> 'Watchers':
         ans = Watchers()
@@ -327,11 +331,12 @@ class Watchers:
         ans.on_set_user_var = self.on_set_user_var[:]
         ans.on_title_change = self.on_title_change[:]
         ans.on_cmd_startstop = self.on_cmd_startstop[:]
+        ans.on_color_scheme_preference_change = self.on_color_scheme_preference_change[:]
         return ans
 
     @property
     def has_watchers(self) -> bool:
-        return bool(self.on_close or self.on_resize or self.on_focus_change
+        return bool(self.on_close or self.on_resize or self.on_focus_change or self.on_color_scheme_preference_change
                     or self.on_set_user_var or self.on_title_change or self.on_cmd_startstop)
 
 
@@ -1343,13 +1348,19 @@ class Window:
         if default_bg_changed:
             get_boss().default_bg_changed_for(self.id, via_escape_code=True)
 
+    @property
+    def is_dark(self) -> bool:
+        return self.screen.color_profile.default_bg.is_dark
+
     def on_color_scheme_preference_change(self, via_escape_code: bool = False) -> None:
         if self.screen.color_preference_notification and not via_escape_code:
             self.report_color_scheme_preference()
+        self.call_watchers(self.watchers.on_color_scheme_preference_change, {
+            'is_dark': self.is_dark, 'via_escape_code': via_escape_code
+        })
 
     def report_color_scheme_preference(self) -> None:
-        cp = self.screen.color_profile
-        n = 1 if cp.default_bg.is_dark else 2
+        n = 1 if self.is_dark else 2
         self.screen.send_escape_code_to_child(ESC_CSI, f'?997;{n}n')
 
     def set_color_table_color(self, code: int, bvalue: Optional[memoryview] = None) -> None:

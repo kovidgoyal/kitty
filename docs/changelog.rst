@@ -93,6 +93,8 @@ Detailed list of changes
 
 - Wayland niri: Fix 250ms delay on startup when using scale 1 (:iss:`8236`)
 
+- :ref:`Watchers <watchers>`: Add a new event ``on_color_scheme_preference_change``  (:iss:`8246`)
+
 
 0.39.0 [2025-01-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
