@@ -380,8 +380,13 @@ Report alternate keys
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This progressive enhancement (``0b100``) causes the terminal to report
-alternate key values in addition to the main value, to aid in shortcut
-matching. See :ref:`key_codes` for details on how these are reported.
+alternate key values *in addition* to the main value, to aid in shortcut
+matching. See :ref:`key_codes` for details on how these are reported. Note that
+this flag is a pure enhancement to the form of the escape code used to
+represent key events, only key events represented as escape codes due to the
+other enhancements in effect will be affected by this enhancement. In other
+words, only if a key event was already going to be represented as an escape
+code due to one of the other enhancements will this enhancement affect it.
 
 .. _report_all_keys:
 
@@ -409,10 +414,11 @@ canonical escape code form.
 Report associated text
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This progressive enhancement (``0b10000``) additionally causes key events that
+This progressive enhancement (``0b10000``) *additionally* causes key events that
 generate text to be reported as ``CSI u`` escape codes with the text embedded
 in the escape code. See :ref:`text_as_codepoints` above for details on the
-mechanism.
+mechanism. Note that this flag is an enhancement to :ref:`report_all_keys`
+and is undefined if used without it.
 
 .. _detection:
 
