@@ -453,7 +453,7 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
         global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
         if (is_window_ready_for_callbacks()) enter_event();
         request_tick_callback();
-    } else debug_input("Mouse cursor left window: %llu", global_state.callback_os_window->id);
+    } else debug_input("Mouse cursor left window: %llu\n", global_state.callback_os_window->id);
     global_state.callback_os_window = NULL;
 }
 
