@@ -94,7 +94,7 @@ class ShellIntegration(BaseTest):
         try:
             if self.with_kitten:
                 cmd = [kitten_exe(), 'run-shell', '--shell', shlex.join(cmd)]
-            pty = self.create_pty(cmd, cwd=home_dir, env=env)
+            pty = self.create_pty(cmd, cwd=home_dir, env=env, cols=180)
             i = 10
             while i > 0 and not pty.screen_contents().strip():
                 pty.process_input_from_child()
