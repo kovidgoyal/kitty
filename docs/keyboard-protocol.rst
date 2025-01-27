@@ -337,7 +337,7 @@ the bytes used for CSI control codes.
 Turning on this flag will cause the terminal to report the :kbd:`Esc`, :kbd:`alt+key`,
 :kbd:`ctrl+key`, :kbd:`ctrl+alt+key`, :kbd:`shift+alt+key` keys using ``CSI u`` sequences instead
 of legacy ones. Here key is any ASCII key as described in :ref:`legacy_text`.
-Additionally, all keypad keys will be reported as separate keys with ``CSI u``
+Additionally, all non text keypad keys will be reported as separate keys with ``CSI u``
 encoding, using dedicated numbers from the :ref:`table below <functional>`.
 
 With this flag turned on, all key events that do not generate text are
