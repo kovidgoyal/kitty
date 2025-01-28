@@ -38,6 +38,19 @@ typedef struct {
 PyTypeObject CTFace_Type;
 static CTFontRef window_title_font = nil;
 
+static BOOL
+CTFontSupportsColorGlyphs(CTFontRef font) {
+    CFTypeRef symbolicTraits = CTFontCopyAttribute(font, kCTFontSymbolicTrait);
+    if (symbolicTraits) {
+        if ([(NSNumber *)symbolicTraits unsignedLongValue] & kCTFontColorGlyphsTrait) {
+            CFRelease(symbolicTraits);
+            return YES;
+        }
+        CFRelease(symbolicTraits);
+    }
+    return NO;
+}
+
 static PyObject*
 convert_cfstring(CFStringRef src, int free_src) {
     RAII_CoreFoundation(CFStringRef, releaseme, free_src ? src : nil);
@@ -819,6 +832,41 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
 static void destroy_hb_buffer(hb_buffer_t **x) { if (*x) hb_buffer_destroy(*x); }
 
 static PyObject*
+render_codepoint(CTFace *self, PyObject *args) {
+    unsigned long cp, fg = 0xffffff;
+    if (!PyArg_ParseTuple(args, "k|k", &cp, &fg)) return NULL;
+    const int num_chars = 1;
+    ensure_render_space(0, 0, num_chars);
+    buffers.glyphs[0] = glyph_id_for_codepoint_ctfont(self->ct_font, cp);
+    CGSize local_advances[num_chars];
+    CTFontGetAdvancesForGlyphs(self->ct_font, kCTFontOrientationDefault, buffers.glyphs, local_advances, num_chars);
+    CGRect bounding_box = CTFontGetBoundingRectsForGlyphs(self->ct_font, kCTFontOrientationDefault, buffers.glyphs, buffers.boxes, num_chars);
+    StringCanvas ans = { .width = (size_t)(bounding_box.size.width + 1), .height = (size_t)(1 + bounding_box.size.height) };
+    size_t baseline = ans.height;
+    ensure_render_space(ans.width, ans.height, num_chars);
+    PyObject *pbuf = PyBytes_FromStringAndSize(NULL, ans.width * ans.height * sizeof(pixel));
+    if (!pbuf) return NULL;
+    memset(PyBytes_AS_STRING(pbuf), 0, PyBytes_GET_SIZE(pbuf));
+    const unsigned long canvas_width = ans.width, canvas_height = ans.height;
+    if (CTFontSupportsColorGlyphs(self->ct_font)) {
+        render_color_glyph(self->ct_font, (uint8_t*)PyBytes_AS_STRING(pbuf), buffers.glyphs[0], ans.width, ans.height, baseline);
+    } else {
+        render_glyphs(self->ct_font, ans.width, ans.height, baseline, num_chars);
+        uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
+        const uint8_t *last_pixel = (uint8_t*)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
+        const uint8_t *s_limit = buffers.render_buf + canvas_width * canvas_height;
+        for (
+            uint8_t *p = (uint8_t*)PyBytes_AS_STRING(pbuf), *s = buffers.render_buf;
+            p <= last_pixel && s < s_limit;
+            p += sizeof(pixel), s++
+        ) {
+            p[0] = r; p[1] = g; p[2] = b; p[3] = s[0];
+        }
+    }
+    return Py_BuildValue("Nkk", pbuf, canvas_width, canvas_height);
+}
+
+static PyObject*
 render_sample_text(CTFace *self, PyObject *args) {
     unsigned long canvas_width, canvas_height;
     unsigned long fg = 0xffffff;
@@ -1122,6 +1170,7 @@ static PyMethodDef methods[] = {
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(set_size, METH_VARARGS),
     METHODB(render_sample_text, METH_VARARGS),
+    METHODB(render_codepoint, METH_VARARGS),
     METHODB(get_best_name, METH_O),
     {NULL}  /* Sentinel */
 };

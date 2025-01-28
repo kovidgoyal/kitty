@@ -617,14 +617,18 @@ detect_right_edge(ProcessedBitmap *ans) {
 static bool
 render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline UNUSED) {
     unsigned short best = 0, diff = USHRT_MAX;
+    const unsigned int width_to_render_in = num_cells * cell_width;
     if (self->face->num_fixed_sizes > 0) {
-        const short limit = self->face->num_fixed_sizes;
-        for (short i = 0; i < limit; i++) {
+        for (short i = 0; i < self->face->num_fixed_sizes; i++) {
             unsigned short w = self->face->available_sizes[i].width;
-            unsigned short d = w > (unsigned short)cell_width ? w - (unsigned short)cell_width : (unsigned short)cell_width - w;
-            if (d < diff) {
-                diff = d;
-                best = i;
+            if (width_to_render_in) {
+                unsigned short d = w > (unsigned short)width_to_render_in ? w - (unsigned short)width_to_render_in : (unsigned short)width_to_render_in - w;
+                if (d < diff) {
+                    diff = d;
+                    best = i;
+                }
+            } else {
+                if (w > self->face->available_sizes[best].width) best = i;
             }
         }
         FT_Error error = FT_Select_Size(self->face, best);
@@ -638,7 +642,7 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
-    if (ans->width > num_cells * cell_width + 2) downsample_bitmap(ans, num_cells * cell_width, cell_height);
+    if (width_to_render_in && ans->width > width_to_render_in + 2) downsample_bitmap(ans, width_to_render_in, cell_height);
     ans->bitmap_top = (int)((float)self->face->glyph->bitmap_top / ans->factor);
     ans->bitmap_left = (int)((float)self->face->glyph->bitmap_left / ans->factor);
     detect_right_edge(ans);
@@ -993,6 +997,35 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
 static void destroy_hb_buffer(hb_buffer_t **x) { if (*x) hb_buffer_destroy(*x); }
 
 static PyObject*
+render_codepoint(Face *self, PyObject *args) {
+    unsigned long cp, fg = 0xffffff;
+    if (!PyArg_ParseTuple(args, "k|k", &cp, &fg)) return NULL;
+    FT_UInt glyph_index = FT_Get_Char_Index(self->face, cp);
+    ProcessedBitmap pbm = EMPTY_PBM;
+    if (self->has_color) {
+        render_color_bitmap(self, glyph_index, &pbm, 0, 0, 0, 0);
+    } else {
+        int load_flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
+        FT_Load_Glyph(self->face, glyph_index, load_flags);
+        FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL);
+        FT_Bitmap *bitmap = &self->face->glyph->bitmap;
+        populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
+    }
+    const unsigned long canvas_width = pbm.width, canvas_height = pbm.rows;
+    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_height * canvas_width));
+    if (!ans) return NULL;
+    pixel *canvas = (pixel*)PyBytes_AS_STRING(ans);
+    memset(canvas, 0, PyBytes_GET_SIZE(ans));
+    place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, 0, 0, 0, 99999, fg, 0, 0);
+    for (pixel *c = canvas; c < canvas + canvas_width * canvas_height; c++) {
+        uint8_t *p = (uint8_t*)c;
+        uint8_t a = p[0], b = p[1], g = p[2], r = p[3];
+        p[0] = r; p[1] = g; p[2] = b; p[3] = a;
+    }
+    return Py_BuildValue("Okk", ans, canvas_width, canvas_height);
+}
+
+static PyObject*
 render_sample_text(Face *self, PyObject *args) {
     unsigned long canvas_width, canvas_height;
     unsigned long fg = 0xffffff;
@@ -1090,6 +1123,7 @@ static PyMethodDef methods[] = {
     METHODB(get_best_name, METH_O),
     METHODB(set_size, METH_VARARGS),
     METHODB(render_sample_text, METH_VARARGS),
+    METHODB(render_codepoint, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
 

@@ -221,6 +221,7 @@ class setup_for_testing:
 
     xnum = 100000
     ynum = 100
+    baseline = 0
 
     def __init__(self, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, main_face_path: str = ''):
         self.family, self.size, self.dpi = family, size, dpi
@@ -243,7 +244,7 @@ class setup_for_testing:
             descriptor_overrides[0] = self.main_face_path, False, False
         try:
             set_font_family(opts)
-            cell_width, cell_height = create_test_font_group(self.size, self.dpi, self.dpi)
+            cell_width, cell_height, self.baseline = create_test_font_group(self.size, self.dpi, self.dpi)
             return sprites, cell_width, cell_height
         except Exception:
             set_send_sprite_to_gpu(None)
@@ -351,3 +352,19 @@ def showcase() -> None:
     test_render_string('你好,世界', family=f)
     test_render_string('│😁│🙏│😺│', family=f)
     test_render_string('A=>>B!=C', family='Fira Code')
+
+
+def test_render_codepoint(char: str = '😺', path: str = '/t/Noto-COLRv1.ttf', font_size: float = 160.0) -> None:
+    if TYPE_CHECKING:
+        from kitty.fast_data_types import CTFace, Face
+    def create_face(path: str) -> 'Union[CTFace, Face]':
+        if is_macos:
+            from kitty.fast_data_types import CTFace
+            return CTFace(path=path)
+        from kitty.fast_data_types import Face
+        return Face(path=path)
+    f = create_face(path=path)
+    f.set_size(font_size, 96, 96)
+    bitmap, w, h = f.render_codepoint(ord(char))
+    display_bitmap(bitmap, w, h)
+    print('\n')

@@ -2199,7 +2199,7 @@ create_test_font_group(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ddd", &sz, &dpix, &dpiy)) return NULL;
     FontGroup *fg = font_group_for(sz, dpix, dpiy);
     if (!fg->sprite_map) send_prerendered_sprites(fg);
-    return Py_BuildValue("II", fg->fcm.cell_width, fg->fcm.cell_height);
+    return Py_BuildValue("III", fg->fcm.cell_width, fg->fcm.cell_height, fg->fcm.baseline);
 }
 
 static PyObject*
