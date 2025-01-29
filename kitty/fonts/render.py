@@ -36,6 +36,9 @@ if is_macos:
 else:
     from .fontconfig import font_for_family as font_for_family_fontconfig
 
+if TYPE_CHECKING:
+    from kitty.fast_data_types import CTFace, Face
+
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: list[tuple[FontObject, bool, bool]] = []
 builtin_nerd_font_descriptor: FontObject | None = None
@@ -354,15 +357,15 @@ def showcase() -> None:
     test_render_string('A=>>B!=C', family='Fira Code')
 
 
+def create_face(path: str) -> 'Union[CTFace, Face]':
+    if is_macos:
+        from kitty.fast_data_types import CTFace
+        return CTFace(path=path)
+    from kitty.fast_data_types import Face
+    return Face(path=path)
+
+
 def test_render_codepoint(char: str = '😺', path: str = '/t/Noto-COLRv1.ttf', font_size: float = 160.0) -> None:
-    if TYPE_CHECKING:
-        from kitty.fast_data_types import CTFace, Face
-    def create_face(path: str) -> 'Union[CTFace, Face]':
-        if is_macos:
-            from kitty.fast_data_types import CTFace
-            return CTFace(path=path)
-        from kitty.fast_data_types import Face
-        return Face(path=path)
     f = create_face(path=path)
     f.set_size(font_size, 96, 96)
     bitmap, w, h = f.render_codepoint(ord(char))

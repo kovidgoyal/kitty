@@ -25,7 +25,7 @@ from kitty.fast_data_types import (
 )
 from kitty.fonts import family_name_to_key
 from kitty.fonts.common import FontSpec, all_fonts_map, face_from_descriptor, get_font_files, get_named_style, spec_for_face
-from kitty.fonts.render import coalesce_symbol_maps, render_string, setup_for_testing, shape_string
+from kitty.fonts.render import coalesce_symbol_maps, create_face, render_string, setup_for_testing, shape_string
 from kitty.options.types import Options
 
 from . import BaseTest, draw_multicell
@@ -339,6 +339,14 @@ class Rendering(FontBaseTest):
         sz = sum(map(lambda x: wcwidth(ord(x)), text))
         cells = render_string(text)[-1]
         self.ae(len(cells), sz)
+
+    def test_rendering_colrv1(self):
+        f = create_face(self.path_for_font('twemoji_smiley-cff2_colr_1.otf'))
+        f.set_size(64, 96, 96)
+        for char in '😁😇😈':
+            _, w, h = f.render_codepoint(ord(char))
+            self.assertGreater(w, 64)
+            self.assertGreater(h, 64)
 
     def test_shaping(self):
 
