@@ -746,33 +746,32 @@ fit_cairo_glyph(Face *self, cairo_glyph_t *g, cairo_text_extents_t *bb, cairo_sc
 }
 
 static bool
-render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned width, unsigned height, ARGB32 fg, unsigned baseline_) {
+render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned width, unsigned height, ARGB32 fg, unsigned cell_baseline) {
     cairo_glyph_t g = {.index=glyph_id};
     cairo_text_extents_t bb = {0};
     if (!ensure_cairo_resources(self, MAX(width, 256), MAX(height, 256))) return false;
     set_cairo_font_size(self, self->metrics.size_in_pts);
     cairo_scaled_font_t *sf = cairo_get_scaled_font(self->cairo.cr);
     cairo_scaled_font_glyph_extents(sf, &g, 1, &bb);
-    double baseline = baseline_;
-    if (!width || !height || !baseline_) {
-        cairo_font_extents_t fm;
+    cairo_font_extents_t fm;
+    if (!width || !height) {
         cairo_scaled_font_extents(sf, &fm);
-        baseline = fm.ascent;
         width = (unsigned)ceil(fm.max_x_advance); height = (unsigned)ceil(fm.height);
-        return render_glyph_with_cairo(self, glyph_id, ans, width, height, fg, (unsigned)baseline);
+        return render_glyph_with_cairo(self, glyph_id, ans, width, height, fg, cell_baseline);
     }
     sf = fit_cairo_glyph(self, &g, &bb, sf, width, height);
-    g.y = baseline;
+    cairo_scaled_font_extents(sf, &fm);
+    g.y = fm.ascent;
     memset(self->cairo.buf, 0, self->cairo.stride * self->cairo.height);
     cairo_set_source_rgba(self->cairo.cr, fg.r / 255., fg.g / 255., fg.b / 255., fg.a / 255.);
     cairo_show_glyphs(self->cairo.cr, &g, 1);
     cairo_surface_flush(self->cairo.surface);
-    if (0) {
-        printf("canvas: %ux%u glyph: %.1fx%.1f x_bearing: %.1f y_bearing: %.1f baseline: %.1f\n",
-                width, height, bb.width, bb.height, bb.x_bearing, bb.y_bearing, baseline);
+#if 0
+        printf("canvas: %ux%u glyph: %.1fx%.1f x_bearing: %.1f y_bearing: %.1f cell_baseline: %u font_baseline: %.1f\n",
+                width, height, bb.width, bb.height, bb.x_bearing, bb.y_bearing, cell_baseline, fm.ascent);
         cairo_status_t s = cairo_surface_write_to_png(cairo_get_target(self->cairo.cr), "/tmp/glyph.png");
         if (s) fprintf(stderr, "Failed to write to PNG with error: %s", cairo_status_to_string(s));
-    }
+#endif
     ans->pixel_mode = FT_PIXEL_MODE_MAX;  // place_bitmap_in_canvas() takes this to mean ARGB
     ans->buf = self->cairo.buf; ans->needs_free = false;
     ans->start_x = 0;
