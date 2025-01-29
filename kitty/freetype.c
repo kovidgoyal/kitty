@@ -835,7 +835,8 @@ copy_color_bitmap_bgra(uint8_t *src, pixel* dest, Region *src_rect, Region *dest
         uint8_t *s = src + src_stride * sr;
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             uint8_t *bgra = s + 4 * sc;
-#define C(idx, shift) ( (uint8_t)(((float)bgra[idx] / (float)bgra[3]) * 255) << shift)
+            const float inv_alpha = 255.f / bgra[3];
+#define C(idx, shift) ( (uint8_t)(bgra[idx] * inv_alpha) << shift)
             d[dc] = C(2, 24) | C(1, 16) | C(0, 8) | bgra[3];
 #undef C
         }
@@ -847,10 +848,12 @@ copy_color_bitmap_argb(uint8_t *src, pixel* dest, Region *src_rect, Region *dest
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
         pixel *d = dest + dest_stride * dr;
         pixel *s = (pixel*)(src + src_stride * sr);
-        for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
+        for (size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             pixel argb = s[sc]; pixel alpha = (argb >> 24) & 0xff;
-            argb <<= 8;
-            d[dc] = argb | alpha;
+            const float inv_alpha = 255.f / alpha;
+#define C(src_shift, dest_shift) ( (pixel)(((argb >> src_shift) & 0xff) * inv_alpha) << dest_shift )
+            d[dc] = C(16, 24) | C(8, 16) | C(0, 8) | alpha;
+#undef C
         }
     }
 }
