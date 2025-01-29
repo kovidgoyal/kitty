@@ -244,9 +244,6 @@ face_apply_scaling(PyObject *f, const FONTS_DATA_HANDLE fg) {
     return false;
 }
 
-static void
-cairo_done_ft_face(void* x) { if (x) FT_Done_Face(x); }
-
 static bool
 init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, long index, FONTS_DATA_HANDLE fg) {
     copy_face_metrics(self);
@@ -679,6 +676,9 @@ free_cairo(Face *self) {
     zero_at_ptr(&self->cairo);
 }
 
+static void
+cairo_done_ft_face(void* x) { if (x) FT_Done_Face(x); }
+
 static bool
 ensure_cairo_resources(Face *self, size_t width, size_t height) {
     if (!self->cairo.font) {
@@ -692,7 +692,7 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
         // Sadly cairo does not use FT_Reference_Face https://lists.cairographics.org/archives/cairo/2015-March/026023.html
         // so we have to let cairo manage lifetime of the FT_Face
         static const cairo_user_data_key_t key;
-        cairo_status_t status = cairo_font_face_set_user_data(self->cairo.font, &key, self->face, cairo_done_ft_face);
+        cairo_status_t status = cairo_font_face_set_user_data(self->cairo.font, &key, self->face_for_cairo, cairo_done_ft_face);
         if (status) {
             FT_Done_Face(self->face_for_cairo); self->face_for_cairo = NULL;
             PyErr_Format(PyExc_RuntimeError, "Failed to set cairo font destructor with error: %s", cairo_status_to_string(status));
@@ -1341,6 +1341,7 @@ PyTypeObject Face_Type = {
 
 static void
 free_freetype(void) {
+    cairo_debug_reset_static_data();
     FT_Done_FreeType(library);
 }
 
