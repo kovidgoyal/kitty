@@ -399,7 +399,7 @@ Key      Value
          terminal implements. If no occasions are supported, the value
          ``o=always`` must be sent in the query response.
 
-``p``    Comma spearated list of supported payload types (i.e. values of the
+``p``    Comma separated list of supported payload types (i.e. values of the
          ``p`` key that the terminal implements). These must contain at least
          ``title``.
 
