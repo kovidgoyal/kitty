@@ -456,6 +456,8 @@ class Boss:
     ) -> Iterator[OSWindowDict]:
         with cached_process_data():
             active_tab_manager = self.active_tab_manager
+            focused_wid = current_focused_os_window_id()
+            last_focused = last_focused_os_window_id()
             for os_window_id, tm in self.os_window_map.items():
                 tabs = list(tm.list_tabs(self_window, tab_filter, window_filter))
                 if tabs:
@@ -466,8 +468,8 @@ class Boss:
                         'id': os_window_id,
                         'platform_window_id': platform_window_id(os_window_id),
                         'is_active': tm is active_tab_manager,
-                        'is_focused': current_focused_os_window_id() == os_window_id,
-                        'last_focused': os_window_id == last_focused_os_window_id(),
+                        'is_focused': focused_wid == os_window_id,
+                        'last_focused': os_window_id == last_focused,
                         'tabs': tabs,
                         'wm_class': tm.wm_class,
                         'wm_name': tm.wm_name,
