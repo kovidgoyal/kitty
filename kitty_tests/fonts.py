@@ -340,6 +340,7 @@ class Rendering(FontBaseTest):
         cells = render_string(text)[-1]
         self.ae(len(cells), sz)
 
+    @unittest.skipIf(is_macos, 'COLRv1 is only supported on Linux')
     def test_rendering_colrv1(self):
         f = create_face(self.path_for_font('twemoji_smiley-cff2_colr_1.otf'))
         f.set_size(64, 96, 96)
