@@ -763,7 +763,7 @@ render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned
     }
     sf = fit_cairo_glyph(self, &g, &bb, sf, width, height);
     g.y = baseline;
-    cairo_set_source_rgba(self->cairo.cr, 0, 0, 0, 0); cairo_paint(self->cairo.cr);  // clear to blank
+    memset(self->cairo.buf, 0, self->cairo.stride * self->cairo.height);
     cairo_set_source_rgba(self->cairo.cr, fg.r / 255., fg.g / 255., fg.b / 255., fg.a / 255.);
     cairo_show_glyphs(self->cairo.cr, &g, 1);
     cairo_surface_flush(self->cairo.surface);

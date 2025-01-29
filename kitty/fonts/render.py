@@ -365,9 +365,11 @@ def create_face(path: str) -> 'Union[CTFace, Face]':
     return Face(path=path)
 
 
-def test_render_codepoint(char: str = '😺', path: str = '/t/Noto-COLRv1.ttf', font_size: float = 160.0) -> None:
+def test_render_codepoint(chars: str = '😺', path: str = '/t/Noto-COLRv1.ttf', font_size: float = 160.0) -> None:
     f = create_face(path=path)
     f.set_size(font_size, 96, 96)
-    bitmap, w, h = f.render_codepoint(ord(char))
-    display_bitmap(bitmap, w, h)
-    print('\n')
+    for char in chars:
+        bitmap, w, h = f.render_codepoint(ord(char))
+        print('Rendered:', char)
+        display_bitmap(bitmap, w, h)
+        print('\n')
