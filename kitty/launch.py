@@ -917,6 +917,21 @@ class CloneCmd:
                     'SSH_TUNNEL', 'SSH_USER_AUTH', 'SSH_AUTH_SOCK',
                     # Dont clone KITTY_WINDOW_ID
                     'KITTY_WINDOW_ID',
+                    # Bash variables from "bind -x" and "complete -C" (needed not to confuse bash-preexec)
+                    'READLINE_ARGUMENT', 'READLINE_LINE', 'READLINE_MARK', 'READLINE_POINT',
+                    'COMP_LINE', 'COMP_POINT', 'COMP_TYPE',
+                    # GPG gpg-agent
+                    'GPG_TTY',
+                    # Session variables of XDG
+                    'XDG_SESSION_CLASS', 'XDG_SESSION_ID', 'XDG_SESSION_TYPE',
+                    # Session variables of GNU Screen
+                    'STY', 'WINDOW',
+                    # Session variables of interactive shell plugins
+                    'ATUIN_SESSION', 'ATUIN_HISTORY_ID',
+                    'BLE_SESSION_ID', '_ble_util_fdlist_cloexec', '_ble_util_fdvars_export',
+                    '_GITSTATUS_CLIENT_PID', '_GITSTATUS_REQ_FD', '_GITSTATUS_RESP_FD', 'GITSTATUS_DAEMON_PID',
+                    'MCFLY_SESSION_ID',
+                    'STARSHIP_SESSION_KEY',
                 } and not k.startswith((
                     # conda state env vars for multi-level virtual environments
                     'CONDA_PREFIX_',
