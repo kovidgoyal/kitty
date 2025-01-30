@@ -23,6 +23,7 @@
 #include FT_TRUETYPE_TABLES_H
 #include FT_MULTIPLE_MASTERS_H
 #include FT_SFNT_NAMES_H
+#include FT_TYPES_H
 
 typedef union FaceIndex {
     struct {
@@ -64,6 +65,7 @@ typedef struct {
     free_extra_data_func free_extra_data;
     PyObject *name_lookup_table;
     FontFeatures font_features;
+    unsigned short dark_palette_index, light_palette_index, palettes_scanned;
 } Face;
 PyTypeObject Face_Type;
 
@@ -667,6 +669,31 @@ static void
 cairo_done_ft_face(void* x) { if (x) FT_Done_Face(x); }
 
 static bool
+is_color_dark(color_type c) {
+    ARGB32 bg = {.val=c};
+    return rgb_luminance(bg) / 255.0 < 0.5;
+}
+
+static unsigned short
+get_preferred_palette_index(Face *self) {
+    if (!self->palettes_scanned) {
+        self->palettes_scanned = 1;
+        self->dark_palette_index = CAIRO_COLOR_PALETTE_DEFAULT; self->light_palette_index = CAIRO_COLOR_PALETTE_DEFAULT;
+        FT_Palette_Data palette_data;
+        FT_Error error = FT_Palette_Data_Get(self->face, &palette_data);
+        if (error) log_error("Could not retrieve palette data for font from FreeType");
+        else if (palette_data.palette_flags) {
+            for (FT_UShort i = 0; i < palette_data.num_palettes; i++) {
+                FT_UShort flags = palette_data.palette_flags[i];
+                if (flags & FT_PALETTE_FOR_DARK_BACKGROUND) self->dark_palette_index = i;
+                else if (flags & FT_PALETTE_FOR_DARK_BACKGROUND) self->light_palette_index = i;
+            }
+        }
+    }
+    return is_color_dark(OPT(background)) ? self->dark_palette_index : self->light_palette_index;
+}
+
+static bool
 ensure_cairo_resources(Face *self, size_t width, size_t height) {
     if (!self->cairo.font) {
         const char *path = PyUnicode_AsUTF8(self->path);
@@ -720,6 +747,11 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
         if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
             cairo_font_options_destroy(opts);
             return set_cairo_exception("Failed to set cairo hintstyle", s);
+        }
+        cairo_font_options_set_color_palette(opts, get_preferred_palette_index(self));
+        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
+            cairo_font_options_destroy(opts);
+            return set_cairo_exception("Failed to set cairo palette index", s);
         }
         cairo_set_font_options(self->cairo.cr, opts);
         cairo_font_options_destroy(opts);
@@ -796,9 +828,7 @@ render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned
 static bool
 render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     const unsigned int width_to_render_in = num_cells * cell_width;
-    ARGB32 bg = {.val=OPT(background)};
-    bool is_dark = rgb_luminance(bg) / 255.0 < 0.5;
-    uint8_t v = is_dark ? 255 : 0;
+    uint8_t v = is_color_dark(OPT(background)) ? 255 : 0;
     ARGB32 fg = {.red = v, .green = v, .blue = v, .alpha=255};
     return render_glyph_with_cairo(self, glyph_id, ans, width_to_render_in, cell_height, fg, baseline);
 }
