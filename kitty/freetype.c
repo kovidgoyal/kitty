@@ -644,25 +644,6 @@ downsample_32bit_image(uint8_t *src, unsigned src_width, unsigned src_height, un
 }
 
 static void
-downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_height) {
-    uint8_t *dest = calloc(4, (size_t)width * cell_height);
-    if (dest == NULL) fatal("Out of memory");
-    bm->factor = downsample_32bit_image(bm->buf, bm->width, bm->rows, bm->stride, dest, width, cell_height);
-    bm->buf = dest; bm->needs_free = true; bm->stride = 4 * width; bm->width = width; bm->rows = cell_height;
-}
-
-static void
-detect_right_edge(ProcessedBitmap *ans) {
-    ans->right_edge = 0;
-    for (ssize_t x = ans->width - 1; !ans->right_edge && x > -1; x--) {
-        for (size_t y = 0; y < ans->rows && !ans->right_edge; y++) {
-            uint8_t *p = ans->buf + x * 4 + y * ans->stride;
-            if (p[3] > 20) ans->right_edge = x;
-        }
-    }
-}
-
-static void
 free_cairo_surface_data(Face *self) {
     if (self->cairo.cr) cairo_destroy(self->cairo.cr);
     if (self->cairo.surface) cairo_surface_destroy(self->cairo.surface);
@@ -785,45 +766,13 @@ render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned
 
 
 static bool
-render_color_bitmap(Face *self, int glyph_id, GlyphColorType colored, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
+render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     const unsigned int width_to_render_in = num_cells * cell_width;
-    if (colored == COLR_V1_COLORED) {
-        ARGB32 bg = {.val=OPT(background)};
-        bool is_dark = rgb_luminance(bg) / 255.0 < 0.5;
-        uint8_t v = is_dark ? 255 : 0;
-        ARGB32 fg = {.red = v, .green = v, .blue = v, .alpha=255};
-        return render_glyph_with_cairo(self, glyph_id, ans, width_to_render_in, cell_height, fg, baseline);
-    }
-    unsigned short best = 0, diff = USHRT_MAX;
-    if (self->face->num_fixed_sizes > 0) {
-        for (short i = 0; i < self->face->num_fixed_sizes; i++) {
-            unsigned short w = self->face->available_sizes[i].width;
-            if (width_to_render_in) {
-                unsigned short d = w > (unsigned short)width_to_render_in ? w - (unsigned short)width_to_render_in : (unsigned short)width_to_render_in - w;
-                if (d < diff) {
-                    diff = d;
-                    best = i;
-                }
-            } else {
-                if (w > self->face->available_sizes[best].width) best = i;
-            }
-        }
-        FT_Error error = FT_Select_Size(self->face, best);
-        if (error) { set_freetype_error("Failed to set char size for non-scalable font, with error:", error); return false; }
-    } else FT_Set_Char_Size(self->face, 0, self->char_height, (FT_UInt)self->xdpi, (FT_UInt)self->ydpi);
-    if (!load_glyph(self, glyph_id, FT_LOAD_COLOR | FT_LOAD_RENDER)) return false;
-    FT_Bitmap *bitmap = &self->face->glyph->bitmap;
-    if (bitmap->pixel_mode != FT_PIXEL_MODE_BGRA) return false;
-    ans->buf = bitmap->buffer;
-    ans->start_x = 0; ans->width = bitmap->width;
-    ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
-    ans->rows = bitmap->rows;
-    ans->pixel_mode = bitmap->pixel_mode;
-    if (width_to_render_in && ans->width > width_to_render_in + 2) downsample_bitmap(ans, width_to_render_in, cell_height);
-    ans->bitmap_top = (int)((float)self->face->glyph->bitmap_top / ans->factor);
-    ans->bitmap_left = (int)((float)self->face->glyph->bitmap_left / ans->factor);
-    detect_right_edge(ans);
-    return true;
+    ARGB32 bg = {.val=OPT(background)};
+    bool is_dark = rgb_luminance(bg) / 255.0 < 0.5;
+    uint8_t v = is_dark ? 255 : 0;
+    ARGB32 fg = {.red = v, .green = v, .blue = v, .alpha=255};
+    return render_glyph_with_cairo(self, glyph_id, ans, width_to_render_in, cell_height, fg, baseline);
 }
 
 
@@ -912,7 +861,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         // dont load the space glyph since loading it fails for some fonts/sizes and it is anyway to be rendered as a blank
         if (info[i].codepoint != self->space_glyph_id) {
             if (*was_colored && (colored = glyph_color_type(self, info[i].codepoint)) != NOT_COLORED) {
-                if (!render_color_bitmap(self, info[i].codepoint, colored, &bm, cell_width, cell_height, num_cells, baseline)) {
+                if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, baseline)) {
                     if (PyErr_Occurred()) PyErr_Print();
                     if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) {
                         free_processed_bitmap(&bm);
@@ -1199,7 +1148,7 @@ render_codepoint(Face *self, PyObject *args) {
     ProcessedBitmap pbm = EMPTY_PBM;
     GlyphColorType colored;
     if (self->has_color && (colored = glyph_color_type(self, glyph_index)) != NOT_COLORED) {
-        render_color_bitmap(self, glyph_index, colored, &pbm, 0, 0, 0, 0);
+        render_color_bitmap(self, glyph_index, &pbm, 0, 0, 0, 0);
     } else {
         int load_flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
         FT_Load_Glyph(self->face, glyph_index, load_flags);
