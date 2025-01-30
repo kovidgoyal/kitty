@@ -643,6 +643,12 @@ downsample_32bit_image(uint8_t *src, unsigned src_width, unsigned src_height, un
     return factor;
 }
 
+static bool
+set_cairo_exception(const char *msg, cairo_status_t s) {
+    PyErr_Format(FreeType_Exception, "cairo error: %s: %s", msg, cairo_status_to_string(s));
+    return false;
+}
+
 static void
 free_cairo_surface_data(Face *self) {
     if (self->cairo.cr) cairo_destroy(self->cairo.cr);
@@ -680,7 +686,6 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
             return false;
         }
         self->cairo.size_in_px = 0;
-        // TODO: Set cairo_font_options
     }
     size_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
     if (stride * height > self->cairo.stride * self->cairo.height) {
@@ -695,6 +700,29 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
         if (!self->cairo.cr) { PyErr_NoMemory(); return false; }
         cairo_set_font_face(self->cairo.cr, self->cairo.font);
         self->cairo.width = width; self->cairo.height = height; self->cairo.size_in_px = 0;
+        cairo_font_options_t *opts = cairo_font_options_create();
+        cairo_status_t s;
+        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
+            cairo_font_options_destroy(opts);
+            return set_cairo_exception("Failed to create cairo font options", s);
+        }
+        cairo_hint_style_t h = CAIRO_HINT_STYLE_NONE;
+        if (self->hinting) {
+            switch(self->hintstyle) {
+                case 0: break;
+                case 1: h = CAIRO_HINT_STYLE_SLIGHT; break;
+                case 2: h = CAIRO_HINT_STYLE_MEDIUM; break;
+                case 3: h = CAIRO_HINT_STYLE_FULL; break;
+                default: h = CAIRO_HINT_STYLE_MEDIUM; break;
+            }
+        }
+        cairo_font_options_set_hint_style(opts, h);
+        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
+            cairo_font_options_destroy(opts);
+            return set_cairo_exception("Failed to set cairo hintstyle", s);
+        }
+        cairo_set_font_options(self->cairo.cr, opts);
+        cairo_font_options_destroy(opts);
     }
     return true;
 }
