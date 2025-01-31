@@ -295,6 +295,8 @@ face_equals_descriptor(PyObject *face_, PyObject *descriptor) {
     return true;
 }
 
+static char* get_variation_as_string(Face *self);
+
 PyObject*
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
 #define D(key, conv, missing_ok) { \
@@ -313,8 +315,8 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     D(hint_style, PyLong_AsLong, true);
 #undef D
     RAII_PyObject(retval, Face_Type.tp_alloc(&Face_Type, 0));
+    Face *self = (Face *)retval;
     if (retval != NULL) {
-        Face *self = (Face *)retval;
         int error;
         if ((error = FT_New_Face(library, path, index, &(self->face)))) { self->face = NULL; return set_load_error(path, error); }
         if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, index, fg)) { Py_CLEAR(retval); return NULL; }
@@ -339,6 +341,7 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
         if (!create_features_for_face(postscript_name_for_face((PyObject*)self), PyDict_GetItemString(descriptor, "features"), &self->font_features)) return NULL;
     }
     Py_XINCREF(retval);
+    printf("%s\n", get_variation_as_string(self));
     return retval;
 }
 
@@ -382,6 +385,20 @@ face_from_path(const char *path, int index, FONTS_DATA_HANDLE fg) {
     if (!init_ft_face(ans, pypath, true, 3, index, fg)) { Py_CLEAR(ans); return NULL; }
     return (PyObject*)ans;
 }
+
+static inline void cleanup_ftmm(FT_MM_Var **p) { if (*p) FT_Done_MM_Var(library, *p); *p = NULL; }
+
+static const char*
+tag_to_string(uint32_t tag, uint8_t bytes[5]) {
+    bytes[0] = (tag >> 24) & 0xff;
+    bytes[1] = (tag >> 16) & 0xff;
+    bytes[2] = (tag >> 8) & 0xff;
+    bytes[3] = (tag) & 0xff;
+    bytes[4] = 0;
+    return (const char*)bytes;
+}
+
+#define RAII_FTMMVar(name) __attribute__((cleanup(cleanup_ftmm))) FT_MM_Var *name = NULL
 
 static void free_cairo(Face *self);
 
@@ -693,6 +710,40 @@ get_preferred_palette_index(Face *self) {
     return is_color_dark(OPT(background)) ? self->dark_palette_index : self->light_palette_index;
 }
 
+static char*
+get_variation_as_string(Face *self) {
+    RAII_FTMMVar(mm);
+    FT_Error err;
+    if ((err = FT_Get_MM_Var(self->face, &mm))) return NULL;
+    RAII_ALLOC(FT_Fixed, coords, malloc(mm->num_axis * sizeof(FT_Fixed))); if (!coords) return NULL;
+    if ((err = FT_Get_Var_Design_Coordinates(self->face, mm->num_axis, coords))) return NULL;
+    RAII_ALLOC(char, buf, NULL);
+    uint8_t tag[5];
+    size_t pos = 0, sz = 0;
+    for (FT_UInt i = 0; i < mm->num_axis; i++) {
+        double val = coords[i] / 65536.0;
+        tag_to_string(mm->axis[i].tag, tag);
+        if (sz - pos < 32) {
+            sz += 4096; buf = realloc(buf, sz); if (!buf) return NULL;
+        }
+        if ((long)val == val) pos += snprintf(buf + pos, sz - pos - 1, "%s=%ld,", tag, (long)val);
+        else pos += snprintf(buf + pos, sz - pos - 1, "%s=%.4f,", tag, val);
+    }
+    char *ans = NULL;
+    if (buf) {
+        buf[pos] = 0; if (pos && buf[pos-1] == ',') buf[pos-1] = 0;
+        ans = buf; buf = NULL;
+    }
+    return ans;
+}
+
+static void
+set_variation_for_cairo(Face *self, cairo_font_options_t *opts) {
+    RAII_ALLOC(char, buf, get_variation_as_string(self));
+    cairo_font_options_set_variations(opts, buf ? buf : "");
+}
+
+
 static bool
 ensure_cairo_resources(Face *self, size_t width, size_t height) {
     if (!self->cairo.font) {
@@ -752,6 +803,11 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
         if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
             cairo_font_options_destroy(opts);
             return set_cairo_exception("Failed to set cairo palette index", s);
+        }
+        set_variation_for_cairo(self, opts);
+        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
+            cairo_font_options_destroy(opts);
+            return set_cairo_exception("Failed to set cairo font variations", s);
         }
         cairo_set_font_options(self->cairo.cr, opts);
         cairo_font_options_destroy(opts);
@@ -1018,20 +1074,6 @@ _get_best_name(Face *self, unsigned long nameid) {
     return key ? get_best_name(self, key) : NULL;
 }
 // }}}
-
-static inline void cleanup_ftmm(FT_MM_Var **p) { if (*p) FT_Done_MM_Var(library, *p); *p = NULL; }
-
-#define RAII_FTMMVar(name) __attribute__((cleanup(cleanup_ftmm))) FT_MM_Var *name = NULL
-
-static const char*
-tag_to_string(uint32_t tag, uint8_t bytes[5]) {
-    bytes[0] = (tag >> 24) & 0xff;
-    bytes[1] = (tag >> 16) & 0xff;
-    bytes[2] = (tag >> 8) & 0xff;
-    bytes[3] = (tag) & 0xff;
-    bytes[4] = 0;
-    return (const char*)bytes;
-}
 
 static PyObject*
 convert_named_style_to_python(Face *face, const FT_Var_Named_Style *src, FT_Var_Axis *axes, unsigned num_of_axes) {
