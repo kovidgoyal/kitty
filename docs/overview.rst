@@ -244,9 +244,7 @@ All these actions can be customized in :file:`kitty.conf` as described
 
 You can also customize what happens when clicking on :term:`hyperlinks` in
 kitty, having it open files in your editor, download remote files, open things
-in your browser, etc.
-
-For details, see :doc:`here <open_actions>`.
+in your browser, etc. For details, see :doc:`here <open_actions>`.
 
 .. toctree::
    :hidden:
