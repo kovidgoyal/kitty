@@ -341,7 +341,6 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
         if (!create_features_for_face(postscript_name_for_face((PyObject*)self), PyDict_GetItemString(descriptor, "features"), &self->font_features)) return NULL;
     }
     Py_XINCREF(retval);
-    printf("%s\n", get_variation_as_string(self));
     return retval;
 }
 
@@ -780,10 +779,12 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
         self->cairo.width = width; self->cairo.height = height; self->cairo.size_in_px = 0;
         cairo_font_options_t *opts = cairo_font_options_create();
         cairo_status_t s;
-        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
-            cairo_font_options_destroy(opts);
-            return set_cairo_exception("Failed to create cairo font options", s);
+#define check(msg) \
+        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) { \
+            cairo_font_options_destroy(opts); \
+            return set_cairo_exception(msg, s); \
         }
+        check("Failed to create cairo font options");
         cairo_hint_style_t h = CAIRO_HINT_STYLE_NONE;
         if (self->hinting) {
             switch(self->hintstyle) {
@@ -794,23 +795,12 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
                 default: h = CAIRO_HINT_STYLE_MEDIUM; break;
             }
         }
-        cairo_font_options_set_hint_style(opts, h);
-        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
-            cairo_font_options_destroy(opts);
-            return set_cairo_exception("Failed to set cairo hintstyle", s);
-        }
-        cairo_font_options_set_color_palette(opts, get_preferred_palette_index(self));
-        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
-            cairo_font_options_destroy(opts);
-            return set_cairo_exception("Failed to set cairo palette index", s);
-        }
-        set_variation_for_cairo(self, opts);
-        if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {
-            cairo_font_options_destroy(opts);
-            return set_cairo_exception("Failed to set cairo font variations", s);
-        }
+        cairo_font_options_set_hint_style(opts, h); check("Failed to set cairo hintstyle");
+        cairo_font_options_set_color_palette(opts, get_preferred_palette_index(self)); check("Failed to set cairo palette index");
+        set_variation_for_cairo(self, opts); check("Failed to set cairo font variations");
         cairo_set_font_options(self->cairo.cr, opts);
         cairo_font_options_destroy(opts);
+#undef check
     }
     return true;
 }
