@@ -769,8 +769,13 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
         free_cairo_surface_data(self);
         self->cairo.width = 0; self->cairo.height = 0;
         self->cairo.stride = stride;
-        self->cairo.buf = malloc(self->cairo.stride * height);
-        if (!self->cairo.buf) { PyErr_NoMemory(); return false; }
+        int ret = posix_memalign(&self->cairo.buf, 64, self->cairo.stride * height);
+        switch (ret) {
+            case 0: break;
+            case ENOMEM: PyErr_NoMemory(); return false;
+            case EINVAL: PyErr_SetString(FreeType_Exception, "Invalid alignment for cairo surface buffer: 64"); return false;
+            default: PyErr_SetString(FreeType_Exception, "Unknown error when calling posix_memalign to create ciro surface buffer"); return false;
+        }
         self->cairo.surface = cairo_image_surface_create_for_data(self->cairo.buf, CAIRO_FORMAT_ARGB32, width, height, self->cairo.stride);
         if (!self->cairo.surface) { PyErr_NoMemory(); return false; }
         self->cairo.cr = cairo_create(self->cairo.surface);
