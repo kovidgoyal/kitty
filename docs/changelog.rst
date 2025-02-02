@@ -9,6 +9,16 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Multiple sized text [0.40]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+kitty is the first major terminal to introduce the concept of multiple sized
+text. Terminal programs running in kitty can now opt-in to use and display text
+in multiple font sizes both larger and smaller than the base font size. This is
+done in backwards compatible, opt-in way that does not affect how traditional
+terminal programs work at all. For details on the new feature and how to use
+it, see :doc:`text-sizing-protocol`.
+
 Cursor trails [0.37]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -83,6 +93,24 @@ consumption to do the same tasks.
 
 Detailed list of changes
 -------------------------------------
+
+0.40.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- :doc:`Allow terminal programs to use text in different font sizes <text-sizing-protocol>` (:iss:`8226`)
+
+- When rendering underlines add gaps around text descenders (parts of the text
+  that overlap with the underline). Controlled by the new option :opt:`underline_exclusion` (:iss:`8226`)
+
+- Finally fix the issue of text-width mismatches that has been plaguing the
+  terminal ecosystem for decades by allowing terminal programs to specify how
+  many cells to render a piece of text in (:iss:`8226`)
+
+- Linux: Add support for `COLRv1 <https://nabla.typearture.com/whatisCOLRV1.html>`__ fonts. These are typically emoji fonts that use vector images for emoji
+
+- Add support for the octant box-drawing characters
+
+- Speed up rendering of box drawing characters by moving the implementation to native code
 
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
