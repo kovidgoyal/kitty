@@ -15,7 +15,7 @@ Multiple sized text [0.40]
 kitty is the first major terminal to introduce the concept of multiple sized
 text. Terminal programs running in kitty can now opt-in to use and display text
 in multiple font sizes both larger and smaller than the base font size. This is
-done in backwards compatible, opt-in way that does not affect how traditional
+done in a backwards compatible, opt-in way that does not affect how traditional
 terminal programs work at all. For details on the new feature and how to use
 it, see :doc:`text-sizing-protocol`.
 
