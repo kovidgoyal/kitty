@@ -109,7 +109,6 @@ Build-time dependencies:
   need to install the following packages, if they are not already installed by
   your distro:
 
-  - ``libdbus-1-dev``
   - ``liblcms2-dev``
   - ``libfontconfig-dev``
   - ``libssl-dev``
@@ -121,6 +120,7 @@ Build-time dependencies:
 
   Also, the X11 development libraries:
 
+  - ``libdbus-1-dev``
   - ``libxcursor-dev``
   - ``libxrandr-dev``
   - ``libxi-dev``
