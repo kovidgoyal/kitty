@@ -13,7 +13,8 @@ Build from source
 
 |kitty| is designed to run from source, for easy hack-ability. All you need to
 get started is a C compiler and the `go compiler
-<https://go.dev/doc/install>`__. After installing those, run the following commands::
+<https://go.dev/doc/install>`__ (on Linux, the :ref:`X11 development libraries <x11-dev-libs>` as well).
+After installing those, run the following commands::
 
     git clone https://github.com/kovidgoyal/kitty.git && cd kitty
     ./dev.sh build
@@ -109,19 +110,25 @@ Build-time dependencies:
   your distro:
 
   - ``libdbus-1-dev``
+  - ``liblcms2-dev``
+  - ``libfontconfig-dev``
+  - ``libssl-dev``
+  - ``libpython3-dev``
+  - ``libxxhash-dev``
+  - ``libsimde-dev``
+
+  .. _x11-dev-libs:
+
+  Also, the X11 development libraries:
+
   - ``libxcursor-dev``
   - ``libxrandr-dev``
   - ``libxi-dev``
   - ``libxinerama-dev``
   - ``libgl1-mesa-dev``
   - ``libxkbcommon-x11-dev``
-  - ``libfontconfig-dev``
   - ``libx11-xcb-dev``
-  - ``liblcms2-dev``
-  - ``libssl-dev``
-  - ``libpython3-dev``
-  - ``libxxhash-dev``
-  - ``libsimde-dev``
+
 
 
 Build and run from source with Nix
