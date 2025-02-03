@@ -60,6 +60,7 @@ Other terminals that have implemented the graphics protocol:
 
 * `Ghostty <https://ghostty.org>`_
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
+* `st (with a patch) <https://st.suckless.org/patches/kitty-graphics-protocol>`_
 * `wayst <https://github.com/91861/wayst>`_
 * `WezTerm <https://github.com/wez/wezterm/issues/986>`_
 
