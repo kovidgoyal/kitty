@@ -1272,7 +1272,8 @@ commit(Canvas *self, Edge lines, bool solid) {
 }
 
 // thin and fat line levels
-static const uint t = 1, f = 3;
+#define t 1u
+#define f 3u
 
 static void
 corner(Canvas *self, uint hlevel, uint vlevel, Corner which) {
@@ -1799,4 +1800,6 @@ END_ALLOW_CASE_RANGE
 #undef C
 #undef S
 #undef SB
+#undef t
+#undef f
 }

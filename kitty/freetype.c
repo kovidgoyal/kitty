@@ -841,7 +841,7 @@ static bool
 render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned width, unsigned height, ARGB32 fg, unsigned cell_baseline) {
     cairo_glyph_t g = {.index=glyph_id};
     cairo_text_extents_t bb = {0};
-    if (!ensure_cairo_resources(self, MAX(width, 256), MAX(height, 256))) return false;
+    if (!ensure_cairo_resources(self, MAX(width, 256u), MAX(height, 256u))) return false;
     set_cairo_font_size(self, self->metrics.size_in_pts);
     cairo_scaled_font_t *sf = cairo_get_scaled_font(self->cairo.cr);
     cairo_scaled_font_glyph_extents(sf, &g, 1, &bb);
