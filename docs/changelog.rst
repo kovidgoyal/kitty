@@ -112,6 +112,8 @@ Detailed list of changes
 
 - Speed up rendering of box drawing characters by moving the implementation to native code
 
+- macOS: Fix fallback font rendering for bold/italic text not working for some symbols that are present in the Menlo regular face but not the bold/italic faces (:iss:`8282`)
+
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

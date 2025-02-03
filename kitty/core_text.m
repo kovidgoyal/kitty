@@ -359,11 +359,9 @@ manually_search_fallback_fonts(CTFontRef current_font, const ListOfChars *lc) {
     for (CFIndex i = 0; i < count; i++) {
         CTFontDescriptorRef descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(fonts, i);
         CTFontRef new_font = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(current_font), NULL);
-        if (!is_last_resort_font(new_font)) {
-            if (font_can_render_cell(new_font, lc)) {
-                ans = new_font;
-                break;
-            }
+        if (!is_last_resort_font(new_font) && font_can_render_cell(new_font, lc)) {
+            ans = new_font;
+            break;
         }
         CFRelease(new_font);
     }
@@ -380,53 +378,41 @@ manually_search_fallback_fonts(CTFontRef current_font, const ListOfChars *lc) {
 
 static CTFontRef
 find_substitute_face(CFStringRef str, CTFontRef old_font, const ListOfChars *lc) {
-    // CTFontCreateForString returns the original font when there are combining
-    // diacritics in the font and the base character is in the original font,
-    // so we have to check each character individually
-    CFIndex len = CFStringGetLength(str), start = 0, amt = len;
-    while (start < len) {
-        CTFontRef new_font = CTFontCreateForString(old_font, str, CFRangeMake(start, amt));
-        if (amt == len && len != 1) amt = 1;
-        else start++;
-        if (new_font == old_font) { CFRelease(new_font); continue; }
-        if (!new_font || is_last_resort_font(new_font)) {
-            if (new_font) CFRelease(new_font);
-            if (is_private_use(lc->chars[0])) {
-                // CoreTexts fallback font mechanism does not work for private use characters
-                new_font = manually_search_fallback_fonts(old_font, lc);
-                if (new_font) return new_font;
-            }
-            return NULL;
-        }
-        return new_font;
+    // CoreText's fallback system has various problems:
+    // 1) CTFontCreateForString returns the original font when there are combining
+    // diacritics in the text and the base character is in the original font.
+    // 2) Fallback does not work for PUA characters
+    CTFontRef new_font = CTFontCreateForString(old_font, str, CFRangeMake(0, CFStringGetLength(str)));
+    if (!new_font || is_last_resort_font(new_font) || !font_can_render_cell(new_font, lc)) {
+        if (new_font) CFRelease(new_font);
+        // CoreText's fallback font mechanism does not work for private use characters, it also fails
+        // in specific circumstances, such as:
+        return manually_search_fallback_fonts(old_font, lc);
     }
-    return NULL;
+    return new_font;
 }
 
 static CTFontRef
-apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool italic) {
+apply_styles_to_fallback_font(CTFontRef original_fallback_font, bool bold, bool italic, const ListOfChars *lc) {
     if (!original_fallback_font || (!bold && !italic) || is_last_resort_font(original_fallback_font)) return original_fallback_font;
-    CTFontDescriptorRef original_descriptor = CTFontCopyFontDescriptor(original_fallback_font);
+    RAII_CoreFoundation(CTFontDescriptorRef, original_descriptor, CTFontCopyFontDescriptor(original_fallback_font));
+    if (!original_descriptor) return original_fallback_font;
     // We cannot set kCTFontTraitMonoSpace in traits as if the original
     // fallback font is Zapf Dingbats we get .AppleSystemUIFontMonospaced as
     // the new fallback
     CTFontSymbolicTraits traits = 0;
     if (bold) traits |= kCTFontTraitBold;
     if (italic) traits |= kCTFontTraitItalic;
-    CTFontDescriptorRef descriptor = CTFontDescriptorCreateCopyWithSymbolicTraits(original_descriptor, traits, traits);
-    CFRelease(original_descriptor);
-    if (descriptor) {
-        CTFontRef ans = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(original_fallback_font), NULL);
-        CFRelease(descriptor);
-        if (!ans) return original_fallback_font;
-        CFStringRef new_name = CTFontCopyFamilyName(ans);
-        CFStringRef old_name = CTFontCopyFamilyName(original_fallback_font);
-        bool same_family = cf_string_equals(new_name, old_name);
-        /* NSLog(@"old: %@ new: %@", old_name, new_name); */
-        CFRelease(new_name); CFRelease(old_name);
-        if (same_family) { CFRelease(original_fallback_font); return ans; }
-        CFRelease(ans);
-    }
+    RAII_CoreFoundation(CTFontDescriptorRef, descriptor, CTFontDescriptorCreateCopyWithSymbolicTraits(original_descriptor, traits, traits));
+    if (!descriptor) return original_fallback_font;
+    CTFontRef ans = CTFontCreateWithFontDescriptor(descriptor, CTFontGetSize(original_fallback_font), NULL);
+    if (!ans) return original_fallback_font;
+    RAII_CoreFoundation(CFStringRef, new_name, CTFontCopyFamilyName(ans));
+    RAII_CoreFoundation(CFStringRef, old_name, CTFontCopyFamilyName(original_fallback_font));
+    bool same_family = cf_string_equals(new_name, old_name);
+    /* NSLog(@"old: %@ new: %@", old_name, new_name); */
+    if (same_family && font_can_render_cell(ans, lc)) { CFRelease(original_fallback_font); return ans; }
+    CFRelease(ans);
     return original_fallback_font;
 }
 
@@ -444,20 +430,20 @@ PyObject*
 create_fallback_face(PyObject *base_face, const ListOfChars *lc, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)base_face;
     RAII_CoreFoundation(CTFontRef, new_font, NULL);
-#define search_for_fallback() \
-        CFStringRef str = lc_as_fallback(lc); \
-        if (str == NULL) return PyErr_NoMemory(); \
-        new_font = find_substitute_face(str, self->ct_font, lc); \
-        CFRelease(str);
+    RAII_CoreFoundation(CFStringRef, str, lc_as_fallback(lc));
+    if (str == NULL) return PyErr_NoMemory();
 
     if (emoji_presentation) {
         new_font = CTFontCreateWithName((CFStringRef)@"AppleColorEmoji", self->scaled_point_sz, NULL);
         if (!new_font || !glyph_id_for_codepoint_ctfont(new_font, lc->chars[0])) {
             if (new_font) CFRelease(new_font);
-            search_for_fallback();
+            new_font = find_substitute_face(str, self->ct_font, lc);
         }
     }
-    else { search_for_fallback(); new_font = apply_styles_to_fallback_font(new_font, bold, italic); }
+    else {
+        new_font = find_substitute_face(str, self->ct_font, lc);
+        new_font = apply_styles_to_fallback_font(new_font, bold, italic, lc);
+    }
     if (new_font == NULL) Py_RETURN_NONE;
     RAII_PyObject(postscript_name, convert_cfstring(CTFontCopyPostScriptName(new_font), true));
     if (!postscript_name) return NULL;
