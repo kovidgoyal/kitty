@@ -15,6 +15,7 @@ from .borders import Border, BorderColor
 from .constants import config_dir
 from .fast_data_types import (
     DECAWM,
+    TOP_EDGE,
     Color,
     Region,
     Screen,
@@ -551,7 +552,7 @@ class TabBar:
             opts.active_tab_title_template,
             opts.tab_activity_symbol,
             opts.tab_powerline_style,
-            'top' if opts.tab_bar_edge == 1 else 'bottom',
+            'top' if opts.tab_bar_edge == TOP_EDGE else 'bottom',
             opts.tab_title_max_length,
         )
         ts = opts.tab_bar_style

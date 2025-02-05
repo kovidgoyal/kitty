@@ -1548,6 +1548,8 @@ init_state(PyObject *module) {
     PyModule_AddIntMacro(module, WINDOW_FULLSCREEN);
     PyModule_AddIntMacro(module, WINDOW_MAXIMIZED);
     PyModule_AddIntMacro(module, WINDOW_MINIMIZED);
+    PyModule_AddIntMacro(module, TOP_EDGE);
+    PyModule_AddIntMacro(module, BOTTOM_EDGE);
     register_at_exit_cleanup_func(STATE_CLEANUP_FUNC, finalize);
     return true;
 }

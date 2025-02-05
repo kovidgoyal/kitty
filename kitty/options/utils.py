@@ -704,7 +704,7 @@ def tab_separator(x: str) -> str:
 
 
 def tab_bar_edge(x: str) -> int:
-    return {'top': 1, 'bottom': 3}.get(x.lower(), 3)
+    return {'top': defines.TOP_EDGE, 'bottom': defines.BOTTOM_EDGE}.get(x.lower(), 3)
 
 
 def tab_font_style(x: str) -> tuple[bool, bool]:
