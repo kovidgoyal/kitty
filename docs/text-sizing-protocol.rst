@@ -126,6 +126,9 @@ transmission, so that the above becomes::
 The use of non-zero ``w`` should mainly be restricted to non-ASCII characters and
 when using fractional scaling, as described below.
 
+.. note:: Text sizes specified by scale are relative to the base font size,
+   thus if the base font size is changed, these sizes are changed as well.
+
 Fractional scaling
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -139,7 +142,7 @@ applied on top of the main scale specified by ``s``. It allows niceties like:
 * ...
 
 The fractional scale **does not** affect the number of cells the text occupies,
-instead, it just adjust the rendered font size within those cells.
+instead, it just adjusts the rendered font size within those cells.
 The fraction is specified using an integer numerator and denominator (``n`` and
 ``d``). In addition, by using the ``v`` key one can vertically align the
 fractionally scaled text at top, bottom or middle.
