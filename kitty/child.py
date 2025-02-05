@@ -499,7 +499,7 @@ class Child:
             return False
         cc = t[-1]
         if key_num == cc[termios.VINTR]:
-            s = signal.SIGINT
+            s: signal.Signals = signal.SIGINT
         elif key_num == cc[termios.VSUSP]:
             s = signal.SIGTSTP
         elif key_num == cc[termios.VQUIT]:
