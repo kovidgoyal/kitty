@@ -189,6 +189,9 @@ class NamedLineIterator:
         return self.lines
 
 
+class GenincludeError(Exception): ...
+
+
 def pygeninclude(path: str) -> list[str]:
     import io
     import runpy
@@ -196,6 +199,12 @@ def pygeninclude(path: str) -> list[str]:
     buf = sys.stdout = io.StringIO()
     try:
         runpy.run_path(path, run_name='__main__')
+    except FileNotFoundError:
+        raise
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        raise GenincludeError(f'Running the geninclude program: {path} failed with the error:\n{tb}')
     finally:
         sys.stdout = before
     return buf.getvalue().splitlines()
@@ -208,7 +217,9 @@ def geninclude(path: str) -> list[str]:
         if path.endswith('.py'):
             return pygeninclude(path)
         import subprocess
-        cp = subprocess.run([path], stdout=subprocess.PIPE, text=True)
+        cp = subprocess.run([path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if cp.returncode != 0:
+            raise GenincludeError(f'Running the geninclude program: {path} failed with exit code: {cp.returncode} and STDERR:\n{cp.stderr}')
         return cp.stdout.splitlines()
     finally:
         if old is None:
@@ -281,8 +292,11 @@ def parse_line(
             if not memory.seen(val):
                 try:
                     lines = geninclude(val)
-                except Exception:
-                    log_error(f'Could not process geninclude {val}, ignoring')
+                except FileNotFoundError as e:
+                    if e.filename == val:
+                        log_error(f'Could not find the geninclude file: {val}, ignoring')
+                    else:
+                        raise
                 else:
                     with currently_parsing.set_file(f'<get: {val}>'):
                         _parse(
