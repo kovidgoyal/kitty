@@ -845,25 +845,24 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
     float scale = rf ? scaled_cell_dimensions(*rf, &scaled_cell_width, &scaled_cell_height) : 1.f;
     scaled_font_map_t_itr i = vt_get(&fg->scaled_font_map, scale);
     ScaledFontData sfd;
+#define apply_scaling(which_fg) if (!face_apply_scaling(medium_font->face, (FONTS_DATA_HANDLE)(which_fg))) { \
+            if (PyErr_Occurred()) PyErr_Print(); \
+            fatal("Could not apply scale of %f to font group at size: %f", scale, (which_fg)->font_sz_in_pts); \
+        }
+
     if (vt_is_end(i)) {
         Font *medium_font = &fg->fonts[fg->medium_font_idx];
         FontGroup copy = {.fcm=fg->fcm, .logical_dpi_x=fg->logical_dpi_x, .logical_dpi_y=fg->logical_dpi_y};
         copy.fcm.cell_width = scaled_cell_width; copy.fcm.cell_height = scaled_cell_height;
         copy.font_sz_in_pts = scale * fg->font_sz_in_pts;
-        if (!face_apply_scaling(medium_font->face, (FONTS_DATA_HANDLE)&copy)) {
-            if (PyErr_Occurred()) PyErr_Print();
-            fatal("Could not apply scale of %f to font group at size: %f", scale, copy.font_sz_in_pts);
-        }
+        apply_scaling(&copy);
         calc_cell_metrics(&copy, medium_font->face);
         if (copy.fcm.cell_width > scaled_cell_width || copy.fcm.cell_height > scaled_cell_height) {
             float wfrac = (float)copy.fcm.cell_width / scaled_cell_width, hfrac = (float)copy.fcm.cell_height / scaled_cell_height;
             float frac = MIN(wfrac, hfrac);
             copy.font_sz_in_pts *= frac;
             while(true) {
-                if (!face_apply_scaling(medium_font->face, (FONTS_DATA_HANDLE)&copy)) {
-                    if (PyErr_Occurred()) PyErr_Print();
-                    fatal("Could not apply scale of %f to font group at size: %f", scale, copy.font_sz_in_pts);
-                }
+                apply_scaling(&copy);
                 calc_cell_metrics(&copy, medium_font->face);
                 if (copy.fcm.cell_width <= scaled_cell_width && copy.fcm.cell_height <= scaled_cell_height) break;
                 if (copy.font_sz_in_pts < 1) fatal("Could not apply scale of %f to font group as font size (%f) is less than minimum threshold", scale, copy.font_sz_in_pts);
@@ -873,10 +872,12 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
         sfd.fcm = copy.fcm; sfd.font_sz_in_pts = copy.font_sz_in_pts;
         sfd.fcm.cell_width = scaled_cell_width; sfd.fcm.cell_height = scaled_cell_height;
         if (vt_is_end(vt_insert(&fg->scaled_font_map, scale, sfd))) fatal("Out of memory inserting scaled font data into map");
+        apply_scaling(fg);
     } else sfd = i.data->val;
     fg->font_sz_in_pts = sfd.font_sz_in_pts;
     fg->fcm = sfd.fcm;
     return scale;
+#undef apply_scaling
 }
 
 static pixel*
