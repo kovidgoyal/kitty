@@ -33,7 +33,7 @@ func wait_for_file_to_grow(file_name string, limit int64) (err error) {
 	return
 }
 
-func read_input(input_file *os.File, input_file_name string, input_channel chan<- input_line_struct, follow bool, count_carriage_returns bool) {
+func read_input(input_file *os.File, input_file_name string, input_channel chan<- input_line_struct, follow_file bool, count_carriage_returns bool) {
 	const buf_capacity = 8192
 	buf := make([]byte, buf_capacity)
 	output_buf := strings.Builder{}
@@ -106,7 +106,7 @@ func read_input(input_file *os.File, input_file_name string, input_channel chan<
 				err = nil
 			}
 		}
-		if !follow {
+		if !follow_file {
 			break
 		}
 		if errors.Is(err, io.EOF) {
