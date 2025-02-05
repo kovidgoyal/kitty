@@ -169,6 +169,10 @@ def screen_cursor_down(count: int) -> None:
     write(f'{CSI}{count}B')
 
 
+def screen_cursor_down1(count: int) -> None:
+    write(f'{CSI}{count}E')
+
+
 def screen_report_key_encoding_flags() -> None:
     write(f'{CSI}?u')
 
@@ -224,6 +228,10 @@ def report_device_attributes(mode: int, char: int) -> None:
     if mode:
         x += str(mode)
     write(f'{x}c')
+
+
+def report_device_status(x: int, private: bool) -> None:
+    write(f'{CSI}{"?" if private else ""}{x}n')
 
 
 def screen_decsace(mode: int) -> None:
