@@ -203,7 +203,8 @@ exact number of cells the client expects.
 .. note::
    It is possible for a terminal to implement only the width part of this spec
    and ignore the scale part. This escape code works with only the `w` key as
-   well as a means of specifying how many cells each piece of text occupies.
+   well, as a means of specifying how many cells each piece of text occupies.
+   In such cases ``s`` defaults to 1.
    See the section on :ref:`detect_text_sizing` on how client applications can
    query for terminal emulator support.
 
