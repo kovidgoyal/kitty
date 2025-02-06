@@ -718,15 +718,17 @@ get_variation_as_string(Face *self) {
     if ((err = FT_Get_Var_Design_Coordinates(self->face, mm->num_axis, coords))) return NULL;
     RAII_ALLOC(char, buf, NULL);
     uint8_t tag[5];
-    size_t pos = 0, sz = 0;
+    size_t pos = 0, sz = 0, n, bufsz;
     for (FT_UInt i = 0; i < mm->num_axis; i++) {
         double val = coords[i] / 65536.0;
         tag_to_string(mm->axis[i].tag, tag);
         if (sz - pos < 32) {
             sz += 4096; buf = realloc(buf, sz); if (!buf) return NULL;
         }
-        if ((long)val == val) pos += snprintf(buf + pos, sz - pos - 1, "%s=%ld,", tag, (long)val);
-        else pos += snprintf(buf + pos, sz - pos - 1, "%s=%.4f,", tag, val);
+        bufsz = sz - pos - 1;
+        if ((long)val == val) n = snprintf(buf + pos, bufsz, "%s=%ld,", tag, (long)val);
+        else n = snprintf(buf + pos, bufsz, "%s=%.4f,", tag, val);
+        if (n < bufsz) pos += n;
     }
     char *ans = NULL;
     if (buf) {

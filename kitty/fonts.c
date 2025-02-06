@@ -135,7 +135,7 @@ static void
 display_rgba_data(const pixel *b, unsigned width, unsigned height) {
     RAII_PyObject(m, PyImport_ImportModule("kitty.fonts.render"));
     RAII_PyObject(f, PyObject_GetAttrString(m, "show"));
-    RAII_PyObject(data, PyMemoryView_FromMemory((char*)b, width * height * sizeof(b[0]), PyBUF_READ));
+    RAII_PyObject(data, PyMemoryView_FromMemory((char*)b, (Py_ssize_t)width * height * sizeof(b[0]), PyBUF_READ));
     RAII_PyObject(ret, PyObject_CallFunction(f, "OII", data, width, height));
     if (ret == NULL) PyErr_Print();
 }
@@ -154,7 +154,7 @@ python_send_to_gpu(FontGroup *fg, sprite_index idx, pixel *buf) {
     if (0) dump_sprite(buf, fg->fcm.cell_width, fg->fcm.cell_height);
     unsigned int x, y, z;
     sprite_index_to_pos(idx, fg->sprite_tracker.xnum, fg->sprite_tracker.ynum, &x, &y, &z);
-    const size_t sprite_size = fg->fcm.cell_width * fg->fcm.cell_height;
+    const size_t sprite_size = (size_t)fg->fcm.cell_width * fg->fcm.cell_height;
     PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#", x, y, z, buf, sprite_size * sizeof(buf[0]));
     if (ret == NULL) PyErr_Print();
     else Py_DECREF(ret);
@@ -834,8 +834,8 @@ effective_scale(RunFont rf) {
 static float
 scaled_cell_dimensions(RunFont rf, unsigned *width, unsigned *height) {
     float frac = effective_scale(rf);
-    *width = (unsigned)ceil(frac * *width);
-    *height = (unsigned)ceil(frac * *height);
+    *width = (unsigned)ceilf(frac * *width);
+    *height = (unsigned)ceilf(frac * *height);
     return frac;
 }
 
@@ -956,7 +956,7 @@ map_scaled_decoration_geometry(DecorationGeometry sdg, Region src, Region dest) 
 
 static void
 render_scaled_decoration(FontCellMetrics unscaled_metrics, FontCellMetrics scaled_metrics, uint8_t *alpha_mask, pixel *output, Region src, Region dest) {
-    memset(output, 0, unscaled_metrics.cell_width * (unscaled_metrics.cell_height + 1) * sizeof(output[0]));
+    memset(output, 0, sizeof(output[0]) * unscaled_metrics.cell_width * (unscaled_metrics.cell_height + 1));
     unsigned src_limit = MIN(scaled_metrics.cell_height, src.bottom), dest_limit = MIN(unscaled_metrics.cell_height, dest.bottom);
     unsigned cell_width = MIN(scaled_metrics.cell_width, unscaled_metrics.cell_width);
     for (unsigned srcy = src.top, desty=dest.top; srcy < src_limit && desty < dest_limit; srcy++, desty++) {
@@ -972,13 +972,13 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
     if ((src.bottom == src.top) || (dest.bottom == dest.top)) return 0;   // no overlap
     const FontCellMetrics unscaled_metrics = fg->fcm;
     scaled_metrics.cell_width = unscaled_metrics.cell_width;
-    RAII_ALLOC(uint8_t, alpha_mask, malloc(scaled_metrics.cell_height * scaled_metrics.cell_width));
-    RAII_ALLOC(pixel, buf, malloc(unscaled_metrics.cell_width * (unscaled_metrics.cell_height + 1) * sizeof(pixel)));
+    RAII_ALLOC(uint8_t, alpha_mask, malloc((size_t)scaled_metrics.cell_height * scaled_metrics.cell_width));
+    RAII_ALLOC(pixel, buf, malloc(sizeof(pixel) * unscaled_metrics.cell_width * (unscaled_metrics.cell_height + 1)));
     if (!alpha_mask || !buf) fatal("Out of memory");
     sprite_index ans = 0;
     bool is_underline = false; uint32_t underline_top = unscaled_metrics.cell_height, underline_bottom = 0;
 #define do_one(call) { \
-    memset(alpha_mask, 0, scaled_metrics.cell_width * scaled_metrics.cell_height * sizeof(alpha_mask[0])); \
+    memset(alpha_mask, 0, sizeof(alpha_mask[0]) * scaled_metrics.cell_width * scaled_metrics.cell_height); \
     DecorationGeometry sdg = call; \
     render_scaled_decoration(unscaled_metrics, scaled_metrics, alpha_mask, buf, src, dest); \
     sprite_index q = current_send_sprite_to_gpu(fg, buf, (DecorationMetadata){0}, scaled_metrics); \
@@ -1119,11 +1119,11 @@ load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_
 static void
 render_filled_sprite(pixel *buf, unsigned num_glyphs, FontCellMetrics scaled_metrics, unsigned num_scaled_cells) {
     if (num_scaled_cells > num_glyphs) {
-        memset(buf, 0xff, num_glyphs * scaled_metrics.cell_width * sizeof(buf[0]));
-        memset(buf + num_glyphs * scaled_metrics.cell_width, 0, (num_scaled_cells - num_glyphs) * scaled_metrics.cell_width * sizeof(buf[0]));
+        memset(buf, 0xff, sizeof(buf[0]) * num_glyphs * scaled_metrics.cell_width);
+        memset(buf + num_glyphs * scaled_metrics.cell_width, 0, sizeof(buf[0]) * (num_scaled_cells - num_glyphs) * scaled_metrics.cell_width);
         for (unsigned y = 1; y < scaled_metrics.cell_height; y++) memcpy(
-            buf + scaled_metrics.cell_width * num_scaled_cells * y, buf, scaled_metrics.cell_width * num_scaled_cells * sizeof(buf[0]));
-    } else memset(buf, 0xff, num_glyphs * scaled_metrics.cell_height * scaled_metrics.cell_width * sizeof(buf[0]));
+            buf + scaled_metrics.cell_width * num_scaled_cells * y, buf, sizeof(buf[0]) * scaled_metrics.cell_width * num_scaled_cells );
+    } else memset(buf, 0xff, sizeof(buf[0]) * num_glyphs * scaled_metrics.cell_height * scaled_metrics.cell_width );
 }
 
 static void

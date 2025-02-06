@@ -235,7 +235,7 @@ typedef struct Canvas {
 } Canvas;
 
 static void
-fill_canvas(Canvas *self, int byte) { memset(self->mask, byte, self->width * self->height * sizeof(self->mask[0])); }
+fill_canvas(Canvas *self, int byte) { memset(self->mask, byte, sizeof(self->mask[0]) * self->width * self->height); }
 
 static void
 append_hole(Canvas *self, Range hole) {
@@ -1581,7 +1581,7 @@ START_ALLOW_CASE_RANGE
         SH(L'🮖', .xnum=4, .ynum=4, .invert=true);
         SH(L'🮗', .xnum=1, .ynum=4, .invert=true);
 #define M(ch, corner) SB(ch, corner_triangle(c, corner)); \
-            memcpy(ss.mask, canvas.mask, canvas.width * canvas.height * sizeof(canvas.mask[0])); \
+            memcpy(ss.mask, canvas.mask, sizeof(canvas.mask[0]) * canvas.width * canvas.height); \
             fill_canvas(&canvas, 0); shade(&canvas, (Shade){.xnum=12}); \
             apply_mask(&canvas, ss.mask); break;
         M(L'🮜', TOP_LEFT);

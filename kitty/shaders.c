@@ -119,7 +119,7 @@ copy_32bit_texture(GLuint old_texture, GLuint new_texture, GLenum texture_type) 
             break;
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    RAII_ALLOC(uint8_t, pixels, malloc(width * height * layers * 4));
+    RAII_ALLOC(uint8_t, pixels, malloc((size_t)width * height * layers * 4u));
     if (!pixels) fatal("Out of memory");
     glGetTexImage(texture_type, 0, format, type, pixels);
     glBindTexture(texture_type, new_texture);
@@ -146,7 +146,7 @@ static void
 realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
 #define dm (sm->decorations_map)
     SpriteMap *sm = (SpriteMap*)fg->sprite_map;
-    size_t current_capacity = dm.width * dm.height;
+    size_t current_capacity = (size_t)dm.width * dm.height;
     if (dm.count < current_capacity && dm.texture_id) return;
     GLint new_capacity = dm.count + 256;
     GLint width = new_capacity, height = 1;
