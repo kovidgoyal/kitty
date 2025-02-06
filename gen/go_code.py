@@ -244,7 +244,7 @@ def make_bitfields() -> None:
     from kitty.fast_data_types import SCALE_BITS, SUBSCALE_BITS, WIDTH_BITS
     make_bitfield(
         'tools/vt', 'CellAttrs',
-        'decoration 3', 'bold 1', 'italic 1', 'reverse 1', 'strike 1', 'dim 1',
+        'decoration 3', 'bold 1', 'italic 1', 'reverse 1', 'strike 1', 'dim 1', 'hyperlink_id 16',
     )
     make_bitfield('tools/vt', 'Ch', 'is_idx 1', 'ch_or_idx 31')
     make_bitfield(
@@ -252,7 +252,7 @@ def make_bitfields() -> None:
         'is_multicell 1', 'natural_width 1', f'scale {SCALE_BITS}', f'subscale_n {SUBSCALE_BITS}', f'subscale_d {SUBSCALE_BITS}',
         f'width {WIDTH_BITS}', f'x {WIDTH_BITS + SCALE_BITS + 1}', f'y {SCALE_BITS + 1}', 'vertical_align 3',
     )
-    make_bitfield('tools/vt', 'CellColor', 'red 8', 'green 8', 'blue 8', 'is_idx 1')
+    make_bitfield('tools/vt', 'CellColor', 'is_idx 1', 'red 8', 'green 8', 'blue 8')
 # }}}
 
 # Completions {{{
