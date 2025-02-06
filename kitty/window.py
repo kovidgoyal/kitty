@@ -1293,7 +1293,7 @@ class Window:
 
     def color_profile_popped(self, bg_changed: bool) -> None:
         if bg_changed:
-            get_boss().default_bg_changed_for(self.id)
+            get_boss().default_bg_changed_for(self.id, via_escape_code=True)
 
     def report_color(self, code: str, col: Color) -> None:
         r, g, b = col.red, col.green, col.blue
