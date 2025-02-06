@@ -19,6 +19,7 @@ from itertools import chain
 from typing import (
     Any,
     BinaryIO,
+    NamedTuple,
     Optional,
     TextIO,
     Union,
@@ -177,6 +178,81 @@ def stringify() -> None:
         'kittens/transfer/ftc.go',
     ):
         stringify_file(path)
+# }}}
+
+# {{{ Bitfields
+
+class BitField(NamedTuple):
+     name: str
+     bits: int
+
+
+def typename_for_bitsize(bits: int) -> str:
+     if bits <= 8:
+        return 'uint8'
+     if bits <= 16:
+        return 'uint16'
+     if bits <= 32:
+        return 'uint32'
+     return 'uint64'
+
+
+def make_bitfield(dest: str, typename: str, *fields_: str) -> None:
+    output_path = os.path.join(dest, f'{typename.lower()}_generated.go')
+    ans = [f'package {os.path.basename(dest)}', '']
+    a = ans.append
+
+    def fieldify(spec: str) -> BitField:
+        name, num = spec.partition(' ')[::2]
+        return BitField(name, int(num))
+
+    fields = tuple(map(fieldify, fields_))
+    total_size = sum(x.bits for x in fields)
+    if total_size > 64:
+        raise ValueError(f'Total size of bit fields: {total_size} for {typename} is larger than 64 bits')
+    a(f'// Total number of bits used: {total_size}')
+    itype = typename_for_bitsize(total_size)
+    a(f'type {typename} {itype}')
+    a('')
+    shift = 0
+    for bf in reversed(fields):
+        tn = typename_for_bitsize(bf.bits)
+        mask = '0b' + '1' * bf.bits
+        a(f'func (s {typename}) {bf.name.capitalize()}() {tn} {{')  # }}
+        if shift:
+            a(f'    return {tn}((s >> {shift}) & {mask})')
+        else:
+            a(f'    return {tn}(s & {mask})')
+        a('}')
+        a('')
+        a(f'func (s *{typename}) Set{bf.name.capitalize()}(val {tn}) {{')  # }}
+        if shift:
+            a(f'    *s &^= {mask} << {shift}')
+            a(f'    *s |= {typename}(val&{mask}) << {shift}')
+        else:
+            a(f'    *s &^= {mask}')
+            a(f'    *s |= {typename}(val & {mask})')
+        a('}')
+        a('')
+        shift += bf.bits
+
+    with replace_if_needed(output_path) as buf:
+        print('\n'.join(ans), file=buf)
+
+
+def make_bitfields() -> None:
+    from kitty.fast_data_types import SCALE_BITS, SUBSCALE_BITS, WIDTH_BITS
+    make_bitfield(
+        'tools/vt', 'CellAttrs',
+        'decoration 3', 'bold 1', 'italic 1', 'reverse 1', 'strike 1', 'dim 1',
+    )
+    make_bitfield('tools/vt', 'Ch', 'is_idx 1', 'ch_or_idx 31')
+    make_bitfield(
+        'tools/vt', 'MultiCell',
+        'is_multicell 1', 'natural_width 1', f'scale {SCALE_BITS}', f'subscale_n {SUBSCALE_BITS}', f'subscale_d {SUBSCALE_BITS}',
+        f'width {WIDTH_BITS}', f'x {WIDTH_BITS + SCALE_BITS + 1}', f'y {SCALE_BITS + 1}', 'vertical_align 3',
+    )
+    make_bitfield('tools/vt', 'CellColor', 'red 8', 'green 8', 'blue 8', 'is_idx 1')
 # }}}
 
 # Completions {{{
@@ -906,6 +982,7 @@ def main(args: list[str]=sys.argv) -> None:
     update_at_commands()
     kitten_clis()
     stringify()
+    make_bitfields()
     print(json.dumps(changed, indent=2))
     stdout, stderr = simdgen_process.communicate()
     if simdgen_process.wait() != 0:

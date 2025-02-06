@@ -11,6 +11,9 @@ from kitty.types import LayerShellConfig, SignalInfo
 from kitty.typing import EdgeLiteral, NotRequired, ReadableBuffer, WriteableBuffer
 
 # Constants {{{
+SCALE_BITS: int
+WIDTH_BITS: int
+SUBSCALE_BITS: int
 GLFW_LAYER_SHELL_NONE: int
 GLFW_LAYER_SHELL_PANEL: int
 GLFW_LAYER_SHELL_TOP: int

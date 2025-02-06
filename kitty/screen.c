@@ -8,6 +8,7 @@
 #define EXTRA_INIT { \
     PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL); \
     PyModule_AddIntMacro(module, EXTEND_CELL); PyModule_AddIntMacro(module, EXTEND_WORD); PyModule_AddIntMacro(module, EXTEND_LINE); \
+    PyModule_AddIntMacro(module, SCALE_BITS); PyModule_AddIntMacro(module, WIDTH_BITS); PyModule_AddIntMacro(module, SUBSCALE_BITS); \
     if (PyModule_AddFunctions(module, module_methods) != 0) return false; \
 }
 
