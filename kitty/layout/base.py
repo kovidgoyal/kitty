@@ -295,6 +295,7 @@ class Layout:
     def add_window(
         self, all_windows: WindowList, window: WindowType, location: str | None = None,
         overlay_for: int | None = None, put_overlay_behind: bool = False, bias: float | None = None,
+        next_to: WindowType | None = None,
     ) -> WindowType | None:
         if overlay_for is not None:
             underlay = all_windows.id_map.get(overlay_for)
@@ -304,13 +305,14 @@ class Layout:
                 return underlay
         if location == 'neighbor':
             location = 'after'
-        self.add_non_overlay_window(all_windows, window, location, bias)
+        self.add_non_overlay_window(all_windows, window, location, bias, next_to)
         return None
 
-    def add_non_overlay_window(self, all_windows: WindowList, window: WindowType, location: str | None, bias: float | None = None) -> None:
-        next_to: WindowType | None = None
+    def add_non_overlay_window(
+        self, all_windows: WindowList, window: WindowType, location: str | None, bias: float | None = None, next_to: WindowType | None = None
+    ) -> None:
         before = False
-        next_to = all_windows.active_window
+        next_to = next_to or all_windows.active_window
         if location is not None:
             if location in ('after', 'vsplit', 'hsplit'):
                 pass

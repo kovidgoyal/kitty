@@ -536,9 +536,9 @@ class Tab:  # {{{
 
     def _add_window(
         self, window: Window, location: str | None = None, overlay_for: int | None = None,
-        overlay_behind: bool = False, bias: float | None = None
+        overlay_behind: bool = False, bias: float | None = None, next_to: Window | None = None,
     ) -> None:
-        self.current_layout.add_window(self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind, bias=bias)
+        self.current_layout.add_window(self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind, bias=bias, next_to=next_to)
         if overlay_behind and (w := self.active_window):
             set_redirect_keys_to_overlay(self.os_window_id, self.id, w.id, window.id)
             buffer_keys_in_window(self.os_window_id, self.id, window.id, True)
@@ -568,6 +568,7 @@ class Tab:  # {{{
         bias: float | None = None,
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
+        next_to: Window | None = None,
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
@@ -581,7 +582,7 @@ class Tab:  # {{{
         )
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind, bias=bias)
+        self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind, bias=bias, next_to=next_to)
         if marker:
             try:
                 window.set_marker(marker)

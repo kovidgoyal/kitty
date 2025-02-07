@@ -106,6 +106,10 @@ Detailed list of changes
   terminal ecosystem for decades by allowing terminal programs to specify how
   many cells to render a piece of text in (:iss:`8226`)
 
+- launch: Add options :option:`launch --source-window` and :option:`launch --next-to` to allow
+  specifying which window is used as the data source and destination location independently of the
+  currently active window (:iss:`8295`)
+
 - Linux: Add support for `COLRv1 <https://nabla.typearture.com/whatisCOLRV1.html>`__ fonts. These are typically emoji fonts that use vector images for emoji
 
 - Add support for the octant box-drawing characters

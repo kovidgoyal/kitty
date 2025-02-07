@@ -20,6 +20,8 @@ class Launch(RemoteCommand):
     protocol_spec = __doc__ = '''
     args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
     match/str: The tab to open the new window in
+    next_to/str: The window next to which to create the new window or empty string to use active window
+    source_window/str: The window to use as source for data or empty string to use active window
     window_title/str: Title for the new window
     cwd/str: Working directory for the new window
     env/list.str: List of environment variables of the form NAME=VALUE

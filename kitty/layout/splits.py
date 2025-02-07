@@ -502,6 +502,7 @@ class Splits(Layout):
         window: WindowType,
         location: str | None,
         bias: float | None = None,
+        next_to: WindowType | None = None,
     ) -> None:
         horizontal = self.default_axis_is_horizontal
         after = True
@@ -511,7 +512,7 @@ class Splits(Layout):
             horizontal = False
         elif location in ('before', 'first'):
             after = False
-        aw = all_windows.active_window
+        aw = next_to or all_windows.active_window
         if bias:
             bias = max(0, min(abs(bias), 100)) / 100
         if aw is not None:

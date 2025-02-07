@@ -58,17 +58,24 @@ This option was added to kitty in version 0.26.0
 
 @run_once
 def options_spec() -> str:
-    return f'''
+    return f"""
+--source-window
+A match expression to select the window from which data such as title, colors, env vars,
+screen contents, etc. are copied. When not specified the currently active window is used.
+See :ref:`search_syntax` for the syntax used for specifying windows.
+
+
 --window-title --title
 The title to set for the new window. By default, title is controlled by the
 child process. The special value :code:`current` will copy the title from the
-currently active window.
+:option:`source window <launch --source-window>`.
 
 
 --tab-title
 The title for the new tab if launching in a new tab. By default, the title
 of the active window in the tab is used as the tab title. The special value
-:code:`current` will copy the title from the title of the currently active tab.
+:code:`current` will copy the title from the tab containing the
+:option:`source window <launch --source-window>`.
 
 
 --type
@@ -119,7 +126,7 @@ opened window.
 --cwd
 completion=type:directory kwds:current,oldest,last_reported,root
 The working directory for the newly launched child. Use the special value
-:code:`current` to use the working directory of the currently active window.
+:code:`current` to use the working directory of the :option:`source window <launch --source-window>`
 The special value :code:`last_reported` uses the last working directory reported
 by the shell (needs :ref:`shell_integration` to work). The special value
 :code:`oldest` works like :code:`current` but uses the working directory of the
@@ -147,18 +154,18 @@ Keep the window open even after the command being executed exits, at a shell pro
 --copy-colors
 type=bool-set
 Set the colors of the newly created window to be the same as the colors in the
-currently active window.
+:option:`source window <launch --source-window>`.
 
 
 --copy-cmdline
 type=bool-set
 Ignore any specified command line and instead use the command line from the
-currently active window.
+:option:`source window <launch --source-window>`.
 
 
 --copy-env
 type=bool-set
-Copy the environment variables from the currently active window into the newly
+Copy the environment variables from the :option:`source window <launch --source-window>` into the newly
 launched child process. Note that this only copies the environment when the
 window was first created, as it is not possible to get updated environment variables
 from arbitrary processes. To copy that environment, use either the :ref:`clone-in-kitty
@@ -178,7 +185,15 @@ instead of at the end. The values of :code:`vsplit`, :code:`hsplit` and
 :code:`split` are only used by the :code:`splits` layout and control if the new
 window is placed in a vertical, horizontal or automatic split with the currently
 active window. The default is to place the window in a layout dependent manner,
-typically, after the currently active window.
+typically, after the currently active window. See :option:`--next-to <launch --next-to>`
+to use a window other than the currently active window.
+
+
+--next-to
+A match expression to select the window next to which the new window is created.
+See :ref:`search_syntax` for the syntax for specifying windows. If not specified
+defaults to the active window. When used via remote control and a target tab is
+specified this option is ignored unless the matched window is in the specified tab.
 
 
 --bias
@@ -241,16 +256,16 @@ choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollb
 Pass the screen contents as :file:`STDIN` to the child process.
 
 :code:`@selection`
-    is the currently selected text.
+    is the currently selected text in the :option:`source window <launch --source-window>`.
 
 :code:`@screen`
-    is the contents of the currently active window.
+    is the contents of the :option:`source window <launch --source-window>`.
 
 :code:`@screen_scrollback`
     is the same as :code:`@screen`, but includes the scrollback buffer as well.
 
 :code:`@alternate`
-    is the secondary screen of the current active window. For example if you run
+    is the secondary screen of the :option:`source window <launch --source-window>`. For example if you run
     a full screen terminal application, the secondary screen will
     be the screen you return to when quitting the application.
 
@@ -302,7 +317,8 @@ using :option:`--type=os-window <launch --type>`. Defaults to
 --os-window-title
 Set the title for the newly created OS window. This title will override any
 titles set by programs running in kitty. The special value :code:`current` will
-use the title of the current OS window, if any.
+copy the title from the OS Window containing the
+:option:`source window <launch --source-window>`.
 
 
 --os-window-state
@@ -357,7 +373,7 @@ the section on watchers in the launch command documentation: :ref:`watchers`.
 Relative paths are resolved relative to the :ref:`kitty config directory
 <confloc>`. Global watchers for all windows can be specified with
 :opt:`watcher` in :file:`kitty.conf`.
-'''
+"""
 
 
 def parse_launch_args(args: Sequence[str] | None = None) -> LaunchSpec:
@@ -536,25 +552,36 @@ def _launch(
     args: list[str],
     target_tab: Tab | None = None,
     force_target_tab: bool = False,
-    active: Window | None = None,
     is_clone_launch: str = '',
     rc_from_window: Window | None = None,
     base_env: dict[str, str] | None = None,
 ) -> Window | None:
-    active = active or boss.active_window_for_cwd
-    if active:
-        active_child = active.child
-    else:
-        active_child = None
+    source_window = boss.active_window_for_cwd
+    if opts.source_window:
+        for qw in boss.match_windows(opts.source_window, rc_from_window):
+            source_window = qw
+            break
+    source_child = source_window.child if source_window else None
+    next_to = boss.active_window
+    if opts.next_to:
+        for qw in boss.match_windows(opts.next_to, rc_from_window):
+            next_to = qw
+            break
+    if target_tab and next_to and next_to not in target_tab:
+        next_to = None
     if opts.window_title == 'current':
-        opts.window_title = active.title if active else None
+        opts.window_title = source_window.title if source_window else None
     if opts.tab_title == 'current':
         atab = boss.active_tab
+        if source_window and (qt := source_window.tabref()):
+            atab = qt
         opts.tab_title = atab.effective_title if atab else None
     if opts.os_window_title == 'current':
         tm = boss.active_tab_manager
+        if source_window and (qt := source_window.tabref()) and (qr := qt.tab_manager_ref()):
+            tm = qr
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
-    env = get_env(opts, active_child, base_env)
+    env = get_env(opts, source_child, base_env)
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,
         'remote_control_passwords': parse_remote_control_passwords(opts.allow_remote_control, opts.remote_control_password),
@@ -578,25 +605,23 @@ def _launch(
         kw['bias'] = max(-100, min(opts.bias, 100))
     if opts.cwd:
         if opts.cwd == 'current':
-            if active:
-                kw['cwd_from'] = CwdRequest(active)
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window)
         elif opts.cwd == 'last_reported':
-            if active:
-                kw['cwd_from'] = CwdRequest(active, CwdRequestType.last_reported)
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window, CwdRequestType.last_reported)
         elif opts.cwd == 'oldest':
-            if active:
-                kw['cwd_from'] = CwdRequest(active, CwdRequestType.oldest)
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window, CwdRequestType.oldest)
         elif opts.cwd == 'root':
-            if active:
-                kw['cwd_from'] = CwdRequest(active, CwdRequestType.root)
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window, CwdRequestType.root)
         else:
             kw['cwd'] = opts.cwd
-        if kw['cwd_from'] is not None and rc_from_window is not None:
-            kw['cwd_from'].rc_from_window_id = rc_from_window.id
     if opts.location != 'default':
         kw['location'] = opts.location
-    if opts.copy_colors and active:
-        kw['copy_colors_from'] = active
+    if opts.copy_colors and source_window:
+        kw['copy_colors_from'] = source_window
     pipe_data: dict[str, Any] = {}
     if opts.stdin_source != 'none':
         q = str(opts.stdin_source)
@@ -606,25 +631,27 @@ def _launch(
                 q = f'@ansi_{q[1:]}'
         if opts.stdin_add_line_wrap_markers:
             q += '_wrap'
-        penv, stdin = boss.process_stdin_source(window=active, stdin=q, copy_pipe_data=pipe_data)
+        penv, stdin = boss.process_stdin_source(window=source_window, stdin=q, copy_pipe_data=pipe_data)
         if stdin:
             kw['stdin'] = stdin
             if penv:
                 env.update(penv)
 
     cmd = args or None
-    if opts.copy_cmdline and active_child:
-        cmd = active_child.foreground_cmdline
+    if opts.copy_cmdline and source_child:
+        cmd = source_child.foreground_cmdline
+    active = boss.active_window
     if cmd:
         final_cmd: list[str] = []
         for x in cmd:
-            if active and not opts.copy_cmdline:
+            if source_window and not opts.copy_cmdline:
                 if x == '@selection':
-                    s = boss.data_for_at(which=x, window=active)
+                    s = boss.data_for_at(which=x, window=source_window)
                     if s:
                         x = s
                 elif x == '@active-kitty-window-id':
-                    x = str(active.id)
+                    if active:
+                        x = str(active.id)
                 elif x == '@input-line-number':
                     if 'input_line_number' in pipe_data:
                         x = str(pipe_data['input_line_number'])
@@ -632,8 +659,8 @@ def _launch(
                     if 'lines' in pipe_data:
                         x = str(pipe_data['lines'])
                 elif x in ('@cursor-x', '@cursor-y', '@scrolled-by', '@first-line-on-screen', '@last-line-on-screen'):
-                    if active is not None:
-                        screen = active.screen
+                    if source_window is not None:
+                        screen = source_window.screen
                         if x == '@scrolled-by':
                             x = str(screen.scrolled_by)
                         elif x == '@cursor-x':
@@ -652,8 +679,8 @@ def _launch(
         kw['cmd'] = final_cmd
     if force_window_launch and opts.type not in non_window_launch_types:
         opts.type = 'window'
-    base_for_overlay = active
-    if target_tab:
+    base_for_overlay = next_to
+    if target_tab and (not base_for_overlay or base_for_overlay not in target_tab):
         base_for_overlay = target_tab.active_window
     if opts.type in ('overlay', 'overlay-main') and base_for_overlay:
         kw['overlay_for'] = base_for_overlay.id
@@ -682,7 +709,7 @@ def _launch(
             watchers = load_watch_modules(opts.watcher)
             with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
                 new_window: Window = tab.new_window(
-                    env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, **kw)
+                    env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
             if spacing:
                 patch_window_edges(new_window, spacing)
                 tab.relayout()
@@ -710,16 +737,15 @@ def launch(
     args: list[str],
     target_tab: Tab | None = None,
     force_target_tab: bool = False,
-    active: Window | None = None,
     is_clone_launch: str = '',
     rc_from_window: Window | None = None,
     base_env: dict[str, str] | None = None,
 ) -> Window | None:
-    active = active or boss.active_window_for_cwd
+    active = boss.active_window
     if opts.keep_focus and active:
         orig, active.ignore_focus_changes = active.ignore_focus_changes, True
     try:
-        return _launch(boss, opts, args, target_tab, force_target_tab, active, is_clone_launch, rc_from_window, base_env)
+        return _launch(boss, opts, args, target_tab, force_target_tab, is_clone_launch, rc_from_window, base_env)
     finally:
         if opts.keep_focus and active:
             active.ignore_focus_changes = orig
@@ -729,7 +755,7 @@ def clone_safe_opts() -> frozenset[str]:
     return frozenset((
         'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'var', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
-        'logo', 'logo_position', 'logo_alpha', 'color', 'spacing',
+        'logo', 'logo_position', 'logo_alpha', 'color', 'spacing', 'next_to',
     ))
 
 
@@ -953,7 +979,8 @@ def remote_edit(msg: str, window: Window) -> None:
             q.abort_signaled = c.abort_signaled
         return
     cmdline = get_editor(path_to_edit=c.file_localpath, line_number=c.line_number)
-    w = launch(get_boss(), c.opts, cmdline, active=window)
+    c.opts.source_window = c.opts.next_to = f'id:{window.id}'
+    w = launch(get_boss(), c.opts, cmdline)
     if w is not None:
         c.source_window_id = window.id
         c.editor_window_id = w.id
@@ -1014,4 +1041,6 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline[0] = window.child.final_exe
         if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
             cmdline = window.child.unmodified_argv
-    launch(get_boss(), c.opts, cmdline, active=window, is_clone_launch=is_clone_launch)
+    c.opts.source_window = f'id:{window.id}'
+    c.opts.next_to = c.opts.next_to or c.opts.source_window
+    launch(get_boss(), c.opts, cmdline, is_clone_launch=is_clone_launch)

@@ -134,7 +134,6 @@ class CwdRequest:
     def __init__(self, window: Optional['Window'] = None, request_type: CwdRequestType = CwdRequestType.current) -> None:
         self.window_id = -1 if window is None else window.id
         self.request_type = request_type
-        self.rc_from_window_id = 0
 
     def __bool__(self) -> bool:
         return self.window_id > -1

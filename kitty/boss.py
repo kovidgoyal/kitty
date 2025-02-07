@@ -2637,7 +2637,10 @@ class Boss:
     def launch(self, *args: str) -> None:
         from kitty.launch import launch, parse_launch_args
         opts, args_ = parse_launch_args(args)
-        launch(self, opts, args_, active=self.window_for_dispatch)
+        if self.window_for_dispatch:
+            opts.source_window = opts.source_window or f'id:{self.window_for_dispatch.id}'
+            opts.next_to = opts.next_to or f'id:{self.window_for_dispatch.id}'
+        launch(self, opts, args_)
 
     @ac('tab', 'Move the active tab forward')
     def move_tab_forward(self) -> None:
