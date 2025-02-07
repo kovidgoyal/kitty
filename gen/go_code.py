@@ -253,6 +253,7 @@ def make_bitfields() -> None:
         f'width {WIDTH_BITS}', f'x {WIDTH_BITS + SCALE_BITS + 1}', f'y {SCALE_BITS + 1}', 'vertical_align 3',
     )
     make_bitfield('tools/vt', 'CellColor', 'is_idx 1', 'red 8', 'green 8', 'blue 8')
+    make_bitfield('tools/vt', 'LineAttrs', 'prompt_kind 2',)
 # }}}
 
 # Completions {{{
