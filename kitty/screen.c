@@ -1843,9 +1843,8 @@ screen_tab(Screen *self) {
     if (!found) found = self->columns - 1;
     if (found != self->cursor->x) {
         if (self->cursor->x < self->columns) {
-            linebuf_init_line(self->linebuf, self->cursor->y);
+            CPUCell *cpu_cell = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y) + self->cursor->x;
             combining_type diff = found - self->cursor->x;
-            CPUCell *cpu_cell = self->linebuf->line->cpu_cells + self->cursor->x;
             bool ok = true;
             for (combining_type i = 0; i < diff; i++) {
                 CPUCell *c = cpu_cell + i;
