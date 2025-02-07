@@ -21,7 +21,7 @@ def generate_stub() -> None:
     from .conf.utils import save_type_stub
     text = 'import typing\n\n\n'
 
-    def do(otext=None, cls: str = 'CLIOptions', extra_fields: Sequence[str] = ()):
+    def do(otext: str | None = None, cls: str = 'CLIOptions', extra_fields: Sequence[str] = ()) -> None:
         nonlocal text
         text += as_type_stub(*parse_option_spec(otext), class_name=cls, extra_fields=extra_fields)
 
@@ -54,8 +54,8 @@ def generate_stub() -> None:
     from kittens.broadcast.main import OPTIONS
     do(OPTIONS(), 'BroadcastCLIOptions')
 
-    from kittens.icat.main import OPTIONS
-    do(OPTIONS, 'IcatCLIOptions')
+    from kittens.icat.main import OPTIONS as OS
+    do(OS, 'IcatCLIOptions')
 
     from kittens.panel.main import OPTIONS
     do(OPTIONS(), 'PanelCLIOptions')
@@ -69,8 +69,8 @@ def generate_stub() -> None:
     from kittens.themes.main import OPTIONS
     do(OPTIONS(), 'ThemesCLIOptions')
 
-    from kittens.transfer.main import option_text as OPTIONS
-    do(OPTIONS(), 'TransferCLIOptions')
+    from kittens.transfer.main import option_text
+    do(option_text(), 'TransferCLIOptions')
 
     from kitty.rc.base import all_command_names, command_for_name
     for cmd_name in all_command_names():
