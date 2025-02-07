@@ -336,10 +336,9 @@ linebuf_index(LineBuf* self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_top = self->line_map[top];
     LineAttrs old_attrs = self->line_attrs[top];
-    for (index_type i = top; i < bottom; i++) {
-        self->line_map[i] = self->line_map[i + 1];
-        self->line_attrs[i] = self->line_attrs[i + 1];
-    }
+    const index_type num = bottom - top;
+    memmove(self->line_map + top, self->line_map + top + 1, sizeof(self->line_map[0]) * num);
+    memmove(self->line_attrs + top, self->line_attrs + top + 1, sizeof(self->line_attrs[0]) * num);
     self->line_map[bottom] = old_top;
     self->line_attrs[bottom] = old_attrs;
 }
@@ -390,24 +389,19 @@ linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned i
     index_type i;
     if (y >= self->ynum || y > bottom || bottom >= self->ynum) return;
     index_type ylimit = bottom + 1;
-    num = MIN(ylimit - y, num);
-    if (num > 0) {
-        for (i = ylimit - num; i < ylimit; i++) {
-            self->scratch[i] = self->line_map[i];
-        }
-        for (i = ylimit - 1; i >= y + num; i--) {
-            self->line_map[i] = self->line_map[i - num];
-            self->line_attrs[i] = self->line_attrs[i - num];
-        }
-        for (i = 0; i < num; i++) {
-            self->line_map[y + i] = self->scratch[ylimit - num + i];
-        }
-        Line l;
-        for (i = y; i < y + num; i++) {
-            init_line(self, &l, self->line_map[i]);
-            clear_line_(&l, self->xnum);
-            self->line_attrs[i].val = 0;
-        }
+    if (ylimit < y || (num = MIN(ylimit - y, num)) < 1) return;
+    const size_t scratch_sz = sizeof(self->scratch[0]) * num;
+    memcpy(self->scratch, self->line_map + ylimit - num, scratch_sz);
+    for (i = ylimit - 1; i >= y + num; i--) {
+        self->line_map[i] = self->line_map[i - num];
+        self->line_attrs[i] = self->line_attrs[i - num];
+    }
+    memcpy(self->line_map + y, self->scratch, scratch_sz);
+    Line l;
+    for (i = y; i < y + num; i++) {
+        init_line(self, &l, self->line_map[i]);
+        clear_line_(&l, self->xnum);
+        self->line_attrs[i].val = 0;
     }
 }
 
@@ -426,16 +420,13 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
     index_type ylimit = bottom + 1;
     num = MIN(bottom + 1 - y, num);
     if (y >= self->ynum || y > bottom || bottom >= self->ynum || num < 1) return;
-    for (i = y; i < y + num; i++) {
-        self->scratch[i] = self->line_map[i];
-    }
+    const size_t scratch_sz = sizeof(self->scratch[0]) * num;
+    memcpy(self->scratch, self->line_map + y, scratch_sz);
     for (i = y; i < ylimit && i + num < self->ynum; i++) {
         self->line_map[i] = self->line_map[i + num];
         self->line_attrs[i] = self->line_attrs[i + num];
     }
-    for (i = 0; i < num; i++) {
-        self->line_map[ylimit - num + i] = self->scratch[y + i];
-    }
+    memcpy(self->line_map + ylimit - num, self->scratch, scratch_sz);
     Line l;
     for (i = ylimit - num; i < ylimit; i++) {
         init_line(self, &l, self->line_map[i]);
