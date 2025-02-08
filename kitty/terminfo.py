@@ -4,7 +4,7 @@
 import re
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
-from typing import cast
+from typing import Literal, cast
 
 from kitty.options.types import Options
 
@@ -521,10 +521,11 @@ def key_as_bytes(name: str) -> bytes:
 def get_capabilities(query_string: str, opts: 'Options', window_id: int = 0, os_window_id: int = 0) -> Generator[str, None, None]:
     from .fast_data_types import ERROR_PREFIX
 
-    def result(encoded_query_name: str, x: str | None = None) -> str:
-        if not x:
-            valid = 0 if x is None else 1
-            return f'{valid}+r{encoded_query_name}'
+    def result(encoded_query_name: str, x: str | Literal[True] | None = None) -> str:
+        if x is None:
+            return f'0+r{encoded_query_name}'
+        if x is True:
+            return f'1+r{encoded_query_name}'
         return f'1+r{encoded_query_name}={hexlify(str(x).encode("utf-8")).decode("ascii")}'
 
     for encoded_query_name in query_string.split(';'):
@@ -543,7 +544,7 @@ def get_capabilities(query_string: str, opts: 'Options', window_id: int = 0, os_
                 yield result(encoded_query_name, rval)
         else:
             if name in bool_capabilities:
-                yield result(encoded_query_name, '')
+                yield result(encoded_query_name, True)
                 continue
             try:
                 val = queryable_capabilities[name]

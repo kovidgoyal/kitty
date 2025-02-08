@@ -118,6 +118,8 @@ Detailed list of changes
 
 - macOS: Fix fallback font rendering for bold/italic text not working for some symbols that are present in the Menlo regular face but not the bold/italic faces (:iss:`8282`)
 
+- XTGETTCAP: Fix response invalid for empty string capabilities (:pull:`8304`)
+
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
