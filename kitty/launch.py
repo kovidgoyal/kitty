@@ -194,6 +194,8 @@ A match expression to select the window next to which the new window is created.
 See :ref:`search_syntax` for the syntax for specifying windows. If not specified
 defaults to the active window. When used via remote control and a target tab is
 specified this option is ignored unless the matched window is in the specified tab.
+When using :option:`--type <launch --type>` of :code:`tab`, the tab will be created
+in the OS Window containing the matched window.
 
 
 --bias
@@ -397,7 +399,7 @@ def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env:
     return env
 
 
-def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None = None) -> Tab | None:
+def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, next_to: Window | None) -> Tab:
 
     def create_tab(tm: TabManager | None = None) -> Tab:
         if tm is None:
@@ -413,16 +415,22 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None = 
         return tab
 
     if opts.type == 'tab':
+        tm = boss.active_tab_manager
+        if next_to is not None and (tab := next_to.tabref()) is not None and (qtm := tab.tab_manager_ref()) is not None:
+            tm = qtm
         if target_tab is not None:
-            tm = target_tab.tab_manager_ref() or boss.active_tab_manager
-        else:
-            tm = boss.active_tab_manager
+            tm = target_tab.tab_manager_ref() or tm
         tab = create_tab(tm)
     elif opts.type == 'os-window':
         tab = create_tab()
     else:
-        tab = target_tab or boss.active_tab or create_tab()
-
+        if target_tab is not None:
+            tab = target_tab
+        else:
+            tab = boss.active_tab
+            if next_to is not None and (qtab := next_to.tabref()) is not None:
+                tab = qtab
+            tab = tab or create_tab()
     return tab
 
 
@@ -679,6 +687,8 @@ def _launch(
         kw['cmd'] = final_cmd
     if force_window_launch and opts.type not in non_window_launch_types:
         opts.type = 'window'
+    if next_to and opts.type in non_window_launch_types:
+        next_to = None
     base_for_overlay = next_to
     if target_tab and (not base_for_overlay or base_for_overlay not in target_tab):
         base_for_overlay = target_tab.active_window
@@ -701,33 +711,32 @@ def _launch(
                 set_primary_selection(stdin)
     else:
         kw['hold'] = opts.hold
-        if force_target_tab:
+        if force_target_tab and target_tab is not None:
             tab = target_tab
         else:
-            tab = tab_for_window(boss, opts, target_tab)
-        if tab is not None:
-            watchers = load_watch_modules(opts.watcher)
-            with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
-                new_window: Window = tab.new_window(
-                    env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
-            if spacing:
-                patch_window_edges(new_window, spacing)
-                tab.relayout()
-            if opts.color:
-                apply_colors(new_window, opts.color)
-            if opts.keep_focus:
-                if active:
-                    boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
-                if not Window.initial_ignore_focus_changes_context_manager_in_operation:
-                    new_window.ignore_focus_changes = False
-            if opts.logo:
-                new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
-            if opts.type == 'overlay-main':
-                new_window.overlay_type = OverlayType.main
-            if opts.var:
-                for key, val in parse_var(opts.var):
-                    new_window.set_user_var(key, val)
-            return new_window
+            tab = tab_for_window(boss, opts, target_tab, next_to)
+        watchers = load_watch_modules(opts.watcher)
+        with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
+            new_window: Window = tab.new_window(
+                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
+        if spacing:
+            patch_window_edges(new_window, spacing)
+            tab.relayout()
+        if opts.color:
+            apply_colors(new_window, opts.color)
+        if opts.keep_focus:
+            if active:
+                boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
+            if not Window.initial_ignore_focus_changes_context_manager_in_operation:
+                new_window.ignore_focus_changes = False
+        if opts.logo:
+            new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
+        if opts.type == 'overlay-main':
+            new_window.overlay_type = OverlayType.main
+        if opts.var:
+            for key, val in parse_var(opts.var):
+                new_window.set_user_var(key, val)
+        return new_window
     return None
 
 
