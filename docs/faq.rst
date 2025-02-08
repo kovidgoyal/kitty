@@ -366,6 +366,10 @@ many alternate icons available, click on an icon to visit its homepage:
    :target: https://github.com/sodapopcan/kitty-icon
    :width: 256
 
+.. image:: https://github.com/sfsam/some_icons/raw/main/kitty.app.iconset/icon_128x128@2x.png
+   :target: https://github.com/sfsam/some_icons
+   :width: 256
+
 On macOS and X11 you can put :file:`kitty.app.icns` (macOS only) or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
 automatically at startup. On X11, this will set the icon for kitty windows.
