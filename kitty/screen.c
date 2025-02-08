@@ -985,11 +985,6 @@ screen_on_input(Screen *self) {
     }
 }
 
-static bool
-ts_cursor_on_multicell(Screen *self, text_loop_state *s) {
-    return self->cursor->x < self->columns && s->cp[self->cursor->x].is_multicell;
-}
-
 static void
 replace_multicell_char_under_cursor_with_spaces(Screen *self) {
     nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, true);
@@ -1044,7 +1039,7 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
                     init_text_loop_line(self, s);
                 } else if (self->columns > 0){
                     self->cursor->x = self->columns - 1;
-                    if (ts_cursor_on_multicell(self, s)) {
+                    if (s->cp[self->cursor->x].is_multicell) {
                         if (s->cp[self->cursor->x].y) move_cursor_past_multicell(self, 1);
                         else replace_multicell_char_under_cursor_with_spaces(self);
                     }
@@ -1076,7 +1071,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             draw_control_char(self, s, ch);
             continue;
         }
-        if (ts_cursor_on_multicell(self, s) && !is_combining_char(ch)) {
+        if (self->cursor->x < self->columns && s->cp[self->cursor->x].is_multicell && !is_combining_char(ch)) {
             if (s->cp[self->cursor->x].y) {
                 move_cursor_past_multicell(self, 1);
                 init_text_loop_line(self, s);
