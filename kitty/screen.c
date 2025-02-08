@@ -593,10 +593,7 @@ selection_intersects_screen_lines(const Selections *selections, int a, int b) {
 
 static void
 init_text_loop_line(Screen *self, text_loop_state *s) {
-    if (self->modes.mIRM) {
-        linebuf_init_line(self->linebuf, self->cursor->y);
-        s->cp = self->linebuf->line->cpu_cells; s->gp = self->linebuf->line->gpu_cells;
-    } else linebuf_init_cells(self->linebuf, self->cursor->y, &s->cp, &s->gp);
+    linebuf_init_cells(self->linebuf, self->cursor->y, &s->cp, &s->gp);
     if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     s->image_placeholder_marked = false;
