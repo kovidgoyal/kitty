@@ -150,7 +150,6 @@ linebuf_init_line_at(LineBuf *self, index_type idx, Line *line) {
     line->ynum = idx;
     line->xnum = self->xnum;
     line->attrs = self->line_attrs[idx];
-    line->attrs.is_continued = idx > 0 ? cpu_lineptr(self, self->line_map[idx - 1])[self->xnum - 1].next_char_was_wrapped : false;
     init_line(self, line, self->line_map[idx]);
 }
 

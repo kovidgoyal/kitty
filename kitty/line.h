@@ -70,11 +70,10 @@ static_assert(sizeof(CPUCell) == 12, "Fix the ordering of CPUCell");
 
 typedef union LineAttrs {
     struct {
-        uint8_t is_continued : 1;
         uint8_t has_dirty_text : 1;
         uint8_t has_image_placeholders : 1;
         uint8_t prompt_kind : 2;
-        uint8_t : 3;
+        uint8_t : 4;
     };
     uint8_t val;
 } LineAttrs ;

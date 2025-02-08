@@ -40,3 +40,4 @@ HistoryBuf *historybuf_alloc_for_rewrap(unsigned int columns, HistoryBuf *self);
 void historybuf_finish_rewrap(HistoryBuf *dest, HistoryBuf *src);
 void historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src);
 index_type historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line, index_type dest_y, Line *dest_line, bool continued);
+bool historybuf_is_line_continued(HistoryBuf *self, index_type lnum);

@@ -168,27 +168,35 @@ index_of(HistoryBuf *self, index_type lnum) {
     return (self->start_of_data + idx) % self->ynum;
 }
 
+static bool
+hb_line_is_continued(HistoryBuf *self, index_type num) {
+    if (num == 0) {
+        size_t sz;
+        if (self->pagerhist && self->pagerhist->ringbuf && (sz = ringbuf_bytes_used(self->pagerhist->ringbuf)) > 0) {
+            size_t pos = ringbuf_findchr(self->pagerhist->ringbuf, '\n', sz - 1);
+            if (pos >= sz) return true;  // ringbuf does not end with a newline
+        }
+        return false;
+    }
+    return cpu_lineptr(self, num - 1)[self->xnum-1].next_char_was_wrapped;
+}
+
 static void
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cpu_cells = cpu_lineptr(self, num);
     l->gpu_cells = gpu_lineptr(self, num);
     l->attrs = *attrptr(self, num);
-    if (num > 0) {
-        l->attrs.is_continued = cpu_lineptr(self, num - 1)[self->xnum-1].next_char_was_wrapped;
-    } else {
-        l->attrs.is_continued = false;
-        size_t sz;
-        if (self->pagerhist && self->pagerhist->ringbuf && (sz = ringbuf_bytes_used(self->pagerhist->ringbuf)) > 0) {
-            size_t pos = ringbuf_findchr(self->pagerhist->ringbuf, '\n', sz - 1);
-            if (pos >= sz) l->attrs.is_continued = true;  // ringbuf does not end with a newline
-        }
-    }
 }
 
 void
 historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
+}
+
+bool
+historybuf_is_line_continued(HistoryBuf *self, index_type lnum) {
+    return hb_line_is_continued(self, index_of(self, lnum + 1));
 }
 
 bool
@@ -555,8 +563,8 @@ is_continued(HistoryBuf *self, PyObject *val) {
 #define is_continued_doc "is_continued(y) -> Whether the line y is continued or not"
     unsigned long y = PyLong_AsUnsignedLong(val);
     if (y >= self->count) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
-    get_line(self, y, self->line);
-    if (self->line->attrs.is_continued) { Py_RETURN_TRUE; }
+    index_type num = index_of(self, self->count - y - 1);
+    if (hb_line_is_continued(self, num)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
