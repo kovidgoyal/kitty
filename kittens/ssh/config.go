@@ -7,14 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"kitty/tools/config"
-	"kitty/tools/stat"
 	"kitty/tools/utils"
 	"kitty/tools/utils/paths"
 	"kitty/tools/utils/shlex"
@@ -241,31 +240,27 @@ func excluded(pattern, path string) bool {
 }
 
 func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string, local_path, arcname string, exclude_patterns []string) error {
-	s_, err := os.Lstat(local_path)
-	if err != nil {
+	var s unix.Stat_t
+	if err := unix.Lstat(local_path, &s); err != nil {
 		return err
 	}
-	s := stat.Get(s_)
 	cb := func(h *tar.Header, data []byte, arcname string) error {
 		h.Name = arcname
 		if h.Typeflag == tar.TypeDir {
 			h.Name = strings.TrimRight(h.Name, "/") + "/"
 		}
 		h.Size = int64(len(data))
-		h.Mode = int64(s.Mode.Perm())
-		h.ModTime = s.Mtime
+		h.Mode = int64(s.Mode & 0777) // discard the setuid, setgid and sticky bits
+		h.ModTime = time.Unix(s.Mtim.Unix())
+		h.AccessTime = time.Unix(s.Atim.Unix())
+		h.ChangeTime = time.Unix(s.Ctim.Unix())
 		h.Format = tar.FormatPAX
-		if s.Has_atime {
-			h.AccessTime = s.Atime
-		}
-		if s.Has_ctime {
-			h.ChangeTime = s.Ctime
-		}
 		return callback(h, data)
 	}
 	// we only copy regular files, directories and symlinks
-	switch s.Mode.Type() {
-	case fs.ModeSymlink:
+	switch s.Mode & unix.S_IFMT {
+	case unix.S_IFBLK, unix.S_IFIFO, unix.S_IFCHR, unix.S_IFSOCK: // ignored
+	case unix.S_IFLNK: // symlink
 		target, err := os.Readlink(local_path)
 		if err != nil {
 			return err
@@ -277,7 +272,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		if err != nil {
 			return err
 		}
-	case fs.ModeDir:
+	case unix.S_IFDIR: // directory
 		local_path = filepath.Clean(local_path)
 		type entry struct {
 			path, arcname string
@@ -320,14 +315,12 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 				}
 			}
 		}
-	case 0: // Regular file
-		if s.Has_ino && s.Has_dev {
-			fid := file_unique_id{dev: s.Dev, inode: s.Ino}
-			if prev, ok := seen[fid]; ok { // Hard link
-				return cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
-			}
-			seen[fid] = arcname
+	case unix.S_IFREG: // Regular file
+		fid := file_unique_id{dev: s.Dev, inode: s.Ino}
+		if prev, ok := seen[fid]; ok { // Hard link
+			return cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
 		}
+		seen[fid] = arcname
 		data, err := os.ReadFile(local_path)
 		if err != nil {
 			return err
