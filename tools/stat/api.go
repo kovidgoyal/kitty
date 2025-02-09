@@ -34,8 +34,6 @@ func (s *StatResult) setup_common(f fs.FileInfo) (u *syscall.Stat_t) {
 		u = nil
 	}
 	if u != nil {
-		s.Has_atime = true
-		s.Has_ctime = true
 		s.Dev = uint64(u.Dev)
 		s.Ino = uint64(u.Ino)
 		s.Has_dev = true
