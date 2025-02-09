@@ -247,6 +247,9 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		return err
 	}
 	u, unix_stat_conv_ok := s.Sys().(*syscall.Stat_t)
+	if u == nil {
+		unix_stat_conv_ok = false
+	}
 	cb := func(h *tar.Header, data []byte, arcname string) error {
 		h.Name = arcname
 		if h.Typeflag == tar.TypeDir {
