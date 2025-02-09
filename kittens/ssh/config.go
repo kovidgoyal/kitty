@@ -12,10 +12,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"syscall"
-	"time"
 
 	"kitty/tools/config"
+	"kitty/tools/stat"
 	"kitty/tools/utils"
 	"kitty/tools/utils/paths"
 	"kitty/tools/utils/shlex"
@@ -242,31 +241,30 @@ func excluded(pattern, path string) bool {
 }
 
 func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string, local_path, arcname string, exclude_patterns []string) error {
-	s, err := os.Lstat(local_path)
+	s_, err := os.Lstat(local_path)
 	if err != nil {
 		return err
 	}
-	u, unix_stat_conv_ok := s.Sys().(*syscall.Stat_t)
-	if u == nil {
-		unix_stat_conv_ok = false
-	}
+	s := stat.Get(s_)
 	cb := func(h *tar.Header, data []byte, arcname string) error {
 		h.Name = arcname
 		if h.Typeflag == tar.TypeDir {
 			h.Name = strings.TrimRight(h.Name, "/") + "/"
 		}
 		h.Size = int64(len(data))
-		h.Mode = int64(s.Mode().Perm())
-		h.ModTime = s.ModTime()
+		h.Mode = int64(s.Mode.Perm())
+		h.ModTime = s.Mtime
 		h.Format = tar.FormatPAX
-		if unix_stat_conv_ok {
-			h.AccessTime = time.Unix(0, u.Atim.Nano())
-			h.ChangeTime = time.Unix(0, u.Ctim.Nano())
+		if s.Has_atime {
+			h.AccessTime = s.Atime
+		}
+		if s.Has_ctime {
+			h.ChangeTime = s.Ctime
 		}
 		return callback(h, data)
 	}
 	// we only copy regular files, directories and symlinks
-	switch s.Mode().Type() {
+	switch s.Mode.Type() {
 	case fs.ModeSymlink:
 		target, err := os.Readlink(local_path)
 		if err != nil {
@@ -323,8 +321,8 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 			}
 		}
 	case 0: // Regular file
-		if unix_stat_conv_ok {
-			fid := file_unique_id{dev: uint64(u.Dev), inode: uint64(u.Ino)}
+		if s.Has_ino && s.Has_dev {
+			fid := file_unique_id{dev: s.Dev, inode: s.Ino}
 			if prev, ok := seen[fid]; ok { // Hard link
 				return cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
 			}
