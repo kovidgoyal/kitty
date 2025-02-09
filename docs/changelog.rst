@@ -120,6 +120,8 @@ Detailed list of changes
 
 - XTGETTCAP: Fix response invalid for empty string capabilities (:pull:`8304`)
 
+- ssh kitten: Fix incorrect copying of data files when using the python interpreter and also fix incorrect hard link detection (:disc:`8308`)
+
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"kitty/tools/config"
@@ -245,7 +246,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 	if err != nil {
 		return err
 	}
-	u, ok := s.Sys().(unix.Stat_t)
+	u, unix_stat_conv_ok := s.Sys().(*syscall.Stat_t)
 	cb := func(h *tar.Header, data []byte, arcname string) error {
 		h.Name = arcname
 		if h.Typeflag == tar.TypeDir {
@@ -255,7 +256,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		h.Mode = int64(s.Mode().Perm())
 		h.ModTime = s.ModTime()
 		h.Format = tar.FormatPAX
-		if ok {
+		if unix_stat_conv_ok {
 			h.AccessTime = time.Unix(0, u.Atim.Nano())
 			h.ChangeTime = time.Unix(0, u.Ctim.Nano())
 		}
@@ -319,14 +320,13 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 			}
 		}
 	case 0: // Regular file
-		fid := file_unique_id{dev: uint64(u.Dev), inode: uint64(u.Ino)}
-		if prev, ok := seen[fid]; ok { // Hard link
-			err = cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
-			if err != nil {
-				return err
+		if unix_stat_conv_ok {
+			fid := file_unique_id{dev: uint64(u.Dev), inode: uint64(u.Ino)}
+			if prev, ok := seen[fid]; ok { // Hard link
+				return cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
 			}
+			seen[fid] = arcname
 		}
-		seen[fid] = arcname
 		data, err := os.ReadFile(local_path)
 		if err != nil {
 			return err
