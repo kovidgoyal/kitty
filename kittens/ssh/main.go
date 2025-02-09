@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"kitty/tools/cli"
@@ -71,7 +72,7 @@ func get_destination(hostname string) (username, hostname_for_match string) {
 
 func read_data_from_shared_memory(shm_name string) ([]byte, error) {
 	data, err := shm.ReadWithSizeAndUnlink(shm_name, func(s fs.FileInfo) error {
-		if stat, ok := s.Sys().(unix.Stat_t); ok {
+		if stat, ok := s.Sys().(syscall.Stat_t); ok {
 			if os.Getuid() != int(stat.Uid) || os.Getgid() != int(stat.Gid) {
 				return fmt.Errorf("Incorrect owner on SHM file")
 			}
