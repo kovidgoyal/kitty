@@ -316,7 +316,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 			}
 		}
 	case unix.S_IFREG: // Regular file
-		fid := file_unique_id{dev: s.Dev, inode: s.Ino}
+		fid := file_unique_id{dev: uint64(s.Dev), inode: uint64(s.Ino)}
 		if prev, ok := seen[fid]; ok { // Hard link
 			return cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
 		}
