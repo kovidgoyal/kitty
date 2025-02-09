@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"unicode/utf8"
 
 	"github.com/shirou/gopsutil/v3/process"
@@ -163,7 +164,7 @@ func macos_user_cache_dir() string {
 		if err != nil {
 			return false
 		}
-		stat, ok := s.Sys().(unix.Stat_t)
+		stat, ok := s.Sys().(syscall.Stat_t)
 		return ok && s.IsDir() && int(stat.Uid) == os.Geteuid() && s.Mode().Perm() == 0o700 && unix.Access(m, unix.X_OK|unix.W_OK|unix.R_OK) == nil
 	}
 
