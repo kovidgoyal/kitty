@@ -10,9 +10,11 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 from kitty.constants import fonts_dir, is_macos
 from kitty.fast_data_types import (
     Screen,
+    concat_cells,
     create_test_font_group,
     current_fonts,
     get_fallback_font,
+    render_decoration,
     set_builtin_nerd_font,
     set_font_data,
     set_options,
@@ -319,7 +321,6 @@ def test_render_string(
         size: float = 64.0,
         dpi: float = 96.0
 ) -> None:
-    from kitty.fast_data_types import concat_cells, current_fonts
 
     cell_width, cell_height, cells = render_string(text, family, size, dpi)
     rgb_data = concat_cells(cell_width, cell_height, True, tuple(cells))
@@ -373,3 +374,10 @@ def test_render_codepoint(chars: str = '😺', path: str = '/t/Noto-COLRv1.ttf',
         print('Rendered:', char)
         display_bitmap(bitmap, w, h)
         print('\n')
+
+
+def test_render_decoration(which: Literal['curl'], cell_width: int, cell_height: int, underline_position: int, underline_thickness: int) -> None:
+    buf = render_decoration(which, cell_width, cell_height, underline_position, underline_thickness)
+    cells = buf, buf, buf, buf, buf
+    rgb_data = concat_cells(cell_width, cell_height, False, cells)
+    display_bitmap(rgb_data, cell_width * len(cells), cell_height)

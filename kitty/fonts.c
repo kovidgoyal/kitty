@@ -2108,6 +2108,18 @@ alpha_blend(uint32_t fg, uint32_t bg) {
 }
 
 static PyObject*
+render_decoration(PyObject *self UNUSED, PyObject *args) {
+    const char *which;
+    FontCellMetrics fcm = {0};
+    if (!PyArg_ParseTuple(args, "sIIII", &which, &fcm.cell_width, &fcm.cell_height, &fcm.underline_position, &fcm.underline_thickness)) return NULL;
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, fcm.cell_width * fcm.cell_height);
+    if (!ans) return NULL;
+    memset(PyBytes_AS_STRING(ans), 0, PyBytes_GET_SIZE(ans));
+    if (strcmp(which, "curl") == 0) add_curl_underline((uint8_t*)PyBytes_AS_STRING(ans), fcm);
+    return ans;
+}
+
+static PyObject*
 concat_cells(PyObject UNUSED *self, PyObject *args) {
     // Concatenate cells returning RGBA data
     unsigned int cell_width, cell_height;
@@ -2334,6 +2346,7 @@ static PyMethodDef module_methods[] = {
     METHODB(sprite_map_set_layout, METH_VARARGS),
     METHODB(test_sprite_position_increment, METH_NOARGS),
     METHODB(concat_cells, METH_VARARGS),
+    METHODB(render_decoration, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),
     METHODB(set_allow_use_of_box_fonts, METH_O),
     METHODB(test_shape, METH_VARARGS),
