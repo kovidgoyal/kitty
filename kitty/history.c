@@ -24,12 +24,14 @@ add_segment(HistoryBuf *self, index_type num) {
     const size_t segment_size = cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs);
     char *mem = calloc(num, segment_size);
     if (!mem) fatal("Out of memory allocating new history buffer segment");
-    self->segments[self->num_segments].mem = mem;
+    char *needs_free = mem;
     for (HistoryBufSegment *s = self->segments + self->num_segments; s < self->segments + self->num_segments + num; s++, mem += segment_size) {
         s->cpu_cells = (CPUCell*)mem;
         s->gpu_cells = (GPUCell*)(((uint8_t*)s->cpu_cells) + cpu_cells_size);
         s->line_attrs = (LineAttrs*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
+        s->mem = NULL;
     }
+    self->segments[self->num_segments].mem = needs_free;
     self->num_segments += num;
 }
 
