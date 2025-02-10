@@ -128,9 +128,9 @@ add_dashed_underline(uint8_t *buf, FontCellMetrics fcm) {
 }
 
 static unsigned
-add_intensity(uint8_t *buf, unsigned x, unsigned y, uint8_t val, unsigned max_y, unsigned position, unsigned cell_width) {
+add_intensity(uint8_t *buf, unsigned x, int y, uint8_t val, unsigned max_y, unsigned position, unsigned cell_width) {
     y += position;
-    y = min(y, max_y);
+    y = min(MAX(0, y), max_y);
     unsigned idx = cell_width * y + x;
     buf[idx] = min(255, buf[idx] + val);
     return y;
