@@ -6,6 +6,7 @@
  */
 
 #include "cleanup.h"
+#include <unistd.h>
 
 
 kitty_cleanup_at_exit_func exit_funcs[NUM_CLEANUP_FUNCS] = {0};
@@ -19,5 +20,6 @@ void
 run_at_exit_cleanup_functions(void) {
     for (unsigned i = 0; i < NUM_CLEANUP_FUNCS; i++) {
         if (exit_funcs[i]) exit_funcs[i]();
+        exit_funcs[i] = NULL;
     }
 }

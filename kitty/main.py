@@ -40,6 +40,7 @@ from .fast_data_types import (
     glfw_terminate,
     load_png_data,
     mask_kitty_signals_process_wide,
+    run_at_exit_cleanup_functions,
     set_custom_cursor,
     set_default_window_icon,
     set_options,
@@ -537,3 +538,7 @@ def main() -> None:
         tb = traceback.format_exc()
         log_error(tb)
         raise SystemExit(1)
+    finally:
+        # we cant rely on this running during module unloading of fast_data_types as Python fails
+        # to unload the module, due to reference cycles, I am guessing.
+        run_at_exit_cleanup_functions()

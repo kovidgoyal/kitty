@@ -605,6 +605,11 @@ py_timed_debug_print(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+py_run_atexit_cleanup_functions(PyObject *self UNUSED, PyObject *args UNUSED) {
+    run_at_exit_cleanup_functions();
+    Py_RETURN_NONE;
+}
 
 static PyMethodDef module_methods[] = {
     METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
@@ -632,6 +637,7 @@ static PyMethodDef module_methods[] = {
     {"monotonic", (PyCFunction)py_monotonic, METH_NOARGS, ""},
     {"timed_debug_print", (PyCFunction)py_timed_debug_print, METH_VARARGS, ""},
     {"find_in_memoryview", (PyCFunction)find_in_memoryview, METH_VARARGS, ""},
+    {"run_at_exit_cleanup_functions", (PyCFunction)py_run_atexit_cleanup_functions, METH_NOARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
     METHODB(process_group_map, METH_NOARGS),

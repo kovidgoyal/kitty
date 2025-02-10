@@ -466,5 +466,6 @@ int main(int argc, char *argv[], char* envp[]) {
     RunData run_data = {.exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype};
     ret = run_embedded(&run_data);
     single_instance_main(-1, NULL, NULL);
+    Py_FinalizeEx();
     return ret;
 }
