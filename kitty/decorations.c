@@ -148,7 +148,8 @@ add_curl_underline(uint8_t *buf, FontCellMetrics fcm) {
     unsigned max_x = fcm.cell_width - 1, max_y = fcm.cell_height - 1;
     double xfactor = ((OPT(undercurl_style) & 1) ? 4.0 : 2.0) * M_PI / max_x;
     div_t d = div(fcm.underline_thickness, 2);
-    /*printf("cell_height: %u underline_position: %u underline_thickness: %u\n", fcm.cell_height, fcm.underline_position, fcm.underline_thickness);*/
+    /*printf("cell_width: %u cell_height: %u underline_position: %u underline_thickness: %u\n",*/
+    /*        fcm.cell_width, fcm.cell_height, fcm.underline_position, fcm.underline_thickness);*/
     unsigned position = min(fcm.underline_position, minus(fcm.cell_height, d.quot + d.rem));
     unsigned thickness = max(1u, min(fcm.underline_thickness, minus(fcm.cell_height, position + 1)));
     unsigned max_height = fcm.cell_height - minus(position, thickness / 2);  // descender from the font
@@ -165,8 +166,8 @@ add_curl_underline(uint8_t *buf, FontCellMetrics fcm) {
     // cosine waves always have slope <= 1 so are never steep
     for (unsigned x = 0; x < fcm.cell_width; x++) {
         double y = half_height * cos(x * xfactor);
-        unsigned y1 = (unsigned)floor(y - thickness), y2 = (unsigned)ceil(y);
-        unsigned intensity = (unsigned)(255. * fabs(y - floor(y)));
+        int y1 = (int)(floor(y - thickness)), y2 = (int)(ceil(y));
+        unsigned intensity = (unsigned)((255. * fabs(y - floor(y))));
         unsigned i1 = 255 - intensity, i2 = intensity;
         unsigned yc = add_intensity(buf, x, y1, i1, max_y, position, fcm.cell_width);  // upper bound
         if (i1) { if (yc < miny) miny = yc; if (yc > maxy) maxy = yc; }
