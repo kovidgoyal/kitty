@@ -136,22 +136,29 @@ add_intensity(uint8_t *buf, unsigned x, unsigned y, uint8_t val, unsigned max_y,
     return y;
 }
 
+static uint
+minus(uint a, uint b) {  // saturating subtraction (a > b ? a - b : 0)
+    uint res = a - b;
+    res &= -(res <= a);
+    return res;
+}
+
 DecorationGeometry
 add_curl_underline(uint8_t *buf, FontCellMetrics fcm) {
     unsigned max_x = fcm.cell_width - 1, max_y = fcm.cell_height - 1;
     double xfactor = ((OPT(undercurl_style) & 1) ? 4.0 : 2.0) * M_PI / max_x;
-    unsigned half_thickness = fcm.underline_thickness / 2;
-    unsigned top = fcm.underline_position > half_thickness ? fcm.underline_position - half_thickness : 0;
-    unsigned max_height = fcm.cell_height - top;  // descender from the font
-    unsigned half_height = max(1u, max_height / 4u);
-    unsigned thickness;
-    if (OPT(undercurl_style) & 2) thickness = max(half_height, fcm.underline_thickness);
-    else thickness = max(1u, fcm.underline_thickness) - (fcm.underline_thickness < 3u ? 1u : 2u);
-    unsigned position = fcm.underline_position;
+    div_t d = div(fcm.underline_thickness, 2);
+    /*printf("cell_height: %u underline_position: %u underline_thickness: %u\n", fcm.cell_height, fcm.underline_position, fcm.underline_thickness);*/
+    unsigned position = min(fcm.underline_position, minus(fcm.cell_height, d.quot + d.rem));
+    unsigned thickness = max(1u, min(fcm.underline_thickness, minus(fcm.cell_height, position + 1)));
+    unsigned max_height = fcm.cell_height - minus(position, thickness / 2);  // descender from the font
+    unsigned half_height = max(1u, max_height / 4u);  // 4 so as to be not too large
+    if (OPT(undercurl_style) & 2) thickness = max(half_height, thickness);
+    else thickness = max(1u, thickness) - (thickness < 3u ? 1u : 2u);
 
-    // Ensure curve doesn't exceed cell boundary at the bottom
     position += half_height * 2;
-    if (position + half_height > fcm.cell_height) position = fcm.cell_height - half_height;
+    if (position + half_height > max_y) position = max_y - half_height;
+    /*printf("position: %u half_height: %u thickness: %u\n", position, half_height, thickness);*/
 
     unsigned miny = fcm.cell_height, maxy = 0;
     // Use the Wu antialias algorithm to draw the curve
@@ -257,13 +264,6 @@ thickness(Canvas *self, uint level, bool horizontal) {
     double pts = OPT(box_drawing_scale)[level];
     double dpi = horizontal ? self->dpi.x : self->dpi.y;
     return (uint)ceil(self->supersample_factor * self->scale * pts * dpi / 72.0);
-}
-
-static uint
-minus(uint a, uint b) {  // saturating subtraction (a > b ? a - b : 0)
-    uint res = a - b;
-    res &= -(res <= a);
-    return res;
 }
 
 static const uint hole_factor = 8;
