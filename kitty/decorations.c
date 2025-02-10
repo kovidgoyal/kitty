@@ -151,7 +151,7 @@ add_curl_underline(uint8_t *buf, FontCellMetrics fcm) {
 
     // Ensure curve doesn't exceed cell boundary at the bottom
     position += half_height * 2;
-    if (position + half_height > max_y) position = max_y - half_height;
+    if (position + half_height > fcm.cell_height) position = fcm.cell_height - half_height;
 
     unsigned miny = fcm.cell_height, maxy = 0;
     // Use the Wu antialias algorithm to draw the curve
