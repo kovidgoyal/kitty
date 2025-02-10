@@ -318,6 +318,96 @@ index_selection(const Screen *self, Selections *selections, bool up) {
     self->is_dirty = true; \
     index_selection(self, &self->selections, false);
 
+static void
+nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit, char_type ch) {
+    for (index_type x = start; x < x_limit; x++) {
+        cell_set_char(cp + x, ch); cp[x].is_multicell = false;
+        clear_sprite_position(gp[x]);
+    }
+}
+
+static void
+nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
+    CPUCell *cp; GPUCell *gp;
+    linebuf_init_cells(self->linebuf, y_, &cp, &gp);
+    index_type num_lines_above = cp[x_].y;
+    index_type y_max_limit = MIN(self->lines, y_ + cp[x_].scale - num_lines_above);
+    while (cp[x_].x && x_ > 0) x_--;
+    index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
+    char_type ch = replace_with_spaces ? ' ' : 0;
+    for (index_type y = y_; y < y_max_limit; y++) {
+        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        nuke_in_line(cp, gp, x_, x_limit, ch); linebuf_mark_line_dirty(self->linebuf, y);
+    }
+    int y_min_limit = -1;
+    if (self->linebuf == self->main_linebuf) y_min_limit = -(self->historybuf->count + 1);
+    for (int y = (int)y_ - 1; y > y_min_limit && num_lines_above; y--, num_lines_above--) {
+        Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
+        nuke_in_line(cp, gp, x_, x_limit, ch);
+        if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
+        else historybuf_mark_line_dirty(self->historybuf, -(y + 1));
+    }
+    self->is_dirty = true;
+}
+
+static void
+nuke_multiline_char_intersecting_with(Screen *self, index_type x_start, index_type x_limit, index_type y_start, index_type y_limit, bool replace_with_spaces) {
+    for (index_type y = y_start; y < y_limit; y++) {
+        CPUCell *cp; GPUCell *gp;
+        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        for (index_type x = x_start; x < x_limit; x++) {
+            if (cp[x].is_multicell && cp[x].scale > 1) nuke_multicell_char_at(self, x, y, replace_with_spaces);
+        }
+    }
+}
+
+static void
+nuke_multicell_char_intersecting_with(Screen *self, index_type x_start, index_type x_limit, index_type y_start, index_type y_limit, bool replace_with_spaces) {
+    for (index_type y = y_start; y < y_limit; y++) {
+        CPUCell *cp; GPUCell *gp;
+        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        for (index_type x = x_start; x < x_limit; x++) {
+            if (cp[x].is_multicell) nuke_multicell_char_at(self, x, y, replace_with_spaces);
+        }
+    }
+}
+
+
+static void
+nuke_split_multicell_char_at_left_boundary(Screen *self, index_type x, index_type y, bool replace_with_spaces) {
+    CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y);
+    if (cp[x].is_multicell && cp[x].x) {
+        nuke_multicell_char_at(self, x, y, replace_with_spaces);  // remove split multicell char at left edge
+    }
+}
+
+static void
+nuke_split_multicell_char_at_right_boundary(Screen *self, index_type x, index_type y, bool replace_with_spaces) {
+    CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y);
+    CPUCell *c = cp + x;
+    if (c->is_multicell) {
+        unsigned max_x = mcd_x_limit(c) - 1;
+        if (c->x < max_x) {
+            nuke_multicell_char_at(self, x, y, replace_with_spaces);
+        }
+    }
+}
+
+static void
+nuke_incomplete_single_line_multicell_chars_in_range(
+    Screen *self, index_type start, index_type limit, index_type y, bool replace_with_spaces
+) {
+    CPUCell *cpu_cells; GPUCell *gpu_cells;
+    linebuf_init_cells(self->linebuf, y, &cpu_cells, &gpu_cells);
+    for (index_type x = start; x < limit; x++) {
+        if (cpu_cells[x].is_multicell) {
+            index_type mcd_x_limit = x + cpu_cells[x].width - cpu_cells[x].x;
+            if (cpu_cells[x].x || mcd_x_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(mcd_x_limit, limit), replace_with_spaces ? ' ': 0);
+            x = mcd_x_limit;
+        }
+    }
+}
+
 
 static index_type
 prevent_current_prompt_from_rewrapping(Screen *self, LineBuf *prompt_copy, index_type *num_of_prompt_lines_above_cursor) {
@@ -347,6 +437,12 @@ found:
     // can easily be seen for instance in zsh when a right side prompt is used
     // so when resizing, simply blank all lines after the current
     // prompt and trust the shell to redraw them.
+    LineBuf *orig = self->linebuf; self->linebuf = self->main_linebuf;
+    // technically only need to nuke partial multichar cells but since we dont
+    // know what the shell will do in terms of clearing, best to be safe and
+    // nuke all
+    nuke_multiline_char_intersecting_with(self, 0, self->columns, y, self->main_linebuf->ynum, true);
+    self->linebuf = orig;
     for (; y < (int)self->main_linebuf->ynum; y++) {
         linebuf_init_line(self->main_linebuf, y);
         linebuf_copy_line_to(prompt_copy, self->main_linebuf->line, num_of_prompt_lines++);
@@ -473,7 +569,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (alt_has_blank_line) remove_blank_output_line_reservation_marker(is_main ? &self->alt_savepoint.cursor : self->cursor, self->alt_linebuf);
     if (num_of_prompt_lines) {
         // Copy the old prompt lines without any reflow this prevents
-        // flickering of prompt during resize. THe flicker is caused by the
+        // flickering of prompt during resize. The flicker is caused by the
         // prompt being first cleared by kitty then sometime later redrawn by
         // the shell.
         LineBuf *src = (LineBuf*)prompt_copy;
@@ -683,96 +779,6 @@ range_line_is_continued(Screen *self, int y) {
     ) return false;
     if (y < 0) return historybuf_is_line_continued(self->historybuf, -(y + 1));
     return visual_line_is_continued(self, y);
-}
-
-static void
-nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit, char_type ch) {
-    for (index_type x = start; x < x_limit; x++) {
-        cell_set_char(cp + x, ch); cp[x].is_multicell = false;
-        clear_sprite_position(gp[x]);
-    }
-}
-
-static void
-nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
-    CPUCell *cp; GPUCell *gp;
-    linebuf_init_cells(self->linebuf, y_, &cp, &gp);
-    index_type num_lines_above = cp[x_].y;
-    index_type y_max_limit = MIN(self->lines, y_ + cp[x_].scale - num_lines_above);
-    while (cp[x_].x && x_ > 0) x_--;
-    index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
-    char_type ch = replace_with_spaces ? ' ' : 0;
-    for (index_type y = y_; y < y_max_limit; y++) {
-        linebuf_init_cells(self->linebuf, y, &cp, &gp);
-        nuke_in_line(cp, gp, x_, x_limit, ch); linebuf_mark_line_dirty(self->linebuf, y);
-    }
-    int y_min_limit = -1;
-    if (self->linebuf == self->main_linebuf) y_min_limit = -(self->historybuf->count + 1);
-    for (int y = (int)y_ - 1; y > y_min_limit && num_lines_above; y--, num_lines_above--) {
-        Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
-        nuke_in_line(cp, gp, x_, x_limit, ch);
-        if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
-        else historybuf_mark_line_dirty(self->historybuf, -(y + 1));
-    }
-    self->is_dirty = true;
-}
-
-static void
-nuke_multiline_char_intersecting_with(Screen *self, index_type x_start, index_type x_limit, index_type y_start, index_type y_limit, bool replace_with_spaces) {
-    for (index_type y = y_start; y < y_limit; y++) {
-        CPUCell *cp; GPUCell *gp;
-        linebuf_init_cells(self->linebuf, y, &cp, &gp);
-        for (index_type x = x_start; x < x_limit; x++) {
-            if (cp[x].is_multicell && cp[x].scale > 1) nuke_multicell_char_at(self, x, y, replace_with_spaces);
-        }
-    }
-}
-
-static void
-nuke_multicell_char_intersecting_with(Screen *self, index_type x_start, index_type x_limit, index_type y_start, index_type y_limit, bool replace_with_spaces) {
-    for (index_type y = y_start; y < y_limit; y++) {
-        CPUCell *cp; GPUCell *gp;
-        linebuf_init_cells(self->linebuf, y, &cp, &gp);
-        for (index_type x = x_start; x < x_limit; x++) {
-            if (cp[x].is_multicell) nuke_multicell_char_at(self, x, y, replace_with_spaces);
-        }
-    }
-}
-
-
-static void
-nuke_split_multicell_char_at_left_boundary(Screen *self, index_type x, index_type y, bool replace_with_spaces) {
-    CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y);
-    if (cp[x].is_multicell && cp[x].x) {
-        nuke_multicell_char_at(self, x, y, replace_with_spaces);  // remove split multicell char at left edge
-    }
-}
-
-static void
-nuke_split_multicell_char_at_right_boundary(Screen *self, index_type x, index_type y, bool replace_with_spaces) {
-    CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y);
-    CPUCell *c = cp + x;
-    if (c->is_multicell) {
-        unsigned max_x = mcd_x_limit(c) - 1;
-        if (c->x < max_x) {
-            nuke_multicell_char_at(self, x, y, replace_with_spaces);
-        }
-    }
-}
-
-static void
-nuke_incomplete_single_line_multicell_chars_in_range(
-    Screen *self, index_type start, index_type limit, index_type y, bool replace_with_spaces
-) {
-    CPUCell *cpu_cells; GPUCell *gpu_cells;
-    linebuf_init_cells(self->linebuf, y, &cpu_cells, &gpu_cells);
-    for (index_type x = start; x < limit; x++) {
-        if (cpu_cells[x].is_multicell) {
-            index_type mcd_x_limit = x + cpu_cells[x].width - cpu_cells[x].x;
-            if (cpu_cells[x].x || mcd_x_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(mcd_x_limit, limit), replace_with_spaces ? ' ': 0);
-            x = mcd_x_limit;
-        }
-    }
 }
 
 static void
