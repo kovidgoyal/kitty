@@ -56,7 +56,7 @@ static void
 init_src_line_basic(Rewrap *r, index_type y, Line *dest, bool update_state) {
     if (r->src_is_in_linebuf) {
         linebuf_init_line_at(r->src.lb, y - r->src.hb_count, dest);
-    } else if (r->src.y >= r->src.hb_count) {
+    } else if (y >= r->src.hb_count) {
         if (update_state) r->src_is_in_linebuf = true;
         linebuf_init_line_at(r->src.lb, y - r->src.hb_count, dest);
     } else {

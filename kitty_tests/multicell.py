@@ -19,12 +19,13 @@ def test_multicell(self: TestMulticell) -> None:
     from kitty.tab_bar import as_rgb
     from kitty.window import as_text
 
-    def as_ansi():
-        return as_text(s, as_ansi=True)
+    def as_ansi(add_history=False):
+        return as_text(s, as_ansi=True, add_history=add_history)
 
     def ac(x_, y_, **assertions):  # assert cell
         cell = s.cpu_cells(y_, x_)
         msg = f'Assertion failed for cell at ({x_}, {y_})\n{cell}\n'
+        failures = []
         def ae(key):
             if key not in assertions:
                 return
@@ -36,7 +37,7 @@ def test_multicell(self: TestMulticell) -> None:
                     raise AssertionError(f'{msg}Unexpectedly not a multicell')
                 val = mcd[key]
             if assertions[key] != val:
-                raise AssertionError(f'{msg}{assertions[key]!r} != {val!r}')
+                failures.append(f'{key}: (expected) {assertions[key]!r} != {val!r}')
 
         self.ae(test_ch_and_idx(0), (0, 0, 0))
         self.ae(test_ch_and_idx(1), (0, 1, 1))
@@ -55,6 +56,8 @@ def test_multicell(self: TestMulticell) -> None:
         ae('text')
         ae('natural_width')
         ae('next_char_was_wrapped')
+        if failures:
+            raise AssertionError(msg + '\n' + '\n'.join(failures))
 
         if 'cursor' in assertions:
             self.ae(assertions['cursor'], (s.cursor.x, s.cursor.y), msg)
@@ -576,22 +579,37 @@ def test_multicell(self: TestMulticell) -> None:
     self.ae('\x1b[m1ab\x1b[mc', as_ansi().rstrip()) # ]]]]]]]
 
     reset()
-    multicell(s, 'X', scale=4), s.draw('112233445555556666667')
+    suffix = '112233445555556666667'
+    multicell(s, 'X', scale=4), s.draw(suffix)
     self.ae(str(s.historybuf), 'X11')  # X is split between the buffers
     resize(6, s.columns+1, 0, 5)
     self.ae(str(s.historybuf), 'X112')
-    self.ae(str(s.linebuf.line(0)), 'X233')
+    self.ae(str(s.linebuf.line(0)), '233')
     for y in range(3):
         for x in range(4):
-            ac(x, y, is_multicell=True)
+            ac(x, y, is_multicell=True, x=x, y=y+1)
     reset()
-    multicell(s, 'X', scale=4), s.draw('112233445555556666667')
+    multicell(s, 'X', scale=4), s.draw(suffix)
     resize(6, s.columns-1, 0, 5)
-    self.ae(str(s.historybuf), 'X1\nX1')
-    self.ae(str(s.linebuf.line(0)), 'X2')
-    for y in range(2):
+    self.ae(f'X{suffix}', as_text(s, add_history=True))
+    self.ae(str(s.historybuf), '1\nX1')
+    self.ae(str(s.linebuf.line(0)), '2')
+    for y in range(-2, 2):
         for x in range(4):
-            ac(x, y, is_multicell=True)
+            ac(x, y, is_multicell=True, x=x, y=y+2, text='X' if (x, y) == (0, -2) else '')
+
+    reset()
+    multicell(s, 'AB', scale=2), s.draw('11223333334444445555556666667')
+    self.ae(str(s.historybuf), 'AB11')  # AB is split between the buffers
+    resize(6, s.columns+1, 0, 5)
+    self.ae(str(s.historybuf), 'AB112')
+    self.ae(str(s.linebuf.line(0)), '233')
+    for x in range(2):
+        ac(x, -1, is_multicell=True, x=x, y=0, text='' if x else 'A')
+        ac(x, 0, is_multicell=True, x=x, y=1, text='')
+    for x in range(2, 4):
+        ac(x, -1, is_multicell=True, x=x-2, y=0, text='' if x > 2 else 'B')
+        ac(x, 0, is_multicell=True, x=x-2, y=1, text='')
 
     # selections
     s = self.create_screen(lines=5, cols=8)
