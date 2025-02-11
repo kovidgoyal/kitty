@@ -2112,7 +2112,7 @@ render_decoration(PyObject *self UNUSED, PyObject *args) {
     const char *which;
     FontCellMetrics fcm = {0};
     if (!PyArg_ParseTuple(args, "sIIII", &which, &fcm.cell_width, &fcm.cell_height, &fcm.underline_position, &fcm.underline_thickness)) return NULL;
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, fcm.cell_width * fcm.cell_height);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)fcm.cell_width * fcm.cell_height);
     if (!ans) return NULL;
     memset(PyBytes_AS_STRING(ans), 0, PyBytes_GET_SIZE(ans));
     if (strcmp(which, "curl") == 0) add_curl_underline((uint8_t*)PyBytes_AS_STRING(ans), fcm);
