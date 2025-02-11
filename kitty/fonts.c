@@ -2129,6 +2129,7 @@ render_decoration(PyObject *self UNUSED, PyObject *args) {
     else if (strcmp(which, "hollow_cursor") == 0) add_hollow_cursor((uint8_t*)PyBytes_AS_STRING(ans), fcm, dpi, dpi);
     else { Py_CLEAR(ans); PyErr_Format(PyExc_KeyError, "Unknown decoration type: %s", which); }
     return ans;
+#undef u
 }
 
 static PyObject*
