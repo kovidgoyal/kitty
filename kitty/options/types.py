@@ -1045,13 +1045,13 @@ defaults.mouse_map = [
 
 
 nullable_colors = frozenset({
-    'cursor'
-    'cursor_text_color'
-    'visual_bell_color'
-    'active_border_color'
-    'tab_bar_background'
-    'tab_bar_margin_color'
-    'selection_foreground'
+    'cursor',
+    'cursor_text_color',
+    'visual_bell_color',
+    'active_border_color',
+    'tab_bar_background',
+    'tab_bar_margin_color',
+    'selection_foreground',
     'selection_background'
 })
 

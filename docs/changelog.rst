@@ -122,6 +122,8 @@ Detailed list of changes
 
 - ssh kitten: Fix incorrect copying of data files when using the python interpreter and also fix incorrect hard link detection (:disc:`8308`)
 
+- Fix a regression in the previous release that broke setting of nullable colors
+
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
