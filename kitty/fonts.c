@@ -2111,11 +2111,23 @@ static PyObject*
 render_decoration(PyObject *self UNUSED, PyObject *args) {
     const char *which;
     FontCellMetrics fcm = {0};
-    if (!PyArg_ParseTuple(args, "sIIII", &which, &fcm.cell_width, &fcm.cell_height, &fcm.underline_position, &fcm.underline_thickness)) return NULL;
+    double dpi = 96.0;
+    if (!PyArg_ParseTuple(args, "sIIII|d", &which, &fcm.cell_width, &fcm.cell_height, &fcm.underline_position, &fcm.underline_thickness, &dpi)) return NULL;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)fcm.cell_width * fcm.cell_height);
     if (!ans) return NULL;
     memset(PyBytes_AS_STRING(ans), 0, PyBytes_GET_SIZE(ans));
-    if (strcmp(which, "curl") == 0) add_curl_underline((uint8_t*)PyBytes_AS_STRING(ans), fcm);
+#define u(x) if (strcmp(which, #x) == 0) add_ ## x ## _underline((uint8_t*)PyBytes_AS_STRING(ans), fcm)
+    u(curl);
+    u(dashed);
+    u(dotted);
+    u(double);
+    u(straight);
+    else if (strcmp(which, "strikethrough") == 0) add_strikethrough((uint8_t*)PyBytes_AS_STRING(ans), fcm);
+    else if (strcmp(which, "missing") == 0) add_missing_glyph((uint8_t*)PyBytes_AS_STRING(ans), fcm);
+    else if (strcmp(which, "beam_cursor") == 0) add_beam_cursor((uint8_t*)PyBytes_AS_STRING(ans), fcm, dpi);
+    else if (strcmp(which, "underline_cursor") == 0) add_underline_cursor((uint8_t*)PyBytes_AS_STRING(ans), fcm, dpi);
+    else if (strcmp(which, "hollow_cursor") == 0) add_hollow_cursor((uint8_t*)PyBytes_AS_STRING(ans), fcm, dpi, dpi);
+    else { Py_CLEAR(ans); PyErr_Format(PyExc_KeyError, "Unknown decoration type: %s", which); }
     return ans;
 }
 

@@ -39,7 +39,9 @@ else:
     from .fontconfig import font_for_family as font_for_family_fontconfig
 
 if TYPE_CHECKING:
-    from kitty.fast_data_types import CTFace, Face
+    from kitty.fast_data_types import CTFace, DecorationTypes, Face
+else:
+    DecorationTypes = str
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: list[tuple[FontObject, bool, bool]] = []
@@ -376,7 +378,7 @@ def test_render_codepoint(chars: str = '😺', path: str = '/t/Noto-COLRv1.ttf',
         print('\n')
 
 
-def test_render_decoration(which: Literal['curl'], cell_width: int, cell_height: int, underline_position: int, underline_thickness: int) -> None:
+def test_render_decoration(which: DecorationTypes, cell_width: int, cell_height: int, underline_position: int, underline_thickness: int) -> None:
     buf = render_decoration(which, cell_width, cell_height, underline_position, underline_thickness)
     cells = buf, buf, buf, buf, buf
     rgb_data = concat_cells(cell_width, cell_height, False, cells)
