@@ -2,6 +2,7 @@
 
 # isort: skip_file
 import typing
+import collections.abc  # noqa: F401, RUF100
 from kitty.conf.utils import (
     merge_dicts, positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
     to_color_or_none, unit_float

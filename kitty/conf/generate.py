@@ -59,7 +59,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         typ = option_type_as_str(rettype)
         if isinstance(option, MultiOption):
             typ = typ[typ.index('[') + 1:-1]
-            typ = typ.replace('Tuple', 'Dict', 1)
+            typ = typ.replace('tuple', 'dict', 1)
             kq = ki_imports.search(typ)
             if kq is not None:
                 kqi = kq.group(1)
@@ -75,7 +75,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
 
     def parser_function_declaration(option_name: str) -> None:
         t('')
-        t(f'    def {option_name}(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:')
+        t(f'    def {option_name}(self, val: str, ans: dict[str, typing.Any]) -> None:')
 
     for option in sorted(defn.iter_all_options(), key=lambda a: natural_keys(a.name)):
         option_names.add(option.name)
@@ -179,7 +179,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         rettype = th['return']
         typ = option_type_as_str(rettype)
         typ = typ[typ.index('[') + 1:-1]
-        a(f'    {aname}: typing.List[{typ}] = []')
+        a(f'    {aname}: list[{typ}] = []')
         for imp in action.imports:
             resolve_import(imp)
         for fname, ftype in action.fields.items():
@@ -198,11 +198,11 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             a('        ' + ', '.join(grp) + ',')
         a('    ))')
 
-    a('    config_paths: typing.Tuple[str, ...] = ()')
-    a('    all_config_paths: typing.Tuple[str, ...] = ()')
-    a('    config_overrides: typing.Tuple[str, ...] = ()')
+    a('    config_paths: tuple[str, ...] = ()')
+    a('    all_config_paths: tuple[str, ...] = ()')
+    a('    config_overrides: tuple[str, ...] = ()')
     a('')
-    a('    def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:')
+    a('    def __init__(self, options_dict: dict[str, typing.Any] | None = None) -> None:')
     if defn.has_color_table:
         a('        self.color_table = array(self.color_table.typecode, self.color_table)')
     a('        if options_dict is not None:')
@@ -214,7 +214,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
 
     a('')
     a('    @property')
-    a('    def _fields(self) -> typing.Tuple[str, ...]:')
+    a('    def _fields(self) -> tuple[str, ...]:')
     a('        return option_names')
 
     a('')
@@ -233,7 +233,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
     a('        return ans')
 
     a('')
-    a('    def _asdict(self) -> typing.Dict[str, typing.Any]:')
+    a('    def _asdict(self) -> dict[str, typing.Any]:')
     a('        return {k: self._copy_of_val(k) for k in self}')
 
     a('')
@@ -246,7 +246,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
     a('        return ans')
 
     a('')
-    a('    def __getitem__(self, key: typing.Union[int, str]) -> typing.Any:')
+    a('    def __getitem__(self, key: int | str) -> typing.Any:')
     a('        k = option_names[key] if isinstance(key, int) else key')
     a('        try:')
     a('            return getattr(self, k)')
@@ -319,7 +319,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
 
     t('')
     t('')
-    t('def create_result_dict() -> typing.Dict[str, typing.Any]:')
+    t('def create_result_dict() -> dict[str, typing.Any]:')
     t('    return {')
     for oname in is_mutiple_vars:
         t(f'        {oname!r}: {{}},')
@@ -329,10 +329,10 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
 
     t('')
     t('')
-    t(f'actions: typing.FrozenSet[str] = frozenset({tuple(defn.actions)!r})')
+    t(f'actions: frozenset[str] = frozenset({tuple(defn.actions)!r})')
     t('')
     t('')
-    t('def merge_result_dicts(defaults: typing.Dict[str, typing.Any], vals: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:')
+    t('def merge_result_dicts(defaults: dict[str, typing.Any], vals: dict[str, typing.Any]) -> dict[str, typing.Any]:')
     t('    ans = {}')
     t('    for k, v in defaults.items():')
     t('        if isinstance(v, dict):')
@@ -349,7 +349,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
     t('parser = Parser()')
     t('')
     t('')
-    t('def parse_conf_item(key: str, val: str, ans: typing.Dict[str, typing.Any]) -> bool:')
+    t('def parse_conf_item(key: str, val: str, ans: dict[str, typing.Any]) -> bool:')
     t('    func = getattr(parser, key, None)')
     t('    if func is not None:')
     t('        func(val, ans)')
@@ -362,6 +362,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
     def output_imports(imports: set[tuple[str, str]], add_module_imports: bool = True) -> None:
         a('# isort: skip_file')
         a('import typing')
+        a('import collections.abc  # noqa: F401, RUF100')
         seen_mods = {'typing'}
         mmap: dict[str, list[str]] = {}
         for mod, name in imports:

@@ -2,6 +2,7 @@
 
 # isort: skip_file
 import typing
+import collections.abc  # noqa: F401, RUF100
 from array import array
 from kitty.constants import is_macos
 import kitty.constants
@@ -597,7 +598,7 @@ class Options:
     tab_activity_symbol: str = ''
     tab_bar_align: choices_for_tab_bar_align = 'left'
     tab_bar_background: kitty.fast_data_types.Color | None = None
-    tab_bar_edge: int = 3
+    tab_bar_edge: int = 8
     tab_bar_margin_color: kitty.fast_data_types.Color | None = None
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)
     tab_bar_margin_width: float = 0
@@ -649,7 +650,7 @@ class Options:
     menu_map: dict[tuple[str, ...], str] = {}
     modify_font: dict[str, kitty.fonts.FontModification] = {}
     narrow_symbols: dict[tuple[int, int], int] = {}
-    remote_control_password: dict[str, typing.Sequence[str]] = {}
+    remote_control_password: dict[str, collections.abc.Sequence[str]] = {}
     symbol_map: dict[tuple[int, int], str] = {}
     watcher: dict[str, str] = {}
     map: list[kitty.options.utils.KeyDefinition] = []
