@@ -57,9 +57,11 @@ at the specified size. It is an ``OSC`` code of the form::
 
 Here, ``OSC`` is the bytes ``ESC ] (0x1b 0x5b)``. The ``metadata`` is a colon
 separated list of ``key=value`` pairs. The final part of the escape code is the
-text which is simply plain text encoded as :ref:`safe_utf8`. Spaces in this
-definition are for clarity only and should be ignored. The ``terminator`` is
-either the byte ``BEL (0x7)`` or the bytes ``ESC ST (0x1b 0x5c)``.
+text which is simply plain text encoded as :ref:`safe_utf8`, the text must be
+no longer than ``4096`` bytes. Longer strings than that must be broken up into
+multiple escape codes. Spaces in this definition are for clarity only and
+should be ignored. The ``terminator`` is either the byte ``BEL (0x7)`` or the
+bytes ``ESC ST (0x1b 0x5c)``.
 
 There are only a handful of metadata keys, defined in the table below:
 
