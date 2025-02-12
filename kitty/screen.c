@@ -845,6 +845,7 @@ add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
     CPUCell *cell = cpu_cells + x;
     if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return false; // don't allow adding combining chars to a null cell
     text_in_cell(cell, self->text_cache, self->lc);
+    if (self->lc->count >= MAX_NUM_CODEPOINTS_PER_CELL) return false; // don't allow too many combining chars to prevent DoS attacks
     ensure_space_for_chars(self->lc, self->lc->count + 1);
     self->lc->chars[self->lc->count++] = ch;
     cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
@@ -1205,11 +1206,12 @@ decode_utf8_safe_string(const uint8_t *src, size_t sz, uint32_t *dest) {
 }
 
 static void
-handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, const ListOfChars *lc) {
+handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc) {
     index_type width = mcd.width * mcd.scale;
     index_type height = mcd.scale;
     index_type max_height = self->margin_bottom - self->margin_top + 1;
     if (width > self->columns || height > max_height) return;
+    lc->count = MIN(lc->count, MAX_NUM_CODEPOINTS_PER_CELL);
     PREPARE_FOR_DRAW_TEXT;
     mcd.hyperlink_id = s.cc.hyperlink_id;
     cell_set_chars(&mcd, self->text_cache, lc);
