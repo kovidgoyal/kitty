@@ -692,6 +692,9 @@ class TestScreen(BaseTest):
         t('\u25b6', 1, '\ufe0f', 2, '\ufe0e', 2)
         # wide + VS15 + VS16
         t('\U0001f610', 2, '\ufe0e', 1, '\ufe0f', 1)
+        # large numbers of combining chars
+        s.reset()
+        s.draw("\N{HEAVY EXCLAMATION MARK SYMBOL}" + 4500 * "\N{VARIATION SELECTOR-16}")
 
     def test_writing_with_cursor_on_trailer_of_wide_character(self):
         s = self.create_screen()

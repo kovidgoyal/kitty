@@ -662,13 +662,13 @@ load_fallback_font(FontGroup *fg, const ListOfChars *lc, bool bold, bool italic,
     return ans;
 }
 
-size_t
-chars_as_utf8(const ListOfChars *lc, char *buf, char_type zero_char) {
+static size_t
+chars_as_utf8(const ListOfChars *lc, char *buf, size_t bufsz, char_type zero_char) {
     size_t n;
     if (lc->count == 1) n = encode_utf8(lc->chars[0] ? lc->chars[0] : zero_char, buf);
     else {
         n = encode_utf8(lc->chars[0], buf);
-        if (lc->chars[0] != '\t') for (unsigned i = 1; i < lc->count; i++) n += encode_utf8(lc->chars[i], buf + n);
+        if (lc->chars[0] != '\t') for (unsigned i = 1; i < lc->count && n < bufsz - 4; i++) n += encode_utf8(lc->chars[i], buf + n);
     }
     buf[n] = 0;
     return n;
@@ -682,7 +682,7 @@ fallback_font(FontGroup *fg, const CPUCell *cpu_cell, const GPUCell *gpu_cell, c
     char style = emoji_presentation ? 'a' : 'A';
     if (bold) style += italic ? 3 : 2; else style += italic ? 1 : 0;
     char cell_text[4 * 32] = {style};
-    const size_t cell_text_len = 1 + chars_as_utf8(lc, cell_text + 1, ' ');
+    const size_t cell_text_len = 1 + chars_as_utf8(lc, cell_text + 1, arraysz(cell_text) - 1, ' ');
     fallback_font_map_t_itr fi = vt_get(&fg->fallback_font_map, cell_text);
     if (!vt_is_end(fi)) return fi.data->val;
     ssize_t idx = load_fallback_font(fg, lc, bold, italic, emoji_presentation);
