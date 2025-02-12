@@ -703,7 +703,7 @@ _glfwWaylandCompositorName(void) {
 
 static const char*
 get_compositor_missing_capabilities(void) {
-#define C(title, x) if (!_glfw.wl.x) p += snprintf(buf, sizeof(buf) - (p - buf), "%s", #title);
+#define C(title, x) if (!_glfw.wl.x) p += snprintf(buf, sizeof(buf) - (p - buf), "%s ", #title);
     static char buf[256];
     char *p = buf;
     *p = 0;
@@ -712,7 +712,10 @@ get_compositor_missing_capabilities(void) {
     C(cursor_shape, wp_cursor_shape_manager_v1); C(layer_shell, zwlr_layer_shell_v1);
     C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
     C(idle_inhibit, idle_inhibit_manager);
+    if (_glfw.wl.xdg_wm_base_version < 6) p += snprintf(buf, sizeof(buf) - (p - buf), "%s ", "window-state-suspended");
+    if (_glfw.wl.xdg_wm_base_version < 5) p += snprintf(buf, sizeof(buf) - (p - buf), "%s ", "window-capabilities");
 #undef C
+    while (p > buf && (p - 1)[0] == ' ') { p--; *p = 0; }
     return buf;
 }
 
