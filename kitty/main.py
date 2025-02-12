@@ -28,6 +28,7 @@ from .constants import (
     kitty_exe,
     logo_png_file,
     running_in_kitty,
+    supports_window_occlusion,
     website_url,
 )
 from .fast_data_types import (
@@ -89,8 +90,10 @@ def load_all_shaders(semi_transparent: bool = False) -> None:
 
 
 def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rendering: bool = False, wayland_enable_ime: bool = True) -> None:
-    if not glfw_init(glfw_path(glfw_module), edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime):
+    ok, swo = glfw_init(glfw_path(glfw_module), edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime)
+    if not ok:
         raise SystemExit('GLFW initialization failed')
+    supports_window_occlusion(swo)
 
 
 def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool = False) -> str:

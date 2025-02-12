@@ -672,7 +672,7 @@ extern _GLFWlibrary _glfw;
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-int _glfwPlatformInit(void);
+int _glfwPlatformInit(bool*);
 void _glfwPlatformTerminate(void);
 const char* _glfwPlatformGetVersionString(void);
 

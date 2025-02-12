@@ -621,8 +621,9 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialize
 
 void _glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) { }
 
-int _glfwPlatformInit(void)
+int _glfwPlatformInit(bool *supports_window_occlusion)
 {
+    *supports_window_occlusion = false;
     XInitThreads();
     XrmInitialize();
 

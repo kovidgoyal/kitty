@@ -1964,7 +1964,7 @@ typedef struct GLFWgamepadstate
  *
  *  @ingroup init
  */
-GLFWAPI int glfwInit(monotonic_t start_time);
+GLFWAPI int glfwInit(monotonic_t start_time, bool *supports_window_occlusion);
 GLFWAPI void glfwRunMainLoop(GLFWtickcallback callback, void *callback_data);
 GLFWAPI void glfwStopMainLoop(void);
 GLFWAPI unsigned long long glfwAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callback, void * callback_data, GLFWuserdatafun free_callback);

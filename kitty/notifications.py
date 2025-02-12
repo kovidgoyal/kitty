@@ -12,7 +12,7 @@ from itertools import count
 from typing import Any, NamedTuple, Set
 from weakref import ReferenceType, ref
 
-from .constants import cache_dir, config_dir, is_macos, logo_png_file, standard_icon_names, standard_sound_names
+from .constants import cache_dir, config_dir, is_macos, logo_png_file, standard_icon_names, standard_sound_names, supports_window_occlusion
 from .fast_data_types import (
     ESC_OSC,
     StreamingBase64Decoder,
@@ -801,9 +801,12 @@ class Channel:
         has_focus = is_visible = False
         boss = get_boss()
         if w := self.window_for_id(channel_id):
-            has_focus = w.is_active and w.os_window_id == current_focused_os_window_id()
-            # window is in the active OS window and the active tab and is visible in the tab layout
-            is_visible = not os_window_is_invisible(w.os_window_id) and w.tabref() is boss.active_tab and w.is_visible_in_layout
+            os_window_active = w.os_window_id == current_focused_os_window_id()
+            has_focus = w.is_active and os_window_active
+            is_visible = os_window_active
+            if supports_window_occlusion():
+                is_visible = not os_window_is_invisible(w.os_window_id)
+            is_visible = is_visible and w.tabref() is boss.active_tab and w.is_visible_in_layout
         return UIState(has_focus, is_visible)
 
     def send(self, channel_id: int, osc_escape_code: str) -> bool:

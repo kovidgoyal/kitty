@@ -721,7 +721,7 @@ get_compositor_missing_capabilities(void) {
 
 GLFWAPI const char* glfwWaylandMissingCapabilities(void) { return get_compositor_missing_capabilities(); }
 
-int _glfwPlatformInit(void)
+int _glfwPlatformInit(bool *supports_window_occlusion)
 {
     int i;
     _GLFWmonitor* monitor;
@@ -812,6 +812,7 @@ int _glfwPlatformInit(void)
         const char *mc = get_compositor_missing_capabilities();
         if (mc && mc[0]) debug("Compositor missing capabilities: %s\n", mc);
     }
+    *supports_window_occlusion = _glfw.wl.xdg_wm_base_version > 5;
 
     return true;
 }

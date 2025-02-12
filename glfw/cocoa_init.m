@@ -791,10 +791,11 @@ GLFWAPI GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunch
     return previous;
 }
 
-int _glfwPlatformInit(void)
+int _glfwPlatformInit(bool *supports_window_occlusion)
 {
     @autoreleasepool {
 
+    *supports_window_occlusion = true;
     _glfw.ns.helper = [[GLFWHelper alloc] init];
 
     [NSThread detachNewThreadSelector:@selector(doNothing:)

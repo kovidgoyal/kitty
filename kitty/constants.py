@@ -330,3 +330,13 @@ def local_docs() -> str:
 def wrapped_kitten_names() -> frozenset[str]:
     import kitty.fast_data_types as f
     return frozenset(f.wrapped_kitten_names())
+
+
+_supports_window_occlusion = False
+
+
+def supports_window_occlusion(set: bool | None = None) -> bool:
+    global _supports_window_occlusion
+    if set is not None:
+        _supports_window_occlusion = set
+    return _supports_window_occlusion

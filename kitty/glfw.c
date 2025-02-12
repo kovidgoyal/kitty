@@ -1503,8 +1503,9 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         glfwDBusSetUserNotificationHandler(dbus_user_notification_activated);
     }
 #endif
-    PyObject *ans = glfwInit(monotonic_start_time) ? Py_True: Py_False;
-    if (ans == Py_True) {
+    bool supports_window_occlusion = false;
+    bool ok = glfwInit(monotonic_start_time, &supports_window_occlusion);
+    if (ok) {
 #ifdef __APPLE__
         glfwSetCocoaURLOpenCallback(apple_url_open_callback);
 #else
@@ -1513,8 +1514,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         get_window_dpi(NULL, &global_state.default_dpi.x, &global_state.default_dpi.y);
         edge_spacing_func = edge_sf; Py_INCREF(edge_spacing_func);
     }
-    Py_INCREF(ans);
-    return ans;
+    return Py_BuildValue("OO", ok ? Py_True : Py_False, supports_window_occlusion ? Py_True : Py_False);
 }
 
 static PyObject*
