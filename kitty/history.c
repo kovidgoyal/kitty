@@ -198,7 +198,7 @@ historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
 
 bool
 historybuf_is_line_continued(HistoryBuf *self, index_type lnum) {
-    return hb_line_is_continued(self, index_of(self, lnum + 1));
+    return hb_line_is_continued(self, index_of(self, lnum));
 }
 
 bool
