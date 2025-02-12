@@ -1729,6 +1729,7 @@ DecorationTypes = Literal[
 def render_decoration(
     which: DecorationTypes, cell_width: int, cell_height: int, underline_position: int, underline_thickness: int, dpi: float = 96.0
 ) -> bytes: ...
+def os_window_is_invisible(os_window_id: int) -> bool: ...
 
 class MousePosition(TypedDict):
     cell_x: int

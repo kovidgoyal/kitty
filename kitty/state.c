@@ -939,6 +939,7 @@ PYWRAP1(set_os_window_chrome) {
 
 PYWRAP1(mark_tab_bar_dirty) {
     id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    if (PyErr_Occurred()) return NULL;
     WITH_OS_WINDOW(os_window_id)
         os_window->tab_bar_data_updated = false;
     END_WITH_OS_WINDOW
@@ -959,6 +960,7 @@ PYWRAP1(change_background_opacity) {
 
 PYWRAP1(background_opacity_of) {
     id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    if (PyErr_Occurred()) return NULL;
     WITH_OS_WINDOW(os_window_id)
         return PyFloat_FromDouble((double)os_window->background_opacity);
     END_WITH_OS_WINDOW
@@ -1048,7 +1050,15 @@ PYWRAP1(get_os_window_title) {
     Py_RETURN_NONE;
 }
 
-
+PYWRAP1(os_window_is_invisible) {
+    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    if (PyErr_Occurred()) return NULL;
+    WITH_OS_WINDOW(os_window_id)
+        if (should_os_window_be_rendered(os_window)) { Py_RETURN_FALSE; }
+        Py_RETURN_TRUE;
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
 
 PYWRAP1(pt_to_px) {
     double pt;
@@ -1490,6 +1500,7 @@ static PyMethodDef module_methods[] = {
     MW(os_window_font_size, METH_VARARGS),
     MW(set_os_window_size, METH_VARARGS),
     MW(get_os_window_size, METH_VARARGS),
+    MW(os_window_is_invisible, METH_O),
     MW(update_tab_bar_edge_colors, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(get_boss, METH_NOARGS),
