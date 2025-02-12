@@ -13,7 +13,16 @@ from typing import Any, NamedTuple, Set
 from weakref import ReferenceType, ref
 
 from .constants import cache_dir, config_dir, is_macos, logo_png_file, standard_icon_names, standard_sound_names
-from .fast_data_types import ESC_OSC, StreamingBase64Decoder, add_timer, base64_decode, current_focused_os_window_id, get_boss, get_options
+from .fast_data_types import (
+    ESC_OSC,
+    StreamingBase64Decoder,
+    add_timer,
+    base64_decode,
+    current_focused_os_window_id,
+    get_boss,
+    get_options,
+    os_window_is_invisible,
+)
 from .types import run_once
 from .typing import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
@@ -794,7 +803,7 @@ class Channel:
         if w := self.window_for_id(channel_id):
             has_focus = w.is_active and w.os_window_id == current_focused_os_window_id()
             # window is in the active OS window and the active tab and is visible in the tab layout
-            is_visible = w.os_window_id == current_focused_os_window_id() and w.tabref() is boss.active_tab and w.is_visible_in_layout
+            is_visible = not os_window_is_invisible(w.os_window_id) and w.tabref() is boss.active_tab and w.is_visible_in_layout
         return UIState(has_focus, is_visible)
 
     def send(self, channel_id: int, osc_escape_code: str) -> bool:

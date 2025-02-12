@@ -3306,7 +3306,8 @@ The possible values are:
 :code:`invisible`
     Only send a notification when the window both is unfocused and not visible
     to the user, for example, because it is in an inactive tab or its OS window
-    is not currently active.
+    is not currently visible (note that OS Window visibility is not implemented
+    by some Wayland compositors such as sway).
 
 :code:`always`
     Always send a notification, regardless of window state.

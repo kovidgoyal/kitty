@@ -106,6 +106,10 @@ Detailed list of changes
   terminal ecosystem for decades by allowing terminal programs to specify how
   many cells to render a piece of text in (:iss:`8226`)
 
+- **Behavior change**: The :opt:`notify_on_cmd_finish` option now uses OS
+  Window visibility instead of focus state when set to ``invisible``
+  (:iss:`8320`)
+
 - launch: Add options :option:`launch --source-window` and :option:`launch --next-to` to allow
   specifying which window is used as the data source and destination location independently of the
   currently active window (:iss:`8295`)
