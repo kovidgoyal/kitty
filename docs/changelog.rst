@@ -128,6 +128,9 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke setting of nullable colors
 
+- Fix a regression in 0.39.0 that caused a crash on invalid Unicode with a
+  large number of combining characters in a single cell (:iss:`8318`)
+
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
