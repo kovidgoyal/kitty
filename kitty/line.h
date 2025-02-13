@@ -27,7 +27,7 @@ static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAt
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
 #define SGR_MASK (~(((CellAttrs){.mark=MARK_MASK}).val))
-#define MAX_NUM_CODEPOINTS_PER_CELL 24
+#define MAX_NUM_CODEPOINTS_PER_CELL 24u
 // Text presentation selector
 #define VS15 0xfe0e
 // Emoji presentation selector

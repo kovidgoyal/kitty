@@ -681,7 +681,7 @@ fallback_font(FontGroup *fg, const CPUCell *cpu_cell, const GPUCell *gpu_cell, c
     bool emoji_presentation = has_emoji_presentation(cpu_cell, lc);
     char style = emoji_presentation ? 'a' : 'A';
     if (bold) style += italic ? 3 : 2; else style += italic ? 1 : 0;
-    char cell_text[4 * (MAX_NUM_CODEPOINTS_PER_CELL + 8)] = {style};
+    char cell_text[4u * (MAX_NUM_CODEPOINTS_PER_CELL + 8u)] = {style};
     const size_t cell_text_len = 1 + chars_as_utf8(lc, cell_text + 1, arraysz(cell_text) - 1, ' ');
     fallback_font_map_t_itr fi = vt_get(&fg->fallback_font_map, cell_text);
     if (!vt_is_end(fi)) return fi.data->val;
