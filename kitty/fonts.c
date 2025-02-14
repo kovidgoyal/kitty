@@ -577,12 +577,11 @@ face_has_codepoint(const void* face, char_type cp) {
 
 static bool
 has_emoji_presentation(const CPUCell *c, const ListOfChars *lc) {
-    bool ans = c->is_multicell && lc->count && is_emoji(lc->chars[0]);
-    if (ans) {
-        if (is_narrow_emoji(lc->chars[0])) ans = lc->count > 1 && lc->chars[1] == VS16;
-        else ans = lc->count == 1 || lc->chars[1] != VS15;
-    }
-    return ans;
+    bool is_text_presentation;
+    return c->is_multicell && lc->count && is_emoji(lc->chars[0]) && (
+        ( (is_text_presentation = is_narrow_emoji(lc->chars[0])) && lc->count > 1 && lc->chars[1] == VS16 ) ||
+        ( !is_text_presentation && (lc->count == 1 || lc->chars[1] != VS15) )
+    );
 }
 
 bool
