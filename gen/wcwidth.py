@@ -319,6 +319,16 @@ def gen_emoji() -> None:
         p('\t}')
         p('\treturn false;\n}')
 
+        p('static inline bool\nis_narrow_emoji(char_type code) {')
+        p('\tswitch(code) {')
+        for spec in get_ranges(list(narrow_emoji)):
+            write_case(spec, p)
+            p('\t\t\treturn true;')
+        p('\t\tdefault: return false;')
+        p('\t}')
+        p('\treturn false;\n}')
+
+
 
 def category_test(
     name: str,

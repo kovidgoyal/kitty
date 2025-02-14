@@ -792,5 +792,250 @@ is_symbol(char_type code) {
 	}
 	return false;
 }
+static inline bool
+is_narrow_emoji(char_type code) {
+	switch(code) {
+		case 0x23:
+			return true;
+		case 0x2a:
+			return true;
+		case 0x30 ... 0x39:
+			return true;
+		case 0xa9:
+			return true;
+		case 0xae:
+			return true;
+		case 0x203c:
+			return true;
+		case 0x2049:
+			return true;
+		case 0x2122:
+			return true;
+		case 0x2139:
+			return true;
+		case 0x2194 ... 0x2199:
+			return true;
+		case 0x21a9 ... 0x21aa:
+			return true;
+		case 0x2328:
+			return true;
+		case 0x23cf:
+			return true;
+		case 0x23ed ... 0x23ef:
+			return true;
+		case 0x23f1 ... 0x23f2:
+			return true;
+		case 0x23f8 ... 0x23fa:
+			return true;
+		case 0x24c2:
+			return true;
+		case 0x25aa ... 0x25ab:
+			return true;
+		case 0x25b6:
+			return true;
+		case 0x25c0:
+			return true;
+		case 0x25fb ... 0x25fc:
+			return true;
+		case 0x2600 ... 0x2604:
+			return true;
+		case 0x260e:
+			return true;
+		case 0x2611:
+			return true;
+		case 0x2618:
+			return true;
+		case 0x261d:
+			return true;
+		case 0x2620:
+			return true;
+		case 0x2622 ... 0x2623:
+			return true;
+		case 0x2626:
+			return true;
+		case 0x262a:
+			return true;
+		case 0x262e ... 0x262f:
+			return true;
+		case 0x2638 ... 0x263a:
+			return true;
+		case 0x2640:
+			return true;
+		case 0x2642:
+			return true;
+		case 0x265f ... 0x2660:
+			return true;
+		case 0x2663:
+			return true;
+		case 0x2665 ... 0x2666:
+			return true;
+		case 0x2668:
+			return true;
+		case 0x267b:
+			return true;
+		case 0x267e:
+			return true;
+		case 0x2692:
+			return true;
+		case 0x2694 ... 0x2697:
+			return true;
+		case 0x2699:
+			return true;
+		case 0x269b ... 0x269c:
+			return true;
+		case 0x26a0:
+			return true;
+		case 0x26a7:
+			return true;
+		case 0x26b0 ... 0x26b1:
+			return true;
+		case 0x26c8:
+			return true;
+		case 0x26cf:
+			return true;
+		case 0x26d1:
+			return true;
+		case 0x26d3:
+			return true;
+		case 0x26e9:
+			return true;
+		case 0x26f0 ... 0x26f1:
+			return true;
+		case 0x26f4:
+			return true;
+		case 0x26f7 ... 0x26f9:
+			return true;
+		case 0x2702:
+			return true;
+		case 0x2708 ... 0x2709:
+			return true;
+		case 0x270c ... 0x270d:
+			return true;
+		case 0x270f:
+			return true;
+		case 0x2712:
+			return true;
+		case 0x2714:
+			return true;
+		case 0x2716:
+			return true;
+		case 0x271d:
+			return true;
+		case 0x2721:
+			return true;
+		case 0x2733 ... 0x2734:
+			return true;
+		case 0x2744:
+			return true;
+		case 0x2747:
+			return true;
+		case 0x2763 ... 0x2764:
+			return true;
+		case 0x27a1:
+			return true;
+		case 0x2934 ... 0x2935:
+			return true;
+		case 0x2b05 ... 0x2b07:
+			return true;
+		case 0x3030:
+			return true;
+		case 0x303d:
+			return true;
+		case 0x3297:
+			return true;
+		case 0x3299:
+			return true;
+		case 0x1f170 ... 0x1f171:
+			return true;
+		case 0x1f17e ... 0x1f17f:
+			return true;
+		case 0x1f202:
+			return true;
+		case 0x1f237:
+			return true;
+		case 0x1f321:
+			return true;
+		case 0x1f324 ... 0x1f32c:
+			return true;
+		case 0x1f336:
+			return true;
+		case 0x1f37d:
+			return true;
+		case 0x1f396 ... 0x1f397:
+			return true;
+		case 0x1f399 ... 0x1f39b:
+			return true;
+		case 0x1f39e ... 0x1f39f:
+			return true;
+		case 0x1f3cb ... 0x1f3ce:
+			return true;
+		case 0x1f3d4 ... 0x1f3df:
+			return true;
+		case 0x1f3f3:
+			return true;
+		case 0x1f3f5:
+			return true;
+		case 0x1f3f7:
+			return true;
+		case 0x1f43f:
+			return true;
+		case 0x1f441:
+			return true;
+		case 0x1f4fd:
+			return true;
+		case 0x1f549 ... 0x1f54a:
+			return true;
+		case 0x1f56f ... 0x1f570:
+			return true;
+		case 0x1f573 ... 0x1f579:
+			return true;
+		case 0x1f587:
+			return true;
+		case 0x1f58a ... 0x1f58d:
+			return true;
+		case 0x1f590:
+			return true;
+		case 0x1f5a5:
+			return true;
+		case 0x1f5a8:
+			return true;
+		case 0x1f5b1 ... 0x1f5b2:
+			return true;
+		case 0x1f5bc:
+			return true;
+		case 0x1f5c2 ... 0x1f5c4:
+			return true;
+		case 0x1f5d1 ... 0x1f5d3:
+			return true;
+		case 0x1f5dc ... 0x1f5de:
+			return true;
+		case 0x1f5e1:
+			return true;
+		case 0x1f5e3:
+			return true;
+		case 0x1f5e8:
+			return true;
+		case 0x1f5ef:
+			return true;
+		case 0x1f5f3:
+			return true;
+		case 0x1f5fa:
+			return true;
+		case 0x1f6cb:
+			return true;
+		case 0x1f6cd ... 0x1f6cf:
+			return true;
+		case 0x1f6e0 ... 0x1f6e5:
+			return true;
+		case 0x1f6e9:
+			return true;
+		case 0x1f6f0:
+			return true;
+		case 0x1f6f3:
+			return true;
+		default: return false;
+	}
+	return false;
+}
 
 END_ALLOW_CASE_RANGE
