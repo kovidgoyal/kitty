@@ -66,7 +66,9 @@ write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
     w(0x1b); w(']');
     for (unsigned i = 0; i < sizeof(xstr(TEXT_SIZE_CODE)) - 1; i++) w(xstr(TEXT_SIZE_CODE)[i]);
     w(';');
-    w('w'); w('='); nonnegative_integer_as_utf32(mcd->width, s->output_buf); w(':');
+    if (!mcd->natural_width) {
+        w('w'); w('='); nonnegative_integer_as_utf32(mcd->width, s->output_buf); w(':');
+    }
     if (mcd->scale > 1) {
         w('s'); w('='); nonnegative_integer_as_utf32(mcd->scale, s->output_buf); w(':');
     }
