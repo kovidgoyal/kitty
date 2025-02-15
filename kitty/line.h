@@ -59,7 +59,8 @@ typedef union CPUCell {
         char_type y : SCALE_BITS + 1;
         char_type width: WIDTH_BITS;
         char_type vertical_align: 3;
-        char_type : 15;
+        char_type temp_flag: 1;
+        char_type : 14;
     };
     struct {
         char_type ch_and_idx: sizeof(char_type) * 8;

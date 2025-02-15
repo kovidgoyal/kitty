@@ -667,8 +667,8 @@ def test_multicell(self: TestMulticell) -> None:
     asa(f'\x1b]{TEXT_SIZE_CODE};w=1:s=2;b\x07', '\x1b[m')
     ss(p(y=1, x=0), p(y=1, x=1, in_left_half_of_cell=False))  # empty leading cell before multiline on y=1
     asl((0, 1, 2), (1, 0, 2))
-    ast(' b')
-    asa(f' \x1b]{TEXT_SIZE_CODE};w=1:s=2;b\x07', '\x1b[m')
+    ast('b')
+    asa(f'\x1b]{TEXT_SIZE_CODE};w=1:s=2;b\x07', '\x1b[m')
 
     s.reset()
     multicell(s, 'X', scale=2), s.draw('123456abcd')
@@ -679,10 +679,18 @@ def test_multicell(self: TestMulticell) -> None:
         asa(f'\x1b]{TEXT_SIZE_CODE};w=1:s=2;X\x07123456', 'ab', '\x1b[m')
     ss(p(y=1), p(y=1, x=3, in_left_half_of_cell=False))
     asl((0, 0, 1), (1, 0, 3))
-    ast('Xab')
-    asa(f'\x1b]{TEXT_SIZE_CODE};w=1:s=2;X\x07ab', '\x1b[m')
+    ast('X', 'ab')
+    asa(f'\x1b]{TEXT_SIZE_CODE};w=1:s=2;X\x07', 'ab', '\x1b[m')
+
+    s = self.create_screen(lines=5, cols=24)
+
+    s.reset()
+    multicell(s, 'ab cd ef', scale=2)
+    ss(p(6, 1), p(9, 0, in_left_half_of_cell=False))
+    ast('ab  ef')
 
     # Hyperlinks
+    s = self.create_screen(lines=5, cols=8)
     asu = partial(asl, bp=2)
     def set_link(url=None, id=None):
         parse_bytes(s, '\x1b]8;id={};{}\x1b\\'.format(id or '', url or '').encode('utf-8'))
