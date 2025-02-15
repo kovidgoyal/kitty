@@ -4811,11 +4811,28 @@ continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary 
     return bottom_line;
 }
 
-void
-screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, SelectionUpdate upd) {
-    if (!self->selections.count) return;
-    self->selections.in_progress = !upd.ended;
-    Selection *s = self->selections.items;
+static int
+clamp_selection_input_to_multicell(Screen *self, const Selection *s, index_type x, index_type y, bool in_left_half_of_cell) {
+    int delta = 0;
+    int abs_y = y - self->scrolled_by, abs_start_y = s->start.y - s->start_scrolled_by;
+    if (abs_y == abs_start_y) return delta;
+    Line *line = checked_range_line(self, abs_start_y);
+    CPUCell *start, *current;
+    if (!line || s->start.x >= line->xnum || !(start = &line->cpu_cells[s->start.x])->is_multicell || start->scale < 2) return delta;
+    int abs_start_top = abs_start_y - start->y;
+    line = checked_range_line(self, abs_y);
+    if (x > s->start.x && in_left_half_of_cell) x--;
+    else if (x < s->start.x && !in_left_half_of_cell) x++;
+    if (!line || x >= line->xnum) return delta;
+    current = line->cpu_cells + x;
+    if (!current->is_multicell) return delta;
+    int abs_current_top = abs_y - current->y;
+    if (current->scale == start->scale && current->subscale_n == start->subscale_n && current->subscale_d == start->subscale_d && abs_current_top == abs_start_top) delta = abs_y - abs_start_y;
+    return delta;
+}
+
+static void
+do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool in_left_half_of_cell, SelectionUpdate upd) {
     s->input_current.x = x; s->input_current.y = y;
     s->input_current.in_left_half_of_cell = in_left_half_of_cell;
     SelectionBoundary start, end, *a = &s->start, *b = &s->end, abs_start, abs_end, abs_current_input;
@@ -4963,6 +4980,23 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             s->initial_extent.scrolled_by = s->start_scrolled_by;
         }
     }
+}
+
+void
+screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, SelectionUpdate upd) {
+    if (!self->selections.count) return;
+    self->selections.in_progress = !upd.ended;
+    Selection *s = self->selections.items;
+    int delta = clamp_selection_input_to_multicell(self, s, x, y, in_left_half_of_cell);
+    index_type orig = self->scrolled_by;
+    if (delta) {
+        int new_y = y - delta;
+        if (new_y < 0) {
+            y = 0; self->scrolled_by += - new_y;
+        } else y = new_y;
+    }
+    do_update_selection(self, s, x, y, in_left_half_of_cell, upd);
+    self->scrolled_by = orig;
 }
 
 static PyObject*
