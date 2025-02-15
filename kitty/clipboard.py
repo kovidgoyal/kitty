@@ -24,6 +24,8 @@ from .fast_data_types import (
 )
 from .utils import log_error
 
+READ_RESPONSE_CHUNK_SIZE = 4096
+
 
 class Tempfile:
 
@@ -462,8 +464,8 @@ class ClipboardRequestManager:
             assert w is not None
             mv = memoryview(data)
             while mv:
-                w.screen.send_escape_code_to_child(ESC_OSC, rr.encode_response(payload=mv[:4096], mime=current_mime))
-                mv = mv[4096:]
+                w.screen.send_escape_code_to_child(ESC_OSC, rr.encode_response(payload=mv[:READ_RESPONSE_CHUNK_SIZE], mime=current_mime))
+                mv = mv[READ_RESPONSE_CHUNK_SIZE:]
 
         for mime in rr.mime_types:
             current_mime = mime

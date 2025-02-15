@@ -47,7 +47,8 @@ The terminal emulator will reply with a sequence of escape codes of the form::
 
 Here, the ``status=DATA`` packets deliver the data (as base64 encoded bytes)
 associated with each MIME type. The terminal emulator should chunk up the data
-for an individual type, into chunks of size **no more** than 4096 bytes. All
+for an individual type, into chunks of size **no more** than 4096 bytes (4096
+is the size of a chunk *before* base64 encoding). All
 the chunks for a given type must be transmitted sequentially and only once they
 are done the chunks for the next type, if any, should be sent. The end of data
 is indicated by a ``status=DONE`` packet.
@@ -90,7 +91,8 @@ following sequence of packets::
 
 The final packet with no mime and no data indicates end of transmission. The
 data for every MIME type should be split into chunks of no more than 4096
-bytes. All the chunks for a given MIME type must be sent sequentially, before
+bytes (4096 is the size of the data before base64 encoding).
+All the chunks for a given MIME type must be sent sequentially, before
 sending chunks for the next MIME type. After the transmission is complete, the
 terminal replies with a single packet indicating success::
 
