@@ -563,12 +563,14 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
     s->escape_code_written = false;
     if (prefix_char) write_ch_to_ansi_buf(s, prefix_char);
 
-    switch (self->attrs.prompt_kind) {
-        case UNKNOWN_PROMPT_KIND:
-            break;
-        case PROMPT_START: write_mark_to_ansi_buf(s, "A"); break;
-        case SECONDARY_PROMPT: write_mark_to_ansi_buf(s, "A;k=s"); break;
-        case OUTPUT_START: write_mark_to_ansi_buf(s, "C"); break;
+    if (start_at == 0) {
+        switch (self->attrs.prompt_kind) {
+            case UNKNOWN_PROMPT_KIND:
+                break;
+            case PROMPT_START: write_mark_to_ansi_buf(s, "A"); break;
+            case SECONDARY_PROMPT: write_mark_to_ansi_buf(s, "A;k=s"); break;
+            case OUTPUT_START: write_mark_to_ansi_buf(s, "C"); break;
+        }
     }
     if (s->limit <= start_at) return s->escape_code_written;
 
