@@ -1109,9 +1109,9 @@ load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_
         for (num = 0; num_cells; first_cpu_cell++, first_gpu_cell++, num_cells--) {
             text_in_cell(first_cpu_cell, tc, lc);
             if (first_cpu_cell->is_multicell && first_cpu_cell->x) continue;
-            if (lc->count + num > arraysz(shape_buffer)) break;
-            memcpy(shape_buffer + num, lc->chars, lc->count * sizeof(shape_buffer[0]));
-            num += lc->count;
+            const size_t count = MIN(lc->count, arraysz(shape_buffer) - num);
+            memcpy(shape_buffer + num, lc->chars, count * sizeof(shape_buffer[0]));
+            num += count;
         }
         hb_buffer_add_utf32(harfbuzz_buffer, shape_buffer, num, 0, num);
     }
