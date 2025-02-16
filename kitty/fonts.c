@@ -1103,18 +1103,16 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
 
 static void
 load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *tc, ListOfChars *lc) {
-    index_type num;
+    size_t num = 0;
     hb_buffer_clear_contents(harfbuzz_buffer);
-    while (num_cells) {
-        for (num = 0; num_cells; first_cpu_cell++, num_cells--) {
-            if (first_cpu_cell->is_multicell && first_cpu_cell->x) continue;
-            text_in_cell(first_cpu_cell, tc, lc);
-            const size_t count = MIN(lc->count, arraysz(shape_buffer) - num);
-            memcpy(shape_buffer + num, lc->chars, count * sizeof(shape_buffer[0]));
-            num += count;
-        }
-        hb_buffer_add_utf32(harfbuzz_buffer, shape_buffer, num, 0, num);
+    for (; num_cells; first_cpu_cell++, num_cells--) {
+        if (first_cpu_cell->is_multicell && first_cpu_cell->x) continue;
+        text_in_cell(first_cpu_cell, tc, lc);
+        const size_t count = MIN(lc->count, arraysz(shape_buffer) - num);
+        memcpy(shape_buffer + num, lc->chars, count * sizeof(shape_buffer[0]));
+        num += count;
     }
+    hb_buffer_add_codepoints(harfbuzz_buffer, shape_buffer, num, 0, num);
     hb_buffer_guess_segment_properties(harfbuzz_buffer);
     if (OPT(force_ltr)) hb_buffer_set_direction(harfbuzz_buffer, HB_DIRECTION_LTR);
 }
