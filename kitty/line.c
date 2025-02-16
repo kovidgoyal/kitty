@@ -414,13 +414,13 @@ cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf, size_t sz) {
 }
 
 size_t
-cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf) {
+cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf, size_t sz) {
     char_type ch = lc->chars[0] ? lc->chars[0] : ' ';
     bool include_cc = true;
     if (ch == '\t') { ch = ' '; include_cc = false; }
     size_t n = encode_utf8(ch, buf);
     if (include_cc) {
-        for (unsigned i = 1; i < lc->count; i++) {
+        for (unsigned i = 1; i < lc->count && sz > n + 4; i++) {
             char_type ch = lc->chars[i];
             if (ch != VS15 && ch != VS16) n += encode_utf8(ch, buf + n);
         }

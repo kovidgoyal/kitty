@@ -422,7 +422,7 @@ static struct { char *buf; size_t capacity; } ft_buffer;
 static CFStringRef
 lc_as_fallback(const ListOfChars *lc) {
     ensure_space_for((&ft_buffer), buf, ft_buffer.buf[0], lc->count * 4 + 128, capacity, 256, false);
-    cell_as_utf8_for_fallback(lc, ft_buffer.buf);
+    cell_as_utf8_for_fallback(lc, ft_buffer.buf, ft_buffer.capacity);
     return CFStringCreateWithCString(NULL, ft_buffer.buf, kCFStringEncodingUTF8);
 }
 
