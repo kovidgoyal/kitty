@@ -505,7 +505,7 @@ create_fallback_face(PyObject UNUSED *base_face, const ListOfChars *lc, bool bol
     if (!emoji_presentation && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (!emoji_presentation && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
     if (emoji_presentation) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
-    size_t num = cell_as_unicode_for_fallback(lc, char_buf);
+    size_t num = cell_as_unicode_for_fallback(lc, char_buf, arraysz(char_buf));
     add_charset(pat, num);
     d = _fc_match(pat);
 face_from_descriptor:

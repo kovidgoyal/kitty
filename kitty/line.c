@@ -402,11 +402,11 @@ text_at(Line* self, Py_ssize_t xval) {
 }
 
 size_t
-cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf) {
+cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf, size_t sz) {
     size_t n = 1;
     buf[0] = lc->chars[0] ? lc->chars[0] : ' ';
     if (buf[0] != '\t') {
-        for (unsigned i = 1; i < lc->count; i++) {
+        for (unsigned i = 1; i < lc->count && n < sz; i++) {
             if (lc->chars[i] != VS15 && lc->chars[i] != VS16) buf[n++] = lc->chars[i];
         }
     } else buf[0] = ' ';

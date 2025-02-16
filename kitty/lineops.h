@@ -78,7 +78,7 @@ index_type next_char_pos(const Line *self, index_type x, index_type num);
 index_type prev_char_pos(const Line *self, index_type x, index_type num);
 bool line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char, bool skip_multiline_non_zero_lines) __attribute__((nonnull));
 unsigned int line_length(Line *self);
-size_t cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf);
+size_t cell_as_unicode_for_fallback(const ListOfChars *lc, Py_UCS4 *buf, size_t sz);
 size_t cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf);
 bool unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells, bool skip_multiline_non_zero_lines, ANSIBuf*);
 PyObject* line_as_unicode(Line *, bool, ANSIBuf*);
