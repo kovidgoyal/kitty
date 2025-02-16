@@ -1111,7 +1111,7 @@ load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *t
     for (; num_cells; first_cpu_cell++, num_cells--) {
         if (first_cpu_cell->is_multicell && first_cpu_cell->x) continue;
         text_in_cell(first_cpu_cell, tc, lc);
-        ensure_space_for((&shape_buffer), codepoints, char_type, lc->count + num, capacity, 512, false);
+        ensure_space_for((&shape_buffer), codepoints, shape_buffer.codepoints[0], lc->count + num, capacity, 512, false);
         memcpy(shape_buffer.codepoints + num, lc->chars, lc->count * sizeof(shape_buffer.codepoints[0]));
         num += lc->count;
     }
