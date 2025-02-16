@@ -1102,13 +1102,13 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
 }
 
 static void
-load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, const TextCache *tc, ListOfChars *lc) {
+load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *tc, ListOfChars *lc) {
     index_type num;
     hb_buffer_clear_contents(harfbuzz_buffer);
     while (num_cells) {
-        for (num = 0; num_cells; first_cpu_cell++, first_gpu_cell++, num_cells--) {
-            text_in_cell(first_cpu_cell, tc, lc);
+        for (num = 0; num_cells; first_cpu_cell++, num_cells--) {
             if (first_cpu_cell->is_multicell && first_cpu_cell->x) continue;
+            text_in_cell(first_cpu_cell, tc, lc);
             const size_t count = MIN(lc->count, arraysz(shape_buffer) - num);
             memcpy(shape_buffer + num, lc->chars, count * sizeof(shape_buffer[0]));
             num += count;
@@ -1273,7 +1273,7 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.first_gpu_cell = first_gpu_cell;
     group_state.last_cpu_cell = first_cpu_cell + (num_cells ? num_cells - 1 : 0);
     group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
-    load_hb_buffer(first_cpu_cell, first_gpu_cell, num_cells, tc, &lc);
+    load_hb_buffer(first_cpu_cell, num_cells, tc, &lc);
 
     size_t num_features = fobj->num_ffs_hb_features;
     if (num_features && !disable_ligature) num_features--;  // the last feature is always -calt
