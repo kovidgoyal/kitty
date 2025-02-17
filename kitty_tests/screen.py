@@ -636,6 +636,7 @@ class TestScreen(BaseTest):
         self.ae(ts(True), expected)
         s.scroll(2, True)
         self.ae(ts(), expected)
+        self.ae(ts(True), expected)
         s.reset()
         s.draw('ab   cd')
         s.start_selection(0, 0)
