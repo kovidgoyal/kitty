@@ -633,6 +633,7 @@ class TestScreen(BaseTest):
 
         expected = ''.join(('55555', '\n66666', '\n77777', '\n88888', '\n99999'))
         self.ae(ts(), expected)
+        self.ae(ts(True), expected)
         s.scroll(2, True)
         self.ae(ts(), expected)
         s.reset()

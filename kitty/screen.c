@@ -3626,6 +3626,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
                 index_type end = x_start;
                 while (end < x_limit && line->cpu_cells[end].temp_flag) end++;
                 if (line_as_ansi(line, &s, x_start, end, prefix_char, !is_first_line)) has_escape_codes = true;
+                need_newline = insert_newlines && !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
                 prefix_char = 0;
                 x_start = MAX(x_start + 1, end);
             }
