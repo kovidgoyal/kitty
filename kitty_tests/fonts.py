@@ -251,7 +251,7 @@ def block_helpers(s, sprites, cell_width, cell_height):
 
 class FontBaseTest(BaseTest):
 
-    font_size = 5.0
+    font_size = 16.0
     dpi = 72.
     font_name = 'FiraCode-Medium.otf'
 
