@@ -16,11 +16,12 @@ func parse_scroll_amount(amt string) ([]any, error) {
 	} else {
 		pages := strings.Contains(amt, "p")
 		unscroll := strings.Contains(amt, "u")
+		prompt := strings.Contains(amt, "r")
 		var mult float64 = 1
 		if strings.HasSuffix(amt, "-") && !unscroll {
 			mult = -1
 		}
-		q, err := strconv.ParseFloat(strings.TrimRight(amt, "+-plu"), 64)
+		q, err := strconv.ParseFloat(strings.TrimRight(amt, "+-plur"), 64)
 		if err != nil {
 			return ans, err
 		}
@@ -32,6 +33,8 @@ func parse_scroll_amount(amt string) ([]any, error) {
 			ans[1] = "p"
 		} else if unscroll {
 			ans[1] = "u"
+		} else if prompt {
+			ans[1] = "r"
 		} else {
 			ans[1] = "l"
 		}

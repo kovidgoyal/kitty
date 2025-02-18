@@ -120,6 +120,8 @@ Detailed list of changes
 
 - Speed up rendering of box drawing characters by moving the implementation to native code
 
+- Remote control: `kitten @ scroll-window`: Allow scrolling to previous/next prompt
+
 - macOS: Fix fallback font rendering for bold/italic text not working for some symbols that are present in the Menlo regular face but not the bold/italic faces (:iss:`8282`)
 
 - XTGETTCAP: Fix response invalid for empty string capabilities (:pull:`8304`)
@@ -130,6 +132,7 @@ Detailed list of changes
 
 - Fix a regression in 0.39.0 that caused a crash on invalid Unicode with a
   large number of combining characters in a single cell (:iss:`8318`)
+
 
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
