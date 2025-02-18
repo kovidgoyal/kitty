@@ -518,6 +518,8 @@ class TestParser(BaseTest):
         pb(f'\033]52;p;{payload}\x07', ('clipboard_control', 52, f'p;{payload}'))
         c.clear()
         pb('\033]52;p;xyz\x07', ('clipboard_control', 52, 'p;xyz'))
+        c.clear()
+        pb('\033]22;?__current__\x07', ('set_dynamic_color', 22, '?__current__'))
 
     def test_dcs_codes(self):
         s = self.create_screen()
