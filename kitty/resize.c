@@ -87,8 +87,10 @@ init_src_line(Rewrap *r) {
 
 static void
 first_dest_line(Rewrap *r) {
-    if (r->src.hb_count) historybuf_next_dest_line(r->dest.hb, r->as_ansi_buf, &r->src.line, 0, &r->dest.line, false);
-    else {
+    if (r->src.hb_count) {
+        historybuf_next_dest_line(r->dest.hb, r->as_ansi_buf, &r->src.line, 0, &r->dest.line, false);
+        r->src.line.attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
+    } else {
         r->dest_line_from_linebuf = true;
         linebuf_init_line_at(r->dest.lb, 0, &r->dest.line);
         set_dest_line_attrs(0);
@@ -133,6 +135,7 @@ next_dest_line(Rewrap *r, bool continued) {
         }
     } else {
         r->dest.y = historybuf_next_dest_line(r->dest.hb, r->as_ansi_buf, &r->src.line, r->dest.y, &r->dest.line, continued);
+        r->src.line.attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
     }
     if (r->sb->line_attrs[0].has_dirty_text) {
         CPUCell *cpu_cells; GPUCell *gpu_cells;
