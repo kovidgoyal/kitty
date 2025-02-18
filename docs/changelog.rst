@@ -133,6 +133,8 @@ Detailed list of changes
 - Fix a regression in 0.39.0 that caused a crash on invalid Unicode with a
   large number of combining characters in a single cell (:iss:`8318`)
 
+- Fix ``--hold`` always restoring cursor to block shape instead of respecting the value of :opt:`cursor_shape` (:disc:`8344`)
+
 
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

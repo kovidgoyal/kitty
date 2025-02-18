@@ -618,6 +618,7 @@ parse_kitty_dcs(PS *self, uint8_t *buf, size_t bufsz) {
     dispatch("ask|", handle_remote_askpass, 0)
     dispatch("clone|", handle_remote_clone, 0)
     dispatch("edit|", handle_remote_edit, 0)
+    dispatch("restore-cursor-appearance|", handle_restore_cursor_appearance, 0)
 
     return false;
 #undef dispatch

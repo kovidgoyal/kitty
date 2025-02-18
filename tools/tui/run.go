@@ -222,10 +222,8 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 			defer func() {
 				_, _ = term.WriteString(strings.Join([]string{
 					loop.RESTORE_PRIVATE_MODE_VALUES,
-					"\x1b[=u",                      // reset kitty keyboard protocol to legacy
-					"\x1b[1 q",                     // blinking block cursor
-					loop.DECTCEM.EscapeCodeToSet(), // cursor visible
-					"\x1b]112\a",                   // reset cursor color
+					"\x1b[=u", // reset kitty keyboard protocol to legacy
+					"\x1bP@kitty-restore-cursor-appearance|\a",
 				}, ""))
 				_ = term.Tcsetattr(tty.TCSANOW, &state_before)
 				term.Close()
