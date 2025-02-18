@@ -1193,6 +1193,14 @@ class TestScreen(BaseTest):
             s.cmd_output(2, a.append)
             return ''.join(a)
 
+        s = self.create_screen(cols=5, lines=5, scrollback=15)
+        draw_prompt('P' * s.columns)
+        draw_output(s.lines + 1, 'a')  # ensure prompt is in scrollback
+        draw_prompt('Q' * s.columns)
+        draw_output(s.lines + 1, 'b')  # ensure prompt is in scrollback
+        draw_prompt('R' * s.columns)
+        self.ae(lco(), '0b\n1b\n2b\n3b\n4b\n5b')
+
         s = self.create_screen()
         s.draw('abcd'), s.index(), s.carriage_return()
         s.draw('12'), s.index(), s.carriage_return()

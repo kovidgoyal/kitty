@@ -772,7 +772,7 @@ checked_range_line(Screen *self, int y) {
 
 static bool
 range_line_is_continued(Screen *self, int y) {
-    if (-(int)self->historybuf->count <= y && y < (int)self->lines) return false;
+    if (!(-(int)self->historybuf->count <= y && y < (int)self->lines)) return false;
     if (y < 0) return historybuf_is_line_continued(self->historybuf, -(y + 1));
     return visual_line_is_continued(self, y);
 }
