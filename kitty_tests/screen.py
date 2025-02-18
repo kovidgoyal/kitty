@@ -1258,6 +1258,20 @@ class TestScreen(BaseTest):
         s.scroll_to_prompt(1)
         self.ae(lvco(), '0x\n1x')
 
+        # test that post rewrap prompt lines have correct attributes
+        s = self.create_screen(cols=5, lines=5, scrollback=15)
+        draw_prompt('P' * (s.columns - 2))
+        draw_output(s.lines + 1, 'a')  # ensure prompt is in scrollback
+        draw_prompt('Q' * (s.columns - 2))
+        self.ae(str(s.visual_line(0)), '3a')
+        s.scroll_to_prompt()
+        self.ae(str(s.visual_line(0)), '$ PPP')
+        s.scroll_to_prompt(1)
+        self.ae(str(s.visual_line(0)), '3a')
+        s.resize(s.lines, s.columns - 2)
+        s.scroll_to_prompt()
+        self.ae(str(s.visual_line(0)), '$ P')
+
         # last command output without line break
         s = self.create_screen(cols=10, lines=3)
         draw_prompt('p1')

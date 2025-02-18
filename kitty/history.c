@@ -638,7 +638,9 @@ historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line
     history_buf_set_last_char_as_continuation(self, 0, continued);
     bool needs_clear;
     index_type idx = historybuf_push(self, as_ansi_buf, &needs_clear);
-    *attrptr(self, idx) = src_line->attrs;
+    LineAttrs *a = attrptr(self, idx);
+    *a = src_line->attrs;
+    if (continued) a->prompt_kind = UNKNOWN_PROMPT_KIND;
     init_line(self, idx, dest_line);
     if (needs_clear) {
         zero_at_ptr_count(dest_line->cpu_cells, dest_line->xnum);
