@@ -1967,10 +1967,8 @@ class Boss:
             copts = common_opts_as_dict(get_options())
             final_args: list[str] = []
             for x in args:
-                if x == '@selection':
-                    sel = self.data_for_at(which='@selection', window=w)
-                    if sel:
-                        x = sel
+                if x == '@selection' and (sel := self.data_for_at(which='@selection', window=w)):
+                    x = sel
                 final_args.append(x)
             env = {
                 'KITTY_COMMON_OPTS': json.dumps(copts),
