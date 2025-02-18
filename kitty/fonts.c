@@ -837,7 +837,7 @@ effective_scale(RunFont rf) {
 
 static float
 scaled_cell_dimensions(RunFont rf, unsigned *width, unsigned *height) {
-    float frac = effective_scale(rf);
+    float frac = MAX(effective_scale(rf), 4.0f / *width);
     *width = (unsigned)ceilf(frac * *width);
     *height = (unsigned)ceilf(frac * *height);
     return frac;
