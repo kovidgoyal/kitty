@@ -4078,7 +4078,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
         } else if (line && line->attrs.prompt_kind == OUTPUT_START && !range_line_is_continued(self, y1)) {
             found_output = true; start = y1;
             found_prompt = true;
-            // keep finding the first output start upwards
+            direction = 1;
         }
         y1--; y2++;
     }
@@ -4091,22 +4091,21 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
             line = checked_range_line(self, y1);
             if (line && line->attrs.prompt_kind == PROMPT_START && !range_line_is_continued(self, y1)) {
                 if (direction == 0) {
-                    // find around: stop at prompt start
-                    start = y1 + 1;
+                    found_prompt = true;
                     break;
                 }
                 found_next_prompt = true; end = y1;
             } else if (line && line->attrs.prompt_kind == OUTPUT_START && !range_line_is_continued(self, y1)) {
-                start = y1;
+                found_output = true; start = y1;
+                found_prompt = true;
                 break;
             }
             y1--;
         }
         if (y1 < upward_limit) {
             oo->reached_upper_limit = true;
-            start = upward_limit;
+            found_output = true; start = upward_limit;
         }
-        found_output = true; found_prompt = true;
     }
 
     // find downwards
@@ -4116,12 +4115,18 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
             line = checked_range_line(self, y2);
             if (line && line->attrs.prompt_kind == PROMPT_START) {
                 if (!found_prompt) found_prompt = true;
-                else if (found_output && !found_next_prompt) {
+                else if (found_prompt && !found_output) {
+                    // skip fetching wrapped prompt lines
+                    while (range_line_is_continued(self, y2)) {
+                        y2++;
+                    }
+                } else if (found_output && !found_next_prompt) {
                     found_next_prompt = true; end = y2;
                     break;
                 }
-            } else if (line && line->attrs.prompt_kind == OUTPUT_START && found_prompt && !found_output) {
+            } else if (line && line->attrs.prompt_kind == OUTPUT_START && !found_output) {
                 found_output = true; start = y2;
+                if (!found_prompt) found_prompt = true;
             }
             y2++;
         }
