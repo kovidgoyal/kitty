@@ -343,6 +343,10 @@ class TestScreen(BaseTest):
         s.draw('p' * (s.columns + 2)), s.carriage_return()
         s.resize(s.lines, 2)
         self.assertTrue(str(s.line(s.cursor.y)))
+        s = self.create_screen(cols=5, lines=5, scrollback=15)
+        s.draw('12345'), s.carriage_return(), s.index()
+        s.resize(s.lines, s.columns - 1)
+        self.ae(('1234', '5', ''), tuple(str(s.line(i)) for i in range(s.cursor.y+1)))
 
         s = self.create_screen(scrollback=6)
         s.draw(''.join([str(i) * s.columns for i in range(s.lines)]))
