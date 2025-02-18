@@ -1925,20 +1925,23 @@ class Boss:
         action_on_removal: Callable[[int, 'Boss'], None] | None = None,
         default_data: dict[str, Any] | None = None
     ) -> Any:
-        orig_args, args = list(args), list(args)
         from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler
         is_wrapped = kitten in wrapped_kitten_names()
-        try:
-            end_kitten = create_kitten_handler(kitten, orig_args)
-        except CLIOnlyKitten:
-            is_wrapped = True
-            end_kitten = KittenMetadata()
         if window is None:
             w = self.active_window
             tab = self.active_tab
         else:
             w = window
             tab = w.tabref() if w else None
+        args = list(args)
+        if w is not None and '@selection' in args and (sel := self.data_for_at(which='@selection', window=w)):
+            args = [sel if xa == '@selection' else xa for xa in args]
+        try:
+            end_kitten = create_kitten_handler(kitten, args)
+        except CLIOnlyKitten:
+            is_wrapped = True
+            end_kitten = KittenMetadata()
+
         if end_kitten.no_ui:
             return end_kitten.handle_result(None, w.id if w else 0, self)
 
@@ -1965,11 +1968,6 @@ class Boss:
             else:
                 data = input_data if isinstance(input_data, bytes) else input_data.encode('utf-8')
             copts = common_opts_as_dict(get_options())
-            final_args: list[str] = []
-            for x in args:
-                if x == '@selection' and (sel := self.data_for_at(which='@selection', window=w)):
-                    x = sel
-                final_args.append(x)
             env = {
                 'KITTY_COMMON_OPTS': json.dumps(copts),
                 'KITTY_CHILD_PID': str(w.child.pid),
@@ -1999,7 +1997,7 @@ class Boss:
             try:
                 overlay_window = tab.new_special_window(
                     SpecialWindow(
-                        cmd + final_args,
+                        cmd + args,
                         stdin=data,
                         env=env,
                         cwd=w.cwd_of_child,
