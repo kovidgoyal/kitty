@@ -4126,6 +4126,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
                 }
             } else if (line && line->attrs.prompt_kind == OUTPUT_START && !found_output) {
                 found_output = true; start = y2;
+                if (!found_prompt) found_prompt = true;
             }
             y2++;
         }
