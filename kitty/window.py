@@ -1317,7 +1317,7 @@ class Window:
         if code == 22:
             ret = set_pointer_shape(self.screen, value, self.os_window_id)
             if ret:
-                self.screen.send_escape_code_to_child(ESC_OSC, '22:' + ret)
+                self.screen.send_escape_code_to_child(ESC_OSC, '22;' + ret)
 
         dirtied = default_bg_changed = False
         def change(which: DynamicColor, val: str) -> None:
