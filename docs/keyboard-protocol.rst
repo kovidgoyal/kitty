@@ -164,7 +164,7 @@ keyboard with a Cyrillic keyboard layout pressing the :kbd:`ctrl+С` key will
 be :kbd:`ctrl+c` in the standard layout. So the terminal should send the *base
 layout key* as ``99`` corresponding to the ``c`` key.
 
-If only one alternate key is present, it is the *shifted key* if the terminal
+If only one alternate key is present, it is the *shifted key*. If the terminal
 wants to send only a base layout key but no shifted key, it must use an empty
 sub-field for the shifted key, like this::
 
