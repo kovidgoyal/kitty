@@ -322,6 +322,7 @@ def parsers() -> None:
         'n': ('subscale_n', 'uint'),
         'd': ('subscale_d', 'uint'),
         'v': ('vertical_align', 'uint'),
+        'h': ('horizontal_align', 'uint'),
     }
     text = generate(
         'parse_multicell_code', 'screen_handle_multicell_command', 'multicell_command', keymap, 'MultiCellCommand',

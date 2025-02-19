@@ -44,6 +44,7 @@ static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 #define WIDTH_BITS 3
 #define SUBSCALE_BITS 4
 #define VALIGN_BITS 2
+#define HALIGN_BITS 2
 
 typedef union CPUCell {
     struct {
@@ -59,9 +60,10 @@ typedef union CPUCell {
         char_type x : WIDTH_BITS + SCALE_BITS;
         char_type y : SCALE_BITS;
         char_type width: WIDTH_BITS;
-        char_type vertical_align: VALIGN_BITS;
+        char_type valign: VALIGN_BITS;
+        char_type halign: HALIGN_BITS;
         char_type temp_flag: 1;
-        char_type : 17;
+        char_type : 15;
     };
     struct {
         char_type ch_and_idx: sizeof(char_type) * 8;
@@ -95,7 +97,7 @@ typedef struct {
 } Line;
 
 typedef struct MultiCellCommand {
-    unsigned int width, scale, subscale_n, subscale_d, vertical_align;
+    unsigned int width, scale, subscale_n, subscale_d, vertical_align, horizontal_align;
     size_t payload_sz;
 } MultiCellCommand;
 

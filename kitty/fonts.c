@@ -34,7 +34,11 @@ typedef struct {
 } GPUSpriteTracker;
 
 typedef struct RunFont {
-    unsigned scale, subscale_n, subscale_d, vertical_align, multicell_y;
+    unsigned scale, subscale_n, subscale_d, multicell_y;
+    union {
+        struct { uint8_t vertical: 4; uint8_t horizontal: 4; };
+        uint8_t val;
+    } align;
     ssize_t font_idx;
 } RunFont;
 
@@ -92,7 +96,7 @@ typedef struct ScaledFontData {
 #include "kitty-verstable.h"
 
 typedef union DecorationsKey {
-    struct { uint8_t scale : 8, subscale_n : 8, subscale_d : 8, vertical_align : 8, multicell_y : 8, u1 : 8, u2 : 8, u3 : 8; };
+    struct { uint8_t scale : 8, subscale_n : 8, subscale_d : 8, align : 8, multicell_y : 8, u1 : 8, u2 : 8, u3 : 8; };
     uint64_t val;
 } DecorationsKey;
 static_assert(sizeof(DecorationsKey) == sizeof(uint64_t), "Fix the ordering of DecorationsKey");
@@ -322,7 +326,7 @@ sprite_position_for(FontGroup *fg, RunFont rf, glyph_index *glyphs, unsigned gly
     uint8_t subscale = ((rf.subscale_n & 0xf) << 4) | (rf.subscale_d & 0xf);
     SpritePosition *s = find_or_create_sprite_position(
         font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, cell_count,
-        rf.scale, subscale, rf.multicell_y, rf.vertical_align, &created);
+        rf.scale, subscale, rf.multicell_y, rf.align.val, &created);
     if (!s) { PyErr_NoMemory(); return NULL; }
     return s;
 }
@@ -905,7 +909,7 @@ calculate_regions_for_line(RunFont rf, unsigned cell_height, Region *src, Region
     unsigned src_height = src->bottom;
     Region src_in_full_coords = *src; unsigned full_dest_height = cell_height * rf.scale;
     if (rf.subscale_n && rf.subscale_d) {
-        switch(rf.vertical_align) {
+        switch(rf.align.vertical) {
             case 0: break; // top aligned no change
             case 1: // bottom aligned
                 src_in_full_coords.top = full_dest_height - src_height;
@@ -1012,7 +1016,7 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
 
 static DecorationMetadata
 index_for_decorations(FontGroup *fg, RunFont rf, Region src, Region dest, FontCellMetrics scaled_metrics) {
-    const DecorationsKey key = {.scale=rf.scale, .subscale_n = rf.subscale_n, .subscale_d = rf.subscale_d, .vertical_align = rf.vertical_align, .multicell_y = rf.multicell_y, .u1 = 0, .u2 = 0, .u3 = 0 };
+    const DecorationsKey key = {.scale=rf.scale, .subscale_n = rf.subscale_n, .subscale_d = rf.subscale_d, .align = rf.align.val, .multicell_y = rf.multicell_y, .u1 = 0, .u2 = 0, .u3 = 0 };
     decorations_index_map_t_itr i = vt_get(&fg->decorations_index_map, key);
     if (!vt_is_end(i)) return i.data->val;
     DecorationMetadata val;
@@ -1799,7 +1803,7 @@ cell_cap_for_codepoint(const char_type cp) {
 
 static bool
 run_fonts_are_equal(const RunFont *a, const RunFont *b) {
-    return a->font_idx == b->font_idx && a->scale == b->scale && a->subscale_n == b->subscale_n && a->subscale_d == b->subscale_d && a->vertical_align == b->vertical_align && a->multicell_y == b->multicell_y;
+    return a->font_idx == b->font_idx && a->scale == b->scale && a->subscale_n == b->subscale_n && a->subscale_d == b->subscale_d && a->align.val == b->align.val && a->multicell_y == b->multicell_y;
 }
 
 static bool
@@ -1833,7 +1837,8 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 i += mcd_x_limit(cpu_cell) - cpu_cell->x - 1;
                 continue;
             }
-            cell_font.scale = cpu_cell->scale; cell_font.subscale_n = cpu_cell->subscale_n; cell_font.subscale_d = cpu_cell->subscale_d; cell_font.vertical_align = cpu_cell->vertical_align;
+            cell_font.scale = cpu_cell->scale; cell_font.subscale_n = cpu_cell->subscale_n; cell_font.subscale_d = cpu_cell->subscale_d;
+            cell_font.align.vertical = cpu_cell->valign; cell_font.align.horizontal = cpu_cell->halign;
             cell_font.multicell_y = cpu_cell->y;
         }
         text_in_cell(cpu_cell, line->text_cache, lc);

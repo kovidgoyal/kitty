@@ -53,6 +53,7 @@ def test_multicell(self: TestMulticell) -> None:
         ae('subscale_n')
         ae('subscale_d')
         ae('vertical_align')
+        ae('horizontal_align')
         ae('text')
         ae('natural_width')
         ae('next_char_was_wrapped')
@@ -448,8 +449,8 @@ def test_multicell(self: TestMulticell) -> None:
         s.reset()
 
     s.reset()
-    multicell(s, 'a', width=2, scale=3, subscale_n=1, subscale_d=2, vertical_align=1)
-    ta(f'\x1b]{TEXT_SIZE_CODE};w=2:s=3:n=1:d=2:v=1;a\x07')
+    multicell(s, 'a', width=2, scale=3, subscale_n=1, subscale_d=2, vertical_align=3, horizontal_align=3)
+    ta(f'\x1b]{TEXT_SIZE_CODE};w=2:s=3:n=1:d=2:v=3:h=3;a\x07')
     s.draw('a')
     multicell(s, 'b', width=2)
     s.draw('c')

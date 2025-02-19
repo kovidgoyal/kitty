@@ -79,6 +79,8 @@ There are only a handful of metadata keys, defined in the table below:
 
     "v", "Integer from 0 to 2",  "0", "The vertical alignment to use for fractionally scaled text. ``0`` - top, ``1`` - bottom, ``2`` - centered"
 
+    "h", "Integer from 0 to 2",  "0", "The horizontal alignment to use for fractionally scaled text. ``0`` - left, ``1`` - right, ``2`` - centered"
+
 
 How it works
 ------------------

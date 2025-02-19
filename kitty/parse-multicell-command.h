@@ -23,7 +23,8 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
     scale = 's',
     subscale_n = 'n',
     subscale_d = 'd',
-    vertical_align = 'v'
+    vertical_align = 'v',
+    horizontal_align = 'h'
   };
 
   enum KEYS key = 'a';
@@ -49,6 +50,9 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
         value_state = UINT;
         break;
       case vertical_align:
+        value_state = UINT;
+        break;
+      case horizontal_align:
         value_state = UINT;
         break;
       default:
@@ -131,6 +135,7 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
         U(subscale_n);
         U(subscale_d);
         U(vertical_align);
+        U(horizontal_align);
       default:
         break;
       }
@@ -183,12 +188,13 @@ static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
   }
 
   REPORT_VA_COMMAND(
-      "K s { sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
+      "K s { sI sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
 
       "width", (unsigned int)g.width, "scale", (unsigned int)g.scale,
       "subscale_n", (unsigned int)g.subscale_n, "subscale_d",
       (unsigned int)g.subscale_d, "vertical_align",
-      (unsigned int)g.vertical_align,
+      (unsigned int)g.vertical_align, "horizontal_align",
+      (unsigned int)g.horizontal_align,
 
       "", (char *)parser_buf + payload_start, g.payload_sz);
 

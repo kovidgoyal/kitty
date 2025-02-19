@@ -78,8 +78,11 @@ write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
     if (mcd->subscale_d) {
         w('d'); w('='); nonnegative_integer_as_utf32(mcd->subscale_d, s->output_buf); w(':');
     }
-    if (mcd->vertical_align) {
-        w('v'); w('='); nonnegative_integer_as_utf32(mcd->vertical_align, s->output_buf); w(':');
+    if (mcd->valign) {
+        w('v'); w('='); nonnegative_integer_as_utf32(mcd->valign, s->output_buf); w(':');
+    }
+    if (mcd->halign) {
+        w('h'); w('='); nonnegative_integer_as_utf32(mcd->halign, s->output_buf); w(':');
     }
     if (s->output_buf->buf[s->output_buf->len - 1] == ':') s->output_buf->len--;
     w(';');
@@ -98,12 +101,12 @@ close_multicell(ANSILineState *s) {
 
 static void
 start_multicell_if_needed(ANSILineState *s, const CPUCell *c) {
-    if (!c->natural_width || c->scale > 1 || c->subscale_n || c->subscale_d || c->vertical_align) write_multicell_ansi_prefix(s, c);
+    if (!c->natural_width || c->scale > 1 || c->subscale_n || c->subscale_d || c->valign || c->halign) write_multicell_ansi_prefix(s, c);
 }
 
 static bool
 multicell_is_continuation_of_previous(const CPUCell *prev, const CPUCell *curr) {
-    if (prev->scale != curr->scale || prev->subscale_n != curr->subscale_n || prev->subscale_d != curr->subscale_d || prev->vertical_align != curr->vertical_align) return false;
+    if (prev->scale != curr->scale || prev->subscale_n != curr->subscale_n || prev->subscale_d != curr->subscale_d || prev->valign != curr->valign || prev->halign != curr->halign) return false;
     if (prev->natural_width) return curr->natural_width;
     return prev->width == curr->width && !curr->natural_width;
 }

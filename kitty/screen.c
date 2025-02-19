@@ -1258,7 +1258,8 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     CPUCell mcd = {
         .width=MIN(cmd->width, M(WIDTH_BITS)), .scale=MAX(1u, MIN(cmd->scale, M(SCALE_BITS))),
         .subscale_n=MIN(cmd->subscale_n, M(SUBSCALE_BITS)), .subscale_d=MIN(cmd->subscale_d, M(SUBSCALE_BITS)),
-        .vertical_align=MIN(cmd->vertical_align, M(VALIGN_BITS)), .is_multicell=true
+        .valign=MIN(cmd->vertical_align, M(VALIGN_BITS)), .halign=MIN(cmd->horizontal_align, M(HALIGN_BITS)),
+        .is_multicell=true
     };
 #undef M
     if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);
@@ -5389,10 +5390,10 @@ test_parse_written_data(Screen *screen, PyObject *args) {
 
 static PyObject*
 multicell_data_as_dict(CPUCell mcd) {
-    return Py_BuildValue("{sI sI sI sI sO sI}",
+    return Py_BuildValue("{sI sI sI sI sO sI sI}",
             "scale", (unsigned int)mcd.scale, "width", (unsigned int)mcd.width,
             "subscale_n", (unsigned int)mcd.subscale_n, "subscale_d", (unsigned int)mcd.subscale_d,
-            "natural_width", mcd.natural_width ? Py_True : Py_False, "vertical_align", mcd.vertical_align);
+            "natural_width", mcd.natural_width ? Py_True : Py_False, "vertical_align", mcd.valign, "horizontal_align", mcd.halign);
 }
 
 static PyObject*
