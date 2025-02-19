@@ -1001,7 +1001,7 @@ render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *re
 
 
 static bool
-do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {
+do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, GlyphRenderInfo *ri) {
     unsigned int canvas_width = cell_width * num_cells;
     ensure_render_space(canvas_width, cell_height, num_glyphs);
     CGRect br = CTFontGetBoundingRectsForGlyphs(ct_font, kCTFontOrientationHorizontal, buffers.glyphs, buffers.boxes, num_glyphs);
@@ -1015,7 +1015,7 @@ do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, 
             CGFloat sz = CTFontGetSize(ct_font);
             sz *= canvas_width / right;
             CTFontRef new_font = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
-            bool ret = do_render(new_font, CTFontGetUnitsPerEm(new_font), bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, false, fg, center_glyph);
+            bool ret = do_render(new_font, CTFontGetUnitsPerEm(new_font), bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, false, fg, ri);
             CFRelease(new_font);
             return ret;
         }
@@ -1037,23 +1037,18 @@ do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, 
         Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.bottom=cell_height, .right=canvas_width};
         render_alpha_mask(buffers.render_buf, canvas, &src, &dest, canvas_width, canvas_width, 0xffffff);
     }
-    if (num_cells && (center_glyph || (num_cells == 2 && *was_colored))) {
-        if (debug_rendering) printf("centering glyphs: center_glyph: %d\n", center_glyph);
-        // center glyphs (two cell emoji, PUA glyphs, ligatures, etc)
-        CGFloat delta = (((CGFloat)canvas_width - br.size.width) / 2.f);
-        // FiraCode ligatures result in negative origins
-        if (br.origin.x > 0) delta -= br.origin.x;
-        if (delta >= 1.f) right_shift_canvas(canvas, canvas_width, cell_height, (unsigned)(delta));
-    }
+    ri->canvas_width = canvas_width; ri->rendered_width = (unsigned)ceil(br.size.width); ri->x = 0;
+    // FiraCode ligatures result in negative origins
+    if (br.origin.x > 0) ri->x = (int)br.origin.x;
     return true;
 }
 
 bool
-render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg, bool center_glyph) {
+render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg, GlyphRenderInfo *ri) {
     CTFace *self = (CTFace*)s;
     ensure_render_space(128, 128, num_glyphs);
     for (unsigned i=0; i < num_glyphs; i++) buffers.glyphs[i] = info[i].codepoint;
-    return do_render(self->ct_font, self->units_per_em, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg, center_glyph);
+    return do_render(self->ct_font, self->units_per_em, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg, ri);
 }
 
 // Font tables {{{

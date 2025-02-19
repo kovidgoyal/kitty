@@ -1136,6 +1136,24 @@ render_filled_sprite(pixel *buf, unsigned num_glyphs, FontCellMetrics scaled_met
 }
 
 static void
+apply_horizontal_alignment(pixel *canvas, RunFont rf, bool center_glyph, GlyphRenderInfo ri, unsigned canvas_height, unsigned num_cells, unsigned num_glyphs, bool was_colored) {
+    int delta = 0;
+    (void)was_colored;
+#ifdef __APPLE__
+    if (num_cells == 2 && was_colored) center_glyph = true;
+#endif
+    if (rf.subscale_n && rf.subscale_d && rf.align.horizontal) {
+        delta = ri.canvas_width - ri.rendered_width;
+        if (rf.align.horizontal == 2) delta /= 2;
+    } else if (center_glyph && num_glyphs && num_cells > 1 && ri.rendered_width < ri.canvas_width) {
+        unsigned half = (ri.canvas_width - ri.rendered_width) / 2;
+        if (half > 1) delta = half;
+    }
+    delta -= ri.x;
+    if (delta > 0) right_shift_canvas(canvas, ri.canvas_width, canvas_height, delta);
+}
+
+static void
 render_group(
     FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells,
     hb_glyph_info_t *info, hb_glyph_position_t *positions, RunFont rf, glyph_index *glyphs, unsigned glyph_count,
@@ -1181,7 +1199,11 @@ render_group(
         render_filled_sprite(fg->canvas.buf, num_glyphs, scaled_metrics, num_scaled_cells);
         was_colored = false;
         /*dump_sprite(fg->canvas.buf, scaled_metrics.cell_width * num_scaled_cells, scaled_metrics.cell_height);*/
-    } else render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, scaled_metrics.cell_width, scaled_metrics.cell_height, num_scaled_cells, scaled_metrics.baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
+    } else {
+        GlyphRenderInfo ri = {0};
+        render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, scaled_metrics.cell_width, scaled_metrics.cell_height, num_scaled_cells, scaled_metrics.baseline, &was_colored, (FONTS_DATA_HANDLE)fg, &ri);
+        apply_horizontal_alignment(fg->canvas.buf, rf, center_glyph, ri, scaled_metrics.cell_height, num_scaled_cells, num_glyphs, was_colored);
+    }
     if (PyErr_Occurred()) PyErr_Print();
 
     fg->fcm = unscaled_metrics;  // needed for current_send_sprite_to_gpu()

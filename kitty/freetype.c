@@ -960,7 +960,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 static const ProcessedBitmap EMPTY_PBM = {.factor = 1};
 
 bool
-render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg, bool center_glyph) {
+render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg, GlyphRenderInfo *ri) {
     Face *self = (Face*)f;
     bool is_emoji = *was_colored; *was_colored = is_emoji && self->has_color;
     float x = 0.f, y = 0.f, x_offset = 0.f;
@@ -1003,14 +1003,9 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         free_processed_bitmap(&bm);
     }
 
-    if (center_glyph && num_glyphs) {
-        unsigned int right_edge = (unsigned int)x, delta;
-        // x_advance is wrong for colored bitmaps that have been downsampled
-        if (*was_colored) right_edge = num_glyphs == 1 ? bm.right_edge : canvas_width;
-        if (num_cells > 1 && right_edge < canvas_width && (delta = (canvas_width - right_edge) / 2) && delta > 1) {
-            right_shift_canvas(canvas, canvas_width, cell_height, delta);
-        }
-    }
+    ri->canvas_width = canvas_width; ri->rendered_width = (unsigned)x; ri->x = 0;
+    // x_advance is wrong for colored bitmaps that have been downsampled
+    if (*was_colored) ri->rendered_width = num_glyphs == 1 ? bm.right_edge : canvas_width;
     return true;
 }
 
