@@ -868,11 +868,11 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
             float wfrac = (float)copy.fcm.cell_width / scaled_cell_width, hfrac = (float)copy.fcm.cell_height / scaled_cell_height;
             float frac = MIN(wfrac, hfrac);
             copy.font_sz_in_pts *= frac;
-            while(true) {
+            while (true) {
                 apply_scaling(&copy);
                 calc_cell_metrics(&copy, medium_font->face);
                 if (copy.fcm.cell_width <= scaled_cell_width && copy.fcm.cell_height <= scaled_cell_height) break;
-                if (copy.font_sz_in_pts < 1) fatal("Could not apply scale of %f to font group as font size (%f) is less than minimum threshold", scale, copy.font_sz_in_pts);
+                if (copy.font_sz_in_pts <= 1) break;
                 copy.font_sz_in_pts -= 0.1;
             }
         }
