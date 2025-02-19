@@ -1172,7 +1172,6 @@ render_group(
         is_only_filled_boxes = true;
         for (unsigned i = 1; i < num_glyphs && is_only_filled_boxes; i++) if (global_glyph_render_scratch.glyphs[i] != box_glyph_id) is_only_filled_boxes = false;
     }
-    for (unsigned i = 0; i < global_glyph_render_scratch.lc->count && is_only_filled_boxes; i++) if (global_glyph_render_scratch.lc->chars[i] != 0x2588) is_only_filled_boxes = false;
     /*printf("num_cells: %u num_scaled_cells: %u num_glyphs: %u scale: %f unscaled: %ux%u scaled: %ux%u\n", num_cells, num_scaled_cells, num_glyphs, scale, unscaled_metrics.cell_width, unscaled_metrics.cell_height, scaled_metrics.cell_width, scaled_metrics.cell_height);*/
     if (is_only_filled_boxes) { // special case rendering of █ for tests
         render_filled_sprite(fg->canvas.buf, num_glyphs, scaled_metrics, num_scaled_cells);
