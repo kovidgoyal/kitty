@@ -723,8 +723,6 @@ START_ALLOW_CASE_RANGE
     ssize_t ans;
     switch(lc->chars[0]) {
         case 0:
-        case ' ':
-        case 0x2002:  // en-space
         case '\t':
         case IMAGE_PLACEHOLDER_CHAR:
             return BLANK_FONT;
@@ -742,6 +740,7 @@ START_ALLOW_CASE_RANGE
             if (allow_use_of_box_fonts) return BOX_FONT;
             /* fallthrough */
         default:
+            if (lc->count == 1 && (lc->chars[0] == ' ' || lc->chars[0] == 0x2002 /* en-space */)) return BLANK_FONT;
             *is_emoji_presentation = has_emoji_presentation(cpu_cell, lc);
             ans = in_symbol_maps(fg, lc->chars[0]);
             if (ans > -1) return ans;
