@@ -321,6 +321,7 @@ class Rendering(FontBaseTest):
         block_test(full_block)
         block_test(full_block, full_block, full_block, full_block, scale=2)
         block_test(full_block, empty_block, empty_block, empty_block, scale=2, subscale_n=1, subscale_d=2)
+        block_test(empty_block, full_block, empty_block, empty_block, scale=2, subscale_n=1, subscale_d=2, horizontal_align=1)
         block_test(full_block, full_block, empty_block, empty_block, scale=2, subscale_n=1, subscale_d=2, text='██')
         block_test(empty_block, empty_block, full_block, empty_block, scale=2, subscale_n=1, subscale_d=2, vertical_align=1)
         block_test(quarter_block, scale=1, subscale_n=1, subscale_d=2)
