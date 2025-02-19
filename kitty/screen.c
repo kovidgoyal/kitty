@@ -1258,7 +1258,7 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     CPUCell mcd = {
         .width=MIN(cmd->width, M(WIDTH_BITS)), .scale=MAX(1u, MIN(cmd->scale, M(SCALE_BITS))),
         .subscale_n=MIN(cmd->subscale_n, M(SUBSCALE_BITS)), .subscale_d=MIN(cmd->subscale_d, M(SUBSCALE_BITS)),
-        .vertical_align=MIN(cmd->vertical_align, 7u), .is_multicell=true
+        .vertical_align=MIN(cmd->vertical_align, M(VALIGN_BITS)), .is_multicell=true
     };
 #undef M
     if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);

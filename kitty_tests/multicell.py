@@ -129,9 +129,14 @@ def test_multicell(self: TestMulticell) -> None:
         for x in range(1, 3):
             comb(x, y)
     comb(0, 1)
+    s = self.create_screen(cols=7 * 7, lines=7)
+    multicell(s, 'a', scale=7, width=7)
+    for y in range(s.lines):
+        for x in range(s.columns):
+            ac(x, y, is_multicell=True, x=x, y=y)
 
     # Test wrapping
-    s.reset()
+    s = self.create_screen(cols=6, lines=6)
     s.draw('x' * (s.columns - 1))
     multicell(s, 'a', scale=2)
     ac(s.columns - 1, 0, is_multicell=False, text='', next_char_was_wrapped=True)
