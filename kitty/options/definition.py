@@ -1284,8 +1284,8 @@ also applies to requests to quit the entire application (all OS windows, via the
 :ac:`quit` action). Negative values are converted to positive ones, however,
 with :opt:`shell_integration` enabled, using negative values means windows
 sitting at a shell prompt are not counted, only windows where some command is
-currently running. Note that if you want confirmation when closing individual
-windows, you can map the :ac:`close_window_with_confirmation` action.
+currently running or is running in the background. Note that if you want confirmation
+when closing individual windows, you can map the :ac:`close_window_with_confirmation` action.
 '''
     )
 egr()  # }}}

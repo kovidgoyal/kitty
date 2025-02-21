@@ -120,6 +120,8 @@ Detailed list of changes
 
 - Speed up rendering of box drawing characters by moving the implementation to native code
 
+- When confirming if a window should be closed consider it active if it has running background processes (:iss:`8358`)
+
 - Remote control: `kitten @ scroll-window`: Allow scrolling to previous/next prompt
 
 - macOS: Fix fallback font rendering for bold/italic text not working for some symbols that are present in the Menlo regular face but not the bold/italic faces (:iss:`8282`)

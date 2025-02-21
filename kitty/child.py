@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
-from typing import TYPE_CHECKING, DefaultDict, Optional, TypedDict
+from typing import TYPE_CHECKING, DefaultDict, Iterable, Optional, TypedDict
 
 import kitty.fast_data_types as fast_data_types
 
@@ -110,6 +110,13 @@ def cached_process_data() -> Generator[None, None, None]:
     finally:
         delattr(process_group_map, 'cached_map')
 
+
+def session_id(pids: Iterable[int]) -> int:
+    for pid in pids:
+        with suppress(OSError):
+            if (sid := os.getsid(pid)) > -1:
+                return sid
+    return -1
 
 def parse_environ_block(data: str) -> dict[str, str]:
     """Parse a C environ block of environment variables into a dictionary."""
@@ -383,6 +390,14 @@ class Child:
             ans = list(self.argv)
         return ans
 
+    def process_desc(self, pid: int) -> ProcessDesc:
+        ans: ProcessDesc = {'pid': pid, 'cmdline': None, 'cwd': None}
+        with suppress(Exception):
+            ans['cmdline'] = self.cmdline_of_pid(pid)
+        with suppress(Exception):
+            ans['cwd'] = cwd_of_process(pid) or None
+        return ans
+
     @property
     def foreground_processes(self) -> list[ProcessDesc]:
         if self.child_fd is None:
@@ -390,16 +405,31 @@ class Child:
         try:
             pgrp = os.tcgetpgrp(self.child_fd)
             foreground_processes = processes_in_group(pgrp) if pgrp >= 0 else []
+            return [self.process_desc(x) for x in foreground_processes]
+        except Exception:
+            return []
 
-            def process_desc(pid: int) -> ProcessDesc:
-                ans: ProcessDesc = {'pid': pid, 'cmdline': None, 'cwd': None}
-                with suppress(Exception):
-                    ans['cmdline'] = self.cmdline_of_pid(pid)
-                with suppress(Exception):
-                    ans['cwd'] = cwd_of_process(pid) or None
-                return ans
+    @property
+    def background_processes(self) -> list[ProcessDesc]:
+        if self.child_fd is None:
+            return []
+        try:
+            foreground_process_group_id = os.tcgetpgrp(self.child_fd)
+            if foreground_process_group_id < 0:
+                return []
+            gmap = process_group_map()
 
-            return [process_desc(x) for x in foreground_processes]
+            sid = session_id(gmap.get(foreground_process_group_id, ()))
+            if sid < 0:
+                return []
+            ans = []
+            for grp_id, pids in gmap.items():
+                if grp_id == foreground_process_group_id:
+                    continue
+                if session_id(pids) == sid:
+                    for pid in pids:
+                        ans.append(self.process_desc(pid))
+            return ans
         except Exception:
             return []
 

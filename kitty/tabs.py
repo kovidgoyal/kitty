@@ -300,14 +300,6 @@ class Tab:  # {{{
     def effective_title(self) -> str:
         return self.name or self.title
 
-    @property
-    def number_of_windows_with_running_programs(self) -> int:
-        ans = 0
-        for window in self:
-            if window.has_running_program:
-                ans += 1
-        return ans
-
     def get_cwd_of_active_window(self, oldest: bool = False) -> str | None:
         w = self.active_window
         return w.get_cwd_of_child(oldest) if w else None
@@ -1141,13 +1133,6 @@ class TabManager:  # {{{
         if t is not None:
             return t.active_window
         return None
-
-    @property
-    def number_of_windows_with_running_programs(self) -> int:
-        count = 0
-        for tab in self:
-            count += tab.number_of_windows_with_running_programs
-        return count
 
     @property
     def number_of_windows(self) -> int:
