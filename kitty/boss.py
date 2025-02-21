@@ -974,10 +974,10 @@ class Boss:
                     background_program = background_program or (q['cmdline'] or [''])[0]
         if num := num_running_programs + num_background_programs:
             if num_running_programs:
-                return ngettext(_('It is running: {}.'), _('It is running: {} and {} other programs.'), num_running_programs).format(
+                return ngettext(_('It is running: {}.'), _('It is running: {0} and {1} other programs.'), num_running_programs).format(
                         green(running_program), num_running_programs - 1), num
             if num_background_programs:
-                return ngettext(_('It is running in the background: {}.'), _('It is running in the background: {} and {} other programs.'),
+                return ngettext(_('It is running in the background: {}.'), _('It is running in the background: {0} and {1} other programs.'),
                                 num_background_programs).format(green(background_program), num_background_programs - 1) + ' ' + _(
                                         '\n\nBackground programs should be run with the disown command'
                                         ' to allow them to continue running when the terminal is closed.'), num
