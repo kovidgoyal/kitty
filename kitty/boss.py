@@ -964,14 +964,15 @@ class Boss:
         num_background_programs = 0
         running_program = background_program = ''
         windows = sorted(windows, key=lambda w: 0 if w is active_window else 1)
-        for window in windows:
-            if window.has_running_program:
-                num_running_programs += 1
-                running_program = running_program or (window.child.foreground_cmdline or [''])[0]
-            elif bp := window.child.background_processes:
-                num_background_programs += len(bp)
-                for q in bp:
-                    background_program = background_program or (q['cmdline'] or [''])[0]
+        with cached_process_data():
+            for window in windows:
+                if window.has_running_program:
+                    num_running_programs += 1
+                    running_program = running_program or (window.child.foreground_cmdline or [''])[0]
+                elif bp := window.child.background_processes:
+                    num_background_programs += len(bp)
+                    for q in bp:
+                        background_program = background_program or (q['cmdline'] or [''])[0]
         if num := num_running_programs + num_background_programs:
             if num_running_programs:
                 return ngettext(_('It is running: {0}.'), _('It is running: {0} and {1} other programs.'), num_running_programs).format(
