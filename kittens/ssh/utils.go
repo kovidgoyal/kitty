@@ -3,8 +3,8 @@
 package ssh
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -37,19 +37,13 @@ var SSHOptions = sync.OnceValue(func() (ssh_options map[string]string) {
 		}
 	}()
 	cmd := exec.Command(SSHExe())
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return
-	}
-	if err = cmd.Start(); err != nil {
-		return
-	}
-	raw, err := io.ReadAll(stderr)
-	if err != nil {
-		return
-	}
-	text := utils.UnsafeBytesToString(raw)
-	if strings.Contains(text, "OpenSSL version mismatch.") {
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	_ = cmd.Run()
+
+	text := stderr.String()
+	if text == "" || strings.Contains(text, "OpenSSL version mismatch.") {
 		// https://bugzilla.mindrot.org/show_bug.cgi?id=3548
 		return
 	}
