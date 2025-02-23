@@ -137,6 +137,8 @@ Detailed list of changes
 
 - Fix ``--hold`` always restoring cursor to block shape instead of respecting the value of :opt:`cursor_shape` (:disc:`8344`)
 
+- When dragging in rectangle select mode use a crosshair mouse cursor configurable via :opt:`pointer_shape_when_dragging`
+
 
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -227,8 +229,6 @@ Detailed list of changes
 - When re-attaching a detached tab preserve internal layout state such as biases and orientations (:iss:`8106`)
 
 - hints/unicode_input kittens: Do not lose keypresses that are sent very rapidly via an automation tool immediately after the kitten is launched (:iss:`7089`)
-
-- When dragging in rectangle select mode use a crosshair mouse cursor configurable via :opt:`pointer_shape_when_dragging`
 
 
 0.37.0 [2024-10-30]
