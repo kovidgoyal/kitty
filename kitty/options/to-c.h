@@ -300,6 +300,12 @@ pointer_shape(PyObject *shape_name) {
     return TEXT_POINTER;
 }
 
+static inline void
+dragging_pointer_shape(PyObject *parts, Options *opts) {
+    opts->pointer_shape_when_dragging = pointer_shape(PyTuple_GET_ITEM(parts, 0));
+    opts->pointer_shape_when_dragging_rectangle = pointer_shape(PyTuple_GET_ITEM(parts, 1));
+}
+
 static inline int
 macos_colorspace(PyObject *csname) {
     if (PyUnicode_CompareWithASCIIString(csname, "srgb") == 0) return 1;

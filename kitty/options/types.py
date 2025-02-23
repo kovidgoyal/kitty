@@ -26,7 +26,6 @@ choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
 choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
 choices_for_placement_strategy = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
-choices_for_pointer_shape_when_dragging = choices_for_default_pointer_shape
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
 choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
@@ -572,7 +571,7 @@ class Options:
     open_url_with: list[str] = ['default']
     paste_actions: frozenset[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     placement_strategy: choices_for_placement_strategy = 'center'
-    pointer_shape_when_dragging: choices_for_pointer_shape_when_dragging = 'beam'
+    pointer_shape_when_dragging: tuple[str, str] = ('beam', 'crosshair')
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
     remember_window_size: bool = True
     repaint_delay: int = 10

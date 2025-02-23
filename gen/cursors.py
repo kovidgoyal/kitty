@@ -118,7 +118,7 @@ def main(args: list[str]=sys.argv) -> None:
     patch_file('glfw/x11_window.c', 'glfw to xc mapping', '\n'.join(f'        {x}' for x in glfw_xfont_map))
     patch_file('kitty/data-types.h', 'mouse shapes', '\n'.join(f'    {x},' for x in enum_to_glfw_map))
     patch_file(
-        'kitty/options/definition.py', 'pointer shape names', '\n'.join(f'    {x!r},' for x in kitty_to_enum_map),
+        'kitty/options/utils.py', 'pointer shape names', '\n'.join(f'    {x!r},' for x in kitty_to_enum_map),
         start_marker='# ', end_marker='',
     )
     patch_file('kitty/options/to-c.h', 'pointer shapes', '\n'.join(

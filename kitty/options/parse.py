@@ -16,9 +16,9 @@ from kitty.options.utils import (
     edge_width, env, filter_notification, font_features, hide_window_decorations, macos_option_as_alt,
     macos_titlebar_color, menu_map, modify_font, narrow_symbols, notify_on_cmd_finish,
     optional_edge_width, parse_font_spec, parse_map, parse_mouse_map, paste_actions,
-    remote_control_password, resize_debounce_time, scrollback_lines, scrollback_pager_history_size,
-    shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
-    tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    pointer_shape_when_dragging, remote_control_password, resize_debounce_time, scrollback_lines,
+    scrollback_pager_history_size, shell_integration, store_multiple, symbol_map, tab_activity_symbol,
+    tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
     tab_title_template, titlebar_color, to_cursor_shape, to_cursor_unfocused_shape, to_font_size,
     to_layout_names, to_modifiers, transparent_background_colors, underline_exclusion, url_prefixes,
     url_style, visual_bell_duration, visual_window_select_characters, window_border_width,
@@ -1158,12 +1158,7 @@ class Parser:
     choices_for_placement_strategy = frozenset(('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'))
 
     def pointer_shape_when_dragging(self, val: str, ans: dict[str, typing.Any]) -> None:
-        val = val.lower()
-        if val not in self.choices_for_pointer_shape_when_dragging:
-            raise ValueError(f"The value {val} is not a valid choice for pointer_shape_when_dragging")
-        ans["pointer_shape_when_dragging"] = val
-
-    choices_for_pointer_shape_when_dragging = choices_for_default_pointer_shape
+        ans['pointer_shape_when_dragging'] = pointer_shape_when_dragging(val)
 
     def pointer_shape_when_grabbed(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()

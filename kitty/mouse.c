@@ -263,9 +263,11 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
 #define HANDLER(name) static void name(Window UNUSED *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx)
 
 static void
-set_mouse_cursor_when_dragging(void) {
-    if (mouse_cursor_shape != OPT(pointer_shape_when_dragging)) {
-        mouse_cursor_shape = OPT(pointer_shape_when_dragging);
+set_mouse_cursor_when_dragging(Screen *screen) {
+    MouseShape expected_shape = OPT(pointer_shape_when_dragging);
+    if (screen && screen->selections.count && screen->selections.items[0].rectangle_select) expected_shape = OPT(pointer_shape_when_dragging_rectangle);
+    if (mouse_cursor_shape != expected_shape) {
+        mouse_cursor_shape = expected_shape;
         set_mouse_cursor(mouse_cursor_shape);
     }
 }
@@ -276,7 +278,7 @@ update_drag(Window *w) {
     if (screen && screen->selections.in_progress) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, (SelectionUpdate){0});
     }
-    set_mouse_cursor_when_dragging();
+    set_mouse_cursor_when_dragging(screen);
 }
 
 static bool
@@ -759,7 +761,7 @@ mouse_selection(Window *w, int code, int button) {
             extend_selection(w, false, false);
             break;
     }
-    set_mouse_cursor_when_dragging();
+    set_mouse_cursor_when_dragging(screen);
 #undef S
 }
 

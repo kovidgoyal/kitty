@@ -734,7 +734,7 @@ set_glfw_mouse_pointer_shape_in_window(GLFWwindow *w, MouseShape type) {
         case NO_DROP_POINTER: set_glfw_mouse_cursor(w, GLFW_NO_DROP_CURSOR); break;
         case GRAB_POINTER: set_glfw_mouse_cursor(w, GLFW_GRAB_CURSOR); break;
         case GRABBING_POINTER: set_glfw_mouse_cursor(w, GLFW_GRABBING_CURSOR); break;
-        /* end enum to glfw */
+/* end enum to glfw */
     }
 }
 

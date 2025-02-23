@@ -90,7 +90,7 @@ typedef struct {
     struct { monotonic_t on_end, on_pause; } resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
     MouseShape default_pointer_shape;
-    MouseShape pointer_shape_when_dragging;
+    MouseShape pointer_shape_when_dragging, pointer_shape_when_dragging_rectangle;
     struct {
         UrlPrefix *values;
         size_t num, max_prefix_len;

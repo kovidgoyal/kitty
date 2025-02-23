@@ -501,7 +501,7 @@ convert_from_opts_default_pointer_shape(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_pointer_shape_when_dragging(PyObject *val, Options *opts) {
-    opts->pointer_shape_when_dragging = pointer_shape(val);
+    dragging_pointer_shape(val, opts);
 }
 
 static void
