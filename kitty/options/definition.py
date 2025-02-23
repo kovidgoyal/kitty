@@ -1492,9 +1492,12 @@ opt('background', '#000000',
     option_type='to_color', ctype='color_as_int',
     )
 
-opt('background_opacity', '1.0',
-    option_type='unit_float', ctype='float',
-    long_text='''
+opt(
+    'background_opacity',
+    '1.0',
+    option_type='unit_float',
+    ctype='float',
+    long_text="""
 The opacity of the background. A number between zero and one, where one is
 opaque and zero is fully transparent. This will only work if supported by the
 OS (for instance, when using a compositor under X11). Note that it only sets
@@ -1509,14 +1512,19 @@ launch your editor. See also :opt:`transparent_background_colors`.
 Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit. When using a low value for this setting, it is
 desirable that you set the :opt:`background` color to a color the matches the
-general color of the desktop background, for best text rendering.  If you want
-to dynamically change transparency of windows, set
+general color of the desktop background, for best text rendering. Note that
+to workaround window managers not doing gamma-corrected blending kitty
+makes background_opacity non-linear which means, especially for light backgrounds
+you might need to make the value much lower than you expect to get good results,
+see :iss:`6218` for details.
+
+If you want to dynamically change transparency of windows, set
 :opt:`dynamic_background_opacity` to :code:`yes` (this is off by default as it
 has a performance cost). Changing this option when reloading the config will
 only work if :opt:`dynamic_background_opacity` was enabled in the original
 config.
-'''
-    )
+""",
+)
 
 opt('background_blur', '0', option_type='int', ctype='int',
     long_text='''
