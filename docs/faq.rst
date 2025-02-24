@@ -347,7 +347,7 @@ many alternate icons available, click on an icon to visit its homepage:
    :target: https://github.com/hristost/kitty-alternative-icon
    :width: 256
 
-.. image:: https://github.com/igrmk/whiskers/raw/main/whiskers.svg
+.. image:: https://github.com/igrmk/whiskers/raw/main/whiskers_512x512.png
    :target: https://github.com/igrmk/whiskers
    :width: 256
 
