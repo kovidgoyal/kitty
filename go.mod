@@ -8,7 +8,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/edwvee/exiffix v0.0.0-20240229113213-0dbb146775be
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/kovidgoyal/imaging v1.6.4
 	github.com/seancfoley/ipaddress-go v1.7.0
