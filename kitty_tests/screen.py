@@ -1331,6 +1331,30 @@ class TestScreen(BaseTest):
         s.scroll_to_prompt(1)
         self.ae(lvco(), '0wrapout\n0y')
 
+        # test: losing markers past scrollback
+        s = self.create_screen(lines=10, scrollback=0)
+        draw_prompt('a' * (s.columns * 3))
+        draw_output(1, 'v' * (s.columns * 2)), draw_output(1, 'w', False)
+        draw_prompt('b')
+        draw_output(1, 'x')
+        # remove prompt start above, set last visited to within prompt
+        s.clear_scrollback()
+        s.scroll_to_prompt(1)
+        self.ae(lvco(), '0vvvvvvvvvv\n0w')
+        # remove output start above, set last visited to within output
+        draw_output(3, 'y', False), draw_output(1, 'z', False)
+        s.clear_scrollback()
+        s.scroll_to_prompt(1)
+        self.ae(lvco(), 'vvvvvv\n0w')
+        draw_output(1, 'end', False)
+        s.clear_scrollback()
+        s.scroll_to_prompt(1)
+        self.ae(lvco(), 'v\n0w')
+        # clear last visited line without setting new one
+        draw_output(1, 'end', False)
+        s.clear_scrollback()
+        self.ae(lvco(), '')
+
         # test that post rewrap prompt lines have correct attributes
         s = self.create_screen(cols=5, lines=5, scrollback=15)
         draw_prompt('P' * (s.columns - 2))
