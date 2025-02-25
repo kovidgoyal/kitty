@@ -4122,7 +4122,8 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
         }
         if (y1 < upward_limit) {
             oo->reached_upper_limit = true;
-            found_output = true; start = upward_limit;
+            found_output = direction != 0; start = upward_limit;
+            found_prompt = direction != 0;
         }
     }
 
