@@ -4133,8 +4133,13 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
             if (on_screen_only && !found_output && y2 > screen_limit) break;
             line = checked_range_line(self, y2);
             if (line && line->attrs.prompt_kind == PROMPT_START) {
-                if (!found_prompt) found_prompt = true;
-                else if (found_prompt && !found_output) {
+                if (!found_prompt) {
+                    if (direction == 0) {
+                        found_next_prompt = true; end = y2;
+                        break;
+                    }
+                    found_prompt = true;
+                } else if (found_prompt && !found_output) {
                     // skip fetching wrapped prompt lines
                     while (range_line_is_continued(self, y2)) {
                         y2++;
