@@ -565,6 +565,9 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             REPORT_COMMAND(screen_pop_dynamic_colors);
             screen_pop_colors(self->screen, 0);
             break;
+        case 666:
+            REPORT_ERROR("Ignoring OSC 666, typically used by VTE terminals for shell integration");
+            break;
         case 697:
             REPORT_ERROR("Ignoring OSC 697, typically used by Fig for shell integration");
             break;
