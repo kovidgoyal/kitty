@@ -151,6 +151,7 @@ def process_env() -> dict[str, str]:
     if ssl_env_var is not None:
         ans.pop(ssl_env_var, None)
     ans.pop('XDG_ACTIVATION_TOKEN', None)
+    ans.pop('VTE_VERSION', None)  # Used by the stupid VTE shell integration script that is installed system wide, sigh
     return ans
 
 
