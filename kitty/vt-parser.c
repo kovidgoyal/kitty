@@ -492,12 +492,13 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             START_DISPATCH
             DISPATCH_OSC(set_title);
             END_DISPATCH
+        case 5: case 105: REPORT_ERROR("Ignoring OSC 5/105, used by XTerm to change special colors used for rendering bold/italic/underline"); break;
+        case 6: case 106: REPORT_ERROR("Ignoring OSC 6/106, used by XTerm to enable/disable special colors used for rendering bold/italic/underline"); break;
         case 4:
         case 104:
             START_DISPATCH
             DISPATCH_OSC_WITH_CODE(set_color_table_color);
             END_DISPATCH
-        case 6:
         case 7:
 #ifdef DUMP_COMMANDS
             START_DISPATCH
@@ -539,6 +540,10 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             if (is_extended_osc && code == 52) code = -52;
             DISPATCH_OSC_WITH_CODE(clipboard_control);
             END_DISPATCH
+        case 46: REPORT_ERROR("Ignoring OSC 46 used for file logging in XTerm"); break;
+        case 50: REPORT_ERROR("Ignoring OSC 50 used for font changing in XTerm"); break;
+        case 51: REPORT_ERROR("Ignoring OSC 51 used by emacs shell"); break;
+        case 60: case 61: REPORT_ERROR("Ignoring OSC 60/61 used for query control in XTerm"); break;
         case 66:
             parse_multicell_code(self, buf + i, limit - i);
             break;
@@ -565,12 +570,20 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             REPORT_COMMAND(screen_pop_dynamic_colors);
             screen_pop_colors(self->screen, 0);
             break;
-        case 666:
-            REPORT_ERROR("Ignoring OSC 666, typically used by VTE terminals for shell integration");
-            break;
-        case 697:
-            REPORT_ERROR("Ignoring OSC 697, typically used by Fig for shell integration");
-            break;
+        case 440: REPORT_ERROR("Ignoring OSC 440 used for audio by mintty"); break;
+        case 633: REPORT_ERROR("Ignoring OSC 633, use by Windows Terminal for VSCode actions"); break;
+        case 666: REPORT_ERROR("Ignoring OSC 666, typically used by VTE terminals for shell integration"); break;
+        case 697: REPORT_ERROR("Ignoring OSC 697, typically used by Fig for shell integration"); break;
+        case 701: REPORT_ERROR("Ignoring OSC 701, used by mintty for locale"); break;
+        case 3008: REPORT_ERROR("Ignoring OSC 3008, used by systemd for OSC-context"); break;
+        case 7704: REPORT_ERROR("Ignoring OSC 7704, used by mintty for ANSI colors"); break;
+        case 7750: REPORT_ERROR("Ignoring OSC 7750, used by mintty for Emoji style"); break;
+        case 7770: REPORT_ERROR("Ignoring OSC 7770, used by mintty for font size"); break;
+        case 7721: REPORT_ERROR("Ignoring OSC 7721, used by mintty for copy window title"); break;
+        case 7771: REPORT_ERROR("Ignoring OSC 7771, used by mintty for glyph coverage"); break;
+        case 7777: REPORT_ERROR("Ignoring OSC 7777, used by mintty for window size"); break;
+        case 77119: REPORT_ERROR("Ignoring OSC 7777, used by mintty for wide chars"); break;
+        case 9001: REPORT_ERROR("Ignoring OSC 9001, used by windows terminal"); break;
         default:
             REPORT_UKNOWN_ESCAPE_CODE("OSC", buf);
             break;
