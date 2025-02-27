@@ -27,7 +27,7 @@ from .types import run_once
 from .typing import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
 
-debug_desktop_integration = False
+debug_desktop_integration = False  # set by NotificationManager
 
 
 def image_type(data: bytes) -> str:
@@ -624,6 +624,8 @@ class MacOSIntegration(DesktopIntegration):
     def notification_activated(self, event: str, ident: str, button_id: str) -> None:
         if event == 'live':
             live_ids = tuple(int(x) for x in ident.split(',') if x)
+            if debug_desktop_integration:
+                log_error(f'Live notifications: {live_ids}')
             self.notification_manager.purge_dead_notifications(live_ids)
             self.live_notification_queries, queries = [], self.live_notification_queries
             for channel_id, req_id in queries:
