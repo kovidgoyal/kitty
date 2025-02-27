@@ -438,7 +438,7 @@ ident_in_list_of_notifications(NSString *ident, NSArray<UNNotification*> *list) 
 
 void
 cocoa_report_live_notifications(const char* ident) {
-    do_notification_callback(ident, "live", "");
+    do_notification_callback(ident, "live", ident ? ident : "");
 }
 
 static bool

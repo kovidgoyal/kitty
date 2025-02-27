@@ -640,8 +640,10 @@ class MacOSIntegration(DesktopIntegration):
             return
         if event == 'created':
             n = self.notification_manager.notification_created(desktop_notification_id)
-            from .fast_data_types import cocoa_live_delivered_notifications
-            cocoa_live_delivered_notifications()  # so that we purge dead notifications
+            # so that we purge dead notifications, check for live notifications
+            # after a few seconds, cant check right away as cocoa does not
+            # report the created notification as live.
+            add_timer(self.check_live_delivered_notifications, 5.0, False)
             if n and n.sound_name in standard_sound_names:
                 from .fast_data_types import cocoa_play_system_sound_by_id_async
                 cocoa_play_system_sound_by_id_async(standard_sound_names[n.sound_name][1])
@@ -665,6 +667,10 @@ class MacOSIntegration(DesktopIntegration):
                     if debug_desktop_integration:
                         log_error('No category found with buttons:', n.buttons)
                         log_error('Current categories:', self.current_categories)
+
+    def check_live_delivered_notifications(self, *a: object) -> None:
+        from .fast_data_types import cocoa_live_delivered_notifications
+        cocoa_live_delivered_notifications()
 
 
 class FreeDesktopIntegration(DesktopIntegration):
