@@ -139,7 +139,7 @@ Detailed list of changes
 
 - When dragging in rectangle select mode use a crosshair mouse cursor configurable via :opt:`pointer_shape_when_dragging`
 
-- macOS: Fix waiting for result from desktop notification not working (:disc:`8379`)
+- macOS: notify kitten: Fix waiting for result from desktop notification not working (:disc:`8379`)
 
 
 0.39.1 [2025-02-01]
