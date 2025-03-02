@@ -433,6 +433,13 @@ followed by request for the `primary device attributes
 attributes is received without getting back an answer for the progressive
 enhancement the terminal does not support this protocol.
 
+.. note::
+   Terminal implementations of this protocol are **strongly** encouraged to
+   implement all progressive enhancements. It does not make sense to
+   implement only a subset. Nonetheless, there are likely to be some terminal
+   implementations that do not do so, applications can detect such
+   implementations by first setting the desired progressive enhancements and
+   then querying for the :ref:`current progressive enhancement <progressive_enhancement>`
 
 Legacy key event encoding
 --------------------------------
