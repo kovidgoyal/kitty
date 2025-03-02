@@ -88,10 +88,12 @@ Where to launch the child process:
     A new :term:`kitty window <window>` in the current tab
 
 :code:`tab`
-    A new :term:`tab` in the current OS window
+    A new :term:`tab` in the current OS window. Not available when the
+    :doc:`launch <launch>` command is used in :ref:`startup sessions <sessions>`.
 
 :code:`os-window`
-    A new :term:`operating system window <os_window>`
+    A new :term:`operating system window <os_window>`.  Not available when the
+    :doc:`launch <launch>` command is used in :ref:`startup sessions <sessions>`.
 
 :code:`overlay`
     An :term:`overlay window <overlay>` covering the current active kitty window
