@@ -77,6 +77,7 @@ class Session:
         self.default_title = default_title
         self.os_window_size: WindowSizes | None = None
         self.os_window_class: str | None = None
+        self.os_window_name: str | None = None
         self.os_window_state: str | None = None
         self.focus_os_window: bool = False
 
@@ -211,6 +212,8 @@ def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = N
                 ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
+            elif cmd == 'os_window_name':
+                ans.os_window_name = rest
             elif cmd == 'os_window_state':
                 ans.os_window_state = rest
             elif cmd == 'resize_window':

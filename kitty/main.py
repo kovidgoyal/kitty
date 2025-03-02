@@ -223,6 +223,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
     with cached_values_for(run_app.cached_values_name) as cached_values:
         startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
         wincls = (startup_sessions[0].os_window_class if startup_sessions else '') or args.cls or appname
+        winname = (startup_sessions[0].os_window_name if startup_sessions else '') or args.name or wincls or appname
         window_state = (args.start_as if args.start_as and args.start_as != 'normal' else None) or (
             getattr(startup_sessions[0], 'os_window_state', None) if startup_sessions else None
         )
@@ -231,7 +232,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
             window_id = create_os_window(
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
                     pre_show_callback,
-                    args.title or appname, args.name or args.cls or appname,
+                    args.title or appname, winname,
                     wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config)
         boss = Boss(opts, args, cached_values, global_shortcuts, talk_fd)
         boss.start(window_id, startup_sessions)
