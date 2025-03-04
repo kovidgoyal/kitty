@@ -150,6 +150,11 @@ vec3 choose_color(float q, vec3 a, vec3 b) {
     return mix(b, a, q);
 }
 
+float choose_alpha(float q, float a, float b) {
+    return mix(b, a, q);
+}
+
+
 float is_cursor(uint x, uint y) {
     uint clamped_x = clamp(x, cursor_x1, cursor_x2);
     uint clamped_y = clamp(y, cursor_y1, cursor_y2);
@@ -252,11 +257,13 @@ void main() {
     // }}}
 
     // Background {{{
+    float orig_bg_alpha = 1;
 #if PHASE == PHASE_BOTH && !defined(TRANSPARENT)  // fast case single pass opaque background
     bg_alpha = 1;
     draw_bg = 1;
 #else
     bg_alpha = calc_background_opacity(bg_as_uint);
+    orig_bg_alpha = bg_alpha;
 #if (PHASE == PHASE_BACKGROUND)
     // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
     float cell_has_non_default_bg = step(1.f, abs(float(bg_as_uint - bg_colors0))); // 0 if has default bg else 1
@@ -281,5 +288,8 @@ void main() {
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
     background = choose_color(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg);
+    // we use max so that opacity of the block cursor cell background goes from orig_bg_alpha to 1
+    float effective_cursor_opacity = max(cursor_opacity, orig_bg_alpha) * draw_bg;
+    bg_alpha = choose_alpha(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
     // }}}
 }
