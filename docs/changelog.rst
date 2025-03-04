@@ -141,7 +141,7 @@ Detailed list of changes
 
 - macOS: notify kitten: Fix waiting for result from desktop notification not working (:disc:`8379`)
 
-- Wayland: Fix mouse pointer position update not being sent when focus regained (:iss`8397`)
+- Wayland: Fix mouse pointer position update not being sent when focus regained (:iss`8397`, :iss:`8398`)
 
 
 0.39.1 [2025-02-01]
