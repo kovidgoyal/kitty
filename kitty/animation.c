@@ -135,6 +135,7 @@ solve_curve_x(const BezierParameters *p, double x, double epsilon) {
     }
     if (fabs(x2) < epsilon) return t2;
 
+    t0 = 0.0, t1 = 0.0, t2 = x, x2 = 0.0;
     // Fall back to the bisection method for reliability.
     unsigned iteration = 0;
     while (t0 < t1 && iteration++ < max_bisection_iterations) {
