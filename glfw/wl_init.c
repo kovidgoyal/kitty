@@ -94,9 +94,11 @@ pointerHandleEnter(
         window->wl.hovered = true;
         window->wl.cursorPosX = x;
         window->wl.cursorPosY = y;
-
         _glfwPlatformSetCursor(window, window->wl.currentCursor);
         _glfwInputCursorEnter(window, true);
+        // Ensure kitty updates the mouse position, see https://github.com/kovidgoyal/kitty/issues/8397
+        _glfwInputCursorPos(window, x, y);
+        _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
     }
 }
 
