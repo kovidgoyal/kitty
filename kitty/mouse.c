@@ -361,6 +361,14 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
 }
 
 static bool
+should_handle_in_kitty(Window *w, Screen *screen, int button) {
+    bool in_tracking_mode = (
+        screen->modes.mouse_tracking_mode == ANY_MODE ||
+        (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0));
+    return !in_tracking_mode || global_state.active_drag_in_window == w->id;
+}
+
+static bool
 set_mouse_position(Window *w, bool *mouse_cell_changed, bool *cell_half_changed) {
     unsigned int x = 0, y = 0;
     bool in_left_half_of_cell = false;
@@ -385,11 +393,7 @@ HANDLER(handle_move_event) {
     if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
     Screen *screen = w->render_data.screen;
     if (OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
-    bool in_tracking_mode = (
-        screen->modes.mouse_tracking_mode == ANY_MODE ||
-        (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0));
-    bool handle_in_kitty = !in_tracking_mode || global_state.active_drag_in_window == w->id;
-    if (handle_in_kitty) {
+    if (should_handle_in_kitty(w, screen, button)) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
         if (!mouse_cell_changed && screen->modes.mouse_tracking_protocol != SGR_PIXEL_PROTOCOL) return;
@@ -691,7 +695,7 @@ update_mouse_pointer_shape(void) {
 }
 
 void
-enter_event(void) {
+enter_event(int modifiers) {
 #ifdef __APPLE__
     // On cocoa there is no way to configure the window manager to
     // focus windows on mouse enter, so we do it ourselves
@@ -699,6 +703,20 @@ enter_event(void) {
         focus_os_window(global_state.callback_os_window, false, NULL);
     }
 #endif
+    // If the mouse is grabbed send a move event to update the cursor position
+    // since the last report.
+    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
+    unsigned window_idx; bool in_tab_bar;
+    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    if (!w || in_tab_bar) return;
+    bool mouse_cell_changed = false;
+    bool cell_half_changed = false;
+    if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
+    Screen *screen = w->render_data.screen;
+    int button = currently_pressed_button();
+    if (!screen || should_handle_in_kitty(w, screen, button)) return;
+    int sz = encode_mouse_button(w, button, button >=0 ? DRAG : MOVE, modifiers);
+    if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
 }
 
 static void
