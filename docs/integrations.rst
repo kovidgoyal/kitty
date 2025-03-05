@@ -59,6 +59,13 @@ graphics protocol.
 Blazing fast terminal file manager, with built-in kitty graphics protocol support
 (implemented both Classic protocol and Unicode placeholders).
 
+.. _tool_clifm:
+
+`clifm <https://github.com/leo-arch/clifm>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The shell-like, command line terminal file manager, uses the kitty graphics and
+keyboard protocols.
+
 .. _tool_hunter:
 
 `hunter <https://github.com/rabite0/hunter>`_
