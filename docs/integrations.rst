@@ -32,6 +32,12 @@ A terminal PDF viewer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A terminal PDF viewer
 
+.. _tool_meowpdf:
+
+`meowpdf <https://github.com/monoamine11231/meowpdf>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal PDF viewer with GUI-like usage and Vim-like keybindings written in Rust
+
 .. _tool_mdcat:
 
 `mdcat <https://github.com/lunaryorn/mdcat>`_
