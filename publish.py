@@ -45,18 +45,28 @@ def echo_cmd(cmd: Iterable[str]) -> None:
     end = '\n'
     if isatty:
         end = f'\x1b[m{end}'
-        print('\x1b[32m', end='')
+        print('\x1b[32m', end='')  # ]]]]]
     print(shlex.join(cmd), end=end, flush=True)
 
 
-def call(*cmd: str, cwd: Optional[str] = None, echo: bool = False) -> None:
+def call(*cmd: str, cwd: Optional[str] = None, echo: bool = False, timeout: float | None = None) -> None:
     if len(cmd) == 1:
         q = shlex.split(cmd[0])
     else:
         q = list(cmd)
     if echo:
         echo_cmd(cmd)
-    ret = subprocess.Popen(q, cwd=cwd).wait()
+    p = subprocess.Popen(q, cwd=cwd)
+    try:
+        ret = p.wait(timeout)
+    except subprocess.TimeoutExpired:
+        p.terminate()
+        try:
+            p.wait(1)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+        raise
     if ret != 0:
         raise SystemExit(ret)
 
@@ -71,9 +81,9 @@ def run_build(args: Any) -> None:
     m = runpy.run_path('./setup.py', run_name='__publish__')
     vcs_rev: str = m['get_vcs_rev']()
 
-    def run_with_retry(cmd: str) -> None:
+    def run_with_retry(cmd: str, timeout: float | None = 20 * 60 ) -> None:
         try:
-            call(cmd, echo=True)
+            call(cmd, echo=True, timeout=timeout)
         except (SystemExit, Exception):
             needs_retry = building_nightly and 'linux' not in cmd
             if not needs_retry:
@@ -82,7 +92,7 @@ def run_build(args: Any) -> None:
             if 'macos' in cmd:
                 call('python ../bypy macos shutdown')
             time.sleep(60)
-            call(cmd, echo=True)
+            call(cmd, echo=True, timeout=timeout)
 
     for x in ('64', 'arm64'):
         prefix = f'python ../bypy linux --arch {x} '
