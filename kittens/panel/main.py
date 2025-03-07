@@ -9,12 +9,12 @@ from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
 from kitty.constants import appname, is_macos, is_wayland
 from kitty.fast_data_types import (
-    GLFW_EDGE_TOP,
     GLFW_EDGE_BOTTOM,
-    GLFW_EDGE_LEFT,
-    GLFW_EDGE_RIGHT,
     GLFW_EDGE_CENTER,
+    GLFW_EDGE_LEFT,
     GLFW_EDGE_NONE,
+    GLFW_EDGE_RIGHT,
+    GLFW_EDGE_TOP,
     GLFW_FOCUS_EXCLUSIVE,
     GLFW_FOCUS_NOT_ALLOWED,
     GLFW_FOCUS_ON_DEMAND,
