@@ -9,11 +9,12 @@ from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
 from kitty.constants import appname, is_macos, is_wayland
 from kitty.fast_data_types import (
+    GLFW_EDGE_TOP,
     GLFW_EDGE_BOTTOM,
     GLFW_EDGE_LEFT,
-    GLFW_EDGE_NONE,
     GLFW_EDGE_RIGHT,
-    GLFW_EDGE_TOP,
+    GLFW_EDGE_CENTER,
+    GLFW_EDGE_NONE,
     GLFW_FOCUS_EXCLUSIVE,
     GLFW_FOCUS_NOT_ALLOWED,
     GLFW_FOCUS_ON_DEMAND,
@@ -32,13 +33,13 @@ OPTIONS = r'''
 --lines
 type=int
 default=1
-The number of lines shown in the panel. Ignored for background and vertical panels.
+The number of lines shown in the panel. Ignored for background, centered, and vertical panels.
 
 
 --columns
 type=int
 default=1
-The number of columns shown in the panel. Ignored for background and horizontal panels.
+The number of columns shown in the panel. Ignored for background, centered, and horizontal panels.
 
 
 --margin-top
@@ -70,7 +71,7 @@ Only works on a Wayland compositor that supports the wlr layer shell protocol.
 
 
 --edge
-choices=top,bottom,left,right,background,none
+choices=top,bottom,left,right,background,center,none
 default=top
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
@@ -78,8 +79,10 @@ The value :code:`background` means make the panel the "desktop wallpaper". This
 is only supported on Wayland, not X11 and note that when using sway if you set
 a background in your sway config it will cover the background drawn using this
 kitten.
-The value :code:`none` anchors the panel to the top left corner by default
-and the panel should be placed using margins parameters, works only on Wayland.
+The value :code:`center` anchors the panel to all sides and covers the entire
+display by default. The panel can be shrinked using the margin parameters.
+The value :code:`none` anchors the panel to the top left corner and should be
+placed using the margin parameters, works only on Wayland.
 
 
 --layer
@@ -131,8 +134,8 @@ type=int
 default=-1
 On a Wayland compositor that supports the wlr layer shell protocol, request a given exclusive zone for the panel.
 Please refer to the wlr layer shell documentation for more details on the meaning of exclusive and its value.
-If :option:`--edge` is set to anything else than :code:`none`, this flag will not have any effect unless
-the flag :option:`--override-exclusive-zone` is also set.
+If :option:`--edge` is set to anything else than :code:`center` or :code:`none`, this flag will not have any
+effect unless the flag :option:`--override-exclusive-zone` is also set.
 If :option:`--edge` is set to :code:`background`, this option has no effect.
 
 
@@ -215,7 +218,7 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]
             spacing = es('top') + es('bottom')
             window_height = int(cell_height * args.lines / yscale + (dpi_y / 72) * spacing + 1)
             window_width = monitor_width
-        elif args.edge == 'background':
+        elif args.edge in {'background', 'center'}:
             window_width, window_height = monitor_width, monitor_height
         else:
             spacing = es('left') + es('right')
@@ -233,7 +236,7 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
              'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
     edge = {
-        'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'none': GLFW_EDGE_NONE
+        'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'center': GLFW_EDGE_CENTER, 'none': GLFW_EDGE_NONE
     }.get(opts.edge, GLFW_EDGE_TOP)
     focus_policy = {
         'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND
