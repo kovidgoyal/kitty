@@ -79,7 +79,7 @@ is only supported on Wayland, not X11 and note that when using sway if you set
 a background in your sway config it will cover the background drawn using this
 kitten.
 The value :code:`none` anchors the panel to the top left corner by default
-and the panel should be placed using margins parameters.
+and the panel should be placed using margins parameters, works only on Wayland.
 
 
 --layer
@@ -191,7 +191,10 @@ window_width = window_height = 0
 def setup_x11_window(win_id: int) -> None:
     if is_wayland():
         return
-    func = globals()[f'create_{args.edge}_strut']
+    try:
+        func = globals()[f'create_{args.edge}_strut']
+    except KeyError:
+        raise SystemExit(f'The value {args.edge} is not support for --edge on X11')
     strut = func(win_id, window_width, window_height)
     make_x11_window_a_dock_window(win_id, strut)
 
