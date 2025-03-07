@@ -1441,6 +1441,11 @@ StartupNotify=true
 Exec=kitty
 Icon=kitty
 Categories=System;TerminalEmulator;
+X-TerminalArgExec=--
+X-TerminalArgTitle=--title
+X-TerminalArgAppId=--class
+X-TerminalArgDir=--working-directory
+X-TerminalArgHold=--hold
 ''')
     with open(os.path.join(deskdir, 'kitty-open.desktop'), 'w') as f:
         f.write(
