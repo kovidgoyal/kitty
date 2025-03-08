@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import errno
 import os
 import shlex
 import shutil
@@ -101,8 +102,15 @@ class ShellIntegration(BaseTest):
                 i -= 1
             yield pty
         finally:
-            if os.path.exists(home_dir):
-                shutil.rmtree(home_dir)
+            while os.path.exists(home_dir):
+                try:
+                    shutil.rmtree(home_dir)
+                except OSError as e:
+                    # As of fish 4 fish runs a background daemon generating
+                    # completions.
+                    if e.errno == errno.ENOTEMPTY:
+                        continue
+                    raise
 
     @unittest.skipUnless(shutil.which('zsh'), 'zsh not installed')
     def test_zsh_integration(self):
