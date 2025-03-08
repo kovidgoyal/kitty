@@ -94,7 +94,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.40.0 [future]
+0.40.0 [2025-03-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :doc:`Allow terminal programs to use text in different font sizes <text-sizing-protocol>` (:iss:`8226`)
