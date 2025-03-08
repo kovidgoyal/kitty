@@ -1009,8 +1009,11 @@ layer_set_properties(_GLFWwindow *window) {
                     panel_width = window->wl.width;
                     if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.width;
                     break;
+                case GLFW_EDGE_CENTER:
+                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+                    break;
                 case GLFW_EDGE_NONE:
-                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP; // None is anchored to "top left"
+                    which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
                     panel_width = window->wl.width;
                     panel_height = window->wl.height;
                     break;

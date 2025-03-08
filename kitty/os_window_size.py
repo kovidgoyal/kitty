@@ -38,7 +38,7 @@ def sanitize_window_size(x: Any) -> int:
     return max(20, min(ans, 50000))
 
 
-def edge_spacing(which: EdgeLiteral, opts:WindowSizeData | Options | None = None) -> float:
+def edge_spacing(which: EdgeLiteral, opts: WindowSizeData | Options | None = None) -> float:
     if opts is None:
         opts = get_options()
     margin: float = getattr(opts.single_window_margin_width, which)
