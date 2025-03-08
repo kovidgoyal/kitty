@@ -79,10 +79,11 @@ The value :code:`background` means make the panel the "desktop wallpaper". This
 is only supported on Wayland, not X11 and note that when using sway if you set
 a background in your sway config it will cover the background drawn using this
 kitten.
+Additionally, there are two Wayland only values: :code:`center` and :code:`none`.
 The value :code:`center` anchors the panel to all sides and covers the entire
-display by default. The panel can be shrinked using the margin parameters.
+display by default. The panel can be shrunk using the margin parameters.
 The value :code:`none` anchors the panel to the top left corner and should be
-placed using the margin parameters, works only on Wayland.
+placed using the margin parameters.
 
 
 --layer
@@ -134,7 +135,7 @@ type=int
 default=-1
 On a Wayland compositor that supports the wlr layer shell protocol, request a given exclusive zone for the panel.
 Please refer to the wlr layer shell documentation for more details on the meaning of exclusive and its value.
-If :option:`--edge` is set to anything else than :code:`center` or :code:`none`, this flag will not have any
+If :option:`--edge` is set to anything other than :code:`center` or :code:`none`, this flag will not have any
 effect unless the flag :option:`--override-exclusive-zone` is also set.
 If :option:`--edge` is set to :code:`background`, this option has no effect.
 

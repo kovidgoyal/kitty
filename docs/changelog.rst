@@ -145,6 +145,9 @@ Detailed list of changes
 
 - Fix cursor blink animation when :opt:`background_opacity` is less than one (:iss:`8401`)
 
+- Wayland: panel kitten: Add a :code:`center` mode for creating panels to ease
+  creation of centered popups in Wayland (:pull:`8411`)
+
 
 0.39.1 [2025-02-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1041,9 +1041,7 @@ edge_spacing(GLFWEdge which) {
         case GLFW_EDGE_BOTTOM: edge = "bottom"; break;
         case GLFW_EDGE_LEFT: edge = "left"; break;
         case GLFW_EDGE_RIGHT: edge = "right"; break;
-        case GLFW_EDGE_CENTER:
-        case GLFW_EDGE_NONE:
-            return 0;
+        case GLFW_EDGE_CENTER: case GLFW_EDGE_NONE: return 0;
     }
     if (!edge_spacing_func) {
         log_error("Attempt to call edge_spacing() without first setting edge_spacing_func");
