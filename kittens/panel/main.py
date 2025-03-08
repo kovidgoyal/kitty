@@ -223,7 +223,7 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]
             window_width, window_height = monitor_width, monitor_height
         else:
             spacing = es('left') + es('right')
-            window_width = int(cell_width * args.lines / xscale + (dpi_x / 72) * spacing + 1)
+            window_width = int(cell_width * args.columns / xscale + (dpi_x / 72) * spacing + 1)
             window_height = monitor_height
         return window_width, window_height
 
