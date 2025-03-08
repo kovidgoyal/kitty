@@ -94,6 +94,7 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
 
 #if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
+    over_lumininace = dot(over.rgb, Y);
 #endif
 
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
@@ -109,6 +110,7 @@ vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     float over_lumininace = dot(over.rgb, Y);
 #if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
+    over_lumininace = dot(over.rgb, Y);
 #endif
     // This is the original gamma-incorrect rendering, it is the solution of the following equation:
     //
