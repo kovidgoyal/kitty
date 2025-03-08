@@ -215,16 +215,21 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]
         global window_width, window_height
         monitor_width, monitor_height = glfw_primary_monitor_size()
 
-        if args.edge in {'top', 'bottom'}:
+        if args.edge in {'left', 'right'}:
+            spacing = es('left') + es('right')
+            window_width = int(cell_width * args.columns / xscale + (dpi_x / 72) * spacing + 1)
+            window_height = monitor_height
+        elif args.edge in {'top', 'bottom'}:
             spacing = es('top') + es('bottom')
             window_height = int(cell_height * args.lines / yscale + (dpi_y / 72) * spacing + 1)
             window_width = monitor_width
         elif args.edge in {'background', 'center'}:
             window_width, window_height = monitor_width, monitor_height
         else:
-            spacing = es('left') + es('right')
-            window_width = int(cell_width * args.lines / xscale + (dpi_x / 72) * spacing + 1)
-            window_height = monitor_height
+            x_spacing = es('left') + es('right')
+            window_width = int(cell_width * args.columns / xscale + (dpi_x / 72) * x_spacing + 1)
+            y_spacing = es('top') + es('bottom')
+            window_height = int(cell_height * args.lines / yscale + (dpi_y / 72) * y_spacing + 1)
         return window_width, window_height
 
     return initial_window_size
