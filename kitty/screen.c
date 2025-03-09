@@ -2990,6 +2990,7 @@ copy_selections(Selections *dest, const Selections *src) {
     }
     dest->count = src->count;
     for (unsigned i = 0; i < dest->count; i++) memcpy(dest->items + i, src->items + i, sizeof(dest->items[0]));
+    dest->last_rendered_count = src->last_rendered_count;
     return true;
 }
 
@@ -4683,6 +4684,7 @@ scroll_to_prompt(Screen *self, PyObject *args) {
 bool
 screen_is_selection_dirty(Screen *self) {
     IterationData q;
+    if (self->paused_rendering.expires_at) return false;
     if (self->scrolled_by != self->last_rendered.scrolled_by) return true;
     if (self->selections.last_rendered_count != self->selections.count || self->url_ranges.last_rendered_count != self->url_ranges.count) return true;
     for (size_t i = 0; i < self->selections.count; i++) {
