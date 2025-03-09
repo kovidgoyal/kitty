@@ -425,9 +425,7 @@ class Child:
                 return []
             ans = []
             for grp_id, pids in gmap.items():
-                if grp_id == foreground_process_group_id:
-                    continue
-                if session_id(pids) == sid:
+                if grp_id != foreground_process_group_id and session_id(pids) == sid:
                     for pid in pids:
                         ans.append(self.process_desc(pid))
             return ans
