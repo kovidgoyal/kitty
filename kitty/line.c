@@ -189,7 +189,7 @@ prev_char_pos(const Line *self, index_type x, index_type num) {
     const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells - 1;
     if (ans->is_multicell) ans -= ans->x;
     while (num-- && --ans > limit) if (ans->is_multicell) ans -= ans->x;
-    return ans > limit ? ans - self->cpu_cells : self->xnum;
+    return ans > limit ? (index_type)(ans - self->cpu_cells) : self->xnum;
 }
 
 
