@@ -517,6 +517,9 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             START_DISPATCH
             DISPATCH_OSC_WITH_CODE(desktop_notify)
             END_DISPATCH
+        case 13: case 14: case 15: case 16: case 18:
+            REPORT_ERROR("Ignoring OSC 13,14,15,16 and 18 used for pointer and Textronic colors by XTerm"); break;
+            break;
         case 10:
         case 11:
         case 12:
