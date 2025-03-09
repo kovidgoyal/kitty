@@ -423,11 +423,10 @@ class Child:
             sid = session_id(gmap.get(foreground_process_group_id, ()))
             if sid < 0:
                 return []
-            ans = []
+            ans: list[ProcessDesc] = []
             for grp_id, pids in gmap.items():
                 if grp_id != foreground_process_group_id and session_id(pids) == sid:
-                    for pid in pids:
-                        ans.append(self.process_desc(pid))
+                    ans.extend(map(self.process_desc, pids))
             return ans
         except Exception:
             return []
