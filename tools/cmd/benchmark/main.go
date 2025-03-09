@@ -209,7 +209,7 @@ func images() (r result, err error) {
 
 func long_escape_codes() (r result, err error) {
 	data := random_string_of_bytes(8024, ascii_printable)
-	// OSC 6 is document reporting which kitty ignores after parsing
+	// OSC 6 is document reporting or XTerm special color which kitty ignores after parsing
 	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
 	const desc = "Long escape codes"
 	duration, data_sz, reps, err := benchmark_data(desc, data, opts)

@@ -493,7 +493,13 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             DISPATCH_OSC(set_title);
             END_DISPATCH
         case 5: case 105: REPORT_ERROR("Ignoring OSC 5/105, used by XTerm to change special colors used for rendering bold/italic/underline"); break;
-        case 6: case 106: REPORT_ERROR("Ignoring OSC 6/106, used by XTerm to enable/disable special colors used for rendering bold/italic/underline"); break;
+        case 6: case 106: {  // report only once as this is used by benchmark kitten causing log spam
+            static bool reported = false;
+            if (!reported) {
+                reported = true;
+                REPORT_ERROR("Ignoring OSC 6/106, used by XTerm to enable/disable special colors used for rendering bold/italic/underline");
+            }
+        } break;
         case 4:
         case 104:
             START_DISPATCH
