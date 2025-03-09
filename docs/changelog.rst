@@ -99,6 +99,9 @@ Detailed list of changes
 
 - Do not count background processes by default for :opt:`confirm_os_window_close` (:iss:`8358`)
 
+- Fix flickering of hyperlink underline when client program continuously
+  redraws on mouse movement (:iss:`8414`)
+
 0.40.0 [2025-03-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
