@@ -87,6 +87,53 @@ vec3 fg_override(float under_luminance, float over_lumininace, vec3 over) {
 	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
 }
 #endif
+#if (APPLY_MIN_CONTRAST_RATIO == 1)
+float contrast_ratio(float under_luminance, float over_luminance) {
+    return (max(under_luminance, over_luminance) + 0.05f) / (min(under_luminance, over_luminance) + 0.05f);
+}
+vec3 increase_luminance(vec3 over, float ratio, float target_ratio, float under_luminance) {
+    vec3 one = vec3(1.f);
+    while (ratio < target_ratio && any(lessThan(over, one))) {
+        over = clamp(over + (one - over) * 0.1f + 0.02f, 0.f, 1.f); // add 0.02 to converge faster towards 1
+        ratio = contrast_ratio(under_luminance, dot(over, Y));
+    }
+    return over;
+}
+vec3 decrease_luminance(vec3 over, float ratio, float target_ratio, float under_luminance) {
+    vec3 zero = vec3(0.f);
+    while (ratio < target_ratio && any(greaterThan(over, zero))) {
+        over = clamp(over * 0.9f - 0.02f, 0.f, 1.f); // subtract 0.02 to converge faster towards 0
+        ratio = contrast_ratio(under_luminance, dot(over, Y));
+    }
+    return over;
+}
+vec3 ensure_min_contrast_ratio(float under_luminance, float over_luminance, vec3 under, vec3 over) {
+    // as in https://github.com/xtermjs/xterm.js/blob/2042bb85023714e55c0c2e986b5000e33b17c414/src/common/Color.ts#L288
+    float ratio = contrast_ratio(under_luminance, over_luminance);
+    if (ratio < MIN_CONTRAST_RATIO) {
+        if (over_luminance < under_luminance) {
+            vec3 result_a = decrease_luminance(over, ratio, MIN_CONTRAST_RATIO, under_luminance);
+            float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
+            if (result_a_ratio < ratio) {
+                vec3 result_b = increase_luminance(over, ratio, MIN_CONTRAST_RATIO, under_luminance);
+                float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
+                return result_a_ratio > result_b_ratio ? result_a : result_b;
+            }
+            return result_a;
+        } else {
+            vec3 result_a = increase_luminance(over, ratio, MIN_CONTRAST_RATIO, under_luminance);
+            float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
+            if (result_a_ratio < ratio) {
+                vec3 result_b = decrease_luminance(over, ratio, MIN_CONTRAST_RATIO, under_luminance);
+                float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
+                return result_a_ratio > result_b_ratio ? result_a : result_b;
+            }
+            return result_a;
+        }
+    }
+    return over;
+}
+#endif
 
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float under_luminance = dot(under, Y);
@@ -94,6 +141,10 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
 
 #if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
+    over_lumininace = dot(over.rgb, Y);
+#endif
+#if (APPLY_MIN_CONTRAST_RATIO == 1)
+    over.rgb = ensure_min_contrast_ratio(under_luminance, over_lumininace, under, over.rgb);
     over_lumininace = dot(over.rgb, Y);
 #endif
 
@@ -110,6 +161,10 @@ vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     float over_lumininace = dot(over.rgb, Y);
 #if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
+    over_lumininace = dot(over.rgb, Y);
+#endif
+#if (APPLY_MIN_CONTRAST_RATIO == 1)
+    over.rgb = ensure_min_contrast_ratio(under_luminance, over_lumininace, under, over.rgb);
     over_lumininace = dot(over.rgb, Y);
 #endif
     // This is the original gamma-incorrect rendering, it is the solution of the following equation:
