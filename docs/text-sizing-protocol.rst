@@ -160,7 +160,8 @@ The fractional scale **does not** affect the number of cells the text occupies,
 instead, it just adjusts the rendered font size within those cells.
 The fraction is specified using an integer numerator and denominator (``n`` and
 ``d``). In addition, by using the ``v`` key one can vertically align the
-fractionally scaled text at top, bottom or middle.
+fractionally scaled text at top, bottom or middle. Similarly, the ``h`` key
+does horizontal alignment — left, right or centered.
 
 When using fractional scaling one often wants to fit more than a single
 character per cell. To accommodate that, there is the ``w`` key. This specifies
