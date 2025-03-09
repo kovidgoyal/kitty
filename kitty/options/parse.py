@@ -10,7 +10,7 @@ from kitty.conf.utils import (
 from kitty.options.utils import (
     action_alias, active_tab_title_template, allow_hyperlinks, bell_on_tab, box_drawing_scale,
     clear_all_mouse_actions, clear_all_shortcuts, clipboard_control, clone_source_strategies,
-    config_or_absolute_path, copy_on_select, cursor_blink_interval, cursor_text_color,
+    config_or_absolute_path, confirm_close, copy_on_select, cursor_blink_interval, cursor_text_color,
     cursor_trail_decay, deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
     edge_width, env, filter_notification, font_features, hide_window_decorations, macos_option_as_alt,
@@ -906,7 +906,7 @@ class Parser:
         ans['command_on_bell'] = to_cmdline(val)
 
     def confirm_os_window_close(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['confirm_os_window_close'] = int(val)
+        ans['confirm_os_window_close'] = confirm_close(val)
 
     def copy_on_select(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['copy_on_select'] = copy_on_select(val)

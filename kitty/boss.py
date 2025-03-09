@@ -962,6 +962,7 @@ class Boss:
     def close_windows_with_confirmation_msg(self, windows: Iterable[Window], active_window: Window | None) -> tuple[str, int]:
         num_running_programs = 0
         num_background_programs = 0
+        count_background = get_options().confirm_os_window_close[1]
         running_program = background_program = ''
         windows = sorted(windows, key=lambda w: 0 if w is active_window else 1)
         with cached_process_data():
@@ -969,7 +970,7 @@ class Boss:
                 if window.has_running_program:
                     num_running_programs += 1
                     running_program = running_program or (window.child.foreground_cmdline or [''])[0]
-                elif bp := window.child.background_processes:
+                elif count_background and (bp := window.child.background_processes):
                     num_background_programs += len(bp)
                     for q in bp:
                         background_program = background_program or (q['cmdline'] or [''])[0]
@@ -1141,7 +1142,7 @@ class Boss:
 
     def confirm_tab_close(self, tab: Tab) -> None:
         msg, num_active_windows = self.close_windows_with_confirmation_msg(tab, tab.active_window)
-        x = get_options().confirm_os_window_close
+        x = get_options().confirm_os_window_close[0]
         num = num_active_windows if x < 0 else len(tab)
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
@@ -1777,7 +1778,7 @@ class Boss:
         for tab in tm:
             windows += list(tab)
         msg, num_active_windows = self.close_windows_with_confirmation_msg(windows, active_window)
-        q = get_options().confirm_os_window_close
+        q = get_options().confirm_os_window_close[0]
         num = num_active_windows if q < 0 else len(windows)
         needs_confirmation = tm is not None and q != 0 and num >= abs(q)
         if not needs_confirmation:
@@ -1820,7 +1821,7 @@ class Boss:
                 windows += list(qt)
         active_window = self.active_window
         msg, num_active_windows = self.close_windows_with_confirmation_msg(windows, active_window)
-        x = get_options().confirm_os_window_close
+        x = get_options().confirm_os_window_close[0]
         num = num_active_windows if x < 0 else len(windows)
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:

@@ -1007,6 +1007,13 @@ def shell_integration(x: str) -> frozenset[str]:
     return q
 
 
+def confirm_close(x: str) -> tuple[int, bool]:
+    parts = x.split(maxsplit=1)
+    num = int(parts[0])
+    allow_background = len(parts) > 1 and parts[1] == 'count-background'
+    return num, allow_background
+
+
 def underline_exclusion(x: str) -> tuple[float, Literal['', 'px', 'pt']]:
     try:
         return float(x), ''

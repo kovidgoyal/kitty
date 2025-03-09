@@ -1236,9 +1236,7 @@ Specify your preference as a string of characters.
 '''
     )
 
-opt('confirm_os_window_close', '-1',
-    option_type='int',
-    long_text='''
+opt('confirm_os_window_close', '-1', option_type='confirm_close', long_text='''
 Ask for confirmation when closing an OS window or a tab with at least this
 number of kitty windows in it by window manager (e.g. clicking the window close
 button or pressing the operating system shortcut to close windows) or by the
@@ -1247,10 +1245,11 @@ also applies to requests to quit the entire application (all OS windows, via the
 :ac:`quit` action). Negative values are converted to positive ones, however,
 with :opt:`shell_integration` enabled, using negative values means windows
 sitting at a shell prompt are not counted, only windows where some command is
-currently running or is running in the background. Note that if you want confirmation
-when closing individual windows, you can map the :ac:`close_window_with_confirmation` action.
-'''
-    )
+currently running. You can also have backgrounded jobs prevent closing,
+by adding :code:`count-background` ot the setting, for example: :code:`-1 count-background`.
+Note that if you want confirmation when closing individual windows,
+you can map the :ac:`close_window_with_confirmation` action.
+''')
 egr()  # }}}
 
 
