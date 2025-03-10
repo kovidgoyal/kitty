@@ -1,7 +1,6 @@
 module kitty
 
 go 1.23
-
 require (
 	github.com/ALTree/bigfloat v0.2.0
 	github.com/alecthomas/chroma/v2 v2.15.0
@@ -15,8 +14,8 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
-	golang.org/x/image v0.24.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/image v0.25.0
+	golang.org/x/sys v0.31.0
 	howett.net/plist v1.0.1
 )
 
