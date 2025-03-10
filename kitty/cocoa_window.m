@@ -1202,6 +1202,28 @@ play_system_sound_by_id_async(PyObject *self UNUSED, PyObject *which) {
     Py_RETURN_NONE;
 }
 
+static NSView *dock_content_view = nil;
+static NSImageView *dock_image_view = nil;
+
+static PyObject*
+cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
+    float percent = -100;
+    if (!PyArg_ParseTuple(args, "|f", &percent)) return NULL;
+    NSDockTile *dockTile = [NSApp dockTile];
+    if (!dock_content_view) {
+        dock_content_view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, dockTile.size.width, dockTile.size.height)];
+        dock_image_view = [NSImageView.alloc initWithFrame:dock_content_view.frame];
+        dock_image_view.imageScaling = NSImageScaleProportionallyDown;
+        dock_image_view.image = NSApp.applicationIconImage;
+        [dock_content_view addSubview:dock_image_view];
+    }
+    [dock_content_view setFrameSize:dockTile.size];
+    [dock_image_view setFrameSize:dockTile.size];
+    [dockTile setContentView:percent < 0 ? nil : dock_content_view];
+    [dockTile display];
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
@@ -1213,6 +1235,7 @@ static PyMethodDef module_methods[] = {
     {"cocoa_set_url_handler", (PyCFunction)cocoa_set_url_handler, METH_VARARGS, ""},
     {"cocoa_set_app_icon", (PyCFunction)cocoa_set_app_icon, METH_VARARGS, ""},
     {"cocoa_set_dock_icon", (PyCFunction)cocoa_set_dock_icon, METH_VARARGS, ""},
+    {"cocoa_show_progress_bar_on_dock_icon", (PyCFunction)cocoa_show_progress_bar_on_dock_icon, METH_VARARGS, ""},
     {"cocoa_bundle_image_as_png", (PyCFunction)(void(*)(void))bundle_image_as_png, METH_VARARGS | METH_KEYWORDS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
