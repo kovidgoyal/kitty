@@ -150,7 +150,10 @@ class LoadShaderPrograms:
         self.semi_transparent = semi_transparent
         opts = get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
-        self.text_fg_override_threshold = max(0, min(opts.text_fg_override_threshold, 100)) * 0.01
+        if opts.text_fg_override_threshold < 0:
+            self.text_fg_override_threshold = opts.text_fg_override_threshold
+        else:
+            self.text_fg_override_threshold = max(0, min(opts.text_fg_override_threshold, 100)) * 0.01
         cell = program_for('cell')
         if self.cell_program_replacer is null_replacer:
             self.cell_program_replacer = MultiReplacer(
@@ -168,7 +171,9 @@ class LoadShaderPrograms:
             r['WHICH_PHASE'] = f'PHASE_{which}'
             r['TRANSPARENT'] = '1' if semi_transparent else '0'
             r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold)
-            r['FG_OVERRIDE'] = '1' if self.text_fg_override_threshold != 0. else '0'
+            r['FG_OVERRIDE'] = '1' if self.text_fg_override_threshold > 0 else '0'
+            r['MIN_CONTRAST_RATIO'] = str(-self.text_fg_override_threshold)
+            r['APPLY_MIN_CONTRAST_RATIO'] = '1' if self.text_fg_override_threshold < 0 else '0'
             r['TEXT_NEW_GAMMA'] = '0' if self.text_old_gamma else '1'
             return self.cell_program_replacer(src)
 
