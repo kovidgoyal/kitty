@@ -1246,7 +1246,7 @@ also applies to requests to quit the entire application (all OS windows, via the
 with :opt:`shell_integration` enabled, using negative values means windows
 sitting at a shell prompt are not counted, only windows where some command is
 currently running. You can also have backgrounded jobs prevent closing,
-by adding :code:`count-background` ot the setting, for example: :code:`-1 count-background`.
+by adding :code:`count-background` to the setting, for example: :code:`-1 count-background`.
 Note that if you want confirmation when closing individual windows,
 you can map the :ac:`close_window_with_confirmation` action.
 ''')
