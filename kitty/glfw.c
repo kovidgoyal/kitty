@@ -767,6 +767,45 @@ set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_os_window_icon(PyObject UNUSED *self, PyObject *args) {
+    size_t sz;
+    unsigned int width, height;
+    PyObject *what = NULL;
+    uint8_t *data;
+    unsigned long long id;
+    if(!PyArg_ParseTuple(args, "K|O", &id, &what)) return NULL;
+    OSWindow *os_window = os_window_for_id(id);
+    if (!os_window) { PyErr_Format(PyExc_KeyError, "No OS Window with id: %llu", id); return NULL; }
+    if (!what || what == Py_None) {
+        glfwSetWindowIcon(os_window->handle, 0, NULL);
+        Py_RETURN_NONE;
+    }
+    if (PyUnicode_Check(what)) {
+        const char *path = PyUnicode_AsUTF8(what);
+        if (png_path_to_bitmap(path, &data, &width, &height, &sz)) {
+            GLFWimage img = { .pixels = data, .width = width, .height = height };
+            glfwSetWindowIcon(os_window->handle, 1, &img);
+            free(data);
+        } else {
+            PyErr_Format(PyExc_ValueError, "%s is not a valid PNG image", path);
+            return NULL;
+        }
+        Py_RETURN_NONE;
+    }
+    RAII_PY_BUFFER(buf);
+    if(!PyArg_ParseTuple(args, "Ky*", &id, &buf)) return NULL;
+    if (png_from_data(buf.buf, buf.len, "<data>", &data, &width, &height, &sz)) {
+        GLFWimage img = { .pixels = data, .width = width, .height = height };
+        glfwSetWindowIcon(os_window->handle, 1, &img);
+    } else {
+        PyErr_Format(PyExc_ValueError, "The supplied data of %lu bytes is not a valid PNG image", (unsigned long)buf.len);
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+
 
 void*
 make_os_window_context_current(OSWindow *w) {
@@ -2323,6 +2362,7 @@ static PyMethodDef module_methods[] = {
     METHODB(pointer_name_to_css_name, METH_O),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
+    METHODB(set_os_window_icon, METH_VARARGS),
     METHODB(set_clipboard_data_types, METH_VARARGS),
     METHODB(get_clipboard_mime, METH_VARARGS),
     METHODB(toggle_secure_input, METH_NOARGS),

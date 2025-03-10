@@ -375,9 +375,11 @@ many alternate icons available, click on an icon to visit its homepage:
    :target: https://github.com/sfsam/some_icons
    :width: 256
 
-On macOS and X11 you can put :file:`kitty.app.icns` (macOS only) or :file:`kitty.app.png` in the
+You can put :file:`kitty.app.icns` (macOS only) or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
-automatically at startup. On X11, this will set the icon for kitty windows.
+automatically at startup. On X11 and Wayland, this will set the icon for kitty windows.
+Note that not all Wayland compositors support the `protocol needed <https://wayland.app/protocols/xdg-toplevel-icon-v1>`__
+for changing window icons.
 
 Unfortunately, on macOS, Apple's Dock does not change its cached icon so the
 custom icon will revert when kitty is quit. Run the following to force the Dock

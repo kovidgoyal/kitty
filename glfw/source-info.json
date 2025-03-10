@@ -84,6 +84,7 @@
       "staging/fractional-scale/fractional-scale-v1.xml",
       "staging/single-pixel-buffer/single-pixel-buffer-v1.xml",
       "unstable/idle-inhibit/idle-inhibit-unstable-v1.xml",
+      "staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml",
 
       "kwin-blur-v1.xml",
       "wlr-layer-shell-unstable-v1.xml"

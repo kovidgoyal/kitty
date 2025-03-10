@@ -3000,10 +3000,6 @@ GLFWAPI void glfwSetWindowTitle(GLFWwindow* window, const char* title);
  *  [Bundle Programming Guide](https://developer.apple.com/library/mac/documentation/CoreFoundation/Conceptual/CFBundles/)
  *  in the Mac Developer Library.
  *
- *  @remark @wayland There is no existing protocol to change an icon, the
- *  window will thus inherit the one defined in the application's desktop file.
- *  This function will emit @ref GLFW_FEATURE_UNAVAILABLE.
- *
  *  @thread_safety This function must only be called from the main thread.
  *
  *  @sa @ref window_icon

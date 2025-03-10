@@ -66,6 +66,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wayland-single-pixel-buffer-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
+#include "wayland-xdg-toplevel-icon-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -332,6 +333,7 @@ typedef struct _GLFWlibraryWayland
     struct zwp_primary_selection_device_v1*    primarySelectionDevice;
     struct zwp_primary_selection_source_v1*    dataSourceForPrimarySelection;
     struct xdg_activation_v1* xdg_activation_v1;
+    struct xdg_toplevel_icon_manager_v1* xdg_toplevel_icon_manager_v1;
     struct wp_cursor_shape_manager_v1* wp_cursor_shape_manager_v1;
     struct wp_cursor_shape_device_v1* wp_cursor_shape_device_v1;
     struct wp_fractional_scale_manager_v1 *wp_fractional_scale_manager_v1;

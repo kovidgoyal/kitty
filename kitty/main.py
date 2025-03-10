@@ -156,17 +156,19 @@ def get_icon128_path(base_path: str) -> str:
     return f'{path}-128{ext}'
 
 
-def set_x11_window_icon() -> None:
+def set_window_icon() -> None:
     custom_icon_path = get_custom_window_icon()[1]
+    is_x11 = not is_macos and not is_wayland()
     try:
         if custom_icon_path is not None:
             custom_icon128_path = get_icon128_path(custom_icon_path)
-            if safe_mtime(custom_icon128_path) is None:
-                set_default_window_icon(custom_icon_path)
-            else:
+            if is_x11 and safe_mtime(custom_icon128_path) is not None:
                 set_default_window_icon(custom_icon128_path)
+            else:
+                set_default_window_icon(custom_icon_path)
         else:
-            set_default_window_icon(get_icon128_path(logo_png_file))
+            if is_x11:
+                set_default_window_icon(get_icon128_path(logo_png_file))
     except ValueError as err:
         log_error(err)
 
@@ -217,8 +219,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         set_macos_app_custom_icon()
     else:
         global_shortcuts = {}
-        if not is_wayland():  # no window icons on wayland
-            set_x11_window_icon()
+        set_window_icon()
 
     with cached_values_for(run_app.cached_values_name) as cached_values:
         startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))

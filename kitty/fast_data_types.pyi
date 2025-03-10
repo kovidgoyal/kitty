@@ -654,6 +654,9 @@ def set_default_window_icon(path: str) -> None:
     pass
 
 
+def set_os_window_icon(os_window_id: int, path: str | None | bytes = None) -> None: ...
+
+
 def set_custom_cursor(
     cursor_shape: str,
     images: Tuple[Tuple[bytes, int, int], ...],

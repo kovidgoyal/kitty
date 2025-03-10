@@ -489,8 +489,7 @@ static void registryHandleGlobal(void* data UNUSED,
     }
     else if (is(wl_shm))
     {
-        _glfw.wl.shm =
-            wl_registry_bind(registry, name, &wl_shm_interface, 1);
+        _glfw.wl.shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
     }
     else if (is(wl_output))
     {
@@ -601,6 +600,9 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(zwp_idle_inhibit_manager_v1)) {
         _glfw.wl.idle_inhibit_manager = wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1);
     }
+    else if (is(xdg_toplevel_icon_manager_v1)) {
+        _glfw.wl.xdg_toplevel_icon_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_icon_manager_v1_interface, 1);
+    }
 #undef is
 }
 
@@ -702,17 +704,17 @@ _glfwWaylandCompositorName(void) {
 
 static const char*
 get_compositor_missing_capabilities(void) {
-#define C(title, x) if (!_glfw.wl.x) p += snprintf(buf, sizeof(buf) - (p - buf), "%s ", #title);
-    static char buf[256];
+#define C(title, x) if (!_glfw.wl.x) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", #title);
+    static char buf[512];
     char *p = buf;
     *p = 0;
     C(viewporter, wp_viewporter); C(fractional_scale, wp_fractional_scale_manager_v1);
     C(blur, org_kde_kwin_blur_manager); C(server_side_decorations, decorationManager);
     C(cursor_shape, wp_cursor_shape_manager_v1); C(layer_shell, zwlr_layer_shell_v1);
     C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
-    C(idle_inhibit, idle_inhibit_manager);
-    if (_glfw.wl.xdg_wm_base_version < 6) p += snprintf(buf, sizeof(buf) - (p - buf), "%s ", "window-state-suspended");
-    if (_glfw.wl.xdg_wm_base_version < 5) p += snprintf(buf, sizeof(buf) - (p - buf), "%s ", "window-capabilities");
+    C(idle_inhibit, idle_inhibit_manager); C(icon, xdg_toplevel_icon_manager_v1);
+    if (_glfw.wl.xdg_wm_base_version < 6) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-state-suspended");
+    if (_glfw.wl.xdg_wm_base_version < 5) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-capabilities");
 #undef C
     while (p > buf && (p - 1)[0] == ' ') { p--; *p = 0; }
     return buf;
@@ -885,6 +887,8 @@ void _glfwPlatformTerminate(void)
         zwp_primary_selection_device_manager_v1_destroy(_glfw.wl.primarySelectionDeviceManager);
     if (_glfw.wl.xdg_activation_v1)
         xdg_activation_v1_destroy(_glfw.wl.xdg_activation_v1);
+    if (_glfw.wl.xdg_toplevel_icon_manager_v1)
+        xdg_toplevel_icon_manager_v1_destroy(_glfw.wl.xdg_toplevel_icon_manager_v1);
     if (_glfw.wl.wp_single_pixel_buffer_manager_v1)
         wp_single_pixel_buffer_manager_v1_destroy(_glfw.wl.wp_single_pixel_buffer_manager_v1);
     if (_glfw.wl.wp_cursor_shape_manager_v1)

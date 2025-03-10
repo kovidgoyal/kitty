@@ -102,6 +102,8 @@ Detailed list of changes
 - Fix flickering of hyperlink underline when client program continuously
   redraws on mouse movement (:iss:`8414`)
 
+- Wayland: Allow overriding the kitty OS Window icon on compositors that implement the xdg-toplevel-icon protocol
+
 0.40.0 [2025-03-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
