@@ -635,6 +635,7 @@ class Window:
         self.last_resized_at = 0.
         self.started_at = monotonic()
         self.created_at = time_ns()
+        self.clear_progress_timer: int = 0
         self.current_remote_data: list[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: bool | None = None
@@ -1134,7 +1135,8 @@ class Window:
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
         else:
-            add_timer(self.clear_progress_if_needed, 1.0, False)
+            if (timer_id is None and not self.clear_progress_timer) or timer_id is not None:
+                self.clear_progress_timer = add_timer(self.clear_progress_if_needed, 1.0, False)
 
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
