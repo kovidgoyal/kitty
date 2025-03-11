@@ -1202,8 +1202,90 @@ play_system_sound_by_id_async(PyObject *self UNUSED, PyObject *which) {
     Py_RETURN_NONE;
 }
 
+@interface RoundedRectangleView : NSView {
+    unsigned intermediate_step;
+    CGFloat fill_fraction;
+    BOOL is_indeterminate;
+}
+- (void) animate;
+- (BOOL) isIndeterminate;
+- (void) setIndeterminate:(BOOL)val;
+- (void) setFraction:(CGFloat) fraction;
+@end
+
+@implementation RoundedRectangleView
+
+- (void) animate { intermediate_step++; }
+- (BOOL) isIndeterminate { return is_indeterminate; }
+- (void) setIndeterminate:(BOOL)val {
+    if (val != is_indeterminate) {
+        is_indeterminate = val;
+        intermediate_step = 0;
+        }
+    }
+- (void) setFraction:(CGFloat)fraction { fill_fraction = fraction; }
+
+
+- (void)drawRect:(NSRect)dirtyRect {
+    [super drawRect:dirtyRect];
+
+    // Define the rectangle
+    NSRect rect = NSInsetRect(self.bounds, 4, 4);
+
+    // Define the corner radius
+    CGFloat cornerRadius = self.bounds.size.height / 4.0;
+
+    // Create the rounded rectangle path
+    NSBezierPath *roundedRectPath = [NSBezierPath bezierPathWithRoundedRect:rect xRadius:cornerRadius yRadius:cornerRadius];
+
+    // Set the fill color
+    [[NSColor systemBlueColor] setFill];
+
+    // Set the clipping path and fill the progress bar
+    [NSGraphicsContext saveGraphicsState];
+    NSRect fillRect = rect;
+    if (is_indeterminate) {
+        unsigned num_of_steps = 80;
+        intermediate_step = intermediate_step % num_of_steps;
+        fillRect.size.width = self.bounds.size.width / 8;
+        float frac = intermediate_step / (float)num_of_steps;
+        fillRect.origin.x += (self.bounds.size.width - fillRect.size.width) * frac;
+    } else {
+        fillRect.size.width *= fill_fraction;
+    }
+    NSBezierPath *clippingPath = [NSBezierPath bezierPathWithRoundedRect:fillRect xRadius:cornerRadius yRadius:cornerRadius];
+    [clippingPath addClip];
+    [roundedRectPath fill];
+    [NSGraphicsContext restoreGraphicsState];
+
+    // Set the border color and width
+    [[NSColor blackColor] setStroke];
+    [roundedRectPath setLineWidth:2.0];
+    [roundedRectPath stroke];
+}
+
+@end
 static NSView *dock_content_view = nil;
 static NSImageView *dock_image_view = nil;
+static RoundedRectangleView *dock_pbar = nil;
+
+static void
+animate_dock_progress_bar(id_type timer_id UNUSED, void *data UNUSED);
+
+static void
+tick_dock_pbar(void) {
+    add_main_loop_timer(ms_to_monotonic_t(20), false, animate_dock_progress_bar, NULL, NULL);
+}
+
+static void
+animate_dock_progress_bar(id_type timer_id UNUSED, void *data UNUSED) {
+    if (dock_pbar != nil && [dock_pbar isIndeterminate]) {
+        [dock_pbar animate];
+        NSDockTile *dockTile = [NSApp dockTile];
+        [dockTile display];
+        tick_dock_pbar();
+    }
+}
 
 static PyObject*
 cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
@@ -1216,10 +1298,21 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
         dock_image_view.imageScaling = NSImageScaleProportionallyDown;
         dock_image_view.image = NSApp.applicationIconImage;
         [dock_content_view addSubview:dock_image_view];
+        dock_pbar = [[RoundedRectangleView alloc] initWithFrame:NSMakeRect(0, 0, dockTile.size.width, dockTile.size.height / 4)];
+        [dock_content_view addSubview:dock_pbar];
     }
     [dock_content_view setFrameSize:dockTile.size];
     [dock_image_view setFrameSize:dockTile.size];
-    [dockTile setContentView:percent < 0 ? nil : dock_content_view];
+    if (percent >= 0 && percent <= 100) {
+        [dock_pbar setFraction:percent/100.];
+        [dock_pbar setIndeterminate:NO];
+    } else if (percent > 100) {
+        [dock_pbar setIndeterminate:YES];
+        tick_dock_pbar();
+    }
+    [dock_pbar setFrameSize:NSMakeSize(dockTile.size.width - 20, 20)];
+    [dock_pbar setFrameOrigin:NSMakePoint(10, -2)];
+    [dockTile setContentView:percent < 0 || percent == 100 ? nil : dock_content_view];
     [dockTile display];
     Py_RETURN_NONE;
 }
