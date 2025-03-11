@@ -104,6 +104,8 @@ Detailed list of changes
 
 - Wayland: Allow overriding the kitty OS Window icon on compositors that implement the xdg-toplevel-icon protocol
 
+- macOS: When the program running in kitty reports progress information for a task, show a progress bar on the kitty dock icon
+
 0.40.0 [2025-03-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

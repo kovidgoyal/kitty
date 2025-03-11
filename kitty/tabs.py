@@ -126,6 +126,7 @@ class Tab:  # {{{
     confirm_close_window_id: int = 0
     num_of_windows_with_progress: int = 0
     total_progress: int = 0
+    has_indeterminate_progress: bool = False
     last_focused_window_with_progress_id: int = 0
 
     def __init__(
@@ -169,6 +170,7 @@ class Tab:  # {{{
         self.num_of_windows_with_progress = 0
         self.total_progress = 0
         self.last_focused_window_with_progress_id = 0
+        self.has_indeterminate_progress = False
         focused_at = 0.
         for window in self:
             p = window.progress
@@ -177,10 +179,15 @@ class Tab:  # {{{
             if p.state in (ProgressState.set, ProgressState.paused):
                 self.total_progress += p.percent
                 self.num_of_windows_with_progress += 1
+            elif p.state is ProgressState.indeterminate:
+                self.has_indeterminate_progress = True
             if window.last_focused_at > focused_at or (not window.last_focused_at and window.id > self.last_focused_window_with_progress_id):
                 focused_at = window.last_focused_at
                 self.last_focused_window_with_progress_id = window.id
         self.mark_tab_bar_dirty()
+        tm = self.tab_manager_ref()
+        if tm is not None:
+            tm.update_progress()
 
     def has_single_window_visible(self) -> bool:
         if self.current_layout.only_active_window_visible:
@@ -910,6 +917,9 @@ class Tab:  # {{{
 class TabManager:  # {{{
 
     confirm_close_window_id: int = 0
+    num_of_windows_with_progress: int = 0
+    total_progress: int = 0
+    has_indeterminate_progress: bool = False
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
@@ -1282,6 +1292,18 @@ class TabManager:  # {{{
         self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, i))
         if len(self.recent_mouse_events) > 5:
             self.recent_mouse_events.popleft()
+
+    def update_progress(self) -> None:
+        self.num_of_windows_with_progress = 0
+        self.total_progress = 0
+        self.has_indeterminate_progress = False
+        for tab in self:
+            if tab.num_of_windows_with_progress:
+                self.total_progress += tab.total_progress
+                self.num_of_windows_with_progress += tab.num_of_windows_with_progress
+            if tab.has_indeterminate_progress:
+                self.has_indeterminate_progress = True
+        get_boss().update_progress_in_dock()
 
     @property
     def tab_bar_rects(self) -> tuple[Border, ...]:

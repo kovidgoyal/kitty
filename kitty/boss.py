@@ -3090,3 +3090,22 @@ class Boss:
         tm = self.active_tab_manager_with_dispatch
         if tm is not None:
             tm.toggle_tab(match_expression)
+
+    def update_progress_in_dock(self) -> None:
+        if not is_macos:
+            return
+        has_indeterminate_progress = False
+        num_of_windows_with_progress = total_progress = 0
+        for tm in self.os_window_map.values():
+            if tm.num_of_windows_with_progress:
+                total_progress += tm.total_progress
+                num_of_windows_with_progress += tm.num_of_windows_with_progress
+            if tm.has_indeterminate_progress:
+                has_indeterminate_progress = True
+        from .fast_data_types import cocoa_show_progress_bar_on_dock_icon
+        if num_of_windows_with_progress:
+            cocoa_show_progress_bar_on_dock_icon(min(100, total_progress / num_of_windows_with_progress))
+        elif has_indeterminate_progress:
+            cocoa_show_progress_bar_on_dock_icon(101)
+        else:
+            cocoa_show_progress_bar_on_dock_icon()

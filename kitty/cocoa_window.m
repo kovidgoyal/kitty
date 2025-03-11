@@ -1312,7 +1312,7 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
     }
     [dock_pbar setFrameSize:NSMakeSize(dockTile.size.width - 20, 20)];
     [dock_pbar setFrameOrigin:NSMakePoint(10, -2)];
-    [dockTile setContentView:percent < 0 || percent == 100 ? nil : dock_content_view];
+    [dockTile setContentView:percent < 0 ? nil : dock_content_view];
     [dockTile display];
     Py_RETURN_NONE;
 }
