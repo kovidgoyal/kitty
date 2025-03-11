@@ -5,6 +5,8 @@ GLSL port by William Malo ( https://github.com/williammalo )
 Put this code in your fragment shader.
 */
 
+// stripped down and optimized (branchless) version
+
 vec3 hsluv_intersectLineLine(vec3 line1x, vec3 line1y, vec3 line2x, vec3 line2y) {
     return (line1y - line2y) / (line2x - line1x);
 }
@@ -15,9 +17,7 @@ vec3 hsluv_distanceFromPole(vec3 pointx,vec3 pointy) {
 
 vec3 hsluv_lengthOfRayUntilIntersect(float theta, vec3 x, vec3 y) {
     vec3 len = y / (sin(theta) - x * cos(theta));
-    if (len.r < 0.0) {len.r=1000.0;}
-    if (len.g < 0.0) {len.g=1000.0;}
-    if (len.b < 0.0) {len.b=1000.0;}
+    len = mix(len, vec3(1000.0), step(len, vec3(0.0)));
     return len;
 }
 
@@ -29,7 +29,7 @@ float hsluv_maxSafeChromaForL(float L){
     );
     float sub0 = L + 16.0;
     float sub1 = sub0 * sub0 * sub0 * .000000641;
-    float sub2 = sub1 > 0.0088564516790356308 ? sub1 : L / 903.2962962962963;
+    float sub2 = mix(L / 903.2962962962963, sub1, step(0.0088564516790356308, sub1));
 
     vec3 top1   = (284517.0 * m2[0] - 94839.0  * m2[2]) * sub2;
     vec3 bottom = (632260.0 * m2[2] - 126452.0 * m2[1]) * sub2;
@@ -65,7 +65,7 @@ float hsluv_maxChromaForLH(float L, float H) {
         -0.49861076029300328 , 0.041555057407175613, 1.0569715142428786
     );
     float sub1 = pow(L + 16.0, 3.0) / 1560896.0;
-    float sub2 = sub1 > 0.0088564516790356308 ? sub1 : L / 903.2962962962963;
+    float sub2 = mix(L / 903.2962962962963, sub1, step(0.0088564516790356308, sub1));
 
     vec3 top1   = (284517.0 * m2[0] - 94839.0  * m2[2]) * sub2;
     vec3 bottom = (632260.0 * m2[2] - 126452.0 * m2[1]) * sub2;
@@ -88,27 +88,20 @@ float hsluv_maxChromaForLH(float L, float H) {
                 lengths1.b)))));
 }
 
-float hsluv_fromLinear(float c) {
-    return c <= 0.0031308 ? 12.92 * c : 1.055 * pow(c, 1.0 / 2.4) - 0.055;
-}
 vec3 hsluv_fromLinear(vec3 c) {
-    return vec3( hsluv_fromLinear(c.r), hsluv_fromLinear(c.g), hsluv_fromLinear(c.b) );
-}
-
-float hsluv_toLinear(float c) {
-    return c > 0.04045 ? pow((c + 0.055) / (1.0 + 0.055), 2.4) : c / 12.92;
+    return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
 }
 
 vec3 hsluv_toLinear(vec3 c) {
-    return vec3( hsluv_toLinear(c.r), hsluv_toLinear(c.g), hsluv_toLinear(c.b) );
+    return mix(c / 12.92, pow((c + 0.055) / (1.0 + 0.055), vec3(2.4)), step(0.04045, c));
 }
 
 float hsluv_yToL(float Y){
-    return Y <= 0.0088564516790356308 ? Y * 903.2962962962963 : 116.0 * pow(Y, 1.0 / 3.0) - 16.0;
+    return mix(Y * 903.2962962962963, 116.0 * pow(Y, 1.0 / 3.0) - 16.0, step(0.0088564516790356308, Y));
 }
 
 float hsluv_lToY(float L) {
-    return L <= 8.0 ? L / 903.2962962962963 : pow((L + 16.0) / 116.0, 3.0);
+    return mix(L / 903.2962962962963, pow((L + 16.0) / 116.0, 3.0), step(8.0, L));
 }
 
 vec3 xyzToRgb(vec3 tuple) {
@@ -116,7 +109,6 @@ vec3 xyzToRgb(vec3 tuple) {
         3.2409699419045214  ,-1.5373831775700935 ,-0.49861076029300328 ,
        -0.96924363628087983 , 1.8759675015077207 , 0.041555057407175613,
         0.055630079696993609,-0.20397695888897657, 1.0569715142428786  );
-
     return hsluv_fromLinear(tuple*m);
 }
 
@@ -166,9 +158,7 @@ vec3 luvToLch(vec3 tuple) {
 
     float C = length(tuple.yz);
     float H = degrees(atan(V,U));
-    if (H < 0.0) {
-        H = 360.0 + H;
-    }
+    H += 360.0 * step(H, 0.0);
 
     return vec3(L, C, H);
 }
@@ -192,16 +182,6 @@ vec3 lchToHsluv(vec3 tuple) {
     return tuple.bgr;
 }
 
-vec3 hpluvToLch(vec3 tuple) {
-    tuple.g *= hsluv_maxSafeChromaForL(tuple.b) * .01;
-    return tuple.bgr;
-}
-
-vec3 lchToHpluv(vec3 tuple) {
-    tuple.g /= hsluv_maxSafeChromaForL(tuple.r) * .01;
-    return tuple.bgr;
-}
-
 vec3 lchToRgb(vec3 tuple) {
     return xyzToRgb(luvToXyz(lchToLuv(tuple)));
 }
@@ -218,73 +198,6 @@ vec3 rgbToHsluv(vec3 tuple) {
     return lchToHsluv(rgbToLch(tuple));
 }
 
-vec3 hpluvToRgb(vec3 tuple) {
-    return lchToRgb(hpluvToLch(tuple));
-}
-
-vec3 rgbToHpluv(vec3 tuple) {
-    return lchToHpluv(rgbToLch(tuple));
-}
-
 vec3 luvToRgb(vec3 tuple){
     return xyzToRgb(luvToXyz(tuple));
 }
-
-// allow vec4's
-vec4   xyzToRgb(vec4 c) {return vec4(   xyzToRgb( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   rgbToXyz(vec4 c) {return vec4(   rgbToXyz( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   xyzToLuv(vec4 c) {return vec4(   xyzToLuv( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   luvToXyz(vec4 c) {return vec4(   luvToXyz( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   luvToLch(vec4 c) {return vec4(   luvToLch( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   lchToLuv(vec4 c) {return vec4(   lchToLuv( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 hsluvToLch(vec4 c) {return vec4( hsluvToLch( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 lchToHsluv(vec4 c) {return vec4( lchToHsluv( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 hpluvToLch(vec4 c) {return vec4( hpluvToLch( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 lchToHpluv(vec4 c) {return vec4( lchToHpluv( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   lchToRgb(vec4 c) {return vec4(   lchToRgb( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   rgbToLch(vec4 c) {return vec4(   rgbToLch( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 hsluvToRgb(vec4 c) {return vec4( hsluvToRgb( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 rgbToHsluv(vec4 c) {return vec4( rgbToHsluv( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 hpluvToRgb(vec4 c) {return vec4( hpluvToRgb( vec3(c.x,c.y,c.z) ), c.a);}
-vec4 rgbToHpluv(vec4 c) {return vec4( rgbToHpluv( vec3(c.x,c.y,c.z) ), c.a);}
-vec4   luvToRgb(vec4 c) {return vec4(   luvToRgb( vec3(c.x,c.y,c.z) ), c.a);}
-// allow 3 floats
-vec3   xyzToRgb(float x, float y, float z) {return   xyzToRgb( vec3(x,y,z) );}
-vec3   rgbToXyz(float x, float y, float z) {return   rgbToXyz( vec3(x,y,z) );}
-vec3   xyzToLuv(float x, float y, float z) {return   xyzToLuv( vec3(x,y,z) );}
-vec3   luvToXyz(float x, float y, float z) {return   luvToXyz( vec3(x,y,z) );}
-vec3   luvToLch(float x, float y, float z) {return   luvToLch( vec3(x,y,z) );}
-vec3   lchToLuv(float x, float y, float z) {return   lchToLuv( vec3(x,y,z) );}
-vec3 hsluvToLch(float x, float y, float z) {return hsluvToLch( vec3(x,y,z) );}
-vec3 lchToHsluv(float x, float y, float z) {return lchToHsluv( vec3(x,y,z) );}
-vec3 hpluvToLch(float x, float y, float z) {return hpluvToLch( vec3(x,y,z) );}
-vec3 lchToHpluv(float x, float y, float z) {return lchToHpluv( vec3(x,y,z) );}
-vec3   lchToRgb(float x, float y, float z) {return   lchToRgb( vec3(x,y,z) );}
-vec3   rgbToLch(float x, float y, float z) {return   rgbToLch( vec3(x,y,z) );}
-vec3 hsluvToRgb(float x, float y, float z) {return hsluvToRgb( vec3(x,y,z) );}
-vec3 rgbToHsluv(float x, float y, float z) {return rgbToHsluv( vec3(x,y,z) );}
-vec3 hpluvToRgb(float x, float y, float z) {return hpluvToRgb( vec3(x,y,z) );}
-vec3 rgbToHpluv(float x, float y, float z) {return rgbToHpluv( vec3(x,y,z) );}
-vec3   luvToRgb(float x, float y, float z) {return   luvToRgb( vec3(x,y,z) );}
-// allow 4 floats
-vec4   xyzToRgb(float x, float y, float z, float a) {return   xyzToRgb( vec4(x,y,z,a) );}
-vec4   rgbToXyz(float x, float y, float z, float a) {return   rgbToXyz( vec4(x,y,z,a) );}
-vec4   xyzToLuv(float x, float y, float z, float a) {return   xyzToLuv( vec4(x,y,z,a) );}
-vec4   luvToXyz(float x, float y, float z, float a) {return   luvToXyz( vec4(x,y,z,a) );}
-vec4   luvToLch(float x, float y, float z, float a) {return   luvToLch( vec4(x,y,z,a) );}
-vec4   lchToLuv(float x, float y, float z, float a) {return   lchToLuv( vec4(x,y,z,a) );}
-vec4 hsluvToLch(float x, float y, float z, float a) {return hsluvToLch( vec4(x,y,z,a) );}
-vec4 lchToHsluv(float x, float y, float z, float a) {return lchToHsluv( vec4(x,y,z,a) );}
-vec4 hpluvToLch(float x, float y, float z, float a) {return hpluvToLch( vec4(x,y,z,a) );}
-vec4 lchToHpluv(float x, float y, float z, float a) {return lchToHpluv( vec4(x,y,z,a) );}
-vec4   lchToRgb(float x, float y, float z, float a) {return   lchToRgb( vec4(x,y,z,a) );}
-vec4   rgbToLch(float x, float y, float z, float a) {return   rgbToLch( vec4(x,y,z,a) );}
-vec4 hsluvToRgb(float x, float y, float z, float a) {return hsluvToRgb( vec4(x,y,z,a) );}
-vec4 rgbToHslul(float x, float y, float z, float a) {return rgbToHsluv( vec4(x,y,z,a) );}
-vec4 hpluvToRgb(float x, float y, float z, float a) {return hpluvToRgb( vec4(x,y,z,a) );}
-vec4 rgbToHpluv(float x, float y, float z, float a) {return rgbToHpluv( vec4(x,y,z,a) );}
-vec4   luvToRgb(float x, float y, float z, float a) {return   luvToRgb( vec4(x,y,z,a) );}
-
-/*
-END HSLUV-GLSL
-*/
