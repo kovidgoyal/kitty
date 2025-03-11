@@ -1131,11 +1131,13 @@ class Window:
 
     def clear_progress_if_needed(self, timer_id: int | None = None) -> None:
         # Clear stuck or completed progress
+        if timer_id is not None:  # this is a timer callback
+            self.clear_progress_timer = 0
         if self.progress.clear_progress():
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
         else:
-            if (timer_id is None and not self.clear_progress_timer) or timer_id is not None:
+            if not self.clear_progress_timer:
                 self.clear_progress_timer = add_timer(self.clear_progress_if_needed, 1.0, False)
 
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
