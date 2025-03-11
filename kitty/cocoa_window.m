@@ -1202,6 +1202,7 @@ play_system_sound_by_id_async(PyObject *self UNUSED, PyObject *which) {
     Py_RETURN_NONE;
 }
 
+// Dock Progress bar {{{
 @interface RoundedRectangleView : NSView {
     unsigned intermediate_step;
     CGFloat fill_fraction;
@@ -1229,39 +1230,28 @@ play_system_sound_by_id_async(PyObject *self UNUSED, PyObject *which) {
 - (void)drawRect:(NSRect)dirtyRect {
     [super drawRect:dirtyRect];
 
-    // Define the rectangle
-    NSRect rect = NSInsetRect(self.bounds, 4, 4);
-
-    // Define the corner radius
+    NSRect bar = NSInsetRect(self.bounds, 4, 4);
     CGFloat cornerRadius = self.bounds.size.height / 4.0;
 
-    // Create the rounded rectangle path
-    NSBezierPath *roundedRectPath = [NSBezierPath bezierPathWithRoundedRect:rect xRadius:cornerRadius yRadius:cornerRadius];
-
-    // Set the fill color
-    [[NSColor systemBlueColor] setFill];
-
-    // Set the clipping path and fill the progress bar
-    [NSGraphicsContext saveGraphicsState];
-    NSRect fillRect = rect;
-    if (is_indeterminate) {
+#define fill(bar) [[NSBezierPath bezierPathWithRoundedRect:bar xRadius:cornerRadius yRadius:cornerRadius] fill]
+    // Create the border
+    [[[NSColor whiteColor] colorWithAlphaComponent:0.8] setFill];
+    fill(bar);
+    // Create the background
+    [[[NSColor blackColor] colorWithAlphaComponent:0.8] setFill];
+    fill(NSInsetRect(bar, 0.5, 0.5));
+    // Create the progress
+    NSRect bar_progress = NSInsetRect(bar, 1, 1);
+    if (intermediate_step) {
         unsigned num_of_steps = 80;
         intermediate_step = intermediate_step % num_of_steps;
-        fillRect.size.width = self.bounds.size.width / 8;
+        bar_progress.size.width = self.bounds.size.width / 8;
         float frac = intermediate_step / (float)num_of_steps;
-        fillRect.origin.x += (self.bounds.size.width - fillRect.size.width) * frac;
-    } else {
-        fillRect.size.width *= fill_fraction;
-    }
-    NSBezierPath *clippingPath = [NSBezierPath bezierPathWithRoundedRect:fillRect xRadius:cornerRadius yRadius:cornerRadius];
-    [clippingPath addClip];
-    [roundedRectPath fill];
-    [NSGraphicsContext restoreGraphicsState];
-
-    // Set the border color and width
-    [[NSColor blackColor] setStroke];
-    [roundedRectPath setLineWidth:2.0];
-    [roundedRectPath stroke];
+        bar_progress.origin.x += (self.bounds.size.width - bar_progress.size.width) * frac;
+    } else bar_progress.size.width *= fill_fraction;
+    [[NSColor whiteColor] setFill];
+    fill(bar_progress);
+#undef fill
 }
 
 @end
@@ -1316,6 +1306,7 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
     [dockTile display];
     Py_RETURN_NONE;
 }
+// }}}
 
 static PyMethodDef module_methods[] = {
     {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
