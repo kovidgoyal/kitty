@@ -245,6 +245,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetSystemColorThemeChangeCallback_impl) = dlsym(handle, "glfwSetSystemColorThemeChangeCallback");
     if (glfwSetSystemColorThemeChangeCallback_impl == NULL) fail("Failed to load glfw function glfwSetSystemColorThemeChangeCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetClipboardLostCallback_impl) = dlsym(handle, "glfwSetClipboardLostCallback");
+    if (glfwSetClipboardLostCallback_impl == NULL) fail("Failed to load glfw function glfwSetClipboardLostCallback with error: %s", dlerror());
+
     *(void **) (&glfwGetCurrentSystemColorTheme_impl) = dlsym(handle, "glfwGetCurrentSystemColorTheme");
     if (glfwGetCurrentSystemColorTheme_impl == NULL) fail("Failed to load glfw function glfwGetCurrentSystemColorTheme with error: %s", dlerror());
 

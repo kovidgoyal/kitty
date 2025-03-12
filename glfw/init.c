@@ -395,6 +395,13 @@ GLFWAPI GLFWsystemcolorthemechangefun glfwSetSystemColorThemeChangeCallback(GLFW
     return cbfun;
 }
 
+GLFWAPI GLFWclipboardlostfun glfwSetClipboardLostCallback(GLFWclipboardlostfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.clipboard_lost, cbfun);
+    return cbfun;
+}
+
 
 GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun cbfun)
 {

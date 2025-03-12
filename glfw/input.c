@@ -453,6 +453,11 @@ void _glfwInputColorScheme(GLFWColorScheme value, bool is_initial_value) {
     if (_glfw.callbacks.system_color_theme_change) _glfw.callbacks.system_color_theme_change(value, is_initial_value);
 }
 
+void _glfwInputClipboardLost(GLFWClipboardType which) {
+    if (_glfw.callbacks.clipboard_lost) _glfw.callbacks.clipboard_lost(which);
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////

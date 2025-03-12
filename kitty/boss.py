@@ -18,6 +18,7 @@ from time import sleep
 from typing import (
     TYPE_CHECKING,
     Any,
+    Literal,
     Optional,
     Union,
 )
@@ -3109,3 +3110,6 @@ class Boss:
             cocoa_show_progress_bar_on_dock_icon(101)
         else:
             cocoa_show_progress_bar_on_dock_icon()
+
+    def on_clipboard_lost(self, which: Literal['clipboard', 'primary']) -> None:
+        pass

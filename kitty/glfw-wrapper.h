@@ -1170,6 +1170,7 @@ typedef void (* GLFWwindowclosefun)(GLFWwindow*);
  */
 typedef void (* GLFWapplicationclosefun)(int);
 
+
 /*! @brief The function pointer type for system color theme change callbacks.
  *
  *  This is the function pointer type for system color theme changes.
@@ -1552,6 +1553,7 @@ typedef enum {
 typedef GLFWDataChunk (* GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
 typedef bool (* GLFWclipboardwritedatafun)(void *object, const char *data, size_t sz);
 typedef bool (* GLFWimecursorpositionfun)(GLFWwindow *window, GLFWIMEUpdateEvent *ev);
+typedef void (* GLFWclipboardlostfun )(GLFWClipboardType);
 
 /*! @brief Video mode type.
  *
@@ -2016,6 +2018,10 @@ GFW_EXTERN glfwSetApplicationCloseCallback_func glfwSetApplicationCloseCallback_
 typedef GLFWsystemcolorthemechangefun (*glfwSetSystemColorThemeChangeCallback_func)(GLFWsystemcolorthemechangefun);
 GFW_EXTERN glfwSetSystemColorThemeChangeCallback_func glfwSetSystemColorThemeChangeCallback_impl;
 #define glfwSetSystemColorThemeChangeCallback glfwSetSystemColorThemeChangeCallback_impl
+
+typedef GLFWclipboardlostfun (*glfwSetClipboardLostCallback_func)(GLFWclipboardlostfun);
+GFW_EXTERN glfwSetClipboardLostCallback_func glfwSetClipboardLostCallback_impl;
+#define glfwSetClipboardLostCallback glfwSetClipboardLostCallback_impl
 
 typedef GLFWColorScheme (*glfwGetCurrentSystemColorTheme_func)(bool);
 GFW_EXTERN glfwGetCurrentSystemColorTheme_func glfwGetCurrentSystemColorTheme_impl;

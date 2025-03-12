@@ -66,6 +66,11 @@ on_system_color_scheme_change(GLFWColorScheme appearance, bool is_initial_value)
 }
 
 static void
+on_clipboard_lost(GLFWClipboardType which) {
+    call_boss(on_clipboard_lost, "s", which == GLFW_CLIPBOARD ? "clipboard" : "primary");
+}
+
+static void
 strip_csi_(const char *title, char *buf, size_t bufsz) {
     enum { NORMAL, IN_ESC, IN_CSI} state = NORMAL;
     char *dest = buf, *last = &buf[bufsz-1];
@@ -1195,6 +1200,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwSetHasCurrentSelectionCallback(has_current_selection);
         glfwSetIMECursorPositionCallback(get_ime_cursor_position);
         glfwSetSystemColorThemeChangeCallback(on_system_color_scheme_change);
+        glfwSetClipboardLostCallback(on_clipboard_lost);
         // Request SRGB output buffer
         // Prevents kitty from starting on Wayland + NVIDIA, sigh: https://github.com/kovidgoyal/kitty/issues/7021
         // Remove after https://github.com/NVIDIA/egl-wayland/issues/85 is fixed.

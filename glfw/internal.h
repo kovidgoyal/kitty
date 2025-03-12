@@ -644,6 +644,7 @@ struct _GLFWlibrary
         GLFWmonitorfun  monitor;
         GLFWjoystickfun joystick;
         GLFWapplicationclosefun application_close;
+        GLFWclipboardlostfun clipboard_lost;
         GLFWsystemcolorthemechangefun system_color_theme_change;
         GLFWdrawtextfun draw_text;
         GLFWcurrentselectionfun get_current_selection;
@@ -809,6 +810,7 @@ void _glfwInputWindowCloseRequest(_GLFWwindow* window);
 void _glfwInputWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor);
 
 void _glfwInputKeyboard(_GLFWwindow *window, GLFWkeyevent *ev);
+void _glfwInputClipboardLost(GLFWClipboardType which);
 void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset, int flags, int mods);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);

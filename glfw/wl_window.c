@@ -2204,6 +2204,7 @@ static void data_source_canceled(void *data UNUSED, struct wl_data_source *wl_da
     if (_glfw.wl.dataSourceForClipboard == wl_data_source) {
         _glfw.wl.dataSourceForClipboard = NULL;
         _glfw_free_clipboard_data(&_glfw.clipboard);
+        _glfwInputClipboardLost(GLFW_CLIPBOARD);
     }
     wl_data_source_destroy(wl_data_source);
 }
@@ -2212,6 +2213,7 @@ static void primary_selection_source_canceled(void *data UNUSED, struct zwp_prim
     if (_glfw.wl.dataSourceForPrimarySelection == primary_selection_source) {
         _glfw.wl.dataSourceForPrimarySelection = NULL;
         _glfw_free_clipboard_data(&_glfw.primary);
+        _glfwInputClipboardLost(GLFW_PRIMARY_SELECTION);
     }
     zwp_primary_selection_source_v1_destroy(primary_selection_source);
 }

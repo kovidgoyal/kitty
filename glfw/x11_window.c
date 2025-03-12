@@ -902,10 +902,12 @@ static void handleSelectionClear(XEvent* event)
     if (event->xselectionclear.selection == _glfw.x11.PRIMARY)
     {
         _glfw_free_clipboard_data(&_glfw.primary);
+        _glfwInputClipboardLost(GLFW_PRIMARY_SELECTION);
     }
     else
     {
         _glfw_free_clipboard_data(&_glfw.clipboard);
+        _glfwInputClipboardLost(GLFW_CLIPBOARD);
     }
 }
 
