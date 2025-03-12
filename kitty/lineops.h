@@ -59,9 +59,10 @@ line_reset_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cell
 
 static inline bool
 line_is_empty(const Line *line) {
-    for (index_type i = 0; i < line->xnum; i++) {
-        if (line->cpu_cells[i].ch_is_idx || line->cpu_cells[i].ch_or_idx != BLANK_CHAR) return false;
-    }
+#if BLANK_CHAR != 0
+#error This implementation is incorrect for BLANK_CHAR != 0
+#endif
+    for (index_type i = 0; i < line->xnum; i++) if (line->cpu_cells[i].ch_and_idx) return false;
     return true;
 }
 
