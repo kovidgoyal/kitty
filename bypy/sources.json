@@ -312,9 +312,9 @@
         "name": "wayland-protocols",
         "os": "linux",
         "unix": {
-            "filename": "wayland-protocols-1.36.tar.xz",
-            "hash": "sha256:71fd4de05e79f9a1ca559fac30c1f8365fa10346422f9fe795f74d77b9ef7e92",
-            "urls": ["https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.36/downloads/{filename}"]
+            "filename": "wayland-protocols-1.41.tar.xz",
+            "hash": "sha256:2786b6b1b79965e313f2c289c12075b9ed700d41844810c51afda10ee329576b",
+            "urls": ["https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.41/downloads/{filename}"]
         }
     }
 
