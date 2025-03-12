@@ -3580,7 +3580,8 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         const bool is_first_line = y == min_y, is_last_line = y + 1 >= y_limit;
         const bool add_trailing_newline = insert_newlines && !is_last_line;
         PyObject *text = NULL;
-        if (x_limit <= x_start && is_only_whitespace_line) {  // we want a newline on only whitespace lines even if they are continued
+        if (x_limit <= x_start && (is_only_whitespace_line || line_is_empty(line))) {
+            // we want a newline on only whitespace lines even if they are continued
             text = add_trailing_newline ? nl : empty;
             text = Py_NewRef(text);
         } else {
@@ -3627,7 +3628,8 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
             }
         }
 
-        if (x_limit <= x_start && is_only_whitespace_line) {  // we want a newline on only whitespace lines even if they are continued
+        if (x_limit <= x_start && (is_only_whitespace_line || line_is_empty(line))) {
+            // we want a newline on only whitespace lines even if they are continued
             if (insert_newlines) need_newline = true;
         } else {
             char_type prefix_char = need_newline ? '\n' : 0;
