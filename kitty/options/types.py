@@ -63,6 +63,7 @@ option_names = (
     'box_drawing_scale',
     'clear_all_mouse_actions',
     'clear_all_shortcuts',
+    'clear_selection_on_clipboard_loss',
     'click_interval',
     'clipboard_control',
     'clipboard_max_size',
@@ -500,6 +501,7 @@ class Options:
     box_drawing_scale: tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False
+    clear_selection_on_clipboard_loss: bool = False
     click_interval: float = -1.0
     clipboard_control: tuple[str, ...] = ('write-clipboard', 'write-primary', 'read-clipboard-ask', 'read-primary-ask')
     clipboard_max_size: float = 512.0

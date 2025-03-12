@@ -119,6 +119,9 @@ class Parser:
     def clear_all_shortcuts(self, val: str, ans: dict[str, typing.Any]) -> None:
         clear_all_shortcuts(val, ans)
 
+    def clear_selection_on_clipboard_loss(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['clear_selection_on_clipboard_loss'] = to_bool(val)
+
     def click_interval(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['click_interval'] = float(val)
 

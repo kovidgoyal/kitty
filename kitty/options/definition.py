@@ -603,6 +603,17 @@ clipboard.
 '''
     )
 
+opt('clear_selection_on_clipboard_loss', 'no', option_type='to_bool', long_text='''
+When the contents of the clipboard no longer reflect the current selection, clear it.
+This is primarily useful on platforms such as Linux where selecting text automatically
+copies it to a special "primary selection" clipboard or if you have :opt:`copy_on_select`
+set to :code:`clipboard`.
+
+Note that on macOS the system does not provide notifications when the clipboard owner
+is changed, so there, copying to clipboard in a non-kitty application will not clear
+selections even if :opt:`copy_on_select` is enabled.
+''')
+
 opt('paste_actions', 'quote-urls-at-prompt,confirm',
     option_type='paste_actions',
     long_text='''

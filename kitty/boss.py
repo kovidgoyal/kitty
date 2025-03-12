@@ -2243,6 +2243,7 @@ class Boss:
             text = w.text_for_selection()
             if text:
                 set_primary_selection(text)
+                self.handle_clipboard_loss('primary', w.id)
                 if get_options().copy_on_select:
                     self.copy_to_buffer(get_options().copy_on_select)
 
@@ -2280,8 +2281,10 @@ class Boss:
             if text:
                 if buffer_name == 'clipboard':
                     set_clipboard_string(text)
+                    self.handle_clipboard_loss('clipboard', w.id)
                 elif buffer_name == 'primary':
                     set_primary_selection(text)
+                    self.handle_clipboard_loss('primary', w.id)
                 else:
                     self.set_clipboard_buffer(buffer_name, text)
 
@@ -2508,8 +2511,10 @@ class Boss:
             if stdin:
                 if dest == 'clipboard':
                     set_clipboard_string(stdin)
+                    self.handle_clipboard_loss('clipboard')
                 else:
                     set_primary_selection(stdin)
+                    self.handle_clipboard_loss('primary')
         else:
             env, stdin = self.process_stdin_source(stdin=source, window=window)
             self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)
@@ -3062,6 +3067,7 @@ class Boss:
         if w is not None:
             output = debug_config(get_options(), self.mappings.global_shortcuts)
             set_clipboard_string(re.sub(r'\x1b.+?m', '', output))
+            self.handle_clipboard_loss('clipboard')
             output += '\n\x1b[35mThis debug output has been copied to the clipboard\x1b[m'  # ]]]
             self.display_scrollback(w, output, title=_('Current kitty options'), report_cursor=False)
 
@@ -3112,4 +3118,12 @@ class Boss:
             cocoa_show_progress_bar_on_dock_icon()
 
     def on_clipboard_lost(self, which: Literal['clipboard', 'primary']) -> None:
-        pass
+        self.handle_clipboard_loss(which)
+
+    def handle_clipboard_loss(self, which: Literal['clipboard', 'primary'], exception: int = 0) -> None:
+        opts = get_options()
+        if opts.clear_selection_on_clipboard_loss and (which == 'primary' or opts.copy_on_select == 'clipboard'):
+            for wid, window in self.window_id_map.items():
+                if wid == exception:
+                    continue
+                window.screen.clear_selection()

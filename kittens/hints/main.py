@@ -296,8 +296,10 @@ def linenum_handle_result(args: list[str], data: dict[str, Any], target_window_i
                         w.paste_bytes(text)
                     elif program == '@':
                         set_clipboard_string(text)
+                        boss.handle_clipboard_loss('clipboard')
                     elif program == '*':
                         set_primary_selection(text)
+                        boss.handle_clipboard_loss('primary')
                     elif program.startswith('@'):
                         boss.set_clipboard_buffer(program[1:], text)
             else:

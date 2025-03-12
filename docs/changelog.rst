@@ -99,6 +99,8 @@ Detailed list of changes
 
 - Do not count background processes by default for :opt:`confirm_os_window_close` (:iss:`8358`)
 
+- A new option :opt:`clear_selection_on_clipboard_loss` to clear selections when they no longer reflect the contents of the clipboard
+
 - Fix flickering of hyperlink underline when client program continuously
   redraws on mouse movement (:iss:`8414`)
 

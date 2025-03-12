@@ -709,8 +709,10 @@ def _launch(
         if stdin is not None:
             if opts.type == 'clipboard':
                 set_clipboard_string(stdin)
+                boss.handle_clipboard_loss('clipboard')
             else:
                 set_primary_selection(stdin)
+                boss.handle_clipboard_loss('primary')
     else:
         kw['hold'] = opts.hold
         if force_target_tab and target_tab is not None:
