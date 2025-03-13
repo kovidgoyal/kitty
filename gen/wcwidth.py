@@ -482,6 +482,7 @@ def gen_grapheme_segmentation() -> None:
         gp('\treturn None')  # }
         p('}')
         gp('}')
+    subprocess.check_call(['gofmt', '-w', '-s', gof.name])
 
 
 def gen_wcwidth() -> None:
