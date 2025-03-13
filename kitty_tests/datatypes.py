@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import os
 import sys
 import tempfile
 
+from kitty.constants import read_kitty_resource
 from kitty.fast_data_types import (
     Color,
     HistoryBuf,
@@ -12,6 +14,7 @@ from kitty.fast_data_types import (
     expand_ansi_c_escapes,
     parse_input_from_terminal,
     replace_c0_codes_except_nl_space_tab,
+    split_into_graphemes,
     strip_csi,
     truncate_point_for_length,
     wcswidth,
@@ -631,3 +634,9 @@ class TestDataTypes(BaseTest):
         }.items():
             actual = tuple(shlex_split_with_positions(q, True))
             self.ae(expected, actual, f'Failed for text: {q!r}')
+
+    def test_split_into_graphemes(self):
+        for i, test in enumerate(json.loads(read_kitty_resource('GraphemeBreakTest.json', __name__.rpartition('.')[0]))):
+            expected = test['data']
+            actual = split_into_graphemes(''.join(expected))
+            self.ae(expected, actual, f'Test #{i} failed: {test["comment"]}')

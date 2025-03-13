@@ -8,31 +8,10 @@
 #include "text-cache.h"
 #include "grapheme-segmentation-data.h"
 
-typedef struct GraphemeSegmentationState {
-    GraphemeBreakProperty last_char_prop;
-
-    /* True if the last character ends a sequence of Indic_Conjunct_Break
-values:  consonant {extend|linker}*  */
-    bool incb_consonant_extended;
-    /* True if the last character ends a sequence of Indic_Conjunct_Break
-values:  consonant {extend|linker}* linker  */
-    bool incb_consonant_extended_linker;
-    /* True if the last character ends a sequence of Indic_Conjunct_Break
-values:  consonant {extend|linker}* linker {extend|linker}*  */
-    bool incb_consonant_extended_linker_extended;
-
-    /* True if the last character ends an emoji modifier sequence
-       \p{Extended_Pictographic} Extend*.  */
-    bool emoji_modifier_sequence;
-    /* True if the last character was immediately preceded by an
-       emoji modifier sequence   \p{Extended_Pictographic} Extend*.  */
-    bool emoji_modifier_sequence_before_last_char;
-
-    /* Number of consecutive regional indicator (RI) characters seen
-       immediately before the current point.  */
-    size_t ri_count;
-} GraphemeSegmentationState;
 #define is_linker_or_extend(incb) ((incb) == ICB_Linker || (incb) == ICB_Extend)
+
+#define GSS_IMPLEMENTATION
+#include "grapheme-segmentation.h"
 
 void
 grapheme_segmentation_reset(GraphemeSegmentationState *s) {
@@ -42,6 +21,8 @@ grapheme_segmentation_reset(GraphemeSegmentationState *s) {
 bool
 grapheme_segmentation_step(GraphemeSegmentationState *s, char_type ch) {
     // Grapheme segmentation as per UAX29-C1-1 as defined in https://www.unicode.org/reports/tr29/
+    // Returns true iff ch should be added to the current cell based on s which
+    // must reflect the state of the current cell.
     GraphemeBreakProperty prop = grapheme_break_property(ch);
     IndicConjunctBreak incb = indic_conjunct_break(ch);
     bool add_to_cell = false;
@@ -66,7 +47,10 @@ grapheme_segmentation_step(GraphemeSegmentationState *s, char_type ch) {
         else if (s->incb_consonant_extended_linker_extended && incb == ICB_Consonant) add_to_cell = true;
         /* No break within emoji modifier sequences or emoji zwj sequences (GB11).  */
         else if (s->last_char_prop == GBP_ZWJ && s->emoji_modifier_sequence_before_last_char && is_extended_pictographic(ch)) add_to_cell = true;
-        else {} // break everywhere else
+        /* No break between RI if there is an odd number of RI characters before (GB12, GB13).  */
+        else if (prop == GBP_Regional_Indicator && (s->ri_count % 2) != 0) add_to_cell = true;
+        /* Break everywhere else */
+        else {}
     }
 
     s->incb_consonant_extended_linker = s->incb_consonant_extended && incb == ICB_Linker;

@@ -12,7 +12,7 @@
 #undef _DARWIN_C_SOURCE
 #endif
 
-#include "data-types.h"
+#include "grapheme-segmentation.h"
 #include "line.h"
 #include "charsets.h"
 #include "base64.h"
@@ -134,6 +134,28 @@ base64_decode_into(PyObject UNUSED *self, PyObject *args) {
     return PyLong_FromSize_t(sz);
 }
 
+static PyObject*
+split_into_graphemes(PyObject UNUSED *self, PyObject *src) {
+    if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "must provide a unicode string"); return NULL; }
+    int kind = PyUnicode_KIND(src); char *data = PyUnicode_DATA(src);
+    RAII_PyObject(ans, PyList_New(0));
+    if (!ans) return NULL;
+    GraphemeSegmentationState s; grapheme_segmentation_reset(&s);
+    Py_ssize_t pos = 0;
+    for (Py_ssize_t i = 0; i < PyUnicode_GET_LENGTH(src); i++) {
+        char_type ch = PyUnicode_READ(kind, data, i);
+        if (!grapheme_segmentation_step(&s, ch)) {
+            RAII_PyObject(u, PyUnicode_FromKindAndData(kind, data + kind * pos, i - pos));
+            if (!u || PyList_Append(ans, u) != 0) return NULL;
+            pos = i;
+        }
+    }
+    if (pos < PyUnicode_GET_LENGTH(src)) {
+        RAII_PyObject(u, PyUnicode_FromKindAndData(kind, data + kind * pos, PyUnicode_GET_LENGTH(src) - pos));
+        if (!u || PyList_Append(ans, u) != 0) return NULL;
+    }
+    return Py_NewRef(ans);
+}
 
 typedef struct StreamingBase64Decoder {
     PyObject_HEAD
@@ -627,6 +649,7 @@ static PyMethodDef module_methods[] = {
     {"base64_encode_into", (PyCFunction)base64_encode_into, METH_VARARGS, ""},
     {"base64_decode", (PyCFunction)(void (*) (void))(pybase64_decode), METH_O, ""},
     {"base64_decode_into", (PyCFunction)base64_decode_into, METH_VARARGS, ""},
+    {"split_into_graphemes", (PyCFunction)split_into_graphemes, METH_O, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"locale_is_valid", (PyCFunction)locale_is_valid, METH_VARARGS, ""},

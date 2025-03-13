@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import os
 import re
 import subprocess
@@ -655,6 +656,30 @@ def gen_rowcolumn_diacritics() -> None:
     gofmt(go_file)
 
 
+def gen_test_data() -> None:
+    tests = []
+    for line in get_data('ucd/auxiliary/GraphemeBreakTest.txt'):
+        t, comment = line.split('#')
+        t = t.lstrip('÷').strip().rstrip('÷').strip()
+        chars: list[list[str]] = [[]]
+        for x in re.split(r'([÷×])', t):
+            x = x.strip()
+            match x:
+                case '÷':
+                    chars.append([])
+                case '×':
+                    pass
+                case '':
+                    pass
+                case _:
+                    ch = chr(int(x, 16))
+                    chars[-1].append(ch)
+        c = [''.join(c) for c in chars]
+        tests.append({'data': c, 'comment': comment.strip()})
+    with open('kitty_tests/GraphemeBreakTest.json', 'wb') as f:
+        f.write(json.dumps(tests, indent=2, ensure_ascii=False).encode())
+
+
 def main(args: list[str]=sys.argv) -> None:
     parse_ucd()
     parse_prop_list()
@@ -667,6 +692,7 @@ def main(args: list[str]=sys.argv) -> None:
     gen_names()
     gen_rowcolumn_diacritics()
     gen_grapheme_segmentation()
+    gen_test_data()
 
 
 if __name__ == '__main__':
