@@ -7,21 +7,28 @@
 START_ALLOW_CASE_RANGE
 
 typedef enum GraphemeBreakProperty {
-    GBP_None,
-    GBP_Prepend,
-    GBP_CR,
-    GBP_LF,
-    GBP_Control,
-    GBP_Extend,
-    GBP_Regional_Indicator,
-    GBP_SpacingMark,
-    GBP_L,
-    GBP_V,
-    GBP_T,
-    GBP_LV,
-    GBP_LVT,
-    GBP_ZWJ,
+	GBP_None,
+	GBP_Prepend,
+	GBP_CR,
+	GBP_LF,
+	GBP_Control,
+	GBP_Extend,
+	GBP_Regional_Indicator,
+	GBP_SpacingMark,
+	GBP_L,
+	GBP_V,
+	GBP_T,
+	GBP_LV,
+	GBP_LVT,
+	GBP_ZWJ,
 } GraphemeBreakProperty;
+
+typedef enum IndicConjunctBreak {
+	ICB_None,
+	ICB_Linker,
+	ICB_Consonant,
+	ICB_Extend,
+} IndicConjunctBreak;
 
 static inline GraphemeBreakProperty
 grapheme_break_property(const char_type c) {
@@ -2819,6 +2826,828 @@ grapheme_break_property(const char_type c) {
 
 	}
 	return GBP_None;
+}
+
+static inline IndicConjunctBreak
+indic_conjunct_break(const char_type c) {
+	switch(c) {
+		 // Linker (6 codepoints {{{
+		case 0x94d:
+			return ICB_Linker;
+		case 0x9cd:
+			return ICB_Linker;
+		case 0xacd:
+			return ICB_Linker;
+		case 0xb4d:
+			return ICB_Linker;
+		case 0xc4d:
+			return ICB_Linker;
+		case 0xd4d:
+			return ICB_Linker;
+		 // }}}
+
+		 // Consonant (240 codepoints {{{
+		case 0x915 ... 0x939:
+			return ICB_Consonant;
+		case 0x958 ... 0x95f:
+			return ICB_Consonant;
+		case 0x978 ... 0x97f:
+			return ICB_Consonant;
+		case 0x995 ... 0x9a8:
+			return ICB_Consonant;
+		case 0x9aa ... 0x9b0:
+			return ICB_Consonant;
+		case 0x9b2:
+			return ICB_Consonant;
+		case 0x9b6 ... 0x9b9:
+			return ICB_Consonant;
+		case 0x9dc ... 0x9dd:
+			return ICB_Consonant;
+		case 0x9df:
+			return ICB_Consonant;
+		case 0x9f0 ... 0x9f1:
+			return ICB_Consonant;
+		case 0xa95 ... 0xaa8:
+			return ICB_Consonant;
+		case 0xaaa ... 0xab0:
+			return ICB_Consonant;
+		case 0xab2 ... 0xab3:
+			return ICB_Consonant;
+		case 0xab5 ... 0xab9:
+			return ICB_Consonant;
+		case 0xaf9:
+			return ICB_Consonant;
+		case 0xb15 ... 0xb28:
+			return ICB_Consonant;
+		case 0xb2a ... 0xb30:
+			return ICB_Consonant;
+		case 0xb32 ... 0xb33:
+			return ICB_Consonant;
+		case 0xb35 ... 0xb39:
+			return ICB_Consonant;
+		case 0xb5c ... 0xb5d:
+			return ICB_Consonant;
+		case 0xb5f:
+			return ICB_Consonant;
+		case 0xb71:
+			return ICB_Consonant;
+		case 0xc15 ... 0xc28:
+			return ICB_Consonant;
+		case 0xc2a ... 0xc39:
+			return ICB_Consonant;
+		case 0xc58 ... 0xc5a:
+			return ICB_Consonant;
+		case 0xd15 ... 0xd3a:
+			return ICB_Consonant;
+		 // }}}
+
+		 // Extend (2192 codepoints {{{
+		case 0x300 ... 0x36f:
+			return ICB_Extend;
+		case 0x483 ... 0x489:
+			return ICB_Extend;
+		case 0x591 ... 0x5bd:
+			return ICB_Extend;
+		case 0x5bf:
+			return ICB_Extend;
+		case 0x5c1 ... 0x5c2:
+			return ICB_Extend;
+		case 0x5c4 ... 0x5c5:
+			return ICB_Extend;
+		case 0x5c7:
+			return ICB_Extend;
+		case 0x610 ... 0x61a:
+			return ICB_Extend;
+		case 0x64b ... 0x65f:
+			return ICB_Extend;
+		case 0x670:
+			return ICB_Extend;
+		case 0x6d6 ... 0x6dc:
+			return ICB_Extend;
+		case 0x6df ... 0x6e4:
+			return ICB_Extend;
+		case 0x6e7 ... 0x6e8:
+			return ICB_Extend;
+		case 0x6ea ... 0x6ed:
+			return ICB_Extend;
+		case 0x711:
+			return ICB_Extend;
+		case 0x730 ... 0x74a:
+			return ICB_Extend;
+		case 0x7a6 ... 0x7b0:
+			return ICB_Extend;
+		case 0x7eb ... 0x7f3:
+			return ICB_Extend;
+		case 0x7fd:
+			return ICB_Extend;
+		case 0x816 ... 0x819:
+			return ICB_Extend;
+		case 0x81b ... 0x823:
+			return ICB_Extend;
+		case 0x825 ... 0x827:
+			return ICB_Extend;
+		case 0x829 ... 0x82d:
+			return ICB_Extend;
+		case 0x859 ... 0x85b:
+			return ICB_Extend;
+		case 0x897 ... 0x89f:
+			return ICB_Extend;
+		case 0x8ca ... 0x8e1:
+			return ICB_Extend;
+		case 0x8e3 ... 0x902:
+			return ICB_Extend;
+		case 0x93a:
+			return ICB_Extend;
+		case 0x93c:
+			return ICB_Extend;
+		case 0x941 ... 0x948:
+			return ICB_Extend;
+		case 0x951 ... 0x957:
+			return ICB_Extend;
+		case 0x962 ... 0x963:
+			return ICB_Extend;
+		case 0x981:
+			return ICB_Extend;
+		case 0x9bc:
+			return ICB_Extend;
+		case 0x9be:
+			return ICB_Extend;
+		case 0x9c1 ... 0x9c4:
+			return ICB_Extend;
+		case 0x9d7:
+			return ICB_Extend;
+		case 0x9e2 ... 0x9e3:
+			return ICB_Extend;
+		case 0x9fe:
+			return ICB_Extend;
+		case 0xa01 ... 0xa02:
+			return ICB_Extend;
+		case 0xa3c:
+			return ICB_Extend;
+		case 0xa41 ... 0xa42:
+			return ICB_Extend;
+		case 0xa47 ... 0xa48:
+			return ICB_Extend;
+		case 0xa4b ... 0xa4d:
+			return ICB_Extend;
+		case 0xa51:
+			return ICB_Extend;
+		case 0xa70 ... 0xa71:
+			return ICB_Extend;
+		case 0xa75:
+			return ICB_Extend;
+		case 0xa81 ... 0xa82:
+			return ICB_Extend;
+		case 0xabc:
+			return ICB_Extend;
+		case 0xac1 ... 0xac5:
+			return ICB_Extend;
+		case 0xac7 ... 0xac8:
+			return ICB_Extend;
+		case 0xae2 ... 0xae3:
+			return ICB_Extend;
+		case 0xafa ... 0xaff:
+			return ICB_Extend;
+		case 0xb01:
+			return ICB_Extend;
+		case 0xb3c:
+			return ICB_Extend;
+		case 0xb3e ... 0xb3f:
+			return ICB_Extend;
+		case 0xb41 ... 0xb44:
+			return ICB_Extend;
+		case 0xb55 ... 0xb57:
+			return ICB_Extend;
+		case 0xb62 ... 0xb63:
+			return ICB_Extend;
+		case 0xb82:
+			return ICB_Extend;
+		case 0xbbe:
+			return ICB_Extend;
+		case 0xbc0:
+			return ICB_Extend;
+		case 0xbcd:
+			return ICB_Extend;
+		case 0xbd7:
+			return ICB_Extend;
+		case 0xc00:
+			return ICB_Extend;
+		case 0xc04:
+			return ICB_Extend;
+		case 0xc3c:
+			return ICB_Extend;
+		case 0xc3e ... 0xc40:
+			return ICB_Extend;
+		case 0xc46 ... 0xc48:
+			return ICB_Extend;
+		case 0xc4a ... 0xc4c:
+			return ICB_Extend;
+		case 0xc55 ... 0xc56:
+			return ICB_Extend;
+		case 0xc62 ... 0xc63:
+			return ICB_Extend;
+		case 0xc81:
+			return ICB_Extend;
+		case 0xcbc:
+			return ICB_Extend;
+		case 0xcbf ... 0xcc0:
+			return ICB_Extend;
+		case 0xcc2:
+			return ICB_Extend;
+		case 0xcc6 ... 0xcc8:
+			return ICB_Extend;
+		case 0xcca ... 0xccd:
+			return ICB_Extend;
+		case 0xcd5 ... 0xcd6:
+			return ICB_Extend;
+		case 0xce2 ... 0xce3:
+			return ICB_Extend;
+		case 0xd00 ... 0xd01:
+			return ICB_Extend;
+		case 0xd3b ... 0xd3c:
+			return ICB_Extend;
+		case 0xd3e:
+			return ICB_Extend;
+		case 0xd41 ... 0xd44:
+			return ICB_Extend;
+		case 0xd57:
+			return ICB_Extend;
+		case 0xd62 ... 0xd63:
+			return ICB_Extend;
+		case 0xd81:
+			return ICB_Extend;
+		case 0xdca:
+			return ICB_Extend;
+		case 0xdcf:
+			return ICB_Extend;
+		case 0xdd2 ... 0xdd4:
+			return ICB_Extend;
+		case 0xdd6:
+			return ICB_Extend;
+		case 0xddf:
+			return ICB_Extend;
+		case 0xe31:
+			return ICB_Extend;
+		case 0xe34 ... 0xe3a:
+			return ICB_Extend;
+		case 0xe47 ... 0xe4e:
+			return ICB_Extend;
+		case 0xeb1:
+			return ICB_Extend;
+		case 0xeb4 ... 0xebc:
+			return ICB_Extend;
+		case 0xec8 ... 0xece:
+			return ICB_Extend;
+		case 0xf18 ... 0xf19:
+			return ICB_Extend;
+		case 0xf35:
+			return ICB_Extend;
+		case 0xf37:
+			return ICB_Extend;
+		case 0xf39:
+			return ICB_Extend;
+		case 0xf71 ... 0xf7e:
+			return ICB_Extend;
+		case 0xf80 ... 0xf84:
+			return ICB_Extend;
+		case 0xf86 ... 0xf87:
+			return ICB_Extend;
+		case 0xf8d ... 0xf97:
+			return ICB_Extend;
+		case 0xf99 ... 0xfbc:
+			return ICB_Extend;
+		case 0xfc6:
+			return ICB_Extend;
+		case 0x102d ... 0x1030:
+			return ICB_Extend;
+		case 0x1032 ... 0x1037:
+			return ICB_Extend;
+		case 0x1039 ... 0x103a:
+			return ICB_Extend;
+		case 0x103d ... 0x103e:
+			return ICB_Extend;
+		case 0x1058 ... 0x1059:
+			return ICB_Extend;
+		case 0x105e ... 0x1060:
+			return ICB_Extend;
+		case 0x1071 ... 0x1074:
+			return ICB_Extend;
+		case 0x1082:
+			return ICB_Extend;
+		case 0x1085 ... 0x1086:
+			return ICB_Extend;
+		case 0x108d:
+			return ICB_Extend;
+		case 0x109d:
+			return ICB_Extend;
+		case 0x135d ... 0x135f:
+			return ICB_Extend;
+		case 0x1712 ... 0x1715:
+			return ICB_Extend;
+		case 0x1732 ... 0x1734:
+			return ICB_Extend;
+		case 0x1752 ... 0x1753:
+			return ICB_Extend;
+		case 0x1772 ... 0x1773:
+			return ICB_Extend;
+		case 0x17b4 ... 0x17b5:
+			return ICB_Extend;
+		case 0x17b7 ... 0x17bd:
+			return ICB_Extend;
+		case 0x17c6:
+			return ICB_Extend;
+		case 0x17c9 ... 0x17d3:
+			return ICB_Extend;
+		case 0x17dd:
+			return ICB_Extend;
+		case 0x180b ... 0x180d:
+			return ICB_Extend;
+		case 0x180f:
+			return ICB_Extend;
+		case 0x1885 ... 0x1886:
+			return ICB_Extend;
+		case 0x18a9:
+			return ICB_Extend;
+		case 0x1920 ... 0x1922:
+			return ICB_Extend;
+		case 0x1927 ... 0x1928:
+			return ICB_Extend;
+		case 0x1932:
+			return ICB_Extend;
+		case 0x1939 ... 0x193b:
+			return ICB_Extend;
+		case 0x1a17 ... 0x1a18:
+			return ICB_Extend;
+		case 0x1a1b:
+			return ICB_Extend;
+		case 0x1a56:
+			return ICB_Extend;
+		case 0x1a58 ... 0x1a5e:
+			return ICB_Extend;
+		case 0x1a60:
+			return ICB_Extend;
+		case 0x1a62:
+			return ICB_Extend;
+		case 0x1a65 ... 0x1a6c:
+			return ICB_Extend;
+		case 0x1a73 ... 0x1a7c:
+			return ICB_Extend;
+		case 0x1a7f:
+			return ICB_Extend;
+		case 0x1ab0 ... 0x1ace:
+			return ICB_Extend;
+		case 0x1b00 ... 0x1b03:
+			return ICB_Extend;
+		case 0x1b34 ... 0x1b3d:
+			return ICB_Extend;
+		case 0x1b42 ... 0x1b44:
+			return ICB_Extend;
+		case 0x1b6b ... 0x1b73:
+			return ICB_Extend;
+		case 0x1b80 ... 0x1b81:
+			return ICB_Extend;
+		case 0x1ba2 ... 0x1ba5:
+			return ICB_Extend;
+		case 0x1ba8 ... 0x1bad:
+			return ICB_Extend;
+		case 0x1be6:
+			return ICB_Extend;
+		case 0x1be8 ... 0x1be9:
+			return ICB_Extend;
+		case 0x1bed:
+			return ICB_Extend;
+		case 0x1bef ... 0x1bf3:
+			return ICB_Extend;
+		case 0x1c2c ... 0x1c33:
+			return ICB_Extend;
+		case 0x1c36 ... 0x1c37:
+			return ICB_Extend;
+		case 0x1cd0 ... 0x1cd2:
+			return ICB_Extend;
+		case 0x1cd4 ... 0x1ce0:
+			return ICB_Extend;
+		case 0x1ce2 ... 0x1ce8:
+			return ICB_Extend;
+		case 0x1ced:
+			return ICB_Extend;
+		case 0x1cf4:
+			return ICB_Extend;
+		case 0x1cf8 ... 0x1cf9:
+			return ICB_Extend;
+		case 0x1dc0 ... 0x1dff:
+			return ICB_Extend;
+		case 0x200d:
+			return ICB_Extend;
+		case 0x20d0 ... 0x20f0:
+			return ICB_Extend;
+		case 0x2cef ... 0x2cf1:
+			return ICB_Extend;
+		case 0x2d7f:
+			return ICB_Extend;
+		case 0x2de0 ... 0x2dff:
+			return ICB_Extend;
+		case 0x302a ... 0x302f:
+			return ICB_Extend;
+		case 0x3099 ... 0x309a:
+			return ICB_Extend;
+		case 0xa66f ... 0xa672:
+			return ICB_Extend;
+		case 0xa674 ... 0xa67d:
+			return ICB_Extend;
+		case 0xa69e ... 0xa69f:
+			return ICB_Extend;
+		case 0xa6f0 ... 0xa6f1:
+			return ICB_Extend;
+		case 0xa802:
+			return ICB_Extend;
+		case 0xa806:
+			return ICB_Extend;
+		case 0xa80b:
+			return ICB_Extend;
+		case 0xa825 ... 0xa826:
+			return ICB_Extend;
+		case 0xa82c:
+			return ICB_Extend;
+		case 0xa8c4 ... 0xa8c5:
+			return ICB_Extend;
+		case 0xa8e0 ... 0xa8f1:
+			return ICB_Extend;
+		case 0xa8ff:
+			return ICB_Extend;
+		case 0xa926 ... 0xa92d:
+			return ICB_Extend;
+		case 0xa947 ... 0xa951:
+			return ICB_Extend;
+		case 0xa953:
+			return ICB_Extend;
+		case 0xa980 ... 0xa982:
+			return ICB_Extend;
+		case 0xa9b3:
+			return ICB_Extend;
+		case 0xa9b6 ... 0xa9b9:
+			return ICB_Extend;
+		case 0xa9bc ... 0xa9bd:
+			return ICB_Extend;
+		case 0xa9c0:
+			return ICB_Extend;
+		case 0xa9e5:
+			return ICB_Extend;
+		case 0xaa29 ... 0xaa2e:
+			return ICB_Extend;
+		case 0xaa31 ... 0xaa32:
+			return ICB_Extend;
+		case 0xaa35 ... 0xaa36:
+			return ICB_Extend;
+		case 0xaa43:
+			return ICB_Extend;
+		case 0xaa4c:
+			return ICB_Extend;
+		case 0xaa7c:
+			return ICB_Extend;
+		case 0xaab0:
+			return ICB_Extend;
+		case 0xaab2 ... 0xaab4:
+			return ICB_Extend;
+		case 0xaab7 ... 0xaab8:
+			return ICB_Extend;
+		case 0xaabe ... 0xaabf:
+			return ICB_Extend;
+		case 0xaac1:
+			return ICB_Extend;
+		case 0xaaec ... 0xaaed:
+			return ICB_Extend;
+		case 0xaaf6:
+			return ICB_Extend;
+		case 0xabe5:
+			return ICB_Extend;
+		case 0xabe8:
+			return ICB_Extend;
+		case 0xabed:
+			return ICB_Extend;
+		case 0xfb1e:
+			return ICB_Extend;
+		case 0xfe00 ... 0xfe0f:
+			return ICB_Extend;
+		case 0xfe20 ... 0xfe2f:
+			return ICB_Extend;
+		case 0xff9e ... 0xff9f:
+			return ICB_Extend;
+		case 0x101fd:
+			return ICB_Extend;
+		case 0x102e0:
+			return ICB_Extend;
+		case 0x10376 ... 0x1037a:
+			return ICB_Extend;
+		case 0x10a01 ... 0x10a03:
+			return ICB_Extend;
+		case 0x10a05 ... 0x10a06:
+			return ICB_Extend;
+		case 0x10a0c ... 0x10a0f:
+			return ICB_Extend;
+		case 0x10a38 ... 0x10a3a:
+			return ICB_Extend;
+		case 0x10a3f:
+			return ICB_Extend;
+		case 0x10ae5 ... 0x10ae6:
+			return ICB_Extend;
+		case 0x10d24 ... 0x10d27:
+			return ICB_Extend;
+		case 0x10d69 ... 0x10d6d:
+			return ICB_Extend;
+		case 0x10eab ... 0x10eac:
+			return ICB_Extend;
+		case 0x10efc ... 0x10eff:
+			return ICB_Extend;
+		case 0x10f46 ... 0x10f50:
+			return ICB_Extend;
+		case 0x10f82 ... 0x10f85:
+			return ICB_Extend;
+		case 0x11001:
+			return ICB_Extend;
+		case 0x11038 ... 0x11046:
+			return ICB_Extend;
+		case 0x11070:
+			return ICB_Extend;
+		case 0x11073 ... 0x11074:
+			return ICB_Extend;
+		case 0x1107f ... 0x11081:
+			return ICB_Extend;
+		case 0x110b3 ... 0x110b6:
+			return ICB_Extend;
+		case 0x110b9 ... 0x110ba:
+			return ICB_Extend;
+		case 0x110c2:
+			return ICB_Extend;
+		case 0x11100 ... 0x11102:
+			return ICB_Extend;
+		case 0x11127 ... 0x1112b:
+			return ICB_Extend;
+		case 0x1112d ... 0x11134:
+			return ICB_Extend;
+		case 0x11173:
+			return ICB_Extend;
+		case 0x11180 ... 0x11181:
+			return ICB_Extend;
+		case 0x111b6 ... 0x111be:
+			return ICB_Extend;
+		case 0x111c0:
+			return ICB_Extend;
+		case 0x111c9 ... 0x111cc:
+			return ICB_Extend;
+		case 0x111cf:
+			return ICB_Extend;
+		case 0x1122f ... 0x11231:
+			return ICB_Extend;
+		case 0x11234 ... 0x11237:
+			return ICB_Extend;
+		case 0x1123e:
+			return ICB_Extend;
+		case 0x11241:
+			return ICB_Extend;
+		case 0x112df:
+			return ICB_Extend;
+		case 0x112e3 ... 0x112ea:
+			return ICB_Extend;
+		case 0x11300 ... 0x11301:
+			return ICB_Extend;
+		case 0x1133b ... 0x1133c:
+			return ICB_Extend;
+		case 0x1133e:
+			return ICB_Extend;
+		case 0x11340:
+			return ICB_Extend;
+		case 0x1134d:
+			return ICB_Extend;
+		case 0x11357:
+			return ICB_Extend;
+		case 0x11366 ... 0x1136c:
+			return ICB_Extend;
+		case 0x11370 ... 0x11374:
+			return ICB_Extend;
+		case 0x113b8:
+			return ICB_Extend;
+		case 0x113bb ... 0x113c0:
+			return ICB_Extend;
+		case 0x113c2:
+			return ICB_Extend;
+		case 0x113c5:
+			return ICB_Extend;
+		case 0x113c7 ... 0x113c9:
+			return ICB_Extend;
+		case 0x113ce ... 0x113d0:
+			return ICB_Extend;
+		case 0x113d2:
+			return ICB_Extend;
+		case 0x113e1 ... 0x113e2:
+			return ICB_Extend;
+		case 0x11438 ... 0x1143f:
+			return ICB_Extend;
+		case 0x11442 ... 0x11444:
+			return ICB_Extend;
+		case 0x11446:
+			return ICB_Extend;
+		case 0x1145e:
+			return ICB_Extend;
+		case 0x114b0:
+			return ICB_Extend;
+		case 0x114b3 ... 0x114b8:
+			return ICB_Extend;
+		case 0x114ba:
+			return ICB_Extend;
+		case 0x114bd:
+			return ICB_Extend;
+		case 0x114bf ... 0x114c0:
+			return ICB_Extend;
+		case 0x114c2 ... 0x114c3:
+			return ICB_Extend;
+		case 0x115af:
+			return ICB_Extend;
+		case 0x115b2 ... 0x115b5:
+			return ICB_Extend;
+		case 0x115bc ... 0x115bd:
+			return ICB_Extend;
+		case 0x115bf ... 0x115c0:
+			return ICB_Extend;
+		case 0x115dc ... 0x115dd:
+			return ICB_Extend;
+		case 0x11633 ... 0x1163a:
+			return ICB_Extend;
+		case 0x1163d:
+			return ICB_Extend;
+		case 0x1163f ... 0x11640:
+			return ICB_Extend;
+		case 0x116ab:
+			return ICB_Extend;
+		case 0x116ad:
+			return ICB_Extend;
+		case 0x116b0 ... 0x116b7:
+			return ICB_Extend;
+		case 0x1171d:
+			return ICB_Extend;
+		case 0x1171f:
+			return ICB_Extend;
+		case 0x11722 ... 0x11725:
+			return ICB_Extend;
+		case 0x11727 ... 0x1172b:
+			return ICB_Extend;
+		case 0x1182f ... 0x11837:
+			return ICB_Extend;
+		case 0x11839 ... 0x1183a:
+			return ICB_Extend;
+		case 0x11930:
+			return ICB_Extend;
+		case 0x1193b ... 0x1193e:
+			return ICB_Extend;
+		case 0x11943:
+			return ICB_Extend;
+		case 0x119d4 ... 0x119d7:
+			return ICB_Extend;
+		case 0x119da ... 0x119db:
+			return ICB_Extend;
+		case 0x119e0:
+			return ICB_Extend;
+		case 0x11a01 ... 0x11a0a:
+			return ICB_Extend;
+		case 0x11a33 ... 0x11a38:
+			return ICB_Extend;
+		case 0x11a3b ... 0x11a3e:
+			return ICB_Extend;
+		case 0x11a47:
+			return ICB_Extend;
+		case 0x11a51 ... 0x11a56:
+			return ICB_Extend;
+		case 0x11a59 ... 0x11a5b:
+			return ICB_Extend;
+		case 0x11a8a ... 0x11a96:
+			return ICB_Extend;
+		case 0x11a98 ... 0x11a99:
+			return ICB_Extend;
+		case 0x11c30 ... 0x11c36:
+			return ICB_Extend;
+		case 0x11c38 ... 0x11c3d:
+			return ICB_Extend;
+		case 0x11c3f:
+			return ICB_Extend;
+		case 0x11c92 ... 0x11ca7:
+			return ICB_Extend;
+		case 0x11caa ... 0x11cb0:
+			return ICB_Extend;
+		case 0x11cb2 ... 0x11cb3:
+			return ICB_Extend;
+		case 0x11cb5 ... 0x11cb6:
+			return ICB_Extend;
+		case 0x11d31 ... 0x11d36:
+			return ICB_Extend;
+		case 0x11d3a:
+			return ICB_Extend;
+		case 0x11d3c ... 0x11d3d:
+			return ICB_Extend;
+		case 0x11d3f ... 0x11d45:
+			return ICB_Extend;
+		case 0x11d47:
+			return ICB_Extend;
+		case 0x11d90 ... 0x11d91:
+			return ICB_Extend;
+		case 0x11d95:
+			return ICB_Extend;
+		case 0x11d97:
+			return ICB_Extend;
+		case 0x11ef3 ... 0x11ef4:
+			return ICB_Extend;
+		case 0x11f00 ... 0x11f01:
+			return ICB_Extend;
+		case 0x11f36 ... 0x11f3a:
+			return ICB_Extend;
+		case 0x11f40 ... 0x11f42:
+			return ICB_Extend;
+		case 0x11f5a:
+			return ICB_Extend;
+		case 0x13440:
+			return ICB_Extend;
+		case 0x13447 ... 0x13455:
+			return ICB_Extend;
+		case 0x1611e ... 0x16129:
+			return ICB_Extend;
+		case 0x1612d ... 0x1612f:
+			return ICB_Extend;
+		case 0x16af0 ... 0x16af4:
+			return ICB_Extend;
+		case 0x16b30 ... 0x16b36:
+			return ICB_Extend;
+		case 0x16f4f:
+			return ICB_Extend;
+		case 0x16f8f ... 0x16f92:
+			return ICB_Extend;
+		case 0x16fe4:
+			return ICB_Extend;
+		case 0x16ff0 ... 0x16ff1:
+			return ICB_Extend;
+		case 0x1bc9d ... 0x1bc9e:
+			return ICB_Extend;
+		case 0x1cf00 ... 0x1cf2d:
+			return ICB_Extend;
+		case 0x1cf30 ... 0x1cf46:
+			return ICB_Extend;
+		case 0x1d165 ... 0x1d169:
+			return ICB_Extend;
+		case 0x1d16d ... 0x1d172:
+			return ICB_Extend;
+		case 0x1d17b ... 0x1d182:
+			return ICB_Extend;
+		case 0x1d185 ... 0x1d18b:
+			return ICB_Extend;
+		case 0x1d1aa ... 0x1d1ad:
+			return ICB_Extend;
+		case 0x1d242 ... 0x1d244:
+			return ICB_Extend;
+		case 0x1da00 ... 0x1da36:
+			return ICB_Extend;
+		case 0x1da3b ... 0x1da6c:
+			return ICB_Extend;
+		case 0x1da75:
+			return ICB_Extend;
+		case 0x1da84:
+			return ICB_Extend;
+		case 0x1da9b ... 0x1da9f:
+			return ICB_Extend;
+		case 0x1daa1 ... 0x1daaf:
+			return ICB_Extend;
+		case 0x1e000 ... 0x1e006:
+			return ICB_Extend;
+		case 0x1e008 ... 0x1e018:
+			return ICB_Extend;
+		case 0x1e01b ... 0x1e021:
+			return ICB_Extend;
+		case 0x1e023 ... 0x1e024:
+			return ICB_Extend;
+		case 0x1e026 ... 0x1e02a:
+			return ICB_Extend;
+		case 0x1e08f:
+			return ICB_Extend;
+		case 0x1e130 ... 0x1e136:
+			return ICB_Extend;
+		case 0x1e2ae:
+			return ICB_Extend;
+		case 0x1e2ec ... 0x1e2ef:
+			return ICB_Extend;
+		case 0x1e4ec ... 0x1e4ef:
+			return ICB_Extend;
+		case 0x1e5ee ... 0x1e5ef:
+			return ICB_Extend;
+		case 0x1e8d0 ... 0x1e8d6:
+			return ICB_Extend;
+		case 0x1e944 ... 0x1e94a:
+			return ICB_Extend;
+		case 0x1f3fb ... 0x1f3ff:
+			return ICB_Extend;
+		case 0xe0020 ... 0xe007f:
+			return ICB_Extend;
+		case 0xe0100 ... 0xe01ef:
+			return ICB_Extend;
+		 // }}}
+
+	}
+	return ICB_None;
 }
 
 END_ALLOW_CASE_RANGE
