@@ -7,6 +7,14 @@ Put this code in your fragment shader.
 
 // stripped down and optimized (branchless) version
 
+float divide(float num, float denom) {
+    return num / (abs(denom) + 1e-15) * sign(denom);
+}
+
+vec3 divide(vec3 num, vec3 denom) {
+    return num / (abs(denom) + 1e-15) * sign(denom);
+}
+
 vec3 hsluv_intersectLineLine(vec3 line1x, vec3 line1y, vec3 line2x, vec3 line2y) {
     return (line1y - line2y) / (line2x - line1x);
 }
@@ -16,7 +24,7 @@ vec3 hsluv_distanceFromPole(vec3 pointx,vec3 pointy) {
 }
 
 vec3 hsluv_lengthOfRayUntilIntersect(float theta, vec3 x, vec3 y) {
-    vec3 len = y / (sin(theta) - x * cos(theta));
+    vec3 len = divide(y, sin(theta) - x * cos(theta));
     len = mix(len, vec3(1000.0), step(len, vec3(0.0)));
     return len;
 }
@@ -89,19 +97,19 @@ float hsluv_maxChromaForLH(float L, float H) {
 }
 
 vec3 hsluv_fromLinear(vec3 c) {
-    return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
+    return mix(c * 12.92, 1.055 * pow(max(c, vec3(0)), vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
 }
 
 vec3 hsluv_toLinear(vec3 c) {
-    return mix(c / 12.92, pow((c + 0.055) / (1.0 + 0.055), vec3(2.4)), step(0.04045, c));
+    return mix(c / 12.92, pow(max((c + 0.055) / (1.0 + 0.055), vec3(0)), vec3(2.4)), step(0.04045, c));
 }
 
 float hsluv_yToL(float Y){
-    return mix(Y * 903.2962962962963, 116.0 * pow(Y, 1.0 / 3.0) - 16.0, step(0.0088564516790356308, Y));
+    return mix(Y * 903.2962962962963, 116.0 * pow(max(Y, 0), 1.0 / 3.0) - 16.0, step(0.0088564516790356308, Y));
 }
 
 float hsluv_lToY(float L) {
-    return mix(L / 903.2962962962963, pow((L + 16.0) / 116.0, 3.0), step(8.0, L));
+    return mix(L / 903.2962962962963, pow((max(L, 0) + 16.0) / 116.0, 3.0), step(8.0, L));
 }
 
 vec3 xyzToRgb(vec3 tuple) {
@@ -127,8 +135,7 @@ vec3 xyzToLuv(vec3 tuple){
     float Z = tuple.z;
 
     float L = hsluv_yToL(Y);
-
-    float div = 1./dot(tuple,vec3(1,15,3));
+    float div = 1. / max(dot(tuple, vec3(1, 15, 3)), 1e-15);
 
     return vec3(
         1.,
@@ -141,8 +148,8 @@ vec3 xyzToLuv(vec3 tuple){
 vec3 luvToXyz(vec3 tuple) {
     float L = tuple.x;
 
-    float U = tuple.y / (13.0 * L) + 0.19783000664283681;
-    float V = tuple.z / (13.0 * L) + 0.468319994938791;
+    float U = divide(tuple.y, 13.0 * L) + 0.19783000664283681;
+    float V = divide(tuple.z, 13.0 * L) + 0.468319994938791;
 
     float Y = hsluv_lToY(L);
     float X = 2.25 * U * Y / V;
@@ -178,7 +185,7 @@ vec3 hsluvToLch(vec3 tuple) {
 }
 
 vec3 lchToHsluv(vec3 tuple) {
-    tuple.g /= hsluv_maxChromaForLH(tuple.r, tuple.b) * .01;
+    tuple.g = divide(tuple.g, hsluv_maxChromaForLH(tuple.r, tuple.b) * .01);
     return tuple.bgr;
 }
 
