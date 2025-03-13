@@ -71,6 +71,7 @@ flag_codepoints = frozenset(range(0x1F1E6, 0x1F1E6 + 26))
 marks = set(emoji_skin_tone_modifiers) | flag_codepoints
 not_assigned = set(range(0, sys.maxunicode))
 property_maps: dict[str, set[int]] = defaultdict(set)
+grapheme_segmentation_maps: dict[str, set[int]] = defaultdict(set)
 
 
 def parse_prop_list() -> None:
@@ -259,6 +260,12 @@ def parse_eaw() -> None:
     doublewidth |= set(range(0x30000, 0x3FFFD + 1)) - seen
 
 
+def parse_grapheme_segmentation() -> None:
+    for line in get_data('ucd/auxiliary/GraphemeBreakProperty.txt'):
+        chars, category = split_two(line)
+        grapheme_segmentation_maps[category] |= chars
+
+
 def get_ranges(items: list[int]) -> Generator[Union[int, tuple[int, int]], None, None]:
     items.sort()
     for k, g in groupby(enumerate(items), lambda m: m[0]-m[1]):
@@ -362,21 +369,6 @@ def category_test(
     p('\treturn false;\n}\n')
 
 
-def codepoint_to_mark_map(p: Callable[..., None], mark_map: list[int]) -> dict[int, int]:
-    p('\tswitch(c) { // {{{')
-    rmap = {c: m for m, c in enumerate(mark_map)}
-    for spec in get_ranges(mark_map):
-        if isinstance(spec, tuple):
-            s = rmap[spec[0]]
-            cases = ' '.join(f'case {i}:' for i in range(spec[0], spec[1]+1))
-            p(f'\t\t{cases} return {s} + c - {spec[0]};')
-        else:
-            p(f'\t\tcase {spec}: return {rmap[spec]};')
-    p('default: return 0;')
-    p('\t} // }}}')
-    return rmap
-
-
 def classes_to_regex(classes: Iterable[str], exclude: str = '', for_go: bool = True) -> Iterable[str]:
     chars: set[int] = set()
     for c in classes:
@@ -449,6 +441,47 @@ def gen_names() -> None:
             if aliases:
                 end = '\t' + ' '.join(sorted(aliases)) + end
             print(cp, *words, end=end, file=f)
+
+
+def gen_grapheme_segmentation() -> None:
+    with create_header('kitty/grapheme-segmentation-data.h') as p, open('tools/wcswidth/grapheme-segmentation-data.go', 'w') as gof:
+        gp = partial(print, file=gof)
+        p('typedef enum GraphemeBreakProperty {')  # }
+        p('    None,')
+        gp('package wcswidth\n\n')
+        gp('type GraphemeBreakProperty uint8\n')
+        gp('const (')  # )
+        gp('None = iota')  # )
+        for category in grapheme_segmentation_maps:
+            p(f'    {category},')
+            gp(f'    {category}')
+        p('} GraphemeBreakProperty;')
+        p('')
+        gp(')')
+        gp('')
+        p('static inline GraphemeBreakProperty')
+        p('grapheme_break_property(const char_type c) {')  # }
+        p('\tswitch(c) {')  # }
+        gp('func GraphemeBreakPropertyFor(code rune) GraphemeBreakProperty {')  # }
+        gp('\tswitch code {')  # }
+        for category, codepoints in grapheme_segmentation_maps.items():
+            p(f'\t\t // {category} ({len(codepoints)} codepoints ''{{''{')
+            gp(f'\t\t // {category} ({len(codepoints)} codepoints ''{{''{')
+            for spec in get_ranges(list(codepoints)):
+                write_case(spec, p)
+                p(f'\t\t\treturn {category};')
+                write_case(spec, p, for_go=True)
+                p(f'\t\t\treturn {category}')
+            p('\t\t // }}''}')
+            p('')
+            gp('\t\t // }}''}')
+            gp('')
+        p('\t}')  # }
+        gp('\t}')  # }
+        p('\treturn None;')  # }
+        gp('\treturn None')  # }
+        p('}')
+        gp('}')
 
 
 def gen_wcwidth() -> None:
@@ -569,11 +602,13 @@ def main(args: list[str]=sys.argv) -> None:
     parse_prop_list()
     parse_emoji()
     parse_eaw()
+    parse_grapheme_segmentation()
     gen_ucd()
     gen_wcwidth()
     gen_emoji()
     gen_names()
     gen_rowcolumn_diacritics()
+    gen_grapheme_segmentation()
 
 
 if __name__ == '__main__':
