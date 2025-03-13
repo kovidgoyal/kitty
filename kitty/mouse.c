@@ -700,7 +700,12 @@ enter_event(int modifiers) {
     // On cocoa there is no way to configure the window manager to
     // focus windows on mouse enter, so we do it ourselves
     if (OPT(focus_follows_mouse) && !global_state.callback_os_window->is_focused) {
+        id_type wid = global_state.callback_os_window->id;
         focus_os_window(global_state.callback_os_window, false, NULL);
+        if (!global_state.callback_os_window) {
+            global_state.callback_os_window = os_window_for_id(wid);
+            if (!global_state.callback_os_window) return;
+        }
     }
 #endif
     // If the mouse is grabbed send a move event to update the cursor position
