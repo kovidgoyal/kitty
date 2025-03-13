@@ -110,6 +110,8 @@ Detailed list of changes
 
 - macOS: When the program running in kitty reports progress information for a task, show a progress bar on the kitty dock icon
 
+- macOS: Fix a regression causing a crash when using :opt:`focus_follows_mouse` (:iss:`8437`)
+
 0.40.0 [2025-03-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
