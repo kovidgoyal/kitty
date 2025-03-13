@@ -447,13 +447,13 @@ def gen_grapheme_segmentation() -> None:
     with create_header('kitty/grapheme-segmentation-data.h') as p, open('tools/wcswidth/grapheme-segmentation-data.go', 'w') as gof:
         gp = partial(print, file=gof)
         p('typedef enum GraphemeBreakProperty {')  # }
-        p('    None,')
+        p('    GBP_None,')
         gp('package wcswidth\n\n')
         gp('type GraphemeBreakProperty uint8\n')
         gp('const (')  # )
         gp('None = iota')  # )
         for category in grapheme_segmentation_maps:
-            p(f'    {category},')
+            p(f'    GBP_{category},')
             gp(f'    {category}')
         p('} GraphemeBreakProperty;')
         p('')
@@ -469,16 +469,16 @@ def gen_grapheme_segmentation() -> None:
             gp(f'\t\t // {category} ({len(codepoints)} codepoints ''{{''{')
             for spec in get_ranges(list(codepoints)):
                 write_case(spec, p)
-                p(f'\t\t\treturn {category};')
-                write_case(spec, p, for_go=True)
-                p(f'\t\t\treturn {category}')
+                p(f'\t\t\treturn GBP_{category};')
+                write_case(spec, gp, for_go=True)
+                gp(f'\t\t\treturn {category}')
             p('\t\t // }}''}')
             p('')
             gp('\t\t // }}''}')
             gp('')
         p('\t}')  # }
         gp('\t}')  # }
-        p('\treturn None;')  # }
+        p('\treturn GBP_None;')  # }
         gp('\treturn None')  # }
         p('}')
         gp('}')
