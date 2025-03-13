@@ -7,6 +7,7 @@
 START_ALLOW_CASE_RANGE
 
 typedef enum GraphemeBreakProperty {
+	GBP_AtStart,
 	GBP_None,
 	GBP_Prepend,
 	GBP_CR,

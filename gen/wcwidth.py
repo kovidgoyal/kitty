@@ -483,7 +483,7 @@ def gen_grapheme_segmentation() -> None:
             p('')
             gp('')
 
-        enum('GraphemeBreakProperty', 'None', *grapheme_segmentation_maps, prefix='GBP_')
+        enum('GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
         enum('IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
 
         def get_cat(name: str, c_func_name: str, go_func_name: str, prefix: str, m: dict[str, set[int]]) -> None:

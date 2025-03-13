@@ -3,7 +3,8 @@ package wcswidth
 type GraphemeBreakProperty uint8
 
 const (
-	GBP_None GraphemeBreakProperty = iota
+	GBP_AtStart GraphemeBreakProperty = iota
+	GBP_None
 	GBP_Prepend
 	GBP_CR
 	GBP_LF
