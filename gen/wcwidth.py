@@ -73,6 +73,7 @@ not_assigned = set(range(0, sys.maxunicode))
 property_maps: dict[str, set[int]] = defaultdict(set)
 grapheme_segmentation_maps: dict[str, set[int]] = defaultdict(set)
 incb_map: dict[str, set[int]] = defaultdict(set)
+extended_pictographic: set[int] = set()
 
 
 def parse_prop_list() -> None:
@@ -262,6 +263,7 @@ def parse_eaw() -> None:
 
 
 def parse_grapheme_segmentation() -> None:
+    global extended_pictographic
     for line in get_data('ucd/auxiliary/GraphemeBreakProperty.txt'):
         chars, category = split_two(line)
         grapheme_segmentation_maps[category] |= chars
@@ -274,6 +276,10 @@ def parse_grapheme_segmentation() -> None:
             # there exist some InCB chars that do not have a GBP category
             subcat = rest.strip().split(';')[1].strip().split()[0].strip()
             incb_map[subcat] |= chars
+    for line in get_data('ucd/emoji/emoji-data.txt'):
+        chars, category = split_two(line)
+        if 'Extended_Pictographic#' == category:
+            extended_pictographic |= chars
 
 
 def get_ranges(items: list[int]) -> Generator[Union[int, tuple[int, int]], None, None]:
@@ -509,6 +515,30 @@ def gen_grapheme_segmentation() -> None:
         p('')
         gp('')
         get_cat('IndicConjunctBreak', 'indic_conjunct_break', 'IndicConjunctBreakFor', 'ICB_', incb_map)
+
+        p('''
+static inline bool
+is_extended_pictographic(char_type c) {
+    switch (c) {
+        default: return false;
+''')
+        gp('''
+func IsExtendedPictographic(c rune) bool {
+    switch c {
+        default: return false;
+''')
+
+        for spec in get_ranges(list(extended_pictographic)):
+            write_case(spec, p)
+            p('\t\t\treturn true;')
+            write_case(spec, gp, for_go=True)
+            gp('\t\t\treturn true')
+        p('''
+    }
+}''')
+        gp('''
+    }
+}''')
     gofmt(gof.name)
 
 
