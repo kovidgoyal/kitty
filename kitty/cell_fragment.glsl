@@ -104,7 +104,7 @@ vec3 apply_min_contrast_ratio(float under_luminance, float over_luminance, vec3 
         float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
         float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
         vec3 result = mix(result_a, result_b, step(result_a_ratio, result_b_ratio));
-        return mix(result, over, diff.r + diff.g + diff.g < 0.001f);
+        return mix(result, over, step(diff.r + diff.g + diff.g, 0.001f));
     }
     return over;
 }
