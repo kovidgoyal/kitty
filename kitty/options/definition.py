@@ -265,21 +265,21 @@ Then adjust the second parameter until it looks good. Then switch to a light the
 and adjust the first parameter until the perceived thickness matches the dark theme.
 ''')
 
-opt('text_fg_override_threshold', 0, option_type='float', long_text='''
-A setting to prevent low contrast scenarios, configurable in two different modes (positive and negative value).
+opt('text_fg_override_threshold', '0 %', option_type='number_with_unit', long_text='''
+A setting to prevent low contrast scenarios, configurable in two different modes (suffix :code:` %` and suffix :code:` ratio`).
 The default value is :code:`0`, which means no overriding is performed. Useful when working with applications
 that use colors that do not contrast well with your preferred color scheme.
 
-A positive value represents the minimum accepted difference in luminance between the foreground and background
+A value with the suffix :code:` %` represents the minimum accepted difference in luminance between the foreground and background
 color, below which kitty will override the foreground color. It is percentage
-ranging from :code:`0` to :code:`100`. If the difference in luminance of the
+ranging from :code:`0 %` to :code:`100 %`. If the difference in luminance of the
 foreground and background is below this threshold, the foreground color will be set
 to white if the background is dark or black if the background is light. 
 
-A negative value represents the minimum accepted contrast ratio between the foreground and background color.
-Possible values range from :code:`-0.0` to :code:`-21.0`.
+A value with the suffix :code:` ratio` represents the minimum accepted contrast ratio between the foreground and background color.
+Possible values range from :code:`0.0 ratio` to :code:`21.0 ratio`.
 To for example meet :link:`WCAG level AA <https://en.wikipedia.org/wiki/Web_Content_Accessibility_Guidelines>`
-a value of :code:`-4.5` can be provided.
+a value of :code:`4.5 ratio` can be provided.
 The algorithm is implemented using :link:`HSLuv <https://www.hsluv.org/>` which enables it to change
 the perceived lightness of a color just as much as needed without really changing its hue and saturation.
 

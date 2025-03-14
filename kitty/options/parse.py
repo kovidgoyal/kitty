@@ -4,8 +4,16 @@
 import typing
 import collections.abc  # noqa: F401, RUF100
 from kitty.conf.utils import (
-    merge_dicts, positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
-    to_color_or_none, unit_float
+    merge_dicts,
+    positive_float,
+    positive_int,
+    python_string,
+    number_with_unit,
+    to_bool,
+    to_cmdline,
+    to_color,
+    to_color_or_none,
+    unit_float,
 )
 from kitty.options.utils import (
     action_alias, active_tab_title_template, allow_hyperlinks, bell_on_tab, box_drawing_scale,
@@ -1324,7 +1332,10 @@ class Parser:
         ans['text_composition_strategy'] = str(val)
 
     def text_fg_override_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['text_fg_override_threshold'] = float(val)
+        value, unit = number_with_unit(val, default_unit='%')
+        if unit not in ['%', 'ratio']:
+            raise ValueError(f'The unit {unit} is not a valid choice for text_fg_override_threshold')
+        ans['text_fg_override_threshold'] = value, unit
 
     def touch_scroll_multiplier(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
