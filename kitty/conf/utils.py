@@ -22,6 +22,7 @@ from ..typing import Protocol
 from ..utils import expandvars, log_error, shlex_split
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
+number_unit_pat = re.compile(r'\s*([-+]?\d+\.?\d*)\s*([^\d\s]*)?')
 ItemParser = Callable[[str, str, dict[str, Any]], bool]
 T = TypeVar('T')
 
@@ -64,6 +65,19 @@ def to_color_or_none(x: str) -> Color | None:
 
 def unit_float(x: ConvertibleToNumbers) -> float:
     return max(0, min(float(x), 1))
+
+
+def number_with_unit(x: str, default_unit: str = '') -> tuple[float, str]:
+    mat = number_unit_pat.match(x)
+    exception = None
+    if mat is not None:
+        try:
+            value, unit = float(mat.group(1)), mat.group(2)
+            unit = default_unit if not unit else unit
+            return value, unit
+        except Exception as e:
+            exception = e
+    raise ValueError(f'Invalid number with unit config option provided: {x if exception is None else exception}')
 
 
 def to_bool(x: str) -> bool:

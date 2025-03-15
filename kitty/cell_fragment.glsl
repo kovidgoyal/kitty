@@ -1,4 +1,5 @@
 #pragma kitty_include_shader <alpha_blend.glsl>
+#pragma kitty_include_shader <hsluv.glsl>
 #pragma kitty_include_shader <linear2srgb.glsl>
 #pragma kitty_include_shader <cell_defines.glsl>
 
@@ -87,6 +88,24 @@ vec3 fg_override(float under_luminance, float over_lumininace, vec3 over) {
 	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
 }
 #endif
+#if (APPLY_MIN_CONTRAST_RATIO == 1)
+float contrast_ratio(float under_luminance, float over_luminance) {
+    return clamp((max(under_luminance, over_luminance) + 0.05f) / (min(under_luminance, over_luminance) + 0.05f), 1.f, 21.f);
+}
+vec3 apply_min_contrast_ratio(float under_luminance, float over_luminance, vec3 under, vec3 over) {
+    float ratio = contrast_ratio(under_luminance, over_luminance);
+    vec3 diff = abs(under - over);
+    vec3 over_hsluv = rgbToHsluv(over);
+    float target_lum_a = clamp((under_luminance + 0.05f) * MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
+    float target_lum_b = clamp((under_luminance + 0.05f) / MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
+    vec3 result_a = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.f)), 0.f, 1.f);
+    vec3 result_b = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_b * 100.f)), 0.f, 1.f);
+    float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
+    float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
+    vec3 result = mix(result_a, result_b, step(result_a_ratio, result_b_ratio));
+    return mix(result, over, max(step(diff.r + diff.g + diff.g, 0.001f), step(MIN_CONTRAST_RATIO, ratio)));
+}
+#endif
 
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float under_luminance = dot(under, Y);
@@ -94,6 +113,10 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
 
 #if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
+    over_lumininace = dot(over.rgb, Y);
+#endif
+#if (APPLY_MIN_CONTRAST_RATIO == 1)
+    over.rgb = apply_min_contrast_ratio(under_luminance, over_lumininace, under, over.rgb);
     over_lumininace = dot(over.rgb, Y);
 #endif
 
@@ -110,6 +133,10 @@ vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     float over_lumininace = dot(over.rgb, Y);
 #if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
+    over_lumininace = dot(over.rgb, Y);
+#endif
+#if (APPLY_MIN_CONTRAST_RATIO == 1)
+    over.rgb = apply_min_contrast_ratio(under_luminance, over_lumininace, under, over.rgb);
     over_lumininace = dot(over.rgb, Y);
 #endif
     // This is the original gamma-incorrect rendering, it is the solution of the following equation:
