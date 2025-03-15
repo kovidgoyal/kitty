@@ -4,16 +4,8 @@
 import typing
 import collections.abc  # noqa: F401, RUF100
 from kitty.conf.utils import (
-    merge_dicts,
-    positive_float,
-    positive_int,
-    python_string,
-    number_with_unit,
-    to_bool,
-    to_cmdline,
-    to_color,
-    to_color_or_none,
-    unit_float,
+    merge_dicts, positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
+    to_color_or_none, unit_float
 )
 from kitty.options.utils import (
     action_alias, active_tab_title_template, allow_hyperlinks, bell_on_tab, box_drawing_scale,
@@ -27,10 +19,10 @@ from kitty.options.utils import (
     pointer_shape_when_dragging, remote_control_password, resize_debounce_time, scrollback_lines,
     scrollback_pager_history_size, shell_integration, store_multiple, symbol_map, tab_activity_symbol,
     tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
-    tab_title_template, titlebar_color, to_cursor_shape, to_cursor_unfocused_shape, to_font_size,
-    to_layout_names, to_modifiers, transparent_background_colors, underline_exclusion, url_prefixes,
-    url_style, visual_bell_duration, visual_window_select_characters, window_border_width,
-    window_logo_scale, window_size
+    tab_title_template, text_fg_override_threshold, titlebar_color, to_cursor_shape,
+    to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers,
+    transparent_background_colors, underline_exclusion, url_prefixes, url_style, visual_bell_duration,
+    visual_window_select_characters, window_border_width, window_logo_scale, window_size
 )
 
 
@@ -1332,10 +1324,7 @@ class Parser:
         ans['text_composition_strategy'] = str(val)
 
     def text_fg_override_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
-        value, unit = number_with_unit(val, default_unit='%')
-        if unit not in ['%', 'ratio']:
-            raise ValueError(f'The unit {unit} is not a valid choice for text_fg_override_threshold')
-        ans['text_fg_override_threshold'] = value, unit
+        ans['text_fg_override_threshold'] = text_fg_override_threshold(val)
 
     def touch_scroll_multiplier(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)

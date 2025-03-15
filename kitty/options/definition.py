@@ -265,7 +265,7 @@ Then adjust the second parameter until it looks good. Then switch to a light the
 and adjust the first parameter until the perceived thickness matches the dark theme.
 ''')
 
-opt('text_fg_override_threshold', '0 %', option_type='number_with_unit', long_text='''
+opt('text_fg_override_threshold', '0 %', option_type='text_fg_override_threshold', long_text='''
 A setting to prevent low contrast scenarios, configurable in two different modes (suffix :code:` %` and suffix :code:` ratio`).
 The default value is :code:`0`, which means no overriding is performed. Useful when working with applications
 that use colors that do not contrast well with your preferred color scheme.

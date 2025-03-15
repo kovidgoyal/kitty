@@ -26,6 +26,7 @@ from kitty.conf.utils import (
     KeyAction,
     KeyFuncWrapper,
     currently_parsing,
+    number_with_unit,
     percent,
     positive_float,
     positive_int,
@@ -750,6 +751,13 @@ def tab_title_template(x: str) -> str:
 def active_tab_title_template(x: str) -> str | None:
     x = tab_title_template(x)
     return None if x == 'none' else x
+
+
+def text_fg_override_threshold(x: str) -> tuple[float, str]:
+    value, unit = number_with_unit(x, default_unit='%')
+    if unit not in ['%', 'ratio']:
+        raise ValueError(f'The unit {unit} is not a valid choice for text_fg_override_threshold')
+    return value, unit
 
 
 ClearOn = Literal['next', 'focus']

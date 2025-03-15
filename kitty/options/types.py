@@ -612,7 +612,7 @@ class Options:
     term: str = 'xterm-kitty'
     terminfo_type: choices_for_terminfo_type = 'path'
     text_composition_strategy: str = 'platform'
-    text_fg_override_threshold: tuple[float, str] = 0.0, '%'
+    text_fg_override_threshold: tuple[float, str] = (0.0, '%')
     touch_scroll_multiplier: float = 1.0
     transparent_background_colors: tuple[tuple[kitty.fast_data_types.Color, float], ...] = ()
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
