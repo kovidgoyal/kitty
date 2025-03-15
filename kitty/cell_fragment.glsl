@@ -94,19 +94,16 @@ float contrast_ratio(float under_luminance, float over_luminance) {
 }
 vec3 apply_min_contrast_ratio(float under_luminance, float over_luminance, vec3 under, vec3 over) {
     float ratio = contrast_ratio(under_luminance, over_luminance);
-    if (ratio < MIN_CONTRAST_RATIO) {
-        vec3 diff = abs(under - over);
-        vec3 over_hsluv = rgbToHsluv(over);
-        float target_lum_a = clamp((under_luminance + 0.05f) * MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
-        float target_lum_b = clamp((under_luminance + 0.05f) / MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
-        vec3 result_a = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.f)), 0.f, 1.f);
-        vec3 result_b = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_b * 100.f)), 0.f, 1.f);
-        float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
-        float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
-        vec3 result = mix(result_a, result_b, step(result_a_ratio, result_b_ratio));
-        return mix(result, over, step(diff.r + diff.g + diff.g, 0.001f));
-    }
-    return over;
+    vec3 diff = abs(under - over);
+    vec3 over_hsluv = rgbToHsluv(over);
+    float target_lum_a = clamp((under_luminance + 0.05f) * MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
+    float target_lum_b = clamp((under_luminance + 0.05f) / MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
+    vec3 result_a = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.f)), 0.f, 1.f);
+    vec3 result_b = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_b * 100.f)), 0.f, 1.f);
+    float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
+    float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
+    vec3 result = mix(result_a, result_b, step(result_a_ratio, result_b_ratio));
+    return mix(result, over, max(step(diff.r + diff.g + diff.g, 0.001f), step(MIN_CONTRAST_RATIO, ratio)));
 }
 #endif
 
