@@ -94,7 +94,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.40.1 [future]
+0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Do not count background processes by default for :opt:`confirm_os_window_close` (:iss:`8358`)
