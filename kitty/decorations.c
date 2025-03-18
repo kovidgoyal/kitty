@@ -1235,8 +1235,9 @@ rectcircle(Canvas *self, Corner which) {
     The entire rectircle fits in four cells, each cell being one quadrant
     of the full rectircle and the origin being the center of the rectircle.
     The functions we return do the mapping for the specified cell.
-    ╭╮
-    ╰╯
+    ╭╮  ╭─╮
+    ╰╯  │ │
+        ╰─╯
     See https://math.stackexchange.com/questions/1649714
     */
     double radius = self->width / 2.;
