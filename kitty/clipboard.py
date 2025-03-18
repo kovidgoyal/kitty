@@ -322,6 +322,7 @@ class ClipboardRequestManager:
         self.window_id = window_id
         self.currently_asking_permission_for: ReadRequest | None = None
         self.in_flight_write_request: WriteRequest | None = None
+        self.osc52_in_flight_write_requests: dict[ClipboardType, WriteRequest] = {}
 
     def parse_osc_5522(self, data: memoryview) -> None:
         import base64
@@ -406,13 +407,13 @@ class ClipboardRequestManager:
                 self.handle_read_request(rr)
         else:
             for d in destinations:
-                wr = self.in_flight_write_request
+                wr = self.osc52_in_flight_write_requests.get(d)
                 if wr is None:
-                    wr = self.in_flight_write_request = WriteRequest(d is ClipboardType.primary_selection)
+                    wr = self.osc52_in_flight_write_requests[d] = WriteRequest(d is ClipboardType.primary_selection)
                 wr.add_base64_data(data)
                 if is_partial:
                     return
-                self.in_flight_write_request = None
+                self.osc52_in_flight_write_requests.pop(d, None)
                 self.handle_write_request(wr)
 
     def handle_write_request(self, wr: WriteRequest) -> None:
@@ -531,3 +532,4 @@ class ClipboardRequestManager:
     def close(self) -> None:
         if self.in_flight_write_request is not None:
             self.in_flight_write_request = None
+        self.osc52_in_flight_write_requests.clear()
