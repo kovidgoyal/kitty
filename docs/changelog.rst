@@ -112,6 +112,8 @@ Detailed list of changes
 
 - macOS: Fix a regression causing a crash when using :opt:`focus_follows_mouse` (:iss:`8437`)
 
+- OSC 52: Fix specifying both clipboard and primary in OSC 52 requests not supported
+
 0.40.0 [2025-03-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
