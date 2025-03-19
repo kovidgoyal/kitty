@@ -78,6 +78,13 @@ When using these colors, you can still dynamically change colors, but the next
 time the OS changes its color mode, any dynamic changes will be overridden.
 
 
+.. note::
+
+   On the GNOME desktop, the desktop reports the color preference as no-preference
+   when using light themes. So use :file:`no-preference-theme.auto.conf` to
+   select colors for light mode on GNOME.
+
+
 Using your own themes
 -----------------------
 
