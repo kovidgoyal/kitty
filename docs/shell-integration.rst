@@ -421,19 +421,27 @@ The protocol used for marking the prompt is very simple. You should consider
 adding it to your shell as a builtin. Many modern terminals make use of it, for
 example: kitty, iTerm2, WezTerm, DomTerm
 
-Just before starting to draw the PS1 prompt send the escape code::
+Just before starting to draw the PS1 prompt send the escape code:
+
+.. code-block:: none
 
     <OSC>133;A<ST>
 
-Just before starting to draw the PS2 prompt send the escape code::
+Just before starting to draw the PS2 prompt send the escape code:
+
+.. code-block:: none
 
     <OSC>133;A;k=s<ST>
 
-Just before running a command/program, send the escape code::
+Just before running a command/program, send the escape code:
+
+.. code-block:: none
 
     <OSC>133;C<ST>
 
-Optionally, when a command is finished its "exit status" can be reported as::
+Optionally, when a command is finished its "exit status" can be reported as:
+
+.. code-block:: none
 
     <OSC>133;D;exit status as base 10 integer<ST>
 
@@ -443,27 +451,34 @@ full protocol, that also marks the command region, see `the iTerm2 docs
 <https://iterm2.com/documentation-escape-codes.html>`_.
 
 kitty additionally supports several extra fields for the ``<OSC>133;A`` command
-to control its behavior, separated by semi-colons. They are::
+to control its behavior, separated by semi-colons. They are:
 
-    redraw=0 - this tells kitty that the shell will not redraw the prompt on
+
+``redraw=0``
+    this tells kitty that the shell will not redraw the prompt on
     resize so it should not erase it
 
-    special_key=1 - this tells kitty to use a special key instead of arrow keys
+``special_key=1``
+    this tells kitty to use a special key instead of arrow keys
     to move the cursor on mouse click. Useful if arrow keys have side-effects
     like triggering auto complete. The shell integration script then binds the
     special key, as needed.
 
-    k=s - this tells kitty that the secondary (PS2) prompt is starting at the
+``k=s``
+    this tells kitty that the secondary (PS2) prompt is starting at the
     current line.
 
-    click_events=1 - this tells kitty that the shell is capable of handling
+``click_events=1``
+    this tells kitty that the shell is capable of handling
     mouse click events. kitty will thus send a click event to the shell when
     the user clicks somewhere in the prompt. The shell can then move the cursor
     to that position or perform some other appropriate action. Without this,
     kitty will instead generate a number of fake key events to move the cursor
     to the clicked location, which is not fully robust.
 
-kitty also optionally supports sending the cmdline going to be executed with ``<OSC>133;C`` as::
+kitty also optionally supports sending the cmdline going to be executed with ``<OSC>133;C`` as:
+
+.. code-block:: none
 
     <OSC>133;C;cmdline=cmdline encoded by %q<ST>
     or
