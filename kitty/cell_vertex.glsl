@@ -208,6 +208,48 @@ float calc_background_opacity(uint bg) {
     );
 }
 
+#if defined(NEEDS_FOREGROUND) && DO_FG_OVERRIDE == 1
+#define OVERRIDE_FG_COLORS
+#pragma kitty_include_shader <hsluv.glsl>
+#if (FG_OVERRIDE_ALGO == 1)
+vec3 fg_override(float under_luminance, float over_lumininace, vec3 under, vec3 over) {
+    // If the difference in luminance is too small,
+    // force the foreground color to be black or white.
+    float diff_luminance = abs(under_luminance - over_lumininace);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, FG_OVERRIDE_THRESHOLD);
+	float original_level = 1.f - override_level;
+	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
+}
+
+#else
+
+float contrast_ratio(float under_luminance, float over_luminance) {
+    return clamp((max(under_luminance, over_luminance) + 0.05f) / (min(under_luminance, over_luminance) + 0.05f), 1.f, 21.f);
+}
+
+vec3 fg_override(float under_luminance, float over_luminance, vec3 under, vec3 over) {
+    float ratio = contrast_ratio(under_luminance, over_luminance);
+    vec3 diff = abs(under - over);
+    vec3 over_hsluv = rgbToHsluv(over);
+    const float min_contrast_ratio = FG_OVERRIDE_THRESHOLD;
+    float target_lum_a = clamp((under_luminance + 0.05f) * min_contrast_ratio - 0.05f, 0.f, 1.f);
+    float target_lum_b = clamp((under_luminance + 0.05f) / min_contrast_ratio - 0.05f, 0.f, 1.f);
+    vec3 result_a = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.f)), 0.f, 1.f);
+    vec3 result_b = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_b * 100.f)), 0.f, 1.f);
+    float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
+    float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
+    vec3 result = mix(result_a, result_b, step(result_a_ratio, result_b_ratio));
+    return mix(result, over, max(step(diff.r + diff.g + diff.g, 0.001f), step(min_contrast_ratio, ratio)));
+}
+#endif
+
+vec3 override_foreground_color(vec3 over, vec3 under) {
+    float under_luminance = dot(under, Y);
+    float over_lumininace = dot(over.rgb, Y);
+    return fg_override(under_luminance, over_lumininace, under, over);
+}
+#endif
+
 void main() {
 
     CellData cell_data = set_vertex_position();
@@ -292,4 +334,9 @@ void main() {
     float effective_cursor_opacity = max(cursor_opacity, orig_bg_alpha) * draw_bg;
     bg_alpha = choose_alpha(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
     // }}}
+
+#ifdef OVERRIDE_FG_COLORS
+    decoration_fg = override_foreground_color(decoration_fg, background);
+    foreground = override_foreground_color(foreground, background);
+#endif
 }

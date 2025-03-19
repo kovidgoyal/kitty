@@ -30,3 +30,6 @@
 #if (HAS_TRANSPARENCY == 1)
 #define TRANSPARENT
 #endif
+
+// sRGB luminance values
+const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
