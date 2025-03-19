@@ -753,8 +753,8 @@ def active_tab_title_template(x: str) -> str | None:
     return None if x == 'none' else x
 
 
-def text_fg_override_threshold(x: str) -> tuple[float, str]:
-    return number_with_unit(x, '%', 'ratio')
+def text_fg_override_threshold(x: str) -> tuple[float, Literal['%', 'ratio']]:
+    return number_with_unit(x, '%', 'ratio')  # type: ignore
 
 
 ClearOn = Literal['next', 'focus']
