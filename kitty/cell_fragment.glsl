@@ -78,7 +78,7 @@ float clamp_to_unit_float(float x) {
     return clamp(x, 0.0f, 1.0f);
 }
 
-#if (FG_OVERRIDE == 1)
+#if (FG_OVERRIDE_ALGO == 1)
 vec3 fg_override(float under_luminance, float over_lumininace, vec3 over) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
@@ -87,8 +87,7 @@ vec3 fg_override(float under_luminance, float over_lumininace, vec3 over) {
 	float original_level = 1.f - override_level;
 	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
 }
-#endif
-#if (APPLY_MIN_CONTRAST_RATIO == 1)
+#else
 float contrast_ratio(float under_luminance, float over_luminance) {
     return clamp((max(under_luminance, over_luminance) + 0.05f) / (min(under_luminance, over_luminance) + 0.05f), 1.f, 21.f);
 }
@@ -96,30 +95,29 @@ vec3 apply_min_contrast_ratio(float under_luminance, float over_luminance, vec3 
     float ratio = contrast_ratio(under_luminance, over_luminance);
     vec3 diff = abs(under - over);
     vec3 over_hsluv = rgbToHsluv(over);
-    float target_lum_a = clamp((under_luminance + 0.05f) * MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
-    float target_lum_b = clamp((under_luminance + 0.05f) / MIN_CONTRAST_RATIO - 0.05f, 0.f, 1.f);
+    const float min_contrast_ratio = FG_OVERRIDE_THRESHOLD;
+    float target_lum_a = clamp((under_luminance + 0.05f) * min_contrast_ratio - 0.05f, 0.f, 1.f);
+    float target_lum_b = clamp((under_luminance + 0.05f) / min_contrast_ratio - 0.05f, 0.f, 1.f);
     vec3 result_a = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.f)), 0.f, 1.f);
     vec3 result_b = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_b * 100.f)), 0.f, 1.f);
     float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
     float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
     vec3 result = mix(result_a, result_b, step(result_a_ratio, result_b_ratio));
-    return mix(result, over, max(step(diff.r + diff.g + diff.g, 0.001f), step(MIN_CONTRAST_RATIO, ratio)));
+    return mix(result, over, max(step(diff.r + diff.g + diff.g, 0.001f), step(min_contrast_ratio, ratio)));
 }
 #endif
 
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
-
-#if (FG_OVERRIDE == 1)
+#if DO_FG_OVERRIDE == 1
+#if FG_OVERRIDE_ALGO == 1
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
-    over_lumininace = dot(over.rgb, Y);
-#endif
-#if (APPLY_MIN_CONTRAST_RATIO == 1)
+#else
     over.rgb = apply_min_contrast_ratio(under_luminance, over_lumininace, under, over.rgb);
+#endif
     over_lumininace = dot(over.rgb, Y);
 #endif
-
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
     // A multiplicative contrast is also available to increase saturation.
     over.a = clamp_to_unit_float(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - over_lumininace + under_luminance) * text_gamma_scaling) * text_contrast);
@@ -131,12 +129,12 @@ vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     // Simulation of gamma-incorrect blending
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
-#if (FG_OVERRIDE == 1)
+#if DO_FG_OVERRIDE == 1
+#if FG_OVERRIDE_ALGO == 1
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
-    over_lumininace = dot(over.rgb, Y);
-#endif
-#if (APPLY_MIN_CONTRAST_RATIO == 1)
+#else
     over.rgb = apply_min_contrast_ratio(under_luminance, over_lumininace, under, over.rgb);
+#endif
     over_lumininace = dot(over.rgb, Y);
 #endif
     // This is the original gamma-incorrect rendering, it is the solution of the following equation:
