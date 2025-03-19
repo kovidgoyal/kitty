@@ -107,6 +107,7 @@ vec3 apply_min_contrast_ratio(float under_luminance, float over_luminance, vec3 
 }
 #endif
 
+#if TEXT_NEW_GAMMA == 1
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
@@ -124,8 +125,9 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
     return over;
 }
 
-#if (TEXT_NEW_GAMMA == 0)
-vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
+#else
+
+vec4 foreground_contrast(vec4 over, vec3 under) {
     // Simulation of gamma-incorrect blending
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
@@ -172,11 +174,7 @@ vec4 calculate_premul_foreground_from_sprites(vec4 text_fg) {
 vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
     // When rendering on a background we can adjust the alpha channel contrast
     // to improve legibility based on the source and destination colors
-#if (TEXT_NEW_GAMMA == 0)
-    return foreground_contrast_incorrect(text_fg, bg);
-#else
     return foreground_contrast(text_fg, bg);
-#endif
 }
 
 #endif
