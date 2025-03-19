@@ -754,10 +754,7 @@ def active_tab_title_template(x: str) -> str | None:
 
 
 def text_fg_override_threshold(x: str) -> tuple[float, str]:
-    value, unit = number_with_unit(x, default_unit='%')
-    if unit not in ['%', 'ratio']:
-        raise ValueError(f'The unit {unit} is not a valid choice for text_fg_override_threshold')
-    return value, unit
+    return number_with_unit(x, '%', 'ratio')
 
 
 ClearOn = Literal['next', 'focus']

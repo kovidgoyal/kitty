@@ -94,6 +94,14 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.41.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- A new mode of operation for :opt:`text_fg_override_threshold` to override
+  foreground colors so as to maintain a minimum contrast between foreground and
+  background text colors. Works in a perceptual color for best color accuracy
+  (:pull:`8420`)
+
 0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
