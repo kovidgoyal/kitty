@@ -89,7 +89,7 @@ def load_all_shaders(semi_transparent: bool = False) -> None:
         raise SystemExit(err)
 
 
-def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rendering: bool = False, wayland_enable_ime: bool = True) -> None:
+def init_glfw_module(glfw_module: str = 'wayland', debug_keyboard: bool = False, debug_rendering: bool = False, wayland_enable_ime: bool = True) -> None:
     ok, swo = glfw_init(glfw_path(glfw_module), edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime)
     if not ok:
         raise SystemExit('GLFW initialization failed')
