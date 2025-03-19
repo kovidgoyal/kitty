@@ -1181,7 +1181,11 @@ def build_static_kittens(
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
     required_go_version = subprocess.check_output([go] + 'list -f {{.GoVersion}} -m'.split(), env=dict(os.environ, GO111MODULE="on")).decode().strip()
-    current_go_version = subprocess.check_output([go, 'version']).decode().strip().split()[2][2:]
+    go_version_raw = subprocess.check_output([go, 'version']).decode().strip().split()
+    if go_version_raw[2] != "devel":
+        current_go_version = go_version_raw[2][2:]
+    else:
+        current_go_version = go_version_raw[3][2:]
     if parse_go_version(required_go_version) > parse_go_version(current_go_version):
         raise SystemExit(f'The version of go on this system ({current_go_version}) is too old. go >= {required_go_version} is needed')
     if not for_platform:
