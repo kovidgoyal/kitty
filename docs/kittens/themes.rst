@@ -81,8 +81,11 @@ time the OS changes its color mode, any dynamic changes will be overridden.
 .. note::
 
    On the GNOME desktop, the desktop reports the color preference as no-preference
-   when using light themes. So use :file:`no-preference-theme.auto.conf` to
-   select colors for light mode on GNOME.
+   when the "Dark style" is not enabled. So use :file:`no-preference-theme.auto.conf` to
+   select colors for light mode on GNOME. You can manually enable light style
+   with ``gsettings set org.gnome.desktop.interface color-scheme prefer-light``
+   in which case GNOME will report the color scheme as light and kitty will use
+   :file:`light-theme.auto.conf`.
 
 
 Using your own themes
