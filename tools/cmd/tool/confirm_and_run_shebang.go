@@ -40,8 +40,37 @@ func ask_for_permission(script_path string) (response string, err error) {
 	return response, err
 }
 
+func ask_if_exe_allowed(exe_path string) (ok bool, err error) {
+	opts := &ask.Options{Type: "yesno", Default: "n"}
+	ctx := markup.New(true)
+	opts.Message = ctx.Prettify(fmt.Sprintf(
+		"Attempting to execute the program: :yellow:`%s`\nExecuting untrusted programs can be dangerous. Proceed anyway?", exe_path))
+	response, err := ask.GetChoices(opts)
+	return response == "y", err
+}
+
 func permission_denied(script_path string) error {
 	return fmt.Errorf("Execution of %s was denied by user", script_path)
+}
+
+func confirm_and_run_exe(args []string) (rc int, err error) {
+	exe := args[len(args)-1]
+	ok, err := ask_if_exe_allowed(exe)
+	if err != nil {
+		return 1, err
+	}
+	if ok {
+		exe = utils.FindExe(args[0])
+		if exe == "" {
+			return 1, fmt.Errorf("Failed to find the script interpreter: %s", args[0])
+		}
+		if err = unix.Exec(exe, []string{exe}, os.Environ()); err != nil {
+			rc = 1
+		}
+	} else {
+		return 1, permission_denied(exe)
+	}
+	return
 }
 
 func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc int, err error) {
