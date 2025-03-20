@@ -243,12 +243,12 @@ def default_launch_actions() -> tuple[OpenAction, ...]:
 # Open script files
 protocol file
 ext sh,command,tool
-action launch --hold --type=os-window kitty +shebang $FILE_PATH $SHELL
+action launch --hold --type=os-window kitten __shebang__ confirm-if-needed $FILE_PATH $SHELL
 
 # Open shell specific script files
 protocol file
 ext fish,bash,zsh
-action launch --hold --type=os-window kitty +shebang $FILE_PATH __ext__
+action launch --hold --type=os-window kitten __shebang__ confirm-if-needed $FILE_PATH __ext__
 
 # Open directories
 protocol file

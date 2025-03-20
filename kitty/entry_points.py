@@ -94,24 +94,7 @@ def edit(args: list[str]) -> None:
 
 def shebang(args: list[str]) -> None:
     from kitty.constants import kitten_exe
-    script_path = args[1]
-    cmd = args[2:]
-    if cmd == ['__ext__']:
-        cmd = [os.path.splitext(script_path)[1][1:].lower()]
-    try:
-        f = open(script_path)
-    except FileNotFoundError:
-        raise SystemExit(f'The file {script_path} does not exist')
-    with f:
-        if f.read(2) == '#!':
-            line = f.readline().strip()
-            _plat = sys.platform.lower()
-            is_macos: bool = 'darwin' in _plat
-            if is_macos:
-                cmd = line.split(' ')
-            else:
-                cmd = line.split(' ', maxsplit=1)
-    os.execvp(kitten_exe(), ['kitten', '__confirm_and_run_shebang__'] + cmd + [script_path])
+    os.execvp(kitten_exe(), ['kitten', '__shebang__', 'confirm-if-needed'] + args[1:])
 
 
 def run_kitten(args: list[str]) -> None:

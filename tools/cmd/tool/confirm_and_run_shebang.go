@@ -3,9 +3,13 @@
 package tool
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 
 	"golang.org/x/sys/unix"
 
@@ -17,6 +21,14 @@ import (
 
 var _ = fmt.Print
 
+type ConfirmPolicy uint8
+
+const (
+	ConfirmAlways = iota
+	ConfirmNever
+	ConfirmIfNeeded
+)
+
 func ask_for_permission(script_path string) (response string, err error) {
 	opts := &ask.Options{Type: "choices", Default: "n", Choices: []string{"y;green:Yes", "n;red:No", "v;yellow:View", "e;magenta:Edit"}}
 
@@ -27,9 +39,18 @@ func ask_for_permission(script_path string) (response string, err error) {
 	return response, err
 }
 
-func confirm_and_run_shebang(args []string) (rc int, err error) {
+func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc int, err error) {
 	script_path := args[len(args)-1]
-	if unix.Access(script_path, unix.X_OK) != nil {
+	do_confirm := true
+	switch confirm_policy {
+	case ConfirmNever:
+		do_confirm = false
+	case ConfirmAlways:
+		do_confirm = true
+	case ConfirmIfNeeded:
+		do_confirm = unix.Access(script_path, unix.X_OK) != nil
+	}
+	if do_confirm {
 		response, err := ask_for_permission(script_path)
 		if err != nil {
 			return 1, err
@@ -43,7 +64,7 @@ func confirm_and_run_shebang(args []string) (rc int, err error) {
 				return 1, err
 			}
 			cli.ShowHelpInPager(utils.UnsafeBytesToString(raw))
-			return confirm_and_run_shebang(args)
+			return confirm_and_run_shebang(args, ConfirmIfNeeded)
 		case "e":
 			exe, err := os.Executable()
 			if err != nil {
@@ -54,7 +75,7 @@ func confirm_and_run_shebang(args []string) (rc int, err error) {
 			editor.Stdout = os.Stdout
 			editor.Stderr = os.Stderr
 			editor.Run()
-			return confirm_and_run_shebang(args)
+			return confirm_and_run_shebang(args, ConfirmIfNeeded)
 		case "y":
 		}
 	}
@@ -67,4 +88,54 @@ func confirm_and_run_shebang(args []string) (rc int, err error) {
 		rc = 1
 	}
 	return
+}
+
+func run_shebang(args []string) (rc int, err error) {
+	if len(args) < 3 {
+		return 1, fmt.Errorf("Usage: kitten __shebang__ confirm-exe path_to_script cmd...")
+	}
+	var confirm_policy ConfirmPolicy
+	switch args[0] {
+	case "confirm-always":
+		confirm_policy = ConfirmAlways
+	case "confirm-never":
+		confirm_policy = ConfirmNever
+	case "confirm-if-needed":
+		confirm_policy = ConfirmIfNeeded
+	default:
+		return 1, fmt.Errorf("Unknown confirmation policy: %s", args[1])
+	}
+	script_path := args[1]
+	cmd := args[2:]
+	if len(cmd) == 1 && cmd[0] == "__ext__" {
+		ext := filepath.Ext(script_path)
+		if ext == "" || ext == "." {
+			return 1, fmt.Errorf("%s has no file extension so cannot be used in __ext__ mode", script_path)
+		}
+		cmd = []string{ext[1:]}
+	}
+	f, err := os.Open(script_path)
+	if err != nil {
+		return 1, err
+	}
+	scanner := bufio.NewScanner(f)
+	first_line := ""
+	if scanner.Scan() {
+		first_line = scanner.Text()
+	} else if err = scanner.Err(); err != nil {
+		f.Close()
+		return 1, fmt.Errorf("Failed to read from %s with error: %w", script_path, err)
+	}
+	f.Close()
+	if strings.HasPrefix(first_line, "#!") {
+		first_line = strings.TrimSpace(first_line[2:])
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = strings.Split(first_line, " ")
+		default:
+			cmd = strings.SplitN(first_line, " ", 2)
+		}
+	}
+	cmd = append(cmd, script_path)
+	return confirm_and_run_shebang(cmd, confirm_policy)
 }
