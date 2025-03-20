@@ -74,6 +74,9 @@ func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc in
 			// pager will still be visible.
 			fmt.Print("Execute the script? (y/n): ")
 			q, err := tty.ReadSingleByteFromTerminal()
+			if err != nil {
+				return 1, err
+			}
 			if q != 'y' && q != 'Y' {
 				fmt.Println()
 				return 1, permission_denied(script_path)
