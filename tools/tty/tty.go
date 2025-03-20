@@ -328,14 +328,11 @@ func (self *Term) WriteString(b string) (int, error) {
 }
 
 func (self *Term) DebugPrintln(a ...any) {
-	msg := []byte(fmt.Sprintln(a...))
+	msg := fmt.Appendln(nil, a...)
 	const limit = 2048
 	encoded := make([]byte, limit*2)
 	for i := 0; i < len(msg); i += limit {
-		end := i + limit
-		if end > len(msg) {
-			end = len(msg)
-		}
+		end := min(i+limit, len(msg))
 		chunk := msg[i:end]
 		encoded = encoded[:cap(encoded)]
 		base64.StdEncoding.Encode(encoded, chunk)
