@@ -102,6 +102,12 @@ Detailed list of changes
   background text colors. Works in a perceptual color for best color accuracy
   (:pull:`8420`)
 
+- :ref:`kitty +open <launch_actions>`: Ask for confirmation by default when running executables
+  to work around some badly designed programs that try to open links in
+  documents that point to executable files. Can be overridden by specifying
+  your own :file:`launch-actions.conf`.
+
+
 0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

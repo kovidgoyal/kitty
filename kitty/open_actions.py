@@ -240,25 +240,27 @@ action show_kitty_doc $URL_PATH
 @run_once
 def default_launch_actions() -> tuple[OpenAction, ...]:
     return tuple(parse('''\
-# Open script files
+# Open script files. Change confirm-always to confirm-never or confirm-if-needed to
+# disable confirmation for all or executable files respectively.
 protocol file
 ext sh,command,tool
-action launch --hold --type=os-window kitten __shebang__ confirm-if-needed $FILE_PATH $SHELL
+action launch --hold --type=os-window kitten __shebang__ confirm-always $FILE_PATH $SHELL
 
 # Open shell specific script files
 protocol file
 ext fish,bash,zsh
-action launch --hold --type=os-window kitten __shebang__ confirm-if-needed $FILE_PATH __ext__
+action launch --hold --type=os-window kitten __shebang__ confirm-always $FILE_PATH __ext__
 
 # Open directories
 protocol file
 mime inode/directory
 action launch --type=os-window --cwd -- $FILE_PATH
 
-# Open executable file
+# Open executable file. Remove kitten __confirm_and_run_exe__ to execute
+# without confirmation.
 protocol file
 mime inode/executable,application/vnd.microsoft.portable-executable
-action launch --hold --type=os-window -- $FILE_PATH
+action launch --hold --type=os-window -- kitten __confirm_and_run_exe__ $FILE_PATH
 
 # Open text files without fragments in the editor
 protocol file
