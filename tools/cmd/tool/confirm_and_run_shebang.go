@@ -16,6 +16,7 @@ import (
 	"kitty/kittens/ask"
 	"kitty/tools/cli"
 	"kitty/tools/cli/markup"
+	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
 
@@ -39,6 +40,10 @@ func ask_for_permission(script_path string) (response string, err error) {
 	return response, err
 }
 
+func permission_denied(script_path string) error {
+	return fmt.Errorf("Execution of %s was denied by user", script_path)
+}
+
 func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc int, err error) {
 	script_path := args[len(args)-1]
 	do_confirm := true
@@ -57,14 +62,23 @@ func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc in
 		}
 		switch response {
 		default:
-			return 1, fmt.Errorf("Execution of %s was denied by user", script_path)
+			return 1, permission_denied(script_path)
 		case "v":
 			raw, err := os.ReadFile(script_path)
 			if err != nil {
 				return 1, err
 			}
 			cli.ShowHelpInPager(utils.UnsafeBytesToString(raw))
-			return confirm_and_run_shebang(args, ConfirmIfNeeded)
+			// The pager might have exited automatically if there is less than
+			// one screen of text, so confirm manually, here, where output from
+			// pager will still be visible.
+			fmt.Print("Execute the script? (y/n): ")
+			q, err := tty.ReadSingleByteFromTerminal()
+			if q != 'y' && q != 'Y' {
+				fmt.Println()
+				return 1, permission_denied(script_path)
+			}
+			fmt.Print("\x1b[H\x1b[2J") // clear screen
 		case "e":
 			exe, err := os.Executable()
 			if err != nil {

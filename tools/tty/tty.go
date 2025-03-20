@@ -78,6 +78,10 @@ func SetReadTimeout(d time.Duration) TermiosOperation {
 
 var SetBlockingRead TermiosOperation = SetReadTimeout(0)
 
+var SetNoCanonical TermiosOperation = func(t *unix.Termios) {
+	t.Lflag &^= unix.ICANON
+}
+
 var SetRaw TermiosOperation = func(t *unix.Termios) {
 	// This attempts to replicate the behaviour documented for cfmakeraw in
 	// the termios(3) manpage, as Go doesn't wrap cfmakeraw probably because its not in POSIX
@@ -378,5 +382,23 @@ func DebugPrintln(a ...any) {
 	if err == nil {
 		defer term.Close()
 		term.DebugPrintln(a...)
+	}
+}
+
+func ReadSingleByteFromTerminal() (b byte, err error) {
+	term, err := OpenControllingTerm(SetBlockingRead, SetNoCanonical)
+	if err != nil {
+		return 0, err
+	}
+	defer term.Close()
+	ans := []byte{b}
+	for {
+		n, err := term.Read(ans)
+		if err != nil {
+			return 0, err
+		}
+		if n > 0 {
+			return ans[0], nil
+		}
 	}
 }
