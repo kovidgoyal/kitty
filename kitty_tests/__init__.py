@@ -407,7 +407,7 @@ class PTY:
             msg = 'The condition was not met'
             if timeout_msg is not None:
                 msg = timeout_msg()
-            raise TimeoutError(f'Timed out: {msg}. Screen contents: \n {repr(self.screen_contents())}')
+            raise TimeoutError(f'Timed out after {timeout} seconds: {msg}. Screen contents: \n {repr(self.screen_contents())}')
 
     def wait_till_child_exits(self, timeout=30 if BaseTest.is_ci else 10, require_exit_code=None):
         end_time = time.monotonic() + timeout
