@@ -208,6 +208,7 @@ float calc_background_opacity(uint bg) {
     );
 }
 
+// Overriding of foreground colors for contrast requirements {{{
 #if defined(NEEDS_FOREGROUND) && DO_FG_OVERRIDE == 1
 #define OVERRIDE_FG_COLORS
 #pragma kitty_include_shader <hsluv.glsl>
@@ -249,6 +250,7 @@ vec3 override_foreground_color(vec3 over, vec3 under) {
     return fg_override(under_luminance, over_lumininace, under, over);
 }
 #endif
+// }}}
 
 void main() {
 
