@@ -110,6 +110,9 @@ Detailed list of changes
 - Fix a regression in version 0.40.0 causing a crash when the underline
   thickness of the font is zero (:iss:`8443`)
 
+- Fix a regression in version 0.40.0 causing a hang on resizing with a wide
+  character at the right edge of a line that needs to be moved onto the next
+  line (:iss:`8464`)
 
 0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

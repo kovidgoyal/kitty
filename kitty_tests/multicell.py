@@ -98,6 +98,11 @@ def test_multicell(self: TestMulticell) -> None:
     def assert_cursor_at(x, y):
         self.ae((s.cursor.x, s.cursor.y), (x, y))
 
+    s = self.create_screen(cols=8, lines=4)
+    s.draw('飛青進服三上')
+    s.resize(s.lines, 5)
+    self.ae('飛青', str(s.line(0)))
+
     s = self.create_screen(cols=6, lines=6)
 
     # Test basic multicell drawing
