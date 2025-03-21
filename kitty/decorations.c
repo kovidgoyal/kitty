@@ -100,7 +100,7 @@ distribute_dots(unsigned available_space, unsigned num_of_dots, unsigned *summed
 
 DecorationGeometry
 add_dotted_underline(uint8_t *buf, FontCellMetrics fcm) {
-    unsigned num_of_dots = MAX(1u, fcm.cell_width / (2 * fcm.underline_thickness));
+    unsigned num_of_dots = MAX(1u, fcm.cell_width / (2 * MAX(1u, fcm.underline_thickness)));
     RAII_ALLOC(unsigned, spacing, malloc(num_of_dots * 2 * sizeof(unsigned)));
     if (!spacing) fatal("Out of memory");
     unsigned size = distribute_dots(fcm.cell_width, num_of_dots, spacing, spacing + num_of_dots);

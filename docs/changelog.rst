@@ -107,6 +107,9 @@ Detailed list of changes
   documents that point to executable files. Can be overridden by specifying
   your own :file:`launch-actions.conf`.
 
+- Fix a regression in version 0.40.0 causing a crash when the underline
+  thickness of the font is zero (:iss:`8443`)
+
 
 0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
