@@ -399,7 +399,7 @@ class ClipboardRequestManager:
         else:
             where = str(data, "utf-8", 'replace')
             data = data[len(data):]
-        destinations = {ClipboardType.from_osc52_where_field(where) for where in where}
+        destinations = {ClipboardType.from_osc52_where_field(where) for where in where or 's0'}
         destinations.discard(ClipboardType.unknown)
         if len(data) == 1 and data.tobytes() == b'?':
             for d in destinations:

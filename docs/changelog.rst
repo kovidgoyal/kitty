@@ -114,6 +114,10 @@ Detailed list of changes
   character at the right edge of a line that needs to be moved onto the next
   line (:iss:`8464`)
 
+- Fix a regression in 0.40.1 that caused copying to clipboard via OSC 52 from
+  applications that dont specify a destination in the escape code not working
+  (:iss:`8459`)
+
 0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
