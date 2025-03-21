@@ -242,6 +242,7 @@ class WindowDict(TypedDict):
     user_vars: dict[str, str]
     at_prompt: bool
     created_at: int
+    in_alternate_screen: bool
 
 
 class PipeData(TypedDict):
@@ -781,6 +782,7 @@ class Window:
             'columns': self.screen.columns,
             'user_vars': self.user_vars,
             'created_at': self.created_at,
+            'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
         }
 
     def serialize_state(self) -> dict[str, Any]:
