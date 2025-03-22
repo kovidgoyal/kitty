@@ -679,6 +679,8 @@ def gen_multistage_table(
     c('};')
 
 
+width_shift = 4
+
 class CharProps(NamedTuple):
 
     width: int  # 3 bits
@@ -691,7 +693,7 @@ class CharProps(NamedTuple):
     @property
     def as_c(self) -> str:
         return ('{'
-            f' .shifted_width={self.width + 4}, .grapheme_break=GBP_{self.grapheme_break},'
+            f' .shifted_width={self.width + width_shift}, .grapheme_break=GBP_{self.grapheme_break},'
             f' .indic_conjunct_break=ICB_{self.indic_conjunct_break},'
             f' .is_invalid={int(self.is_invalid)}, .is_extended_pictographic={int(self.is_extended_pictographic)},'
             f' .is_non_rendered={int(self.is_non_rendered)},'
@@ -754,6 +756,7 @@ def gen_char_props() -> None:
         generate_enum(c, gp, 'GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
         generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
         gen_multistage_table(c, gp, t1, t2, shift, mask)
+    gofmt(gof.name)
 
 
 def main(args: list[str]=sys.argv) -> None:
