@@ -20,10 +20,12 @@ def typename_for_bitsize(bits: int) -> str:
      return 'uint64'
 
 
-def make_bitfield(dest: str, typename: str, *fields_: str) -> tuple[str, str]:
+def make_bitfield(dest: str, typename: str, *fields_: str, add_package: bool = True) -> tuple[str, str]:
     output_path = os.path.join(dest, f'{typename.lower()}_generated.go')
     ans = [f'package {os.path.basename(dest)}', '']
     a = ans.append
+    if not add_package:
+        del ans[0]
 
     def fieldify(spec: str) -> BitField:
         name, num = spec.partition(' ')[::2]
@@ -48,7 +50,7 @@ def make_bitfield(dest: str, typename: str, *fields_: str) -> tuple[str, str]:
             a(f'    return {tn}(s & {mask})')
         a('}')
         a('')
-        a(f'func (s *{typename}) Set{bf.name.capitalize()}(val {tn}) {{')  # }}
+        a(f'func (s *{typename}) Set_{bf.name}(val {tn}) {{')  # }}
         if shift:
             a(f'    *s &^= {mask} << {shift}')
             a(f'    *s |= {typename}(val&{mask}) << {shift}')
