@@ -12,7 +12,7 @@
 #undef _DARWIN_C_SOURCE
 #endif
 
-#include "grapheme-segmentation.h"
+#include "char-props.h"
 #include "line.h"
 #include "charsets.h"
 #include "base64.h"
@@ -144,7 +144,7 @@ split_into_graphemes(PyObject UNUSED *self, PyObject *src) {
     Py_ssize_t pos = 0;
     for (Py_ssize_t i = 0; i < PyUnicode_GET_LENGTH(src); i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
-        if (!grapheme_segmentation_step(&s, ch)) {
+        if (!grapheme_segmentation_step(&s, char_props_for(ch))) {
             RAII_PyObject(u, PyUnicode_FromKindAndData(kind, data + kind * pos, i - pos));
             if (!u || PyList_Append(ans, u) != 0) return NULL;
             pos = i;

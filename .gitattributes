@@ -1,5 +1,5 @@
 kitty/wcwidth-std.h linguist-generated=true
-kitty/grapheme-segmentation-data.h linguist-generated=true
+kitty/char-props-data.h linguist-generated=true
 kitty_tests/GraphemeBreakTest.json linguist-generated=true
 kitty/emoji.h linguist-generated=true
 kitty/charsets.c linguist-generated=true
@@ -22,7 +22,7 @@ glfw/*.h linguist-vendored=true
 3rdparty/** linguist-vendored=true
 kittens/unicode_input/names.h linguist-generated=true
 tools/wcswidth/std.go linguist-generated=true
-tools/wcswidth/grapheme-segmentation-data.go linguist-generated=true
+tools/wcswidth/char-props-data.go linguist-generated=true
 tools/unicode_names/names.txt linguist-generated=true
 terminfo/kitty.term* linguist-generated=true
 terminfo/x/* linguist-generated=true

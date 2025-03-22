@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Hashable, Iterable
 from contextlib import contextmanager
 from functools import lru_cache, partial
 from html.entities import html5
@@ -16,7 +16,11 @@ from operator import itemgetter
 from typing import (
     Callable,
     DefaultDict,
+    Literal,
+    NamedTuple,
     Optional,
+    Protocol,
+    Sequence,
     Union,
 )
 from urllib.request import urlopen
@@ -464,85 +468,6 @@ def gofmt(*files: str) -> None:
     subprocess.check_call(['gofmt', '-w', '-s'] + list(files))
 
 
-def gen_grapheme_segmentation() -> None:
-    with create_header('kitty/grapheme-segmentation-data.h') as p, open('tools/wcswidth/grapheme-segmentation-data.go', 'w') as gof:
-        gp = partial(print, file=gof)
-        gp('package wcswidth\n\n')
-        def enum(name: str, *items: str, prefix: str = '') -> None:
-            p(f'typedef enum {name} {{')  # }}
-            gp(f'type {name} uint8\n')
-            gp('const (')  # )
-            for i, x in enumerate(items):
-                x = prefix + x
-                p(f'\t{x},')
-                if i == 0:
-                    gp(f'{x} {name} = iota')
-                else:
-                    gp(x)
-            p(f'}} {name};')
-            gp(')')
-            p('')
-            gp('')
-
-        enum('GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
-        enum('IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
-
-        def get_cat(name: str, c_func_name: str, go_func_name: str, prefix: str, m: dict[str, set[int]]) -> None:
-            p(f'static inline {name}')
-            p(f'{c_func_name}(const char_type c) {{')  # }}
-            p('\tswitch(c) {')  # }
-            gp(f'func {go_func_name}(code rune) {name} {{')  # }}
-            gp('\tswitch code {')  # }
-            for category, codepoints in m.items():
-                p(f'\t\t // {category} ({len(codepoints)} codepoints ''{{''{')
-                gp(f'\t\t // {category} ({len(codepoints)} codepoints ''{{''{')
-                category = prefix + category
-                for spec in get_ranges(list(codepoints)):
-                    write_case(spec, p)
-                    p(f'\t\t\treturn {category};')
-                    write_case(spec, gp, for_go=True)
-                    gp(f'\t\t\treturn {category}')
-                p('\t\t // }}''}')
-                p('')
-                gp('\t\t // }}''}')
-                gp('')
-            p('\t}')  # }
-            gp('\t}')  # }
-            p(f'\treturn {prefix + "None"};')  # }
-            gp(f'\treturn {prefix + "None"}')  # }
-            p('}')
-            gp('}')
-        get_cat('GraphemeBreakProperty', 'grapheme_break_property', 'GraphemeBreakPropertyFor', 'GBP_', grapheme_segmentation_maps)
-        p('')
-        gp('')
-        get_cat('IndicConjunctBreak', 'indic_conjunct_break', 'IndicConjunctBreakFor', 'ICB_', incb_map)
-
-        p('''
-static inline bool
-is_extended_pictographic(char_type c) {
-    switch (c) {
-        default: return false;
-''')
-        gp('''
-func IsExtendedPictographic(c rune) bool {
-    switch c {
-        default: return false;
-''')
-
-        for spec in get_ranges(list(extended_pictographic)):
-            write_case(spec, p)
-            p('\t\t\treturn true;')
-            write_case(spec, gp, for_go=True)
-            gp('\t\t\treturn true')
-        p('''
-    }
-}''')
-        gp('''
-    }
-}''')
-    gofmt(gof.name)
-
-
 def gen_wcwidth() -> None:
     seen: set[int] = set()
     non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
@@ -680,6 +605,157 @@ def gen_test_data() -> None:
         f.write(json.dumps(tests, indent=2, ensure_ascii=False).encode())
 
 
+def getsize(data: Iterable[int]) -> Literal[1, 2, 4]:
+    # return smallest possible integer size for the given array
+    maxdata = max(data)
+    if maxdata < 256:
+        return 1
+    if maxdata < 65536:
+        return 2
+    return 4
+
+
+def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[T], int, int, int]:
+    if use_fixed_shift:
+        candidates = range(use_fixed_shift, use_fixed_shift + 1)
+    else:
+        n = len(t)-1    # last valid index
+        maxshift = 0    # the most we can shift n and still have something left
+        if n > 0:
+            while n >> 1:
+                n >>= 1
+                maxshift += 1
+        candidates = range(maxshift + 1)
+    bytesz = sys.maxsize
+    for shift in candidates:
+        t1: list[int] = []
+        t2: list[T] = []
+        size = 2**shift
+        bincache: dict[tuple[T, ...], int] = {}
+        for i in range(0, len(t), size):
+            bin = t[i:i+size]
+            index = bincache.get(bin)
+            if index is None:
+                index = len(t2)
+                bincache[bin] = index
+                t2.extend(bin)
+            t1.append(index >> shift)
+        # determine memory size
+        b = len(t1)*getsize(t1) + len(t2)*property_size
+        if b < bytesz:
+            best = t1, t2, shift
+            bytesz = b
+    t1, t2, shift = best
+    mask = ~((~0) << shift)
+    return t1, t2, shift, mask, bytesz
+
+
+class Property(Protocol):
+    @property
+    def as_c(self) -> str:
+        return ''
+
+
+def gen_multistage_table(
+    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[Property], shift: int, mask: int
+) -> None:
+    sz = getsize(t1)
+    name = t2[0].__class__.__name__
+    match sz:
+        case 1:
+            ctype = 'unsigned char'
+        case 2:
+            ctype = 'unsigned short'
+        case 4:
+            ctype = 'uint32_t'
+    c(f'static const unsigned {name}_mask = {mask}u;')
+    c(f'static const unsigned {name}_shift = {shift}u;')
+    c(f'static const {ctype} {name}_t1[{len(t1)}] = ''{')
+    c(f'\t{", ".join(map(str, t1))}')
+    c('};')
+    items = '\n\t'.join(x.as_c + ',' for x in t2)
+    c(f'static const {name} {name}_t2[{len(t2)}] = ''{')
+    c(f'\t{items}')
+    c('};')
+
+
+class CharProps(NamedTuple):
+
+    width: int  # 3 bits
+    grapheme_break: str  # 4 bits
+    indic_conjunct_break: str # 2 bits
+    is_invalid: bool
+    is_extended_pictographic: bool
+    is_non_rendered: bool
+
+    @property
+    def as_c(self) -> str:
+        return ('{'
+            f' .shifted_width={self.width + 4}, .grapheme_break=GBP_{self.grapheme_break},'
+            f' .indic_conjunct_break=ICB_{self.indic_conjunct_break},'
+            f' .is_invalid={int(self.is_invalid)}, .is_extended_pictographic={int(self.is_extended_pictographic)},'
+            f' .is_non_rendered={int(self.is_non_rendered)},'
+        ' }')
+
+
+def generate_enum(p: Callable[..., None], gp: Callable[..., None], name: str, *items: str, prefix: str = '') -> None:
+    p(f'typedef enum {name} {{')  # }}
+    gp(f'type {name} uint8\n')
+    gp('const (')  # )
+    for i, x in enumerate(items):
+        x = prefix + x
+        p(f'\t{x},')
+        if i == 0:
+            gp(f'{x} {name} = iota')
+        else:
+            gp(x)
+    p(f'}} {name};')
+    gp(')')
+    p('')
+    gp('')
+
+
+def gen_char_props() -> None:
+    invalid = class_maps['Cc'] | class_maps['Cs']
+    non_printing = invalid | class_maps['Cf']
+    width_map: dict[int, int] = {}
+    def aw(s: Iterable[int], width: int) -> None:
+        nonlocal width_map
+        d = dict.fromkeys(s, width)
+        d.update(width_map)
+        width_map = d
+
+    aw(flag_codepoints, 2)
+    aw(doublewidth, 2)
+    aw(wide_emoji, 2)
+    aw(marks | {0}, 0)
+    aw(non_printing, -1)
+    aw(ambiguous, -2)
+    aw(class_maps['Co'], -3)  # Private use
+    aw(not_assigned, -4)
+
+    gs_map: dict[int, str] = {}
+    icb_map: dict[int, str] = {}
+    for name, cps in grapheme_segmentation_maps.items():
+        gs_map.update(dict.fromkeys(cps, name))
+    for name, cps in incb_map.items():
+        icb_map.update(dict.fromkeys(cps, name))
+    prop_array = tuple(
+        CharProps(
+            width=width_map.get(ch, 1), grapheme_break=gs_map.get(ch, 'None'), indic_conjunct_break=icb_map.get(ch, 'None'),
+            is_invalid=ch in invalid, is_non_rendered=ch in non_printing,
+            is_extended_pictographic=ch in extended_pictographic
+        ) for ch in range(sys.maxunicode + 1))
+    t1, t2, shift, mask, bytesz = splitbins(prop_array, 2)
+    print(f'Size of character properties table: {bytesz/1024:.1f}KB')
+    with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
+        gp = partial(print, file=gof)
+        gp('package wcswidth\n\n')
+        generate_enum(c, gp, 'GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
+        generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
+        gen_multistage_table(c, gp, t1, t2, shift, mask)
+
+
 def main(args: list[str]=sys.argv) -> None:
     parse_ucd()
     parse_prop_list()
@@ -691,8 +767,8 @@ def main(args: list[str]=sys.argv) -> None:
     gen_emoji()
     gen_names()
     gen_rowcolumn_diacritics()
-    gen_grapheme_segmentation()
     gen_test_data()
+    gen_char_props()
 
 
 if __name__ == '__main__':
