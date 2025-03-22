@@ -655,6 +655,10 @@ class Property(Protocol):
     def as_c(self) -> str:
         return ''
 
+    @property
+    def as_go(self) -> str:
+        return ''
+
 
 def gen_multistage_table(
     c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[Property], shift: int, mask: int
@@ -664,10 +668,13 @@ def gen_multistage_table(
     match sz:
         case 1:
             ctype = 'unsigned char'
+            gotype = 'uint8'
         case 2:
             ctype = 'unsigned short'
+            gotype = 'uint16'
         case 4:
             ctype = 'uint32_t'
+            gotype = 'uint32'
     c(f'static const unsigned {name}_mask = {mask}u;')
     c(f'static const unsigned {name}_shift = {shift}u;')
     c(f'static const {ctype} {name}_t1[{len(t1)}] = ''{')
@@ -678,17 +685,59 @@ def gen_multistage_table(
     c(f'\t{items}')
     c('};')
 
+    lname = name.lower()
+    g(f'const {lname}_mask = {mask}')
+    g(f'const {lname}_shift = {shift}')
+    g(f'var {lname}_t1 = [{len(t1)}]{gotype}''{')
+    g(f'\t{", ".join(map(str, t1))},')
+    g('}')
+    items = '\n\t'.join(x.as_go + ',' for x in t2)
+    g(f'var {lname}_t2 = [{len(t2)}]{name}''{')
+    g(f'\t{items}')
+    g('}')
+
 
 width_shift = 4
 
 class CharProps(NamedTuple):
 
-    width: int  # 3 bits
-    grapheme_break: str  # 4 bits
-    indic_conjunct_break: str # 2 bits
-    is_invalid: bool
-    is_extended_pictographic: bool
-    is_non_rendered: bool
+    width: int = 3
+    grapheme_break: str = '2'
+    indic_conjunct_break: str = '2'
+    is_invalid: bool = True
+    is_extended_pictographic: bool = True
+    is_non_rendered: bool = True
+
+    @property
+    def go_fields(self) -> Iterable[str]:
+        ans = []
+        for f in self._fields:
+            bits = int(self._field_defaults[f])
+            if f == 'width':
+                f = 'shifted_width'
+            ans.append(f'{f} {bits}')
+        return tuple(ans)
+
+    @property
+    def as_go(self) -> str:
+        shift = 0
+        parts = []
+        for f in reversed(self._fields):
+            x = getattr(self, f)
+            match f:
+                case 'width':
+                    x += width_shift
+                case 'grapheme_break':
+                    x = f'CharProps(GBP_{x})'
+                case 'indic_conjunct_break':
+                    x = f'CharProps(ICB_{x})'
+                case _:
+                    x = int(x)
+            bits = int(self._field_defaults[f])
+            mask = '0b' + '1' * bits
+            parts.append(f'(({x} & {mask}) << {shift})')
+            shift += bits
+        return ' | '.join(parts)
 
     @property
     def as_c(self) -> str:
@@ -750,11 +799,14 @@ def gen_char_props() -> None:
         ) for ch in range(sys.maxunicode + 1))
     t1, t2, shift, mask, bytesz = splitbins(prop_array, 2)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
+    from .bitfields import make_bitfield
     with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
         gp = partial(print, file=gof)
-        gp('package wcswidth\n\n')
+        gp('package wcswidth')
         generate_enum(c, gp, 'GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
         generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
+        bf = make_bitfield('tools/wcswidth', 'CharProps', *CharProps().go_fields, add_package=False)[1]
+        gp(bf)
         gen_multistage_table(c, gp, t1, t2, shift, mask)
     gofmt(gof.name)
 
