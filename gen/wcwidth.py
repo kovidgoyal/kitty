@@ -675,8 +675,8 @@ def gen_multistage_table(
         case 4:
             ctype = 'uint32_t'
             gotype = 'uint32'
-    c(f'static const unsigned {name}_mask = {mask}u;')
-    c(f'static const unsigned {name}_shift = {shift}u;')
+    c(f'static const char_type {name}_mask = {mask}u;')
+    c(f'static const char_type {name}_shift = {shift}u;')
     c(f'static const {ctype} {name}_t1[{len(t1)}] = ''{')
     c(f'\t{", ".join(map(str, t1))}')
     c('};')
@@ -807,6 +807,10 @@ def gen_char_props() -> None:
         generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
         bf = make_bitfield('tools/wcswidth', 'CharProps', *CharProps().go_fields, add_package=False)[1]
         gp(bf)
+        gp(f'''
+func (s CharProps) Width() int {{
+	return int(s.Shifted_width()) - {width_shift}
+}}''')
         gen_multistage_table(c, gp, t1, t2, shift, mask)
     gofmt(gof.name)
 
