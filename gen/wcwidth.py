@@ -702,7 +702,7 @@ width_shift = 4
 class CharProps(NamedTuple):
 
     width: int = 3
-    grapheme_break: str = '2'
+    grapheme_break: str = '4'
     indic_conjunct_break: str = '2'
     is_invalid: bool = True
     is_extended_pictographic: bool = True

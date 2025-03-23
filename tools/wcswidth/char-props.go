@@ -2,6 +2,7 @@ package wcswidth
 
 import (
 	"fmt"
+	"iter"
 )
 
 var _ = fmt.Print
@@ -31,12 +32,42 @@ type GraphemeSegmentationState struct {
 	ri_count uint
 }
 
-func Char_props_for(ch rune) CharProps {
+func CharPropsFor(ch rune) CharProps {
 	return charprops_t2[(rune(charprops_t1[ch>>charprops_shift])<<charprops_shift)+(ch&charprops_mask)]
+}
+
+func IteratorOverGraphemes(text string) iter.Seq[string] {
+	s := GraphemeSegmentationState{}
+	start_pos := 0
+	return func(yield func(string) bool) {
+		for pos, ch := range text {
+			if !s.Step(CharPropsFor(ch)) {
+				if !yield(text[start_pos:pos]) {
+					return
+				}
+				start_pos = pos
+			}
+		}
+		if start_pos < len(text) {
+			yield(text[start_pos:len(text)])
+		}
+	}
+}
+
+func SplitIntoGraphemes(text string) []string {
+	ans := make([]string, 0, len(text))
+	for t := range IteratorOverGraphemes(text) {
+		ans = append(ans, t)
+	}
+	return ans
 }
 
 func (i IndicConjunctBreak) is_linker_or_extend() bool {
 	return i == ICB_Linker || i == ICB_Extend
+}
+
+func (s *GraphemeSegmentationState) Reset() {
+	*s = GraphemeSegmentationState{}
 }
 
 func (s *GraphemeSegmentationState) Step(ch CharProps) bool {
