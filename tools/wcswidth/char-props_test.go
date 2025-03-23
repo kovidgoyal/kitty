@@ -3,8 +3,8 @@ package wcswidth
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -22,7 +22,7 @@ type GraphemeBreakTest struct {
 func TestSplitIntoGraphemes(t *testing.T) {
 	var m = map[string][]string{
 		" \u0308 ": []string{" \u0308", " "},
-		"abc": []string{"a", "b", "c"},
+		"abc":      []string{"a", "b", "c"},
 	}
 	for text, expected := range m {
 		if diff := cmp.Diff(expected, SplitIntoGraphemes(text)); diff != "" {
