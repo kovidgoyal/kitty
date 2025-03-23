@@ -49,7 +49,7 @@ func IteratorOverGraphemes(text string) iter.Seq[string] {
 			}
 		}
 		if start_pos < len(text) {
-			yield(text[start_pos:len(text)])
+			yield(text[start_pos:])
 		}
 	}
 }

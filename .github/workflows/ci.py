@@ -193,7 +193,7 @@ def main() -> None:
     elif action == 'test':
         test_kitty()
     elif action == 'gofmt':
-        q = subprocess.check_output('gofmt -s -l tools'.split()).decode()
+        q = subprocess.check_output('gofmt -s -l tools kittens'.split()).decode()
         if q.strip():
             q = '\n'.join(filter(lambda x: not x.rstrip().endswith('_generated.go'), q.strip().splitlines())).strip()
             if q:

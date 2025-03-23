@@ -21,8 +21,8 @@ type GraphemeBreakTest struct {
 
 func TestSplitIntoGraphemes(t *testing.T) {
 	var m = map[string][]string{
-		" \u0308 ": []string{" \u0308", " "},
-		"abc":      []string{"a", "b", "c"},
+		" \u0308 ": {" \u0308", " "},
+		"abc":      {"a", "b", "c"},
 	}
 	for text, expected := range m {
 		if diff := cmp.Diff(expected, SplitIntoGraphemes(text)); diff != "" {
