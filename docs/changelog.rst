@@ -99,7 +99,7 @@ Detailed list of changes
 
 - A new mode of operation for :opt:`text_fg_override_threshold` to override
   foreground colors so as to maintain a minimum contrast between foreground and
-  background text colors. Works in a perceptual color for best color accuracy
+  background text colors. Works in a perceptual color space for best color accuracy
   (:pull:`8420`)
 
 - :ref:`kitty +open <launch_actions>`: Ask for confirmation by default when running executables
