@@ -17,7 +17,8 @@ typedef union CharProps {
         uint8_t is_invalid: 1;
         uint8_t shifted_width : 3;
         uint8_t is_non_rendered : 1;
-        uint8_t : 4;
+        uint8_t is_emoji_presentation_base : 1;
+        uint8_t : 3;
     };
     uint16_t val;
 } CharProps;

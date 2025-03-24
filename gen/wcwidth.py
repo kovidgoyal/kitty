@@ -707,6 +707,7 @@ class CharProps(NamedTuple):
     is_invalid: bool = True
     is_extended_pictographic: bool = True
     is_non_rendered: bool = True
+    is_emoji_presentation_base: bool = True
 
     @property
     def go_fields(self) -> Iterable[str]:
@@ -745,7 +746,7 @@ class CharProps(NamedTuple):
             f' .shifted_width={self.width + width_shift}, .grapheme_break=GBP_{self.grapheme_break},'
             f' .indic_conjunct_break=ICB_{self.indic_conjunct_break},'
             f' .is_invalid={int(self.is_invalid)}, .is_extended_pictographic={int(self.is_extended_pictographic)},'
-            f' .is_non_rendered={int(self.is_non_rendered)},'
+            f' .is_non_rendered={int(self.is_non_rendered)}, .is_emoji_presentation_base={int(self.is_emoji_presentation_base)}'
         ' }')
 
 
@@ -795,7 +796,7 @@ def gen_char_props() -> None:
         CharProps(
             width=width_map.get(ch, 1), grapheme_break=gs_map.get(ch, 'None'), indic_conjunct_break=icb_map.get(ch, 'None'),
             is_invalid=ch in invalid, is_non_rendered=ch in non_printing,
-            is_extended_pictographic=ch in extended_pictographic
+            is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
         ) for ch in range(sys.maxunicode + 1))
     t1, t2, shift, mask, bytesz = splitbins(prop_array, 2)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
