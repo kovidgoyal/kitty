@@ -28,7 +28,7 @@
 #include <fcntl.h>
 #include "unicode-data.h"
 #include "modes.h"
-#include "wcwidth-std.h"
+#include "char-props.h"
 #include "wcswidth.h"
 #include <stdalign.h>
 #include "keys.h"
@@ -934,6 +934,11 @@ move_widened_char_past_multiline_chars(Screen *self, CPUCell* cpu_cell, GPUCell 
     *cpu_cell = (CPUCell){0}; *gpu_cell = (GPUCell){0};
 }
 
+static bool
+is_emoji_presentation_base(char_type ch) {
+    return char_props_for(ch).is_emoji_presentation_base == 1;
+}
+
 static void
 draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     bool has_prev_char = false;
@@ -1100,7 +1105,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                     continue;
                 }
             }
-            char_width = wcwidth_std(ch);
+            char_width = wcwidth_std(char_props_for(ch));
             if (UNLIKELY(char_width < 1)) {
                 if (char_width == 0) continue;
                 char_width = 1;
@@ -4272,7 +4277,7 @@ screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
                 prev_width = 2;
             } else prev_width = 0;
         } else {
-            int w = wcwidth_std(ch);
+            int w = wcwidth_std(char_props_for(ch));
             switch(w) {
                 case -1:
                 case 0:

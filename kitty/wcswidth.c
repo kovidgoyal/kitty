@@ -5,7 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "wcwidth-std.h"
+#include "char-props.h"
 #include "wcswidth.h"
 #include "unicode-data.h"
 
@@ -17,6 +17,11 @@ initialize_wcs_state(WCSState *state) {
 static inline bool
 is_flag_pair(char_type a, char_type b) {
     return is_flag_codepoint(a) && is_flag_codepoint(b);
+}
+
+static inline bool
+is_emoji_presentation_base(char_type ch) {
+    return char_props_for(ch).is_emoji_presentation_base == 1;
 }
 
 int
@@ -59,7 +64,7 @@ wcswidth_step(WCSState *state, const char_type ch) {
 
                 default: {
                     if (is_flag_codepoint(ch)) state->parser_state = FLAG_PAIR_STARTED;
-                    int w = wcwidth_std(ch);
+                    int w = wcwidth_std(char_props_for(ch));
                     switch(w) {
                         case -1:
                         case 0:
@@ -141,9 +146,4 @@ wcswidth_std(PyObject UNUSED *self, PyObject *str) {
         ans += wcswidth_step(&state, ch);
     }
     return PyLong_FromSize_t(ans);
-}
-
-PyObject*
-unicode_database_version(PyObject *self UNUSED, PyObject *args UNUSED) {
-    return Py_BuildValue("iii", UNICODE_MAJOR_VERSION, UNICODE_MINOR_VERSION, UNICODE_PATCH_VERSION);
 }

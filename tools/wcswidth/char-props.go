@@ -130,3 +130,11 @@ func (s *GraphemeSegmentationState) Step(ch CharProps) bool {
 	}
 	return add_to_cell
 }
+
+func Runewidth(code rune) int {
+	return CharPropsFor(code).Width()
+}
+
+func IsEmojiPresentationBase(code rune) bool {
+	return CharPropsFor(code).Is_emoji_presentation_base() == 1
+}

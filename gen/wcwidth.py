@@ -468,73 +468,6 @@ def gofmt(*files: str) -> None:
     subprocess.check_call(['gofmt', '-w', '-s'] + list(files))
 
 
-def gen_wcwidth() -> None:
-    seen: set[int] = set()
-    non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
-
-    def add(p: Callable[..., None], comment: str, chars_: Union[set[int], frozenset[int]], ret: int, for_go: bool = False) -> None:
-        chars = chars_ - seen
-        seen.update(chars)
-        p(f'\t\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
-        for spec in get_ranges(list(chars)):
-            write_case(spec, p, for_go)
-            p(f'\t\t\treturn {ret};')
-        p('\t\t// }}}\n')
-
-    def add_all(p: Callable[..., None], for_go: bool = False) -> None:
-        seen.clear()
-        add(p, 'Flags', flag_codepoints, 2, for_go)
-        add(p, 'Marks', marks | {0}, 0, for_go)
-        add(p, 'Non-printing characters', non_printing, -1, for_go)
-        add(p, 'Private use', class_maps['Co'], -3, for_go)
-        add(p, 'Text Presentation', narrow_emoji, 1, for_go)
-        add(p, 'East Asian ambiguous width', ambiguous, -2, for_go)
-        add(p, 'East Asian double width', doublewidth, 2, for_go)
-        add(p, 'Emoji Presentation', wide_emoji, 2, for_go)
-
-        add(p, 'Not assigned in the unicode character database', not_assigned, -4, for_go)
-
-        p('\t\tdefault:\n\t\t\treturn 1;')
-        p('\t}')
-        if for_go:
-            p('\t}')
-        else:
-            p('\treturn 1;\n}')
-
-    with create_header('kitty/wcwidth-std.h') as p, open('tools/wcswidth/std.go', 'w') as gof:
-        gop = partial(print, file=gof)
-        gop('package wcswidth\n\n')
-        gop('func Runewidth(code rune) int {')
-        p('static inline int\nwcwidth_std(int32_t code) {')
-        p('\tif (LIKELY(0x20 <= code && code <= 0x7e)) { return 1; }')
-        p('\tswitch(code) {')
-        gop('\tswitch(code) {')
-        add_all(p)
-        add_all(gop, True)
-
-        p('static inline bool\nis_emoji_presentation_base(uint32_t code) {')
-        gop('func IsEmojiPresentationBase(code rune) bool {')
-        p('\tswitch(code) {')
-        gop('\tswitch(code) {')
-        for spec in get_ranges(list(emoji_presentation_bases)):
-            write_case(spec, p)
-            write_case(spec, gop, for_go=True)
-            p('\t\t\treturn true;')
-            gop('\t\t\treturn true;')
-        p('\t\tdefault: return false;')
-        p('\t}')
-        gop('\t\tdefault:\n\t\t\treturn false')
-        gop('\t}')
-        p('\treturn true;\n}')
-        gop('\n}')
-        uv = unicode_version()
-        p(f'#define UNICODE_MAJOR_VERSION {uv[0]}')
-        p(f'#define UNICODE_MINOR_VERSION {uv[1]}')
-        p(f'#define UNICODE_PATCH_VERSION {uv[2]}')
-        gop('var UnicodeDatabaseVersion [3]int = [3]int{' f'{uv[0]}, {uv[1]}, {uv[2]}' + '}')
-    gofmt(gof.name)
-
-
 def gen_rowcolumn_diacritics() -> None:
     # codes of all row/column diacritics
     codes = []
@@ -814,6 +747,13 @@ func (s CharProps) Width() int {{
 }}''')
         gen_multistage_table(c, gp, t1, t2, shift, mask)
     gofmt(gof.name)
+    with open('kitty/char-props.h', 'r+') as f:
+        raw = f.read()
+        nraw = re.sub(r'\d+/\*=width_shift\*/', f'{width_shift}/*=width_shift*/', raw)
+        if nraw != raw:
+            f.seek(0)
+            f.truncate()
+            f.write(nraw)
 
 
 def main(args: list[str]=sys.argv) -> None:
@@ -823,7 +763,6 @@ def main(args: list[str]=sys.argv) -> None:
     parse_eaw()
     parse_grapheme_segmentation()
     gen_ucd()
-    gen_wcwidth()
     gen_emoji()
     gen_names()
     gen_rowcolumn_diacritics()

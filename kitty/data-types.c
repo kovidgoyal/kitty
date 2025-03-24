@@ -22,7 +22,6 @@
 #include "cleanup.h"
 #include "safe-wrappers.h"
 #include "control-codes.h"
-#include "wcwidth-std.h"
 #include "wcswidth.h"
 #include "modes.h"
 #include <stddef.h>
@@ -428,7 +427,7 @@ py_shm_unlink(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
-    return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
+    return PyLong_FromLong(wcwidth_std(char_props_for(PyLong_AsLong(chr))));
 }
 
 static PyObject*
@@ -639,7 +638,6 @@ static PyMethodDef module_methods[] = {
     {"expand_ansi_c_escapes", (PyCFunction)expand_ansi_c_escapes, METH_O, ""},
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
     {"wcswidth", (PyCFunction)wcswidth_std, METH_O, ""},
-    {"unicode_database_version", (PyCFunction)unicode_database_version, METH_NOARGS, ""},
     {"open_tty", open_tty, METH_VARARGS, ""},
     {"normal_tty", normal_tty, METH_VARARGS, ""},
     {"raw_tty", raw_tty, METH_VARARGS, ""},
