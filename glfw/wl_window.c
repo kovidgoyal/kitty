@@ -1474,6 +1474,7 @@ _glfwPlatformSetWindowIcon(_GLFWwindow* window, int count, const GLFWimage* imag
             _glfwInputError(GLFW_FEATURE_UNAVAILABLE, "Wayland: The compositor does not support changing window icons");
             warned_once = true;
         }
+        return;
     }
     if (!count) {
         xdg_toplevel_icon_manager_v1_set_icon(_glfw.wl.xdg_toplevel_icon_manager_v1, window->wl.xdg.toplevel, NULL);

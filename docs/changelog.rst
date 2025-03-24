@@ -118,6 +118,10 @@ Detailed list of changes
   applications that dont specify a destination in the escape code not working
   (:iss:`8459`)
 
+- Wayland: Fix a regression in the previous release that caused crashes on
+  compositors that dont support the xdg-toplevel-icon protocol and the user has
+  set a custom kitty icon (:iss:`8471`)
+
 0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
