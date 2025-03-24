@@ -10,7 +10,7 @@
 #include "pyport.h"
 #include "charsets.h"
 #include "state.h"
-#include "emoji.h"
+#include "char-props.h"
 #include "unicode-data.h"
 #include "decorations.h"
 #include "glyph-cache.h"
@@ -582,8 +582,9 @@ face_has_codepoint(const void* face, char_type cp) {
 static bool
 has_emoji_presentation(const CPUCell *c, const ListOfChars *lc) {
     bool is_text_presentation;
-    return c->is_multicell && lc->count && is_emoji(lc->chars[0]) && (
-        ( (is_text_presentation = is_narrow_emoji(lc->chars[0])) && lc->count > 1 && lc->chars[1] == VS16 ) ||
+    CharProps cp;
+    return c->is_multicell && lc->count && (cp = char_props_for(lc->chars[0])).is_emoji && (
+        ( (is_text_presentation = wcwidth_std(cp) < 2) && lc->count > 1 && lc->chars[1] == VS16 ) ||
         ( !is_text_presentation && (lc->count == 1 || lc->chars[1] != VS15) )
     );
 }
@@ -593,7 +594,7 @@ has_cell_text(bool(*has_codepoint)(const void*, char_type ch), const void* face,
     RAII_ListOfChars(llc);
     if (!has_codepoint(face, lc->chars[0])) goto not_found;
     for (unsigned i = 1; i < lc->count; i++) {
-        if (!is_non_rendered_char(lc->chars[i])) {
+        if (!char_props_for(lc->chars[i]).is_non_rendered) {
             ensure_space_for_chars(&llc, llc.count+1);
             llc.chars[llc.count++] = lc->chars[i];
         }
@@ -1803,7 +1804,7 @@ is_non_emoji_dingbat(char_type ch) {
         START_ALLOW_CASE_RANGE
         case 0x2700 ... 0x27bf:
         case 0x1f100 ... 0x1f1ff:
-            return !is_emoji(ch);
+            return !char_props_for(ch).is_emoji;
         END_ALLOW_CASE_RANGE
     }
     return false;
@@ -1866,7 +1867,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         cell_font.font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
         if (
                 cell_font.font_idx != MISSING_FONT &&
-                ((!is_main_font && !is_emoji_presentation && is_symbol(first_ch)) || (cell_font.font_idx != BOX_FONT && (is_private_use(first_ch))) || is_non_emoji_dingbat(first_ch))
+                ((!is_main_font && !is_emoji_presentation && char_props_for(first_ch).is_symbol) || (cell_font.font_idx != BOX_FONT && (is_private_use(first_ch))) || is_non_emoji_dingbat(first_ch))
         ) {
             unsigned int desired_cells = 1;
             if (cell_font.font_idx > 0) {

@@ -9,7 +9,6 @@
 #include <hb.h>
 #include <hb-ft.h>
 #include "charsets.h"
-#include "unicode-data.h"
 #include "char-props.h"
 #include "wcswidth.h"
 #include FT_BITMAP_H
@@ -409,7 +408,7 @@ static bool
 process_codepoint(RenderCtx *ctx, RenderState *rs, char_type codep, char_type next_codep) {
     bool add_to_current_buffer = false;
     Face *fallback_font = NULL;
-    if (is_combining_char(codep)) {
+    if (char_props_for(codep).is_combining_char) {
         add_to_current_buffer = true;
     } else if (glyph_id_for_codepoint(&main_face, codep) > 0) {
         add_to_current_buffer = rs->current_face == &main_face;

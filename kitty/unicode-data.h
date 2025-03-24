@@ -5,12 +5,9 @@
 // Converts row/column diacritics to numbers.
 int diacritic_to_num(char_type ch);
 
-bool is_combining_char(char_type ch);
-bool is_ignored_char(char_type ch);
 bool is_word_char(char_type ch);
 bool is_CZ_category(char_type);
 bool is_P_category(char_type);
-bool is_non_rendered_char(char_type);
 
 static inline bool
 is_excluded_from_url(uint32_t ch) {

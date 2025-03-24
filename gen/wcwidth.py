@@ -327,37 +327,6 @@ def create_header(path: str, include_data_types: bool = True) -> Generator[Calla
             p('END_ALLOW_CASE_RANGE')
 
 
-def gen_emoji() -> None:
-    with create_header('kitty/emoji.h') as p:
-        p('static inline bool\nis_emoji(char_type code) {')
-        p('\tswitch(code) {')
-        for spec in get_ranges(list(all_emoji)):
-            write_case(spec, p)
-            p('\t\t\treturn true;')
-        p('\t\tdefault: return false;')
-        p('\t}')
-        p('\treturn false;\n}')
-
-        p('static inline bool\nis_symbol(char_type code) {')
-        p('\tswitch(code) {')
-        for spec in get_ranges(list(all_symbols)):
-            write_case(spec, p)
-            p('\t\t\treturn true;')
-        p('\t\tdefault: return false;')
-        p('\t}')
-        p('\treturn false;\n}')
-
-        p('static inline bool\nis_narrow_emoji(char_type code) {')
-        p('\tswitch(code) {')
-        for spec in get_ranges(list(narrow_emoji)):
-            write_case(spec, p)
-            p('\t\t\treturn true;')
-        p('\t\tdefault: return false;')
-        p('\t}')
-        p('\treturn false;\n}')
-
-
-
 def category_test(
     name: str,
     p: Callable[..., None],
@@ -422,28 +391,10 @@ def gen_ucd() -> None:
     with create_header('kitty/unicode-data.c') as p:
         p('#include "unicode-data.h"')
         p('START_ALLOW_CASE_RANGE')
-        category_test(
-                'is_combining_char', p,
-                (),
-                'Combining and default ignored characters',
-                extra_chars=marks,
-                least_check_return='false'
-        )
-        category_test(
-            'is_ignored_char', p, 'Cc Cs'.split(),
-            'Control characters and non-characters',
-            extra_chars=non_characters,
-            ascii_range='false'
-        )
-        category_test(
-            'is_non_rendered_char', p, 'Cc Cs Cf'.split(),
-            'Other_Default_Ignorable_Code_Point and soft hyphen',
-            extra_chars=property_maps['Other_Default_Ignorable_Code_Point'] | set(range(0xfe00, 0xfe0f + 1)),
-            ascii_range='false'
-        )
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
         category_test('is_CZ_category', p, cz, 'C and Z categories')
         category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')
+
 
 def gen_names() -> None:
     aliases_map: dict[int, set[str]] = {}
@@ -641,6 +592,9 @@ class CharProps(NamedTuple):
     is_extended_pictographic: bool = True
     is_non_rendered: bool = True
     is_emoji_presentation_base: bool = True
+    is_emoji: bool = True
+    is_symbol: bool = True
+    is_combining_char: bool = True
 
     @property
     def go_fields(self) -> Iterable[str]:
@@ -675,12 +629,21 @@ class CharProps(NamedTuple):
 
     @property
     def as_c(self) -> str:
-        return ('{'
-            f' .shifted_width={self.width + width_shift}, .grapheme_break=GBP_{self.grapheme_break},'
-            f' .indic_conjunct_break=ICB_{self.indic_conjunct_break},'
-            f' .is_invalid={int(self.is_invalid)}, .is_extended_pictographic={int(self.is_extended_pictographic)},'
-            f' .is_non_rendered={int(self.is_non_rendered)}, .is_emoji_presentation_base={int(self.is_emoji_presentation_base)}'
-        ' }')
+        parts = []
+        for f in self._fields:
+            x = getattr(self, f)
+            match f:
+                case 'width':
+                    x += width_shift
+                    f = 'shifted_width'
+                case 'grapheme_break':
+                    x = f'GBP_{x}'
+                case 'indic_conjunct_break':
+                    x = f'ICB_{x}'
+                case _:
+                    x = int(x)
+            parts.append(f'.{f}={x}')
+        return '{' + ', '.join(parts) + '}'
 
 
 def generate_enum(p: Callable[..., None], gp: Callable[..., None], name: str, *items: str, prefix: str = '') -> None:
@@ -728,8 +691,9 @@ def gen_char_props() -> None:
     prop_array = tuple(
         CharProps(
             width=width_map.get(ch, 1), grapheme_break=gs_map.get(ch, 'None'), indic_conjunct_break=icb_map.get(ch, 'None'),
-            is_invalid=ch in invalid, is_non_rendered=ch in non_printing,
+            is_invalid=ch in invalid, is_non_rendered=ch in non_printing, is_emoji=ch in all_emoji, is_symbol=ch in all_symbols,
             is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
+            is_combining_char=ch in marks,
         ) for ch in range(sys.maxunicode + 1))
     t1, t2, shift, mask, bytesz = splitbins(prop_array, 2)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
@@ -763,7 +727,6 @@ def main(args: list[str]=sys.argv) -> None:
     parse_eaw()
     parse_grapheme_segmentation()
     gen_ucd()
-    gen_emoji()
     gen_names()
     gen_rowcolumn_diacritics()
     gen_test_data()
