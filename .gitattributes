@@ -1,6 +1,5 @@
 kitty/char-props-data.h linguist-generated=true
 kitty_tests/GraphemeBreakTest.json linguist-generated=true
-kitty/emoji.h linguist-generated=true
 kitty/charsets.c linguist-generated=true
 kitty/key_encoding.py linguist-generated=true
 kitty/unicode-data.c linguist-generated=true
