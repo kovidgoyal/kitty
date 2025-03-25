@@ -553,10 +553,6 @@ class Property(Protocol):
     def as_go(self) -> str:
         return ''
 
-    @property
-    def bitsize(self) -> int:
-        return 16
-
 
 def get_types(sz: int) -> tuple[str, str]:
     sz *= 8
@@ -607,9 +603,9 @@ def bitsize(maxval: int) -> int:  # number of bits needed to store maxval
 class CharProps(NamedTuple):
 
     width: int = 3
+    is_extended_pictographic: bool = True
     grapheme_break: str = ''  # set at runtime
     indic_conjunct_break: str = ''  # set at runtime
-    is_extended_pictographic: bool = True
     is_emoji: bool = True
     is_emoji_presentation_base: bool = True
 
@@ -619,9 +615,9 @@ class CharProps(NamedTuple):
     is_symbol: bool = True
     is_combining_char: bool = True
 
-    @property
-    def bitsize(self) -> int:
-        ans = sum(int(self._field_defaults[f]) for f in self._fields)
+    @classmethod
+    def bitsize(cls) -> int:
+        ans = sum(int(cls._field_defaults[f]) for f in cls._fields)
         if ans <= 8:
             return 8
         if ans <= 16:
@@ -681,6 +677,21 @@ class CharProps(NamedTuple):
             parts.append(f'.{f}={x}')
         return '{' + ', '.join(parts) + '}'
 
+    @classmethod
+    def c_declaration(cls) -> str:
+        base_type = f'uint{cls.bitsize()}_t'
+        ans = ['// CharPropsDeclaration', 'typedef union CharProps {', '    struct {']
+
+        for f in cls._fields:
+            n = 'shifted_width' if f == 'width' else f
+            ans.append(f'        uint8_t {n} : {int(cls._field_defaults[f])};')
+        ans.append('    };')
+        ans.append(f'    {base_type} val;')
+        ans.append('} CharProps;')
+        ans.append(f'static_assert(sizeof(CharProps) == sizeof({base_type}), "Fix the ordering of CharProps");')
+        ans.append('// EndCharPropsDeclaration')
+        return '\n'.join(ans)
+
 
 def generate_enum(p: Callable[..., None], gp: Callable[..., None], name: str, *items: str, prefix: str = '') -> None:
     p(f'typedef enum {name} {{')  # }}
@@ -733,7 +744,7 @@ def gen_char_props() -> None:
             is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
             is_combining_char=ch in marks,
         ) for ch in range(sys.maxunicode + 1))
-    t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, prop_array[0].bitsize // 8)
+    t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
     from .bitfields import make_bitfield
     with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
@@ -753,6 +764,7 @@ func (s CharProps) Width() int {{
     with open('kitty/char-props.h', 'r+') as f:
         raw = f.read()
         nraw = re.sub(r'\d+/\*=width_shift\*/', f'{width_shift}/*=width_shift*/', raw)
+        nraw = re.sub(r'// CharPropsDeclaration.+?// EndCharPropsDeclaration', CharProps.c_declaration(), nraw, flags=re.DOTALL)
         if nraw != raw:
             f.seek(0)
             f.truncate()
