@@ -29,6 +29,40 @@ const (
 	ICB_Extend
 )
 
+type UnicodeCategory uint8
+
+const (
+	UC_Cc UnicodeCategory = iota
+	UC_Zs
+	UC_Po
+	UC_Sc
+	UC_Ps
+	UC_Pe
+	UC_Sm
+	UC_Pd
+	UC_Nd
+	UC_Lu
+	UC_Sk
+	UC_Pc
+	UC_Ll
+	UC_So
+	UC_Lo
+	UC_Pi
+	UC_Cf
+	UC_No
+	UC_Pf
+	UC_Lt
+	UC_Lm
+	UC_Mn
+	UC_Me
+	UC_Mc
+	UC_Nl
+	UC_Zl
+	UC_Zp
+	UC_Cs
+	UC_Co
+)
+
 // Total number of bits used: 16
 type CharProps uint16
 

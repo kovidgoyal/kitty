@@ -28,6 +28,38 @@ typedef enum IndicConjunctBreak {
 	ICB_Extend,
 } IndicConjunctBreak;
 
+typedef enum UnicodeCategory {
+	UC_Cc,
+	UC_Zs,
+	UC_Po,
+	UC_Sc,
+	UC_Ps,
+	UC_Pe,
+	UC_Sm,
+	UC_Pd,
+	UC_Nd,
+	UC_Lu,
+	UC_Sk,
+	UC_Pc,
+	UC_Ll,
+	UC_So,
+	UC_Lo,
+	UC_Pi,
+	UC_Cf,
+	UC_No,
+	UC_Pf,
+	UC_Lt,
+	UC_Lm,
+	UC_Mn,
+	UC_Me,
+	UC_Mc,
+	UC_Nl,
+	UC_Zl,
+	UC_Zp,
+	UC_Cs,
+	UC_Co,
+} UnicodeCategory;
+
 static const char_type CharProps_mask = 255u;
 static const char_type CharProps_shift = 8u;
 static const uint8_t CharProps_t1[4352] = {

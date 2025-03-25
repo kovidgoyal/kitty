@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from functools import lru_cache, partial
 from html.entities import html5
 from itertools import groupby
+from math import ceil, log
 from operator import itemgetter
 from typing import (
     Callable,
@@ -598,15 +599,21 @@ def gen_multistage_table(
 
 width_shift = 4
 
+
+def bitsize(maxval: int) -> int:  # number of bits needed to store maxval
+    return ceil(log(maxval, 2))
+
+
 class CharProps(NamedTuple):
 
     width: int = 3
-    grapheme_break: str = '4'
-    indic_conjunct_break: str = '2'
+    grapheme_break: str = ''  # set at runtime
+    indic_conjunct_break: str = ''  # set at runtime
     is_extended_pictographic: bool = True
     is_emoji: bool = True
     is_emoji_presentation_base: bool = True
 
+    # derived properties for fast lookup
     is_invalid: bool = True
     is_non_rendered: bool = True
     is_symbol: bool = True
@@ -693,6 +700,8 @@ def generate_enum(p: Callable[..., None], gp: Callable[..., None], name: str, *i
 
 
 def gen_char_props() -> None:
+    CharProps._field_defaults['grapheme_break'] = str(bitsize(len(grapheme_segmentation_maps) + 2))
+    CharProps._field_defaults['indic_conjunct_break'] = str(bitsize(len(incb_map) + 1))
     invalid = class_maps['Cc'] | class_maps['Cs']
     non_printing = invalid | class_maps['Cf']
     width_map: dict[int, int] = {}
@@ -732,6 +741,7 @@ def gen_char_props() -> None:
         gp('package wcswidth')
         generate_enum(c, gp, 'GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
         generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
+        generate_enum(c, gp, 'UnicodeCategory', *class_maps, prefix='UC_')
         bf = make_bitfield('tools/wcswidth', 'CharProps', *CharProps().go_fields, add_package=False)[1]
         gp(bf)
         gp(f'''
