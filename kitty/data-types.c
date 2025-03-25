@@ -638,9 +638,9 @@ py_char_props_for(PyObject *self UNUSED, PyObject *ch) {
     char_type c = PyUnicode_READ_CHAR(ch, 0);
     CharProps cp = char_props_for(c);
 #define B(x) #x, cp.x ? Py_True : Py_False
-    return Py_BuildValue("{ si sO sB sB ss }",
+    return Py_BuildValue("{si sO sB sB ss sO sO}",
         "width", wcwidth_std(cp), B(is_extended_pictographic), "grapheme_break", cp.grapheme_break,
-        "indic_conjunct_break", cp.indic_conjunct_break, "category", char_category(cp)
+        "indic_conjunct_break", cp.indic_conjunct_break, "category", char_category(cp), B(is_emoji), B(is_emoji_presentation_base)
     );
 #undef B
 }

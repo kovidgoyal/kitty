@@ -637,8 +637,8 @@ class TestDataTypes(BaseTest):
             self.ae(expected, actual, f'Failed for text: {q!r}')
 
     def test_split_into_graphemes(self):
+        self.assertEqual(char_props_for('\ue000')['category'], 'Co')
         for i, test in enumerate(json.loads(read_kitty_resource('GraphemeBreakTest.json', __name__.rpartition('.')[0]))):
             expected = test['data']
             actual = split_into_graphemes(''.join(expected))
             self.ae(expected, actual, f'Test #{i} failed: {test["comment"]}')
-        self.assertEqual(char_props_for('\ue000')['category'], 'Co')
