@@ -552,6 +552,10 @@ class Property(Protocol):
     def as_go(self) -> str:
         return ''
 
+    @property
+    def bitsize(self) -> int:
+        return 16
+
 
 def get_types(sz: int) -> tuple[str, str]:
     sz *= 8
@@ -607,6 +611,19 @@ class CharProps(NamedTuple):
     is_non_rendered: bool = True
     is_symbol: bool = True
     is_combining_char: bool = True
+
+    @property
+    def bitsize(self) -> int:
+        ans = sum(int(self._field_defaults[f]) for f in self._fields)
+        if ans <= 8:
+            return 8
+        if ans <= 16:
+            return 16
+        if ans <= 32:
+            return 32
+        if ans <= 64:
+            return 64
+        raise ValueError('Too many fields')
 
     @property
     def go_fields(self) -> Iterable[str]:
@@ -707,7 +724,7 @@ def gen_char_props() -> None:
             is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
             is_combining_char=ch in marks,
         ) for ch in range(sys.maxunicode + 1))
-    t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, 2)
+    t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, prop_array[0].bitsize // 8)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
     from .bitfields import make_bitfield
     with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
