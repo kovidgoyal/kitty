@@ -69,5 +69,3 @@ grapheme_segmentation_step(GraphemeSegmentationState *s, CharProps ch) {
     return add_to_cell;
 }
 
-bool
-is_private_use(CharProps ch) { return ch.category == UC_Co; }

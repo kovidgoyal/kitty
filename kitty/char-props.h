@@ -9,6 +9,45 @@
 
 #include "data-types.h"
 
+// UCBDeclaration
+typedef enum UnicodeCategory {
+	UC_Cn,
+	UC_Cc,
+	UC_Zs,
+	UC_Po,
+	UC_Sc,
+	UC_Ps,
+	UC_Pe,
+	UC_Sm,
+	UC_Pd,
+	UC_Nd,
+	UC_Lu,
+	UC_Sk,
+	UC_Pc,
+	UC_Ll,
+	UC_So,
+	UC_Lo,
+	UC_Pi,
+	UC_Cf,
+	UC_No,
+	UC_Pf,
+	UC_Lt,
+	UC_Lm,
+	UC_Mn,
+	UC_Me,
+	UC_Mc,
+	UC_Nl,
+	UC_Zl,
+	UC_Zp,
+	UC_Cs,
+	UC_Co,
+} UnicodeCategory;
+
+// EndUCBDeclaration
+
+
+
+
 // CharPropsDeclaration
 // Uses 23 bits
 typedef union CharProps {
@@ -61,4 +100,4 @@ CharProps char_props_for(char_type ch);
 void grapheme_segmentation_reset(GraphemeSegmentationState *s);
 bool grapheme_segmentation_step(GraphemeSegmentationState *s, CharProps ch);
 static inline int wcwidth_std(CharProps ch) { return (int)ch.shifted_width - 4/*=width_shift*/; }
-bool is_private_use(CharProps ch);
+static inline bool is_private_use(CharProps ch) { return ch.category == UC_Co; }

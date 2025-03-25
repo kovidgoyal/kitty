@@ -11,6 +11,7 @@ from collections.abc import Generator, Hashable, Iterable
 from contextlib import contextmanager
 from functools import lru_cache, partial
 from html.entities import html5
+from io import StringIO
 from math import ceil, log
 from typing import (
     Callable,
@@ -687,18 +688,23 @@ def gen_char_props() -> None:
             width=width_map.get(ch, 1), grapheme_break=gs_map.get(ch, 'None'), indic_conjunct_break=icb_map.get(ch, 'None'),
             is_invalid=ch in invalid, is_non_rendered=ch in non_printing, is_emoji=ch in all_emoji, is_symbol=ch in all_symbols,
             is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
-            is_combining_char=ch in marks, category=cat_map.get(ch, 'None'), is_word_char=ch in is_word_char,
+            is_combining_char=ch in marks, category=cat_map.get(ch, 'Cn'), is_word_char=ch in is_word_char,
             is_punctuation=ch in is_punctuation,
         ) for ch in range(sys.maxunicode + 1))
     t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
+
     from .bitfields import make_bitfield
+    buf = StringIO()
+    cen = partial(print, file=buf)
     with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
         gp = partial(print, file=gof)
         gp('package wcswidth')
         generate_enum(c, gp, 'GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
         generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
-        generate_enum(c, gp, 'UnicodeCategory', 'None', *class_maps, prefix='UC_')
+        cen('// UCBDeclaration')
+        generate_enum(cen, gp, 'UnicodeCategory', 'Cn', *class_maps, prefix='UC_')
+        cen('// EndUCBDeclaration')
         bf = make_bitfield('tools/wcswidth', 'CharProps', *CharProps().go_fields, add_package=False)[1]
         gp(bf)
         gp(f'''
@@ -711,6 +717,7 @@ func (s CharProps) Width() int {{
         raw = f.read()
         nraw = re.sub(r'\d+/\*=width_shift\*/', f'{width_shift}/*=width_shift*/', raw)
         nraw = re.sub(r'// CharPropsDeclaration.+?// EndCharPropsDeclaration', CharProps.c_declaration(), nraw, flags=re.DOTALL)
+        nraw = re.sub(r'// UCBDeclaration.+?// EndUCBDeclaration', buf.getvalue(), nraw, flags=re.DOTALL)
         if nraw != raw:
             f.seek(0)
             f.truncate()
