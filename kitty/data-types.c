@@ -632,6 +632,19 @@ py_run_atexit_cleanup_functions(PyObject *self UNUSED, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+py_char_props_for(PyObject *self UNUSED, PyObject *ch) {
+    if (!PyUnicode_Check(ch) || PyUnicode_GET_LENGTH(ch) != 1) { PyErr_SetString(PyExc_TypeError, "must suply a single character"); return NULL; }
+    char_type c = PyUnicode_READ_CHAR(ch, 0);
+    CharProps cp = char_props_for(c);
+#define B(x) #x, cp.x ? Py_True : Py_False
+    return Py_BuildValue("{ si sO sB sB ss }",
+        "width", wcwidth_std(cp), B(is_extended_pictographic), "grapheme_break", cp.grapheme_break,
+        "indic_conjunct_break", cp.indic_conjunct_break, "category", char_category(cp)
+    );
+#undef B
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
@@ -647,6 +660,7 @@ static PyMethodDef module_methods[] = {
     {"base64_encode_into", (PyCFunction)base64_encode_into, METH_VARARGS, ""},
     {"base64_decode", (PyCFunction)(void (*) (void))(pybase64_decode), METH_O, ""},
     {"base64_decode_into", (PyCFunction)base64_decode_into, METH_VARARGS, ""},
+    {"char_props_for", py_char_props_for, METH_O, ""},
     {"split_into_graphemes", (PyCFunction)split_into_graphemes, METH_O, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},

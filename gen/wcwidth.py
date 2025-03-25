@@ -717,7 +717,7 @@ func (s CharProps) Width() int {{
         raw = f.read()
         nraw = re.sub(r'\d+/\*=width_shift\*/', f'{width_shift}/*=width_shift*/', raw)
         nraw = re.sub(r'// CharPropsDeclaration.+?// EndCharPropsDeclaration', CharProps.c_declaration(), nraw, flags=re.DOTALL)
-        nraw = re.sub(r'// UCBDeclaration.+?// EndUCBDeclaration', buf.getvalue(), nraw, flags=re.DOTALL)
+        nraw = re.sub(r'// UCBDeclaration.+?// EndUCBDeclaration', buf.getvalue().rstrip(), nraw, flags=re.DOTALL)
         if nraw != raw:
             f.seek(0)
             f.truncate()

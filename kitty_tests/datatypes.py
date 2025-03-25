@@ -11,6 +11,7 @@ from kitty.fast_data_types import (
     Color,
     HistoryBuf,
     LineBuf,
+    char_props_for,
     expand_ansi_c_escapes,
     parse_input_from_terminal,
     replace_c0_codes_except_nl_space_tab,
@@ -640,3 +641,4 @@ class TestDataTypes(BaseTest):
             expected = test['data']
             actual = split_into_graphemes(''.join(expected))
             self.ae(expected, actual, f'Test #{i} failed: {test["comment"]}')
+        self.assertEqual(char_props_for('\ue000')['category'], 'Co')

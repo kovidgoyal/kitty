@@ -46,8 +46,6 @@ typedef enum UnicodeCategory {
 // EndUCBDeclaration
 
 
-
-
 // CharPropsDeclaration
 // Uses 23 bits
 typedef union CharProps {
@@ -101,3 +99,12 @@ void grapheme_segmentation_reset(GraphemeSegmentationState *s);
 bool grapheme_segmentation_step(GraphemeSegmentationState *s, CharProps ch);
 static inline int wcwidth_std(CharProps ch) { return (int)ch.shifted_width - 4/*=width_shift*/; }
 static inline bool is_private_use(CharProps ch) { return ch.category == UC_Co; }
+static inline const char* char_category(CharProps cp) {
+#define a(x) case UC_##x: return #x
+    switch((UnicodeCategory)cp.category) {
+        a(Cn); a(Cc); a(Zs); a(Po); a(Sc); a(Ps); a(Pe); a(Sm); a(Pd); a(Nd); a(Lu); a(Sk); a(Pc); a(Ll); a(So); a(Lo); a(Pi); a(Cf);
+        a(No); a(Pf); a(Lt); a(Lm); a(Mn); a(Me); a(Mc); a(Nl); a(Zl); a(Zp); a(Cs); a(Co);
+    }
+    return "Cn";
+#undef a
+}
