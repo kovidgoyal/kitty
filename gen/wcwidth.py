@@ -11,9 +11,7 @@ from collections.abc import Generator, Hashable, Iterable
 from contextlib import contextmanager
 from functools import lru_cache, partial
 from html.entities import html5
-from itertools import groupby
 from math import ceil, log
-from operator import itemgetter
 from typing import (
     Callable,
     DefaultDict,
@@ -288,17 +286,6 @@ def parse_grapheme_segmentation() -> None:
             extended_pictographic |= chars
 
 
-def get_ranges(items: list[int]) -> Generator[Union[int, tuple[int, int]], None, None]:
-    items.sort()
-    for k, g in groupby(enumerate(items), lambda m: m[0]-m[1]):
-        group = tuple(map(itemgetter(1), g))
-        a, b = group[0], group[-1]
-        if a == b:
-            yield a
-        else:
-            yield a, b
-
-
 def write_case(spec: Union[tuple[int, ...], int], p: Callable[..., None], for_go: bool = False) -> None:
     if isinstance(spec, tuple):
         if for_go:
@@ -326,75 +313,6 @@ def create_header(path: str, include_data_types: bool = True) -> Generator[Calla
         p()
         if include_data_types:
             p('END_ALLOW_CASE_RANGE')
-
-
-def category_test(
-    name: str,
-    p: Callable[..., None],
-    classes: Iterable[str],
-    comment: str,
-    use_static: bool = False,
-    extra_chars: Union[frozenset[int], set[int]] = frozenset(),
-    exclude: Union[set[int], frozenset[int]] = frozenset(),
-    least_check_return: Optional[str] = None,
-    ascii_range: Optional[str] = None
-) -> None:
-    static = 'static inline ' if use_static else ''
-    chars: set[int] = set()
-    for c in classes:
-        chars |= class_maps[c]
-    chars |= extra_chars
-    chars -= exclude
-    p(f'{static}bool\n{name}(char_type code) {{')
-    p(f'\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
-    if least_check_return is not None:
-        least = min(chars)
-        p(f'\tif (LIKELY(code < {least})) return {least_check_return};')
-    if ascii_range is not None:
-        p(f'\tif (LIKELY(0x20 <= code && code <= 0x7e)) return {ascii_range};')
-    p('\tswitch(code) {')
-    for spec in get_ranges(list(chars)):
-        write_case(spec, p)
-        p('\t\t\treturn true;')
-    p('\t} // }}}\n')
-    p('\treturn false;\n}\n')
-
-
-def classes_to_regex(classes: Iterable[str], exclude: str = '', for_go: bool = True) -> Iterable[str]:
-    chars: set[int] = set()
-    for c in classes:
-        chars |= class_maps[c]
-    for x in map(ord, exclude):
-        chars.discard(x)
-
-    if for_go:
-        def as_string(codepoint: int) -> str:
-            if codepoint < 256:
-                return fr'\x{codepoint:02x}'
-            return fr'\x{{{codepoint:x}}}'
-    else:
-        def as_string(codepoint: int) -> str:
-            if codepoint < 256:
-                return fr'\x{codepoint:02x}'
-            if codepoint <= 0xffff:
-                return fr'\u{codepoint:04x}'
-            return fr'\U{codepoint:08x}'
-
-    for spec in get_ranges(list(chars)):
-        if isinstance(spec, tuple):
-            yield '{}-{}'.format(*map(as_string, (spec[0], spec[1])))
-        else:
-            yield as_string(spec)
-
-
-def gen_ucd() -> None:
-    cz = {c for c in class_maps if c[0] in 'CZ'}
-    with create_header('kitty/unicode-data.c') as p:
-        p('#include "unicode-data.h"')
-        p('START_ALLOW_CASE_RANGE')
-        category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
-        category_test('is_CZ_category', p, cz, 'C and Z categories')
-        category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')
 
 
 def gen_names() -> None:
@@ -606,6 +524,7 @@ class CharProps(NamedTuple):
     is_extended_pictographic: bool = True
     grapheme_break: str = ''  # set at runtime
     indic_conjunct_break: str = ''  # set at runtime
+    category: str = ''  # set at runtime
     is_emoji: bool = True
     is_emoji_presentation_base: bool = True
 
@@ -614,6 +533,8 @@ class CharProps(NamedTuple):
     is_non_rendered: bool = True
     is_symbol: bool = True
     is_combining_char: bool = True
+    is_word_char: bool = True
+    is_punctuation: bool = True
 
     @classmethod
     def bitsize(cls) -> int:
@@ -651,6 +572,8 @@ class CharProps(NamedTuple):
                     x = f'CharProps(GBP_{x})'
                 case 'indic_conjunct_break':
                     x = f'CharProps(ICB_{x})'
+                case 'category':
+                    x = f'CharProps(UC_{x})'
                 case _:
                     x = int(x)
             bits = int(self._field_defaults[f])
@@ -672,6 +595,8 @@ class CharProps(NamedTuple):
                     x = f'GBP_{x}'
                 case 'indic_conjunct_break':
                     x = f'ICB_{x}'
+                case 'category':
+                    x = f'UC_{x}'
                 case _:
                     x = int(x)
             parts.append(f'.{f}={x}')
@@ -680,7 +605,8 @@ class CharProps(NamedTuple):
     @classmethod
     def c_declaration(cls) -> str:
         base_type = f'uint{cls.bitsize()}_t'
-        ans = ['// CharPropsDeclaration', 'typedef union CharProps {', '    struct {']
+        bits = sum(int(cls._field_defaults[f]) for f in cls._fields)
+        ans = ['// CharPropsDeclaration', f'// Uses {bits} bits', 'typedef union CharProps {', '    struct {']
 
         for f in cls._fields:
             n = 'shifted_width' if f == 'width' else f
@@ -710,12 +636,31 @@ def generate_enum(p: Callable[..., None], gp: Callable[..., None], name: str, *i
     gp('')
 
 
+def category_set(predicate: Callable[[str], bool]) -> set[int]:
+    ans = set()
+    for c, chs in class_maps.items():
+        if predicate(c):
+            ans |= chs
+    return ans
+
+
+def top_level_category(q: str) -> set[int]:
+    return category_set(lambda x: x[0] in q)
+
+
 def gen_char_props() -> None:
     CharProps._field_defaults['grapheme_break'] = str(bitsize(len(grapheme_segmentation_maps) + 2))
     CharProps._field_defaults['indic_conjunct_break'] = str(bitsize(len(incb_map) + 1))
+    CharProps._field_defaults['category'] = str(bitsize(len(class_maps) + 1))
     invalid = class_maps['Cc'] | class_maps['Cs']
     non_printing = invalid | class_maps['Cf']
+    is_word_char = top_level_category('LN')
+    is_punctuation = top_level_category('P')
     width_map: dict[int, int] = {}
+    cat_map: dict[int, str] = {}
+    for cat, chs in class_maps.items():
+        for ch in chs:
+            cat_map[ch] = cat
     def aw(s: Iterable[int], width: int) -> None:
         nonlocal width_map
         d = dict.fromkeys(s, width)
@@ -742,7 +687,8 @@ def gen_char_props() -> None:
             width=width_map.get(ch, 1), grapheme_break=gs_map.get(ch, 'None'), indic_conjunct_break=icb_map.get(ch, 'None'),
             is_invalid=ch in invalid, is_non_rendered=ch in non_printing, is_emoji=ch in all_emoji, is_symbol=ch in all_symbols,
             is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
-            is_combining_char=ch in marks,
+            is_combining_char=ch in marks, category=cat_map.get(ch, 'None'), is_word_char=ch in is_word_char,
+            is_punctuation=ch in is_punctuation,
         ) for ch in range(sys.maxunicode + 1))
     t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
@@ -752,7 +698,7 @@ def gen_char_props() -> None:
         gp('package wcswidth')
         generate_enum(c, gp, 'GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
         generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
-        generate_enum(c, gp, 'UnicodeCategory', *class_maps, prefix='UC_')
+        generate_enum(c, gp, 'UnicodeCategory', 'None', *class_maps, prefix='UC_')
         bf = make_bitfield('tools/wcswidth', 'CharProps', *CharProps().go_fields, add_package=False)[1]
         gp(bf)
         gp(f'''
@@ -777,7 +723,6 @@ def main(args: list[str]=sys.argv) -> None:
     parse_emoji()
     parse_eaw()
     parse_grapheme_segmentation()
-    gen_ucd()
     gen_names()
     gen_rowcolumn_diacritics()
     gen_test_data()

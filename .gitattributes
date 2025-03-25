@@ -2,7 +2,6 @@ kitty/char-props-data.h linguist-generated=true
 kitty_tests/GraphemeBreakTest.json linguist-generated=true
 kitty/charsets.c linguist-generated=true
 kitty/key_encoding.py linguist-generated=true
-kitty/unicode-data.c linguist-generated=true
 kitty/rowcolumn-diacritics.c linguist-generated=true
 kitty/rgb.py linguist-generated=true
 kitty/srgb_gamma.* linguist-generated=true

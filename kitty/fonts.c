@@ -11,7 +11,6 @@
 #include "charsets.h"
 #include "state.h"
 #include "char-props.h"
-#include "unicode-data.h"
 #include "decorations.h"
 #include "glyph-cache.h"
 
@@ -1799,12 +1798,12 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
 }
 
 static bool
-is_non_emoji_dingbat(char_type ch) {
+is_non_emoji_dingbat(char_type ch, CharProps cp) {
     switch(ch) {
         START_ALLOW_CASE_RANGE
         case 0x2700 ... 0x27bf:
         case 0x1f100 ... 0x1f1ff:
-            return !char_props_for(ch).is_emoji;
+            return !cp.is_emoji;
         END_ALLOW_CASE_RANGE
     }
     return false;
@@ -1865,9 +1864,10 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         GPUCell *gpu_cell = line->gpu_cells + i;
         const char_type first_ch = lc->chars[0];
         cell_font.font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
+        CharProps cp = char_props_for(first_ch);
         if (
                 cell_font.font_idx != MISSING_FONT &&
-                ((!is_main_font && !is_emoji_presentation && char_props_for(first_ch).is_symbol) || (cell_font.font_idx != BOX_FONT && (is_private_use(first_ch))) || is_non_emoji_dingbat(first_ch))
+                ((!is_main_font && !is_emoji_presentation && cp.is_symbol) || (cell_font.font_idx != BOX_FONT && (is_private_use(cp))) || is_non_emoji_dingbat(first_ch, cp))
         ) {
             unsigned int desired_cells = 1;
             if (cell_font.font_idx > 0) {

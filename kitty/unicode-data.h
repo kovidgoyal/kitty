@@ -1,13 +1,10 @@
 #pragma once
 #include "data-types.h"
 #include "state.h"
+#include "char-props.h"
 
 // Converts row/column diacritics to numbers.
 int diacritic_to_num(char_type ch);
-
-bool is_word_char(char_type ch);
-bool is_CZ_category(char_type);
-bool is_P_category(char_type);
 
 static inline bool
 is_excluded_from_url(uint32_t ch) {
@@ -61,14 +58,8 @@ is_url_char(uint32_t ch) {
 static inline bool
 can_strip_from_end_of_url(uint32_t ch) {
     // remove trailing punctuation
-    return (is_P_category(ch) && ch != '/' && ch != '&' && ch != '-' && ch != ')' && ch != ']' && ch != '}');
+    return (char_props_for(ch).is_punctuation && ch != '/' && ch != '&' && ch != '-' && ch != ')' && ch != ']' && ch != '}');
 }
-
-static inline bool
-is_private_use(char_type ch) {
-    return (0xe000 <= ch && ch <= 0xf8ff) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
-}
-
 
 static inline bool
 is_flag_codepoint(char_type ch) {

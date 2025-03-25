@@ -4611,7 +4611,7 @@ is_opt_word_char(char_type ch, bool forward) {
 static bool
 is_char_ok_for_word_extension(Line* line, index_type x, bool forward) {
     char_type ch = cell_first_char(line->cpu_cells + x, line->text_cache);
-    if (is_word_char(ch) || is_opt_word_char(ch, forward)) return true;
+    if (char_props_for(ch).is_word_char || is_opt_word_char(ch, forward)) return true;
     // pass : from :// so that common URLs are matched
     return ch == ':' && x + 2 < line->xnum && cell_is_char(line->cpu_cells + x + 1, '/') && cell_is_char(line->cpu_cells + x + 2,  '/');
 }

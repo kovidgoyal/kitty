@@ -10,22 +10,26 @@
 #include "data-types.h"
 
 // CharPropsDeclaration
+// Uses 23 bits
 typedef union CharProps {
     struct {
         uint8_t shifted_width : 3;
         uint8_t is_extended_pictographic : 1;
         uint8_t grapheme_break : 4;
         uint8_t indic_conjunct_break : 2;
+        uint8_t category : 5;
         uint8_t is_emoji : 1;
         uint8_t is_emoji_presentation_base : 1;
         uint8_t is_invalid : 1;
         uint8_t is_non_rendered : 1;
         uint8_t is_symbol : 1;
         uint8_t is_combining_char : 1;
+        uint8_t is_word_char : 1;
+        uint8_t is_punctuation : 1;
     };
-    uint16_t val;
+    uint32_t val;
 } CharProps;
-static_assert(sizeof(CharProps) == sizeof(uint16_t), "Fix the ordering of CharProps");
+static_assert(sizeof(CharProps) == sizeof(uint32_t), "Fix the ordering of CharProps");
 // EndCharPropsDeclaration
 
 typedef struct GraphemeSegmentationState {
@@ -57,3 +61,4 @@ CharProps char_props_for(char_type ch);
 void grapheme_segmentation_reset(GraphemeSegmentationState *s);
 bool grapheme_segmentation_step(GraphemeSegmentationState *s, CharProps ch);
 static inline int wcwidth_std(CharProps ch) { return (int)ch.shifted_width - 4/*=width_shift*/; }
+bool is_private_use(CharProps ch);
