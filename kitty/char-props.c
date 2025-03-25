@@ -13,7 +13,7 @@
 
 CharProps
 char_props_for(char_type ch) {
-    return CharProps_t2[(CharProps_t1[ch >> CharProps_shift] << CharProps_shift) + (ch & CharProps_mask)];
+    return CharProps_t3[CharProps_t2[(CharProps_t1[ch >> CharProps_shift] << CharProps_shift) + (ch & CharProps_mask)]];
 }
 
 void

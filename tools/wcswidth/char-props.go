@@ -33,7 +33,7 @@ type GraphemeSegmentationState struct {
 }
 
 func CharPropsFor(ch rune) CharProps {
-	return charprops_t2[(rune(charprops_t1[ch>>charprops_shift])<<charprops_shift)+(ch&charprops_mask)]
+	return charprops_t3[charprops_t2[(rune(charprops_t1[ch>>charprops_shift])<<charprops_shift)+(ch&charprops_mask)]]
 }
 
 func IteratorOverGraphemes(text string) iter.Seq[string] {

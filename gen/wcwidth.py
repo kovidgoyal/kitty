@@ -499,7 +499,7 @@ def getsize(data: Iterable[int]) -> Literal[1, 2, 4]:
     return 4
 
 
-def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[T], int, int, int]:
+def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[int], list[T], int, int, int]:
     if use_fixed_shift:
         candidates = range(use_fixed_shift, use_fixed_shift + 1)
     else:
@@ -510,14 +510,23 @@ def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift
                 n >>= 1
                 maxshift += 1
         candidates = range(maxshift + 1)
+    t3: list[T] = []
+    tmap: dict[T, int] = {}
+    seen = set()
+    for x in t:
+        if x not in seen:
+            seen.add(x)
+            tmap[x] = len(t3)
+            t3.append(x)
+    t_int = tuple(tmap[x] for x in t)
     bytesz = sys.maxsize
     for shift in candidates:
         t1: list[int] = []
-        t2: list[T] = []
+        t2: list[int] = []
         size = 2**shift
-        bincache: dict[tuple[T, ...], int] = {}
-        for i in range(0, len(t), size):
-            bin = t[i:i+size]
+        bincache: dict[tuple[int, ...], int] = {}
+        for i in range(0, len(t_int), size):
+            bin = t_int[i:i+size]
             index = bincache.get(bin)
             if index is None:
                 index = len(t2)
@@ -525,13 +534,13 @@ def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift
                 t2.extend(bin)
             t1.append(index >> shift)
         # determine memory size
-        b = len(t1)*getsize(t1) + len(t2)*property_size
+        b = len(t1)*getsize(t1) + len(t3)*property_size + len(t2)*getsize(t2)
         if b < bytesz:
             best = t1, t2, shift
             bytesz = b
     t1, t2, shift = best
     mask = ~((~0) << shift)
-    return t1, t2, shift, mask, bytesz
+    return t1, t2, t3, shift, mask, bytesz
 
 
 class Property(Protocol):
@@ -544,39 +553,41 @@ class Property(Protocol):
         return ''
 
 
+def get_types(sz: int) -> tuple[str, str]:
+    sz *= 8
+    return f'uint{sz}_t', f'uint{sz}'
+
+
 def gen_multistage_table(
-    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[Property], shift: int, mask: int
+    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[int], t3: Sequence[Property], shift: int, mask: int
 ) -> None:
-    sz = getsize(t1)
-    name = t2[0].__class__.__name__
-    match sz:
-        case 1:
-            ctype = 'unsigned char'
-            gotype = 'uint8'
-        case 2:
-            ctype = 'unsigned short'
-            gotype = 'uint16'
-        case 4:
-            ctype = 'uint32_t'
-            gotype = 'uint32'
+    ctype_t1, gotype_t1 = get_types(getsize(t1))
+    name = t3[0].__class__.__name__
+    ctype_t2, gotype_t2 = get_types(getsize(tuple(range(len(t3)))))
     c(f'static const char_type {name}_mask = {mask}u;')
     c(f'static const char_type {name}_shift = {shift}u;')
-    c(f'static const {ctype} {name}_t1[{len(t1)}] = ''{')
+    c(f'static const {ctype_t1} {name}_t1[{len(t1)}] = ''{')
     c(f'\t{", ".join(map(str, t1))}')
     c('};')
-    items = '\n\t'.join(x.as_c + ',' for x in t2)
-    c(f'static const {name} {name}_t2[{len(t2)}] = ''{')
+    c(f'static const {ctype_t2} {name}_t2[{len(t2)}] = ''{')
+    c(f'\t{", ".join(map(str, t2))}')
+    c('};')
+    items = '\n\t'.join(x.as_c + ',' for x in t3)
+    c(f'static const {name} {name}_t3[{len(t3)}] = ''{')
     c(f'\t{items}')
     c('};')
 
     lname = name.lower()
     g(f'const {lname}_mask = {mask}')
     g(f'const {lname}_shift = {shift}')
-    g(f'var {lname}_t1 = [{len(t1)}]{gotype}''{')
+    g(f'var {lname}_t1 = [{len(t1)}]{gotype_t1}''{')
     g(f'\t{", ".join(map(str, t1))},')
     g('}')
-    items = '\n\t'.join(x.as_go + ',' for x in t2)
-    g(f'var {lname}_t2 = [{len(t2)}]{name}''{')
+    g(f'var {lname}_t2 = [{len(t2)}]{gotype_t2}''{')
+    g(f'\t{", ".join(map(str, t2))},')
+    g('}')
+    items = '\n\t'.join(x.as_go + ',' for x in t3)
+    g(f'var {lname}_t3 = [{len(t3)}]{name}''{')
     g(f'\t{items}')
     g('}')
 
@@ -588,11 +599,12 @@ class CharProps(NamedTuple):
     width: int = 3
     grapheme_break: str = '4'
     indic_conjunct_break: str = '2'
-    is_invalid: bool = True
     is_extended_pictographic: bool = True
-    is_non_rendered: bool = True
-    is_emoji_presentation_base: bool = True
     is_emoji: bool = True
+    is_emoji_presentation_base: bool = True
+
+    is_invalid: bool = True
+    is_non_rendered: bool = True
     is_symbol: bool = True
     is_combining_char: bool = True
 
@@ -695,7 +707,7 @@ def gen_char_props() -> None:
             is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
             is_combining_char=ch in marks,
         ) for ch in range(sys.maxunicode + 1))
-    t1, t2, shift, mask, bytesz = splitbins(prop_array, 2)
+    t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, 2)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
     from .bitfields import make_bitfield
     with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
@@ -709,7 +721,7 @@ def gen_char_props() -> None:
 func (s CharProps) Width() int {{
 	return int(s.Shifted_width()) - {width_shift}
 }}''')
-        gen_multistage_table(c, gp, t1, t2, shift, mask)
+        gen_multistage_table(c, gp, t1, t2, t3, shift, mask)
     gofmt(gof.name)
     with open('kitty/char-props.h', 'r+') as f:
         raw = f.read()
