@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	_ "embed"
+	"github.com/google/go-cmp/cmp"
 )
 
 var _ = fmt.Print
