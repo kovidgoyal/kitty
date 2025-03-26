@@ -10,7 +10,7 @@ import sys
 import time
 import unittest
 from collections.abc import Callable, Generator, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from functools import lru_cache
 from tempfile import TemporaryDirectory
 from threading import Thread
@@ -184,6 +184,8 @@ def run_go(packages: set[str], names: str) -> GoProc:
     for name in names:
         cmd.extend(('-run', name))
     cmd += go_pkg_args
+    with suppress(FileExistsError):
+        os.link('kitty_tests/GraphemeBreakTest.json', 'tools/wcswidth/GraphemeBreakTest.json')
     return GoProc(cmd)
 
 
