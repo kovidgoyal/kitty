@@ -8,12 +8,11 @@ import (
 
 	_ "embed"
 	"github.com/google/go-cmp/cmp"
+
+	"kitty"
 )
 
 var _ = fmt.Print
-
-//go:embed GraphemeBreakTest.json
-var test_data []byte
 
 type GraphemeBreakTest struct {
 	Data    []string `json:"data"`
@@ -31,7 +30,7 @@ func TestSplitIntoGraphemes(t *testing.T) {
 		}
 	}
 	tests := []GraphemeBreakTest{}
-	if err := json.Unmarshal(test_data, &tests); err != nil {
+	if err := json.Unmarshal(kitty.GraphemeBreakTestData, &tests); err != nil {
 		t.Fatalf("Failed to parse GraphemeBreakTest JSON with error: %s", err)
 	}
 	for i, x := range tests {

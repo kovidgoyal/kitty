@@ -180,11 +180,10 @@ class GoProc(Thread):
 def run_go(packages: set[str], names: str) -> GoProc:
     go = go_exe()
     go_pkg_args = [f'kitty/{x}' for x in packages]
-    cmd = [go, 'test', '-v']
+    cmd = [go, 'test', '--tags', 'testing', '-v']
     for name in names:
         cmd.extend(('-run', name))
     cmd += go_pkg_args
-    shutil.copy2('kitty_tests/GraphemeBreakTest.json', 'tools/wcswidth/GraphemeBreakTest.json')
     return GoProc(cmd)
 
 

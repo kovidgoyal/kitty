@@ -121,7 +121,7 @@ jobs:
             run: which python && python -m mypy --version && ./test.py mypy
 
           - name: Run go vet
-            run: cp kitty_tests/GraphemeBreakTest.json tools/wcswidth && go version && go vet ./...
+            run: go version && go vet -tags testing ./...
 
           - name: Build man page
             run: make FAIL_WARN=1 man

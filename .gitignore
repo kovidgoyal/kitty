@@ -23,7 +23,6 @@ __pycache__/
 /docs/_build/
 /docs/generated/
 /tools/simdstring/simdstring.test
-/tools/wcswidth/GraphemeBreakTest.json
 /.mypy_cache
 /.ruff_cache
 .DS_Store
