@@ -102,6 +102,9 @@ Detailed list of changes
   background text colors. Works in a perceptual color space for best color accuracy
   (:pull:`8420`)
 
+- A 15% improvement in throughput when processing text thanks to using a
+  multi-stage table for Unicode property lookups
+
 - :ref:`kitty +open <launch_actions>`: Ask for confirmation by default when running executables
   to work around some badly designed programs that try to open links in
   documents that point to executable files. Can be overridden by specifying
