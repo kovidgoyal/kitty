@@ -4702,6 +4702,13 @@ scroll_to_prompt(Screen *self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
+static PyObject*
+set_last_visited_prompt(Screen *self, PyObject *args) {
+    index_type visual_y = 0;
+    if (!PyArg_ParseTuple(args, "|I", &visual_y)) return NULL;
+    if (screen_set_last_visited_prompt(self, visual_y)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
 
 bool
 screen_is_selection_dirty(Screen *self) {
@@ -5550,6 +5557,7 @@ static PyMethodDef methods[] = {
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(scroll_to_prompt, METH_VARARGS)
+    MND(set_last_visited_prompt, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)
     MND(pause_rendering, METH_VARARGS)
     MND(hyperlink_at, METH_VARARGS)
