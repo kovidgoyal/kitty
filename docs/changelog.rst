@@ -94,7 +94,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.41.0 [future]
+0.41.0 [2025-03-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new mode of operation for :opt:`text_fg_override_threshold` to override
