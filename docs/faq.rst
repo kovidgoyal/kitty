@@ -28,6 +28,13 @@ As of version 0.40 kitty has innovated a :doc:`new protocol
 how many cells a character is rendered in thereby solving the issue of
 character width once and for all.
 
+Similarly, some monospaced font families are buggy and have bold or italic
+faces that have characters wider than the width of the normal face, these
+will also result in clipping. Such issues should be reported to the font
+developer. Monospaced font families must have all their characters rendered
+within a fixed width across all faces of the font, otherwise they aren't really
+monospaced.
+
 
 Using a color theme with a background color does not work well in vim?
 -----------------------------------------------------------------------
