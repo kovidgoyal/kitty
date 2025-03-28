@@ -151,6 +151,7 @@ times to set different user variables. Syntax: :code:`name=value`. Using
 --hold
 type=bool-set
 Keep the window open even after the command being executed exits, at a shell prompt.
+The shell will be run after the launched command exits.
 
 
 --copy-colors
