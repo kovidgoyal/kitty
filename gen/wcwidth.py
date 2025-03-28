@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+# Imports {{{
 import json
 import os
 import re
@@ -16,11 +17,13 @@ from math import ceil, log
 from typing import (
     Callable,
     DefaultDict,
+    Iterator,
     Literal,
     NamedTuple,
     Optional,
     Protocol,
     Sequence,
+    TypedDict,
     Union,
 )
 from urllib.request import urlopen
@@ -29,8 +32,9 @@ if __name__ == '__main__' and not __package__:
     import __main__
     __main__.__package__ = 'gen'
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# }}}
 
-
+# Fetching data {{{
 non_characters = frozenset(range(0xfffe, 0x10ffff, 0x10000))
 non_characters |= frozenset(range(0xffff, 0x10ffff + 1, 0x10000))
 non_characters |= frozenset(range(0xfdd0, 0xfdf0))
@@ -63,8 +67,9 @@ def unicode_version() -> tuple[int, int, int]:
         if m is not None:
             return int(m.group(1)), int(m.group(2)), int(m.group(3))
     raise ValueError('Could not find Unicode Version')
+# }}}
 
-
+# Parsing Unicode databases {{{
 # Map of class names to set of codepoints in class
 class_maps: dict[str, set[int]] = {}
 all_symbols: set[int] = set()
@@ -269,9 +274,13 @@ def parse_eaw() -> None:
 
 def parse_grapheme_segmentation() -> None:
     global extended_pictographic
+    grapheme_segmentation_maps['AtStart']  # this is used by the segmentation algorithm, no character has it
+    grapheme_segmentation_maps['None']  # this is used by the segmentation algorithm, no character has it
     for line in get_data('ucd/auxiliary/GraphemeBreakProperty.txt'):
         chars, category = split_two(line)
         grapheme_segmentation_maps[category] |= chars
+    grapheme_segmentation_maps['Private_Expecting_RI']  # this is used by the segmentation algorithm, no character has it
+    incb_map['None']   # used by segmentation algorithm no character has it
     for line in get_data('ucd/DerivedCoreProperties.txt'):
         spec, rest = line.split(';', 1)
         category = rest.strip().split(' ', 1)[0].strip().rstrip(';')
@@ -285,6 +294,36 @@ def parse_grapheme_segmentation() -> None:
         chars, category = split_two(line)
         if 'Extended_Pictographic#' == category:
             extended_pictographic |= chars
+
+
+class GraphemeSegmentationTest(TypedDict):
+    data: tuple[str, ...]
+    comment: str
+
+
+grapheme_segmentation_tests: list[GraphemeSegmentationTest] = []
+
+
+def parse_test_data() -> None:
+    for line in get_data('ucd/auxiliary/GraphemeBreakTest.txt'):
+        t, comment = line.split('#')
+        t = t.lstrip('÷').strip().rstrip('÷').strip()
+        chars: list[list[str]] = [[]]
+        for x in re.split(r'([÷×])', t):
+            x = x.strip()
+            match x:
+                case '÷':
+                    chars.append([])
+                case '×':
+                    pass
+                case '':
+                    pass
+                case _:
+                    ch = chr(int(x, 16))
+                    chars[-1].append(ch)
+        c = tuple(''.join(c) for c in chars)
+        grapheme_segmentation_tests.append({'data': c, 'comment': comment.strip()})
+# }}}
 
 
 def write_case(spec: Union[tuple[int, ...], int], p: Callable[..., None], for_go: bool = False) -> None:
@@ -386,27 +425,8 @@ def gen_rowcolumn_diacritics() -> None:
 
 
 def gen_test_data() -> None:
-    tests = []
-    for line in get_data('ucd/auxiliary/GraphemeBreakTest.txt'):
-        t, comment = line.split('#')
-        t = t.lstrip('÷').strip().rstrip('÷').strip()
-        chars: list[list[str]] = [[]]
-        for x in re.split(r'([÷×])', t):
-            x = x.strip()
-            match x:
-                case '÷':
-                    chars.append([])
-                case '×':
-                    pass
-                case '':
-                    pass
-                case _:
-                    ch = chr(int(x, 16))
-                    chars[-1].append(ch)
-        c = [''.join(c) for c in chars]
-        tests.append({'data': c, 'comment': comment.strip()})
     with open('kitty_tests/GraphemeBreakTest.json', 'wb') as f:
-        f.write(json.dumps(tests, indent=2, ensure_ascii=False).encode())
+        f.write(json.dumps(grapheme_segmentation_tests, indent=2, ensure_ascii=False).encode())
 
 
 def getsize(data: Iterable[int]) -> Literal[1, 2, 4]:
@@ -519,6 +539,148 @@ def bitsize(maxval: int) -> int:  # number of bits needed to store maxval
     return ceil(log(maxval, 2))
 
 
+def clamped_bitsize(val: int) -> int:
+    if val <= 8:
+        return 8
+    if val <= 16:
+        return 16
+    if val <= 32:
+        return 32
+    if val <= 64:
+        return 64
+    raise ValueError('Too many fields')
+
+
+class GraphemeSegmentationProps(NamedTuple):
+
+    grapheme_break: str = ''  # set at runtime
+    indic_conjunct_break: str = ''  # set at runtime
+    is_extended_pictographic: bool = True
+
+    @classmethod
+    def bitsize(cls) -> int:
+        ans = sum(int(cls._field_defaults[f]) for f in cls._fields)
+        return clamped_bitsize(ans)
+
+
+control_grapheme_breaks = 'CR', 'LF', 'Control'
+linker_or_extend = 'Linker', 'Extend'
+
+
+class GraphemeSegmentationState(NamedTuple):
+    grapheme_break: str = ''  # set at runtime
+    # True if the last character ends a sequence of Indic_Conjunct_Break values:  consonant {extend|linker}*
+    incb_consonant_extended: bool = True
+    # True if the last character ends a sequence of Indic_Conjunct_Break values:  consonant {extend|linker}* linker
+    incb_consonant_extended_linker: bool = True
+    # True if the last character ends a sequence of Indic_Conjunct_Break values:  consonant {extend|linker}* linker {extend|linker}*
+    incb_consonant_extended_linker_extended: bool = True
+    # True if the last character ends an emoji modifier sequence \p{Extended_Pictographic} Extend*
+    emoji_modifier_sequence: bool = True
+    # True if the last character was immediately preceded by an emoji modifier sequence   \p{Extended_Pictographic} Extend*
+    emoji_modifier_sequence_before_last_char: bool = True
+
+    @classmethod
+    def make(cls) -> 'GraphemeSegmentationState':
+        return GraphemeSegmentationState('AtStart', False, False, False, False, False)
+
+    @classmethod
+    def bitsize(cls) -> int:
+        ans = sum(int(cls._field_defaults[f]) for f in cls._fields)
+        return clamped_bitsize(ans)
+
+    def add_to_current_cell(self, p: GraphemeSegmentationProps) -> 'GraphemeSegmentationResult':
+        prev = self.grapheme_break
+        prop = p.grapheme_break
+        incb = p.indic_conjunct_break
+        add_to_cell = False
+        if self.grapheme_break == 'AtStart':
+            add_to_cell = True
+            if prop == 'Regional_Indicator':
+                prop = 'Private_Expecting_RI'
+        else:
+            # No break between CR and LF (GB3).
+            if prev == 'CR' and prop == 'LF':
+                add_to_cell = True
+            # Break before and after controls (GB4, GB5).
+            elif prev in control_grapheme_breaks or prop in control_grapheme_breaks:
+                pass
+            # No break between Hangul syllable sequences (GB6, GB7, GB8).
+            elif (
+                (prev == 'L' and prop in ('L', 'V', 'LV', 'LVT')) or
+                (prev in ('LV', 'V') and prop in ('V', 'T')) or
+                (prev in ('LVT', 'T') and prop == 'T')
+            ):
+                add_to_cell = True
+            # No break before: extending characters or ZWJ (GB9), SpacingMarks (GB9a), Prepend characters (GB9b).
+            elif prop in ('Extend', 'ZWJ', 'SpacingMark') or prev in 'Prepend':
+                add_to_cell = True
+            # No break within certain combinations of Indic_Conjunct_Break values
+            # Between consonant {extend|linker}* linker {extend|linker}* and consonant (GB9c).
+            elif self.incb_consonant_extended_linker_extended and incb == 'Consonant':
+                add_to_cell = True
+            # No break within emoji modifier sequences or emoji zwj sequences (GB11).
+            elif prev == 'ZWJ' and self.emoji_modifier_sequence_before_last_char and p.is_extended_pictographic:
+                add_to_cell = True
+            # No break between RI if there is an odd number of RI characters before (GB12, GB13).
+            elif prop == 'Regional_Indicator':
+                if prev == 'Private_Expecting_RI':
+                    add_to_cell = True
+                else:
+                    prop = 'Private_Expecting_RI'
+            # Break everywhere else GB999
+
+        incb_consonant_extended_linker = self.incb_consonant_extended and incb == 'Linker'
+        incb_consonant_extended_linker_extended = incb_consonant_extended_linker or (
+                self.incb_consonant_extended_linker_extended and incb in linker_or_extend)
+        incb_consonant_extended = incb == 'Consonant' or (
+            self.incb_consonant_extended and incb in linker_or_extend)
+        emoji_modifier_sequence_before_last_char = self.emoji_modifier_sequence
+        emoji_modifier_sequence = (self.emoji_modifier_sequence and prop == 'Extend') or p.is_extended_pictographic
+
+        return GraphemeSegmentationResult(GraphemeSegmentationState(
+            grapheme_break=prop, incb_consonant_extended=incb_consonant_extended,
+            incb_consonant_extended_linker=incb_consonant_extended_linker,
+            incb_consonant_extended_linker_extended=incb_consonant_extended_linker_extended,
+            emoji_modifier_sequence=emoji_modifier_sequence, emoji_modifier_sequence_before_last_char=emoji_modifier_sequence_before_last_char
+        ), add_to_cell)
+
+
+def split_into_graphemes(text: str, props: Sequence[GraphemeSegmentationProps]) -> Iterator[str]:
+    s = GraphemeSegmentationState.make()
+    pos = 0
+    for i, ch in enumerate(text):
+        p = props[ord(ch)]
+        s, add_to_cell = s.add_to_current_cell(p)
+        if not add_to_cell:
+            yield text[pos:i]
+            pos = i
+    if pos < len(text):
+        yield text[pos:]
+
+
+def test_grapheme_segmentation(props: Sequence[GraphemeSegmentationProps]) -> None:
+    for test in grapheme_segmentation_tests:
+        expected = test['data']
+        actual = tuple(split_into_graphemes(''.join(test['data']), props))
+        if expected != actual:
+            def as_codepoints(text: str) -> str:
+                return ' '.join(hex(ord(x))[2:] for x in text)
+            qe = tuple(map(as_codepoints, expected))
+            qa = tuple(map(as_codepoints, actual))
+            raise SystemExit(f'Failed to split graphemes for: {test["comment"]}\n{expected!r} {qe} != {actual!r} {qa}')
+
+
+class GraphemeSegmentationKey(NamedTuple):
+    state: GraphemeSegmentationState
+    next_char: GraphemeSegmentationProps
+
+
+class GraphemeSegmentationResult(NamedTuple):
+    new_state: GraphemeSegmentationState
+    add_to_current_cell: bool
+
+
 class CharProps(NamedTuple):
 
     width: int = 3
@@ -540,15 +702,7 @@ class CharProps(NamedTuple):
     @classmethod
     def bitsize(cls) -> int:
         ans = sum(int(cls._field_defaults[f]) for f in cls._fields)
-        if ans <= 8:
-            return 8
-        if ans <= 16:
-            return 16
-        if ans <= 32:
-            return 32
-        if ans <= 64:
-            return 64
-        raise ValueError('Too many fields')
+        return clamped_bitsize(ans)
 
     @property
     def go_fields(self) -> Iterable[str]:
@@ -650,9 +804,12 @@ def top_level_category(q: str) -> set[int]:
 
 
 def gen_char_props() -> None:
-    CharProps._field_defaults['grapheme_break'] = str(bitsize(len(grapheme_segmentation_maps) + 2))
-    CharProps._field_defaults['indic_conjunct_break'] = str(bitsize(len(incb_map) + 1))
+    CharProps._field_defaults['grapheme_break'] = str(bitsize(len(grapheme_segmentation_maps)))
+    CharProps._field_defaults['indic_conjunct_break'] = str(bitsize(len(incb_map)))
     CharProps._field_defaults['category'] = str(bitsize(len(class_maps) + 1))
+    GraphemeSegmentationProps._field_defaults['grapheme_break'] = CharProps._field_defaults['grapheme_break']
+    GraphemeSegmentationProps._field_defaults['indic_conjunct_break'] = CharProps._field_defaults['indic_conjunct_break']
+    GraphemeSegmentationState._field_defaults['grapheme_break'] = GraphemeSegmentationProps._field_defaults['grapheme_break']
     invalid = class_maps['Cc'] | class_maps['Cs']
     non_printing = invalid | class_maps['Cf']
     is_word_char = top_level_category('LN')
@@ -691,6 +848,10 @@ def gen_char_props() -> None:
             is_combining_char=ch in marks, category=cat_map.get(ch, 'Cn'), is_word_char=ch in is_word_char,
             is_punctuation=ch in is_punctuation,
         ) for ch in range(sys.maxunicode + 1))
+    gsprops = tuple(GraphemeSegmentationProps(
+        grapheme_break=x.grapheme_break, indic_conjunct_break=x.indic_conjunct_break,
+        is_extended_pictographic=x.is_extended_pictographic) for x in prop_array)
+    test_grapheme_segmentation(gsprops)
     t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
 
@@ -700,8 +861,8 @@ def gen_char_props() -> None:
     with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
         gp = partial(print, file=gof)
         gp('package wcswidth')
-        generate_enum(c, gp, 'GraphemeBreakProperty', 'AtStart', 'None', *grapheme_segmentation_maps, prefix='GBP_')
-        generate_enum(c, gp, 'IndicConjunctBreak', 'None', *incb_map, prefix='ICB_')
+        generate_enum(c, gp, 'GraphemeBreakProperty', *grapheme_segmentation_maps, prefix='GBP_')
+        generate_enum(c, gp, 'IndicConjunctBreak', *incb_map, prefix='ICB_')
         cen('// UCBDeclaration')
         generate_enum(cen, gp, 'UnicodeCategory', 'Cn', *class_maps, prefix='UC_')
         cen('// EndUCBDeclaration')
@@ -730,6 +891,7 @@ def main(args: list[str]=sys.argv) -> None:
     parse_emoji()
     parse_eaw()
     parse_grapheme_segmentation()
+    parse_test_data()
     gen_names()
     gen_rowcolumn_diacritics()
     gen_test_data()
