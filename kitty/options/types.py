@@ -396,6 +396,9 @@ option_names = (
     'modify_font',
     'mouse_hide_wait',
     'mouse_map',
+    'mouse_scroll_show',
+    'mouse_show_threshold',
+    'mouse_show_wait',
     'narrow_symbols',
     'notify_on_cmd_finish',
     'open_url_with',
@@ -569,6 +572,9 @@ class Options:
     mark3_background: Color = Color(242, 116, 188)
     mark3_foreground: Color = Color(0, 0, 0)
     mouse_hide_wait: float = 0.0 if is_macos else 3.0
+    mouse_scroll_show: bool = True
+    mouse_show_threshold: int = 40
+    mouse_show_wait: float = 0.0
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
     open_url_with: list[str] = ['default']
     paste_actions: frozenset[str] = frozenset({'confirm', 'quote-urls-at-prompt'})

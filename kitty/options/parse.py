@@ -1139,6 +1139,15 @@ class Parser:
     def mouse_hide_wait(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mouse_hide_wait'] = float(val)
 
+    def mouse_scroll_show(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mouse_scroll_show'] = to_bool(val)
+
+    def mouse_show_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mouse_show_threshold'] = positive_int(val)
+
+    def mouse_show_wait(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mouse_show_wait'] = float(val)
+
     def narrow_symbols(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in narrow_symbols(val):
             ans["narrow_symbols"][k] = v

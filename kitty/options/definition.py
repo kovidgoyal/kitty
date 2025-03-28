@@ -520,6 +520,36 @@ as getting it to work robustly with the ever-changing sea of bugs that is Cocoa
 is too much effort.
 '''
     )
+opt('mouse_show_wait', '0.0',
+    option_type='float', ctype='time',
+    long_text='''
+Waits for the specified number of seconds after mouse events before unhiding the
+mouse cursor. Set to zero to unhide mouse cursor immediately on mouse activity.
+This is useful to prevent the mouse cursor from unhiding on accidental swipes on
+the trackpad.
+'''
+    )
+opt('mouse_show_threshold', '40',
+    option_type='positive_int',
+    long_text='''
+Sets the threshold of mouse activity required to unhide the mouse cursor, when
+the mouse_show_wait option is non-zero. When mouse_show_wait is zero, this has
+no effect.
+
+For example, if mouse_show_threshold is 40 and mouse_show_wait is 2.5, when
+kitty detects a mouse event, it records the number of mouse events in the next
+2.5 seconds, and checks if that exceeds 40 * 2.5 = 100.  If it does, then the
+mouse cursor is unhidden, otherwise nothing happens.
+'''
+    )
+opt('mouse_scroll_show', 'yes',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Controls what mouse events may unhide the mouse cursor. If enabled, both scroll
+and movement events may unhide the cursor. If disabled, only mouse movements can
+unhide the cursor.
+'''
+    )
 
 opt('url_color', '#0087bd',
     option_type='to_color', ctype='color_as_int',
