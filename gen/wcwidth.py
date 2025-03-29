@@ -447,7 +447,11 @@ def getsize(data: Iterable[int]) -> Literal[1, 2, 4]:
     return 4
 
 
-def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[int], list[T], int, int, int]:
+def mask_for(bits: int) -> int:
+    return ~((~0) << bits)
+
+
+def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[int], list[T], int, int]:
     if use_fixed_shift:
         candidates = range(use_fixed_shift, use_fixed_shift + 1)
     else:
@@ -487,8 +491,7 @@ def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift
             best = t1, t2, shift
             bytesz = b
     t1, t2, shift = best
-    mask = ~((~0) << shift)
-    return t1, t2, t3, shift, mask, bytesz
+    return t1, t2, t3, shift, bytesz
 
 
 class Property(Protocol):
@@ -507,9 +510,10 @@ def get_types(sz: int) -> tuple[str, str]:
 
 
 def gen_multistage_table(
-    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[int], t3: Sequence[Property], shift: int, mask: int
+    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[int], t3: Sequence[Property], shift: int,
 ) -> None:
     ctype_t1, gotype_t1 = get_types(getsize(t1))
+    mask = mask_for(shift)
     name = t3[0].__class__.__name__
     ctype_t2, gotype_t2 = get_types(getsize(tuple(range(len(t3)))))
     c(f'static const char_type {name}_mask = {mask}u;')
@@ -565,7 +569,7 @@ def bitfield_from_int(
     # first field is most significant, last field is least significant
     args: dict[str, str | bool] = {}
     for f, shift in fields.items():
-        mask = ~((~0) << shift)
+        mask = mask_for(shift)
         val = x & mask
         if shift == 1:
             args[f] = bool(val)
@@ -631,24 +635,37 @@ control_grapheme_breaks = 'CR', 'LF', 'Control'
 linker_or_extend = 'Linker', 'Extend'
 
 
-def bitfield_declaration_as_c(name: str, fields: dict[str, int]) -> str:
-    bits = sum(fields.values())
-    base_type = f'uint{clamped_bitsize(bits)}_t'
-    ans = [f'// {name}Declaration', f'// Uses {bits} bits', f'typedef union {name} {{', '    struct {']
-    ans.append('#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__')
-    for f, width in reversed(fields.items()):
-        ans.append(f'        uint8_t {f} : {width};')
-    ans.append('#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__')
-    for f, width in fields.items():
-        ans.append(f'        uint8_t {f} : {width};')
-    ans.append('#else')
-    ans.append('#error "Unsupported endianness"')
-    ans.append('#endif')
-    ans.append('    };')
+def bitfield_declaration_as_c(name: str, fields: dict[str, int], *alternate_fields: dict[str, int]) -> str:
+    # empty in MSB, then top to bottom with bottom at LSB
+    base_size = clamped_bitsize(sum(fields.values()))
+    base_type = f'uint{base_size}_t'
+    ans = [f'// {name}Declaration: uses {sum(fields.values())} bits {{''{{', f'typedef union {name} {{']
+    def struct(fields: dict[str, int]) -> Iterator[str]:
+        if not fields:
+            return
+        empty = base_size - sum(fields.values())
+        yield '    struct __attribute__((packed)) {'
+        yield '#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__'
+        for f, width in reversed(fields.items()):
+            yield f'        uint{clamped_bitsize(width)}_t {f} : {width};'
+        if empty:
+            yield f'        uint{clamped_bitsize(empty)}_t : {empty};'
+        yield '#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__'
+        if empty:
+            yield f'        uint{clamped_bitsize(empty)}_t : {empty};'
+        for f, width in fields.items():
+            yield f'        uint{clamped_bitsize(width)}_t {f} : {width};'
+        yield '#else'
+        yield '#error "Unsupported endianness"'
+        yield '#endif'
+        yield '    };'
+    ans.extend(struct(fields))
+    for fields in alternate_fields:
+        ans.extend(struct(fields))
     ans.append(f'    {base_type} val;')
     ans.append(f'}} {name};')
     ans.append(f'static_assert(sizeof({name}) == sizeof({base_type}), "Fix the ordering of {name}");')
-    ans.append(f'// End{name}Declaration')
+    ans.append(f'// End{name}Declaration }}''}}')
     return '\n'.join(ans)
 
 
@@ -779,20 +796,18 @@ class GraphemeSegmentationKey(NamedTuple):
     @classmethod
     def from_int(cls, x: int) -> 'GraphemeSegmentationKey':
         shift = cls.char.used_bits()
-        mask = ~((~0) << shift)
+        mask = mask_for(shift)
         state = GraphemeSegmentationState.from_int(x >> shift)
         char = GraphemeSegmentationProps.from_int(x & mask)
         return GraphemeSegmentationKey(state, char)
 
     @classmethod
     def as_int(cls, for_go: bool = False) -> str:
-        cp = bit_field_as_int(
-            'CharProps', {f: int(CharProps._field_defaults[f]) for f in cls.char._fields}, function_name_suffix='_as_key', for_go=for_go)
-        lines = [cp, '']
+        lines = []
         shift = cls.char.used_bits()
         base_type = f'uint{cls.state.bitsize()}_t'
         lines.append(f'static inline {base_type} {cls.__name__}(GraphemeSegmentation state, CharProps ch)' '{')
-        lines.append(f'\treturn (state.val << {shift}) | (CharProps_as_key(ch)));')
+        lines.append(f'\treturn (state.val << {shift}) | ch.grapheme_segmentation_property;')
         lines.append('}')
         return '\n'.join(lines)
 
@@ -847,11 +862,8 @@ class GraphemeSegmentationResult(NamedTuple):
 class CharProps(NamedTuple):
 
     width: int = 3
-    is_extended_pictographic: bool = True
-    grapheme_break: str = ''  # set at runtime
-    indic_conjunct_break: str = ''  # set at runtime
-    category: str = ''  # set at runtime
     is_emoji: bool = True
+    category: str = ''  # set at runtime
     is_emoji_presentation_base: bool = True
 
     # derived properties for fast lookup
@@ -861,6 +873,11 @@ class CharProps(NamedTuple):
     is_combining_char: bool = True
     is_word_char: bool = True
     is_punctuation: bool = True
+
+    # needed for grapheme segmentation set as LSB bits for easy conversion to GraphemeSegmentationProps
+    grapheme_break: str = ''  # set at runtime
+    indic_conjunct_break: str = ''  # set at runtime
+    is_extended_pictographic: bool = True
 
     @classmethod
     def bitsize(cls) -> int:
@@ -921,20 +938,15 @@ class CharProps(NamedTuple):
         return '{' + ', '.join(parts) + '}'
 
     @classmethod
-    def c_declaration(cls) -> str:
-        base_type = f'uint{cls.bitsize()}_t'
-        bits = sum(int(cls._field_defaults[f]) for f in cls._fields)
-        ans = ['// CharPropsDeclaration', f'// Uses {bits} bits', 'typedef union CharProps {', '    struct {']
+    def fields(cls) -> dict[str, int]:
+        return {'shifted_width' if f == 'width' else f: int(cls._field_defaults[f]) for f in cls._fields}
 
-        for f in cls._fields:
-            n = 'shifted_width' if f == 'width' else f
-            ans.append(f'        uint8_t {n} : {int(cls._field_defaults[f])};')
-        ans.append('    };')
-        ans.append(f'    {base_type} val;')
-        ans.append('} CharProps;')
-        ans.append(f'static_assert(sizeof(CharProps) == sizeof({base_type}), "Fix the ordering of CharProps");')
-        ans.append('// EndCharPropsDeclaration')
-        return '\n'.join(ans)
+    @classmethod
+    def c_declaration(cls) -> str:
+        alternate = {
+            'grapheme_segmentation_property': sum(int(cls._field_defaults[f]) for f in GraphemeSegmentationProps._fields)
+        }
+        return bitfield_declaration_as_c(cls.__name__, cls.fields(), alternate)
 
 
 def generate_enum(p: Callable[..., None], gp: Callable[..., None], name: str, *items: str, prefix: str = '') -> None:
@@ -968,7 +980,7 @@ def top_level_category(q: str) -> set[int]:
 
 def patch_declaration(name: str, decl: str, raw: str) -> str:
     begin = f'// {name}Declaration'
-    end = f'// End{name}Declaration'
+    end = f'// End{name}Declaration }}''}}'
     return re.sub(rf'{begin}.+?{end}', decl.rstrip(), raw, flags=re.DOTALL)
 
 
@@ -1021,7 +1033,7 @@ def gen_char_props() -> None:
         grapheme_break=x.grapheme_break, indic_conjunct_break=x.indic_conjunct_break,
         is_extended_pictographic=x.is_extended_pictographic) for x in prop_array)
     test_grapheme_segmentation(gsprops)
-    t1, t2, t3, shift, mask, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
+    t1, t2, t3, shift, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
 
     from .bitfields import make_bitfield
@@ -1041,7 +1053,7 @@ def gen_char_props() -> None:
 func (s CharProps) Width() int {{
 	return int(s.Shifted_width()) - {width_shift}
 }}''')
-        gen_multistage_table(c, gp, t1, t2, t3, shift, mask)
+        gen_multistage_table(c, gp, t1, t2, t3, shift)
     gofmt(gof.name)
     with open('kitty/char-props.h', 'r+') as f:
         raw = f.read()
