@@ -1302,6 +1302,9 @@ class Screen:
     def scroll_to_prompt(self, num_of_prompts: int = -1) -> bool:
         pass
 
+    def set_last_visited_prompt(self, visual_y: int = 0) -> bool:
+        pass
+
     def reverse_scroll(self, amt: int, fill_from_scrollback: bool = False) -> bool:
         pass
 

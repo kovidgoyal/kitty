@@ -1294,42 +1294,60 @@ class TestScreen(BaseTest):
         self.ae(lvco(), '0x\n1x')
         # test: obscure prompt
         s.scroll(2, False)
+        s.set_last_visited_prompt()
         self.ae(lvco(), '0x\n1x')
         # test: prompts without output
         s.scroll(s.scrolled_by, False)
+        s.resize(5, s.columns + 5)
         draw_prompt('4')
-        # resizing resets last visited, rely on scroll_to_prompt
-        s.resize(2, s.columns + 4)
-        s.scroll_to_prompt()
-        s.scroll_to_prompt(1)
-        self.ae(str(s.visual_line(0)), '$ 4')
+        s.set_last_visited_prompt(2)
         self.ae(lvco(), '')
-        s.resize(5, s.columns)
         draw_prompt('wrapcmd')
-        s.scroll_to_prompt(1)
         self.ae(lvco(), '')
         draw_output(1, 'wrapout'), draw_output(1, 'y', False)
+        s.set_last_visited_prompt(0)
         self.ae(lvco(), '0wrapout\n0y\n')
         # wrap long prompt with long output
-        s.resize(5, s.columns - 4)
-        self.ae(str(s.visual_line(0)), 'pcmd')
+        s.resize(5, s.columns - 5)
         # test: set last visited to previous empty prompt
         s.scroll_to_prompt(-2)
         self.ae(str(s.visual_line(0)), '$ 4')
         self.ae(lvco(), '0wrapout\n0y\n')
-        mark_prompt(), s.draw('$ end')
+        draw_prompt('end')
+        s.scroll_to_prompt(-1)
         self.ae(lvco(), '0wrapout\n0y')
-        # test: set last visited to continued line of long prompt
-        s.scroll_to_prompt(2)
-        self.ae(str(s.visual_line(0)), 'pcmd')
-        self.ae(lvco(), '0wrapout\n0y')
-        s.scroll_to_prompt()
-        self.ae(lvco(), '0wrapout\n0y')
-        # test: set last visited to continued line of output
-        s.carriage_return(), s.index()
-        draw_output(1, 'z')
         s.scroll_to_prompt(1)
         self.ae(lvco(), '0wrapout\n0y')
+        # test: set last visited to continued line of long prompt
+        s.set_last_visited_prompt(1)
+        self.ae(lvco(), '0wrapout\n0y')
+        # test: set last visited to continued line of output
+        s.set_last_visited_prompt(3)
+        self.ae(lvco(), '0wrapout\n0y')
+
+        # test: losing markers past scrollback
+        s = self.create_screen(lines=10, scrollback=0)
+        draw_prompt('a' * (s.columns * 3))
+        draw_output(1, 'v' * (s.columns * 2)), draw_output(1, 'w', False)
+        draw_prompt('b')
+        draw_output(1, 'x')
+        # remove prompt start above, set last visited to within prompt
+        s.clear_scrollback()
+        s.set_last_visited_prompt(0)
+        self.ae(lvco(), '0vvvvvvvvvv\n0w')
+        # remove output start above, set last visited to within output
+        draw_output(3, 'y', False), draw_output(1, 'z', False)
+        s.clear_scrollback()
+        s.set_last_visited_prompt(0)
+        self.ae(lvco(), 'vvvvvv\n0w')
+        draw_output(1, 'end', False)
+        s.clear_scrollback()
+        s.set_last_visited_prompt(0)
+        self.ae(lvco(), 'v\n0w')
+        # clear last visited line without setting new one
+        draw_output(1, 'end', False)
+        s.clear_scrollback()
+        self.ae(lvco(), '')
 
         # test that post rewrap prompt lines have correct attributes
         s = self.create_screen(cols=5, lines=5, scrollback=15)
