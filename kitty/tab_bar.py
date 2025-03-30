@@ -14,8 +14,8 @@ from typing import (
 from .borders import Border, BorderColor
 from .constants import config_dir
 from .fast_data_types import (
+    BOTTOM_EDGE,
     DECAWM,
-    TOP_EDGE,
     Color,
     Region,
     Screen,
@@ -552,7 +552,7 @@ class TabBar:
             opts.active_tab_title_template,
             opts.tab_activity_symbol,
             opts.tab_powerline_style,
-            'top' if opts.tab_bar_edge == TOP_EDGE else 'bottom',
+            'bottom' if opts.tab_bar_edge == BOTTOM_EDGE else 'top',
             opts.tab_title_max_length,
         )
         ts = opts.tab_bar_style
@@ -624,12 +624,12 @@ class TabBar:
         blank_rects: list[Border] = []
         bg = BorderColor.tab_bar_margin_color if opts.tab_bar_margin_color is not None else BorderColor.default_bg
         if opts.tab_bar_margin_height:
-            if opts.tab_bar_edge == 3:  # bottom
+            if opts.tab_bar_edge == BOTTOM_EDGE:
                 if opts.tab_bar_margin_height.outer:
                     blank_rects.append(Border(0, tab_bar.bottom + 1, vw, vh, bg))
                 if opts.tab_bar_margin_height.inner:
                     blank_rects.append(Border(0, central.bottom + 1, vw, vh, bg))
-            else:  # top
+            else: # top
                 if opts.tab_bar_margin_height.outer:
                     blank_rects.append(Border(0, 0, vw, tab_bar.top, bg))
                 if opts.tab_bar_margin_height.inner:
