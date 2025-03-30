@@ -782,7 +782,8 @@ static bool
 range_line_is_continued(Screen *self, int y) {
     if (!(-(int)self->historybuf->count <= y && y < (int)self->lines)) return false;
     if (y < 0) return historybuf_is_line_continued(self->historybuf, -(y + 1));
-    return visual_line_is_continued(self, y);
+    if (y) return linebuf_is_line_continued(self->linebuf, y);
+    return self->linebuf == self->main_linebuf ? history_buf_endswith_wrap(self->historybuf) : false;
 }
 
 static void
