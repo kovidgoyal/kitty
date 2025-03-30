@@ -991,7 +991,7 @@ def gen_char_props() -> None:
     GraphemeSegmentationProps._field_defaults['grapheme_break'] = CharProps._field_defaults['grapheme_break']
     GraphemeSegmentationProps._field_defaults['indic_conjunct_break'] = CharProps._field_defaults['indic_conjunct_break']
     GraphemeSegmentationState._field_defaults['grapheme_break'] = GraphemeSegmentationProps._field_defaults['grapheme_break']
-    invalid = class_maps['Cc'] | class_maps['Cs']
+    invalid = class_maps['Cc'] | class_maps['Cs'] | non_characters
     non_printing = invalid | class_maps['Cf']
     non_rendered = non_printing | property_maps['Other_Default_Ignorable_Code_Point'] | set(range(0xfe00, 0xfe0f + 1))
     is_word_char = top_level_category('LN')
