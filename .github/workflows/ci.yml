@@ -81,6 +81,9 @@ jobs:
           - name: Test for trailing whitespace
             run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
 
+          - name: Test for bad code block formatting
+            run: if grep -Inr ':code:`\s' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Space at code block start found, aborting.; exit 1; fi
+
           - name: Set up Python
             uses: actions/setup-python@v4
             with:
