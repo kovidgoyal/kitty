@@ -993,6 +993,7 @@ def gen_char_props() -> None:
     GraphemeSegmentationState._field_defaults['grapheme_break'] = GraphemeSegmentationProps._field_defaults['grapheme_break']
     invalid = class_maps['Cc'] | class_maps['Cs']
     non_printing = invalid | class_maps['Cf']
+    non_rendered = non_printing | property_maps['Other_Default_Ignorable_Code_Point'] | set(range(0xfe00, 0xfe0f + 1))
     is_word_char = top_level_category('LN')
     is_punctuation = top_level_category('P')
     width_map: dict[int, int] = {}
@@ -1024,7 +1025,7 @@ def gen_char_props() -> None:
     prop_array = tuple(
         CharProps(
             width=width_map.get(ch, 1), grapheme_break=gs_map.get(ch, 'None'), indic_conjunct_break=icb_map.get(ch, 'None'),
-            is_invalid=ch in invalid, is_non_rendered=ch in non_printing, is_emoji=ch in all_emoji, is_symbol=ch in all_symbols,
+            is_invalid=ch in invalid, is_non_rendered=ch in non_rendered, is_emoji=ch in all_emoji, is_symbol=ch in all_symbols,
             is_extended_pictographic=ch in extended_pictographic, is_emoji_presentation_base=ch in emoji_presentation_bases,
             is_combining_char=ch in marks, category=cat_map.get(ch, 'Cn'), is_word_char=ch in is_word_char,
             is_punctuation=ch in is_punctuation,
