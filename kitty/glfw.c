@@ -1106,11 +1106,14 @@ calculate_layer_shell_window_size(
         if (!*height) *height = monitor_height;
         return;
     }
-    float xscale, yscale;
-    glfwGetWindowContentScale(window, &xscale, &yscale);
-    double xdpi, ydpi;
-    dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
+    float xscale = (float)config->expected.xscale, yscale = (float)config->expected.yscale;
+    double xdpi = config->expected.xdpi, ydpi = config->expected.ydpi;
+    if (glfwWaylandIsWindowFullyCreated(window)) {
+        glfwGetWindowContentScale(window, &xscale, &yscale);
+        dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
+    }
     OSWindow *os_window = os_window_for_glfw_window(window);
+    debug("Calculating layer shell window size at scale: %f\n", xscale);
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(os_window ? os_window->fonts_data->font_sz_in_pts : OPT(font_size), xdpi, ydpi);
     if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
         if (!*height) *height = monitor_height;
@@ -1273,6 +1276,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (is_layer_shell) {
         GLFWLayerShellConfig lsc = {0};
         if (!translate_layer_shell_config(layer_shell_config, &lsc)) return NULL;
+        lsc.expected.xdpi = xdpi; lsc.expected.ydpi = ydpi; lsc.expected.xscale = xscale; lsc.expected.yscale = yscale;
         glfwWaylandSetupLayerShellForNextWindow(&lsc);
     }
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context);
@@ -1303,8 +1307,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         float n_xscale, n_yscale;
         double n_xdpi, n_ydpi;
         get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
-        if (n_xdpi != xdpi || n_ydpi != ydpi) {
+        if (n_xdpi != xdpi || n_ydpi != ydpi || is_layer_shell) {
             // this can happen if the window is moved by the OS to a different monitor when shown or with fractional scales on Wayland
+            // it can also happen with layer shell windows if the callback is
+            // called before the window is fully created
             xdpi = n_xdpi; ydpi = n_ydpi;
             fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
         }

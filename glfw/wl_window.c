@@ -2819,6 +2819,8 @@ GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(const GLFWLayerShellConfig 
     layer_shell_config_for_next_window = *c;
 }
 
+GLFWAPI bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle) { return handle != NULL && ((_GLFWwindow*)handle)->wl.window_fully_created; }
+
 void
 _glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) {
     _GLFWwindow* window = _glfw.windowListHead;

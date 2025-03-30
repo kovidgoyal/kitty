@@ -1058,6 +1058,7 @@ typedef struct GLFWLayerShellConfig {
     int requested_exclusive_zone;
     unsigned override_exclusive_zone;
     void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
+    struct { double xdpi, ydpi, xscale, yscale; } expected;
 } GLFWLayerShellConfig;
 
 typedef struct GLFWDBUSNotificationData {
@@ -2338,6 +2339,10 @@ GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
 typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;
 #define glfwWaylandRedrawCSDWindowTitle glfwWaylandRedrawCSDWindowTitle_impl
+
+typedef bool (*glfwWaylandIsWindowFullyCreated_func)(GLFWwindow*);
+GFW_EXTERN glfwWaylandIsWindowFullyCreated_func glfwWaylandIsWindowFullyCreated_impl;
+#define glfwWaylandIsWindowFullyCreated glfwWaylandIsWindowFullyCreated_impl
 
 typedef void (*glfwWaylandSetupLayerShellForNextWindow_func)(const GLFWLayerShellConfig*);
 GFW_EXTERN glfwWaylandSetupLayerShellForNextWindow_func glfwWaylandSetupLayerShellForNextWindow_impl;

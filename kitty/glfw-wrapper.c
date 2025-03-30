@@ -485,6 +485,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwWaylandRedrawCSDWindowTitle_impl) = dlsym(handle, "glfwWaylandRedrawCSDWindowTitle");
     if (glfwWaylandRedrawCSDWindowTitle_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwWaylandIsWindowFullyCreated_impl) = dlsym(handle, "glfwWaylandIsWindowFullyCreated");
+    if (glfwWaylandIsWindowFullyCreated_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwWaylandSetupLayerShellForNextWindow_impl) = dlsym(handle, "glfwWaylandSetupLayerShellForNextWindow");
     if (glfwWaylandSetupLayerShellForNextWindow_impl == NULL) dlerror(); // clear error indicator
 

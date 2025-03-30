@@ -103,6 +103,9 @@ Detailed list of changes
 - Fix a regression that caused tab bar margins to not be properly blanked when
   the tab bar is at the bottom (:iss:`8494`)
 
+- Wayland: panel kitten: Fix incorrect initial font size on compositors such as Hyprland
+  that set scale late in the window creation process (:iss:`8496`)
+
 
 0.41.0 [2025-03-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
