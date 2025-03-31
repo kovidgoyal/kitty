@@ -870,16 +870,15 @@ class GraphemeSegmentationResult(NamedTuple):
         shift = 0
         parts = []
         for f in reversed(GraphemeSegmentationResult.go_fields()):
-            f = f.partition(' ')[0]
+            f, _, w = f.partition(' ')
+            bits = int(w)
             if f != 'add_to_current_cell':
-                bits = int(self.new_state._field_defaults[f])
                 x = getattr(self.new_state, f)
                 if f == 'grapheme_break':
                     x = f'GraphemeSegmentationResult(GBP_{x})'
                 else:
                     x = int(x)
             else:
-                bits = 1
                 x = int(self.add_to_current_cell)
             mask = '0b' + '1' * bits
             parts.append(f'(({x} & {mask}) << {shift})')
@@ -916,6 +915,7 @@ func (r GraphemeSegmentationResult) State() (ans {base_type}) {{
         sfields = GraphemeSegmentationState.fields()
         fields.update(sfields)
         bits = sum(sfields.values())
+        # dont know if the alternate state access works in big endian
         return bitfield_declaration_as_c('GraphemeSegmentationResult', fields, {'state': bits})
 
 
@@ -959,7 +959,10 @@ class CharProps(NamedTuple):
     def as_go(self) -> str:
         shift = 0
         parts = []
-        for f in reversed(self._fields):
+        for f in reversed(self.go_fields()):
+            f, _, w = f.partition(' ')
+            if f == 'shifted_width':
+                f = 'width'
             x = getattr(self, f)
             match f:
                 case 'width':
@@ -972,7 +975,7 @@ class CharProps(NamedTuple):
                     x = f'CharProps(UC_{x})'
                 case _:
                     x = int(x)
-            bits = int(self._field_defaults[f])
+            bits = int(w)
             mask = '0b' + '1' * bits
             parts.append(f'(({x} & {mask}) << {shift})')
             shift += bits
