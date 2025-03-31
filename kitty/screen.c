@@ -319,7 +319,9 @@ index_selection(const Screen *self, Selections *selections, bool up) {
     } \
     INDEX_GRAPHICS(1) \
     self->is_dirty = true; \
-    index_selection(self, &self->selections, false);
+    index_selection(self, &self->selections, false); \
+    clear_selection(&self->url_ranges);
+
 
 static void
 nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit, char_type ch) {
@@ -1996,7 +1998,8 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     } \
     linebuf_clear_line(self->linebuf, bottom, true); \
     self->is_dirty = true; \
-    index_selection(self, &self->selections, true);
+    index_selection(self, &self->selections, true); \
+    clear_selection(&self->url_ranges);
 
 void
 screen_index(Screen *self) {
