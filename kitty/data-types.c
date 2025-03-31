@@ -139,11 +139,11 @@ split_into_graphemes(PyObject UNUSED *self, PyObject *src) {
     int kind = PyUnicode_KIND(src); char *data = PyUnicode_DATA(src);
     RAII_PyObject(ans, PyList_New(0));
     if (!ans) return NULL;
-    GraphemeSegmentationState s; grapheme_segmentation_reset(&s);
+    GraphemeSegmentationResult s; grapheme_segmentation_reset(&s);
     Py_ssize_t pos = 0;
     for (Py_ssize_t i = 0; i < PyUnicode_GET_LENGTH(src); i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
-        if (!grapheme_segmentation_step(&s, char_props_for(ch))) {
+        if (!(s = grapheme_segmentation_step(s, char_props_for(ch))).add_to_current_cell) {
             RAII_PyObject(u, PyUnicode_FromKindAndData(kind, data + kind * pos, i - pos));
             if (!u || PyList_Append(ans, u) != 0) return NULL;
             pos = i;

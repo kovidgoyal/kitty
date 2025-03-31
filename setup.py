@@ -595,6 +595,8 @@ def init_env(
         ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev,
     )
     ans.has_copy_file_range = bool(has_copy_file_range)
+    if ans.compiler_type is CompilerType.gcc:
+        cflags.append('-Wno-packed-bitfield-compat')
     if verbose:
         print(ans.cc_version_string.strip())
         print('Detected:', ans.compiler_type)

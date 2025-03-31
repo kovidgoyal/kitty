@@ -278,6 +278,7 @@ def parse_eaw() -> None:
 
 def parse_grapheme_segmentation() -> None:
     global extended_pictographic, grapheme_break_as_int, incb_as_int, int_as_grapheme_break, int_as_incb
+    global seg_props_from_int, seg_props_as_int
     grapheme_segmentation_maps['AtStart']  # this is used by the segmentation algorithm, no character has it
     grapheme_segmentation_maps['None']  # this is used by the segmentation algorithm, no character has it
     for line in get_data('ucd/auxiliary/GraphemeBreakProperty.txt'):
@@ -302,6 +303,8 @@ def parse_grapheme_segmentation() -> None:
         chars, category = split_two(line)
         if 'Extended_Pictographic#' == category:
             extended_pictographic |= chars
+    seg_props_from_int = {'grapheme_break': int_as_grapheme_break, 'indic_conjunct_break': int_as_incb}
+    seg_props_as_int = {'grapheme_break': grapheme_break_as_int, 'indic_conjunct_break': incb_as_int}
 
 
 class GraphemeSegmentationTest(TypedDict):
@@ -524,7 +527,7 @@ def gen_multistage_table(
     c(f'static const {ctype_t2} {name}_t2[{len(t2)}] = ''{')
     c(f'\t{", ".join(map(str, t2))}')
     c('};')
-    items = '\n\t'.join(x.as_c + ',' for x in t3)
+    items = '\n\t'.join(x.as_c + f', // {i}' for i, x in enumerate(t3))
     c(f'static const {name} {name}_t3[{len(t3)}] = ''{')
     c(f'\t{items}')
     c('};')
@@ -538,7 +541,7 @@ def gen_multistage_table(
     g(f'var {lname}_t2 = [{len(t2)}]{gotype_t2}''{')
     g(f'\t{", ".join(map(str, t2))},')
     g('}')
-    items = '\n\t'.join(x.as_go + ',' for x in t3)
+    items = '\n\t'.join(x.as_go + f', // {i}' for i, x in enumerate(t3))
     g(f'var {lname}_t3 = [{len(t3)}]{name}''{')
     g(f'\t{items}')
     g('}')
@@ -566,7 +569,7 @@ def clamped_bitsize(val: int) -> int:
 def bitfield_from_int(
     fields: dict[str, int], x: int, int_to_str: dict[str, tuple[str, ...]]
 ) -> dict[str, str | bool]:
-    # first field is most significant, last field is least significant
+    # first field is least significant, last field is most significant
     args: dict[str, str | bool] = {}
     for f, shift in fields.items():
         mask = mask_for(shift)
@@ -579,26 +582,24 @@ def bitfield_from_int(
     return args
 
 
-def bit_field_as_int(
-    field_name: str, fields: dict[str, int], for_go: bool = False, function_name_suffix: str = '_as_integer',
-) -> str:
-    # first field is most significant, last field is least significant
-    bsz = clamped_bitsize(sum(fields.values()))
-    parts = []
-    total_shift = 0
-    base_type = f'uint{bsz}_t'
-    for f, shift in reversed(fields.items()):
-        parts.append(f'(({base_type})((x).{f}) << {shift})')
-        total_shift += shift
-    expr = ' | '.join(parts)
-    return f'''\
-static inline {base_type} {field_name}{function_name_suffix}({field_name} x) {{
-    return {expr};
-}}
-    '''
+def bitfield_as_int(
+    fields: dict[str, int], vals: Sequence[bool | str], str_maps: dict[str, dict[str, int]]
+) -> int:
+    # first field is least significant, last field is most significant
+    ans = shift = 0
+    for i, (f, width) in enumerate(fields.items()):
+        qval = vals[i]
+        if isinstance(qval, str):
+            val = str_maps[f][qval]
+        else:
+            val = int(qval)
+        ans |= val << shift
+        shift += width
+    return ans
 
 
-seg_props_as_int = {'grapheme_break': int_as_grapheme_break, 'indic_conjunct_break': int_as_incb}
+seg_props_from_int: dict[str, tuple[str, ...]] = {}
+seg_props_as_int: dict[str, dict[str, int]] = {}
 
 
 class GraphemeSegmentationProps(NamedTuple):
@@ -621,14 +622,11 @@ class GraphemeSegmentationProps(NamedTuple):
 
     @classmethod
     def from_int(cls, x: int) -> 'GraphemeSegmentationProps':
-        args = bitfield_from_int(cls.fields(), x, seg_props_as_int)
+        args = bitfield_from_int(cls.fields(), x, seg_props_from_int)
         return cls(**args)  # type: ignore
 
     def __int__(self) -> int:
-        gbwidth = int(self._field_defaults['grapheme_break'])
-        incbwidth = int(self._field_defaults['indic_conjunct_break'])
-        return grapheme_break_as_int[self.grapheme_break] | incb_as_int[self.indic_conjunct_break] << gbwidth | int(
-                self.is_extended_pictographic) << (gbwidth + incbwidth)
+        return bitfield_as_int(self.fields(), self, seg_props_as_int)
 
 
 control_grapheme_breaks = 'CR', 'LF', 'Control'
@@ -636,7 +634,6 @@ linker_or_extend = 'Linker', 'Extend'
 
 
 def bitfield_declaration_as_c(name: str, fields: dict[str, int], *alternate_fields: dict[str, int]) -> str:
-    # empty in MSB, then top to bottom with bottom at LSB
     base_size = clamped_bitsize(sum(fields.values()))
     base_type = f'uint{base_size}_t'
     ans = [f'// {name}Declaration: uses {sum(fields.values())} bits {{''{{', f'typedef union {name} {{']
@@ -645,12 +642,12 @@ def bitfield_declaration_as_c(name: str, fields: dict[str, int], *alternate_fiel
             return
         empty = base_size - sum(fields.values())
         yield '    struct __attribute__((packed)) {'
-        yield '#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__'
+        yield '#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__'
         for f, width in reversed(fields.items()):
             yield f'        uint{clamped_bitsize(width)}_t {f} : {width};'
         if empty:
             yield f'        uint{clamped_bitsize(empty)}_t : {empty};'
-        yield '#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__'
+        yield '#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__'
         if empty:
             yield f'        uint{clamped_bitsize(empty)}_t : {empty};'
         for f, width in fields.items():
@@ -694,6 +691,9 @@ class GraphemeSegmentationState(NamedTuple):
     def from_int(cls, x: int) -> 'GraphemeSegmentationState':
         args = bitfield_from_int(cls.fields(), x, {'grapheme_break': int_as_grapheme_break})
         return cls(**args)  # type: ignore
+
+    def __int__(self) -> int:
+        return bitfield_as_int(self.fields(), self, seg_props_as_int)
 
     @classmethod
     def c_declaration(cls) -> str:
@@ -764,7 +764,7 @@ class GraphemeSegmentationState(NamedTuple):
         ), add_to_cell)
 
 
-def split_into_graphemes(text: str, props: Sequence[GraphemeSegmentationProps]) -> Iterator[str]:
+def split_into_graphemes(props: Sequence[GraphemeSegmentationProps], text: str) -> Iterator[str]:
     s = GraphemeSegmentationState.make()
     pos = 0
     for i, ch in enumerate(text):
@@ -777,10 +777,25 @@ def split_into_graphemes(text: str, props: Sequence[GraphemeSegmentationProps]) 
         yield text[pos:]
 
 
-def test_grapheme_segmentation(props: Sequence[GraphemeSegmentationProps]) -> None:
+def split_into_graphemes_with_table(
+    props: Sequence['GraphemeSegmentationProps'], table: Sequence['GraphemeSegmentationResult'], text: str,
+) -> Iterator[str]:
+    s = GraphemeSegmentationResult.make()
+    pos = 0
+    for i, ch in enumerate(text):
+        k = int(GraphemeSegmentationKey(s.new_state, props[ord(ch)]))
+        s = table[k]
+        if not s.add_to_current_cell:
+            yield text[pos:i]
+            pos = i
+    if pos < len(text):
+        yield text[pos:]
+
+
+def test_grapheme_segmentation(split_into_graphemes: Callable[[str], Iterator[str]]) -> None:
     for test in grapheme_segmentation_tests:
         expected = test['data']
-        actual = tuple(split_into_graphemes(''.join(test['data']), props))
+        actual = tuple(split_into_graphemes(''.join(test['data'])))
         if expected != actual:
             def as_codepoints(text: str) -> str:
                 return ' '.join(hex(ord(x))[2:] for x in text)
@@ -795,39 +810,96 @@ class GraphemeSegmentationKey(NamedTuple):
 
     @classmethod
     def from_int(cls, x: int) -> 'GraphemeSegmentationKey':
-        shift = cls.char.used_bits()
+        shift = GraphemeSegmentationProps.used_bits()
         mask = mask_for(shift)
         state = GraphemeSegmentationState.from_int(x >> shift)
         char = GraphemeSegmentationProps.from_int(x & mask)
         return GraphemeSegmentationKey(state, char)
 
+    def __int__(self) -> int:
+        shift = GraphemeSegmentationProps.used_bits()
+        return int(self.state) << shift | int(self.char)
+
+    def result(self) -> 'GraphemeSegmentationResult':
+        return self.state.add_to_current_cell(self.char)
+
     @classmethod
-    def as_int(cls, for_go: bool = False) -> str:
-        lines = []
-        shift = cls.char.used_bits()
-        base_type = f'uint{cls.state.bitsize()}_t'
-        lines.append(f'static inline {base_type} {cls.__name__}(GraphemeSegmentation state, CharProps ch)' '{')
-        lines.append(f'\treturn (state.val << {shift}) | ch.grapheme_segmentation_property;')
-        lines.append('}')
+    def code_to_convert_to_int(cls, for_go: bool = False) -> str:
+        lines: list[str] = []
+        a = lines.append
+        shift = GraphemeSegmentationProps.used_bits()
+        if for_go:
+            base_type = f'uint{GraphemeSegmentationState.bitsize()}'
+            a(f'func grapheme_segmentation_key(r GraphemeSegmentationResult, ch CharProps) ({base_type}) ''{')
+            a(f'\treturn (r.State() << {shift}) | ch.GraphemeSegmentationProperty()')
+            a('}')
+        else:
+            base_type = f'uint{GraphemeSegmentationState.bitsize()}_t'
+            a(f'static inline {base_type} {cls.__name__}(GraphemeSegmentationResult r, CharProps ch)' '{')
+            a(f'\treturn (r.state << {shift}) | ch.grapheme_segmentation_property;')
+            a('}')
         return '\n'.join(lines)
 
 
 class GraphemeSegmentationResult(NamedTuple):
-    new_state: GraphemeSegmentationState
-    add_to_current_cell: bool
+    new_state: GraphemeSegmentationState = GraphemeSegmentationState()
+    add_to_current_cell: bool = True
 
     @classmethod
     def used_bits(cls) -> int:
-        return sum(int(cls.new_state._field_defaults[f]) for f in cls.new_state._fields) + 1
+        return sum(int(GraphemeSegmentationState._field_defaults[f]) for f in GraphemeSegmentationState._fields) + 1
 
     @classmethod
     def bitsize(cls) -> int:
         return clamped_bitsize(cls.used_bits())
 
+    @classmethod
+    def make(cls) -> 'GraphemeSegmentationResult':
+        return GraphemeSegmentationResult(GraphemeSegmentationState.make(), False)
+
+    @classmethod
+    def go_fields(cls) -> Sequence[str]:
+        ans = []
+        ans.append('add_to_current_cell 1')
+        for f, width in reversed(GraphemeSegmentationState.fields().items()):
+            ans.append(f'{f} {width}')
+        return tuple(ans)
+
+    @property
+    def as_go(self) -> str:
+        shift = 0
+        parts = []
+        for f in reversed(GraphemeSegmentationResult.go_fields()):
+            f = f.partition(' ')[0]
+            if f != 'add_to_current_cell':
+                bits = int(self.new_state._field_defaults[f])
+                x = getattr(self.new_state, f)
+                if f == 'grapheme_break':
+                    x = f'GraphemeSegmentationResult(GBP_{x})'
+                else:
+                    x = int(x)
+            else:
+                bits = 1
+                x = int(self.add_to_current_cell)
+            mask = '0b' + '1' * bits
+            parts.append(f'(({x} & {mask}) << {shift})')
+            shift += bits
+        return ' | '.join(parts)
+
+    @classmethod
+    def go_extra(cls) -> str:
+        bits = GraphemeSegmentationState.used_bits()
+        base_type = f'uint{GraphemeSegmentationState.bitsize()}'
+        return f'''
+func (r GraphemeSegmentationResult) State() (ans {base_type}) {{
+    return {base_type}(r) & {mask_for(bits)}
+}}
+    '''
+
     @property
     def as_c(self) -> str:
         parts = []
-        for f in self.new_state._fields:
+        for f in GraphemeSegmentationState._fields:
             x = getattr(self.new_state, f)
             match f:
                 case 'grapheme_break':
@@ -835,27 +907,16 @@ class GraphemeSegmentationResult(NamedTuple):
                 case _:
                     x = int(x)
             parts.append(f'.{f}={x}')
-        parts.append(f'.add_to_current_cell={self.add_to_current_cell}')
+        parts.append(f'.add_to_current_cell={int(self.add_to_current_cell)}')
         return '{' + ', '.join(parts) + '}'
 
     @classmethod
     def c_declaration(cls) -> str:
-        base_type = f'uint{cls.bitsize()}_t'
-        leftover = cls.bitsize() - cls.used_bits()
-        bits = sum(int(cls._field_defaults[f]) for f in cls._fields)
-        ans = ['// GraphemeSegmentationResultDeclaration', f'// Uses {bits} bits', 'typedef union GraphemeSegmentationResult {',
-               '    struct {']
-        for f in cls.new_state._fields:
-            ans.append(f'        uint8_t {f} : {int(cls.new_state._field_defaults[f])};')
-        ans.append('        uint8_t add_to_current_cell : 1;')
-        ans.append(f'        uint8_t : {leftover};')
-        ans.append('    };')
-        ans.append(f'    struct {{ uint16_t state : 9; uint16_t : {1 + leftover}; }};')
-        ans.append(f'    {base_type} val;')
-        ans.append('} GraphemeSegmentationResult;')
-        ans.append(f'static_assert(sizeof(GraphemeSegmentationResult) == sizeof({base_type}), "Fix the ordering of GraphemeSegmentationResult");')
-        ans.append('// EndGraphemeSegmentationResultDeclaration')
-        return '\n'.join(ans)
+        fields = {'add_to_current_cell': 1}
+        sfields = GraphemeSegmentationState.fields()
+        fields.update(sfields)
+        bits = sum(sfields.values())
+        return bitfield_declaration_as_c('GraphemeSegmentationResult', fields, {'state': bits})
 
 
 
@@ -884,11 +945,11 @@ class CharProps(NamedTuple):
         ans = sum(int(cls._field_defaults[f]) for f in cls._fields)
         return clamped_bitsize(ans)
 
-    @property
-    def go_fields(self) -> Iterable[str]:
+    @classmethod
+    def go_fields(cls) -> Sequence[str]:
         ans = []
-        for f in self._fields:
-            bits = int(self._field_defaults[f])
+        for f in cls._fields:
+            bits = int(cls._field_defaults[f])
             if f == 'width':
                 f = 'shifted_width'
             ans.append(f'{f} {bits}')
@@ -917,6 +978,21 @@ class CharProps(NamedTuple):
             shift += bits
         return ' | '.join(parts)
 
+    @classmethod
+    def go_extra(cls) -> str:
+        base_type = f'uint{GraphemeSegmentationState.bitsize()}'
+        f = GraphemeSegmentationProps.fields()
+        s = f['grapheme_break'] + f['indic_conjunct_break']
+        return f'''
+func (s CharProps) Width() int {{
+	return int(s.Shifted_width()) - {width_shift}
+}}
+
+func (s CharProps) GraphemeSegmentationProperty() {base_type} {{
+    return {base_type}(s.Grapheme_break() | (s.Indic_conjunct_break() << {f["grapheme_break"]}) | (s.Is_extended_pictographic() << {s}))
+}}
+    '''
+
     @property
     def as_c(self) -> str:
         parts = []
@@ -943,6 +1019,7 @@ class CharProps(NamedTuple):
 
     @classmethod
     def c_declaration(cls) -> str:
+        # Dont know if grapheme_segmentation_property in alternate works on big endian
         alternate = {
             'grapheme_segmentation_property': sum(int(cls._field_defaults[f]) for f in GraphemeSegmentationProps._fields)
         }
@@ -1033,9 +1110,13 @@ def gen_char_props() -> None:
     gsprops = tuple(GraphemeSegmentationProps(
         grapheme_break=x.grapheme_break, indic_conjunct_break=x.indic_conjunct_break,
         is_extended_pictographic=x.is_extended_pictographic) for x in prop_array)
-    test_grapheme_segmentation(gsprops)
-    t1, t2, t3, shift, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
+    test_grapheme_segmentation(partial(split_into_graphemes, gsprops))
+    gseg_results = tuple(GraphemeSegmentationKey.from_int(i).result() for i in range(1 << 16))
+    test_grapheme_segmentation(partial(split_into_graphemes_with_table, gsprops, gseg_results))
+    t1, t2, t3, t_shift, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
     print(f'Size of character properties table: {bytesz/1024:.1f}KB')
+    g1, g2, g3, g_shift, bytesz = splitbins(gseg_results, GraphemeSegmentationResult.bitsize() // 8)
+    print(f'Size of grapheme segmentation table: {bytesz/1024:.1f}KB')
 
     from .bitfields import make_bitfield
     buf = StringIO()
@@ -1045,21 +1126,24 @@ def gen_char_props() -> None:
         gp('package wcswidth')
         generate_enum(c, gp, 'GraphemeBreakProperty', *grapheme_segmentation_maps, prefix='GBP_')
         generate_enum(c, gp, 'IndicConjunctBreak', *incb_map, prefix='ICB_')
-        cen('// UCBDeclaration')
+        cen('// UCBDeclaration {{''{')
         generate_enum(cen, gp, 'UnicodeCategory', 'Cn', *class_maps, prefix='UC_')
-        cen('// EndUCBDeclaration')
-        bf = make_bitfield('tools/wcswidth', 'CharProps', *CharProps().go_fields, add_package=False)[1]
-        gp(bf)
-        gp(f'''
-func (s CharProps) Width() int {{
-	return int(s.Shifted_width()) - {width_shift}
-}}''')
-        gen_multistage_table(c, gp, t1, t2, t3, shift)
+        cen('// EndUCBDeclaration }}''}')
+        gp(make_bitfield('tools/wcswidth', 'CharProps', *CharProps.go_fields(), add_package=False)[1])
+        gp(make_bitfield('tools/wcswidth', 'GraphemeSegmentationResult', *GraphemeSegmentationResult.go_fields(), add_package=False)[1])
+        gp(CharProps.go_extra())
+        gp(GraphemeSegmentationResult.go_extra())
+        gen_multistage_table(c, gp, t1, t2, t3, t_shift)
+        gen_multistage_table(c, gp, g1, g2, g3, g_shift)
+        c(GraphemeSegmentationKey.code_to_convert_to_int())
+        c(GraphemeSegmentationState.c_declaration())
+        gp(GraphemeSegmentationKey.code_to_convert_to_int(for_go=True))
     gofmt(gof.name)
     with open('kitty/char-props.h', 'r+') as f:
         raw = f.read()
         nraw = re.sub(r'\d+/\*=width_shift\*/', f'{width_shift}/*=width_shift*/', raw)
         nraw = patch_declaration('CharProps', CharProps.c_declaration(), nraw)
+        nraw = patch_declaration('GraphemeSegmentationResult', GraphemeSegmentationResult.c_declaration(), nraw)
         nraw = patch_declaration('UCB', buf.getvalue(), nraw)
         if nraw != raw:
             f.seek(0)

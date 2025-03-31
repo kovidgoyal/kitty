@@ -638,6 +638,7 @@ class TestDataTypes(BaseTest):
 
     def test_split_into_graphemes(self):
         self.assertEqual(char_props_for('\ue000')['category'], 'Co')
+        self.ae(split_into_graphemes('ab'), ['a', 'b'])
         for i, test in enumerate(json.loads(read_kitty_resource('GraphemeBreakTest.json', __name__.rpartition('.')[0]))):
             expected = test['data']
             actual = split_into_graphemes(''.join(expected))
