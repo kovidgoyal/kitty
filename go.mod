@@ -2,6 +2,8 @@ module kitty
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	github.com/ALTree/bigfloat v0.2.0
 	github.com/alecthomas/chroma/v2 v2.15.0
@@ -11,7 +13,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/kovidgoyal/imaging v1.6.4
-	github.com/seancfoley/ipaddress-go v1.7.0
+	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
