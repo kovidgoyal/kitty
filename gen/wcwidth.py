@@ -454,7 +454,7 @@ def mask_for(bits: int) -> int:
     return ~((~0) << bits)
 
 
-def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[int], list[T], int, int]:
+def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[int], list[T], int]:
     if use_fixed_shift:
         candidates = range(use_fixed_shift, use_fixed_shift + 1)
     else:
@@ -475,6 +475,12 @@ def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift
             t3.append(x)
     t_int = tuple(tmap[x] for x in t)
     bytesz = sys.maxsize
+
+    def memsize() -> int:
+        ans = len(t1)*getsize(t1)
+        sz3 = len(t3)*property_size + len(t2)*getsize(t2)
+        sz2 = len(t2) * property_size
+        return ans + min(sz2, sz3)
     for shift in candidates:
         t1: list[int] = []
         t2: list[int] = []
@@ -489,12 +495,12 @@ def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift
                 t2.extend(bin)
             t1.append(index >> shift)
         # determine memory size
-        b = len(t1)*getsize(t1) + len(t3)*property_size + len(t2)*getsize(t2)
+        b = memsize()
         if b < bytesz:
             best = t1, t2, shift
             bytesz = b
     t1, t2, shift = best
-    return t1, t2, t3, shift, bytesz
+    return t1, t2, t3, shift
 
 
 class Property(Protocol):
@@ -526,43 +532,70 @@ def gen_multistage_table(
     t2_type_sz = getsize(tuple(range(len(t3))))
     ctype_t2, gotype_t2 = get_types(t2_type_sz)
     t3_type_sz = t3[0].bitsize() // 8
+    lname = name.lower()
+    input_type = get_types(getsize((input_max_val,)))[1]
+
+    # Output t1
     c(f'static const char_type {name}_mask = {mask}u;')
     c(f'static const char_type {name}_shift = {shift}u;')
     c(f'static const {ctype_t1} {name}_t1[{len(t1)}] = ''{')
     c(f'\t{", ".join(map(str, t1))}')
     c('};')
-    c(f'static const {ctype_t2} {name}_t2[{len(t2)}] = ''{')
-    c(f'\t{", ".join(map(str, t2))}')
-    c('};')
-    items = '\n\t'.join(x.as_c + f', // {i}' for i, x in enumerate(t3))
-    c(f'static const {name} {name}_t3[{len(t3)}] = ''{')
-    c(f'\t{items}')
-    c('};')
-
-    lname = name.lower()
     g(f'const {lname}_mask = {mask}')
     g(f'const {lname}_shift = {shift}')
     g(f'var {lname}_t1 = [{len(t1)}]{gotype_t1}''{')
     g(f'\t{", ".join(map(str, t1))},')
     g('}')
-    g(f'var {lname}_t2 = [{len(t2)}]{gotype_t2}''{')
-    g(f'\t{", ".join(map(str, t2))},')
-    g('}')
-    items = '\n\t'.join(x.as_go + f', // {i}' for i, x in enumerate(t3))
-    g(f'var {lname}_t3 = [{len(t3)}]{name}''{')
-    g(f'\t{items}')
-    g('}')
+    bytesz = len(t1) * t1_type_sz
 
-    input_type = get_types(getsize((input_max_val,)))[1]
-    g(f'''
-// Array accessor function that avoids bounds checking
-func {lname}_for(x {input_type}) {name} {{
-	t1 := uintptr(*(*{gotype_t1})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t1[0])) + uintptr(x>>{lname}_shift)*{t1_type_sz})))
-    t1_shifted := (t1 << {lname}_shift) + (uintptr(x) & {lname}_mask)
-	t2 := uintptr(*(*{gotype_t2})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t2[0])) + t1_shifted*{t2_type_sz})))
-	return *(*{name})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t3[0])) + t2*{t3_type_sz}))
-}}
-''')
+    if t3_type_sz > t2_type_sz:  # needs 3 levels
+        bytesz += len(t2) * t2_type_sz + len(t3) * t3_type_sz
+        c(f'static const {ctype_t2} {name}_t2[{len(t2)}] = ''{')
+        c(f'\t{", ".join(map(str, t2))}')
+        c('};')
+        items = '\n\t'.join(x.as_c + f', // {i}' for i, x in enumerate(t3))
+        c(f'static const {name} {name}_t3[{len(t3)}] = ''{')
+        c(f'\t{items}')
+        c('};')
+
+        g(f'var {lname}_t2 = [{len(t2)}]{gotype_t2}''{')
+        g(f'\t{", ".join(map(str, t2))},')
+        g('}')
+        items = '\n\t'.join(x.as_go + f', // {i}' for i, x in enumerate(t3))
+        g(f'var {lname}_t3 = [{len(t3)}]{name}''{')
+        g(f'\t{items}')
+        g('}')
+
+        g(f'''
+        // Array accessor function that avoids bounds checking
+        func {lname}_for(x {input_type}) {name} {{
+            t1 := uintptr(*(*{gotype_t1})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t1[0])) + uintptr(x>>{lname}_shift)*{t1_type_sz})))
+            t1_shifted := (t1 << {lname}_shift) + (uintptr(x) & {lname}_mask)
+            t2 := uintptr(*(*{gotype_t2})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t2[0])) + t1_shifted*{t2_type_sz})))
+            return *(*{name})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t3[0])) + t2*{t3_type_sz}))
+        }}
+        ''')
+    else:
+        t3 = tuple(t3[i] for i in t2)
+        bytesz += len(t3) * t3_type_sz
+        items = '\n\t'.join(x.as_c + ',' for x in t3)
+        c(f'static const {name} {name}_t2[{len(t3)}] = ''{')
+        c(f'\t{items}')
+        c('};')
+        items = '\n\t'.join(x.as_go + ',' for x in t3)
+        g(f'var {lname}_t2 = [{len(t3)}]{name}''{')
+        g(f'\t{items}')
+        g('}')
+        g(f'''
+        // Array accessor function that avoids bounds checking
+        func {lname}_for(x {input_type}) {name} {{
+            t1 := uintptr(*(*{gotype_t1})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t1[0])) + uintptr(x>>{lname}_shift)*{t1_type_sz})))
+            t1_shifted := (t1 << {lname}_shift) + (uintptr(x) & {lname}_mask)
+            return *(*{name})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t2[0])) + t1_shifted*{t3_type_sz}))
+        }}
+        ''')
+    print(f'Size of {name} table: {ceil(bytesz/1024)}KB with {shift} bit shift')
+
 
 width_shift = 4
 
@@ -1132,10 +1165,8 @@ def gen_char_props() -> None:
     test_grapheme_segmentation(partial(split_into_graphemes, gsprops))
     gseg_results = tuple(GraphemeSegmentationKey.from_int(i).result() for i in range(1 << 16))
     test_grapheme_segmentation(partial(split_into_graphemes_with_table, gsprops, gseg_results))
-    t1, t2, t3, t_shift, bytesz = splitbins(prop_array, CharProps.bitsize() // 8)
-    print(f'Size of character properties table: {bytesz/1024:.1f}KB')
-    g1, g2, g3, g_shift, bytesz = splitbins(gseg_results, GraphemeSegmentationResult.bitsize() // 8)
-    print(f'Size of grapheme segmentation table: {bytesz/1024:.1f}KB')
+    t1, t2, t3, t_shift = splitbins(prop_array, CharProps.bitsize() // 8)
+    g1, g2, g3, g_shift = splitbins(gseg_results, GraphemeSegmentationResult.bitsize() // 8)
 
     from .bitfields import make_bitfield
     buf = StringIO()
