@@ -781,7 +781,7 @@ class GraphemeSegmentationState(NamedTuple):
             ):
                 add_to_cell = True
             # No break before: extending characters or ZWJ (GB9), SpacingMarks (GB9a), Prepend characters (GB9b).
-            elif prop in ('Extend', 'ZWJ', 'SpacingMark') or prev in 'Prepend':
+            elif prop in ('Extend', 'ZWJ', 'SpacingMark') or prev == 'Prepend':
                 add_to_cell = True
             # No break within certain combinations of Indic_Conjunct_Break values
             # Between consonant {extend|linker}* linker {extend|linker}* and consonant (GB9c).
