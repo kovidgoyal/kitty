@@ -1,5 +1,7 @@
 package wcswidth
 
+import "unsafe"
+
 type GraphemeBreakProperty uint8
 
 const (
@@ -382,6 +384,15 @@ var charprops_t3 = [109]CharProps{
 	((0 & 0b1) << 0) | ((CharProps(ICB_None) & 0b11) << 1) | ((CharProps(GBP_Regional_Indicator) & 0b1111) << 3) | ((0 & 0b1) << 7) | ((0 & 0b1) << 8) | ((1 & 0b1) << 9) | ((1 & 0b1) << 10) | ((0 & 0b1) << 11) | ((0 & 0b1) << 12) | ((1 & 0b1) << 13) | ((CharProps(UC_So) & 0b11111) << 14) | ((1 & 0b1) << 19) | ((6 & 0b111) << 20), // 106
 	((0 & 0b1) << 0) | ((CharProps(ICB_Extend) & 0b11) << 1) | ((CharProps(GBP_Extend) & 0b1111) << 3) | ((0 & 0b1) << 7) | ((0 & 0b1) << 8) | ((1 & 0b1) << 9) | ((1 & 0b1) << 10) | ((0 & 0b1) << 11) | ((0 & 0b1) << 12) | ((1 & 0b1) << 13) | ((CharProps(UC_Sk) & 0b11111) << 14) | ((1 & 0b1) << 19) | ((6 & 0b111) << 20),           // 107
 	((0 & 0b1) << 0) | ((CharProps(ICB_Extend) & 0b11) << 1) | ((CharProps(GBP_Extend) & 0b1111) << 3) | ((0 & 0b1) << 7) | ((0 & 0b1) << 8) | ((1 & 0b1) << 9) | ((0 & 0b1) << 10) | ((1 & 0b1) << 11) | ((0 & 0b1) << 12) | ((0 & 0b1) << 13) | ((CharProps(UC_Cf) & 0b11111) << 14) | ((0 & 0b1) << 19) | ((4 & 0b111) << 20),           // 108
+}
+
+// Array accessor function that avoids bounds checking
+func CharPropsFor(x rune) CharProps {
+	x = max(0, min(x, 1114111))
+	t1 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t1[0])) + uintptr(x>>charprops_shift)*1)))
+	t1_shifted := (t1 << charprops_shift) + (uintptr(x) & charprops_mask)
+	t2 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t2[0])) + t1_shifted*1)))
+	return *(*CharProps)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t3[0])) + t2*4))
 }
 
 const graphemesegmentationresult_mask = 15
@@ -1024,6 +1035,15 @@ var graphemesegmentationresult_t3 = [630]GraphemeSegmentationResult{
 	((GraphemeSegmentationResult(GBP_Regional_Indicator) & 0b1111) << 0) | ((1 & 0b1) << 4) | ((0 & 0b1) << 5) | ((1 & 0b1) << 6) | ((1 & 0b1) << 7) | ((1 & 0b1) << 8) | ((0 & 0b1) << 9),   // 627
 	((GraphemeSegmentationResult(GBP_SpacingMark) & 0b1111) << 0) | ((1 & 0b1) << 4) | ((0 & 0b1) << 5) | ((1 & 0b1) << 6) | ((1 & 0b1) << 7) | ((1 & 0b1) << 8) | ((0 & 0b1) << 9),          // 628
 	((GraphemeSegmentationResult(GBP_ZWJ) & 0b1111) << 0) | ((1 & 0b1) << 4) | ((0 & 0b1) << 5) | ((1 & 0b1) << 6) | ((1 & 0b1) << 7) | ((1 & 0b1) << 8) | ((0 & 0b1) << 9),                  // 629
+}
+
+// Array accessor function that avoids bounds checking
+func GraphemeSegmentationResultFor(x uint16) GraphemeSegmentationResult {
+
+	t1 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&graphemesegmentationresult_t1[0])) + uintptr(x>>graphemesegmentationresult_shift)*1)))
+	t1_shifted := (t1 << graphemesegmentationresult_shift) + (uintptr(x) & graphemesegmentationresult_mask)
+	t2 := uintptr(*(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(&graphemesegmentationresult_t2[0])) + t1_shifted*2)))
+	return *(*GraphemeSegmentationResult)(unsafe.Pointer(uintptr(unsafe.Pointer(&graphemesegmentationresult_t3[0])) + t2*2))
 }
 
 func grapheme_segmentation_key(r GraphemeSegmentationResult, ch CharProps) uint16 {

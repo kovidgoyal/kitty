@@ -104,6 +104,7 @@ static_assert(sizeof(GraphemeSegmentationResult) == sizeof(uint16_t), "Fix the o
 // EndGraphemeSegmentationResultDeclaration }}}
 
 // UCBDeclaration {{{
+#define MAX_UNICODE (1114111u)
 typedef enum UnicodeCategory {
 	UC_Cn,
 	UC_Cc,
