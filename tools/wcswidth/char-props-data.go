@@ -2,6 +2,9 @@ package wcswidth
 
 import "unsafe"
 
+const MAX_UNICODE = 1114111
+const UNICODE_LIMIT = 1114112
+
 type GraphemeBreakProperty uint8
 
 const (
@@ -387,8 +390,7 @@ var charprops_t3 = [109]CharProps{
 }
 
 // Array accessor function that avoids bounds checking
-func CharPropsFor(x rune) CharProps {
-	x = max(0, min(x, 1114111))
+func charprops_for(x uint32) CharProps {
 	t1 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t1[0])) + uintptr(x>>charprops_shift)*1)))
 	t1_shifted := (t1 << charprops_shift) + (uintptr(x) & charprops_mask)
 	t2 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t2[0])) + t1_shifted*1)))
@@ -1038,8 +1040,7 @@ var graphemesegmentationresult_t3 = [630]GraphemeSegmentationResult{
 }
 
 // Array accessor function that avoids bounds checking
-func GraphemeSegmentationResultFor(x uint16) GraphemeSegmentationResult {
-
+func graphemesegmentationresult_for(x uint16) GraphemeSegmentationResult {
 	t1 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&graphemesegmentationresult_t1[0])) + uintptr(x>>graphemesegmentationresult_shift)*1)))
 	t1_shifted := (t1 << graphemesegmentationresult_shift) + (uintptr(x) & graphemesegmentationresult_mask)
 	t2 := uintptr(*(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(&graphemesegmentationresult_t2[0])) + t1_shifted*2)))

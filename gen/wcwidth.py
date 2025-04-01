@@ -517,8 +517,7 @@ def get_types(sz: int) -> tuple[str, str]:
 
 
 def gen_multistage_table(
-    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[int], t3: Sequence[Property], shift: int,
-    for_go_type: str, maxval: int = 0
+    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[int], t3: Sequence[Property], shift: int, input_sz: int
 ) -> None:
     t1_type_sz = getsize(t1)
     ctype_t1, gotype_t1 = get_types(t1_type_sz)
@@ -554,11 +553,10 @@ def gen_multistage_table(
     g(f'\t{items}')
     g('}')
 
-    check = f'x = max(0, min(x, {maxval}))' if maxval else ''
+    input_type = get_types(getsize((input_sz,)))[1]
     g(f'''
 // Array accessor function that avoids bounds checking
-func {name}For(x {for_go_type}) {name} {{
-    {check}
+func {lname}_for(x {input_type}) {name} {{
 	t1 := uintptr(*(*{gotype_t1})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t1[0])) + uintptr(x>>{lname}_shift)*{t1_type_sz})))
     t1_shifted := (t1 << {lname}_shift) + (uintptr(x) & {lname}_mask)
 	t2 := uintptr(*(*{gotype_t2})(unsafe.Pointer(uintptr(unsafe.Pointer(&{lname}_t2[0])) + t1_shifted*{t2_type_sz})))
@@ -1146,6 +1144,8 @@ def gen_char_props() -> None:
         gp = partial(print, file=gof)
         gp('package wcswidth')
         gp('import "unsafe"')
+        gp(f'const MAX_UNICODE = {sys.maxunicode}')
+        gp(f'const UNICODE_LIMIT = {sys.maxunicode + 1}')
         generate_enum(c, gp, 'GraphemeBreakProperty', *grapheme_segmentation_maps, prefix='GBP_')
         generate_enum(c, gp, 'IndicConjunctBreak', *incb_map, prefix='ICB_')
         cen('// UCBDeclaration {{''{')
@@ -1156,8 +1156,8 @@ def gen_char_props() -> None:
         gp(make_bitfield('tools/wcswidth', 'GraphemeSegmentationResult', *GraphemeSegmentationResult.go_fields(), add_package=False)[1])
         gp(CharProps.go_extra())
         gp(GraphemeSegmentationResult.go_extra())
-        gen_multistage_table(c, gp, t1, t2, t3, t_shift, 'rune', sys.maxunicode)
-        gen_multistage_table(c, gp, g1, g2, g3, g_shift, 'uint16')
+        gen_multistage_table(c, gp, t1, t2, t3, t_shift, len(prop_array)-1)
+        gen_multistage_table(c, gp, g1, g2, g3, g_shift, len(gseg_results)-1)
         c(GraphemeSegmentationKey.code_to_convert_to_int())
         c(GraphemeSegmentationState.c_declaration())
         gp(GraphemeSegmentationKey.code_to_convert_to_int(for_go=True))
