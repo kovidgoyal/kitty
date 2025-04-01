@@ -517,7 +517,7 @@ def get_types(sz: int) -> tuple[str, str]:
 
 
 def gen_multistage_table(
-    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[int], t3: Sequence[Property], shift: int, input_sz: int
+    c: Callable[..., None], g: Callable[..., None], t1: Sequence[int], t2: Sequence[int], t3: Sequence[Property], shift: int, input_max_val: int
 ) -> None:
     t1_type_sz = getsize(t1)
     ctype_t1, gotype_t1 = get_types(t1_type_sz)
@@ -553,7 +553,7 @@ def gen_multistage_table(
     g(f'\t{items}')
     g('}')
 
-    input_type = get_types(getsize((input_sz,)))[1]
+    input_type = get_types(getsize((input_max_val,)))[1]
     g(f'''
 // Array accessor function that avoids bounds checking
 func {lname}_for(x {input_type}) {name} {{
