@@ -500,12 +500,14 @@ def init_env(
     env_cflags = shlex.split(os.environ.get('CFLAGS', ''))
     env_cppflags = shlex.split(os.environ.get('CPPFLAGS', ''))
     env_ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
+    # Newer clang does not use -fno-plt leading to an error
+    no_plt = '-fno-plt' if test_compile(cc, '-fno-plt', '-Werror') else ''
 
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
             f' {werror} {optimize} {sanitize_flag} -fwrapv {stack_protector} {missing_braces}'
-            f' -pipe -fvisibility=hidden -fno-plt'
+            f' -pipe -fvisibility=hidden {no_plt}'
         )
     )
     cflags = shlex.split(cflags_) + shlex.split(
