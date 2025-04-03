@@ -116,7 +116,7 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 func random_string_of_bytes(n int, alphabet string) string {
 	b := make([]byte, n)
 	al := len(alphabet)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b[i] = alphabet[rand.IntN(al)]
 	}
 	return utils.UnsafeBytesToString(b)
