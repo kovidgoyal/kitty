@@ -71,6 +71,16 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.x, 5), self.ae(s.cursor.y, 2)
         s.draw('c' * 15)
         self.ae(str(s.line(0)), 'ニチ')
+        s.reset()
+        qt = 'a' * s.columns + '\u0306'
+        s.draw(qt)
+        self.ae(str(s.line(0)), qt)
+        s.reset()
+        s.draw(qt[:-1]), s.draw(qt[-1])
+        self.ae(str(s.line(0)), qt)
+        s.reset()
+        s.draw(qt[:-1]), s.linefeed(), s.carriage_return(), s.draw(qt[-1])
+        self.ae(str(s.line(0)), qt[:-1])
 
         # Now test without line-wrap
         s.reset(), s.reset_dirty()
