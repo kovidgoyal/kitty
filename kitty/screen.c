@@ -682,6 +682,10 @@ typedef struct text_loop_state {
     bool image_placeholder_marked;
     const CPUCell cc; const GPUCell g;
     CPUCell *cp; GPUCell *gp;
+    GraphemeSegmentationResult seg;
+    struct {
+        index_type x, y; CPUCell *cc;
+    } prev;
 } text_loop_state;
 
 static void
@@ -713,11 +717,36 @@ clear_intersecting_selections(Screen *self, index_type y) {
 }
 
 static void
+init_prev_cell(Screen *self, text_loop_state *s) {
+    zero_at_ptr(&s->prev);
+    if (self->cursor->x) {
+        s->prev.y = self->cursor->y;
+        s->prev.x = self->cursor->x - 1;
+        s->prev.cc = linebuf_cpu_cell_at(self->linebuf, s->prev.x, s->prev.y);
+    } else if (self->cursor->y) {
+        s->prev.y = self->cursor->y - 1;
+        s->prev.x = self->columns - 1;
+        s->prev.cc = linebuf_cpu_cell_at(self->linebuf, s->prev.x, s->prev.y);
+        if (!s->prev.cc->next_char_was_wrapped) s->prev.cc = NULL;
+    }
+}
+static void
+init_segmentation_state(Screen *self, text_loop_state *s) {
+    init_prev_cell(self, s);
+    grapheme_segmentation_reset(&s->seg);
+    if (s->prev.cc) {
+        text_in_cell(s->prev.cc, self->text_cache, self->lc);
+        for (index_type i = 0; i < self->lc->count; i++) s->seg = grapheme_segmentation_step(s->seg, char_props_for(self->lc->chars[i]));
+    }
+}
+
+static void
 init_text_loop_line(Screen *self, text_loop_state *s) {
     linebuf_init_cells(self->linebuf, self->cursor->y, &s->cp, &s->gp);
     clear_intersecting_selections(self, self->cursor->y);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     s->image_placeholder_marked = false;
+    init_segmentation_state(self, s);
 }
 
 static void
@@ -857,10 +886,6 @@ set_active_hyperlink(Screen *self, char *id, char *url) {
     }
 }
 
-static bool is_flag_pair(char_type a, char_type b) {
-    return is_flag_codepoint(a) && is_flag_codepoint(b);
-}
-
 static bool
 add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
     CPUCell *cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, y);
@@ -885,25 +910,6 @@ add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
     return true;
 }
 
-
-static bool
-draw_second_flag_codepoint(Screen *self, char_type ch) {
-    index_type xpos = 0, ypos = 0;
-    if (self->cursor->x > 1) {
-        ypos = self->cursor->y;
-        xpos = self->cursor->x - 2;
-    } else if (self->cursor->y > 0 && self->columns > 1) {
-        ypos = self->cursor->y - 1;
-        xpos = self->columns - 2;
-    } else return false;
-
-    CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, ypos);
-    CPUCell *cell = cp + xpos;
-    text_in_cell(cell, self->text_cache, self->lc);
-    if (self->lc->count != 1 || !is_flag_pair(self->lc->chars[0], ch)) return false;
-    add_combining_char(self, ch, xpos, ypos);
-    return true;
-}
 
 static bool
 has_multiline_cells_in_span(const CPUCell *cells, const index_type start, const index_type count) {
@@ -959,22 +965,11 @@ is_emoji_presentation_base(char_type ch) {
 
 static void
 draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
-    bool has_prev_char = false;
-    index_type xpos = 0, ypos = 0;
-    if (self->cursor->x > 0) {
-        ypos = self->cursor->y;
-        xpos = self->cursor->x - 1;
-        has_prev_char = true;
-    } else if (self->cursor->y > 0) {
-        ypos = self->cursor->y - 1;
-        xpos = self->columns - 1;
-        has_prev_char = true;
-    }
-    if (!has_prev_char) return;
     CPUCell *cp; GPUCell *gp;
-    linebuf_init_cells(self->linebuf, ypos, &cp, &gp);
+    linebuf_init_cells(self->linebuf, s->prev.y, &cp, &gp);
+    index_type xpos = s->prev.x;
     while (xpos && cp[xpos].is_multicell && cp[xpos].x) xpos--;
-    if (!add_combining_char(self, ch, xpos, ypos) || self->lc->count < 2) return;
+    if (!add_combining_char(self, ch, xpos, s->prev.y) || self->lc->count < 2) return;
     unsigned base_pos = self->lc->count -  2;
     if (ch == VS16) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
         CPUCell *cpu_cell = cp + xpos;
@@ -988,21 +983,28 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
                 CPUCell *second = cp + xpos + 1;
                 if (second->is_multicell) {
                     if (second->y) {
-                        move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, ypos);
+                        move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, s->prev.y);
+                        init_segmentation_state(self, s);
                         return;
                     }
-                    nuke_multicell_char_at(self, xpos + 1, ypos, false);
+                    nuke_multicell_char_at(self, xpos + 1, s->prev.y, false);
                 }
                 zero_cells(s, second, gp + xpos + 1);
                 self->cursor->x++;
                 *second = *cpu_cell; second->x = 1;
-            } else move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, ypos);
+            } else {
+                move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, s->prev.y);
+                init_segmentation_state(self, s);
+            }
         }
     } else if (ch == VS15) {
         const CPUCell *cpu_cell = cp + xpos;
         if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->width == 2 && is_emoji_presentation_base(self->lc->chars[base_pos])) {
             index_type deltax = (cpu_cell->scale * cpu_cell->width) / 2;
-            if (halve_multicell_width(self, xpos, ypos)) self->cursor->x -= deltax;
+            if (halve_multicell_width(self, xpos, s->prev.y)) {
+                self->cursor->x -= deltax;
+                init_segmentation_state(self, s);
+            }
         }
     }
 }
@@ -1064,7 +1066,9 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
         case BEL:
             screen_bell(self); break;
         case BS:
-            screen_backspace(self); break;
+            screen_backspace(self);
+            init_segmentation_state(self, s);
+            break;
         case HT:
             if (UNLIKELY(self->cursor->x >= self->columns)) {
                 if (self->modes.mDECAWM) {
@@ -1080,6 +1084,7 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
                     screen_tab(self);
                 }
             } else screen_tab(self);
+            init_segmentation_state(self, s);
             break;
         case SI:
             screen_change_charset(self, 0); break;
@@ -1090,7 +1095,7 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
         case FF:
             screen_linefeed(self); init_text_loop_line(self, s); break;
         case CR:
-            screen_carriage_return(self); break;
+            screen_carriage_return(self); init_segmentation_state(self, s); break;
         default:
             break;
     }
@@ -1101,35 +1106,37 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
     init_text_loop_line(self, s);
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = map_char(self, chars[i]);
-        if (ch < ' ') {
-            draw_control_char(self, s, ch);
+        CharProps cp = char_props_for(ch);
+        if (cp.is_invalid) {
+            if (ch < ' ') draw_control_char(self, s, ch);
             continue;
         }
-        if (self->cursor->x < self->columns && s->cp[self->cursor->x].is_multicell && !char_props_for(ch).is_combining_char) {
+        s->seg = grapheme_segmentation_step(s->seg, cp);
+        if (UNLIKELY(s->seg.add_to_current_cell && s->prev.cc)) {
+            draw_combining_char(self, s, ch);
+            continue;
+        }
+        int char_width = wcwidth_std(cp);
+        if (UNLIKELY(char_width < 1)) {
+            if (char_width == 0) {
+                // check for some zero width chars that we want to preserve for
+                // round tripping that are not added to prev cell by grapheme
+                // segmentation.
+                if (s->prev.cc && (ch == 0xad || ch == 0x200b || ch == 0x2060)) {  // soft hyphen, zero width space, word joiner
+                    draw_combining_char(self, s, ch);
+                }
+                continue;  // we cannot represent zero width chars except as combining chars
+            }
+            char_width = 1;
+        }
+
+        if (self->cursor->x < self->columns && s->cp[self->cursor->x].is_multicell) {
             if (s->cp[self->cursor->x].y) {
                 move_cursor_past_multicell(self, 1);
                 init_text_loop_line(self, s);
             } else nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, s->cp[self->cursor->x].x != 0);
         }
 
-        int char_width = 1;
-        if (ch > DEL) {  // not printable ASCII
-            CharProps cp = char_props_for(ch);
-            if (cp.is_invalid) continue;
-            if (UNLIKELY(cp.is_combining_char)) {
-                if (UNLIKELY(is_flag_codepoint(ch))) {
-                    if (draw_second_flag_codepoint(self, ch)) continue;
-                } else {
-                    draw_combining_char(self, s, ch);
-                    continue;
-                }
-            }
-            char_width = wcwidth_std(cp);
-            if (UNLIKELY(char_width < 1)) {
-                if (char_width == 0) continue;
-                char_width = 1;
-            }
-        }
         self->last_graphic_char = ch;
         if (UNLIKELY(self->columns < self->cursor->x + (unsigned int)char_width)) {
             if (self->modes.mDECAWM) {
@@ -1161,10 +1168,13 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             *fc = (CPUCell){.ch_or_idx=ch, .is_multicell=true, .width=2, .scale=1, .natural_width=true};
             *second = *fc; second->x = 1;
             s->gp[self->cursor->x + 1] = s->gp[self->cursor->x];
+            s->prev.y = self->cursor->y; s->prev.x = self->cursor->x; s->prev.cc = fc;
             self->cursor->x += 2;
         } else {
             zero_cells(s, fc, s->gp + self->cursor->x);
-            cell_set_char(fc, ch); self->cursor->x++;
+            cell_set_char(fc, ch);
+            s->prev.y = self->cursor->y; s->prev.x = self->cursor->x; s->prev.cc = fc;
+            self->cursor->x++;
             fc->is_multicell = false;
         }
     }
@@ -1276,7 +1286,6 @@ handle_variable_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *
     mcd.width = wcswidth_string(lc->chars);
     if (!mcd.width) { lc->count = 0; return; }
     handle_fixed_width_multicell_command(self, mcd, lc);
-    lc->count = 0;
 }
 
 void
@@ -1297,29 +1306,16 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);
     else {
         RAII_ListOfChars(lc);
+        GraphemeSegmentationResult s; grapheme_segmentation_reset(&s);
         mcd.natural_width = true;
         for (unsigned i = 0; i < self->lc->count; i++) {
             char_type ch = self->lc->chars[i];
             CharProps cp = char_props_for(ch);
             if (cp.is_invalid) continue;
-            if (cp.is_combining_char) {
-                if (is_flag_codepoint(ch)) {
-                    if (lc.count == 1) {
-                        if (is_flag_pair(lc.chars[0], ch)) {
-                            lc.chars[lc.count++] = ch; handle_variable_width_multicell_command(self, mcd, &lc);
-                        } else {
-                            handle_variable_width_multicell_command(self, mcd, &lc); lc.chars[lc.count++] = ch;
-                        }
-                    } else {
-                        handle_variable_width_multicell_command(self, mcd, &lc); lc.chars[lc.count++] = ch;
-                    }
-                } else {
-                    if (!lc.count) continue;
-                    lc.chars[lc.count++] = ch;
-                }
-            } else {
+            if ((s = grapheme_segmentation_step(s, cp)).add_to_current_cell) lc.chars[lc.count++] = ch;
+            else {
                 if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
-                lc.chars[lc.count++] = ch;
+                lc.chars[0] = ch; lc.count = 1;
             }
         }
         if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
