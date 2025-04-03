@@ -29,7 +29,8 @@ type Options struct {
 }
 
 const reset = "\x1b]\x1b\\\x1bc"
-const ascii_printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \n\t `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?"
+const ascii_printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ  `~!@#$%^&*()_+-=[]{}\\|;:'\",<.>/?"
+const control_chars = "\n\t"
 const chinese_lorem_ipsum = `
 旦海司有幼雞讀松鼻種比門真目怪少：扒裝虎怕您跑綠蝶黃，位香法士錯乙音造活羽詞坡村目園尺封鳥朋；法松夕點我冬停雪因科對只貓息加黃住蝶，明鴨乾春呢風乙時昔孝助？小紅女父故去。
 飯躲裝個哥害共買去隻把氣年，己你校跟飛百拉！快石牙飽知唱想土人吹象毛吉每浪四又連見、欠耍外豆雞秋鼻。住步帶。
@@ -131,7 +132,7 @@ type result struct {
 
 func simple_ascii() (r result, err error) {
 	const desc = "Only ASCII chars"
-	data := random_string_of_bytes(1024*2048+13, ascii_printable)
+	data := random_string_of_bytes(1024*2048+13, ascii_printable+control_chars)
 	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
 	if err != nil {
 		return result{}, err
@@ -141,7 +142,7 @@ func simple_ascii() (r result, err error) {
 
 func unicode() (r result, err error) {
 	const desc = "Unicode chars"
-	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode, 1024)
+	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode+control_chars, 1024)
 	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
 	if err != nil {
 		return result{}, err
@@ -157,7 +158,7 @@ func ascii_with_csi() (r result, err error) {
 		q := rand.IntN(100)
 		switch {
 		case (q < 10):
-			chunk = random_string_of_bytes(rand.IntN(72)+1, ascii_printable)
+			chunk = random_string_of_bytes(rand.IntN(72)+1, ascii_printable+control_chars)
 		case (10 <= q && q < 30):
 			chunk = "\x1b[m\x1b[?1h\x1b[H"
 		case (30 <= q && q < 40):
@@ -256,7 +257,7 @@ func main(args []string) (err error) {
 	// First warm up the terminal by getting it to render all chars so that font rendering
 	// time is not polluting the benchmarks.
 	w := Options{Repetitions: 1}
-	if _, _, _, err = benchmark_data("Warmup", ascii_printable+chinese_lorem_ipsum+misc_unicode, w); err != nil {
+	if _, _, _, err = benchmark_data("Warmup", ascii_printable+control_chars+chinese_lorem_ipsum+misc_unicode, w); err != nil {
 		return err
 	}
 	time.Sleep(time.Second / 2)
