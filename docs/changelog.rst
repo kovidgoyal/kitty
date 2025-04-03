@@ -94,7 +94,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.41.1 [future]
+0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix a regression in the previous release that caused rendering of emoji using
