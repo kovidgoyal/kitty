@@ -141,6 +141,13 @@ def test_multicell(self: TestMulticell) -> None:
         for x in range(s.columns):
             ac(x, y, is_multicell=True, x=x, y=y)
 
+    # Test zero width roundtripping
+    for preserved in '\xad\u200b\u2060':
+        s.reset()
+        multicell(s, f'|{preserved}|', scale=2)
+        assert_cursor_at(4, 0)
+        ac(0, 0, text=f'|{preserved}')
+
     # Test wrapping
     s = self.create_screen(cols=6, lines=6)
     s.draw('x' * (s.columns - 1))
