@@ -292,8 +292,8 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
     const bool needs_special_handling = self->linebuf == self->alt_linebuf && (top > 0 || bottom < self->lines - 1);
     for (size_t i = 0; i < selections->count; i++) {
         Selection *s = selections->items + i;
-        if (is_selection_empty(s)) continue;
         if (needs_special_handling) {
+            if (is_selection_empty(s)) continue;
             int start = (int)s->start.y - s->start_scrolled_by;
             int end = (int)s->end.y - s->end_scrolled_by;
             int stop = MIN(start, end);
