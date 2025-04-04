@@ -6,14 +6,16 @@
 
 #pragma once
 
-#include "data-types.h"
+#include "char-props.h"
 
-typedef enum {NORMAL, IN_ESC, IN_CSI, FLAG_PAIR_STARTED, IN_ST_TERMINATED} WCSParserState;
+typedef enum {NORMAL, IN_ESC, IN_CSI, IN_ST_TERMINATED} WCSParserState;
 
 typedef struct {
     char_type prev_ch;
     int prev_width;
     WCSParserState parser_state;
+    bool can_combine;
+    GraphemeSegmentationResult seg;
 } WCSState;
 
 
