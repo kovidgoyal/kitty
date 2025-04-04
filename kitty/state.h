@@ -39,7 +39,12 @@ struct MenuItem {
 };
 
 typedef struct {
-    monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval;
+    monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, click_interval;
+    struct {
+        monotonic_t hide_wait, unhide_wait;
+        int unhide_threshold;
+        bool scroll_unhide;
+    } mouse_hide;
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     int wheel_scroll_min_lines;
     bool enable_audio_bell;
@@ -286,7 +291,8 @@ typedef struct {
     } tab_bar_edge_color;
     bool tab_bar_data_updated;
     bool is_focused;
-    monotonic_t cursor_blink_zero_time, last_mouse_activity_at;
+    monotonic_t cursor_blink_zero_time, last_mouse_activity_at, mouse_activate_deadline;
+    int mouse_show_threshold;
     bool has_received_cursor_pos_event;
     double mouse_x, mouse_y;
     bool mouse_button_pressed[32];

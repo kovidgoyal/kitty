@@ -218,6 +218,30 @@ show_mouse_cursor(GLFWwindow *w) {
 }
 
 void
+cursor_active_callback(GLFWwindow *w, monotonic_t now) {
+    if (OPT(mouse_hide.unhide_wait) == 0) {
+        show_mouse_cursor(w);
+    } else if (OPT(mouse_hide.unhide_wait) > 0) {
+            if (global_state.callback_os_window->mouse_activate_deadline == -1) {
+                global_state.callback_os_window->mouse_activate_deadline = OPT(mouse_hide.unhide_wait) + now;
+                global_state.callback_os_window->mouse_show_threshold = (int) (OPT(mouse_hide.unhide_wait) / 1e9 * OPT(mouse_hide.unhide_threshold));
+            } else if (now < global_state.callback_os_window->mouse_activate_deadline) {
+                if (global_state.callback_os_window->mouse_show_threshold > 0) {
+                    global_state.callback_os_window->mouse_show_threshold--;
+                }
+            } else {
+                if (
+                        now < global_state.callback_os_window->mouse_activate_deadline + s_double_to_monotonic_t(0.5) &&
+                        global_state.callback_os_window->mouse_show_threshold == 0
+                ) {
+                    show_mouse_cursor(w);
+                }
+                global_state.callback_os_window->mouse_activate_deadline = -1;
+            }
+    }
+}
+
+void
 blank_os_window(OSWindow *osw) {
     color_type color = OPT(background);
     if (osw->num_tabs > 0) {
@@ -451,8 +475,8 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
         double x, y;
         glfwGetCursorPos(w, &x, &y);
         debug_input("Mouse cursor entered window: %llu at %fx%f\n", global_state.callback_os_window->id, x, y);
-        show_mouse_cursor(w);
         monotonic_t now = monotonic();
+        cursor_active_callback(w, now);
         global_state.callback_os_window->last_mouse_activity_at = now;
         global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
         global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
@@ -465,9 +489,9 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
 static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
-    show_mouse_cursor(w);
-    mods_at_last_key_or_button_event = mods;
     monotonic_t now = monotonic();
+    cursor_active_callback(w, now);
+    mods_at_last_key_or_button_event = mods;
     OSWindow *window = global_state.callback_os_window;
     window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < arraysz(global_state.callback_os_window->mouse_button_pressed)) {
@@ -489,8 +513,8 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 static void
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
     if (!set_callback_window(w)) return;
-    show_mouse_cursor(w);
     monotonic_t now = monotonic();
+    cursor_active_callback(w, now);
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
@@ -504,8 +528,10 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
 static void
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset, int flags, int mods) {
     if (!set_callback_window(w)) return;
-    show_mouse_cursor(w);
     monotonic_t now = monotonic();
+    if (OPT(mouse_hide.scroll_unhide)) {
+        cursor_active_callback(w, now);
+    }
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (is_window_ready_for_callbacks()) scroll_event(xoffset, yoffset, flags, mods);
     request_tick_callback();
@@ -519,13 +545,13 @@ window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
     debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", global_state.callback_os_window->id, focused);
     global_state.callback_os_window->is_focused = focused ? true : false;
+    monotonic_t now = monotonic();
     if (focused) {
-        show_mouse_cursor(w);
+        cursor_active_callback(w, now);
         focus_in_event();
         global_state.callback_os_window->last_focused_counter = ++focus_counter;
         global_state.check_for_active_animated_images = true;
     }
-    monotonic_t now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
     if (is_window_ready_for_callbacks()) {
@@ -1371,6 +1397,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
+    w->mouse_activate_deadline = -1;
+    w->mouse_show_threshold = 0;
     w->is_semi_transparent = is_semi_transparent;
     if (want_semi_transparent && !w->is_semi_transparent) {
         static bool warned = false;

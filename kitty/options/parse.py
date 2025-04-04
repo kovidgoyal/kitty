@@ -14,7 +14,7 @@ from kitty.options.utils import (
     cursor_trail_decay, deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
     edge_width, env, filter_notification, font_features, hide_window_decorations, macos_option_as_alt,
-    macos_titlebar_color, menu_map, modify_font, narrow_symbols, notify_on_cmd_finish,
+    macos_titlebar_color, menu_map, modify_font, mouse_hide_wait, narrow_symbols, notify_on_cmd_finish,
     optional_edge_width, parse_font_spec, parse_map, parse_mouse_map, paste_actions,
     pointer_shape_when_dragging, remote_control_password, resize_debounce_time, scrollback_lines,
     scrollback_pager_history_size, shell_integration, store_multiple, symbol_map, tab_activity_symbol,
@@ -1137,7 +1137,7 @@ class Parser:
             ans["modify_font"][k] = v
 
     def mouse_hide_wait(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['mouse_hide_wait'] = float(val)
+        ans['mouse_hide_wait'] = mouse_hide_wait(val)
 
     def narrow_symbols(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in narrow_symbols(val):

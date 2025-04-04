@@ -319,7 +319,7 @@ convert_from_opts_touch_scroll_multiplier(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_mouse_hide_wait(PyObject *val, Options *opts) {
-    opts->mouse_hide_wait = parse_s_double_to_monotonic_t(val);
+    mouse_hide_wait(val, opts);
 }
 
 static void

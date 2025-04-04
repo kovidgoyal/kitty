@@ -56,7 +56,10 @@ def conf_parsing(self):
 
     opts = p('font_size 11.37', 'clear_all_shortcuts y', 'color23 red')
     self.ae(opts.font_size, 11.37)
-    self.ae(opts.mouse_hide_wait, 0 if is_macos else 3)
+    self.ae(opts.mouse_hide_wait[0], 0 if is_macos else 3)
+    self.ae(opts.mouse_hide_wait[1], 0)
+    self.ae(opts.mouse_hide_wait[2], 40)
+    self.ae(opts.mouse_hide_wait[3], True)
     self.ae(opts.color23, Color(255, 0, 0))
     self.assertFalse(opts.keyboard_modes[''].keymap)
     opts = p('clear_all_shortcuts y', 'map f1 next_window')

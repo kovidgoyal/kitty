@@ -235,7 +235,7 @@ on_key_input(const GLFWkeyevent *ev) {
     }
     if (!w) { debug("no active window, ignoring\n"); return; }
     send_pending_click_to_window(w, -1);
-    if (OPT(mouse_hide_wait) < 0 && !is_no_action_key(key, native_key)) hide_mouse(global_state.callback_os_window);
+    if (OPT(mouse_hide.hide_wait) < 0 && !is_no_action_key(key, native_key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
     id_type active_window_id = w->id;
 
