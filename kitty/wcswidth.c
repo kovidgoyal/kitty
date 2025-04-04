@@ -7,21 +7,10 @@
 
 #include "char-props.h"
 #include "wcswidth.h"
-#include "unicode-data.h"
 
 void
 initialize_wcs_state(WCSState *state) {
     zero_at_ptr(state);
-}
-
-static inline bool
-is_flag_pair(char_type a, char_type b) {
-    return is_flag_codepoint(a) && is_flag_codepoint(b);
-}
-
-static inline bool
-is_emoji_presentation_base(char_type ch) {
-    return char_props_for(ch).is_emoji_presentation_base == 1;
 }
 
 int
@@ -30,53 +19,44 @@ wcswidth_step(WCSState *state, const char_type ch) {
     switch (state->parser_state) {
         case IN_CSI: {
             state->prev_width = 0;
-            if (0x40 <= ch && ch <= 0x7e) state->parser_state = NORMAL;
+            if (0x40 <= ch && ch <= 0x7e) { state->parser_state = NORMAL; state->can_combine = false; }
         } break;
         case IN_ST_TERMINATED: {
             state->prev_width = 0;
-            if (ch == 0x9c || (ch == '\\' && state->prev_ch == 0x1b)) state->parser_state = NORMAL;
+            if (ch == '\a' || (ch == '\\' && state->prev_ch == 0x1b)) { state->parser_state = NORMAL; state->can_combine = false; }
         } break;
 
-        case FLAG_PAIR_STARTED: {
-            state->parser_state = NORMAL;
-            if (is_flag_pair(state->prev_ch, ch)) break;
-        } /* fallthrough */
-
         case NORMAL: {
-            switch(ch) {
-                case 0x1b: {
+            CharProps cp = char_props_for(ch);
+            state->seg = grapheme_segmentation_step(state->seg, cp);
+            if (state->seg.add_to_current_cell && state->can_combine) {
+                switch(ch) {
+                    case 0xfe0f:
+                        if (char_props_for(state->prev_ch).is_emoji_presentation_base && state->prev_width == 1) {
+                            ans = 1; state->prev_width = 2;
+                        } else state->prev_width = 0;
+                        break;
+                    case 0xfe0e:
+                        if (char_props_for(state->prev_ch).is_emoji_presentation_base && state->prev_width == 2) {
+                            ans = -1; state->prev_width = 1;
+                        } else state->prev_width = 0;
+                        break;
+                }
+                break;
+            }
+            int width = wcwidth_std(cp);
+            switch (width) {
+                case -1: case 0:
                     state->prev_width = 0;
-                    state->parser_state = IN_ESC;
-                } break;
-                case 0xfe0f: {
-                    if (is_emoji_presentation_base(state->prev_ch) && state->prev_width == 1) {
-                        ans += 1;
-                        state->prev_width = 2;
-                    } else state->prev_width = 0;
-                } break;
-
-                case 0xfe0e: {
-                    if (is_emoji_presentation_base(state->prev_ch) && state->prev_width == 2) {
-                        ans -= 1;
-                        state->prev_width = 1;
-                    } else state->prev_width = 0;
-                } break;
-
-                default: {
-                    if (is_flag_codepoint(ch)) state->parser_state = FLAG_PAIR_STARTED;
-                    int w = wcwidth_std(char_props_for(ch));
-                    switch(w) {
-                        case -1:
-                        case 0:
-                            state->prev_width = 0; break;
-                        case 2:
-                            state->prev_width = 2; break;
-                        default:
-                            state->prev_width = 1; break;
-                    }
-                    ans += state->prev_width;
-                } break;
-            } break; // switch(ch)
+                    if (ch == 0x1b) state->parser_state = IN_ESC;
+                    break;
+                case 2:
+                    state->prev_width = 2; break;
+                default:
+                    state->prev_width = 1; break;
+            }
+            ans = state->prev_width;
+            state->can_combine = true;
         } break;  // case NORMAL
 
         case IN_ESC:
@@ -113,9 +93,7 @@ wcswidth_step(WCSState *state, const char_type ch) {
                 case '~':
                     break;
                 default:
-                    state->prev_ch = 0x1b;
-                    state->prev_width = 0;
-                    state->parser_state = NORMAL;
+                    zero_at_ptr(state);
                     return wcswidth_step(state, ch);
             } break;
     }
