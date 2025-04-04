@@ -1590,6 +1590,24 @@ def cursor_blink_interval(spec: str) -> tuple[float, EasingFunction, EasingFunct
     return parse_animation(spec)
 
 
+class MouseHideWait(NamedTuple):
+    hide_wait: float
+    show_wait: float
+    show_threshold: int
+    scroll_show: bool
+
+
+def mouse_hide_wait(x: str) -> MouseHideWait:
+    parts = x.split(maxsplit=3)
+    if len(parts) != 1 and len(parts) != 4:
+        log_error(f'Invalid mouse_hide_wait: {x}, ignoring')
+        return MouseHideWait(3.0, 0.0, 40, True)
+    if len(parts) == 1:
+        return MouseHideWait(float(parts[0]), 0.0, 40, True)
+    else:
+        return MouseHideWait(float(parts[0]), float(parts[1]), int(parts[2]), to_bool(parts[3]))
+
+
 def visual_bell_duration(spec: str) -> tuple[float, EasingFunction, EasingFunction]:
     return parse_animation(spec, interval=0.)
 

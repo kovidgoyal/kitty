@@ -219,12 +219,12 @@ show_mouse_cursor(GLFWwindow *w) {
 
 void
 cursor_active_callback(GLFWwindow *w, monotonic_t now) {
-    if (OPT(mouse_show_wait) == 0) {
+    if (OPT(mouse_hide.unhide_wait) == 0) {
         show_mouse_cursor(w);
-    } else if (OPT(mouse_show_wait) > 0) {
+    } else if (OPT(mouse_hide.unhide_wait) > 0) {
             if (global_state.callback_os_window->mouse_activate_deadline == -1) {
-                global_state.callback_os_window->mouse_activate_deadline = OPT(mouse_show_wait) + now;
-                global_state.callback_os_window->mouse_show_threshold = (int) (OPT(mouse_show_wait) * OPT(mouse_show_threshold));
+                global_state.callback_os_window->mouse_activate_deadline = OPT(mouse_hide.unhide_wait) + now;
+                global_state.callback_os_window->mouse_show_threshold = (int) (OPT(mouse_hide.unhide_wait) / 1e9 * OPT(mouse_hide.unhide_threshold));
             } else if (now < global_state.callback_os_window->mouse_activate_deadline) {
                 if (global_state.callback_os_window->mouse_show_threshold > 0) {
                     global_state.callback_os_window->mouse_show_threshold--;
@@ -529,7 +529,7 @@ static void
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset, int flags, int mods) {
     if (!set_callback_window(w)) return;
     monotonic_t now = monotonic();
-    if (OPT(mouse_scroll_show)) {
+    if (OPT(mouse_hide.scroll_unhide)) {
         cursor_active_callback(w, now);
     }
     global_state.callback_os_window->last_mouse_activity_at = now;

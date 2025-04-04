@@ -39,9 +39,12 @@ struct MenuItem {
 };
 
 typedef struct {
-    monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, mouse_show_wait, click_interval;
-    int mouse_show_threshold;
-    bool mouse_scroll_show;
+    monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, click_interval;
+    struct {
+        monotonic_t hide_wait, unhide_wait;
+        int unhide_threshold;
+        bool scroll_unhide;
+    } mouse_hide;
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     int wheel_scroll_min_lines;
     bool enable_audio_bell;

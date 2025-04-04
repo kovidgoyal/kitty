@@ -511,43 +511,51 @@ agr('mouse', 'Mouse')
 
 opt('mouse_hide_wait', '3.0',
     macos_default='0.0',
-    option_type='float', ctype='time',
+    option_type='mouse_hide_wait', ctype='!mouse_hide_wait',
     long_text='''
 Hide mouse cursor after the specified number of seconds of the mouse not being
 used. Set to zero to disable mouse cursor hiding. Set to a negative value to
 hide the mouse cursor immediately when typing text. Disabled by default on macOS
 as getting it to work robustly with the ever-changing sea of bugs that is Cocoa
 is too much effort.
-'''
-    )
-opt('mouse_show_wait', '0.0',
-    option_type='float', ctype='time',
-    long_text='''
+
+By default, once the cursor is hidden, it is immediately unhidden on any
+further mouse events.
+
+Two formats are supported:
+ - "<hide-wait>"
+ - "<hide-wait> <unhide-wait> <unhide-threshold> <scroll-unhide>"
+
+To change the unhide behavior, the optional parameters <unhide-wait>,
+<unhide-threshold>, and <scroll-unhide> may be set.
+
+<unhide-wait>:
 Waits for the specified number of seconds after mouse events before unhiding the
 mouse cursor. Set to zero to unhide mouse cursor immediately on mouse activity.
 This is useful to prevent the mouse cursor from unhiding on accidental swipes on
 the trackpad.
-'''
-    )
-opt('mouse_show_threshold', '40',
-    option_type='positive_int',
-    long_text='''
-Sets the threshold of mouse activity required to unhide the mouse cursor, when
-the mouse_show_wait option is non-zero. When mouse_show_wait is zero, this has
-no effect.
 
-For example, if mouse_show_threshold is 40 and mouse_show_wait is 2.5, when
-kitty detects a mouse event, it records the number of mouse events in the next
-2.5 seconds, and checks if that exceeds 40 * 2.5 = 100.  If it does, then the
-mouse cursor is unhidden, otherwise nothing happens.
-'''
-    )
-opt('mouse_scroll_show', 'yes',
-    option_type='to_bool', ctype='bool',
-    long_text='''
+<unhide-threshold>:
+Sets the threshold of mouse activity required to unhide the mouse cursor, when
+the <unhide-wait> option is non-zero. When <unhide-wait> is zero, this has no
+effect.
+
+For example, if <unhide-threshold> is 40 and <unhide-wait> is 2.5, when kitty
+detects a mouse event, it records the number of mouse events in the next 2.5
+seconds, and checks if that exceeds 40 * 2.5 = 100.  If it does, then the mouse
+cursor is unhidden, otherwise nothing happens.
+
+<scroll-unhide>:
 Controls what mouse events may unhide the mouse cursor. If enabled, both scroll
 and movement events may unhide the cursor. If disabled, only mouse movements can
 unhide the cursor.
+
+
+Examples of valid values:
+ - 0.0
+ - 1.0
+ - -1.0
+ - 0.1 3.0 40 yes
 '''
     )
 

@@ -198,6 +198,18 @@ visual_bell_duration(PyObject *src, Options *opts) {
 #undef parse_animation
 
 static inline void
+mouse_hide_wait(PyObject *val, Options *opts) {
+    if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 4) {
+        PyErr_SetString(PyExc_TypeError, "mouse_hide_wait is not a 4-item tuple");
+        return;
+    }
+    opts->mouse_hide.hide_wait = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(val, 0));
+    opts->mouse_hide.unhide_wait = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(val, 1));
+    opts->mouse_hide.unhide_threshold = PyLong_AsLong(PyTuple_GET_ITEM(val, 2));
+    opts->mouse_hide.scroll_unhide = PyObject_IsTrue(PyTuple_GET_ITEM(val, 3));
+}
+
+static inline void
 cursor_trail_decay(PyObject *src, Options *opts) {
     opts->cursor_trail_decay_fast = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 0));
     opts->cursor_trail_decay_slow = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));

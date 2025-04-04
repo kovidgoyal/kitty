@@ -319,7 +319,7 @@ convert_from_opts_touch_scroll_multiplier(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_mouse_hide_wait(PyObject *val, Options *opts) {
-    opts->mouse_hide_wait = parse_s_double_to_monotonic_t(val);
+    mouse_hide_wait(val, opts);
 }
 
 static void
@@ -327,32 +327,6 @@ convert_from_opts_mouse_hide_wait(PyObject *py_opts, Options *opts) {
     PyObject *ret = PyObject_GetAttrString(py_opts, "mouse_hide_wait");
     if (ret == NULL) return;
     convert_from_python_mouse_hide_wait(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_mouse_show_wait(PyObject *val, Options *opts) {
-    opts->mouse_show_wait = parse_s_double_to_monotonic_t(val);
-}
-
-static void
-convert_from_opts_mouse_show_wait(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mouse_show_wait");
-    if (ret == NULL) return;
-    convert_from_python_mouse_show_wait(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_mouse_scroll_show(PyObject *val, Options *opts) {
-    opts->mouse_scroll_show = PyObject_IsTrue(val);
-}
-
-static void
-convert_from_opts_mouse_scroll_show(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "mouse_scroll_show");
-    if (ret == NULL) return;
-    convert_from_python_mouse_scroll_show(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1252,10 +1226,6 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_touch_scroll_multiplier(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_mouse_hide_wait(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mouse_show_wait(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_mouse_scroll_show(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_url_color(py_opts, opts);
     if (PyErr_Occurred()) return false;
