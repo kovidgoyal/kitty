@@ -94,6 +94,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.42.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

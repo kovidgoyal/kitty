@@ -523,39 +523,38 @@ By default, once the cursor is hidden, it is immediately unhidden on any
 further mouse events.
 
 Two formats are supported:
- - "<hide-wait>"
- - "<hide-wait> <unhide-wait> <unhide-threshold> <scroll-unhide>"
+ - :code:`<hide-wait>`
+ - :code:`<hide-wait> <unhide-wait> <unhide-threshold> <scroll-unhide>`
 
-To change the unhide behavior, the optional parameters <unhide-wait>,
-<unhide-threshold>, and <scroll-unhide> may be set.
+To change the unhide behavior, the optional parameters :code:`<unhide-wait>`,
+:code:`<unhide-threshold>`, and :code:`<scroll-unhide>` may be set.
 
-<unhide-wait>:
-Waits for the specified number of seconds after mouse events before unhiding the
-mouse cursor. Set to zero to unhide mouse cursor immediately on mouse activity.
-This is useful to prevent the mouse cursor from unhiding on accidental swipes on
-the trackpad.
+:code:`<unhide-wait>`
+    Waits for the specified number of seconds after mouse events before unhiding the
+    mouse cursor. Set to zero to unhide mouse cursor immediately on mouse activity.
+    This is useful to prevent the mouse cursor from unhiding on accidental swipes on
+    the trackpad.
 
-<unhide-threshold>:
-Sets the threshold of mouse activity required to unhide the mouse cursor, when
-the <unhide-wait> option is non-zero. When <unhide-wait> is zero, this has no
-effect.
+:code:`<unhide-threshold>`
+    Sets the threshold of mouse activity required to unhide the mouse cursor, when
+    the <unhide-wait> option is non-zero. When <unhide-wait> is zero, this has no
+    effect.
 
-For example, if <unhide-threshold> is 40 and <unhide-wait> is 2.5, when kitty
-detects a mouse event, it records the number of mouse events in the next 2.5
-seconds, and checks if that exceeds 40 * 2.5 = 100.  If it does, then the mouse
-cursor is unhidden, otherwise nothing happens.
+    For example, if :code:`<unhide-threshold>` is 40 and :code:`<unhide-wait>` is 2.5, when kitty
+    detects a mouse event, it records the number of mouse events in the next 2.5
+    seconds, and checks if that exceeds 40 * 2.5 = 100. If it does, then the mouse
+    cursor is unhidden, otherwise nothing happens.
 
-<scroll-unhide>:
-Controls what mouse events may unhide the mouse cursor. If enabled, both scroll
-and movement events may unhide the cursor. If disabled, only mouse movements can
-unhide the cursor.
-
+:code:`<scroll-unhide>`
+    Controls what mouse events may unhide the mouse cursor. If enabled, both scroll
+    and movement events may unhide the cursor. If disabled, only mouse movements can
+    unhide the cursor.
 
 Examples of valid values:
- - 0.0
- - 1.0
- - -1.0
- - 0.1 3.0 40 yes
+ - :code:`0.0`
+ - :code:`1.0`
+ - :code:`-1.0`
+ - :code:`0.1 3.0 40 yes`
 '''
     )
 

@@ -224,7 +224,7 @@ cursor_active_callback(GLFWwindow *w, monotonic_t now) {
     } else if (OPT(mouse_hide.unhide_wait) > 0) {
             if (global_state.callback_os_window->mouse_activate_deadline == -1) {
                 global_state.callback_os_window->mouse_activate_deadline = OPT(mouse_hide.unhide_wait) + now;
-                global_state.callback_os_window->mouse_show_threshold = (int) (OPT(mouse_hide.unhide_wait) / 1e9 * OPT(mouse_hide.unhide_threshold));
+                global_state.callback_os_window->mouse_show_threshold = (int) (monotonic_t_to_ms(OPT(mouse_hide.unhide_wait)) * OPT(mouse_hide.unhide_threshold));
             } else if (now < global_state.callback_os_window->mouse_activate_deadline) {
                 if (global_state.callback_os_window->mouse_show_threshold > 0) {
                     global_state.callback_os_window->mouse_show_threshold--;
