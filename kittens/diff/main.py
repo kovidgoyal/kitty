@@ -196,9 +196,22 @@ map('Scroll to next page',
 map('Scroll to next page',
     'scroll_page_down space scroll_to next-page',
     )
+map('Scroll to next page',
+    'scroll_page_down ctrl+f scroll_to next-page',
+    )
 
 map('Scroll to previous page',
     'scroll_page_up page_up scroll_to prev-page',
+    )
+map('Scroll to previous page',
+    'scroll_page_up ctrl+b scroll_to prev-page',
+    )
+
+map('Scroll down half page',
+    'scroll_half_page_down ctrl+d scroll_to next-half-page',
+    )
+map('Scroll up half page',
+    'scroll_half_page_up ctrl+u scroll_to prev-half-page',
     )
 
 map('Scroll to next change',
