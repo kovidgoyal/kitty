@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"strconv"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -135,6 +136,15 @@ func ShowHelpInPager(text string) {
 	_ = pager.Run()
 }
 
+func getDeterministicTimestamp() time.Time {
+	if epochStr, exists := os.LookupEnv("SOURCE_DATE_EPOCH"); exists {
+			if epoch, err := strconv.ParseInt(epochStr, 10, 64); err == nil {
+					return time.Unix(epoch, 0).UTC()
+			}
+	}
+	return time.Now()
+}
+
 func (self *Command) GenerateManPages(level int, recurse bool) (err error) {
 	var names []string
 	p := self
@@ -149,7 +159,7 @@ func (self *Command) GenerateManPages(level int, recurse bool) (err error) {
 		return err
 	}
 	defer outf.Close()
-	fmt.Fprintf(outf, `.TH "%s" "1" "%s" "%s" "%s"`, name, time.Now().Format("Jan 02, 2006"), kitty.VersionString, "kitten Manual")
+	fmt.Fprintf(outf, `.TH "%s" "1" "%s" "%s" "%s"`, name, getDeterministicTimestamp().Format("Jan 02, 2006"), kitty.VersionString, "kitten Manual")
 	fmt.Fprintln(outf)
 	fmt.Fprintln(outf, ".SH Name")
 	fmt.Fprintln(outf, name, "\\-", escape_text_for_man(self.ShortDescription))
