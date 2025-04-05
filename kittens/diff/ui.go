@@ -695,6 +695,9 @@ func (self *Handler) dispatch_action(name, args string) error {
 			done = self.scroll_to_next_match(strings.Contains(args, `prev`), false)
 		case strings.Contains(args, `page`):
 			amt := self.screen_size.num_lines
+			if strings.Contains(args, `half`) {
+            	amt = amt / 2
+            }
 			if strings.Contains(args, `prev`) {
 				amt *= -1
 			}
