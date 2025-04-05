@@ -4,6 +4,7 @@ package cli
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"kitty/tools/cli/markup"
@@ -22,6 +23,7 @@ func fish_completion_script(commands []string) (string, error) {
 	}
 	if len(commands) == 0 {
 		commands = append(commands, utils.Keys(all_commands)...)
+		sort.Strings(commands)
 	}
 	script := strings.Builder{}
 	script.WriteString(`function __ksi_completions
