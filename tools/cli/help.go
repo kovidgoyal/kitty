@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"slices"
-	"strings"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -137,10 +137,8 @@ func ShowHelpInPager(text string) {
 }
 
 func getDeterministicTimestamp() time.Time {
-	if epochStr, exists := os.LookupEnv("SOURCE_DATE_EPOCH"); exists {
-			if epoch, err := strconv.ParseInt(epochStr, 10, 64); err == nil {
-					return time.Unix(epoch, 0).UTC()
-			}
+	if epoch, err := strconv.ParseInt(os.Getenv("SOURCE_DATE_EPOCH"), 10, 64); err == nil {
+		return time.Unix(epoch, 0).UTC()
 	}
 	return time.Now()
 }
