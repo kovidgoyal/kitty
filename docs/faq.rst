@@ -481,8 +481,8 @@ setup environment variables system-wide, so people end up putting them in all
 sorts of places where they may or may not work.
 
 
-I am using tmux and have a problem
---------------------------------------
+I am using tmux/zellij and have a problem
+----------------------------------------------
 
 First, terminal multiplexers are :iss:`a bad idea <391#issuecomment-638320745>`,
 do not use them, if at all possible. kitty contains features that do all of what
