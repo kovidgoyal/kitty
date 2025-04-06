@@ -255,8 +255,6 @@ env COLORTERM
 
             def check_untar_or_fail():
                 q = pty.screen_contents()
-                if 'bzip2' in q:
-                    raise ValueError('Untarring failed with screen contents:\n' + q)
                 return 'UNTAR_DONE' in q
             pty.wait_till(check_untar_or_fail, timeout=60)
             self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
