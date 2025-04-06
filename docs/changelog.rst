@@ -99,6 +99,8 @@ Detailed list of changes
 
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)
 
+- diff kitten: Add half page and full page scroll vim-like bindings (:pull:`8514`)
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
