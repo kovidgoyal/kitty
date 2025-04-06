@@ -216,9 +216,11 @@ def filled_history_buf(ynum=5, xnum=5, cursor=Cursor()):
 
 
 is_ci = os.environ.get('CI') == 'true'
+max_attempts = 4 if is_ci else 2
+sleep_duration = 4 if is_ci else 2
 
 
-def retry_on_failure(max_attempts=4 if is_ci else 2, sleep_duration=30 if is_ci else 2):
+def retry_on_failure(max_attempts=max_attempts, sleep_duration=sleep_duration):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):

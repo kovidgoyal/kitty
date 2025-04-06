@@ -73,7 +73,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 f.write(simple_data)
 
         for sh in self.all_possible_sh:
-            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
+            with tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
                 tuple(map(touch, 'simple-file g.1 g.2'.split()))
                 os.makedirs(f'{local_home}/d1/d2/d3')
                 touch('d1/d2/x')
@@ -126,7 +126,7 @@ copy --exclude **/w.* --exclude **/r d1
     def test_ssh_env_vars(self):
         tset = '$A-$(echo no)-`echo no2` !Q5 "something else"'
         for sh in self.all_possible_sh:
-            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
+            with tempfile.TemporaryDirectory() as tdir:
                 os.mkdir(os.path.join(tdir, 'cwd'))
                 conf = f'''
 cwd $HOME/cwd
@@ -151,7 +151,7 @@ env COLORTERM
                 if sh == 'sh' or 'python' in sh:
                     q = shutil.which(launcher)
                     if q:
-                        with self.subTest(sh=sh, launcher=q), tempfile.TemporaryDirectory() as tdir:
+                        with tempfile.TemporaryDirectory() as tdir:
                             self.check_bootstrap(sh, tdir, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', launcher=q)
 
     @retry_on_failure()
@@ -160,7 +160,7 @@ env COLORTERM
         for sh in self.all_possible_sh:
             if 'python' in sh:
                 script = 'print("ld:" + leading_data.decode("ascii")); raise SystemExit(0);'
-            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
+            with tempfile.TemporaryDirectory() as tdir:
                 pty = self.check_bootstrap(
                     sh, tdir, test_script=script,
                     SHELL_INTEGRATION_VALUE='', pre_data='before_tarfile')
@@ -190,7 +190,7 @@ env COLORTERM
             for sh in self.all_possible_sh:
                 if 'python' in sh:
                     continue
-                with self.subTest(sh=sh, method=m), tempfile.TemporaryDirectory() as tdir:
+                with tempfile.TemporaryDirectory() as tdir:
                     pty = self.check_bootstrap(sh, tdir, test_script=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
                     self.assertIn(expected_login_shell, pty.screen_contents())
 
@@ -202,7 +202,7 @@ env COLORTERM
                 if login_shell == 'bash' and not bash_ok():
                     continue
                 ok_login_shell = login_shell
-                with self.subTest(sh=sh, login_shell=login_shell), tempfile.TemporaryDirectory() as tdir:
+                with tempfile.TemporaryDirectory() as tdir:
                     pty = self.check_bootstrap(sh, tdir, login_shell)
                     if login_shell == 'bash':
                         pty.send_cmd_to_child('echo $HISTFILE')
