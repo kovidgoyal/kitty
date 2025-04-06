@@ -504,9 +504,10 @@ for tmux refusing to support images.
 
 If you use any of the advanced features that kitty has innovated, such as
 :doc:`styled underlines </underlines>`, :doc:`desktop notifications
-</desktop-notifications>`, :doc:`extended keyboard support
-</keyboard-protocol>`, :doc:`file transfer </kittens/transfer>`, :doc:`the ssh
-kitten </kittens/ssh>`, :doc:`shell integration </shell-integration>` etc. they may or may not work,
+</desktop-notifications>`, :doc:`variable sized text </text-sizing-protocol>`,
+:doc:`extended keyboard support </keyboard-protocol>`,
+:doc:`file transfer </kittens/transfer>`, :doc:`the ssh kitten </kittens/ssh>`,
+:doc:`shell integration </shell-integration>` etc. they may or may not work,
 depending on the whims of tmux's maintainer, your version of tmux, etc.
 
 
