@@ -696,8 +696,8 @@ func (self *Handler) dispatch_action(name, args string) error {
 		case strings.Contains(args, `page`):
 			amt := self.screen_size.num_lines
 			if strings.Contains(args, `half`) {
-            	amt = amt / 2
-            }
+				amt = amt / 2
+			}
 			if strings.Contains(args, `prev`) {
 				amt *= -1
 			}
