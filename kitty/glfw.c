@@ -1938,6 +1938,7 @@ set_os_window_title(OSWindow *w, const char *title) {
 void
 hide_mouse(OSWindow *w) {
     glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    w->mouse_activate_deadline = -1;
 }
 
 bool
