@@ -536,7 +536,7 @@ class TestParser(BaseTest):
         pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
         self.ae(c.wtcbuf, b'\033P1$rm\033\\')
         for sgr in '0;34;102;1;2;3;4 0;38:5:200;58:2:10:11:12'.split():
-            expected = set(sgr.split(';')) - {'0'}
+            expected = set(sgr.split(';'))
             c.clear()
             parse_bytes(s, f'\033[{sgr}m\033P$qm\033\\'.encode('ascii'))
             r = c.wtcbuf.decode('ascii').partition('r')[2].partition('m')[0]
