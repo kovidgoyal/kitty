@@ -2994,7 +2994,9 @@ screen_request_capabilities(Screen *self, char c, const char *query) {
                 shape = snprintf(buf, sizeof(buf), "1$r%d q", shape);
             } else if (strcmp("m", query) == 0) {
                 // SGR
-                shape = snprintf(buf, sizeof(buf), "1$r%sm", cursor_as_sgr(self->cursor));
+                const char *s = cursor_as_sgr(self->cursor);
+                if (s && s[0]) shape = snprintf(buf, sizeof(buf), "1$r0;%sm", s);
+                else shape = snprintf(buf, sizeof(buf), "1$r0m");
             } else if (strcmp("r", query) == 0) { // DECSTBM
                 shape = snprintf(buf, sizeof(buf), "1$r%u;%ur", self->margin_top + 1, self->margin_bottom + 1);
             } else if (strcmp("*x", query) == 0) { // DECSACE
