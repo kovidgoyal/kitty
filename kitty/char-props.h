@@ -105,6 +105,25 @@ static_assert(sizeof(GraphemeSegmentationResult) == sizeof(uint16_t), "Fix the o
 
 // UCBDeclaration {{{
 #define MAX_UNICODE (1114111u)
+typedef enum GraphemeBreakProperty {
+	GBP_AtStart,
+	GBP_None,
+	GBP_Prepend,
+	GBP_CR,
+	GBP_LF,
+	GBP_Control,
+	GBP_Extend,
+	GBP_Regional_Indicator,
+	GBP_SpacingMark,
+	GBP_L,
+	GBP_V,
+	GBP_T,
+	GBP_LV,
+	GBP_LVT,
+	GBP_ZWJ,
+	GBP_Private_Expecting_RI,
+} GraphemeBreakProperty;
+
 typedef enum UnicodeCategory {
 	UC_Cn,
 	UC_Cc,

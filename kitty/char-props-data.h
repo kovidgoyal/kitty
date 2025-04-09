@@ -3,25 +3,6 @@
 
 #pragma once
 
-typedef enum GraphemeBreakProperty {
-	GBP_AtStart,
-	GBP_None,
-	GBP_Prepend,
-	GBP_CR,
-	GBP_LF,
-	GBP_Control,
-	GBP_Extend,
-	GBP_Regional_Indicator,
-	GBP_SpacingMark,
-	GBP_L,
-	GBP_V,
-	GBP_T,
-	GBP_LV,
-	GBP_LVT,
-	GBP_ZWJ,
-	GBP_Private_Expecting_RI,
-} GraphemeBreakProperty;
-
 typedef enum IndicConjunctBreak {
 	ICB_None,
 	ICB_Linker,
