@@ -1,5 +1,3 @@
-//go:build testing
-
 package kitty
 
 import (

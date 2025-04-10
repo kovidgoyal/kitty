@@ -122,6 +122,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	images.ConvertEntryPoint(root)
 	// __atexit__
 	atexit.EntryPoint(root)
+	// __width_test__
+	cli.WcswidthKittenEntryPoint(root)
 	// __generate_man_pages__
 	root.AddSubCommand(&cli.Command{
 		Name:            "__generate_man_pages__",
