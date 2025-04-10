@@ -1164,6 +1164,13 @@ def gen_char_props() -> None:
         is_extended_pictographic=x.is_extended_pictographic) for x in prop_array)
     test_grapheme_segmentation(partial(split_into_graphemes, gsprops))
     gseg_results = tuple(GraphemeSegmentationKey.from_int(i).result() for i in range(1 << 16))
+    s = GraphemeSegmentationResult.make()
+    for ch in range(32, 127):
+        k = int(GraphemeSegmentationKey(s.new_state, gsprops[ch]))
+        s = gseg_results[k]
+        print(111111, chr(ch), s)
+
+
     test_grapheme_segmentation(partial(split_into_graphemes_with_table, gsprops, gseg_results))
     t1, t2, t3, t_shift = splitbins(prop_array, CharProps.bitsize() // 8)
     g1, g2, g3, g_shift = splitbins(gseg_results, GraphemeSegmentationResult.bitsize() // 8)

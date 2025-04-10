@@ -1104,28 +1104,38 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
 static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
+    int char_width;
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = map_char(self, chars[i]);
-        CharProps cp = char_props_for(ch);
-        if (cp.is_invalid) {
-            if (ch < ' ') draw_control_char(self, s, ch);
-            continue;
-        }
-        s->seg = grapheme_segmentation_step(s->seg, cp);
-        if (UNLIKELY(s->seg.add_to_current_cell && s->prev.cc)) {
-            draw_combining_char(self, s, ch);
-            continue;
-        }
-        int char_width = wcwidth_std(cp);
-        if (UNLIKELY(char_width < 1)) {
-            if (char_width == 0) {
-                // Preserve zero width chars as combining chars even though
-                // they were not added to the prev cell by grapheme segmentation.
-                // Zero width chars can only be represented as combining chars.
-                if (s->prev.cc) draw_combining_char(self, s, ch);
+        if (ch < DEL && s->seg.grapheme_break == GBP_None) {  // fast path for printable ASCII
+            if (ch < ' ') {
+                draw_control_char(self, s, ch);
                 continue;
             }
             char_width = 1;
+            s->seg = (GraphemeSegmentationResult){.grapheme_break=GBP_None};
+        } else {
+            CharProps cp = char_props_for(ch);
+            if (cp.is_invalid) {
+                if (ch < ' ') draw_control_char(self, s, ch);
+                continue;
+            }
+            s->seg = grapheme_segmentation_step(s->seg, cp);
+            if (UNLIKELY(s->seg.add_to_current_cell && s->prev.cc)) {
+                draw_combining_char(self, s, ch);
+                continue;
+            }
+            char_width = wcwidth_std(cp);
+            if (UNLIKELY(char_width < 1)) {
+                if (char_width == 0) {
+                    // Preserve zero width chars as combining chars even though
+                    // they were not added to the prev cell by grapheme segmentation.
+                    // Zero width chars can only be represented as combining chars.
+                    if (s->prev.cc) draw_combining_char(self, s, ch);
+                    continue;
+                }
+                char_width = 1;
+            }
         }
 
         if (self->cursor->x < self->columns && s->cp[self->cursor->x].is_multicell) {
