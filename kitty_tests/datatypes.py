@@ -682,3 +682,6 @@ class TestDataTypes(BaseTest):
         s.draw('a' * s.columns)
         s.draw('\u0306')
         self.ae(str(s.line(0)), 'a' * s.columns + '\u0306')
+        s.reset()
+        s.draw('\0')
+        self.ae(str(s.line(0)), '')

@@ -191,8 +191,7 @@ have is the Unicode standard. Unfortunately, the Unicode standard has a new
 version almost every year and actually changes the width assigned to some
 characters in different versions. Furthermore, to actually get the "correct"
 width for a string using that standard one has to do grapheme segmentation,
-which is an `extremely complex algorithm
-<https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries>`__.
+which is a :ref:`complex algorithm, specified below <gseg>`.
 Expecting all terminals and all terminal programs to have both up-to-date
 character databases and a bug free implementation of this algorithm is not
 realistic.
@@ -344,3 +343,123 @@ their interactions with multicell characters.
 **Delete lines** (``CSI M`` aka ``DL``)
     When deleting ``n`` lines at cursor position ``y`` any multicell character
     that intersects the deleted lines must be erased.
+
+
+.. _gseg:
+
+The algorithm for splitting text into cells
+------------------------------------------------
+
+.. note::
+   Notation: :code:`[start, stop, step]` means the integeres from :code:`start`
+   to :code:`stop` in increments of :code:`step`. When the step is not
+   specified, it defaults to one.
+
+Here, we specify how a terminal must split up text into cells, where a cell is
+a width one unit in the character grid the terminal displays.
+
+The basis for the algorithm is the
+`Grapheme segmentation algorithm <https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries>`__
+from the Unicode standard. However, that algorithm alone is insufficient to
+fully specify text handling for terminals. The full algorithm is specified
+below. When a terminal receives a Unicode character:
+
+#. First check if the character is an ASCII control code, and handle it
+   appropriately. ASCII control codes are the characters less than 32 and the
+   character 127 (DEL). The NUL character (0) must be discarded.
+
+#. Next, check if the character is *invalid*, and if it is, discard it
+   and finish processing. Invalid characters are characters with Unicode category :code:`Cc or Cs`
+   and 66 additional characters: :code:`[0xfdd0, 0xfdef]`, :code:`[0xfffe, 0x10ffff-1, 0x10000]`
+   and :code:`[0xffff, 0x10ffff, 0x10000]`.
+
+#. Next, check if there is a previous cell before the
+   current cursor position. This means either the cursor is at x > 0 in which
+   case the previous cell is at x-1 on the same line, or the previous cell is
+   the last cell of the previous line, provided there is no line break
+   between the previous and current lines.
+
+#. Next, calculate the width in cells of the received
+   character, which can be 0, 1, or 2 depending on the character properties in
+   the Unicode standard.
+
+#. If there is no previous cell and the character width is zero, the character
+   is discarded and processing of the character is finished.
+
+#. If there is a previous cell, the
+   `Grapheme segmentation algorithm UAX29-C1-1 <https://www.unicode.org/reports/tr29/#C1-1>`__
+   is used to determine if there is a grapheme boundary between the previous cell and the current character.
+
+#. If there is no boundary the current character is added to the previous
+   cell and processing of the character is finished. See the :ref:`var_select`
+   section below for handling of Unicode Variation selectors.
+
+#. If there is a boundary, but the width of the current character is zero
+   it is added to the previous cell and processing is finished.
+
+#. The character is added to the current cell and the cursor is moved forward
+   (right) by either 1 or 2 cells depending on the width of the character.
+
+
+It remains to specify how to calculate the width in cells of a Unicode
+character. To do this, characters are divided into various classes, as
+described by the rules below, in order of decreasing priority:
+
+#. Regional indicators: 26 characters starting at :code:`0x1F1E6`. These all
+   have width 2
+
+#. Doublewidth: Parse `EastAsianWidth.txt
+   <https://www.unicode.org/Public/UCD/latest/ucd/EastAsianWidth.txt>`__ from
+   the Unicode standard. All characters marked :code:`W` or :code:`F` have
+   width two. All characters in the following ranges have width two *unless*
+   they are marked as :code:`A` in :code:`EastAsianWidth.txt`: :code:`[0x3400,
+   0x4DBF], [0x4E00, 0x9FFF], [0xF900, 0xFAFF], [0x20000, 0x2FFFD], [0x30000, 0x3FFFD]`
+
+.. _wide_emoji_rule:
+
+#. Wide Emoji: Parse `emoji-sequences.txt
+   <https://www.unicode.org/Public/emoji/latest/emoji-sequences.txt>`__ from
+   the Unicode standard. All :code:`Basic_Emoji` have width two unless they are
+   followed by :code:`FE0F` in the file. The leading copdepoints in all
+   :code:`RGI_Emoji_Modifier_Sequence` and :code:`RGI_Emoji_Tag_Sequence` have width two.
+   All codepoints in :code:`RGI_Emoji_Flag_Sequence` have width two.
+
+#. Marks: These are all zero width characters. They are characters with Unicode
+   categories whose first Letter is :code:`M` or :code:`S`. Additionally,
+   characters with Unicode category: :code:`Cf`. Finally, they include
+   all modifier codepoints from :code:`RGI_Emoji_Modifier_Sequence` in the
+   :ref:`Wide emoji rule <wide_emoji_rule>`.
+
+#. All remaining codepoints have a width of one cell.
+
+.. _var_select:
+
+Unicode variation selectors
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There are two codepoints (:code:`U+FE0E` and :code:`U+FE0F`) that can actually
+alter the width of the previous codepoint. When adding a codepoint to the
+previous cell these have to be handled specially.
+
+``U+FE0E`` - Variation Selector 15
+  When the previous cell has width two and the last character in the previous
+  cell is one of the ``Basic_Emoji`` codepoint from the :ref:`Wide emoji rule
+  <wide_emoji_rule>` that is *not* followed by ``FEOF`` then the width of the
+  previous cell is decreased to one.
+
+``U+FE0F`` - Variation Selector 16
+  When the previous cell has width one and the last character in the previous
+  cell is one of the ``Basic_Emoji`` codepoint from the :ref:`Wide emoji rule
+  <wide_emoji_rule>` that is followed by ``FEOF`` then the width of the
+  previous cell is increased to two.
+
+Note that the rule for ``U+FE0E`` is particularly problematic for terminals as
+it means that the width of a string cannot be determined without knowing the
+width of the screen it will be rendered on. This is because when there is only
+one cell left on the current line and a wide emoji is received it wraps onto
+the next line. If subsequently a ``U+FE0E`` is received, the emoji becomes one
+cell wide but it is *not* moved back to the previous line.
+
+To avoid this issue, it is recommended applications detect when ``U+FE0E`` is
+present and in such cases use the width part of the text sizing protocol
+to control rendering.
