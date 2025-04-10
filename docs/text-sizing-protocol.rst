@@ -425,7 +425,7 @@ described by the rules below, in order of decreasing priority:
    All codepoints in :code:`RGI_Emoji_Flag_Sequence` have width two.
 
 #. Marks: These are all zero width characters. They are characters with Unicode
-   categories whose first Letter is :code:`M` or :code:`S`. Additionally,
+   categories whose first letter is :code:`M` or :code:`S`. Additionally,
    characters with Unicode category: :code:`Cf`. Finally, they include
    all modifier codepoints from :code:`RGI_Emoji_Modifier_Sequence` in the
    :ref:`Wide emoji rule <wide_emoji_rule>`.
