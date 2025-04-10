@@ -678,3 +678,7 @@ class TestDataTypes(BaseTest):
                 if ct:
                     actual.append(ct)
             self.ae(expected, list(adapt_cell_text(actual)), f'Test #{i} failed: {test["comment"]}')
+        s.reset()
+        s.draw('a' * s.columns)
+        s.draw('\u0306')
+        self.ae(str(s.line(0)), 'a' * s.columns + '\u0306')
