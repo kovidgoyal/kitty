@@ -443,13 +443,13 @@ previous cell these have to be handled specially.
 
 ``U+FE0E`` - Variation Selector 15
   When the previous cell has width two and the last character in the previous
-  cell is one of the ``Basic_Emoji`` codepoint from the :ref:`Wide emoji rule
+  cell is one of the ``Basic_Emoji`` codepoints from the :ref:`Wide emoji rule
   <wide_emoji_rule>` that is *not* followed by ``FEOF`` then the width of the
   previous cell is decreased to one.
 
 ``U+FE0F`` - Variation Selector 16
   When the previous cell has width one and the last character in the previous
-  cell is one of the ``Basic_Emoji`` codepoint from the :ref:`Wide emoji rule
+  cell is one of the ``Basic_Emoji`` codepoints from the :ref:`Wide emoji rule
   <wide_emoji_rule>` that is followed by ``FEOF`` then the width of the
   previous cell is increased to two.
 
