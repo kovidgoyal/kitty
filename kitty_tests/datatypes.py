@@ -640,7 +640,41 @@ class TestDataTypes(BaseTest):
     def test_split_into_graphemes(self):
         self.assertEqual(char_props_for('\ue000')['category'], 'Co')
         self.ae(split_into_graphemes('ab'), ['a', 'b'])
+        s = self.create_screen(cols=12)
+        excluded_chars = set(range(32))
+
+        def is_excluded(text):
+            return bool(set(map(ord, text)) & excluded_chars)
+
+        def adapt_cell_text(cells):
+            for cell in cells:
+                gp = split_into_graphemes(cell)
+                if len(gp) == 1:
+                    yield cell
+                else:
+                    for i, g in enumerate(gp[:-1]):
+                        if wcswidth(gp[i+1][0]) != 0:
+                            raise AssertionError(
+                                f'cell {cell!r} contains grapheme break point at non zero width character for Test #{i}: {test["comment"]}')
+                    yield from gp
+
         for i, test in enumerate(json.loads(read_kitty_resource('GraphemeBreakTest.json', __name__.rpartition('.')[0]))):
             expected = test['data']
-            actual = split_into_graphemes(''.join(expected))
+            text = ''.join(expected)
+            actual = split_into_graphemes(text)
             self.ae(expected, actual, f'Test #{i} failed: {test["comment"]}')
+            if is_excluded(text):
+                continue
+            s.carriage_return(), s.erase_in_line()
+            s.draw(' ' + text)
+            actual = []
+            for x in range(s.cursor.x):
+                cell = s.cpu_cells(0, x)
+                if cell['x'] > 0:
+                    continue
+                ct = cell['text']
+                if x == 0:
+                    ct = ct[1:]
+                if ct:
+                    actual.append(ct)
+            self.ae(expected, list(adapt_cell_text(actual)), f'Test #{i} failed: {test["comment"]}')

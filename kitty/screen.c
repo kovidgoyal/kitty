@@ -1101,11 +1101,6 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
     }
 }
 
-static bool
-is_roundtripped_zero_width_char(char_type ch) {
-    return ch == 0xad || ch == 0x200b || ch == 0x2060;
-}
-
 static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
@@ -1124,13 +1119,11 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
         int char_width = wcwidth_std(cp);
         if (UNLIKELY(char_width < 1)) {
             if (char_width == 0) {
-                // check for some zero width chars that we want to preserve for
-                // round tripping that are not added to prev cell by grapheme
-                // segmentation.
-                if (s->prev.cc && is_roundtripped_zero_width_char(ch)) {  // soft hyphen, zero width space, word joiner
-                    draw_combining_char(self, s, ch);
-                }
-                continue;  // we cannot represent zero width chars except as combining chars
+                // Preserve zero width chars as combining chars even though
+                // they were not added to the prev cell by grapheme segmentation.
+                // Zero width chars can only be represented as combining chars.
+                if (s->prev.cc) draw_combining_char(self, s, ch);
+                continue;
             }
             char_width = 1;
         }
@@ -1317,7 +1310,7 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
             char_type ch = self->lc->chars[i];
             CharProps cp = char_props_for(ch);
             if (cp.is_invalid) continue;
-            if ((s = grapheme_segmentation_step(s, cp)).add_to_current_cell || (wcwidth_std(cp) == 0 && is_roundtripped_zero_width_char(ch) && lc.count)) lc.chars[lc.count++] = ch;
+            if ((s = grapheme_segmentation_step(s, cp)).add_to_current_cell || (wcwidth_std(cp) == 0 && lc.count)) lc.chars[lc.count++] = ch;
             else {
                 if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
                 if (wcwidth_std(cp) < 1) lc.count = 0;
