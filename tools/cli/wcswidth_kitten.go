@@ -98,7 +98,7 @@ func show_results(tests []*test_struct) (err error) {
 	num_failures := 0
 	for _, t := range tests {
 		if diff := cmp.Diff(t.expected_cursor_positions, t.actual_cursor_positions); diff != "" {
-			fmt.Println("\x1b[31mTest failed\x1b[39m:", t.description)
+			fmt.Printf("\x1b[31mTest number %d failed\x1b[39m: %s\n", t.num, t.description)
 			fmt.Println(diff)
 			num_failures++
 		}
@@ -124,15 +124,14 @@ func main(allowed_tests *utils.Set[int]) (rc int, err error) {
 	var tests []*test_struct
 	if gb_tests, err := kitty.LoadGraphemeBreakTests(); err == nil {
 		for _, t := range gb_tests {
-			test_num := len(tests) + 1
 			text := strings.Join(t.Data, "")
 			rt, _ := json.Marshal(text)
-			desc := fmt.Sprintf("Test #%d: Unicode GraphemeBreakTest: Text: %s\n%s", test_num, string(rt), t.Comment)
+			desc := fmt.Sprintf("Unicode GraphemeBreakTest: Text: %s Expected breaks:\n%s", string(rt), t.Comment)
 			if has_control_chars(text) {
 				continue
 			}
 			payload := " " + text + cursor_position_report
-			test := test_struct{num: test_num, description: desc, payload: payload, expected_cursor_positions: []int{1 + wcswidth.Stringwidth(text)}}
+			test := test_struct{num: len(tests) + 1, description: desc, payload: payload, expected_cursor_positions: []int{1 + wcswidth.Stringwidth(text)}}
 			tests = append(tests, &test)
 		}
 		if allowed_tests.Len() > 0 {
