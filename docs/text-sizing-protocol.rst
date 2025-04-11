@@ -351,9 +351,8 @@ The algorithm for splitting text into cells
 ------------------------------------------------
 
 .. note::
-   Notation: :code:`[start, stop, step]` means the integeres from :code:`start`
-   to :code:`stop` in increments of :code:`step`. When the step is not
-   specified, it defaults to one.
+   kitty comes with a utility to test terminal compliance with this algorithm.
+   Install kitty and run: ``kitten __width_test__`` in any terminal to test it.
 
 Here, we specify how a terminal must split up text into cells, where a cell is
 a width one unit in the character grid the terminal displays.
@@ -404,6 +403,11 @@ below. When a terminal receives a Unicode character:
 It remains to specify how to calculate the width in cells of a Unicode
 character. To do this, characters are divided into various classes, as
 described by the rules below, in order of decreasing priority:
+
+.. note::
+   Notation: :code:`[start, stop, step]` means the integeres from :code:`start`
+   to :code:`stop` in increments of :code:`step`. When the step is not
+   specified, it defaults to one.
 
 #. Regional indicators: 26 characters starting at :code:`0x1F1E6`. These all
    have width 2
