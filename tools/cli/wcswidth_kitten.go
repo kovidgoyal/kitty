@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"kitty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
 )
 
@@ -25,6 +27,7 @@ type test_struct struct {
 }
 
 const cursor_position_report = "\x1b[6n"
+const reset_line = "\r\x1b[K"
 
 func run_tests(tests []*test_struct) (err error) {
 	lp, err := loop.New(loop.NoAlternateScreen)
@@ -35,7 +38,7 @@ func run_tests(tests []*test_struct) (err error) {
 	buf.WriteString(loop.PENDING_UPDATE.EscapeCodeToSet())
 	for _, t := range tests {
 		buf.WriteString(t.payload)
-		buf.WriteString("\r\x1b[K")
+		buf.WriteString(reset_line)
 		if buf.Len() > 512*1024 {
 			buf.WriteString(loop.PENDING_UPDATE.EscapeCodeToReset())
 			buf.WriteString(loop.PENDING_UPDATE.EscapeCodeToSet())
@@ -44,9 +47,19 @@ func run_tests(tests []*test_struct) (err error) {
 	buf.WriteString(loop.PENDING_UPDATE.EscapeCodeToReset())
 	buf.WriteString("\x1b[c")
 
+	print_para := func(text string) {
+		sz, _ := lp.ScreenSize()
+		for _, line := range style.WrapTextAsLines(text, int(sz.WidthCells), style.WrapOptions{Trim_whitespace: true}) {
+			lp.Println(line)
+		}
+		lp.Println()
+	}
 	lp.OnInitialize = func() (string, error) {
 		lp.SetCursorVisible(false)
+		print_para("These tests work by sending text to the terminal and then querying it for its cursor position. Every test is thus different strings sent to the terminal along with a list of expected cursor positions after each string. A failure means the actual cursor position was different from the expected one.")
+		print_para("The individual test descriptions use the character ÷ to indicate a position where a break is expected to occur and the character × to indicate a position where no break should happen.")
 		lp.Printf("Running %d tests, please wait...\n", len(tests))
+
 		lp.QueueWriteString(buf.String())
 		return "", err
 	}
@@ -112,8 +125,9 @@ func main(allowed_tests *utils.Set[int]) (rc int, err error) {
 	if gb_tests, err := kitty.LoadGraphemeBreakTests(); err == nil {
 		for _, t := range gb_tests {
 			test_num := len(tests) + 1
-			desc := fmt.Sprintf("Test: #%d: Unicode GraphemeBreakTest: %s", test_num, t.Comment)
 			text := strings.Join(t.Data, "")
+			rt, _ := json.Marshal(text)
+			desc := fmt.Sprintf("Test #%d: Unicode GraphemeBreakTest: Text: %s\n%s", test_num, string(rt), t.Comment)
 			if has_control_chars(text) {
 				continue
 			}

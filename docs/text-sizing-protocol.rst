@@ -353,6 +353,8 @@ The algorithm for splitting text into cells
 .. note::
    kitty comes with a utility to test terminal compliance with this algorithm.
    Install kitty and run: ``kitten __width_test__`` in any terminal to test it.
+   This uses tests published by the Unicode consortium, `GraphemeBreakTest.txt
+   <https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt>`__.
 
 Here, we specify how a terminal must split up text into cells, where a cell is
 a width one unit in the character grid the terminal displays.
