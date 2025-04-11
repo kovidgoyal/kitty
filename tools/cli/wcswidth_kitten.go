@@ -130,8 +130,17 @@ func main(allowed_tests *utils.Set[int]) (rc int, err error) {
 			if has_control_chars(text) {
 				continue
 			}
-			payload := " " + text + cursor_position_report
-			test := test_struct{num: len(tests) + 1, description: desc, payload: payload, expected_cursor_positions: []int{1 + wcswidth.Stringwidth(text)}}
+			buf := strings.Builder{}
+			buf.WriteString(" " + text + cursor_position_report + reset_line + " ")
+			expected_cursor_positions := []int{1 + wcswidth.Stringwidth(text)}
+			// Now test cursor position after each individual grapheme
+			pos := 0
+			for _, grapheme := range t.Data {
+				buf.WriteString(grapheme + cursor_position_report)
+				pos += wcswidth.Stringwidth(grapheme)
+				expected_cursor_positions = append(expected_cursor_positions, 1+pos)
+			}
+			test := test_struct{num: len(tests) + 1, description: desc, payload: buf.String(), expected_cursor_positions: expected_cursor_positions}
 			tests = append(tests, &test)
 		}
 		if allowed_tests.Len() > 0 {
