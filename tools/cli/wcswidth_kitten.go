@@ -18,6 +18,7 @@ var _ = fmt.Print
 
 type test_struct struct {
 	description               string
+	num                       int
 	expected_cursor_positions []int
 	actual_cursor_positions   []int
 	payload                   string
@@ -92,7 +93,7 @@ func show_results(tests []*test_struct) (err error) {
 	if num_failures > 0 {
 		err = fmt.Errorf("%d out of %d tests failed.", num_failures, len(tests))
 	} else {
-		fmt.Printf("All %d tests passed!\n", len(tests))
+		fmt.Println("All tests passed!")
 	}
 	return
 }
@@ -106,18 +107,28 @@ func has_control_chars(text string) bool {
 	return false
 }
 
-func main() (rc int, err error) {
+func main(allowed_tests *utils.Set[int]) (rc int, err error) {
 	var tests []*test_struct
 	if gb_tests, err := kitty.LoadGraphemeBreakTests(); err == nil {
-		for i, t := range gb_tests {
-			desc := fmt.Sprintf("Unicode GraphemeBreakTest: #%d (%s)", i, t.Comment)
+		for _, t := range gb_tests {
+			test_num := len(tests) + 1
+			desc := fmt.Sprintf("Test: #%d: Unicode GraphemeBreakTest: %s", test_num, t.Comment)
 			text := strings.Join(t.Data, "")
 			if has_control_chars(text) {
 				continue
 			}
 			payload := " " + text + cursor_position_report
-			test := test_struct{description: desc, payload: payload, expected_cursor_positions: []int{1 + wcswidth.Stringwidth(text)}}
+			test := test_struct{num: test_num, description: desc, payload: payload, expected_cursor_positions: []int{1 + wcswidth.Stringwidth(text)}}
 			tests = append(tests, &test)
+		}
+		if allowed_tests.Len() > 0 {
+			temp := make([]*test_struct, 0, len(tests))
+			for _, t := range tests {
+				if allowed_tests.Has(t.num) {
+					temp = append(temp, t)
+				}
+			}
+			tests = temp
 		}
 		if err = run_tests(tests); err != nil {
 			return 1, err
@@ -131,13 +142,20 @@ func main() (rc int, err error) {
 func WcswidthKittenEntryPoint(root *Command) {
 	root.AddSubCommand(&Command{
 		Name:            "__width_test__",
+		Usage:           "[test number to run...]",
+		HelpText:        "Test the terminal for compliance with the kitty text-sizing specification's splitting of text into cells. You can optionally specify specific test numbers to run.",
 		Hidden:          true,
 		OnlyArgsAllowed: true,
 		Run: func(cmd *Command, args []string) (rc int, err error) {
-			if len(args) != 0 {
-				return 1, fmt.Errorf("Usage: __width_test__")
+			allowed_tests := utils.NewSet[int]()
+			for _, arg := range args {
+				if x, err := strconv.Atoi(arg); err == nil {
+					allowed_tests.Add(x)
+				} else {
+					return 1, fmt.Errorf("%s is not a valid test number", arg)
+				}
 			}
-			return main()
+			return main(allowed_tests)
 		},
 	})
 }
