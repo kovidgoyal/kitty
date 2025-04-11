@@ -7377,5 +7377,19 @@
       "क््त"
     ],
     "comment": "÷ [0.2] DEVANAGARI LETTER KA (ConjunctLinkingScripts_LinkingConsonant) × [9.0] DEVANAGARI SIGN VIRAMA (Extend_ConjunctLinkingScripts_ConjunctLinker_ExtCccZwj) × [9.0] DEVANAGARI SIGN VIRAMA (Extend_ConjunctLinkingScripts_ConjunctLinker_ExtCccZwj) × [9.3] DEVANAGARI LETTER TA (ConjunctLinkingScripts_LinkingConsonant) ÷ [0.3]"
+  },
+  {
+    "data": [
+      " ",
+      "­",
+      " "
+    ],
+    "comment": "÷ [0.2] SPACE (Other) ÷ [0.4] SOFT HYPHEN ÷ [999.0] SPACE (Other) ÷ [0.3]"
+  },
+  {
+    "data": [
+      "👨‍👩‍👧‍👦"
+    ],
+    "comment": "÷ [0.2] MAN × [9.0] ZERO WIDTH JOINER × [11.0] WOMAN × [9.0] ZERO WIDTH JOINER × [11.0] GIRL × [9.0] ZERO WIDTH JOINER × [11.0] BOY ÷ [0.3]"
   }
 ]

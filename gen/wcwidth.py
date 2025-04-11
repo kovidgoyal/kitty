@@ -334,6 +334,14 @@ def parse_test_data() -> None:
                     chars[-1].append(ch)
         c = tuple(''.join(c) for c in chars)
         grapheme_segmentation_tests.append({'data': c, 'comment': comment.strip()})
+    grapheme_segmentation_tests.append({
+        'data': (' ', '\xad', ' '),
+        'comment': '÷ [0.2] SPACE (Other) ÷ [0.4] SOFT HYPHEN ÷ [999.0] SPACE (Other) ÷ [0.3]'
+    })
+    grapheme_segmentation_tests.append({
+        'data': ('\U0001f468\u200d\U0001f469\u200d\U0001f467\u200d\U0001f466',),
+        'comment': '÷ [0.2] MAN × [9.0] ZERO WIDTH JOINER × [11.0] WOMAN × [9.0] ZERO WIDTH JOINER × [11.0] GIRL × [9.0] ZERO WIDTH JOINER × [11.0] BOY ÷ [0.3]'
+    })
 # }}}
 
 
@@ -1164,12 +1172,6 @@ def gen_char_props() -> None:
         is_extended_pictographic=x.is_extended_pictographic) for x in prop_array)
     test_grapheme_segmentation(partial(split_into_graphemes, gsprops))
     gseg_results = tuple(GraphemeSegmentationKey.from_int(i).result() for i in range(1 << 16))
-    s = GraphemeSegmentationResult.make()
-    for ch in range(32, 127):
-        k = int(GraphemeSegmentationKey(s.new_state, gsprops[ch]))
-        s = gseg_results[k]
-        print(111111, chr(ch), s)
-
 
     test_grapheme_segmentation(partial(split_into_graphemes_with_table, gsprops, gseg_results))
     t1, t2, t3, t_shift = splitbins(prop_array, CharProps.bitsize() // 8)
