@@ -639,6 +639,7 @@ class Splits(Layout):
                     if count == 2:  # special case, a single split
                         pair = self.pairs_root.pair_for_window(wg.id)
                         if pair is not None:
+                            pair.horizontal = horizontal
                             if which in ('left', 'top'):
                                 if pair.one != wg.id:
                                     pair.one, pair.two = pair.two, pair.one
