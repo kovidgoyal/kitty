@@ -138,7 +138,7 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 	}
 	orig_csi := csi
 	last_char := csi[len(csi)-1:]
-	if !strings.Contains("u~ABCDEHFPQRS", last_char) || (last_char == "~" && (csi == "200~" || csi == "201~")) {
+	if !strings.Contains("u~ABCDEHFPQS", last_char) || (last_char == "~" && (csi == "200~" || csi == "201~")) {
 		return nil
 	}
 	csi = csi[:len(csi)-1]

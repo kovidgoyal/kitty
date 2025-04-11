@@ -1,23 +1,18 @@
 package wcswidth
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 
 	_ "embed"
+
 	"github.com/google/go-cmp/cmp"
 
 	"kitty"
 )
 
 var _ = fmt.Print
-
-type GraphemeBreakTest struct {
-	Data    []string `json:"data"`
-	Comment string   `json:"comment"`
-}
 
 func TestSplitIntoGraphemes(t *testing.T) {
 	var m = map[string][]string{
@@ -29,9 +24,9 @@ func TestSplitIntoGraphemes(t *testing.T) {
 			t.Fatalf("Failed to split %#v into graphemes: %s", text, diff)
 		}
 	}
-	tests := []GraphemeBreakTest{}
-	if err := json.Unmarshal(kitty.GraphemeBreakTestData, &tests); err != nil {
-		t.Fatalf("Failed to parse GraphemeBreakTest JSON with error: %s", err)
+	tests, err := kitty.LoadGraphemeBreakTests()
+	if err != nil {
+		t.Fatal(err)
 	}
 	for i, x := range tests {
 		text := strings.Join(x.Data, "")
