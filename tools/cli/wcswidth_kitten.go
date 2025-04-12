@@ -103,11 +103,11 @@ func run_tests(tests []*test_struct) (err error) {
 	lp.OnInitialize = func() (string, error) {
 		sz, _ := lp.ScreenSize()
 		screen_width = int(sz.WidthCells)
-		lp.SaveCursorPosition()
-		lp.SetCursorVisible(false)
 		print_para("These tests work by sending text to the terminal and then querying it for its cursor position. Every test is thus different strings sent to the terminal along with a list of expected cursor positions after each string. A failure means the actual cursor position was different from the expected one. A failure where the first expected cursor position is correct but subsequent ones are not, means that the complete string was rendered at the correct width but individual graphemes from the string were not.")
 		print_para("The individual test descriptions use the character ÷ to indicate a position where a break is expected to occur and the character × to indicate a position where no break should happen. ")
 		lp.Printf("Running %d tests, please wait...\n", len(tests))
+		lp.SaveCursorPosition()
+		lp.SetCursorVisible(false)
 
 		lp.QueueWriteString(gen_payload(screen_width))
 		return "", err
