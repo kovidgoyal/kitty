@@ -2698,6 +2698,7 @@ class Boss:
         if theme_colors.has_applied_theme:
             theme_colors.refresh()
             if theme_colors.has_applied_theme:  # in case the theme file was deleted
+                assert theme_colors.applied_theme  # to make mypy happy
                 theme_colors.apply_theme(theme_colors.applied_theme, notify_on_bg_change=False)
         for w in self.all_windows:
             if w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
