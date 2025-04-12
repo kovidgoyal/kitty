@@ -101,6 +101,8 @@ Detailed list of changes
 
 - diff kitten: Add half page and full page scroll vim-like bindings (:pull:`8514`)
 
+- Fix a regression that caused automatic color themes to not be re-applied after config file reload (:iss:`8530`)
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

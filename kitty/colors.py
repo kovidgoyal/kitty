@@ -84,6 +84,18 @@ class ThemeColors:
         return found
 
     @property
+    def has_applied_theme(self) -> bool:
+        match self.applied_theme:
+            case '':
+                return False
+            case 'dark':
+                return self.has_dark_theme
+            case 'light':
+                return self.has_light_theme
+            case 'no_preference':
+                return self.has_no_preference_theme
+
+    @property
     def has_dark_theme(self) -> bool:
         return self.dark_mtime > -1
 

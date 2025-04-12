@@ -2695,8 +2695,10 @@ class Boss:
         for tm in self.all_tab_managers:
             tm.apply_options()
         # Update colors
-        if theme_colors.applied_theme and theme_colors.refresh():
-            theme_colors.apply_theme(theme_colors.applied_theme, notify_on_bg_change=False)
+        if theme_colors.has_applied_theme:
+            theme_colors.refresh()
+            if theme_colors.has_applied_theme:  # in case the theme file was deleted
+                theme_colors.apply_theme(theme_colors.applied_theme, notify_on_bg_change=False)
         for w in self.all_windows:
             if w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
                 self.default_bg_changed_for(w.id)
