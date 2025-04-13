@@ -356,6 +356,13 @@ The algorithm for splitting text into cells
    This uses tests published by the Unicode consortium, `GraphemeBreakTest.txt
    <https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt>`__.
 
+.. warning::
+   This algorithm is under public discussion in :iss:`8533`. Until that issue
+   is closed, it is subject to change based on feedback from the community.
+   Additionally, in the future if the Unicode standard changes in ways that
+   affect this algorithm, it will be updated. Currently the algorithm is based
+   on Unicode version 16.
+
 Here, we specify how a terminal must split up text into cells, where a cell is
 a width one unit in the character grid the terminal displays.
 
