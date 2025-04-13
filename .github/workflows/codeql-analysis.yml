@@ -1,49 +1,47 @@
 name: "Code scanning - action"
 
 on:
-  push:
-    branches: [master, ]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [master]
-  schedule:
-    - cron: '0 22 * * 5'
+    push:
+        branches: [master]
+    pull_request:
+        # The branches below must be a subset of the branches above
+        branches: [master]
+    schedule:
+        - cron: "0 22 * * 5"
 
 permissions:
-  contents: read # to fetch code (actions/checkout)
+    contents: read # to fetch code (actions/checkout)
 
 jobs:
-  CodeQL-Build:
+    CodeQL-Build:
+        permissions:
+            contents: read # to fetch code (actions/checkout)
+            security-events: write # to upload SARIF results (github/codeql-action/analyze)
 
-    permissions:
-      contents: read # to fetch code (actions/checkout)
-      security-events: write # to upload SARIF results (github/codeql-action/analyze)
+        runs-on: ubuntu-latest
 
-    runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v3
+              with:
+                  # We must fetch at least the immediate parents so that if this is
+                  # a pull request then we can checkout the head.
+                  fetch-depth: 2
 
-    steps:
+            - name: Install Go
+              uses: actions/setup-go@v3
+              with:
+                  go-version-file: go.mod
 
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        # We must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head.
-        fetch-depth: 2
+            # Initializes the CodeQL tools for scanning.
+            - name: Initialize CodeQL
+              uses: github/codeql-action/init@v2
+              with:
+                  languages: python, c
+                  setup-python-dependencies: false
 
-    - name: Install Go
-      uses: actions/setup-go@v3
-      with:
-        go-version-file: go.mod
+            - name: Build kitty
+              run: python3 .github/workflows/ci.py build
 
-    # Initializes the CodeQL tools for scanning.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: python, c
-        setup-python-dependencies: false
-
-    - name: Build kitty
-      run: python3 .github/workflows/ci.py build
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+            - name: Perform CodeQL Analysis
+              uses: github/codeql-action/analyze@v2
