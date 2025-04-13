@@ -93,6 +93,7 @@ from .fast_data_types import (
     os_window_focus_counters,
     os_window_font_size,
     redirect_mouse_handling,
+    remove_floating_window,
     ring_bell,
     run_with_activation_token,
     safe_pipe,
@@ -921,16 +922,23 @@ class Boss:
                     traceback.print_exc()
             os_window_id = window.os_window_id
             window.destroy()
-            tm = self.os_window_map.get(os_window_id)
-            tab = None
-            if tm is not None:
-                for q in tm:
-                    if window in q:
-                        tab = q
-                        break
-            if tab is not None:
-                tab.remove_window(window)
-                self._cleanup_tab_after_window_removal(tab)
+            for cid in window.child_window_ids:
+                cw = self.window_id_map.pop(cid, None)
+                if cw is not None:
+                    self.child_monitor.mark_for_close(cw.id)
+            if window.floating_in:
+                remove_floating_window(window.os_window_id, window.tab_id, window.floating_in, window.id)
+            else:
+                tm = self.os_window_map.get(os_window_id)
+                tab = None
+                if tm is not None:
+                    for q in tm:
+                        if window in q:
+                            tab = q
+                            break
+                if tab is not None:
+                    tab.remove_window(window)
+                    self._cleanup_tab_after_window_removal(tab)
             for removal_action in window.actions_on_removal:
                 try:
                     removal_action(window)
@@ -1804,7 +1812,8 @@ class Boss:
         tm = self.os_window_map.pop(os_window_id, None)
         if tm is not None:
             tm.destroy()
-        for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
+        for window_id in tuple(w.id for w in self.window_id_map.values() if w.os_window_id == os_window_id):
+            self.child_monitor.mark_for_close(window_id)
             self.window_id_map.pop(window_id, None)
         if not self.os_window_map and is_macos:
             cocoa_set_menubar_title('')

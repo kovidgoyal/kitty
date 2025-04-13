@@ -1102,22 +1102,18 @@ process_pending_resizes(monotonic_t now) {
 }
 
 static void
-close_os_window(ChildMonitor *self, OSWindow *os_window) {
+close_os_window(OSWindow *os_window) {
     int w = os_window->window_width, h = os_window->window_height;
     if (os_window->before_fullscreen.is_set && is_os_window_fullscreen(os_window)) {
         w = os_window->before_fullscreen.w; h = os_window->before_fullscreen.h;
     }
     destroy_os_window(os_window);
     call_boss(on_os_window_closed, "Kii", os_window->id, w, h);
-    for (size_t t=0; t < os_window->num_tabs; t++) {
-        Tab *tab = os_window->tabs + t;
-        for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
-    }
     remove_os_window(os_window->id);
 }
 
 static bool
-process_pending_closes(ChildMonitor *self) {
+process_pending_closes(void) {
     if (global_state.quit_request == CONFIRMABLE_CLOSE_REQUESTED) {
         call_boss(quit, "");
     }
@@ -1135,14 +1131,14 @@ process_pending_closes(ChildMonitor *self) {
                 os_window->close_request = CLOSE_BEING_CONFIRMED;
                 call_boss(confirm_os_window_close, "K", os_window->id);
                 if (os_window->close_request == IMPERATIVE_CLOSE_REQUESTED) {
-                    close_os_window(self, os_window);
+                    close_os_window(os_window);
                 } else has_open_windows = true;
                 break;
             case CLOSE_BEING_CONFIRMED:
                 has_open_windows = true;
                 break;
             case IMPERATIVE_CLOSE_REQUESTED:
-                close_os_window(self, os_window);
+                close_os_window(os_window);
                 break;
         }
     }
@@ -1297,7 +1293,7 @@ process_global_state(void *data) {
 #endif
     report_reaped_pids();
     bool should_quit = false;
-    if (global_state.has_pending_closes) should_quit = process_pending_closes(self);
+    if (global_state.has_pending_closes) should_quit = process_pending_closes();
     if (should_quit) {
         stop_main_loop();
     } else {

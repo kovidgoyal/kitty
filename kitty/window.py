@@ -64,6 +64,7 @@ from .fast_data_types import (
     current_focused_os_window_id,
     encode_key_for_tty,
     get_boss,
+    get_child_window_ids,
     get_click_interval,
     get_mouse_data_for_window,
     get_options,
@@ -623,6 +624,7 @@ class Window:
         watchers: Watchers | None = None,
         allow_remote_control: bool = False,
         remote_control_passwords: dict[str, Sequence[str]] | None = None,
+        floating_in: int = 0,  # window id of non-floating ancestor window
     ):
         if watchers:
             self.watchers = watchers
@@ -637,6 +639,7 @@ class Window:
         self.started_at = monotonic()
         self.created_at = time_ns()
         self.clear_progress_timer: int = 0
+        self.floating_in: int = floating_in
         self.current_remote_data: list[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: bool | None = None
@@ -681,6 +684,10 @@ class Window:
             self.screen.copy_colors_from(copy_colors_from.screen)
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
+
+    @property
+    def child_window_ids(self) -> list[int]:
+        return get_child_window_ids(self.os_window_id, self.tab_id, self.id)
 
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
@@ -1710,6 +1717,11 @@ class Window:
                 traceback.print_exc()
 
     def destroy(self) -> None:
+        b = get_boss()
+        if b is not None:
+            for cid in self.child_window_ids:
+                if cw := b.window_id_map.get(cid):
+                    cw.destroy()
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
         self.clipboard_request_manager.close()

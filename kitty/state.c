@@ -12,7 +12,7 @@
 
 GlobalState global_state = {{0}};
 
-#define REMOVER(array, qid, count, destroy, capacity) { \
+#define REMOVER(array, qid, count, destroy) { \
     for (size_t i = 0; i < count; i++) { \
         if (array[i].id == qid) { \
             destroy(array + i); \
@@ -360,13 +360,15 @@ destroy_window(Window *w) {
         decref_window_logo(global_state.all_window_logos, w->window_logo.id);
         w->window_logo.id = 0;
     }
+    for (size_t i = 0; i < w->floating.child_count; i++) destroy_window(&w->floating.children[i]);
+    free(w->floating.children); w->floating.children = NULL;
 }
 
 static void
 remove_window_inner(Tab *tab, id_type id) {
     id_type active_window_id = 0;
     if (tab->active_window < tab->num_windows) active_window_id = tab->windows[tab->active_window].id;
-    REMOVER(tab->windows, id, tab->num_windows, destroy_window, tab->capacity);
+    REMOVER(tab->windows, id, tab->num_windows, destroy_window);
     if (active_window_id) {
         for (unsigned int w = 0; w < tab->num_windows; w++) {
             if (tab->windows[w].id == active_window_id) {
@@ -375,6 +377,30 @@ remove_window_inner(Tab *tab, id_type id) {
         }
     }
 }
+
+static bool
+remove_floating_window_inner(Window *window, id_type id) {
+    Window *w;
+    for (size_t i = 0; i < window->floating.child_count; i++) {
+        if ((w = window->floating.children + i)->id == id) {
+            destroy_window(w);
+            zero_at_i(window->floating.children, i);
+            remove_i_from_array(window->floating.children, i, window->floating.child_count);
+            return true;
+        }
+        if (remove_floating_window_inner(window->floating.children + i, id)) return true;
+    }
+    return false;
+}
+
+static void
+remove_floating_window(id_type os_window_id, id_type tab_id, id_type parent_non_floating_window, id_type id) {
+    WITH_WINDOW(os_window_id, tab_id, parent_non_floating_window);
+        make_os_window_context_current(osw);
+        remove_floating_window_inner(window, id);
+    END_WITH_WINDOW;
+}
+
 
 static void
 remove_window(id_type os_window_id, id_type tab_id, id_type id) {
@@ -462,7 +488,7 @@ remove_tab_inner(OSWindow *os_window, id_type id) {
     id_type active_tab_id = 0;
     if (os_window->active_tab < os_window->num_tabs) active_tab_id = os_window->tabs[os_window->active_tab].id;
     make_os_window_context_current(os_window);
-    REMOVER(os_window->tabs, id, os_window->num_tabs, destroy_tab, os_window->capacity);
+    REMOVER(os_window->tabs, id, os_window->num_tabs, destroy_tab);
     if (active_tab_id) {
         for (unsigned int i = 0; i < os_window->num_tabs; i++) {
             if (os_window->tabs[i].id == active_tab_id) {
@@ -501,7 +527,7 @@ remove_os_window(id_type os_window_id) {
     END_WITH_OS_WINDOW
     if (found) {
         WITH_OS_WINDOW_REFS
-            REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, destroy_os_window_item, global_state.capacity);
+            REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, destroy_os_window_item);
         END_WITH_OS_WINDOW_REFS
         update_os_window_references();
     }
@@ -644,6 +670,26 @@ make_window_context_current(id_type window_id) {
 }
 
 void
+iter_child_windows(Window *self, bool(*callback)(Window *, void *data), void *data) {
+    for (size_t i = 0; i < self->floating.child_count; i++) {
+        Window *w = self->floating.children + i;
+        if (!callback(w, data)) return;
+        iter_child_windows(w, callback, data);
+    }
+}
+
+Window*
+find_child_window(Window *self, id_type child_id) {
+    for (size_t i = 0; i < self->floating.child_count; i++) {
+        Window *w = self->floating.children + i;
+        if (w->id == child_id) return w;
+        if ((w = find_child_window(w, child_id))) return w;
+    }
+    return NULL;
+}
+
+
+void
 dispatch_pending_clicks(id_type timer_id UNUSED, void *data UNUSED) {
     bool dispatched = false;
     do {  // dispatching a click can cause windows/tabs/etc to close so do it one at a time.
@@ -675,7 +721,8 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
             Tab *qtab = osw->tabs + t;
             for (size_t w = 0; w < qtab->num_windows; w++) {
                 Window *window = qtab->windows + w;
-                if (window->id == window_id) {
+                if (window_id != window->id) window = find_child_window(window, window_id);
+                if (window != NULL) {
                     // The screen may not be ready after the new window is created and focused, and still needs to enable IME.
                     if ((window->render_data.screen && (force || osw->is_focused)) || update_focus > 0) {
                         OSWindow *orig = global_state.callback_os_window;
@@ -695,7 +742,6 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
     return false;
 }
 
-
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PYNOARG)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
@@ -705,6 +751,7 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
 #define THREE_UINT(name) PYWRAP1(name) { unsigned int a, b, c; PA("III", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 #define TWO_ID(name) PYWRAP1(name) { id_type a, b; PA("KK", &a, &b); name(a, b); Py_RETURN_NONE; }
 #define THREE_ID(name) PYWRAP1(name) { id_type a, b, c; PA("KKK", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
+#define FOUR_ID(name) PYWRAP1(name) { id_type a, b, c, d; PA("KKKK", &a, &b, &c, &d); name(a, b, c, d); Py_RETURN_NONE; }
 #define THREE_ID_OBJ(name) PYWRAP1(name) { id_type a, b, c; PyObject *o; PA("KKKO", &a, &b, &c, &o); name(a, b, c, o); Py_RETURN_NONE; }
 #define K(name) PYWRAP1(name) { id_type a; PA("K", &a); name(a); Py_RETURN_NONE; }
 #define KI(name) PYWRAP1(name) { id_type a; unsigned int b; PA("KI", &a, &b); name(a, b); Py_RETURN_NONE; }
@@ -1399,6 +1446,7 @@ PYWRAP1(buffer_keys_in_window) {
 
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
+FOUR_ID(remove_floating_window)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
@@ -1411,6 +1459,30 @@ KKK(set_active_window)
 KII(swap_tabs)
 KK5I(add_borders_rect)
 KKKK(set_redirect_keys_to_overlay)
+
+static bool
+get_child_window_ids_inner(Window *window, PyObject *ans) {
+    for (size_t i = 0; i < window->floating.child_count; i++) {
+        RAII_PyObject(t, PyLong_FromUnsignedLongLong(window->floating.children[i].id)); if (!t) return false;
+        if (PyList_Append(ans, t) != 0) return false;
+        if (!get_child_window_ids_inner(&window->floating.children[i], ans)) return false;
+    }
+    return true;
+}
+
+static PyObject*
+get_child_window_ids(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id, tab_id, window_id, child_id = 0;
+    PA("KKK|K", &os_window_id, &tab_id, &window_id, &child_id);
+    RAII_PyObject(ans, PyList_New(0)); if (!ans) return NULL;
+    WITH_WINDOW(os_window_id, tab_id, window_id)
+        if (child_id) window = find_child_window(window, child_id);
+        if (window) {
+            if (!get_child_window_ids_inner(window, ans)) return NULL;
+        }
+    END_WITH_WINDOW
+    return Py_NewRef(ans);
+}
 
 static PyObject*
 os_window_focus_counters(PyObject *self UNUSED, PyObject *args UNUSED) {
@@ -1465,6 +1537,8 @@ static PyMethodDef module_methods[] = {
     MW(update_window_title, METH_VARARGS),
     MW(remove_tab, METH_VARARGS),
     MW(remove_window, METH_VARARGS),
+    MW(remove_floating_window, METH_VARARGS),
+    M(get_child_window_ids, METH_VARARGS),
     MW(detach_window, METH_VARARGS),
     MW(attach_window, METH_VARARGS),
     MW(set_active_tab, METH_VARARGS),

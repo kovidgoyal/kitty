@@ -189,7 +189,7 @@ typedef struct WindowBarData {
     bool needs_render;
 } WindowBarData;
 
-typedef struct {
+typedef struct Window {
     id_type id;
     bool visible;
     float cursor_opacity_at_last_render;
@@ -216,6 +216,11 @@ typedef struct {
         PendingClick *clicks;
         size_t num, capacity;
     } pending_clicks;
+    struct {
+        bool is_floating, can_become_key, is_key;
+        struct Window *children;  // must be maintained in render order
+        size_t child_count, child_capacity;
+    } floating;
 } Window;
 
 typedef struct {
@@ -440,3 +445,5 @@ bool render_os_window(OSWindow *w, monotonic_t now, bool ignore_render_frames, b
 void update_mouse_pointer_shape(void);
 void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height);
 void dispatch_buffered_keys(Window *w);
+Window* find_child_window(Window *self, id_type child_id);
+void iter_child_windows(Window *self, bool(*callback)(Window *, void *data), void *data);
