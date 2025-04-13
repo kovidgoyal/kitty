@@ -421,9 +421,7 @@ described by the rules below, in order of decreasing priority:
    they are marked as :code:`A` in :code:`EastAsianWidth.txt`: :code:`[0x3400,
    0x4DBF], [0x4E00, 0x9FFF], [0xF900, 0xFAFF], [0x20000, 0x2FFFD], [0x30000, 0x3FFFD]`
 
-.. _wide_emoji_rule:
-
-#. Wide Emoji: Parse `emoji-sequences.txt
+#. Wide emoji: Parse `emoji-sequences.txt
    <https://www.unicode.org/Public/emoji/latest/emoji-sequences.txt>`__ from
    the Unicode standard. All :code:`Basic_Emoji` have width two unless they are
    followed by :code:`FE0F` in the file. The leading copdepoints in all
@@ -434,7 +432,7 @@ described by the rules below, in order of decreasing priority:
    categories whose first letter is :code:`M` or :code:`S`. Additionally,
    characters with Unicode category: :code:`Cf`. Finally, they include
    all modifier codepoints from :code:`RGI_Emoji_Modifier_Sequence` in the
-   :ref:`Wide emoji rule <wide_emoji_rule>`.
+   *Wide emoji* rule above.
 
 #. All remaining codepoints have a width of one cell.
 
@@ -455,8 +453,8 @@ previous cell these have to be handled specially.
 
 ``U+FE0F`` - Variation Selector 16
   When the previous cell has width one and the last character in the previous
-  cell is one of the ``Basic_Emoji`` codepoints from the :ref:`Wide emoji rule
-  <wide_emoji_rule>` that is followed by ``FEOF`` then the width of the
+  cell is one of the ``Basic_Emoji`` codepoints from the *Wide emoji* rule above
+  that is followed by ``FEOF`` then the width of the
   previous cell is increased to two.
 
 Note that the rule for ``U+FE0E`` is particularly problematic for terminals as
