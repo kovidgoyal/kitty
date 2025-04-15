@@ -315,9 +315,21 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     return 0;
 }
 
+static id_type
+add_floating_window(id_type os_window_id, id_type tab_id, id_type floating_in) {
+    WITH_WINDOW(os_window_id, tab_id, floating_in);
+        make_os_window_context_current(osw);
+        ensure_space_for(&window->floating, children, Window, window->floating.child_count + 1, child_capacity, 1, true);
+        zero_at_i(window->floating.children, window->floating.child_count);
+        initialize_window(window->floating.children + window->floating.child_count, NULL, true);
+        return window->floating.children[window->floating.child_count++].id;
+    END_WITH_WINDOW;
+    return 0;
+}
+
 static void
 update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyObject *title) {
-    WITH_WINDOW(os_window_id, tab_id, window_id)
+    WITH_WINDOW(os_window_id, tab_id, window_id);
         Py_CLEAR(window->title);
         window->title = title;
         Py_XINCREF(window->title);
@@ -1460,6 +1472,12 @@ KII(swap_tabs)
 KK5I(add_borders_rect)
 KKKK(set_redirect_keys_to_overlay)
 
+PYWRAP1(add_floating_window) {
+    id_type os_window_id, tab_id, floating_in;
+    PA("KKK", &os_window_id, &tab_id, &floating_in);
+    return PyLong_FromUnsignedLongLong(add_floating_window(os_window_id, tab_id, floating_in));
+}
+
 static bool
 get_child_window_ids_inner(Window *window, PyObject *ans) {
     for (size_t i = 0; i < window->floating.child_count; i++) {
@@ -1534,6 +1552,7 @@ static PyMethodDef module_methods[] = {
     MW(pt_to_px, METH_VARARGS),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
+    MW(add_floating_window, METH_VARARGS),
     MW(update_window_title, METH_VARARGS),
     MW(remove_tab, METH_VARARGS),
     MW(remove_window, METH_VARARGS),

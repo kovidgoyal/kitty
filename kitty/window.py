@@ -639,7 +639,7 @@ class Window:
         self.started_at = monotonic()
         self.created_at = time_ns()
         self.clear_progress_timer: int = 0
-        self.floating_in: int = floating_in
+        self.floating_in = floating_in
         self.current_remote_data: list[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: bool | None = None
@@ -662,7 +662,7 @@ class Window:
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
         self.user_vars: dict[str, str] = {}
-        self.id: int = add_window(tab.os_window_id, tab.id, self.title)
+        self.id = add_window(tab.os_window_id, tab.id, self.title)
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
