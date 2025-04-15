@@ -55,5 +55,11 @@ to display htop as your desktop background. Remember this works in everything
 but GNOME and also, in sway, you have to disable the background wallpaper as
 sway renders that over the panel kitten surface.
 
+There are projects that make use of this facility to implement generalised
+panels and desktop components:
+
+    * `kitty panel <https://github.com/5hubham5ingh/kitty-panel>`__
+    * `pawbar <https://github.com/codelif/pawbar>`__
+
 
 .. include:: ../generated/cli-kitten-panel.rst

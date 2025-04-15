@@ -310,6 +310,17 @@ Live incremental search of the scrollback buffer.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Keyboard based text selection for the kitty scrollback buffer.
 
+Desktop panels
+-------------------------
+
+`kitty panel <https://github.com/5hubham5ingh/kitty-panel>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A system panel for Kitty terminal that displays real-time system metrics using terminal-based utilities.
+
+
+`pawbar <https://github.com/codelif/pawbar>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A kitten-panel based desktop panel for your desktop
 
 Miscellaneous
 ------------------
