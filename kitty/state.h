@@ -218,6 +218,7 @@ typedef struct Window {
     } pending_clicks;
     struct {
         bool is_floating, can_become_key, is_key;
+        id_type parent, non_floating_ancestor;
         struct Window *children;  // must be maintained in render order
         size_t child_count, child_capacity;
     } floating;

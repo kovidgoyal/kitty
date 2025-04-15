@@ -565,7 +565,6 @@ mark_child_for_close(ChildMonitor *self, id_type window_id) {
     return found;
 }
 
-
 static PyObject *
 mark_for_close(ChildMonitor *self, PyObject *args) {
 #define mark_for_close_doc "Mark a child to be removed from the child monitor"

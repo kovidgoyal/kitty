@@ -54,6 +54,7 @@ from .fast_data_types import (
     ColorProfile,
     KeyEvent,
     Screen,
+    add_floating_window,
     add_timer,
     add_window,
     base64_decode,
@@ -662,13 +663,20 @@ class Window:
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
         self.user_vars: dict[str, str] = {}
-        self.id = add_window(tab.os_window_id, tab.id, self.title)
+        self.non_floating_ancestor: int = 0
+        self.id: int = 0
+        if floating_in:
+            self.id, self.non_floating_ancestor = add_floating_window(tab.os_window_id, tab.id, floating_in)
+            if not self.id:
+                raise Exception(f'No window with id: {floating_in} in Tab: {tab.id} OS Window: {tab.os_window_id} was found, or the window counter wrapped')
+        else:
+            self.id = add_window(tab.os_window_id, tab.id, self.title)
+            if not self.id:
+                raise Exception(f'No tab with id: {tab.id} in OS Window: {tab.os_window_id} was found, or the window counter wrapped')
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
         self.kitten_result: dict[str, Any] | None = None
-        if not self.id:
-            raise Exception(f'No tab with id: {tab.id} in OS Window: {tab.os_window_id} was found, or the window counter wrapped')
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref: Callable[[], TabType | None] = weakref.ref(tab)

@@ -315,16 +315,26 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     return 0;
 }
 
-static id_type
+static Window*
 add_floating_window(id_type os_window_id, id_type tab_id, id_type floating_in) {
-    WITH_WINDOW(os_window_id, tab_id, floating_in);
-        make_os_window_context_current(osw);
-        ensure_space_for(&window->floating, children, Window, window->floating.child_count + 1, child_capacity, 1, true);
-        zero_at_i(window->floating.children, window->floating.child_count);
-        initialize_window(window->floating.children + window->floating.child_count, NULL, true);
-        return window->floating.children[window->floating.child_count++].id;
-    END_WITH_WINDOW;
-    return 0;
+    WITH_TAB(os_window_id, tab_id);
+        for (size_t i = 0; i < tab->num_windows; i++) {
+            Window *window = tab->windows + i;
+            if (window->id != floating_in) window = find_child_window(window, floating_in);
+            if (window) {
+                make_os_window_context_current(osw);
+                ensure_space_for(&window->floating, children, Window, window->floating.child_count + 1, child_capacity, 1, true);
+                zero_at_i(window->floating.children, window->floating.child_count);
+                initialize_window(window->floating.children + window->floating.child_count, NULL, true);
+                Window *ans = &window->floating.children[window->floating.child_count++];
+                ans->floating.is_floating = true;
+                ans->floating.parent = floating_in;
+                ans->floating.non_floating_ancestor = tab->windows[i].id;
+                return ans;
+            }
+        }
+    END_WITH_TAB;
+    return NULL;
 }
 
 static void
@@ -1475,7 +1485,9 @@ KKKK(set_redirect_keys_to_overlay)
 PYWRAP1(add_floating_window) {
     id_type os_window_id, tab_id, floating_in;
     PA("KKK", &os_window_id, &tab_id, &floating_in);
-    return PyLong_FromUnsignedLongLong(add_floating_window(os_window_id, tab_id, floating_in));
+    Window *ans = add_floating_window(os_window_id, tab_id, floating_in);
+    if (ans) return Py_BuildValue("KK", ans->id, ans->floating.non_floating_ancestor);
+    return Py_BuildValue("II", 0, 0);
 }
 
 static bool
