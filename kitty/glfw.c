@@ -1820,6 +1820,7 @@ ring_audio_bell(OSWindow *w) {
     if (last_bell_at >= 0 && now - last_bell_at <= ms_to_monotonic_t(100ll)) return;
     last_bell_at = now;
 #ifdef __APPLE__
+    (void)w;
     cocoa_system_beep(OPT(bell_path));
 #else
     if (OPT(bell_path)) play_canberra_sound(OPT(bell_path), "kitty bell", true, "event", OPT(bell_theme));
