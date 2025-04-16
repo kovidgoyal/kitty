@@ -1817,13 +1817,15 @@ class Boss:
 
     def on_os_window_closed(self, os_window_id: int, viewport_width: int, viewport_height: int) -> None:
         self.cached_values['window-size'] = viewport_width, viewport_height
+        windows_in_os_window = {w.id: w for w in self.window_id_map.values() if w.os_window_id == os_window_id}
         tm = self.os_window_map.pop(os_window_id, None)
         if tm is not None:
-            tm.destroy()
-        for window_id in tuple(w.id for w in self.window_id_map.values() if w.os_window_id == os_window_id):
+            tm.destroy()  # this will call destroy on all windows
+        for window_id, w in windows_in_os_window.items():
             self.child_monitor.mark_for_close(window_id)
             self.window_id_map.pop(window_id, None)
             self.window_floats_map.pop(window_id, None)
+            w.destroy()  # in case tm was None
         if not self.os_window_map and is_macos:
             cocoa_set_menubar_title('')
         action = self.os_window_death_actions.pop(os_window_id, None)

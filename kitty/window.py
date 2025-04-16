@@ -1743,10 +1743,12 @@ class Window:
                 traceback.print_exc()
 
     def destroy(self) -> None:
+        if self.destroyed:
+            return
+        self.destroyed = True
         for cw in self.floats:
             cw.destroy()
         self.call_watchers(self.watchers.on_close, {})
-        self.destroyed = True
         self.clipboard_request_manager.close()
         del self.kitten_result_processors
         if hasattr(self, 'screen'):
