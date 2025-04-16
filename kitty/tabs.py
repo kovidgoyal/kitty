@@ -843,7 +843,7 @@ class Tab:  # {{{
                 yield w.as_dict(
                     is_active=w is active_window,
                     is_focused=w.os_window_id == current_focused_os_window_id() and w is active_window,
-                    is_self=w is self_window)
+                    self_window=self_window)
 
     def list_groups(self) -> list[dict[str, Any]]:
         return [g.as_simple_dict() for g in self.windows.groups]

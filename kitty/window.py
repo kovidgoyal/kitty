@@ -95,7 +95,7 @@ from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
-from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
+from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict, WindowType
 from .utils import (
     color_as_int,
     docs_url,
@@ -246,6 +246,7 @@ class WindowDict(TypedDict):
     at_prompt: bool
     created_at: int
     in_alternate_screen: bool
+    floats: tuple['WindowDict', ...]
 
 
 class PipeData(TypedDict):
@@ -670,7 +671,7 @@ class Window:
             self.id, self.non_floating_ancestor = add_floating_window(tab.os_window_id, tab.id, floating_in)
             if not self.id:
                 raise Exception(f'No window with id: {floating_in} in Tab: {tab.id} OS Window: {tab.os_window_id} was found, or the window counter wrapped')
-            get_boss().window_child_map.setdefault(floating_in, []).append(self.id)
+            get_boss().window_floats_map.setdefault(floating_in, []).append(self.id)
         else:
             self.id = add_window(tab.os_window_id, tab.id, self.title)
             if not self.id:
@@ -701,7 +702,7 @@ class Window:
 
     @property
     def child_window_ids(self) -> list[int]:
-        return get_boss().window_child_map.get(self.id, [])
+        return get_boss().window_floats_map.get(self.id, [])
 
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
@@ -788,7 +789,15 @@ class Window:
     def __repr__(self) -> str:
         return f'Window(title={self.title}, id={self.id})'
 
-    def as_dict(self, is_focused: bool = False, is_self: bool = False, is_active: bool = False) -> WindowDict:
+    @property
+    def floats(self) -> Iterator['Window']:
+        b = get_boss()
+        for fid in b.window_floats_map.get(self.id, ()):
+            c = b.window_id_map.get(fid)
+            if c is not None:
+                yield c
+
+    def as_dict(self, is_focused: bool = False, self_window: WindowType | None = None, is_active: bool = False) -> WindowDict:
         return {
             'id': self.id,
             'is_focused': is_focused,
@@ -801,13 +810,15 @@ class Window:
             'last_cmd_exit_status': self.last_cmd_exit_status,
             'env': self.child.environ or self.child.final_env,
             'foreground_processes': self.child.foreground_processes,
-            'is_self': is_self,
+            'is_self': self_window is self,
             'at_prompt': self.at_prompt,
             'lines': self.screen.lines,
             'columns': self.screen.columns,
             'user_vars': self.user_vars,
             'created_at': self.created_at,
             'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
+            'floats': tuple(w.as_dict(
+                is_focused=is_focused and w.is_focused, is_active=is_active and w.is_focused, self_window=self_window) for w in self.floats),
         }
 
     def serialize_state(self) -> dict[str, Any]:
@@ -828,6 +839,7 @@ class Window:
             'margin': self.margin.serialize(),
             'user_vars': self.user_vars,
             'padding': self.padding.serialize(),
+            'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
         }
         if self.window_custom_type:
             ans['window_custom_type'] = self.window_custom_type
@@ -835,6 +847,9 @@ class Window:
             ans['overlay_type'] = self.overlay_type.value
         if self.user_vars:
             ans['user_vars'] = self.user_vars
+        floats = tuple(self.floats)
+        if floats:
+            ans['floats'] = floats
         return ans
 
     @property
