@@ -696,14 +696,6 @@ class Window:
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
 
-    @property
-    def descendant_window_ids(self) -> Iterator[int]:
-        return get_boss().descendant_window_ids(self.id)
-
-    @property
-    def child_window_ids(self) -> list[int]:
-        return get_boss().window_floats_map.get(self.id, [])
-
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
             return False
@@ -725,10 +717,8 @@ class Window:
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)
-        m = get_boss().window_id_map
-        for cwid in self.child_window_ids:
-            if cw := m.get(cwid):
-                cw.change_tab(tab)
+        for cw in self.floats:
+            cw.change_tab(tab)
 
     def effective_margin(self, edge: EdgeLiteral) -> int:
         q = getattr(self.margin, edge)
@@ -792,10 +782,11 @@ class Window:
     @property
     def floats(self) -> Iterator['Window']:
         b = get_boss()
-        for fid in b.window_floats_map.get(self.id, ()):
-            c = b.window_id_map.get(fid)
-            if c is not None:
-                yield c
+        if b is not None:
+            for fid in b.window_floats_map.get(self.id, ()):
+                c = b.window_id_map.get(fid)
+                if c is not None:
+                    yield c
 
     def as_dict(self, is_focused: bool = False, self_window: WindowType | None = None, is_active: bool = False) -> WindowDict:
         return {
@@ -993,11 +984,9 @@ class Window:
         self.update_effective_padding()
         if update_ime_position:
             update_ime_position_for_window(self.id, True)
-
-        for cwid in self.child_window_ids:
-            if cw := boss.window_id_map.get(cwid):
-                child_geometry = calculate_geometry_for_float(cw, self.geometry)
-                cw.set_geometry(child_geometry)
+        for cw in self.floats:
+            child_geometry = calculate_geometry_for_float(cw, self.geometry)
+            cw.set_geometry(child_geometry)
 
     def contains(self, x: int, y: int) -> bool:
         g = self.geometry
@@ -1754,11 +1743,8 @@ class Window:
                 traceback.print_exc()
 
     def destroy(self) -> None:
-        b = get_boss()
-        if b is not None:
-            for cid in self.child_window_ids:
-                if cw := b.window_id_map.get(cid):
-                    cw.destroy()
+        for cw in self.floats:
+            cw.destroy()
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
         self.clipboard_request_manager.close()
