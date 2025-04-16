@@ -2835,3 +2835,11 @@ _glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) {
         window = window->next;
     }
 }
+
+GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
+    if (!_glfw.wl.xdg_system_bell_v1) return false;
+    _GLFWwindow *window = (_GLFWwindow*)handle;
+    xdg_system_bell_v1_ring(_glfw.wl.xdg_system_bell_v1, window ? window->wl.surface : NULL);
+    return true;
+}
+

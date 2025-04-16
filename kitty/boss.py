@@ -1501,7 +1501,7 @@ class Boss:
         else:
             self.visual_window_select_action_trigger(self.current_visual_select.window_ids[0] if self.current_visual_select.window_ids else 0)
             if get_options().enable_audio_bell:
-                ring_bell()
+                ring_bell(tab.os_window_id)
 
     def visual_window_select_action_trigger(self, window_id: int = 0) -> None:
         if self.current_visual_select:
@@ -1545,7 +1545,7 @@ class Boss:
         if len(selectable_windows) < 2:
             self.visual_window_select_action_trigger(selectable_windows[0][0] if selectable_windows else 0)
             if get_options().enable_audio_bell:
-                ring_bell()
+                ring_bell(tab.os_window_id)
             return None
         cvs = self.current_visual_select
 

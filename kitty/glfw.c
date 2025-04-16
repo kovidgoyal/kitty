@@ -1814,7 +1814,7 @@ cocoa_hide_other_apps(PYNOARG) {
 }
 
 static void
-ring_audio_bell(void) {
+ring_audio_bell(OSWindow *w) {
     static monotonic_t last_bell_at = -1;
     monotonic_t now = monotonic();
     if (last_bell_at >= 0 && now - last_bell_at <= ms_to_monotonic_t(100ll)) return;
@@ -1823,13 +1823,19 @@ ring_audio_bell(void) {
     cocoa_system_beep(OPT(bell_path));
 #else
     if (OPT(bell_path)) play_canberra_sound(OPT(bell_path), "kitty bell", true, "event", OPT(bell_theme));
-    else play_canberra_sound("bell", "kitty bell", false, "event", OPT(bell_theme));
+    else {
+        if (!global_state.is_wayland || !glfwWaylandBeep(w ? w->handle : NULL)) play_canberra_sound(
+                "bell", "kitty bell", false, "event", OPT(bell_theme));
+    }
 #endif
 }
 
 static PyObject*
-ring_bell(PYNOARG) {
-    ring_audio_bell();
+ring_bell(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id = 0;
+    if (!PyArg_ParseTuple(args, "|K", &os_window_id)) return NULL;
+    OSWindow *w = os_window_for_id(os_window_id);
+    ring_audio_bell(w);
     Py_RETURN_NONE;
 }
 
@@ -1918,7 +1924,7 @@ void
 request_window_attention(id_type kitty_window_id, bool audio_bell) {
     OSWindow *w = os_window_for_kitty_window(kitty_window_id);
     if (w) {
-        if (audio_bell) ring_audio_bell();
+        if (audio_bell) ring_audio_bell(w);
         if (OPT(window_alert_on_bell)) glfwRequestWindowAttention(w->handle);
         glfwPostEmptyEvent();
     }
@@ -2408,7 +2414,7 @@ static PyMethodDef module_methods[] = {
     METHODB(get_clipboard_mime, METH_VARARGS),
     METHODB(toggle_secure_input, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),
-    METHODB(ring_bell, METH_NOARGS),
+    METHODB(ring_bell, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_VARARGS),
     METHODB(toggle_maximized, METH_VARARGS),
     METHODB(change_os_window_state, METH_VARARGS),

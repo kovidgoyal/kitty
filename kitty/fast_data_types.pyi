@@ -1012,7 +1012,7 @@ def set_active_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 
 
-def ring_bell() -> None:
+def ring_bell(os_window_id: int = 0) -> None:
     pass
 
 

@@ -324,6 +324,7 @@ def generate_wrappers(glfw_header: str) -> None:
     bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, bool use_system_color)
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)
     bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle)
+    bool glfwWaylandBeep(GLFWwindow *handle)
     void glfwWaylandSetupLayerShellForNextWindow(const GLFWLayerShellConfig *c)
     pid_t glfwWaylandCompositorPID(void)
     unsigned long long glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *data)

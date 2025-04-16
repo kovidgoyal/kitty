@@ -2344,6 +2344,10 @@ typedef bool (*glfwWaylandIsWindowFullyCreated_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandIsWindowFullyCreated_func glfwWaylandIsWindowFullyCreated_impl;
 #define glfwWaylandIsWindowFullyCreated glfwWaylandIsWindowFullyCreated_impl
 
+typedef bool (*glfwWaylandBeep_func)(GLFWwindow*);
+GFW_EXTERN glfwWaylandBeep_func glfwWaylandBeep_impl;
+#define glfwWaylandBeep glfwWaylandBeep_impl
+
 typedef void (*glfwWaylandSetupLayerShellForNextWindow_func)(const GLFWLayerShellConfig*);
 GFW_EXTERN glfwWaylandSetupLayerShellForNextWindow_func glfwWaylandSetupLayerShellForNextWindow_impl;
 #define glfwWaylandSetupLayerShellForNextWindow glfwWaylandSetupLayerShellForNextWindow_impl

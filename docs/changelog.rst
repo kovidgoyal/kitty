@@ -103,6 +103,10 @@ Detailed list of changes
 
 - Fix a regression that caused automatic color themes to not be re-applied after config file reload (:iss:`8530`)
 
+- Wayland: When the compositor supports the `xdg-system-bell
+  <https://wayland.app/protocols/xdg-system-bell-v1>`__ protocol use it to play
+  the default bell sound
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

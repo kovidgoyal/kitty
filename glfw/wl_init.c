@@ -603,6 +603,9 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(xdg_toplevel_icon_manager_v1)) {
         _glfw.wl.xdg_toplevel_icon_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_icon_manager_v1_interface, 1);
     }
+    else if (is(xdg_system_bell_v1)) {
+        _glfw.wl.xdg_system_bell_v1 = wl_registry_bind(registry, name, &xdg_system_bell_v1_interface, 1);
+    }
 #undef is
 }
 
@@ -712,7 +715,7 @@ get_compositor_missing_capabilities(void) {
     C(blur, org_kde_kwin_blur_manager); C(server_side_decorations, decorationManager);
     C(cursor_shape, wp_cursor_shape_manager_v1); C(layer_shell, zwlr_layer_shell_v1);
     C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
-    C(idle_inhibit, idle_inhibit_manager); C(icon, xdg_toplevel_icon_manager_v1);
+    C(idle_inhibit, idle_inhibit_manager); C(icon, xdg_toplevel_icon_manager_v1); C(bell, xdg_system_bell_v1);
     if (_glfw.wl.xdg_wm_base_version < 6) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-state-suspended");
     if (_glfw.wl.xdg_wm_base_version < 5) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-capabilities");
 #undef C
@@ -889,6 +892,8 @@ void _glfwPlatformTerminate(void)
         xdg_activation_v1_destroy(_glfw.wl.xdg_activation_v1);
     if (_glfw.wl.xdg_toplevel_icon_manager_v1)
         xdg_toplevel_icon_manager_v1_destroy(_glfw.wl.xdg_toplevel_icon_manager_v1);
+    if (_glfw.wl.xdg_system_bell_v1)
+        xdg_system_bell_v1_destroy(_glfw.wl.xdg_system_bell_v1);
     if (_glfw.wl.wp_single_pixel_buffer_manager_v1)
         wp_single_pixel_buffer_manager_v1_destroy(_glfw.wl.wp_single_pixel_buffer_manager_v1);
     if (_glfw.wl.wp_cursor_shape_manager_v1)
