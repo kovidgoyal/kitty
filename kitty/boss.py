@@ -361,6 +361,7 @@ class Boss:
         self.clipboard = Clipboard()
         self.window_for_dispatch: Window | None = None
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
+        self.window_child_map: dict[int, list[int]] = {}
         self.update_check_started = False
         self.peer_data_map: dict[int, dict[str, Sequence[str]] | None] = {}
         self.background_process_death_notify_map: dict[int, Callable[[int, Exception | None], None]] = {}
@@ -908,6 +909,11 @@ class Boss:
             for w, val in changes.items():
                 w.ignore_focus_changes = val
 
+    def descendant_window_ids(self, parent_id: int) -> Iterator[int]:
+        for cid in self.window_child_map.get(parent_id, ()):
+            yield cid
+            yield from self.descendant_window_ids(cid)
+
     def on_child_death(self, window_id: int) -> None:
         prev_active_window = self.active_window
         window = self.window_id_map.pop(window_id, None)
@@ -922,10 +928,12 @@ class Boss:
                     traceback.print_exc()
             os_window_id = window.os_window_id
             window.destroy()
-            for cid in window.child_window_ids:
+            for cid in tuple(self.descendant_window_ids(window.id)):
+                self.window_child_map.pop(cid, None)
                 cw = self.window_id_map.pop(cid, None)
                 if cw is not None:
                     self.child_monitor.mark_for_close(cw.id)
+            self.window_child_map.pop(window.id, None)
             if window.floating_in:
                 remove_floating_window(window.os_window_id, window.tab_id, window.floating_in, window.id)
             else:
@@ -1815,6 +1823,7 @@ class Boss:
         for window_id in tuple(w.id for w in self.window_id_map.values() if w.os_window_id == os_window_id):
             self.child_monitor.mark_for_close(window_id)
             self.window_id_map.pop(window_id, None)
+            self.window_child_map.pop(window_id, None)
         if not self.os_window_map and is_macos:
             cocoa_set_menubar_title('')
         action = self.os_window_death_actions.pop(os_window_id, None)

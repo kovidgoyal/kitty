@@ -19,6 +19,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Deque,
+    Iterator,
     Literal,
     NamedTuple,
     Optional,
@@ -65,7 +66,6 @@ from .fast_data_types import (
     current_focused_os_window_id,
     encode_key_for_tty,
     get_boss,
-    get_child_window_ids,
     get_click_interval,
     get_mouse_data_for_window,
     get_options,
@@ -89,6 +89,7 @@ from .fast_data_types import (
     update_window_visibility,
     wakeup_main_loop,
 )
+from .floats import calculate_geometry_for_float
 from .keys import keyboard_mode_name, mod_mask
 from .progress import Progress
 from .rgb import to_color
@@ -669,6 +670,7 @@ class Window:
             self.id, self.non_floating_ancestor = add_floating_window(tab.os_window_id, tab.id, floating_in)
             if not self.id:
                 raise Exception(f'No window with id: {floating_in} in Tab: {tab.id} OS Window: {tab.os_window_id} was found, or the window counter wrapped')
+            get_boss().window_child_map.setdefault(floating_in, []).append(self.id)
         else:
             self.id = add_window(tab.os_window_id, tab.id, self.title)
             if not self.id:
@@ -694,8 +696,12 @@ class Window:
         self.allow_remote_control = allow_remote_control
 
     @property
+    def descendant_window_ids(self) -> Iterator[int]:
+        return get_boss().descendant_window_ids(self.id)
+
+    @property
     def child_window_ids(self) -> list[int]:
-        return get_child_window_ids(self.os_window_id, self.tab_id, self.id)
+        return get_boss().window_child_map.get(self.id, [])
 
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
@@ -718,6 +724,10 @@ class Window:
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)
+        m = get_boss().window_id_map
+        for cwid in self.child_window_ids:
+            if cw := m.get(cwid):
+                cw.change_tab(tab)
 
     def effective_margin(self, edge: EdgeLiteral) -> int:
         q = getattr(self.margin, edge)
@@ -946,8 +956,8 @@ class Window:
             self.screen.lines, self.screen.columns,
             max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
         update_ime_position = False
+        boss = get_boss()
         if current_pty_size != self.last_reported_pty_size:
-            boss = get_boss()
             boss.child_monitor.resize_pty(self.id, *current_pty_size)
             self.last_resized_at = monotonic()
             self.last_reported_pty_size = current_pty_size
@@ -963,12 +973,16 @@ class Window:
                 print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
         else:
             mark_os_window_dirty(self.os_window_id)
-
-        self.geometry = g = new_geometry
-        set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen, *g[:4])
+        self.geometry = new_geometry
+        set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen, *self.geometry[:4])
         self.update_effective_padding()
         if update_ime_position:
             update_ime_position_for_window(self.id, True)
+
+        for cwid in self.child_window_ids:
+            if cw := boss.window_id_map.get(cwid):
+                child_geometry = calculate_geometry_for_float(cw, self.geometry)
+                cw.set_geometry(child_geometry)
 
     def contains(self, x: int, y: int) -> bool:
         g = self.geometry

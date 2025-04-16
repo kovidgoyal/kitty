@@ -1490,30 +1490,6 @@ PYWRAP1(add_floating_window) {
     return Py_BuildValue("II", 0, 0);
 }
 
-static bool
-get_child_window_ids_inner(Window *window, PyObject *ans) {
-    for (size_t i = 0; i < window->floating.child_count; i++) {
-        RAII_PyObject(t, PyLong_FromUnsignedLongLong(window->floating.children[i].id)); if (!t) return false;
-        if (PyList_Append(ans, t) != 0) return false;
-        if (!get_child_window_ids_inner(&window->floating.children[i], ans)) return false;
-    }
-    return true;
-}
-
-static PyObject*
-get_child_window_ids(PyObject *self UNUSED, PyObject *args) {
-    unsigned long long os_window_id, tab_id, window_id, child_id = 0;
-    PA("KKK|K", &os_window_id, &tab_id, &window_id, &child_id);
-    RAII_PyObject(ans, PyList_New(0)); if (!ans) return NULL;
-    WITH_WINDOW(os_window_id, tab_id, window_id)
-        if (child_id) window = find_child_window(window, child_id);
-        if (window) {
-            if (!get_child_window_ids_inner(window, ans)) return NULL;
-        }
-    END_WITH_WINDOW
-    return Py_NewRef(ans);
-}
-
 static PyObject*
 os_window_focus_counters(PyObject *self UNUSED, PyObject *args UNUSED) {
     RAII_PyObject(ans, PyDict_New());
@@ -1569,7 +1545,6 @@ static PyMethodDef module_methods[] = {
     MW(remove_tab, METH_VARARGS),
     MW(remove_window, METH_VARARGS),
     MW(remove_floating_window, METH_VARARGS),
-    M(get_child_window_ids, METH_VARARGS),
     MW(detach_window, METH_VARARGS),
     MW(attach_window, METH_VARARGS),
     MW(set_active_tab, METH_VARARGS),
