@@ -704,8 +704,63 @@ change_menubar_title(PyObject *title UNUSED) {
 #endif
 }
 
+#define WD w->render_data
+
 static bool
-prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg, bool scan_for_animated_images) {
+prepare_to_render_window(OSWindow *os_window, Tab *tab, Window *w, bool is_active_non_floating_window, monotonic_t now, bool scan_for_animated_images, id_type *active_window_id) {
+    bool needs_render = false;
+    if (w->last_drag_scroll_at > 0) {
+        if (now - w->last_drag_scroll_at >= ms_to_monotonic_t(20ll)) {
+            if (drag_scroll(w, os_window)) {
+                w->last_drag_scroll_at = now;
+                set_maximum_wait(ms_to_monotonic_t(20ll));
+                needs_render = true;
+            } else w->last_drag_scroll_at = 0;
+        } else set_maximum_wait(now - w->last_drag_scroll_at);
+    }
+    const bool is_floating = w->floating.is_floating;
+    const bool is_active = is_active_non_floating_window && ((is_floating && w->floating.is_key) || (!is_floating && !w->floating.child_count));
+    if (is_active) {
+        *active_window_id = w->id;
+        if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
+        WD.screen->cursor_render_info.is_focused = os_window->is_focused;
+        set_os_window_title_from_window(w, os_window);
+        if (OPT(cursor_trail)) {
+            if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
+                needs_render = true;
+                // A max wait of zero causes key input processing to be
+                // slow so handle the case of OPT(repaint_delay) == 0, see https://github.com/kovidgoyal/kitty/pull/8066
+                set_maximum_wait(MAX(OPT(repaint_delay), ms_to_monotonic_t(1ll)));
+            } else if (OPT(cursor_trail) > now - WD.screen->cursor->position_changed_by_client_at) {
+                // If update_cursor_trail failed due to time threshold, the trail animation
+                // should be evaluated again shortly. Schedule next update when enough time
+                // has passed since the cursor was last moved.
+                set_maximum_wait(OPT(cursor_trail) - now + WD.screen->cursor->position_changed_by_client_at);
+            }
+        }
+    } else {
+        if (WD.screen->cursor_render_info.render_even_when_unfocused) {
+            if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
+            WD.screen->cursor_render_info.is_focused = false;
+        } else {
+            WD.screen->cursor_render_info.opacity = 0;
+        }
+    }
+    if (scan_for_animated_images) {
+        monotonic_t min_gap;
+        if (scan_active_animations(WD.screen->grman, now, &min_gap, true)) needs_render = true;
+        if (min_gap < MONOTONIC_T_MAX) {
+            global_state.check_for_active_animated_images = true;
+            set_maximum_wait(min_gap);
+        }
+    }
+    if (send_cell_data_to_gpu(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
+    if (WD.screen->start_visual_bell_at != 0) needs_render = true;
+    return needs_render;
+}
+
+static bool
+prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, id_type *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg, bool scan_for_animated_images) {
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
@@ -727,61 +782,18 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
     color_type first_window_bg = 0;
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
-#define WD w->render_data
         if (w->visible && WD.screen) {
             screen_check_pause_rendering(WD.screen, now);
             *num_visible_windows += 1;
             color_type window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg).rgb;
+            const bool is_active_non_floating_window = i == tab->active_window;
             if (*num_visible_windows == 1) first_window_bg = window_bg;
             if (first_window_bg != window_bg) *all_windows_have_same_bg = false;
-            if (w->last_drag_scroll_at > 0) {
-                if (now - w->last_drag_scroll_at >= ms_to_monotonic_t(20ll)) {
-                    if (drag_scroll(w, os_window)) {
-                        w->last_drag_scroll_at = now;
-                        set_maximum_wait(ms_to_monotonic_t(20ll));
-                        needs_render = true;
-                    } else w->last_drag_scroll_at = 0;
-                } else set_maximum_wait(now - w->last_drag_scroll_at);
+            if (is_active_non_floating_window) *active_window_bg = window_bg;
+            needs_render |= prepare_to_render_window(os_window, tab, w, is_active_non_floating_window, now, scan_for_animated_images, active_window_id);
+            for (size_t i = 0; i < w->floating.child_count; i++) {
+                needs_render |= prepare_to_render_window(os_window, tab, w->floating.children + i, is_active_non_floating_window, now, scan_for_animated_images, active_window_id);
             }
-            bool is_active_window = i == tab->active_window;
-            if (is_active_window) {
-                *active_window_id = w->id;
-                if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
-                WD.screen->cursor_render_info.is_focused = os_window->is_focused;
-                set_os_window_title_from_window(w, os_window);
-                *active_window_bg = window_bg;
-                if (OPT(cursor_trail)) {
-                    if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
-                        needs_render = true;
-                        // A max wait of zero causes key input processing to be
-                        // slow so handle the case of OPT(repaint_delay) == 0, see https://github.com/kovidgoyal/kitty/pull/8066
-                        set_maximum_wait(MAX(OPT(repaint_delay), ms_to_monotonic_t(1ll)));
-                    } else if (OPT(cursor_trail) > now - WD.screen->cursor->position_changed_by_client_at) {
-                        // If update_cursor_trail failed due to time threshold, the trail animation
-                        // should be evaluated again shortly. Schedule next update when enough time
-                        // has passed since the cursor was last moved.
-                        set_maximum_wait(OPT(cursor_trail) - now + WD.screen->cursor->position_changed_by_client_at);
-                    }
-                }
-
-            } else {
-                if (WD.screen->cursor_render_info.render_even_when_unfocused) {
-                    if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
-                    WD.screen->cursor_render_info.is_focused = false;
-                } else {
-                    WD.screen->cursor_render_info.opacity = 0;
-                }
-            }
-            if (scan_for_animated_images) {
-                monotonic_t min_gap;
-                if (scan_active_animations(WD.screen->grman, now, &min_gap, true)) needs_render = true;
-                if (min_gap < MONOTONIC_T_MAX) {
-                    global_state.check_for_active_animated_images = true;
-                    set_maximum_wait(min_gap);
-                }
-            }
-            if (send_cell_data_to_gpu(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
-            if (WD.screen->start_visual_bell_at != 0) needs_render = true;
         }
     }
     return needs_render;
@@ -801,6 +813,16 @@ draw_resizing_text(OSWindow *w) {
     }
 }
 
+static bool
+draw_window(OSWindow *os_window, Window *w, bool is_active_non_floating_window, unsigned num_of_visible_windows) {
+    const bool is_floating = w->floating.is_floating, is_active_window = (
+        is_active_non_floating_window && ((!is_floating && !w->floating.child_count) || (is_floating && w->floating.is_key)));
+    draw_cells(WD.vao_idx, &WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
+    if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
+    w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
+    return is_active_window;
+}
+
 static void
 render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
     // ensure all pixels are cleared to background color at least once in every buffer
@@ -810,17 +832,16 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
     draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     br->is_dirty = false;
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, &TD, os_window, true, true, false, NULL);
-    unsigned int num_of_visible_windows = 0;
+    unsigned num_of_visible_windows = 0;
     Window *active_window = NULL;
     for (unsigned int i = 0; i < tab->num_windows; i++) { if (tab->windows[i].visible) num_of_visible_windows++; }
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
         if (w->visible && WD.screen) {
-            bool is_active_window = i == tab->active_window;
-            if (is_active_window) active_window = w;
-            draw_cells(WD.vao_idx, &WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
-            if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
-            w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
+            if (draw_window(os_window, w, i == tab->active_window, num_of_visible_windows)) active_window = w;
+            for (size_t f = 0; f < w->floating.child_count; f++) {
+                if (draw_window(os_window, w->floating.children + f, i == tab->active_window, num_of_visible_windows)) active_window = w->floating.children + f;
+            }
         }
     }
     if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
@@ -873,7 +894,7 @@ render_os_window(OSWindow *w, monotonic_t now, bool ignore_render_frames, bool s
         w->viewport_size_dirty = false;
         needs_render = true;
     }
-    unsigned int active_window_id = 0, num_visible_windows = 0;
+    id_type active_window_id = 0; unsigned num_visible_windows = 0;
     bool all_windows_have_same_bg;
     color_type active_window_bg = 0;
     if (!w->fonts_data) { log_error("No fonts data found for window id: %llu", w->id); return false; }
