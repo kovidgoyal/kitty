@@ -75,7 +75,7 @@ class Grid(Layout):
         return 0, 0
 
     def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_layoutable_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
         row_num, col_num = self.position_for_window_idx(idx, num_windows, ncols, nrows, special_rows, special_col)
         if row_num == 0:
@@ -93,7 +93,7 @@ class Grid(Layout):
         return tuple(self.variable_layout(layout_func, num_windows, b)) == before_layout
 
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_layoutable_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
         row_num, col_num = self.position_for_window_idx(idx, num_windows, ncols, nrows, special_rows, special_col)
 
@@ -151,7 +151,7 @@ class Grid(Layout):
             on_col_done(col_windows)
 
     def do_layout(self, all_windows: WindowList) -> None:
-        n = all_windows.num_groups
+        n = all_windows.num_layoutable_groups
         if n == 1:
             self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
             return
@@ -193,7 +193,7 @@ class Grid(Layout):
             position_window_in_grid_cell(window_idx, xl, yl)
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
-        n = all_windows.num_groups
+        n = all_windows.num_layoutable_groups
         if not lgd.draw_minimal_borders or n < 2:
             return
         needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
@@ -260,7 +260,7 @@ class Grid(Layout):
                     yield BorderLine(edges, color)
 
     def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
-        n = all_windows.num_groups
+        n = all_windows.num_layoutable_groups
         if n < 4:
             return neighbors_for_tall_window(1, window, all_windows)
 

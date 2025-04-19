@@ -91,7 +91,7 @@ class Borders:
             for tbr in tab_bar_rects:
                 add_borders_rect(self.os_window_id, self.tab_id, *tbr)
         bw = 0
-        groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
+        groups = tuple(all_windows.iter_all_layoutable_groups())
         if groups:
             bw = groups[0].effective_border()
         draw_borders = bw > 0 and draw_window_borders

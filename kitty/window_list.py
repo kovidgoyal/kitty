@@ -72,6 +72,13 @@ class WindowGroup:
         else:
             self.windows.append(window)
 
+    @property
+    def is_floating(self) -> bool:
+        for w in self.windows:
+            if w.is_floating:
+                return True
+        return False
+
     def move_window_to_top_of_group(self, window: WindowType) -> bool:
         try:
             idx = self.windows.index(window)
@@ -100,22 +107,19 @@ class WindowGroup:
         }
 
     def decoration(self, which: EdgeLiteral, border_mult: int = 1, is_single_window: bool = False) -> int:
-        if not self.windows:
-            return 0
-        w = self.windows[0]
-        return w.effective_margin(which) + w.effective_border() * border_mult + w.effective_padding(which)
+        for w in self.windows:
+            return w.effective_margin(which) + w.effective_border() * border_mult + w.effective_padding(which)
+        return 0
 
     def effective_padding(self, which: EdgeLiteral) -> int:
-        if not self.windows:
-            return 0
-        w = self.windows[0]
-        return w.effective_padding(which)
+        for w in self.windows:
+            return w.effective_padding(which)
+        return 0
 
     def effective_border(self) -> int:
-        if not self.windows:
-            return 0
-        w = self.windows[0]
-        return w.effective_border()
+        for w in self.windows:
+            return w.effective_border()
+        return 0
 
     def set_geometry(self, geom: WindowGeometry) -> None:
         for w in self.windows:
@@ -123,22 +127,19 @@ class WindowGroup:
 
     @property
     def default_bg(self) -> Color:
-        if self.windows:
-            w = self.windows[-1]
+        for w in reversed(self.windows):
             return w.screen.color_profile.default_bg or get_options().background
         return get_options().background
 
     @property
     def geometry(self) -> WindowGeometry | None:
-        if self.windows:
-            w = self.windows[-1]
+        for w in reversed(self.windows):
             return w.geometry
         return None
 
     @property
     def is_visible_in_layout(self) -> bool:
-        if self.windows:
-            w = self.windows[-1]
+        for w in reversed(self.windows):
             return w.is_visible_in_layout
         return False
 
@@ -202,7 +203,7 @@ class WindowList:
 
     def set_active_group_idx(self, i: int, notify: bool = True) -> bool:
         changed = False
-        if i != self._active_group_idx and 0 <= i < len(self.groups):
+        if i != self._active_group_idx and 0 <= i < self.num_of_floating_groups_and_non_floating_groups:
             old_active_window = self.active_window
             g = self.active_group
             if g is not None:
@@ -226,14 +227,37 @@ class WindowList:
     def change_tab(self, tab: TabType) -> None:
         self.tabref = weakref.ref(tab)
 
-    def iter_windows_with_visibility(self) -> Iterator[tuple[WindowType, bool]]:
+    def iter_windows_with_visibility(self) -> Iterator[tuple[WindowType, bool, bool]]:
         for g in self.groups:
             aw = g.active_window_id
+            is_floating = g.is_floating
             for window in g:
-                yield window, window.id == aw
+                yield window, window.id == aw, is_floating
 
-    def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
-        return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
+    def iter_all_layoutable_groups(self) -> Iterator[WindowGroup]:
+        for g in self.groups:
+            if g.is_visible_in_layout and not g.is_floating:
+                yield g
+
+    @property
+    def num_layoutable_groups(self) -> int:
+        ans = 0
+        for g in self.groups:
+            if g.is_visible_in_layout and not g.is_floating:
+                ans += 1
+        return ans
+
+    @property
+    def num_of_non_floating_groups(self) -> int:
+        ans = 0
+        for g in self.groups:
+            if not g.is_floating:
+                ans += 1
+        return ans
+
+    @property
+    def num_of_floating_groups_and_non_floating_groups(self) -> int:
+        return len(self.groups)
 
     def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[tuple[int, WindowType]]:
         for i, g in enumerate(self.groups):
@@ -258,10 +282,6 @@ class WindowList:
                     self.set_active_group_idx(x, notify=notify)
                     return
         self.set_active_group_idx(len(self.groups) - 1, notify=notify)
-
-    @property
-    def num_groups(self) -> int:
-        return len(self.groups)
 
     def group_for_window(self, x: WindowOrId) -> WindowGroup | None:
         q = self.id_map[x] if isinstance(x, int) else x
@@ -343,22 +363,28 @@ class WindowList:
 
         if group_of is not None:
             target_group = self.group_for_window(group_of)
-        if target_group is None and next_to is not None:
-            q = self.id_map[next_to] if isinstance(next_to, int) else next_to
-            pos = -1
-            for i, g in enumerate(self.groups):
-                if q in g:
-                    pos = i
-                    break
-            if pos > -1:
+        if window.is_floating:
+            if target_group is None:
                 target_group = WindowGroup()
-                self.groups.insert(pos + (0 if before else 1), target_group)
-        if target_group is None:
-            target_group = WindowGroup()
-            if before:
-                self.groups.insert(0, target_group)
-            else:
                 self.groups.append(target_group)
+        else:
+            if target_group is None and next_to is not None:
+                q = self.id_map[next_to] if isinstance(next_to, int) else next_to
+                pos = -1
+                for i, g in enumerate(self.groups):
+                    if q in g:
+                        pos = i
+                        break
+                if pos > -1:
+                    target_group = WindowGroup()
+                    self.groups.insert(pos + (0 if before else 1), target_group)
+            if target_group is None:
+                target_group = WindowGroup()
+                if before:
+                    self.groups.insert(0, target_group)
+                else:
+                    self.groups.append(target_group)
+            self.move_floating_groups_to_end()
 
         old_active_window = self.active_window
         target_group.add_window(window, head_of_group=head_of_group)
@@ -371,6 +397,14 @@ class WindowList:
         if new_active_window is not old_active_window:
             self.notify_on_active_window_change(old_active_window, new_active_window)
         return target_group
+
+    def move_floating_groups_to_end(self) -> None:
+        fg: list[WindowGroup] = []
+        ng: list[WindowGroup] = []
+        for g in self.groups:
+            (fg if g.is_floating else ng).append(g)
+        ng.extend(fg)
+        self.groups = ng
 
     def remove_window(self, x: WindowOrId) -> None:
         old_active_window = self.active_window
@@ -398,8 +432,8 @@ class WindowList:
 
     def active_window_in_nth_group(self, n: int, clamp: bool = False) -> WindowType | None:
         if clamp:
-            n = max(0, min(n, self.num_groups - 1))
-        if 0 <= n < self.num_groups:
+            n = max(0, min(n, len(self.groups) - 1))
+        if 0 <= n < len(self.groups):
             return self.id_map.get(self.groups[n].active_window_id)
         return None
 
@@ -410,14 +444,14 @@ class WindowList:
         return None
 
     def activate_next_window_group(self, delta: int) -> None:
-        self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))
+        self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_of_floating_groups_and_non_floating_groups, delta))
 
     def move_window_group(self, by: int | None = None, to_group: int | None = None) -> bool:
         if self.active_group_idx < 0 or not self.groups:
             return False
         target = -1
         if by is not None:
-            target = wrap_increment(self.active_group_idx, self.num_groups, by)
+            target = wrap_increment(self.active_group_idx, len(self.groups), by)
         if to_group is not None:
             for i, group in enumerate(self.groups):
                 if group.id == to_group:
@@ -427,6 +461,7 @@ class WindowList:
             if target == self.active_group_idx:
                 return False
             self.groups[self.active_group_idx], self.groups[target] = self.groups[target], self.groups[self.active_group_idx]
+            self.move_floating_groups_to_end()
             self.set_active_group_idx(target)
             return True
         return False

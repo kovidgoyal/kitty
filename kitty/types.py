@@ -27,6 +27,13 @@ class OverlayType(Enum):
     main = 'main'
 
 
+class FloatType(Enum):
+    none = 'none'
+    window = 'window'
+    tab = 'tab'
+    os_window = 'os_window'
+
+
 class ParsedShortcut(NamedTuple):
     mods: int
     key_name: str

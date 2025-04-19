@@ -14,6 +14,7 @@ class Window:
 
     def __init__(self, win_id, overlay_for=None, overlay_window_id=None):
         self.id = win_id
+        self.is_floating = False
         self.overlay_for = overlay_for
         self.overlay_window_id = overlay_window_id
         self.is_visible_in_layout = True
@@ -98,15 +99,15 @@ class TestLayout(BaseTest):
         check_visible()
 
         # Test nth_window
-        for i in range(windows.num_groups):
+        for i in range(windows.num_of_floating_groups_and_non_floating_groups):
             q.activate_nth_window(windows, i)
             self.ae(windows.active_group_idx, i)
             expect_ids(*range(1, len(windows)+1))
             check_visible()
 
         # Test next_window
-        for i in range(2 * windows.num_groups):
-            expected = (windows.active_group_idx + 1) % windows.num_groups
+        for i in range(2 * windows.num_of_floating_groups_and_non_floating_groups):
+            expected = (windows.active_group_idx + 1) % windows.num_of_floating_groups_and_non_floating_groups
             q.next_window(windows)
             self.ae(windows.active_group_idx, expected)
             expect_ids(*range(1, len(windows)+1))
@@ -127,9 +128,9 @@ class TestLayout(BaseTest):
         # Test add_window
         windows.set_active_group_idx(4)
         q.add_window(windows, Window(6))
-        self.ae(windows.num_groups, 6)
+        self.ae(windows.num_of_floating_groups_and_non_floating_groups, 6)
         self.ae(windows.active_group_idx, 5)
-        expect_ids(*range(1, windows.num_groups+1))
+        expect_ids(*range(1, windows.num_of_floating_groups_and_non_floating_groups+1))
         check_visible()
 
         # Test remove_window
@@ -150,7 +151,7 @@ class TestLayout(BaseTest):
         expect_ids(2, 3, 5, 6)
 
         # Test set_active_window
-        for i in range(windows.num_groups):
+        for i in range(windows.num_of_floating_groups_and_non_floating_groups):
             windows.set_active_group_idx(i)
             self.ae(i, windows.active_group_idx)
             check_visible()
@@ -177,10 +178,10 @@ class TestLayout(BaseTest):
         w = Window(len(windows) + 1)
         windows.add_window(w)
         expect_ids(1, 2, 3, 4, 5, 6)
-        self.ae(windows.active_group_idx, windows.num_groups - 1)
+        self.ae(windows.active_group_idx, windows.num_of_floating_groups_and_non_floating_groups - 1)
 
         # Test nth_window
-        for i in range(windows.num_groups):
+        for i in range(windows.num_of_floating_groups_and_non_floating_groups):
             q.activate_nth_window(windows, i)
             self.ae(windows.active_group_idx, i)
             if i == overlaid_group:
@@ -189,8 +190,8 @@ class TestLayout(BaseTest):
             check_visible()
 
         # Test next_window
-        for i in range(windows.num_groups):
-            expected = (windows.active_group_idx + 1) % windows.num_groups
+        for i in range(windows.num_of_floating_groups_and_non_floating_groups):
+            expected = (windows.active_group_idx + 1) % windows.num_of_floating_groups_and_non_floating_groups
             q.next_window(windows)
             self.ae(windows.active_group_idx, expected)
             expect_ids(1, 2, 3, 4, 5, 6)
@@ -210,7 +211,7 @@ class TestLayout(BaseTest):
         check_visible()
 
         # Test set_active_window
-        for i in range(windows.num_groups):
+        for i in range(windows.num_of_floating_groups_and_non_floating_groups):
             windows.set_active_group_idx(i)
             self.ae(i, windows.active_group_idx)
             if i == overlaid_group:
