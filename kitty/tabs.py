@@ -568,20 +568,27 @@ class Tab:  # {{{
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
         next_to: Window | None = None,
+        is_float: bool = False,
     ) -> Window:
+        floating_in = 0
+        if is_float:
+            fp = next_to or self.active_window
+            if fp is not None:
+                floating_in = fp.id
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
             is_clone_launch=is_clone_launch, add_listen_on_env_var=False if allow_remote_control and remote_control_passwords else True,
             hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd,
         )
         window = Window(
-            self, child, self.args, override_title=override_title,
+            self, child, self.args, override_title=override_title, floating_in=floating_in,
             copy_colors_from=copy_colors_from, watchers=watchers,
             allow_remote_control=allow_remote_control, remote_control_passwords=remote_control_passwords
         )
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind, bias=bias, next_to=next_to)
+        if not floating_in:
+            self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind, bias=bias, next_to=next_to)
         if marker:
             try:
                 window.set_marker(marker)

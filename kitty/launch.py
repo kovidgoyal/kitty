@@ -81,7 +81,7 @@ of the active window in the tab is used as the tab title. The special value
 --type
 type=choices
 default=window
-choices=window,tab,os-window,overlay,overlay-main,background,clipboard,primary
+choices=window,tab,os-window,overlay,overlay-main,background,clipboard,primary,float
 Where to launch the child process:
 
 :code:`window`
@@ -105,6 +105,9 @@ Where to launch the child process:
     directory, the input text for kittens, launch commands, etc. Useful if this overlay is
     intended to run for a long time as a primary window.
 
+:code:`float`
+    A floating window displayed on top of the parent window.
+
 :code:`background`
     The process will be run in the :italic:`background`, without a kitty
     window. Note that if :option:`kitten @ launch --allow-remote-control` is
@@ -122,7 +125,8 @@ Where to launch the child process:
 --keep-focus --dont-take-focus
 type=bool-set
 Keep the focus on the currently active window instead of switching to the newly
-opened window.
+opened window. Note that floating windows always take focus from their parent
+non-floating window.
 
 
 --cwd
@@ -722,8 +726,8 @@ def _launch(
             tab = tab_for_window(boss, opts, target_tab, next_to)
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
-            new_window: Window = tab.new_window(
-                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
+            new_window = tab.new_window(
+                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, is_float=opts.type == 'float', **kw)
         if spacing:
             patch_window_edges(new_window, spacing)
             tab.relayout()

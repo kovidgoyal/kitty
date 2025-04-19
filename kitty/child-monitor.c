@@ -792,7 +792,8 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, id_type *activ
             if (is_active_non_floating_window) *active_window_bg = window_bg;
             needs_render |= prepare_to_render_window(os_window, tab, w, is_active_non_floating_window, now, scan_for_animated_images, active_window_id);
             for (size_t i = 0; i < w->floating.child_count; i++) {
-                needs_render |= prepare_to_render_window(os_window, tab, w->floating.children + i, is_active_non_floating_window, now, scan_for_animated_images, active_window_id);
+                Window *cw = w->floating.children + i;
+                if (cw->render_data.screen) needs_render |= prepare_to_render_window(os_window, tab, cw, is_active_non_floating_window, now, scan_for_animated_images, active_window_id);
             }
         }
     }
@@ -840,7 +841,8 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
         if (w->visible && WD.screen) {
             if (draw_window(os_window, w, i == tab->active_window, num_of_visible_windows)) active_window = w;
             for (size_t f = 0; f < w->floating.child_count; f++) {
-                if (draw_window(os_window, w->floating.children + f, i == tab->active_window, num_of_visible_windows)) active_window = w->floating.children + f;
+                Window *cw = w->floating.children + f;
+                if (cw->render_data.screen && draw_window(os_window, cw, i == tab->active_window, num_of_visible_windows)) active_window = cw;
             }
         }
     }
