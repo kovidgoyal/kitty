@@ -68,9 +68,10 @@ class Vertical(Layout):
     perp_axis_layout = Layout.xlayout
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
-        num_windows = all_windows.num_groups
+        windows = tuple(all_windows.iter_all_layoutable_groups())
+        num_windows = len(windows)
         bias = biased_map if num_windows > 1 else None
-        return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias)
+        return self.main_axis_layout(windows, bias=bias)
 
     def fixed_layout(self, wg: WindowGroup) -> LayoutDimension:
         return self.perp_axis_layout(iter((wg,)), border_mult=0 if lgd.draw_minimal_borders else 1)
@@ -82,7 +83,7 @@ class Vertical(Layout):
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         if self.main_is_horizontal != is_horizontal:
             return False
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_layoutable_groups
         if num_windows < 2:
             return False
         before_layout = list(self.variable_layout(all_windows, self.biased_map))
@@ -109,7 +110,7 @@ class Vertical(Layout):
             yield wg, xl, yl
 
     def do_layout(self, all_windows: WindowList) -> None:
-        window_count = all_windows.num_groups
+        window_count = all_windows.num_layoutable_groups
         if window_count == 1:
             self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
             return
@@ -117,7 +118,7 @@ class Vertical(Layout):
             self.set_window_group_geometry(wg, xl, yl)
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
-        window_count = all_windows.num_groups
+        window_count = all_windows.num_layoutable_groups
         if window_count < 2 or not lgd.draw_minimal_borders:
             return
         yield from borders(self.generate_layout_data(all_windows), self.main_is_horizontal, all_windows)

@@ -91,7 +91,7 @@ from .keys import keyboard_mode_name, mod_mask
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
+from .types import FloatType, MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing_compat import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int,
@@ -623,12 +623,16 @@ class Window:
         watchers: Watchers | None = None,
         allow_remote_control: bool = False,
         remote_control_passwords: dict[str, Sequence[str]] | None = None,
+        float_type: FloatType = FloatType.none,
+        floating_in_window: int = 0,
     ):
         if watchers:
             self.watchers = watchers
             self.watchers.add(global_watchers())
         else:
             self.watchers = global_watchers().copy()
+        self.float_type = float_type
+        self.floating_in_window = floating_in_window
         self.keys_redirected_till_ready_from: int = 0
         self.last_focused_at = 0.
         self.is_focused: bool = False
@@ -681,6 +685,10 @@ class Window:
             self.screen.copy_colors_from(copy_colors_from.screen)
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
+
+    @property
+    def is_floating(self) -> bool:
+        return self.float_type is not FloatType.none
 
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:

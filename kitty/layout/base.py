@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections.abc import Generator, Iterable, Iterator, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from functools import partial
 from itertools import repeat
 from typing import Any, NamedTuple
@@ -9,7 +9,7 @@ from typing import Any, NamedTuple
 from kitty.borders import BorderColor
 from kitty.fast_data_types import Region, set_active_window, viewport_for_window
 from kitty.options.types import Options
-from kitty.types import Edges, WindowGeometry
+from kitty.types import Edges, FloatType, WindowGeometry
 from kitty.typing_compat import TypedDict, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -241,9 +241,9 @@ class Layout:
 
     def bias_increment_for_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
         self._set_dimensions()
-        return self.calculate_bias_increment_for_a_single_cell(all_windows, is_horizontal)
+        return self.calculate_bias_increment_for_a_single_cell(is_horizontal)
 
-    def calculate_bias_increment_for_a_single_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
+    def calculate_bias_increment_for_a_single_cell(self, is_horizontal: bool) -> float:
         if is_horizontal:
             return (lgd.cell_width + 1) / lgd.central.width
         return (lgd.cell_height + 1) / lgd.central.height
@@ -284,7 +284,7 @@ class Layout:
         return self.neighbors_for_window(w, all_windows)
 
     def move_window(self, all_windows: WindowList, delta: int = 1) -> bool:
-        if all_windows.num_groups < 2 or not delta:
+        if all_windows.num_of_non_floating_groups < 2 or not delta:
             return False
 
         return all_windows.move_window_group(by=delta)
@@ -332,7 +332,7 @@ class Layout:
 
     def _bias_slot(self, all_windows: WindowList, idx: int, bias: float) -> bool:
         fractional_bias = max(10, min(abs(bias), 90)) / 100
-        h, v = self.calculate_bias_increment_for_a_single_cell(all_windows, True), self.calculate_bias_increment_for_a_single_cell(all_windows, False)
+        h, v = self.calculate_bias_increment_for_a_single_cell(True), self.calculate_bias_increment_for_a_single_cell(False)
         nh, nv = lgd.central.width / lgd.cell_width, lgd.central.height / lgd.cell_height
         f = max(-90, min(bias, 90)) / 100.
         return self.bias_slot(all_windows, idx, fractional_bias, h * nh *f, v * nv * f)
@@ -342,9 +342,21 @@ class Layout:
 
     def update_visibility(self, all_windows: WindowList) -> None:
         active_window = all_windows.active_window
-        for window, is_group_leader in all_windows.iter_windows_with_visibility():
-            is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
-            window.set_visible_in_layout(is_visible)
+        floating_windows = []
+        vismap = {}
+        for window, is_group_leader, is_floating in all_windows.iter_windows_with_visibility():
+            if is_floating:
+                floating_windows.append((window, is_group_leader))
+            else:
+                is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
+                window.set_visible_in_layout(is_visible)
+                vismap[window.id] = is_visible
+        for window, is_group_leader in sorted(floating_windows, key=lambda x: x[0].id):
+            vis = is_group_leader
+            if vis and window.float_type is FloatType.window:
+                vis = vismap.get(window.floating_in_window, True)  # if floating_in_window not found float in tab
+            window.set_visible_in_layout(vis)
+            vismap[window.id] = vis
 
     def _set_dimensions(self) -> None:
         lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
@@ -372,7 +384,7 @@ class Layout:
 
     def xlayout(
         self,
-        groups: Iterator[WindowGroup],
+        groups: Iterable[WindowGroup],
         bias: None | Sequence[float] | dict[int, float] = None,
         start: int | None = None,
         size: int | None = None,
@@ -391,7 +403,7 @@ class Layout:
 
     def ylayout(
         self,
-        groups: Iterator[WindowGroup],
+        groups: Iterable[WindowGroup],
         bias: None | Sequence[float] | dict[int, float] = None,
         start: int | None = None,
         size: int | None = None,

@@ -118,9 +118,10 @@ class Tall(Layout):
         return True
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
-        num = all_windows.num_groups - self.num_full_size_windows
+        windows = tuple(all_windows.iter_all_layoutable_groups())
+        num = len(windows) - self.num_full_size_windows
         bias = biased_map if num > 1 else None
-        return self.perp_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias, offset=self.num_full_size_windows)
+        return self.perp_axis_layout(windows, bias=bias, offset=self.num_full_size_windows)
 
     def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
         if idx < len(self.main_bias):
@@ -134,7 +135,7 @@ class Tall(Layout):
         return before_layout == after_layout
 
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_layoutable_groups
         if self.main_is_horizontal == is_horizontal:
             before_main_bias = self.main_bias
             ncols = self.num_full_size_windows + 1
@@ -159,10 +160,10 @@ class Tall(Layout):
         return before != after
 
     def simple_layout(self, all_windows: WindowList) -> Generator[tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
-        num = all_windows.num_groups
         is_fat = not self.main_is_horizontal
         mirrored = self.layout_opts.mirrored
         groups = tuple(all_windows.iter_all_layoutable_groups())
+        num = len(groups)
         main_bias = self.main_bias[::-1] if mirrored else self.main_bias
         if mirrored:
             groups = tuple(reversed(groups))
@@ -218,9 +219,10 @@ class Tall(Layout):
             yield wg, xl, yl, False
 
     def do_layout(self, all_windows: WindowList) -> None:
-        num = all_windows.num_groups
+        windows = tuple(all_windows.iter_all_layoutable_groups())
+        num = len(windows)
         if num == 1:
-            self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
+            self.layout_single_window_group(windows[0])
             return
         layouts = (self.simple_layout if num <= self.num_full_size_windows + 1 else self.full_layout)(all_windows)
         for wg, xl, yl, is_full_size in layouts:
@@ -270,7 +272,7 @@ class Tall(Layout):
         return None
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
-        num = all_windows.num_groups
+        num = all_windows.num_layoutable_groups
         if num < 2 or not lgd.draw_minimal_borders:
             return
         try:

@@ -192,7 +192,7 @@ class Tab:  # {{{
     def has_single_window_visible(self) -> bool:
         if self.current_layout.only_active_window_visible:
             return True
-        for i, g in enumerate(self.windows.iter_all_layoutable_groups(only_visible=True)):
+        for i, g in enumerate(self.windows.iter_all_layoutable_groups()):
             if i > 0:
                 return False
         return True
@@ -673,8 +673,8 @@ class Tab:  # {{{
         if self.windows:
             if num < 0:
                 self.windows.make_previous_group_active(-num)
-            elif self.windows.num_groups:
-                self.current_layout.activate_nth_window(self.windows, min(num, self.windows.num_groups - 1))
+            elif self.windows.num_of_floating_groups_and_non_floating_groups:
+                self.current_layout.activate_nth_window(self.windows, min(num, self.windows.num_of_floating_groups_and_non_floating_groups - 1))
             self.relayout_borders()
 
     @ac('win', 'Focus the first window')
@@ -893,7 +893,7 @@ class Tab:  # {{{
 
     @property
     def num_window_groups(self) -> int:
-        return self.windows.num_groups
+        return self.windows.num_of_non_floating_groups
 
     def __contains__(self, window: Window) -> bool:
         return window in self.windows
