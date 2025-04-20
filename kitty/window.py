@@ -663,7 +663,7 @@ class Window:
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
         self.user_vars: dict[str, str] = {}
-        self.id: int = add_window(tab.os_window_id, tab.id, self.title)
+        self.id: int = add_window(tab.os_window_id, tab.id, self.title, self.is_floating)
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()

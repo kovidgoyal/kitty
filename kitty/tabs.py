@@ -52,7 +52,7 @@ from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .progress import ProgressState
 from .tab_bar import TabBar, TabBarData
-from .types import ac
+from .types import FloatType, ac
 from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowDict
@@ -568,15 +568,21 @@ class Tab:  # {{{
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
         next_to: Window | None = None,
+        float_type: FloatType = FloatType.none,
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
             is_clone_launch=is_clone_launch, add_listen_on_env_var=False if allow_remote_control and remote_control_passwords else True,
             hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd,
         )
+        floating_in = 0
+        if float_type is FloatType.window:
+            w = next_to or self.active_window
+            if w:
+                floating_in = w.id
         window = Window(
-            self, child, self.args, override_title=override_title,
-            copy_colors_from=copy_colors_from, watchers=watchers,
+            self, child, self.args, override_title=override_title, floating_in_window=floating_in,
+            copy_colors_from=copy_colors_from, watchers=watchers, float_type=float_type,
             allow_remote_control=allow_remote_control, remote_control_passwords=remote_control_passwords
         )
         # Must add child before laying out so that resize_pty succeeds

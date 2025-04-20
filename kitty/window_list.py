@@ -9,7 +9,7 @@ from itertools import count
 from typing import Any, Deque, Union
 
 from .fast_data_types import Color, get_options
-from .types import OverlayType, WindowGeometry
+from .types import FloatType, OverlayType, WindowGeometry
 from .typing_compat import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
@@ -331,6 +331,31 @@ class WindowList:
     def active_window(self) -> WindowType | None:
         with suppress(Exception):
             return self.id_map[self.groups[self.active_group_idx].active_window_id]
+        return None
+
+    @property
+    def active_non_floating_window(self) -> WindowType | None:
+        w = self.active_window
+        if w is None:
+            return None
+        if not w.is_floating:
+            return w
+        if w.float_type is FloatType.window:
+            parent = self.id_map.get(w.floating_in_window)
+            if parent is not None:
+                g = self.group_for_window(parent)
+                if g is not None:
+                    ans = self.id_map.get(g.active_window_id)
+                    if ans is not None:
+                        return ans
+        # tab or os window float or parent window closed
+        gid_map = {g.id: g for g in self.groups}
+        for gid in reversed(self.active_group_history):
+            g = gid_map.get(gid)
+            if g is not None:
+                w = self.id_map.get(g.active_window_id)
+                if w is not None and not w.is_floating:
+                    return w
         return None
 
     @property

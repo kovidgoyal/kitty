@@ -341,14 +341,14 @@ class Layout:
         return False
 
     def update_visibility(self, all_windows: WindowList) -> None:
-        active_window = all_windows.active_window
+        active_non_floating_window = all_windows.active_non_floating_window
         floating_windows = []
         vismap = {}
         for window, is_group_leader, is_floating in all_windows.iter_windows_with_visibility():
             if is_floating:
                 floating_windows.append((window, is_group_leader))
             else:
-                is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
+                is_visible = window is active_non_floating_window or (is_group_leader and not self.only_active_window_visible)
                 window.set_visible_in_layout(is_visible)
                 vismap[window.id] = is_visible
         for window, is_group_leader in sorted(floating_windows, key=lambda x: x[0].id):
