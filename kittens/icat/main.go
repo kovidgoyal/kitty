@@ -165,20 +165,20 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			return 1, fmt.Errorf("Invalid size specification: " + opts.UseWindowSize)
 		}
 		screen_size = &unix.Winsize{}
-		t := 0
-		if t, err = strconv.Atoi(parts[0]); err != nil || t < 1 {
+		var t uint64
+		if t, err = strconv.ParseUint(parts[0], 10, 16); err != nil || t < 1 {
 			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
 		}
 		screen_size.Col = uint16(t)
-		if t, err = strconv.Atoi(parts[1]); err != nil || t < 1 {
+		if t, err = strconv.ParseUint(parts[1], 10, 16); err != nil || t < 1 {
 			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
 		}
 		screen_size.Row = uint16(t)
-		if t, err = strconv.Atoi(parts[2]); err != nil || t < 1 {
+		if t, err = strconv.ParseUint(parts[2], 10, 16); err != nil || t < 1 {
 			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
 		}
 		screen_size.Xpixel = uint16(t)
-		if t, err = strconv.Atoi(parts[3]); err != nil || t < 1 {
+		if t, err = strconv.ParseUint(parts[3], 10, 16); err != nil || t < 1 {
 			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
 		}
 		screen_size.Ypixel = uint16(t)

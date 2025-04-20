@@ -432,7 +432,7 @@ func (self Patcher) Patch(path, sentinel, content string, settings_to_comment_ou
 
 func ReloadConfigInKitty(in_parent_only bool) error {
 	if in_parent_only {
-		if pid, err := strconv.Atoi(os.Getenv("KITTY_PID")); err == nil {
+		if pid, err := strconv.ParseInt(os.Getenv("KITTY_PID"), 10, 32); err == nil {
 			if p, err := process.NewProcess(int32(pid)); err == nil {
 				if exe, eerr := p.Exe(); eerr == nil {
 					if c, err := p.CmdlineSlice(); err == nil && is_kitty_gui_cmdline(exe, c...) {
@@ -451,7 +451,7 @@ func ReloadConfigInKitty(in_parent_only bool) error {
 		for _, line := range utils.Splitlines(utils.UnsafeBytesToString(ps_out)) {
 			line = strings.TrimSpace(line)
 			if pid_string, argv0, found := strings.Cut(line, " "); found {
-				if pid, err := strconv.Atoi(strings.TrimSpace(pid_string)); err == nil && strings.Contains(argv0, "kitty") {
+				if pid, err := strconv.ParseInt(strings.TrimSpace(pid_string), 10, 32); err == nil && strings.Contains(argv0, "kitty") {
 					if p, err := process.NewProcess(int32(pid)); err == nil {
 						if cmdline, err := p.CmdlineSlice(); err == nil {
 							if exe, err := p.Exe(); err == nil && is_kitty_gui_cmdline(exe, cmdline...) {
