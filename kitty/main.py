@@ -211,7 +211,16 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
     return global_shortcuts
 
 
+_is_panel_kitten = False
+
+
+def is_panel_kitten() -> bool:
+    return _is_panel_kitten
+
+
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
+    global _is_panel_kitten
+    _is_panel_kitten = run_app.cached_values_name == 'panel'
     if is_macos:
         global_shortcuts = set_cocoa_global_shortcuts(opts)
         if opts.macos_custom_beam_cursor:

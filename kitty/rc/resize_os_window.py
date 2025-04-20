@@ -3,7 +3,18 @@
 
 from typing import TYPE_CHECKING
 
-from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+from .base import (
+    MATCH_WINDOW_OPTION,
+    ArgsType,
+    Boss,
+    PayloadGetType,
+    PayloadType,
+    RCOptions,
+    RemoteCommand,
+    RemoteControlErrorWithoutTraceback,
+    ResponseType,
+    Window,
+)
 
 if TYPE_CHECKING:
     from kitty.cli_stub import ResizeOSWindowRCOptions as CLIOptions
@@ -77,6 +88,9 @@ using this option means that you will not be notified of failures.
         }
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
+        from kitty.main import is_panel_kitten
+        if is_panel_kitten():
+            raise RemoteControlErrorWithoutTraceback('Resizing of panels created by the panel kitten is not supported')
         windows = self.windows_for_match_payload(boss, window, payload_get)
         if windows:
             ac = payload_get('action')

@@ -1553,6 +1553,11 @@ void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 
 void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 {
+    if (is_layer_shell(window)) {
+        _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
+                        "Wayland: Resizing of layer shell surfaces is not supported");
+        return;
+    }
     if (width != window->wl.width || height != window->wl.height) {
         window->wl.user_requested_content_size.width = width;
         window->wl.user_requested_content_size.height = height;
