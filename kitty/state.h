@@ -141,10 +141,15 @@ typedef struct WindowLogoRenderData {
     bool using_default;
 } WindowLogoRenderData;
 
+typedef struct FloatRenderData {
+    bool is_floating;
+} FloatRenderData;
+
 typedef struct {
     ssize_t vao_idx;
     float xstart, ystart, dx, dy;
     Screen *screen;
+    FloatRenderData float_data;
 } WindowRenderData;
 
 typedef struct {

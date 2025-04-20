@@ -526,7 +526,7 @@ def monitor_pid(pid: int) -> None:
     pass
 
 
-def add_window(os_window_id: int, tab_id: int, title: str) -> int:
+def add_window(os_window_id: int, tab_id: int, title: str, is_floating: bool) -> int:
     pass
 
 

@@ -16,7 +16,7 @@ from .clipboard import set_clipboard_string, set_primary_selection
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
-from .types import LayerShellConfig, OverlayType, run_once
+from .types import FloatType, LayerShellConfig, OverlayType, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
@@ -81,7 +81,7 @@ of the active window in the tab is used as the tab title. The special value
 --type
 type=choices
 default=window
-choices=window,tab,os-window,os-panel,overlay,overlay-main,background,clipboard,primary
+choices=window,tab,os-window,os-panel,overlay,overlay-main,float-in-window,float-in-tab,background,clipboard,primary
 Where to launch the child process:
 
 :code:`window`
@@ -104,6 +104,14 @@ Where to launch the child process:
     window which means it is used as the active window for getting the current working
     directory, the input text for kittens, launch commands, etc. Useful if this overlay is
     intended to run for a long time as a primary window.
+
+:code:`float-in-window`
+    A floating window that is drawn over a non-floating window, usually the currently
+    active window.
+
+:code:`float-in-tab`
+    A floating window that is drawn over all windows in a tab, usually the currently
+    active tab.
 
 :code:`background`
     The process will be run in the :italic:`background`, without a kitty
@@ -753,8 +761,9 @@ def _launch(
             tab = tab_for_window(boss, opts, target_tab, next_to)
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
+            float_type = {'float-in-window': FloatType.window, 'float-in-tab': FloatType.tab}.get(opts.type, FloatType.none)
             new_window: Window = tab.new_window(
-                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
+                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, float_type=float_type, **kw)
             if child_death_callback is not None:
                 boss.monitor_pid(new_window.child.pid or 0, child_death_callback)
         if spacing:

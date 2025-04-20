@@ -7,6 +7,7 @@
 
 #include "cleanup.h"
 #include "options/to-c-generated.h"
+#include "iqsort.h"
 #include <math.h>
 #include <sys/mman.h>
 
@@ -288,10 +289,11 @@ set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, floa
 }
 
 static void
-initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
+initialize_window(Window *w, PyObject *title, bool init_gpu_resources, bool is_floating) {
     w->id = ++global_state.window_id_counter;
     w->visible = true;
     w->title = title;
+    w->render_data.float_data.is_floating = is_floating;
     Py_XINCREF(title);
     if (!set_window_logo(w, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true, NULL, 0)) {
         log_error("Failed to load default window logo: %s", OPT(default_window_logo));
@@ -303,14 +305,23 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     }
 }
 
+static void
+sort_windows_in_render_order(Window *windows, size_t count) {
+#define lt(a, b) (!a->render_data.float_data.is_floating && b->render_data.float_data.is_floating) || (a->render_data.float_data.is_floating == b->render_data.float_data.is_floating && a->id < b->id)
+    QSORT(Window, windows, count, lt)
+#undef lt
+}
+
 static id_type
-add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
+add_window(id_type os_window_id, id_type tab_id, PyObject *title, bool is_floating) {
     WITH_TAB(os_window_id, tab_id);
         ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
         make_os_window_context_current(osw);
         zero_at_i(tab->windows, tab->num_windows);
-        initialize_window(tab->windows + tab->num_windows, title, true);
-        return tab->windows[tab->num_windows++].id;
+        initialize_window(tab->windows + tab->num_windows, title, true, is_floating);
+        Window *ans = tab->windows + tab->num_windows++;
+        sort_windows_in_render_order(tab->windows, tab->num_windows);
+        return ans->id;
     END_WITH_TAB;
     return 0;
 }
@@ -1290,13 +1301,14 @@ static PyObject*
 pycreate_mock_window(PyObject *self UNUSED, PyObject *args) {
     Screen *screen;
     PyObject *title = NULL;
-    if (!PyArg_ParseTuple(args, "O|U", &screen, &title)) return NULL;
+    int is_floating = 0;
+    if (!PyArg_ParseTuple(args, "O|Up", &screen, &title, &is_floating)) return NULL;
     Window *w = PyMem_Calloc(sizeof(Window), 1);
     if (!w) return NULL;
     Py_INCREF(screen);
     PyObject *ans = PyCapsule_New(w, "Window", destroy_mock_window);
     if (ans != NULL) {
-        initialize_window(w, title, false);
+        initialize_window(w, title, false, is_floating);
         w->render_data.screen = screen;
     }
     return ans;
@@ -1404,7 +1416,11 @@ THREE_ID(remove_window)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
-PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
+PYWRAP1(add_window) {
+    PyObject *title; id_type a, b; int is_floating;
+    PA("KKOp", &a, &b, &title, &is_floating);
+    return PyLong_FromUnsignedLongLong(add_window(a, b, title, is_floating));
+}
 PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }
 TWO_ID(remove_tab)
 KI(set_active_tab)

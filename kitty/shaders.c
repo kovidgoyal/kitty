@@ -1134,7 +1134,7 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
     }
     bool use_premult = false;
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
-    if (os_window->is_semi_transparent) {
+    if (os_window->is_semi_transparent || srd->float_data.is_floating) {
         if (has_underlying_image) { draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, grd, wl); use_premult = true; }
         else draw_cells_simple(vao_idx, screen, &crd, grd, os_window->is_semi_transparent);
     } else {
