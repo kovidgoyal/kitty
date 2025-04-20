@@ -210,7 +210,9 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    bool bold, italic, reverse, strikethrough, dim, non_blinking;
+    // non-blinking means this cursor does not blink,
+    // blink means that the letters *under* the cursor blink
+    bool bold, italic, reverse, strikethrough, dim, non_blinking, blink;
     monotonic_t position_changed_by_client_at;
     unsigned int x, y;
     uint8_t decoration;

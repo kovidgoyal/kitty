@@ -10,6 +10,7 @@
 #include "cleanup.h"
 #include "colors.h"
 #include <stddef.h>
+#include <sys/time.h>
 #include "window_logo.h"
 #include "srgb_gamma.h"
 #include "uniforms_generated.h"
@@ -756,6 +757,20 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
 #define S(prog, loc) bind_program(prog); glUniform1f(cell_program_layouts[prog].uniforms.inactive_text_alpha, current_inactive_text_alpha);
         S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc);
 #undef S
+    }
+
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    // Give a time between 0.0 and 1.0 which repeats every 1 second
+    float t = fmodf(tv.tv_usec / 1000000.0f, 1.0f);
+    for (int i = CELL_PROGRAM; i <= CELL_FG_PROGRAM; i++) {
+        bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
+        switch(i) {
+            case CELL_PROGRAM: case CELL_FG_PROGRAM:
+                glUniform1f(cu->u_time, t);
+                break;
+        }
     }
 }
 

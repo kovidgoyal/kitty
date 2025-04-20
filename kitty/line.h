@@ -17,8 +17,9 @@ typedef union CellAttrs {
         uint16_t reverse : 1;
         uint16_t strike : 1;
         uint16_t dim : 1;
+        uint16_t blink : 1;
         uint16_t mark : 2;
-        uint32_t : 22;
+        uint32_t : 20;
     };
     uint32_t val;
 } CellAttrs;
@@ -26,7 +27,7 @@ static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAt
 
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
-#define SGR_MASK (~(((CellAttrs){.mark=MARK_MASK}).val))
+#define SGR_MASK (~(((CellAttrs){.mark=MARK_MASK, .blink=1}).val))
 #define MAX_NUM_CODEPOINTS_PER_CELL 24u
 // Text presentation selector
 #define VS15 0xfe0e
@@ -173,14 +174,14 @@ static inline CellAttrs
 cursor_to_attrs(const Cursor *c) {
     CellAttrs ans = {
         .decoration=c->decoration, .bold=c->bold, .italic=c->italic, .reverse=c->reverse,
-        .strike=c->strikethrough, .dim=c->dim};
+        .strike=c->strikethrough, .dim=c->dim, .blink=c->blink};
     return ans;
 }
 
 static inline void
 attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
     c->decoration = attrs.decoration; c->bold = attrs.bold;  c->italic = attrs.italic;
-    c->reverse = attrs.reverse; c->strikethrough = attrs.strike; c->dim = attrs.dim;
+    c->reverse = attrs.reverse; c->strikethrough = attrs.strike; c->dim = attrs.dim; c->blink = attrs.blink;
 }
 
 #define cursor_as_gpu_cell(cursor) {.attrs=cursor_to_attrs(cursor), .fg=(cursor->fg & COL_MASK), .bg=(cursor->bg & COL_MASK), .decoration_fg=cursor->decoration_fg & COL_MASK}

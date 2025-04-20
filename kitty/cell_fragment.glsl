@@ -22,6 +22,9 @@ in vec3 decoration_fg;
 in float colored_sprite;
 #endif
 
+uniform float u_time;
+flat in uint v_blink;
+
 out vec4 output_color;
 
 // Util functions {{{
@@ -146,6 +149,31 @@ float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, flo
 
 void main() {
     vec4 final_color;
+    if (v_blink == 1u) {
+        // Use u_time for blinking effect. A 1.0 second cycle: first 0.5s on, next 0.5s off
+        float phase = mod(u_time, 1.0);
+        if (phase > 0.5) { // "off" phase
+            // Skip foreground/special rendering for this fragment by outputting only the background
+            #if (PHASE == PHASE_BOTH || PHASE == PHASE_BACKGROUND || PHASE == PHASE_SPECIAL)
+                #ifdef TRANSPARENT
+                    // If transparent, output premultiplied background color with its calculated alpha
+                    output_color = vec4_premul(background, bg_alpha);
+                #else
+                    // If opaque, output background color with alpha 1 if it should be drawn, 0 otherwise
+                    output_color = vec4(background, draw_bg * bg_alpha);
+                #endif
+            #else // PHASE_FOREGROUND
+                // In the foreground-only pass, discard fragments during the "off" phase
+                output_color = vec4(0.0);
+                discard;
+            #endif
+            return; // Skip the rest of the main function for this fragment
+        }
+        // Debug: Render a solid color to see if v_blink is working
+        //output_color = vec4(1.0, 0.0, 0.0, 1.0); // Red color for debugging
+        //return;
+    }
+
 #if (PHASE == PHASE_BOTH)
     vec4 text_fg = load_text_foreground_color();
     text_fg = adjust_foreground_contrast_with_background(text_fg, background);
@@ -183,5 +211,6 @@ void main() {
     final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
 #endif
 #endif
+
     output_color = final_color;
 }

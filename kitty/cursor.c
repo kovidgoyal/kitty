@@ -24,7 +24,7 @@ dealloc(Cursor* self) {
 
 #define EQ(x) (a->x == b->x)
 static int __eq__(Cursor *a, Cursor *b) {
-    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(dim) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
+    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(dim) && EQ(blink) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
 }
 
 static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "BEAM", "UNDERLINE", "HOLLOW" };
@@ -33,16 +33,16 @@ static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "
 static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
-        "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, dim=%R, decoration=%d, decoration_fg=#%08x)",
+        "Cursor(x=%u, y=%u, shape=%s, non_blinking=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, dim=%R, blink=%R, decoration=%d, decoration_fg=#%08x)",
         self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES ? cursor_names[self->shape] : "INVALID"),
-        BOOL(!self->non_blinking), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), BOOL(self->dim), self->decoration, self->decoration_fg
+        BOOL(!self->non_blinking), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), BOOL(self->dim), BOOL(self->blink), self->decoration, self->decoration_fg
     );
 }
 
 void
 cursor_reset_display_attrs(Cursor *self) {
     self->bg = 0; self->fg = 0; self->decoration_fg = 0;
-    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false; self->dim = false;
+    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false; self->dim = false; self->blink = false;
 }
 
 
@@ -93,6 +93,8 @@ START_ALLOW_CASE_RANGE
                 if (is_group && i < count) { self->decoration = MIN(5, params[i]); i++; }
                 else self->decoration = 1;
                 break;
+            case 5:
+                self->blink = true; break;
             case 7:
                 self->reverse = true;  break;
             case 9:
@@ -109,6 +111,8 @@ START_ALLOW_CASE_RANGE
                 self->italic = false;  break;
             case 24:
                 self->decoration = 0;  break;
+            case 25:
+                self->blink = false;  break;
             case 27:
                 self->reverse = false;  break;
             case 29:
@@ -169,12 +173,16 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
                 if (is_group && i < count) { val = MIN(5, params[i]); i++; }
                 S(decoration, val);
             }
+            case 5:
+                S(blink, true);
             case 7:
                 S(reverse, true);
             case 9:
                 S(strike, true);
             case 21:
                 S(decoration, 2);
+            case 25:
+                S(blink, false);
             case 221:
                 S(bold, false);
             case 222:
@@ -247,7 +255,7 @@ void cursor_reset(Cursor *self) {
 void cursor_copy_to(Cursor *src, Cursor *dest) {
 #define CCY(x) dest->x = src->x;
     CCY(x); CCY(y); CCY(shape); CCY(non_blinking);
-    CCY(bold); CCY(italic); CCY(strikethrough); CCY(dim); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg);
+    CCY(bold); CCY(italic); CCY(strikethrough); CCY(dim); CCY(blink); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg);
 }
 
 static PyObject*

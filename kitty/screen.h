@@ -174,6 +174,7 @@ typedef struct {
     CharsetState charset;
     ListOfChars *lc;
     monotonic_t parsing_at;
+    bool has_blinking_text;
 } Screen;
 
 

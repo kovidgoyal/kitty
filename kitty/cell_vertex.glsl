@@ -59,6 +59,7 @@ out float colored_sprite;
 out float effective_text_alpha;
 #endif
 
+flat out uint v_blink;
 
 // Utility functions {{{
 const uint BYTE_MASK = uint(0xFF);
@@ -261,6 +262,7 @@ void main() {
     uint text_attrs = sprite_idx[1];
     uint is_reversed = ((text_attrs >> REVERSE_SHIFT) & ONE);
     uint is_inverted = is_reversed + inverted;
+    v_blink = ((text_attrs >> BLINK_SHIFT) & ONE);
     int fg_index = fg_index_map[is_inverted];
     int bg_index = 1 - fg_index;
     int mark = int(text_attrs >> MARK_SHIFT) & MARK_MASK;

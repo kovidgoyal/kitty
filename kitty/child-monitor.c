@@ -783,6 +783,10 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
+            if (WD.screen->has_blinking_text) {
+                needs_render = true;
+                set_maximum_wait(ms_to_monotonic_t(1ll));
+            }
         }
     }
     return needs_render;
