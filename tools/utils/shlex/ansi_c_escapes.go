@@ -38,8 +38,7 @@ func is_oct_char(ch rune) bool {
 func (self *ansi_c) write_digits(base int) {
 	if self.digit_idx > 0 {
 		text := string(self.digits[:self.digit_idx])
-		val, err := strconv.ParseUint(text, base, 32)
-		if err == nil {
+		if val, err := strconv.ParseUint(text, base, 32); err == nil && val <= 0x10ffff {
 			self.output.WriteRune(rune(val))
 		}
 	}

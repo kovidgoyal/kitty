@@ -35,6 +35,10 @@ func (self sgr_color) as_sgr(base int) string {
 	return fmt.Sprintf("%d:2:%d:%d:%d", base+8, self.color.Red, self.color.Green, self.color.Blue)
 }
 
+func as_uint8(x int) uint8 {
+	return uint8(uint(x) & 0xff)
+}
+
 func (self *sgr_color) from_extended(nums []int) bool {
 	switch nums[0] {
 	case 5:
@@ -45,9 +49,9 @@ func (self *sgr_color) from_extended(nums []int) bool {
 	case 2:
 		if len(nums) > 3 {
 			self.number = -1
-			self.color.Red = uint8(nums[1])
-			self.color.Green = uint8(nums[2])
-			self.color.Blue = uint8(nums[3])
+			self.color.Red = as_uint8(nums[1])
+			self.color.Green = as_uint8(nums[2])
+			self.color.Blue = as_uint8(nums[3])
 			return true
 		}
 	}

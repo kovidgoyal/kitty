@@ -69,7 +69,7 @@ func Abspath(path string) string {
 
 var KittyExe = sync.OnceValue(func() string {
 	if kitty_pid := os.Getenv("KITTY_PID"); kitty_pid != "" {
-		if kp, err := strconv.Atoi(kitty_pid); err == nil {
+		if kp, err := strconv.ParseInt(kitty_pid, 10, 32); err == nil {
 			if p, err := process.NewProcess(int32(kp)); err == nil {
 				if exe, err := p.Exe(); err == nil && filepath.IsAbs(exe) && filepath.Base(exe) == "kitty" {
 					return exe
