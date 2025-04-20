@@ -69,7 +69,7 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			if err = set_metadata(func(m fs.FileMode) error { return os.Chmod(dest, m) }, hdr); err != nil {
 				return
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			var d *os.File
 			if err = os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
 				return
