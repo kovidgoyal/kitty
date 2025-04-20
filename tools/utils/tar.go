@@ -103,10 +103,6 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			if !filepath.IsAbs(link_target) {
 				link_target = filepath.Join(filepath.Dir(dest), link_target)
 			}
-			// Ensure the symlink target is within the destination directory
-			if !strings.HasPrefix(filepath.Clean(link_target), filepath.Clean(dest_path)+string(os.PathSeparator)) {
-				continue
-			}
 			if err = os.Link(link_target, dest); err != nil {
 				return
 			}
@@ -121,10 +117,9 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			if !filepath.IsAbs(link_target) {
 				link_target = filepath.Join(filepath.Dir(dest), link_target)
 			}
-			// Ensure the symlink target is within the destination directory
-			if !strings.HasPrefix(filepath.Clean(link_target), filepath.Clean(dest_path)+string(os.PathSeparator)) {
-				continue
-			}
+			// We dont care about the link target being outside dest_path as
+			// we use EvalSymlinks on dest, so a symlink pointing outside
+			// dest_path cannot cause writes outside dest_path.
 			if err = os.Symlink(link_target, dest); err != nil {
 				return
 			}
