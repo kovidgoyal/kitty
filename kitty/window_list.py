@@ -239,6 +239,11 @@ class WindowList:
             if g.is_visible_in_layout and not g.is_floating:
                 yield g
 
+    def iter_all_floating_groups(self) -> Iterator[WindowGroup]:
+        for g in self.groups:
+            if g.is_floating:
+                yield g
+
     @property
     def num_layoutable_groups(self) -> int:
         ans = 0
@@ -468,7 +473,7 @@ class WindowList:
 
     def compute_needs_borders_map(self, draw_active_borders: bool) -> dict[int, bool]:
         ag = self.active_group
-        return {gr.id: ((gr is ag and draw_active_borders) or gr.needs_attention) for gr in self.groups}
+        return {gr.id: ((gr is ag and draw_active_borders) or gr.needs_attention) for gr in self.groups if not gr.is_floating}
 
     @property
     def num_visble_groups(self) -> int:

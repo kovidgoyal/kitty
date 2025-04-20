@@ -366,6 +366,7 @@ class Layout:
         self.update_visibility(all_windows)
         self.blank_rects = []
         self.do_layout(all_windows)
+        self.layout_floats(all_windows)
 
     def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:
         bw = 1 if self.must_draw_borders else 0
@@ -428,6 +429,11 @@ class Layout:
 
     def do_layout(self, windows: WindowList) -> None:
         raise NotImplementedError()
+
+    def layout_floats(self, windows: WindowList) -> None:
+        for gr in windows.iter_all_floating_groups():
+            # TODO: actually position the float based on its properties
+            self.layout_single_window_group(gr, False)
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         return {'left': [], 'right': [], 'top': [], 'bottom': []}
