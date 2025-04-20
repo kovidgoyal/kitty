@@ -115,7 +115,7 @@ func ISO8601Parse(raw string) (time.Time, error) {
 				text = text[:9]
 			}
 			if text != "" {
-				if nsec, err = strconv.ParseInt(text, 10, 64); err != nil {
+				if nsec, err = strconv.ParseInt(text, 10, 0); err != nil {
 					return errf("timestamp does not have a valid nanosecond field")
 				}
 				for ; extra > 0; extra-- {

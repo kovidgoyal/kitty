@@ -60,6 +60,16 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			continue
 		}
 		dest = filepath.Join(dest_path, dest)
+		if dest, err = filepath.EvalSymlinks(dest); err != nil {
+			if os.IsNotExist(err) {
+				err = nil
+			} else {
+				return count, err
+			}
+		}
+		if !strings.HasPrefix(filepath.Clean(dest), filepath.Clean(dest_path)+string(os.PathSeparator)) {
+			return count, fmt.Errorf("illegal path in tar archive: %s", hdr.Name)
+		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			err = os.MkdirAll(dest, 0o700)
@@ -99,7 +109,15 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			if err = os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
 				return
 			}
-			if err = os.Symlink(hdr.Linkname, dest); err != nil {
+			link_target := hdr.Linkname
+			if !filepath.IsAbs(link_target) {
+				link_target = filepath.Join(filepath.Dir(dest), link_target)
+			}
+			// Ensure the symlink target is within the destination directory
+			if !strings.HasPrefix(filepath.Clean(link_target), filepath.Clean(dest_path)+string(os.PathSeparator)) {
+				return count, fmt.Errorf("illegal symlink target: %s -> %s", hdr.Name, link_target)
+			}
+			if err = os.Symlink(link_target, dest); err != nil {
 				return
 			}
 			if err = set_metadata(nil, hdr); err != nil {
