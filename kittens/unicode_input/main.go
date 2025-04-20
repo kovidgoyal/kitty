@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -388,17 +389,18 @@ func (self *handler) switch_mode(mode Mode) {
 
 func (self *handler) handle_hex_key_event(event *loop.KeyEvent) {
 	text := self.rl.AllText()
-	val, err := strconv.ParseUint(text, 16, 32)
+	uval, err := strconv.ParseUint(text, 16, 32)
 	new_val := -1
-	if err != nil {
+	if err != nil || uval > math.MaxInt {
 		return
 	}
+	val := int(uval)
 	if event.MatchesPressOrRepeat("tab") {
-		new_val = int(val) + 10
+		new_val = val + 10
 	} else if event.MatchesPressOrRepeat("up") {
-		new_val = int(val) + 1
+		new_val = val + 1
 	} else if event.MatchesPressOrRepeat("down") {
-		new_val = utils.Max(32, int(val)-1)
+		new_val = max(32, val-1)
 	}
 	if new_val > -1 {
 		event.Handled = true

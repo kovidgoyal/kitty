@@ -4,6 +4,7 @@ package utils
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -43,7 +44,10 @@ func ISO8601Parse(raw string) (time.Time, error) {
 		text := raw[:num_digits]
 		raw = raw[num_digits:]
 		ans, err := strconv.ParseUint(text, 10, 32)
-		return int(ans), err
+		if err == nil && ans <= math.MaxInt {
+			return int(ans), nil
+		}
+		return math.MaxInt, err
 
 	}
 	optional_separator := func(x byte) bool {
@@ -77,7 +81,8 @@ func ISO8601Parse(raw string) (time.Time, error) {
 		}
 	}
 
-	var hour, minute, second, nsec int
+	var hour, minute, second int
+	var nsec int64
 
 	if len(raw) > 0 && (raw[0] == 'T' || raw[0] == ' ') {
 		raw = raw[1:]
@@ -114,7 +119,7 @@ func ISO8601Parse(raw string) (time.Time, error) {
 				if err != nil {
 					return errf("timestamp does not have a valid nanosecond field")
 				}
-				nsec = int(n)
+				nsec = int64(n)
 				for ; extra > 0; extra-- {
 					nsec *= 10
 				}
@@ -158,7 +163,7 @@ func ISO8601Parse(raw string) (time.Time, error) {
 		seconds := tzhour*3600 + tzminute*60
 		loc = time.FixedZone("", tzsign*seconds)
 	}
-	return time.Date(year, time.Month(month), day, hour, minute, second, nsec, loc), err
+	return time.Date(year, time.Month(month), day, hour, minute, second, int(nsec), loc), err
 }
 
 func ISO8601Format(x time.Time) string {

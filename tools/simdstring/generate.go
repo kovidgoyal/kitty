@@ -806,7 +806,7 @@ func (f *Function) SetRegisterTo(self Register, val any) {
 }
 
 func (r Register) ARMId() uint32 {
-	num, err := strconv.Atoi(r.Name[1:])
+	num, err := strconv.ParseUint(r.Name[1:], 10, 32)
 	if err != nil {
 		panic(err)
 	}

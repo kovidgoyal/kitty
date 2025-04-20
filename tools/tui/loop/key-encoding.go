@@ -4,6 +4,7 @@ package loop
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -152,7 +153,7 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 				ans[i] = missing
 			} else {
 				q, err := strconv.ParseUint(x, 10, 32)
-				if err != nil {
+				if err != nil || q > math.MaxInt32 {
 					return nil
 				}
 				ans[i] = int32(q)

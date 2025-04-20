@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 )
 
 var _ = fmt.Print
@@ -59,8 +60,9 @@ func StringLiteral(val string) (string, error) {
 	var state State
 	decode := func(base int) {
 		text := string(buf[:bufcount])
-		num, _ := strconv.ParseUint(text, base, 32)
-		ans.WriteRune(rune(num))
+		if num, err := strconv.ParseUint(text, base, 32); err == nil && num <= utf8.MaxRune {
+			ans.WriteRune(rune(num))
+		}
 		state = normal
 		bufcount = 0
 		buflimit = 0

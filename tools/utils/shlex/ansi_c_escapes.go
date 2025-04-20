@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 var _ = fmt.Print
@@ -38,7 +39,7 @@ func is_oct_char(ch rune) bool {
 func (self *ansi_c) write_digits(base int) {
 	if self.digit_idx > 0 {
 		text := string(self.digits[:self.digit_idx])
-		if val, err := strconv.ParseUint(text, base, 32); err == nil && val <= 0x10ffff {
+		if val, err := strconv.ParseUint(text, base, 32); err == nil && val <= utf8.MaxRune {
 			self.output.WriteRune(rune(val))
 		}
 	}
