@@ -40,7 +40,6 @@ jobs:
           uses: github/codeql-action/init@v3
           with:
               languages: python, c, go
-              setup-python-dependencies: false
 
         - name: Build kitty
           run: python3 .github/workflows/ci.py build
