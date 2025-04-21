@@ -26,8 +26,9 @@ class Launch(RemoteCommand):
     cwd/str: Working directory for the new window
     env/list.str: List of environment variables of the form NAME=VALUE
     var/list.str: List of user variables of the form NAME=VALUE
+    os_panel/list.str: List of panel settings
     tab_title/str: Title for the new tab
-    type/choices.window.tab.os-window.overlay.overlay-main.background.clipboard.primary: The type of window to open
+    type/choices.window.tab.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
     keep_focus/bool: Boolean indicating whether the current window should retain focus or not
     copy_colors/bool: Boolean indicating whether to copy the colors from the current window
     copy_cmdline/bool: Boolean indicating whether to copy the cmdline from the current window

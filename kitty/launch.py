@@ -16,7 +16,7 @@ from .clipboard import set_clipboard_string, set_primary_selection
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
-from .types import OverlayType, run_once
+from .types import LayerShellConfig, OverlayType, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
@@ -81,7 +81,7 @@ of the active window in the tab is used as the tab title. The special value
 --type
 type=choices
 default=window
-choices=window,tab,os-window,overlay,overlay-main,background,clipboard,primary
+choices=window,tab,os-window,os-panel,overlay,overlay-main,background,clipboard,primary
 Where to launch the child process:
 
 :code:`window`
@@ -115,6 +115,11 @@ Where to launch the child process:
 :code:`clipboard`, :code:`primary`
     These two are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
     data to the :italic:`system clipboard` or :italic:`primary selection`.
+
+:code:`os-panel`
+    Similar to :code:`os-window`, except that it creates the new OS Window as a desktop panel.
+    Only works on platforms that support this, such as Wayand compositors that support the layer
+    shell protocol. Use the :option:`kitten @ launch --os-panel` option to configure the panel.
 
 #placeholder_for_formatting#
 
@@ -378,6 +383,15 @@ the section on watchers in the launch command documentation: :ref:`watchers`.
 Relative paths are resolved relative to the :ref:`kitty config directory
 <confloc>`. Global watchers for all windows can be specified with
 :opt:`watcher` in :file:`kitty.conf`.
+
+
+--os-panel
+type=list
+Options to control the creation of desktop panels. Takes the same settings
+as the :doc:`panel kitten </kittens/panel>`. Can be specified multiple times.
+For example, to create a desktop panel at the bottom of the screen two lines high::
+
+    launch --type os-panel --os-panel lines=2 --os-panel edge=bottom sh -c "echo; echo; echo hello; sleep 5s"
 """
 
 
@@ -402,15 +416,25 @@ def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env:
     return env
 
 
+def layer_shell_config_from_panel_opts(panel_opts: Iterable[str]) -> LayerShellConfig:
+    from kittens.panel.main import layer_shell_config, parse_panel_args
+    args = [('' if x.startswith('--') else '--') + x for x in panel_opts]
+    opts, _ = parse_panel_args(args)
+    return layer_shell_config(opts)
+
+
 def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, next_to: Window | None) -> Tab:
 
     def create_tab(tm: TabManager | None = None) -> Tab:
         if tm is None:
-            oswid = boss.add_os_window(
-                wclass=opts.os_window_class,
-                wname=opts.os_window_name,
-                window_state=opts.os_window_state,
-                override_title=opts.os_window_title or None)
+            if opts.type == 'os-panel':
+                oswid = boss.add_os_panel(layer_shell_config_from_panel_opts(opts.os_panel), opts.os_window_class, opts.os_window_name)
+            else:
+                oswid = boss.add_os_window(
+                    wclass=opts.os_window_class,
+                    wname=opts.os_window_name,
+                    window_state=opts.os_window_state,
+                    override_title=opts.os_window_title or None)
             tm = boss.os_window_map[oswid]
         tab = tm.new_tab(empty_tab=True, location=opts.location)
         if opts.tab_title:
@@ -424,7 +448,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, n
         if target_tab is not None:
             tm = target_tab.tab_manager_ref() or tm
         tab = create_tab(tm)
-    elif opts.type == 'os-window':
+    elif opts.type in ('os-window', 'os-panel'):
         tab = create_tab()
     else:
         if target_tab is not None:

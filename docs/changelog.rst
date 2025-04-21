@@ -97,6 +97,8 @@ Detailed list of changes
 0.42.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- launch: Allow creating desktop panels such as those created by the :doc:`panel kitten </kittens/panel>` (:iss:`8459`)
+
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)
 
 - diff kitten: Add half page and full page scroll vim-like bindings (:pull:`8514`)
@@ -108,6 +110,7 @@ Detailed list of changes
   the default bell sound
 
 - panel kitten: Allow specifying panel size in pixels in addition to cells
+
 
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

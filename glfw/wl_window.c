@@ -1446,6 +1446,9 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->wl.xdg.surface)
         xdg_surface_destroy(window->wl.xdg.surface);
 
+    if (window->wl.layer_shell.zwlr_layer_surface_v1)
+        zwlr_layer_surface_v1_destroy(window->wl.layer_shell.zwlr_layer_surface_v1);
+
     if (window->wl.surface)
         wl_surface_destroy(window->wl.surface);
 

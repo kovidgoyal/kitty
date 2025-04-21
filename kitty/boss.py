@@ -86,6 +86,7 @@ from .fast_data_types import (
     get_options,
     get_os_window_size,
     global_font_size,
+    is_layer_shell_supported,
     last_focused_os_window_id,
     mark_os_window_for_close,
     monitor_pid,
@@ -120,7 +121,7 @@ from .os_window_size import initial_window_size_func
 from .session import Session, create_sessions, get_os_window_sizing_data
 from .shaders import load_shader_programs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
-from .types import _T, AsyncResponse, SingleInstanceData, WindowSystemMouseEvent, ac
+from .types import _T, AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters,
@@ -452,6 +453,18 @@ class Boss:
             wname = self.args.name or self.args.cls or appname
             wclass = self.args.cls or appname
         tm = TabManager(os_window_id, self.args, wclass, wname, startup_session)
+        self.os_window_map[os_window_id] = tm
+        return os_window_id
+
+    def add_os_panel(self, cfg: LayerShellConfig, wclass: str | None = appname, wname: str | None = appname) -> int:
+        if is_macos or not is_wayland() or not is_layer_shell_supported():
+            raise RuntimeError('Creating desktop panels is not supported on this platform')
+        wclass = wclass or appname
+        wname = wname or appname
+        size_data = get_os_window_sizing_data(get_options(), None)
+        os_window_id = create_os_window(
+            initial_window_size_func(size_data, {}), lambda *a: None, appname, wname, wclass, None, layer_shell_config=cfg)
+        tm = TabManager(os_window_id, self.args, wclass, wname, None)
         self.os_window_map[os_window_id] = tm
         return os_window_id
 
