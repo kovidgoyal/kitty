@@ -1141,17 +1141,19 @@ calculate_layer_shell_window_size(
     OSWindow *os_window = os_window_for_glfw_window(window);
     debug("Calculating layer shell window size at scale: %f\n", xscale);
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(os_window ? os_window->fonts_data->font_sz_in_pts : OPT(font_size), xdpi, ydpi);
+    const unsigned xsz = config->x_size_in_pixels ? config->x_size_in_pixels : (fonts_data->fcm.cell_width * config->x_size_in_cells);
+    const unsigned ysz = config->y_size_in_pixels ? config->y_size_in_pixels : (fonts_data->fcm.cell_height * config->y_size_in_cells);
     if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
         if (!*height) *height = monitor_height;
         double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
         spacing *= xdpi / 72.;
-        spacing += (fonts_data->fcm.cell_width * config->x_size_in_cells) / xscale;
+        spacing += xsz / xscale;
         *width = (uint32_t)(1. + spacing);
     } else if (config->edge == GLFW_EDGE_TOP || config->edge == GLFW_EDGE_BOTTOM) {
         if (!*width) *width = monitor_width;
         double spacing = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
         spacing *= ydpi / 72.;
-        spacing += (fonts_data->fcm.cell_height * config->y_size_in_cells) / yscale;
+        spacing += ysz / yscale;
         *height = (uint32_t)(1. + spacing);
     } else if (config->edge == GLFW_EDGE_CENTER) {
         if (!*width) *width = monitor_width;
@@ -1159,10 +1161,10 @@ calculate_layer_shell_window_size(
     } else {
         double spacing_x = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
         spacing_x *= xdpi / 72.;
-        spacing_x += (fonts_data->fcm.cell_width * config->x_size_in_cells) / xscale;
+        spacing_x += xsz / xscale;
         double spacing_y = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
         spacing_y *= ydpi / 72.;
-        spacing_y += (fonts_data->fcm.cell_height * config->y_size_in_cells) / yscale;
+        spacing_y += ysz / yscale;
         *width = (uint32_t)(1. + spacing_x);
         *height = (uint32_t)(1. + spacing_y);
     }
@@ -1355,6 +1357,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
     w->disallow_title_changes = disallow_override_title;
+    w->is_layer_shell = is_layer_shell;
     update_os_window_references();
     if (!is_layer_shell) {
         for (size_t i = 0; i < global_state.num_os_windows; i++) {

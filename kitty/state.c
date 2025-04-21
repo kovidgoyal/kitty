@@ -1123,10 +1123,10 @@ PYWRAP1(get_os_window_size) {
         get_os_window_size(os_window, &width, &height, &fw, &fh);
         get_os_window_content_scale(os_window, &xdpi, &ydpi, &xscale, &yscale);
         unsigned int cell_width = os_window->fonts_data->fcm.cell_width, cell_height = os_window->fonts_data->fcm.cell_height;
-        return Py_BuildValue("{si si si si sf sf sd sd sI sI}",
+        return Py_BuildValue("{si si si si sf sf sd sd sI sI sO}",
             "width", width, "height", height, "framebuffer_width", fw, "framebuffer_height", fh,
             "xscale", xscale, "yscale", yscale, "xdpi", xdpi, "ydpi", ydpi,
-            "cell_width", cell_width, "cell_height", cell_height);
+            "cell_width", cell_width, "cell_height", cell_height, "is_layer_shell", os_window->is_layer_shell ? Py_True : Py_False);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }

@@ -1311,8 +1311,8 @@ typedef struct GLFWLayerShellConfig {
     GLFWEdge edge;
     char output_name[64];
     GLFWFocusPolicy focus_policy;
-    unsigned x_size_in_cells;
-    unsigned y_size_in_cells;
+    unsigned x_size_in_cells, x_size_in_pixels;
+    unsigned y_size_in_cells, y_size_in_pixels;
     unsigned requested_top_margin;
     unsigned requested_left_margin;
     unsigned requested_bottom_margin;

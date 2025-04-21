@@ -312,6 +312,7 @@ typedef struct {
     uint64_t render_calls;
     id_type last_focused_counter;
     CloseRequest close_request;
+    bool is_layer_shell;
 } OSWindow;
 
 

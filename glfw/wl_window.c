@@ -2830,6 +2830,10 @@ GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(const GLFWLayerShellConfig 
     layer_shell_config_for_next_window = *c;
 }
 
+GLFWAPI GLFWLayerShellConfig* glfwWaylandLayerShellConfig(GLFWwindow *handle) {
+    return &((_GLFWwindow*)handle)->wl.layer_shell.config;
+}
+
 GLFWAPI bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle) { return handle != NULL && ((_GLFWwindow*)handle)->wl.window_fully_created; }
 
 void

@@ -1049,8 +1049,8 @@ typedef struct GLFWLayerShellConfig {
     GLFWEdge edge;
     char output_name[64];
     GLFWFocusPolicy focus_policy;
-    unsigned x_size_in_cells;
-    unsigned y_size_in_cells;
+    unsigned x_size_in_cells, x_size_in_pixels;
+    unsigned y_size_in_cells, y_size_in_pixels;
     unsigned requested_top_margin;
     unsigned requested_left_margin;
     unsigned requested_bottom_margin;
@@ -2347,6 +2347,10 @@ GFW_EXTERN glfwWaylandIsWindowFullyCreated_func glfwWaylandIsWindowFullyCreated_
 typedef bool (*glfwWaylandBeep_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandBeep_func glfwWaylandBeep_impl;
 #define glfwWaylandBeep glfwWaylandBeep_impl
+
+typedef GLFWLayerShellConfig* (*glfwWaylandLayerShellConfig_func)(GLFWwindow*);
+GFW_EXTERN glfwWaylandLayerShellConfig_func glfwWaylandLayerShellConfig_impl;
+#define glfwWaylandLayerShellConfig glfwWaylandLayerShellConfig_impl
 
 typedef void (*glfwWaylandSetupLayerShellForNextWindow_func)(const GLFWLayerShellConfig*);
 GFW_EXTERN glfwWaylandSetupLayerShellForNextWindow_func glfwWaylandSetupLayerShellForNextWindow_impl;

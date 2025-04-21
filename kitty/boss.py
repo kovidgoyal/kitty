@@ -147,6 +147,7 @@ from .window import CommandOutput, CwdRequest, Window
 
 if TYPE_CHECKING:
 
+    from .fast_data_types import OSWindowSize
     from .rc.base import ResponseType
 # }}}
 
@@ -1582,12 +1583,14 @@ class Boss:
             return None
         return tab.resize_window_by(window.id, increment, is_horizontal)
 
-    def resize_os_window(self, os_window_id: int, width: int, height: int, unit: str, incremental: bool = False) -> None:
+    def resize_os_window(self, os_window_id: int, width: int, height: int, unit: str, incremental: bool = False, metrics: 'None | OSWindowSize' = None) -> None:
         if not incremental and (width < 0 or height < 0):
             return
-        metrics = get_os_window_size(os_window_id)
+        metrics = get_os_window_size(os_window_id) if metrics is None else metrics
         if metrics is None:
             return
+        if metrics['is_layer_shell']:
+            raise TypeError(f'The OS Window {os_window_id} is a panel and cannot be resized')
         has_window_scaling = is_macos or is_wayland()
         w, h = get_new_os_window_size(metrics, width, height, unit, incremental, has_window_scaling)
         set_os_window_size(os_window_id, w, h)

@@ -3,6 +3,8 @@
 
 from typing import TYPE_CHECKING
 
+from kitty.fast_data_types import get_os_window_size
+
 from .base import (
     MATCH_WINDOW_OPTION,
     ArgsType,
@@ -88,17 +90,19 @@ using this option means that you will not be notified of failures.
         }
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
-        from kitty.main import is_panel_kitten
-        if is_panel_kitten():
-            raise RemoteControlErrorWithoutTraceback('Resizing of panels created by the panel kitten is not supported')
         windows = self.windows_for_match_payload(boss, window, payload_get)
         if windows:
             ac = payload_get('action')
             for os_window_id in {w.os_window_id for w in windows if w}:
+                metrics = get_os_window_size(os_window_id)
+                if metrics is None:
+                    raise RemoteControlErrorWithoutTraceback(f'The OS Window {os_window_id} does not exist')
+                if metrics['is_layer_shell']:
+                    raise RemoteControlErrorWithoutTraceback(f'The OS Window {os_window_id} is a panel and cannot be resized')
                 if ac == 'resize':
                     boss.resize_os_window(
                         os_window_id, width=payload_get('width'), height=payload_get('height'),
-                        unit=payload_get('unit'), incremental=payload_get('incremental')
+                        unit=payload_get('unit'), incremental=payload_get('incremental'), metrics=metrics,
                     )
                 elif ac == 'toggle-fullscreen':
                     boss.toggle_fullscreen(os_window_id)

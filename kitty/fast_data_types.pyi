@@ -1545,6 +1545,7 @@ class OSWindowSize(TypedDict):
     ydpi: float
     cell_width: int
     cell_height: int
+    is_layer_shell: bool
 
 
 def mark_os_window_dirty(os_window_id: int) -> None:
