@@ -171,8 +171,10 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 	if len(optss) > 0 {
 		opts = optss[0]
 	}
-	if dest_path, err = filepath.Abs(dest_path); err != nil {
-		return
+	if !filepath.IsAbs(dest_path) {
+		if dest_path, err = filepath.Abs(dest_path); err != nil {
+			return
+		}
 	}
 	if dest_path, err = filepath.EvalSymlinks(dest_path); err != nil {
 		return
