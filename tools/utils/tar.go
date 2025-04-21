@@ -171,10 +171,13 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 	if len(optss) > 0 {
 		opts = optss[0]
 	}
-	dest_path, err = filepath.Abs(dest_path)
-	if err != nil {
+	if dest_path, err = filepath.Abs(dest_path); err != nil {
 		return
 	}
+	if dest_path, err = filepath.EvalSymlinks(dest_path); err != nil {
+		return
+	}
+	dest_path = filepath.Clean(dest_path)
 
 	mode := func(hdr int64) fs.FileMode {
 		return fs.FileMode(hdr) & (fs.ModePerm | fs.ModeSetgid | fs.ModeSetuid | fs.ModeSticky)
@@ -190,6 +193,7 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 		count++
 		return
 	}
+	needed_prefix := dest_path + string(os.PathSeparator)
 
 	for {
 		var hdr *tar.Header
@@ -208,7 +212,7 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 		if dest, err = EvalSymlinksThatExist(dest); err != nil {
 			return count, err
 		}
-		if !strings.HasPrefix(filepath.Clean(dest), filepath.Clean(dest_path)+string(os.PathSeparator)) {
+		if !strings.HasPrefix(dest, needed_prefix) {
 			continue
 		}
 		switch hdr.Typeflag {
