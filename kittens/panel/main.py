@@ -112,7 +112,7 @@ you to specify which output is used, by name. If not specified the compositor wi
 output automatically, typically the last output the user interacted with or the primary monitor.
 
 
---class
+--class --app-id
 dest=cls
 default={appname}-panel
 condition=not is_macos
