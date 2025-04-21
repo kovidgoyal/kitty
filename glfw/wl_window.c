@@ -2834,6 +2834,8 @@ GLFWAPI GLFWLayerShellConfig* glfwWaylandLayerShellConfig(GLFWwindow *handle) {
     return &((_GLFWwindow*)handle)->wl.layer_shell.config;
 }
 
+GLFWAPI bool glfwWaylandIsLayerShellSupported(void) { return _glfw.wl.zwlr_layer_shell_v1 != NULL; }
+
 GLFWAPI bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle) { return handle != NULL && ((_GLFWwindow*)handle)->wl.window_fully_created; }
 
 void

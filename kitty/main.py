@@ -39,6 +39,7 @@ from .fast_data_types import (
     free_font_data,
     glfw_init,
     glfw_terminate,
+    is_layer_shell_supported,
     load_png_data,
     mask_kitty_signals_process_wide,
     run_at_exit_cleanup_functions,
@@ -229,6 +230,10 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
     else:
         global_shortcuts = {}
         set_window_icon()
+    if _is_panel_kitten and is_wayland() and not is_layer_shell_supported():
+        from .debug_config import compositor_name
+        raise SystemExit(
+                f'Cannot create panels as the layer shell protocol is not supported by the compositor: {compositor_name()}')
 
     with cached_values_for(run_app.cached_values_name) as cached_values:
         startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))

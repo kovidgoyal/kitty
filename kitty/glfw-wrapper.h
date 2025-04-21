@@ -2340,6 +2340,10 @@ typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;
 #define glfwWaylandRedrawCSDWindowTitle glfwWaylandRedrawCSDWindowTitle_impl
 
+typedef bool (*glfwWaylandIsLayerShellSupported_func)(void);
+GFW_EXTERN glfwWaylandIsLayerShellSupported_func glfwWaylandIsLayerShellSupported_impl;
+#define glfwWaylandIsLayerShellSupported glfwWaylandIsLayerShellSupported_impl
+
 typedef bool (*glfwWaylandIsWindowFullyCreated_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandIsWindowFullyCreated_func glfwWaylandIsWindowFullyCreated_impl;
 #define glfwWaylandIsWindowFullyCreated glfwWaylandIsWindowFullyCreated_impl

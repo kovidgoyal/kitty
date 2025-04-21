@@ -1211,6 +1211,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &optional_window_state, &load_programs, &optional_x, &optional_y, &disallow_override_title, &layer_shell_config)) return NULL;
     bool is_layer_shell = false;
     if (layer_shell_config && layer_shell_config != Py_None && global_state.is_wayland) {
+        if (!glfwWaylandIsLayerShellSupported()) {
+            PyErr_SetString(PyExc_RuntimeError, "The Wayland compositor does not support the layer shell protocol.");
+            return NULL;
+        }
         is_layer_shell = true;
     } else {
         if (optional_window_state && optional_window_state != Py_None) { if (!PyLong_Check(optional_window_state)) { PyErr_SetString(PyExc_TypeError, "window_state must be an int"); return NULL; } window_state = (int) PyLong_AsLong(optional_window_state); }
@@ -2407,6 +2411,17 @@ make_x11_window_a_dock_window(PyObject *self UNUSED, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+is_layer_shell_supported(PyObject *self UNUSED, PyObject *args UNUSED) {
+#ifdef __APPLE__
+    Py_RETURN_FALSE;
+#else
+    if (!global_state.is_wayland) Py_RETURN_FALSE;
+    return Py_NewRef(glfwWaylandIsLayerShellSupported() ? Py_True : Py_False);
+#endif
+}
+
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -2428,6 +2443,7 @@ static PyMethodDef module_methods[] = {
     METHODB(x11_display, METH_NOARGS),
     METHODB(wayland_compositor_data, METH_NOARGS),
     METHODB(get_click_interval, METH_NOARGS),
+    METHODB(is_layer_shell_supported, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(make_x11_window_a_dock_window, METH_VARARGS),
     METHODB(strip_csi, METH_O),
