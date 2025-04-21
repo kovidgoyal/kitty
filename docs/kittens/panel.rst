@@ -68,7 +68,9 @@ Make a Quake like quick access terminal
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. versionadded:: 0.42.0
-   Support for quake mode, works only on Wayland, except for GNOME.
+   Support for quake mode, works only on Wayland, except for GNOME. On KDE
+   because of a bug in kwin, the terminal appears and hides only once, after
+   that it does not re-appear.
 
 This kitten can be used to make a quick access terminal, that appears and
 disappears at a key press. To do so use the following command::
