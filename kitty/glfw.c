@@ -1141,8 +1141,8 @@ calculate_layer_shell_window_size(
     OSWindow *os_window = os_window_for_glfw_window(window);
     debug("Calculating layer shell window size at scale: %f\n", xscale);
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(os_window ? os_window->fonts_data->font_sz_in_pts : OPT(font_size), xdpi, ydpi);
-    const unsigned xsz = config->x_size_in_pixels ? config->x_size_in_pixels : (fonts_data->fcm.cell_width * config->x_size_in_cells);
-    const unsigned ysz = config->y_size_in_pixels ? config->y_size_in_pixels : (fonts_data->fcm.cell_height * config->y_size_in_cells);
+    const unsigned xsz = config->x_size_in_pixels ? (unsigned)(config->x_size_in_pixels * xscale) : (fonts_data->fcm.cell_width * config->x_size_in_cells);
+    const unsigned ysz = config->y_size_in_pixels ? (unsigned)(config->y_size_in_pixels * yscale) : (fonts_data->fcm.cell_height * config->y_size_in_cells);
     if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
         if (!*height) *height = monitor_height;
         double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
@@ -1180,6 +1180,8 @@ translate_layer_shell_config(PyObject *p, GLFWLayerShellConfig *ans) {
     A(focus_policy, PyLong_Check, PyLong_AsLong);
     A(x_size_in_cells, PyLong_Check, PyLong_AsLong);
     A(y_size_in_cells, PyLong_Check, PyLong_AsLong);
+    A(x_size_in_pixels, PyLong_Check, PyLong_AsLong);
+    A(y_size_in_pixels, PyLong_Check, PyLong_AsLong);
     A(requested_top_margin, PyLong_Check, PyLong_AsLong);
     A(requested_left_margin, PyLong_Check, PyLong_AsLong);
     A(requested_bottom_margin, PyLong_Check, PyLong_AsLong);

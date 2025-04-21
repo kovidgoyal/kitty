@@ -107,6 +107,8 @@ Detailed list of changes
   <https://wayland.app/protocols/xdg-system-bell-v1>`__ protocol use it to play
   the default bell sound
 
+- panel kitten: Allow specifying panel size in pixels in addition to cells
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

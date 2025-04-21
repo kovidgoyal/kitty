@@ -72,6 +72,8 @@ class LayerShellConfig(NamedTuple):
     edge: int = 0
     focus_policy: int = 0
     output_name: str = ''
+    x_size_in_pixels: int = 0
+    y_size_in_pixels: int = 0
     x_size_in_cells: int = 0
     y_size_in_cells: int = 0
     requested_top_margin: int = 0

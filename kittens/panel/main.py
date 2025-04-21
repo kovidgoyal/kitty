@@ -3,6 +3,7 @@
 
 import sys
 from collections.abc import Callable
+from contextlib import suppress
 from typing import Any
 
 from kitty.cli import parse_args
@@ -31,42 +32,42 @@ from kitty.typing import EdgeLiteral
 
 OPTIONS = r'''
 --lines
-type=int
 default=1
 The number of lines shown in the panel. Ignored for background, centered, and vertical panels.
+If it has the suffix :code:`px` then it sets the height of the panel in pixels instead of lines.
 
 
 --columns
-type=int
 default=1
 The number of columns shown in the panel. Ignored for background, centered, and horizontal panels.
+If it has the suffix :code:`px` then it sets the width of the panel in pixels instead of columns.
 
 
 --margin-top
 type=int
 default=0
-Request a given top margin to the compositor.
+Set the top margin for the panel, in pixels. Has no effect for bottom edge panels.
 Only works on a Wayland compositor that supports the wlr layer shell protocol.
 
 
 --margin-left
 type=int
 default=0
-Request a given left margin to the compositor.
+Set the left margin for the panel, in pixels. Has no effect for right edge panels.
 Only works on a Wayland compositor that supports the wlr layer shell protocol.
 
 
 --margin-bottom
 type=int
 default=0
-Request a given bottom margin to the compositor.
+Set the bottom margin for the panel, in pixels. Has no effect for top edge panels.
 Only works on a Wayland compositor that supports the wlr layer shell protocol.
 
 
 --margin-right
 type=int
 default=0
-Request a given right margin to the compositor.
+Set the right margin for the panel, in pixels. Has no effect for left edge panels.
 Only works on a Wayland compositor that supports the wlr layer shell protocol.
 
 
@@ -214,25 +215,39 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]
             xscale = yscale = 1
         global window_width, window_height
         monitor_width, monitor_height = glfw_primary_monitor_size()
+        x = dual_distance(args.columns, min_cell_value_if_no_pixels=1)
+        rwidth = x[1] if x[1] else (x[0] * cell_width / xscale)
+        x = dual_distance(args.lines, min_cell_value_if_no_pixels=1)
+        rheight = x[1] if x[1] else (x[0] * cell_width / yscale)
 
         if args.edge in {'left', 'right'}:
             spacing = es('left') + es('right')
-            window_width = int(cell_width * args.columns / xscale + (dpi_x / 72) * spacing + 1)
+            window_width = int(rwidth + (dpi_x / 72) * spacing + 1)
             window_height = monitor_height
         elif args.edge in {'top', 'bottom'}:
             spacing = es('top') + es('bottom')
-            window_height = int(cell_height * args.lines / yscale + (dpi_y / 72) * spacing + 1)
+            window_height = int(rheight + (dpi_y / 72) * spacing + 1)
             window_width = monitor_width
         elif args.edge in {'background', 'center'}:
             window_width, window_height = monitor_width, monitor_height
         else:
             x_spacing = es('left') + es('right')
-            window_width = int(cell_width * args.columns / xscale + (dpi_x / 72) * x_spacing + 1)
+            window_width = int(rwidth + (dpi_x / 72) * x_spacing + 1)
             y_spacing = es('top') + es('bottom')
-            window_height = int(cell_height * args.lines / yscale + (dpi_y / 72) * y_spacing + 1)
+            window_height = int(rheight + (dpi_y / 72) * y_spacing + 1)
         return window_width, window_height
 
     return initial_window_size
+
+
+def dual_distance(spec: str, min_cell_value_if_no_pixels: int = 0) -> tuple[int, int]:
+    with suppress(Exception):
+        return int(spec), 0
+    if spec.endswith('px'):
+        return min_cell_value_if_no_pixels, int(spec[:-2])
+    if spec.endswith('c'):
+        return int(spec[:-1]), 0
+    return min_cell_value_if_no_pixels, 0
 
 
 def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
@@ -247,10 +262,11 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
     focus_policy = {
         'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND
     }.get(opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED)
+    x, y = dual_distance(opts.columns, min_cell_value_if_no_pixels=1), dual_distance(opts.lines, min_cell_value_if_no_pixels=1)
     return LayerShellConfig(type=ltype,
                             edge=edge,
-                            x_size_in_cells=max(1, opts.columns),
-                            y_size_in_cells=max(1, opts.lines),
+                            x_size_in_cells=x[0], x_size_in_pixels=x[1],
+                            y_size_in_cells=y[0], y_size_in_pixels=y[1],
                             requested_top_margin=max(0, opts.margin_top),
                             requested_left_margin=max(0, opts.margin_left),
                             requested_bottom_margin=max(0, opts.margin_bottom),
