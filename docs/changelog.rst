@@ -100,6 +100,8 @@ Detailed list of changes
 - **Behavior change**: Now kitty does full grapheme segmentation following the
   Unicode 16 spec when splitting text into cells (:iss:`8533`)
 
+- panel kitten: Allow using :option:`kitty +kitten panel --single-instance` to create multiple panels in one process (:iss:`8549`)
+
 - launch: Allow creating desktop panels such as those created by the :doc:`panel kitten </kittens/panel>` (:iss:`8549`)
 
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)

@@ -4,11 +4,12 @@
 import sys
 from collections.abc import Callable
 from contextlib import suppress
-from typing import Any
+from functools import partial
+from typing import Any, Mapping, Sequence
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
-from kitty.constants import appname, is_macos, is_wayland
+from kitty.constants import appname, is_macos, is_wayland, kitten_exe
 from kitty.fast_data_types import (
     GLFW_EDGE_BOTTOM,
     GLFW_EDGE_CENTER,
@@ -28,7 +29,7 @@ from kitty.fast_data_types import (
 )
 from kitty.os_window_size import WindowSizeData, edge_spacing
 from kitty.types import LayerShellConfig
-from kitty.typing import EdgeLiteral
+from kitty.typing import BossType, EdgeLiteral
 
 OPTIONS = r'''
 --lines
@@ -145,6 +146,19 @@ If :option:`--edge` is set to :code:`background`, this option has no effect.
 type=bool-set
 On a Wayland compositor that supports the wlr layer shell protocol, override the default exclusive zone.
 This has effect only if :option:`--edge` is set to :code:`top`, :code:`left`, :code:`bottom` or :code:`right`.
+
+
+--single-instance -1
+type=bool-set
+If specified only a single instance of the panel will run. New
+invocations will instead create a new top-level window in the existing
+panel instance.
+
+
+--instance-group
+Used in combination with the :option:`--single-instance` option. All
+panel invocations with the same :option:`--instance-group` will result
+in new panels being created in the first panel instance within that group.
 
 
 --debug-rendering
@@ -277,6 +291,18 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             output_name=opts.output_name or '')
 
 
+def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
+    from kitty.tabs import SpecialWindow
+    args, items = parse_panel_args(list(sys_args[1:]))
+    items = items or [kitten_exe(), 'run-shell']
+    lsc = layer_shell_config(args)
+    os_window_id = boss.add_os_panel(lsc, args.cls, args.name)
+    if notify_on_os_window_death:
+        boss.os_window_death_actions[os_window_id] = partial(boss.notify_on_os_window_death, notify_on_os_window_death)
+    tm = boss.os_window_map[os_window_id]
+    tm.new_tab(SpecialWindow(cmd=items, env=dict(environ)))
+
+
 def main(sys_args: list[str]) -> None:
     global args
     if is_macos:
@@ -295,6 +321,8 @@ def main(sys_args: list[str]) -> None:
     for override in args.override:
         sys.argv.extend(('--override', override))
     sys.argv.append('--override=linux_display_server=auto')
+    if args.single_instance:
+        sys.argv.append('--single-instance')
     sys.argv.extend(items)
     from kitty.main import main as real_main
     from kitty.main import run_app

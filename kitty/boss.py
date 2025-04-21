@@ -841,6 +841,10 @@ class Boss:
             log_error('Malformed command received over single instance socket, ignoring')
             return None
         if isinstance(data, dict) and data.get('cmd') == 'new_instance':
+            if data['args'][0] == 'panel':
+                from kittens.panel.main import handle_single_instance_command
+                handle_single_instance_command(self, data['args'], data['environ'], data.get('notify_on_os_window_death', ''))
+                return None
             from .cli_stub import CLIOptions
             startup_id = data['environ'].get('DESKTOP_STARTUP_ID', '')
             activation_token = data['environ'].get('XDG_ACTIVATION_TOKEN', '')
@@ -864,7 +868,7 @@ class Boss:
             focused_os_window = os_window_id = 0
             for session in create_sessions(opts, args, respect_cwd=True):
                 if not session.has_non_background_processes:
-                    # background only do not create and OS Window
+                    # background only do not create an OS Window
                     from .launch import LaunchSpec, launch
                     for tab in session.tabs:
                         for window in tab.windows:
