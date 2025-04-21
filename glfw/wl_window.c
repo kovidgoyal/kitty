@@ -1341,6 +1341,26 @@ struct wl_cursor* _glfwLoadCursor(GLFWCursorShape shape, struct wl_cursor_theme*
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+static bool
+attach_opengl_context_to_window(_GLFWwindow *window, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig) {
+    if (ctxconfig->source == GLFW_EGL_CONTEXT_API ||
+        ctxconfig->source == GLFW_NATIVE_CONTEXT_API)
+    {
+        if (!_glfwInitEGL())
+            return false;
+        if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig))
+            return false;
+    }
+    else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API)
+    {
+        if (!_glfwInitOSMesa())
+            return false;
+        if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig))
+            return false;
+    }
+    return true;
+}
+
 int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWwndconfig* wndconfig,
                               const _GLFWctxconfig* ctxconfig,
@@ -1383,24 +1403,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     // and only then create the OpenGL context.
     if (window->wl.visible) loop_till_window_fully_created(window);
     debug("Creating OpenGL context and attaching it to window\n");
-    if (ctxconfig->client != GLFW_NO_API)
-    {
-        if (ctxconfig->source == GLFW_EGL_CONTEXT_API ||
-            ctxconfig->source == GLFW_NATIVE_CONTEXT_API)
-        {
-            if (!_glfwInitEGL())
-                return false;
-            if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig))
-                return false;
-        }
-        else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API)
-        {
-            if (!_glfwInitOSMesa())
-                return false;
-            if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig))
-                return false;
-        }
-    }
+    if (ctxconfig->client != GLFW_NO_API) attach_opengl_context_to_window(window, ctxconfig, fbconfig);
     return true;
 }
 
@@ -1682,23 +1685,29 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
     if (!window->wl.visible) {
-        create_window_desktop_surface(window);
+        if (!is_layer_shell(window)) create_window_desktop_surface(window);
         window->wl.visible = true;
+        wl_surface_commit(window->wl.surface);
     }
 }
 
 void _glfwPlatformHideWindow(_GLFWwindow* window)
 {
-    if (window->wl.xdg.toplevel)
-    {
-        xdg_toplevel_destroy(window->wl.xdg.toplevel);
-        xdg_surface_destroy(window->wl.xdg.surface);
+    if (!window->wl.visible) return;
+    if (is_layer_shell(window)) {
+        wl_surface_attach(window->wl.surface, NULL, 0, 0);
+    } else {
+        if (window->wl.xdg.toplevel) {
+            xdg_toplevel_destroy(window->wl.xdg.toplevel);
+            xdg_surface_destroy(window->wl.xdg.surface);
+        }
         window->wl.xdg.toplevel = NULL;
         window->wl.xdg.surface = NULL;
-        window->wl.once.surface_configured = false;
-        window->swaps_disallowed = true;
     }
+    window->wl.once.surface_configured = false;
+    window->swaps_disallowed = true;
     window->wl.visible = false;
+    wl_surface_commit(window->wl.surface);
 }
 
 static void

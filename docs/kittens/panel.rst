@@ -62,4 +62,31 @@ panels and desktop components:
     * `pawbar <https://github.com/codelif/pawbar>`__
 
 
+.. _quake:
+
+Make a Quake like quick access terminal
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 0.42.0
+   Support for quake mode, works only on Wayland, except for GNOME.
+
+This kitten can be used to make a quick access terminal, that appears and
+disappears at a key press. To do so use the following command::
+
+    kitty +kitten panel --edge=top --layer=overlay --lines=15 \
+        --focus-policy=exclusive --exclusive-zone=0 --override-exclusive-zone \
+        -o background_opacity=0.8 --toggle-visibility --single-instance \
+        --instance-group=quake kitten run-shell
+
+Run this command in a terminal, and a quick access kitty panel will show up at
+the top of your screen. Run it again, and the panel will be hidden.
+
+Simply bind this command to some key press in your window manager or desktop
+environment settings and then you have a quick access terminal at a single key press.
+You can use the various panel options to configure the size, appearance and
+position of the quick access panel. In particular, the :option:`kitty +kitten panel --config` and
+:option:`kitty +kitten panel --override` options can be used to theme the terminal appropriately,
+making it look different from regular kitty terminal instances.
+
+
 .. include:: ../generated/cli-kitten-panel.rst

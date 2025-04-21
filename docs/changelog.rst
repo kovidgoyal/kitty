@@ -97,6 +97,8 @@ Detailed list of changes
 0.42.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- The panel kitten can now be used to :ref:`quake`
+
 - **Behavior change**: Now kitty does full grapheme segmentation following the
   Unicode 16 spec when splitting text into cells (:iss:`8533`)
 

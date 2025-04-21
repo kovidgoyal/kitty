@@ -1255,11 +1255,10 @@ def build_static_binaries(args: Options, launcher_dir: str) -> None:
             build_static_kittens(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
 
 
-@lru_cache(2)
-def kitty_cli_boolean_options() -> Tuple[str, ...]:
-    with open(os.path.join(src_base, 'kitty/cli.py')) as f:
+def read_bool_options(path: str = 'kitty/cli.py') -> Tuple[str, ...]:
+    with open(os.path.join(src_base, path)) as f:
         raw = f.read()
-    m = re.search(r"^\s*OPTIONS = '''(.+?)'''", raw, flags=re.MULTILINE | re.DOTALL)
+    m = re.search(r"^\s*OPTIONS = r?'''(.+?)'''", raw, flags=re.MULTILINE | re.DOTALL)
     assert m is not None
     ans: List[str] = []
     in_option: List[str] = []
@@ -1277,6 +1276,11 @@ def kitty_cli_boolean_options() -> Tuple[str, ...]:
             if line.startswith('-'):
                 in_option = line.strip().split()
     return tuple(ans)
+
+
+@lru_cache(2)
+def kitty_cli_boolean_options() -> Tuple[str, ...]:
+    return tuple(set(read_bool_options()) | set(read_bool_options('kittens/panel/main.py')))
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:

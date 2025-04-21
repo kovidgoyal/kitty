@@ -2421,12 +2421,23 @@ is_layer_shell_supported(PyObject *self UNUSED, PyObject *args UNUSED) {
 #endif
 }
 
+static PyObject*
+toggle_os_window_visibility(PyObject *self UNUSED, PyObject *wid) {
+    if (!PyLong_Check(wid)) { PyErr_SetString(PyExc_TypeError, "os_window_id must be a int"); return NULL; }
+    id_type id = PyLong_AsUnsignedLongLong(wid);
+    OSWindow *w = os_window_for_id(id);
+    if (!w || !w->handle) Py_RETURN_FALSE;
+    if (glfwGetWindowAttrib(w->handle, GLFW_VISIBLE)) glfwHideWindow(w->handle);
+    else glfwShowWindow(w->handle);
+    Py_RETURN_TRUE;
+}
 
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
+    METHODB(toggle_os_window_visibility, METH_O),
     METHODB(pointer_name_to_css_name, METH_O),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),

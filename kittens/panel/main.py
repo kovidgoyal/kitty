@@ -26,6 +26,7 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_TOP,
     glfw_primary_monitor_size,
     make_x11_window_a_dock_window,
+    toggle_os_window_visibility,
 )
 from kitty.os_window_size import WindowSizeData, edge_spacing
 from kitty.types import LayerShellConfig
@@ -161,6 +162,12 @@ panel invocations with the same :option:`--instance-group` will result
 in new panels being created in the first panel instance within that group.
 
 
+--toggle-visibility
+type=bool-set
+When set and using :option:`--single-instance` will toggle the visibility of the
+existing panel rather than creating a new one.
+
+
 --debug-rendering
 type=bool-set
 For internal debugging use.
@@ -265,10 +272,12 @@ def dual_distance(spec: str, min_cell_value_if_no_pixels: int = 0) -> tuple[int,
 
 
 def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
-    ltype = {'background': GLFW_LAYER_SHELL_BACKGROUND,
-             'bottom': GLFW_LAYER_SHELL_PANEL,
-             'top': GLFW_LAYER_SHELL_TOP,
-             'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
+    ltype = {
+        'background': GLFW_LAYER_SHELL_BACKGROUND,
+        'bottom': GLFW_LAYER_SHELL_PANEL,
+        'top': GLFW_LAYER_SHELL_TOP,
+        'overlay': GLFW_LAYER_SHELL_OVERLAY
+    }.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
     edge = {
         'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'center': GLFW_EDGE_CENTER, 'none': GLFW_EDGE_NONE
@@ -294,6 +303,10 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
 def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
     from kitty.tabs import SpecialWindow
     args, items = parse_panel_args(list(sys_args[1:]))
+    if args.toggle_visibility and boss.os_window_map:
+        for os_window_id in boss.os_window_map:
+            toggle_os_window_visibility(os_window_id)
+        return
     items = items or [kitten_exe(), 'run-shell']
     lsc = layer_shell_config(args)
     os_window_id = boss.add_os_panel(lsc, args.cls, args.name)
