@@ -846,6 +846,25 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str
     return leftover_args
 
 
+listen_on_defn = f'''\
+--listen-on
+completion=type:special group:complete_kitty_listen_on
+Listen on the specified socket address for control messages. For example,
+:option:`{appname} --listen-on`=unix:/tmp/mykitty or :option:`{appname}
+--listen-on`=tcp:localhost:12345. On Linux systems, you can also use abstract
+UNIX sockets, not associated with a file, like this: :option:`{appname}
+--listen-on`=unix:@mykitty. Environment variables are expanded and relative
+paths are resolved with respect to the temporary directory. To control kitty,
+you can send commands to it with :italic:`kitten @` using the
+:option:`kitten @ --to` option to specify this address. Note that if you run
+:italic:`kitten @` within a kitty window, there is no need to specify the
+:option:`kitten @ --to` option as it will automatically read from the
+environment. Note that this will be ignored unless :opt:`allow_remote_control`
+is set to either: :code:`yes`, :code:`socket` or :code:`socket-only`. This can
+also be specified in :file:`kitty.conf`.
+'''
+
+
 def options_spec() -> str:
     if not hasattr(options_spec, 'ans'):
         OPTIONS = '''
@@ -940,21 +959,7 @@ previous instance is found, then :italic:`{appname}` will wait anyway,
 regardless of this option.
 
 
---listen-on
-completion=type:special group:complete_kitty_listen_on
-Listen on the specified socket address for control messages. For example,
-:option:`{appname} --listen-on`=unix:/tmp/mykitty or :option:`{appname}
---listen-on`=tcp:localhost:12345. On Linux systems, you can also use abstract
-UNIX sockets, not associated with a file, like this: :option:`{appname}
---listen-on`=unix:@mykitty. Environment variables are expanded and relative
-paths are resolved with respect to the temporary directory. To control kitty,
-you can send commands to it with :italic:`kitten @` using the
-:option:`kitten @ --to` option to specify this address. Note that if you run
-:italic:`kitten @` within a kitty window, there is no need to specify the
-:option:`kitten @ --to` option as it will automatically read from the
-environment. Note that this will be ignored unless :opt:`allow_remote_control`
-is set to either: :code:`yes`, :code:`socket` or :code:`socket-only`. This can
-also be specified in :file:`kitty.conf`.
+{listen_on_defn}
 
 
 --start-as
@@ -1018,7 +1023,7 @@ type=bool-set
 !
 '''
         setattr(options_spec, 'ans', OPTIONS.format(
-            appname=appname, conf_name=appname,
+            appname=appname, conf_name=appname, listen_on_defn=listen_on_defn,
             config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
         ))
     ans: str = getattr(options_spec, 'ans')

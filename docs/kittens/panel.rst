@@ -89,4 +89,25 @@ position of the quick access panel. In particular, the :option:`kitty +kitten pa
 making it look different from regular kitty terminal instances.
 
 
+Controlling panels via remote control
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can control panels via the kitty :doc:`remote control <remote-control>` facility. Create a panel
+with remote control enabled::
+
+    kitty +kitten panel -o allow_remote_control=socket-only --lines=2 \
+        --listen-on=unix:/tmp/mypanel kitten run-shell
+
+
+Now you can control this panel using remote control, for example to show/hide
+it, use::
+
+    kitten @ --to=unix:/tmp/mypanel resize-os-window --action=toggle-visibility
+
+To move the panel to the bottom of the screen and increase its height::
+
+    kitten @ --to=unix:/tmp/mypanel resize-os-window --action=os-panel \
+        --incremental edge=bottom lines=4
+
+
 .. include:: ../generated/cli-kitten-panel.rst

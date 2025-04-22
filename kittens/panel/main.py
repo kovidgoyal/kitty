@@ -7,7 +7,7 @@ from contextlib import suppress
 from functools import partial
 from typing import Any, Mapping, Sequence
 
-from kitty.cli import parse_args
+from kitty.cli import listen_on_defn, parse_args
 from kitty.cli_stub import PanelCLIOptions
 from kitty.constants import appname, is_macos, is_wayland, kitten_exe
 from kitty.fast_data_types import (
@@ -163,6 +163,9 @@ panel invocations with the same :option:`--instance-group` will result
 in new panels being created in the first panel instance within that group.
 
 
+{listen_on_defn}
+
+
 --toggle-visibility
 type=bool-set
 When set and using :option:`--single-instance` will toggle the visibility of the
@@ -172,7 +175,7 @@ existing panel rather than creating a new one.
 --debug-rendering
 type=bool-set
 For internal debugging use.
-'''.format(appname=appname).format
+'''.format(appname=appname, listen_on_defn=listen_on_defn).format
 
 
 args = PanelCLIOptions()
@@ -341,6 +344,9 @@ def main(sys_args: list[str]) -> None:
     sys.argv.append('--override=linux_display_server=auto')
     if args.single_instance:
         sys.argv.append('--single-instance')
+    if args.listen_on:
+        sys.argv.append(f'--listen-on={args.listen_on}')
+
     sys.argv.extend(items)
     from kitty.main import main as real_main
     from kitty.main import run_app
