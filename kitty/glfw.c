@@ -1067,7 +1067,7 @@ apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width,
 
 void
 set_os_window_chrome(OSWindow *w) {
-    if (!w->handle) return;
+    if (!w->handle || w->is_layer_shell) return;
     color_type bg = OPT(background);
     if (w->num_tabs > w->active_tab) {
         Tab *tab = w->tabs + w->active_tab;
@@ -1227,6 +1227,14 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     A(output_name);
     return true;
 #undef A
+}
+
+static bool
+set_layer_shell_config_for(OSWindow *w, GLFWLayerShellConfig *lsc) {
+    lsc->related.background_opacity = w->background_opacity;
+    lsc->related.background_blur = OPT(background_blur);
+    lsc->related.color_space = OPT(macos_colorspace);
+    return glfwSetLayerShellConfig(w->handle, lsc);
 }
 
 static PyObject*
@@ -1446,11 +1454,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         }
     }
     init_window_chrome_state(&w->last_window_chrome, OPT(background), w->is_semi_transparent, w->background_opacity);
-#ifdef __APPLE__
-    apply_window_chrome_state(w->handle, w->last_window_chrome, width, height, OPT(hide_window_decorations) != 0);
-#else
-    apply_window_chrome_state(w->handle, w->last_window_chrome, width, height, false);
-#endif
+    if (w->is_layer_shell) {
+        if (global_state.is_apple) set_layer_shell_config_for(w, lsc);
+    } else apply_window_chrome_state(
+            w->handle, w->last_window_chrome, width, height, global_state.is_apple ? OPT(hide_window_decorations) != 0 : false);
     // Update window state
     // We do not call glfwWindowHint to set GLFW_MAXIMIZED before the window is created.
     // That would cause the window to be set to maximize immediately after creation and use the wrong initial size when restored.
@@ -2514,7 +2521,7 @@ set_layer_shell_config(PyObject *self UNUSED, PyObject *args) {
     if (!window || !window->handle || !window->is_layer_shell) Py_RETURN_FALSE;
     GLFWLayerShellConfig lsc = {0};
     if (!layer_shell_config_from_python(pylsc, &lsc)) return NULL;
-    return Py_NewRef(glfwSetLayerShellConfig(window->handle, &lsc) ? Py_True : Py_False);
+    return Py_NewRef(set_layer_shell_config_for(window, &lsc) ? Py_True : Py_False);
 }
 
 // Boilerplate {{{

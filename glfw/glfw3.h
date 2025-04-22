@@ -1321,6 +1321,9 @@ typedef struct GLFWLayerShellConfig {
     unsigned override_exclusive_zone;
     void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
     struct { double xdpi, ydpi, xscale, yscale; } expected;
+    struct {
+        float background_opacity; int background_blur, color_space;
+    } related;
 } GLFWLayerShellConfig;
 
 typedef struct GLFWDBUSNotificationData {

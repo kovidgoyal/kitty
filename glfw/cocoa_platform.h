@@ -152,8 +152,10 @@ typedef struct _GLFWwindowNS
     UInt32 deadKeyState;
 
     // Layer shell windows
-    bool is_layer_shell;
-    GLFWLayerShellConfig layer_shell_config;
+    struct {
+        bool is_active;
+        GLFWLayerShellConfig config;
+    } layer_shell;
 
     // Whether a render frame has been requested for this window
     bool renderFrameRequested;
