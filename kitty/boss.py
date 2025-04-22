@@ -848,7 +848,12 @@ class Boss:
             from .cli_stub import CLIOptions
             startup_id = data['environ'].get('DESKTOP_STARTUP_ID', '')
             activation_token = data['environ'].get('XDG_ACTIVATION_TOKEN', '')
-            args, rest = parse_args(list(data['args'][1:]), result_class=CLIOptions)
+            try:
+                args, rest = parse_args(list(data['args'][1:]), result_class=CLIOptions)
+            except BaseException as e:
+                self.show_error(_('Invalid single instance command received'), _('The command: {0} is invalid with error: {1}').format(
+                    data['args'], e))
+                return None
             cmdline_args_for_open = data.get('cmdline_args_for_open')
             if cmdline_args_for_open:
                 self.launch_urls(*cmdline_args_for_open, no_replace_window=True)

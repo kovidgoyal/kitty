@@ -31,6 +31,7 @@ from kitty.fast_data_types import (
 from kitty.os_window_size import WindowSizeData, edge_spacing
 from kitty.types import LayerShellConfig
 from kitty.typing import BossType, EdgeLiteral
+from kitty.utils import log_error
 
 OPTIONS = r'''
 --lines
@@ -302,7 +303,11 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
 
 def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
     from kitty.tabs import SpecialWindow
-    args, items = parse_panel_args(list(sys_args[1:]))
+    try:
+        args, items = parse_panel_args(list(sys_args[1:]))
+    except BaseException as e:
+        log_error(f'Invalid arguments received over single instance socket: {sys_args} with error: {e}')
+        return
     if args.toggle_visibility and boss.os_window_map:
         for os_window_id in boss.os_window_map:
             toggle_os_window_visibility(os_window_id)
