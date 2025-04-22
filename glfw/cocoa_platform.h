@@ -150,6 +150,11 @@ typedef struct _GLFWwindowNS
     GLFWcocoatogglefullscreenfun toggleFullscreenCallback;
     // Dead key state
     UInt32 deadKeyState;
+
+    // Layer shell windows
+    bool is_layer_shell;
+    GLFWLayerShellConfig layer_shell_config;
+
     // Whether a render frame has been requested for this window
     bool renderFrameRequested;
     GLFWcocoarenderframefun renderFrameCallback;

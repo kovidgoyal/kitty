@@ -1652,6 +1652,13 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (BOOL)canBecomeKeyWindow
 {
+    if (glfw_window && glfw_window->ns.is_layer_shell) {
+        switch(glfw_window->ns.layer_shell_config.focus_policy) {
+            case GLFW_FOCUS_NOT_ALLOWED: return NO;
+            case GLFW_FOCUS_EXCLUSIVE: return YES;
+            case GLFW_FOCUS_ON_DEMAND: return YES;
+        }
+    }
     // Required for NSWindowStyleMaskBorderless windows
     return YES;
 }
@@ -1820,8 +1827,11 @@ static bool createNativeWindow(_GLFWwindow* window,
 //////////////////////////////////////////////////////////////////////////
 
 int _glfwPlatformCreateWindow(_GLFWwindow* window, const _GLFWwndconfig* wndconfig, const _GLFWctxconfig* ctxconfig, const _GLFWfbconfig* fbconfig, const GLFWLayerShellConfig *lsc) {
-    (void)lsc;
     window->ns.deadKeyState = 0;
+    if (lsc) {
+        window->ns.is_layer_shell = true;
+        window->ns.layer_shell_config = *lsc;
+    } else window->ns.is_layer_shell = false;
     if (!_glfw.ns.finishedLaunching)
     {
         [NSApp run];
@@ -1956,6 +1966,7 @@ void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 
 void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 {
+    if (window->ns.is_layer_shell) return;
     if (window->monitor)
     {
         if (window->monitor->window == window)
@@ -2992,8 +3003,67 @@ GLFWAPI GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, 
     return current;
 }
 
+static NSScreen*
+screen_for_window_center(_GLFWwindow *window) {
+    NSRect windowFrame = [window->ns.object frame];
+    NSPoint windowCenter = NSMakePoint(NSMidX(windowFrame), NSMidY(windowFrame));
+    for (NSScreen *screen in [NSScreen screens]) {
+        if (NSPointInRect(windowCenter, [screen frame])) {
+            return screen;
+        }
+    }
+    return NSScreen.mainScreen;
+}
+
+static void
+apply_layer_shell_properties(_GLFWwindow *window, int background_blur, unsigned system_color, int color_space) {
+    window->resizable = false;
+    const bool is_transparent = ![window->ns.object isOpaque];
+    if (!is_transparent) { background_blur = 0; }
+    NSAppearance *appearance = nil;
+    NSAppearance *light_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantLight] : [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+    NSAppearance *dark_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark] : [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+    NSColor *background = nil;
+    switch (system_color) {
+        case 1:
+            appearance = light_appearance; break;
+        case 2:
+            appearance = dark_appearance; break;
+    }
+    [window->ns.object setBackgroundColor:background];
+    [window->ns.object setAppearance:appearance];
+    _glfwPlatformSetWindowBlur(window, background_blur);
+    window->ns.titlebar_hidden = true;
+    window->decorated = false;
+    [window->ns.object setTitlebarAppearsTransparent:false];
+    [window->ns.object setHasShadow:false];
+    [window->ns.object setTitleVisibility:NSWindowTitleHidden];
+    NSColorSpace *cs = nil;
+    switch (color_space) {
+        case SRGB_COLORSPACE: cs = [NSColorSpace sRGBColorSpace]; break;
+        case DISPLAY_P3_COLORSPACE: cs = [NSColorSpace displayP3ColorSpace]; break;
+        case DEFAULT_COLORSPACE: cs = nil; break;  // using deviceRGBColorSpace causes a hang when transitioning to fullscreen
+    }
+    [window->ns.object setColorSpace:cs];
+    [[window->ns.object standardWindowButton: NSWindowCloseButton] setHidden:true];
+    [[window->ns.object standardWindowButton: NSWindowMiniaturizeButton] setHidden:true];
+    [[window->ns.object standardWindowButton: NSWindowZoomButton] setHidden:true];
+    [window->ns.object setStyleMask:NSWindowStyleMaskBorderless];
+    // HACK: Changing the style mask can cause the first responder to be cleared
+    [window->ns.object makeFirstResponder:window->ns.view];
+    uint32_t width = 0, height = 0;
+    NSScreen *screen = screen_for_window_center(window);
+    NSRect frame = screen.frame;
+    CGFloat monitor_width = NSWidth(frame), monitor_height = NSHeight(frame);
+    window->ns.layer_shell_config.size_callback((GLFWwindow*)window, &window->ns.layer_shell_config, (unsigned)monitor_width, (unsigned)monitor_height, &width, &height);
+    NSRect window_frame = [window->ns.object frame];
+    CGFloat x = 0, y = NSMinY(window_frame);
+    [window->ns.object setFrame:NSMakeRect(x, y, (CGFloat)width, (CGFloat)height) display:YES];
+}
+
 GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool use_system_color, unsigned int system_color, int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable) { @autoreleasepool {
     _GLFWwindow* window = (_GLFWwindow*)w;
+    if (window->ns.is_layer_shell) { apply_layer_shell_properties(window, background_blur, system_color, color_space); return; }
     const bool is_transparent = ![window->ns.object isOpaque];
     if (!is_transparent) { background_opacity = 1.0; background_blur = 0; }
     NSColor *background = nil;

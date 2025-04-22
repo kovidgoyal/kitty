@@ -326,8 +326,6 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
 
 def main(sys_args: list[str]) -> None:
     global args
-    if is_macos:
-        raise SystemExit('Currently the panel kitten is not supported on macOS')
     args, items = parse_panel_args(sys_args[1:])
     if not items:
         raise SystemExit('You must specify the program to run')
@@ -336,12 +334,14 @@ def main(sys_args: list[str]) -> None:
         sys.argv.append('--debug-rendering')
     for config in args.config:
         sys.argv.extend(('--config', config))
-    sys.argv.extend(('--class', args.cls))
+    if not is_macos:
+        sys.argv.extend(('--class', args.cls))
     if args.name:
         sys.argv.extend(('--name', args.name))
     for override in args.override:
         sys.argv.extend(('--override', override))
     sys.argv.append('--override=linux_display_server=auto')
+    sys.argv.append('--override=macos_quit_when_last_window_closed=yes')
     if args.single_instance:
         sys.argv.append('--single-instance')
     if args.listen_on:
@@ -352,8 +352,9 @@ def main(sys_args: list[str]) -> None:
     from kitty.main import run_app
     run_app.cached_values_name = 'panel'
     run_app.layer_shell_config = layer_shell_config(args)
-    run_app.first_window_callback = setup_x11_window
-    run_app.initial_window_size_func = initial_window_size_func
+    if not is_macos:
+        run_app.first_window_callback = setup_x11_window
+        run_app.initial_window_size_func = initial_window_size_func
     real_main()
 
 

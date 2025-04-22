@@ -330,7 +330,7 @@ typedef struct {
     OSWindow *os_windows;
     size_t num_os_windows, capacity;
     OSWindow *callback_os_window;
-    bool is_wayland;
+    bool is_wayland, is_apple;
     bool has_render_frames;
     bool debug_rendering, debug_font_fallback;
     bool has_pending_resizes, has_pending_closes;

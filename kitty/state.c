@@ -769,10 +769,11 @@ PYWRAP1(set_options) {
         Py_CLEAR(global_state.options_object);
         Py_RETURN_NONE;
     }
-    global_state.is_wayland = is_wayland ? true : false;
 #ifdef __APPLE__
+    global_state.is_apple = true;
     global_state.has_render_frames = true;
 #endif
+    global_state.is_wayland = is_wayland ? true : false;
     if (global_state.is_wayland) global_state.has_render_frames = true;
     global_state.debug_rendering = debug_rendering ? true : false;
     global_state.debug_font_fallback = debug_font_fallback ? true : false;

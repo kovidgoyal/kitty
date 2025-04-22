@@ -1134,7 +1134,7 @@ calculate_layer_shell_window_size(
     }
     float xscale = (float)config->expected.xscale, yscale = (float)config->expected.yscale;
     double xdpi = config->expected.xdpi, ydpi = config->expected.ydpi;
-    if (glfwWaylandIsWindowFullyCreated(window)) {
+    if (global_state.is_apple || (global_state.is_wayland && glfwWaylandIsWindowFullyCreated(window))) {
         glfwGetWindowContentScale(window, &xscale, &yscale);
         dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
     }
@@ -1238,12 +1238,19 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|OOOOpO", (char**)kwlist,
         &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &optional_window_state, &load_programs, &optional_x, &optional_y, &disallow_override_title, &layer_shell_config)) return NULL;
     GLFWLayerShellConfig *lsc = NULL, lsc_stack = {0};
-    if (layer_shell_config && layer_shell_config != Py_None && global_state.is_wayland) {
-        if (!glfwWaylandIsLayerShellSupported()) {
-            PyErr_SetString(PyExc_RuntimeError, "The Wayland compositor does not support the layer shell protocol.");
-            return NULL;
-        }
+
+    if (layer_shell_config && layer_shell_config != Py_None ) {
+#ifdef __APPLE__
         lsc = &lsc_stack;
+#else
+        if (global_state.is_wayland) {
+            if (!glfwWaylandIsLayerShellSupported()) {
+                PyErr_SetString(PyExc_RuntimeError, "The Wayland compositor does not support the layer shell protocol.");
+                return NULL;
+            }
+            lsc = &lsc_stack;
+        }
+#endif
     } else {
         if (optional_window_state && optional_window_state != Py_None) { if (!PyLong_Check(optional_window_state)) { PyErr_SetString(PyExc_TypeError, "window_state must be an int"); return NULL; } window_state = (int) PyLong_AsLong(optional_window_state); }
         if (optional_x && optional_x != Py_None) { if (!PyLong_Check(optional_x)) { PyErr_SetString(PyExc_TypeError, "x must be an int"); return NULL;} x = (int)PyLong_AsLong(optional_x); }
@@ -1274,7 +1281,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         // See https://github.com/kovidgoyal/kitty/issues/7174#issuecomment-2000033873
         if (!global_state.is_wayland) glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 #ifdef __APPLE__
-        cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
+        cocoa_set_activation_policy(OPT(macos_hide_from_tasks) || lsc != NULL);
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
         glfwSetApplicationShouldHandleReopen(on_application_reopen);
         glfwSetApplicationWillFinishLaunching(cocoa_create_global_menu);
@@ -1358,12 +1365,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (pret == NULL) return NULL;
     Py_DECREF(pret);
     if (x != INT_MIN && y != INT_MIN) glfwSetWindowPos(glfw_window, x, y);
-    bool is_apple = true;
-#ifndef __APPLE__
-    is_apple = false;
-    if (!global_state.is_wayland) glfwShowWindow(glfw_window);
-#endif
-    if (global_state.is_wayland || is_apple) {
+    if (!global_state.is_apple && !global_state.is_wayland) glfwShowWindow(glfw_window);
+    if (global_state.is_wayland || global_state.is_apple) {
         float n_xscale, n_yscale;
         double n_xdpi, n_ydpi;
         get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
@@ -1391,7 +1394,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->disallow_title_changes = disallow_override_title;
     w->is_layer_shell = lsc != NULL;
     update_os_window_references();
-    if (!w->is_layer_shell) {
+    if (!w->is_layer_shell || (global_state.is_apple && w->is_layer_shell && lsc->focus_policy == GLFW_FOCUS_EXCLUSIVE)) {
         for (size_t i = 0; i < global_state.num_os_windows; i++) {
             // On some platforms (macOS) newly created windows don't get the initial focus in event
             OSWindow *q = global_state.os_windows + i;
