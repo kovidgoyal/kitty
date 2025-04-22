@@ -24,8 +24,11 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_OVERLAY,
     GLFW_LAYER_SHELL_PANEL,
     GLFW_LAYER_SHELL_TOP,
+    add_timer,
+    get_boss,
     glfw_primary_monitor_size,
     make_x11_window_a_dock_window,
+    monotonic,
     toggle_os_window_visibility,
 )
 from kitty.os_window_size import WindowSizeData, edge_spacing
@@ -301,6 +304,28 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             output_name=opts.output_name or '')
 
 
+last_toggled_at = 0.
+num_of_pending_toggles = 0
+
+
+def do_visibility_toggle(timer_id: int | None = None) -> None:
+    global last_toggled_at, num_of_pending_toggles
+    if num_of_pending_toggles & 1:
+        for os_window_id in get_boss().os_window_map:
+            toggle_os_window_visibility(os_window_id)
+    last_toggled_at = monotonic()
+    num_of_pending_toggles = 0
+
+
+def schedule_visibility_toggle(debounce_interval: float = 0.2) -> None:
+    global num_of_pending_toggles, last_toggled_at
+    num_of_pending_toggles += 1
+    if monotonic() - last_toggled_at > debounce_interval:
+        do_visibility_toggle()
+    elif num_of_pending_toggles == 1:
+        add_timer(do_visibility_toggle, debounce_interval, False)
+
+
 def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
     from kitty.tabs import SpecialWindow
     try:
@@ -309,8 +334,7 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
         log_error(f'Invalid arguments received over single instance socket: {sys_args} with error: {e}')
         return
     if args.toggle_visibility and boss.os_window_map:
-        for os_window_id in boss.os_window_map:
-            toggle_os_window_visibility(os_window_id)
+        schedule_visibility_toggle()
         return
     items = items or [kitten_exe(), 'run-shell']
     lsc = layer_shell_config(args)
