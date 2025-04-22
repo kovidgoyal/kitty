@@ -409,6 +409,7 @@ handle_option_value:
                 char buf[2] = {0};
                 for (int i = 1; arg[i] != 0; i++) {
                     switch(arg[i]) {
+                        case '=': fprintf(stderr, "= is not allowed in short options, only long options. -d=xyz is illegal, --directory=xyz is legal. Use -d xyz instead.\n"); exit(1); break;
                         case 'v': opts.version_requested = true; break;
                         case '1': opts.single_instance = true; break;
                         default:
