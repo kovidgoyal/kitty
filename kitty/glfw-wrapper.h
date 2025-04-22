@@ -1852,7 +1852,7 @@ typedef void (*glfwWindowHintString_func)(int, const char*);
 GFW_EXTERN glfwWindowHintString_func glfwWindowHintString_impl;
 #define glfwWindowHintString glfwWindowHintString_impl
 
-typedef GLFWwindow* (*glfwCreateWindow_func)(int, int, const char*, GLFWmonitor*, GLFWwindow*);
+typedef GLFWwindow* (*glfwCreateWindow_func)(int, int, const char*, GLFWmonitor*, GLFWwindow*, const GLFWLayerShellConfig*);
 GFW_EXTERN glfwCreateWindow_func glfwCreateWindow_impl;
 #define glfwCreateWindow glfwCreateWindow_impl
 
@@ -2355,10 +2355,6 @@ GFW_EXTERN glfwWaylandBeep_func glfwWaylandBeep_impl;
 typedef GLFWLayerShellConfig* (*glfwWaylandLayerShellConfig_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandLayerShellConfig_func glfwWaylandLayerShellConfig_impl;
 #define glfwWaylandLayerShellConfig glfwWaylandLayerShellConfig_impl
-
-typedef void (*glfwWaylandSetupLayerShellForNextWindow_func)(const GLFWLayerShellConfig*);
-GFW_EXTERN glfwWaylandSetupLayerShellForNextWindow_func glfwWaylandSetupLayerShellForNextWindow_impl;
-#define glfwWaylandSetupLayerShellForNextWindow glfwWaylandSetupLayerShellForNextWindow_impl
 
 typedef pid_t (*glfwWaylandCompositorPID_func)(void);
 GFW_EXTERN glfwWaylandCompositorPID_func glfwWaylandCompositorPID_impl;

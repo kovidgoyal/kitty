@@ -43,8 +43,6 @@
 
 #define debug debug_rendering
 
-static GLFWLayerShellConfig layer_shell_config_for_next_window = {0};
-
 static bool
 is_layer_shell(_GLFWwindow *window) { return window->wl.layer_shell.config.type != GLFW_LAYER_SHELL_NONE; }
 
@@ -1361,13 +1359,11 @@ attach_opengl_context_to_window(_GLFWwindow *window, const _GLFWctxconfig *ctxco
     return true;
 }
 
-int _glfwPlatformCreateWindow(_GLFWwindow* window,
-                              const _GLFWwndconfig* wndconfig,
-                              const _GLFWctxconfig* ctxconfig,
-                              const _GLFWfbconfig* fbconfig)
-{
-    window->wl.layer_shell.config = layer_shell_config_for_next_window;
-    memset(&layer_shell_config_for_next_window, 0, sizeof(layer_shell_config_for_next_window));
+int _glfwPlatformCreateWindow(
+    _GLFWwindow* window, const _GLFWwndconfig* wndconfig, const _GLFWctxconfig* ctxconfig, const _GLFWfbconfig* fbconfig,
+    const GLFWLayerShellConfig *lsc
+) {
+    window->wl.layer_shell.config = lsc ? *lsc : (GLFWLayerShellConfig){0};
     csd_initialize_metrics(window);
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
@@ -2836,10 +2832,6 @@ GLFWAPI bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, boo
 GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     if (csd_change_title(window)) commit_window_surface_if_safe(window);
-}
-
-GLFWAPI void glfwWaylandSetupLayerShellForNextWindow(const GLFWLayerShellConfig *c) {
-    layer_shell_config_for_next_window = *c;
 }
 
 GLFWAPI GLFWLayerShellConfig* glfwWaylandLayerShellConfig(GLFWwindow *handle) {

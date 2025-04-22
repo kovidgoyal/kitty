@@ -497,9 +497,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwWaylandLayerShellConfig_impl) = dlsym(handle, "glfwWaylandLayerShellConfig");
     if (glfwWaylandLayerShellConfig_impl == NULL) dlerror(); // clear error indicator
 
-    *(void **) (&glfwWaylandSetupLayerShellForNextWindow_impl) = dlsym(handle, "glfwWaylandSetupLayerShellForNextWindow");
-    if (glfwWaylandSetupLayerShellForNextWindow_impl == NULL) dlerror(); // clear error indicator
-
     *(void **) (&glfwWaylandCompositorPID_impl) = dlsym(handle, "glfwWaylandCompositorPID");
     if (glfwWaylandCompositorPID_impl == NULL) dlerror(); // clear error indicator
 

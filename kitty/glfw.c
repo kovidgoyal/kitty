@@ -1237,13 +1237,13 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     static const char* kwlist[] = {"get_window_size", "pre_show_callback", "title", "wm_class_name", "wm_class_class", "window_state", "load_programs", "x", "y", "disallow_override_title", "layer_shell_config", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|OOOOpO", (char**)kwlist,
         &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &optional_window_state, &load_programs, &optional_x, &optional_y, &disallow_override_title, &layer_shell_config)) return NULL;
-    bool is_layer_shell = false;
+    GLFWLayerShellConfig *lsc = NULL, lsc_stack = {0};
     if (layer_shell_config && layer_shell_config != Py_None && global_state.is_wayland) {
         if (!glfwWaylandIsLayerShellSupported()) {
             PyErr_SetString(PyExc_RuntimeError, "The Wayland compositor does not support the layer shell protocol.");
             return NULL;
         }
-        is_layer_shell = true;
+        lsc = &lsc_stack;
     } else {
         if (optional_window_state && optional_window_state != Py_None) { if (!PyLong_Check(optional_window_state)) { PyErr_SetString(PyExc_TypeError, "window_state must be an int"); return NULL; } window_state = (int) PyLong_AsLong(optional_window_state); }
         if (optional_x && optional_x != Py_None) { if (!PyLong_Check(optional_x)) { PyErr_SetString(PyExc_TypeError, "x must be an int"); return NULL;} x = (int)PyLong_AsLong(optional_x); }
@@ -1309,7 +1309,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     GLFWwindow *temp_window = NULL;
 #ifdef __APPLE__
     if (!apple_preserve_common_context) {
-        apple_preserve_common_context = glfwCreateWindow(640, 480, "kitty", NULL, common_context);
+        apple_preserve_common_context = glfwCreateWindow(640, 480, "kitty", NULL, common_context, NULL);
     }
     if (!common_context) common_context = apple_preserve_common_context;
 #endif
@@ -1326,7 +1326,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
             }
         }
     } else {
-        temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
+        temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context, NULL);
         if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL %d.%d drivers.", OPENGL_REQUIRED_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MINOR); }
         get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
     }
@@ -1335,13 +1335,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
-    if (is_layer_shell) {
-        GLFWLayerShellConfig lsc = {0};
-        if (!layer_shell_config_from_python(layer_shell_config, &lsc)) return NULL;
-        lsc.expected.xdpi = xdpi; lsc.expected.ydpi = ydpi; lsc.expected.xscale = xscale; lsc.expected.yscale = yscale;
-        glfwWaylandSetupLayerShellForNextWindow(&lsc);
+    if (lsc) {
+        if (!layer_shell_config_from_python(layer_shell_config, lsc)) return NULL;
+        lsc->expected.xdpi = xdpi; lsc->expected.ydpi = ydpi; lsc->expected.xscale = xscale; lsc->expected.yscale = yscale;
     }
-    GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context);
+    GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context, lsc);
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     glfwMakeContextCurrent(glfw_window);
@@ -1369,7 +1367,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         float n_xscale, n_yscale;
         double n_xdpi, n_ydpi;
         get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
-        if (n_xdpi != xdpi || n_ydpi != ydpi || is_layer_shell) {
+        if (n_xdpi != xdpi || n_ydpi != ydpi || lsc) {
             // this can happen if the window is moved by the OS to a different monitor when shown or with fractional scales on Wayland
             // it can also happen with layer shell windows if the callback is
             // called before the window is fully created
@@ -1391,9 +1389,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
     w->disallow_title_changes = disallow_override_title;
-    w->is_layer_shell = is_layer_shell;
+    w->is_layer_shell = lsc != NULL;
     update_os_window_references();
-    if (!is_layer_shell) {
+    if (!w->is_layer_shell) {
         for (size_t i = 0; i < global_state.num_os_windows; i++) {
             // On some platforms (macOS) newly created windows don't get the initial focus in event
             OSWindow *q = global_state.os_windows + i;
