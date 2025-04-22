@@ -1681,8 +1681,8 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
     if (!window->wl.visible) {
+        // workaround for https://bugs.kde.org/show_bug.cgi?id=503121
         if (is_layer_shell(window)) layer_set_properties(window);
-        else create_window_desktop_surface(window);
         window->wl.visible = true;
         commit_window_surface(window);
         debug("Window %llu show requested\n", window->id);
@@ -1693,16 +1693,7 @@ void _glfwPlatformShowWindow(_GLFWwindow* window)
 void _glfwPlatformHideWindow(_GLFWwindow* window)
 {
     if (!window->wl.visible) return;
-    if (is_layer_shell(window)) {
-        wl_surface_attach(window->wl.surface, NULL, 0, 0);
-    } else {
-        if (window->wl.xdg.toplevel) {
-            xdg_toplevel_destroy(window->wl.xdg.toplevel);
-            xdg_surface_destroy(window->wl.xdg.surface);
-        }
-        window->wl.xdg.toplevel = NULL;
-        window->wl.xdg.surface = NULL;
-    }
+    wl_surface_attach(window->wl.surface, NULL, 0, 0);
     window->wl.once.surface_configured = false;
     window->swaps_disallowed = true;
     window->wl.visible = false;
