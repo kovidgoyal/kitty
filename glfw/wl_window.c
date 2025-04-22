@@ -1681,7 +1681,8 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
     if (!window->wl.visible) {
-        if (!is_layer_shell(window)) create_window_desktop_surface(window);
+        if (is_layer_shell(window)) layer_set_properties(window);
+        else create_window_desktop_surface(window);
         window->wl.visible = true;
         commit_window_surface(window);
         if (is_layer_shell(window)) debug("Layer shell surface mapped waiting for configure event from compositor\n");
