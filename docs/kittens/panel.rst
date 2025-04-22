@@ -92,7 +92,7 @@ making it look different from regular kitty terminal instances.
 Controlling panels via remote control
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can control panels via the kitty :doc:`remote control <remote-control>` facility. Create a panel
+You can control panels via the kitty :doc:`remote control </remote-control>` facility. Create a panel
 with remote control enabled::
 
     kitty +kitten panel -o allow_remote_control=socket-only --lines=2 \
