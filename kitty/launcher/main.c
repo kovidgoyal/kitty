@@ -407,9 +407,12 @@ handle_option_value:
                 }
             } else {
                 char buf[2] = {0};
+                current_option_expecting_argument[0] = 0;
                 for (int i = 1; arg[i] != 0; i++) {
                     switch(arg[i]) {
-                        case '=': fprintf(stderr, "= is not allowed in short options, only long options. -d=xyz is illegal, --directory=xyz is legal. Use -d xyz instead.\n"); exit(1); break;
+                        case '=':
+                            arg = arg + i + 1;
+                            goto handle_option_value;
                         case 'v': opts.version_requested = true; break;
                         case '1': opts.single_instance = true; break;
                         default:

@@ -118,6 +118,9 @@ Detailed list of changes
 
 - panel kitten: Allow specifying panel size in pixels in addition to cells
 
+- Fix a regression in 0.36.0 that caused using = with single letter options to
+  no longer work correctly (:iss:`8556`)
+
 
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
