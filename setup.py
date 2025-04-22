@@ -133,7 +133,10 @@ class CompilationDatabase:
 
     def cmd_changed(self, compile_cmd: Command) -> bool:
         key, cmd = compile_cmd.key, compile_cmd.cmd
-        return bool(self.db.get(key) != cmd)
+        dkey = self.db.get(key)
+        if dkey != cmd:
+            return True
+        return False
 
     def __enter__(self) -> 'CompilationDatabase':
         self.all_keys: Set[CompileKey] = set()
@@ -1280,7 +1283,7 @@ def read_bool_options(path: str = 'kitty/cli.py') -> Tuple[str, ...]:
 
 @lru_cache(2)
 def kitty_cli_boolean_options() -> Tuple[str, ...]:
-    return tuple(set(read_bool_options()) | set(read_bool_options('kittens/panel/main.py')))
+    return tuple(sorted(set(read_bool_options()) | set(read_bool_options('kittens/panel/main.py'))))
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
