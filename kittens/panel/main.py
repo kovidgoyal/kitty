@@ -318,6 +318,8 @@ def do_visibility_toggle(timer_id: int | None = None) -> None:
 
 
 def schedule_visibility_toggle(debounce_interval: float = 0.2) -> None:
+    # Debouncing of toggle requests is needed because of buggy Wayland
+    # compositors: https://github.com/kovidgoyal/kitty/issues/8557
     global num_of_pending_toggles, last_toggled_at
     num_of_pending_toggles += 1
     if (delta := monotonic() - last_toggled_at) >= debounce_interval:
