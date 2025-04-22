@@ -2873,6 +2873,7 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height, const char* title, G
 GLFWAPI bool glfwToggleFullscreen(GLFWwindow *window, unsigned int flags);
 GLFWAPI bool glfwIsFullscreen(GLFWwindow *window, unsigned int flags);
 GLFWAPI bool glfwAreSwapsAllowed(const GLFWwindow* window);
+GLFWAPI bool glfwSetLayerShellConfig(GLFWwindow* handle, const GLFWLayerShellConfig *value);
 
 /*! @brief Destroys the specified window and its context.
  *

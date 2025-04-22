@@ -1868,6 +1868,10 @@ typedef bool (*glfwAreSwapsAllowed_func)(const GLFWwindow*);
 GFW_EXTERN glfwAreSwapsAllowed_func glfwAreSwapsAllowed_impl;
 #define glfwAreSwapsAllowed glfwAreSwapsAllowed_impl
 
+typedef bool (*glfwSetLayerShellConfig_func)(GLFWwindow*, const GLFWLayerShellConfig*);
+GFW_EXTERN glfwSetLayerShellConfig_func glfwSetLayerShellConfig_impl;
+#define glfwSetLayerShellConfig glfwSetLayerShellConfig_impl
+
 typedef void (*glfwDestroyWindow_func)(GLFWwindow*);
 GFW_EXTERN glfwDestroyWindow_func glfwDestroyWindow_impl;
 #define glfwDestroyWindow glfwDestroyWindow_impl

@@ -551,6 +551,14 @@ GLFWAPI void glfwSetWindowShouldClose(GLFWwindow* handle, int value)
     window->shouldClose = value;
 }
 
+GLFWAPI bool glfwSetLayerShellConfig(GLFWwindow* handle, const GLFWLayerShellConfig *value) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(false);
+    return _glfwPlatformSetLayerShellConfig(window, value);
+}
+
 GLFWAPI void glfwSetWindowTitle(GLFWwindow* handle, const char* title)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

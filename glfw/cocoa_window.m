@@ -1903,6 +1903,11 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     window->ns.object = nil;
 }
 
+bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
+    (void)window; (void)value;
+    return false;
+}
+
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 {
     if (!title) return;

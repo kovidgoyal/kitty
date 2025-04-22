@@ -714,6 +714,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window);
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title);
 void _glfwPlatformSetWindowIcon(_GLFWwindow* window,
                                 int count, const GLFWimage* images);
+bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value);
 void _glfwPlatformGetWindowPos(_GLFWwindow* window, int* xpos, int* ypos);
 void _glfwPlatformSetWindowPos(_GLFWwindow* window, int xpos, int ypos);
 void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height);

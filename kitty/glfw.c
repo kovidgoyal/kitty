@@ -2475,6 +2475,16 @@ layer_shell_config_for_os_window(PyObject *self UNUSED, PyObject *wid) {
 #endif
 }
 
+static PyObject*
+set_layer_shell_config(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long wid; PyObject *pylsc;
+    if (!PyArg_ParseTuple(args, "KO", &wid, &pylsc)) return NULL;
+    OSWindow *window = os_window_for_id(wid);
+    if (!window || !window->handle || !window->is_layer_shell) Py_RETURN_FALSE;
+    GLFWLayerShellConfig lsc = {0};
+    if (!layer_shell_config_from_python(pylsc, &lsc)) return NULL;
+    return Py_NewRef(glfwSetLayerShellConfig(window->handle, &lsc) ? Py_True : Py_False);
+}
 
 // Boilerplate {{{
 
@@ -2483,6 +2493,7 @@ static PyMethodDef module_methods[] = {
     METHODB(is_css_pointer_name_valid, METH_O),
     METHODB(toggle_os_window_visibility, METH_O),
     METHODB(layer_shell_config_for_os_window, METH_O),
+    METHODB(set_layer_shell_config, METH_VARARGS),
     METHODB(pointer_name_to_css_name, METH_O),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),

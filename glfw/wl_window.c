@@ -1707,6 +1707,12 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
     wl_surface_commit(window->wl.surface);
 }
 
+bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
+    if (!is_layer_shell(window)) return false;
+    window->wl.layer_shell.config = *value;
+    return true;
+}
+
 static void
 request_attention(GLFWwindow *window, const char *token, void *data UNUSED) {
     if (window && token && token[0] && _glfw.wl.xdg_activation_v1) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);

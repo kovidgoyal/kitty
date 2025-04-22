@@ -131,6 +131,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwAreSwapsAllowed_impl) = dlsym(handle, "glfwAreSwapsAllowed");
     if (glfwAreSwapsAllowed_impl == NULL) fail("Failed to load glfw function glfwAreSwapsAllowed with error: %s", dlerror());
 
+    *(void **) (&glfwSetLayerShellConfig_impl) = dlsym(handle, "glfwSetLayerShellConfig");
+    if (glfwSetLayerShellConfig_impl == NULL) fail("Failed to load glfw function glfwSetLayerShellConfig with error: %s", dlerror());
+
     *(void **) (&glfwDestroyWindow_impl) = dlsym(handle, "glfwDestroyWindow");
     if (glfwDestroyWindow_impl == NULL) fail("Failed to load glfw function glfwDestroyWindow with error: %s", dlerror());
 

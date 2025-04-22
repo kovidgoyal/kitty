@@ -1963,6 +1963,11 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     XFlush(_glfw.x11.display);
 }
 
+bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
+    (void)window; (void)value;
+    return false;
+}
+
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 {
 #if defined(X_HAVE_UTF8_STRING)
