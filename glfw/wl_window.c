@@ -1681,7 +1681,7 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
     if (!window->wl.visible) {
-        // workaround for https://bugs.kde.org/show_bug.cgi?id=503121
+        // workaround for kwin layer shell bug: https://bugs.kde.org/show_bug.cgi?id=503121
         if (is_layer_shell(window)) layer_set_properties(window);
         window->wl.visible = true;
         commit_window_surface(window);
