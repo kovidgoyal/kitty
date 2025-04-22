@@ -320,10 +320,10 @@ def do_visibility_toggle(timer_id: int | None = None) -> None:
 def schedule_visibility_toggle(debounce_interval: float = 0.2) -> None:
     global num_of_pending_toggles, last_toggled_at
     num_of_pending_toggles += 1
-    if monotonic() - last_toggled_at > debounce_interval:
+    if (delta := monotonic() - last_toggled_at) >= debounce_interval:
         do_visibility_toggle()
     elif num_of_pending_toggles == 1:
-        add_timer(do_visibility_toggle, debounce_interval, False)
+        add_timer(do_visibility_toggle, debounce_interval - delta, False)
 
 
 def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
