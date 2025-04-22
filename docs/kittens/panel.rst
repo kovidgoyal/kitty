@@ -109,5 +109,9 @@ To move the panel to the bottom of the screen and increase its height::
     kitten @ --to=unix:/tmp/mypanel resize-os-window --action=os-panel \
         --incremental edge=bottom lines=4
 
+To create a new panel in the same instance (line creating a new OS window)::
+
+    kitten @ launch --type=os-panel --os-panel edge=left --os-panel columns=8 top
+
 
 .. include:: ../generated/cli-kitten-panel.rst
