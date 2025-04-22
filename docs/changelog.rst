@@ -106,6 +106,9 @@ Detailed list of changes
 
 - launch: Allow creating desktop panels such as those created by the :doc:`panel kitten </kittens/panel>` (:iss:`8549`)
 
+- Remote control: Allow modifying desktop panels and showing/hiding OS Windows
+  using the `kitten @ resize-os-window` command (:iss:`8550`)
+
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)
 
 - diff kitten: Add half page and full page scroll vim-like bindings (:pull:`8514`)

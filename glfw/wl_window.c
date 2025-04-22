@@ -1683,7 +1683,7 @@ void _glfwPlatformShowWindow(_GLFWwindow* window)
     if (!window->wl.visible) {
         if (!is_layer_shell(window)) create_window_desktop_surface(window);
         window->wl.visible = true;
-        wl_surface_commit(window->wl.surface);
+        commit_window_surface(window);
         if (is_layer_shell(window)) debug("Layer shell surface mapped waiting for configure event from compositor\n");
     }
 }
@@ -1704,12 +1704,14 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
     window->wl.once.surface_configured = false;
     window->swaps_disallowed = true;
     window->wl.visible = false;
-    wl_surface_commit(window->wl.surface);
+    commit_window_surface(window);
 }
 
 bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
     if (!is_layer_shell(window)) return false;
     window->wl.layer_shell.config = *value;
+    layer_set_properties(window);
+    commit_window_surface(window);
     return true;
 }
 

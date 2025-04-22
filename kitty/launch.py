@@ -419,7 +419,10 @@ def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env:
 def layer_shell_config_from_panel_opts(panel_opts: Iterable[str]) -> LayerShellConfig:
     from kittens.panel.main import layer_shell_config, parse_panel_args
     args = [('' if x.startswith('--') else '--') + x for x in panel_opts]
-    opts, _ = parse_panel_args(args)
+    try:
+        opts, _ = parse_panel_args(args)
+    except SystemExit as e:
+        raise ValueError(str(e))
     return layer_shell_config(opts)
 
 
