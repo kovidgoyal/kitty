@@ -1170,8 +1170,36 @@ calculate_layer_shell_window_size(
     }
 }
 
+static PyObject*
+layer_shell_config_to_python(const GLFWLayerShellConfig *c) {
+    RAII_PyObject(ans, PyDict_New()); if (!ans) return ans;
+#define fl(x) PyLong_FromLong((long)x)
+#define fu(x) PyLong_FromUnsignedLong((unsigned long)x)
+#define b(x) Py_NewRef(x ? Py_True : Py_False)
+#define A(attr, convert) RAII_PyObject(attr, convert(c->attr)); if (!attr) return NULL; if (PyDict_SetItemString(ans, #attr, attr) != 0) return NULL;
+    A(type, fl);
+    A(output_name, PyUnicode_FromString);
+    A(edge, fl);
+    A(focus_policy, fl);
+    A(x_size_in_cells, fu);
+    A(y_size_in_cells, fu);
+    A(x_size_in_pixels, fu);
+    A(y_size_in_pixels, fu);
+    A(requested_top_margin, fu);
+    A(requested_left_margin, fu);
+    A(requested_bottom_margin, fu);
+    A(requested_right_margin, fu);
+    A(requested_exclusive_zone, fl);
+    A(override_exclusive_zone, b);
+#undef A
+#undef fl
+#undef fu
+#undef b
+    return Py_NewRef(ans);
+}
+
 static bool
-translate_layer_shell_config(PyObject *p, GLFWLayerShellConfig *ans) {
+layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     memset(ans, 0, sizeof(GLFWLayerShellConfig));
     ans->size_callback = calculate_layer_shell_window_size;
 #define A(attr, type_check, convert) RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; if (!type_check(attr)) { PyErr_SetString(PyExc_TypeError, #attr " not of the correct type"); return false; }; ans->attr = convert(attr);
@@ -1309,7 +1337,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     Py_CLEAR(ret);
     if (is_layer_shell) {
         GLFWLayerShellConfig lsc = {0};
-        if (!translate_layer_shell_config(layer_shell_config, &lsc)) return NULL;
+        if (!layer_shell_config_from_python(layer_shell_config, &lsc)) return NULL;
         lsc.expected.xdpi = xdpi; lsc.expected.ydpi = ydpi; lsc.expected.xscale = xscale; lsc.expected.yscale = yscale;
         glfwWaylandSetupLayerShellForNextWindow(&lsc);
     }
@@ -2432,12 +2460,31 @@ toggle_os_window_visibility(PyObject *self UNUSED, PyObject *wid) {
     Py_RETURN_TRUE;
 }
 
+static PyObject*
+layer_shell_config_for_os_window(PyObject *self UNUSED, PyObject *wid) {
+    if (!PyLong_Check(wid)) { PyErr_SetString(PyExc_TypeError, "os_window_id must be a int"); return NULL; }
+#ifdef __APPLE__
+    (void)layer_shell_config_to_python;
+    Py_RETURN_NONE;
+#else
+    if (!global_state.is_wayland) Py_RETURN_NONE;
+    id_type id = PyLong_AsUnsignedLongLong(wid);
+    OSWindow *w = os_window_for_id(id);
+    if (!w || !w->handle) Py_RETURN_NONE;
+    const GLFWLayerShellConfig *c = glfwWaylandLayerShellConfig(w->handle);
+    if (!c) Py_RETURN_NONE;
+    return layer_shell_config_to_python(c);
+#endif
+}
+
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
     METHODB(toggle_os_window_visibility, METH_O),
+    METHODB(layer_shell_config_for_os_window, METH_O),
     METHODB(pointer_name_to_css_name, METH_O),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
