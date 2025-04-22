@@ -96,22 +96,24 @@ You can control panels via the kitty :doc:`remote control </remote-control>` fac
 with remote control enabled::
 
     kitty +kitten panel -o allow_remote_control=socket-only --lines=2 \
-        --listen-on=unix:/tmp/mypanel kitten run-shell
+        --listen-on=unix:/tmp/panel kitten run-shell
 
 
 Now you can control this panel using remote control, for example to show/hide
 it, use::
 
-    kitten @ --to=unix:/tmp/mypanel resize-os-window --action=toggle-visibility
+    kitten @ --to=unix:/tmp/panel resize-os-window --action=toggle-visibility
 
 To move the panel to the bottom of the screen and increase its height::
 
     kitten @ --to=unix:/tmp/mypanel resize-os-window --action=os-panel \
         --incremental edge=bottom lines=4
 
-To create a new panel in the same instance (line creating a new OS window)::
+To create a new panel running the program top, in the same instance
+(like creating a new OS window)::
 
-    kitten @ launch --type=os-panel --os-panel edge=left --os-panel columns=8 top
+    kitten @ --to=unix:/tmp/panel launch --type=os-panel --os-panel edge=top \
+        --os-panel lines=8 top
 
 
 .. include:: ../generated/cli-kitten-panel.rst
