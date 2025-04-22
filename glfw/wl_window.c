@@ -1685,8 +1685,7 @@ void _glfwPlatformShowWindow(_GLFWwindow* window)
         if (is_layer_shell(window)) layer_set_properties(window);
         window->wl.visible = true;
         commit_window_surface(window);
-        debug("Window %llu show requested\n", window->id);
-        if (is_layer_shell(window)) { debug("Layer shell surface mapped waiting for configure event from compositor\n"); }
+        debug("Window %llu mapped waiting for configure event from compositor\n", window->id);
     }
 }
 
