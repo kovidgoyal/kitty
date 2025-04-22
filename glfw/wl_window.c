@@ -1697,7 +1697,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
     window->swaps_disallowed = true;
     window->wl.visible = false;
     commit_window_surface(window);
-    debug("Window %llu hide requested\n", window->id);
+    debug("Window %llu unmapped\n", window->id);
 }
 
 bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
