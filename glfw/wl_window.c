@@ -1036,6 +1036,48 @@ layer_set_properties(_GLFWwindow *window) {
 }
 
 static void
+calculate_layer_size(_GLFWwindow *window, uint32_t *width, uint32_t *height) {
+    const GLFWLayerShellConfig *config = &window->wl.layer_shell.config;
+    GLFWvidmode m = {0};
+    if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);
+    const int y_margin = config->requested_bottom_margin + config->requested_top_margin, x_margin = config->requested_left_margin + config->requested_right_margin;
+    const int monitor_width = MAX(0, m.width - x_margin), monitor_height = MAX(0, m.height - y_margin);
+    float xscale = (float)config->expected.xscale, yscale = (float)config->expected.yscale;
+    if (window->wl.window_fully_created) _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
+    unsigned cell_width, cell_height; double left_edge_spacing, top_edge_spacing, right_edge_spacing, bottom_edge_spacing;
+    config->size_callback((GLFWwindow*)window, xscale, yscale, &cell_width, &cell_height, &left_edge_spacing, &top_edge_spacing, &right_edge_spacing, &bottom_edge_spacing);
+    double spacing_x = left_edge_spacing + right_edge_spacing;
+    double spacing_y = top_edge_spacing + bottom_edge_spacing;
+    if (config->type == GLFW_LAYER_SHELL_BACKGROUND) {
+        if (!*width) *width = monitor_width;
+        if (!*height) *height = monitor_height;
+        return;
+    }
+    debug("Calculating layer shell window size at scale: %f\n", xscale);
+    const unsigned xsz = config->x_size_in_pixels ? (unsigned)(config->x_size_in_pixels * xscale) : (cell_width * config->x_size_in_cells);
+    const unsigned ysz = config->y_size_in_pixels ? (unsigned)(config->y_size_in_pixels * yscale) : (cell_height * config->y_size_in_cells);
+    if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
+        if (!*height) *height = monitor_height;
+        double spacing = spacing_x;
+        spacing += xsz / xscale;
+        *width = (uint32_t)(1. + spacing);
+    } else if (config->edge == GLFW_EDGE_TOP || config->edge == GLFW_EDGE_BOTTOM) {
+        if (!*width) *width = monitor_width;
+        double spacing = spacing_y;
+        spacing += ysz / yscale;
+        *height = (uint32_t)(1. + spacing);
+    } else if (config->edge == GLFW_EDGE_CENTER) {
+        if (!*width) *width = monitor_width;
+        if (!*height) *height = monitor_height;
+    } else {
+        spacing_x += xsz / xscale;
+        spacing_y += ysz / yscale;
+        *width = (uint32_t)(1. + spacing_x);
+        *height = (uint32_t)(1. + spacing_y);
+    }
+}
+
+static void
 layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t width, uint32_t height) {
     debug("Layer shell configure event: width: %u height: %u\n", width, height);
     _GLFWwindow* window = data;
@@ -1047,8 +1089,7 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
     }
     GLFWvidmode m = {0};
     if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);
-    window->wl.layer_shell.config.size_callback(
-            (GLFWwindow*)window, &window->wl.layer_shell.config, m.width, m.height, &width, &height);
+    calculate_layer_size(window, &width, &height);
     zwlr_layer_surface_v1_ack_configure(surface, serial);
     if ((int)width != window->wl.width || (int)height != window->wl.height) {
         debug("Layer shell size changed to %ux%u in layer_surface_handle_configure\n", width, height);

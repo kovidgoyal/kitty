@@ -1057,8 +1057,8 @@ typedef struct GLFWLayerShellConfig {
     unsigned requested_right_margin;
     int requested_exclusive_zone;
     unsigned override_exclusive_zone;
-    void (*size_callback)(GLFWwindow *window, const struct GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height);
-    struct { double xdpi, ydpi, xscale, yscale; } expected;
+    void (*size_callback)(GLFWwindow *window, float xscale, float yscale, unsigned *cell_width, unsigned *cell_height, double *left_edge_spacing, double *top_edge_spacing, double *right_edge_spacing, double *bottom_edge_spacing);
+    struct { float xscale, yscale; } expected;
     struct {
         float background_opacity; int background_blur, color_space;
     } related;

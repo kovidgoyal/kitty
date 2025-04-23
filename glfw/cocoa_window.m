@@ -1927,6 +1927,7 @@ screen_for_window_center(_GLFWwindow *window) {
 
 bool
 _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
+#define config window->ns.layer_shell.config
     window->resizable = false;
     const bool is_transparent = ![window->ns.object isOpaque];
     int background_blur = value->related.background_blur;
@@ -1953,11 +1954,15 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     [window->ns.object makeFirstResponder:window->ns.view];
     uint32_t width = 0, height = 0;
     NSScreen *screen = screen_for_window_center(window);
-    CGFloat monitor_width = NSWidth(screen.frame), monitor_height = NSHeight(screen.frame);
-    window->ns.layer_shell.config.size_callback((GLFWwindow*)window, &window->ns.layer_shell.config, (unsigned)monitor_width, (unsigned)monitor_height, &width, &height);
+    // CGFloat monitor_width = NSWidth(screen.frame), monitor_height = NSHeight(screen.frame);
+    unsigned cell_width, cell_height; double left_edge_spacing, top_edge_spacing, right_edge_spacing, bottom_edge_spacing;
+    float xscale = (float)config.expected.xscale, yscale = (float)config.expected.yscale;
+    _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
+    config.size_callback((GLFWwindow*)window, xscale, yscale, &cell_width, &cell_height, &left_edge_spacing, &top_edge_spacing, &right_edge_spacing, &bottom_edge_spacing);
     CGFloat x = NSMinX(screen.visibleFrame), y = NSMinY(screen.visibleFrame);
     [window->ns.object setFrame:NSMakeRect(x, y, (CGFloat)width, (CGFloat)height) display:YES];
     return true;
+    #undef config
 }
 
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)

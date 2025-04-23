@@ -1125,49 +1125,17 @@ edge_spacing(GLFWEdge which) {
 
 static void
 calculate_layer_shell_window_size(
-    GLFWwindow *window, const GLFWLayerShellConfig *config, unsigned monitor_width, unsigned monitor_height, uint32_t *width, uint32_t *height) {
-    request_tick_callback();
-    if (config->type == GLFW_LAYER_SHELL_BACKGROUND) {
-        if (!*width) *width = monitor_width;
-        if (!*height) *height = monitor_height;
-        return;
-    }
-    float xscale = (float)config->expected.xscale, yscale = (float)config->expected.yscale;
-    double xdpi = config->expected.xdpi, ydpi = config->expected.ydpi;
-    if (global_state.is_apple || (global_state.is_wayland && glfwWaylandIsWindowFullyCreated(window))) {
-        glfwGetWindowContentScale(window, &xscale, &yscale);
-        dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
-    }
+    GLFWwindow *window, float xscale, float yscale, unsigned *cell_width, unsigned *cell_height, double *left_edge_spacing, double *top_edge_spacing, double *right_edge_spacing, double *bottom_edge_spacing) {
     OSWindow *os_window = os_window_for_glfw_window(window);
-    debug("Calculating layer shell window size at scale: %f\n", xscale);
+    double xdpi, ydpi;
+    dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(os_window ? os_window->fonts_data->font_sz_in_pts : OPT(font_size), xdpi, ydpi);
-    const unsigned xsz = config->x_size_in_pixels ? (unsigned)(config->x_size_in_pixels * xscale) : (fonts_data->fcm.cell_width * config->x_size_in_cells);
-    const unsigned ysz = config->y_size_in_pixels ? (unsigned)(config->y_size_in_pixels * yscale) : (fonts_data->fcm.cell_height * config->y_size_in_cells);
-    if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
-        if (!*height) *height = monitor_height;
-        double spacing = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
-        spacing *= xdpi / 72.;
-        spacing += xsz / xscale;
-        *width = (uint32_t)(1. + spacing);
-    } else if (config->edge == GLFW_EDGE_TOP || config->edge == GLFW_EDGE_BOTTOM) {
-        if (!*width) *width = monitor_width;
-        double spacing = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
-        spacing *= ydpi / 72.;
-        spacing += ysz / yscale;
-        *height = (uint32_t)(1. + spacing);
-    } else if (config->edge == GLFW_EDGE_CENTER) {
-        if (!*width) *width = monitor_width;
-        if (!*height) *height = monitor_height;
-    } else {
-        double spacing_x = edge_spacing(GLFW_EDGE_LEFT) + edge_spacing(GLFW_EDGE_RIGHT);
-        spacing_x *= xdpi / 72.;
-        spacing_x += xsz / xscale;
-        double spacing_y = edge_spacing(GLFW_EDGE_TOP) + edge_spacing(GLFW_EDGE_BOTTOM);
-        spacing_y *= ydpi / 72.;
-        spacing_y += ysz / yscale;
-        *width = (uint32_t)(1. + spacing_x);
-        *height = (uint32_t)(1. + spacing_y);
-    }
+    *cell_width = fonts_data->fcm.cell_width; *cell_height = fonts_data->fcm.cell_height;
+    double x_factor = xdpi / 72., y_factor = ydpi / 72.;
+    *left_edge_spacing = edge_spacing(GLFW_EDGE_LEFT) * x_factor;
+    *top_edge_spacing = edge_spacing(GLFW_EDGE_TOP) * y_factor;
+    *right_edge_spacing = edge_spacing(GLFW_EDGE_RIGHT) * x_factor;
+    *bottom_edge_spacing = edge_spacing(GLFW_EDGE_BOTTOM) * y_factor;
 }
 
 static PyObject*
@@ -1352,7 +1320,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     Py_CLEAR(ret);
     if (lsc) {
         if (!layer_shell_config_from_python(layer_shell_config, lsc)) return NULL;
-        lsc->expected.xdpi = xdpi; lsc->expected.ydpi = ydpi; lsc->expected.xscale = xscale; lsc->expected.yscale = yscale;
+        lsc->expected.xscale = xscale; lsc->expected.yscale = yscale;
     }
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context, lsc);
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
