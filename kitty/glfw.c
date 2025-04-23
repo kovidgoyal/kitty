@@ -1166,10 +1166,10 @@ layer_shell_config_to_python(const GLFWLayerShellConfig *c) {
     A(y_size_in_cells, fu);
     A(x_size_in_pixels, fu);
     A(y_size_in_pixels, fu);
-    A(requested_top_margin, fu);
-    A(requested_left_margin, fu);
-    A(requested_bottom_margin, fu);
-    A(requested_right_margin, fu);
+    A(requested_top_margin, fl);
+    A(requested_left_margin, fl);
+    A(requested_bottom_margin, fl);
+    A(requested_right_margin, fl);
     A(requested_exclusive_zone, fl);
     A(override_exclusive_zone, b);
 #undef A
@@ -1187,10 +1187,10 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     A(type, PyLong_Check, PyLong_AsLong);
     A(edge, PyLong_Check, PyLong_AsLong);
     A(focus_policy, PyLong_Check, PyLong_AsLong);
-    A(x_size_in_cells, PyLong_Check, PyLong_AsLong);
-    A(y_size_in_cells, PyLong_Check, PyLong_AsLong);
-    A(x_size_in_pixels, PyLong_Check, PyLong_AsLong);
-    A(y_size_in_pixels, PyLong_Check, PyLong_AsLong);
+    A(x_size_in_cells, PyLong_Check, PyLong_AsUnsignedLong);
+    A(y_size_in_cells, PyLong_Check, PyLong_AsUnsignedLong);
+    A(x_size_in_pixels, PyLong_Check, PyLong_AsUnsignedLong);
+    A(y_size_in_pixels, PyLong_Check, PyLong_AsUnsignedLong);
     A(requested_top_margin, PyLong_Check, PyLong_AsLong);
     A(requested_left_margin, PyLong_Check, PyLong_AsLong);
     A(requested_bottom_margin, PyLong_Check, PyLong_AsLong);

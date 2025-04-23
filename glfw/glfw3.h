@@ -1313,10 +1313,7 @@ typedef struct GLFWLayerShellConfig {
     GLFWFocusPolicy focus_policy;
     unsigned x_size_in_cells, x_size_in_pixels;
     unsigned y_size_in_cells, y_size_in_pixels;
-    unsigned requested_top_margin;
-    unsigned requested_left_margin;
-    unsigned requested_bottom_margin;
-    unsigned requested_right_margin;
+    int requested_top_margin, requested_left_margin, requested_bottom_margin, requested_right_margin;
     int requested_exclusive_zone;
     unsigned override_exclusive_zone;
     void (*size_callback)(GLFWwindow *window, float xscale, float yscale, unsigned *cell_width, unsigned *cell_height, double *left_edge_spacing, double *top_edge_spacing, double *right_edge_spacing, double *bottom_edge_spacing);
