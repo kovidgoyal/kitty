@@ -1236,7 +1236,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         window_state = (int) PyLong_AsLong(optional_window_state);
     }
     if (layer_shell_config && layer_shell_config != Py_None ) {
-        if (window_state != WINDOW_HIDDEN) window_state = WINDOW_NORMAL;
 #ifdef __APPLE__
         lsc = &lsc_stack;
 #else
@@ -1254,6 +1253,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         if (window_state < WINDOW_NORMAL || window_state > WINDOW_HIDDEN) window_state = WINDOW_NORMAL;
     }
     if (PyErr_Occurred()) return NULL;
+    if (lsc && window_state != WINDOW_HIDDEN) window_state = WINDOW_NORMAL;
 
     static bool is_first_window = true;
     if (is_first_window) {
