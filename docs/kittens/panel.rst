@@ -14,7 +14,8 @@ screen or as the desktop wallpaper, that shows the output from an arbitrary
 terminal program.
 
 It is useful for showing status information or notifications on your desktop
-using terminal programs instead of GUI toolkits.
+using terminal programs instead of GUI toolkits. It can also be used for a
+:ref:`Quake like quick access terminal`.
 
 .. figure:: ../screenshots/panel.png
    :alt: Screenshot, showing a sample panel
@@ -28,15 +29,18 @@ The screenshot above shows a sample panel that displays the current desktop and
 window title as well as miscellaneous system information such as network
 activity, CPU load, date/time, etc.
 
-.. versionadded:: 0.34.0
-   Support for Wayland
+.. versionadded:: 0.42.0
+   Support for macOS and support for Wayland was added in 0.34.0
 
 .. note::
 
-    This kitten currently only works on X11 desktops and Wayland compositors
+    This kitten currently only works on macOS and Wayland compositors
     that support the `wlr layer shell protocol
     <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__
-    (which is almost all of them except the, as usual, crippled GNOME).
+    (which is almost all of them except GNOME). On macOS the panels do not
+    prevent other windows from floating over them because of limitations in
+    Cocoa. On X11, only the ``top`` and ``bottom`` panels are widely supported,
+    the other types depend on the window manager used.
 
 Using this kitten is simple, for example::
 
@@ -47,11 +51,11 @@ seconds. Here, the terminal program we are running is :program:`sh` with a scrip
 to print out ``Hello, world!``. You can make the terminal program as complex as
 you like, as demonstrated in the screenshot above.
 
-If you are on Wayland, you can, for instance run::
+If you are on Wayland or macOS, you can, for instance run::
 
     kitty +kitten panel --edge=background htop
 
-to display htop as your desktop background. Remember this works in everything
+to display ``htop`` as your desktop background. Remember this works in everything
 but GNOME and also, in sway, you have to disable the background wallpaper as
 sway renders that over the panel kitten surface.
 
@@ -68,7 +72,7 @@ Make a Quake like quick access terminal
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. versionadded:: 0.42.0
-   Support for quake mode, works only on Wayland, except for GNOME.
+   Support for quake mode, works only on macOS and Wayland, except for GNOME.
 
 This kitten can be used to make a quick access terminal, that appears and
 disappears at a key press. To do so use the following command::
