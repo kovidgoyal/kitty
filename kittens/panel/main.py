@@ -80,14 +80,15 @@ default=top
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
 The value :code:`background` means make the panel the "desktop wallpaper". This
-is only supported on Wayland, not X11 and note that when using sway if you set
+is not supported on X11 and note that when using sway if you set
 a background in your sway config it will cover the background drawn using this
 kitten.
-Additionally, there are two Wayland only values: :code:`center` and :code:`none`.
+Additionally, there are two more values: :code:`center` and :code:`none`.
 The value :code:`center` anchors the panel to all sides and covers the entire
-display by default. The panel can be shrunk using the margin parameters.
+display (on macOS the part of the display not covered by titlebar and dock) by default.
+The panel can be shrunk using the margin parameters.
 The value :code:`none` anchors the panel to the top left corner and should be
-placed using the margin parameters.
+placed and sized using the margin parameters.
 
 
 --layer
@@ -185,7 +186,7 @@ For internal debugging use.
 
 args = PanelCLIOptions()
 help_text = 'Use a command line program to draw a GPU accelerated panel on your X11 desktop'
-usage = 'program-to-run'
+usage = '[cmdline-to-run ...]'
 
 
 def parse_panel_args(args: list[str]) -> tuple[PanelCLIOptions, list[str]]:
@@ -332,8 +333,6 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
 def main(sys_args: list[str]) -> None:
     global args
     args, items = parse_panel_args(sys_args[1:])
-    if not items:
-        raise SystemExit('You must specify the program to run')
     sys.argv = ['kitty']
     if args.debug_rendering:
         sys.argv.append('--debug-rendering')
