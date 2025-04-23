@@ -670,7 +670,7 @@ def system_paths_on_macos() -> tuple[str, ...]:
     def add_from_file(x: str) -> None:
         try:
             f = open(x)
-        except FileNotFoundError:
+        except (FileNotFoundError, PermissionError):
             return
         with f:
             for line in f:
@@ -681,7 +681,7 @@ def system_paths_on_macos() -> tuple[str, ...]:
                         entries.append(line)
     try:
         files = os.listdir('/etc/paths.d')
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError):
         files = []
     for name in sorted(files):
         add_from_file(os.path.join('/etc/paths.d', name))
