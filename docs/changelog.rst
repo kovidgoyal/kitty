@@ -131,6 +131,8 @@ Detailed list of changes
 - Single instance: Preserve environment variables from invoking environment in
   newly created window (:disc:`8567`)
 
+- Single instance: Reset OS Window class and name in new single instance OS
+  windows (:disc:`8567`)
 
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
