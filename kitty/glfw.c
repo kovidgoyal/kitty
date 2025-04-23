@@ -1330,8 +1330,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
             }
         }
     } else {
+#define glfw_failure { \
+        PyErr_Format(PyExc_OSError, "Failed to create GLFWwindow. This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL %d.%d drivers.", OPENGL_REQUIRED_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MINOR); \
+        return NULL; }
+
         temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context, NULL);
-        if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL %d.%d drivers.", OPENGL_REQUIRED_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MINOR); }
+        if (temp_window == NULL) glfw_failure;
         get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
     }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
@@ -1345,7 +1349,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     }
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context, lsc);
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
-    if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
+    if (glfw_window == NULL) glfw_failure;
+#undef glfw_failure
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) gl_init();
     // Will make the GPU automatically apply SRGB gamma curve on the resulting framebuffer
