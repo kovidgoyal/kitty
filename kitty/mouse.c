@@ -744,6 +744,7 @@ typedef enum MouseSelectionType {
     MOUSE_SELECTION_LINE_FROM_POINT,
     MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
     MOUSE_SELECTION_MOVE_END,
+    MOUSE_SELECTION_UPTO_SURROUNDING_WHITESPACE,
 } MouseSelectionType;
 
 
@@ -782,6 +783,9 @@ mouse_selection(Window *w, int code, int button) {
             break;
         case MOUSE_SELECTION_MOVE_END:
             extend_selection(w, false, false);
+            break;
+        case MOUSE_SELECTION_UPTO_SURROUNDING_WHITESPACE:
+            // TODO: Implement me for people migrating from urxvt
             break;
     }
     set_mouse_cursor_when_dragging(screen);
@@ -1115,6 +1119,7 @@ init_mouse(PyObject *module) {
     PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE_FROM_POINT);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_MOVE_END);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_UPTO_SURROUNDING_WHITESPACE);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }
