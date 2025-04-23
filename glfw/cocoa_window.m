@@ -1981,8 +1981,6 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     [nswindow setLevel:level];
     [nswindow setCollectionBehavior: (NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary | NSWindowCollectionBehaviorIgnoresCycle)];
     [nswindow setFrame:NSMakeRect(x, y, width, height) display:YES animate:config.type != GLFW_LAYER_SHELL_BACKGROUND];
-    if (config.type == GLFW_LAYER_SHELL_BACKGROUND) [nswindow orderBack:nil];
-    else [nswindow orderFrontRegardless];
     return true;
 #undef config
 #undef nswindow
@@ -2181,11 +2179,10 @@ int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
     // Make us the active application
-    // HACK: This is here to prevent applications using only hidden windows from
-    //       being activated, but should probably not be done every time any
-    //       window is shown
-    [NSApp activateIgnoringOtherApps:YES];
-    [window->ns.object makeKeyAndOrderFront:nil];
+    if ([window->ns.object canBecomeKeyWindow]) {
+        [NSApp activateIgnoringOtherApps:YES];
+        [window->ns.object makeKeyAndOrderFront:nil];
+    }
 }
 
 void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
