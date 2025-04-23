@@ -2012,7 +2012,7 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     [nswindow setAnimationBehavior:animation_behavior];
     [nswindow setLevel:level];
     [nswindow setCollectionBehavior: (NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary | NSWindowCollectionBehaviorIgnoresCycle)];
-    [nswindow setFrame:NSMakeRect(x, y, width, height) display:YES animate:config.type != GLFW_LAYER_SHELL_BACKGROUND];
+    [nswindow setFrame:NSMakeRect(x, y, width, height) display:YES];
     return true;
 #undef config
 #undef nswindow
