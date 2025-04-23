@@ -97,7 +97,9 @@ Detailed list of changes
 0.42.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- The panel kitten can now be used to :ref:`quake`
+- The :doc:`panel kitten </kittens/panel>` can now be used to :ref:`quake`
+
+- The :doc:`panel kitten </kittens/panel>` now works on macOS as well as Wayland (:iss:`2590`)
 
 - **Behavior change**: Now kitty does full grapheme segmentation following the
   Unicode 16 spec when splitting text into cells (:iss:`8533`)

@@ -15,7 +15,7 @@ terminal program.
 
 It is useful for showing status information or notifications on your desktop
 using terminal programs instead of GUI toolkits. It can also be used for a
-:ref:`Quake like quick access terminal`.
+:ref:`Quake like quick access terminal <quake>`.
 
 .. figure:: ../screenshots/panel.png
    :alt: Screenshot, showing a sample panel
