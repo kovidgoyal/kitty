@@ -1929,9 +1929,10 @@ bool
 _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
 #define config window->ns.layer_shell.config
     window->resizable = false;
+    if (value) config = *value;
     const bool is_transparent = ![window->ns.object isOpaque];
-    int background_blur = value->related.background_blur;
-    if (!is_transparent || value->related.background_opacity >= 1.f) { background_blur = 0; }
+    int background_blur = config.related.background_blur;
+    if (!is_transparent || config.related.background_opacity >= 1.f) { background_blur = 0; }
     [window->ns.object setBackgroundColor:nil];
     _glfwPlatformSetWindowBlur(window, background_blur);
     window->ns.titlebar_hidden = true;
@@ -1940,7 +1941,7 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     [window->ns.object setHasShadow:false];
     [window->ns.object setTitleVisibility:NSWindowTitleHidden];
     NSColorSpace *cs = nil;
-    switch (value->related.color_space) {
+    switch (config.related.color_space) {
         case SRGB_COLORSPACE: cs = [NSColorSpace sRGBColorSpace]; break;
         case DISPLAY_P3_COLORSPACE: cs = [NSColorSpace displayP3ColorSpace]; break;
         case DEFAULT_COLORSPACE: cs = nil; break;  // using deviceRGBColorSpace causes a hang when transitioning to fullscreen

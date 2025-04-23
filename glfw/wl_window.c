@@ -1741,9 +1741,10 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
     debug("Window %llu unmapped\n", window->id);
 }
 
-bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
+bool
+_glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
     if (!is_layer_shell(window)) return false;
-    window->wl.layer_shell.config = *value;
+    if (value) window->wl.layer_shell.config = *value;
     layer_set_properties(window);
     commit_window_surface(window);
     return true;

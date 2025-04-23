@@ -129,6 +129,16 @@ min_size_for_os_window(OSWindow *window, int *min_width, int *min_height) {
 static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 static void get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi);
 
+static bool
+set_layer_shell_config_for(OSWindow *w, GLFWLayerShellConfig *lsc) {
+    if (lsc) {
+        lsc->related.background_opacity = w->background_opacity;
+        lsc->related.background_blur = OPT(background_blur);
+        lsc->related.color_space = OPT(macos_colorspace);
+    }
+    return glfwSetLayerShellConfig(w->handle, lsc);
+}
+
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h, fw, fh;
@@ -171,6 +181,7 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     if (notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
     }
+    if (dpi_changed && window->is_layer_shell && window->handle) set_layer_shell_config_for(window, NULL);
 }
 
 // callbacks {{{
@@ -1197,13 +1208,17 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
 #undef A
 }
 
-static bool
-set_layer_shell_config_for(OSWindow *w, GLFWLayerShellConfig *lsc) {
-    lsc->related.background_opacity = w->background_opacity;
-    lsc->related.background_blur = OPT(background_blur);
-    lsc->related.color_space = OPT(macos_colorspace);
-    return glfwSetLayerShellConfig(w->handle, lsc);
+static void
+os_window_update_size_increments(OSWindow *window) {
+    if (OPT(resize_in_steps)) {
+        if (window->handle && window->fonts_data) glfwSetWindowSizeIncrements(
+                window->handle, window->fonts_data->fcm.cell_width, window->fonts_data->fcm.cell_height);
+    } else {
+        if (window->handle) glfwSetWindowSizeIncrements(
+                window->handle, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    }
 }
+
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
@@ -1440,14 +1455,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 }
 
 void
-os_window_update_size_increments(OSWindow *window) {
-    if (OPT(resize_in_steps)) {
-        if (window->handle && window->fonts_data) glfwSetWindowSizeIncrements(
-                window->handle, window->fonts_data->fcm.cell_width, window->fonts_data->fcm.cell_height);
-    } else {
-        if (window->handle) glfwSetWindowSizeIncrements(
-                window->handle, GLFW_DONT_CARE, GLFW_DONT_CARE);
-    }
+on_os_window_font_size_change(OSWindow *os_window, double new_sz) {
+    double xdpi, ydpi; float xscale, yscale;
+    get_os_window_content_scale(os_window, &xdpi, &ydpi, &xscale, &yscale);
+    os_window->fonts_data = load_fonts_data(new_sz, xdpi, ydpi);
+    os_window_update_size_increments(os_window);
+    if (os_window->is_layer_shell) set_layer_shell_config_for(os_window, NULL);
 }
 
 #ifdef __APPLE__
