@@ -132,7 +132,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty --', has_words('--config', '--single-instance', '--'))
     add('kitty --s', has_words('--session', '--start-as'))
     add('kitty --start-as', all_words('--start-as'))
-    add('kitty --start-as ', all_words('minimized', 'maximized', 'fullscreen', 'normal'))
+    add('kitty --start-as ', all_words('minimized', 'maximized', 'fullscreen', 'normal', 'hidden'))
     add('kitty -1 ', does_not_have_words('@ls', '@'))
     add('kitty --directory ', all_words('bin/', 'sub/'))
     add('kitty -1d ', all_words('exe1'))
