@@ -977,62 +977,63 @@ find_output_by_name(const char* name) {
 }
 
 static void
-layer_set_properties(_GLFWwindow *window) {
+layer_set_properties(const _GLFWwindow *window, uint32_t width, uint32_t height) {
+#define config window->wl.layer_shell.config
     enum zwlr_layer_surface_v1_anchor which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-    int exclusive_zone = window->wl.layer_shell.config.requested_exclusive_zone;
+    int exclusive_zone = config.requested_exclusive_zone;
     enum zwlr_layer_surface_v1_keyboard_interactivity focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
-    switch(window->wl.layer_shell.config.focus_policy) {
+    switch(config.focus_policy) {
         case GLFW_FOCUS_NOT_ALLOWED: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE; break;
         case GLFW_FOCUS_EXCLUSIVE: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE; break;
         case GLFW_FOCUS_ON_DEMAND: focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND; break;
     }
     int panel_width = 0, panel_height = 0;
-    switch (window->wl.layer_shell.config.type) {
+    switch (config.type) {
         case GLFW_LAYER_SHELL_NONE: break;
         case GLFW_LAYER_SHELL_BACKGROUND: exclusive_zone = -1; break;
         case GLFW_LAYER_SHELL_TOP:
         case GLFW_LAYER_SHELL_OVERLAY:
         case GLFW_LAYER_SHELL_PANEL:
-            switch (window->wl.layer_shell.config.edge) {
+            switch (config.edge) {
                 case GLFW_EDGE_TOP:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-                    panel_height = window->wl.height;
-                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.height;
+                    panel_height = height;
+                    if (!config.override_exclusive_zone) exclusive_zone = height;
                     break;
                 case GLFW_EDGE_BOTTOM:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-                    panel_height = window->wl.height;
-                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.height;
+                    panel_height = height;
+                    if (!config.override_exclusive_zone) exclusive_zone = height;
                     break;
                 case GLFW_EDGE_LEFT:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-                    panel_width = window->wl.width;
-                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.width;
+                    panel_width = width;
+                    if (!config.override_exclusive_zone) exclusive_zone = width;
                     break;
                 case GLFW_EDGE_RIGHT:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-                    panel_width = window->wl.width;
-                    if (!window->wl.layer_shell.config.override_exclusive_zone) exclusive_zone = window->wl.width;
+                    panel_width = width;
+                    if (!config.override_exclusive_zone) exclusive_zone = width;
                     break;
                 case GLFW_EDGE_CENTER:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
                     break;
                 case GLFW_EDGE_NONE:
                     which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-                    panel_width = window->wl.width;
-                    panel_height = window->wl.height;
+                    panel_width = width;
+                    panel_height = height;
                     break;
             }
     }
 #define surface window->wl.layer_shell.zwlr_layer_surface_v1
     zwlr_layer_surface_v1_set_size(surface, panel_width, panel_height);
-    if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
-    debug("Compositor will be informed that layer size: %dx%d viewport: %dx%d at next surface commit\n", panel_width, panel_height, window->wl.width, window->wl.height);
+    debug("Compositor will be informed that layer size: %dx%d viewport: %dx%d at next surface commit\n", panel_width, panel_height, width, height);
     zwlr_layer_surface_v1_set_anchor(surface, which_anchor);
     zwlr_layer_surface_v1_set_exclusive_zone(surface, exclusive_zone);
-    zwlr_layer_surface_v1_set_margin(surface, window->wl.layer_shell.config.requested_top_margin, window->wl.layer_shell.config.requested_right_margin, window->wl.layer_shell.config.requested_bottom_margin, window->wl.layer_shell.config.requested_left_margin);
+    zwlr_layer_surface_v1_set_margin(surface, config.requested_top_margin, config.requested_right_margin, config.requested_bottom_margin, config.requested_left_margin);
     zwlr_layer_surface_v1_set_keyboard_interactivity(surface, focus_policy);
 #undef surface
+#undef config
 }
 
 static void
@@ -1097,7 +1098,8 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
         window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
         _glfwInputWindowDamage(window);
-        layer_set_properties(window);
+        layer_set_properties(window, window->wl.width, window->wl.height);
+        if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
     }
     commit_window_surface_if_safe(window);
     if (!window->wl.window_fully_created) {
@@ -1140,7 +1142,8 @@ create_layer_shell_surface(_GLFWwindow *window) {
         return false;
     }
     zwlr_layer_surface_v1_add_listener(ls, &zwlr_layer_surface_v1_listener, window);
-    layer_set_properties(window);
+    layer_set_properties(window, window->wl.width, window->wl.height);
+    if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
     commit_window_surface(window);
     wl_display_roundtrip(_glfw.wl.display);
     window->wl.created = true;
@@ -1724,7 +1727,7 @@ void _glfwPlatformShowWindow(_GLFWwindow* window)
             window->wl.visible = true;
         } else {
             // workaround for kwin layer shell bug: https://bugs.kde.org/show_bug.cgi?id=503121
-            if (is_layer_shell(window)) layer_set_properties(window);
+            if (is_layer_shell(window)) layer_set_properties(window, window->wl.width, window->wl.height);
             window->wl.visible = true;
             commit_window_surface(window);
         }
@@ -1747,7 +1750,9 @@ bool
 _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
     if (!is_layer_shell(window)) return false;
     if (value) window->wl.layer_shell.config = *value;
-    layer_set_properties(window);
+    uint32_t width, height;
+    calculate_layer_size(window, &width, &height);
+    layer_set_properties(window, width, height);
     commit_window_surface(window);
     return true;
 }
