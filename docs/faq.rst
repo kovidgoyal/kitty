@@ -325,10 +325,9 @@ Then, the font will be available in ``kitten choose-fonts``.
 How can I assign a single global shortcut to bring up the kitty terminal?
 -----------------------------------------------------------------------------
 
-Bringing up applications on a single key press is the job of the window
-manager/desktop environment. For ways to do it with kitty (or indeed any
-terminal) in different environments,
-see :iss:`here <45>`.
+Use the :ref:`panel kitten <quake>`, this allows you to use kitty as a quick
+access Quake like terminal and even to use kitty as the desktop background, if
+so desired.
 
 
 I do not like the kitty icon!
