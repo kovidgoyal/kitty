@@ -172,6 +172,11 @@ When set and using :option:`--single-instance` will toggle the visibility of the
 existing panel rather than creating a new one.
 
 
+--start-as-hidden
+type=bool-set
+Start in hidden mode, useful with :option:`--toggle-visibility`.
+
+
 --debug-rendering
 type=bool-set
 For internal debugging use.
@@ -338,6 +343,8 @@ def main(sys_args: list[str]) -> None:
         sys.argv.extend(('--class', args.cls))
     if args.name:
         sys.argv.extend(('--name', args.name))
+    if args.start_as_hidden:
+        sys.argv.append('--start-as=hidden')
     for override in args.override:
         sys.argv.extend(('--override', override))
     sys.argv.append('--override=linux_display_server=auto')

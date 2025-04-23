@@ -959,13 +959,14 @@ previous instance is found, then :italic:`{appname}` will wait anyway,
 regardless of this option.
 
 
-{listen_on_defn}
+{listen_on_defn} To start in headless mode,
+without an actual window, use :option:`{appname} --start-as`=hidden.
 
 
 --start-as
 type=choices
 default=normal
-choices=normal,fullscreen,maximized,minimized
+choices=normal,fullscreen,maximized,minimized,hidden
 Control how the initial kitty window is created.
 
 

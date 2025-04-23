@@ -1143,6 +1143,7 @@ create_layer_shell_surface(_GLFWwindow *window) {
     layer_set_properties(window);
     commit_window_surface(window);
     wl_display_roundtrip(_glfw.wl.display);
+    window->wl.created = true;
 #undef ls
     return true;
 }
@@ -1214,6 +1215,7 @@ create_window_desktop_surface(_GLFWwindow* window)
 
     commit_window_surface(window);
     wl_display_roundtrip(_glfw.wl.display);
+    window->wl.created = true;
 
     return true;
 }
@@ -1413,21 +1415,16 @@ int _glfwPlatformCreateWindow(
     if (!createSurface(window, wndconfig)) return false;
     if (wndconfig->title) window->wl.title = _glfw_strdup(wndconfig->title);
     if (wndconfig->maximized) window->wl.maximize_on_first_show = true;
-
-    if (wndconfig->visible)
-    {
-        if (!create_window_desktop_surface(window))
-            return false;
-
+    if (wndconfig->visible) {
+        if (!create_window_desktop_surface(window)) return false;
         window->wl.visible = true;
-    }
-    else
-    {
+    } else {
+        window->wl.visible = false;
         window->wl.xdg.surface = NULL;
         window->wl.xdg.toplevel = NULL;
         window->wl.layer_shell.zwlr_layer_surface_v1 = NULL;
-        window->wl.visible = false;
     }
+
 
     window->wl.currentCursor = NULL;
     // Don't set window->wl.cursorTheme to NULL here.
@@ -1722,10 +1719,15 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
     if (!window->wl.visible) {
-        // workaround for kwin layer shell bug: https://bugs.kde.org/show_bug.cgi?id=503121
-        if (is_layer_shell(window)) layer_set_properties(window);
-        window->wl.visible = true;
-        commit_window_surface(window);
+        if (!window->wl.created) {
+            create_window_desktop_surface(window);
+            window->wl.visible = true;
+        } else {
+            // workaround for kwin layer shell bug: https://bugs.kde.org/show_bug.cgi?id=503121
+            if (is_layer_shell(window)) layer_set_properties(window);
+            window->wl.visible = true;
+            commit_window_surface(window);
+        }
         debug("Window %llu mapped waiting for configure event from compositor\n", window->id);
     }
 }

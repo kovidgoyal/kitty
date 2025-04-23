@@ -109,6 +109,8 @@ Detailed list of changes
 - Remote control: Allow modifying desktop panels and showing/hiding OS Windows
   using the `kitten @ resize-os-window` command (:iss:`8550`)
 
+- Allow starting kitty with the OS window hidden via :option:`kitty --start-as`=hidden useful for single instance mode (:iss:`3466`)
+
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)
 
 - diff kitten: Add half page and full page scroll vim-like bindings (:pull:`8514`)

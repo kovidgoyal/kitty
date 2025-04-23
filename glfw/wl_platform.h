@@ -165,7 +165,7 @@ enum _GLFWWaylandAxisEvent {
 typedef struct _GLFWwindowWayland
 {
     int                         width, height;
-    bool                        visible;
+    bool                        visible, created;
     bool                        hovered;
     bool                        transparent;
     struct wl_surface*          surface;

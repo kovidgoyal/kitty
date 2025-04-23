@@ -989,6 +989,8 @@ change_state_for_os_window(OSWindow *w, int state) {
             if (is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
             else glfwRestoreWindow(w->handle);
             break;
+        case WINDOW_HIDDEN:
+            glfwHideWindow(w->handle); break;
     }
 }
 
@@ -1229,8 +1231,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|OOOOpO", (char**)kwlist,
         &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &optional_window_state, &load_programs, &optional_x, &optional_y, &disallow_override_title, &layer_shell_config)) return NULL;
     GLFWLayerShellConfig *lsc = NULL, lsc_stack = {0};
-
+    if (optional_window_state && optional_window_state != Py_None) {
+        if (!PyLong_Check(optional_window_state)) { PyErr_SetString(PyExc_TypeError, "window_state must be an int"); return NULL; }
+        window_state = (int) PyLong_AsLong(optional_window_state);
+    }
     if (layer_shell_config && layer_shell_config != Py_None ) {
+        if (window_state != WINDOW_HIDDEN) window_state = WINDOW_NORMAL;
 #ifdef __APPLE__
         lsc = &lsc_stack;
 #else
@@ -1243,10 +1249,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         }
 #endif
     } else {
-        if (optional_window_state && optional_window_state != Py_None) { if (!PyLong_Check(optional_window_state)) { PyErr_SetString(PyExc_TypeError, "window_state must be an int"); return NULL; } window_state = (int) PyLong_AsLong(optional_window_state); }
         if (optional_x && optional_x != Py_None) { if (!PyLong_Check(optional_x)) { PyErr_SetString(PyExc_TypeError, "x must be an int"); return NULL;} x = (int)PyLong_AsLong(optional_x); }
         if (optional_y && optional_y != Py_None) { if (!PyLong_Check(optional_y)) { PyErr_SetString(PyExc_TypeError, "y must be an int"); return NULL;} y = (int)PyLong_AsLong(optional_y); }
-        if (window_state < WINDOW_NORMAL || window_state > WINDOW_MINIMIZED) window_state = WINDOW_NORMAL;
+        if (window_state < WINDOW_NORMAL || window_state > WINDOW_HIDDEN) window_state = WINDOW_NORMAL;
     }
     if (PyErr_Occurred()) return NULL;
 
@@ -1301,8 +1306,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwWindowHint(GLFW_WAYLAND_BGCOLOR, ((bgalpha & 0xff) << 24) | bgcolor);
     // We use a temp window to avoid the need to set the window size after
     // creation, which causes a resize event and all the associated processing.
-    // The temp window is used to get the DPI.
-    if (!global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, false);
+    // The temp window is used to get the DPI. On Wayland no temp window can be
+    // used, so start with window visible unless hidden window requested.
+    glfwWindowHint(GLFW_VISIBLE, window_state != WINDOW_HIDDEN && global_state.is_wayland);
     GLFWwindow *common_context = global_state.num_os_windows ? global_state.os_windows[0].handle : NULL;
     GLFWwindow *temp_window = NULL;
 #ifdef __APPLE__
@@ -1356,7 +1362,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (pret == NULL) return NULL;
     Py_DECREF(pret);
     if (x != INT_MIN && y != INT_MIN) glfwSetWindowPos(glfw_window, x, y);
-    if (!global_state.is_apple && !global_state.is_wayland) glfwShowWindow(glfw_window);
+    if (!global_state.is_apple && !global_state.is_wayland && window_state != WINDOW_HIDDEN) glfwShowWindow(glfw_window);
     if (global_state.is_wayland || global_state.is_apple) {
         float n_xscale, n_yscale;
         double n_xdpi, n_ydpi;
@@ -1447,7 +1453,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (window_state != WINDOW_NORMAL) change_state_for_os_window(w, window_state);
 #ifdef __APPLE__
     // macOS: Show the window after it is ready
-    glfwShowWindow(glfw_window);
+    if (window_state != WINDOW_HIDDEN) glfwShowWindow(glfw_window);
 #endif
     w->redraw_count = 1;
     debug("OS Window created\n");

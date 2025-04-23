@@ -1556,6 +1556,7 @@ init_state(PyObject *module) {
     PyModule_AddIntMacro(module, WINDOW_NORMAL);
     PyModule_AddIntMacro(module, WINDOW_FULLSCREEN);
     PyModule_AddIntMacro(module, WINDOW_MAXIMIZED);
+    PyModule_AddIntMacro(module, WINDOW_HIDDEN);
     PyModule_AddIntMacro(module, WINDOW_MINIMIZED);
     PyModule_AddIntMacro(module, TOP_EDGE);
     PyModule_AddIntMacro(module, BOTTOM_EDGE);

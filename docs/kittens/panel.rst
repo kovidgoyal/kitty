@@ -88,6 +88,11 @@ position of the quick access panel. In particular, the :option:`kitty +kitten pa
 :option:`kitty +kitten panel --override` options can be used to theme the terminal appropriately,
 making it look different from regular kitty terminal instances.
 
+.. note::
+   If you want to start the quake terminal hidden, use
+   :option:`kitty +kitten panel --start-as-hidden`, useful if you are starting it in the background
+   during computer startup.
+
 
 Controlling panels via remote control
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
