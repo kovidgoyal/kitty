@@ -939,7 +939,7 @@ do_toggle_fullscreen(OSWindow *w, unsigned int flags, bool restore_sizes) {
 
 static bool
 toggle_fullscreen_for_os_window(OSWindow *w) {
-    if (w && w->handle) {
+    if (w && w->handle && !w->is_layer_shell) {
 #ifdef __APPLE__
         if (!OPT(macos_traditional_fullscreen)) return do_toggle_fullscreen(w, 1, false);
 #endif
@@ -961,7 +961,7 @@ is_os_window_fullscreen(OSWindow *w) {
 static bool
 toggle_maximized_for_os_window(OSWindow *w) {
     bool maximized = false;
-    if (w && w->handle) {
+    if (w && w->handle && !w->is_layer_shell) {
         if (glfwGetWindowAttrib(w->handle, GLFW_MAXIMIZED)) {
             glfwRestoreWindow(w->handle);
         } else {
@@ -974,7 +974,7 @@ toggle_maximized_for_os_window(OSWindow *w) {
 
 static void
 change_state_for_os_window(OSWindow *w, int state) {
-    if (!w || !w->handle) return;
+    if (!w || !w->handle || w->is_layer_shell) return;
     switch (state) {
         case WINDOW_MAXIMIZED:
             glfwMaximizeWindow(w->handle);
@@ -1920,7 +1920,7 @@ cocoa_minimize_os_window(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "|K", &os_window_id)) return NULL;
 #ifdef __APPLE__
     OSWindow *w = os_window_id ? os_window_for_id(os_window_id) : current_os_window();
-    if (!w || !w->handle) Py_RETURN_NONE;
+    if (!w || !w->handle || w->is_layer_shell) Py_RETURN_NONE;
     if (!glfwGetCocoaWindow) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
     void *window = glfwGetCocoaWindow(w->handle);
     if (!window) Py_RETURN_NONE;

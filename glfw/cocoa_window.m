@@ -1963,7 +1963,7 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     CGFloat x = NSMinX(screen.visibleFrame), y = NSMinY(screen.visibleFrame);
     [window->ns.object setFrame:NSMakeRect(x, y, (CGFloat)width, (CGFloat)height) display:YES];
     return true;
-    #undef config
+#undef config
 }
 
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
