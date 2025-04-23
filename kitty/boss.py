@@ -870,8 +870,10 @@ class Boss:
                 args.session = ''
             if not os.path.isabs(args.directory):
                 args.directory = os.path.join(data['cwd'], args.directory)
+            from .child import process_env
+            clean_env = process_env(data['environ'])
             focused_os_window = os_window_id = 0
-            for session in create_sessions(opts, args, respect_cwd=True):
+            for session in create_sessions(opts, args, respect_cwd=True, env_when_no_session=clean_env):
                 if not session.has_non_background_processes:
                     # background only do not create an OS Window
                     from .launch import LaunchSpec, launch

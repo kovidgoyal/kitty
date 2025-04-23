@@ -145,8 +145,8 @@ def environ_of_process(pid: int) -> dict[str, str]:
     return parse_environ_block(_environ_of_process(pid))
 
 
-def process_env() -> dict[str, str]:
-    ans = dict(os.environ)
+def process_env(env: dict[str, str] | None = None) -> dict[str, str]:
+    ans = dict(os.environ if env is None else env)
     ssl_env_var = getattr(sys, 'kitty_ssl_env_var', None)
     if ssl_env_var is not None:
         ans.pop(ssl_env_var, None)

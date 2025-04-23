@@ -241,6 +241,7 @@ def create_sessions(
     cwd_from: Optional['CwdRequest'] = None,
     respect_cwd: bool = False,
     default_session: str | None = None,
+    env_when_no_session: dict[str, str] | None = None,
 ) -> Iterator[Session]:
     if args and args.session:
         if args.session == "none":
@@ -276,6 +277,6 @@ def create_sessions(
         cmd = args.args if args and args.args else resolved_shell(opts)
         from kitty.tabs import SpecialWindow
         cwd: str | None = args.directory if respect_cwd and args else None
-        special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, hold=bool(args and args.hold))
+        special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, env=env_when_no_session, hold=bool(args and args.hold))
     ans.add_special_window(special_window)
     yield ans
