@@ -439,7 +439,9 @@ handle_option_value:
             if (opts.instance_group && opts.instance_group[0]) {
                 snprintf(igbuf, sizeof(igbuf), "%s-%s", instance_group_prefix, opts.instance_group ? opts.instance_group : "");
                 opts.instance_group = igbuf;
-            } opts.instance_group = instance_group_prefix;
+            } else {
+                opts.instance_group = instance_group_prefix;
+            }
         }
         single_instance_main(argc, argv, &opts);
     }
