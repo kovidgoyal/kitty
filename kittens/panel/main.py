@@ -136,7 +136,7 @@ choices=not-allowed,exclusive,on-demand
 default=not-allowed
 On a Wayland compositor that supports the wlr layer shell protocol, specify the focus policy for keyboard
 interactivity with the panel. Please refer to the wlr layer shell protocol documentation for more details.
-Ignored on X11 and macOS.
+On macOS, :code:`exclusive` and :code:`on-demand` are currently the same. Ignored on X11.
 
 
 --exclusive-zone
