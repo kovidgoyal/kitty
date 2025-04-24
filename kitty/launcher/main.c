@@ -438,8 +438,6 @@ handle_option_value:
         exit(0);
     }
     if (opts.detach) {
-        if (fork() != 0) exit(0);
-        setsid();
 #define reopen_or_fail(path, mode, which) { if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
         if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0))
                 ) reopen_or_fail("/dev/null", "rb", stdin);
@@ -447,6 +445,8 @@ handle_option_value:
         reopen_or_fail(opts.detached_log, "ab", stdout);
         reopen_or_fail(opts.detached_log, "ab", stderr);
 #undef reopen_or_fail
+        if (fork() != 0) exit(0);
+        setsid();
     }
     unsetenv("KITTY_SI_DATA");
     if (opts.single_instance) {
