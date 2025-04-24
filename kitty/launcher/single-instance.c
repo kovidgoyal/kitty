@@ -196,7 +196,8 @@ bind_unix_socket(int s, const char *basename, struct sockaddr_un *addr, cleanup_
     if (errno != ENOENT) return false;
     // Try an actual filesystem file
     get_socket_dir(addr->sun_path, sizeof(addr->sun_path) - blen - 2);
-    const size_t dlen = strlen(addr->sun_path);
+    size_t dlen = strlen(addr->sun_path);
+    while (dlen && addr->sun_path[dlen-1] == '/') dlen--;
     if (snprintf(addr->sun_path + dlen, sizeof(addr->sun_path) - dlen, "/%s", basename) < blen + 1) {
         fprintf(stderr, "Socket directory has path too long for single instance socket file %s\n", addr->sun_path);
         do_exit(1);
