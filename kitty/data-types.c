@@ -654,10 +654,9 @@ abspath(PyObject *self UNUSED, PyObject *path) {
 
 static PyObject*
 py_makedirs(PyObject *self UNUSED, PyObject *args) {
-    int mode = 0755; const char *p; Py_ssize_t sz;
-    if (!PyArg_ParseTuple(args, "s#|i", &p, &sz, &mode)) return NULL;
-    RAII_PyObject(b, PyBytes_FromStringAndSize(p, sz));
-    if (!makedirs(PyBytes_AS_STRING(b), mode)) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    int mode = 0755; const char *p;
+    if (!PyArg_ParseTuple(args, "s|i", &p, &mode)) return NULL;
+    if (!makedirs(p, mode)) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     Py_RETURN_NONE;
 }
 

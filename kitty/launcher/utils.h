@@ -145,10 +145,11 @@ makedirs_cleaned(char *path, int mode, struct stat *buffer) {
 }
 
 static bool
-makedirs(char *path /* path is modified by this function */, int mode) {
+makedirs(const char *path, int mode) {
     struct stat buffer;
-    clean_path(path);
-    return makedirs_cleaned(path, mode, &buffer);
+    char pbuf[PATH_MAX];
+    lexical_absolute_path(path, pbuf, sizeof(pbuf));
+    return makedirs_cleaned(pbuf, mode, &buffer);
 }
 
 static bool
