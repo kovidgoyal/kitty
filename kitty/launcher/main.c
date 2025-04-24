@@ -438,7 +438,7 @@ handle_option_value:
         exit(0);
     }
     if (opts.detach) {
-#define reopen_or_fail(path, mode, which) { if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
+#define reopen_or_fail(path, mode, which) { errno = 0; if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
         if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0))
                 ) reopen_or_fail("/dev/null", "rb", stdin);
         if (!opts.detached_log || !opts.detached_log[0]) opts.detached_log = "/dev/null";
