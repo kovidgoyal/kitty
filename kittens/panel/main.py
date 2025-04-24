@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
 from collections.abc import Callable
 from contextlib import suppress
@@ -189,6 +190,10 @@ Detach from the controlling terminal, if any, running in an independent child pr
 the parent process exits immediately.
 
 
+--detached-log
+Path to a log file to store STDOUT/STDERR when using :option:`--detach`
+
+
 --debug-rendering
 type=bool-set
 For internal debugging use.
@@ -346,7 +351,7 @@ def main(sys_args: list[str]) -> None:
     args, items = parse_panel_args(sys_args[1:])
     if args.detach:
         from kitty.utils import detach
-        detach()
+        detach(log_file=args.detached_log or os.devnull)
     sys.argv = ['kitty']
     if args.debug_rendering:
         sys.argv.append('--debug-rendering')

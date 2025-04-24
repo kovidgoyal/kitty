@@ -257,7 +257,7 @@ def open_url(url: str, program: str | list[str] = 'default', cwd: str | None = N
     return open_cmd(command_for_open(program), url, cwd=cwd, extra_env=extra_env)
 
 
-def detach(fork: bool = True, setsid: bool = True, redirect: bool = True) -> None:
+def detach(fork: bool = True, setsid: bool = True, redirect: bool = True, log_file: str = os.devnull) -> None:
     if fork:
         # Detach from the controlling process.
         if os.fork() != 0:
@@ -266,7 +266,7 @@ def detach(fork: bool = True, setsid: bool = True, redirect: bool = True) -> Non
         os.setsid()
     if redirect:
         from .fast_data_types import redirect_std_streams
-        redirect_std_streams(os.devnull)
+        redirect_std_streams(stdin=os.devnull, stdout=log_file, stderr=log_file)
 
 
 def init_startup_notification_x11(window_handle: int, startup_id: str | None = None) -> Optional['StartupCtx']:

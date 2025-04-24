@@ -335,7 +335,7 @@ def log_error_string(s: str) -> None:
     pass
 
 
-def redirect_std_streams(devnull: str) -> None:
+def redirect_std_streams(stdin: str = '', stdout: str = '', stderr: str = '') -> None:
     pass
 
 
