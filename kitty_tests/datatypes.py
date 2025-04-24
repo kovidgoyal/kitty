@@ -3,6 +3,7 @@
 
 import json
 import os
+import shutil
 import sys
 import tempfile
 
@@ -11,8 +12,12 @@ from kitty.fast_data_types import (
     Color,
     HistoryBuf,
     LineBuf,
+    abspath,
     char_props_for,
     expand_ansi_c_escapes,
+    expanduser,
+    get_config_dir,
+    makedirs,
     parse_input_from_terminal,
     replace_c0_codes_except_nl_space_tab,
     split_into_graphemes,
@@ -461,6 +466,57 @@ class TestDataTypes(BaseTest):
                 self.assertTrue(is_ok_to_read_image_file(tf.name, tf.fileno()), fifo)
         self.ae(sanitize_url_for_dispay_to_user(
             'h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
+        for x in ('~', '~/', '', '~root', '~root/~', '/~', '/a/b/', '~xx/a', '~~'):
+           self.assertEqual(os.path.expanduser(x), expanduser(x), x)
+        for x in (
+            '/', '', '/a', '/ab', '/ab/', '/ab/c', 'a', 'ab', 'ab/', 'ab///c', 'ab/././..', '.', '..', '../', './', '../..', '../.',
+            '/a/../..', '/a/../../', '/a/..', '/ab/../../../cd/.', '///',
+        ):
+           self.assertEqual(os.path.abspath(x), abspath(x), repr(x))
+        self.assertEqual('/', abspath('//'))
+        with tempfile.TemporaryDirectory() as tdir:
+            for x, ex in {
+                'a': None, 'a/b/c': None, 'a/..': None, 'a/../a': None,
+                'a/f': NotADirectoryError, 'a/f/d': NotADirectoryError, 'a/b/c/f/g': NotADirectoryError,
+            }.items():
+                q = os.path.join(tdir, x)
+                if ex is None:
+                    makedirs(q)
+                    open(os.path.join(q, 'f'), 'wb').close()
+                else:
+                    with self.assertRaises(ex, msg=x):
+                        makedirs(q)
+        saved = {x: os.environ.get(x) for x in 'KITTY_CONFIG_DIRECTORY XDG_CONFIG_DIRS XDG_CONFIG_HOME'.split()}
+        try:
+            dot_config = os.path.expanduser('~/.config')
+            if os.path.exists(dot_config):
+                shutil.rmtree(dot_config)
+            with tempfile.TemporaryDirectory() as tdir:
+                os.makedirs(tdir + '/good/kitty')
+                open(tdir + '/good/kitty/kitty.conf', 'w').close()
+                open(tdir + '/f', 'w').close()
+                for x in (
+                    (f'KITTY_CONFIG_DIRECTORY={tdir}', f'{tdir}'),
+                    (f'XDG_CONFIG_HOME={tdir}/good', f'{tdir}/good/kitty'),
+                    (f'XDG_CONFIG_DIRS={tdir}:{tdir}/good', f'{tdir}/good/kitty'),
+                    (f'XDG_CONFIG_DIRS={tdir}:{tdir}/bad:{tdir}/f', f'{dot_config}/kitty'),
+                    (f'{dot_config}/kitty',),
+                ):
+                    for k in saved:
+                        os.environ.pop(k, None)
+                    for e in x[:-1]:
+                        k, v = e.partition('=')[::2]
+                        os.environ[k] = v
+                    self.assertEqual(x[-1], get_config_dir(), str(x))
+        finally:
+            if os.path.exists(dot_config):
+                shutil.rmtree(dot_config)
+            for k in saved:
+                os.environ.pop(k, None)
+                if saved[k] is not None:
+                    os.environ[k] = saved[k]
+
+
 
     def test_historybuf(self):
         lb = filled_line_buf()

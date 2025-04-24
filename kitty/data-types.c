@@ -13,6 +13,7 @@
 #endif
 
 #include "char-props.h"
+#include "launcher/utils.h"
 #include "line.h"
 #include "charsets.h"
 #include "base64.h"
@@ -635,13 +636,50 @@ py_char_props_for(PyObject *self UNUSED, PyObject *ch) {
 #undef B
 }
 
+static PyObject*
+expanduser(PyObject *self UNUSED, PyObject *path) {
+    if (!PyUnicode_Check(path)) { PyErr_SetString(PyExc_TypeError, "path must a string"); return NULL; }
+    char buf[PATH_MAX + 1];
+    expand_tilde(PyUnicode_AsUTF8(path), buf, arraysz(buf));
+    return PyUnicode_FromString(buf);
+}
+
+static PyObject*
+abspath(PyObject *self UNUSED, PyObject *path) {
+    if (!PyUnicode_Check(path)) { PyErr_SetString(PyExc_TypeError, "path must a string"); return NULL; }
+    char buf[PATH_MAX + 1];
+    lexical_absolute_path(PyUnicode_AsUTF8(path), buf, arraysz(buf));
+    return PyUnicode_FromString(buf);
+}
+
+static PyObject*
+py_makedirs(PyObject *self UNUSED, PyObject *args) {
+    int mode = 0755; const char *p; Py_ssize_t sz;
+    if (!PyArg_ParseTuple(args, "s#|i", &p, &sz, &mode)) return NULL;
+    RAII_PyObject(b, PyBytes_FromStringAndSize(p, sz));
+    if (!makedirs(PyBytes_AS_STRING(b), mode)) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+py_get_config_dir(PyObject *self UNUSED, PyObject *args UNUSED) {
+    char buf[PATH_MAX];
+    if (get_config_dir(buf, PATH_MAX)) return PyUnicode_FromString(buf);
+    return PyUnicode_FromString("");
+}
+
+
 static PyMethodDef module_methods[] = {
     METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
+    {"expanduser", (PyCFunction)expanduser, METH_O, ""},
+    {"abspath", (PyCFunction)abspath, METH_O, ""},
     {"expand_ansi_c_escapes", (PyCFunction)expand_ansi_c_escapes, METH_O, ""},
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
+    {"get_config_dir", (PyCFunction)py_get_config_dir, METH_NOARGS, ""},
     {"wcswidth", (PyCFunction)wcswidth_std, METH_O, ""},
     {"open_tty", open_tty, METH_VARARGS, ""},
+    {"makedirs", py_makedirs, METH_VARARGS, ""},
     {"normal_tty", normal_tty, METH_VARARGS, ""},
     {"raw_tty", raw_tty, METH_VARARGS, ""},
     {"close_tty", close_tty, METH_VARARGS, ""},
@@ -736,6 +774,7 @@ shift_to_first_set_bit(CellAttrs x) {
     }
     return ans;
 }
+
 
 EXPORTED PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
