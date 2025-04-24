@@ -369,6 +369,8 @@ def main(sys_args: list[str]) -> None:
     sys.argv.append('--override=macos_quit_when_last_window_closed=yes')
     if args.single_instance:
         sys.argv.append('--single-instance')
+    if args.instance_group:
+        sys.argv.append(f'--instance-group={args.instance_group}')
     if args.listen_on:
         sys.argv.append(f'--listen-on={args.listen_on}')
 
