@@ -314,6 +314,7 @@ typedef struct {
     id_type last_focused_counter;
     CloseRequest close_request;
     bool is_layer_shell;
+    bool hide_on_focus_lost;
 } OSWindow;
 
 

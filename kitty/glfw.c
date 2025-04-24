@@ -315,7 +315,7 @@ static void
 cocoa_out_of_sequence_render(OSWindow *window) {
     make_os_window_context_current(window);
     window->needs_render = true;
-    bool rendered = render_os_window(window, monotonic(), true, true);
+    bool rendered = render_os_window(window, monotonic(), true);
     if (!rendered) {
         blank_os_window(window);
         swap_window_buffers(window);
@@ -552,31 +552,50 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset, int flags, int mo
 static id_type focus_counter = 0;
 
 static void
+set_os_window_visibility(OSWindow *w, int set_visible) {
+    if (set_visible) {
+        glfwShowWindow(w->handle);
+        w->needs_render = true;
+        w->keep_rendering_till_swap = 256;  // try this many times
+        request_tick_callback();
+    } else glfwHideWindow(w->handle);
+}
+
+static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
-    debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", global_state.callback_os_window->id, focused);
-    global_state.callback_os_window->is_focused = focused ? true : false;
+#define osw global_state.callback_os_window
+    debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", osw->id, focused);
+    osw->is_focused = focused ? true : false;
     monotonic_t now = monotonic();
+    id_type wid = osw->id;
     if (focused) {
         cursor_active_callback(w, now);
         focus_in_event();
-        global_state.callback_os_window->last_focused_counter = ++focus_counter;
+        osw->last_focused_counter = ++focus_counter;
         global_state.check_for_active_animated_images = true;
     }
-    global_state.callback_os_window->last_mouse_activity_at = now;
-    global_state.callback_os_window->cursor_blink_zero_time = now;
+    osw->last_mouse_activity_at = now;
+    osw->cursor_blink_zero_time = now;
     if (is_window_ready_for_callbacks()) {
         WINDOW_CALLBACK(on_focus, "O", focused ? Py_True : Py_False);
-        GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_FOCUS, .focused = focused };
-        glfwUpdateIMEState(global_state.callback_os_window->handle, &ev);
-        if (focused) {
-            Tab *tab = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-            Window *window = tab->windows + tab->active_window;
-            if (window->render_data.screen) update_ime_position(window, window->render_data.screen);
+        if (!osw || osw->id != wid) osw = os_window_for_id(wid);
+        if (osw) {
+            GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_FOCUS, .focused = focused };
+            glfwUpdateIMEState(osw->handle, &ev);
+            if (focused) {
+                Tab *tab = osw->tabs + osw->active_tab;
+                Window *window = tab->windows + tab->active_window;
+                if (window->render_data.screen) update_ime_position(window, window->render_data.screen);
+            }
         }
     }
     request_tick_callback();
-    global_state.callback_os_window = NULL;
+    if (osw && osw->hide_on_focus_lost && osw->handle) {
+        if (glfwGetWindowAttrib(osw->handle, GLFW_VISIBLE)) set_os_window_visibility(osw, 0);
+    }
+    osw = NULL;
+#undef osw
 }
 
 static int
@@ -2462,12 +2481,7 @@ toggle_os_window_visibility(PyObject *self UNUSED, PyObject *args) {
     bool is_visible = glfwGetWindowAttrib(w->handle, GLFW_VISIBLE) != 0;
     if (set_visible == -1) set_visible = !is_visible;
     else if (set_visible == is_visible) Py_RETURN_FALSE;
-    if (set_visible) {
-        glfwShowWindow(w->handle);
-        w->needs_render = true;
-        w->keep_rendering_till_swap = 256;  // try this many times
-        request_tick_callback();
-    } else glfwHideWindow(w->handle);
+    set_os_window_visibility(w, set_visible);
     Py_RETURN_TRUE;
 }
 
@@ -2499,11 +2513,23 @@ set_layer_shell_config(PyObject *self UNUSED, PyObject *args) {
     return Py_NewRef(set_layer_shell_config_for(window, &lsc) ? Py_True : Py_False);
 }
 
+static PyObject*
+set_os_window_hide_on_focus_lost(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long wid; int val = 1;
+    if (!PyArg_ParseTuple(args, "K|p", &wid, &val)) return NULL;
+    OSWindow *window = os_window_for_id(wid);
+    if (!window) Py_RETURN_FALSE;
+    window->hide_on_focus_lost = val;
+    Py_RETURN_TRUE;
+}
+
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
+    METHODB(set_os_window_hide_on_focus_lost, METH_O),
     METHODB(toggle_os_window_visibility, METH_VARARGS),
     METHODB(layer_shell_config_for_os_window, METH_O),
     METHODB(set_layer_shell_config, METH_VARARGS),
