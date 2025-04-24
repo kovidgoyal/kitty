@@ -849,14 +849,14 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
 }
 
 bool
-render_os_window(OSWindow *w, monotonic_t now, bool ignore_render_frames, bool scan_for_animated_images) {
+render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     if (!w->num_tabs) return false;
     if (!should_os_window_be_rendered(w)) {
         update_os_window_title(w);
         if (w->is_focused) change_menubar_title(w->window_title);
         return false;
     }
-    if (!ignore_render_frames && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
+    if (!w->keep_rendering_till_swap && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
         if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
         // dont respect render frames soon after a resize on Wayland as they cause flicker because
         // we want to fill the newly resized buffer ASAP, not at compositors convenience
@@ -905,10 +905,17 @@ render(monotonic_t now, bool input_read) {
         // rendering is done in cocoa_os_window_resized()
         if (w->live_resize.in_progress) continue;
 #endif
-        if (!render_os_window(w, now, false, scan_for_animated_images)) {
+        if (!render_os_window(w, now, scan_for_animated_images)) {
             // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
             if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
         }
+        if (w->keep_rendering_till_swap) {
+            debug_rendering("Re-rendering window %llu on the %u attempt since swap did not happen\n", w->id, w->keep_rendering_till_swap);
+            set_maximum_wait(OPT(repaint_delay));
+            w->needs_render = true;
+            w->keep_rendering_till_swap--;
+        }
+
     }
     last_render_at = now;
 #undef TD

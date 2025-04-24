@@ -1993,7 +1993,10 @@ is_mouse_hidden(OSWindow *w) {
 
 void
 swap_window_buffers(OSWindow *os_window) {
-    if (glfwAreSwapsAllowed(os_window->handle)) glfwSwapBuffers(os_window->handle);
+    if (glfwAreSwapsAllowed(os_window->handle)) {
+        glfwSwapBuffers(os_window->handle);
+        os_window->keep_rendering_till_swap = 0;
+    }
 }
 
 void
@@ -2458,6 +2461,7 @@ do_os_visibility_change(id_type timer_id, void *d) {
         if (w->debounce_visibility_changes.set_visible) {
             glfwShowWindow(w->handle);
             w->needs_render = true;
+            w->keep_rendering_till_swap = 256;  // try this many times
             request_tick_callback();
         } else glfwHideWindow(w->handle);
         w->debounce_visibility_changes.last_change_at = monotonic();

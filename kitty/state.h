@@ -285,6 +285,7 @@ typedef struct {
     BackgroundImage *bgimage;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render;
+    unsigned keep_rendering_till_swap;
     WindowRenderData tab_bar_render_data;
     struct {
         color_type left, right;
@@ -442,7 +443,7 @@ bool update_ime_position_for_window(id_type window_id, bool force, int update_fo
 void set_ignore_os_keyboard_processing(bool enabled);
 void update_menu_bar_title(PyObject *title UNUSED);
 void change_live_resize_state(OSWindow*, bool);
-bool render_os_window(OSWindow *w, monotonic_t now, bool ignore_render_frames, bool scan_for_animated_images);
+bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images);
 void update_mouse_pointer_shape(void);
 void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height);
 void dispatch_buffered_keys(Window *w);
