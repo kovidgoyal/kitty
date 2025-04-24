@@ -41,7 +41,7 @@ home_path_for(const char *username) {
     return NULL;
 }
 
-static inline void
+static void
 expand_tilde(const char* path, char *ans, size_t ans_sz) {
     if (path[0] != '~') {
         snprintf(ans, ans_sz, "%s", path);
@@ -162,7 +162,7 @@ is_dir_ok_for_config(char *q) {
     return access(q, W_OK) == 0;
 }
 
-static inline bool
+static bool
 get_config_dir(char *output, size_t outputsz) {
     const char *q;
     char buf1[PATH_MAX], buf2[PATH_MAX];

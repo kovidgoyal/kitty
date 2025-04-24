@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import errno
 import os
 import pwd
 import sys
@@ -32,6 +31,7 @@ is_running_from_develop: bool = False
 RC_ENCRYPTION_PROTOCOL_VERSION = '1'
 website_base_url = 'https://sw.kovidgoyal.net/kitty/'
 default_pager_for_help = ('less', '-iRXF')
+launched_by_launch_services = getattr(sys, 'kitty_run_data')['launched_by_launch_services']
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
 
@@ -86,46 +86,17 @@ def kitten_exe() -> str:
 
 
 def _get_config_dir() -> str:
-    if 'KITTY_CONFIG_DIRECTORY' in os.environ:
-        return os.path.abspath(os.path.expanduser(os.environ['KITTY_CONFIG_DIRECTORY']))
-
-    locations = []
-    if 'XDG_CONFIG_HOME' in os.environ:
-        locations.append(os.path.abspath(os.path.expanduser(os.environ['XDG_CONFIG_HOME'])))
-    locations.append(os.path.expanduser('~/.config'))
-    if is_macos:
-        locations.append(os.path.expanduser('~/Library/Preferences'))
-    for loc in filter(None, os.environ.get('XDG_CONFIG_DIRS', '').split(os.pathsep)):
-        locations.append(os.path.abspath(os.path.expanduser(loc)))
-    for loc in locations:
-        if loc:
-            q = os.path.join(loc, appname)
-            if os.access(q, os.W_OK) and os.path.exists(os.path.join(q, 'kitty.conf')):
-                return q
-
-    def make_tmp_conf() -> None:
-        import atexit
-        import tempfile
-        ans = tempfile.mkdtemp(prefix='kitty-conf-')
-
-        def cleanup() -> None:
-            import shutil
-            with suppress(Exception):
-                shutil.rmtree(ans)
-        atexit.register(cleanup)
-
-    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or '~/.config'))
-    ans = os.path.join(candidate, appname)
-    try:
-        os.makedirs(os.path.realpath(ans), exist_ok=True)
-    except FileExistsError:
-        raise SystemExit(f'A file {ans} already exists. It must be a directory, not a file.')
-    except PermissionError:
-        make_tmp_conf()
-    except OSError as err:
-        if err.errno != errno.EROFS:  # Error other than read-only file system
-            raise
-        make_tmp_conf()
+    cdir = getattr(sys, 'kitty_run_data').get('config_dir', '')
+    if cdir:
+        return str(cdir)
+    import atexit
+    import tempfile
+    ans = tempfile.mkdtemp(prefix='kitty-conf-')
+    def cleanup() -> None:
+        import shutil
+        with suppress(Exception):
+            shutil.rmtree(ans)
+    atexit.register(cleanup)
     return ans
 
 

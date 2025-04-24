@@ -16,12 +16,14 @@
 #else
 #include <limits.h>
 #endif
+#include <pwd.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <wchar.h>
 #include <fcntl.h>
 #include "launcher.h"
+#include "utils.h"
 
 #ifndef KITTY_LIB_PATH
 #define KITTY_LIB_PATH "../.."
@@ -45,9 +47,10 @@ safe_realpath(const char* src, char *buf, size_t buf_sz) {
 #endif
 
 typedef struct {
-    const char *exe, *exe_dir, *lc_ctype, *lib_dir;
+    const char *exe, *exe_dir, *lc_ctype, *lib_dir, *config_dir;
     char **argv;
     int argc;
+    bool launched_by_launch_services;
 } RunData;
 
 static bool
@@ -70,6 +73,20 @@ set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir)
         PyObject *ed = PyUnicode_FromWideChar(extensions_dir, -1);
         S(extensions_dir, ed);
     }
+    PyObject *lbls = run_data->launched_by_launch_services ? Py_True : Py_False;
+    Py_INCREF(lbls);
+    S(launched_by_launch_services, lbls);
+
+    char buf[PATH_MAX + 1];
+    if (run_data->config_dir == NULL) {
+        if (get_config_dir(buf, sizeof(buf))) run_data->config_dir = buf;
+    }
+    if (run_data->config_dir) {
+        PyObject *cdir = PyUnicode_DecodeFSDefaultAndSize(run_data->config_dir, strlen(run_data->config_dir));
+        if (!cdir) { PyErr_Print(); return false; }
+        S(config_dir, cdir);
+    }
+
 #undef S
     int ret = PySys_SetObject("kitty_run_data", ans);
     Py_CLEAR(ans);
@@ -493,9 +510,18 @@ int main(int argc, char *argv[], char* envp[]) {
     char exe[PATH_MAX+1] = {0};
     char exe_dir_buf[PATH_MAX+1] = {0};
     RAII_ALLOC(const char, lc_ctype, NULL);
+    bool launched_by_launch_services = false;
+    const char *config_dir = NULL;
 #ifdef __APPLE__
     lc_ctype = getenv("LC_CTYPE");
     if (lc_ctype) lc_ctype = strdup(lc_ctype);
+    if (getenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES")) {
+        launched_by_launch_services = true;
+        unsetenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES");
+        char buf[PATH_MAX+1];
+        if (!get_config_dir(buf,sizeof(buf))) buf[0] = 0;
+        config_dir = buf;
+    }
 #endif
     if (!read_exe_path(exe, sizeof(exe))) return 1;
     strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
@@ -510,7 +536,10 @@ int main(int argc, char *argv[], char* envp[]) {
     }
 
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
-    RunData run_data = {.exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype};
+    RunData run_data = {
+        .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype,
+        .launched_by_launch_services=launched_by_launch_services, .config_dir = config_dir,
+    };
     ret = run_embedded(&run_data);
     single_instance_main(-1, NULL, NULL);
     Py_FinalizeEx();

@@ -26,6 +26,7 @@ from .constants import (
     is_wayland,
     kitten_exe,
     kitty_exe,
+    launched_by_launch_services,
     logo_png_file,
     running_in_kitty,
     supports_window_occlusion,
@@ -46,6 +47,7 @@ from .fast_data_types import (
     set_custom_cursor,
     set_default_window_icon,
     set_options,
+    set_use_os_log,
 )
 from .fonts.render import dump_font_debug, set_font_family
 from .options.types import Options
@@ -479,9 +481,10 @@ def _main() -> None:
     running_in_kitty(True)
 
     args = sys.argv[1:]
-    if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
+    if is_macos and launched_by_launch_services:
         os.chdir(os.path.expanduser('~'))
         args = macos_cmdline(args)
+        set_use_os_log(True)
     try:
         cwd_ok = os.path.isdir(os.getcwd())
     except Exception:
