@@ -504,20 +504,21 @@ def _main() -> None:
         cli_opts.args = []
     else:
         cli_opts.args = rest
-    if cli_opts.detach:
-        if cli_opts.session == '-':
-            from .session import PreReadSession
-            cli_opts.session = PreReadSession(sys.stdin.read(), os.environ)
-        detach()
-    if cli_opts.replay_commands:
-        from kitty.client import main as client_main
-        client_main(cli_opts.replay_commands)
-        return
     talk_fd = -1
     if cli_opts.single_instance:
         si_data = os.environ.pop('KITTY_SI_DATA', '')
         if si_data:
             talk_fd = int(si_data)
+
+    if cli_opts.detach:
+        if cli_opts.session == '-':
+            from .session import PreReadSession
+            cli_opts.session = PreReadSession(sys.stdin.read(), os.environ)
+        detach(talk_fd)
+    if cli_opts.replay_commands:
+        from kitty.client import main as client_main
+        client_main(cli_opts.replay_commands)
+        return
     bad_lines: list[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
     setup_environment(opts, cli_opts)
