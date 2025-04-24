@@ -183,6 +183,11 @@ type=bool-set
 Start in hidden mode, useful with :option:`--toggle-visibility`.
 
 
+--detach
+type=bool-set
+Detach from the controlling terminal, if any.
+
+
 --debug-rendering
 type=bool-set
 For internal debugging use.
@@ -338,6 +343,9 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
 def main(sys_args: list[str]) -> None:
     global args
     args, items = parse_panel_args(sys_args[1:])
+    if args.detach:
+        from kitty.utils import detach
+        detach()
     sys.argv = ['kitty']
     if args.debug_rendering:
         sys.argv.append('--debug-rendering')
