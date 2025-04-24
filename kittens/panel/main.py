@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 import sys
 from collections.abc import Callable
 from contextlib import suppress
@@ -349,14 +348,6 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
 def main(sys_args: list[str]) -> None:
     global args
     args, items = parse_panel_args(sys_args[1:])
-    talk_fd = -1
-    if args.single_instance:
-        si_data = os.environ.get('KITTY_SI_DATA', '')
-        if si_data:
-            talk_fd = int(si_data)
-    if args.detach:
-        from kitty.utils import detach
-        detach(talk_fd, log_file=args.detached_log or os.devnull)
     sys.argv = ['kitty']
     if args.debug_rendering:
         sys.argv.append('--debug-rendering')

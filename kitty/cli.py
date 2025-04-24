@@ -909,9 +909,12 @@ Change to the specified directory when launching.
 
 --detach
 type=bool-set
-condition=not is_macos
-Detach from the controlling terminal, if any. Not available on macOS. On macOS
+Detach from the controlling terminal, if any. On macOS
 use :code:`open -a kitty.app -n` instead.
+
+
+--detached-log
+Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 
 
 --session

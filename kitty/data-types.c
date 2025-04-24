@@ -67,17 +67,6 @@ process_group_map(PyObject *self UNUSED, PyObject *args UNUSED) {
 #endif
 
 static PyObject*
-redirect_std_streams(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
-    char *in = "", *out = "", *err = "";
-    static const char* kwlist[] = {"stdin", "stdout", "stderr", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|sss", (char**)kwlist, &in, &out, &err)) return NULL;
-    if (in[0] && freopen(in, "r", stdin) == NULL) return PyErr_SetFromErrno(PyExc_OSError);
-    if (out[0] && freopen(out, "a", stdout) == NULL) return PyErr_SetFromErrno(PyExc_OSError);
-    if (out[0] && freopen(err, "a", stderr) == NULL)  return PyErr_SetFromErrno(PyExc_OSError);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 pybase64_encode(PyObject UNUSED *self, PyObject *const *args, Py_ssize_t nargs) {
     int add_padding = 0;
     if (nargs < 1 || nargs > 2) { PyErr_SetString(PyExc_TypeError, "must supply one or two arguments"); return NULL; }
@@ -664,7 +653,6 @@ static PyMethodDef module_methods[] = {
     {"char_props_for", py_char_props_for, METH_O, ""},
     {"split_into_graphemes", (PyCFunction)split_into_graphemes, METH_O, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
-    {"redirect_std_streams", (PyCFunction)(void (*) (void))(redirect_std_streams), METH_VARARGS | METH_KEYWORDS, NULL},
     {"locale_is_valid", (PyCFunction)locale_is_valid, METH_VARARGS, ""},
     {"shm_open", (PyCFunction)py_shm_open, METH_VARARGS, ""},
     {"shm_unlink", (PyCFunction)py_shm_unlink, METH_VARARGS, ""},

@@ -10,8 +10,8 @@
 #include <stdbool.h>
 
 typedef struct CLIOptions {
-    const char *session, *instance_group;
-    bool single_instance, version_requested, wait_for_single_instance_window_close;
+    const char *session, *instance_group, *detached_log;
+    bool single_instance, version_requested, wait_for_single_instance_window_close, detach;
     int open_url_count; char **open_urls;
 } CLIOptions;
 

@@ -378,6 +378,8 @@ handle_option_value:
                 opts.session = arg;
             } else if (strcmp(current_option_expecting_argument, "instance-group") == 0) {
                 opts.instance_group = arg;
+            } else if (strcmp(current_option_expecting_argument, "detached-log") == 0) {
+                opts.detached_log = arg;
             }
             current_option_expecting_argument[0] = 0;
         } else {
@@ -397,11 +399,14 @@ handle_option_value:
                         opts.single_instance = true;
                     } else if (strcmp(arg+2, "wait-for-single-instance-window-close") == 0) {
                         opts.wait_for_single_instance_window_close = true;
+                    } else if (strcmp(arg+2, "detach") == 0) {
+                        opts.detach = true;
                     } else if (!is_boolean_flag(arg+2)) {
                         strncpy(current_option_expecting_argument, arg+2, sizeof(current_option_expecting_argument)-1);
                     }
                 } else {
                     memcpy(current_option_expecting_argument, arg+2, equal - (arg + 2));
+                    current_option_expecting_argument[equal - (arg + 2)] = 0;
                     arg = equal + 1;
                     goto handle_option_value;
                 }
@@ -431,6 +436,14 @@ handle_option_value:
             printf("kitty %s created by Kovid Goyal\n", KITTY_VERSION);
         }
         exit(0);
+    }
+    if (opts.detach) {
+        if (fork() != 0) exit(0);
+        setsid();
+        if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0))) freopen("/dev/null", "r", stdin);
+        if (!opts.detached_log || !opts.detached_log[0]) opts.detached_log = "/dev/null";
+        freopen(opts.detached_log, "ab", stdout);
+        freopen(opts.detached_log, "ab", stderr);
     }
     unsetenv("KITTY_SI_DATA");
     if (opts.single_instance) {

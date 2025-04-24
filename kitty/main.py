@@ -56,7 +56,6 @@ from .shaders import CompileError, load_shader_programs
 from .types import LayerShellConfig
 from .utils import (
     cleanup_ssh_control_masters,
-    detach,
     expandvars,
     get_custom_window_icon,
     log_error,
@@ -514,7 +513,6 @@ def _main() -> None:
         if cli_opts.session == '-':
             from .session import PreReadSession
             cli_opts.session = PreReadSession(sys.stdin.read(), os.environ)
-        detach(talk_fd)
     if cli_opts.replay_commands:
         from kitty.client import main as client_main
         client_main(cli_opts.replay_commands)

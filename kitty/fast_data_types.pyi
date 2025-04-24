@@ -335,10 +335,6 @@ def log_error_string(s: str) -> None:
     pass
 
 
-def redirect_std_streams(stdin: str = '', stdout: str = '', stderr: str = '') -> None:
-    pass
-
-
 def glfw_get_key_name(key: int, native_key: int) -> Optional[str]:
     pass
 
