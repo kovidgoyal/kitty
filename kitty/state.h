@@ -314,11 +314,6 @@ typedef struct {
     id_type last_focused_counter;
     CloseRequest close_request;
     bool is_layer_shell;
-    struct {
-        monotonic_t last_change_at;
-        bool set_visible;
-        id_type timer_id;
-    } debounce_visibility_changes;
 } OSWindow;
 
 

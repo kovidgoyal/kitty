@@ -2452,22 +2452,6 @@ is_layer_shell_supported(PyObject *self UNUSED, PyObject *args UNUSED) {
 #endif
 }
 
-static void
-do_os_visibility_change(id_type timer_id, void *d) {
-    id_type wid = (uintptr_t)d;
-    OSWindow *w = os_window_for_id(wid);
-    if (w && w->handle && w->debounce_visibility_changes.timer_id == timer_id) {
-        w->debounce_visibility_changes.timer_id = 0;
-        if (w->debounce_visibility_changes.set_visible) {
-            glfwShowWindow(w->handle);
-            w->needs_render = true;
-            w->keep_rendering_till_swap = 256;  // try this many times
-            request_tick_callback();
-        } else glfwHideWindow(w->handle);
-        w->debounce_visibility_changes.last_change_at = monotonic();
-    }
-}
-
 static PyObject*
 toggle_os_window_visibility(PyObject *self UNUSED, PyObject *args) {
     unsigned long long wid;
@@ -2478,17 +2462,12 @@ toggle_os_window_visibility(PyObject *self UNUSED, PyObject *args) {
     bool is_visible = glfwGetWindowAttrib(w->handle, GLFW_VISIBLE) != 0;
     if (set_visible == -1) set_visible = !is_visible;
     else if (set_visible == is_visible) Py_RETURN_FALSE;
-    // Debouncing of toggle requests is needed because of buggy Wayland
-    // compositors: https://github.com/kovidgoyal/kitty/issues/8557
-    monotonic_t debounce_interval = ms_to_monotonic_t(250);
-    monotonic_t now = monotonic();
-    w->debounce_visibility_changes.set_visible = set_visible;
-    if (now - w->debounce_visibility_changes.last_change_at >= debounce_interval) {
-        do_os_visibility_change(0, (void*)(uintptr_t)w->id);
-    } else if (w->debounce_visibility_changes.timer_id == 0) {
-        w->debounce_visibility_changes.timer_id = add_main_loop_timer(
-            debounce_interval - (now - w->debounce_visibility_changes.last_change_at), false, do_os_visibility_change, (void*)(uintptr_t)w->id, NULL);
-    }
+    if (set_visible) {
+        glfwShowWindow(w->handle);
+        w->needs_render = true;
+        w->keep_rendering_till_swap = 256;  // try this many times
+        request_tick_callback();
+    } else glfwHideWindow(w->handle);
     Py_RETURN_TRUE;
 }
 
