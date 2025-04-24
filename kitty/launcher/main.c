@@ -392,21 +392,24 @@ handle_option_value:
             }
             if (arg[1] == '-') {  // long opt
                 const char *equal = strchr(arg, '=');
+                const char *q = arg + 2;
                 if (equal == NULL) {
-                    if (strcmp(arg+2, "version") == 0) {
+                    if (strcmp(q, "version") == 0) {
                         opts.version_requested = true;
-                    } else if (strcmp(arg+2, "single-instance") == 0) {
+                    } else if (strcmp(q, "single-instance") == 0) {
                         opts.single_instance = true;
-                    } else if (strcmp(arg+2, "wait-for-single-instance-window-close") == 0) {
+                    } else if (strcmp(q, "wait-for-single-instance-window-close") == 0) {
                         opts.wait_for_single_instance_window_close = true;
-                    } else if (strcmp(arg+2, "detach") == 0) {
+                    } else if (strcmp(q, "detach") == 0) {
                         opts.detach = true;
+                    } else if (strcmp(q, "help") == 0) {
+                        return;
                     } else if (!is_boolean_flag(arg+2)) {
-                        strncpy(current_option_expecting_argument, arg+2, sizeof(current_option_expecting_argument)-1);
+                        strncpy(current_option_expecting_argument, q, sizeof(current_option_expecting_argument)-1);
                     }
                 } else {
-                    memcpy(current_option_expecting_argument, arg+2, equal - (arg + 2));
-                    current_option_expecting_argument[equal - (arg + 2)] = 0;
+                    memcpy(current_option_expecting_argument, q, equal - q);
+                    current_option_expecting_argument[equal - q] = 0;
                     arg = equal + 1;
                     goto handle_option_value;
                 }
@@ -420,6 +423,7 @@ handle_option_value:
                             goto handle_option_value;
                         case 'v': opts.version_requested = true; break;
                         case '1': opts.single_instance = true; break;
+                        case 'h': return;
                         default:
                             buf[0] = arg[i]; buf[1] = 0;
                             if (!is_boolean_flag(buf)) { current_option_expecting_argument[0] = arg[i]; current_option_expecting_argument[1] = 0; }
