@@ -185,7 +185,8 @@ Start in hidden mode, useful with :option:`--toggle-visibility`.
 
 --detach
 type=bool-set
-Detach from the controlling terminal, if any.
+Detach from the controlling terminal, if any, running in an independent child process,
+the parent process exits immediately.
 
 
 --debug-rendering
