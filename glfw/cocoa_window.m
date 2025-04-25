@@ -1972,7 +1972,7 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     }
     // Screen co-ordinate system is with origin in lower left and y increasing upwards and x increasing rightwards
     // NSLog(@"frame: %@ visibleFrame: %@\n", NSStringFromRect(screen.frame), NSStringFromRect(screen.visibleFrame));
-    NSWindowLevel level = NSScreenSaverWindowLevel - 1;
+    NSWindowLevel level = NSPopUpMenuWindowLevel - 1; // so that popup menus from globalmenubar function
     NSWindowAnimationBehavior animation_behavior = NSWindowAnimationBehaviorUtilityWindow;
     switch (config.type) {
         case GLFW_LAYER_SHELL_BACKGROUND:
@@ -1982,7 +1982,7 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
             break;
         case GLFW_LAYER_SHELL_OVERLAY: case GLFW_LAYER_SHELL_NONE: break;
         case GLFW_LAYER_SHELL_PANEL: level = NSNormalWindowLevel - 1; break;
-        case GLFW_LAYER_SHELL_TOP: level = NSPopUpMenuWindowLevel + 1; break;
+        case GLFW_LAYER_SHELL_TOP: level--; break;
     }
     if (config.type != GLFW_LAYER_SHELL_BACKGROUND && config.edge != GLFW_EDGE_CENTER) {
         double panel_height = spacing_y + ysz / yscale, panel_width = spacing_x + xsz / xscale;
