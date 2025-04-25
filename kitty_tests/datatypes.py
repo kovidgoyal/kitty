@@ -28,7 +28,7 @@ from kitty.fast_data_types import (
 )
 from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
-from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user, shlex_split_with_positions
+from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user, shlex_split, shlex_split_with_positions
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -664,6 +664,8 @@ class TestDataTypes(BaseTest):
         ):
             with self.assertRaises(ValueError, msg=f'Failed to raise exception for {bad!r}'):
                 tuple(shlex_split_with_positions(bad))
+            with self.assertRaises(ValueError, msg=f'Failed to raise exception for {bad!r}'):
+                tuple(shlex_split(bad))
 
         for q, expected in {
             '"ab"': ((0, 'ab'),),
@@ -672,9 +674,16 @@ class TestDataTypes(BaseTest):
             r'\abc\ d': ((0, 'abc d'),),
             '': ((0, ''),), '   ': ((0, ''),), ' \tabc\n\t\r ': ((2, 'abc'),),
             "$'ab'": ((0, '$ab'),),
+            '😀': ((0, '😀'),),
+            '"a😀"': ((0, 'a😀'),),
+            '😀 a': ((0, '😀'), (2, 'a')),
+            ' \t😀a': ((2, '😀a'),),
         }.items():
             actual = tuple(shlex_split_with_positions(q))
             self.ae(expected, actual, f'Failed for text: {q!r}')
+            ex = tuple(x[1] for x in expected)
+            actual = tuple(shlex_split(q))
+            self.ae(ex, actual, f'Failed for text: {q!r}')
 
         for q, expected in {
             "$'ab'": ((0, 'ab'),),
@@ -692,6 +701,9 @@ class TestDataTypes(BaseTest):
         }.items():
             actual = tuple(shlex_split_with_positions(q, True))
             self.ae(expected, actual, f'Failed for text: {q!r}')
+            actual = tuple(shlex_split(q, True))
+            ex = tuple(x[1] for x in expected)
+            self.ae(ex, actual, f'Failed for text: {q!r}')
 
     def test_split_into_graphemes(self):
         self.assertEqual(char_props_for('\ue000')['category'], 'Co')

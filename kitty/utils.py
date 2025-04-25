@@ -1105,23 +1105,13 @@ def key_val_matcher(items: Iterable[tuple[str, str]], key_pat: 're.Pattern[str]'
 
 
 def shlex_split(text: str, allow_ansi_quoted_strings: bool = False) -> Iterator[str]:
-    s = Shlex(text, allow_ansi_quoted_strings)
-    yielded = False
-    while (q := s.next_word())[0] > -1:
-        yield q[1]
-        yielded = True
-    if not yielded:
-        yield ''
+    yield from Shlex(text, allow_ansi_quoted_strings)
 
 
 def shlex_split_with_positions(text: str, allow_ansi_quoted_strings: bool = False) -> Iterator[tuple[int, str]]:
     s = Shlex(text, allow_ansi_quoted_strings)
-    yielded = False
     while (q := s.next_word())[0] > -1:
         yield q
-        yielded = True
-    if not yielded:
-        yield 0, ''
 
 
 def timed_debug_print(*a: Any, sep: str = ' ', end: str = '\n') -> None:
