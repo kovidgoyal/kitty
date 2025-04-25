@@ -95,7 +95,8 @@ def expand_dirs(items, exclude=lambda x: x.endswith('.so')):
     return items
 
 
-def do_sign(app_dir):
+
+def do_sign(app_dir: str) -> None:
     with current_dir(join(app_dir, 'Contents')):
         # Sign all .so files
         so_files = {x for x in files_in('.') if x.endswith('.so')}
@@ -109,6 +110,10 @@ def do_sign(app_dir):
         # Sign kitten
         with current_dir('MacOS'):
             codesign('kitten')
+        # Sign sub-apps
+        for x in os.listdir('.'):
+            if x.endswith('.app'):
+                codesign(x)
 
     # Now sign the main app
     codesign(app_dir)
