@@ -67,7 +67,7 @@ typedef void* id;
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int, unsigned long);
 typedef bool (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef bool (* GLFWhandleurlopen)(const char*);
-typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
+typedef void (* GLFWapplicationwillfinishlaunchingfun)(bool);
 typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 

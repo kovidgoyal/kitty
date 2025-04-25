@@ -44,7 +44,7 @@ typedef struct {
     const char *exe, *exe_dir, *lc_ctype, *lib_dir, *config_dir;
     char **argv;
     int argc;
-    bool launched_by_launch_services;
+    bool launched_by_launch_services, is_quick_access_terminal;
 } RunData;
 
 static bool
@@ -70,6 +70,9 @@ set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir)
     PyObject *lbls = run_data->launched_by_launch_services ? Py_True : Py_False;
     Py_INCREF(lbls);
     S(launched_by_launch_services, lbls);
+    lbls = run_data->is_quick_access_terminal ? Py_True : Py_False;
+    Py_INCREF(lbls);
+    S(is_quick_access_terminal_app, lbls);
 
     char buf[PATH_MAX + 1];
     if (run_data->config_dir == NULL) {
@@ -438,19 +441,33 @@ delegate_to_kitten_if_possible(int argc, char *argv[], char* exe_dir) {
     return false;
 }
 
+static bool
+endswith(const char *str, const char *suffix) {
+    size_t strLen = strlen(str);
+    size_t suffixLen = strlen(suffix);
+    if (suffixLen > strLen) return false;
+    return strcmp(str + strLen - suffixLen, suffix) == 0;
+}
+
 int main(int argc_, char *argv_[], char* envp[]) {
     if (argc_ < 1 || !argv_) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
     if (!ensure_working_stdio()) return 1;
     char exe[PATH_MAX+1] = {0};
+    if (!read_exe_path(exe, sizeof(exe))) return 1;
     char exe_dir_buf[PATH_MAX+1] = {0};
+    strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
+    char *exe_dir = dirname(exe_dir_buf);
+
     RAII_ALLOC(const char, lc_ctype, NULL);
     bool launched_by_launch_services = false;
     const char *config_dir = NULL;
+    bool is_quick_access_terminal = false;
     argv_array argva = {.argv = argv_, .count = argc_};
 #ifdef __APPLE__
     lc_ctype = getenv("LC_CTYPE");
     if (lc_ctype) lc_ctype = strdup(lc_ctype);
     char abuf[PATH_MAX+1];
+    is_quick_access_terminal = endswith(exe, "/kitty-quick-access");
     if (getenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES")) {
         launched_by_launch_services = true;
         unsetenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES");
@@ -462,11 +479,10 @@ int main(int argc_, char *argv_[], char* envp[]) {
             if (!get_argv_from(cbuf, argva.argv[0], &argva)) exit(1);
         }
     }
+#else
+    (void)endswith;
 #endif
     (void)read_full_file;
-    if (!read_exe_path(exe, sizeof(exe))) return 1;
-    strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
-    char *exe_dir = dirname(exe_dir_buf);
     if (!delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir)) handle_fast_commandline(argva.count, argva.argv, NULL);
     int ret=0;
     char lib[PATH_MAX+1] = {0};
@@ -477,7 +493,7 @@ int main(int argc_, char *argv_[], char* envp[]) {
     }
     RunData run_data = {
         .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argva.count, .argv = argva.argv, .lc_ctype = lc_ctype,
-        .launched_by_launch_services=launched_by_launch_services, .config_dir = config_dir,
+        .launched_by_launch_services=launched_by_launch_services, .config_dir = config_dir, .is_quick_access_terminal=is_quick_access_terminal,
     };
     ret = run_embedded(&run_data);
     free_argv_array(&argva);

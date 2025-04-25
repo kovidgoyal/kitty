@@ -33,6 +33,13 @@ from kitty.types import LayerShellConfig
 from kitty.typing import BossType, EdgeLiteral
 from kitty.utils import log_error
 
+quake = (
+    'kitty +kitten panel --edge=top --layer=overlay --lines=25 --focus-policy=exclusive'
+    ' -o background_opacity=0.8 --toggle-visibility --single-instance --instance-group=quake'
+)
+default_quake_cmdline = f'{quake} --exclusive-zone=0 --override-exclusive-zone --detach'
+default_macos_quake_cmdline = f'{quake}'
+
 OPTIONS = r'''
 --lines
 default=1
@@ -363,6 +370,8 @@ def main(sys_args: list[str]) -> None:
         sys.argv.extend(('--override', override))
     sys.argv.append('--override=linux_display_server=auto')
     sys.argv.append('--override=macos_quit_when_last_window_closed=yes')
+    sys.argv.append('--override=macos_hide_from_tasks=yes')
+    sys.argv.append('--override=macos_window_resizable=no')
     if args.single_instance:
         sys.argv.append('--single-instance')
     if args.instance_group:
@@ -378,7 +387,7 @@ def main(sys_args: list[str]) -> None:
     if not is_macos:
         run_app.first_window_callback = setup_x11_window
         run_app.initial_window_size_func = initial_window_size_func
-    real_main()
+    real_main(called_from_panel=True)
 
 
 if __name__ == '__main__':

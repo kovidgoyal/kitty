@@ -31,10 +31,12 @@ is_running_from_develop: bool = False
 RC_ENCRYPTION_PROTOCOL_VERSION = '1'
 website_base_url = 'https://sw.kovidgoyal.net/kitty/'
 default_pager_for_help = ('less', '-iRXF')
-launched_by_launch_services = getattr(sys, 'kitty_run_data', {}).get('launched_by_launch_services', False)
+kitty_run_data: dict[str, Any] = getattr(sys, 'kitty_run_data', {})
+launched_by_launch_services = kitty_run_data.get('launched_by_launch_services', False)
+is_quick_access_terminal_app = kitty_run_data.get('is_quick_access_terminal_app', False)
 
 if getattr(sys, 'frozen', False):
-    extensions_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
+    extensions_dir: str = kitty_run_data['extensions_dir']
 
     def get_frozen_base() -> str:
         global is_running_from_develop
@@ -66,7 +68,7 @@ else:
 
 @run_once
 def kitty_exe() -> str:
-    rpath = getattr(sys, 'kitty_run_data').get('bundle_exe_dir')
+    rpath = kitty_run_data.get('bundle_exe_dir')
     if not rpath:
         items = os.environ.get('PATH', '').split(os.pathsep) + [os.path.join(kitty_base_dir, 'kitty', 'launcher')]
         seen: set[str] = set()
@@ -87,7 +89,7 @@ def kitten_exe() -> str:
 
 
 def _get_config_dir() -> str:
-    cdir = getattr(sys, 'kitty_run_data', {}).get('config_dir', '')
+    cdir = kitty_run_data.get('config_dir', '')
     if cdir:
         return str(cdir)
     import atexit
@@ -276,7 +278,7 @@ def clear_handled_signals(*a: Any) -> None:
 def local_docs() -> str:
     d = os.path.dirname
     base = d(d(kitty_exe()))
-    from_source = getattr(sys, 'kitty_run_data').get('from_source')
+    from_source = kitty_run_data.get('from_source')
     if is_macos and from_source and '/kitty.app/Contents/' in kitty_exe():
         base = d(d(d(base)))
     subdir = os.path.join('doc', 'kitty', 'html')

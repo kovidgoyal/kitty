@@ -43,7 +43,7 @@ typedef enum {
 
 void cocoa_focus_window(void *w);
 long cocoa_window_number(void *w);
-void cocoa_create_global_menu(void);
+void cocoa_application_lifecycle_event(bool);
 void cocoa_recreate_global_menu(void);
 void cocoa_system_beep(const char*);
 void cocoa_set_activation_policy(bool);

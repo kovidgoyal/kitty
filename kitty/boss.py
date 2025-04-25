@@ -108,6 +108,7 @@ from .fast_data_types import (
     thread_write,
     toggle_fullscreen,
     toggle_maximized,
+    toggle_os_window_visibility,
     toggle_secure_input,
     wrapped_kitten_names,
 )
@@ -899,6 +900,10 @@ class Boss:
         else:
             log_error('Unknown message received over single instance socket, ignoring')
         return None
+
+    def quick_access_terminal_invoked(self) -> None:
+        for os_window_id in self.os_window_map:
+            toggle_os_window_visibility(os_window_id)
 
     def handle_remote_cmd(self, cmd: memoryview, window: Window | None = None) -> None:
         response = self._handle_remote_command(cmd, window)

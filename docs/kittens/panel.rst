@@ -75,12 +75,11 @@ Make a Quake like quick access terminal
    Support for quake mode, works only on macOS and Wayland, except for GNOME.
 
 This kitten can be used to make a quick access terminal, that appears and
-disappears at a key press. To do so use the following command::
+disappears at a key press. To do so use the following command:
 
-    kitty +kitten panel --edge=top --layer=overlay --lines=15 \
-        --focus-policy=exclusive --exclusive-zone=0 --override-exclusive-zone \
-        -o background_opacity=0.8 --toggle-visibility --single-instance \
-        --instance-group=quake --detach
+.. code-block:: sh
+
+_default_quake_cmdline
 
 Run this command in a terminal, and a quick access kitty panel will show up at
 the top of your screen. Run it again, and the panel will be hidden.

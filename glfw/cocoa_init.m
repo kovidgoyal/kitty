@@ -358,8 +358,7 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
         else
             createMenuBar();
     }
-    if (finish_launching_callback)
-        finish_launching_callback();
+    if (finish_launching_callback) finish_launching_callback(false);
 }
 
 - (BOOL)application:(NSApplication *)sender openFile:(NSString *)filename {
@@ -410,6 +409,7 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
+    if (finish_launching_callback) finish_launching_callback(true);
     (void)notification;
     [NSApp stop:nil];
 

@@ -50,6 +50,7 @@ extern CGSConnectionID _CGSDefaultConnection(void);
 CFArrayRef CGSCopySpacesForWindows(CGSConnectionID Connection, CGSSpaceSelector Type, CFArrayRef Windows);
 
 static NSMenuItem* title_menu = NULL;
+static bool application_has_finished_launching = false;
 
 
 static NSString*
@@ -679,6 +680,12 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     return YES;
 }
 
+- (void)quickAccessTerminal:(NSPasteboard *)pboard userData:(NSString *)userData error:(NSString **)error {
+    // we ignore event during application launch as it will cause the window to be shown and hidden
+    static bool is_first_event = true;
+    if (is_first_event) is_first_event = false;
+    else { call_boss(quick_access_terminal_invoked, NULL) }
+}
 @end
 
 // global menu {{{
@@ -712,7 +719,7 @@ add_user_global_menu_entry(struct MenuItem *e, NSMenu *bar, size_t action_index)
     }
 }
 
-void
+static void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
     NSMenu* bar = [[NSMenu alloc] init];
@@ -842,6 +849,13 @@ cocoa_create_global_menu(void) {
     [NSApp setServicesProvider:[[[ServiceProvider alloc] init] autorelease]];
 
 #undef MENU_ITEM
+}
+
+void
+cocoa_application_lifecycle_event(bool application_launch_finished) {
+    if (application_launch_finished) {  // applicationDidFinishLaunching
+        application_has_finished_launching = true;
+    } else cocoa_create_global_menu();  // applicationWillFinishLaunching
 }
 
 void

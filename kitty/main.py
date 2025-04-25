@@ -22,6 +22,7 @@ from .constants import (
     clear_handled_signals,
     glfw_path,
     is_macos,
+    is_quick_access_terminal_app,
     is_wayland,
     kitten_exe,
     kitty_exe,
@@ -62,6 +63,7 @@ from .utils import (
     log_error,
     parse_os_window_state,
     safe_mtime,
+    shlex_split,
     startup_notification_handler,
 )
 
@@ -451,13 +453,10 @@ def set_locale() -> None:
             set_LANG_in_default_env(old_lang)
 
 
-def _main() -> None:
+def kitty_main() -> None:
     running_in_kitty(True)
 
     args = sys.argv[1:]
-    if is_macos and launched_by_launch_services:
-        os.chdir(os.path.expanduser('~'))
-        set_use_os_log(True)
     try:
         cwd_ok = os.path.isdir(os.getcwd())
     except Exception:
@@ -495,6 +494,8 @@ def _main() -> None:
         return
     bad_lines: list[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
+    if is_quick_access_terminal_app:
+        opts.macos_hide_from_tasks = True
     setup_environment(opts, cli_opts)
 
     # set_locale on macOS uses cocoa APIs when LANG is not set, so we have to
@@ -524,9 +525,20 @@ def _main() -> None:
         cleanup_ssh_control_masters()
 
 
-def main() -> None:
+
+def main(called_from_panel: bool = False) -> None:
+    global redirected_for_quick_access
     try:
-        _main()
+        if is_macos and launched_by_launch_services and not called_from_panel:
+            with suppress(OSError):
+                os.chdir(os.path.expanduser('~'))
+            set_use_os_log(True)
+            if is_quick_access_terminal_app:
+                from kittens.panel.main import default_macos_quake_cmdline
+                from kittens.panel.main import main as panel_main
+                panel_main(list(shlex_split(default_macos_quake_cmdline))[2:])
+                return
+        kitty_main()
     except Exception:
         import traceback
         tb = traceback.format_exc()
