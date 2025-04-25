@@ -187,7 +187,8 @@ get_config_dir(char *output, size_t outputsz) {
     q = getenv("XDG_CONFIG_HOME");
     if (!q || !q[0]) q = "~/.config";
     expand(q, buf2, sizeof(buf2));
-    snprintf(output, outputsz, "%s/kitty", buf2);
+    int n = snprintf(output, outputsz, "%s/kitty", buf2);
+    if (n <= 0 || (size_t)n >= outputsz) return false;
     if (makedirs(output, 0755)) return true;
     return false;
 #undef expand
