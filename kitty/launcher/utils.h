@@ -34,6 +34,8 @@ ensure_home_path(void) {
     }
 }
 
+#define safe_snprintf(buf, sz, fmt, ...) { int n = snprintf(buf, sz, fmt, __VA_ARGS__); if (n < 0 || (size_t)n >= sz) { fprintf(stderr, "Out of buffer space calling sprintf for format: %s at line: %d\n", fmt, __LINE__); exit(1); }}
+
 static const char*
 home_path_for(const char *username) {
     struct passwd* pw = getpwnam(username);
@@ -44,7 +46,7 @@ home_path_for(const char *username) {
 static void
 expand_tilde(const char* path, char *ans, size_t ans_sz) {
     if (path[0] != '~') {
-        snprintf(ans, ans_sz, "%s", path);
+        safe_snprintf(ans, ans_sz, "%s", path);
         return;
     }
     const char *prefix = NULL, *sep = "";
@@ -65,7 +67,7 @@ expand_tilde(const char* path, char *ans, size_t ans_sz) {
         }
     }
     // Construct the expanded path
-    snprintf(ans, ans_sz, "%s%s%s", prefix, sep, path + 1);
+    safe_snprintf(ans, ans_sz, "%s%s%s", prefix, sep, path + 1);
 }
 
 static size_t
@@ -177,7 +179,7 @@ get_config_dir(char *output, size_t outputsz) {
 #endif
     q = getenv("XDG_CONFIG_DIRS");
     if (q && q[0]) {
-        snprintf(buf2, sizeof(buf2), "%s", q);
+        safe_snprintf(buf2, sizeof(buf2), "%s", q);
         char *s, *token = strtok_r(buf2, ":", &s);
         while (token) {
             check_and_ret(token);
@@ -187,8 +189,7 @@ get_config_dir(char *output, size_t outputsz) {
     q = getenv("XDG_CONFIG_HOME");
     if (!q || !q[0]) q = "~/.config";
     expand(q, buf2, sizeof(buf2));
-    int n = snprintf(output, outputsz, "%s/kitty", buf2);
-    if (n <= 0 || (size_t)n >= outputsz) return false;
+    safe_snprintf(output, outputsz, "%s/kitty", buf2);
     if (makedirs(output, 0755)) return true;
     return false;
 #undef expand

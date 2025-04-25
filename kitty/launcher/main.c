@@ -16,12 +16,6 @@
 #else
 #include <limits.h>
 #endif
-#include <pwd.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-#include <wchar.h>
-#include <fcntl.h>
 #include "launcher.h"
 #include "utils.h"
 
@@ -41,7 +35,7 @@ static bool
 safe_realpath(const char* src, char *buf, size_t buf_sz) {
     RAII_ALLOC(char, ans, realpath(src, NULL));
     if (ans == NULL) return false;
-    snprintf(buf, buf_sz, "%s", ans);
+    safe_snprintf(buf, buf_sz, "%s", ans);
     return true;
 }
 #endif
@@ -170,7 +164,7 @@ run_embedded(RunData *run_data) {
 #else
     const char *python_relpath = "../" KITTY_LIB_DIR_NAME;
 #endif
-    int num = snprintf(extensions_dir_full, PATH_MAX, "%s/%s/kitty-extensions", run_data->exe_dir, python_relpath);
+    int num = safe_snprintf(extensions_dir_full, PATH_MAX, "%s/%s/kitty-extensions", run_data->exe_dir, python_relpath);
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to extensions_dir: %s/%s\n", run_data->exe_dir, python_relpath); return 1; }
     wchar_t extensions_dir[num+2];
     if (!canonicalize_path_wide(extensions_dir_full, extensions_dir, num+1)) {
@@ -220,7 +214,7 @@ run_embedded(RunData *run_data) {
 #ifdef SET_PYTHON_HOME
 #ifndef __APPLE__
     char pyhome[256];
-    snprintf(pyhome, sizeof(pyhome), "%s/%s", run_data->lib_dir, SET_PYTHON_HOME);
+    safe_snprintf(pyhome, sizeof(pyhome), "%s/%s", run_data->lib_dir, SET_PYTHON_HOME);
     status = PyConfig_SetBytesString(&config, &config.home, pyhome);
     if (PyStatus_Exception(status)) goto fail;
 #endif
@@ -285,7 +279,7 @@ read_exe_path(char *exe, size_t buf_sz) {
     char *token = strtok(buf, ":");
     while (token != NULL) {
         char q[PATH_MAX + 1] = {0};
-        snprintf(q, PATH_MAX, "%s/kitty", token);
+        safe_snprintf(q, PATH_MAX, "%s/kitty", token);
         if (safe_realpath(q, exe, buf_sz)) return true;
         token = strtok(NULL, ":");
     }
@@ -351,14 +345,14 @@ ensure_working_stdio(void) {
 static bool
 is_wrapped_kitten(const char *arg) {
     char buf[64];
-    snprintf(buf, sizeof(buf)-1, " %s ", arg);
+    safe_snprintf(buf, sizeof(buf)-1, " %s ", arg);
     return strstr(" " WRAPPED_KITTENS " ", buf);
 }
 
 static void
 exec_kitten(int argc, char *argv[], char *exe_dir) {
     char exe[PATH_MAX+1] = {0};
-    snprintf(exe, PATH_MAX, "%s/kitten", exe_dir);
+    safe_snprintf(exe, PATH_MAX, "%s/kitten", exe_dir);
     char **newargv = malloc(sizeof(char*) * (argc + 1));
     memcpy(newargv, argv, sizeof(char*) * argc);
     newargv[argc] = 0;
@@ -373,7 +367,7 @@ static bool
 is_boolean_flag(const char *x) {
     static const char *all_boolean_options = KITTY_CLI_BOOL_OPTIONS;
     char buf[128];
-    snprintf(buf, sizeof(buf), " %s ", x);
+    safe_snprintf(buf, sizeof(buf), " %s ", x);
     return strstr(all_boolean_options, buf) != NULL;
 }
 
@@ -474,7 +468,7 @@ handle_option_value:
         char igbuf[256];
         if (instance_group_prefix && instance_group_prefix[0]) {
             if (opts.instance_group && opts.instance_group[0]) {
-                snprintf(igbuf, sizeof(igbuf), "%s-%s", instance_group_prefix, opts.instance_group ? opts.instance_group : "");
+                safe_snprintf(igbuf, sizeof(igbuf), "%s-%s", instance_group_prefix, opts.instance_group ? opts.instance_group : "");
                 opts.instance_group = igbuf;
             } else {
                 opts.instance_group = instance_group_prefix;
@@ -527,15 +521,13 @@ int main(int argc, char *argv[], char* envp[]) {
     strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
     char *exe_dir = dirname(exe_dir_buf);
     if (!delegate_to_kitten_if_possible(argc, argv, exe_dir)) handle_fast_commandline(argc, argv, NULL);
-    int num, ret=0;
+    int ret=0;
     char lib[PATH_MAX+1] = {0};
     if (KITTY_LIB_PATH[0] == '/') {
-        num = snprintf(lib, PATH_MAX, "%s", KITTY_LIB_PATH);
+        safe_snprintf(lib, PATH_MAX, "%s", KITTY_LIB_PATH);
     } else {
-        num = snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
+        safe_snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
     }
-
-    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
     RunData run_data = {
         .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype,
         .launched_by_launch_services=launched_by_launch_services, .config_dir = config_dir,
