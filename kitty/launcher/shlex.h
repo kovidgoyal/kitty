@@ -25,7 +25,10 @@ typedef struct {
 
 static bool
 alloc_shlex_state(ShlexState *s, const char *src, size_t src_sz, bool support_ansi_c_quoting) {
-    *s = (ShlexState){.src=src, .src_sz=src_sz, .support_ansi_c_quoting=support_ansi_c_quoting, .buf=malloc(src_sz)};
+    *s = (ShlexState){
+        // for NULL termination and some safety we add 16 bytes
+        .src=src, .src_sz=src_sz, .support_ansi_c_quoting=support_ansi_c_quoting, .buf=malloc(16 + src_sz)
+    };
     return s->buf != NULL;
 }
 
