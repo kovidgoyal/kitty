@@ -31,7 +31,8 @@ is_running_from_develop: bool = False
 RC_ENCRYPTION_PROTOCOL_VERSION = '1'
 website_base_url = 'https://sw.kovidgoyal.net/kitty/'
 default_pager_for_help = ('less', '-iRXF')
-launched_by_launch_services = getattr(sys, 'kitty_run_data')['launched_by_launch_services']
+launched_by_launch_services = getattr(sys, 'kitty_run_data', {}).get('launched_by_launch_services', False)
+
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
 
@@ -86,7 +87,7 @@ def kitten_exe() -> str:
 
 
 def _get_config_dir() -> str:
-    cdir = getattr(sys, 'kitty_run_data').get('config_dir', '')
+    cdir = getattr(sys, 'kitty_run_data', {}).get('config_dir', '')
     if cdir:
         return str(cdir)
     import atexit
