@@ -4,10 +4,11 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
-from kitty.constants import read_kitty_resource
+from kitty.constants import is_macos, kitty_exe, read_kitty_resource
 from kitty.fast_data_types import (
     Color,
     HistoryBuf,
@@ -19,6 +20,7 @@ from kitty.fast_data_types import (
     get_config_dir,
     makedirs,
     parse_input_from_terminal,
+    read_file,
     replace_c0_codes_except_nl_space_tab,
     split_into_graphemes,
     strip_csi,
@@ -492,9 +494,22 @@ class TestDataTypes(BaseTest):
             if os.path.exists(dot_config):
                 shutil.rmtree(dot_config)
             with tempfile.TemporaryDirectory() as tdir:
+                with open(tdir + '/macos-launch-services-cmdline', 'w') as f:
+                    print('kitty +runpy "import sys; print(sys.argv[-1])"', file=f)
+                    print('next-line', file=f)
+                    print()
+                if is_macos:
+                    env = os.environ.copy()
+                    env['KITTY_CONFIG_DIRECTORY'] = tdir
+                    env['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '1'
+                    actual = subprocess.check_output([kitty_exe(), '+runpy', 'import json, sys; print(json.dumps(sys.argv))'], env=env).strip().decode()
+                    self.ae('next-line', actual)
                 os.makedirs(tdir + '/good/kitty')
                 open(tdir + '/good/kitty/kitty.conf', 'w').close()
-                open(tdir + '/f', 'w').close()
+                data = os.urandom(32879)
+                with open(tdir + '/f', 'wb') as f:
+                    f.write(data)
+                self.ae(data, read_file(f.name))
                 for x in (
                     (f'KITTY_CONFIG_DIRECTORY={tdir}', f'{tdir}'),
                     (f'XDG_CONFIG_HOME={tdir}/good', f'{tdir}/good/kitty'),

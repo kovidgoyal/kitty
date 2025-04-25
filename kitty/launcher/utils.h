@@ -195,3 +195,40 @@ get_config_dir(char *output, size_t outputsz) {
 #undef expand
 #undef check_and_ret
 }
+
+
+static ssize_t
+safe_read_stream(void* ptr, size_t size, FILE* stream) {
+    errno = 0;
+    ssize_t total = 0, bytes_to_read = size;
+    while (total < bytes_to_read) {
+        size_t n = fread((char*)ptr + total, 1, bytes_to_read - total, stream);
+        if (n > 0) total += n;
+        else {
+            if (!ferror(stream)) break;  // eof
+            if (errno != EINTR) return -1;
+            clearerr(stream);
+        }
+    }
+    return total;
+}
+
+static char*
+read_full_file(const char* filename, size_t *sz) {
+    FILE* file = fopen(filename, "rb");
+    if (!file) return NULL;
+    fseek(file, 0, SEEK_END);
+    unsigned long file_size = ftell(file);
+    rewind(file);
+    char* buffer = (char*)malloc(file_size + 1); // +1 for the null terminator
+    if (!buffer) {
+        errno = ENOMEM;
+        fclose(file);
+        return NULL;
+    }
+    ssize_t q = safe_read_stream(buffer, file_size, file);
+    fclose(file);
+    if (q < 0) { free(buffer); buffer = NULL; if (sz) *sz = 0; }
+    else { if (sz) { *sz = q; } buffer[q] = 0; }
+    return buffer;
+}

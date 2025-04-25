@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct CLIOptions {
     const char *session, *instance_group, *detached_log;
@@ -16,5 +17,12 @@ typedef struct CLIOptions {
 } CLIOptions;
 
 
-void
-single_instance_main(int argc, char *argv[], const CLIOptions *opts);
+typedef struct argv_array {
+    char **argv, *buf; size_t capacity, count, pos;
+    bool needs_free;
+} argv_array;
+
+
+void single_instance_main(int argc, char *argv[], const CLIOptions *opts);
+bool get_argv_from(const char *filename, const char* argv0, argv_array *ans);
+void free_argv_array(argv_array *a);

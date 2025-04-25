@@ -92,67 +92,13 @@ set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir)
 #ifdef FOR_BUNDLE
 #include <bypy-freeze.h>
 
-static bool
-canonicalize_path(const char *srcpath, char *dstpath, size_t sz) {
-    // remove . and .. path segments
-    bool ok = false;
-    size_t plen = strlen(srcpath) + 1, chk;
-    RAII_ALLOC(char, wtmp, malloc(plen));
-    RAII_ALLOC(char*, tokv, malloc(sizeof(char*) * plen));
-    if (!wtmp || !tokv) goto end;
-    char *s, *tok, *sav;
-    bool relpath = *srcpath != '/';
-
-    // use a buffer as strtok modifies its input
-    memcpy(wtmp, srcpath, plen);
-
-    tok = strtok_r(wtmp, "/", &sav);
-    int ti = 0;
-    while (tok != NULL) {
-        if (strcmp(tok, "..") == 0) {
-            if (ti > 0) ti--;
-        } else if (strcmp(tok, ".") != 0) {
-            tokv[ti++] = tok;
-        }
-        tok = strtok_r(NULL, "/", &sav);
-    }
-
-    chk = 0;
-    s = dstpath;
-    for (int i = 0; i < ti; i++) {
-        size_t token_sz = strlen(tokv[i]);
-
-        if (i > 0 || !relpath) {
-            if (++chk >= sz) goto end;
-            *s++ = '/';
-        }
-
-        chk += token_sz;
-        if (chk >= sz) goto end;
-
-        memcpy(s, tokv[i], token_sz);
-        s += token_sz;
-    }
-
-    if (s == dstpath) {
-        if (++chk >= sz) goto end;
-        *s++ = relpath ? '.' : '/';
-    }
-    *s = '\0';
-    ok = true;
-
-end:
-    return ok;
-}
-
-static bool
+static void
 canonicalize_path_wide(const char *srcpath, wchar_t *dest, size_t sz) {
     char buf[sz + 1];
-    bool ret = canonicalize_path(srcpath, buf, sz);
+    lexical_absolute_path(srcpath, buf, sz);
     buf[sz] = 0;
     mbstowcs(dest, buf, sz - 1);
     dest[sz-1] = 0;
-    return ret;
 }
 
 static int
@@ -164,18 +110,12 @@ run_embedded(RunData *run_data) {
 #else
     const char *python_relpath = "../" KITTY_LIB_DIR_NAME;
 #endif
-    int num = safe_snprintf(extensions_dir_full, PATH_MAX, "%s/%s/kitty-extensions", run_data->exe_dir, python_relpath);
-    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to extensions_dir: %s/%s\n", run_data->exe_dir, python_relpath); return 1; }
-    wchar_t extensions_dir[num+2];
-    if (!canonicalize_path_wide(extensions_dir_full, extensions_dir, num+1)) {
-        fprintf(stderr, "Failed to canonicalize the path: %s\n", extensions_dir_full); return 1; }
-
-    num = snprintf(python_home_full, PATH_MAX, "%s/%s/python%s", run_data->exe_dir, python_relpath, PYVER);
-    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to python home: %s/%s\n", run_data->exe_dir, python_relpath); return 1; }
-    wchar_t python_home[num+2];
-    if (!canonicalize_path_wide(python_home_full, python_home, num+1)) {
-        fprintf(stderr, "Failed to canonicalize the path: %s\n", python_home_full); return 1; }
-
+    safe_snprintf(extensions_dir_full, PATH_MAX, "%s/%s/kitty-extensions", run_data->exe_dir, python_relpath);
+    wchar_t extensions_dir[PATH_MAX];
+    canonicalize_path_wide(extensions_dir_full, extensions_dir, PATH_MAX);
+    safe_snprintf(python_home_full, PATH_MAX, "%s/%s/python%s", run_data->exe_dir, python_relpath, PYVER);
+    wchar_t python_home[PATH_MAX];
+    canonicalize_path_wide(python_home_full, python_home, PATH_MAX);
     bypy_initialize_interpreter(
             L"kitty", python_home, L"kitty_main", extensions_dir, run_data->argc, run_data->argv);
     if (!set_kitty_run_data(run_data, false, extensions_dir)) return 1;
@@ -498,29 +438,36 @@ delegate_to_kitten_if_possible(int argc, char *argv[], char* exe_dir) {
     return false;
 }
 
-int main(int argc, char *argv[], char* envp[]) {
-    if (argc < 1 || !argv) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
+int main(int argc_, char *argv_[], char* envp[]) {
+    if (argc_ < 1 || !argv_) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
     if (!ensure_working_stdio()) return 1;
     char exe[PATH_MAX+1] = {0};
     char exe_dir_buf[PATH_MAX+1] = {0};
     RAII_ALLOC(const char, lc_ctype, NULL);
     bool launched_by_launch_services = false;
     const char *config_dir = NULL;
+    argv_array argva = {.argv = argv_, .count = argc_};
 #ifdef __APPLE__
     lc_ctype = getenv("LC_CTYPE");
     if (lc_ctype) lc_ctype = strdup(lc_ctype);
+    char abuf[PATH_MAX+1];
     if (getenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES")) {
         launched_by_launch_services = true;
         unsetenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES");
-        char buf[PATH_MAX+1];
-        if (!get_config_dir(buf,sizeof(buf))) buf[0] = 0;
-        config_dir = buf;
+        if (!get_config_dir(abuf, sizeof(abuf))) abuf[0] = 0;
+        config_dir = abuf;
+        if (launched_by_launch_services && config_dir[0]) {
+            char cbuf[PATH_MAX];
+            safe_snprintf(cbuf, sizeof(cbuf), "%s/macos-launch-services-cmdline", config_dir);
+            if (!get_argv_from(cbuf, argva.argv[0], &argva)) exit(1);
+        }
     }
 #endif
+    (void)read_full_file;
     if (!read_exe_path(exe, sizeof(exe))) return 1;
     strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
     char *exe_dir = dirname(exe_dir_buf);
-    if (!delegate_to_kitten_if_possible(argc, argv, exe_dir)) handle_fast_commandline(argc, argv, NULL);
+    if (!delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir)) handle_fast_commandline(argva.count, argva.argv, NULL);
     int ret=0;
     char lib[PATH_MAX+1] = {0};
     if (KITTY_LIB_PATH[0] == '/') {
@@ -529,10 +476,11 @@ int main(int argc, char *argv[], char* envp[]) {
         safe_snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
     }
     RunData run_data = {
-        .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype,
+        .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argva.count, .argv = argva.argv, .lc_ctype = lc_ctype,
         .launched_by_launch_services=launched_by_launch_services, .config_dir = config_dir,
     };
     ret = run_embedded(&run_data);
+    free_argv_array(&argva);
     single_instance_main(-1, NULL, NULL);
     Py_FinalizeEx();
     return ret;

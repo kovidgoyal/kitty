@@ -239,6 +239,10 @@ workaround that limitation, |kitty| will read command line options from the file
 :file:`<kitty config dir>/macos-launch-services-cmdline` when it is launched
 from the GUI, i.e. by clicking the |kitty| application icon or using
 ``open -a kitty``. Note that this file is *only read* when running via the GUI.
+The contents of the file are assumed to be the command line to pass to kitty in
+shell syntax, for example::
+
+    --single-instance --override background=red
 
 You can, of course, also run |kitty| from a terminal with command line options,
 using: :file:`/Applications/kitty.app/Contents/MacOS/kitty`.

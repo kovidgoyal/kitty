@@ -20,7 +20,6 @@ from .constants import (
     appname,
     beam_cursor_data_file,
     clear_handled_signals,
-    config_dir,
     glfw_path,
     is_macos,
     is_wayland,
@@ -63,7 +62,6 @@ from .utils import (
     log_error,
     parse_os_window_state,
     safe_mtime,
-    shlex_split,
     startup_notification_handler,
 )
 
@@ -337,30 +335,6 @@ def setup_profiling() -> Generator[None, None, None]:
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
-def macos_cmdline(argv_args: list[str]) -> list[str]:
-    try:
-        with open(os.path.join(config_dir, 'macos-launch-services-cmdline')) as f:
-            raw = f.read()
-    except FileNotFoundError:
-        return argv_args
-    raw = raw.strip()
-    ans = list(shlex_split(raw))
-    if ans and ans[0] == 'kitty':
-        del ans[0]
-    if '-1' in ans or '--single-instance' in ans:
-        if 'KITTY_SI_DATA' in os.environ:
-            # C code will already have setup single instance
-            log_error(
-                '--single-instance supplied in both command line arguments and macos-launch-services-cmdline,'
-                ' ignoring any --instance-group in macos-launch-services-cmdline')
-        else:
-            # Re-exec with new argv so that the C code that handles single instance
-            # can pick up the modified argv
-            os.environ['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '2'  # so that use_os_log is set in the re-execed process
-            os.execl(kitty_exe(), 'kitty', *(ans + argv_args))
-    return ans + argv_args
-
-
 def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
     if from_config_file and listen_on == 'none':
         return ''
@@ -483,7 +457,6 @@ def _main() -> None:
     args = sys.argv[1:]
     if is_macos and launched_by_launch_services:
         os.chdir(os.path.expanduser('~'))
-        args = macos_cmdline(args)
         set_use_os_log(True)
     try:
         cwd_ok = os.path.isdir(os.getcwd())

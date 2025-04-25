@@ -653,6 +653,17 @@ abspath(PyObject *self UNUSED, PyObject *path) {
 }
 
 static PyObject*
+read_file(PyObject *self UNUSED, PyObject *path) {
+    if (!PyUnicode_Check(path)) { PyErr_SetString(PyExc_TypeError, "path must a string"); return NULL; }
+    size_t sz;
+    char *result = read_full_file(PyUnicode_AsUTF8(path), &sz);
+    if (!result) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    PyObject *ans = PyBytes_FromStringAndSize(result, sz);
+    free(result);
+    return ans;
+}
+
+static PyObject*
 py_makedirs(PyObject *self UNUSED, PyObject *args) {
     int mode = 0755; const char *p;
     if (!PyArg_ParseTuple(args, "s|i", &p, &mode)) return NULL;
@@ -670,6 +681,7 @@ py_get_config_dir(PyObject *self UNUSED, PyObject *args UNUSED) {
 
 static PyMethodDef module_methods[] = {
     METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
+    METHODB(read_file, METH_O),
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"expanduser", (PyCFunction)expanduser, METH_O, ""},
     {"abspath", (PyCFunction)abspath, METH_O, ""},

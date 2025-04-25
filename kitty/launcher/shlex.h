@@ -86,6 +86,7 @@ write_unich(ShlexState *self, unsigned long ch) {
 static size_t
 get_word(ShlexState *self) {
     size_t ans = self->buf_pos; self->buf_pos = 0;
+    self->buf[ans] = 0;
     return ans;
 }
 
