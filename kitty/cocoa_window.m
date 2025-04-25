@@ -683,8 +683,8 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
 - (void)quickAccessTerminal:(NSPasteboard *)pboard userData:(NSString *)userData error:(NSString **)error {
     // we ignore event during application launch as it will cause the window to be shown and hidden
     static bool is_first_event = true;
-    if (is_first_event) is_first_event = false;
-    else { call_boss(quick_access_terminal_invoked, NULL) }
+    if (!is_first_event || monotonic() >= s_double_to_monotonic_t(2.0)) { call_boss(quick_access_terminal_invoked, NULL); }
+    is_first_event = false;
 }
 @end
 
