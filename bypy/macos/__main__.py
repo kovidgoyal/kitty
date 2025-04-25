@@ -173,6 +173,7 @@ class Freeze(object):
         self.freeze_python()
         self.add_ca_certs()
         self.build_frozen_tools()
+        self.complete_sub_bundles()
         if not self.dont_strip:
             self.strip_files()
         if not self.skip_tests:
@@ -182,6 +183,16 @@ class Freeze(object):
         ret = self.makedmg(self.build_dir, f'{APPNAME}-{VERSION}')
 
         return ret
+
+    @flush
+    def complete_sub_bundles(self):
+        count = 0
+        for qapp in glob.glob(join(self.contents_dir, '*.app')):
+            for exe in glob.glob(join(self.contents_dir, 'MacOS', '*')):
+                os.symlink(f'../../../MacOS/{os.path.basename(exe)}', os.path.join(qapp, 'Contents', 'MacOS', os.path.basename(exe)))
+                count += 1
+        if count < 2:
+            raise SystemExit(f'Could not complete sub-bundles in {self.contents_dir}')
 
     @flush
     def add_ca_certs(self):
@@ -376,6 +387,9 @@ class Freeze(object):
         os.rename(join(dirname(self.contents_dir), 'bin', 'kitty'), join(self.contents_dir, 'MacOS', 'kitty'))
         shutil.rmtree(join(dirname(self.contents_dir), 'bin'))
         self.fix_dependencies_in_lib(join(self.contents_dir, 'MacOS', 'kitty'))
+        for f in glob.glob(join(self.contents_dir, '*.app', 'Contents', 'MacOS', '*')):
+            if not os.path.islink(f):
+                self.fix_dependencies_in_lib(f)
         for f in walk(pdir):
             if f.endswith('.so') or f.endswith('.dylib'):
                 self.fix_dependencies_in_lib(f)
