@@ -1487,7 +1487,7 @@ MimeType=image/*;application/x-sh;application/x-shellscript;inode/directory;text
     os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
 
 
-def macos_info_plist(for_quake: bool = False, quake_desc: str = f'Quick access to {appname}') -> bytes:
+def macos_info_plist(for_quake: str = '') -> bytes:
     import plistlib
     VERSION = '.'.join(map(str, version))
 
@@ -1587,7 +1587,7 @@ def macos_info_plist(for_quake: bool = False, quake_desc: str = f'Quick access t
 
     services = [
         {
-            'NSMenuItem': {'default': quake_desc},
+            'NSMenuItem': {'default': for_quake},
             'NSMessage': 'quickAccessTerminal',
             'NSRequiredContext': {'NSServiceCategory': 'None'},
         },
@@ -1707,7 +1707,7 @@ def create_macos_app_icon(where: str = 'Resources') -> None:
 quake_name = f'{appname}-quick-access'
 
 
-def create_quick_access_bundle(kapp: str) -> None:
+def create_quick_access_bundle(kapp: str, quake_desc: str = 'Quick access to kitty') -> None:
     qapp = os.path.join(kapp, 'Contents', f'{quake_name}.app')
     base_exe_dir = os.path.join(kapp, 'Contents/MacOS')
     if os.path.exists(qapp):
@@ -1715,7 +1715,7 @@ def create_quick_access_bundle(kapp: str) -> None:
     bin_dir = os.path.join(qapp, 'Contents/MacOS')
     os.makedirs(bin_dir)
     with open(os.path.join(qapp, 'Contents/Info.plist'), 'wb') as f:
-        f.write(macos_info_plist(for_quake=True, quake_desc=f'Quick access to {appname} built from source'))
+        f.write(macos_info_plist(quake_desc))
     for exe in os.listdir(base_exe_dir):
         os.symlink(f'../../../MacOS/{exe}', os.path.join(bin_dir, exe))
     base_exe = os.path.join(base_exe_dir, 'kitty')
@@ -1746,7 +1746,7 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str, relocate: bool
             os.remove(kitty_exe)
         os.symlink(os.path.join(os.path.relpath(bin_dir, launcher_dir), appname), kitty_exe)
     create_macos_app_icon(resources_dir)
-    create_quick_access_bundle(kapp)
+    create_quick_access_bundle(kapp, 'Quick access to kitty built from source')
 
 
 def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
