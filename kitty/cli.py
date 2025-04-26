@@ -632,10 +632,14 @@ class PrintHelpForSeq:
                 continue  # hidden option
             a('  ' + ', '.join(map(green, sorted(opt['aliases'], reverse=True))))
             defval = opt.get('default')
-            if not opt.get('type', '').startswith('bool-'):
-                if defval:
-                    dt = f'=[{italic(defval)}]'
-                    blocks[-1] += dt
+            if (otype := opt.get('type', '')).startswith('bool-'):
+                if otype == 'bool-set':
+                    blocks[-1] += italic('[=no]')
+                else:
+                    blocks[-1] += italic('[=yes]')
+            else:
+                dt = f'''=[{italic(defval or '""')}]'''
+                blocks[-1] += dt
             if opt.get('help'):
                 t = help_text.replace('%default', str(defval)).strip()
                 # replace rst literal code block syntax
@@ -699,10 +703,13 @@ def seq_as_rst(
         if help_text == '!':
             continue  # hidden option
         defn = '.. option:: '
-        if not opt.get('type', '').startswith('bool-'):
-            val_name = ' <{}>'.format(opt['dest'].upper())
+        if (otype := opt.get('type', '')).startswith('bool-'):
+            if otype == 'bool-set':
+                val_name = ' [=yes]'
+            else:
+                val_name = ' [=no]'
         else:
-            val_name = ''
+            val_name = ' <{}>'.format(opt['dest'].upper())
         a(defn + ', '.join(o + val_name for o in sorted(opt['aliases'])))
         if opt.get('help'):
             defval = opt.get('default')
