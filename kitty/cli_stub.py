@@ -6,7 +6,8 @@ from collections.abc import Sequence
 
 
 class CLIOptions:
-    pass
+    def __repr__(self) -> str:
+        return repr(vars(self))
 
 
 LaunchCLIOptions = AskCLIOptions = ClipboardCLIOptions = DiffCLIOptions = CLIOptions

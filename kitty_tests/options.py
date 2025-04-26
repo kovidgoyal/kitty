@@ -28,6 +28,89 @@ class TestConfParsing(BaseTest):
     def test_conf_parsing(self):
         conf_parsing(self)
 
+    def test_cli_parsing(self):
+        cli_parsing(self)
+
+
+def cli_parsing(self):
+    from kitty.cli import CLIOptions, Options, parse_cmdline, parse_option_spec
+    from kitty.utils import shlex_split
+    seq, disabled = parse_option_spec('''\
+--simple-string -s
+a simple string
+
+
+--list -l
+type=list
+a list
+
+
+--choice -c
+choices=a,b,c
+some choices
+
+
+--bool-set -1
+type=bool-set
+set a bool
+
+
+--bool-reset -0
+type=bool-reset
+unset a bool
+
+
+--int -i
+type=int
+a integer
+
+
+--float -f
+type=float
+a float
+
+
+--version -v
+type=bool-set
+version
+''')
+    oc = Options(seq, usage='xxx', message='yyy', appname='test')
+    oc.do_print = False
+
+    def t(args, leftover=(), fails=False, **expected):
+        oc.values_map['list'] = []
+        args = list(shlex_split(args))
+        ans = CLIOptions()
+        if fails:
+            with self.assertRaises(SystemExit):
+                parse_cmdline(oc, disabled, ans, args=args)
+        else:
+            actual_leftover = parse_cmdline(oc, disabled, ans, args=args)
+            self.assertEqual(tuple(leftover), tuple(actual_leftover), f'{args}\n{ans}')
+            for dest, defval in oc.values_map.items():
+                val = expected.get(dest, defval)
+                self.assertEqual(val, getattr(ans, dest), f'Failed to parse {dest} correctly for: {args} \n{ans}')
+
+    t('-1 -h', fails=True)
+    t('-1 --help', fails=True)
+    t('-1 -0v', fails=True)
+    t('-1 -v0', fails=True)
+    t('-1 --version', fails=True)
+    t('-1', bool_set=True)
+    t('-01', bool_reset=False, bool_set=True)
+    t('-01=y', bool_reset=False, bool_set=True)
+    t('-01=n', bool_reset=False, bool_set=False)
+    t('--simple-string xx moo -1', leftover=['moo', '-1'], simple_string='xx')
+    t('--simple-string -0 -- -1', leftover=['-1'], simple_string='-0')
+    t('--simple-string=-0 -- -1', leftover=['-1'], simple_string='-0')
+    t('--simple-string=--help -- -1', leftover=['-1'], simple_string='--help')
+    t('--simple-string --help -- -1', leftover=['-1'], simple_string='--help')
+    t('-1l=a --list=b -c b --list c', bool_set=True, choice='b', list=list('abc'))
+    t('-1s= -l "" --list= x', leftover=['x'], bool_set=True, simple_string='', list=['', ''])
+    t('--choice moo', fails=True)
+    t('-1c moo', fails=True)
+    t('-10c=moo', fails=True)
+
 
 def conf_parsing(self):
     from kitty.config import defaults, load_config
