@@ -163,10 +163,8 @@ def setup_openssl_environment(ext_dir: str) -> None:
 
 
 def main() -> None:
-    if getattr(sys, 'frozen', False):
-        ext_dir: str = getattr(sys, 'kitty_run_data').get('extensions_dir')
-        if ext_dir:
-            setup_openssl_environment(ext_dir)
+    if getattr(sys, 'frozen', False) and (ext_dir := getattr(sys, 'kitty_run_data', {}).get('extensions_dir')):
+        setup_openssl_environment(ext_dir)
     first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
     func = entry_points.get(first_arg)
     if func is None:
