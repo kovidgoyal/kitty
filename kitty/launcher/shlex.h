@@ -15,7 +15,7 @@ typedef enum { NORMAL, WORD, STRING_WITHOUT_ESCAPES, STRING_WITH_ESCAPES, ANSI_C
 
 typedef struct {
     const char *src;
-    bool support_ansi_c_quoting;
+    bool support_ansi_c_quoting, allow_empty;
     char *buf;
     size_t src_sz, src_pos, word_start, buf_pos;
     ShlexEnum state;
@@ -90,6 +90,7 @@ static size_t
 get_word(ShlexState *self) {
     size_t ans = self->buf_pos; self->buf_pos = 0;
     self->buf[ans] = 0;
+    self->allow_empty = false;
     return ans;
 }
 
@@ -201,7 +202,7 @@ next_word(ShlexState *self) {
                 break;
             case WORD:
                 switch(ch) {
-                    case WHITESPACE: set_state(self, NORMAL); if (self->buf_pos) return get_word(self); break;
+                    case WHITESPACE: set_state(self, NORMAL); if (self->buf_pos || self->allow_empty) return get_word(self); break;
                     case STRING_WITH_ESCAPES_DELIM: set_state(self, STRING_WITH_ESCAPES); break;
                     case STRING_WITHOUT_ESCAPES_DELIM:
                         if (self->support_ansi_c_quoting && prev_word_ch == '$') { self->buf_pos--; set_state(self, ANSI_C_QUOTED); }
@@ -212,18 +213,18 @@ next_word(ShlexState *self) {
                 } break;
             case STRING_WITHOUT_ESCAPES:
                 switch(ch) {
-                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); break;
+                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); self->allow_empty = true; break;
                     default: write_ch(self, ch); break;
                 } break;
             case STRING_WITH_ESCAPES:
                 switch(ch) {
-                    case STRING_WITH_ESCAPES_DELIM: set_state(self, WORD); break;
+                    case STRING_WITH_ESCAPES_DELIM: set_state(self, WORD); self->allow_empty = true; break;
                     case ESCAPE_CHAR: write_escaped_or_fail(); break;
                     default: write_ch(self, ch); break;
                 } break;
             case ANSI_C_QUOTED:
                 switch(ch) {
-                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); break;
+                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); self->allow_empty = true; break;
                     case ESCAPE_CHAR: if (!write_ansi_escape_ch(self)) return -1; break;
                     default: write_ch(self, ch); break;
                 } break;
@@ -232,7 +233,7 @@ next_word(ShlexState *self) {
     switch (self->state) {
         case WORD:
             self->state = NORMAL;
-            if (self->buf_pos) return get_word(self);
+            if (self->buf_pos || self->allow_empty) return get_word(self);
             break;
         case STRING_WITH_ESCAPES: case STRING_WITHOUT_ESCAPES: case ANSI_C_QUOTED:
             self->err = "Unterminated string at the end of input";

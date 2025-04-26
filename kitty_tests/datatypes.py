@@ -683,6 +683,12 @@ class TestDataTypes(BaseTest):
                 tuple(shlex_split(bad))
 
         for q, expected in {
+            'a""': ((0, 'a'),),
+            'a""b': ((0, 'ab'),),
+            '-1 "" 2': ((0, '-1'), (3, ''), (6, '2')),
+            "-1 '' 2": ((0, '-1'), (3, ''), (6, '2')),
+            'a ""': ((0, 'a'), (2, '')),
+            '""': ((0, ''),),
             '"ab"': ((0, 'ab'),),
             r'x "ab"y \m': ((0, 'x'), (2, 'aby'), (8, 'm')),
             r'''x'y"\z'1''': ((0, 'xy"\\z1'),),
@@ -694,11 +700,11 @@ class TestDataTypes(BaseTest):
             '😀 a': ((0, '😀'), (2, 'a')),
             ' \t😀a': ((2, '😀a'),),
         }.items():
-            actual = tuple(shlex_split_with_positions(q))
-            self.ae(expected, actual, f'Failed for text: {q!r}')
             ex = tuple(x[1] for x in expected)
             actual = tuple(shlex_split(q))
             self.ae(ex, actual, f'Failed for text: {q!r}')
+            actual = tuple(shlex_split_with_positions(q))
+            self.ae(expected, actual, f'Failed for text: {q!r}')
 
         for q, expected in {
             "$'ab'": ((0, 'ab'),),
