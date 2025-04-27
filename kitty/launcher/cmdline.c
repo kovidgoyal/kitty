@@ -8,6 +8,9 @@
 #include "shlex.h"
 #include "utils.h"
 #include "launcher.h"
+#ifdef __APPLE__
+#include <os/log.h>
+#endif
 
 
 void
@@ -46,6 +49,11 @@ get_argv_from(const char *filename, const char *argv0, argv_array *final_ans) {
     char* src = read_full_file(filename, &src_sz);
     if (!src) {
         if (errno == ENOENT || errno == ENOTDIR) return true;
+#ifdef __APPLE__
+        int saved = errno;
+        os_log_error(OS_LOG_DEFAULT, "Failed to read from %s with error: %{darwin.errno}d", filename, errno);
+        errno = saved;
+#endif
         fprintf(stderr, "Failed to read from %s ", filename); perror("with error");
         return true;
     }
