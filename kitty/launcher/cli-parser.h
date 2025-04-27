@@ -141,11 +141,12 @@ add_list_value(CLISpec *spec, const char *dest, const char *val) {
     if (vt_is_end(itr)) OOM;
     CLIValue v = itr.data->val;
     if (v.listval.count + 1 >= v.listval.capacity) {
-        size_t cap = v.listval.capacity * 2;
-        if (!cap) cap = 64;
-        v.listval.items = realloc((void*)v.listval.items, cap * sizeof(v.listval.items[0]));
-        if (!v.listval.items) OOM;
+        size_t cap = MAX(64, v.listval.capacity * 2);
+        char **new = alloc_for_cli(spec, cap * sizeof(v.listval.items[0]));
+        if (!new) OOM;
         v.listval.capacity = cap;
+        if (v.listval.count) memcpy(new, v.listval.items, sizeof(new[0]) * v.listval.count);
+        v.listval.items = (void*)new;
     }
     v.listval.items[v.listval.count++] = val;
     if (vt_is_end(vt_insert(&spec->value_map, dest, v))) OOM;
