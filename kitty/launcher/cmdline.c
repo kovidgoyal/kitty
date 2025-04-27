@@ -45,8 +45,9 @@ get_argv_from(const char *filename, const char *argv0, argv_array *final_ans) {
     size_t src_sz;
     char* src = read_full_file(filename, &src_sz);
     if (!src) {
+        if (errno == ENOENT || errno == ENOTDIR) return true;
         fprintf(stderr, "Failed to read from %s ", filename); perror("with error");
-        return false;
+        return true;
     }
     ShlexState s = {0};
     argv_array ans = {0};

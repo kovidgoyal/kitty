@@ -215,7 +215,9 @@ safe_read_stream(void* ptr, size_t size, FILE* stream) {
 
 static char*
 read_full_file(const char* filename, size_t *sz) {
-    FILE* file = fopen(filename, "rb");
+    FILE* file = NULL;
+    errno = EINTR;
+    while (file == NULL && errno == EINTR) file = fopen(filename, "rb");
     if (!file) return NULL;
     fseek(file, 0, SEEK_END);
     unsigned long file_size = ftell(file);
