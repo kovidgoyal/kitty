@@ -209,6 +209,20 @@ Add this to bashrc and then to plot a function, simply do:
 
     iplot 'sin(x*3)*exp(x*.2)'
 
+.. _tool_k-nine:
+
+`k-nine <https://github.com/talwrii/kitty-plotnine>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A wrapper around the :code:`plotnine` library which lets you plot data from the command-line with bash one-liners by reading data from stdin in CSV, JSONL, or space-separated formats. :code:`plotnine` implements the Graphics of Grammar.
+
+The following bash command plots the number of downloads of the PyPI library :code:`kitkat` over time:
+
+.. code-block:: sh
+
+    curl https://pypistats.org/api/packages/kitcat/python_major | jq '.data | .[]' -rc | k-nine 'aes(x="date", y="downloads", group="category", color="category") + geom_line()'
+
+
 .. tool_tgutui:
 
 `tgutui <https://github.com/tgu-ltd/tgutui>`_
