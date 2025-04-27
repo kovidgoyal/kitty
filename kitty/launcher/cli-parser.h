@@ -114,14 +114,14 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
     int sz = snprintf(NULL, 0, fmt, __VA_ARGS__); \
     char *buf = alloc_for_cli(spec, sz + 4);  \
     if (!buf) OOM; \
-    snprintf(buf, sz, fmt, __VA_ARGS__); spec->errmsg = buf; \
+    snprintf(buf, sz + 4, fmt, __VA_ARGS__); spec->errmsg = buf; \
 }
 
 static const char*
 dest_for_alias(CLISpec *spec, const char *alias) {
     alias_hash_itr itr = vt_get(&spec->alias_map, alias);
     if (vt_is_end(itr)) {
-        set_err("Unknown flag: %s use --help", alias);
+        set_err("Unknown flag: %s use --help.", alias);
         return NULL;
     }
     return itr.data->val;
