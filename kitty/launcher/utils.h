@@ -224,12 +224,14 @@ read_full_file(const char* filename, size_t *sz) {
     rewind(file);
     char* buffer = (char*)malloc(file_size + 1); // +1 for the null terminator
     if (!buffer) {
+        errno = EINTR; while (errno == EINTR && fclose(file) != 0);
         errno = ENOMEM;
-        fclose(file);
         return NULL;
     }
     ssize_t q = safe_read_stream(buffer, file_size, file);
-    fclose(file);
+    int saved = errno;
+    errno = EINTR; while (errno == EINTR && fclose(file) != 0);
+    errno = saved;
     if (q < 0) { free(buffer); buffer = NULL; if (sz) *sz = 0; }
     else { if (sz) { *sz = q; } buffer[q] = 0; }
     return buffer;
