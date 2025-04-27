@@ -14,25 +14,14 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#ifndef RAII_ALLOC
+#ifndef RAII_PyObject
 static inline void cleanup_decref2(PyObject **p) { Py_CLEAR(*p); }
 #define RAII_PyObject(name, initializer) __attribute__((cleanup(cleanup_decref2))) PyObject *name = initializer
-
-static inline void cleanup_free(void *p) { free(*(void**)p); }
-#define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
 
 #define MAX(x, y) __extension__ ({ \
     const __typeof__ (x) __a__ = (x); const __typeof__ (y) __b__ = (y); \
         __a__ > __b__ ? __a__ : __b__;})
-
 #endif
-
-static inline void
-cleanup_argv(void *p) {
-    for (char **argv = *(void **)p; *argv; argv++) free(*argv);
-    free(*(void**)p);
-}
-#define RAII_ARGV(name, argc) __attribute__((cleanup(cleanup_argv))) char** name = calloc(argc + 1, sizeof(char*))
 
 typedef enum CLIValueType { CLI_VALUE_STRING, CLI_VALUE_BOOL, CLI_VALUE_INT, CLI_VALUE_FLOAT, CLI_VALUE_LIST, CLI_VALUE_CHOICE } CLIValueType;
 typedef struct CLIValue {
@@ -351,12 +340,17 @@ parse_cli_from_python_spec(PyObject *self, PyObject *args) {
     (void)self; PyObject *pyargs, *names_map, *defval_map;
     if (!PyArg_ParseTuple(args, "O!O!O!", &PyList_Type, &pyargs, &PyDict_Type, &names_map, &PyDict_Type, &defval_map)) return NULL;
     int argc = PyList_GET_SIZE(pyargs);
-    RAII_ARGV(argv, argc); if (!argv) return PyErr_NoMemory();
-    for (int i = 0; i < argc; i++) {
-        argv[i] = strdup(PyUnicode_AsUTF8(PyList_GET_ITEM(pyargs, i)));
-        if (!argv[i]) return PyErr_NoMemory();
-    }
     RAII_CLISpec(spec);
+    char **argv = alloc_for_cli(&spec, sizeof(char*) * (argc + 1));
+    if (!argv) return PyErr_NoMemory();
+    for (int i = 0; i < argc; i++) {
+        Py_ssize_t sz;
+        const char *src = PyUnicode_AsUTF8AndSize(PyList_GET_ITEM(pyargs, i), &sz);
+        argv[i] = alloc_for_cli(&spec, sz);
+        if (!argv[i]) return PyErr_NoMemory();
+        memcpy(argv[i], src, sz);
+    }
+    argv[argc] = 0;
     PyObject *key = NULL, *opt = NULL;
     Py_ssize_t pos = 0;
     while (PyDict_Next(names_map, &pos, &key, &opt)) {
