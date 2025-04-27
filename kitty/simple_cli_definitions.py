@@ -292,6 +292,7 @@ def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
                 yield '\tflag.defval.type = CLI_VALUE_STRING;'
                 yield f'\tflag.defval.strval = {"NULL" if defval is None else c_str(defval)};'
         yield '\tif (vt_is_end(vt_insert(&spec->flag_map, flag.dest, flag))) OOM;'
+    yield '\tparse_cli_loop(spec, true, argc, argv);'
     yield '}'
 
 
