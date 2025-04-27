@@ -134,6 +134,8 @@ Detailed list of changes
 - Single instance: Reset OS Window class and name in new single instance OS
   windows (:disc:`8567`)
 
+- macOS: Fix text color in visual window select ignoring the color theme (:iss:`8579`)
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

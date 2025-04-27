@@ -20,6 +20,7 @@
 #include <CoreText/CoreText.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
+#import <AppKit/AppKit.h>
 
 #define debug debug_fonts
 static inline void cleanup_cfrelease(void *__p) { CFTypeRef *tp = (CFTypeRef *)__p; CFTypeRef cf = *tp; if (cf) { CFRelease(cf); } }
@@ -958,7 +959,8 @@ cocoa_render_line_of_text(const char *text, const color_type fg, const color_typ
     CGContextSetRGBFillColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
     CGContextSetRGBStrokeColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
 
-    NSAttributedString *str = [[NSAttributedString alloc] initWithString:@(text) attributes:@{(NSString *)kCTFontAttributeName: (__bridge id)window_title_font}];
+    NSColor *color = [NSColor colorWithCalibratedRed:((fg >> 16) & 0xff) / 255.f green:((fg >> 8) & 0xff) / 255.f blue:(fg & 0xff) / 255.f alpha:1.0];
+    NSAttributedString *str = [[NSAttributedString alloc] initWithString:@(text) attributes:@{(NSString *)kCTFontAttributeName: (__bridge id)window_title_font, NSForegroundColorAttributeName: color}];
     if (!str) { CGContextRelease(ctx); return false; }
     CTLineRef line = CTLineCreateWithAttributedString((CFAttributedStringRef)str);
     [str release];
