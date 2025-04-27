@@ -112,7 +112,7 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
 
 #define set_err(fmt, ...) { \
     int sz = snprintf(NULL, 0, fmt, __VA_ARGS__); \
-    char *buf = alloc_for_cli(spec, sz);  \
+    char *buf = alloc_for_cli(spec, sz + 4);  \
     if (!buf) OOM; \
     snprintf(buf, sz, fmt, __VA_ARGS__); spec->errmsg = buf; \
 }
@@ -296,6 +296,32 @@ parse_cli_loop(CLISpec *spec, int argc, char **argv) {  // argv must contain arg
     return spec->errmsg != NULL;
 }
 
+#ifdef FOR_LAUNCHER
+static CLIValue
+get_cli_val(CLISpec *spec, const char *name) {
+    cli_hash_itr itr = vt_get(&spec->value_map, name);
+    if (vt_is_end(itr)) {
+        flag_hash_itr itr = vt_get(&spec->flag_map, name);
+        if (vt_is_end(itr)) {
+            fprintf(stderr, "Trying to get value for unknown option name: %s\n", name);
+            exit(1);
+        }
+        return itr.data->val.defval;
+    }
+    return itr.data->val;
+}
+
+static bool
+get_bool_cli_val(CLISpec *spec, const char *name) {
+    return get_cli_val(spec, name).boolval;
+}
+
+static const char*
+get_string_cli_val(CLISpec *spec, const char *name) {
+    return get_cli_val(spec, name).strval;
+}
+#endif
+
 static PyObject*
 cli_parse_result_as_python(CLISpec *spec) {
     if (PyErr_Occurred()) return NULL;
@@ -336,6 +362,7 @@ cli_parse_result_as_python(CLISpec *spec) {
     return Py_BuildValue("OO", ans, leftover_args);
 }
 
+#ifndef FOR_LAUNCHER
 static PyObject*
 parse_cli_from_python_spec(PyObject *self, PyObject *args) {
     (void)self; PyObject *pyargs, *names_map, *defval_map;
@@ -398,4 +425,4 @@ parse_cli_from_python_spec(PyObject *self, PyObject *args) {
     PyObject *ans = cli_parse_result_as_python(&spec);
     return ans;
 }
-
+#endif
