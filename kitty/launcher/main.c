@@ -340,6 +340,18 @@ parse_and_check_panel_kitten_cli(CLISpec *cli_spec, int argc, char **argv) {
     return true;
 }
 
+static int
+offset_for_plus_subcommand(int argc, char **argv, const char *name) {
+    int offset = 0;
+#define arg_eq(num, what) (strcmp(argv[num], what) == 0)
+    if (argc > 1 && argv[1][0] == '+' && strcmp(argv[1] + 1, name) == 0) {
+        offset = 1;
+    } else if (argc > 2 && arg_eq(1, "+") && arg_eq(2, name)) {
+        offset = 2;
+    }
+#undef arg_eq
+    return offset;
+}
 
 static void
 handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, int offset_for_panel_kitten) {
@@ -347,9 +359,7 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, in
     RAII_CLISpec(subcommand_cli_spec);
     if (offset_for_panel_kitten < 0) {
         // Look for +open
-        int offset = 0;
-        if (cli_spec->original_argc > 1 && strcmp("+open", cli_spec->original_argv[1]) == 0) offset = 1;
-        else if (cli_spec->original_argc > 2 && strcmp("+", cli_spec->original_argv[1]) == 0 && strcmp("open", cli_spec->original_argv[2]) == 0) offset = 2;
+        int offset = offset_for_plus_subcommand(cli_spec->original_argc, cli_spec->original_argv, "open");
         if (offset) {
             if (!parse_and_check_kitty_cli(&subcommand_cli_spec, cli_spec->original_argc - offset, cli_spec->original_argv + offset)) exit(1);
             cli_spec = &subcommand_cli_spec;
@@ -403,17 +413,12 @@ static bool
 delegate_to_kitten_if_possible(CLISpec *cli_spec, char* exe_dir) {
     int argc = cli_spec->original_argc; char **argv = cli_spec->original_argv;
     if (argc > 1 && argv[1][0] == '@') exec_kitten(argc, argv, exe_dir);
-    if (argc > 2 && strcmp(argv[1], "+kitten") == 0) {
-        if (is_wrapped_kitten(argv[2])) exec_kitten(argc - 1, argv + 1, exe_dir);
-        if (strcmp(argv[2], "panel") == 0) {
-            handle_fast_commandline(cli_spec, "panel", 2);
-            return true;
-        }
-    }
-    if (argc > 3 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "kitten") == 0) {
-        if (is_wrapped_kitten(argv[3])) exec_kitten(argc - 2, argv + 2, exe_dir);
-        if (strcmp(argv[2], "panel") == 0) {
-            handle_fast_commandline(cli_spec, "panel", 3);
+    int offset = offset_for_plus_subcommand(argc, argv, "kitten");
+    if (offset && argc > offset+1) {
+        const char *kitten = argv[offset + 1];
+        if (is_wrapped_kitten(kitten)) exec_kitten(argc - offset, argv + offset, exe_dir);
+        if (strcmp(kitten, "panel") == 0) {
+            handle_fast_commandline(cli_spec, "panel", offset + 1);
             return true;
         }
     }
