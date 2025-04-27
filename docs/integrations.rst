@@ -209,6 +209,13 @@ Add this to bashrc and then to plot a function, simply do:
 
     iplot 'sin(x*3)*exp(x*.2)'
 
+.. _tool_k-nine:
+
+`k-nine <https://github.com/talwrii/kitty-plotnine>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A wrapper around the :code:`plotnine` library which lets you plot data from the command-line with bash one-liners.
+
 .. tool_tgutui:
 
 `tgutui <https://github.com/tgu-ltd/tgutui>`_
