@@ -2,12 +2,12 @@ import termios
 from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload
 
 from kitty.boss import Boss
-from kitty.cli import OptionDict
 from kitty.fonts import VariableData
 from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.notifications import MacOSNotificationCategory
 from kitty.options.types import Options
+from kitty.simple_cli_definitions import OptionDict
 from kitty.types import LayerShellConfig, SignalInfo
 from kitty.typing import EdgeLiteral, NotRequired, ReadableBuffer, WriteableBuffer
 

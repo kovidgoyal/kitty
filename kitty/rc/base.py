@@ -7,9 +7,10 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union, cast
 
-from kitty.cli import CompletionSpec, get_defaults_from_seq, parse_args, parse_option_spec
+from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
 from kitty.cli_stub import RCOptions as R
 from kitty.constants import list_kitty_resources, running_in_kitty
+from kitty.simple_cli_definitions import CompletionSpec
 from kitty.types import AsyncResponse
 
 if TYPE_CHECKING:

@@ -4,7 +4,7 @@
 
 import sys
 
-from kitty.cli import CompletionSpec
+from kitty.simple_cli_definitions import CompletionSpec
 
 OPTIONS = '''
 --role

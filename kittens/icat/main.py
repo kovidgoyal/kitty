@@ -179,7 +179,7 @@ if __name__ == '__main__':
 elif __name__ == '__doc__':
     import sys
 
-    from kitty.cli import CompletionSpec
+    from kitty.simple_cli_definitions import CompletionSpec
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = lambda: OPTIONS.format()

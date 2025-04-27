@@ -10,6 +10,7 @@ from collections.abc import Callable, Iterator
 from typing import Any, get_type_hints
 
 from kitty.conf.types import Definition, MultiOption, Option, ParserFuncType, unset
+from kitty.simple_cli_definitions import serialize_as_go_string
 from kitty.types import _T
 
 
@@ -579,7 +580,6 @@ def gen_go_code(defn: Definition) -> str:
 
     a('func NewConfig() *Config {')
     a('return &Config{')
-    from kitty.cli import serialize_as_go_string
     from kitty.fast_data_types import Color
     for name, pname in go_parsers.items():
         if name in multiopts:

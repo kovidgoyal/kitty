@@ -127,7 +127,7 @@ def main(args: list[str]) -> None:
 if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__doc__':
-    from kitty.cli import CompletionSpec
+    from kitty.simple_cli_definitions import CompletionSpec
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = option_text

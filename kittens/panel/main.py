@@ -7,7 +7,7 @@ from contextlib import suppress
 from functools import partial
 from typing import Any, Mapping, Sequence
 
-from kitty.cli import listen_on_defn, parse_args
+from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
 from kitty.constants import appname, is_macos, is_wayland, kitten_exe
 from kitty.fast_data_types import (
@@ -29,6 +29,7 @@ from kitty.fast_data_types import (
     toggle_os_window_visibility,
 )
 from kitty.os_window_size import WindowSizeData, edge_spacing
+from kitty.simple_cli_definitions import listen_on_defn
 from kitty.types import LayerShellConfig
 from kitty.typing import BossType, EdgeLiteral
 from kitty.utils import log_error

@@ -3,7 +3,7 @@
 
 import sys
 
-from kitty.cli import CompletionSpec
+from kitty.simple_cli_definitions import CompletionSpec
 
 help_text = (
     'Change the kitty theme. If no theme name is supplied, run interactively, otherwise'
