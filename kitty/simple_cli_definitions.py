@@ -252,6 +252,13 @@ def c_str(x: str) -> str:
 
 def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
     names_map, _, defaults_map = get_option_maps(parse_option_spec(spec)[0])
+    if 'help' not in names_map:
+        names_map['help'] = {'type': 'bool-set', 'aliases': ('--help', '-h')}  # type: ignore
+        defaults_map['help'] = False
+    if 'version' not in names_map:
+        names_map['version'] = {'type': 'bool-set', 'aliases': ('--version', '-v')}  # type: ignore
+        defaults_map['version'] = False
+
     yield f'static void\nparse_cli_for_{funcname}(CLISpec *spec, int argc, char **argv) {{'  # }}
     yield '\tFlagSpec flag;'
     for name, opt in names_map.items():

@@ -274,7 +274,7 @@ parse_cli_loop(CLISpec *spec, int argc, char **argv) {  // argv must contain arg
                                     if (!process_cli_arg(spec, flag, payload)) return false;
                                 } else {
                                     state = EXPECTING_ARG;
-                                    current_option = arg;
+                                    current_option = flag;
                                 }
                                 if (spec->errmsg) return false;
                             }

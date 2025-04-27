@@ -77,18 +77,25 @@ version
     oc = Options(seq, usage='xxx', message='yyy', appname='test')
     oc.do_print = False
 
-    def t(args, leftover=(), fails=False, **expected):
+    def t(args, leftover=(), fails=False, version_called=False, help_called=False, **expected):
+        oc.help_called = oc.version_called = False
         args = list(shlex_split(args))
         ans = CLIOptions()
         if fails:
-            with self.assertRaises(SystemExit):
-                parse_cmdline(oc, disabled, ans, args=args)
+            if isinstance(fails, str):
+                with self.assertRaisesRegex(SystemExit, fails):
+                    parse_cmdline(oc, disabled, ans, args=args)
+            else:
+                with self.assertRaises(SystemExit):
+                    parse_cmdline(oc, disabled, ans, args=args)
         else:
             actual_leftover = parse_cmdline(oc, disabled, ans, args=args)
             self.assertEqual(tuple(leftover), tuple(actual_leftover), f'{args}\n{ans}')
             for dest, defval in oc.values_map.items():
                 val = expected.get(dest, defval)
                 self.assertEqual(val, getattr(ans, dest, BaseTest), f'Failed to parse {dest} correctly for: {args} \n{ans}')
+        self.assertEqual(version_called, oc.version_called)
+        self.assertEqual(help_called, oc.help_called)
 
     t('-1', bool_set=True)
     t('-01', bool_reset=False, bool_set=True)
@@ -101,14 +108,14 @@ version
     t('--simple-string --help -- -1', leftover=['-1'], simple_string='--help')
     t('-1l=a --list=b -c b --list c', bool_set=True, choice='b', list=list('abc'))
     t('-1s= -l "" --list= x', leftover=['x'], bool_set=True, simple_string='', list=['', ''])
-    t('--choice moo', fails=True)
-    t('-1c moo', fails=True)
-    t('-10c=moo', fails=True)
-    t('-1 -h', fails=True)
-    t('-1 --help', fails=True)
-    t('-1 -0v', fails=True)
-    t('-1 -v0', fails=True)
-    t('-1 --version', fails=True)
+    t('--choice moo', fails='a, b, c')
+    t('-1c moo', fails='a, b, c')
+    t('-10c=moo', fails='a, b, c')
+    t('-1 -h', fails=True, help_called=True)
+    t('-1 --help', fails=True, help_called=True)
+    t('-1 -0v', fails=True, version_called=True)
+    t('-1 -v0', fails=True, version_called=True)
+    t('-1 --version', fails=True, version_called=True)
     t('-f=3.142 --int 17', float=3.142, int=17)
 
 

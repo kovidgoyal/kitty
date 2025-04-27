@@ -565,21 +565,32 @@ class Options:
         self.seq = seq
         self.usage, self.message, self.appname = usage, message, appname
         self.names_map, self.alias_map, self.values_map = get_option_maps(seq)
+        self.help_called = self.version_called = False
 
     def handle_help(self) -> NoReturn:
         if self.do_print:
             print_help_for_seq(self.seq, self.usage, self.message, self.appname or appname)
+        self.help_called = True
         raise SystemExit(0)
 
     def handle_version(self) -> NoReturn:
+        self.version_called = True
         if self.do_print:
             print(version())
         raise SystemExit(0)
 
 
 def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None) -> list[str]:
+    names_map = oc.names_map.copy()
+    values_map = oc.values_map.copy()
+    if 'help' not in names_map:
+        names_map['help'] = {'type': 'bool-set', 'aliases': ('--help', '-h')}  # type: ignore
+        values_map['help'] = False
+    if 'version' not in names_map:
+        names_map['version'] = {'type': 'bool-set', 'aliases': ('--version', '-v')}  # type: ignore
+        values_map['version'] = False
     try:
-        vals, leftover_args = parse_cli_from_spec(sys.argv[1:] if args is None else args, oc.names_map, oc.values_map)
+        vals, leftover_args = parse_cli_from_spec(sys.argv[1:] if args is None else args, names_map, values_map)
     except Exception as e:
         raise SystemExit(str(e))
 
