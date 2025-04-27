@@ -4,7 +4,7 @@
 from collections.abc import Sequence
 
 from kitty.fast_data_types import monotonic
-from kitty.typing import TypedDict
+from kitty.typing_compat import TypedDict
 
 
 class SpinnerDef(TypedDict):

@@ -18,7 +18,7 @@ from ..constants import _plat, is_macos
 from ..fast_data_types import Color
 from ..rgb import to_color as as_color
 from ..types import ConvertibleToNumbers, ParsedShortcut, run_once
-from ..typing import Protocol
+from ..typing_compat import Protocol
 from ..utils import expandvars, log_error, shlex_split
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')

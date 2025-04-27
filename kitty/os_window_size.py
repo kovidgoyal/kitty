@@ -8,7 +8,7 @@ from .constants import is_macos, is_wayland
 from .fast_data_types import get_options
 from .options.types import Options
 from .types import FloatEdges
-from .typing import EdgeLiteral
+from .typing_compat import EdgeLiteral
 from .utils import log_error
 
 

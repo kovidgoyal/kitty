@@ -6,7 +6,7 @@ from typing import Any, NamedTuple, Optional, Union
 
 from kitty.borders import BorderColor
 from kitty.types import Edges, WindowGeometry
-from kitty.typing import EdgeLiteral, WindowType
+from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import BorderLine, Layout, LayoutOpts, NeighborsMap, blank_rects_for_window, lgd, window_geometry_from_layouts

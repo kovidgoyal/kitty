@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.typing import WindowType
+from kitty.typing_compat import WindowType
 from kitty.window_list import WindowList
 
 from .base import Layout, NeighborsMap

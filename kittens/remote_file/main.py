@@ -15,7 +15,7 @@ from typing import Any, Optional
 from kitty.cli import parse_args
 from kitty.cli_stub import RemoteFileCLIOptions
 from kitty.constants import cache_dir
-from kitty.typing import BossType
+from kitty.typing_compat import BossType
 from kitty.utils import SSHConnectionData, command_for_open, get_editor, open_cmd
 
 from ..tui.handler import result_handler

@@ -10,7 +10,7 @@ from kitty.cli_stub import HintsCLIOptions
 from kitty.clipboard import set_clipboard_string, set_primary_selection
 from kitty.constants import website_url
 from kitty.fast_data_types import get_options
-from kitty.typing import BossType, WindowType
+from kitty.typing_compat import BossType, WindowType
 from kitty.utils import get_editor, resolve_custom_file
 
 from ..tui.handler import result_handler

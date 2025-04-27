@@ -23,7 +23,7 @@ from .fast_data_types import (
 )
 from .options.types import Options
 from .options.utils import KeyboardMode, KeyDefinition, KeyMap
-from .typing import ScreenType
+from .typing_compat import ScreenType
 
 if TYPE_CHECKING:
     from .window import Window

@@ -9,7 +9,7 @@ from kitty.notifications import MacOSNotificationCategory
 from kitty.options.types import Options
 from kitty.simple_cli_definitions import OptionDict
 from kitty.types import LayerShellConfig, SignalInfo
-from kitty.typing import EdgeLiteral, NotRequired, ReadableBuffer, WriteableBuffer
+from kitty.typing_compat import EdgeLiteral, NotRequired, ReadableBuffer, WriteableBuffer
 
 # Constants {{{
 SCALE_BITS: int

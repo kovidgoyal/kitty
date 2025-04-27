@@ -6,7 +6,7 @@ from typing import Any
 
 from kitty.borders import BorderColor
 from kitty.types import Edges
-from kitty.typing import WindowType
+from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import BorderLine, Layout, LayoutData, LayoutDimension, NeighborsMap, lgd

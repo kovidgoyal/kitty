@@ -12,7 +12,7 @@ from kitty.key_encoding import encode_key_event
 from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
 from kitty.remote_control import create_basic_command, encode_send
 from kitty.short_uuid import uuid4
-from kitty.typing import KeyEventType, ScreenSize
+from kitty.typing_compat import KeyEventType, ScreenSize
 
 from ..tui.handler import Handler
 from ..tui.line_edit import LineEdit

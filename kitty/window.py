@@ -92,7 +92,7 @@ from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
-from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
+from .typing_compat import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int,
     docs_url,

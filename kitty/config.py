@@ -13,7 +13,7 @@ from .conf.utils import load_config as _load_config
 from .constants import cache_dir, defconf
 from .options.types import Options, defaults, option_names
 from .options.utils import KeyboardMode, KeyboardModeMap, KeyDefinition, MouseMap, MouseMapping, build_action_aliases
-from .typing import TypedDict
+from .typing_compat import TypedDict
 from .utils import log_error
 
 

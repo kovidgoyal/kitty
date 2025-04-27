@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 from .fast_data_types import BORDERS_PROGRAM, add_borders_rect, get_options, init_borders_program, os_window_has_background_image
 from .shaders import program_for
-from .typing import LayoutType
+from .typing_compat import LayoutType
 from .utils import color_as_int
 from .window_list import WindowGroup, WindowList
 

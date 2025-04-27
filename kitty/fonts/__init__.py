@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Literal, NamedTuple, TypedDict, TypeVar, Union
 
 from kitty.fast_data_types import ParsedFontFeature
 from kitty.types import run_once
-from kitty.typing import CoreTextFont, FontConfigPattern
+from kitty.typing_compat import CoreTextFont, FontConfigPattern
 from kitty.utils import shlex_split
 
 if TYPE_CHECKING:

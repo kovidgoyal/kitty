@@ -12,7 +12,7 @@ from .constants import config_dir
 from .fast_data_types import Color, get_boss, get_options, glfw_get_system_color_theme, patch_color_profiles, patch_global_colors, set_os_window_chrome
 from .options.types import Options, nullable_colors
 from .rgb import color_from_int
-from .typing import WindowType
+from .typing_compat import WindowType
 
 ColorsSpec = dict[str, Optional[int]]
 TransparentBackgroundColors = tuple[tuple[Color, float], ...]

@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import NamedTuple
 
 from kitty.fast_data_types import CTFace, coretext_all_fonts
-from kitty.typing import CoreTextFont
+from kitty.typing_compat import CoreTextFont
 from kitty.utils import log_error
 
 from . import Descriptor, DescriptorVar, ListedFont, Score, Scorer, VariableData, family_name_to_key

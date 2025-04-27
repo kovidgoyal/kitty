@@ -16,7 +16,7 @@ from .fast_data_types import get_options
 from .guess_mime_type import guess_type
 from .options.utils import ActionAlias, MapType, resolve_aliases_and_parse_actions
 from .types import run_once
-from .typing import MatchType
+from .typing_compat import MatchType
 from .utils import expandvars, get_editor, log_error, resolved_shell
 
 

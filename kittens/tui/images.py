@@ -14,7 +14,7 @@ from typing import Any, ClassVar, DefaultDict, Deque, Generic, Optional, TypeVar
 
 from kitty.conf.utils import positive_float, positive_int
 from kitty.fast_data_types import create_canvas
-from kitty.typing import GRT_C, CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
+from kitty.typing_compat import GRT_C, CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 from kitty.utils import ScreenSize, fit_image, which
 
 from .operations import cursor

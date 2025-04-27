@@ -6,7 +6,7 @@ from collections.abc import Generator
 from typing import Any
 
 from .cli_stub import HintsCLIOptions
-from .typing import MarkType
+from .typing_compat import MarkType
 
 
 def mark(text: str, args: HintsCLIOptions, Mark: type[MarkType], extra_cli_args: list[str], *a: Any) -> Generator[MarkType, None, None]:

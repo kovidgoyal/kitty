@@ -20,7 +20,7 @@ from kitty.fast_data_types import (
     FC_WEIGHT_SEMIBOLD as FC_WEIGHT_BOLD,
 )
 from kitty.fast_data_types import fc_match as fc_match_impl
-from kitty.typing import FontConfigPattern
+from kitty.typing_compat import FontConfigPattern
 
 from . import Descriptor, DescriptorVar, ListedFont, Score, Scorer, VariableData, family_name_to_key
 

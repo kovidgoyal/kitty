@@ -1,6 +1,6 @@
 from typing import Callable, Union
 
-from kitty.typing import ReadableBuffer, WriteableBuffer
+from kitty.typing_compat import ReadableBuffer, WriteableBuffer
 
 class RsyncError(Exception):
     pass

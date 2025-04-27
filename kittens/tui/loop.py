@@ -19,7 +19,7 @@ from typing import Any, NamedTuple
 from kitty.constants import is_macos
 from kitty.fast_data_types import FILE_TRANSFER_CODE, close_tty, normal_tty, open_tty, parse_input_from_terminal, raw_tty
 from kitty.key_encoding import ALT, CTRL, SHIFT, backspace_key, decode_key_event, enter_key
-from kitty.typing import ImageManagerType, KeyEventType, Protocol
+from kitty.typing_compat import ImageManagerType, KeyEventType, Protocol
 from kitty.utils import ScreenSize, ScreenSizeGetter, screen_size_function, write_all
 
 from .handler import Handler

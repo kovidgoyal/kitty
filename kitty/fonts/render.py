@@ -27,7 +27,7 @@ from kitty.fast_data_types import (
 from kitty.options.types import Options, defaults
 from kitty.options.utils import parse_font_spec
 from kitty.types import _T
-from kitty.typing import CoreTextFont, FontConfigPattern
+from kitty.typing_compat import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
 from . import family_name_to_key

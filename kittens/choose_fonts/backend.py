@@ -27,7 +27,7 @@ from kitty.fonts.list import create_family_groups
 from kitty.fonts.render import display_bitmap
 from kitty.options.types import Options
 from kitty.options.utils import parse_font_spec
-from kitty.typing import NotRequired
+from kitty.typing_compat import NotRequired
 from kitty.utils import screen_size_function
 
 if TYPE_CHECKING:

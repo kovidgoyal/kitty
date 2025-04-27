@@ -24,7 +24,7 @@ from .fast_data_types import (
     os_window_is_invisible,
 )
 from .types import run_once
-from .typing import WindowType
+from .typing_compat import WindowType
 from .utils import get_custom_window_icon, log_error, sanitize_control_codes
 
 debug_desktop_integration = False  # set by NotificationManager

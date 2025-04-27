@@ -11,7 +11,7 @@ from typing import Any, Optional, TypeVar, Union
 
 from kitty.fast_data_types import Color
 from kitty.rgb import color_as_sharp, to_color
-from kitty.typing import GraphicsCommandType, HandlerType, ScreenSize, UnderlineLiteral
+from kitty.typing_compat import GraphicsCommandType, HandlerType, ScreenSize, UnderlineLiteral
 
 from .operations_stub import CMD
 
@@ -461,7 +461,7 @@ def func_sig(func: Callable[..., Any]) -> Generator[str, None, None]:
 def as_type_stub() -> str:
     ans = [
         'from typing import *  # noqa',
-        'from kitty.typing import GraphicsCommandType, ScreenSize',
+        'from kitty.typing_compat import GraphicsCommandType, ScreenSize',
         'from kitty.fast_data_types import Color',
         'import kitty.rgb',
         'import kittens.tui.operations',

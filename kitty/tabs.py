@@ -53,7 +53,7 @@ from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .progress import ProgressState
 from .tab_bar import TabBar, TabBarData
 from .types import ac
-from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
+from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowDict
 from .window_list import WindowList

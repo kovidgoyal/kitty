@@ -33,7 +33,7 @@ from .fast_data_types import (
 )
 from .rc.base import NoResponse, PayloadGetter, all_command_names, command_for_name
 from .types import AsyncResponse
-from .typing import BossType, WindowType
+from .typing_compat import BossType, WindowType
 from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
 
 active_async_requests: dict[str, float] = {}

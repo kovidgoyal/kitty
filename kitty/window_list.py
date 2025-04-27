@@ -10,7 +10,7 @@ from typing import Any, Deque, Union
 
 from .fast_data_types import Color, get_options
 from .types import OverlayType, WindowGeometry
-from .typing import EdgeLiteral, TabType, WindowType
+from .typing_compat import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
 group_id_counter = count(start=1)

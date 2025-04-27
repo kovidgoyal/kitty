@@ -31,7 +31,7 @@ from kitty.fast_data_types import (
 from kitty.os_window_size import WindowSizeData, edge_spacing
 from kitty.simple_cli_definitions import listen_on_defn
 from kitty.types import LayerShellConfig
-from kitty.typing import BossType, EdgeLiteral
+from kitty.typing_compat import BossType, EdgeLiteral
 from kitty.utils import log_error
 
 quake = (

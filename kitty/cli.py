@@ -15,7 +15,7 @@ from .fast_data_types import parse_cli_from_spec, wcswidth
 from .options.types import Options as KittyOpts
 from .simple_cli_definitions import CompletionSpec, CompletionType, OptionDict, kitty_options_spec, serialize_as_go_string
 from .types import run_once
-from .typing import BadLineType
+from .typing_compat import BadLineType
 
 is_macos
 go_type_map = {

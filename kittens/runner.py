@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 from kitty.constants import list_kitty_resources
 from kitty.types import run_once
-from kitty.typing import BossType, WindowType
+from kitty.typing_compat import BossType, WindowType
 from kitty.utils import resolve_abs_or_config_path
 
 aliases = {'url_hints': 'hints'}

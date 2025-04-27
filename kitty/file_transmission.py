@@ -24,7 +24,7 @@ from typing import IO, Any, DefaultDict, Deque, Union
 from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
 from kitty.fast_data_types import ESC_OSC, FILE_TRANSFER_CODE, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options, monotonic
 from kitty.types import run_once
-from kitty.typing import ReadableBuffer, WriteableBuffer
+from kitty.typing_compat import ReadableBuffer, WriteableBuffer
 
 from .utils import log_error
 

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, ContextManager, Deque, NamedTuple, Option
 from kitty.constants import kitten_exe, running_in_kitty
 from kitty.fast_data_types import monotonic, safe_pipe
 from kitty.types import DecoratedFunc, ParsedShortcut
-from kitty.typing import (
+from kitty.typing_compat import (
     AbstractEventLoop,
     BossType,
     Debug,

@@ -14,7 +14,7 @@ from .layout.interface import all_layouts
 from .options.types import Options
 from .options.utils import resize_window, to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
-from .typing import SpecialWindowInstance
+from .typing_compat import SpecialWindowInstance
 from .utils import expandvars, log_error, resolve_custom_file, resolved_shell, shlex_split
 
 if TYPE_CHECKING:

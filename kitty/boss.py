@@ -123,7 +123,7 @@ from .session import Session, create_sessions, get_os_window_sizing_data
 from .shaders import load_shader_programs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 from .types import _T, AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
-from .typing import PopenType, TypedDict
+from .typing_compat import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters,
     func_name,

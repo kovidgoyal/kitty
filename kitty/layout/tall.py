@@ -8,7 +8,7 @@ from typing import Any
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
 from kitty.types import Edges
-from kitty.typing import EdgeLiteral, WindowType
+from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import (

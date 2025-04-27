@@ -2,7 +2,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.typing import BossType
+from kitty.typing_compat import BossType
 
 from ..tui.handler import result_handler
 
