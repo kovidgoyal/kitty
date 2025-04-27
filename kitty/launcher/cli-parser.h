@@ -65,6 +65,7 @@ typedef struct CLISpec {
     alias_hash alias_map;
     flag_hash flag_map;
     char **argv; int argc;  // leftover args
+    char **original_argv; int original_argc;  // original args
     const char* errmsg;
     struct {
         struct { char *buf; size_t capacity, used; } *items;
@@ -230,9 +231,22 @@ dealloc_cli_spec(void *v) {
 #define RAII_CLISpec(name) __attribute__((cleanup(dealloc_cli_spec))) CLISpec name = {0}; alloc_cli_spec(&name)
 
 static bool
-parse_cli_loop(CLISpec *spec, int argc, char **argv) {  // argv must contain arg1 and beyond
+parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {  // argv must contain arg1 and beyond
     enum { NORMAL, EXPECTING_ARG } state = NORMAL;
-    spec->argc = 0; spec->argv = NULL; spec->errmsg = NULL;
+    spec->argc = 0; spec->argv = NULL; spec->errmsg = NULL; spec->original_argc = argc; spec->original_argv = NULL;
+    if (save_original_argv) {
+        char **copy = alloc_for_cli(spec, sizeof(char*) * (argc + 1));
+        if (!spec->original_argv) OOM;
+        copy[argc] = NULL;
+        for (int i = 0; i < argc; i++) {
+            size_t len = strlen(argv[i]);
+            copy[i] = alloc_for_cli(spec, len);
+            if (!copy[i]) OOM;
+            memcpy(copy[i], argv[i], len);
+        }
+        spec->original_argv = argv;
+        argv = copy;
+    }
     char flag[3] = {'-', 0, 0};
     const char *current_option = NULL;
     for (int i = 0; i < argc; i++) {
@@ -421,7 +435,7 @@ parse_cli_from_python_spec(PyObject *self, PyObject *args) {
         if (vt_is_end(vt_insert(&spec.flag_map, flag.dest, flag))) return PyErr_NoMemory();
     }
     if (PyErr_Occurred()) return NULL;
-    parse_cli_loop(&spec, argc, argv);
+    parse_cli_loop(&spec, false, argc, argv);
     PyObject *ans = cli_parse_result_as_python(&spec);
     return ans;
 }
