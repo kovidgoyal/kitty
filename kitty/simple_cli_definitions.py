@@ -4,20 +4,16 @@
 # This module must be runnable by a vanilla python interperter
 # as it is used to generate C code when building kitty
 
-import os
+import re
 import sys
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Iterator, TypedDict
+from typing import Any, Iterator, TypedDict
 
 try:
     from kitty.constants import appname, is_macos
 except ImportError:
     is_macos = 'darwin' in sys.platform.lower()
-    try:
-        appname
-    except NameError:
-        appname = os.environ['KITTY_APPNAME']
 try:
     from kitty.utils import shlex_split as ksplit
     def shlex_split(text: str) -> Iterator[str]:
@@ -122,6 +118,182 @@ class OptionDict(TypedDict):
     completion: CompletionSpec
 
 
+OptionSpecSeq = list[str | OptionDict]
+
+
+def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpecSeq]:
+    if spec is None:
+        spec = kitty_options_spec()
+    NORMAL, METADATA, HELP = 'NORMAL', 'METADATA', 'HELP'
+    state = NORMAL
+    lines = spec.splitlines()
+    prev_line = ''
+    prev_indent = 0
+    seq: OptionSpecSeq = []
+    disabled: OptionSpecSeq = []
+    mpat = re.compile('([a-z]+)=(.+)')
+    current_cmd: OptionDict = {
+        'dest': '', 'aliases': (), 'help': '', 'choices': (),
+        'type': '', 'condition': False, 'default': None, 'completion': CompletionSpec(), 'name': ''
+    }
+    empty_cmd = current_cmd
+
+    def indent_of_line(x: str) -> int:
+        return len(x) - len(x.lstrip())
+
+    for line in lines:
+        line = line.rstrip()
+        if state is NORMAL:
+            if not line:
+                continue
+            if line.startswith('# '):
+                seq.append(line[2:])
+                continue
+            if line.startswith('--'):
+                parts = line.split(' ')
+                defdest = parts[0][2:].replace('-', '_')
+                current_cmd = {
+                    'dest': defdest, 'aliases': tuple(parts), 'help': '',
+                    'choices': tuple(), 'type': '', 'name': defdest,
+                    'default': None, 'condition': True, 'completion': CompletionSpec(),
+                }
+                state = METADATA
+                continue
+            raise ValueError(f'Invalid option spec, unexpected line: {line}')
+        elif state is METADATA:
+            m = mpat.match(line)
+            if m is None:
+                state = HELP
+                current_cmd['help'] += line
+            else:
+                k, v = m.group(1), m.group(2)
+                if k == 'choices':
+                    vals = tuple(x.strip() for x in v.split(','))
+                    if not current_cmd['type']:
+                        current_cmd['type'] = 'choices'
+                    if current_cmd['type'] != 'choices':
+                        raise ValueError(f'Cannot specify choices for an option of type: {current_cmd["type"]}')
+                    current_cmd['choices'] = tuple(vals)
+                    if current_cmd['default'] is None:
+                        current_cmd['default'] = vals[0]
+                else:
+                    if k == 'default':
+                        current_cmd['default'] = v
+                    elif k == 'type':
+                        if v == 'choice':
+                            v = 'choices'
+                        current_cmd['type'] = v
+                    elif k == 'dest':
+                        current_cmd['dest'] = v
+                    elif k == 'condition':
+                        current_cmd['condition'] = bool(eval(v))
+                    elif k == 'completion':
+                        current_cmd['completion'] = CompletionSpec.from_string(v)
+        elif state is HELP:
+            if line:
+                current_indent = indent_of_line(line)
+                if current_indent > 1:
+                    if prev_indent == 0:
+                        current_cmd['help'] += '\n'
+                    else:
+                        line = line.strip()
+                prev_indent = current_indent
+                spc = '' if current_cmd['help'].endswith('\n') else ' '
+                current_cmd['help'] += spc + line
+            else:
+                prev_indent = 0
+                if prev_line:
+                    current_cmd['help'] += '\n' if current_cmd['help'].endswith('::') else '\n\n'
+                else:
+                    state = NORMAL
+                    (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
+                    current_cmd = empty_cmd
+        prev_line = line
+    if current_cmd is not empty_cmd:
+        (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
+
+    return seq, disabled
+
+
+def defval_for_opt(opt: OptionDict) -> Any:
+    dv: Any = opt.get('default')
+    typ = opt.get('type', '')
+    if typ.startswith('bool-'):
+        if dv is None:
+            dv = False if typ == 'bool-set' else True
+        else:
+            dv = dv.lower() in ('true', 'yes', 'y')
+    elif typ == 'list':
+        dv = []
+    elif typ in ('int', 'float'):
+        dv = (int if typ == 'int' else float)(dv or 0)
+    return dv
+
+
+def get_option_maps(seq: OptionSpecSeq) -> tuple[dict[str, OptionDict], dict[str, OptionDict], dict[str, Any]]:
+    names_map: dict[str, OptionDict] = {}
+    alias_map: dict[str, OptionDict] = {}
+    values_map: dict[str, Any] = {}
+    for opt in seq:
+        if isinstance(opt, str):
+            continue
+        for alias in opt['aliases']:
+            alias_map[alias] = opt
+        name = opt['dest']
+        names_map[name] = opt
+        values_map[name] = defval_for_opt(opt)
+    return names_map, alias_map, values_map
+
+
+def c_str(x: str) -> str:
+    x = x.replace('\\', r'\\')
+    return f'"{x}"'
+
+
+def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
+    names_map, _, defaults_map = get_option_maps(parse_option_spec(spec)[0])
+    yield f'static void\nparse_cli_for_{funcname}(CLISpec *spec, int argc, char **argv) {{'  # }}
+    yield '\tFlagSpec flag;'
+    for name, opt in names_map.items():
+        for alias in opt['aliases']:
+            yield f'\tif (vt_is_end(vt_insert(&spec->alias_map, {c_str(alias)}, {c_str(name)}))) OOM;'
+        yield f'\tflag = (FlagSpec){{.dest={c_str(name)},}};'
+        defval = defaults_map[name]
+        match opt['type']:
+            case 'bool-set' | 'bool-reset':
+                yield '\tflag.defval.type = CLI_VALUE_BOOL;'
+                yield f'\tflag.defval.boolval = {"true" if defval else "false"};'
+            case 'int':
+                yield '\tflag.defval.type = CLI_VALUE_INT;'
+                yield f'\tflag.defval.intval = {defval};'
+            case 'float':
+                yield '\tflag.defval.type = CLI_VALUE_FLOAT;'
+                yield f'\tflag.defval.floatval = {defval};'
+            case 'list':
+                yield '\tflag.defval.type = CLI_VALUE_LIST;'
+            case 'choices':
+                yield '\tflag.defval.type = CLI_VALUE_CHOICE;'
+                yield f'\tflag.defval.strval = {c_str(defval)};'
+                choices = opt['choices']
+                yield f'\tflag.defval.listval.items = alloc_for_cli(spec, {len(choices)} * sizeof(flag.defval.listval.items[0]));'
+                yield '\tif (!flag.defval.listval.items) OOM;'
+                yield f'\tflag.defval.listval.count = {len(choices)};'
+                yield f'\tflag.defval.listval.capacity = {len(choices)};'
+                for n, choice in enumerate(choices):
+                    yield f'\tflag.defval.listval.items[{n}] = {c_str(choice)};'
+            case _:
+                yield '\tflag.defval.type = CLI_VALUE_STRING;'
+                yield f'\tflag.defval.strval = {"NULL" if defval is None else c_str(defval)};'
+        yield '\tif (vt_is_end(vt_insert(&spec->flag_map, flag.dest, flag))) OOM;'
+    yield '}'
+
+
+def generate_c_parsers() -> Iterator[str]:
+    yield '#pragma once'
+    yield '// generated by simple_cli_definitions.py do NOT edit!'
+    yield '#include "cli-parser.h"'
+    yield from generate_c_parser_for('kitty', kitty_options_spec())
+    yield ''
 
 
 listen_on_defn = f'''\
@@ -336,7 +508,3 @@ type=bool-set
         ))
     ans: str = getattr(kitty_options_spec, 'ans')
     return ans
-
-
-if __name__ == '__main__':
-    print(111111111, appname)

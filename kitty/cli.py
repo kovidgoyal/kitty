@@ -6,14 +6,23 @@ import re
 import sys
 from collections.abc import Callable, Iterator, Sequence
 from re import Match
-from typing import Any, NoReturn, TypeVar, Union, cast
+from typing import Any, NoReturn, TypeVar, cast
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .constants import appname, clear_handled_signals, config_dir, default_pager_for_help, defconf, is_macos, str_version, website_url
 from .fast_data_types import parse_cli_from_spec, wcswidth
 from .options.types import Options as KittyOpts
-from .simple_cli_definitions import CompletionSpec, CompletionType, OptionDict, kitty_options_spec, serialize_as_go_string
+from .simple_cli_definitions import (
+    CompletionType,
+    OptionDict,
+    OptionSpecSeq,
+    defval_for_opt,
+    get_option_maps,
+    kitty_options_spec,
+    parse_option_spec,
+    serialize_as_go_string,
+)
 from .types import run_once
 from .typing_compat import BadLineType
 
@@ -272,103 +281,6 @@ def pull(x: str) -> str:
 @role
 def disc(x: str) -> str:
     return ref_hyperlink(x, 'discussions-')
-
-
-OptionSpecSeq = list[Union[str, OptionDict]]
-
-
-def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpecSeq]:
-    if spec is None:
-        spec = kitty_options_spec()
-    NORMAL, METADATA, HELP = 'NORMAL', 'METADATA', 'HELP'
-    state = NORMAL
-    lines = spec.splitlines()
-    prev_line = ''
-    prev_indent = 0
-    seq: OptionSpecSeq = []
-    disabled: OptionSpecSeq = []
-    mpat = re.compile('([a-z]+)=(.+)')
-    current_cmd: OptionDict = {
-        'dest': '', 'aliases': (), 'help': '', 'choices': (),
-        'type': '', 'condition': False, 'default': None, 'completion': CompletionSpec(), 'name': ''
-    }
-    empty_cmd = current_cmd
-
-    def indent_of_line(x: str) -> int:
-        return len(x) - len(x.lstrip())
-
-    for line in lines:
-        line = line.rstrip()
-        if state is NORMAL:
-            if not line:
-                continue
-            if line.startswith('# '):
-                seq.append(line[2:])
-                continue
-            if line.startswith('--'):
-                parts = line.split(' ')
-                defdest = parts[0][2:].replace('-', '_')
-                current_cmd = {
-                    'dest': defdest, 'aliases': tuple(parts), 'help': '',
-                    'choices': tuple(), 'type': '', 'name': defdest,
-                    'default': None, 'condition': True, 'completion': CompletionSpec(),
-                }
-                state = METADATA
-                continue
-            raise ValueError(f'Invalid option spec, unexpected line: {line}')
-        elif state is METADATA:
-            m = mpat.match(line)
-            if m is None:
-                state = HELP
-                current_cmd['help'] += line
-            else:
-                k, v = m.group(1), m.group(2)
-                if k == 'choices':
-                    vals = tuple(x.strip() for x in v.split(','))
-                    if not current_cmd['type']:
-                        current_cmd['type'] = 'choices'
-                    if current_cmd['type'] != 'choices':
-                        raise ValueError(f'Cannot specify choices for an option of type: {current_cmd["type"]}')
-                    current_cmd['choices'] = tuple(vals)
-                    if current_cmd['default'] is None:
-                        current_cmd['default'] = vals[0]
-                else:
-                    if k == 'default':
-                        current_cmd['default'] = v
-                    elif k == 'type':
-                        if v == 'choice':
-                            v = 'choices'
-                        current_cmd['type'] = v
-                    elif k == 'dest':
-                        current_cmd['dest'] = v
-                    elif k == 'condition':
-                        current_cmd['condition'] = bool(eval(v))
-                    elif k == 'completion':
-                        current_cmd['completion'] = CompletionSpec.from_string(v)
-        elif state is HELP:
-            if line:
-                current_indent = indent_of_line(line)
-                if current_indent > 1:
-                    if prev_indent == 0:
-                        current_cmd['help'] += '\n'
-                    else:
-                        line = line.strip()
-                prev_indent = current_indent
-                spc = '' if current_cmd['help'].endswith('\n') else ' '
-                current_cmd['help'] += spc + line
-            else:
-                prev_indent = 0
-                if prev_line:
-                    current_cmd['help'] += '\n' if current_cmd['help'].endswith('::') else '\n\n'
-                else:
-                    state = NORMAL
-                    (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
-                    current_cmd = empty_cmd
-        prev_line = line
-    if current_cmd is not empty_cmd:
-        (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
-
-    return seq, disabled
 
 
 def prettify(text: str) -> str:
@@ -635,21 +547,6 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
     return '\n'.join(ans) + '\n\n\n'
 
 
-def defval_for_opt(opt: OptionDict) -> Any:
-    dv: Any = opt.get('default')
-    typ = opt.get('type', '')
-    if typ.startswith('bool-'):
-        if dv is None:
-            dv = False if typ == 'bool-set' else True
-        else:
-            dv = dv.lower() in ('true', 'yes', 'y')
-    elif typ == 'list':
-        dv = []
-    elif typ in ('int', 'float'):
-        dv = (int if typ == 'int' else float)(dv or 0)
-    return dv
-
-
 bool_map = {'y': True, 'yes': True, 'true': True, 'n': False, 'no': False, 'false': False}
 
 
@@ -665,19 +562,9 @@ class Options:
     do_print = True
 
     def __init__(self, seq: OptionSpecSeq, usage: str | None, message: str | None, appname: str | None):
-        self.alias_map = {}
         self.seq = seq
-        self.names_map: dict[str, OptionDict] = {}
-        self.values_map: dict[str, Any] = {}
         self.usage, self.message, self.appname = usage, message, appname
-        for opt in seq:
-            if isinstance(opt, str):
-                continue
-            for alias in opt['aliases']:
-                self.alias_map[alias] = opt
-            name = opt['dest']
-            self.names_map[name] = opt
-            self.values_map[name] = defval_for_opt(opt)
+        self.names_map, self.alias_map, self.values_map = get_option_maps(seq)
 
     def handle_help(self) -> NoReturn:
         if self.do_print:
@@ -689,45 +576,6 @@ class Options:
             print(version())
         raise SystemExit(0)
 
-    def is_bool(self, alias: str) -> bool:
-        opt = self.alias_map[alias]
-        typ = opt.get('type', '')
-        return typ.startswith('bool-')
-
-    def process_arg(self, alias: str, val: Any = None) -> None:
-        opt = self.alias_map[alias]
-        typ = opt.get('type', '')
-        name = opt['dest']
-        nmap = {'float': float, 'int': int}
-        if typ == 'bool-set':
-            if val is None:
-                self.values_map[name] = True
-            else:
-                self.values_map[name] = to_bool(alias, val)
-        elif typ == 'bool-reset':
-            if val is None:
-                self.values_map[name] = False
-            else:
-                self.values_map[name] = to_bool(alias, val)
-        elif typ == 'list':
-            self.values_map.setdefault(name, [])
-            self.values_map[name].append(val)
-        elif typ == 'choices':
-            choices = opt['choices']
-            if val not in choices:
-                raise SystemExit('{} is not a valid value for the {} option. Valid values are: {}'.format(
-                    val, emph(alias), ', '.join(choices)))
-            self.values_map[name] = val
-        elif typ in nmap:
-            f = nmap[typ]
-            try:
-                self.values_map[name] = f(val)
-            except Exception:
-                raise SystemExit('{} is not a valid value for the {} option, a number is required.'.format(
-                    val, emph(alias)))
-        else:
-            self.values_map[name] = val
-
 
 def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None) -> list[str]:
     try:
@@ -736,10 +584,10 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str
         raise SystemExit(str(e))
 
     for key, (val, is_seen) in vals.items():
-        if key == 'version' and is_seen and val:
-            oc.handle_version()
-        elif key == 'help' and is_seen and val:
+        if key == 'help' and is_seen and val:
             oc.handle_help()
+        elif key == 'version' and is_seen and val:
+            oc.handle_version()
         setattr(ans, key, val)
     for opt in disabled:
         if not isinstance(opt, str):

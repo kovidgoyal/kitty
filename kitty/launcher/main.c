@@ -308,7 +308,7 @@ exec_kitten(int argc, char *argv[], char *exe_dir) {
 
 static bool
 is_boolean_flag(const char *x) {
-    static const char *all_boolean_options = KITTY_CLI_BOOL_OPTIONS;
+    static const char *all_boolean_options = "";
     char buf[128];
     safe_snprintf(buf, sizeof(buf), " %s ", x);
     return strstr(all_boolean_options, buf) != NULL;

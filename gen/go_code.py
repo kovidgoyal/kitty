@@ -31,7 +31,6 @@ from kitty.actions import get_all_actions
 from kitty.cli import (
     GoOption,
     go_options_for_seq,
-    parse_option_spec,
 )
 from kitty.conf.generate import gen_go_code
 from kitty.conf.types import Definition
@@ -43,7 +42,7 @@ from kitty.options.types import Options
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
-from kitty.simple_cli_definitions import CompletionSpec, serialize_as_go_string
+from kitty.simple_cli_definitions import CompletionSpec, parse_option_spec, serialize_as_go_string
 
 if __name__ == '__main__' and not __package__:
     import __main__

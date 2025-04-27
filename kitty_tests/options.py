@@ -109,6 +109,7 @@ version
     t('-1 -0v', fails=True)
     t('-1 -v0', fails=True)
     t('-1 --version', fails=True)
+    t('-f=3.142 --int 17', float=3.142, int=17)
 
 
 def conf_parsing(self):
