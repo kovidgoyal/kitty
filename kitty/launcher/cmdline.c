@@ -51,7 +51,7 @@ get_argv_from(const char *filename, const char *argv0, argv_array *final_ans) {
         if (errno == ENOENT || errno == ENOTDIR) return true;
 #ifdef __APPLE__
         int saved = errno;
-        os_log_error(OS_LOG_DEFAULT, "Failed to read from %s with error: %{darwin.errno}d", filename, errno);
+        os_log_error(OS_LOG_DEFAULT, "Failed to read from %{public}s with error: %{darwin.errno}d", filename, errno);
         errno = saved;
 #endif
         fprintf(stderr, "Failed to read from %s ", filename); perror("with error");

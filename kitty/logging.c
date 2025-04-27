@@ -56,7 +56,7 @@ log_error(const char *fmt, ...) {
         fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic()));
     }
     // To see os_log messages from kitty, use:
-    // log show --predicate 'processImagePath contains "kitty"'
+    // log show --predicate 'processImagePath contains "kitty" and messageType == error'
 #ifdef __APPLE__
     if (use_os_log) os_log_error(OS_LOG_DEFAULT, "%{public}s", sanbuf);
 #endif
