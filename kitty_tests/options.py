@@ -93,9 +93,9 @@ version
             self.assertEqual(tuple(leftover), tuple(actual_leftover), f'{args}\n{ans}')
             for dest, defval in oc.values_map.items():
                 val = expected.get(dest, defval)
-                self.assertEqual(val, getattr(ans, dest, BaseTest), f'Failed to parse {dest} correctly for: {args} \n{ans}')
-        self.assertEqual(version_called, oc.version_called)
-        self.assertEqual(help_called, oc.help_called)
+                self.assertEqual(val, getattr(ans, dest, BaseTest), f'Failed to parse {dest} correctly for: {args}\n{ans}')
+        self.assertEqual(version_called, oc.version_called, f'Failed to call version for: {args}\n{ans}')
+        self.assertEqual(help_called, oc.help_called, f'Failed to call help for: {args}\n{ans}')
 
     t('-1', bool_set=True)
     t('-01', bool_reset=False, bool_set=True)

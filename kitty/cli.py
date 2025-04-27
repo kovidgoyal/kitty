@@ -580,6 +580,19 @@ class Options:
         raise SystemExit(0)
 
 
+PreparsedCLIFlags = tuple[dict[str, tuple[Any, bool]], list[str]]
+
+
+def apply_preparsed_cli_flags(preparsed_from_c: PreparsedCLIFlags, ans: Any, create_oc: Callable[[], Options]) -> list[str]:
+    for key, (val, is_seen) in preparsed_from_c[0].items():
+        if key == 'help' and is_seen and val:
+            create_oc().handle_help()
+        elif key == 'version' and is_seen and val:
+            create_oc().handle_version()
+        setattr(ans, key, val)
+    return preparsed_from_c[1]
+
+
 def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None) -> list[str]:
     names_map = oc.names_map.copy()
     values_map = oc.values_map.copy()
@@ -590,16 +603,11 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str
         names_map['version'] = {'type': 'bool-set', 'aliases': ('--version', '-v')}  # type: ignore
         values_map['version'] = False
     try:
-        vals, leftover_args = parse_cli_from_spec(sys.argv[1:] if args is None else args, names_map, values_map)
+        preparsed = parse_cli_from_spec(sys.argv[1:] if args is None else args, names_map, values_map)
     except Exception as e:
         raise SystemExit(str(e))
+    leftover_args = apply_preparsed_cli_flags(preparsed, ans, lambda: oc)
 
-    for key, (val, is_seen) in vals.items():
-        if key == 'help' and is_seen and val:
-            oc.handle_help()
-        elif key == 'version' and is_seen and val:
-            oc.handle_version()
-        setattr(ans, key, val)
     for opt in disabled:
         if not isinstance(opt, str):
             setattr(ans, opt['dest'], defval_for_opt(opt))
@@ -634,14 +642,24 @@ def parse_args(
     message: str | None = None,
     appname: str | None = None,
     result_class: type[T] | None = None,
+    preparsed_from_c: PreparsedCLIFlags | None = None,
 ) -> tuple[T, list[str]]:
-    options = parse_option_spec(ospec())
-    seq, disabled = options
-    oc = Options(seq, usage, message, appname)
     if result_class is not None:
         ans = result_class()
     else:
         ans = cast(T, CLIOptions())
+
+    def create_oc() -> Options:
+        options = parse_option_spec(ospec())
+        seq, disabled = options
+        return Options(seq, usage, message, appname)
+
+    if preparsed_from_c:
+        return ans, apply_preparsed_cli_flags(preparsed_from_c, ans, create_oc)
+
+    options = parse_option_spec(ospec())
+    seq, disabled = options
+    oc = Options(seq, usage, message, appname)
     return ans, parse_cmdline(oc, disabled, ans, args=args)
 
 

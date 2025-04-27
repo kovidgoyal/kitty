@@ -13,11 +13,14 @@
 #include <mach-o/dyld.h>
 #include <sys/syslimits.h>
 #include <sys/stat.h>
+#include <os/log.h>
 #else
 #include <limits.h>
 #endif
 #include "launcher.h"
 #include "utils.h"
+#define FOR_LAUNCHER
+#include "cli-parser-data_generated.h"
 
 #ifndef KITTY_LIB_PATH
 #define KITTY_LIB_PATH "../.."
@@ -42,8 +45,7 @@ safe_realpath(const char* src, char *buf, size_t buf_sz) {
 
 typedef struct {
     const char *exe, *exe_dir, *lc_ctype, *lib_dir, *config_dir;
-    char **argv;
-    int argc;
+    CLISpec *cli_spec;
     bool launched_by_launch_services, is_quick_access_terminal;
 } RunData;
 
@@ -83,6 +85,12 @@ set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir)
         if (!cdir) { PyErr_Print(); return false; }
         S(config_dir, cdir);
     }
+    PyObject *cli_flags = cli_parse_result_as_python(run_data->cli_spec);
+    if (!cli_flags) {
+        if (PyErr_Occurred()) PyErr_Print();
+        return false;
+    }
+    S(cli_flags, cli_flags);
 
 #undef S
     int ret = PySys_SetObject("kitty_run_data", ans);
@@ -120,7 +128,7 @@ run_embedded(RunData *run_data) {
     wchar_t python_home[PATH_MAX];
     canonicalize_path_wide(python_home_full, python_home, PATH_MAX);
     bypy_initialize_interpreter(
-            L"kitty", python_home, L"kitty_main", extensions_dir, run_data->argc, run_data->argv);
+            L"kitty", python_home, L"kitty_main", extensions_dir, run_data->cli_spec->original_argc, run_data->cli_spec->original_argv);
     if (!set_kitty_run_data(run_data, false, extensions_dir)) return 1;
     set_sys_bool("frozen", true);
     return bypy_run_interpreter();
@@ -148,7 +156,7 @@ run_embedded(RunData *run_data) {
     PyConfig_InitPythonConfig(&config);
     config.parse_argv = 0;
     config.optimization_level = 2;
-    status = PyConfig_SetBytesArgv(&config, run_data->argc, run_data->argv);
+    status = PyConfig_SetBytesArgv(&config, run_data->cli_spec->original_argc, run_data->cli_spec->original_argv);
     if (PyStatus_Exception(status)) goto fail;
     status = PyConfig_SetBytesString(&config, &config.executable, run_data->exe);
     if (PyStatus_Exception(status)) goto fail;
@@ -307,87 +315,53 @@ exec_kitten(int argc, char *argv[], char *exe_dir) {
 }
 
 static bool
-is_boolean_flag(const char *x) {
-    static const char *all_boolean_options = "";
-    char buf[128];
-    safe_snprintf(buf, sizeof(buf), " %s ", x);
-    return strstr(all_boolean_options, buf) != NULL;
+parse_and_check_kitty_cli(CLISpec *cli_spec, int argc, char **argv) {
+    parse_cli_for_kitty(cli_spec, argc, argv);
+    if (cli_spec->errmsg) {
+        fprintf(stderr, "%s\n", cli_spec->errmsg);
+#ifdef __APPLE__
+        os_log_error(OS_LOG_DEFAULT, "%{public}s", cli_spec->errmsg);
+#endif
+        return false;
+    }
+    return true;
 }
 
-static void
-handle_fast_commandline(int argc, char *argv[], const char *instance_group_prefix) {
-    char current_option_expecting_argument[128] = {0};
-    CLIOptions opts = {0};
-    int first_arg = 1;
-    if (argc > 1 && strcmp(argv[1], "+open") == 0) {
-        first_arg = 2;
-    } else if (argc > 2 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "open") == 0) {
-        first_arg = 3;
+static bool
+parse_and_check_panel_kitten_cli(CLISpec *cli_spec, int argc, char **argv) {
+    parse_cli_for_panel_kitten(cli_spec, argc, argv);
+    if (cli_spec->errmsg) {
+        fprintf(stderr, "%s\n", cli_spec->errmsg);
+#ifdef __APPLE__
+        os_log_error(OS_LOG_DEFAULT, "%{public}s", cli_spec->errmsg);
+#endif
+        return false;
     }
-    for (int i = first_arg; i < argc; i++) {
-        const char *arg = argv[i];
-        if (current_option_expecting_argument[0]) {
-handle_option_value:
-            if (strcmp(current_option_expecting_argument, "session") == 0) {
-                opts.session = arg;
-            } else if (strcmp(current_option_expecting_argument, "instance-group") == 0) {
-                opts.instance_group = arg;
-            } else if (strcmp(current_option_expecting_argument, "detached-log") == 0) {
-                opts.detached_log = arg;
-            }
-            current_option_expecting_argument[0] = 0;
-        } else {
-            if (!arg || !arg[0] || !arg[1] || arg[0] != '-' || strcmp(arg, "--") == 0) {
-                if (first_arg > 1) {
-                    opts.open_urls = argv + i;
-                    opts.open_url_count = argc - i;
-                }
-                break;
-            }
-            if (arg[1] == '-') {  // long opt
-                const char *equal = strchr(arg, '=');
-                const char *q = arg + 2;
-                if (equal == NULL) {
-                    if (strcmp(q, "version") == 0) {
-                        opts.version_requested = true;
-                    } else if (strcmp(q, "single-instance") == 0) {
-                        opts.single_instance = true;
-                    } else if (strcmp(q, "wait-for-single-instance-window-close") == 0) {
-                        opts.wait_for_single_instance_window_close = true;
-                    } else if (strcmp(q, "detach") == 0) {
-                        opts.detach = true;
-                    } else if (strcmp(q, "help") == 0) {
-                        return;
-                    } else if (!is_boolean_flag(arg+2)) {
-                        strncpy(current_option_expecting_argument, q, sizeof(current_option_expecting_argument)-1);
-                    }
-                } else {
-                    memcpy(current_option_expecting_argument, q, equal - q);
-                    current_option_expecting_argument[equal - q] = 0;
-                    arg = equal + 1;
-                    goto handle_option_value;
-                }
-            } else {
-                char buf[2] = {0};
-                current_option_expecting_argument[0] = 0;
-                for (int i = 1; arg[i] != 0; i++) {
-                    switch(arg[i]) {
-                        case '=':
-                            arg = arg + i + 1;
-                            goto handle_option_value;
-                        case 'v': opts.version_requested = true; break;
-                        case '1': opts.single_instance = true; break;
-                        case 'h': return;
-                        default:
-                            buf[0] = arg[i]; buf[1] = 0;
-                            if (!is_boolean_flag(buf)) { current_option_expecting_argument[0] = arg[i]; current_option_expecting_argument[1] = 0; }
-                    }
-                }
-            }
-        }
-    }
+    return true;
+}
 
-    if (opts.version_requested) {
+
+static void
+handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, int offset_for_panel_kitten) {
+    CLIOptions opts = {0};
+    RAII_CLISpec(subcommand_cli_spec);
+    if (offset_for_panel_kitten < 0) {
+        // Look for +open
+        int offset = 0;
+        if (cli_spec->original_argc > 1 && strcmp("+open", cli_spec->original_argv[1]) == 0) offset = 1;
+        else if (cli_spec->original_argc > 2 && strcmp("+", cli_spec->original_argv[1]) == 0 && strcmp("open", cli_spec->original_argv[2]) == 0) offset = 2;
+        if (offset) {
+            if (!parse_and_check_kitty_cli(&subcommand_cli_spec, cli_spec->original_argc - offset, cli_spec->original_argv + offset)) exit(1);
+            cli_spec = &subcommand_cli_spec;
+            opts.open_url_count = cli_spec->argc;
+            opts.open_urls = cli_spec->argv;
+        }
+    } else if (offset_for_panel_kitten > 0) {
+        parse_and_check_panel_kitten_cli(&subcommand_cli_spec, cli_spec->original_argc - offset_for_panel_kitten, cli_spec->original_argv + offset_for_panel_kitten);
+        cli_spec = &subcommand_cli_spec;
+    }
+    if (get_bool_cli_val(cli_spec, "help")) return;
+    if (get_bool_cli_val(cli_spec, "version")) {
         if (isatty(STDOUT_FILENO)) {
             printf("\x1b[3mkitty\x1b[23m \x1b[32m%s\x1b[39m created by \x1b[1;34mKovid Goyal\x1b[22;39m\n", KITTY_VERSION);
         } else {
@@ -395,21 +369,25 @@ handle_option_value:
         }
         exit(0);
     }
-    if (opts.detach) {
+    opts.session = get_string_cli_val(cli_spec, "session");
+    if (get_bool_cli_val(cli_spec, "detach")) {
 #define reopen_or_fail(path, mode, which) { errno = 0; if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
-        if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0))
-                ) reopen_or_fail("/dev/null", "rb", stdin);
-        if (!opts.detached_log || !opts.detached_log[0]) opts.detached_log = "/dev/null";
-        reopen_or_fail(opts.detached_log, "ab", stdout);
-        reopen_or_fail(opts.detached_log, "ab", stderr);
+        if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0)))
+            reopen_or_fail("/dev/null", "rb", stdin);
+        const char *detached_log = get_string_cli_val(cli_spec, "detached_log");
+        if (!detached_log || !detached_log[0]) detached_log = "/dev/null";
+        reopen_or_fail(detached_log, "ab", stdout);
+        reopen_or_fail(detached_log, "ab", stderr);
 #undef reopen_or_fail
         if (fork() != 0) exit(0);
         setsid();
     }
     unsetenv("KITTY_SI_DATA");
-    if (opts.single_instance) {
+    if (get_bool_cli_val(cli_spec, "single_instance")) {
         char igbuf[256];
+        opts.wait_for_single_instance_window_close = get_bool_cli_val(cli_spec, "wait_for_single_instance_window_close");
         if (instance_group_prefix && instance_group_prefix[0]) {
+            opts.instance_group = get_string_cli_val(cli_spec, "instance_group");
             if (opts.instance_group && opts.instance_group[0]) {
                 safe_snprintf(igbuf, sizeof(igbuf), "%s-%s", instance_group_prefix, opts.instance_group ? opts.instance_group : "");
                 opts.instance_group = igbuf;
@@ -417,24 +395,25 @@ handle_option_value:
                 opts.instance_group = instance_group_prefix;
             }
         }
-        single_instance_main(argc, argv, &opts);
+        single_instance_main(cli_spec->original_argc, cli_spec->original_argv, &opts);
     }
 }
 
 static bool
-delegate_to_kitten_if_possible(int argc, char *argv[], char* exe_dir) {
+delegate_to_kitten_if_possible(CLISpec *cli_spec, char* exe_dir) {
+    int argc = cli_spec->original_argc; char **argv = cli_spec->original_argv;
     if (argc > 1 && argv[1][0] == '@') exec_kitten(argc, argv, exe_dir);
     if (argc > 2 && strcmp(argv[1], "+kitten") == 0) {
         if (is_wrapped_kitten(argv[2])) exec_kitten(argc - 1, argv + 1, exe_dir);
         if (strcmp(argv[2], "panel") == 0) {
-            handle_fast_commandline(argc - 2, argv + 2, "panel");
+            handle_fast_commandline(cli_spec, "panel", 2);
             return true;
         }
     }
     if (argc > 3 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "kitten") == 0) {
         if (is_wrapped_kitten(argv[3])) exec_kitten(argc - 2, argv + 2, exe_dir);
-        if (strcmp(argv[3], "panel") == 0) {
-            handle_fast_commandline(argc - 3, argv + 3, "panel");
+        if (strcmp(argv[2], "panel") == 0) {
+            handle_fast_commandline(cli_spec, "panel", 3);
             return true;
         }
     }
@@ -483,7 +462,19 @@ int main(int argc_, char *argv_[], char* envp[]) {
     (void)endswith;
 #endif
     (void)read_full_file;
-    if (!delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir)) handle_fast_commandline(argva.count, argva.argv, NULL);
+    RAII_CLISpec(cli_spec);
+    bool ok = parse_and_check_kitty_cli(&cli_spec, argva.count, argva.argv);
+    free_argv_array(&argva);
+    if (!ok) return 1;
+    if (cli_spec.errmsg) {
+        fprintf(stderr, "%s\n", cli_spec.errmsg);
+#ifdef __APPLE__
+        os_log_error(OS_LOG_DEFAULT, "%{public}s", cli_spec.errmsg);
+#endif
+        return 1;
+    }
+
+    if (!delegate_to_kitten_if_possible(&cli_spec, exe_dir)) handle_fast_commandline(&cli_spec, NULL, -1);
     int ret=0;
     char lib[PATH_MAX+1] = {0};
     if (KITTY_LIB_PATH[0] == '/') {
@@ -492,11 +483,10 @@ int main(int argc_, char *argv_[], char* envp[]) {
         safe_snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
     }
     RunData run_data = {
-        .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argva.count, .argv = argva.argv, .lc_ctype = lc_ctype,
+        .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .cli_spec = &cli_spec, .lc_ctype = lc_ctype,
         .launched_by_launch_services=launched_by_launch_services, .config_dir = config_dir, .is_quick_access_terminal=is_quick_access_terminal,
     };
     ret = run_embedded(&run_data);
-    free_argv_array(&argva);
     single_instance_main(-1, NULL, NULL);
     Py_FinalizeEx();
     return ret;

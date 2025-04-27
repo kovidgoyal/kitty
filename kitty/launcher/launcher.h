@@ -11,8 +11,8 @@
 #include <stddef.h>
 
 typedef struct CLIOptions {
-    const char *session, *instance_group, *detached_log;
-    bool single_instance, version_requested, wait_for_single_instance_window_close, detach;
+    const char *session, *instance_group;
+    bool wait_for_single_instance_window_close;
     int open_url_count; char **open_urls;
 } CLIOptions;
 

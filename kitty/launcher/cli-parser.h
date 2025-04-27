@@ -231,12 +231,12 @@ dealloc_cli_spec(void *v) {
 #define RAII_CLISpec(name) __attribute__((cleanup(dealloc_cli_spec))) CLISpec name = {0}; alloc_cli_spec(&name)
 
 static bool
-parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {  // argv must contain arg1 and beyond
+parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {
     enum { NORMAL, EXPECTING_ARG } state = NORMAL;
     spec->argc = 0; spec->argv = NULL; spec->errmsg = NULL; spec->original_argc = argc; spec->original_argv = NULL;
     if (save_original_argv) {
         char **copy = alloc_for_cli(spec, sizeof(char*) * (argc + 1));
-        if (!spec->original_argv) OOM;
+        if (!copy) OOM;
         copy[argc] = NULL;
         for (int i = 0; i < argc; i++) {
             size_t len = strlen(argv[i]);
@@ -249,7 +249,7 @@ parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) { 
     }
     char flag[3] = {'-', 0, 0};
     const char *current_option = NULL;
-    for (int i = 0; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
         char *arg = argv[i];
         switch(state) {
             case NORMAL: {
@@ -383,16 +383,17 @@ parse_cli_from_python_spec(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!O!O!", &PyList_Type, &pyargs, &PyDict_Type, &names_map, &PyDict_Type, &defval_map)) return NULL;
     int argc = PyList_GET_SIZE(pyargs);
     RAII_CLISpec(spec);
-    char **argv = alloc_for_cli(&spec, sizeof(char*) * (argc + 1));
+    char **argv = alloc_for_cli(&spec, sizeof(char*) * (argc + 2));
     if (!argv) return PyErr_NoMemory();
+    argv[0] = "parse_cli_from_python_spec";
     for (int i = 0; i < argc; i++) {
         Py_ssize_t sz;
         const char *src = PyUnicode_AsUTF8AndSize(PyList_GET_ITEM(pyargs, i), &sz);
-        argv[i] = alloc_for_cli(&spec, sz);
-        if (!argv[i]) return PyErr_NoMemory();
-        memcpy(argv[i], src, sz);
+        argv[i + 1] = alloc_for_cli(&spec, sz);
+        if (!argv[i + 1]) return PyErr_NoMemory();
+        memcpy(argv[i + 1], src, sz);
     }
-    argv[argc] = 0;
+    argv[++argc] = 0;
     PyObject *key = NULL, *opt = NULL;
     Py_ssize_t pos = 0;
     while (PyDict_Next(names_map, &pos, &key, &opt)) {

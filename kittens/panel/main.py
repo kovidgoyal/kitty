@@ -9,7 +9,7 @@ from typing import Any, Mapping, Sequence
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
-from kitty.constants import appname, is_macos, is_wayland, kitten_exe
+from kitty.constants import is_macos, is_wayland, kitten_exe
 from kitty.fast_data_types import (
     GLFW_EDGE_BOTTOM,
     GLFW_EDGE_CENTER,
@@ -29,7 +29,7 @@ from kitty.fast_data_types import (
     toggle_os_window_visibility,
 )
 from kitty.os_window_size import WindowSizeData, edge_spacing
-from kitty.simple_cli_definitions import listen_on_defn
+from kitty.simple_cli_definitions import panel_kitten_options_spec
 from kitty.types import LayerShellConfig
 from kitty.typing_compat import BossType, EdgeLiteral
 from kitty.utils import log_error
@@ -41,171 +41,6 @@ quake = (
 default_quake_cmdline = f'{quake} --exclusive-zone=0 --override-exclusive-zone --detach'
 default_macos_quake_cmdline = f'{quake}'
 
-OPTIONS = r'''
---lines
-default=1
-The number of lines shown in the panel. Ignored for background, centered, and vertical panels.
-If it has the suffix :code:`px` then it sets the height of the panel in pixels instead of lines.
-
-
---columns
-default=1
-The number of columns shown in the panel. Ignored for background, centered, and horizontal panels.
-If it has the suffix :code:`px` then it sets the width of the panel in pixels instead of columns.
-
-
---margin-top
-type=int
-default=0
-Set the top margin for the panel, in pixels. Has no effect for bottom edge panels.
-Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
-
-
---margin-left
-type=int
-default=0
-Set the left margin for the panel, in pixels. Has no effect for right edge panels.
-Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
-
-
---margin-bottom
-type=int
-default=0
-Set the bottom margin for the panel, in pixels. Has no effect for top edge panels.
-Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
-
-
---margin-right
-type=int
-default=0
-Set the right margin for the panel, in pixels. Has no effect for left edge panels.
-Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
-
-
---edge
-choices=top,bottom,left,right,background,center,none
-default=top
-Which edge of the screen to place the panel on. Note that some window managers
-(such as i3) do not support placing docked windows on the left and right edges.
-The value :code:`background` means make the panel the "desktop wallpaper". This
-is not supported on X11 and note that when using sway if you set
-a background in your sway config it will cover the background drawn using this
-kitten.
-Additionally, there are two more values: :code:`center` and :code:`none`.
-The value :code:`center` anchors the panel to all sides and covers the entire
-display (on macOS the part of the display not covered by titlebar and dock).
-The panel can be shrunk and placed using the margin parameters.
-The value :code:`none` anchors the panel to the top left corner and should be
-placed and using the margin parameters. It's size is set bye :option:`--lines`
-and :option:`--columns`.
-
-
---layer
-choices=background,bottom,top,overlay
-default=bottom
-On a Wayland compositor that supports the wlr layer shell protocol, specifies the layer
-on which the panel should be drawn. This parameter is ignored and set to
-:code:`background` if :option:`--edge` is set to :code:`background`. On macOS, maps
-these to appropriate NSWindow *levels*.
-
-
---config -c
-type=list
-Path to config file to use for kitty when drawing the panel.
-
-
---override -o
-type=list
-Override individual kitty configuration options, can be specified multiple times.
-Syntax: :italic:`name=value`. For example: :option:`kitty +kitten panel -o` font_size=20
-
-
---output-name
-On Wayland, the panel can only be displayed on a single monitor (output) at a time. This allows
-you to specify which output is used, by name. If not specified the compositor will choose an
-output automatically, typically the last output the user interacted with or the primary monitor.
-
-
---class --app-id
-dest=cls
-default={appname}-panel
-condition=not is_macos
-Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it sets the app id.
-
-
---name
-condition=not is_macos
-Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
-
-
---focus-policy
-choices=not-allowed,exclusive,on-demand
-default=not-allowed
-On a Wayland compositor that supports the wlr layer shell protocol, specify the focus policy for keyboard
-interactivity with the panel. Please refer to the wlr layer shell protocol documentation for more details.
-On macOS, :code:`exclusive` and :code:`on-demand` are currently the same. Ignored on X11.
-
-
---exclusive-zone
-type=int
-default=-1
-On a Wayland compositor that supports the wlr layer shell protocol, request a given exclusive zone for the panel.
-Please refer to the wlr layer shell documentation for more details on the meaning of exclusive and its value.
-If :option:`--edge` is set to anything other than :code:`center` or :code:`none`, this flag will not have any
-effect unless the flag :option:`--override-exclusive-zone` is also set.
-If :option:`--edge` is set to :code:`background`, this option has no effect.
-Ignored on X11 and macOS.
-
-
---override-exclusive-zone
-type=bool-set
-On a Wayland compositor that supports the wlr layer shell protocol, override the default exclusive zone.
-This has effect only if :option:`--edge` is set to :code:`top`, :code:`left`, :code:`bottom` or :code:`right`.
-Ignored on X11 and macOS.
-
-
---single-instance -1
-type=bool-set
-If specified only a single instance of the panel will run. New
-invocations will instead create a new top-level window in the existing
-panel instance.
-
-
---instance-group
-Used in combination with the :option:`--single-instance` option. All
-panel invocations with the same :option:`--instance-group` will result
-in new panels being created in the first panel instance within that group.
-
-
-{listen_on_defn}
-
-
---toggle-visibility
-type=bool-set
-When set and using :option:`--single-instance` will toggle the visibility of the
-existing panel rather than creating a new one.
-
-
---start-as-hidden
-type=bool-set
-Start in hidden mode, useful with :option:`--toggle-visibility`.
-
-
---detach
-type=bool-set
-Detach from the controlling terminal, if any, running in an independent child process,
-the parent process exits immediately.
-
-
---detached-log
-Path to a log file to store STDOUT/STDERR when using :option:`--detach`
-
-
---debug-rendering
-type=bool-set
-For internal debugging use.
-'''.format(appname=appname, listen_on_defn=listen_on_defn).format
-
 
 args = PanelCLIOptions()
 help_text = 'Use a command line program to draw a GPU accelerated panel on your desktop'
@@ -213,7 +48,7 @@ usage = '[cmdline-to-run ...]'
 
 
 def parse_panel_args(args: list[str]) -> tuple[PanelCLIOptions, list[str]]:
-    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
+    return parse_args(args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
 
 
 Strut = tuple[int, int, int, int, int, int, int, int, int, int, int, int]
@@ -396,6 +231,6 @@ if __name__ == '__main__':
 elif __name__ == '__doc__':
     cd: dict = sys.cli_docs  # type: ignore
     cd['usage'] = usage
-    cd['options'] = OPTIONS
+    cd['options'] = panel_kitten_options_spec
     cd['help_text'] = help_text
     cd['short_desc'] = help_text
