@@ -78,7 +78,6 @@ version
     oc.do_print = False
 
     def t(args, leftover=(), fails=False, **expected):
-        oc.values_map['list'] = []
         args = list(shlex_split(args))
         ans = CLIOptions()
         if fails:
@@ -89,13 +88,8 @@ version
             self.assertEqual(tuple(leftover), tuple(actual_leftover), f'{args}\n{ans}')
             for dest, defval in oc.values_map.items():
                 val = expected.get(dest, defval)
-                self.assertEqual(val, getattr(ans, dest), f'Failed to parse {dest} correctly for: {args} \n{ans}')
+                self.assertEqual(val, getattr(ans, dest, BaseTest), f'Failed to parse {dest} correctly for: {args} \n{ans}')
 
-    t('-1 -h', fails=True)
-    t('-1 --help', fails=True)
-    t('-1 -0v', fails=True)
-    t('-1 -v0', fails=True)
-    t('-1 --version', fails=True)
     t('-1', bool_set=True)
     t('-01', bool_reset=False, bool_set=True)
     t('-01=y', bool_reset=False, bool_set=True)
@@ -110,6 +104,11 @@ version
     t('--choice moo', fails=True)
     t('-1c moo', fails=True)
     t('-10c=moo', fails=True)
+    t('-1 -h', fails=True)
+    t('-1 --help', fails=True)
+    t('-1 -0v', fails=True)
+    t('-1 -v0', fails=True)
+    t('-1 --version', fails=True)
 
 
 def conf_parsing(self):

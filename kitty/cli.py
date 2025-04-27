@@ -4,17 +4,16 @@
 import os
 import re
 import sys
-from collections import deque
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from re import Match
-from typing import Any, TypeVar, Union, cast
+from typing import Any, NoReturn, TypeVar, Union, cast
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .constants import appname, clear_handled_signals, config_dir, default_pager_for_help, defconf, is_macos, str_version, website_url
-from .fast_data_types import wcswidth
+from .fast_data_types import parse_cli_from_spec, wcswidth
 from .options.types import Options as KittyOpts
 from .types import run_once
 from .typing import BadLineType, TypedDict
@@ -101,9 +100,9 @@ class CompletionSpec:
 class OptionDict(TypedDict):
     dest: str
     name: str
-    aliases: frozenset[str]
+    aliases: tuple[str, ...]
     help: str
-    choices: frozenset[str]
+    choices: tuple[str, ...]
     type: str
     default: str | None
     condition: bool
@@ -410,7 +409,7 @@ def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpe
     disabled: OptionSpecSeq = []
     mpat = re.compile('([a-z]+)=(.+)')
     current_cmd: OptionDict = {
-        'dest': '', 'aliases': frozenset(), 'help': '', 'choices': frozenset(),
+        'dest': '', 'aliases': (), 'help': '', 'choices': (),
         'type': '', 'condition': False, 'default': None, 'completion': CompletionSpec(), 'name': ''
     }
     empty_cmd = current_cmd
@@ -430,8 +429,8 @@ def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpe
                 parts = line.split(' ')
                 defdest = parts[0][2:].replace('-', '_')
                 current_cmd = {
-                    'dest': defdest, 'aliases': frozenset(parts), 'help': '',
-                    'choices': frozenset(), 'type': '', 'name': defdest,
+                    'dest': defdest, 'aliases': tuple(parts), 'help': '',
+                    'choices': tuple(), 'type': '', 'name': defdest,
                     'default': None, 'condition': True, 'completion': CompletionSpec(),
                 }
                 state = METADATA
@@ -450,7 +449,7 @@ def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpe
                         current_cmd['type'] = 'choices'
                     if current_cmd['type'] != 'choices':
                         raise ValueError(f'Cannot specify choices for an option of type: {current_cmd["type"]}')
-                    current_cmd['choices'] = frozenset(vals)
+                    current_cmd['choices'] = tuple(vals)
                     if current_cmd['default'] is None:
                         current_cmd['default'] = vals[0]
                 else:
@@ -800,18 +799,15 @@ class Options:
             self.names_map[name] = opt
             self.values_map[name] = defval_for_opt(opt)
 
-    def check_for_standard_flag(self, alias: str) -> None:
-        if alias in ('-h', '--help'):
-            if self.do_print:
-                print_help_for_seq(self.seq, self.usage, self.message, self.appname or appname)
-            raise SystemExit(0)
-        opt = self.alias_map.get(alias)
-        if opt is None:
-            raise SystemExit(f'Unknown option: {emph(alias)}')
-        if opt['dest'] == 'version':
-            if self.do_print:
-                print(version())
-            raise SystemExit(0)
+    def handle_help(self) -> NoReturn:
+        if self.do_print:
+            print_help_for_seq(self.seq, self.usage, self.message, self.appname or appname)
+        raise SystemExit(0)
+
+    def handle_version(self) -> NoReturn:
+        if self.do_print:
+            print(version())
+        raise SystemExit(0)
 
     def is_bool(self, alias: str) -> bool:
         opt = self.alias_map[alias]
@@ -854,58 +850,16 @@ class Options:
 
 
 def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None) -> list[str]:
-    NORMAL, EXPECTING_ARG = 'NORMAL', 'EXPECTING_ARG'
-    state = NORMAL
-    dargs = deque(sys.argv[1:] if args is None else args)
-    leftover_args: list[str] = []
-    current_option = None
-    payload: str | None = None
+    try:
+        vals, leftover_args = parse_cli_from_spec(sys.argv[1:] if args is None else args, oc.names_map, oc.values_map)
+    except Exception as e:
+        raise SystemExit(str(e))
 
-    while dargs:
-        arg = dargs.popleft()
-        if state is NORMAL:
-            if arg.startswith('-'):
-                is_long_opt = arg.startswith('--')
-                if is_long_opt and arg == '--':
-                    leftover_args = list(dargs)
-                    break
-                flag, has_equal, payload = arg.partition('=')
-                if not has_equal:
-                    payload = None
-                if is_long_opt:
-                    oc.check_for_standard_flag(flag)
-                    if oc.is_bool(flag):
-                        oc.process_arg(flag, payload)
-                        continue
-                    if not has_equal:
-                        current_option = flag
-                        state = EXPECTING_ARG
-                        continue
-                    oc.process_arg(flag, payload)
-                else:
-                    letters = flag[1:]
-                    for letter in letters[:-1]:
-                        flag = f'-{letter}'
-                        oc.check_for_standard_flag(flag)
-                        oc.process_arg(flag)
-                    flag = f'-{letters[-1]}'
-                    oc.check_for_standard_flag(flag)
-                    if oc.is_bool(flag) or payload is not None:
-                        oc.process_arg(flag, payload)
-                    else:
-                        current_option = flag
-                        state = EXPECTING_ARG
-                        continue
-            else:
-                leftover_args = [arg] + list(dargs)
-                break
-        elif current_option is not None:
-            oc.process_arg(current_option, arg)
-            current_option, state = None, NORMAL
-    if state is EXPECTING_ARG:
-        raise SystemExit(f'An argument is required for the option: {emph(arg)}')
-
-    for key, val in oc.values_map.items():
+    for key, (val, is_seen) in vals.items():
+        if key == 'version' and is_seen and val:
+            oc.handle_version()
+        elif key == 'help' and is_seen and val:
+            oc.handle_help()
         setattr(ans, key, val)
     for opt in disabled:
         if not isinstance(opt, str):

@@ -678,10 +678,12 @@ py_get_config_dir(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyUnicode_FromString("");
 }
 
+#include "launcher/cli-parser.h"
 
 static PyMethodDef module_methods[] = {
     METHODB(replace_c0_codes_except_nl_space_tab, METH_O),
     METHODB(read_file, METH_O),
+    {"parse_cli_from_spec", parse_cli_from_python_spec, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"expanduser", (PyCFunction)expanduser, METH_O, ""},
     {"abspath", (PyCFunction)abspath, METH_O, ""},
