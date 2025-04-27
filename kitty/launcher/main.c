@@ -410,15 +410,14 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, in
 }
 
 static bool
-delegate_to_kitten_if_possible(CLISpec *cli_spec, char* exe_dir) {
-    int argc = cli_spec->original_argc; char **argv = cli_spec->original_argv;
+delegate_to_kitten_if_possible(int argc, char **argv, char* exe_dir) {
     if (argc > 1 && argv[1][0] == '@') exec_kitten(argc, argv, exe_dir);
     int offset = offset_for_plus_subcommand(argc, argv, "kitten");
     if (offset && argc > offset+1) {
         const char *kitten = argv[offset + 1];
         if (is_wrapped_kitten(kitten)) exec_kitten(argc - offset, argv + offset, exe_dir);
         if (strcmp(kitten, "panel") == 0) {
-            handle_fast_commandline(cli_spec, "panel", offset + 1);
+            handle_fast_commandline(NULL, "panel", offset + 1);
             return true;
         }
     }
@@ -468,18 +467,11 @@ int main(int argc_, char *argv_[], char* envp[]) {
 #endif
     (void)read_full_file;
     RAII_CLISpec(cli_spec);
+    bool handle_fast_commandline_called = delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir);
     bool ok = parse_and_check_kitty_cli(&cli_spec, argva.count, argva.argv);
     free_argv_array(&argva);
     if (!ok) return 1;
-    if (cli_spec.errmsg) {
-        fprintf(stderr, "%s\n", cli_spec.errmsg);
-#ifdef __APPLE__
-        os_log_error(OS_LOG_DEFAULT, "%{public}s", cli_spec.errmsg);
-#endif
-        return 1;
-    }
-
-    if (!delegate_to_kitten_if_possible(&cli_spec, exe_dir)) handle_fast_commandline(&cli_spec, NULL, -1);
+    if (!handle_fast_commandline_called) handle_fast_commandline(&cli_spec, NULL, -1);
     int ret=0;
     char lib[PATH_MAX+1] = {0};
     if (KITTY_LIB_PATH[0] == '/') {
