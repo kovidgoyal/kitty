@@ -12,7 +12,6 @@
 #include <os/log.h>
 #endif
 
-
 void
 free_argv_array(argv_array *a) {
     if (a && a->needs_free) {
@@ -61,10 +60,10 @@ get_argv_from(const char *filename, const char *argv0, argv_array *final_ans) {
     argv_array ans = {0};
     bool ok = false;
     ans.buf = malloc(src_sz + strlen(argv0) + 64);
-    if (!ans.buf) { errno = ENOMEM; goto end; }
+    if (!ans.buf) goto oom;
     ans.needs_free = true;
-    if (!add_to_argv(&ans, argv0, strlen(argv0))) goto end;
-    if (!alloc_shlex_state(&s, src, src_sz, false)) { errno = ENOMEM; goto end; }
+    if (!add_to_argv(&ans, argv0, strlen(argv0))) goto oom;
+    if (!alloc_shlex_state(&s, src, src_sz, false)) goto oom;
     bool keep_going = true;
     while (keep_going) {
         ssize_t q = next_word(&s);
@@ -73,18 +72,19 @@ get_argv_from(const char *filename, const char *argv0, argv_array *final_ans) {
             case -2: keep_going = false; break;
             default:
                 if (ans.count == 1 && strcmp(s.buf, "kitty") == 0) continue;
-                if (!add_to_argv(&ans, s.buf, q)) { goto end; }
+                if (!add_to_argv(&ans, s.buf, q)) goto oom;
                 break;
         }
     }
     ok = true;
+oom:
+    if (!ok) {
+        errno = ENOMEM;
+        fprintf(stderr, "Failed to read from %s ", filename); perror("with error");
+    }
 end:
     free(src); dealloc_shlex_state(&s);
     if (ok) *final_ans = ans;
-    else {
-        free_argv_array(&ans);
-        fprintf(stderr, "Failed to read from %s ", filename); perror("with error");
-    }
     return ok;
 }
 

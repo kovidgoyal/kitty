@@ -502,7 +502,11 @@ class TestDataTypes(BaseTest):
                     env = os.environ.copy()
                     env['KITTY_CONFIG_DIRECTORY'] = tdir
                     env['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '1'
-                    actual = subprocess.check_output([kitty_exe(), '+runpy', 'import json, sys; print(json.dumps(sys.argv))'], env=env).strip().decode()
+                    cp = subprocess.run([kitty_exe(), '+runpy', 'import json, sys; print(json.dumps(sys.argv))'], env=env, stdout=subprocess.PIPE)
+                    actual = cp.stdout.strip().decode()
+                    if cp.returncode != 0:
+                        print(actual)
+                        raise AssertionError(f'kitty +runpy failed with return code: {cp.returncode}')
                     self.ae('next-line', actual)
                 os.makedirs(tdir + '/good/kitty')
                 open(tdir + '/good/kitty/kitty.conf', 'w').close()
