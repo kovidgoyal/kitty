@@ -222,7 +222,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	keep_going.Store(true)
 	if !opts.DetectSupport && num_of_items > 0 {
 		num_workers := utils.Max(1, utils.Min(num_of_items, runtime.NumCPU()))
-		for i := 0; i < num_workers; i++ {
+		for range num_workers {
 			go run_worker()
 		}
 	}

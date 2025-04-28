@@ -13,6 +13,7 @@ import (
 	"kitty/kittens/hyperlinked_grep"
 	"kitty/kittens/icat"
 	"kitty/kittens/notify"
+	"kitty/kittens/panel"
 	"kitty/kittens/query_terminal"
 	"kitty/kittens/show_key"
 	"kitty/kittens/ssh"
@@ -53,6 +54,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	ssh.EntryPoint(root)
 	// transfer
 	transfer.EntryPoint(root)
+	// panel
+	panel.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
 	// show_key
