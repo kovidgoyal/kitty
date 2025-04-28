@@ -152,7 +152,7 @@ dest_for_alias(CLISpec *spec, const char *alias) {
             }
         }
         if (match_key) {
-            if (count == 1) return match_val;
+            if (count == 1) { vt_cleanup(&matches); return match_val; }
             total += 256 + total;
             char *buf = alloc_for_cli(spec, total);
             if (!buf) OOM;
@@ -160,6 +160,7 @@ dest_for_alias(CLISpec *spec, const char *alias) {
             alias_map_for_loop(&matches) {
                 n += snprintf(buf + n, total - n, " %s,", itr.data->val);
             }
+            vt_cleanup(&matches);
             buf[n-1] = '.';
             spec->errmsg = buf;
             return NULL;
