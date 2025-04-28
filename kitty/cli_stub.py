@@ -20,7 +20,7 @@ ThemesCLIOptions = TransferCLIOptions = LoadConfigRCOptions = ActionRCOptions = 
 def generate_stub() -> None:
     from .cli import as_type_stub
     from .conf.utils import save_type_stub
-    from .simple_cli_definitions import panel_kitten_options_spec, parse_option_spec
+    from .simple_cli_definitions import parse_option_spec
     text = 'import typing\n\n\n'
 
     def do(otext: str | None = None, cls: str = 'CLIOptions', extra_fields: Sequence[str] = ()) -> None:
@@ -59,6 +59,7 @@ def generate_stub() -> None:
     from kittens.icat.main import OPTIONS as OS
     do(OS, 'IcatCLIOptions')
 
+    from kittens.panel.main import panel_kitten_options_spec
     do(panel_kitten_options_spec(), 'PanelCLIOptions')
 
     from kittens.resize_window.main import OPTIONS

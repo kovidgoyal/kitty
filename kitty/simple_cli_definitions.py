@@ -303,7 +303,7 @@ def generate_c_parsers() -> Iterator[str]:
     yield from generate_c_parser_for('kitty', kitty_options_spec())
     yield ''
     yield ''
-    yield from generate_c_parser_for('panel_kitten', panel_kitten_options_spec())
+    yield from generate_c_parser_for('panel_kitten', build_panel_cli_spec({}))
     yield ''
 
 
@@ -524,9 +524,8 @@ type=bool-set
 
 
 # panel CLI spec {{{
-def panel_kitten_options_spec() -> str:
-    if not hasattr(panel_kitten_options_spec, 'ans'):
-        OPTIONS = r'''
+def build_panel_cli_spec(defaults: dict[str, str]) -> str:
+    return r'''
 --lines
 default=1
 The number of lines shown in the panel. Ignored for background, centered, and vertical panels.
@@ -689,10 +688,7 @@ Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 --debug-rendering
 type=bool-set
 For internal debugging use.
-'''
-        setattr(panel_kitten_options_spec, 'ans', OPTIONS.format(
-            appname=appname, listen_on_defn=listen_on_defn,
-        ))
-    ans: str = getattr(panel_kitten_options_spec, 'ans')
-    return ans
+'''.format(appname=appname, listen_on_defn=listen_on_defn, **defaults)
+
+
 # }}}

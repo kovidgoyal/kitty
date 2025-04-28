@@ -29,7 +29,7 @@ from kitty.fast_data_types import (
     toggle_os_window_visibility,
 )
 from kitty.os_window_size import WindowSizeData, edge_spacing
-from kitty.simple_cli_definitions import panel_kitten_options_spec
+from kitty.simple_cli_definitions import build_panel_cli_spec
 from kitty.types import LayerShellConfig
 from kitty.typing_compat import BossType, EdgeLiteral
 from kitty.utils import log_error
@@ -46,6 +46,12 @@ args = PanelCLIOptions()
 help_text = 'Use a command line program to draw a GPU accelerated panel on your desktop'
 usage = '[cmdline-to-run ...]'
 
+
+def panel_kitten_options_spec() -> str:
+    if not hasattr(panel_kitten_options_spec, 'ans'):
+           setattr(panel_kitten_options_spec, 'ans', build_panel_cli_spec({}))
+    ans: str = getattr(panel_kitten_options_spec, 'ans')
+    return ans
 
 def parse_panel_args(args: list[str]) -> tuple[PanelCLIOptions, list[str]]:
     return parse_args(args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
