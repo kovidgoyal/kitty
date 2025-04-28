@@ -450,15 +450,6 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
 
 # kittens {{{
 
-@lru_cache
-def wrapped_kittens() -> tuple[str, ...]:
-    with open('shell-integration/ssh/kitty') as f:
-        for line in f:
-            if line.startswith('    wrapped_kittens="'):
-                val = line.strip().partition('"')[2][:-1]
-                return tuple(sorted(filter(None, val.split())))
-    raise Exception('Failed to read wrapped kittens from kitty wrapper script')
-
 
 def generate_conf_parser(kitten: str, defn: Definition) -> None:
     with replace_if_needed(f'kittens/{kitten}/conf_generated.go'):
