@@ -105,6 +105,11 @@ func NormalizeOptionName(name string) string {
 
 func (self *Option) parsed_value() any {
 	if len(self.values_from_cmdline) == 0 {
+		if self.IsList {
+			if self.parsed_default == nil {
+				return []string{}
+			}
+		}
 		return self.parsed_default
 	}
 	switch self.OptionType {
@@ -112,9 +117,12 @@ func (self *Option) parsed_value() any {
 		return len(self.parsed_values_from_cmdline)
 	case StringOption:
 		if self.IsList {
-			ans := make([]string, len(self.parsed_values_from_cmdline))
-			for i, x := range self.parsed_values_from_cmdline {
-				ans[i] = x.(string)
+			ans := make([]string, 0, len(self.parsed_values_from_cmdline)+2)
+			if self.parsed_default != nil {
+				ans = append(ans, self.parsed_default.([]string)...)
+			}
+			for _, x := range self.parsed_values_from_cmdline {
+				ans = append(ans, x.(string))
 			}
 			return ans
 		}
@@ -128,9 +136,9 @@ func (self *Option) parse_value(val string) (any, error) {
 	switch self.OptionType {
 	case BoolOption:
 		switch val {
-		case "true":
+		case "y", "yes", "true":
 			return true, nil
-		case "false":
+		case "n", "no", "false":
 			return false, nil
 		default:
 			return nil, &ParseError{Option: self, Message: fmt.Sprintf(":yellow:`%s` is not a valid value for :bold:`%s`.", val, self.seen_option)}

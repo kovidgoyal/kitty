@@ -487,6 +487,9 @@ parse_cli_from_python_spec(PyObject *self, PyObject *args) {
             flag.defval.floatval = PyFloat_AsDouble(defval);
         } else if (strcmp(type, "list") == 0) {
             flag.defval.type = CLI_VALUE_LIST;
+            if (PyObject_IsTrue(defval)) {
+                for (ssize_t l = 0; l < PyList_GET_SIZE(defval); l++) add_to_listval(&spec, &flag.defval, PyUnicode_AsUTF8(PyList_GET_ITEM(defval, l)));
+            }
         } else if (strcmp(type, "choices") == 0) {
             flag.defval.type = CLI_VALUE_CHOICE;
             flag.defval.strval = PyUnicode_AsUTF8(defval);

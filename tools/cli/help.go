@@ -78,10 +78,6 @@ func (self *Option) FormatOptionForMan(output io.Writer) {
 	fmt.Fprint(output, "\" ")
 	defval := self.Default
 	switch self.OptionType {
-	case StringOption:
-		if self.IsList {
-			defval = ""
-		}
 	case CountOption:
 		defval = ""
 	case BoolOption:
@@ -109,10 +105,6 @@ func (self *Option) FormatOption(output io.Writer, formatter *markup.Context, sc
 	}
 	defval := self.Default
 	switch self.OptionType {
-	case StringOption:
-		if self.IsList {
-			defval = ""
-		}
 	case CountOption:
 		defval = ""
 	case BoolOption:

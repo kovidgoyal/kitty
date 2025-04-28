@@ -112,7 +112,7 @@ func TestSSHConfigParsing(t *testing.T) {
 	hostname = "2"
 	rt()
 
-	ci, err := ParseCopyInstruction("--exclude moose --dest=target " + cf)
+	ci, err := ParseCopyInstruction("--exclude moose --exclude second --dest=target " + cf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestSSHConfigParsing(t *testing.T) {
 	if diff != "" {
 		t.Fatalf("Incorrect local_path:\n%s", diff)
 	}
-	diff = cmp.Diff([]string{"moose"}, ci[0].exclude_patterns)
+	diff = cmp.Diff([]string{"moose", "second"}, ci[0].exclude_patterns)
 	if diff != "" {
 		t.Fatalf("Incorrect excludes:\n%s", diff)
 	}

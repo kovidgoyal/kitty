@@ -224,7 +224,7 @@ def defval_for_opt(opt: OptionDict) -> Any:
         else:
             dv = dv.lower() in ('true', 'yes', 'y')
     elif typ == 'list':
-        dv = []
+        dv = list(shlex_split(dv)) if dv else []
     elif typ in ('int', 'float'):
         dv = (int if typ == 'int' else float)(dv or 0)
     return dv
@@ -248,6 +248,15 @@ def get_option_maps(seq: OptionSpecSeq) -> tuple[dict[str, OptionDict], dict[str
 def c_str(x: str) -> str:
     x = x.replace('\\', r'\\')
     return f'"{x}"'
+
+
+def add_list_values(*values: str) -> Iterator[str]:
+    yield f'\tflag.defval.listval.items = alloc_for_cli(spec, {len(values)} * sizeof(flag.defval.listval.items[0]));'
+    yield '\tif (!flag.defval.listval.items) OOM;'
+    yield f'\tflag.defval.listval.count = {len(values)};'
+    yield f'\tflag.defval.listval.capacity = {len(values)};'
+    for n, value in enumerate(values):
+        yield f'\tflag.defval.listval.items[{n}] = {c_str(value)};'
 
 
 def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
@@ -278,16 +287,12 @@ def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
                 yield f'\tflag.defval.floatval = {defval};'
             case 'list':
                 yield '\tflag.defval.type = CLI_VALUE_LIST;'
+                if defval:
+                    yield from add_list_values(*defval)
             case 'choices':
                 yield '\tflag.defval.type = CLI_VALUE_CHOICE;'
                 yield f'\tflag.defval.strval = {c_str(defval)};'
-                choices = opt['choices']
-                yield f'\tflag.defval.listval.items = alloc_for_cli(spec, {len(choices)} * sizeof(flag.defval.listval.items[0]));'
-                yield '\tif (!flag.defval.listval.items) OOM;'
-                yield f'\tflag.defval.listval.count = {len(choices)};'
-                yield f'\tflag.defval.listval.capacity = {len(choices)};'
-                for n, choice in enumerate(choices):
-                    yield f'\tflag.defval.listval.items[{n}] = {c_str(choice)};'
+                yield from add_list_values(*opt['choices'])
             case _:
                 yield '\tflag.defval.type = CLI_VALUE_STRING;'
                 yield f'\tflag.defval.strval = {"NULL" if defval is None else c_str(defval)};'
@@ -524,51 +529,62 @@ type=bool-set
 
 
 # panel CLI spec {{{
+panel_defaults = {
+    'lines': '1', 'columns': '1',
+    'margin_left': '0', 'margin_top': '0', 'margin_right': '0', 'margin_bottom': '0',
+    'edge': 'top', 'layer': 'bottom', 'override': '', 'cls': f'{appname}-panel',
+    'focus_policy': 'not-allowed', 'exclusive_zone': '-1', 'override_exclusive_zone': 'no',
+    'single_instance': 'no', 'instance_group': '', 'toggle_visibility': 'no',
+    'start_as_hidden': 'no', 'detach': 'no', 'detached_log': '',
+}
+
 def build_panel_cli_spec(defaults: dict[str, str]) -> str:
+    d = panel_defaults.copy()
+    d.update(defaults)
     return r'''
 --lines
-default=1
+default={lines}
 The number of lines shown in the panel. Ignored for background, centered, and vertical panels.
 If it has the suffix :code:`px` then it sets the height of the panel in pixels instead of lines.
 
 
 --columns
-default=1
+default={columns}
 The number of columns shown in the panel. Ignored for background, centered, and horizontal panels.
 If it has the suffix :code:`px` then it sets the width of the panel in pixels instead of columns.
 
 
 --margin-top
 type=int
-default=0
+default={margin_top}
 Set the top margin for the panel, in pixels. Has no effect for bottom edge panels.
 Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
 
 
 --margin-left
 type=int
-default=0
+default={margin_left}
 Set the left margin for the panel, in pixels. Has no effect for right edge panels.
 Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
 
 
 --margin-bottom
 type=int
-default=0
+default={margin_bottom}
 Set the bottom margin for the panel, in pixels. Has no effect for top edge panels.
 Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
 
 
 --margin-right
 type=int
-default=0
+default={margin_right}
 Set the right margin for the panel, in pixels. Has no effect for left edge panels.
 Only works on macOS and Wayland compositors that supports the wlr layer shell protocol.
 
 
 --edge
 choices=top,bottom,left,right,background,center,none
-default=top
+default={edge}
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
 The value :code:`background` means make the panel the "desktop wallpaper". This
@@ -586,7 +602,7 @@ and :option:`--columns`.
 
 --layer
 choices=background,bottom,top,overlay
-default=bottom
+default={layer}
 On a Wayland compositor that supports the wlr layer shell protocol, specifies the layer
 on which the panel should be drawn. This parameter is ignored and set to
 :code:`background` if :option:`--edge` is set to :code:`background`. On macOS, maps
@@ -600,6 +616,7 @@ Path to config file to use for kitty when drawing the panel.
 
 --override -o
 type=list
+default={override}
 Override individual kitty configuration options, can be specified multiple times.
 Syntax: :italic:`name=value`. For example: :option:`kitty +kitten panel -o` font_size=20
 
@@ -612,7 +629,7 @@ output automatically, typically the last output the user interacted with or the 
 
 --class --app-id
 dest=cls
-default={appname}-panel
+default={cls}
 condition=not is_macos
 Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it sets the app id.
 
@@ -624,7 +641,7 @@ Set the name part of the :italic:`WM_CLASS` property (defaults to using the valu
 
 --focus-policy
 choices=not-allowed,exclusive,on-demand
-default=not-allowed
+default={focus_policy}
 On a Wayland compositor that supports the wlr layer shell protocol, specify the focus policy for keyboard
 interactivity with the panel. Please refer to the wlr layer shell protocol documentation for more details.
 On macOS, :code:`exclusive` and :code:`on-demand` are currently the same. Ignored on X11.
@@ -632,7 +649,7 @@ On macOS, :code:`exclusive` and :code:`on-demand` are currently the same. Ignore
 
 --exclusive-zone
 type=int
-default=-1
+default={exclusive_zone}
 On a Wayland compositor that supports the wlr layer shell protocol, request a given exclusive zone for the panel.
 Please refer to the wlr layer shell documentation for more details on the meaning of exclusive and its value.
 If :option:`--edge` is set to anything other than :code:`center` or :code:`none`, this flag will not have any
@@ -643,6 +660,7 @@ Ignored on X11 and macOS.
 
 --override-exclusive-zone
 type=bool-set
+default={override_exclusive_zone}
 On a Wayland compositor that supports the wlr layer shell protocol, override the default exclusive zone.
 This has effect only if :option:`--edge` is set to :code:`top`, :code:`left`, :code:`bottom` or :code:`right`.
 Ignored on X11 and macOS.
@@ -650,12 +668,14 @@ Ignored on X11 and macOS.
 
 --single-instance -1
 type=bool-set
+default={single_instance}
 If specified only a single instance of the panel will run. New
 invocations will instead create a new top-level window in the existing
 panel instance.
 
 
 --instance-group
+default={instance_group}
 Used in combination with the :option:`--single-instance` option. All
 panel invocations with the same :option:`--instance-group` will result
 in new panels being created in the first panel instance within that group.
@@ -666,29 +686,33 @@ in new panels being created in the first panel instance within that group.
 
 --toggle-visibility
 type=bool-set
+default={toggle_visibility}
 When set and using :option:`--single-instance` will toggle the visibility of the
 existing panel rather than creating a new one.
 
 
 --start-as-hidden
 type=bool-set
+default={start_as_hidden}
 Start in hidden mode, useful with :option:`--toggle-visibility`.
 
 
 --detach
 type=bool-set
+default={detach}
 Detach from the controlling terminal, if any, running in an independent child process,
 the parent process exits immediately.
 
 
 --detached-log
+default={detached_log}
 Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 
 
 --debug-rendering
 type=bool-set
 For internal debugging use.
-'''.format(appname=appname, listen_on_defn=listen_on_defn, **defaults)
+'''.format(appname=appname, listen_on_defn=listen_on_defn, **d)
 
 
 # }}}

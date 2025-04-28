@@ -23,18 +23,22 @@ type base_options struct {
 }
 
 type options struct {
-	FromParent   int
-	SimpleString string
-	Choices      string
-	SetMe        bool
-	Int          int
-	Float        float64
-	List         []string
+	FromParent      int
+	SimpleString    string
+	Choices         string
+	SetMe           bool
+	Int             int
+	Float           float64
+	List            []string
+	ListWithDefault []string
 }
 
 func TestCLIParsing(t *testing.T) {
 
 	rt := func(expected_cmd *Command, cmdline string, expected_options any, expected_args ...string) {
+		if opts, ok := expected_options.(*options); ok && opts.ListWithDefault == nil {
+			opts.ListWithDefault = []string{`1`, `2`}
+		}
 		cp, err := shlex.Split(cmdline)
 		if err != nil {
 			t.Fatal(err)
@@ -77,6 +81,7 @@ func TestCLIParsing(t *testing.T) {
 	child1.Add(OptionSpec{Name: "--int -i", Type: "int"})
 	child1.Add(OptionSpec{Name: "--float", Type: "float"})
 	child1.Add(OptionSpec{Name: "--list", Type: "list"})
+	child1.Add(OptionSpec{Name: "--list-with-default -L", Type: "list", Default: "1 2"})
 	child1.SubCommandIsOptional = true
 	gc1 := child1.AddSubCommand(&Command{Name: "gc1"})
 
@@ -97,6 +102,7 @@ func TestCLIParsing(t *testing.T) {
 	rt(child1, "test child1 --int -3 --simple-s -s --float=3.3", &options{SimpleString: "-s", Int: -3, Float: 3.3})
 	rt(child1, "test child1 -bi=3 --float=3.3", &options{SetMe: true, Int: 3, Float: 3.3})
 	rt(child1, "test child1 --list -3 -p --list one", &options{FromParent: 1, List: []string{"-3", "one"}})
+	rt(child1, "test child1 -L 3 -L 4", &options{ListWithDefault: []string{`1`, `2`, `3`, `4`}})
 	rt(gc1, "test -p child1 -p gc1 xxx", &empty_options{}, "xxx")
 
 	_, err := child1.ParseArgs(strings.Split("test child1 --choices x", " "))

@@ -30,6 +30,8 @@ func complete_kitty_listen_on(completions *cli.Completions, word string, arg_num
 	}
 }
 
+var CompleteKittyListenOn = complete_kitty_listen_on
+
 func GetQuickAccessKittyExe() (kitty_exe string, err error) {
 	if kitty_exe, err = filepath.EvalSymlinks(utils.KittyExe()); err != nil {
 		return "", fmt.Errorf("Failed to find path to the kitty executable, this kitten requires the kitty executable to function. The kitty executable or a symlink to it must be placed in the same directory as the kitten executable. Error: %w", err)

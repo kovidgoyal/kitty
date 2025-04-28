@@ -11,6 +11,7 @@ import (
 
 	"kitty/tools/cli/markup"
 	"kitty/tools/utils"
+	"kitty/tools/utils/shlex"
 )
 
 var _ = fmt.Print
@@ -178,7 +179,11 @@ func option_from_spec(spec OptionSpec) (*Option, error) {
 	}
 	ans.parsed_default = pval
 	if ans.IsList {
-		ans.parsed_default = []string{}
+		if ans.Default == "" {
+			ans.parsed_default = nil
+		} else if ans.parsed_default, err = shlex.Split(ans.Default); err != nil {
+			return nil, err
+		}
 	}
 	ans.Completer = spec.Completer
 	if ans.Aliases == nil || len(ans.Aliases) == 0 {

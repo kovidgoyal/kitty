@@ -80,9 +80,9 @@ class GoOption:
         elif self.obj_dict['completion'].type is not CompletionType.none:
             ans += ''.join(self.obj_dict['completion'].as_go_code('Completer', ': ')) + ','
         if depth > 0:
-            ans += f'\nDepth: {depth},\n'
+            ans += f'\n\tDepth: {depth},\n'
         if self.default:
-            ans += f'\nDefault: "{serialize_as_go_string(self.default)}",\n'
+            ans += f'\n\tDefault: "{serialize_as_go_string(self.default)}",\n'
         return ans + '})'
 
     def as_string_for_commandline(self) -> str:
@@ -94,7 +94,7 @@ class GoOption:
             case 'int':
                 val = f'fmt.Sprintf(`%d`, {val})'
             case 'string':
-                val = val
+                return f'if {val} != "" {{ ans = append(ans, `{flag}=` + {val}) }}'
             case 'float64':
                 val = f'fmt.Sprintf(`%f`, {val})'
             case '[]string':

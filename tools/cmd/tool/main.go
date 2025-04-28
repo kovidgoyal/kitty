@@ -15,6 +15,7 @@ import (
 	"kitty/kittens/notify"
 	"kitty/kittens/panel"
 	"kitty/kittens/query_terminal"
+	"kitty/kittens/quick_access_terminal"
 	"kitty/kittens/show_key"
 	"kitty/kittens/ssh"
 	"kitty/kittens/themes"
@@ -56,6 +57,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	transfer.EntryPoint(root)
 	// panel
 	panel.EntryPoint(root)
+	// quick_access_terminal
+	quick_access_terminal.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
 	// show_key
