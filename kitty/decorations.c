@@ -186,7 +186,7 @@ vert(uint8_t *ans, bool is_left_edge, double width_pt, double dpi_x, FontCellMet
     const unsigned left = is_left_edge ? 0 : (fcm.cell_width > width ? fcm.cell_width - width : 0);
     for (unsigned y = 0; y < fcm.cell_height; y++) {
         const unsigned offset = y * fcm.cell_width + left;
-        for (unsigned x = offset; x < offset + width; x++) ans[x] = 0xff;
+        memset(ans + offset, 0xff, width);
     }
 }
 
@@ -196,7 +196,7 @@ horz(uint8_t *ans, bool is_top_edge, double height_pt, double dpi_y, FontCellMet
     const unsigned top = is_top_edge ? 0 : (fcm.cell_height > height ? fcm.cell_height - height : 0);
     for (unsigned y = top; y < top + height; y++) {
         const unsigned offset = y * fcm.cell_width;
-        for (unsigned x = 0; x < fcm.cell_width; x++) ans[offset + x] = 0xff;
+        memset(ans + offset, 0xff, fcm.cell_width);
     }
     return top;
 }
