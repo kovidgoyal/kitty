@@ -32,6 +32,7 @@
 static void cleanup_free(void *p) { free(*(void**) p); }
 #define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
 
+static bool being_tested = false;
 
 #ifndef __FreeBSD__
 static bool
@@ -304,12 +305,14 @@ static void
 exec_kitten(int argc, char *argv[], char *exe_dir) {
     char exe[PATH_MAX+1] = {0};
     safe_snprintf(exe, PATH_MAX, "%s/kitten", exe_dir);
-    char **newargv = malloc(sizeof(char*) * (argc + 1));
-    memcpy(newargv, argv, sizeof(char*) * argc);
-    newargv[argc] = 0;
-    newargv[0] = "kitten";
+    argv[0] = "kitten";
+    if (being_tested) {
+        printf("kitten_exe: %s\n", exe);
+        output_argv("argv", argc, argv);
+        exit(0);
+    }
     errno = 0;
-    execv(exe, newargv);
+    execv(exe, argv);
     fprintf(stderr, "Failed to execute kitten (%s) with error: %s\n", exe, strerror(errno));
     exit(1);
 }
@@ -357,18 +360,23 @@ static void
 handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, int offset_for_panel_kitten) {
     CLIOptions opts = {0};
     RAII_CLISpec(subcommand_cli_spec);
+#define swap_cli_spec \
+            subcommand_cli_spec.original_argc = cli_spec->original_argc; \
+            subcommand_cli_spec.original_argv = cli_spec->original_argv; \
+            cli_spec = &subcommand_cli_spec;
     if (offset_for_panel_kitten < 0) {
         // Look for +open
         int offset = offset_for_plus_subcommand(cli_spec->original_argc, cli_spec->original_argv, "open");
         if (offset) {
             if (!parse_and_check_kitty_cli(&subcommand_cli_spec, cli_spec->original_argc - offset, cli_spec->original_argv + offset)) exit(1);
-            cli_spec = &subcommand_cli_spec;
+            swap_cli_spec;
             opts.open_url_count = cli_spec->argc;
             opts.open_urls = cli_spec->argv;
         }
     } else if (offset_for_panel_kitten > 0) {
-        parse_and_check_panel_kitten_cli(&subcommand_cli_spec, cli_spec->original_argc - offset_for_panel_kitten, cli_spec->original_argv + offset_for_panel_kitten);
-        cli_spec = &subcommand_cli_spec;
+        parse_and_check_panel_kitten_cli(
+            &subcommand_cli_spec, cli_spec->original_argc - offset_for_panel_kitten, cli_spec->original_argv + offset_for_panel_kitten);
+        swap_cli_spec;
     }
     if (get_bool_cli_val(cli_spec, "help")) return;
     if (get_bool_cli_val(cli_spec, "version")) {
@@ -381,21 +389,29 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, in
     }
     opts.session = get_string_cli_val(cli_spec, "session");
     if (get_bool_cli_val(cli_spec, "detach")) {
-#define reopen_or_fail(path, mode, which) { errno = 0; if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
-        if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0)))
-            reopen_or_fail("/dev/null", "rb", stdin);
         const char *detached_log = get_string_cli_val(cli_spec, "detached_log");
-        if (!detached_log || !detached_log[0]) detached_log = "/dev/null";
-        reopen_or_fail(detached_log, "ab", stdout);
-        reopen_or_fail(detached_log, "ab", stderr);
+        if (being_tested) {
+            printf("detach: true\n");
+            printf("detached_log: %s\n", detached_log ? detached_log : "");
+            printf("session: %s\n", opts.session ? opts.session : "");
+            exit(0);
+        } else {
+#define reopen_or_fail(path, mode, which) { errno = 0; if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
+            if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0)))
+                reopen_or_fail("/dev/null", "rb", stdin);
+            if (!detached_log || !detached_log[0]) detached_log = "/dev/null";
+            reopen_or_fail(detached_log, "ab", stdout);
+            reopen_or_fail(detached_log, "ab", stderr);
 #undef reopen_or_fail
-        if (fork() != 0) exit(0);
-        setsid();
+            if (fork() != 0) exit(0);
+            setsid();
+        }
     }
     unsetenv("KITTY_SI_DATA");
     if (get_bool_cli_val(cli_spec, "single_instance")) {
         char igbuf[256];
         opts.wait_for_single_instance_window_close = get_bool_cli_val(cli_spec, "wait_for_single_instance_window_close");
+        opts.instance_group = get_string_cli_val(cli_spec, "instance_group");
         if (instance_group_prefix && instance_group_prefix[0]) {
             opts.instance_group = get_string_cli_val(cli_spec, "instance_group");
             if (opts.instance_group && opts.instance_group[0]) {
@@ -405,7 +421,17 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, in
                 opts.instance_group = instance_group_prefix;
             }
         }
-        single_instance_main(cli_spec->original_argc, cli_spec->original_argv, &opts);
+        if (being_tested) {
+            output_argv("argv", cli_spec->original_argc, cli_spec->original_argv);
+            output_argv("open_urls", opts.open_url_count, opts.open_urls);
+            output_values_for_testing(cli_spec);
+            printf("single_instance: 1\n");
+            printf("instance_group: %s\n", opts.instance_group ? opts.instance_group : "");
+            printf("session: %s\n", opts.session ? opts.session : "");
+            exit(0);
+        } else {
+            single_instance_main(cli_spec->original_argc, cli_spec->original_argv, &opts);
+        }
     }
 }
 
@@ -417,7 +443,8 @@ delegate_to_kitten_if_possible(int argc, char **argv, char* exe_dir) {
         const char *kitten = argv[offset + 1];
         if (is_wrapped_kitten(kitten)) exec_kitten(argc - offset, argv + offset, exe_dir);
         if (strcmp(kitten, "panel") == 0) {
-            handle_fast_commandline(NULL, "panel", offset + 1);
+            CLISpec t = {.original_argv = argv, .original_argc=argc};
+            handle_fast_commandline(&t, "panel", offset + 1);
             return true;
         }
     }
@@ -432,8 +459,25 @@ endswith(const char *str, const char *suffix) {
     return strcmp(str + strLen - suffixLen, suffix) == 0;
 }
 
-int main(int argc_, char *argv_[], char* envp[]) {
+static void
+output_test_data(RunData *rd) {
+    printf("launched_by_launch_services: %d\n", rd->launched_by_launch_services);
+    printf("is_quick_access_terminal: %d\n", rd->is_quick_access_terminal);
+    char buf[PATH_MAX + 1];
+    if (rd->config_dir == NULL) {
+        if (get_config_dir(buf, sizeof(buf))) rd->config_dir = buf;
+    }
+    printf("config_dir: %s\n", rd->config_dir ? rd->config_dir : "");
+    output_for_testing(rd->cli_spec);
+}
+
+int
+main(int argc_, char *argv_[], char* envp[]) {
     if (argc_ < 1 || !argv_) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
+    if (argc_ > 1 && strcmp(argv_[1], "+testing-launcher-code") == 0) {
+        being_tested = true;
+        memmove(argv_ + 1, argv_ + 2, (--argc_ - 1) * sizeof(argv_[0]));
+    }
     if (!ensure_working_stdio()) return 1;
     char exe[PATH_MAX+1] = {0};
     if (!read_exe_path(exe, sizeof(exe))) return 1;
@@ -483,8 +527,9 @@ int main(int argc_, char *argv_[], char* envp[]) {
         .exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .cli_spec = &cli_spec, .lc_ctype = lc_ctype,
         .launched_by_launch_services=launched_by_launch_services, .config_dir = config_dir, .is_quick_access_terminal=is_quick_access_terminal,
     };
-    ret = run_embedded(&run_data);
+    if (being_tested) output_test_data(&run_data);
+    else ret = run_embedded(&run_data);
     single_instance_main(-1, NULL, NULL);
-    Py_FinalizeEx();
+    if (!being_tested) Py_FinalizeEx();
     return ret;
 }

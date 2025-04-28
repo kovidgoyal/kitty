@@ -18,6 +18,7 @@
 static inline void cleanup_decref2(PyObject **p) { Py_CLEAR(*p); }
 #define RAII_PyObject(name, initializer) __attribute__((cleanup(cleanup_decref2))) PyObject *name = initializer
 
+#undef MAX
 #define MAX(x, y) __extension__ ({ \
     const __typeof__ (x) __a__ = (x); const __typeof__ (y) __b__ = (y); \
         __a__ > __b__ ? __a__ : __b__;})
@@ -105,8 +106,11 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
         block.used = 0;
     }
     char *ans = block.buf + block.used;
-    block.used += sz;
     ans[sz-1] = 0;
+    block.used += sz;
+    // keep returned memory regions aligned to size of pointer
+    size_t extra = sz % sizeof(void*);
+    if (extra) block.used += sizeof(void*) - extra;
     return ans;
 #undef block
 }
@@ -311,15 +315,47 @@ parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {
 }
 
 #ifdef FOR_LAUNCHER
+static void
+output_argv(const char *name, int argc, char **argv) {
+    printf("%s:", name);
+    for (int i = 0; i < argc; i++) printf("\x1e%s", argv[i]);
+    printf("\n");
+}
+
+static void
+output_values_for_testing(CLISpec *spec) {
+    value_map_for_loop(&spec->value_map) {
+        printf("%s: ", itr.data->key);
+        CLIValue v = itr.data->val;
+        switch (v.type) {
+            case CLI_VALUE_STRING: case CLI_VALUE_CHOICE:
+                printf("%s", v.strval ? v.strval : ""); break;
+            case CLI_VALUE_BOOL:
+                printf("%d", v.boolval); break;
+            case CLI_VALUE_INT:
+                printf("%lld", v.intval); break;
+            case CLI_VALUE_FLOAT:
+                printf("%f", v.floatval); break;
+            case CLI_VALUE_LIST:
+                break;
+        }
+        printf("\n");
+    }
+}
+
+static void
+output_for_testing(CLISpec *spec) {
+    output_argv("original_argv", spec->original_argc, spec->original_argv);
+    output_argv("argv", spec->argc, spec->argv);
+    output_values_for_testing(spec);
+}
+
 static CLIValue
 get_cli_val(CLISpec *spec, const char *name) {
     cli_hash_itr itr = vt_get(&spec->value_map, name);
     if (vt_is_end(itr)) {
         flag_hash_itr itr = vt_get(&spec->flag_map, name);
-        if (vt_is_end(itr)) {
-            fprintf(stderr, "Trying to get value for unknown option name: %s\n", name);
-            exit(1);
-        }
+        if (vt_is_end(itr)) return (CLIValue){0};
         return itr.data->val.defval;
     }
     return itr.data->val;

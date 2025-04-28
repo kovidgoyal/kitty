@@ -1299,8 +1299,10 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
     cflags = f'-Wall {werror} -fpie'.split()
     cppflags = [define(f'WRAPPED_KITTENS=" {wrapped_kittens()} "')]
-    libs: List[str] = []
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
+    xxhash = xxhash_flags()
+    cppflags.extend(xxhash[0])
+    libs: list[str] = xxhash[1]
     if args.profile or args.sanitize:
         cflags.append('-g3')
         if args.sanitize:

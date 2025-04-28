@@ -470,9 +470,10 @@ def kitty_main() -> None:
             'Run kitty and open the specified files or URLs in it, using launch-actions.conf. For details'
             ' see https://sw.kovidgoyal.net/kitty/open_actions/#scripting-the-opening-of-files-with-kitty-on-macos'
             '\n\nAll the normal kitty options can be used.')
+        cli_flags = None
     else:
+        cli_flags = getattr(sys, 'kitty_run_data', {}).get('cli_flags', None)
         usage = msg = appname = None
-    cli_flags = getattr(sys, 'kitty_run_data', {}).get('cli_flags', None)
     cli_opts, rest = parse_args(args=args, result_class=CLIOptions, usage=usage, message=msg, appname=appname, preparsed_from_c=cli_flags)
     if getattr(sys, 'cmdline_args_for_open', False):
         setattr(sys, 'cmdline_args_for_open', rest)

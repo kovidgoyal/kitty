@@ -3,11 +3,13 @@
 
 import os
 import shutil
+import subprocess
 import tempfile
 
+from kitty.constants import kitty_exe
 from kitty.fast_data_types import Color, test_cursor_blink_easing_function
 from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, to_color
-from kitty.utils import log_error
+from kitty.utils import log_error, shlex_split
 
 from . import BaseTest
 
@@ -28,13 +30,15 @@ class TestConfParsing(BaseTest):
     def test_conf_parsing(self):
         conf_parsing(self)
 
+    def test_launcher(self):
+        launcher(self)
+
     def test_cli_parsing(self):
         cli_parsing(self)
 
 
 def cli_parsing(self):
     from kitty.cli import CLIOptions, Options, parse_cmdline, parse_option_spec
-    from kitty.utils import shlex_split
     seq, disabled = parse_option_spec('''\
 --simple-string -s
 a simple string
@@ -117,6 +121,77 @@ version
     t('-1 -v0', fails=True, version_called=True)
     t('-1 --version', fails=True, version_called=True)
     t('-f=3.142 --int 17', float=3.142, int=17)
+
+
+def launcher(self):
+    kexe = kitty_exe()
+    def get_report(cmdline: str, launch_services= False):
+        args = list(shlex_split(cmdline))
+        env = dict(os.environ)
+        if launch_services:
+            env['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '1'
+        cp = subprocess.run([kexe, "+testing-launcher-code"] + args, env=env, stdout=subprocess.PIPE)
+        self.assertEqual(cp.returncode, 0)
+        ans = {}
+        for line in cp.stdout.decode().split('\n'):
+            if not line:
+                continue
+            try:
+                key, val = line.split(':')
+            except ValueError:
+                raise AssertionError(f'Unexpected output from launcher: {line!r}\n{cp.stdout.decode()}')
+            if key in ('argv', 'original_argv', 'open_urls'):
+                val = [x for x in val.split('\x1e') if x]
+            else:
+                val = val.strip()
+            ans[key] = val
+        return ans, cp.stdout.decode().replace('\x1e', ' ')
+    def test(cmdline, assertions):
+        r, output = get_report(cmdline, launch_services=assertions.get('launched_by_launch_services', '0') != '0')
+        for key, expected in assertions.items():
+            self.assertEqual(expected, r.get(key), f'Failed for {key} with command line: {cmdline}\nOutput:\n{output}')
+        return output
+
+    def t(cmdline, **assertions):
+        assertions['is_quick_access_terminal'] = '0'
+        assertions['config_dir'] = os.path.join(os.environ['XDG_CONFIG_HOME'], 'kitty')
+        assertions.setdefault('launched_by_launch_services', '0')
+        test(cmdline, assertions)
+
+    def si(cmdline, **assertions):
+        assertions['single_instance'] = '1'
+        test(cmdline, assertions)
+
+    def dt(cmdline, **assertions):
+        assertions['detach'] = 'true'
+        test(cmdline, assertions)
+
+    def k(cmdline):
+        assertions = {}
+        assertions['argv'] = ['kitten'] + cmdline.split()
+        for prefix in ('+kitten', '+ kitten'):
+            output = test(prefix + ' ' + cmdline, assertions)
+            self.assertIn('kitten_exe:', output)
+
+    def pn(cmdline, **assertions):
+        ig = assertions.get('instance_group')
+        assertions['instance_group'] = f'panel-{ig}' if ig else 'panel'
+        assertions['single_instance'] = '1'
+        assertions['session'] = ''
+        test(cmdline, assertions)
+
+    t('', original_argv=[kexe], argv=[])
+    t('--title=xxx cat', title='xxx', original_argv=[kexe, '--title=xxx', 'cat'], argv=['cat'])
+    k('icat abc xyz')
+    t('+kitten unwrapped xyz', argv=['+kitten', 'unwrapped', 'xyz'])
+    t('+ kitten unwrapped xyz', original_argv=[kexe, '+', 'kitten', 'unwrapped', 'xyz'])
+    si('--single-instance --instance-group=g -T 3', argv=[kexe, '--single-instance', '--instance-group=g', '-T', '3'])
+    t('+open --help', argv=['+open', '--help'])
+    t('+open -1 --help', argv=['+open', '-1', '--help'])
+    si('+open -1 moose', argv=[kexe, '+open', '-1', 'moose'], open_urls=['moose'])
+    si('+open -1 --instance-group=g x y', instance_group='g', open_urls=['x', 'y'])
+    dt('--detach --session=moose --detached-log=xyz', detached_log='xyz', session='moose')
+    pn('+kitten panel -1 --edge=left', edge='left')
 
 
 def conf_parsing(self):
