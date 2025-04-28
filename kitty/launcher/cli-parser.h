@@ -141,18 +141,17 @@ dest_for_alias(CLISpec *spec, const char *alias) {
     alias_hash_itr itr = vt_get(&spec->alias_map, alias);
     if (vt_is_end(itr)) {
         const char *match_key = NULL, *match_val = NULL;
-        size_t total = 0, count = 0;
+        size_t total = 0;
         alias_hash matches; vt_init(&matches);
         alias_map_for_loop(&spec->alias_map) {
             if (strstr(itr.data->key, alias) == itr.data->key) {
                 total += strlen(itr.data->key) + 8;
                 if (!match_key) { match_key = itr.data->key; match_val = itr.data->val; }
                 if (vt_is_end(vt_insert(&matches, itr.data->val, itr.data->key))) OOM;
-                count++;
             }
         }
         if (match_key) {
-            if (count == 1) { vt_cleanup(&matches); return match_val; }
+            if (vt_size(&matches) == 1) { vt_cleanup(&matches); return match_val; }
             total += 256 + total;
             char *buf = alloc_for_cli(spec, total);
             if (!buf) OOM;
