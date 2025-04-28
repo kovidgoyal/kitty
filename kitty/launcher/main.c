@@ -513,7 +513,6 @@ main(int argc_, char *argv_[], char* envp[]) {
     RAII_CLISpec(cli_spec);
     bool handle_fast_commandline_called = delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir);
     bool ok = parse_and_check_kitty_cli(&cli_spec, argva.count, argva.argv);
-    free_argv_array(&argva);
     if (!ok) return 1;
     if (!handle_fast_commandline_called) handle_fast_commandline(&cli_spec, NULL, -1);
     int ret=0;
@@ -529,6 +528,7 @@ main(int argc_, char *argv_[], char* envp[]) {
     };
     if (being_tested) output_test_data(&run_data);
     else ret = run_embedded(&run_data);
+    free_argv_array(&argva);
     single_instance_main(-1, NULL, NULL);
     if (!being_tested) Py_FinalizeEx();
     return ret;
