@@ -76,28 +76,23 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 					options_allowed = false
 					continue
 				}
-				opt_str := arg
+				opt_str, opt_val, has_val := strings.Cut(arg, "=")
 				if strings.HasPrefix(opt_str, "--") {
-					opt_str, opt_val, has_val := strings.Cut(opt_str, "=")
 					err := handle_option(opt_str, has_val, opt_val, false)
 					if err != nil {
 						return err
 					}
 				} else {
-					prefix, payload, has_payload := strings.Cut(opt_str, "=")
-					runes := []rune(prefix[1:])
+					runes := []rune(opt_str[1:])
 					for i, sl := range runes {
-						err := handle_option("-"+string(sl), false, "", i < len(runes)-1)
+						var err error
+						if i == len(runes)-1 {
+							err = handle_option("-"+string(sl), has_val, opt_val, false)
+						} else {
+							err = handle_option("-"+string(sl), false, "", true)
+						}
 						if err != nil {
 							return err
-						}
-					}
-					if has_payload {
-						if expecting_arg_for == nil {
-							return &ParseError{Message: fmt.Sprintf("The option: :yellow:`-%c` does not take values", prefix[len(prefix)-1])}
-						} else {
-							expecting_arg_for.add_value(payload)
-							expecting_arg_for = nil
 						}
 					}
 				}
