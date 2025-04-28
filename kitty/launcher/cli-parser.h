@@ -122,10 +122,49 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
     snprintf(buf, sz + 4, fmt, __VA_ARGS__); spec->errmsg = buf; \
 }
 
+static bool
+add_to_listval(CLISpec *spec, CLIValue *v, const char *val) {
+    if (v->listval.count + 1 >= v->listval.capacity) {
+        size_t cap = MAX(64, v->listval.capacity * 2);
+        char **new = alloc_for_cli(spec, cap * sizeof(v->listval.items[0]));
+        if (!new) return false;
+        v->listval.capacity = cap;
+        if (v->listval.count) memcpy(new, v->listval.items, sizeof(new[0]) * v->listval.count);
+        v->listval.items = (void*)new;
+    }
+    v->listval.items[v->listval.count++] = val;
+    return true;
+}
+
 static const char*
 dest_for_alias(CLISpec *spec, const char *alias) {
     alias_hash_itr itr = vt_get(&spec->alias_map, alias);
     if (vt_is_end(itr)) {
+        const char *match_key = NULL, *match_val = NULL;
+        size_t total = 0, count = 0;
+        alias_hash matches; vt_init(&matches);
+        alias_map_for_loop(&spec->alias_map) {
+            if (strstr(itr.data->key, alias) == itr.data->key) {
+                total += strlen(itr.data->key) + 8;
+                if (!match_key) { match_key = itr.data->key; match_val = itr.data->val; }
+                if (vt_is_end(vt_insert(&matches, itr.data->val, itr.data->key))) OOM;
+                count++;
+            }
+        }
+        if (match_key) {
+            if (count == 1) return match_val;
+            total += 256 + total;
+            char *buf = alloc_for_cli(spec, total);
+            if (!buf) OOM;
+            int n = snprintf(buf, total, "The flag %s is ambiguous. Possible matches:", alias);
+            alias_map_for_loop(&matches) {
+                n += snprintf(buf + n, total - n, " %s,", itr.data->val);
+            }
+            buf[n-1] = '.';
+            spec->errmsg = buf;
+            return NULL;
+        }
+
         set_err("Unknown flag: %s use --help.", alias);
         return NULL;
     }
@@ -145,15 +184,7 @@ add_list_value(CLISpec *spec, const char *dest, const char *val) {
     cli_hash_itr itr = vt_get_or_insert(&spec->value_map, dest, (CLIValue){.type=CLI_VALUE_LIST});
     if (vt_is_end(itr)) OOM;
     CLIValue v = itr.data->val;
-    if (v.listval.count + 1 >= v.listval.capacity) {
-        size_t cap = MAX(64, v.listval.capacity * 2);
-        char **new = alloc_for_cli(spec, cap * sizeof(v.listval.items[0]));
-        if (!new) OOM;
-        v.listval.capacity = cap;
-        if (v.listval.count) memcpy(new, v.listval.items, sizeof(new[0]) * v.listval.count);
-        v.listval.items = (void*)new;
-    }
-    v.listval.items[v.listval.count++] = val;
+    if (!add_to_listval(spec, &v, val)) OOM;
     if (vt_is_end(vt_insert(&spec->value_map, dest, v))) OOM;
 }
 
@@ -184,8 +215,9 @@ process_cli_arg(CLISpec* spec, const char *alias, const char *payload) {
                 if (strcmp(payload, flag->defval.listval.items[c]) == 0) { val.strval = payload; break; }
             }
             if (!val.strval) {
-                size_t bufsz = 128 + strlen(alias) + strlen(payload);
+                size_t bufsz = 0;
                 for (size_t c = 0; c < flag->defval.listval.count; c++) bufsz += strlen(flag->defval.listval.items[c]) + 8;
+                bufsz += 256 + strlen(alias) + strlen(payload) + bufsz;
                 char *buf = alloc_for_cli(spec, bufsz);
                 int n = snprintf(buf, bufsz, "%s is an invalid value for %s. Valid values are:",
                         payload[0] ? payload : "<empty>", alias);
