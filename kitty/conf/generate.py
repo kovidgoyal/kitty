@@ -466,8 +466,8 @@ def write_output(loc: str, defn: Definition, extra_after_type_defn: str = '') ->
 
 
 def go_type_data(parser_func: ParserFuncType, ctype: str, is_multiple: bool = False) -> tuple[str, str]:
-    if ctype:
-        if ctype == 'string':
+    if ctype or is_multiple:
+        if ctype in ('string', ''):
             if is_multiple:
                 return 'string', '[]string{val}, nil'
             return 'string', 'val, nil'
@@ -493,7 +493,7 @@ def go_type_data(parser_func: ParserFuncType, ctype: str, is_multiple: bool = Fa
     if p == 'positive_float':
         return 'float64', 'config.PositiveFloat(val, 10, 64)'
     if p == 'unit_float':
-        return 'float64', 'config.UnitFloat(val, 10, 64)'
+        return 'float64', 'config.UnitFloat(val)'
     if p == 'python_string':
         return 'string', 'config.StringLiteral(val)'
     th = get_type_hints(parser_func)
