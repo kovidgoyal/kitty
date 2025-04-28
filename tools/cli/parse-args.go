@@ -55,7 +55,13 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 		}
 		if has_val {
 			if !needs_arg {
-				return &ParseError{Message: fmt.Sprintf("The option: :yellow:`%s` does not take values", opt_str)}
+				if opt.OptionType == BoolOption {
+					if err := opt.add_value(opt_val); err != nil {
+						return err
+					}
+				} else {
+					return &ParseError{Message: fmt.Sprintf("The option: :yellow:`%s` does not take values", opt_str)}
+				}
 			}
 			return opt.add_value(opt_val)
 		} else if needs_arg {

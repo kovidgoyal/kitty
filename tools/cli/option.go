@@ -160,16 +160,32 @@ func (self *Option) add_value(val string) error {
 	name_without_hyphens := NormalizeOptionName(self.seen_option)
 	switch self.OptionType {
 	case BoolOption:
-		for _, x := range self.Aliases {
-			if x.NameWithoutHyphens == name_without_hyphens {
-				if x.IsUnset {
-					self.values_from_cmdline = append(self.values_from_cmdline, "false")
-					self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, false)
-				} else {
-					self.values_from_cmdline = append(self.values_from_cmdline, "true")
-					self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, true)
+		if val == "" {
+			for _, x := range self.Aliases {
+				if x.NameWithoutHyphens == name_without_hyphens {
+					if x.IsUnset {
+						self.values_from_cmdline = append(self.values_from_cmdline, "false")
+						self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, false)
+					} else {
+						self.values_from_cmdline = append(self.values_from_cmdline, "true")
+						self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, true)
+					}
+					return nil
 				}
-				return nil
+			}
+		} else {
+			switch val {
+			case "y", "yes", "true":
+				self.values_from_cmdline = append(self.values_from_cmdline, "true")
+				self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, true)
+			case "n", "no", "false":
+				self.values_from_cmdline = append(self.values_from_cmdline, "false")
+				self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, false)
+			default:
+				return &ParseError{Option: self, Message: fmt.Sprintf(":yellow:`%s` is not a valid value for :bold:`%s`. Valid values: %s",
+					val, self.seen_option, "y, yes, true, n, no and false",
+				)}
+
 			}
 		}
 	case StringOption:

@@ -86,6 +86,11 @@ func TestCLIParsing(t *testing.T) {
 		"one", "two",
 	)
 	rt(child1, "test child1", &options{})
+	rt(child1, "test child1 --set-me one", &options{SetMe: true}, "one")
+	rt(child1, "test child1 --set-me=y one", &options{SetMe: true}, "one")
+	rt(child1, "test child1 --set-me=n one", &options{SetMe: false}, "one")
+	rt(child1, "test child1 --set-me=n --set-me one", &options{SetMe: true}, "one")
+	rt(child1, "test child1 --set-me=y -b=n one", &options{SetMe: false}, "one")
 	rt(child1, "test child1 --set-me --simple-string=foo one", &options{SimpleString: "foo", SetMe: true}, "one")
 	rt(child1, "test child1 --set-me --simp=foo one", &options{SimpleString: "foo", SetMe: true}, "one")
 	rt(child1, "test child1 --set-me --simple-string= one", &options{SetMe: true}, "one")

@@ -82,8 +82,10 @@ func (self *Option) FormatOptionForMan(output io.Writer) {
 		if self.IsList {
 			defval = ""
 		}
-	case BoolOption, CountOption:
+	case CountOption:
 		defval = ""
+	case BoolOption:
+		defval = utils.IfElse(self.Default == "true", "yes", "no")
 	}
 
 	if defval != "" {
@@ -111,7 +113,11 @@ func (self *Option) FormatOption(output io.Writer, formatter *markup.Context, sc
 		if self.IsList {
 			defval = ""
 		}
-	case BoolOption, CountOption:
+	case CountOption:
+		defval = ""
+	case BoolOption:
+		yn := utils.IfElse(self.Default == "true", "yes", "no")
+		fmt.Fprintf(output, " %s", formatter.Italic("[="+yn+"]"))
 		defval = ""
 	}
 	if defval != "" {
