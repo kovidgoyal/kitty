@@ -357,14 +357,14 @@ offset_for_plus_subcommand(int argc, char **argv, const char *name) {
 }
 
 static void
-handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, int offset_for_panel_kitten) {
+handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
     CLIOptions opts = {0};
     RAII_CLISpec(subcommand_cli_spec);
 #define swap_cli_spec \
             subcommand_cli_spec.original_argc = cli_spec->original_argc; \
             subcommand_cli_spec.original_argv = cli_spec->original_argv; \
             cli_spec = &subcommand_cli_spec;
-    if (offset_for_panel_kitten < 0) {
+    if (instance_group_prefix == NULL) {
         // Look for +open
         int offset = offset_for_plus_subcommand(cli_spec->original_argc, cli_spec->original_argv, "open");
         if (offset) {
@@ -373,9 +373,9 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, in
             opts.open_url_count = cli_spec->argc;
             opts.open_urls = cli_spec->argv;
         }
-    } else if (offset_for_panel_kitten > 0) {
+    } else {
         parse_and_check_panel_kitten_cli(
-            &subcommand_cli_spec, cli_spec->original_argc - offset_for_panel_kitten, cli_spec->original_argv + offset_for_panel_kitten);
+            &subcommand_cli_spec, cli_spec->original_argc, cli_spec->original_argv);
         swap_cli_spec;
     }
     if (get_bool_cli_val(cli_spec, "help")) return;
@@ -443,8 +443,9 @@ delegate_to_kitten_if_possible(int argc, char **argv, char* exe_dir) {
         const char *kitten = argv[offset + 1];
         if (is_wrapped_kitten(kitten)) exec_kitten(argc - offset, argv + offset, exe_dir);
         if (strcmp(kitten, "panel") == 0) {
-            CLISpec t = {.original_argv = argv, .original_argc=argc};
-            handle_fast_commandline(&t, "panel", offset + 1);
+            offset++;
+            CLISpec t = {.original_argv = argv + offset, .original_argc=argc - offset};
+            handle_fast_commandline(&t, "panel");
             return true;
         }
     }
@@ -514,7 +515,7 @@ main(int argc_, char *argv_[], char* envp[]) {
     bool handle_fast_commandline_called = delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir);
     bool ok = parse_and_check_kitty_cli(&cli_spec, argva.count, argva.argv);
     if (!ok) return 1;
-    if (!handle_fast_commandline_called) handle_fast_commandline(&cli_spec, NULL, -1);
+    if (!handle_fast_commandline_called) handle_fast_commandline(&cli_spec, NULL);
     int ret=0;
     char lib[PATH_MAX+1] = {0};
     if (KITTY_LIB_PATH[0] == '/') {
