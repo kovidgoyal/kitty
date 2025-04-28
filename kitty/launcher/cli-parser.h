@@ -359,18 +359,18 @@ output_argv(const char *name, int argc, char **argv) {
 static void
 output_values_for_testing(CLISpec *spec) {
     value_map_for_loop(&spec->value_map) {
-        printf("%s: ", itr.data->key);
         CLIValue v = itr.data->val;
         switch (v.type) {
             case CLI_VALUE_STRING: case CLI_VALUE_CHOICE:
-                printf("%s", v.strval ? v.strval : ""); break;
+                printf("%s: %s", itr.data->key, v.strval ? v.strval : ""); break;
             case CLI_VALUE_BOOL:
-                printf("%d", v.boolval); break;
+                printf("%s: %d", itr.data->key, v.boolval); break;
             case CLI_VALUE_INT:
-                printf("%lld", v.intval); break;
+                printf("%s: %lld", itr.data->key, v.intval); break;
             case CLI_VALUE_FLOAT:
-                printf("%f", v.floatval); break;
+                printf("%s: %f", itr.data->key, v.floatval); break;
             case CLI_VALUE_LIST:
+                output_argv(itr.data->key, v.listval.count, (char**)v.listval.items);
                 break;
         }
         printf("\n");

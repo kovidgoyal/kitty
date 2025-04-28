@@ -126,6 +126,7 @@ version
 
 def launcher(self):
     kexe = kitty_exe()
+    cfgdir = os.path.join(os.environ['XDG_CONFIG_HOME'], 'kitty')
     def get_report(cmdline: str, launch_services= False):
         args = list(shlex_split(cmdline))
         env = dict(os.environ)
@@ -141,7 +142,7 @@ def launcher(self):
                 key, val = line.split(':')
             except ValueError:
                 raise AssertionError(f'Unexpected output from launcher: {line!r}\n{cp.stdout.decode()}')
-            if key in ('argv', 'original_argv', 'open_urls'):
+            if '\x1e' in val:
                 val = [x for x in val.split('\x1e') if x]
             else:
                 val = val.strip()
@@ -155,7 +156,7 @@ def launcher(self):
 
     def t(cmdline, **assertions):
         assertions['is_quick_access_terminal'] = '0'
-        assertions['config_dir'] = os.path.join(os.environ['XDG_CONFIG_HOME'], 'kitty')
+        assertions['config_dir'] = cfgdir
         assertions.setdefault('launched_by_launch_services', '0')
         test(cmdline, assertions)
 
@@ -182,7 +183,8 @@ def launcher(self):
         test(cmdline, assertions)
 
     t('', original_argv=[kexe], argv=[])
-    t('--title=xxx cat', title='xxx', original_argv=[kexe, '--title=xxx', 'cat'], argv=['cat'])
+    t('--title=xxx --start-as maximized -c=a -c b cat', title='xxx', start_as='maximized', config=['a', 'b'], original_argv=[
+        kexe, '--title=xxx', '--start-as', 'maximized', '-c=a', '-c', 'b', 'cat'], argv=['cat'])
     k('icat abc xyz')
     t('+kitten unwrapped xyz', argv=['+kitten', 'unwrapped', 'xyz'])
     t('+ kitten unwrapped xyz', original_argv=[kexe, '+', 'kitten', 'unwrapped', 'xyz'])
