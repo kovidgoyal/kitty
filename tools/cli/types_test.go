@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"kitty/tools/utils/shlex"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 var _ = fmt.Print
@@ -54,14 +56,14 @@ func TestCLIParsing(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(expected_options, actual_options) {
-			t.Fatalf("Option values incorrect (expected != actual):\nCommand line: %s\n%#v != %#v", cmdline, expected_options, actual_options)
+		if diff := cmp.Diff(expected_options, actual_options); diff != "" {
+			t.Fatalf("Option values incorrect (expected != actual):\nCommand line: %s\n%s", cmdline, diff)
 		}
 		if expected_args == nil {
 			expected_args = []string{}
 		}
-		if !reflect.DeepEqual(expected_args, cmd.Args) {
-			t.Fatalf("Argument values incorrect (expected != actual):\nCommand line: %s\n%#v != %#v", cmdline, expected_args, cmd.Args)
+		if diff := cmp.Diff(expected_args, cmd.Args); diff != "" {
+			t.Fatalf("Argument values incorrect (expected != actual):\nCommand line: %s\n%s", cmdline, diff)
 		}
 		cmd.Root().ResetAfterParseArgs()
 	}
@@ -71,8 +73,8 @@ func TestCLIParsing(t *testing.T) {
 	child1 := root.AddSubCommand(&Command{Name: "child1"})
 	child1.Add(OptionSpec{Name: "--choices", Choices: "a b c"})
 	child1.Add(OptionSpec{Name: "--simple-string -s"})
-	child1.Add(OptionSpec{Name: "--set-me", Type: "bool-set"})
-	child1.Add(OptionSpec{Name: "--int", Type: "int"})
+	child1.Add(OptionSpec{Name: "--set-me -b", Type: "bool-set"})
+	child1.Add(OptionSpec{Name: "--int -i", Type: "int"})
 	child1.Add(OptionSpec{Name: "--float", Type: "float"})
 	child1.Add(OptionSpec{Name: "--list", Type: "list"})
 	child1.SubCommandIsOptional = true
@@ -88,6 +90,7 @@ func TestCLIParsing(t *testing.T) {
 	rt(child1, "test child1 --set-me --simp=foo one", &options{SimpleString: "foo", SetMe: true}, "one")
 	rt(child1, "test child1 --set-me --simple-string= one", &options{SetMe: true}, "one")
 	rt(child1, "test child1 --int -3 --simple-s -s --float=3.3", &options{SimpleString: "-s", Int: -3, Float: 3.3})
+	rt(child1, "test child1 -bi=3 --float=3.3", &options{SetMe: true, Int: 3, Float: 3.3})
 	rt(child1, "test child1 --list -3 -p --list one", &options{FromParent: 1, List: []string{"-3", "one"}})
 	rt(gc1, "test -p child1 -p gc1 xxx", &empty_options{}, "xxx")
 

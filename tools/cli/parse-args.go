@@ -51,7 +51,7 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 		opt.seen_option = opt_str
 		needs_arg := opt.needs_argument()
 		if needs_arg && val_not_allowed {
-			return &ParseError{Message: fmt.Sprintf("The option : :yellow:`%s` must be followed by a value not another option", opt_str)}
+			return &ParseError{Message: fmt.Sprintf("The option: :yellow:`%s` must be followed by a value not another option", opt_str)}
 		}
 		if has_val {
 			if !needs_arg {
@@ -77,25 +77,27 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 					continue
 				}
 				opt_str := arg
-				opt_val := ""
-				has_val := false
 				if strings.HasPrefix(opt_str, "--") {
-					parts := strings.SplitN(arg, "=", 2)
-					if len(parts) > 1 {
-						has_val = true
-						opt_val = parts[1]
-					}
-					opt_str = parts[0]
+					opt_str, opt_val, has_val := strings.Cut(opt_str, "=")
 					err := handle_option(opt_str, has_val, opt_val, false)
 					if err != nil {
 						return err
 					}
 				} else {
-					runes := []rune(opt_str[1:])
+					prefix, payload, has_payload := strings.Cut(opt_str, "=")
+					runes := []rune(prefix[1:])
 					for i, sl := range runes {
 						err := handle_option("-"+string(sl), false, "", i < len(runes)-1)
 						if err != nil {
 							return err
+						}
+					}
+					if has_payload {
+						if expecting_arg_for == nil {
+							return &ParseError{Message: fmt.Sprintf("The option: :yellow:`-%c` does not take values", prefix[len(prefix)-1])}
+						} else {
+							expecting_arg_for.add_value(payload)
+							expecting_arg_for = nil
 						}
 					}
 				}
