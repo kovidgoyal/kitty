@@ -173,10 +173,10 @@ dest_for_alias(CLISpec *spec, const char *alias) {
 }
 
 static bool
-is_alias_bool(CLISpec* spec, const char *alias) {
-    const char *dest = dest_for_alias(spec, alias);
-    if (!dest) return false;
-    flag_hash_itr itr = vt_get(&spec->flag_map, dest);
+is_alias_bool(CLISpec* spec, const char *alias, const char **dest_out) {
+    *dest_out = dest_for_alias(spec, alias);
+    if (!*dest_out) return false;
+    flag_hash_itr itr = vt_get(&spec->flag_map, *dest_out);
     return itr.data->val.defval.type == CLI_VALUE_BOOL;
 }
 
@@ -190,8 +190,8 @@ add_list_value(CLISpec *spec, const char *dest, const char *val) {
 }
 
 static bool
-process_cli_arg(CLISpec* spec, const char *alias, const char *payload) {
-    const char *dest = dest_for_alias(spec, alias);
+process_cli_arg(CLISpec* spec, const char *alias, const char *payload, const char *dest) {
+    if (!dest) dest = dest_for_alias(spec, alias);
     if (!dest) return false;
     flag_hash_itr itr = vt_get(&spec->flag_map, dest);
     const FlagSpec *flag = &itr.data->val;
@@ -286,6 +286,7 @@ parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {
     }
     char flag[3] = {'-', 0, 0};
     const char *current_option = NULL;
+    const char *dest_for_current_arg = NULL;
     for (int i = 1; i < argc; i++) {
         char *arg = argv[i];
         switch(state) {
@@ -304,26 +305,27 @@ parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {
                         payload = has_equal + 1;
                     }
                     if (is_long_opt) {
-                        if (is_alias_bool(spec, arg)) {
-                            if (!process_cli_arg(spec, arg, payload)) return false;
+                        if (is_alias_bool(spec, arg, &dest_for_current_arg)) {
+                            if (!process_cli_arg(spec, arg, payload, dest_for_current_arg)) return false;
                         } else {
+                            if (spec->errmsg) return false;
                             if (has_equal) {
-                                if (!process_cli_arg(spec, arg, payload)) return false;
+                                if (!process_cli_arg(spec, arg, payload, dest_for_current_arg)) return false;
                             } else {
                                 state = EXPECTING_ARG;
                                 current_option = arg;
                             }
                         }
-                        if (spec->errmsg) return false;
                     } else {
                         for (const char *letter = arg + 1; *letter; letter++) {
                             flag[1] = *letter;
                             if (letter[1]) {
-                                if (!process_cli_arg(spec, flag, NULL)) return false;
+                                if (!process_cli_arg(spec, flag, NULL, NULL)) return false;
                             } else {
-                                if (is_alias_bool(spec, flag) || payload) {
-                                    if (!process_cli_arg(spec, flag, payload)) return false;
+                                if (is_alias_bool(spec, flag, &dest_for_current_arg) || payload) {
+                                    if (!process_cli_arg(spec, flag, payload, dest_for_current_arg)) return false;
                                 } else {
+                                    if (spec->errmsg) return false;
                                     state = EXPECTING_ARG;
                                     current_option = flag;
                                 }
@@ -338,7 +340,7 @@ parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {
                 }
             } break;
             case EXPECTING_ARG: {
-                if (current_option && !process_cli_arg(spec, current_option, arg)) return false;
+                if (current_option && !process_cli_arg(spec, current_option, arg, NULL)) return false;
                 current_option = NULL; state = NORMAL;
             } break;
         }
