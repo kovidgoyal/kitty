@@ -124,5 +124,5 @@ that is, they are used to set the variable value for some font characteristic.
 
 
 In addition to these keys, any four letter key is treated as the name of a
-variable characteristic of the font. It's value is used to set the value for
+variable characteristic of the font. Its value is used to set the value for
 the name.

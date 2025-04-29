@@ -596,7 +596,7 @@ The value :code:`center` anchors the panel to all sides and covers the entire
 display (on macOS the part of the display not covered by titlebar and dock).
 The panel can be shrunk and placed using the margin parameters.
 The value :code:`none` anchors the panel to the top left corner and should be
-placed and using the margin parameters. It's size is set bye :option:`--lines`
+placed and using the margin parameters. Its size is set by :option:`--lines`
 and :option:`--columns`.
 
 
