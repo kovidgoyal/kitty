@@ -136,6 +136,28 @@ add_to_listval(CLISpec *spec, CLIValue *v, const char *val) {
     return true;
 }
 
+static bool
+use_ansi_escape_codes(void) {
+    static bool checked = false, ans;
+    if (!checked) { ans = isatty(STDERR_FILENO); checked = true; }
+    return ans;
+}
+
+static const char*
+formatted_text(CLISpec *spec, const char *start_code, const char *text, const char *end_code) {
+    if (!use_ansi_escape_codes()) return text;
+    static const char *fmt =  "\x1b[%sm%s\x1b[%sm";
+    int sz = snprintf(NULL, 0, fmt, start_code, text, end_code);
+    char *ans = alloc_for_cli(spec, sz+1);
+    snprintf(ans, sz+1, fmt, start_code, text, end_code);
+    return ans;
+}
+
+#define red_text(text) formatted_text(spec, "91", text, "39")
+#define yellow_text(text) formatted_text(spec, "93", text, "39")
+#define green_text(text) formatted_text(spec, "32", text, "39")
+#define italic_text(text) formatted_text(spec, "3", text, "23")
+
 static const char*
 dest_for_alias(CLISpec *spec, const char *alias) {
     alias_hash_itr itr = vt_get(&spec->alias_map, alias);
@@ -155,7 +177,7 @@ dest_for_alias(CLISpec *spec, const char *alias) {
             total += 256 + total;
             char *buf = alloc_for_cli(spec, total);
             if (!buf) OOM;
-            int n = snprintf(buf, total, "The flag %s is ambiguous. Possible matches:", alias);
+            int n = snprintf(buf, total, "The flag %s is ambiguous. Possible matches:", yellow_text(alias));
             alias_map_for_loop(&matches) {
                 n += snprintf(buf + n, total - n, " %s,", itr.data->val);
             }
@@ -165,7 +187,7 @@ dest_for_alias(CLISpec *spec, const char *alias) {
             return NULL;
         }
 
-        set_err("Unknown flag: %s use --help.", alias);
+        set_err("Unknown flag: %s use --help.", red_text(alias));
         return NULL;
     }
     return itr.data->val;
@@ -203,8 +225,8 @@ process_cli_arg(CLISpec* spec, const char *alias, const char *payload, const cha
                 if (streq(y) || streq(yes) || streq(true)) val.boolval = true;
                 else if (streq(n) || streq(no) || streq(false)) val.boolval = false;
                 else {
-                    set_err("%s is an invalid value for %s. Valid values are: y, yes, true, n, no and false.",
-                            payload[0] ? payload : "<empty>", alias);
+                    set_err("%s is an invalid value for %s. Valid values are: %s, %s, %s, %s, %s and %s.",
+                            red_text(payload[0] ? payload : "<empty>"), green_text(alias), italic_text("y"), italic_text("yes"), italic_text("true"), italic_text("n"), italic_text("no"), italic_text("false"));
                     return false;
                 }
             } else val.boolval = !flag->defval.boolval;
@@ -220,9 +242,9 @@ process_cli_arg(CLISpec* spec, const char *alias, const char *payload, const cha
                 bufsz += 256 + strlen(alias) + strlen(payload) + bufsz;
                 char *buf = alloc_for_cli(spec, bufsz);
                 int n = snprintf(buf, bufsz, "%s is an invalid value for %s. Valid values are:",
-                        payload[0] ? payload : "<empty>", alias);
+                        red_text(payload[0] ? payload : "<empty>"), green_text(alias));
                 for (size_t c = 0; c < flag->defval.listval.count; c++)
-                    n += snprintf(buf + n, bufsz - n, " %s,", flag->defval.listval.items[c]);
+                    n += snprintf(buf + n, bufsz - n, " %s,", italic_text(flag->defval.listval.items[c]));
                 buf[n-1] = '.';
                 spec->errmsg = buf;
                 return false;
@@ -231,13 +253,13 @@ process_cli_arg(CLISpec* spec, const char *alias, const char *payload, const cha
         case CLI_VALUE_INT:
             errno = 0; val.intval = strtoll(payload, NULL, 10);
             if (errno) {
-                set_err("%s is an invalid value for %s, it must be an integer number.", payload, alias);
+                set_err("%s is an invalid value for %s, it must be an integer number.", red_text(payload), green_text(alias));
                 return false;
             } break;
         case CLI_VALUE_FLOAT:
             errno = 0; val.floatval = strtod(payload, NULL);
             if (errno) {
-                set_err("%s is an invalid value for %s, it must be a number.", payload, alias);
+                set_err("%s is an invalid value for %s, it must be a number.", red_text(payload), green_text(alias));
                 return false;
             } break;
         case CLI_VALUE_LIST: add_list_value(spec, flag->dest, payload); return true;
@@ -344,7 +366,7 @@ parse_cli_loop(CLISpec *spec, bool save_original_argv, int argc, char **argv) {
             } break;
         }
     }
-    if (state == EXPECTING_ARG) set_err("The %s flag must be followed by an argument.", current_option ? current_option : "");
+    if (state == EXPECTING_ARG) set_err("The %s flag must be followed by an argument.", yellow_text(current_option ? current_option : ""));
     return spec->errmsg != NULL;
 }
 
