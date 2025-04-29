@@ -6,9 +6,6 @@ from collections.abc import Sequence
 
 
 class CLIOptions:
-    # these are present here because the parser doesn't set them on macOS
-    cls: str = ''
-    name: str = ''
     def __repr__(self) -> str:
         return repr(vars(self))
 

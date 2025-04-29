@@ -64,7 +64,7 @@ typedef struct FlagSpec {
 typedef struct CLISpec {
     cli_hash value_map;
     alias_hash alias_map;
-    flag_hash flag_map;
+    flag_hash flag_map, disabled_map;
     char **argv; int argc;  // leftover args
     char **original_argv; int original_argc;  // original args
     const char* errmsg;
@@ -274,6 +274,7 @@ alloc_cli_spec(CLISpec *spec) {
     vt_init(&spec->value_map);
     vt_init(&spec->alias_map);
     vt_init(&spec->flag_map);
+    vt_init(&spec->disabled_map);
 }
 
 static void
@@ -284,6 +285,7 @@ dealloc_cli_spec(void *v) {
     vt_cleanup(&spec->value_map);
     vt_cleanup(&spec->alias_map);
     vt_cleanup(&spec->flag_map);
+    vt_cleanup(&spec->disabled_map);
 }
 
 #define RAII_CLISpec(name) __attribute__((cleanup(dealloc_cli_spec))) CLISpec name = {0}; alloc_cli_spec(&name)
@@ -428,6 +430,31 @@ get_string_cli_val(CLISpec *spec, const char *name) {
 }
 #endif
 
+static bool
+clival_as_python(const CLIValue *v, PyObject *is_seen, const char *dest, PyObject *ans) {
+#define S(fv) { \
+    RAII_PyObject(temp, Py_BuildValue("NO", fv, is_seen)); if (!temp) return false; \
+    if (PyDict_SetItemString(ans, dest, temp) != 0) return false; \
+}
+        switch (v->type) {
+            case CLI_VALUE_BOOL: S(PyBool_FromLong((long)v->boolval)); break;
+            case CLI_VALUE_STRING: if (v->strval) { S(PyUnicode_FromString(v->strval)); } else { S(Py_NewRef(Py_None)); } break;
+            case CLI_VALUE_CHOICE: S(PyUnicode_FromString(v->strval)); break;
+            case CLI_VALUE_INT: S(PyLong_FromLongLong(v->intval)); break;
+            case CLI_VALUE_FLOAT: S(PyFloat_FromDouble(v->floatval)); break;
+            case CLI_VALUE_LIST: {
+                RAII_PyObject(l, PyList_New(v->listval.count)); if (!l) return false;
+                for (size_t i = 0; i < v->listval.count; i++) {
+                    PyObject *x = PyUnicode_FromString(v->listval.items[i]); if (!x) return false;
+                    PyList_SET_ITEM(l, i, x);
+                }
+                S(Py_NewRef(l));
+            } break;
+        }
+#undef S
+        return true;
+}
+
 static PyObject*
 cli_parse_result_as_python(CLISpec *spec) {
     if (PyErr_Occurred()) return NULL;
@@ -440,25 +467,12 @@ cli_parse_result_as_python(CLISpec *spec) {
         cli_hash_itr i = vt_get(&spec->value_map, flag->dest);
         PyObject *is_seen = vt_is_end(i) ? Py_False : Py_True;
         const CLIValue *v = is_seen == Py_True ? &i.data->val : &flag->defval;
-#define S(fv) { RAII_PyObject(temp, Py_BuildValue("NO", fv, is_seen)); if (!temp) return NULL; \
-    if (PyDict_SetItemString(ans, flag->dest, temp) != 0) return NULL;}
-        switch (v->type) {
-            case CLI_VALUE_BOOL: S(PyBool_FromLong((long)v->boolval)); break;
-            case CLI_VALUE_STRING: if (v->strval) { S(PyUnicode_FromString(v->strval)); } else { S(Py_NewRef(Py_None)); } break;
-            case CLI_VALUE_CHOICE: S(PyUnicode_FromString(v->strval)); break;
-            case CLI_VALUE_INT: S(PyLong_FromLongLong(v->intval)); break;
-            case CLI_VALUE_FLOAT: S(PyFloat_FromDouble(v->floatval)); break;
-            case CLI_VALUE_LIST: {
-                RAII_PyObject(l, PyList_New(v->listval.count)); if (!l) return NULL;
-                for (size_t i = 0; i < v->listval.count; i++) {
-                    PyObject *x = PyUnicode_FromString(v->listval.items[i]); if (!x) return NULL;
-                    PyList_SET_ITEM(l, i, x);
-                }
-                S(Py_NewRef(l));
-            } break;
-        }
+        if (!clival_as_python(v, is_seen, flag->dest, ans)) return NULL;
     }
-#undef S
+    flag_map_for_loop(&spec->disabled_map) {
+        const FlagSpec *flag = &itr.data->val;
+        if (!clival_as_python(&flag->defval, Py_False, flag->dest, ans)) return NULL;
+    }
     RAII_PyObject(leftover_args, PyList_New(spec->argc)); if (!leftover_args) return NULL;
     for (int i = 0; i < spec->argc; i++) {
         PyObject *t = PyUnicode_FromString(spec->argv[i]);

@@ -259,8 +259,34 @@ def add_list_values(*values: str) -> Iterator[str]:
         yield f'\tflag.defval.listval.items[{n}] = {c_str(value)};'
 
 
+def generate_c_for_opt(name: str, defval: Any, opt: OptionDict) -> Iterator[str]:
+    yield f'\tflag = (FlagSpec){{.dest={c_str(name)},}};'
+    match opt['type']:
+        case 'bool-set' | 'bool-reset':
+            yield '\tflag.defval.type = CLI_VALUE_BOOL;'
+            yield f'\tflag.defval.boolval = {"true" if defval else "false"};'
+        case 'int':
+            yield '\tflag.defval.type = CLI_VALUE_INT;'
+            yield f'\tflag.defval.intval = {defval};'
+        case 'float':
+            yield '\tflag.defval.type = CLI_VALUE_FLOAT;'
+            yield f'\tflag.defval.floatval = {defval};'
+        case 'list':
+            yield '\tflag.defval.type = CLI_VALUE_LIST;'
+            if defval:
+                yield from add_list_values(*defval)
+        case 'choices':
+            yield '\tflag.defval.type = CLI_VALUE_CHOICE;'
+            yield f'\tflag.defval.strval = {c_str(defval)};'
+            yield from add_list_values(*opt['choices'])
+        case _:
+            yield '\tflag.defval.type = CLI_VALUE_STRING;'
+            yield f'\tflag.defval.strval = {"NULL" if defval is None else c_str(defval)};'
+
+
 def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
-    names_map, _, defaults_map = get_option_maps(parse_option_spec(spec)[0])
+    seq, disabled = parse_option_spec(spec)
+    names_map, _, defaults_map = get_option_maps(seq)
     if 'help' not in names_map:
         names_map['help'] = {'type': 'bool-set', 'aliases': ('--help', '-h')}  # type: ignore
         defaults_map['help'] = False
@@ -273,30 +299,13 @@ def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
     for name, opt in names_map.items():
         for alias in opt['aliases']:
             yield f'\tif (vt_is_end(vt_insert(&spec->alias_map, {c_str(alias)}, {c_str(name)}))) OOM;'
-        yield f'\tflag = (FlagSpec){{.dest={c_str(name)},}};'
-        defval = defaults_map[name]
-        match opt['type']:
-            case 'bool-set' | 'bool-reset':
-                yield '\tflag.defval.type = CLI_VALUE_BOOL;'
-                yield f'\tflag.defval.boolval = {"true" if defval else "false"};'
-            case 'int':
-                yield '\tflag.defval.type = CLI_VALUE_INT;'
-                yield f'\tflag.defval.intval = {defval};'
-            case 'float':
-                yield '\tflag.defval.type = CLI_VALUE_FLOAT;'
-                yield f'\tflag.defval.floatval = {defval};'
-            case 'list':
-                yield '\tflag.defval.type = CLI_VALUE_LIST;'
-                if defval:
-                    yield from add_list_values(*defval)
-            case 'choices':
-                yield '\tflag.defval.type = CLI_VALUE_CHOICE;'
-                yield f'\tflag.defval.strval = {c_str(defval)};'
-                yield from add_list_values(*opt['choices'])
-            case _:
-                yield '\tflag.defval.type = CLI_VALUE_STRING;'
-                yield f'\tflag.defval.strval = {"NULL" if defval is None else c_str(defval)};'
+        yield from generate_c_for_opt(name, defaults_map[name], opt)
         yield '\tif (vt_is_end(vt_insert(&spec->flag_map, flag.dest, flag))) OOM;'
+    for d in disabled:
+        if not isinstance(d, str):
+            yield from generate_c_for_opt(d['dest'], defval_for_opt(d), d)
+            yield '\tif (vt_is_end(vt_insert(&spec->disabled_map, flag.dest, flag))) OOM;'
+
     yield '\tparse_cli_loop(spec, true, argc, argv);'
     yield '}'
 
