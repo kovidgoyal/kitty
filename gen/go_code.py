@@ -546,6 +546,7 @@ def kitten_clis() -> None:
             print('func (opts Options) AsCommandLine() (ans []string) {')
             if ser:
                 print('\t sval := ""')
+                print('\t _ = sval')
                 for x in ser:
                     print('\t' + x)
             print('return')
