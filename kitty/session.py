@@ -274,8 +274,9 @@ def create_sessions(
     ans.add_tab(opts)
     ans.tabs[-1].layout = current_layout
     if args is not None:
-        ans.os_window_class = args.cls
-        ans.os_window_name = args.name
+        with suppress(AttributeError):  # macOS
+            ans.os_window_class = args.cls
+            ans.os_window_name = args.name
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
         from kitty.tabs import SpecialWindow
