@@ -532,12 +532,12 @@ def main(called_from_panel: bool = False) -> None:
     global redirected_for_quick_access
     try:
         if is_macos and launched_by_launch_services and not called_from_panel:
+            with suppress(OSError):
+                os.chdir(os.path.expanduser('~'))
             if is_quick_access_terminal_app:
                 # we were started by launch services, use the kitten to read
                 # the config and re-run
                 os.execl(kitten_exe(), kitten_exe(), 'quick-access-terminal')
-            with suppress(OSError):
-                os.chdir(os.path.expanduser('~'))
             set_use_os_log(True)
         kitty_main(called_from_panel)
     except Exception:
