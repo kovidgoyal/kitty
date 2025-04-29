@@ -1003,8 +1003,8 @@ take, and the default value they take when missing. All integers are 32-bit.
 Key      Value                 Default    Description
 =======  ====================  =========  =================
 ``a``    Single character.     ``t``      The overall action this graphics command is performing.
-         ``(a, c, d, f, ``                ``t`` - transmit data, ``T`` - transmit data and display image,
-         ``p, q, t, T)``                  ``q`` - query terminal, ``p`` - put (display) previous transmitted image,
+         ``(a, c, d, f,                   ``t`` - transmit data, ``T`` - transmit data and display image,
+         p, q, t, T)``                    ``q`` - query terminal, ``p`` - put (display) previous transmitted image,
                                           ``d`` - delete image, ``f`` - transmit data for animation frames,
                                           ``a`` - control animation, ``c`` - compose animation frames
 
