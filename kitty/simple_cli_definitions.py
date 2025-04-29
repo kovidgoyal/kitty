@@ -281,7 +281,8 @@ def generate_c_for_opt(name: str, defval: Any, opt: OptionDict) -> Iterator[str]
             yield from add_list_values(*opt['choices'])
         case _:
             yield '\tflag.defval.type = CLI_VALUE_STRING;'
-            yield f'\tflag.defval.strval = {"NULL" if defval is None else c_str(defval)};'
+            if defval is not None:
+                yield f'\tflag.defval.strval = {c_str(defval)};'
 
 
 def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
