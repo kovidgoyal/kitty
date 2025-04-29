@@ -8,10 +8,10 @@ Draw a GPU accelerated dock panel on your desktop
     Overview
     --------------
 
-
-You can use this kitten to draw a GPU accelerated panel on the edge of your
-screen or as the desktop wallpaper, that shows the output from an arbitrary
-terminal program.
+Draw the desktop wallpaper or docks and panels using arbitrary
+terminal programs, For example, have `btop
+<https://github.com/aristocratos/btop>`__ or `cava
+<https://github.com/karlstav/cava/>`__ be your desktop wallpaper.
 
 It is useful for showing status information or notifications on your desktop
 using terminal programs instead of GUI toolkits.
@@ -65,31 +65,7 @@ panels and desktop components:
     * `pawbar <https://github.com/codelif/pawbar>`__
 
 
-.. _quake:
-
-Make a Quake like quick access terminal
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. versionadded:: 0.42.0
-   Support for quake mode, works only on macOS and Wayland, except for GNOME.
-
-This kitten can be used to make a quick access terminal, that appears and
-disappears at a key press. To do so use the following command:
-
-.. code-block:: sh
-
-    kitten quick-access-terminal
-
-Run this command in a terminal, and a quick access kitty window will show up at
-the top of your screen. Run it again, and the window will be hidden.
-
-Simply bind this command to some key press in your window manager or desktop
-environment settings and then you have a quick access terminal at a single key press.
-You can use the various panel options to configure the size, appearance and
-position of the quick access panel. In particular, the :option:`kitty +kitten panel --config` and
-:option:`kitty +kitten panel --override` options can be used to theme the terminal appropriately,
-making it look different from regular kitty terminal instances.
-
+.. _remote_control_panel:
 
 Controlling panels via remote control
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

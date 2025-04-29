@@ -13,6 +13,8 @@ Extend with kittens
    kittens/themes
    kittens/choose-fonts
    kittens/hints
+   kittens/quick-access-terminal
+   kittens/panel
    kittens/remote_file
    kittens/hyperlinked_grep
    kittens/transfer
@@ -49,6 +51,16 @@ Some prominent kittens:
 :doc:`Hints <kittens/hints>`
     Select and open/paste/insert arbitrary text snippets such as URLs,
     filenames, words, lines, etc. from the terminal screen.
+
+
+:doc:`Quick access terminal <kittens/quick-access-terminal>`
+    Get access to a quick access floating, semi-transparent kitty window
+    with a single keypress.
+
+
+:doc:`Panel <kittens/panel>`
+    Draw the desktop wallpaper or docks and panels using arbitrary
+    terminal programs.
 
 
 :doc:`Remote file <kittens/remote_file>`

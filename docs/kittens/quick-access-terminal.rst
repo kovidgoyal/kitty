@@ -26,22 +26,32 @@ the top of your screen. Run it again, and the window will be hidden.
 
 To make the terminal appear and disappear at a key press:
 
-.. tab:: Linux
+.. |macOs| replace:: :guilabel:`System Preferences->Keyboard->Keyboard Shortcuts->Services->General`
 
-   Simply bind the above command to some key press in your window manager or desktop
-   environment settings and then you have a quick access terminal at a single key press.
+.. only:: not man
 
-.. tab:: macOS
+    .. tab:: Linux
 
-   In kitty, run the above command to show the quick access window, then close
-   it by running the command again or pressing :kbd:`ctrl+d`. Now go to :guilabel:`System
-   Preferences->Keyboard->Keyboard Shortcuts->Services->General` and set a shortcut for
-   the :guilabel:`Quick access to kitty` entry.
+        Simply bind the above command to some key press in your window manager or desktop
+        environment settings and then you have a quick access terminal at a single key press.
+
+    .. tab:: macOS
+
+        In kitty, run the above command to show the quick access window, then close
+        it by running the command again or pressing :kbd:`ctrl+d`. Now go to |macOS| and set a shortcut for
+        the :guilabel:`Quick access to kitty` entry.
+
+.. only:: man
+
+    In Linux, simply assign the above command to a global shortcut in your
+    window manager. In macOS, go to |macOS| and set a shortcut
+    for the :guilabel:`Quick access to kitty` entry.
 
 .. note::
 
    This kitten uses the :doc:`panel kitten </kittens/panel>` under the
-   hood.
+   hood. You can use the :ref:`techniques described there <remote_control_panel>`
+   for remote controlling the quick access window.
 
 Configuration
 ------------------------
