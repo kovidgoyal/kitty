@@ -530,7 +530,7 @@ def kitten_clis() -> None:
             for opt in gopts:
                 print(opt.as_option('ans'))
                 od.append(opt.struct_declaration())
-                ser.append(opt.as_string_for_commandline())
+                ser.append('\n'.join(opt.as_string_for_commandline()))
             if ac is not None:
                 print(''.join(ac.as_go_code('ans.ArgCompleter', ' = ')))
             if not kcd:
@@ -544,8 +544,10 @@ def kitten_clis() -> None:
             print('\n'.join(od))
             print('}')
             print('func (opts Options) AsCommandLine() (ans []string) {')
-            for x in ser:
-                print('\t' + x)
+            if ser:
+                print('\t sval := ""')
+                for x in ser:
+                    print('\t' + x)
             print('return')
             print('}')
 

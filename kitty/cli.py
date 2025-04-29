@@ -85,21 +85,29 @@ class GoOption:
             ans += f'\n\tDefault: "{serialize_as_go_string(self.default)}",\n'
         return ans + '})'
 
-    def as_string_for_commandline(self) -> str:
+    def as_string_for_commandline(self) -> Iterator[str]:
+        # }}}}}}}}}}}]]]]]]]]]]]]]]]]]
         flag = self.flags[0]
         val = f'opts.{self.go_var_name}'
+        if self.go_type == '[]string':
+            yield f'\tfor _, x := range {val} {{ ans = append(ans, `{flag}=` + x) }}'
+            return
         match self.go_type:
             case 'bool':
-                val = f'fmt.Sprintf(`%#v`, {val})'
+                yield f'sval = fmt.Sprintf(`%#v`, {val})'
+                godef = '`true`' if self.type != 'bool-set' else '`false`'
             case 'int':
-                val = f'fmt.Sprintf(`%d`, {val})'
+                yield f'sval = fmt.Sprintf(`%d`, {val})'
+                godef = f"`{self.default or '0'}`"
             case 'string':
-                return f'if {val} != "" {{ ans = append(ans, `{flag}=` + {val}) }}'
+                yield f'sval = {val}'
+                godef = f'''"{serialize_as_go_string(self.default or '')}"'''
             case 'float64':
-                val = f'fmt.Sprintf(`%f`, {val})'
-            case '[]string':
-                return f'for _, x := range {val} {{ ans = append(ans, `{flag}=` + x) }}'
-        return f'ans = append(ans, `{flag}=` + {val})'
+                yield f'sval = fmt.Sprintf(`%f`, {val})'
+                godef = f"`{self.default or '0'}`"
+            case _:
+                raise ValueError(f'Unknown type: {self.go_type}')
+        yield f'\tif (sval != {godef}) {{ ans = append(ans, `{flag}=` + sval)}}'
 
     @property
     def sorted_choices(self) -> list[str]:
