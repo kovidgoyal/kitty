@@ -52,6 +52,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	argv := []string{kitty_exe, "+kitten", "panel"}
+	argv = append(argv, o.AsCommandLine()...)
 	err = unix.Exec(kitty_exe, append(argv, args...), os.Environ())
 	rc = 1
 	return
