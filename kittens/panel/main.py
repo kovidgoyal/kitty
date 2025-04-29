@@ -26,6 +26,7 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_TOP,
     glfw_primary_monitor_size,
     make_x11_window_a_dock_window,
+    set_layer_shell_config,
     toggle_os_window_visibility,
 )
 from kitty.os_window_size import WindowSizeData, edge_spacing
@@ -167,18 +168,23 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
 
 
 def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
+    from kitty.main import run_app
     from kitty.tabs import SpecialWindow
     try:
         args, items = parse_panel_args(list(sys_args[1:]))
     except BaseException as e:
         log_error(f'Invalid arguments received over single instance socket: {sys_args} with error: {e}')
         return
+    lsc = layer_shell_config(args)
+    layer_config_changed = lsc != run_app.layer_shell_config
+    run_app.layer_shell_config = lsc
     if args.toggle_visibility and boss.os_window_map:
         for os_window_id in boss.os_window_map:
             toggle_os_window_visibility(os_window_id)
+            if layer_config_changed:
+                set_layer_shell_config(os_window_id, lsc)
         return
     items = items or [kitten_exe(), 'run-shell']
-    lsc = layer_shell_config(args)
     os_window_id = boss.add_os_panel(lsc, args.cls, args.name)
     if notify_on_os_window_death:
         boss.os_window_death_actions[os_window_id] = partial(boss.notify_on_os_window_death, notify_on_os_window_death)
