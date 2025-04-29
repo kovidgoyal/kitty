@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"kitty/kittens/panel"
 	"kitty/tools/cli"
@@ -63,7 +64,9 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 
 	argv = append(argv, fmt.Sprintf("--override=background_opacity=%f", conf.Background_opacity))
-	argv = append(argv, fmt.Sprintf("--app-id=%s", conf.App_id))
+	if runtime.GOOS != "darwin" {
+		argv = append(argv, fmt.Sprintf("--app-id=%s", conf.App_id))
+	}
 	argv = append(argv, fmt.Sprintf("--focus-policy=%s", conf.Focus_policy))
 	if conf.Start_as_hidden {
 		argv = append(argv, `--start-as-hidden`)

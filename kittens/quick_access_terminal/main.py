@@ -62,7 +62,7 @@ opt('+kitty_override', '', long_text='Override individual kitty configuration op
 )
 
 opt('app_id', f'{appname}-quick-access',
-    long_text='The Wayland APP_ID assigned to the quick access window')
+    long_text='The Wayland APP_ID assigned to the quick access window (Linux only)')
 
 opt('start_as_hidden', 'no', option_type='to_bool',
     long_text='Whether to start the quick access terminal hidden. Useful if you are starting it as part of system startup.')
