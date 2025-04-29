@@ -1621,6 +1621,12 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 @implementation GLFWWindow
 
+static void
+handle_screen_size_change(_GLFWwindow *window, NSNotification *notification UNUSED) {
+    if (!window || !window->ns.layer_shell.is_active) return;
+    _glfwPlatformSetLayerShellConfig(window, NULL);
+}
+
 - (instancetype)initWithGlfwWindow:(NSRect)contentRect
                          styleMask:(NSWindowStyleMask)style
                            backing:(NSBackingStoreType)backingStoreType
@@ -1630,6 +1636,13 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     if (self != nil) {
         glfw_window = initWindow;
         self.tabbingMode = NSWindowTabbingModeDisallowed;
+        NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+        [center addObserverForName:NSApplicationDidChangeScreenParametersNotification
+                        object:nil
+                        queue:[NSOperationQueue mainQueue]
+                        usingBlock:^(NSNotification * _Nonnull notification) {
+                        handle_screen_size_change(glfw_window, notification);
+                    }];
     }
     return self;
 }
@@ -1637,6 +1650,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 - (void) removeGLFWWindow
 {
     glfw_window = NULL;
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
