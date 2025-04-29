@@ -380,6 +380,12 @@ For comprehensive documentation for kitty, please see: {url}''').format(
     appname=appname, url=website_url())
 
 
+def help_defval_for_bool(otype: str) -> str:
+    if otype == 'bool-set':
+        return 'no'
+    return 'yes'
+
+
 class PrintHelpForSeq:
 
     allow_pager = True
@@ -424,10 +430,7 @@ class PrintHelpForSeq:
             a('  ' + ', '.join(map(green, sorted(opt['aliases'], reverse=True))))
             defval = opt.get('default')
             if (otype := opt.get('type', '')).startswith('bool-'):
-                if otype == 'bool-set':
-                    blocks[-1] += italic('[=no]')
-                else:
-                    blocks[-1] += italic('[=yes]')
+                blocks[-1] += italic(f'[={help_defval_for_bool(otype)}]')
             else:
                 dt = f'''=[{italic(defval or '""')}]'''
                 blocks[-1] += dt
@@ -495,10 +498,7 @@ def seq_as_rst(
             continue  # hidden option
         defn = '.. option:: '
         if (otype := opt.get('type', '')).startswith('bool-'):
-            if otype == 'bool-set':
-                val_name = ' [=yes]'
-            else:
-                val_name = ' [=no]'
+            val_name = f' [={help_defval_for_bool(otype)}]'
         else:
             val_name = ' <{}>'.format(opt['dest'].upper())
         a(defn + ', '.join(o + val_name for o in sorted(opt['aliases'])))
