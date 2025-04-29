@@ -63,7 +63,6 @@ from .utils import (
     log_error,
     parse_os_window_state,
     safe_mtime,
-    shlex_split,
     startup_notification_handler,
 )
 
@@ -533,14 +532,13 @@ def main(called_from_panel: bool = False) -> None:
     global redirected_for_quick_access
     try:
         if is_macos and launched_by_launch_services and not called_from_panel:
+            if is_quick_access_terminal_app:
+                # we were started by launch services, use the kitten to read
+                # the config and re-run
+                os.execl(kitten_exe(), kitten_exe(), 'quick-access-terminal')
             with suppress(OSError):
                 os.chdir(os.path.expanduser('~'))
             set_use_os_log(True)
-            if is_quick_access_terminal_app:
-                from kittens.panel.main import default_macos_quake_cmdline
-                from kittens.panel.main import main as panel_main
-                panel_main(list(shlex_split(default_macos_quake_cmdline))[2:])
-                return
         kitty_main(called_from_panel)
     except Exception:
         import traceback

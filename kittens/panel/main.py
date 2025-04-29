@@ -34,14 +34,6 @@ from kitty.types import LayerShellConfig
 from kitty.typing_compat import BossType, EdgeLiteral
 from kitty.utils import log_error
 
-quake = (
-    'kitty +kitten panel --edge=top --layer=overlay --lines=25 --focus-policy=exclusive'
-    ' -o background_opacity=0.8 --toggle-visibility --single-instance --instance-group=quake'
-)
-default_quake_cmdline = f'{quake} --exclusive-zone=0 --override-exclusive-zone --detach'
-default_macos_quake_cmdline = f'{quake}'
-
-
 args = PanelCLIOptions()
 help_text = 'Use a command line program to draw a GPU accelerated panel on your desktop'
 usage = '[cmdline-to-run ...]'

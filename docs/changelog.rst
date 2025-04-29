@@ -97,7 +97,7 @@ Detailed list of changes
 0.42.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- The :doc:`panel kitten </kittens/panel>` can now be used to :ref:`quake`
+- A new :doc:`kitten quick-access-terminal </kittens/quick-access-terminal>` can now be used to :ref:`quake`
 
 - The :doc:`panel kitten </kittens/panel>` now works on macOS as well as Wayland (:iss:`2590`)
 

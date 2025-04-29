@@ -14,8 +14,7 @@ screen or as the desktop wallpaper, that shows the output from an arbitrary
 terminal program.
 
 It is useful for showing status information or notifications on your desktop
-using terminal programs instead of GUI toolkits. It can also be used for a
-:ref:`Quake like quick access terminal <quake>`.
+using terminal programs instead of GUI toolkits.
 
 .. figure:: ../screenshots/panel.png
    :alt: Screenshot, showing a sample panel
@@ -44,7 +43,7 @@ activity, CPU load, date/time, etc.
 
 Using this kitten is simple, for example::
 
-    kitty +kitten panel sh -c 'printf "\n\n\nHello, world."; sleep 5s'
+    kitten panel sh -c 'printf "\n\n\nHello, world."; sleep 5s'
 
 This will show ``Hello, world.`` at the top edge of your screen for five
 seconds. Here, the terminal program we are running is :program:`sh` with a script
@@ -53,7 +52,7 @@ you like, as demonstrated in the screenshot above.
 
 If you are on Wayland or macOS, you can, for instance run::
 
-    kitty +kitten panel --edge=background htop
+    kitten panel --edge=background htop
 
 to display ``htop`` as your desktop background. Remember this works in everything
 but GNOME and also, in sway, you have to disable the background wallpaper as
@@ -79,10 +78,10 @@ disappears at a key press. To do so use the following command:
 
 .. code-block:: sh
 
-_default_quake_cmdline
+    kitten quick-access-terminal
 
-Run this command in a terminal, and a quick access kitty panel will show up at
-the top of your screen. Run it again, and the panel will be hidden.
+Run this command in a terminal, and a quick access kitty window will show up at
+the top of your screen. Run it again, and the window will be hidden.
 
 Simply bind this command to some key press in your window manager or desktop
 environment settings and then you have a quick access terminal at a single key press.
@@ -91,11 +90,6 @@ position of the quick access panel. In particular, the :option:`kitty +kitten pa
 :option:`kitty +kitten panel --override` options can be used to theme the terminal appropriately,
 making it look different from regular kitty terminal instances.
 
-.. note::
-   If you want to start the quake terminal hidden, use
-   :option:`kitty +kitten panel --start-as-hidden`, useful if you are starting it in the background
-   during computer startup.
-
 
 Controlling panels via remote control
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +97,7 @@ Controlling panels via remote control
 You can control panels via the kitty :doc:`remote control </remote-control>` facility. Create a panel
 with remote control enabled::
 
-    kitty +kitten panel -o allow_remote_control=socket-only --lines=2 \
+    kitten panel -o allow_remote_control=socket-only --lines=2 \
         --listen-on=unix:/tmp/panel kitten run-shell
 
 
