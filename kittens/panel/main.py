@@ -152,6 +152,8 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
     focus_policy = {
         'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND
     }.get(opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED)
+    if opts.hide_on_focus_loss:
+        focus_policy = GLFW_FOCUS_ON_DEMAND
     x, y = dual_distance(opts.columns, min_cell_value_if_no_pixels=1), dual_distance(opts.lines, min_cell_value_if_no_pixels=1)
     return LayerShellConfig(type=ltype,
                             edge=edge,
@@ -164,6 +166,7 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             focus_policy=focus_policy,
                             requested_exclusive_zone=opts.exclusive_zone,
                             override_exclusive_zone=opts.override_exclusive_zone,
+                            hide_on_focus_loss=opts.hide_on_focus_loss,
                             output_name=opts.output_name or '')
 
 

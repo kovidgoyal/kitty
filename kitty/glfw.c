@@ -135,6 +135,7 @@ set_layer_shell_config_for(OSWindow *w, GLFWLayerShellConfig *lsc) {
         lsc->related.background_opacity = w->background_opacity;
         lsc->related.background_blur = OPT(background_blur);
         lsc->related.color_space = OPT(macos_colorspace);
+        w->hide_on_focus_loss = lsc->hide_on_focus_loss;
     }
     return glfwSetLayerShellConfig(w->handle, lsc);
 }
@@ -562,10 +563,17 @@ set_os_window_visibility(OSWindow *w, int set_visible) {
 }
 
 static void
+update_os_window_visibility_based_on_focus(id_type timer_id UNUSED, void*d) {
+    OSWindow * osw = os_window_for_id((uintptr_t)d);
+    if (osw && osw->hide_on_focus_loss && !osw->is_focused) set_os_window_visibility(osw, 0);
+}
+
+static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
 #define osw global_state.callback_os_window
     debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", osw->id, focused);
+    bool focus_changed = osw->is_focused != focused;
     osw->is_focused = focused ? true : false;
     monotonic_t now = monotonic();
     id_type wid = osw->id;
@@ -591,8 +599,8 @@ window_focus_callback(GLFWwindow *w, int focused) {
         }
     }
     request_tick_callback();
-    if (osw && osw->hide_on_focus_lost && osw->handle) {
-        if (glfwGetWindowAttrib(osw->handle, GLFW_VISIBLE)) set_os_window_visibility(osw, 0);
+    if (osw && osw->handle && !focused && focus_changed && osw->hide_on_focus_loss && glfwGetWindowAttrib(osw->handle, GLFW_VISIBLE)) {
+        add_main_loop_timer(0, false, update_os_window_visibility_based_on_focus, (void*)(uintptr_t)osw->id, NULL);
     }
     osw = NULL;
 #undef osw
@@ -1216,6 +1224,7 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     A(requested_right_margin, PyLong_Check, PyLong_AsLong);
     A(requested_exclusive_zone, PyLong_Check, PyLong_AsLong);
     A(override_exclusive_zone, PyBool_Check, PyLong_AsLong);
+    A(hide_on_focus_loss, PyBool_Check, PyLong_AsLong);
 #undef A
 #define A(attr) { \
     RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; \
@@ -1413,7 +1422,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
     w->disallow_title_changes = disallow_override_title;
-    w->is_layer_shell = lsc != NULL;
+    if (lsc != NULL) {
+        w->is_layer_shell = true;
+        w->hide_on_focus_loss = lsc->hide_on_focus_loss;
+    }
     update_os_window_references();
     if (!w->is_layer_shell || (global_state.is_apple && w->is_layer_shell && lsc->focus_policy == GLFW_FOCUS_EXCLUSIVE)) {
         for (size_t i = 0; i < global_state.num_os_windows; i++) {
@@ -2513,23 +2525,12 @@ set_layer_shell_config(PyObject *self UNUSED, PyObject *args) {
     return Py_NewRef(set_layer_shell_config_for(window, &lsc) ? Py_True : Py_False);
 }
 
-static PyObject*
-set_os_window_hide_on_focus_lost(PyObject *self UNUSED, PyObject *args) {
-    unsigned long long wid; int val = 1;
-    if (!PyArg_ParseTuple(args, "K|p", &wid, &val)) return NULL;
-    OSWindow *window = os_window_for_id(wid);
-    if (!window) Py_RETURN_FALSE;
-    window->hide_on_focus_lost = val;
-    Py_RETURN_TRUE;
-}
-
 
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
-    METHODB(set_os_window_hide_on_focus_lost, METH_O),
     METHODB(toggle_os_window_visibility, METH_VARARGS),
     METHODB(layer_shell_config_for_os_window, METH_O),
     METHODB(set_layer_shell_config, METH_VARARGS),

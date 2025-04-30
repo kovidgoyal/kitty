@@ -313,8 +313,7 @@ typedef struct {
     uint64_t render_calls;
     id_type last_focused_counter;
     CloseRequest close_request;
-    bool is_layer_shell;
-    bool hide_on_focus_lost;
+    bool is_layer_shell, hide_on_focus_loss;
 } OSWindow;
 
 

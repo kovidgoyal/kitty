@@ -71,6 +71,9 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if conf.Start_as_hidden {
 		argv = append(argv, `--start-as-hidden`)
 	}
+	if conf.Hide_on_focus_loss {
+		argv = append(argv, `--hide-on-focus-loss`)
+	}
 	if opts.Detach {
 		argv = append(argv, `--detach`)
 	}

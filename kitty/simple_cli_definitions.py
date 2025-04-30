@@ -654,7 +654,15 @@ choices=not-allowed,exclusive,on-demand
 default={focus_policy}
 On a Wayland compositor that supports the wlr layer shell protocol, specify the focus policy for keyboard
 interactivity with the panel. Please refer to the wlr layer shell protocol documentation for more details.
+Note that different Wayland compositors behave very differently with :code:`exclusive`, your mileage may vary.
 On macOS, :code:`exclusive` and :code:`on-demand` are currently the same. Ignored on X11.
+
+
+--hide-on-focus-loss
+type=bool-set
+Automatically hide the panel window when it loses focus. Using this option will force :option:`--focus-policy`
+to :code:`on-demand`. Note that on Wayland, depending on the compositor, this can result in the window never
+becoming visible.
 
 
 --exclusive-zone

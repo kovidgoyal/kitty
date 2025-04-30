@@ -40,6 +40,11 @@ option of the same name, it is present here as it has a different
 default value for the quick access terminal.
 ''')
 
+opt('hide_on_focus_loss', 'no', option_type='to_bool', long_text='''
+Hide the window when it loses keyboard focus automatically. Using this option
+will force :opt:`focus_policy` to :code:`on-demand`.
+''')
+
 opt('margin_left', '0', option_type='int',
     long_text='Set the left margin for the window, in pixels. Has no effect for windows on the right edge of the screen.')
 
@@ -67,8 +72,14 @@ opt('app_id', f'{appname}-quick-access',
 opt('start_as_hidden', 'no', option_type='to_bool',
     long_text='Whether to start the quick access terminal hidden. Useful if you are starting it as part of system startup.')
 
-opt('focus_policy', 'exclusive', choices=('exclusive', 'on-demand'),
-    long_text='How to manage window focus.')
+opt('focus_policy', 'exclusive', choices=('exclusive', 'on-demand'), long_text='''
+How to manage window focus. A value of :code:`exclusive` means prevent other windows from getting focus.
+However, whether this works is entirely dependent on the compositor/desktop environment.
+It does not have any effect on macOS and KDE, for example. Note that on sway using :code:`on-demand` means
+the compositor will not focus the window when it appears until you click on it, which is why the default is set
+to :code:`exclusive`.
+''')
+
 
 
 def options_spec() -> str:
