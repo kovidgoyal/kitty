@@ -10,25 +10,34 @@ Make a Quake like quick access terminal
     Overview
     --------------
 
+
+.. only:: not man
+
+    .. sidebar::
+
+        **Screenshots**
+
+        .. figure:: ../screenshots/quake-macos.webp
+            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on macOS
+            :align: center
+            :width: 100%
+
+            macOS
+
+
+        .. figure:: ../screenshots/quake-hypr.webp
+            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on Hyprland in Linux
+            :align: center
+            :width: 100%
+
+            Linux
+
+        How the screenshots were generated is :ref:`described in the panel
+        kitten docs <quake_ss>`.
+
+
 .. versionadded:: 0.42.0
    Works on macOS and Wayland, except for GNOME.
-
-
-.. figure:: ../screenshots/quake-macos.webp
-   :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on macOS
-   :align: center
-   :width: 40%
-
-   Floating quick access window and also desktop background showing the `btop <https://github.com/aristocratos/btop>`__
-   process monitor both drawn with kitty, above in macOS and below in Hyprland
-   on Linux.
-
-
-.. figure:: ../screenshots/quake-hypr.webp
-   :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on Hyprland in Linux
-   :align: center
-   :width: 40%
-
 
 This kitten can be used to make a quick access terminal, that appears and
 disappears at a key press. To do so use the following command:
@@ -63,12 +72,6 @@ To make the terminal appear and disappear at a key press:
     window manager. In macOS, go to |macOS| and set a shortcut
     for the :guilabel:`Quick access to kitty` entry.
 
-.. note::
-
-   This kitten uses the :doc:`panel kitten </kittens/panel>` under the
-   hood. You can use the :ref:`techniques described there <remote_control_panel>`
-   for remote controlling the quick access window.
-
 Configuration
 ------------------------
 
@@ -77,6 +80,15 @@ by creating a :file:`quick-access-terminal.conf` file in your
 :ref:`kitty config folder <confloc>`. In particular, you can use the
 :opt:`kitty_conf <kitten-quick_access_terminal.kitty_conf>` option to change
 various kitty settings, just for the quick access window.
+
+.. note::
+
+   This kitten uses the :doc:`panel kitten </kittens/panel>` under the
+   hood. You can use the :ref:`techniques described there <remote_control_panel>`
+   for remote controlling the quick access window, remember to add
+   ``kitty_override allow_remote_control=socket-only`` and ``kitty_override
+   listen_on=unix:/tmp/whatever`` to
+   :file:`quick-access-terminal.conf`.
 
 See below for the supported configuration directives:
 

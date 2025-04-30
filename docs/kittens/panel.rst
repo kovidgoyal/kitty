@@ -16,29 +16,55 @@ terminal programs, For example, have `btop
 It is useful for showing status information or notifications on your desktop
 using terminal programs instead of GUI toolkits.
 
-.. figure:: ../screenshots/panel.png
-   :alt: Screenshot, showing a sample panel
-   :align: center
-   :width: 100%
+.. only:: not man
 
-   Screenshot, showing a sample panel
+    .. sidebar::
+
+        **Screenshots**
+
+        .. figure:: ../screenshots/quake-macos.webp
+            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on macOS
+            :align: center
+            :width: 100%
+
+            macOS
 
 
-The screenshot above shows a sample panel that displays the current desktop and
-window title as well as miscellaneous system information such as network
-activity, CPU load, date/time, etc.
+        .. figure:: ../screenshots/quake-hypr.webp
+            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on Hyprland in Linux
+            :align: center
+            :width: 100%
+
+            Linux
+
+        .. figure:: ../screenshots/panel.png
+            :alt: Screenshot, showing a sample panel
+            :align: center
+            :width: 100%
+
+            A sample panel on Linux
+
+        How the screenshots were generated is :ref:`described below
+        <quake_ss>`.
+
+
+The screenshot to the side shows some uses of the panel kitten to draw various
+desktop components such as the background, a quick access floating terminal and
+a dock panel showing system information (Linux only).
 
 .. versionadded:: 0.42.0
-   Support for macOS and support for Wayland was added in 0.34.0
+
+   Support for macOS (the edge based panels do not prevent other windows from
+   floating over them because of limitations in Cocoa, but background and
+   overlay panels work well)
+
+.. versionadded:: 0.34.0
+
+   Support for Wayland (all compositors supporting the `wlr layer shell protocol <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__ which is almost all of them, except GNOME)
 
 .. note::
 
-    This kitten currently only works on macOS and Wayland compositors
-    that support the `wlr layer shell protocol
-    <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__
-    (which is almost all of them except GNOME). On macOS the panels do not
-    prevent other windows from floating over them because of limitations in
-    Cocoa. On X11, only the ``top`` and ``bottom`` panels are widely supported,
+    On X11, only the ``top`` and ``bottom`` panels are widely supported,
     the other types depend on the window manager used.
 
 Using this kitten is simple, for example::
@@ -48,9 +74,9 @@ Using this kitten is simple, for example::
 This will show ``Hello, world.`` at the top edge of your screen for five
 seconds. Here, the terminal program we are running is :program:`sh` with a script
 to print out ``Hello, world!``. You can make the terminal program as complex as
-you like, as demonstrated in the screenshot above.
+you like, as demonstrated in the screenshots.
 
-If you are on Wayland or macOS, you can, for instance run::
+If you are on Wayland or macOS, you can, for instance, run::
 
     kitten panel --edge=background htop
 
@@ -60,6 +86,8 @@ sway renders that over the panel kitten surface.
 
 There are projects that make use of this facility to implement generalised
 panels and desktop components:
+
+.. _panel_projects:
 
     * `kitty panel <https://github.com/5hubham5ingh/kitty-panel>`__
     * `pawbar <https://github.com/codelif/pawbar>`__
@@ -95,3 +123,34 @@ To create a new panel running the program top, in the same instance
 
 
 .. include:: ../generated/cli-kitten-panel.rst
+
+
+.. _quake_ss:
+
+How the screenshots were generated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The system statistics in the background were created using::
+
+    kitten panel --edge=background -o background_opacity=0.2 -o background=black btop
+
+This creates a kitty background window and inside it runs the `btop
+<https://github.com/aristocratos/btop>`__ program to display the statistics.
+
+The floating quick access window was created by running::
+
+    kitten quick-access-terminal kitten run-shell \
+       zsh -c 'printf "\e]66;s=4;Quick access kitty in Hyprland\a\n\n\n\nAlso uses kitty to draw desktop background\n"'
+
+This starts the quick access window and inside it runs ``kitten run-shell``, which
+in turn first runs ``zsh`` to print out the message and then starts the users login
+shell.
+
+The Linux dock panel was::
+
+    kitten panel kitty +launch my-panel.py
+
+This creates the panel window and runs the ``my-panel.py`` script inside it
+using the Python interpreter that comes bundled with kitty. Unfortunately the
+actual script is not public, but there are :ref:`public projects implementing
+general purpose panels using kitty <panel_projects>`.
