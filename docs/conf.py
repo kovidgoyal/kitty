@@ -62,7 +62,7 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx_copybutton',
     'sphinx_inline_tabs',
-    "sphinxext.opengraph",
+    'sphinxext.opengraph',
 ]
 
 # URL for OpenGraph tags

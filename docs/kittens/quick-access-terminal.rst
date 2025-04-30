@@ -14,6 +14,18 @@ Make a Quake like quick access terminal
    Works on macOS and Wayland, except for GNOME.
 
 
+.. figure:: ../screenshots/quake-macos.webp
+   :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on macOS
+   :align: center
+   :width: 100%
+
+
+.. figure:: ../screenshots/quake-hypr.webp
+   :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on Hyprland in Linux
+   :align: center
+   :width: 100%
+
+
 This kitten can be used to make a quick access terminal, that appears and
 disappears at a key press. To do so use the following command:
 
