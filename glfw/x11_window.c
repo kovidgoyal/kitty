@@ -3276,6 +3276,14 @@ GLFWAPI int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
 GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id) {
     _GLFW_REQUIRE_INIT();
     Atom type = _glfw.x11.NET_WM_WINDOW_TYPE_DOCK;
+    if (!type) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "The X11 window manager does not support the NET_WM_WINDOW_TYPE_DOCK Atom, cannot make panels into docks\n");
+        return ;
+    }
+    if (!_glfw.x11.NET_WM_WINDOW_TYPE) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "The X11 window manager does not support the NET_WM_WINDOW_TYPE Atom, cannot make panels into docks\n");
+        return ;
+    }
     XChangeProperty(_glfw.x11.display, x11_window_id,
                     _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
                     PropModeReplace, (unsigned char*) &type, 1);
@@ -3284,6 +3292,10 @@ GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id) {
 
 GLFWAPI void glfwSetX11WindowStrut(int32_t x11_window_id, uint32_t dimensions[12]) {
     _GLFW_REQUIRE_INIT();
+    if (!_glfw.x11.NET_WM_STRUT_PARTIAL) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "The X11 window manager does not support the NET_WM_STRUT_PARTIAL Atom, cannot make panels into docks\n");
+        return ;
+    }
     XChangeProperty(_glfw.x11.display, x11_window_id,
                     _glfw.x11.NET_WM_STRUT_PARTIAL, XA_CARDINAL, 32,
                     PropModeReplace, (unsigned char*) dimensions, 12);
