@@ -17,13 +17,17 @@ Make a Quake like quick access terminal
 .. figure:: ../screenshots/quake-macos.webp
    :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on macOS
    :align: center
-   :width: 100%
+   :width: 40%
+
+   Floating quick access window and also desktop background showing the `btop <https://github.com/aristocratos/btop>`__
+   process monitor both drawn with kitty, above in macOS and below in Hyprland
+   on Linux.
 
 
 .. figure:: ../screenshots/quake-hypr.webp
    :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on Hyprland in Linux
    :align: center
-   :width: 100%
+   :width: 40%
 
 
 This kitten can be used to make a quick access terminal, that appears and
