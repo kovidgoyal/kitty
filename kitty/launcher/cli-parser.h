@@ -100,7 +100,7 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
                 if (!spec->blocks.items) return NULL;
             }
         }
-        block.capacity = MAX(sz, 8192);
+        block.capacity = MAX(sz, 8192u);
         block.buf = malloc(block.capacity);
         if (!block.buf) return NULL;
         block.used = 0;
@@ -125,7 +125,7 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
 static bool
 add_to_listval(CLISpec *spec, CLIValue *v, const char *val) {
     if (v->listval.count + 1 >= v->listval.capacity) {
-        size_t cap = MAX(64, v->listval.capacity * 2);
+        size_t cap = MAX(64u, v->listval.capacity * 2u);
         char **new = alloc_for_cli(spec, cap * sizeof(v->listval.items[0]));
         if (!new) return false;
         v->listval.capacity = cap;
