@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
 from collections.abc import Callable
 from contextlib import suppress
 from functools import partial
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
@@ -87,7 +88,7 @@ def setup_x11_window(win_id: int) -> None:
     try:
         func = globals()[f'create_{args.edge}_strut']
     except KeyError:
-        raise SystemExit(f'The value {args.edge} is not support for --edge on X11')
+        raise SystemExit(f'The value {args.edge} is not supported for --edge on X11')
     strut = func(win_id, window_width, window_height)
     make_x11_window_a_dock_window(win_id, strut)
 
@@ -170,21 +171,42 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             output_name=opts.output_name or '')
 
 
+mtime_map: dict[str, float] = {}
+
+
+def have_config_files_been_updated(config_files: Iterable[str]) -> bool:
+    ans = False
+    for cf in config_files:
+        try:
+            mtime = os.path.getmtime(cf)
+        except OSError:
+            mtime = 0
+        if mtime_map.get(cf, 0) != mtime:
+            ans = True
+        mtime_map[cf] = mtime
+    return ans
+
+
 def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
+    global args
+    from kitty.cli import parse_override
     from kitty.main import run_app
     from kitty.tabs import SpecialWindow
     try:
-        args, items = parse_panel_args(list(sys_args[1:]))
+        new_args, items = parse_panel_args(list(sys_args[1:]))
     except BaseException as e:
         log_error(f'Invalid arguments received over single instance socket: {sys_args} with error: {e}')
         return
-    lsc = layer_shell_config(args)
-    layer_config_changed = lsc != run_app.layer_shell_config
-    run_app.layer_shell_config = lsc
+    lsc = layer_shell_config(new_args)
+    layer_shell_config_changed = lsc != run_app.layer_shell_config
+    config_changed = have_config_files_been_updated(new_args.config) or args.config != new_args.config or args.override != new_args.override
+    args = new_args
+    if config_changed:
+        boss.load_config_file(*args.config, overrides=tuple(map(parse_override, new_args.override)))
     if args.toggle_visibility and boss.os_window_map:
         for os_window_id in boss.os_window_map:
             toggle_os_window_visibility(os_window_id)
-            if layer_config_changed:
+            if layer_shell_config_changed:
                 set_layer_shell_config(os_window_id, lsc)
         return
     items = items or [kitten_exe(), 'run-shell']
@@ -196,8 +218,18 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
 
 
 def main(sys_args: list[str]) -> None:
+    # run_kitten run using runpy.run_module which does not import into
+    # sys.modules, which means the module will be re-imported later, causing
+    # global variables to be duplicated, so do it now.
+    from kittens.panel.main import actual_main
+    actual_main(sys_args)
+    return
+
+
+def actual_main(sys_args: list[str]) -> None:
     global args
     args, items = parse_panel_args(sys_args[1:])
+    have_config_files_been_updated(args.config)
     sys.argv = ['kitty']
     if args.debug_rendering:
         sys.argv.append('--debug-rendering')
