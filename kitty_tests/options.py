@@ -126,8 +126,9 @@ version
 
 def launcher(self):
     kexe = kitty_exe()
-    cfgdir = os.path.join(os.environ['XDG_CONFIG_HOME'], 'kitty')
+    cfgdir = None
     def get_report(cmdline: str, launch_services= False):
+        nonlocal cfgdir
         args = list(shlex_split(cmdline))
         env = dict(os.environ)
         if launch_services:
@@ -147,6 +148,8 @@ def launcher(self):
             else:
                 val = val.strip()
             ans[key] = val
+            if key == 'config_dir':
+                cfgdir = val
         return ans, cp.stdout.decode().replace('\x1e', ' ')
     def test(cmdline, assertions):
         r, output = get_report(cmdline, launch_services=assertions.get('launched_by_launch_services', '0') != '0')
@@ -156,7 +159,8 @@ def launcher(self):
 
     def t(cmdline, **assertions):
         assertions['is_quick_access_terminal'] = '0'
-        assertions['config_dir'] = cfgdir
+        if cfgdir:
+            assertions['config_dir'] = cfgdir
         assertions.setdefault('launched_by_launch_services', '0')
         test(cmdline, assertions)
 
