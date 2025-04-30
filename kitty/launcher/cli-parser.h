@@ -179,7 +179,7 @@ dest_for_alias(CLISpec *spec, const char *alias) {
             if (!buf) OOM;
             int n = snprintf(buf, total, "The flag %s is ambiguous. Possible matches:", yellow_text(alias));
             alias_map_for_loop(&matches) {
-                if (total > n) n += snprintf(buf + n, total - n, " %s,", itr.data->val);
+                if ((ssize_t)total > n) n += snprintf(buf + n, total - n, " %s,", itr.data->val);
             }
             vt_cleanup(&matches);
             buf[n-1] = '.';
@@ -244,7 +244,7 @@ process_cli_arg(CLISpec* spec, const char *alias, const char *payload, const cha
                 int n = snprintf(buf, bufsz, "%s is an invalid value for %s. Valid values are:",
                         red_text(payload[0] ? payload : "<empty>"), green_text(alias));
                 for (size_t c = 0; c < flag->defval.listval.count; c++)
-                    if (bufsz > n) n += snprintf(buf + n, bufsz - n, " %s,", italic_text(flag->defval.listval.items[c]));
+                    if ((ssize_t)bufsz > n) n += snprintf(buf + n, bufsz - n, " %s,", italic_text(flag->defval.listval.items[c]));
                 buf[n-1] = '.';
                 spec->errmsg = buf;
                 return false;
