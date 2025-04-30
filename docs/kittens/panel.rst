@@ -8,6 +8,8 @@ Draw a GPU accelerated dock panel on your desktop
     Overview
     --------------
 
+.. include:: ../quake-screenshots.rst
+
 Draw the desktop wallpaper or docks and panels using arbitrary
 terminal programs, For example, have `btop
 <https://github.com/aristocratos/btop>`__ or `cava
@@ -15,37 +17,6 @@ terminal programs, For example, have `btop
 
 It is useful for showing status information or notifications on your desktop
 using terminal programs instead of GUI toolkits.
-
-.. only:: not man
-
-    .. sidebar::
-
-        **Screenshots**
-
-        .. figure:: ../screenshots/quake-macos.webp
-            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on macOS
-            :align: center
-            :width: 100%
-
-            macOS
-
-
-        .. figure:: ../screenshots/quake-hypr.webp
-            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program ``btop``, running inside kitty, on Hyprland in Linux
-            :align: center
-            :width: 100%
-
-            Linux
-
-        .. figure:: ../screenshots/panel.png
-            :alt: Screenshot, showing a sample panel
-            :align: center
-            :width: 100%
-
-            A sample panel on Linux
-
-        How the screenshots were generated is :ref:`described below
-        <quake_ss>`.
 
 
 The screenshot to the side shows some uses of the panel kitten to draw various
