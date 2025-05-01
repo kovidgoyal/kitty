@@ -127,47 +127,53 @@ general purpose panels using kitty <panel_projects>`.
 Compatibility with various platforms
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. tab:: Wayland
+.. only:: man
 
-    Below is a list of the status of various Wayland compositors. The panel kitten
-    relies of the `wlr layer shell protocol
-    <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__,
-    which is technically supported by almost all Wayland compositors, but the
-    implementation in some of them is quite buggy.
+   See the HTML documentation for the compatibility matrix.
 
-    🟢 **Hyprland**
-       Fully working, no known issues
+.. only:: not man
 
-    🟢 **KDE** (kwin)
-       Fully working, no known issues
+    .. tab:: Wayland
 
-    🟠 **Sway**
-       Partially working. Issues include:
-          * Renders its configured background over the background window instead of
-            under it. This is likely because it uses the wlr protocol for
-            backgrounds itself.
-          * Hiding a dock panel (unmapping the window) does not release the space
-            used by the dock.
+        Below is a list of the status of various Wayland compositors. The panel kitten
+        relies of the `wlr layer shell protocol
+        <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__,
+        which is technically supported by almost all Wayland compositors, but the
+        implementation in some of them is quite buggy.
 
-    🟠 **niri**
-       Breaks when hiding (unmapping) layer shell windows. This means the quick
-       access terminal is non-functional, but background and dock panels work.
-       More technically, keyboard focus gets stuck in the hidden window and when trying
-       to remap the hidden window niri never sends configure events for the remapped surface.
+        🟢 **Hyprland**
+            Fully working, no known issues
 
-    🟠 **labwc**
-       Breaks when hiding (unmapping) layer shell windows. This means the quick
-       access terminal is non-functional, but background and dock panels work.
-       More technically, when unmapping the surface (attaching a NULL buffer to
-       it) labwc continues to send configure events to the unmapped surface,
-       leading to Wayland protocol errors and a crash of labwc.
+        🟢 **KDE** (kwin)
+            Fully working, no known issues
 
-    🔴 **GNOME** (mutter)
-       Does not implement the wlr protocol at all, nothing works.
+        🟠 **Sway**
+            Partially working. Issues include:
+                * Renders its configured background over the background window instead of
+                  under it. This is likely because it uses the wlr protocol for
+                  backgrounds itself.
+                * Hiding a dock panel (unmapping the window) does not release the space
+                  used by the dock.
 
-.. tab:: macOS
+        🟠 **niri**
+            Breaks when hiding (unmapping) layer shell windows. This means the quick
+            access terminal is non-functional, but background and dock panels work.
+            More technically, keyboard focus gets stuck in the hidden window and when trying
+            to remap the hidden window niri never sends configure events for the remapped surface.
 
-   Mostly everything works, with the notable exception that dock panels do not
-   prevent other windows form covering them. This is because Apple does not
-   provide and way to do this in their APIs.
+        🟠 **labwc**
+            Breaks when hiding (unmapping) layer shell windows. This means the quick
+            access terminal is non-functional, but background and dock panels work.
+            More technically, when unmapping the surface (attaching a NULL buffer to
+            it) labwc continues to send configure events to the unmapped surface,
+            leading to Wayland protocol errors and a crash of labwc.
+
+        🔴 **GNOME** (mutter)
+            Does not implement the wlr protocol at all, nothing works.
+
+    .. tab:: macOS
+
+        Mostly everything works, with the notable exception that dock panels do not
+        prevent other windows form covering them. This is because Apple does not
+        provide and way to do this in their APIs.
 
