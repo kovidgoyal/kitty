@@ -31,7 +31,8 @@ a dock panel showing system information (Linux only).
 
 .. versionadded:: 0.34.0
 
-   Support for Wayland (all compositors supporting the `wlr layer shell protocol <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__ which is almost all of them, except GNOME)
+   Support for Wayland. See :ref:`below <panel_wayland_status>` for which
+   Wayland compositors work.
 
 .. note::
 
@@ -125,3 +126,45 @@ This creates the panel window and runs the ``my-panel.py`` script inside it
 using the Python interpreter that comes bundled with kitty. Unfortunately the
 actual script is not public, but there are :ref:`public projects implementing
 general purpose panels using kitty <panel_projects>`.
+
+
+.. _panel_wayland_status:
+
+Wayland compositor status
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Below is a list of the status of various Wayland compositors. The panel kitten
+relies of the `wlr layer shell protocol
+<https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__,
+which is technically supported by almost all Wayland compositors, but the
+implementation in several of them is quite buggy.
+
+**Hyprland** 🟢
+    Fully working, no known issues
+
+**KDE** (kwin) 🟢
+    Fully working, no known issues
+
+**Sway** 🟠
+    Partially working. Issues include:
+      * Renders its configured background over the background window instead of
+        under it. This is likely because it uses the wlr protocol for
+        backgrounds itself.
+      * Hiding a dock panel (unmapping the window) does not release the space
+        used by the dock.
+
+GNOME (mutter) 🔴
+    Does not implement the wlr protocol at all, nothing works.
+
+niri 🟠
+    Breaks when hiding (unmapping) layer shell windows. This means the quick
+    access terminal is non-functional, but background and dock panels work.
+    More technically, keyboard focus gets stuck in the hidden window and when trying
+    to remap the hidden window niri never sends configure events for the remapped surface.
+
+labwc 🟠
+    Breaks when hiding (unmapping) layer shell windows. This means the quick
+    access terminal is non-functional, but background and dock panels work.
+    More technically, when unmapping the surface (attaching a NULL buffer to
+    it) labwc continues to send configure events to the unmapped surface,
+    leading to Wayland protocol errors and a crash of labwc.
