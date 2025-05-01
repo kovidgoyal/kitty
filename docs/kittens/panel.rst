@@ -142,38 +142,37 @@ Compatibility with various platforms
         implementation in some of them is quite buggy.
 
         🟢 **Hyprland**
-            Fully working, no known issues
+           Fully working, no known issues
 
         🟢 **KDE** (kwin)
-            Fully working, no known issues
+           Fully working, no known issues
 
         🟠 **Sway**
-            Partially working. Issues include:
-                * Renders its configured background over the background window instead of
-                  under it. This is likely because it uses the wlr protocol for
-                  backgrounds itself.
-                * Hiding a dock panel (unmapping the window) does not release the space
-                  used by the dock.
+           Partially working. Issues include:
+               * Renders its configured background over the background window instead of
+                 under it. This is likely because it uses the wlr protocol for
+                 backgrounds itself.
+               * Hiding a dock panel (unmapping the window) does not release the space
+                 used by the dock.
 
         🟠 **niri**
-            Breaks when hiding (unmapping) layer shell windows. This means the quick
-            access terminal is non-functional, but background and dock panels work.
-            More technically, keyboard focus gets stuck in the hidden window and when trying
-            to remap the hidden window niri never sends configure events for the remapped surface.
+           Breaks when hiding (unmapping) layer shell windows. This means the quick
+           access terminal is non-functional, but background and dock panels work.
+           More technically, keyboard focus gets stuck in the hidden window and when trying
+           to remap the hidden window niri never sends configure events for the remapped surface.
 
         🟠 **labwc**
-            Breaks when hiding (unmapping) layer shell windows. This means the quick
-            access terminal is non-functional, but background and dock panels work.
-            More technically, when unmapping the surface (attaching a NULL buffer to
-            it) labwc continues to send configure events to the unmapped surface,
-            leading to Wayland protocol errors and a crash of labwc.
+           Breaks when hiding (unmapping) layer shell windows. This means the quick
+           access terminal is non-functional, but background and dock panels work.
+           More technically, when unmapping the surface (attaching a NULL buffer to
+           it) labwc continues to send configure events to the unmapped surface,
+           leading to Wayland protocol errors and a crash of labwc.
 
         🔴 **GNOME** (mutter)
-            Does not implement the wlr protocol at all, nothing works.
+           Does not implement the wlr protocol at all, nothing works.
 
     .. tab:: macOS
 
         Mostly everything works, with the notable exception that dock panels do not
-        prevent other windows form covering them. This is because Apple does not
+        prevent other windows from covering them. This is because Apple does not
         provide and way to do this in their APIs.
-
