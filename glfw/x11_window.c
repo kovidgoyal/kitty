@@ -530,10 +530,12 @@ static void enableCursor(_GLFWwindow* window)
     updateCursorImage(window);
 }
 
+typedef unsigned long strut_type;
+
 typedef struct WindowGeometry {
     int x, y, width, height;
     bool needs_strut;
-    uint32_t struts[12];
+    strut_type struts[12];
 } WindowGeometry;
 
 static WindowGeometry
@@ -562,7 +564,7 @@ calculate_layer_geometry(_GLFWwindow *window) {
     ans.width = (int)(1. + spacing_x + xsz); ans.height = (int)(1. + spacing_y + ysz);
     GeometryRect m = config.type == GLFW_LAYER_SHELL_TOP || config.type == GLFW_LAYER_SHELL_OVERLAY ? mg.workarea : mg.full;
     static const struct {
-        uint32_t left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x;
+        unsigned left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x;
     } s = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
     switch (config.edge) {
@@ -603,11 +605,6 @@ calculate_layer_geometry(_GLFWwindow *window) {
 
 GLFWAPI bool glfwIsLayerShellSupported(void) { return _glfw.x11.NET_WM_WINDOW_TYPE != 0 && _glfw.x11.NET_WM_STATE != 0; }
 
-static void
-glfwSetX11WindowStrut(_GLFWwindow *window, const uint32_t dimensions[12]) {
-    XChangeProperty(
-        _glfw.x11.display, window->x11.handle, _glfw.x11.NET_WM_STRUT_PARTIAL, XA_CARDINAL, 32, PropModeReplace, (unsigned char*) dimensions, 12);
-}
 
 static bool
 update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndconfig *wndconfig) {
@@ -647,7 +644,9 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
     }
     if (is_layer_shell) {
         if (_glfw.x11.NET_WM_STRUT_PARTIAL) {
-            glfwSetX11WindowStrut(window, wg->needs_strut ? wg->struts : (uint32_t[12]){0});
+            XChangeProperty(
+                _glfw.x11.display, window->x11.handle, _glfw.x11.NET_WM_STRUT_PARTIAL, XA_CARDINAL, 32, PropModeReplace,
+                (unsigned char*)(wg->needs_strut ? wg->struts : (strut_type[12]){0}), 12);
         } else if (wg->needs_strut) {
             _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _NET_WM_STRUT_PARTIAL");
             ok = false;
