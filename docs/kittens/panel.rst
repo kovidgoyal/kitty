@@ -124,6 +124,9 @@ general purpose panels using kitty <panel_projects>`.
 
 .. _panel_compat:
 
+Compatibility with various platforms
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. tab:: Wayland
 
     Below is a list of the status of various Wayland compositors. The panel kitten
