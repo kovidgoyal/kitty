@@ -544,7 +544,12 @@ calculate_layer_geometry(_GLFWwindow *window) {
     ans.x = mg.full.x; ans.y = mg.full.y;
 #define config (window->x11.layer_shell.config)
     ans.needs_strut = config.type == GLFW_LAYER_SHELL_PANEL;
-    if (config.type == GLFW_LAYER_SHELL_BACKGROUND) return ans;
+    if (config.type == GLFW_LAYER_SHELL_BACKGROUND) {
+        ans.x += config.requested_left_margin; ans.y += config.requested_top_margin;
+        ans.width -= config.requested_left_margin + config.requested_right_margin;
+        ans.height -= config.requested_top_margin + config.requested_bottom_margin;
+        return ans;
+    }
     float xscale = (float)config.expected.xscale, yscale = (float)config.expected.yscale;
     _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
     unsigned cell_width, cell_height; double left_edge_spacing, top_edge_spacing, right_edge_spacing, bottom_edge_spacing;
@@ -593,7 +598,6 @@ calculate_layer_geometry(_GLFWwindow *window) {
             ans.width = m.width - config.requested_right_margin - config.requested_left_margin;
             break;
     }
-#undef config
     return ans;
 }
 
@@ -615,7 +619,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
         hints->flags = StateHint | InputHint;
         hints->initial_state = NormalState;
         hints->input = true;
-        if (is_layer_shell && window->x11.layer_shell.config.type == GLFW_LAYER_SHELL_BACKGROUND) hints->input = false;
+        if (is_layer_shell && (config.type == GLFW_LAYER_SHELL_BACKGROUND || config.type == GLFW_LAYER_SHELL_PANEL)) hints->input = false;
         XSetWMHints(_glfw.x11.display, window->x11.handle, hints);
         XFree(hints);
     } else _glfwInputError(GLFW_OUT_OF_MEMORY, "X11: Failed to allocate WM hints");
@@ -624,7 +628,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
         if (window->x11.layer_shell.is_active) {
             const char *name = NULL;
 #define S(which) type = _glfw.x11.NET_WM_WINDOW_TYPE_DESKTOP; name = #which
-            switch (window->x11.layer_shell.config.type) {
+            switch (config.type) {
                 case GLFW_LAYER_SHELL_BACKGROUND: S(NET_WM_WINDOW_TYPE_DESKTOP); break;
                 case GLFW_LAYER_SHELL_PANEL: S(NET_WM_WINDOW_TYPE_DOCK); break;
                 default: S(NET_WM_WINDOW_TYPE_NORMAL); break;
@@ -658,7 +662,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
             if (_glfw.x11.NET_WM_STATE_SKIP_PAGER) states[count++] = _glfw.x11.NET_WM_STATE_SKIP_PAGER;
             if (_glfw.x11.NET_WM_STATE_SKIP_TASKBAR) states[count++] = _glfw.x11.NET_WM_STATE_SKIP_TASKBAR;
 #define S(x) if (_glfw.x11.x) { states[count++] = _glfw.x11.x; } else { _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _%s", #x); ok = false; }
-            switch (window->x11.layer_shell.config.type) {
+            switch (config.type) {
                 case GLFW_LAYER_SHELL_NONE: break;
                 case GLFW_LAYER_SHELL_BACKGROUND: case GLFW_LAYER_SHELL_PANEL: S(NET_WM_STATE_BELOW); break;
                 case GLFW_LAYER_SHELL_TOP: case GLFW_LAYER_SHELL_OVERLAY: S(NET_WM_STATE_ABOVE); break;
@@ -684,6 +688,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
     }
     if (!wndconfig && ok) _glfwPlatformSetWindowPos(window, wg->x, wg->y);
     return ok;
+#undef config
 }
 
 // Create the X11 window (and its colormap)
