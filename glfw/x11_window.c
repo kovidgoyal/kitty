@@ -616,7 +616,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
         hints->flags = StateHint | InputHint;
         hints->initial_state = NormalState;
         hints->input = true;
-        if (is_layer_shell && (config.type == GLFW_LAYER_SHELL_BACKGROUND || config.type == GLFW_LAYER_SHELL_PANEL)) hints->input = false;
+        if (is_layer_shell && config.focus_policy == GLFW_FOCUS_NOT_ALLOWED) hints->input = false;
         XSetWMHints(_glfw.x11.display, window->x11.handle, hints);
         XFree(hints);
     } else _glfwInputError(GLFW_OUT_OF_MEMORY, "X11: Failed to allocate WM hints");
