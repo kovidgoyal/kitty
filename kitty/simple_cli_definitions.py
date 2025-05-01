@@ -597,10 +597,9 @@ choices=top,bottom,left,right,background,center,none
 default={edge}
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
-The value :code:`background` means make the panel the "desktop wallpaper". This
-is not supported on X11 and note that when using sway if you set
-a background in your sway config it will cover the background drawn using this
-kitten.
+The value :code:`background` means make the panel the "desktop wallpaper".
+Note that when using sway if you set a background in your sway config it will
+cover the background drawn using this kitten.
 Additionally, there are two more values: :code:`center` and :code:`none`.
 The value :code:`center` anchors the panel to all sides and covers the entire
 display (on macOS the part of the display not covered by titlebar and dock).
@@ -655,7 +654,7 @@ default={focus_policy}
 On a Wayland compositor that supports the wlr layer shell protocol, specify the focus policy for keyboard
 interactivity with the panel. Please refer to the wlr layer shell protocol documentation for more details.
 Note that different Wayland compositors behave very differently with :code:`exclusive`, your mileage may vary.
-On macOS, :code:`exclusive` and :code:`on-demand` are currently the same. Ignored on X11.
+On macOS, :code:`exclusive` and :code:`on-demand` are currently the same.
 
 
 --hide-on-focus-loss

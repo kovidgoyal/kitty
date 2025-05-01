@@ -14,8 +14,7 @@ Make a Quake like quick access terminal
 .. include:: ../quake-screenshots.rst
 
 .. versionadded:: 0.42.0
-   Works on macOS and Wayland, see :ref:`here for Wayland compositor support
-   status <panel_wayland_status>`.
+   See :ref:`here for what platforms it works on <panel_compat>`.
 
 This kitten can be used to make a quick access terminal, that appears and
 disappears at a key press. To do so use the following command:
