@@ -74,6 +74,9 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if conf.Hide_on_focus_loss {
 		argv = append(argv, `--hide-on-focus-loss`)
 	}
+	if opts.DebugRendering {
+		argv = append(argv, `--debug-rendering`)
+	}
 	if opts.Detach {
 		argv = append(argv, `--detach`)
 	}

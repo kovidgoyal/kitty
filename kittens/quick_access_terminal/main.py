@@ -109,6 +109,11 @@ Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 --instance-group
 default=quick-access
 The unique name of this quick access terminal Use a different name if you want multiple such terminals.
+
+
+--debug-rendering
+type=bool-set
+For debugging interactions with the compositor/window manager.
 '''
 
 def main(args: list[str]) -> None:
