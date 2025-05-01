@@ -3,14 +3,13 @@
 
 import os
 import sys
-from collections.abc import Callable
 from contextlib import suppress
 from functools import partial
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Iterable, Mapping, Sequence
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
-from kitty.constants import is_macos, is_wayland, kitten_exe
+from kitty.constants import is_macos, kitten_exe
 from kitty.fast_data_types import (
     GLFW_EDGE_BOTTOM,
     GLFW_EDGE_CENTER,
@@ -25,15 +24,12 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_OVERLAY,
     GLFW_LAYER_SHELL_PANEL,
     GLFW_LAYER_SHELL_TOP,
-    glfw_primary_monitor_size,
-    make_x11_window_a_dock_window,
     set_layer_shell_config,
     toggle_os_window_visibility,
 )
-from kitty.os_window_size import WindowSizeData, edge_spacing
 from kitty.simple_cli_definitions import build_panel_cli_spec
 from kitty.types import LayerShellConfig
-from kitty.typing_compat import BossType, EdgeLiteral
+from kitty.typing_compat import BossType
 from kitty.utils import log_error
 
 args = PanelCLIOptions()
@@ -49,84 +45,6 @@ def panel_kitten_options_spec() -> str:
 
 def parse_panel_args(args: list[str]) -> tuple[PanelCLIOptions, list[str]]:
     return parse_args(args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
-
-
-Strut = tuple[int, int, int, int, int, int, int, int, int, int, int, int]
-
-
-def create_strut(
-    win_id: int,
-    left: int = 0, right: int = 0, top: int = 0, bottom: int = 0, left_start_y: int = 0, left_end_y: int = 0,
-    right_start_y: int = 0, right_end_y: int = 0, top_start_x: int = 0, top_end_x: int = 0,
-    bottom_start_x: int = 0, bottom_end_x: int = 0
-) -> Strut:
-    return left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x
-
-
-def create_top_strut(win_id: int, width: int, height: int) -> Strut:
-    return create_strut(win_id, top=height, top_end_x=width)
-
-
-def create_bottom_strut(win_id: int, width: int, height: int) -> Strut:
-    return create_strut(win_id, bottom=height, bottom_end_x=width)
-
-
-def create_left_strut(win_id: int, width: int, height: int) -> Strut:
-    return create_strut(win_id, left=width, left_end_y=height)
-
-
-def create_right_strut(win_id: int, width: int, height: int) -> Strut:
-    return create_strut(win_id, right=width, right_end_y=height)
-
-
-window_width = window_height = 0
-
-
-def setup_x11_window(win_id: int) -> None:
-    if is_wayland():
-        return
-    try:
-        func = globals()[f'create_{args.edge}_strut']
-    except KeyError:
-        raise SystemExit(f'The value {args.edge} is not supported for --edge on X11')
-    strut = func(win_id, window_width, window_height)
-    make_x11_window_a_dock_window(win_id, strut)
-
-
-def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]) -> Callable[[int, int, float, float, float, float], tuple[int, int]]:
-
-    def es(which: EdgeLiteral) -> float:
-        return edge_spacing(which, opts)
-
-    def initial_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> tuple[int, int]:
-        if not is_macos and not is_wayland():
-            # Not sure what the deal with scaling on X11 is
-            xscale = yscale = 1
-        global window_width, window_height
-        monitor_width, monitor_height = glfw_primary_monitor_size()
-        x = dual_distance(args.columns, min_cell_value_if_no_pixels=1)
-        rwidth = x[1] if x[1] else (x[0] * cell_width / xscale)
-        x = dual_distance(args.lines, min_cell_value_if_no_pixels=1)
-        rheight = x[1] if x[1] else (x[0] * cell_width / yscale)
-
-        if args.edge in {'left', 'right'}:
-            spacing = es('left') + es('right')
-            window_width = int(rwidth + (dpi_x / 72) * spacing + 1)
-            window_height = monitor_height
-        elif args.edge in {'top', 'bottom'}:
-            spacing = es('top') + es('bottom')
-            window_height = int(rheight + (dpi_y / 72) * spacing + 1)
-            window_width = monitor_width
-        elif args.edge in {'background', 'center'}:
-            window_width, window_height = monitor_width, monitor_height
-        else:
-            x_spacing = es('left') + es('right')
-            window_width = int(rwidth + (dpi_x / 72) * x_spacing + 1)
-            y_spacing = es('top') + es('bottom')
-            window_height = int(rheight + (dpi_y / 72) * y_spacing + 1)
-        return window_width, window_height
-
-    return initial_window_size
 
 
 def dual_distance(spec: str, min_cell_value_if_no_pixels: int = 0) -> tuple[int, int]:
@@ -259,9 +177,6 @@ def actual_main(sys_args: list[str]) -> None:
     from kitty.main import run_app
     run_app.cached_values_name = 'panel'
     run_app.layer_shell_config = layer_shell_config(args)
-    if not is_macos:
-        run_app.first_window_callback = setup_x11_window
-        run_app.initial_window_size_func = initial_window_size_func
     real_main(called_from_panel=True)
 
 

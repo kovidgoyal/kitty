@@ -458,7 +458,7 @@ class Boss:
         return os_window_id
 
     def add_os_panel(self, cfg: LayerShellConfig, wclass: str | None = appname, wname: str | None = appname) -> int:
-        if is_macos or not is_wayland() or not is_layer_shell_supported():
+        if not is_layer_shell_supported():
             raise RuntimeError('Creating desktop panels is not supported on this platform')
         wclass = wclass or appname
         wname = wname or appname

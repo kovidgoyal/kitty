@@ -230,10 +230,8 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
     else:
         global_shortcuts = {}
         set_window_icon()
-    if _is_panel_kitten and is_wayland() and not is_layer_shell_supported():
-        from .debug_config import compositor_name
-        raise SystemExit(
-                f'Cannot create panels as the layer shell protocol is not supported by the compositor: {compositor_name()}')
+    if _is_panel_kitten and not is_layer_shell_supported():
+        raise SystemExit('Cannot create panels as the window manager/compositor does not support the neccessary protocols')
 
     with cached_values_for(run_app.cached_values_name) as cached_values:
         startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))

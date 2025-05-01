@@ -668,6 +668,10 @@ struct _GLFWlibrary
 //
 extern _GLFWlibrary _glfw;
 
+typedef struct GeometryRect { int x, y, width, height; } GeometryRect;
+typedef struct MonitorGeometry {
+    GeometryRect full, workarea;
+} MonitorGeometry;
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
@@ -878,6 +882,7 @@ unsigned long long _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLF
 void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled);
 void _glfwPlatformRemoveTimer(unsigned long long timer_id);
 int _glfwPlatformSetWindowBlur(_GLFWwindow* handle, int value);
+MonitorGeometry _glfwPlatformGetMonitorGeometry(_GLFWmonitor* monitor);
 
 char* _glfw_strdup(const char* source);
 

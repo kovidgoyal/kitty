@@ -1756,6 +1756,10 @@ typedef GLFWimecursorpositionfun (*glfwSetIMECursorPositionCallback_func)(GLFWim
 GFW_EXTERN glfwSetIMECursorPositionCallback_func glfwSetIMECursorPositionCallback_impl;
 #define glfwSetIMECursorPositionCallback glfwSetIMECursorPositionCallback_impl
 
+typedef bool (*glfwIsLayerShellSupported_func)(void);
+GFW_EXTERN glfwIsLayerShellSupported_func glfwIsLayerShellSupported_impl;
+#define glfwIsLayerShellSupported glfwIsLayerShellSupported_impl
+
 typedef void (*glfwTerminate_func)(void);
 GFW_EXTERN glfwTerminate_func glfwTerminate_impl;
 #define glfwTerminate glfwTerminate_impl
@@ -2344,10 +2348,6 @@ typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;
 #define glfwWaylandRedrawCSDWindowTitle glfwWaylandRedrawCSDWindowTitle_impl
 
-typedef bool (*glfwWaylandIsLayerShellSupported_func)(void);
-GFW_EXTERN glfwWaylandIsLayerShellSupported_func glfwWaylandIsLayerShellSupported_impl;
-#define glfwWaylandIsLayerShellSupported glfwWaylandIsLayerShellSupported_impl
-
 typedef bool (*glfwWaylandIsWindowFullyCreated_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandIsWindowFullyCreated_func glfwWaylandIsWindowFullyCreated_impl;
 #define glfwWaylandIsWindowFullyCreated glfwWaylandIsWindowFullyCreated_impl
@@ -2375,13 +2375,5 @@ GFW_EXTERN glfwDBusSetUserNotificationHandler_func glfwDBusSetUserNotificationHa
 typedef int (*glfwSetX11LaunchCommand_func)(GLFWwindow*, char**, int);
 GFW_EXTERN glfwSetX11LaunchCommand_func glfwSetX11LaunchCommand_impl;
 #define glfwSetX11LaunchCommand glfwSetX11LaunchCommand_impl
-
-typedef void (*glfwSetX11WindowAsDock_func)(int32_t);
-GFW_EXTERN glfwSetX11WindowAsDock_func glfwSetX11WindowAsDock_impl;
-#define glfwSetX11WindowAsDock glfwSetX11WindowAsDock_impl
-
-typedef void (*glfwSetX11WindowStrut_func)(int32_t, uint32_t[12]);
-GFW_EXTERN glfwSetX11WindowStrut_func glfwSetX11WindowStrut_impl;
-#define glfwSetX11WindowStrut glfwSetX11WindowStrut_impl
 
 const char* load_glfw(const char* path);

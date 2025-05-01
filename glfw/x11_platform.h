@@ -205,6 +205,10 @@ typedef struct _GLFWwindowX11
     // The last position the cursor was warped to by GLFW
     int             warpCursorPosX, warpCursorPosY;
 
+    struct {
+        bool is_active;
+        GLFWLayerShellConfig config;
+    } layer_shell;
 } _GLFWwindowX11;
 
 typedef struct MimeAtom {
@@ -254,12 +258,17 @@ typedef struct _GLFWlibraryX11
     Atom            NET_WM_WINDOW_TYPE;
     Atom            NET_WM_WINDOW_TYPE_NORMAL;
     Atom            NET_WM_WINDOW_TYPE_DOCK;
+    Atom            NET_WM_WINDOW_TYPE_DESKTOP;
     Atom            NET_WM_STATE;
     Atom            NET_WM_STATE_ABOVE;
+    Atom            NET_WM_STATE_BELOW;
     Atom            NET_WM_STATE_FULLSCREEN;
     Atom            NET_WM_STATE_MAXIMIZED_VERT;
     Atom            NET_WM_STATE_MAXIMIZED_HORZ;
     Atom            NET_WM_STATE_DEMANDS_ATTENTION;
+    Atom            NET_WM_STATE_SKIP_TASKBAR;
+    Atom            NET_WM_STATE_SKIP_PAGER;
+    Atom            NET_WM_STATE_STICKY;
     Atom            NET_WM_BYPASS_COMPOSITOR;
     Atom            NET_WM_FULLSCREEN_MONITORS;
     Atom            NET_WM_WINDOW_OPACITY;

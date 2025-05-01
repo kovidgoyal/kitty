@@ -530,19 +530,172 @@ static void enableCursor(_GLFWwindow* window)
     updateCursorImage(window);
 }
 
+typedef struct WindowGeometry {
+    int x, y, width, height;
+    bool needs_strut;
+    uint32_t struts[12];
+} WindowGeometry;
+
+static WindowGeometry
+calculate_layer_geometry(_GLFWwindow *window) {
+    MonitorGeometry mg = _glfwPlatformGetMonitorGeometry((_GLFWmonitor*)glfwGetPrimaryMonitor());
+    WindowGeometry ans = {0};
+    ans.width = mg.full.width; ans.height = mg.full.height;
+    ans.x = mg.full.x; ans.y = mg.full.y;
+#define config (window->x11.layer_shell.config)
+    ans.needs_strut = config.type == GLFW_LAYER_SHELL_PANEL;
+    if (config.type == GLFW_LAYER_SHELL_BACKGROUND) return ans;
+    float xscale = (float)config.expected.xscale, yscale = (float)config.expected.yscale;
+    _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
+    unsigned cell_width, cell_height; double left_edge_spacing, top_edge_spacing, right_edge_spacing, bottom_edge_spacing;
+    config.size_callback((GLFWwindow*)window, xscale, yscale, &cell_width, &cell_height, &left_edge_spacing, &top_edge_spacing, &right_edge_spacing, &bottom_edge_spacing);
+    double spacing_x = left_edge_spacing + right_edge_spacing;
+    double spacing_y = top_edge_spacing + bottom_edge_spacing;
+    double xsz = config.x_size_in_pixels ? (unsigned)(config.x_size_in_pixels * xscale) : (cell_width * config.x_size_in_cells);
+    double ysz = config.y_size_in_pixels ? (unsigned)(config.y_size_in_pixels * yscale) : (cell_height * config.y_size_in_cells);
+    xsz /= xscale; ysz /= yscale;
+    ans.width = (int)(1. + spacing_x + xsz); ans.height = (int)(1. + spacing_y + ysz);
+    GeometryRect m = config.type == GLFW_LAYER_SHELL_TOP || config.type == GLFW_LAYER_SHELL_OVERLAY ? mg.workarea : mg.full;
+    static const struct {
+        uint32_t left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x;
+    } s = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+
+    switch (config.edge) {
+        case GLFW_EDGE_LEFT:
+            ans.x = m.x + config.requested_left_margin;
+            ans.y = m.y + config.requested_top_margin;
+            ans.height = m.height - config.requested_bottom_margin - config.requested_top_margin;
+            ans.struts[s.left] = ans.width; ans.struts[s.left_end_y] = ans.height;
+            break;
+        case GLFW_EDGE_RIGHT:
+            ans.x = m.x + m.width - config.requested_right_margin - ans.width;
+            ans.y = m.y + config.requested_top_margin;
+            ans.height = m.height - config.requested_bottom_margin - config.requested_top_margin;
+            ans.struts[s.right] = ans.width; ans.struts[s.right_end_y] = ans.height;
+            break;
+        case GLFW_EDGE_TOP:
+            ans.x = m.x + config.requested_left_margin;
+            ans.y = m.y + config.requested_top_margin;
+            ans.width = m.width - config.requested_right_margin - config.requested_left_margin;
+            ans.struts[s.top] = ans.height; ans.struts[s.top_end_x] = ans.width;
+            break;
+        case GLFW_EDGE_BOTTOM:
+            ans.x = m.x + config.requested_left_margin;
+            ans.y = m.height - config.requested_bottom_margin - ans.height;
+            ans.width = m.width - config.requested_right_margin - config.requested_left_margin;
+            ans.struts[s.bottom] = ans.height; ans.struts[s.bottom_end_x] = ans.width;
+            break;
+        default:
+            ans.needs_strut = false;
+            ans.x = m.x + config.requested_left_margin;
+            ans.y = m.y + config.requested_top_margin;
+            ans.height = m.height - config.requested_bottom_margin - config.requested_top_margin;
+            ans.width = m.width - config.requested_right_margin - config.requested_left_margin;
+            break;
+    }
+#undef config
+    return ans;
+}
+
+GLFWAPI bool glfwIsLayerShellSupported(void) { return _glfw.x11.NET_WM_WINDOW_TYPE != 0 && _glfw.x11.NET_WM_STATE != 0; }
+
+static void
+glfwSetX11WindowStrut(_GLFWwindow *window, const uint32_t dimensions[12]) {
+    XChangeProperty(
+        _glfw.x11.display, window->x11.handle, _glfw.x11.NET_WM_STRUT_PARTIAL, XA_CARDINAL, 32, PropModeReplace, (unsigned char*) dimensions, 12);
+}
+
+static bool
+update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndconfig *wndconfig) {
+    XWMHints* hints = XAllocWMHints();
+    bool is_layer_shell = window->x11.layer_shell.is_active;
+    bool ok = false;
+    if (hints) {
+        ok = true;
+        hints->flags = StateHint | InputHint;
+        hints->initial_state = NormalState;
+        hints->input = true;
+        if (is_layer_shell && window->x11.layer_shell.config.type == GLFW_LAYER_SHELL_BACKGROUND) hints->input = false;
+        XSetWMHints(_glfw.x11.display, window->x11.handle, hints);
+        XFree(hints);
+    } else _glfwInputError(GLFW_OUT_OF_MEMORY, "X11: Failed to allocate WM hints");
+    if (_glfw.x11.NET_WM_WINDOW_TYPE) {
+        Atom type = 0;
+        if (window->x11.layer_shell.is_active) {
+            const char *name = NULL;
+#define S(which) type = _glfw.x11.NET_WM_WINDOW_TYPE_DESKTOP; name = #which
+            switch (window->x11.layer_shell.config.type) {
+                case GLFW_LAYER_SHELL_BACKGROUND: S(NET_WM_WINDOW_TYPE_DESKTOP); break;
+                case GLFW_LAYER_SHELL_PANEL: S(NET_WM_WINDOW_TYPE_DOCK); break;
+                default: S(NET_WM_WINDOW_TYPE_NORMAL); break;
+            }
+#undef S
+            if (!type) {
+                _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _%s", name);
+                ok = false;
+            }
+        } else if (_glfw.x11.NET_WM_WINDOW_TYPE_NORMAL) type = _glfw.x11.NET_WM_WINDOW_TYPE_NORMAL;
+        if (type) XChangeProperty(
+            _glfw.x11.display,  window->x11.handle, _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32, PropModeReplace, (unsigned char*) &type, 1);
+    } else if (is_layer_shell) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _NET_WM_WINDOW_TYPE");
+        ok = false;
+    }
+    if (is_layer_shell) {
+        if (_glfw.x11.NET_WM_STRUT_PARTIAL) {
+            glfwSetX11WindowStrut(window, wg->needs_strut ? wg->struts : (uint32_t[12]){0});
+        } else if (wg->needs_strut) {
+            _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _NET_WM_STRUT_PARTIAL");
+            ok = false;
+        }
+    }
+    if (ok) {
+        updateNormalHints(window, wg->width, wg->height);
+        Atom states[8]; unsigned count = 0;
+        if (is_layer_shell) {
+            _glfwPlatformSetWindowDecorated(window, false);
+            if (_glfw.x11.NET_WM_STATE_STICKY) states[count++] = _glfw.x11.NET_WM_STATE_STICKY;
+            if (_glfw.x11.NET_WM_STATE_SKIP_PAGER) states[count++] = _glfw.x11.NET_WM_STATE_SKIP_PAGER;
+            if (_glfw.x11.NET_WM_STATE_SKIP_TASKBAR) states[count++] = _glfw.x11.NET_WM_STATE_SKIP_TASKBAR;
+#define S(x) if (_glfw.x11.x) { states[count++] = _glfw.x11.x; } else { _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _%s", #x); ok = false; }
+            switch (window->x11.layer_shell.config.type) {
+                case GLFW_LAYER_SHELL_NONE: break;
+                case GLFW_LAYER_SHELL_BACKGROUND: case GLFW_LAYER_SHELL_PANEL: S(NET_WM_STATE_BELOW); break;
+                case GLFW_LAYER_SHELL_TOP: case GLFW_LAYER_SHELL_OVERLAY: S(NET_WM_STATE_ABOVE); break;
+            }
+#undef S
+        } else if (wndconfig) {
+            if (!wndconfig->decorated) _glfwPlatformSetWindowDecorated(window, false);
+            if (_glfw.x11.NET_WM_STATE && !window->monitor) {
+                if (wndconfig->floating) {
+                    if (_glfw.x11.NET_WM_STATE_ABOVE) states[count++] = _glfw.x11.NET_WM_STATE_ABOVE;
+                }
+                if (wndconfig->maximized) {
+                    if (_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT && _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ) {
+                        states[count++] = _glfw.x11.NET_WM_STATE_MAXIMIZED_VERT;
+                        states[count++] = _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ;
+                        window->x11.maximized = true;
+                    }
+                }
+            }
+        }
+        if (count && _glfw.x11.NET_WM_STATE) XChangeProperty(_glfw.x11.display, window->x11.handle, _glfw.x11.NET_WM_STATE,
+                XA_ATOM, 32, PropModeReplace, (unsigned char*) states, count);
+    }
+    if (!wndconfig && ok) _glfwPlatformSetWindowPos(window, wg->x, wg->y);
+    return ok;
+}
+
 // Create the X11 window (and its colormap)
 //
 static bool createNativeWindow(_GLFWwindow* window,
                                    const _GLFWwndconfig* wndconfig,
                                    Visual* visual, int depth)
 {
-    int width = wndconfig->width;
-    int height = wndconfig->height;
-
-    if (wndconfig->scaleToMonitor)
-    {
-        width *= (int)_glfw.x11.contentScaleX;
-        height *= (int)_glfw.x11.contentScaleY;
+    WindowGeometry wg = {.width=wndconfig->width, .height=wndconfig->height};
+    if (window->x11.layer_shell.is_active) {
+        wg = calculate_layer_geometry(window);
+        window->resizable = false;
     }
 
     // Create a colormap based on the visual used by the current context
@@ -565,8 +718,8 @@ static bool createNativeWindow(_GLFWwindow* window,
     window->x11.parent = _glfw.x11.root;
     window->x11.handle = XCreateWindow(_glfw.x11.display,
                                        _glfw.x11.root,
-                                       0, 0,   // Position
-                                       width, height,
+                                       wg.x, wg.y,   // Position
+                                       wg.width, wg.height,
                                        0,      // Border width
                                        depth,  // Color depth
                                        InputOutput,
@@ -587,39 +740,6 @@ static bool createNativeWindow(_GLFWwindow* window,
                  window->x11.handle,
                  _glfw.x11.context,
                  (XPointer) window);
-
-    if (!wndconfig->decorated)
-        _glfwPlatformSetWindowDecorated(window, false);
-
-    if (_glfw.x11.NET_WM_STATE && !window->monitor)
-    {
-        Atom states[3];
-        int count = 0;
-
-        if (wndconfig->floating)
-        {
-            if (_glfw.x11.NET_WM_STATE_ABOVE)
-                states[count++] = _glfw.x11.NET_WM_STATE_ABOVE;
-        }
-
-        if (wndconfig->maximized)
-        {
-            if (_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT &&
-                _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
-            {
-                states[count++] = _glfw.x11.NET_WM_STATE_MAXIMIZED_VERT;
-                states[count++] = _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ;
-                window->x11.maximized = true;
-            }
-        }
-
-        if (count)
-        {
-            XChangeProperty(_glfw.x11.display, window->x11.handle,
-                            _glfw.x11.NET_WM_STATE, XA_ATOM, 32,
-                            PropModeReplace, (unsigned char*) states, count);
-        }
-    }
 
     // Declare the WM protocols supported by GLFW
     {
@@ -643,32 +763,7 @@ static bool createNativeWindow(_GLFWwindow* window,
                         (unsigned char*) &pid, 1);
     }
 
-    if (_glfw.x11.NET_WM_WINDOW_TYPE && _glfw.x11.NET_WM_WINDOW_TYPE_NORMAL)
-    {
-        Atom type = _glfw.x11.NET_WM_WINDOW_TYPE_NORMAL;
-        XChangeProperty(_glfw.x11.display,  window->x11.handle,
-                        _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
-                        PropModeReplace, (unsigned char*) &type, 1);
-    }
-
-    // Set ICCCM WM_HINTS property
-    {
-        XWMHints* hints = XAllocWMHints();
-        if (!hints)
-        {
-            _glfwInputError(GLFW_OUT_OF_MEMORY,
-                            "X11: Failed to allocate WM hints");
-            return false;
-        }
-
-        hints->flags = StateHint;
-        hints->initial_state = NormalState;
-
-        XSetWMHints(_glfw.x11.display, window->x11.handle, hints);
-        XFree(hints);
-    }
-
-    updateNormalHints(window, width, height);
+    if (!update_wm_hints(window, &wg, wndconfig)) return false;
 
     // Set ICCCM WM_CLASS property
     {
@@ -1869,9 +1964,12 @@ void _glfwPushSelectionToManagerX11(void)
 
 int _glfwPlatformCreateWindow(_GLFWwindow* window, const _GLFWwndconfig* wndconfig, const _GLFWctxconfig* ctxconfig, const _GLFWfbconfig* fbconfig, const GLFWLayerShellConfig *lsc)
 {
-    (void)lsc;
     Visual* visual = NULL;
     int depth;
+    if (lsc) {
+        window->x11.layer_shell.is_active = true;
+        window->x11.layer_shell.config = *lsc;
+    } else window->x11.layer_shell.is_active = false;
 
     if (ctxconfig->client != GLFW_NO_API)
     {
@@ -1964,7 +2062,9 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 }
 
 bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
-    (void)window; (void)value;
+    if (value) window->x11.layer_shell.config = *value;
+    WindowGeometry wg = calculate_layer_geometry(window);
+    update_wm_hints(window, &wg, NULL);
     return false;
 }
 
@@ -3273,30 +3373,4 @@ GLFWAPI int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
     return XSetCommand(_glfw.x11.display, window->x11.handle, argv, argc);
 }
 
-GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id) {
-    _GLFW_REQUIRE_INIT();
-    Atom type = _glfw.x11.NET_WM_WINDOW_TYPE_DOCK;
-    if (!type) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "The X11 window manager does not support the NET_WM_WINDOW_TYPE_DOCK Atom, cannot make panels into docks\n");
-        return ;
-    }
-    if (!_glfw.x11.NET_WM_WINDOW_TYPE) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "The X11 window manager does not support the NET_WM_WINDOW_TYPE Atom, cannot make panels into docks\n");
-        return ;
-    }
-    XChangeProperty(_glfw.x11.display, x11_window_id,
-                    _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
-                    PropModeReplace, (unsigned char*) &type, 1);
-}
 
-
-GLFWAPI void glfwSetX11WindowStrut(int32_t x11_window_id, uint32_t dimensions[12]) {
-    _GLFW_REQUIRE_INIT();
-    if (!_glfw.x11.NET_WM_STRUT_PARTIAL) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "The X11 window manager does not support the NET_WM_STRUT_PARTIAL Atom, cannot make panels into docks\n");
-        return ;
-    }
-    XChangeProperty(_glfw.x11.display, x11_window_id,
-                    _glfw.x11.NET_WM_STRUT_PARTIAL, XA_CARDINAL, 32,
-                    PropModeReplace, (unsigned char*) dimensions, 12);
-}

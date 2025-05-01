@@ -47,6 +47,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetIMECursorPositionCallback_impl) = dlsym(handle, "glfwSetIMECursorPositionCallback");
     if (glfwSetIMECursorPositionCallback_impl == NULL) fail("Failed to load glfw function glfwSetIMECursorPositionCallback with error: %s", dlerror());
 
+    *(void **) (&glfwIsLayerShellSupported_impl) = dlsym(handle, "glfwIsLayerShellSupported");
+    if (glfwIsLayerShellSupported_impl == NULL) fail("Failed to load glfw function glfwIsLayerShellSupported with error: %s", dlerror());
+
     *(void **) (&glfwTerminate_impl) = dlsym(handle, "glfwTerminate");
     if (glfwTerminate_impl == NULL) fail("Failed to load glfw function glfwTerminate with error: %s", dlerror());
 
@@ -488,9 +491,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwWaylandRedrawCSDWindowTitle_impl) = dlsym(handle, "glfwWaylandRedrawCSDWindowTitle");
     if (glfwWaylandRedrawCSDWindowTitle_impl == NULL) dlerror(); // clear error indicator
 
-    *(void **) (&glfwWaylandIsLayerShellSupported_impl) = dlsym(handle, "glfwWaylandIsLayerShellSupported");
-    if (glfwWaylandIsLayerShellSupported_impl == NULL) dlerror(); // clear error indicator
-
     *(void **) (&glfwWaylandIsWindowFullyCreated_impl) = dlsym(handle, "glfwWaylandIsWindowFullyCreated");
     if (glfwWaylandIsWindowFullyCreated_impl == NULL) dlerror(); // clear error indicator
 
@@ -511,12 +511,6 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwSetX11LaunchCommand_impl) = dlsym(handle, "glfwSetX11LaunchCommand");
     if (glfwSetX11LaunchCommand_impl == NULL) dlerror(); // clear error indicator
-
-    *(void **) (&glfwSetX11WindowAsDock_impl) = dlsym(handle, "glfwSetX11WindowAsDock");
-    if (glfwSetX11WindowAsDock_impl == NULL) dlerror(); // clear error indicator
-
-    *(void **) (&glfwSetX11WindowStrut_impl) = dlsym(handle, "glfwSetX11WindowStrut");
-    if (glfwSetX11WindowStrut_impl == NULL) dlerror(); // clear error indicator
 
     return NULL;
 }

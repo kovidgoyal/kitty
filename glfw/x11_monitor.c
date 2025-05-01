@@ -350,96 +350,79 @@ void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor UNUSED,
         *yscale = _glfw.x11.contentScaleY;
 }
 
-void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos, int* width, int* height)
-{
-    int areaX = 0, areaY = 0, areaWidth = 0, areaHeight = 0;
-
-    if (_glfw.x11.randr.available && !_glfw.x11.randr.monitorBroken)
-    {
+MonitorGeometry
+_glfwPlatformGetMonitorGeometry(_GLFWmonitor *monitor) {
+    MonitorGeometry ans = {0};
+    if (!monitor) return ans;
+    if (_glfw.x11.randr.available && !_glfw.x11.randr.monitorBroken) {
         XRRScreenResources* sr =
             XRRGetScreenResourcesCurrent(_glfw.x11.display, _glfw.x11.root);
         XRRCrtcInfo* ci = XRRGetCrtcInfo(_glfw.x11.display, sr, monitor->x11.crtc);
 
-        areaX = ci->x;
-        areaY = ci->y;
+        ans.full.x = ci->x;
+        ans.full.y = ci->y;
 
         const XRRModeInfo* mi = getModeInfo(sr, ci->mode);
 
-        if (ci->rotation == RR_Rotate_90 || ci->rotation == RR_Rotate_270)
-        {
-            areaWidth  = mi->height;
-            areaHeight = mi->width;
-        }
-        else
-        {
-            areaWidth  = mi->width;
-            areaHeight = mi->height;
+        if (ci->rotation == RR_Rotate_90 || ci->rotation == RR_Rotate_270) {
+            ans.full.width  = mi->height;
+            ans.full.height = mi->width;
+        } else {
+            ans.full.width  = mi->width;
+            ans.full.height = mi->height;
         }
 
         XRRFreeCrtcInfo(ci);
         XRRFreeScreenResources(sr);
+    } else {
+        ans.full.width  = DisplayWidth(_glfw.x11.display, _glfw.x11.screen);
+        ans.full.height = DisplayHeight(_glfw.x11.display, _glfw.x11.screen);
     }
-    else
-    {
-        areaWidth  = DisplayWidth(_glfw.x11.display, _glfw.x11.screen);
-        areaHeight = DisplayHeight(_glfw.x11.display, _glfw.x11.screen);
-    }
+    ans.workarea = *(&ans.full);
 
-    if (_glfw.x11.NET_WORKAREA && _glfw.x11.NET_CURRENT_DESKTOP)
-    {
+    if (_glfw.x11.NET_WORKAREA && _glfw.x11.NET_CURRENT_DESKTOP) {
         Atom* extents = NULL;
         Atom* desktop = NULL;
-        const unsigned long extentCount =
-            _glfwGetWindowPropertyX11(_glfw.x11.root,
-                                      _glfw.x11.NET_WORKAREA,
-                                      XA_CARDINAL,
-                                      (unsigned char**) &extents);
+        const unsigned long extentCount = _glfwGetWindowPropertyX11(
+            _glfw.x11.root, _glfw.x11.NET_WORKAREA, XA_CARDINAL, (unsigned char**) &extents);
 
-        if (_glfwGetWindowPropertyX11(_glfw.x11.root,
-                                      _glfw.x11.NET_CURRENT_DESKTOP,
-                                      XA_CARDINAL,
-                                      (unsigned char**) &desktop) > 0)
-        {
-            if (extentCount >= 4 && *desktop < extentCount / 4)
-            {
+        if (_glfwGetWindowPropertyX11(_glfw.x11.root, _glfw.x11.NET_CURRENT_DESKTOP, XA_CARDINAL, (unsigned char**) &desktop) > 0) {
+            if (extentCount >= 4 && *desktop < extentCount / 4) {
                 const int globalX = extents[*desktop * 4 + 0];
                 const int globalY = extents[*desktop * 4 + 1];
                 const int globalWidth  = extents[*desktop * 4 + 2];
                 const int globalHeight = extents[*desktop * 4 + 3];
 
-                if (areaX < globalX)
-                {
-                    areaWidth -= globalX - areaX;
-                    areaX = globalX;
+                if (ans.workarea.x < globalX) {
+                    ans.workarea.width -= globalX - ans.workarea.x;
+                    ans.workarea.x = globalX;
                 }
-
-                if (areaY < globalY)
-                {
-                    areaHeight -= globalY - areaY;
-                    areaY = globalY;
+                if (ans.workarea.y < globalY) {
+                    ans.workarea.height -= globalY - ans.workarea.y;
+                    ans.workarea.y = globalY;
                 }
-
-                if (areaX + areaWidth > globalX + globalWidth)
-                    areaWidth = globalX - areaX + globalWidth;
-                if (areaY + areaHeight > globalY + globalHeight)
-                    areaHeight = globalY - areaY + globalHeight;
+                if (ans.workarea.x + ans.workarea.width > globalX + globalWidth)
+                    ans.workarea.width = globalX - ans.workarea.x + globalWidth;
+                if (ans.workarea.y + ans.workarea.height > globalY + globalHeight)
+                    ans.workarea.height = globalY - ans.workarea.y + globalHeight;
             }
         }
-
-        if (extents)
-            XFree(extents);
-        if (desktop)
-            XFree(desktop);
+        if (extents) XFree(extents);
+        if (desktop) XFree(desktop);
     }
+    return ans;
+}
 
+void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos, int* width, int* height) {
+    MonitorGeometry ans = _glfwPlatformGetMonitorGeometry(monitor);
     if (xpos)
-        *xpos = areaX;
+        *xpos = ans.workarea.x;
     if (ypos)
-        *ypos = areaY;
+        *ypos = ans.workarea.y;
     if (width)
-        *width = areaWidth;
+        *width = ans.workarea.width;
     if (height)
-        *height = areaHeight;
+        *height = ans.workarea.height;
 }
 
 GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)

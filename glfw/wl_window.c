@@ -1054,8 +1054,10 @@ calculate_layer_size(_GLFWwindow *window, uint32_t *width, uint32_t *height) {
     const GLFWLayerShellConfig *config = &window->wl.layer_shell.config;
     GLFWvidmode m = {0};
     if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);
+    int monitor_width = m.width, monitor_height = m.height;
     const int y_margin = config->requested_bottom_margin + config->requested_top_margin, x_margin = config->requested_left_margin + config->requested_right_margin;
-    const int monitor_width = MAX(0, m.width - x_margin), monitor_height = MAX(0, m.height - y_margin);
+    monitor_width = monitor_width > x_margin ? monitor_width - x_margin : 0;
+    monitor_height = monitor_height > y_margin ? monitor_height - y_margin : 0;
     float xscale = (float)config->expected.xscale, yscale = (float)config->expected.yscale;
     if (window->wl.window_fully_created) _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
     unsigned cell_width, cell_height; double left_edge_spacing, top_edge_spacing, right_edge_spacing, bottom_edge_spacing;
@@ -1089,6 +1091,7 @@ calculate_layer_size(_GLFWwindow *window, uint32_t *width, uint32_t *height) {
         *width = (uint32_t)(1. + spacing_x);
         *height = (uint32_t)(1. + spacing_y);
     }
+
 }
 
 static void
@@ -1101,8 +1104,6 @@ layer_surface_handle_configure(void* data, struct zwlr_layer_surface_v1* surface
         window->wl.once.surface_configured = true;
         update_fully_created_on_configure(window);
     }
-    GLFWvidmode m = {0};
-    if (window->wl.monitorsCount) _glfwPlatformGetVideoMode(window->wl.monitors[0], &m);
     calculate_layer_size(window, &width, &height);
     zwlr_layer_surface_v1_ack_configure(surface, serial);
     if ((int)width != window->wl.width || (int)height != window->wl.height) {
@@ -2895,7 +2896,7 @@ GLFWAPI GLFWLayerShellConfig* glfwWaylandLayerShellConfig(GLFWwindow *handle) {
     return &((_GLFWwindow*)handle)->wl.layer_shell.config;
 }
 
-GLFWAPI bool glfwWaylandIsLayerShellSupported(void) { return _glfw.wl.zwlr_layer_shell_v1 != NULL; }
+GLFWAPI bool glfwIsLayerShellSupported(void) { return _glfw.wl.zwlr_layer_shell_v1 != NULL; }
 
 GLFWAPI bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle) { return handle != NULL && ((_GLFWwindow*)handle)->wl.window_fully_created; }
 

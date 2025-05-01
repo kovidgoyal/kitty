@@ -1264,17 +1264,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         window_state = (int) PyLong_AsLong(optional_window_state);
     }
     if (layer_shell_config && layer_shell_config != Py_None ) {
-#ifdef __APPLE__
-        lsc = &lsc_stack;
-#else
-        if (global_state.is_wayland) {
-            if (!glfwWaylandIsLayerShellSupported()) {
-                PyErr_SetString(PyExc_RuntimeError, "The Wayland compositor does not support the layer shell protocol.");
-                return NULL;
-            }
-            lsc = &lsc_stack;
+        if (!glfwIsLayerShellSupported()) {
+            PyErr_SetString(PyExc_RuntimeError, "The window manager/compositor does not support the primitives needed to make panels.");
+            return NULL;
         }
-#endif
+        lsc = &lsc_stack;
     } else {
         if (optional_x && optional_x != Py_None) { if (!PyLong_Check(optional_x)) { PyErr_SetString(PyExc_TypeError, "x must be an int"); return NULL;} x = (int)PyLong_AsLong(optional_x); }
         if (optional_y && optional_y != Py_None) { if (!PyLong_Check(optional_y)) { PyErr_SetString(PyExc_TypeError, "y must be an int"); return NULL;} y = (int)PyLong_AsLong(optional_y); }
@@ -2459,28 +2453,8 @@ get_clipboard_mime(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyObject*
-make_x11_window_a_dock_window(PyObject *self UNUSED, PyObject *args UNUSED) {
-    int x11_window_id;
-    PyObject *dims;
-    if (!PyArg_ParseTuple(args, "iO!", &x11_window_id, &PyTuple_Type, &dims)) return NULL;
-    if (PyTuple_GET_SIZE(dims) != 12 ) { PyErr_SetString(PyExc_TypeError, "dimensions must be a tuple of length 12"); return NULL; }
-    if (!glfwSetX11WindowAsDock) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
-    uint32_t dimensions[12];
-    for (Py_ssize_t i = 0; i < 12; i++) dimensions[i] = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(dims, i));
-    if (PyErr_Occurred()) return NULL;
-    glfwSetX11WindowAsDock(x11_window_id);
-    glfwSetX11WindowStrut(x11_window_id, dimensions);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 is_layer_shell_supported(PyObject *self UNUSED, PyObject *args UNUSED) {
-#ifdef __APPLE__
-    Py_RETURN_FALSE;
-#else
-    if (!global_state.is_wayland) Py_RETURN_FALSE;
-    return Py_NewRef(glfwWaylandIsLayerShellSupported() ? Py_True : Py_False);
-#endif
+    return Py_NewRef(glfwIsLayerShellSupported() ? Py_True : Py_False);
 }
 
 static PyObject*
@@ -2552,7 +2526,6 @@ static PyMethodDef module_methods[] = {
     METHODB(get_click_interval, METH_NOARGS),
     METHODB(is_layer_shell_supported, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
-    METHODB(make_x11_window_a_dock_window, METH_VARARGS),
     METHODB(strip_csi, METH_O),
 #ifndef __APPLE__
     METHODB(dbus_close_notification, METH_VARARGS),

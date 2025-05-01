@@ -3252,6 +3252,7 @@ glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int *cocoa_mods) {
     return _glfwPlatformGetNativeKeyForKey(glfw_key);
 }
 
+GLFWAPI bool glfwIsLayerShellSupported(void) { return true; }
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
