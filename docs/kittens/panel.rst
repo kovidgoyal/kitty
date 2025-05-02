@@ -176,3 +176,24 @@ Compatibility with various platforms
         Mostly everything works, with the notable exception that dock panels do not
         prevent other windows from covering them. This is because Apple does not
         provide and way to do this in their APIs.
+
+    .. tab:: X11
+
+        Support is highly dependent on the quirks of individual window
+        managers. See the matrix below:
+
+        .. list-table:: Compatibility matrix
+           :header-rows: 1
+           :stub-columns: 1
+
+           * - WM
+             - Desktop
+             - Dock
+             - Quick
+             - Notes
+
+           * - KDE
+             - 🟢
+             - 🟢
+             - 🟢
+             - transparency does not work for :option:`--edge=background <--edge>`
