@@ -1069,9 +1069,9 @@ calculate_layer_size(_GLFWwindow *window, uint32_t *width, uint32_t *height) {
         if (!*height) *height = monitor_height;
         return;
     }
-    debug("Calculating layer shell window size at scale: %f\n", xscale);
     const unsigned xsz = config->x_size_in_pixels ? (unsigned)(config->x_size_in_pixels * xscale) : (cell_width * config->x_size_in_cells);
     const unsigned ysz = config->y_size_in_pixels ? (unsigned)(config->y_size_in_pixels * yscale) : (cell_height * config->y_size_in_cells);
+    debug("Calculating layer shell window size at scale: %f cell_size: %u %u sz: %u %u\n", xscale, cell_width, cell_height, xsz, ysz);
     if (config->edge == GLFW_EDGE_LEFT || config->edge == GLFW_EDGE_RIGHT) {
         if (!*height) *height = monitor_height;
         double spacing = spacing_x;
