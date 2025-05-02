@@ -556,11 +556,11 @@ calculate_layer_geometry(_GLFWwindow *window) {
     _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
     unsigned cell_width, cell_height; double left_edge_spacing, top_edge_spacing, right_edge_spacing, bottom_edge_spacing;
     config.size_callback((GLFWwindow*)window, xscale, yscale, &cell_width, &cell_height, &left_edge_spacing, &top_edge_spacing, &right_edge_spacing, &bottom_edge_spacing);
+    debug_rendering("Calculating layer size at scale: %f cell size: (%u, %u) \n", xscale, cell_width, cell_height)
     double spacing_x = left_edge_spacing + right_edge_spacing;
     double spacing_y = top_edge_spacing + bottom_edge_spacing;
     double xsz = config.x_size_in_pixels ? (unsigned)(config.x_size_in_pixels * xscale) : (cell_width * config.x_size_in_cells);
     double ysz = config.y_size_in_pixels ? (unsigned)(config.y_size_in_pixels * yscale) : (cell_height * config.y_size_in_cells);
-    xsz /= xscale; ysz /= yscale;
     ans.width = (int)(1. + spacing_x + xsz); ans.height = (int)(1. + spacing_y + ysz);
     GeometryRect m = config.type == GLFW_LAYER_SHELL_TOP || config.type == GLFW_LAYER_SHELL_OVERLAY ? mg.workarea : mg.full;
     static const struct {
