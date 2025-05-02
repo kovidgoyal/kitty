@@ -624,7 +624,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
         Atom type = 0;
         if (window->x11.layer_shell.is_active) {
             const char *name = NULL;
-#define S(which) type = _glfw.x11.NET_WM_WINDOW_TYPE_DESKTOP; name = #which
+#define S(which) type = _glfw.x11.which; name = #which
             switch (config.type) {
                 case GLFW_LAYER_SHELL_BACKGROUND: S(NET_WM_WINDOW_TYPE_DESKTOP); break;
                 case GLFW_LAYER_SHELL_PANEL: S(NET_WM_WINDOW_TYPE_DOCK); break;
