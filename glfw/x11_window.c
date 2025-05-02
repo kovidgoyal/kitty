@@ -638,7 +638,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
     } else _glfwInputError(GLFW_OUT_OF_MEMORY, "X11: Failed to allocate WM hints");
     if (_glfw.x11.NET_WM_WINDOW_TYPE) {
         Atom type = 0;
-        if (window->x11.layer_shell.is_active) {
+        if (is_layer_shell) {
             const char *name = NULL;
 #define S(which) type = _glfw.x11.which; name = #which
             switch (config.type) {
@@ -788,6 +788,8 @@ static bool createNativeWindow(_GLFWwindow* window,
     }
 
     if (!update_wm_hints(window, &wg, wndconfig)) return false;
+    // without this floating window position is incorrect on KDE
+    if (window->x11.layer_shell.is_active) _glfwPlatformSetWindowPos(window, wg.x, wg.y);
 
     // Set ICCCM WM_CLASS property
     {
@@ -1550,6 +1552,7 @@ static void processEvent(XEvent *event)
             if (event->xconfigure.width != window->x11.width ||
                 event->xconfigure.height != window->x11.height)
             {
+                debug_rendering("Window resized to: %d %d from: %d %d\n", event->xconfigure.width, event->xconfigure.height, window->x11.width, window->x11.height);
                 _glfwInputFramebufferSize(window,
                                           event->xconfigure.width,
                                           event->xconfigure.height);
@@ -1584,9 +1587,9 @@ static void processEvent(XEvent *event)
                     return;
                 }
             }
-
             if (xpos != window->x11.xpos || ypos != window->x11.ypos)
             {
+                debug_rendering("Window moved to: %d %d from: %d %d\n", xpos, ypos, window->x11.xpos, window->x11.xpos);
                 _glfwInputWindowPos(window, xpos, ypos);
                 window->x11.xpos = xpos;
                 window->x11.ypos = ypos;
@@ -2445,6 +2448,11 @@ void _glfwPlatformShowWindow(_GLFWwindow* window)
         return;
 
     XMapWindow(_glfw.x11.display, window->x11.handle);
+    // without this floating window position is incorrect on KDE
+    if (window->x11.layer_shell.is_active) {
+        WindowGeometry wg = calculate_layer_geometry(window);
+        _glfwPlatformSetWindowPos(window, wg.x, wg.y);
+    }
     waitForVisibilityNotify(window);
 }
 
