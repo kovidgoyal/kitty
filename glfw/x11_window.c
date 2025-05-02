@@ -701,7 +701,10 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
         if (count && _glfw.x11.NET_WM_STATE) XChangeProperty(_glfw.x11.display, window->x11.handle, _glfw.x11.NET_WM_STATE,
                 XA_ATOM, 32, PropModeReplace, (unsigned char*) states, count);
     }
-    if (!wndconfig && ok) _glfwPlatformSetWindowPos(window, wg->x, wg->y);
+    if (!wndconfig && ok) {
+        _glfwPlatformSetWindowPos(window, wg->x, wg->y);
+        _glfwPlatformSetWindowSize(window, wg->width, wg->height);
+    }
     return ok;
 #undef config
 }
