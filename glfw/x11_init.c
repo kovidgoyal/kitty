@@ -47,16 +47,11 @@
 //
 static Atom getAtomIfSupported(Atom* supportedAtoms,
                                unsigned long atomCount,
-                               const char* atomName)
+                               const Atom atom)
 {
-    const Atom atom = XInternAtom(_glfw.x11.display, atomName, False);
-
-    for (unsigned long i = 0;  i < atomCount;  i++)
-    {
-        if (supportedAtoms[i] == atom)
-            return atom;
+    for (unsigned long i = 0;  i < atomCount;  i++) {
+        if (supportedAtoms[i] == atom) return atom;
     }
-
     return None;
 }
 
@@ -120,49 +115,34 @@ static void detectEWMH(void)
 
     // See which of the atoms we support that are supported by the WM
 
-    _glfw.x11.NET_WM_STATE =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE");
-    _glfw.x11.NET_WM_STATE_ABOVE =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_ABOVE");
-    _glfw.x11.NET_WM_STATE_BELOW =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_BELOW");
-    _glfw.x11.NET_WM_STATE_FULLSCREEN =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_FULLSCREEN");
-    _glfw.x11.NET_WM_STATE_MAXIMIZED_VERT =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_MAXIMIZED_VERT");
-    _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_MAXIMIZED_HORZ");
-    _glfw.x11.NET_WM_STATE_DEMANDS_ATTENTION =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_DEMANDS_ATTENTION");
-    _glfw.x11.NET_WM_STATE_SKIP_TASKBAR =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_SKIP_TASKBAR");
-    _glfw.x11.NET_WM_STATE_SKIP_PAGER =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_SKIP_PAGER");
-    _glfw.x11.NET_WM_STATE_STICKY =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STATE_STICKY");
-    _glfw.x11.NET_WM_FULLSCREEN_MONITORS =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_FULLSCREEN_MONITORS");
-    _glfw.x11.NET_WM_WINDOW_TYPE =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_WINDOW_TYPE");
-    _glfw.x11.NET_WM_WINDOW_TYPE_NORMAL =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_WINDOW_TYPE_NORMAL");
-    _glfw.x11.NET_WM_WINDOW_TYPE_DOCK =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_WINDOW_TYPE_DOCK");
-    _glfw.x11.NET_WM_WINDOW_TYPE_DESKTOP =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_WINDOW_TYPE_DESKTOP");
-    _glfw.x11.NET_WORKAREA =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WORKAREA");
-    _glfw.x11.NET_CURRENT_DESKTOP =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_CURRENT_DESKTOP");
-    _glfw.x11.NET_ACTIVE_WINDOW =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_ACTIVE_WINDOW");
-    _glfw.x11.NET_FRAME_EXTENTS =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_FRAME_EXTENTS");
-    _glfw.x11.NET_REQUEST_FRAME_EXTENTS =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_REQUEST_FRAME_EXTENTS");
-    _glfw.x11.NET_WM_STRUT_PARTIAL =
-        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STRUT_PARTIAL");
+#define ALL_ATOMS  \
+    S(NET_WM_STATE) S(NET_WM_STATE_ABOVE) S(NET_WM_STATE_BELOW) S(NET_WM_STATE_FULLSCREEN) \
+    S(NET_WM_STATE_MAXIMIZED_VERT) S(NET_WM_STATE_MAXIMIZED_HORZ) S(NET_WM_STATE_DEMANDS_ATTENTION) \
+    S(NET_WM_STATE_SKIP_TASKBAR) S(NET_WM_STATE_SKIP_PAGER) S(NET_WM_STATE_STICKY) \
+\
+    S(NET_WM_FULLSCREEN_MONITORS) S(NET_WM_STRUT_PARTIAL) \
+\
+    S(NET_WM_WINDOW_TYPE) S(NET_WM_WINDOW_TYPE_NORMAL) S(NET_WM_WINDOW_TYPE_DOCK) S(NET_WM_WINDOW_TYPE_DESKTOP) \
+\
+    S(NET_WORKAREA) S(NET_CURRENT_DESKTOP) S(NET_ACTIVE_WINDOW) S(NET_FRAME_EXTENTS) S(NET_REQUEST_FRAME_EXTENTS) \
+\
+    S(NET_WM_ALLOWED_ACTIONS) S(NET_WM_ACTION_MOVE) S(NET_WM_ACTION_RESIZE) S(NET_WM_ACTION_MINIMIZE) \
+    S(NET_WM_ACTION_SHADE) S(NET_WM_ACTION_STICK) S(NET_WM_ACTION_MAXIMIZE_HORZ) S(NET_WM_ACTION_MAXIMIZE_VERT) \
+    S(NET_WM_ACTION_FULLSCREEN) S(NET_WM_ACTION_CHANGE_DESKTOP) S(NET_WM_ACTION_CLOSE) S(NET_WM_ACTION_ABOVE) \
+    S(NET_WM_ACTION_BELOW) S(NET_WM_ACTION_ABOVE_BELOW)
 
+    static const char* atom_names[35] = {
+#define S(x) "_" #x,
+        ALL_ATOMS
+    };
+#undef S
+    Atom atoms[arraysz(atom_names)];
+    XInternAtoms(_glfw.x11.display, (char**)atom_names, arraysz(atom_names), False, atoms);
+    unsigned i = 0;
+#define S(name) _glfw.x11.name = getAtomIfSupported(supportedAtoms, atomCount, atoms[i++]);
+    ALL_ATOMS
+#undef S
+#undef ALL_ATOMS
     XFree(supportedAtoms);
 }
 
