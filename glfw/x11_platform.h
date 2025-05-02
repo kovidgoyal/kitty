@@ -256,10 +256,7 @@ typedef struct _GLFWlibraryX11
     Atom            NET_WM_ICON;
     Atom            NET_WM_PID;
     Atom            NET_WM_PING;
-    Atom            NET_WM_WINDOW_TYPE;
-    Atom            NET_WM_WINDOW_TYPE_NORMAL;
-    Atom            NET_WM_WINDOW_TYPE_DOCK;
-    Atom            NET_WM_WINDOW_TYPE_DESKTOP;
+    Atom            NET_WM_WINDOW_TYPE, NET_WM_WINDOW_TYPE_NORMAL, NET_WM_WINDOW_TYPE_DOCK, NET_WM_WINDOW_TYPE_DESKTOP, NET_WM_WINDOW_TYPE_UTILITY, NET_WM_WINDOW_TYPE_SPLASH, NET_WM_WINDOW_TYPE_DIALOG, NET_WM_WINDOW_TYPE_MENU, NET_WM_WINDOW_TYPE_NOTIFICATION;
     Atom            NET_WM_STATE;
     Atom            NET_WM_STATE_ABOVE;
     Atom            NET_WM_STATE_BELOW;
