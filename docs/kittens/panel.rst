@@ -211,3 +211,9 @@ Compatibility with various platforms
              - 🟢
              - 🟢
              -
+
+           * - i3
+             - 🔴
+             - 🟠
+             - 🔴
+             - only top and bottom dock panels, without transparency

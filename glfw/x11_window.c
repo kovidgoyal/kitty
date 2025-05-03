@@ -679,7 +679,11 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
 #define S(x) if (_glfw.x11.x) { states[count++] = _glfw.x11.x; } else { _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _%s", #x); ok = false; }
             switch (config.type) {
                 case GLFW_LAYER_SHELL_NONE: break;
-                case GLFW_LAYER_SHELL_BACKGROUND: case GLFW_LAYER_SHELL_PANEL: S(NET_WM_STATE_BELOW); break;
+                case GLFW_LAYER_SHELL_BACKGROUND:  S(NET_WM_STATE_BELOW); break;
+                case GLFW_LAYER_SHELL_PANEL:
+                    // i3 does not support NET_WM_STATE_BELOW but panels work without it
+                    if (_glfw.x11.NET_WM_STATE_BELOW) { S(NET_WM_STATE_BELOW); }
+                    break;
                 case GLFW_LAYER_SHELL_TOP: case GLFW_LAYER_SHELL_OVERLAY: S(NET_WM_STATE_ABOVE); break;
             }
 #undef S
