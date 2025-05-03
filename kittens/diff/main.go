@@ -37,16 +37,9 @@ var conf *Config
 var opts *Options
 var lp *loop.Loop
 
-func isdir(path string) bool {
-	if s, err := os.Stat(path); err == nil {
-		return s.IsDir()
-	}
-	return false
-}
-
 var temp_files []string
 
-func resolve_path(path string) (ans string, err error) {
+func resolve_path(path string) (ans string, is_dir bool, err error) {
 	var s fs.FileInfo
 	if s, err = os.Stat(path); err != nil {
 		return
@@ -65,10 +58,10 @@ func resolve_path(path string) (ans string, err error) {
 			if _, err = io.Copy(dest, src); err != nil {
 				return
 			}
-			return dest.Name(), nil
+			return dest.Name(), false, nil
 
 		} else {
-			return path, nil
+			return path, s.IsDir(), nil
 		}
 	}
 }
@@ -158,20 +151,22 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	if isdir(left) != isdir(right) {
-		return 1, fmt.Errorf("The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.'")
-	}
 	defer func() {
 		for _, path := range temp_files {
 			os.Remove(path)
 		}
 	}()
-	if left, err = resolve_path(left); err != nil {
+	var left_is_dir, right_is_dir bool
+	if left, left_is_dir, err = resolve_path(left); err != nil {
 		return 1, err
 	}
-	if right, err = resolve_path(right); err != nil {
+	if right, right_is_dir, err = resolve_path(right); err != nil {
 		return 1, err
 	}
+	if left_is_dir != right_is_dir {
+		return 1, fmt.Errorf("The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.'")
+	}
+
 	lp, err = loop.New()
 	loop.MouseTrackingMode(lp, loop.BUTTONS_AND_DRAG_MOUSE_TRACKING)
 	if err != nil {
