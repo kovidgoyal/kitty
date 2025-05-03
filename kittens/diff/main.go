@@ -50,7 +50,7 @@ func resolve_path(path string) (ans string, is_dir bool, err error) {
 				return
 			}
 			defer src.Close()
-			if dest, err = os.CreateTemp("", fmt.Sprintf("*-pipe-%d", len(temp_files)+1)); err != nil {
+			if dest, err = os.CreateTemp("", fmt.Sprintf("*-pipe-%s", filepath.Base(path))); err != nil {
 				return
 			}
 			defer dest.Close()
