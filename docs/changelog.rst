@@ -129,6 +129,8 @@ Detailed list of changes
 
 - diff kitten: Add half page and full page scroll vim-like bindings (:pull:`8514`)
 
+- diff kitten: Allow diffing named pipes (:iss:`8597`)
+
 - Fix a regression that caused automatic color themes to not be re-applied after config file reload (:iss:`8530`)
 
 - Wayland: When the compositor supports the `xdg-system-bell
