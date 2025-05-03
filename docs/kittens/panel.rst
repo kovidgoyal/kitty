@@ -204,3 +204,9 @@ Compatibility with various platforms
              - 🟢
              - 🟢
              -
+
+           * - XFCE
+             - 🟢
+             - 🟢
+             - 🟢
+             -

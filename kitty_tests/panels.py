@@ -28,4 +28,4 @@ r('right panel, check struts', 'panel -o background_opacity=0.2 --edge=right --c
 r('background, check transparency and margins and no input focus',
   'panel -o background_opacity=0.2 --edge=background --margin-top=50 --margin-bottom=50 --margin-left=100 --margin-right=100')
 
-r('quake, check transparency and focus on show/re-show', 'kitten quick-access-terminal')
+r('quake, check transparency and focus on show/re-show', 'quick-access-terminal')
