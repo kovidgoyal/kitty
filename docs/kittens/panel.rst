@@ -132,6 +132,7 @@ Compatibility with various platforms
    See the HTML documentation for the compatibility matrix.
 
 .. only:: not man
+
     Generated with the help of the :file:`panels.py` test script.
 
     .. tab:: Wayland
@@ -194,7 +195,7 @@ Compatibility with various platforms
              - Notes
 
            * - KDE
-             - 🟢
+             - 🟠
              - 🟢
              - 🟢
              - transparency does not work for :option:`--edge=background <--edge>`
