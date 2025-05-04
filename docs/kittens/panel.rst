@@ -217,3 +217,9 @@ Compatibility with various platforms
              - 🟠
              - 🔴
              - only top and bottom dock panels, without transparency
+
+           * - xmonad
+             - 🔴
+             - 🔴
+             - 🔴
+             - doesn't support the needed NET_WM protocols
