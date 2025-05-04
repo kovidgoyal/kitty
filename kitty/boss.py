@@ -1853,6 +1853,8 @@ class Boss:
             for qt in q:
                 windows += list(qt)
         active_window = self.active_window
+        active_window_size = get_os_window_size(active_window.id)
+        self.cached_values['window-size'] = active_window_size['width'], active_window_size['height']
         msg, num_active_windows = self.close_windows_with_confirmation_msg(windows, active_window)
         x = get_options().confirm_os_window_close[0]
         num = num_active_windows if x < 0 else len(windows)
