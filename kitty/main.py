@@ -40,6 +40,8 @@ from .fast_data_types import (
     free_font_data,
     glfw_init,
     glfw_terminate,
+    glfw_primary_monitor_size,
+    glfw_get_monitor_workarea,
     is_layer_shell_supported,
     load_png_data,
     mask_kitty_signals_process_wide,
@@ -241,12 +243,19 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
             getattr(startup_sessions[0], 'os_window_state', None) if startup_sessions else None
         )
         wstate = parse_os_window_state(window_state) if window_state is not None else None
+        posX, posY = None, None
+        if args.position:
+            monitor_workarea = glfw_get_monitor_workarea()
+            cached_workarea = cached_values.get('monitor-workarea', None)
+            if cached_workarea and len(monitor_workarea) == len(cached_workarea):
+                if all([tuple(cached_workarea[i]) == monitor_workarea[i] for i in range(len(cached_workarea))]):
+                    posX, posY = cached_values.get('window-pos', (None, None))
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
                     pre_show_callback,
                     args.title or appname, winname,
-                    wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config)
+                    wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config, x=posX, y=posY)
         boss = Boss(opts, args, cached_values, global_shortcuts, talk_fd)
         boss.start(window_id, startup_sessions)
         if args.debug_font_fallback:

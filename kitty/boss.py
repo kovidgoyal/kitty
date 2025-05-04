@@ -85,6 +85,9 @@ from .fast_data_types import (
     get_boss,
     get_options,
     get_os_window_size,
+    get_os_window_pos,
+    glfw_primary_monitor_size,
+    glfw_get_monitor_workarea,
     global_font_size,
     is_layer_shell_supported,
     last_focused_os_window_id,
@@ -1864,6 +1867,10 @@ class Boss:
             for qt in q:
                 windows += list(qt)
         active_window = self.active_window
+        x, y = get_os_window_pos(active_window.id)
+        monitorGeometryX, monitorGeometryY = glfw_primary_monitor_size()
+        self.cached_values['window-pos'] = x, y
+        self.cached_values['monitor-workarea'] = glfw_get_monitor_workarea()
         msg, num_active_windows = self.close_windows_with_confirmation_msg(windows, active_window)
         x = get_options().confirm_os_window_close[0]
         num = num_active_windows if x < 0 else len(windows)

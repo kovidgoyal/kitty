@@ -602,6 +602,7 @@ def apply_preparsed_cli_flags(preparsed_from_c: PreparsedCLIFlags, ans: Any, cre
 
 
 def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None) -> list[str]:
+
     names_map = oc.names_map.copy()
     values_map = oc.values_map.copy()
     if 'help' not in names_map:

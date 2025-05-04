@@ -2127,6 +2127,42 @@ primary_monitor_size(PYNOARG) {
     return Py_BuildValue("ii", mode->width, mode->height);
 }
 
+static PyObject *
+get_monitor_workarea(PYNOARG)
+{
+    int count = 0;
+    GLFWmonitor **monitors = glfwGetMonitors(&count);
+    if (count == 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Failed to retrieve monitors");
+    }
+
+    PyObject *result = PyList_New(count);
+    if (!result)
+    {
+        return NULL;
+    }
+
+    for (int i = 0; i < count; i++)
+    {
+        int xpos, ypos, width, height;
+        GLFWmonitor *monitor = monitors[i];
+
+        glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
+
+        PyObject *monitor_workarea = Py_BuildValue("iiii", xpos, ypos, width, height);
+        if (!monitor_workarea)
+        {
+            Py_DECREF(monitor_workarea);
+            return NULL;
+        }
+
+        PyList_SET_ITEM(result, i, monitor_workarea);
+    }
+
+    return result;
+}
+
 static PyObject*
 primary_monitor_content_scale(PYNOARG) {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -2626,6 +2662,7 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
     {"glfw_get_system_color_theme", (PyCFunction)glfw_get_system_color_theme, METH_VARARGS, ""},
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},
+    {"glfw_get_monitor_workarea", (PyCFunction)get_monitor_workarea, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
