@@ -3027,8 +3027,6 @@ class Boss:
 
     def set_background_image(self, path: str | None, os_windows: tuple[int, ...], configured: bool, layout: str | None, png_data: bytes = b'') -> None:
         set_background_image(path, os_windows, configured, layout, png_data)
-        for os_window_id in os_windows:
-            self.default_bg_changed_for(os_window_id)
 
     # Can be called with kitty -o "map f1 send_test_notification"
     def send_test_notification(self) -> None:
