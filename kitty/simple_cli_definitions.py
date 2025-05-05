@@ -391,11 +391,6 @@ inside kitty, permanently fixing the OS window's title. So only use this if you
 are running a program that does not set titles.
 
 
---position
-type=bool-set
-Restores the last session's window position. Does not work on Wayland.
-
-
 --config -c
 type=list
 completion=type:file ext:conf group:"Config files" kwds:none,NONE
@@ -479,6 +474,11 @@ type=choices
 default=normal
 choices=normal,fullscreen,maximized,minimized,hidden
 Control how the initial kitty window is created.
+
+
+--position
+type=bool-set
+Restores the last session's window position. Does not work on Wayland.
 
 
 # Debugging options
