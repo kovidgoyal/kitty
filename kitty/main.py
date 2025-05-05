@@ -241,7 +241,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
             getattr(startup_sessions[0], 'os_window_state', None) if startup_sessions else None
         )
         wstate = parse_os_window_state(window_state) if window_state is not None else None
-        posX, posY = cached_values.get('window-pos', (None, None))
+        posX, posY = None, None
+        if args.position:
+            posX, posY = cached_values.get('window-pos', (None, None))
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
