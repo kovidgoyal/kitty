@@ -709,7 +709,10 @@ def set_background_image(
     os_window_ids: Tuple[int, ...],
     configured: bool = True,
     layout_name: Optional[str] = None,
-    png_data: bytes = b''
+    png_data: bytes = b'',
+    linear: bool | None = None,
+    tint: float | None = None,
+    tint_gaps: float | None = None,
 ) -> None:
     pass
 

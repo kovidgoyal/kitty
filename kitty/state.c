@@ -1215,13 +1215,14 @@ PYWRAP1(update_tab_bar_edge_colors) {
 }
 
 static PyObject*
-pyset_background_image(PyObject *self UNUSED, PyObject *args) {
+pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     const char *path;
-    PyObject *layout_name = NULL;
+    PyObject *layout_name = NULL, *pylinear = NULL, *pytint = NULL, *pytint_gaps = NULL;
     PyObject *os_window_ids;
     int configured = 0;
     char *png_data = NULL; Py_ssize_t png_data_size = 0;
-    PA("zO!|pOy#", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name, &png_data, &png_data_size);
+    static char *kwds[] = {"path", "os_window_ids", "configured", "layout_name", "png_data", "linear", "tint", "tint_gaps", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "zO!|pOy#OOO", kwds, &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name, &png_data, &png_data_size, &pylinear, &pytint, &pytint_gaps)) return NULL;
     size_t size;
     BackgroundImageLayout layout = PyUnicode_Check(layout_name) ? bglayout(layout_name) : OPT(background_image_layout);
     BackgroundImage *bgimage = NULL;
@@ -1247,6 +1248,9 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
         global_state.bgimage = bgimage;
         if (bgimage) bgimage->refcnt++;
         OPT(background_image_layout) = layout;
+        if (pylinear) convert_from_python_background_image_linear(pylinear, &global_state.opts);
+        if (pytint) convert_from_python_background_tint(pytint, &global_state.opts);
+        if (pytint_gaps) convert_from_python_background_tint_gaps(pytint_gaps, &global_state.opts);
     }
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(os_window_ids); i++) {
         id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(os_window_ids, i));
@@ -1494,7 +1498,7 @@ static PyMethodDef module_methods[] = {
     MW(get_os_window_pos, METH_VARARGS),
     MW(set_os_window_pos, METH_VARARGS),
     MW(global_font_size, METH_VARARGS),
-    MW(set_background_image, METH_VARARGS),
+    {"set_background_image", (PyCFunction)(void (*) (void))pyset_background_image, METH_VARARGS | METH_KEYWORDS, ""},
     MW(os_window_font_size, METH_VARARGS),
     MW(set_os_window_size, METH_VARARGS),
     MW(get_os_window_size, METH_VARARGS),
