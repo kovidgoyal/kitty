@@ -94,6 +94,8 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
             elif f == 'modify_font':
                 for k in sorted(val):
                     print('   ', val[k])
+            elif f == 'remote_control_password':
+                print({"REDACTED": value for _, value in val.items()})
             else:
                 print(pformat(val))
         else:
