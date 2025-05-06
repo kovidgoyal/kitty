@@ -24,6 +24,9 @@ else:
 
 def resolved_kitten(k: str) -> str:
     ans = aliases.get(k, k)
+    if os.path.exists(ans):
+        return ans
+
     head, tail = os.path.split(ans)
     tail = tail.replace('-', '_')
     return os.path.join(head, tail)
