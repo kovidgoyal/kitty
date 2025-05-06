@@ -21,7 +21,7 @@ from .colors import theme_colors
 from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
 from .fast_data_types import Color, SingleKey, current_fonts, glfw_get_system_color_theme, num_users, opengl_version_string, wayland_compositor_data
 from .options.types import Options as KittyOpts
-from .options.types import defaults
+from .options.types import defaults, secret_options
 from .options.utils import KeyboardMode, KeyDefinition
 from .rgb import color_as_sharp, color_from_int
 from .types import MouseEvent, Shortcut, mod_to_names
@@ -85,6 +85,9 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
     fmt = f'{{:{field_len:d}s}}'
     colors = []
     for f in changed_opts:
+        if f in secret_options:
+            print(title(f'{f}:'), 'REDACTED FOR SECURITY')
+            continue
         val = getattr(opts, f)
         if isinstance(val, dict):
             print(title(f'{f}:'))
