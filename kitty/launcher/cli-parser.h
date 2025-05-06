@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "../iqsort.h"
 
 #ifndef RAII_PyObject
 static inline void cleanup_decref2(PyObject **p) { Py_CLEAR(*p); }
@@ -122,6 +123,43 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
     snprintf(buf, sz + 4, fmt, __VA_ARGS__); spec->errmsg = buf; \
 }
 
+static ssize_t
+levenshtein_distance(size_t *cache, const char *a, const char *b) {
+    if (a == b) return 0;
+    const size_t length = strlen(a);
+    const size_t bLength = strlen(b);
+    if (length == 0) return bLength;
+    if (bLength == 0) return length;
+    size_t index = 0, bIndex = 0, distance = 0, bDistance = 0, result = 0;
+    char code = 0;
+
+    // initialize the vector.
+    while (index < length) {
+        cache[index] = index + 1;
+        index++;
+    }
+
+    while (bIndex < bLength) {
+        code = b[bIndex];
+        result = distance = bIndex++;
+        index = SIZE_MAX;
+
+        while (++index < length) {
+            bDistance = code == a[index] ? distance : distance + 1;
+            distance = cache[index];
+
+            cache[index] = result = distance > result
+                ? bDistance > result
+                ? result + 1
+                : bDistance
+                : bDistance > distance
+                ? distance + 1
+                : bDistance;
+        }
+    }
+    return result;
+}
+
 static bool
 add_to_listval(CLISpec *spec, CLIValue *v, const char *val) {
     if (v->listval.count + 1 >= v->listval.capacity) {
@@ -158,6 +196,11 @@ formatted_text(CLISpec *spec, const char *start_code, const char *text, const ch
 #define green_text(text) formatted_text(spec, "32", text, "39")
 #define italic_text(text) formatted_text(spec, "3", text, "23")
 
+typedef struct similiar_alias {
+    const char *alias;
+    ssize_t distance;
+} similiar_alias;
+
 static const char*
 dest_for_alias(CLISpec *spec, const char *alias) {
     alias_hash_itr itr = vt_get(&spec->alias_map, alias);
@@ -186,7 +229,23 @@ dest_for_alias(CLISpec *spec, const char *alias) {
             spec->errmsg = buf;
             return NULL;
         }
-
+        size_t *cache = alloc_for_cli(spec, sizeof(size_t) * strlen(alias));
+        size_t num_aliases = vt_size(&spec->alias_map);
+        similiar_alias *candidates =  alloc_for_cli(spec, sizeof(similiar_alias) * num_aliases);
+        size_t num_candidates = 0;
+        alias_map_for_loop(&spec->alias_map) {
+            const char *q = itr.data->key;
+            ssize_t d = levenshtein_distance(cache, alias, q);
+            if (d < 0) break;
+            if (d < 3) candidates[num_candidates++] = (similiar_alias){.alias=q, .distance=d};
+        }
+        if (num_candidates) {
+#define lt(a, b) (a->distance < b->distance)
+            QSORT(similiar_alias, candidates, num_candidates, lt);
+            set_err("Unknown flag: %s. Did you mean: %s?", red_text(alias), green_text(candidates[0].alias));
+            return NULL;
+#undef lt
+        }
         set_err("Unknown flag: %s use --help.", red_text(alias));
         return NULL;
     }
