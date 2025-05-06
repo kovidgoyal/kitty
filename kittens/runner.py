@@ -87,8 +87,8 @@ class KittenMetadata(NamedTuple):
 
 def create_kitten_handler(kitten: str, orig_args: list[str]) -> KittenMetadata:
     from kitty.constants import config_dir
-    kitten = resolved_kitten(kitten)
     m = import_kitten_main_module(config_dir, kitten)
+    kitten = resolved_kitten(kitten)
     main = m['start']
     handle_result = m['end']
     return KittenMetadata(
@@ -110,12 +110,13 @@ def set_debug(kitten: str) -> None:
 
 def launch(args: list[str]) -> None:
     config_dir, kitten = args[:2]
+    original_kitten_name = kitten
     kitten = resolved_kitten(kitten)
     del args[:2]
     args = [kitten] + args
     os.environ['KITTY_CONFIG_DIRECTORY'] = config_dir
     set_debug(kitten)
-    m = import_kitten_main_module(config_dir, kitten)
+    m = import_kitten_main_module(config_dir, original_kitten_name)
     try:
         result = m['start'](args)
     finally:
@@ -139,11 +140,14 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
     if kitten in all_kitten_names():
         runpy.run_module(f'kittens.{kitten}.main', run_name=run_name)
         return
+    kitten = original_kitten_name
     # Look for a custom kitten
     if not kitten.endswith('.py'):
         kitten += '.py'
     from kitty.constants import config_dir
     path = path_to_custom_kitten(config_dir, kitten)
+    if not os.path.exists(path):
+        path = path_to_custom_kitten(config_dir, resolved_kitten(kitten))
     if not os.path.exists(path):
         print('Available builtin kittens:', file=sys.stderr)
         for kitten in all_kitten_names():
