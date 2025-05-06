@@ -125,6 +125,10 @@ Detailed list of changes
 - Remote control: Allow modifying desktop panels and showing/hiding OS Windows
   using the `kitten @ resize-os-window` command (:iss:`8550`)
 
+- Remote control launch: Allow waiting for a program launched in a new window
+  to exit and get the exit code via the `kitty +launch
+  --wait-for-child-to-exit` command line flag (:disc:`8573`)
+
 - Allow starting kitty with the OS window hidden via :option:`kitty --start-as=hidden <kitty --start-as>`, useful for single instance mode (:iss:`3466`)
 
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)

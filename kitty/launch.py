@@ -6,7 +6,7 @@ import os
 import shutil
 from collections.abc import Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, NamedTuple, TypedDict
+from typing import Any, Callable, NamedTuple, TypedDict
 
 from .boss import Boss
 from .child import Child
@@ -593,6 +593,7 @@ def _launch(
     is_clone_launch: str = '',
     rc_from_window: Window | None = None,
     base_env: dict[str, str] | None = None,
+    child_death_callback: Callable[[int, Exception | None], None] | None = None,
 ) -> Window | None:
     source_window = boss.active_window_for_cwd
     if opts.source_window:
@@ -730,7 +731,8 @@ def _launch(
             raise ValueError('The cmd to run must be specified when running a background process')
         boss.run_background_process(
             cmd, cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'],
-            allow_remote_control=kw['allow_remote_control'], remote_control_passwords=kw['remote_control_passwords']
+            allow_remote_control=kw['allow_remote_control'], remote_control_passwords=kw['remote_control_passwords'],
+            notify_on_death=child_death_callback,
         )
     elif opts.type in ('clipboard', 'primary'):
         stdin = kw.get('stdin')
@@ -741,6 +743,8 @@ def _launch(
             else:
                 set_primary_selection(stdin)
                 boss.handle_clipboard_loss('primary')
+        if child_death_callback is not None:
+            child_death_callback(0, None)
     else:
         kw['hold'] = opts.hold
         if force_target_tab and target_tab is not None:
@@ -751,6 +755,8 @@ def _launch(
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
             new_window: Window = tab.new_window(
                 env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
+            if child_death_callback is not None:
+                boss.monitor_pid(new_window.child.pid or 0, child_death_callback)
         if spacing:
             patch_window_edges(new_window, spacing)
             tab.relayout()
@@ -781,12 +787,13 @@ def launch(
     is_clone_launch: str = '',
     rc_from_window: Window | None = None,
     base_env: dict[str, str] | None = None,
+    child_death_callback: Callable[[int, Exception | None], None] | None = None,
 ) -> Window | None:
     active = boss.active_window
     if opts.keep_focus and active:
         orig, active.ignore_focus_changes = active.ignore_focus_changes, True
     try:
-        return _launch(boss, opts, args, target_tab, force_target_tab, is_clone_launch, rc_from_window, base_env)
+        return _launch(boss, opts, args, target_tab, force_target_tab, is_clone_launch, rc_from_window, base_env, child_death_callback)
     finally:
         if opts.keep_focus and active:
             active.ignore_focus_changes = orig

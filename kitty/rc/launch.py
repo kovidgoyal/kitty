@@ -2,12 +2,14 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import os
 from typing import TYPE_CHECKING
 
 from kitty.cli_stub import LaunchCLIOptions
 from kitty.launch import launch as do_launch
 from kitty.launch import options_spec as launch_options_spec
 from kitty.launch import parse_launch_args
+from kitty.types import AsyncResponse
 
 from .base import MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
@@ -54,6 +56,7 @@ class Launch(RemoteCommand):
     color/list.str: list of color specifications such as foreground=red
     watcher/list.str: list of paths to watcher files
     bias/float: The bias with which to create the new window in the current layout
+    wait_for_child_to_exit/bool: Boolean indicating whether to wait and return child exit code
     '''
 
     short_desc = 'Run an arbitrary process in a new window/tab'
@@ -64,6 +67,21 @@ class Launch(RemoteCommand):
         '    kitten @ launch --title=Email mutt'
     )
     options_spec = MATCH_TAB_OPTION + '\n\n' + '''\
+--wait-for-child-to-exit
+type=bool-set
+Wait until the launched program exits and print out its exit code. The exit code is
+printed out instead of the window id. If the program exited nromally its exit code is printed, which
+is always greater than or equal to zero. If the program was killed by a signal, the symbolic name
+of the SIGNAL is printed, if available, otherwise the signal number with a leading minus sign is printed.
+
+
+--response-timeout
+type=float
+default=86400
+The time in seconds to wait for the started process to exit, when using the :option:`--wait-for-child-to-exit`
+option. Defaults to one day.
+
+
 --no-response
 type=bool-set
 Do not print out the id of the newly created window.
@@ -76,14 +94,17 @@ instead of the active tab
     ''' + '\n\n' + launch_options_spec().replace(':option:`launch', ':option:`kitten @ launch')
     args = RemoteCommand.Args(spec='[CMD ...]', json_field='args', completion=RemoteCommand.CompletionSpec.from_string(
         'type:special group:cli.CompleteExecutableFirstArg'))
+    is_asynchronous = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         ans = {'args': args or []}
         for attr, val in opts.__dict__.items():
             ans[attr] = val
+        # ans['wait_for_child_to_exit'] = opts.wait_for_child_to_exit
         return ans
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
+        # responder.send_data(getattr(w, 'id', 0))
         default_opts = parse_launch_args()[0]
         opts = LaunchCLIOptions()
         for key, default_value in default_opts.__dict__.items():
@@ -108,10 +129,31 @@ instead of the active tab
         tabs = self.tabs_for_match_payload(boss, window, payload_get)
         if tabs and tabs[0]:
             target_tab = tabs[0]
-        elif payload_get('type') not in ('background', 'os-window', 'tab', 'window'):
-            return None
-        w = do_launch(boss, opts, payload_get('args') or [], target_tab=target_tab, rc_from_window=window, base_env=base_env)
-        return None if payload_get('no_response') else str(getattr(w, 'id', 0))
 
+        def on_child_death(exit_status: int, exc: Exception | None) -> None:
+            code = os.waitstatus_to_exitcode(exit_status)
+            ans = str(code)
+            if code < 0:
+                try:
+                    from signal import Signals
+                    ans = Signals(-code).name
+                except ValueError:
+                    pass
+            responder.send_data(ans)
+
+        w = do_launch(
+            boss, opts, payload_get('args') or [], target_tab=target_tab, rc_from_window=window, base_env=base_env,
+            child_death_callback=on_child_death if payload_get('wait_for_child_to_exit') and not payload_get('no_response') else None)
+        if payload_get('no_response'):
+            return None
+
+        if not payload_get('wait_for_child_to_exit'):
+            return str(0 if w is None else w.id)
+
+        responder = self.create_async_responder(payload_get, window)
+        return AsyncResponse()
+
+    def cancel_async_request(self, boss: 'Boss', window: Window | None, payload_get: PayloadGetType) -> None:
+        pass
 
 launch = Launch()

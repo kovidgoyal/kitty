@@ -2782,6 +2782,10 @@ class Boss:
                     self.update_check_process.kill()
         self.update_check_process = process
 
+    def monitor_pid(self, pid: int, callback: Callable[[int, Exception | None], None]) -> None:
+        self.background_process_death_notify_map[pid] = callback
+        monitor_pid(pid)
+
     def on_monitored_pid_death(self, pid: int, exit_status: int) -> None:
         callback = self.background_process_death_notify_map.pop(pid, None)
         if callback is not None:
