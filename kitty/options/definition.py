@@ -1597,27 +1597,6 @@ depending on how the platform implements it, so use with care. Currently support
 on macOS and KDE.
 ''')
 
-opt('background_image', 'none',
-    option_type='config_or_absolute_path', ctype='!background_image',
-    long_text='Path to a background image. Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
-    )
-
-opt('background_image_layout', 'tiled',
-    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled'),
-    ctype='bglayout',
-    long_text='''
-Whether to tile, scale or clamp the background image. The value can be one of
-:code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped`, :code:`centered`
-or :code:`cscaled`. The :code:`scaled` and :code:`cscaled` values scale the image to the
-window size, with :code:`cscaled` preserving the image aspect ratio.
-'''
-    )
-
-opt('background_image_linear', 'no',
-    option_type='to_bool', ctype='bool',
-    long_text='When background image is scaled, whether linear interpolation should be used.'
-    )
-
 opt('transparent_background_colors', '', option_type='transparent_background_colors', long_text='''
 A space separated list of upto 7 colors, with opacity. When the background color of a cell matches one of these colors,
 it is rendered semi-transparent using the specified opacity.
@@ -1645,6 +1624,31 @@ this option by reloading the config is not supported.
 '''
     )
 
+
+opt('background_image', 'none',
+    option_type='config_or_absolute_path', ctype='!background_image',
+    long_text='Path to a background image. Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
+    ' Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.'
+    )
+
+opt('background_image_layout', 'tiled',
+    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled'),
+    ctype='bglayout',
+    long_text='''
+Whether to tile, scale or clamp the background image. The value can be one of
+:code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped`, :code:`centered`
+or :code:`cscaled`. The :code:`scaled` and :code:`cscaled` values scale the image to the
+window size, with :code:`cscaled` preserving the image aspect ratio.
+Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.
+'''
+    )
+
+opt('background_image_linear', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='When background image is scaled, whether linear interpolation should be used.'
+' Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.'
+    )
+
 opt('background_tint', '0.0',
     option_type='unit_float', ctype='float',
     long_text='''
@@ -1652,6 +1656,7 @@ How much to tint the background image by the background color. This option
 makes it easier to read the text. Tinting is done using the current background
 color for each window. This option applies only if :opt:`background_opacity` is
 set and transparent windows are supported or :opt:`background_image` is set.
+Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.
 '''
     )
 
@@ -1662,6 +1667,7 @@ How much to tint the background image at the window gaps by the background
 color, after applying :opt:`background_tint`. Since this is multiplicative
 with :opt:`background_tint`, it can be used to lighten the tint over the window
 gaps for a *separated* look.
+Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.
 '''
     )
 

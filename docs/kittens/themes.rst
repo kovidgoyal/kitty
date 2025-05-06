@@ -70,7 +70,8 @@ This works by creating three files: :file:`dark-theme.auto.conf`,
 :file:`light-theme.auto.conf` and :file:`no-preference-theme.auto.conf` in the
 kitty config directory. When these files exist, kitty queries the OS for its color scheme
 and uses the appropriate file. Note that the colors in these files override all other
-colors, even those specified using the :option:`kitty --override` command line flag.
+colors, and also all background image settings,
+even those specified using the :option:`kitty --override` command line flag.
 kitty will also automatically change colors when the OS color scheme changes,
 for example, during night/day transitions.
 

@@ -1248,9 +1248,9 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
         global_state.bgimage = bgimage;
         if (bgimage) bgimage->refcnt++;
         OPT(background_image_layout) = layout;
-        if (pylinear) convert_from_python_background_image_linear(pylinear, &global_state.opts);
-        if (pytint) convert_from_python_background_tint(pytint, &global_state.opts);
-        if (pytint_gaps) convert_from_python_background_tint_gaps(pytint_gaps, &global_state.opts);
+        if (pylinear && pylinear != Py_None) convert_from_python_background_image_linear(pylinear, &global_state.opts);
+        if (pytint && pytint != Py_None) convert_from_python_background_tint(pytint, &global_state.opts);
+        if (pytint_gaps && pytint_gaps != Py_None) convert_from_python_background_tint_gaps(pytint_gaps, &global_state.opts);
     }
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(os_window_ids); i++) {
         id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(os_window_ids, i));

@@ -3025,8 +3025,11 @@ class Boss:
 
         self.choose_entry('Choose an OS window to move the tab to', items, chosen)
 
-    def set_background_image(self, path: str | None, os_windows: tuple[int, ...], configured: bool, layout: str | None, png_data: bytes = b'') -> None:
-        set_background_image(path, os_windows, configured, layout, png_data)
+    def set_background_image(
+        self, path: str | None, os_windows: tuple[int, ...], configured: bool, layout: str | None, png_data: bytes = b'',
+        linear_interpolation: bool | None = None, tint: float | None = None, tint_gaps: float | None = None
+    ) -> None:
+        set_background_image(path, os_windows, configured, layout, png_data, linear_interpolation, tint, tint_gaps)
 
     # Can be called with kitty -o "map f1 send_test_notification"
     def send_test_notification(self) -> None:
@@ -3049,6 +3052,19 @@ class Boss:
         ''')
     def close_shared_ssh_connections(self) -> None:
         cleanup_ssh_control_masters()
+
+    @ac('debug', '''Simulate a change in OS color scheme preference''')
+    def simulate_color_scheme_preference_change(self, which: str) -> None:
+        which = which.lower().replace('-', '_')
+        match which:
+            case 'light':
+                self.on_system_color_scheme_change('light', False)
+            case 'dark':
+                self.on_system_color_scheme_change('dark', False)
+            case 'no_preference':
+                self.on_system_color_scheme_change('no_preference', False)
+            case _:
+                self.show_error(_('Unknown color scheme type'), _('{} is not a valid color scheme type').format(which))
 
     def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
         from .launch import force_window_launch

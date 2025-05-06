@@ -116,6 +116,8 @@ Detailed list of changes
 - **Behavior change**: Now kitty does full grapheme segmentation following the
   Unicode 16 spec when splitting text into cells (:iss:`8533`)
 
+- **Behavior change**: The :ref:`automatic color switching functionality <auto_color_scheme>` now also controls background image settings (:iss:`8603`)
+
 - panel kitten: Allow using :option:`kitty +kitten panel --single-instance` to create multiple panels in one process (:iss:`8549`)
 
 - launch: Allow creating desktop panels such as those created by the :doc:`panel kitten </kittens/panel>` (:iss:`8549`)
@@ -123,7 +125,7 @@ Detailed list of changes
 - Remote control: Allow modifying desktop panels and showing/hiding OS Windows
   using the `kitten @ resize-os-window` command (:iss:`8550`)
 
-- Allow starting kitty with the OS window hidden via :option:`kitty --start-as`\=hidden useful for single instance mode (:iss:`3466`)
+- Allow starting kitty with the OS window hidden via :option:`kitty --start-as=hidden <kitty --start-as>`, useful for single instance mode (:iss:`3466`)
 
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)
 
