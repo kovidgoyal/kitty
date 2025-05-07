@@ -149,14 +149,14 @@ user presses, for example, :kbd:`ctrl+shift+a` the escape code would be ``CSI
 97;modifiers u``. It *must not* be ``CSI 65; modifiers u``.
 
 If *alternate key reporting* is requested by the program running in the
-terminal, the terminal can send two additional Unicode codepoints, the
-*shifted key* and *base layout key*, separated by colons.
-The shifted key is simply the upper-case version of ``unicode-codepoint``, or
-more technically, the shifted version. So `a` becomes `A` and so on, based on
-the current keyboard layout. This is needed to be able to match against a
-shortcut such as :kbd:`ctrl+plus` which depending on the type of keyboard could
-be either :kbd:`ctrl+shift+equal` or :kbd:`ctrl+plus`. Note that the shifted
-key must be present only if shift is also present in the modifiers.
+terminal, the terminal can send two additional Unicode codepoints, the *shifted
+key* and *base layout key*, separated by colons. The shifted key is simply the
+upper-case version of ``unicode-codepoint``, or more technically, the shifted
+version, in the currently active keyboard layout. So `a` becomes `A` and so on,
+based on the current keyboard layout. This is needed to be able to match
+against a shortcut such as :kbd:`ctrl+plus` which depending on the type of
+keyboard could be either :kbd:`ctrl+shift+equal` or :kbd:`ctrl+plus`. Note that
+the shifted key must be present only if shift is also present in the modifiers.
 
 The *base layout key* is the key corresponding to the physical key in the
 standard PC-101 key layout. So for example, if the user is using a Cyrillic
