@@ -470,7 +470,8 @@ You need to make sure that the environment variables you define in your shell's
 rc files are either also defined system wide or via the :opt:`env` directive in
 :file:`kitty.conf`. Common environment variables that cause issues are those
 related to localization, such as :envvar:`LANG`, ``LC_*`` and loading of
-configuration files such as ``XDG_*``, :envvar:`KITTY_CONFIG_DIRECTORY`.
+configuration files such as ``XDG_*``, :envvar:`KITTY_CONFIG_DIRECTORY` and,
+most importantly, ``PATH`` to locate binaries.
 
 To see the environment variables that kitty sees, you can add the following
 mapping to :file:`kitty.conf`::
