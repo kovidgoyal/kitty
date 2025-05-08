@@ -156,6 +156,8 @@ Detailed list of changes
 
 - macOS: Fix text color in visual window select ignoring the color theme (:iss:`8579`)
 
+- Launch action: Allow using an env var that resolves to a full command-line as the program to launch (:pull:`8613`)
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

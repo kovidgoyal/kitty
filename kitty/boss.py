@@ -141,6 +141,7 @@ from .utils import (
     platform_window_id,
     safe_print,
     sanitize_url_for_dispay_to_user,
+    shlex_split,
     startup_notification_handler,
     timed_debug_print,
     which,
@@ -2655,6 +2656,11 @@ class Boss:
     def launch(self, *args: str) -> None:
         from kitty.launch import launch, parse_launch_args
         opts, args_ = parse_launch_args(args)
+        if args_ and ' ' in args_[0]:
+            # this can happen for example with map f1 launch $EDITOR when $EDITOR is not a single command
+            q = which(args_[0])
+            if not q or (q is args_[0] and not os.access(q, os.X_OK)):
+                args_[:1] = shlex_split(args_[0])
         if self.window_for_dispatch:
             opts.source_window = opts.source_window or f'id:{self.window_for_dispatch.id}'
             opts.next_to = opts.next_to or f'id:{self.window_for_dispatch.id}'
