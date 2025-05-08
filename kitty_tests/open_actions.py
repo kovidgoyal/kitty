@@ -32,7 +32,7 @@ class TestOpenActions(BaseTest):
 protocol file
 mime text/*
 fragment_matches .
-AcTion launch $EDITOR $FILE_PATH $FRAGMENT
+AcTion launch $SHELL -c "$EDITOR $FILE_PATH $FRAGMENT"
 action
 
 protocol file
