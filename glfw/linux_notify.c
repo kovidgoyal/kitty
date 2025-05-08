@@ -32,9 +32,9 @@ glfw_dbus_set_user_notification_activated_handler(GLFWDBusnotificationactivatedf
 }
 
 void
-notification_created(DBusMessage *msg, const char* errmsg, void *data) {
-    if (errmsg) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to create notification error: %s", errmsg);
+notification_created(DBusMessage *msg, const DBusError* err, void *data) {
+    if (err) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to create notification error: %s: %s", err->name, err->message);
         if (data) free(data);
         return;
     }
@@ -95,9 +95,9 @@ cancel_user_notification(DBusConnection *session_bus, uint32_t *id) {
 }
 
 static void
-got_capabilities(DBusMessage *msg, const char* err, void* data UNUSED) {
+got_capabilities(DBusMessage *msg, const DBusError* err, void* data UNUSED) {
     if (err) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to get server capabilities error: %s", err);
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to get server capabilities error: %s: %s", err->name, err->message);
         return;
     }
 #define check_call(func, err, ...) if (!func(__VA_ARGS__)) { _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: GetCapabilities: %s", err); return;  }

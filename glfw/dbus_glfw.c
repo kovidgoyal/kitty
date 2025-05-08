@@ -214,13 +214,6 @@ typedef struct {
     void *user_data;
 } MethodResponse;
 
-static const char*
-format_message_error(DBusError *err) {
-    static char buf[1024];
-    snprintf(buf, sizeof(buf), "[%s] %s", err->name ? err->name : "", err->message);
-    return buf;
-}
-
 static void
 method_reply_received(DBusPendingCall *pending, void *user_data) {
     MethodResponse *res = (MethodResponse*)user_data;
@@ -228,7 +221,7 @@ method_reply_received(DBusPendingCall *pending, void *user_data) {
     if (msg) {
         DBusError err;
         dbus_error_init(&err);
-        if (dbus_set_error_from_message(&err, msg)) res->callback(NULL, format_message_error(&err), res->user_data);
+        if (dbus_set_error_from_message(&err, msg)) res->callback(NULL, &err, res->user_data);
         else res->callback(msg, NULL, res->user_data);
     }
 }
@@ -243,7 +236,7 @@ call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_p
             DBusError error; dbus_error_init(&error);
             RAII_MSG(reply, dbus_connection_send_with_reply_and_block(session_bus, msg, timeout, &error));
             if (dbus_error_is_set(&error)) {
-                callback(reply, error.message, user_data);
+                callback(reply, &error, user_data);
                 return false;
             } else if (reply) {
                 callback(reply, NULL, user_data);

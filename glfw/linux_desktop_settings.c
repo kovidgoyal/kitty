@@ -24,15 +24,46 @@ static int theme_size = -1;
 static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
 static bool cursor_theme_changed = false, appearance_initialized = false;
 
-#define HANDLER(name) static void name(DBusMessage *msg, const char* errmsg, void *data) { \
+#define HANDLER(name_) static void name_(DBusMessage *msg, const DBusError* err, void *data) { \
     (void)data; \
-    if (errmsg) { \
-        _glfwInputError(GLFW_PLATFORM_ERROR, "%s: failed with error: %s", #name, errmsg); \
+    if (err) { \
+        _glfwInputError(GLFW_PLATFORM_ERROR, "%s: failed with error: %s: %s", #name_, err->name, err->message); \
         return; \
     }
 
+HANDLER(get_color_scheme_legacy)
+    DBusMessageIter iter, variant_iter, variant_iter2;
+    if (!dbus_message_iter_init(msg, &iter)) return;
+    dbus_message_iter_recurse(&iter, &variant_iter);
+    int type = dbus_message_iter_get_arg_type(&variant_iter);
+    if (type != DBUS_TYPE_VARIANT) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a variant"); return;
+    }
+    dbus_message_iter_recurse(&variant_iter, &variant_iter2);
+    if (type != DBUS_TYPE_VARIANT) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a nested variant"); return;
+    }
+    uint32_t val;
+    dbus_message_iter_get_basic(&variant_iter2, &val);
+    if (val < 3) appearance = val;
+}
 
-HANDLER(get_color_scheme)
+static void get_color_scheme(DBusMessage *msg, const DBusError* err, void *data) {
+    (void) data;
+    if (err) {
+        if (strcmp("org.freedesktop.DBus.Error.UnknownMethod", err->name) == 0) {
+            DBusConnection *session_bus = glfw_dbus_session_bus();
+            if (session_bus) {
+                const char *namespace = FDO_DESKTOP_NAMESPACE, *key = FDO_APPEARANCE_KEY;
+                glfw_dbus_call_blocking_method(session_bus, DESKTOP_SERVICE, DESKTOP_PATH, DESKTOP_INTERFACE, "Read", DBUS_TIMEOUT_USE_DEFAULT,
+                    get_color_scheme_legacy, NULL, DBUS_TYPE_STRING, &namespace, DBUS_TYPE_STRING, &key, DBUS_TYPE_INVALID);
+            }
+            return;
+        } else {
+            _glfwInputError(GLFW_PLATFORM_ERROR, "%s: failed with error: %s: %s", "get_color_scheme", err->name, err->message);
+            return;
+        }
+    }
     uint32_t val;
     DBusMessageIter iter, variant_iter;
     if (!dbus_message_iter_init(msg, &iter)) return;

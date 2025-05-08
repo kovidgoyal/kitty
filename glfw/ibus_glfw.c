@@ -373,9 +373,9 @@ read_ibus_address(_GLFWIBUSData *ibus) {
 }
 
 void
-input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
-    if (errmsg) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to create input context with error: %s", errmsg);
+input_context_created(DBusMessage *msg, const DBusError *err, void *data) {
+    if (err) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to create input context with error: %s: %s", err->name, err->message);
         return;
     }
     const char *path = NULL;
@@ -488,15 +488,15 @@ glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
 }
 
 void
-key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
+key_event_processed(DBusMessage *msg, const DBusError *err, void *data) {
     uint32_t handled = 0;
     _GLFWIBUSKeyEvent *ev = (_GLFWIBUSKeyEvent*)data;
     // Restore key's text from the text embedded in the structure.
     ev->glfw_ev.text = ev->__embedded_text;
     bool is_release = ev->glfw_ev.action == GLFW_RELEASE;
     bool failed = false;
-    if (errmsg) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to process key with error: %s", errmsg);
+    if (err) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to process key with error: %s: %s", err->name, err->message);
         failed = true;
     } else {
         glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID);
