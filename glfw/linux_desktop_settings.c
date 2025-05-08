@@ -48,7 +48,8 @@ HANDLER(get_color_scheme_legacy)
     if (val < 3) appearance = val;
 }
 
-static void get_color_scheme(DBusMessage *msg, const DBusError* err, void *data) {
+static void
+get_color_scheme(DBusMessage *msg, const DBusError* err, void *data) {
     (void) data;
     if (err) {
         if (strcmp("org.freedesktop.DBus.Error.UnknownMethod", err->name) == 0) {
