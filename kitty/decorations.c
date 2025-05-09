@@ -258,13 +258,17 @@ append_limit(Canvas *self, double upper, double lower) {
     self->y_limits[self->y_limits_count++].lower = lower;
 }
 
-
-static uint
-thickness(Canvas *self, uint level, bool horizontal) {
+static double
+thickness_as_float(Canvas *self, uint level, bool horizontal) {
     level = min(level, arraysz(OPT(box_drawing_scale)));
     double pts = OPT(box_drawing_scale)[level];
     double dpi = horizontal ? self->dpi.x : self->dpi.y;
-    return (uint)ceil(self->supersample_factor * self->scale * pts * dpi / 72.0);
+    return self->supersample_factor * self->scale * pts * dpi / 72.0;
+}
+
+static uint
+thickness(Canvas *self, uint level, bool horizontal) {
+    return (uint)ceil(thickness_as_float(self, level, horizontal));
 }
 
 static const uint hole_factor = 8;
@@ -698,6 +702,39 @@ static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
         } \
     } \
     vt_cleanup(&seen); \
+}
+
+static double
+distance(double x1, double y1, double x2, double y2) {
+    const double dx = x1 - x2;
+    const double dy = y1 - y2;
+    return sqrt(dx * dx + dy * dy);
+}
+
+typedef double(*curve_func)(void *, double t);
+
+static void
+draw_parametrized_curve_with_derivative(Canvas *self, void *curve_data, uint level, curve_func xfunc, curve_func yfunc) {
+    double th = thickness_as_float(self, level, true);
+    double step = 1.0 / (self->height);
+    double half_thickness = th / 2.0;
+    double t = -step;
+    do {
+        t += step; if (t > 1.0) t = 1.0;
+        double x = xfunc(curve_data, t), y = yfunc(curve_data, t);
+        for (double dy = -th; dy <= th; dy++) {
+            for (double dx = -th; dx <= th; dx++) {
+                double px = x + dx, py = y + dy;
+                double dist = distance(x, y, px, py);
+                int row = (int)py, col = (int)px;
+                if (dist > half_thickness || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
+                const int offset = row * self->width + col;
+                double alpha = 1.0 - (dist / half_thickness);
+                uint8_t old_alpha = self->mask[offset];
+                self->mask[offset] = (uint8_t)(alpha * 255 + (1 - alpha) * old_alpha);
+            }
+        }
+    } while (t < 1.0);
 }
 
 static void
@@ -1187,38 +1224,41 @@ fading_vline(Canvas *self, uint level, uint num, Edge fade) {
 }
 
 typedef struct Rectircle Rectircle;
-typedef double (*Rectircle_equation)(Rectircle r, double t);
 
 typedef struct Rectircle {
     uint a, b;
     double yexp, xexp, adjust_x;
     uint cell_width;
-    Rectircle_equation x, y;
+    curve_func x, y;
 } Rectircle;
 
 static double
-rectircle_lower_quadrant_y(Rectircle r, double t) {
-    return r.b * t; // 0 -> top of cell, 1 -> middle of cell
+rectircle_lower_half_y(void *v, double t) {
+    Rectircle *r = v;
+    return r->b * t; // 0 -> top of cell, 1 -> middle of cell
 }
 
 static double
-rectircle_upper_quadrant_y(Rectircle r, double t) {
-    return r.b * (2. - t); // 0 -> bottom of cell, 1 -> middle of cell
+rectircle_upper_half_y(void *v, double t) {
+    Rectircle *r = v;
+    return r->b * (2. - t); // 0 -> bottom of cell, 1 -> middle of cell
 }
 
 // x(t). To get this we first need |y(t)|/b. This is just t since as t goes
 // from 0 to 1 y goes from either 0 to b or 0 to -b
 
 static double
-rectircle_left_quadrant_x(Rectircle r, double t) {
-    double xterm = 1 - pow(t, r.yexp);
-    return floor(r.cell_width - fabs(r.a * pow(xterm, r.xexp)) - r.adjust_x);
+rectircle_left_half_x(void *v, double t) {
+    Rectircle *r = v;
+    double xterm = 1 - pow(t, r->yexp);
+    return floor(r->cell_width - fabs(r->a * pow(xterm, r->xexp)) - r->adjust_x);
 }
 
 static double
-rectircle_right_quadrant_x(Rectircle r, double t) {
-    double xterm = 1 - pow(t, r.yexp);
-    return ceil(fabs(r.a * pow(xterm, r.xexp)));
+rectircle_right_half_x(void *v, double t) {
+    Rectircle *r = v;
+    double xterm = 1 - pow(t, r->yexp);
+    return ceil(fabs(r->a * pow(xterm, r->xexp)));
 }
 
 static Rectircle
@@ -1228,7 +1268,7 @@ rectcircle(Canvas *self, Corner which) {
     in the range [0, 1] to x and y coordinates in the cell. The rectircle equation
     we use is:
 
-    (|x| / a) ^ (2a / r) + (|y| / a) ^ (2b / r) = 1
+    (|x| / a) ^ (2a / r) + (|y| / b) ^ (2b / r) = 1
 
     where 2a = width, 2b = height and r is radius
 
@@ -1248,8 +1288,8 @@ rectcircle(Canvas *self, Corner which) {
         .xexp = radius / self->width,
         .cell_width = self->width,
         .adjust_x = cell_width_is_odd * self->supersample_factor,
-        .x = which & LEFT_EDGE ? rectircle_left_quadrant_x : rectircle_right_quadrant_x,
-        .y = which & TOP_EDGE ? rectircle_upper_quadrant_y : rectircle_lower_quadrant_y,
+        .x = which & LEFT_EDGE ? rectircle_left_half_x : rectircle_right_half_x,
+        .y = which & TOP_EDGE ? rectircle_upper_half_y : rectircle_lower_half_y,
     };
 
     return ans;
@@ -1258,7 +1298,7 @@ rectcircle(Canvas *self, Corner which) {
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     Rectircle r = rectcircle(self, which);
-    draw_parametrized_curve(self, level, r.x(r, t), r.y(r, t));
+    draw_parametrized_curve_with_derivative(self, &r, level, r.x, r.y);
 }
 
 static void
