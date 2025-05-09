@@ -476,6 +476,11 @@ choices=normal,fullscreen,maximized,minimized,hidden
 Control how the initial kitty window is created.
 
 
+--position
+type=bool-set
+Restores the last session's window position. Does not work on Wayland.
+
+
 # Debugging options
 
 --version -v
