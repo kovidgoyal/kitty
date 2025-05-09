@@ -4,11 +4,12 @@
 : <<'COMMENT'
 export RSYNC_PASSWORD=password
 export BUILDBOT=rsync://useranme@server/path/to/this/directory
+mkdir -p ~/kitty-src
 cd ~/kitty-src || exit 1
 
 script=rsync-and-build.sh
 if [[ -e "$script" ]]; then
-    source "$script"
+    . "./$script"
 else
     rsync -a --include "$script" --exclude '*' "$BUILDBOT" . && source "$script"
 fi
