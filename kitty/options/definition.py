@@ -4182,6 +4182,11 @@ To setup shortcuts for specific font sizes::
 To setup shortcuts to change only the current OS window's font size::
 
     map kitty_mod+f6 change_font_size current 10.0
+
+To setup shortcuts to multiply/divide the font size:
+
+    map kitty_mod+f6 change_font_size all *2.0
+    map kitty_mod+f6 change_font_size all /2.0
 ''')  # }}}
 
 

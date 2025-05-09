@@ -1358,7 +1358,17 @@ class Boss:
                 new_size = get_options().font_size
             else:
                 if increment_operation:
-                    new_size += (1 if increment_operation == '+' else -1) * amt
+                    match increment_operation:
+                        case '+':
+                            new_size += amt
+                        case '-':
+                            new_size -= amt
+                        case '*':
+                            new_size *= amt
+                        case '/':
+                            new_size /= amt
+                        case _:
+                            pass  # no-op
                 else:
                     new_size = amt
                 new_size = max(MINIMUM_FONT_SIZE, min(new_size, get_options().font_size * 5))

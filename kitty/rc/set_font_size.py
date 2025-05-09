@@ -13,7 +13,7 @@ class SetFontSize(RemoteCommand):
     protocol_spec = __doc__ = '''
     size+/float: The new font size in pts (a positive number). If absent is assumed to be zero which means reset to default.
     all/bool: Boolean whether to change font size in the current window or all windows
-    increment_op/choices.+.-: The string ``+`` or ``-`` to interpret size as an increment
+    increment_op/choices.+.-.*./: The string ``+``, ``-``, ``*`` or ``/`` to interpret size as an increment
     '''
 
     short_desc = 'Set the font size in the active top-level OS window'
@@ -22,7 +22,7 @@ class SetFontSize(RemoteCommand):
         ' that in kitty all sub-windows in the same OS window'
         ' must have the same font size. A value of zero'
         ' resets the font size to default. Prefixing the value'
-        ' with a :code:`+` or :code:`-` increments the font size by the specified'
+        ' with a :code:`+`, :code:`-`, :code:`*` or :code:`/` changes the font size by the specified'
         ' amount. Use -- before using - to have it not mistaken for a option. For example:'
         ' kitten @ set-font-size -- -2'
     )

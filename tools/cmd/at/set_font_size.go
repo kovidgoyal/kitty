@@ -3,11 +3,12 @@
 package at
 
 import (
+	"bytes"
 	"strconv"
 )
 
 func parse_set_font_size(arg string, payload *set_font_size_json_type) error {
-	if len(arg) > 0 && (arg[0] == '+' || arg[0] == '-') {
+	if len(arg) > 0 && (bytes.IndexByte([]byte{'+', '-', '/', '*'}, arg[0]) > -1) {
 		payload.Increment_op = arg[:1]
 		arg = arg[1:]
 	}

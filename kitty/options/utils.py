@@ -199,7 +199,7 @@ def parse_change_font_size(func: str, rest: str) -> tuple[str, tuple[bool, str |
     c_all = vals[0].lower() == 'all'
     sign: str | None = None
     amt = vals[1]
-    if amt[0] in '+-':
+    if amt[0] in '+-*/':
         sign = amt[0]
         amt = amt[1:]
     return func, (c_all, sign, float(amt.strip()))

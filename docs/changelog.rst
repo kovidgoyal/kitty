@@ -158,6 +158,8 @@ Detailed list of changes
 
 - Launch action: Allow using an env var that resolves to a full command-line as the program to launch (:pull:`8613`)
 
+- :ac:`change_font_size` allow multiplying/dividing the current font size in addition to incrementing it (:iss:`8616`)
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
