@@ -1226,39 +1226,20 @@ fading_vline(Canvas *self, uint level, uint num, Edge fade) {
 typedef struct Rectircle Rectircle;
 
 typedef struct Rectircle {
-    uint a, b;
-    double yexp, xexp, adjust_x;
-    uint cell_width;
+    double a, b, yexp, xexp, x_sign, y_sign, x_start, y_start;
     curve_func x, y;
 } Rectircle;
 
 static double
-rectircle_lower_half_y(void *v, double t) {
+rectircle_x(void *v, double t) {
     Rectircle *r = v;
-    return r->b * t; // 0 -> top of cell, 1 -> middle of cell
+    return r->x_start + r->x_sign * r->a * pow(cos(t * (M_PI / 2.0)), r->xexp);
 }
 
 static double
-rectircle_upper_half_y(void *v, double t) {
+rectircle_y(void *v, double t) {
     Rectircle *r = v;
-    return r->b * (2. - t); // 0 -> bottom of cell, 1 -> middle of cell
-}
-
-// x(t). To get this we first need |y(t)|/b. This is just t since as t goes
-// from 0 to 1 y goes from either 0 to b or 0 to -b
-
-static double
-rectircle_left_half_x(void *v, double t) {
-    Rectircle *r = v;
-    double xterm = 1 - pow(t, r->yexp);
-    return floor(r->cell_width - fabs(r->a * pow(xterm, r->xexp)) - r->adjust_x);
-}
-
-static double
-rectircle_right_half_x(void *v, double t) {
-    Rectircle *r = v;
-    double xterm = 1 - pow(t, r->yexp);
-    return ceil(fabs(r->a * pow(xterm, r->xexp)));
+    return r->y_start + r->y_sign * r->b * pow(sin(t * (M_PI / 2.0)), r->yexp);
 }
 
 static Rectircle
@@ -1267,10 +1248,14 @@ rectcircle(Canvas *self, Corner which) {
     Return two functions, x(t) and y(t) that map the parameter t which must be
     in the range [0, 1] to x and y coordinates in the cell. The rectircle equation
     we use is:
-
     (|x| / a) ^ (2a / r) + (|y| / b) ^ (2b / r) = 1
-
     where 2a = width, 2b = height and r is radius
+    See https://math.stackexchange.com/questions/1649714
+
+    This is a super-ellipse, its parametrized form is:
+    x = ± a * (cos(theta) ^ (r / a)); y = ± b * (sin(theta) ^ (r / b)); theta is in [0, pi/2]
+    https://en.wikipedia.org/wiki/Superellipse
+    The plus minus signs are chosen to give the four quadrants.
 
     The entire rectircle fits in four cells, each cell being one quadrant
     of the full rectircle and the origin being the center of the rectircle.
@@ -1278,18 +1263,16 @@ rectcircle(Canvas *self, Corner which) {
     ╭╮  ╭─╮
     ╰╯  │ │
         ╰─╯
-    See https://math.stackexchange.com/questions/1649714
     */
-    double radius = self->width / 2.;
-    uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
+    double radius = self->width / 2., a = self->width / 2., b = self->height / 2.;
     Rectircle ans = {
-        .a = half_width(self), .b = half_height(self),
-        .yexp = self->height / radius,
-        .xexp = radius / self->width,
-        .cell_width = self->width,
-        .adjust_x = cell_width_is_odd * self->supersample_factor,
-        .x = which & LEFT_EDGE ? rectircle_left_half_x : rectircle_right_half_x,
-        .y = which & TOP_EDGE ? rectircle_upper_half_y : rectircle_lower_half_y,
+        .a = a, .b = b,
+        .xexp = radius / a, .yexp = radius / b,
+        .x_sign = which & RIGHT_EDGE ? 1. : -1,
+        .x_start = which & RIGHT_EDGE ? 0. : 2 * a,
+        .y_start = which & BOTTOM_EDGE ? 0. : 2 * b,
+        .y_sign = which & BOTTOM_EDGE ? 1. : -1,
+        .x = rectircle_x, .y = rectircle_y,
     };
 
     return ans;
