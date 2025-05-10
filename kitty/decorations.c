@@ -592,15 +592,16 @@ typedef struct CubicBezier {
 } CubicBezier;
 
 #define bezier_eq(which) { \
+    const CubicBezier *cb = v; \
     double tm1 = 1 - t; \
     double tm1_3 = tm1 * tm1 * tm1; \
     double t_3 = t * t * t; \
-    return tm1_3 * cb.start.which + 3 * t * tm1 * (tm1 * cb.c1.which + t * cb.c2.which) + t_3 * cb.end.which; \
+    return tm1_3 * cb->start.which + 3 * t * tm1 * (tm1 * cb->c1.which + t * cb->c2.which) + t_3 * cb->end.which; \
 }
 static double
-bezier_x(CubicBezier cb, double t) { bezier_eq(x); }
+bezier_x(const void *v, double t) { bezier_eq(x); }
 static double
-bezier_y(CubicBezier cb, double t) { bezier_eq(y); }
+bezier_y(const void *v, double t) { bezier_eq(y); }
 #undef bezier_eq
 
 static int
@@ -609,13 +610,13 @@ find_bezier_for_D(int width, int height) {
     CubicBezier cb = {.end={.x=0, .y=height - 1}, .c2={.x=0, .y=height - 1}};
     while (true) {
         cb.c1.x = cx; cb.c2.x = cx;
-        if (bezier_x(cb, 0.5) > width - 1) return last_cx;
+        if (bezier_x(&cb, 0.5) > width - 1) return last_cx;
         last_cx = cx++;
     }
 }
 
 static double
-find_t_for_x(CubicBezier cb, int x, double start_t) {
+find_t_for_x(const CubicBezier *cb, int x, double start_t) {
     if (fabs(bezier_x(cb, start_t) - x) < 0.1) return start_t;
     static const double t_limit = 0.5;
     double increment = t_limit - start_t;
@@ -639,7 +640,7 @@ find_t_for_x(CubicBezier cb, int x, double start_t) {
 
 
 static void
-get_bezier_limits(Canvas *self, CubicBezier cb) {
+get_bezier_limits(Canvas *self, const CubicBezier *cb) {
     int start_x = (int)bezier_x(cb, 0), max_x = (int)bezier_x(cb, 0.5);
     double last_t = 0.;
     for (int x = start_x; x < max_x + 1; x++) {
@@ -670,7 +671,7 @@ static void
 filled_D(Canvas *self, bool left) {
     int c1x = find_bezier_for_D(self->width, self->height);
     CubicBezier cb = {.end={.y=self->height-1}, .c1 = {.x=c1x}, .c2 = {.x=c1x, .y=self->height - 1}};
-    get_bezier_limits(self, cb);
+    get_bezier_limits(self, &cb);
     if (left) fill_region(self, false);
     else mirror_horizontally(fill_region(self, false));
 }
@@ -753,8 +754,8 @@ rounded_separator(Canvas *self, uint level, bool left) {
     uint gap = thickness(self, level, true);
     int c1x = find_bezier_for_D(minus(self->width, gap), self->height);
     CubicBezier cb = {.end={.y=self->height - 1}, .c1={.x=c1x}, .c2={.x=c1x, .y=self->height - 1}};
-    if (left) { draw_parametrized_curve(self, level, bezier_x(cb, t), bezier_y(cb, t)); }
-    else { mirror_horizontally(draw_parametrized_curve(self, level, bezier_x(cb, t), bezier_y(cb, t))); }
+    if (left) { draw_parametrized_curve(self, level, bezier_x(&cb, t), bezier_y(&cb, t)); }
+    else { mirror_horizontally(draw_parametrized_curve(self, level, bezier_x(&cb, t), bezier_y(&cb, t))); }
 }
 
 static void
