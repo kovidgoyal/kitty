@@ -711,7 +711,7 @@ distance(double x1, double y1, double x2, double y2) {
     return sqrt(dx * dx + dy * dy);
 }
 
-typedef double(*curve_func)(void *, double t);
+typedef double(*curve_func)(const void *, double t);
 
 static void
 draw_parametrized_curve_with_derivative(
@@ -1242,28 +1242,28 @@ typedef struct Rectircle {
 } Rectircle;
 
 static double
-rectircle_x(void *v, double t) {
-    Rectircle *r = v;
+rectircle_x(const void *v, double t) {
+    const Rectircle *r = v;
     return r->x_start + r->x_sign * r->a * pow(cos(t * (M_PI / 2.0)), r->xexp);
 }
 
 static double
-rectircle_x_prime(void *v, double t) {
-    Rectircle *r = v;
+rectircle_x_prime(const void *v, double t) {
+    const Rectircle *r = v;
     t *= (M_PI / 2.0);
     return r->x_prime_coeff * pow(cos(t), r->x_prime_exp) * sin(t);
 }
 
 static double
-rectircle_y_prime(void *v, double t) {
-    Rectircle *r = v;
+rectircle_y_prime(const void *v, double t) {
+    const Rectircle *r = v;
     t *= (M_PI / 2.0);
     return r->y_prime_coeff * pow(sin(t), r->y_prime_exp) * cos(t);
 }
 
 static double
-rectircle_y(void *v, double t) {
-    Rectircle *r = v;
+rectircle_y(const void *v, double t) {
+    const Rectircle *r = v;
     return r->y_start + r->y_sign * r->b * pow(sin(t * (M_PI / 2.0)), r->yexp);
 }
 
