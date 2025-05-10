@@ -160,6 +160,8 @@ Detailed list of changes
 
 - :ac:`change_font_size` allow multiplying/dividing the current font size in addition to incrementing it (:iss:`8616`)
 
+- Box drawing: Improve appearance of rounder corners giving them a uniform line width (:iss:`8299`)
+
 0.41.1 [2025-04-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
