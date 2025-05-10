@@ -798,17 +798,15 @@ circle(Point origin, double radius, double start_at, double end_at) {
     return ans;
 }
 
-static double
-circle_x(Circle c, double t) { return c.origin.x + c.radius * cos(c.start + c.amt * t); }
-static double
-circle_y(Circle c, double t) { return c.origin.y + c.radius * sin(c.start + c.amt * t); }
+static double circle_x(const void *v, double t) { const Circle *c=v; return c->origin.x + c->radius * cos(c->start + c->amt * t); }
+static double circle_y(const void *v, double t) { const Circle *c=v; return c->origin.y + c->radius * sin(c->start + c->amt * t); }
 
 static void
 spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
     uint w = self->width / 2, h = self->height / 2;
     uint radius = minus(min(w, h), thickness(self, level, true) / 2);
     Circle c = circle((Point){.x=w, .y=h}, radius, start_degrees, end_degrees);
-    draw_parametrized_curve(self, level, circle_x(c, t), circle_y(c, t));
+    draw_parametrized_curve(self, level, circle_x(&c, t), circle_y(&c, t));
 }
 
 static void
@@ -831,7 +829,7 @@ draw_fish_eye(Canvas *self, uint level) {
     uint line_width = thickness(self, level, true) / 2;
     uint radius = minus(min(w, h), line_width);
     Circle c = circle((Point){.x=w, .y=h}, radius, 0, 360);
-    draw_parametrized_curve(self, level, circle_x(c, t), circle_y(c, t));
+    draw_parametrized_curve(self, level, circle_x(&c, t), circle_y(&c, t));
     uint gap = minus(radius, radius / 10);
     draw_circle(self, 1.0, gap, false);
 }
