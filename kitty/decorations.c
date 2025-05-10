@@ -686,35 +686,6 @@ filled_D(Canvas *self, bool left) {
     else mirror_horizontally(fill_region(self, false));
 }
 
-#define NAME position_set
-#define KEY_TY Point
-#define HASH_FN hash_point
-#define CMPR_FN cmpr_point
-static uint64_t hash_point(Point p);
-static bool cmpr_point(Point, Point);
-#include "kitty-verstable.h"
-static uint64_t hash_point(Point p) { return vt_hash_integer(p.val); }
-static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
-
-#define draw_parametrized_curve(self, level, xfunc, yfunc) { \
-    div_t d = div(thickness(self, level, true), 2u); \
-    int delta = d.quot, extra = d.rem; \
-    uint num_samples = self->height * 8; \
-    position_set seen; vt_init(&seen); \
-    for (uint i = 0; i < num_samples + 1; i++) { \
-        double t = i / (double)num_samples; \
-        Point p = {.x=(int32_t)xfunc, .y=(int32_t)yfunc};  \
-        position_set_itr q = vt_get(&seen, p); \
-        if (!vt_is_end(q)) continue; \
-        if (vt_is_end(vt_insert(&seen, p))) fatal("Out of memory"); \
-        for (int y = MAX(0, p.y - delta); y < MIN(p.y + delta + extra, (int)self->height); y++) { \
-            uint offset = y * self->width, start = MAX(0, p.x - delta); \
-            memset(self->mask + offset + start, 255, minus((uint)MIN(p.x + delta + extra, (int)self->width), start)); \
-        } \
-    } \
-    vt_cleanup(&seen); \
-}
-
 static double
 distance(double x1, double y1, double x2, double y2) {
     const double dx = x1 - x2;
@@ -785,54 +756,61 @@ corner_triangle(Canvas *self, const Corner corner) {
 }
 
 typedef struct Circle {
-    Point origin;
-    double radius;
-
+    double x, y, radius;
     double start, end, amt;
 } Circle;
 
 static Circle
-circle(Point origin, double radius, double start_at, double end_at) {
+circle(double x, double y, double radius, double start_at, double end_at) {
     double conv = M_PI / 180.;
-    Circle ans = {.origin=origin, .radius=radius, .start=start_at*conv, .end=end_at*conv};
+    Circle ans = {.x=x, .y=y, .radius=radius, .start=start_at*conv, .end=end_at*conv};
     ans.amt = ans.end - ans.start;
     return ans;
 }
 
-static double circle_x(const void *v, double t) { const Circle *c=v; return c->origin.x + c->radius * cos(c->start + c->amt * t); }
-static double circle_y(const void *v, double t) { const Circle *c=v; return c->origin.y + c->radius * sin(c->start + c->amt * t); }
+static double circle_x(const void *v, double t) { const Circle *c=v; return c->x + c->radius * cos(c->start + c->amt * t); }
+static double circle_y(const void *v, double t) { const Circle *c=v; return c->y + c->radius * sin(c->start + c->amt * t); }
+static double circle_prime_x(const void *v, double t) { const Circle *c=v; return -c->radius * sin(c->start + c->amt * t); }
+static double circle_prime_y(const void *v, double t) { const Circle *c=v; return c->radius * cos(c->start + c->amt * t); }
 
 static void
 spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
-    uint w = self->width / 2, h = self->height / 2;
-    uint radius = minus(min(w, h), thickness(self, level, true) / 2);
-    Circle c = circle((Point){.x=w, .y=h}, radius, start_degrees, end_degrees);
-    draw_parametrized_curve(self, level, circle_x(&c, t), circle_y(&c, t));
+    double x = self->width / 2.0, y = self->height / 2.0;
+    double line_width = thickness_as_float(self, level, true);
+    double radius = fmax(0, fmin(x, y) - line_width / 2.0);
+    Circle c = circle(x, y, radius, start_degrees, end_degrees);
+    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, 0);
 }
 
 static void
-draw_circle(Canvas *self, double scale, double gap, bool invert) {
-    const uint w = self->width / 2, h = self->height / 2;
-    const double radius = (int)(scale * min(w, h) - gap / 2);
-    const uint8_t fill = invert ? 0 : 255;
+fill_circle_of_radius(Canvas *self, double origin_x, double origin_y, double radius, uint8_t alpha) {
     const double limit = radius * radius;
     for (uint y = 0; y < self->height; y++) {
         for (uint x = 0; x < self->width; x++) {
-            double xw = (double)x - w, yh = (double)y - h;
-            if (xw * xw + yh * yh <= limit) self->mask[y * self->width + x] = fill;
+            double xw = (double)x - origin_x, yh = (double)y - origin_y;
+            if (xw * xw + yh * yh <= limit) self->mask[y * self->width + x] = alpha;
         }
     }
 }
 
 static void
-draw_fish_eye(Canvas *self, uint level) {
-    uint w = self->width / 2, h = self->height / 2;
-    uint line_width = thickness(self, level, true) / 2;
-    uint radius = minus(min(w, h), line_width);
-    Circle c = circle((Point){.x=w, .y=h}, radius, 0, 360);
-    draw_parametrized_curve(self, level, circle_x(&c, t), circle_y(&c, t));
-    uint gap = minus(radius, radius / 10);
-    draw_circle(self, 1.0, gap, false);
+fill_circle(Canvas *self, double scale, double gap, bool invert) {
+    const uint w = self->width / 2, h = self->height / 2;
+    const double radius = (int)(scale * min(w, h) - gap / 2);
+    const uint8_t fill = invert ? 0 : 255;
+    fill_circle_of_radius(self, w, h, radius, fill);
+}
+
+static void
+draw_fish_eye(Canvas *self, uint level UNUSED) {
+    double x = self->width / 2., y = self->height / 2.;
+    double radius = fmin(x, y);
+    double central_radius = (2./3.) * radius;
+    fill_circle_of_radius(self, x, y, central_radius, 255);
+    double line_width = fmax(1. * self->supersample_factor, (radius - central_radius) / 2.5);
+    radius = fmax(0, fmin(x, y) - line_width / 2.);
+    Circle c = circle(x, y, radius, 0, 360);
+    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, 0);
 }
 
 static void
@@ -1334,8 +1312,8 @@ commit(Canvas *self, Edge lines, bool solid) {
     if (lines & LEFT_EDGE) draw_hline(self, 0, hw, hh, level);
     if (lines & TOP_EDGE) draw_vline(self, 0, hh, hw, level);
     if (lines & BOTTOM_EDGE) draw_vline(self, hh, self->height, hw, level);
-    draw_circle(self, scale, 0, false);
-    if (!solid) draw_circle(self, scale, thickness(self, level, true), true);
+    fill_circle(self, scale, 0, false);
+    if (!solid) fill_circle(self, scale, thickness(self, level, true), true);
 }
 
 // thin and fat line levels
@@ -1592,7 +1570,7 @@ START_ALLOW_CASE_RANGE
         S(L'◟', spinner, 1, 450, 540);
         S(L'◠', spinner, 1, 180, 360);
         S(L'◡', spinner, 1, 0, 180);
-        S(L'●', draw_circle, 1.0, 0, false);
+        S(L'●', fill_circle, 1.0, 0, false);
         S(L'◉', draw_fish_eye, 0);
 
         C(L'═', dhline, 1, TOP_EDGE | BOTTOM_EDGE);
