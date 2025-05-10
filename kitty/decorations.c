@@ -700,8 +700,9 @@ draw_parametrized_curve_with_derivative(
     Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
     int x_offset, int yoffset, double thickness_fudge
 ) {
-    double step = 1.0 / self->height;
-    const double min_step = 1.0 / (100 * self->height);
+    double larger_dim = fmax(self->height, self->width);
+    double step = 1.0 / larger_dim;
+    const double min_step = 1.0 / (100 * larger_dim), max_step = step;
     line_width = fmax(1., line_width);
     const double half_thickness = line_width / 2.0;
     const double distance_limit = half_thickness + thickness_fudge;
@@ -725,7 +726,7 @@ draw_parametrized_curve_with_derivative(
         double dx = x_prime(curve_data, t), dy = y_prime(curve_data, t);
         double d = sqrt(dx * dx + dy * dy);
         step = 1.0 / fmax(1e-6, d);
-        step = fmax(min_step, fmin(step, 0.01));
+        step = fmax(min_step, fmin(step, max_step));
         t = fmin(t + step, 1.0);
     }
 }
