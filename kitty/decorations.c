@@ -726,19 +726,19 @@ typedef double(*curve_func)(const void *, double t);
 
 static void
 draw_parametrized_curve_with_derivative(
-    Canvas *self, void *curve_data, uint level, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
+    Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
     int x_offset, int yoffset, double thickness_fudge
 ) {
-    const double th = thickness_as_float(self, level, true);
     double step = 1.0 / self->height;
     const double min_step = 1.0 / (100 * self->height);
-    const double half_thickness = th / 2.0;
+    line_width = fmax(1., line_width);
+    const double half_thickness = line_width / 2.0;
     const double distance_limit = half_thickness + thickness_fudge;
     double t = 0;
     while(true) {
         double x = xfunc(curve_data, t), y = yfunc(curve_data, t);
-        for (double dy = -th; dy <= th; dy++) {
-            for (double dx = -th; dx <= th; dx++) {
+        for (double dy = -line_width; dy <= line_width; dy++) {
+            for (double dx = -line_width; dx <= line_width; dx++) {
                 double px = x + dx, py = y + dy;
                 double dist = distance(x, y, px, py);
                 int row = (int)py + yoffset, col = (int)px + x_offset;
@@ -764,7 +764,8 @@ rounded_separator(Canvas *self, uint level, bool left) {
     uint gap = thickness(self, level, true);
     int c1x = find_bezier_for_D(minus(self->width, gap), self->height);
     CubicBezier cb = {.end={.y=self->height - 1}, .c1={.x=c1x}, .c2={.x=c1x, .y=self->height - 1}};
-#define d draw_parametrized_curve_with_derivative(self, &cb, level, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y, 0, 0, 0)
+    double line_width = thickness_as_float(self, level, true);
+#define d draw_parametrized_curve_with_derivative(self, &cb, line_width, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y, 0, 0, 0)
     if (left) { d; } else { mirror_horizontally(d); }
 #undef d
 }
@@ -1321,7 +1322,8 @@ rounded_corner(Canvas *self, uint level, Corner which) {
     uint cell_height_is_odd = (self->height / self->supersample_factor) & 1;
     // adjust for odd cell dimensions to line up with box drawing lines
     int x_offset = -(cell_width_is_odd & 1), y_offset = -(cell_height_is_odd & 1);
-    draw_parametrized_curve_with_derivative(self, &r, level, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, 0.1);
+    double line_width = thickness_as_float(self, level, true);
+    draw_parametrized_curve_with_derivative(self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, 0.1);
 }
 
 static void
