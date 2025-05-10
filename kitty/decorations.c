@@ -593,16 +593,26 @@ typedef struct CubicBezier {
 
 #define bezier_eq(which) { \
     const CubicBezier *cb = v; \
-    double tm1 = 1 - t; \
-    double tm1_3 = tm1 * tm1 * tm1; \
-    double t_3 = t * t * t; \
-    return tm1_3 * cb->start.which + 3 * t * tm1 * (tm1 * cb->c1.which + t * cb->c2.which) + t_3 * cb->end.which; \
+    const double u = 1. - t; \
+    const double u_3 = u * u * u; \
+    const double t_3 = t * t * t; \
+    return u_3 * cb->start.which + 3 * t * u * (u * cb->c1.which + t * cb->c2.which) + t_3 * cb->end.which; \
 }
-static double
-bezier_x(const void *v, double t) { bezier_eq(x); }
-static double
-bezier_y(const void *v, double t) { bezier_eq(y); }
+
+#define bezier_prime_eq(which) { \
+    const CubicBezier *cb = v; \
+    const double u = 1. - t; \
+    const double u_2 = u * u; \
+    const double t_2 = t * t; \
+    return 3 * u_2 * (cb->c1.which - cb->start.which) + 6 * t * u * (cb->c2.which - cb->c1.which) + 3 * t_2 * (cb->end.which - cb->c2.which); \
+}
+
+static double bezier_x(const void *v, double t) { bezier_eq(x); }
+static double bezier_y(const void *v, double t) { bezier_eq(y); }
+static double bezier_prime_x(const void *v, double t) { bezier_prime_eq(x); }
+static double bezier_prime_y(const void *v, double t) { bezier_prime_eq(y); }
 #undef bezier_eq
+#undef bezier_prime_eq
 
 static int
 find_bezier_for_D(int width, int height) {
@@ -754,8 +764,9 @@ rounded_separator(Canvas *self, uint level, bool left) {
     uint gap = thickness(self, level, true);
     int c1x = find_bezier_for_D(minus(self->width, gap), self->height);
     CubicBezier cb = {.end={.y=self->height - 1}, .c1={.x=c1x}, .c2={.x=c1x, .y=self->height - 1}};
-    if (left) { draw_parametrized_curve(self, level, bezier_x(&cb, t), bezier_y(&cb, t)); }
-    else { mirror_horizontally(draw_parametrized_curve(self, level, bezier_x(&cb, t), bezier_y(&cb, t))); }
+#define d draw_parametrized_curve_with_derivative(self, &cb, level, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y, 0, 0, 0)
+    if (left) { d; } else { mirror_horizontally(d); }
+#undef d
 }
 
 static void
