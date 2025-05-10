@@ -716,7 +716,7 @@ typedef double(*curve_func)(const void *, double t);
 static void
 draw_parametrized_curve_with_derivative(
     Canvas *self, void *curve_data, uint level, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
-    int x_offset, double thickness_fudge
+    int x_offset, int yoffset, double thickness_fudge
 ) {
     const double th = thickness_as_float(self, level, true);
     double step = 1.0 / self->height;
@@ -730,7 +730,7 @@ draw_parametrized_curve_with_derivative(
             for (double dx = -th; dx <= th; dx++) {
                 double px = x + dx, py = y + dy;
                 double dist = distance(x, y, px, py);
-                int row = (int)py, col = (int)px + x_offset;
+                int row = (int)py + yoffset, col = (int)px + x_offset;
                 if (dist >= distance_limit || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
                 const int offset = row * self->width + col;
                 double alpha = 1.0 - (dist / half_thickness);
@@ -1308,8 +1308,10 @@ static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     Rectircle r = rectcircle(self, which);
     uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
-    int x_offset = -(cell_width_is_odd & 1);  // line up with box drawing lines when cell_width is odd
-    draw_parametrized_curve_with_derivative(self, &r, level, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, 0.1);
+    uint cell_height_is_odd = (self->height / self->supersample_factor) & 1;
+    // adjust for odd cell dimensions to line up with box drawing lines
+    int x_offset = -(cell_width_is_odd & 1), y_offset = -(cell_height_is_odd & 1);
+    draw_parametrized_curve_with_derivative(self, &r, level, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, 0.1);
 }
 
 static void
