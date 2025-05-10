@@ -714,27 +714,38 @@ distance(double x1, double y1, double x2, double y2) {
 typedef double(*curve_func)(void *, double t);
 
 static void
-draw_parametrized_curve_with_derivative(Canvas *self, void *curve_data, uint level, curve_func xfunc, curve_func yfunc) {
-    double th = thickness_as_float(self, level, true);
-    double step = 1.0 / (self->height);
-    double half_thickness = th / 2.0;
-    double t = -step;
-    do {
-        t += step; if (t > 1.0) t = 1.0;
+draw_parametrized_curve_with_derivative(
+    Canvas *self, void *curve_data, uint level, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
+    int x_offset, double thickness_fudge
+) {
+    const double th = thickness_as_float(self, level, true);
+    double step = 1.0 / self->height;
+    const double min_step = 1.0 / (100 * self->height);
+    const double half_thickness = th / 2.0;
+    const double distance_limit = half_thickness + thickness_fudge;
+    double t = 0;
+    while(true) {
         double x = xfunc(curve_data, t), y = yfunc(curve_data, t);
         for (double dy = -th; dy <= th; dy++) {
             for (double dx = -th; dx <= th; dx++) {
                 double px = x + dx, py = y + dy;
                 double dist = distance(x, y, px, py);
-                int row = (int)py, col = (int)px;
-                if (dist > half_thickness || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
+                int row = (int)py, col = (int)px + x_offset;
+                if (dist >= distance_limit || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
                 const int offset = row * self->width + col;
                 double alpha = 1.0 - (dist / half_thickness);
                 uint8_t old_alpha = self->mask[offset];
                 self->mask[offset] = (uint8_t)(alpha * 255 + (1 - alpha) * old_alpha);
             }
         }
-    } while (t < 1.0);
+        if (t >= 1.0) break;
+        // Dynamically adjust step size based on curve's derivative
+        double dx = x_prime(curve_data, t), dy = y_prime(curve_data, t);
+        double d = sqrt(dx * dx + dy * dy);
+        step = 1.0 / fmax(1e-6, d);
+        step = fmax(min_step, fmin(step, 0.01));
+        t = fmin(t + step, 1.0);
+    }
 }
 
 static void
@@ -1227,13 +1238,27 @@ typedef struct Rectircle Rectircle;
 
 typedef struct Rectircle {
     double a, b, yexp, xexp, x_sign, y_sign, x_start, y_start;
-    curve_func x, y;
+    double x_prime_coeff, x_prime_exp, y_prime_coeff, y_prime_exp;
 } Rectircle;
 
 static double
 rectircle_x(void *v, double t) {
     Rectircle *r = v;
     return r->x_start + r->x_sign * r->a * pow(cos(t * (M_PI / 2.0)), r->xexp);
+}
+
+static double
+rectircle_x_prime(void *v, double t) {
+    Rectircle *r = v;
+    t *= (M_PI / 2.0);
+    return r->x_prime_coeff * pow(cos(t), r->x_prime_exp) * sin(t);
+}
+
+static double
+rectircle_y_prime(void *v, double t) {
+    Rectircle *r = v;
+    t *= (M_PI / 2.0);
+    return r->y_prime_coeff * pow(sin(t), r->y_prime_exp) * cos(t);
 }
 
 static double
@@ -1268,11 +1293,12 @@ rectcircle(Canvas *self, Corner which) {
     Rectircle ans = {
         .a = a, .b = b,
         .xexp = radius / a, .yexp = radius / b,
+        .x_prime_coeff = radius, .x_prime_exp = radius / a - 1.,
+        .y_prime_coeff = radius, .y_prime_exp = radius / b - 1.,
         .x_sign = which & RIGHT_EDGE ? 1. : -1,
         .x_start = which & RIGHT_EDGE ? 0. : 2 * a,
         .y_start = which & BOTTOM_EDGE ? 0. : 2 * b,
         .y_sign = which & BOTTOM_EDGE ? 1. : -1,
-        .x = rectircle_x, .y = rectircle_y,
     };
 
     return ans;
@@ -1281,7 +1307,8 @@ rectcircle(Canvas *self, Corner which) {
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     Rectircle r = rectcircle(self, which);
-    draw_parametrized_curve_with_derivative(self, &r, level, r.x, r.y);
+    int x_offset = -((self->width + 1) & 1);  // line up with box drawing lines when width is even
+    draw_parametrized_curve_with_derivative(self, &r, level, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, 0.1);
 }
 
 static void
