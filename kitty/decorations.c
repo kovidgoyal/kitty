@@ -1307,7 +1307,8 @@ rectcircle(Canvas *self, Corner which) {
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     Rectircle r = rectcircle(self, which);
-    int x_offset = -((self->width + 1) & 1);  // line up with box drawing lines when width is even
+    uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
+    int x_offset = -(cell_width_is_odd & 1);  // line up with box drawing lines when cell_width is odd
     draw_parametrized_curve_with_derivative(self, &r, level, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, 0.1);
 }
 
