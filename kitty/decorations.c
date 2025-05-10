@@ -742,7 +742,7 @@ draw_parametrized_curve_with_derivative(
                 double px = x + dx, py = y + dy;
                 double dist = distance(x, y, px, py);
                 int row = (int)py + yoffset, col = (int)px + x_offset;
-                if (dist >= distance_limit || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
+                if (dist > distance_limit || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
                 const int offset = row * self->width + col;
                 double alpha = 1.0 - (dist / half_thickness);
                 uint8_t old_alpha = self->mask[offset];
