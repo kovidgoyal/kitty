@@ -292,6 +292,8 @@ def multicell_command(payload: str) -> None:
         m += f'd={d}:'
     if (v := c.pop('vertical_align', None)) is not None and v > 0:
         m += f'v={v}:'
+    if (h := c.pop('horizontal_align', None)) is not None and h > 0:
+        m += f'h={h}:'
     if c:
         raise Exception('Unknown keys in multicell_command: ' + ', '.join(c))
     write(f'{OSC}{TEXT_SIZE_CODE};{m.rstrip(":")};{text}\a')
