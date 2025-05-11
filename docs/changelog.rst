@@ -106,7 +106,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.42.0 [future]
+0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new kitten: :doc:`quick-access-terminal </kittens/quick-access-terminal>` to :ref:`quake`
