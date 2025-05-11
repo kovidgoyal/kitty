@@ -702,7 +702,7 @@ draw_parametrized_curve_with_derivative(
 ) {
     double larger_dim = fmax(self->height, self->width);
     double step = 1.0 / larger_dim;
-    const double min_step = 1.0 / (100 * larger_dim), max_step = step;
+    const double min_step = step / 100., max_step = step;
     line_width = fmax(1., line_width);
     const double half_thickness = line_width / 2.0;
     const double distance_limit = half_thickness + thickness_fudge;
