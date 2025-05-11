@@ -648,6 +648,9 @@ def get_options() -> Options:
 def glfw_primary_monitor_size() -> Tuple[int, int]:
     pass
 
+def glfw_get_monitor_workarea() -> [Tuple[int, int, int, int]]:
+    pass
+
 
 def set_default_window_icon(path: str) -> None:
     pass

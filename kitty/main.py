@@ -41,6 +41,7 @@ from .fast_data_types import (
     glfw_init,
     glfw_terminate,
     glfw_primary_monitor_size,
+    glfw_get_monitor_workarea,
     is_layer_shell_supported,
     load_png_data,
     mask_kitty_signals_process_wide,
@@ -244,35 +245,11 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         wstate = parse_os_window_state(window_state) if window_state is not None else None
         posX, posY = None, None
         if args.position:
-            posX, posY = cached_values.get('window-pos', (None, None))
-            monitorWidth, monitorHeight = glfw_primary_monitor_size()
-            # since this will not work on initial startup, we can assume window-size is cached. Otherwise, just start normally
-            windowWidth, windowHeight = cached_values.get('window-size', (None, None))
-            cachedMonitorWidth, cachedMonitorHeight = cached_values.get('monitor-geometry', (None, None))
-            if (posX is not None and posY is not None and windowWidth is not None and windowHeight is not None and cachedMonitorHeight is not None
-                and cachedMonitorHeight is not None and cachedMonitorWidth is not None):
-                # all cached values are available, else start as normal
-                    if (cachedMonitorHeight and cachedMonitorWidth) and (monitorWidth != cachedMonitorWidth or monitorHeight != cachedMonitorHeight): 
-                        posXPercent = posX/cachedMonitorWidth
-                        posYPercent = posY/cachedMonitorHeight
-
-
-                        posX = int(posXPercent * monitorWidth)
-                        posY = int(posYPercent * monitorHeight)
-
-                        # scale window size accordingly
-                        windowWidthPercent = windowWidth/cachedMonitorWidth
-                        windowHeightPercent = windowHeight/cachedMonitorHeight
-
-                        windowWidth = int(windowWidthPercent * monitorWidth)
-                        windowHeight = int(windowHeightPercent * monitorHeight)
-                        windowWidth = max(10, min(windowWidth, monitorWidth))
-                        windowHeight = max(10, min(windowHeight, monitorHeight))
-                        cached_values['window-size'] = (windowWidth, windowHeight)
-
-            # ensure window position is within screen bounds
-                    posX = max(0, min(posX, monitorWidth - windowWidth))
-                    posY = max(0, min(posY, monitorHeight - windowHeight))
+            monitor_workarea = glfw_get_monitor_workarea()
+            cached_workarea = cached_values['monitor-workarea']
+            if len(monitor_workarea) == len(cached_workarea):
+                if all([tuple(cached_workarea[i]) == monitor_workarea[i] for i in range(len(cached_workarea))]):
+                    posX, posY = cached_values['window-pos']
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
