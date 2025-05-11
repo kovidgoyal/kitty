@@ -1323,8 +1323,10 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
             if ((s = grapheme_segmentation_step(s, cp)).add_to_current_cell || (wcwidth_std(cp) == 0 && lc.count)) lc.chars[lc.count++] = ch;
             else {
                 if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
-                if (wcwidth_std(cp) < 1) lc.count = 0;
-                else { lc.chars[0] = ch; lc.count = 1; }
+                switch(wcwidth_std(cp)) {
+                    case 0: case -1: lc.count = 0; break;
+                    default: lc.chars[0] = ch; lc.count = 1; break;
+                }
             }
         }
         if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);

@@ -106,6 +106,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.42.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix ambiguous width and private use characters not being rendered when used with variable width text-sizing protocol escape codes
+
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

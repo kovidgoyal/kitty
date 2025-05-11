@@ -135,6 +135,9 @@ def test_multicell(self: TestMulticell) -> None:
         for x in range(1, 3):
             comb(x, y)
     comb(0, 1)
+    s.reset()
+    multicell(s, 'aüa', scale=2)
+    self.ae(s.cursor.x, 6)
     s = self.create_screen(cols=7 * 7, lines=7)
     multicell(s, 'a', scale=7, width=7)
     for y in range(s.lines):
