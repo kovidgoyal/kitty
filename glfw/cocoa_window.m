@@ -2207,8 +2207,8 @@ void _glfwPlatformShowWindow(_GLFWwindow* window)
     if (window->ns.layer_shell.is_active && window->ns.layer_shell.config.type == GLFW_LAYER_SHELL_BACKGROUND) {
         [window->ns.object orderBack:nil];
     } else [window->ns.object orderFront:nil];
-    debug("Previously active application pid: %d bundle identifier: %s\n", window->ns.previous_front_most_application,
-            window->ns.previous_front_most_application ? [NSRunningApplication runningApplicationWithProcessIdentifier:window->ns.previous_front_most_application].bundleIdentifier.UTF8String : "");
+    debug("Previously active application pid: %d bundle identifier: %s\n",
+        window->ns.previous_front_most_application, app ? app.bundleIdentifier.UTF8String : "");
 }
 
 void _glfwPlatformHideWindow(_GLFWwindow* window)
