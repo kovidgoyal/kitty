@@ -695,11 +695,47 @@ distance(double x1, double y1, double x2, double y2) {
 
 typedef double(*curve_func)(const void *, double t);
 
+#define NAME position_set
+#define KEY_TY Point
+#define HASH_FN hash_point
+#define CMPR_FN cmpr_point
+static uint64_t hash_point(Point p);
+static bool cmpr_point(Point, Point);
+#include "kitty-verstable.h"
+static uint64_t hash_point(Point p) { return vt_hash_integer(p.val); }
+static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
+
+#define draw_parametrized_thin_curve(self, line_width, xfunc, yfunc, x_offset, y_offset) { \
+    uint th = (uint)ceil(line_width); \
+    div_t d = div(th, 2u); \
+    int delta = d.quot, extra = d.rem; \
+    uint num_samples = self->height * 8; \
+    position_set seen; vt_init(&seen); \
+    for (uint i = 0; i < num_samples + 1; i++) { \
+        double t = i / (double)num_samples; \
+        Point p = {.x=(int32_t)xfunc, .y=(int32_t)yfunc};  \
+        position_set_itr q = vt_get(&seen, p); \
+        if (!vt_is_end(q)) continue; \
+        if (vt_is_end(vt_insert(&seen, p))) fatal("Out of memory"); \
+        p.x += x_offset; \
+        for (int y = MAX(0, p.y - delta); y < MIN(p.y + delta + extra, (int)self->height); y++) { \
+            uint offset = y * self->width, start = MAX(0, p.x - delta); \
+            memset(self->mask + offset + start, 255, minus((uint)MIN(p.x + delta + extra, (int)self->width), start)); \
+        } \
+    } \
+    vt_cleanup(&seen); \
+}
+
 static void
 draw_parametrized_curve_with_derivative(
     Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
     int x_offset, int yoffset, double thickness_fudge
 ) {
+    if (line_width <= 2 * self->supersample_factor) {
+        // The old algorithm looks better for very thin lines
+        draw_parametrized_thin_curve(self, line_width, xfunc(curve_data, t), yfunc(curve_data, t), x_offset, y_offset);
+        return;
+    }
     double larger_dim = fmax(self->height, self->width);
     double step = 1.0 / larger_dim;
     const double min_step = step / 100., max_step = step;
