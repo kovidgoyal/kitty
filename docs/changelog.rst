@@ -113,6 +113,8 @@ Detailed list of changes
 
 - macOS: Quick access terminal: Restore focus to previously active window when hiding the quick access terminal window (:iss:`8627`)
 
+- Wayland: Fix an abort if the terminal program sets a window title longer than 2KB that contains CSI escape sequences and multibyte UTF-8 (:iss:`8619`)
+
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

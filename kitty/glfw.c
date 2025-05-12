@@ -70,6 +70,52 @@ on_clipboard_lost(GLFWClipboardType which) {
     call_boss(on_clipboard_lost, "s", which == GLFW_CLIPBOARD ? "clipboard" : "primary");
 }
 
+static bool
+is_continuation_byte(unsigned char byte) {
+    return (byte & 0xC0) == 0x80; // Continuation bytes have the form 10xxxxxx
+}
+
+static int
+utf8_sequence_length(unsigned char byte) {
+    if ((byte & 0x80) == 0) return 1; // 0xxxxxxx: Single-byte ASCII
+    if ((byte & 0xE0) == 0xC0) return 2; // 110xxxxx: Two-byte sequence
+    if ((byte & 0xF0) == 0xE0) return 3; // 1110xxxx: Three-byte sequence
+    if ((byte & 0xF8) == 0xF0) return 4; // 11110xxx: Four-byte sequence
+    return -1; // Invalid first byte
+}
+
+// Function to remove invalid UTF-8 bytes from the end of a string
+static void
+remove_invalid_utf8_from_end(char *str, size_t len) {
+    if (!len) return;
+    // Start from the end of the string and move backward
+    size_t i = len - 1;
+    while (i > 0) {
+        if (is_continuation_byte((unsigned char)str[i])) {
+            // Continue backward to find the start of the potential UTF-8 sequence
+            size_t start = i;
+            while (start > 0 && is_continuation_byte((unsigned char)str[start])) start--;
+            // Check if the sequence is valid
+            int seq_len = utf8_sequence_length((unsigned char)str[start]);
+            if (seq_len > 0 && start + seq_len == len) return; // Valid sequence found, stop trimming
+            // Invalid sequence, trim it
+            str[start] = '\0';
+            len = start;
+            i = start - 1;
+        } else {
+            // Not a continuation byte, check if it's a valid start byte
+            int seq_len = utf8_sequence_length((unsigned char)str[i]);
+            if (seq_len > 0 && i + seq_len == len) return; // Valid sequence found, stop trimming
+            // Invalid byte, trim it
+            str[i] = '\0';
+            len = i;
+            i--;
+        }
+    }
+    // Handle the case where the entire string is invalid
+    if (utf8_sequence_length((unsigned char)str[0]) < 0) str[0] = '\0';
+}
+
 static void
 strip_csi_(const char *title, char *buf, size_t bufsz) {
     enum { NORMAL, IN_ESC, IN_CSI} state = NORMAL;
@@ -99,6 +145,7 @@ strip_csi_(const char *title, char *buf, size_t bufsz) {
         }
     }
     *dest = 0;
+    remove_invalid_utf8_from_end(buf, dest - buf);
 }
 
 
