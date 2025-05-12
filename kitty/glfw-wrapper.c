@@ -134,6 +134,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwAreSwapsAllowed_impl) = dlsym(handle, "glfwAreSwapsAllowed");
     if (glfwAreSwapsAllowed_impl == NULL) fail("Failed to load glfw function glfwAreSwapsAllowed with error: %s", dlerror());
 
+    *(void **) (&glfwGetLayerShellConfig_impl) = dlsym(handle, "glfwGetLayerShellConfig");
+    if (glfwGetLayerShellConfig_impl == NULL) fail("Failed to load glfw function glfwGetLayerShellConfig with error: %s", dlerror());
+
     *(void **) (&glfwSetLayerShellConfig_impl) = dlsym(handle, "glfwSetLayerShellConfig");
     if (glfwSetLayerShellConfig_impl == NULL) fail("Failed to load glfw function glfwSetLayerShellConfig with error: %s", dlerror());
 
@@ -496,9 +499,6 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwWaylandBeep_impl) = dlsym(handle, "glfwWaylandBeep");
     if (glfwWaylandBeep_impl == NULL) dlerror(); // clear error indicator
-
-    *(void **) (&glfwWaylandLayerShellConfig_impl) = dlsym(handle, "glfwWaylandLayerShellConfig");
-    if (glfwWaylandLayerShellConfig_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwWaylandCompositorPID_impl) = dlsym(handle, "glfwWaylandCompositorPID");
     if (glfwWaylandCompositorPID_impl == NULL) dlerror(); // clear error indicator

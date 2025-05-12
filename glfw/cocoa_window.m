@@ -1940,6 +1940,11 @@ screen_for_window_center(_GLFWwindow *window) {
     return NSScreen.mainScreen;
 }
 
+const GLFWLayerShellConfig*
+_glfwPlatformGetLayerShellConfig(_GLFWwindow *window) {
+    return &window->ns.layer_shell.config;
+}
+
 bool
 _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
 #define config window->ns.layer_shell.config

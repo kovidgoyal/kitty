@@ -115,6 +115,8 @@ Detailed list of changes
 
 - Wayland: Fix an abort if the terminal program sets a window title longer than 2KB that contains CSI escape sequences and multibyte UTF-8 (:iss:`8619`)
 
+- Quick access terminal: Allow toggling the window to full screen and map using the standard kitty :sc:`toggle_fullscreen` shortcut (:iss:`8626`)
+
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

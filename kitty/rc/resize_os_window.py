@@ -3,7 +3,7 @@
 
 from typing import TYPE_CHECKING
 
-from kitty.fast_data_types import get_os_window_size, layer_shell_config_for_os_window, set_layer_shell_config, toggle_os_window_visibility
+from kitty.fast_data_types import get_os_window_size, layer_shell_config_for_os_window, set_layer_shell_config, toggle_fullscreen, toggle_os_window_visibility
 
 from .base import (
     MATCH_WINDOW_OPTION,
@@ -139,6 +139,10 @@ using this option means that you will not be notified of failures.
                     toggle_os_window_visibility(os_window_id, False)
                 elif ac == 'show':
                     toggle_os_window_visibility(os_window_id, True)
+                elif ac == 'toggle-fullscreen':
+                    if not toggle_fullscreen(os_window_id):
+                        raise RemoteControlErrorWithoutTraceback(
+                            f'The OS Window {os_window_id} is a desktop panel that cannot be made fullscreen')
                 elif is_panel:
                     raise RemoteControlErrorWithoutTraceback(
                         f'The OS Window {os_window_id} is a desktop panel, no actions other than resizing are supported for it')
@@ -147,8 +151,6 @@ using this option means that you will not be notified of failures.
                         os_window_id, width=payload_get('width'), height=payload_get('height'),
                         unit=payload_get('unit'), incremental=payload_get('incremental'), metrics=metrics,
                     )
-                elif ac == 'toggle-fullscreen':
-                    boss.toggle_fullscreen(os_window_id)
                 elif ac == 'toggle-maximized':
                     boss.toggle_maximized(os_window_id)
         return None

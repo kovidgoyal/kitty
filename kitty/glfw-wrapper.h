@@ -1047,6 +1047,11 @@ typedef enum { GLFW_FOCUS_NOT_ALLOWED, GLFW_FOCUS_EXCLUSIVE, GLFW_FOCUS_ON_DEMAN
 typedef struct GLFWLayerShellConfig {
     GLFWLayerShellType type;
     GLFWEdge edge;
+    struct {
+        GLFWEdge edge;
+        int requested_top_margin, requested_left_margin, requested_bottom_margin, requested_right_margin;
+    } previous;
+    bool was_toggled_to_fullscreen;
     char output_name[64];
     GLFWFocusPolicy focus_policy;
     unsigned x_size_in_cells, x_size_in_pixels;
@@ -1872,6 +1877,10 @@ typedef bool (*glfwAreSwapsAllowed_func)(const GLFWwindow*);
 GFW_EXTERN glfwAreSwapsAllowed_func glfwAreSwapsAllowed_impl;
 #define glfwAreSwapsAllowed glfwAreSwapsAllowed_impl
 
+typedef const GLFWLayerShellConfig* (*glfwGetLayerShellConfig_func)(GLFWwindow*);
+GFW_EXTERN glfwGetLayerShellConfig_func glfwGetLayerShellConfig_impl;
+#define glfwGetLayerShellConfig glfwGetLayerShellConfig_impl
+
 typedef bool (*glfwSetLayerShellConfig_func)(GLFWwindow*, const GLFWLayerShellConfig*);
 GFW_EXTERN glfwSetLayerShellConfig_func glfwSetLayerShellConfig_impl;
 #define glfwSetLayerShellConfig glfwSetLayerShellConfig_impl
@@ -2355,10 +2364,6 @@ GFW_EXTERN glfwWaylandIsWindowFullyCreated_func glfwWaylandIsWindowFullyCreated_
 typedef bool (*glfwWaylandBeep_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandBeep_func glfwWaylandBeep_impl;
 #define glfwWaylandBeep glfwWaylandBeep_impl
-
-typedef GLFWLayerShellConfig* (*glfwWaylandLayerShellConfig_func)(GLFWwindow*);
-GFW_EXTERN glfwWaylandLayerShellConfig_func glfwWaylandLayerShellConfig_impl;
-#define glfwWaylandLayerShellConfig glfwWaylandLayerShellConfig_impl
 
 typedef pid_t (*glfwWaylandCompositorPID_func)(void);
 GFW_EXTERN glfwWaylandCompositorPID_func glfwWaylandCompositorPID_impl;

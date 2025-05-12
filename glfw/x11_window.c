@@ -2092,7 +2092,13 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     XFlush(_glfw.x11.display);
 }
 
-bool _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
+const GLFWLayerShellConfig*
+_glfwPlatformGetLayerShellConfig(_GLFWwindow *window) {
+    return &window->x11.layer_shell.config;
+}
+
+bool
+_glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
     if (value) window->x11.layer_shell.config = *value;
     WindowGeometry wg = calculate_layer_geometry(window);
     update_wm_hints(window, &wg, NULL);

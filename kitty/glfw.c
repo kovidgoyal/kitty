@@ -1013,11 +1013,40 @@ do_toggle_fullscreen(OSWindow *w, unsigned int flags, bool restore_sizes) {
 
 static bool
 toggle_fullscreen_for_os_window(OSWindow *w) {
-    if (w && w->handle && !w->is_layer_shell) {
+    if (!w || !w->handle) return false;
+    if (!w->is_layer_shell) {
 #ifdef __APPLE__
         if (!OPT(macos_traditional_fullscreen)) return do_toggle_fullscreen(w, 1, false);
 #endif
         return do_toggle_fullscreen(w, 0, true);
+    }
+    const GLFWLayerShellConfig *prev = glfwGetLayerShellConfig(w->handle);
+    if (!prev) return false;
+    GLFWLayerShellConfig lsc;
+    memcpy(&lsc, prev, sizeof(lsc));
+    if (prev->type == GLFW_LAYER_SHELL_OVERLAY || prev->type == GLFW_LAYER_SHELL_TOP) {
+        if (prev->was_toggled_to_fullscreen) {
+            lsc.edge = prev->previous.edge;
+            lsc.requested_bottom_margin = prev->previous.requested_bottom_margin;
+            lsc.requested_top_margin = prev->previous.requested_top_margin;
+            lsc.requested_left_margin = prev->requested_left_margin;
+            lsc.requested_right_margin = prev->requested_right_margin;
+            lsc.was_toggled_to_fullscreen = false;
+            glfwSetLayerShellConfig(w->handle, &lsc);
+            return true;
+        }
+        if (prev->edge == GLFW_EDGE_TOP || prev->edge == GLFW_EDGE_BOTTOM || prev->edge == GLFW_EDGE_LEFT || prev->edge == GLFW_EDGE_RIGHT) {
+            lsc.edge = GLFW_EDGE_CENTER;
+            lsc.previous.edge = prev->edge;
+            lsc.previous.requested_right_margin = prev->requested_right_margin;
+            lsc.previous.requested_left_margin = prev->requested_left_margin;
+            lsc.previous.requested_top_margin = prev->requested_top_margin;
+            lsc.previous.requested_bottom_margin = prev->requested_bottom_margin;
+            lsc.requested_bottom_margin = 0; lsc.requested_top_margin = 0; lsc.requested_left_margin = 0; lsc.requested_right_margin = 0;
+            lsc.was_toggled_to_fullscreen = true;
+            glfwSetLayerShellConfig(w->handle, &lsc);
+            return true;
+        }
     }
     return false;
 }
@@ -1025,11 +1054,15 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
 bool
 is_os_window_fullscreen(OSWindow *w) {
     unsigned int flags = 0;
+    if (!w || !w->handle) return false;
+    if (w->is_layer_shell) {
+        const GLFWLayerShellConfig *c = glfwGetLayerShellConfig(w->handle);
+        return c && c->was_toggled_to_fullscreen;
+    }
 #ifdef __APPLE__
     if (!OPT(macos_traditional_fullscreen)) flags = 1;
 #endif
-    if (w && w->handle) return glfwIsFullscreen(w->handle, flags);
-    return false;
+    return glfwIsFullscreen(w->handle, flags);
 }
 
 static bool
@@ -1048,20 +1081,20 @@ toggle_maximized_for_os_window(OSWindow *w) {
 
 static void
 change_state_for_os_window(OSWindow *w, int state) {
-    if (!w || !w->handle || w->is_layer_shell) return;
+    if (!w || !w->handle) return;
     switch (state) {
         case WINDOW_MAXIMIZED:
-            glfwMaximizeWindow(w->handle);
+            if (!w->is_layer_shell) glfwMaximizeWindow(w->handle);
             break;
         case WINDOW_MINIMIZED:
-            glfwIconifyWindow(w->handle);
+            if (!w->is_layer_shell) glfwIconifyWindow(w->handle);
             break;
         case WINDOW_FULLSCREEN:
             if (!is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
             break;
         case WINDOW_NORMAL:
             if (is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
-            else glfwRestoreWindow(w->handle);
+            else if (!w->is_layer_shell) glfwRestoreWindow(w->handle);
             break;
         case WINDOW_HIDDEN:
             glfwHideWindow(w->handle); break;
@@ -2529,7 +2562,7 @@ layer_shell_config_for_os_window(PyObject *self UNUSED, PyObject *wid) {
     id_type id = PyLong_AsUnsignedLongLong(wid);
     OSWindow *w = os_window_for_id(id);
     if (!w || !w->handle) Py_RETURN_NONE;
-    const GLFWLayerShellConfig *c = glfwWaylandLayerShellConfig(w->handle);
+    const GLFWLayerShellConfig *c = glfwGetLayerShellConfig(w->handle);
     if (!c) Py_RETURN_NONE;
     return layer_shell_config_to_python(c);
 #endif

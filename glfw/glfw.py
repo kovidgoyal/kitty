@@ -325,7 +325,6 @@ def generate_wrappers(glfw_header: str) -> None:
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)
     bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle)
     bool glfwWaylandBeep(GLFWwindow *handle)
-    GLFWLayerShellConfig* glfwWaylandLayerShellConfig(GLFWwindow *handle)
     pid_t glfwWaylandCompositorPID(void)
     unsigned long long glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)

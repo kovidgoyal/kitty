@@ -2892,8 +2892,9 @@ GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     if (csd_change_title(window)) commit_window_surface_if_safe(window);
 }
 
-GLFWAPI GLFWLayerShellConfig* glfwWaylandLayerShellConfig(GLFWwindow *handle) {
-    return &((_GLFWwindow*)handle)->wl.layer_shell.config;
+const GLFWLayerShellConfig*
+_glfwPlatformGetLayerShellConfig(_GLFWwindow *window) {
+    return &window->wl.layer_shell.config;
 }
 
 GLFWAPI bool glfwIsLayerShellSupported(void) { return _glfw.wl.zwlr_layer_shell_v1 != NULL; }
