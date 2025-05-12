@@ -3,8 +3,6 @@
 
 from typing import TYPE_CHECKING
 
-from kitty.fast_data_types import get_os_window_size, layer_shell_config_for_os_window, set_layer_shell_config, toggle_fullscreen, toggle_os_window_visibility
-
 from .base import (
     MATCH_WINDOW_OPTION,
     ArgsType,
@@ -98,6 +96,13 @@ using this option means that you will not be notified of failures.
         }
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
+        from kitty.fast_data_types import (
+            get_os_window_size,
+            layer_shell_config_for_os_window,
+            set_layer_shell_config,
+            toggle_fullscreen,
+            toggle_os_window_visibility,
+        )
         windows = self.windows_for_match_payload(boss, window, payload_get)
         if windows:
             ac = payload_get('action')
