@@ -125,6 +125,7 @@ typedef struct _GLFWwindowNS
     id              delegate;
     id              view;
     id              layer;
+    pid_t           previous_front_most_application;
 
     bool            maximized;
     bool            retina;

@@ -111,6 +111,8 @@ Detailed list of changes
 
 - Fix ambiguous width and private use characters not being rendered when used with variable width text-sizing protocol escape codes
 
+- macOS: Quick access terminal: Restore focus to previously active window when hiding the quick access terminal window (:iss:`8627`)
+
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
