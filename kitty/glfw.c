@@ -4,7 +4,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include <Python.h>
 #include "state.h"
 #include "cleanup.h"
 #include "monotonic.h"

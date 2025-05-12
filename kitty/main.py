@@ -246,10 +246,10 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         posX, posY = None, None
         if args.position:
             monitor_workarea = glfw_get_monitor_workarea()
-            cached_workarea = cached_values['monitor-workarea']
-            if len(monitor_workarea) == len(cached_workarea):
+            cached_workarea = cached_values.get('monitor-workarea', None)
+            if cached_workarea and len(monitor_workarea) == len(cached_workarea):
                 if all([tuple(cached_workarea[i]) == monitor_workarea[i] for i in range(len(cached_workarea))]):
-                    posX, posY = cached_values['window-pos']
+                    posX, posY = cached_values.get('window-pos', (None, None))
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
