@@ -1079,6 +1079,18 @@ opt('initial_window_height', '400',
     option_type='window_size',
     )
 
+opt('remember_window_position', 'no',
+    option_type='to_bool',
+    long_text='''
+If enabled, the :term:`OS Window <os_window>` position will be remembered so that
+new instances of kitty will have the same position as the previous instance.
+If disabled, the :term:`OS Window <os_window>` will be placed by the window manager.
+Note that remembering of position only works if the underlying desktop environment/window
+manager supports it. It never works on Wayland. See also :option:`kitty --position` to
+specify the position when launching kitty.
+'''
+    )
+
 opt('enabled_layouts', '*',
     option_type='to_layout_names',
     long_text='''

@@ -403,6 +403,7 @@ option_names = (
     'placement_strategy',
     'pointer_shape_when_dragging',
     'pointer_shape_when_grabbed',
+    'remember_window_position',
     'remember_window_size',
     'remote_control_password',
     'repaint_delay',
@@ -575,6 +576,7 @@ class Options:
     placement_strategy: choices_for_placement_strategy = 'center'
     pointer_shape_when_dragging: tuple[str, str] = ('beam', 'crosshair')
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
+    remember_window_position: bool = False
     remember_window_size: bool = True
     repaint_delay: int = 10
     resize_debounce_time: tuple[float, float] = (0.1, 0.5)

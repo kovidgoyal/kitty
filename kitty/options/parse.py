@@ -1171,6 +1171,9 @@ class Parser:
 
     choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 
+    def remember_window_position(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['remember_window_position'] = to_bool(val)
+
     def remember_window_size(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['remember_window_size'] = to_bool(val)
 

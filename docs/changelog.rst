@@ -117,6 +117,9 @@ Detailed list of changes
 
 - Quick access terminal: Allow toggling the window to full screen and map using the standard kitty :sc:`toggle_fullscreen` shortcut (:iss:`8626`)
 
+- A new setting :opt:`remember_window_position` to optionally use the position of the last closed kitty OS Window as the position of the first kitty OS Window when running a new kitty instance (:pull:`8601`)
+
+
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

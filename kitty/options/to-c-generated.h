@@ -890,6 +890,19 @@ convert_from_opts_background_blur(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_dynamic_background_opacity(PyObject *val, Options *opts) {
+    opts->dynamic_background_opacity = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_dynamic_background_opacity(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "dynamic_background_opacity");
+    if (ret == NULL) return;
+    convert_from_python_dynamic_background_opacity(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_background_image(PyObject *val, Options *opts) {
     background_image(val, opts);
 }
@@ -925,19 +938,6 @@ convert_from_opts_background_image_linear(PyObject *py_opts, Options *opts) {
     PyObject *ret = PyObject_GetAttrString(py_opts, "background_image_linear");
     if (ret == NULL) return;
     convert_from_python_background_image_linear(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_dynamic_background_opacity(PyObject *val, Options *opts) {
-    opts->dynamic_background_opacity = PyObject_IsTrue(val);
-}
-
-static void
-convert_from_opts_dynamic_background_opacity(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "dynamic_background_opacity");
-    if (ret == NULL) return;
-    convert_from_python_dynamic_background_opacity(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1313,13 +1313,13 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_blur(py_opts, opts);
     if (PyErr_Occurred()) return false;
+    convert_from_opts_dynamic_background_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
     convert_from_opts_background_image(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_image_layout(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_image_linear(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_dynamic_background_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_tint(py_opts, opts);
     if (PyErr_Occurred()) return false;

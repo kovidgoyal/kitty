@@ -2127,40 +2127,20 @@ primary_monitor_size(PYNOARG) {
     return Py_BuildValue("ii", mode->width, mode->height);
 }
 
-static PyObject *
-get_monitor_workarea(PYNOARG)
-{
+static PyObject*
+get_monitor_workarea(PYNOARG) {
     int count = 0;
     GLFWmonitor **monitors = glfwGetMonitors(&count);
-    if (count == 0)
-    {
-        PyErr_SetString(PyExc_ValueError, "Failed to retrieve monitors");
-    }
-
-    PyObject *result = PyList_New(count);
-    if (!result)
-    {
-        return NULL;
-    }
-
-    for (int i = 0; i < count; i++)
-    {
+    if (count <= 0 || !monitors) return PyTuple_New(0);
+    RAII_PyObject(result, PyTuple_New(count)); if (!result) return NULL;
+    for (int i = 0; i < count; i++) {
         int xpos, ypos, width, height;
-        GLFWmonitor *monitor = monitors[i];
-
-        glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
-
+        glfwGetMonitorWorkarea(monitors[i], &xpos, &ypos, &width, &height);
         PyObject *monitor_workarea = Py_BuildValue("iiii", xpos, ypos, width, height);
-        if (!monitor_workarea)
-        {
-            Py_DECREF(monitor_workarea);
-            return NULL;
-        }
-
-        PyList_SET_ITEM(result, i, monitor_workarea);
+        if (!monitor_workarea) return NULL;
+        PyTuple_SET_ITEM(result, i, monitor_workarea);
     }
-
-    return result;
+    return Py_NewRef(result);
 }
 
 static PyObject*

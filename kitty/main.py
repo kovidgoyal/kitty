@@ -38,10 +38,9 @@ from .fast_data_types import (
     SingleKey,
     create_os_window,
     free_font_data,
+    glfw_get_monitor_workarea,
     glfw_init,
     glfw_terminate,
-    glfw_primary_monitor_size,
-    glfw_get_monitor_workarea,
     is_layer_shell_supported,
     load_png_data,
     mask_kitty_signals_process_wide,
@@ -234,8 +233,15 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         set_window_icon()
     if _is_panel_kitten and not is_layer_shell_supported():
         raise SystemExit('Cannot create panels as the window manager/compositor does not support the neccessary protocols')
-
+    pos_x, pos_y = None, None
     with cached_values_for(run_app.cached_values_name) as cached_values:
+        if not _is_panel_kitten and not is_wayland():
+            if opts.remember_window_position:
+                cached_workarea = cached_values.get('monitor-workarea', ())
+                if cached_workarea and glfw_get_monitor_workarea() == tuple(cached_workarea):
+                    pos_x, pos_y = cached_values.get('window-pos', (None, None))
+            if args.position:
+                pos_x, pos_y = map(int, args.position.lower().partition('x')[::2])
         startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
         wincls = (startup_sessions[0].os_window_class if startup_sessions else '') or args.cls or appname
         winname = (startup_sessions[0].os_window_name if startup_sessions else '') or args.name or wincls or appname
@@ -243,19 +249,13 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
             getattr(startup_sessions[0], 'os_window_state', None) if startup_sessions else None
         )
         wstate = parse_os_window_state(window_state) if window_state is not None else None
-        posX, posY = None, None
-        if args.position:
-            monitor_workarea = glfw_get_monitor_workarea()
-            cached_workarea = cached_values.get('monitor-workarea', None)
-            if cached_workarea and len(monitor_workarea) == len(cached_workarea):
-                if all([tuple(cached_workarea[i]) == monitor_workarea[i] for i in range(len(cached_workarea))]):
-                    posX, posY = cached_values.get('window-pos', (None, None))
+
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
                     pre_show_callback,
                     args.title or appname, winname,
-                    wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config, x=posX, y=posY)
+                    wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config, x=pos_x, y=pos_y)
         boss = Boss(opts, args, cached_values, global_shortcuts, talk_fd)
         boss.start(window_id, startup_sessions)
         if args.debug_font_fallback:

@@ -645,10 +645,10 @@ def get_options() -> Options:
     pass
 
 
-def glfw_primary_monitor_size() -> Tuple[int, int]:
+def glfw_primary_monitor_size() -> tuple[int, int]:
     pass
 
-def glfw_get_monitor_workarea() -> [Tuple[int, int, int, int]]:
+def glfw_get_monitor_workarea() -> tuple[tuple[int, int, int, int], ...]:
     pass
 
 
