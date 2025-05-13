@@ -69,6 +69,13 @@ opt('+kitty_override', '', long_text='Override individual kitty configuration op
 opt('app_id', f'{appname}-quick-access',
     long_text='The Wayland APP_ID assigned to the quick access window (Linux only)')
 
+
+opt('output_name', '', long_text='''
+On Wayland or X11, the panel can only be displayed on a single monitor (output) at a time. This allows
+you to specify which output is used, by name. If not specified the compositor will choose an
+output automatically, typically the last output the user interacted with or the primary monitor.
+''')
+
 opt('start_as_hidden', 'no', option_type='to_bool',
     long_text='Whether to start the quick access terminal hidden. Useful if you are starting it as part of system startup.')
 
