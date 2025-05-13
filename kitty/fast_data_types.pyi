@@ -1570,7 +1570,7 @@ def set_os_window_pos(os_window_id: int, x: int, y: int) -> None:
 def get_all_processes() -> Tuple[int, ...]:
     pass
 
-def get_monitor_names() -> tuple[tuple[str, str], ...]: ...
+def glfw_get_monitor_names() -> tuple[tuple[str, str], ...]: ...
 
 def num_users() -> int:
     pass
