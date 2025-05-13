@@ -1215,6 +1215,10 @@ class TabManager:  # {{{
                     return idx
             return -1
 
+        def remove_from_end_of_active_history(idx: int) -> None:
+            while self.active_tab_history and idx_for_id(self.active_tab_history[-1]) == idx:
+                self.active_tab_history.pop()
+
         if active_tab_needs_to_change:
             next_active_tab = -1
             tss = get_options().tab_switch_strategy
@@ -1224,10 +1228,13 @@ class TabManager:  # {{{
                     next_active_tab = idx_for_id(tab_id)
             elif tss == 'left':
                 next_active_tab = max(0, self.active_tab_idx - 1)
+                remove_from_end_of_active_history(next_active_tab)
             elif tss == 'right':
                 next_active_tab = min(self.active_tab_idx, len(self.tabs) - 1)
+                remove_from_end_of_active_history(next_active_tab)
             elif tss == 'last':
                 next_active_tab = len(self.tabs) - 1
+                remove_from_end_of_active_history(next_active_tab)
 
             if next_active_tab < 0:
                 next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
