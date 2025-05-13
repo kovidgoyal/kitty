@@ -242,7 +242,7 @@ def list_monitors() -> None:
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
-    if _is_panel_kitten and run_app.layer_shell_config.output_name == 'list':
+    if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name == 'list':
         list_monitors()
         return
     if is_macos:
