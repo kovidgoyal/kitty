@@ -13,6 +13,7 @@ from kitty.constants import is_macos, kitten_exe
 from kitty.fast_data_types import (
     GLFW_EDGE_BOTTOM,
     GLFW_EDGE_CENTER,
+    GLFW_EDGE_CENTER_SIZED,
     GLFW_EDGE_LEFT,
     GLFW_EDGE_NONE,
     GLFW_EDGE_RIGHT,
@@ -66,7 +67,8 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
     }.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
     edge = {
-        'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT, 'center': GLFW_EDGE_CENTER, 'none': GLFW_EDGE_NONE
+        'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT,
+        'center': GLFW_EDGE_CENTER, 'none': GLFW_EDGE_NONE, 'center-sized': GLFW_EDGE_CENTER_SIZED,
     }.get(opts.edge, GLFW_EDGE_TOP)
     focus_policy = {
         'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND

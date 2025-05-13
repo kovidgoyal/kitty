@@ -121,6 +121,8 @@ Detailed list of changes
 
 - A new setting :opt:`remember_window_position` to optionally use the position of the last closed kitty OS Window as the position of the first kitty OS Window when running a new kitty instance (:pull:`8601`)
 
+- Panel kitten: A new ``center-sized`` value for :option:`--edge <kitty +kitten panel --edge>` to allow easily creating sized and centered panels
+
 
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

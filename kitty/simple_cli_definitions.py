@@ -601,20 +601,21 @@ Only works on macOS and Wayland compositors that supports the wlr layer shell pr
 
 
 --edge
-choices=top,bottom,left,right,background,center,none
+choices=top,bottom,left,right,background,center,center-sized,none
 default={edge}
 Which edge of the screen to place the panel on. Note that some window managers
 (such as i3) do not support placing docked windows on the left and right edges.
 The value :code:`background` means make the panel the "desktop wallpaper".
 Note that when using sway if you set a background in your sway config it will
 cover the background drawn using this kitten.
-Additionally, there are two more values: :code:`center` and :code:`none`.
+Additionally, there are three more values: :code:`center`, :code:`center-sized` and :code:`none`.
 The value :code:`center` anchors the panel to all sides and covers the entire
 display (on macOS the part of the display not covered by titlebar and dock).
 The panel can be shrunk and placed using the margin parameters.
 The value :code:`none` anchors the panel to the top left corner and should be
 placed and using the margin parameters. Its size is set by :option:`--lines`
-and :option:`--columns`.
+and :option:`--columns`. The value :code:`center-sized` is just like :code:`none` except
+that the panel is centered instead of in the top left corner and the margins have no effect.
 
 
 --layer

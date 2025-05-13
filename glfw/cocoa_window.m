@@ -2031,6 +2031,11 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
                 x += width - panel_width + 1.;
                 width = panel_width;
                 break;
+            case GLFW_EDGE_CENTER_SIZED:
+                x += (width - panel_width) / 2;
+                y += (height - panel_height) / 2;
+                width = panel_width; height = panel_height;
+                break;
             default:  // top left
                 y += height - panel_height + 1.;
                 height = panel_height; width = panel_width;
@@ -2040,8 +2045,10 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
         if (height < 1.) height = NSWidth(screen.visibleFrame);
     }
 
-    x += config.requested_left_margin; width -= config.requested_left_margin + config.requested_right_margin;
-    y += config.requested_bottom_margin; height -= config.requested_top_margin + config.requested_bottom_margin;
+    if (config.edge != GLFW_EDGE_CENTER_SIZED) {
+        x += config.requested_left_margin; width -= config.requested_left_margin + config.requested_right_margin;
+        y += config.requested_bottom_margin; height -= config.requested_top_margin + config.requested_bottom_margin;
+    }
 
     [nswindow setAnimationBehavior:animation_behavior];
     [nswindow setLevel:level];
