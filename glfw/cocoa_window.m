@@ -2227,7 +2227,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
             if (_glfwPlatformWindowVisible(w)) num_visible++;
         }
         if (!num_visible) {
-            // yieldActivationToApplication was introduced in macOS 14
+            // yieldActivationToApplication was introduced in macOS 14 (Sonoma)
             SEL selector = NSSelectorFromString(@"yieldActivationToApplication:");
             if ([NSApp respondsToSelector:selector]) {
                 [NSApp performSelector:selector withObject:app];
@@ -2235,6 +2235,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
             } else {
                 #define NSApplicationActivateIgnoringOtherApps 2
                 [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+                #undef NSApplicationActivateIgnoringOtherApps
             }
         }
     }
