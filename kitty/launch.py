@@ -388,7 +388,8 @@ Relative paths are resolved relative to the :ref:`kitty config directory
 --os-panel
 type=list
 Options to control the creation of desktop panels. Takes the same settings
-as the :doc:`panel kitten </kittens/panel>`. Can be specified multiple times.
+as the :doc:`panel kitten </kittens/panel>`, except for :option:`--override <kitty +kitten panel --override>`
+and :option:`--config <kitty +kitten panel --config>`. Can be specified multiple times.
 For example, to create a desktop panel at the bottom of the screen two lines high::
 
     launch --type os-panel --os-panel lines=2 --os-panel edge=bottom sh -c "echo; echo; echo hello; sleep 5s"
