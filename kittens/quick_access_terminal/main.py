@@ -71,9 +71,10 @@ opt('app_id', f'{appname}-quick-access',
 
 
 opt('output_name', '', long_text='''
-On Wayland or X11, the panel can only be displayed on a single monitor (output) at a time. This allows
+The panel can only be displayed on a single monitor (output) at a time. This allows
 you to specify which output is used, by name. If not specified the compositor will choose an
 output automatically, typically the last output the user interacted with or the primary monitor.
+You can get a list of available outputs by running: :code:`kitten panel --output-name list`.
 ''')
 
 opt('start_as_hidden', 'no', option_type='to_bool',

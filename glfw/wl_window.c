@@ -971,7 +971,7 @@ find_output_by_name(const char* name) {
     if (!name || !name[0]) return NULL;
     for (int i = 0; i < _glfw.monitorCount; i++) {
         _GLFWmonitor *m = _glfw.monitors[i];
-        if (strcmp(m->wl.friendly_name, name) == 0) return m->wl.output;
+        if (strcmp(m->name, name) == 0) return m->wl.output;
     }
     return NULL;
 }

@@ -2144,6 +2144,23 @@ get_monitor_workarea(PYNOARG) {
 }
 
 static PyObject*
+get_monitor_names(PYNOARG) {
+    int count = 0;
+    GLFWmonitor **monitors = glfwGetMonitors(&count);
+    if (count <= 0 || !monitors) return PyTuple_New(0);
+    RAII_PyObject(result, PyTuple_New(count)); if (!result) return NULL;
+    for (int i = 0; i < count; i++) {
+        const char *name = glfwGetMonitorName(monitors[i]);
+        const char *description = glfwGetMonitorDescription(monitors[i]);
+        PyObject *x = Py_BuildValue("ss", name, description);
+        if (!x) return NULL;
+        PyTuple_SET_ITEM(result, i, x);
+    }
+    return Py_NewRef(result);
+}
+
+
+static PyObject*
 primary_monitor_content_scale(PYNOARG) {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     float xscale = 1.0, yscale = 1.0;
@@ -2643,6 +2660,7 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_system_color_theme", (PyCFunction)glfw_get_system_color_theme, METH_VARARGS, ""},
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},
     {"glfw_get_monitor_workarea", (PyCFunction)get_monitor_workarea, METH_NOARGS, ""},
+    {"glfw_get_monitor_names", (PyCFunction)get_monitor_names, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

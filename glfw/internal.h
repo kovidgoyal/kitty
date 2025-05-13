@@ -490,7 +490,7 @@ struct _GLFWwindow
 //
 struct _GLFWmonitor
 {
-    char*           name;
+    const char *name, *description;
     void*           userPointer;
 
     // Physical dimensions in millimeters.

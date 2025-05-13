@@ -66,9 +66,9 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	argv = append(argv, fmt.Sprintf("--override=background_opacity=%f", conf.Background_opacity))
 	if runtime.GOOS != "darwin" {
 		argv = append(argv, fmt.Sprintf("--app-id=%s", conf.App_id))
-		if conf.Output_name != "" {
-			argv = append(argv, fmt.Sprintf("--output-name=%s", conf.Output_name))
-		}
+	}
+	if conf.Output_name != "" {
+		argv = append(argv, fmt.Sprintf("--output-name=%s", conf.Output_name))
 	}
 	argv = append(argv, fmt.Sprintf("--focus-policy=%s", conf.Focus_policy))
 	if conf.Start_as_hidden {

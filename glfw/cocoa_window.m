@@ -1945,6 +1945,17 @@ _glfwPlatformGetLayerShellConfig(_GLFWwindow *window) {
     return &window->ns.layer_shell.config;
 }
 
+static NSScreen*
+screen_for_name(const char *name) {
+    int count = 0;
+    GLFWmonitor **monitors = glfwGetMonitors(&count);
+    for (int i = 0; i < count; i++) {
+        const char *q = glfwGetMonitorName(monitors[i]);
+        if (q && strcmp(q, name) == 0) return ((_GLFWmonitor*)monitors[i])->ns.screen;
+    }
+    return NULL;
+}
+
 bool
 _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig *value) {
 #define config window->ns.layer_shell.config
@@ -1975,6 +1986,10 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     // HACK: Changing the style mask can cause the first responder to be cleared
     [nswindow makeFirstResponder:window->ns.view];
     NSScreen *screen = screen_for_window_center(window);
+    if (config.output_name[0]) {
+        NSScreen *q = screen_for_name(config.output_name);
+        if (q) screen = q;
+    }
     unsigned cell_width, cell_height; double left_edge_spacing, top_edge_spacing, right_edge_spacing, bottom_edge_spacing;
     float xscale = (float)config.expected.xscale, yscale = (float)config.expected.yscale;
     _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);

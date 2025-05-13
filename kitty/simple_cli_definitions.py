@@ -639,9 +639,10 @@ Syntax: :italic:`name=value`. For example: :option:`kitty +kitten panel -o` font
 
 
 --output-name
-On Wayland or X11, the panel can only be displayed on a single monitor (output) at a time. This allows
+The panel can only be displayed on a single monitor (output) at a time. This allows
 you to specify which output is used, by name. If not specified the compositor will choose an
 output automatically, typically the last output the user interacted with or the primary monitor.
+Use the special value :code:`list` to get a list of available outputs.
 
 
 --class --app-id

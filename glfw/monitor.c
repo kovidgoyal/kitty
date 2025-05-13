@@ -186,7 +186,8 @@ void _glfwFreeMonitor(_GLFWmonitor* monitor)
     _glfwFreeGammaArrays(&monitor->currentRamp);
 
     free(monitor->modes);
-    free(monitor->name);
+    free((void*)monitor->name);
+    free((void*)monitor->description);
     free(monitor);
 }
 
@@ -393,8 +394,18 @@ GLFWAPI const char* glfwGetMonitorName(GLFWmonitor* handle)
     assert(monitor != NULL);
 
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
-    return monitor->name;
+    return monitor->name ? monitor->name : "";
 }
+
+GLFWAPI const char* glfwGetMonitorDescription(GLFWmonitor* handle)
+{
+    _GLFWmonitor* monitor = (_GLFWmonitor*) handle;
+    assert(monitor != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    return monitor->description ? monitor->description : "";
+}
+
 
 GLFWAPI void glfwSetMonitorUserPointer(GLFWmonitor* handle, void* pointer)
 {

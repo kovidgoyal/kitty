@@ -38,6 +38,7 @@ from .fast_data_types import (
     SingleKey,
     create_os_window,
     free_font_data,
+    glfw_get_monitor_names,
     glfw_get_monitor_workarea,
     glfw_init,
     glfw_terminate,
@@ -220,9 +221,30 @@ def is_panel_kitten() -> bool:
     return _is_panel_kitten
 
 
+def list_monitors() -> None:
+    monitor_names = glfw_get_monitor_names()
+    has_descriptions = False
+    for (name, desc) in monitor_names:
+        if desc:
+            has_descriptions = True
+            break
+    isatty = sys.stdout.isatty()
+    for (name, desc) in monitor_names:
+        if isatty:
+            name = f'\x1b[32m{name}\x1b[39m'  # ]]
+        print(name)
+        if desc:
+            print(f'\t{desc}')
+        if has_descriptions:
+            print()
+
+
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
+    if _is_panel_kitten and run_app.layer_shell_config.output_name == 'list':
+        list_monitors()
+        return
     if is_macos:
         global_shortcuts = set_cocoa_global_shortcuts(opts)
         if opts.macos_custom_beam_cursor:

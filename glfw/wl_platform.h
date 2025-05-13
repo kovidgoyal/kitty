@@ -406,7 +406,6 @@ typedef struct _GLFWmonitorWayland
 {
     struct wl_output*           output;
     uint32_t                    name;
-    char                        friendly_name[64], description[64];
     int                         currentMode;
 
     int                         x;

@@ -89,6 +89,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetMonitorName_impl) = dlsym(handle, "glfwGetMonitorName");
     if (glfwGetMonitorName_impl == NULL) fail("Failed to load glfw function glfwGetMonitorName with error: %s", dlerror());
 
+    *(void **) (&glfwGetMonitorDescription_impl) = dlsym(handle, "glfwGetMonitorDescription");
+    if (glfwGetMonitorDescription_impl == NULL) fail("Failed to load glfw function glfwGetMonitorDescription with error: %s", dlerror());
+
     *(void **) (&glfwSetMonitorUserPointer_impl) = dlsym(handle, "glfwSetMonitorUserPointer");
     if (glfwSetMonitorUserPointer_impl == NULL) fail("Failed to load glfw function glfwSetMonitorUserPointer with error: %s", dlerror());
 

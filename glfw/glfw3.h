@@ -1314,7 +1314,7 @@ typedef struct GLFWLayerShellConfig {
         int requested_top_margin, requested_left_margin, requested_bottom_margin, requested_right_margin;
     } previous;
     bool was_toggled_to_fullscreen;
-    char output_name[64];
+    char output_name[128];
     GLFWFocusPolicy focus_policy;
     unsigned x_size_in_cells, x_size_in_pixels;
     unsigned y_size_in_cells, y_size_in_pixels;
@@ -2385,6 +2385,7 @@ GLFWAPI void glfwGetMonitorContentScale(GLFWmonitor* monitor, float* xscale, flo
  *  @ingroup monitor
  */
 GLFWAPI const char* glfwGetMonitorName(GLFWmonitor* monitor);
+GLFWAPI const char* glfwGetMonitorDescription(GLFWmonitor* monitor);
 
 /*! @brief Sets the user pointer of the specified monitor.
  *

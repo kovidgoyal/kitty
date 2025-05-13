@@ -41,20 +41,15 @@ static void outputHandleGeometry(void* data,
                                  int32_t physicalWidth,
                                  int32_t physicalHeight,
                                  int32_t subpixel UNUSED,
-                                 const char* make,
-                                 const char* model,
+                                 const char* make UNUSED,
+                                 const char* model UNUSED,
                                  int32_t transform UNUSED)
 {
     struct _GLFWmonitor *monitor = data;
-    char name[1024];
-
     monitor->wl.x = x;
     monitor->wl.y = y;
     monitor->widthMM = physicalWidth;
     monitor->heightMM = physicalHeight;
-
-    snprintf(name, sizeof(name), "%s %s", make, model);
-    monitor->name = _glfw_strdup(name);
 }
 
 static void outputHandleMode(void* data,
@@ -105,15 +100,20 @@ static void outputHandleName(void* data,
                               struct wl_output* output UNUSED,
                               const char* name) {
     struct _GLFWmonitor *monitor = data;
-    if (name) strncpy(monitor->wl.friendly_name, name, sizeof(monitor->wl.friendly_name)-1);
+    if (name) {
+        if (monitor->name) free((void*)monitor->name);
+        monitor->name = _glfw_strdup(name);
+    }
 }
 
 static void outputHandleDescription(void* data,
                               struct wl_output* output UNUSED,
                               const char* description) {
     struct _GLFWmonitor *monitor = data;
-    if (description) strncpy(monitor->wl.description, description, sizeof(monitor->wl.description)-1);
-
+    if (description) {
+        if (monitor->description) free((void*)monitor->description);
+        monitor->description = _glfw_strdup(description);
+    }
 }
 
 static const struct wl_output_listener outputListener = {
@@ -142,8 +142,8 @@ void _glfwAddOutputWayland(uint32_t name, uint32_t version)
         return;
     }
 
-    // The actual name of this output will be set in the geometry handler.
-    monitor = _glfwAllocMonitor(NULL, 0, 0);
+    // The actual name of this output will be set in the handlers.
+    monitor = _glfwAllocMonitor("unnamed", 0, 0);
 
     output = wl_registry_bind(_glfw.wl.registry,
                               name,
