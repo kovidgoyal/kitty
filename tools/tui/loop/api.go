@@ -297,10 +297,7 @@ func (self *Loop) DebugPrintln(args ...any) {
 		const limit = 2048
 		msg := fmt.Sprintln(args...)
 		for i := 0; i < len(msg); i += limit {
-			end := i + limit
-			if end > len(msg) {
-				end = len(msg)
-			}
+			end := min(i+limit, len(msg))
 			self.QueueWriteString("\x1bP@kitty-print|")
 			self.QueueWriteString(base64.StdEncoding.EncodeToString([]byte(msg[i:end])))
 			self.QueueWriteString("\x1b\\")
@@ -311,11 +308,12 @@ func (self *Loop) DebugPrintln(args ...any) {
 func (self *Loop) Run() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			pcs := make([]uintptr, 256)
+			pcs := make([]uintptr, 512)
 			n := runtime.Callers(2, pcs)
+			lines := []string{}
 			frames := runtime.CallersFrames(pcs[:n])
 			err = fmt.Errorf("Panicked: %s", r)
-			fmt.Fprintf(os.Stderr, "\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r)
+			lines = append(lines, fmt.Sprintf("\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r))
 			found_first_frame := false
 			for frame, more := frames.Next(); more; frame, more = frames.Next() {
 				if !found_first_frame {
@@ -324,8 +322,11 @@ func (self *Loop) Run() (err error) {
 					}
 					found_first_frame = true
 				}
-				fmt.Fprintf(os.Stderr, "%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line)
+				lines = append(lines, fmt.Sprintf("%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line))
 			}
+			text := strings.Join(lines, "")
+			os.Stderr.WriteString(text)
+			tty.DebugPrintln(strings.TrimSpace(text))
 			if self.terminal_options.Alternate_screen {
 				term, err := tty.OpenControllingTerm(tty.SetRaw)
 				if err == nil {
