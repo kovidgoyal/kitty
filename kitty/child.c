@@ -106,7 +106,11 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             sigset_t signals; sigemptyset(&signals);
             if (sigprocmask(SIG_SETMASK, &signals, NULL) != 0) exit_on_err("sigprocmask() in child process failed");
             // Use only signal-safe functions (man 7 signal-safety)
-            if (chdir(cwd) != 0) { if (chdir("/") != 0) {} };  // ignore failure to chdir to /
+            if (chdir(cwd) != 0) {
+                if (access(".", X_OK) != 0) { // existing cwd does not exist or dont have permissions for it
+                    if (chdir("/") != 0) {} // ignore failure to chdir to /
+                }
+            };
             if (setsid() == -1) exit_on_err("setsid() in child process failed");
 
             // Establish the controlling terminal (see man 7 credentials)
