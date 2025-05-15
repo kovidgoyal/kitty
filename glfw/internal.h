@@ -331,7 +331,7 @@ struct _GLFWwndconfig
         char      instanceName[256];
     } x11;
     struct {
-        char      appId[256];
+        char      appId[256], windowTag[256];
         uint32_t  bgcolor;
     } wl;
 };

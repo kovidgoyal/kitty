@@ -495,6 +495,10 @@ GLFWAPI void glfwWindowHintString(int hint, const char* value)
             strncpy(_glfw.hints.window.wl.appId, value,
                     sizeof(_glfw.hints.window.wl.appId) - 1);
             return;
+        case GLFW_WAYLAND_WINDOW_TAG:
+            strncpy(_glfw.hints.window.wl.windowTag, value,
+                    sizeof(_glfw.hints.window.wl.windowTag) - 1);
+            return;
     }
 
     _glfwInputError(GLFW_INVALID_ENUM, "Invalid window hint string 0x%08X", hint);

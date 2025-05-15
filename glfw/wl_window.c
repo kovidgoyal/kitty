@@ -1198,8 +1198,10 @@ create_window_desktop_surface(_GLFWwindow* window)
         zxdg_toplevel_decoration_v1_add_listener(window->wl.xdg.decoration, &xdgDecorationListener, window);
     }
 
-    if (strlen(window->wl.appId))
+    if (window->wl.appId[0])
         xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
+    if (window->wl.windowTag[0] && _glfw.wl.xdg_toplevel_tag_manager_v1)
+        xdg_toplevel_tag_manager_v1_set_toplevel_tag(_glfw.wl.xdg_toplevel_tag_manager_v1, window->wl.xdg.toplevel, window->wl.windowTag);
 
     if (window->wl.title)
         xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);

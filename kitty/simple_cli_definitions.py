@@ -375,13 +375,13 @@ def kitty_options_spec() -> str:
 dest=cls
 default={appname}
 condition=not is_macos
-Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it
-sets the app id.
+Set the :italic:`application id` on Wayland. On X11 set the class part of the :italic:`WM_CLASS` window property.
 
 
---name
+--name --os-window-tag
 condition=not is_macos
-Set the name part of the :italic:`WM_CLASS` property. Defaults to using the
+On Wayland, set the :italic:`window tag`.
+On X11, set the name part of the :italic:`WM_CLASS` property, when unset, defaults to using the
 value from :option:`{appname} --class`.
 
 
@@ -650,12 +650,13 @@ Use the special value :code:`list` to get a list of available outputs.
 dest=cls
 default={cls}
 condition=not is_macos
-Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it sets the app id.
+Set the :italic:`application id` on Wayland. On X11 set the class part of the :italic:`WM_CLASS` window property.
 
 
---name
+--name --os-window-tag
 condition=not is_macos
-Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
+On X11 sets the name part of the :italic:`WM_CLASS` property on X11,
+when unspecified uses the value from :option:`{appname} --class` on X11.
 
 
 --focus-policy

@@ -68,6 +68,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
 #include "wayland-xdg-toplevel-icon-v1-client-protocol.h"
 #include "wayland-xdg-system-bell-v1-client-protocol.h"
+#include "wayland-xdg-toplevel-tag-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -210,7 +211,7 @@ typedef struct _GLFWwindowWayland
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
 
     char*                       title;
-    char                        appId[256];
+    char                        appId[256], windowTag[256];
 
     // We need to track the monitors the window spans on to calculate the
     // optimal scaling factor.
@@ -340,6 +341,7 @@ typedef struct _GLFWlibraryWayland
     struct xdg_activation_v1* xdg_activation_v1;
     struct xdg_toplevel_icon_manager_v1* xdg_toplevel_icon_manager_v1;
     struct xdg_system_bell_v1* xdg_system_bell_v1;
+    struct xdg_toplevel_tag_manager_v1* xdg_toplevel_tag_manager_v1;
     struct wp_cursor_shape_manager_v1* wp_cursor_shape_manager_v1;
     struct wp_cursor_shape_device_v1* wp_cursor_shape_device_v1;
     struct wp_fractional_scale_manager_v1 *wp_fractional_scale_manager_v1;

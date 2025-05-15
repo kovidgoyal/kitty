@@ -123,6 +123,9 @@ Detailed list of changes
 
 - Panel kitten: A new ``center-sized`` value for :option:`--edge <kitty +kitten panel --edge>` to allow easily creating sized and centered panels
 
+- Wayland: The `kitty --name` flag now sets the XDG *window tag* on compositors
+  that support the `xdg-toplevel-tag <https://wayland.app/protocols/xdg-toplevel-tag-v1>`__ protocol.
+
 
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

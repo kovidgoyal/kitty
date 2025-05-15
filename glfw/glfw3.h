@@ -1056,6 +1056,7 @@ typedef enum {
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
 #define GLFW_WAYLAND_BGCOLOR        0x00025002
+#define GLFW_WAYLAND_WINDOW_TAG     0x00025003
 /*! @} */
 
 #define GLFW_NO_API                          0
