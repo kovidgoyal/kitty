@@ -380,7 +380,7 @@ Set the :italic:`application id` on Wayland. On X11 set the class part of the :i
 
 --name --os-window-tag
 condition=not is_macos
-On Wayland, set the :italic:`window tag`.
+On Wayland, set the :italic:`window tag`, when specified.
 On X11, set the name part of the :italic:`WM_CLASS` property, when unset, defaults to using the
 value from :option:`{appname} --class`.
 
