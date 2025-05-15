@@ -67,7 +67,7 @@ opt('+kitty_override', '', long_text='Override individual kitty configuration op
 )
 
 opt('app_id', f'{appname}-quick-access',
-    long_text='The WM_CLASS assigned to the quick access window (X11 only)')
+    long_text='On Wayland set the :italic:`namespace` parameter of the LayerShellV1 surface. On X11 set the WM_CLASS assigned to the quick access window. (Linux only)')
 
 
 opt('output_name', '', long_text='''
