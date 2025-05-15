@@ -375,7 +375,7 @@ def kitty_options_spec() -> str:
 dest=cls
 default={appname}
 condition=not is_macos
-Set the :italic:`application id` on Wayland. On X11 set the class part of the :italic:`WM_CLASS` window property.
+On Wayland set the :italic:`namespaces` parameter of the LayerShellV1 surface. On X11 set the class part of the :italic:`WM_CLASS` window property.
 
 
 --name --os-window-tag

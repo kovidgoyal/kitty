@@ -1144,7 +1144,7 @@ create_layer_shell_surface(_GLFWwindow *window) {
     struct wl_output *wl_output = find_output_by_name(window->wl.layer_shell.config.output_name);
 #define ls window->wl.layer_shell.zwlr_layer_surface_v1
     ls = zwlr_layer_shell_v1_get_layer_surface(
-            _glfw.wl.zwlr_layer_shell_v1, window->wl.surface, wl_output, get_layer_shell_layer(window), "kitty");
+            _glfw.wl.zwlr_layer_shell_v1, window->wl.surface, wl_output, get_layer_shell_layer(window), window->wl.appId[0] ? window->wl.appId : "kitty");
     if (!ls) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: layer-surface creation failed");
         return false;
