@@ -67,7 +67,7 @@ opt('+kitty_override', '', long_text='Override individual kitty configuration op
 )
 
 opt('app_id', f'{appname}-quick-access',
-    long_text='The Wayland APP_ID assigned to the quick access window (Linux only)')
+    long_text='The WM_CLASS assigned to the quick access window (X11 only)')
 
 
 opt('output_name', '', long_text='''

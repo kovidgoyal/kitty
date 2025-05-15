@@ -650,7 +650,7 @@ Use the special value :code:`list` to get a list of available outputs.
 dest=cls
 default={cls}
 condition=not is_macos
-Set the :italic:`application id` on Wayland. On X11 set the class part of the :italic:`WM_CLASS` window property.
+On X11 set the class part of the :italic:`WM_CLASS` window property.
 
 
 --name --os-window-tag
