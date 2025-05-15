@@ -149,6 +149,11 @@ Compatibility with various platforms
         🟢 **KDE** (kwin)
            Fully working, no known issues
 
+           kwin uses an undocumented mapping <https://invent.kde.org/plasma/kwin/-/blob/3dc5cee6b34792486b343098e55e7f2b90dfcd00/src/layershellv1window.cpp#L24>
+           under Wayland to set the window type from the `--app-id` parameter. You might want to use
+           `--app-id=dock` so that kwin treats the window as a dock panel, and disables window
+           appearing/disappearing animations for it.
+
         🟠 **Sway**
            Partially working. Issues include:
                * Renders its configured background over the background window instead of
