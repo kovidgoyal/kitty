@@ -73,6 +73,13 @@ func (self *Set[T]) Iterable() map[T]struct{} {
 	return self.items
 }
 
+func (self *Set[T]) Any() T {
+	for x := range self.items {
+		return x
+	}
+	panic("set is empty")
+}
+
 func (self *Set[T]) AsSlice() []T {
 	return Keys(self.items)
 }
