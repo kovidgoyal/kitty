@@ -67,6 +67,7 @@ is_netbsd = 'netbsd' in _plat
 is_dragonflybsd = 'dragonfly' in _plat
 is_bsd = is_freebsd or is_netbsd or is_dragonflybsd or is_openbsd
 is_arm = platform.processor() == 'arm' or platform.machine() in ('arm64', 'aarch64')
+c_std = '' if is_openbsd else '-std=c11'
 Env = glfw.Env
 env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
@@ -498,7 +499,6 @@ def init_env(
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
     has_copy_file_range = test_compile(cc, src='#define _GNU_SOURCE 1\n#include <unistd.h>\nint main() { copy_file_range(1, NULL, 2, NULL, 0, 0); return 0; }')
     werror = '' if ignore_compiler_warnings else '-pedantic-errors -Werror'
-    std = '' if is_openbsd else '-std=c11'
     sanitize_flag = ' '.join(sanitize_args)
     env_cflags = shlex.split(os.environ.get('CFLAGS', ''))
     env_cppflags = shlex.split(os.environ.get('CPPFLAGS', ''))
@@ -508,7 +508,7 @@ def init_env(
 
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
+            f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {c_std}'
             f' {werror} {optimize} {sanitize_flag} -fwrapv {stack_protector} {missing_braces}'
             f' -pipe -fvisibility=hidden {no_plt}'
         )
@@ -1297,7 +1297,7 @@ def read_bool_options(path: str = 'kitty/cli.py') -> Tuple[str, ...]:
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> str:
     werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
-    cflags = f'-Wall {werror} -fpie'.split()
+    cflags = f'-Wall {werror} -fpie {c_std}'.strip().split()
     cppflags = [define(f'WRAPPED_KITTENS=" {wrapped_kittens()} "')]
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     xxhash = xxhash_flags()

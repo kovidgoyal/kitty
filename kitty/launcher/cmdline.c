@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "shlex.h"
 #include "utils.h"
 #include "launcher.h"
