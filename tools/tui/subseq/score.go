@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"kitty/tools/utils"
-	"kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/images"
 )
 
 var _ = fmt.Print

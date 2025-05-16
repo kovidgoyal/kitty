@@ -4,7 +4,7 @@ package tui
 
 import (
 	"fmt"
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,12 +16,12 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
 
-	"kitty/tools/config"
-	"kitty/tools/tty"
-	"kitty/tools/tui/loop"
-	"kitty/tools/tui/shell_integration"
-	"kitty/tools/utils"
-	"kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/kitty/tools/config"
+	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/tui/shell_integration"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 )
 
 var _ = fmt.Print

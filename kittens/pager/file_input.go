@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"kitty/tools/simdstring"
+	"github.com/kovidgoyal/kitty/tools/simdstring"
 )
 
 var _ = fmt.Print

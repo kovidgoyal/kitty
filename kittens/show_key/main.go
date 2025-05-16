@@ -5,7 +5,7 @@ package show_key
 import (
 	"fmt"
 
-	"kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/cli"
 )
 
 var _ = fmt.Print

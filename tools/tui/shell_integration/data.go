@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"regexp"
 	"strings"
 	"sync"

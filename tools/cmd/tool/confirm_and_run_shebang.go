@@ -13,11 +13,11 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"kitty/kittens/ask"
-	"kitty/tools/cli"
-	"kitty/tools/cli/markup"
-	"kitty/tools/tty"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/kittens/ask"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/cli/markup"
+	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print

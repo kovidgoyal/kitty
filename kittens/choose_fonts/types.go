@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"kitty/tools/utils"
-	"kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 )
 
 var _ = fmt.Print

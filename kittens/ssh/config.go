@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"kitty/tools/config"
-	"kitty/tools/utils"
-	"kitty/tools/utils/paths"
-	"kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/kitty/tools/config"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/paths"
+	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"golang.org/x/sys/unix"

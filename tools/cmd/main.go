@@ -5,10 +5,10 @@ package main
 import (
 	"os"
 
-	"kitty/kittens/ssh"
-	"kitty/tools/cli"
-	"kitty/tools/cmd/completion"
-	"kitty/tools/cmd/tool"
+	"github.com/kovidgoyal/kitty/kittens/ssh"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/cmd/completion"
+	"github.com/kovidgoyal/kitty/tools/cmd/tool"
 )
 
 func KittenMain(args ...string) {

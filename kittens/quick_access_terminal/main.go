@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"kitty/kittens/panel"
-	"kitty/tools/cli"
-	"kitty/tools/config"
+	"github.com/kovidgoyal/kitty/kittens/panel"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/config"
 
 	"golang.org/x/sys/unix"
 )

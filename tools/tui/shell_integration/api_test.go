@@ -5,7 +5,7 @@ package shell_integration
 import (
 	"bytes"
 	"fmt"
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 	"os"
 	"path/filepath"
 	"testing"

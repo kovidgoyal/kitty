@@ -1,4 +1,4 @@
-module kitty
+module github.com/kovidgoyal/kitty
 
 go 1.23.0
 

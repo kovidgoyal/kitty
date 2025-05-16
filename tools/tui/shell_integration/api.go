@@ -13,9 +13,9 @@ import (
 	"slices"
 	"strings"
 
-	"kitty"
-	"kitty/tools/tty"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print

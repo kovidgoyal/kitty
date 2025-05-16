@@ -5,8 +5,8 @@ package hints
 import (
 	"errors"
 	"fmt"
-	"kitty"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"strconv"

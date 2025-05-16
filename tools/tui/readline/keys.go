@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"kitty/tools/tui/loop"
-	"kitty/tools/tui/shortcuts"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/tui/shortcuts"
 )
 
 var _ = fmt.Print

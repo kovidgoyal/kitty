@@ -14,7 +14,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print

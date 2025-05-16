@@ -4,7 +4,7 @@ package ssh
 
 import (
 	"fmt"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"os"
 	"os/user"
 	"path/filepath"

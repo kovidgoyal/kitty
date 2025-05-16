@@ -18,8 +18,8 @@ import (
 	"strings"
 	"sync"
 
-	"kitty"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/utils"
 
 	"github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"

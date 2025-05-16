@@ -5,8 +5,8 @@ package icat
 import (
 	"fmt"
 
-	"kitty/tools/tui/graphics"
-	"kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/tui/graphics"
+	"github.com/kovidgoyal/kitty/tools/utils/images"
 )
 
 var _ = fmt.Print

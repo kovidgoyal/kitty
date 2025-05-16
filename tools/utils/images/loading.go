@@ -19,8 +19,8 @@ import (
 	"strings"
 	"sync"
 
-	"kitty/tools/utils"
-	"kitty/tools/utils/shm"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/shm"
 
 	"github.com/edwvee/exiffix"
 	"github.com/kovidgoyal/imaging"

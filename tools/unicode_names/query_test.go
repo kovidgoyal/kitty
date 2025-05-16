@@ -4,7 +4,7 @@ package unicode_names
 
 import (
 	"fmt"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"slices"
 	"testing"
 

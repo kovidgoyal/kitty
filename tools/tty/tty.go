@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 const (

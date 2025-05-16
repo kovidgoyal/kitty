@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"strings"
 
-	"kitty/tools/cli"
-	"kitty/tools/utils/shm"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print

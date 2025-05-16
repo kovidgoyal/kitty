@@ -4,7 +4,7 @@ package tui
 
 import (
 	"fmt"
-	"kitty/tools/cli/markup"
+	"github.com/kovidgoyal/kitty/tools/cli/markup"
 	"strings"
 )
 

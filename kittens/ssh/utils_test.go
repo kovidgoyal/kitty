@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 
 	"github.com/google/go-cmp/cmp"
 )

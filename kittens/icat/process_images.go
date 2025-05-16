@@ -15,11 +15,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"kitty/tools/tty"
-	"kitty/tools/tui/graphics"
-	"kitty/tools/utils"
-	"kitty/tools/utils/images"
-	"kitty/tools/utils/shm"
+	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tui/graphics"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print

@@ -259,9 +259,9 @@ def completion_for_launch_wrappers(*names: str) -> None:
 
 def generate_completions_for_kitty() -> None:
     print('package completion\n')
-    print('import "kitty/tools/cli"')
-    print('import "kitty/tools/cmd/tool"')
-    print('import "kitty/tools/cmd/at"')
+    print('import "github.com/kovidgoyal/kitty/tools/cli"')
+    print('import "github.com/kovidgoyal/kitty/tools/cmd/tool"')
+    print('import "github.com/kovidgoyal/kitty/tools/cmd/at"')
 
     print('func kitty(root *cli.Command) {')
 
@@ -458,7 +458,7 @@ def generate_conf_parser(kitten: str, defn: Definition) -> None:
 
 
 def generate_extra_cli_parser(name: str, spec: str) -> None:
-    print('import "kitty/tools/cli"')
+    print('import "github.com/kovidgoyal/kitty/tools/cli"')
     go_opts = tuple(go_options_for_seq(parse_option_spec(spec)[0]))
     print(f'type {name}_options struct ''{')
     for opt in go_opts:
@@ -508,7 +508,7 @@ def kitten_clis() -> None:
             has_underscore = '_' in kitten
             print(f'package {kitten}')
             print('import "fmt"')
-            print('import "kitty/tools/cli"')
+            print('import "github.com/kovidgoyal/kitty/tools/cli"')
             print('var _ = fmt.Sprintf')
             print('func create_cmd(root *cli.Command, run_func func(*cli.Command, *Options, []string)(int, error)) {')
             print('ans := root.AddSubCommand(&cli.Command{')
@@ -723,7 +723,7 @@ def update_at_commands() -> None:
     odef = '\n'.join(opt_def)
     code = f'''
 package at
-import "kitty/tools/cli"
+import "github.com/kovidgoyal/kitty/tools/cli"
 type rc_global_options struct {{
 {sdef}
 }}
@@ -751,7 +751,7 @@ def update_completion() -> None:
 
     with replace_if_needed('tools/cmd/edit_in_kitty/launch_generated.go'):
         print('package edit_in_kitty')
-        print('import "kitty/tools/cli"')
+        print('import "github.com/kovidgoyal/kitty/tools/cli"')
         print('func AddCloneSafeOpts(cmd *cli.Command) {')
         completion_for_launch_wrappers('cmd')
         print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('cmd.ArgCompleter', ' = ')))

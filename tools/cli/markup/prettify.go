@@ -9,9 +9,9 @@ import (
 	"strings"
 	"unicode"
 
-	"kitty"
-	"kitty/tools/utils"
-	"kitty/tools/utils/style"
+	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/style"
 )
 
 var _ = fmt.Print

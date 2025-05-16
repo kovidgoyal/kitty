@@ -2,10 +2,10 @@ package choose_fonts
 
 import (
 	"fmt"
-	"kitty/tools/tui"
-	"kitty/tools/tui/subseq"
-	"kitty/tools/utils"
-	"kitty/tools/wcswidth"
+	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/tui/subseq"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print

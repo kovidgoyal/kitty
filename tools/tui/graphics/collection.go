@@ -10,11 +10,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"kitty/tools/tui"
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
-	"kitty/tools/utils/images"
-	"kitty/tools/utils/shm"
+	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print

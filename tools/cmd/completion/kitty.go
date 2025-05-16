@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	kitty_constants "kitty"
-	"kitty/tools/cli"
-	"kitty/tools/themes"
-	"kitty/tools/utils"
+	kitty_constants "github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/themes"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print

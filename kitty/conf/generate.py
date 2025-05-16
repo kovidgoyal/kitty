@@ -540,7 +540,8 @@ def normalize_shortcuts(spec: str) -> Iterator[str]:
 
 
 def gen_go_code(defn: Definition) -> str:
-    lines = ['import "fmt"', 'import "strconv"', 'import "kitty/tools/config"', 'import "kitty/tools/utils/style"',
+    lines = ['import "fmt"', 'import "strconv"', 'import "github.com/kovidgoyal/kitty/tools/config"',
+             'import "github.com/kovidgoyal/kitty/tools/utils/style"',
              'var _ = fmt.Println', 'var _ = config.StringToBool', 'var _ = strconv.Atoi', 'var _ = style.ParseColor']
     a = lines.append
     keyboard_shortcuts = tuple(defn.iter_all_maps())

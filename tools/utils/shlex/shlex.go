@@ -17,7 +17,7 @@ package shlex
 
 import (
 	"fmt"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"strings"
 	"unicode/utf8"
 )

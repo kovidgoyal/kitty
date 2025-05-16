@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 type stream_response struct {

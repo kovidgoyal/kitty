@@ -5,7 +5,7 @@ package simdstring
 import (
 	"bytes"
 	"fmt"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"runtime"
 	"strings"
 	"testing"

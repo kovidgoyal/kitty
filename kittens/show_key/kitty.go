@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"kitty/tools/cli/markup"
-	"kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/cli/markup"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print

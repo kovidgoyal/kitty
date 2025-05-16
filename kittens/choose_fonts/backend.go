@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print

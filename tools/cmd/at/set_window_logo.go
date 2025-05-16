@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/utils/images"
 )
 
 func set_payload_data(io_data *rc_io_data, data string) {

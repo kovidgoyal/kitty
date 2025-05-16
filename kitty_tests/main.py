@@ -179,7 +179,7 @@ class GoProc(Thread):
 
 def run_go(packages: set[str], names: str) -> GoProc:
     go = go_exe()
-    go_pkg_args = [f'kitty/{x}' for x in packages]
+    go_pkg_args = [f'github.com/kovidgoyal/kitty/{x}' for x in packages]
     cmd = [go, 'test', '--tags', 'testing', '-v']
     for name in names:
         cmd.extend(('-run', name))

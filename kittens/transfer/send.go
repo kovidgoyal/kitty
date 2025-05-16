@@ -20,14 +20,14 @@ import (
 
 	"golang.org/x/exp/constraints"
 
-	"kitty"
-	"kitty/tools/cli/markup"
-	"kitty/tools/rsync"
-	"kitty/tools/tui"
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
-	"kitty/tools/utils/humanize"
-	"kitty/tools/wcswidth"
+	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/cli/markup"
+	"github.com/kovidgoyal/kitty/tools/rsync"
+	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/humanize"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print

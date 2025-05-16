@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"kitty/tools/tui/loop"
-	"kitty/tools/wcswidth"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 type KilledBySignal struct {

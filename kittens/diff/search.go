@@ -9,10 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	"kitty/tools/tui"
-	"kitty/tools/utils"
-	"kitty/tools/utils/images"
-	"kitty/tools/wcswidth"
+	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print

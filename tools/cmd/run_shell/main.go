@@ -4,16 +4,16 @@ package run_shell
 
 import (
 	"fmt"
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"kitty/tools/cli"
-	"kitty/tools/tty"
-	"kitty/tools/tui"
-	"kitty/tools/tui/shell_integration"
-	"kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/tui/shell_integration"
+	"github.com/kovidgoyal/kitty/tools/utils"
 
 	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"

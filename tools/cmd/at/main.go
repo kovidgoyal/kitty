@@ -17,15 +17,15 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"kitty"
-	"kitty/tools/cli"
-	"kitty/tools/crypto"
-	"kitty/tools/tty"
-	"kitty/tools/tui"
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
-	"kitty/tools/utils/base85"
-	"kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/crypto"
+	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/base85"
+	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 )
 
 const lowerhex = "0123456789abcdef"

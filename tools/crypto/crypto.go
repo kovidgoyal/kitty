@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"kitty/tools/utils"
-	"kitty/tools/utils/base85"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/base85"
 )
 
 func curve25519_key_pair() (private_key []byte, public_key []byte, err error) {

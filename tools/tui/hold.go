@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 
-	"kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print

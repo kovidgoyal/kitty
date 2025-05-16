@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 )
 
 var _ = fmt.Print

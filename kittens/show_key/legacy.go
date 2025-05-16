@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"kitty/tools/cli/markup"
-	"kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/cli/markup"
+	"github.com/kovidgoyal/kitty/tools/tty"
 	"os"
 
 	"golang.org/x/sys/unix"

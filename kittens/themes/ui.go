@@ -5,19 +5,19 @@ package themes
 import (
 	"fmt"
 	"io"
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 	"maps"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
-	"kitty/tools/config"
-	"kitty/tools/themes"
-	"kitty/tools/tui/loop"
-	"kitty/tools/tui/readline"
-	"kitty/tools/utils"
-	"kitty/tools/wcswidth"
+	"github.com/kovidgoyal/kitty/tools/config"
+	"github.com/kovidgoyal/kitty/tools/themes"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/tui/readline"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print

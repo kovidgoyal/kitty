@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 )
 
 // key encoding mappings {{{

@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
-	"kitty/tools/utils/humanize"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/humanize"
 )
 
 var _ = fmt.Print

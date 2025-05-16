@@ -3,14 +3,14 @@ package query_terminal
 import (
 	"bytes"
 	"fmt"
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
-	"kitty/tools/cli"
-	"kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print

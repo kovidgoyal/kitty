@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	"kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tty"
 )
 
 var _ = fmt.Print

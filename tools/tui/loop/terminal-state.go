@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"kitty"
+	"github.com/kovidgoyal/kitty"
 )
 
 type KeyboardStateBits uint8
