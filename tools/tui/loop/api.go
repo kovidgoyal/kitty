@@ -121,6 +121,9 @@ type Loop struct {
 
 	// Called when the terminal's color scheme changes
 	OnColorSchemeChange func(ColorPreference) error
+
+	// Called on focus in/out events
+	OnFocusChange func(bool) error
 }
 
 func New(options ...func(self *Loop)) (*Loop, error) {
