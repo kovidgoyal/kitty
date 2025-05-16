@@ -4,8 +4,8 @@ package themes
 
 import (
 	"fmt"
-	"io"
 	"github.com/kovidgoyal/kitty"
+	"io"
 	"maps"
 	"regexp"
 	"slices"

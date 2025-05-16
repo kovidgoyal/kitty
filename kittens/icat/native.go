@@ -4,13 +4,13 @@ package icat
 
 import (
 	"fmt"
-	"image"
-	"image/gif"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
 	"github.com/kovidgoyal/kitty/tools/utils/shm"
+	"image"
+	"image/gif"
 
 	"github.com/edwvee/exiffix"
 	"github.com/kovidgoyal/imaging"
