@@ -95,7 +95,7 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 		i := inputs[0]
 		n, err := i.src.Read(buf[:])
 		if n > 0 {
-			waiting_for_write = lp.QueueWriteString(encode_bytes(make_metadata("wdata", i.mime_type), buf[:n]))
+			waiting_for_write = lp.QueueWriteString(Encode_bytes(make_metadata("wdata", i.mime_type), buf[:n]))
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {

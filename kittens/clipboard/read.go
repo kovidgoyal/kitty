@@ -201,7 +201,7 @@ func unescape_metadata_value(k, x string) (ans string) {
 	return x
 }
 
-func encode_bytes(metadata map[string]string, payload []byte) string {
+func Encode_bytes(metadata map[string]string, payload []byte) string {
 	ans := strings.Builder{}
 	enc_payload := ""
 	if len(payload) > 0 {
@@ -228,7 +228,7 @@ func encode_bytes(metadata map[string]string, payload []byte) string {
 }
 
 func encode(metadata map[string]string, payload string) string {
-	return encode_bytes(metadata, utils.UnsafeStringToBytes(payload))
+	return Encode_bytes(metadata, utils.UnsafeStringToBytes(payload))
 }
 
 func error_from_status(status string) error {
