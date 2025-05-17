@@ -106,7 +106,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.42.1 [future]
+0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix ambiguous width and private use characters not being rendered when used with variable width text-sizing protocol escape codes
@@ -115,7 +115,7 @@ Detailed list of changes
 
 - Wayland: Fix an abort if the terminal program sets a window title longer than 2KB that contains CSI escape sequences and multibyte UTF-8 (:iss:`8619`)
 
-- Quick access terminal: Allow toggling the window to full screen and map using the standard kitty :sc:`toggle_fullscreen` shortcut (:iss:`8626`)
+- Quick access terminal: Allow toggling the window to full screen using the standard kitty :sc:`toggle_fullscreen` shortcut (:iss:`8626`)
 
 - Quick access terminal: Allow configuring the monitor to display the panel on in Wayland/X11 (:iss:`8630`)
 
