@@ -146,7 +146,7 @@ Compatibility with various platforms
         🟢 **Hyprland**
            Fully working, no known issues
 
-        🟢 **KDE**
+        🟢 **KDE** (kwin)
            Fully working, no known issues. KDE uses an `undocumented mapping <https://invent.kde.org/plasma/kwin/-/blob/3dc5cee6b34792486b343098e55e7f2b90dfcd00/src/layershellv1window.cpp#L24>`__ under Wayland to set the window type from the :code:`kitten panel --app-id` flag. You might want to use :code:`--app-id=dock` so that KDE treats the window as a dock panel, and disables window
            appearing/disappearing animations for it.
 
