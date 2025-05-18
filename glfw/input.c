@@ -684,6 +684,13 @@ GLFWAPI void glfwSetIgnoreOSKeyboardProcessing(bool enabled) {
     _glfw.ignoreOSKeyboardProcessing = enabled;
 }
 
+GLFWAPI bool glfwGrabKeyboard(int grab) {
+    if (grab == 0 || grab == 1) {
+        if (_glfwPlatformGrabKeyboard(grab)) _glfw.keyboard_grabbed = grab;
+    }
+    return _glfw.keyboard_grabbed;
+}
+
 GLFWAPI int glfwGetInputMode(GLFWwindow* handle, int mode)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

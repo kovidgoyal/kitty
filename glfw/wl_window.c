@@ -1469,6 +1469,8 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->id == _glfw.wl.keyRepeatInfo.keyboardFocusId) {
         _glfw.wl.keyRepeatInfo.keyboardFocusId = 0;
     }
+    if (window->wl.keyboard_shortcuts_inhibitor)
+        zwp_keyboard_shortcuts_inhibitor_v1_destroy(window->wl.keyboard_shortcuts_inhibitor);
 
     if (window->wl.temp_buffer_used_during_window_creation)
         wl_buffer_destroy(window->wl.temp_buffer_used_during_window_creation);
@@ -2818,6 +2820,22 @@ _glfwPlatformSetWindowBlur(_GLFWwindow *window, int blur_radius) {
         update_regions(window);
     }
     return has_blur ? 1 : 0;
+}
+
+bool
+_glfwPlatformGrabKeyboard(bool grab) {
+    if (!_glfw.wl.keyboard_shortcuts_inhibit_manager) return false;
+    for (_GLFWwindow* window = _glfw.windowListHead; window; window = window->next) {
+        if (grab) {
+            if (window->wl.keyboard_shortcuts_inhibitor) break;
+            window->wl.keyboard_shortcuts_inhibitor = zwp_keyboard_shortcuts_inhibit_manager_v1_inhibit_shortcuts(_glfw.wl.keyboard_shortcuts_inhibit_manager, window->wl.surface, _glfw.wl.seat);
+        } else {
+            if (!window->wl.keyboard_shortcuts_inhibitor) break;
+            zwp_keyboard_shortcuts_inhibitor_v1_destroy(window->wl.keyboard_shortcuts_inhibitor);
+            window->wl.keyboard_shortcuts_inhibitor = NULL;
+        }
+    }
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////

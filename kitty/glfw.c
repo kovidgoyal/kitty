@@ -2612,6 +2612,11 @@ set_layer_shell_config(PyObject *self UNUSED, PyObject *args) {
     return Py_NewRef(set_layer_shell_config_for(window, &lsc) ? Py_True : Py_False);
 }
 
+static PyObject*
+grab_keyboard(PyObject *self UNUSED, PyObject *action) {
+    if (action == Py_None) return Py_NewRef(glfwGrabKeyboard(2) ? Py_True : Py_False);
+    return Py_NewRef(glfwGrabKeyboard(PyObject_IsTrue(action)) ? Py_True : Py_False);
+}
 
 // Boilerplate {{{
 
@@ -2621,6 +2626,7 @@ static PyMethodDef module_methods[] = {
     METHODB(toggle_os_window_visibility, METH_VARARGS),
     METHODB(layer_shell_config_for_os_window, METH_O),
     METHODB(set_layer_shell_config, METH_VARARGS),
+    METHODB(grab_keyboard, METH_O),
     METHODB(pointer_name_to_css_name, METH_O),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),

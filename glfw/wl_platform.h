@@ -66,6 +66,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wayland-single-pixel-buffer-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
+#include "wayland-keyboard-shortcuts-inhibit-unstable-v1-client-protocol.h"
 #include "wayland-xdg-toplevel-icon-v1-client-protocol.h"
 #include "wayland-xdg-system-bell-v1-client-protocol.h"
 #include "wayland-xdg-toplevel-tag-v1-client-protocol.h"
@@ -290,6 +291,7 @@ typedef struct _GLFWwindowWayland
         WaylandWindowState toplevel_states;
         uint32_t decoration_mode;
     } current, pending;
+    struct zwp_keyboard_shortcuts_inhibitor_v1 *keyboard_shortcuts_inhibitor;
 } _GLFWwindowWayland;
 
 typedef enum _GLFWWaylandOfferType
@@ -350,6 +352,7 @@ typedef struct _GLFWlibraryWayland
     struct zwlr_layer_shell_v1* zwlr_layer_shell_v1; uint32_t zwlr_layer_shell_v1_version;
     struct wp_single_pixel_buffer_manager_v1 *wp_single_pixel_buffer_manager_v1;
     struct zwp_idle_inhibit_manager_v1* idle_inhibit_manager;
+    struct zwp_keyboard_shortcuts_inhibit_manager_v1 *keyboard_shortcuts_inhibit_manager;
 
     int                         compositorVersion;
     int                         seatVersion;

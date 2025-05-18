@@ -293,6 +293,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetIgnoreOSKeyboardProcessing_impl) = dlsym(handle, "glfwSetIgnoreOSKeyboardProcessing");
     if (glfwSetIgnoreOSKeyboardProcessing_impl == NULL) fail("Failed to load glfw function glfwSetIgnoreOSKeyboardProcessing with error: %s", dlerror());
 
+    *(void **) (&glfwGrabKeyboard_impl) = dlsym(handle, "glfwGrabKeyboard");
+    if (glfwGrabKeyboard_impl == NULL) fail("Failed to load glfw function glfwGrabKeyboard with error: %s", dlerror());
+
     *(void **) (&glfwGetInputMode_impl) = dlsym(handle, "glfwGetInputMode");
     if (glfwGetInputMode_impl == NULL) fail("Failed to load glfw function glfwGetInputMode with error: %s", dlerror());
 

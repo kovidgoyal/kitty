@@ -794,6 +794,7 @@ typedef enum {
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
 #define GLFW_WAYLAND_BGCOLOR        0x00025002
+#define GLFW_WAYLAND_WINDOW_TAG     0x00025003
 /*! @} */
 
 #define GLFW_NO_API                          0
@@ -2088,6 +2089,10 @@ GFW_EXTERN glfwGetIgnoreOSKeyboardProcessing_func glfwGetIgnoreOSKeyboardProcess
 typedef void (*glfwSetIgnoreOSKeyboardProcessing_func)(bool);
 GFW_EXTERN glfwSetIgnoreOSKeyboardProcessing_func glfwSetIgnoreOSKeyboardProcessing_impl;
 #define glfwSetIgnoreOSKeyboardProcessing glfwSetIgnoreOSKeyboardProcessing_impl
+
+typedef bool (*glfwGrabKeyboard_func)(int);
+GFW_EXTERN glfwGrabKeyboard_func glfwGrabKeyboard_impl;
+#define glfwGrabKeyboard glfwGrabKeyboard_impl
 
 typedef int (*glfwGetInputMode_func)(GLFWwindow*, int);
 GFW_EXTERN glfwGetInputMode_func glfwGetInputMode_impl;

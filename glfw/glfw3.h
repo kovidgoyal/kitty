@@ -4247,6 +4247,7 @@ GLFWAPI void glfwPostEmptyEvent(void);
 
 GLFWAPI bool glfwGetIgnoreOSKeyboardProcessing(void);
 GLFWAPI void glfwSetIgnoreOSKeyboardProcessing(bool enabled);
+GLFWAPI bool glfwGrabKeyboard(int grab);
 
 /*! @brief Returns the value of an input option for the specified window.
  *

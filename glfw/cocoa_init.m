@@ -828,7 +828,7 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
     {
         debug_key("---------------- key down -------------------\n");
         debug_key("%s\n", [[event description] UTF8String]);
-        if (!_glfw.ignoreOSKeyboardProcessing) {
+        if (!_glfw.ignoreOSKeyboardProcessing && !_glfw.keyboard_grabbed) {
             // first check if there is a global menu bar shortcut
             if ([[NSApp mainMenu] performKeyEquivalent:event]) {
                 debug_key("keyDown triggered global menu bar action ignoring\n");
@@ -1144,3 +1144,4 @@ void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval,
 }
 
 void _glfwPlatformInputColorScheme(GLFWColorScheme appearance UNUSED) { }
+bool _glfwPlatformGrabKeyboard(bool grab UNUSED) { return true; /* directly uses _glfw.keyboard_grabbed */ }

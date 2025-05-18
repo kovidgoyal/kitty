@@ -87,6 +87,7 @@ from .fast_data_types import (
     get_os_window_size,
     glfw_get_monitor_workarea,
     global_font_size,
+    grab_keyboard,
     is_layer_shell_supported,
     last_focused_os_window_id,
     mark_os_window_for_close,
@@ -3202,3 +3203,15 @@ class Boss:
                 if wid == exception:
                     continue
                 window.screen.clear_selection()
+
+    @ac('misc', '''
+    Grab the keyboard. This means global shortcuts defined in the OS will be handled in kitty instead. How well this
+    works depends on the OS/window manager/desktop environment. On Wayland it works only if the compositor implements
+    the :link:`inhibit-keyboard-shortcuts protocol <https://wayland.app/protocols/keyboard-shortcuts-inhibit-unstable-v1>`.
+    ''')
+    def grab_keyboard(self) -> None:
+        grab_keyboard(True)
+
+    @ac('misc', 'Ungrab the keyboard if it was previously grabbed')
+    def ungrab_keyboard(self) -> None:
+        grab_keyboard(False)

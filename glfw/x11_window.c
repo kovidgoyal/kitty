@@ -3384,6 +3384,12 @@ _glfwPlatformSetWindowBlur(_GLFWwindow *window, int blur_radius) {
 }
 
 
+bool
+_glfwPlatformGrabKeyboard(bool grab) {
+    if (grab) _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Grabbing of keyboard is not currently supported");
+    return false;
+}
+
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW native API                       //////
 //////////////////////////////////////////////////////////////////////////

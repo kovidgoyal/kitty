@@ -616,7 +616,7 @@ struct _GLFWlibrary
     _GLFWtls            contextSlot;
     _GLFWmutex          errorLock;
 
-    bool                ignoreOSKeyboardProcessing;
+    bool                ignoreOSKeyboardProcessing, keyboard_grabbed;
 
     struct {
         bool            available;
@@ -884,6 +884,7 @@ void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval,
 void _glfwPlatformRemoveTimer(unsigned long long timer_id);
 int _glfwPlatformSetWindowBlur(_GLFWwindow* handle, int value);
 MonitorGeometry _glfwPlatformGetMonitorGeometry(_GLFWmonitor* monitor);
+bool _glfwPlatformGrabKeyboard(bool grab);
 
 char* _glfw_strdup(const char* source);
 
