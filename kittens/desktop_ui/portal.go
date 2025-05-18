@@ -1,18 +1,20 @@
 package desktop_ui
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
 
 	"github.com/kovidgoyal/dbus"
 	"github.com/kovidgoyal/dbus/introspect"
 	"github.com/kovidgoyal/dbus/prop"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
 
-const PORTAL_COLOR_SCHEME_NAMESPACE = "org.freedesktop.appearance"
+const PORTAL_APPEARANCE_NAMESPACE = "org.freedesktop.appearance"
 const PORTAL_COLOR_SCHEME_KEY = "color-scheme"
 const PORTAL_BUS_NAME = "org.freedesktop.impl.portal.desktop.kitty"
 const PORTAL_OBJ_PATH = "/org/freedesktop/portal/desktop"
@@ -23,7 +25,7 @@ const SETTINGS_INTERFACE = "org.freedesktop.impl.portal.Settings"
 const SETTINGS_CANARY_NAMESPACE = "net.kovidgoyal.kitty"
 const SETTINGS_CANARY_KEY = "status"
 
-type ColorScheme uint
+type ColorScheme uint32
 
 const (
 	NO_PREFERENCE ColorScheme = iota
@@ -33,6 +35,7 @@ const (
 
 type Portal struct {
 	Color_scheme ColorScheme
+	lock         sync.Mutex
 	bus          *dbus.Conn
 }
 
@@ -49,111 +52,42 @@ func NewPortal(opts *Options) *Portal {
 	return &ans
 }
 
-func (self *Portal) Start(ctx context.Context) (err error) {
-	if self.bus, err = dbus.SessionBus(); err != nil {
-		return fmt.Errorf("could not connect to session D-Bus: %s", err)
-	}
+type PropSpec map[string]map[string]*prop.Prop
 
-	// Define the "Version" prop (its value will be static).
-	propsSpec := map[string]map[string]*prop.Prop{
-		SETTINGS_INTERFACE: {
-			"Version": {
-				Value:    1,
-				Writable: false,
-				Emit:     prop.EmitTrue,
-			},
-		},
+func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path string, prop_spec PropSpec) (err error) {
+	op := dbus.ObjectPath(object_path)
+	if err = conn.Export(object, op, interface_name); err != nil {
+		return fmt.Errorf("failed to export interface: %s at object path: %s with error: %w", interface_name, object_path, err)
 	}
-	// Export the "Version" prop.
-	versionProp, err := prop.Export(self.bus, PORTAL_OBJ_PATH, propsSpec)
-	if err != nil {
-		return fmt.Errorf("failed to export D-Bus prop: %v", err)
+	var props *prop.Properties
+	if prop_spec != nil {
+		props, err = prop.Export(conn, op, prop_spec)
+		if err != nil {
+			return fmt.Errorf("failed to export properties with error: %w", err)
+		}
 	}
-
-	// Exoprt the D-Bus object.
-	if err = self.bus.Export(self.bus, PORTAL_OBJ_PATH, SETTINGS_INTERFACE); err != nil {
-		return fmt.Errorf("failed to export interface: %v", err)
-	}
-
-	// Declare change signal
-	settingChanged := introspect.Signal{
-		Name: "SettingChanged",
-		Args: []introspect.Arg{
-			{
-				Name: "namespace",
-				Type: "s",
-			},
-			{
-				Name: "key",
-				Type: "s",
-			},
-			{
-				Name: "value",
-				Type: "v",
-			},
-		},
-	}
-
-	readMethod := introspect.Method{
-		Name: "Read",
-		Args: []introspect.Arg{
-			{
-				Name:      "namespace",
-				Type:      "s",
-				Direction: "in",
-			},
-			{
-				Name:      "key",
-				Type:      "s",
-				Direction: "in",
-			},
-			{
-				Name:      "value",
-				Type:      "v",
-				Direction: "out",
-			},
-		},
-	}
-	readAllMethod := introspect.Method{
-		Name: "ReadAll",
-		Args: []introspect.Arg{
-			{
-				Name:      "namespaces",
-				Type:      "as",
-				Direction: "in",
-			},
-			{
-				Name:      "value",
-				Type:      "a{sa{sv}}",
-				Direction: "out",
-			},
-		},
-	}
-
-	portalInterface := introspect.Interface{
-		Name:       SETTINGS_INTERFACE,
-		Signals:    []introspect.Signal{settingChanged},
-		Properties: versionProp.Introspection(SETTINGS_INTERFACE),
-		Methods:    []introspect.Method{readMethod, readAllMethod},
-	}
-
 	n := &introspect.Node{
-		Name: PORTAL_OBJ_PATH,
+		Name: object_path,
 		Interfaces: []introspect.Interface{
 			introspect.IntrospectData,
 			prop.IntrospectData,
-			portalInterface,
+			{
+				Name:       interface_name,
+				Methods:    introspect.Methods(object),
+				Properties: props.Introspection(interface_name),
+			},
 		},
 	}
-
-	if err = self.bus.Export(
-		introspect.NewIntrospectable(n),
-		PORTAL_OBJ_PATH,
-		"org.freedesktop.DBus.Introspectable",
-	); err != nil {
-		return fmt.Errorf("failed to export dbus name: %v", err)
+	if err = conn.Export(introspect.NewIntrospectable(n), op, "org.freedesktop.DBus.Introspectable"); err != nil {
+		return fmt.Errorf("failed to export introspected methods with error: %w", err)
 	}
+	return
+}
 
+func (self *Portal) Start() (err error) {
+	if self.bus, err = dbus.SessionBus(); err != nil {
+		return fmt.Errorf("could not connect to session D-Bus: %s", err)
+	}
 	reply, err := self.bus.RequestName(PORTAL_BUS_NAME, dbus.NameFlagDoNotQueue)
 	if err != nil {
 		return fmt.Errorf("failed to register dbus name: %v", err)
@@ -161,14 +95,24 @@ func (self *Portal) Start(ctx context.Context) (err error) {
 	if reply != dbus.RequestNameReplyPrimaryOwner {
 		return fmt.Errorf("can't register D-Bus name: name already taken")
 	}
+	props_spec := PropSpec{
+		SETTINGS_INTERFACE: {
+			"version": {Value: uint32(1), Writable: false, Emit: prop.EmitFalse},
+		},
+	}
+	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, PORTAL_OBJ_PATH, props_spec); err != nil {
+		return
+	}
 
 	return
 }
 
-func (self *Portal) ChangeMode(x string) (err error) {
+func (self *Portal) ChangeColorScheme(x string) (err error) {
 	if self.bus == nil {
 		return fmt.Errorf("cannot emit portal signal; no connection to dbus")
 	}
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	switch x {
 	case "toggle":
 		switch self.Color_scheme {
@@ -190,7 +134,7 @@ func (self *Portal) ChangeMode(x string) (err error) {
 	if err = self.bus.Emit(
 		PORTAL_OBJ_PATH,
 		SETTINGS_INTERFACE+".SettingChanged",
-		PORTAL_COLOR_SCHEME_NAMESPACE,
+		PORTAL_APPEARANCE_NAMESPACE,
 		PORTAL_COLOR_SCHEME_KEY,
 		dbus.MakeVariant(self.Color_scheme),
 	); err != nil {
@@ -201,7 +145,9 @@ func (self *Portal) ChangeMode(x string) (err error) {
 }
 
 func (self *Portal) Read(namespace string, key string) (dbus.Variant, *dbus.Error) {
-	if namespace == PORTAL_COLOR_SCHEME_NAMESPACE && key == PORTAL_COLOR_SCHEME_KEY {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if namespace == PORTAL_APPEARANCE_NAMESPACE && key == PORTAL_COLOR_SCHEME_KEY {
 		return dbus.MakeVariant(self.Color_scheme), nil
 	}
 	if namespace == SETTINGS_CANARY_NAMESPACE && key == SETTINGS_CANARY_KEY {
@@ -211,10 +157,35 @@ func (self *Portal) Read(namespace string, key string) (dbus.Variant, *dbus.Erro
 }
 
 func (self *Portal) ReadAll(namespaces []string) (map[string]map[string]dbus.Variant, *dbus.Error) {
+	all_namespaces := utils.NewSetWithItems(PORTAL_APPEARANCE_NAMESPACE, SETTINGS_CANARY_NAMESPACE)
+	matched_namespaces := utils.NewSet[string](all_namespaces.Len())
+	if len(namespaces) == 0 {
+		matched_namespaces = all_namespaces
+	} else {
+		for _, namespace := range namespaces {
+			if namespace == "" {
+				matched_namespaces = all_namespaces
+				break
+			} else {
+				if strings.HasSuffix(namespace, ".*") {
+					namespace = namespace[:len(namespace)-1]
+					for candidate := range all_namespaces.Iterable() {
+						if strings.HasPrefix(candidate, namespace) {
+							matched_namespaces.Add(candidate)
+						}
+					}
+				} else if all_namespaces.Has(namespace) {
+					matched_namespaces.Add(namespace)
+				}
+			}
+		}
+	}
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	values := map[string]map[string]dbus.Variant{}
-	for _, namespace := range namespaces {
-		if namespace == PORTAL_COLOR_SCHEME_NAMESPACE {
-			values[PORTAL_COLOR_SCHEME_NAMESPACE] = map[string]dbus.Variant{
+	for namespace := range matched_namespaces.Iterable() {
+		if namespace == PORTAL_APPEARANCE_NAMESPACE {
+			values[PORTAL_APPEARANCE_NAMESPACE] = map[string]dbus.Variant{
 				PORTAL_COLOR_SCHEME_KEY: dbus.MakeVariant(self.Color_scheme),
 			}
 		} else if namespace == SETTINGS_CANARY_NAMESPACE {

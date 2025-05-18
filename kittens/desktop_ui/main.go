@@ -1,7 +1,6 @@
 package desktop_ui
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -16,12 +15,11 @@ type Options struct {
 
 func run_server(opts *Options) (err error) {
 	portal := NewPortal(opts)
-	ctx := context.Background()
-	if err = portal.Start(ctx); err != nil {
+	if err = portal.Start(); err != nil {
 		return
 	}
-	// Run until explicitly stopped.
-	<-ctx.Done()
+	c := make(chan string)
+	<-c
 	return
 }
 
