@@ -17,7 +17,9 @@ type Options struct {
 func run_server(opts *Options) (err error) {
 	portal := NewPortal(opts)
 	ctx := context.Background()
-	err = portal.Start(ctx)
+	if err = portal.Start(ctx); err != nil {
+		return
+	}
 	// Run until explicitly stopped.
 	<-ctx.Done()
 	return
