@@ -328,6 +328,7 @@ Grab the keyboard. This means global shortcuts defined in the OS will be passed 
 you want to create an OS modal window. How well this
 works depends on the OS/window manager/desktop environment. On Wayland it works only if the compositor implements
 the :link:`inhibit-keyboard-shortcuts protocol <https://wayland.app/protocols/keyboard-shortcuts-inhibit-unstable-v1>`.
+On macOS Apple doesn't allow applications to grab the keyboard without special permissions, so it doesn't work.
 """
 
 listen_on_defn = f'''\
