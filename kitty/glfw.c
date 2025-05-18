@@ -2614,8 +2614,7 @@ set_layer_shell_config(PyObject *self UNUSED, PyObject *args) {
 
 static PyObject*
 grab_keyboard(PyObject *self UNUSED, PyObject *action) {
-    if (action == Py_None) return Py_NewRef(glfwGrabKeyboard(2) ? Py_True : Py_False);
-    return Py_NewRef(glfwGrabKeyboard(PyObject_IsTrue(action)) ? Py_True : Py_False);
+    return Py_NewRef(glfwGrabKeyboard(action == Py_None ? 2 : PyObject_IsTrue(action)) ? Py_True : Py_False);
 }
 
 // Boilerplate {{{
