@@ -111,6 +111,8 @@ Detailed list of changes
 
 - Fix :opt:`remember_window_position` not working because of a stupid typo (:iss:`8646`)
 
+- A new :option:`kitty --grab-keyboard` that can be used to grab the keyboard so that global shortcuts are sent to kitty instead
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

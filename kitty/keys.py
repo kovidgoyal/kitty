@@ -160,6 +160,7 @@ class Mappings:
         key_action = get_shortcut(mode.keymap, ev)
         if key_action is None and self.global_shortcuts_map and (global_key_action := get_shortcut(self.global_shortcuts_map, ev)) is not None:
             if grab_keyboard(None):
+                # the shortcuts in the global menubar will have been bypassed so trigger them here
                 key_action = global_key_action
             else:
                 return True

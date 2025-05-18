@@ -323,6 +323,13 @@ def generate_c_parsers() -> Iterator[str]:
 
 
 # kitty CLI spec {{{
+grab_keyboard_docs = """\
+Grab the keyboard. This means global shortcuts defined in the OS will be passed to kitty instead. Useful if
+you want to create an OS modal window. How well this
+works depends on the OS/window manager/desktop environment. On Wayland it works only if the compositor implements
+the :link:`inhibit-keyboard-shortcuts protocol <https://wayland.app/protocols/keyboard-shortcuts-inhibit-unstable-v1>`.
+"""
+
 listen_on_defn = f'''\
 --listen-on
 completion=type:special group:complete_kitty_listen_on
@@ -484,6 +491,11 @@ See also :opt:`remember_window_position` to have kitty automatically try
 to restore the previous window position.
 
 
+--grab-keyboard
+type=bool-set
+{grab_keyboard_docs}
+
+
 # Debugging options
 
 --version -v
@@ -539,8 +551,9 @@ type=bool-set
 '''
         setattr(kitty_options_spec, 'ans', OPTIONS.format(
             appname=appname, conf_name=appname, listen_on_defn=listen_on_defn,
-            config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
-        ))
+            grab_keyboard_docs=grab_keyboard_docs,
+            config_help=CONFIG_HELP.format(appname=appname, conf_name=appname
+        )))
     ans: str = getattr(kitty_options_spec, 'ans')
     return ans
 # }}}
@@ -675,6 +688,11 @@ to :code:`on-demand`. Note that on Wayland, depending on the compositor, this ca
 becoming visible.
 
 
+--grab-keyboard
+type=bool-set
+{grab_keyboard_docs}
+
+
 --exclusive-zone
 type=int
 default={exclusive_zone}
@@ -740,7 +758,7 @@ Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 --debug-rendering
 type=bool-set
 For internal debugging use.
-'''.format(appname=appname, listen_on_defn=listen_on_defn, **d)
+'''.format(appname=appname, listen_on_defn=listen_on_defn, grab_keyboard_docs=grab_keyboard_docs, **d)
 
 
 # }}}

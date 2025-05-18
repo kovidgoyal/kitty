@@ -161,6 +161,8 @@ def actual_main(sys_args: list[str]) -> None:
         sys.argv.extend(('--name', args.name))
     if args.start_as_hidden:
         sys.argv.append('--start-as=hidden')
+    if args.grab_keyboard:
+        sys.argv.append('--grab-keyboard')
     for override in args.override:
         sys.argv.extend(('--override', override))
     sys.argv.append('--override=linux_display_server=auto')
