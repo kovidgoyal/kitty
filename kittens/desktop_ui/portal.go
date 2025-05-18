@@ -53,8 +53,11 @@ func NewPortal(opts *Options) *Portal {
 }
 
 type PropSpec map[string]*prop.Prop
+type SignalSpec map[string][]struct {
+	Name, Type string
+}
 
-func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path string, prop_spec PropSpec) (err error) {
+func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path string, prop_spec PropSpec, signal_spec SignalSpec) (err error) {
 	op := dbus.ObjectPath(object_path)
 	if err = conn.Export(object, op, interface_name); err != nil {
 		return fmt.Errorf("failed to export interface: %s at object path: %s with error: %w", interface_name, object_path, err)
@@ -68,6 +71,23 @@ func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path st
 			properties = props.Introspection(interface_name)
 		}
 	}
+	var signals []introspect.Signal
+	if signal_spec != nil {
+		for signal_name, args := range signal_spec {
+			sig_args := make([]introspect.Arg, len(args))
+			for i, a := range args {
+				sig_args[i] = introspect.Arg{
+					Name:      a.Name,
+					Type:      a.Type,
+					Direction: "out",
+				}
+			}
+			signals = append(signals, introspect.Signal{
+				Name: signal_name,
+				Args: sig_args,
+			})
+		}
+	}
 	n := &introspect.Node{
 		Name: object_path,
 		Interfaces: []introspect.Interface{
@@ -77,6 +97,7 @@ func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path st
 				Name:       interface_name,
 				Methods:    introspect.Methods(object),
 				Properties: properties,
+				Signals:    signals,
 			},
 		},
 	}
@@ -100,7 +121,10 @@ func (self *Portal) Start() (err error) {
 	props_spec := PropSpec{
 		"version": {Value: uint32(1), Writable: false, Emit: prop.EmitFalse},
 	}
-	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, PORTAL_OBJ_PATH, props_spec); err != nil {
+	signals := SignalSpec{
+		"SettingChanged": {{"namespace", "s"}, {"key", "s"}, {"value", "v"}},
+	}
+	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, PORTAL_OBJ_PATH, props_spec, signals); err != nil {
 		return
 	}
 
