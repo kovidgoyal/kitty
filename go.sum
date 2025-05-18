@@ -18,8 +18,6 @@ github.com/edwvee/exiffix v0.0.0-20240229113213-0dbb146775be h1:FNPYI8/ifKGW7kdB
 github.com/edwvee/exiffix v0.0.0-20240229113213-0dbb146775be/go.mod h1:G3dK5MziX9e4jUa8PWjowCOPCcyQwxsZ5a0oYA73280=
 github.com/go-ole/go-ole v1.2.6 h1:/Fpf6oFPoeFik9ty7siob0G6Ke8QvQEuVcuChpwXzpY=
 github.com/go-ole/go-ole v1.2.6/go.mod h1:pprOEPIfldk/42T2oK7lQ4v4JSDwmV0As9GaiUsvbm0=
-github.com/godbus/dbus/v5 v5.1.0 h1:4KLkAxT3aOY8Li4FRJe/KvhoNFFxo0m6fNuFUO8QJUk=
-github.com/godbus/dbus/v5 v5.1.0/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
@@ -30,6 +28,10 @@ github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSo
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/klauspost/cpuid/v2 v2.2.5 h1:0E5MSMDEoAulmXNFquVs//DdoomxaoTY1kUhbc/qbZg=
 github.com/klauspost/cpuid/v2 v2.2.5/go.mod h1:Lcz8mBdAVJIBVzewtcLocK12l3Y+JytZYpaMropDUws=
+github.com/kovidgoyal/dbus v0.0.0-20250518162316-472d38549895 h1:CQ+iKunklzE89I7C/AtXXltUhokfDNwL4rlst4AFQ9Q=
+github.com/kovidgoyal/dbus v0.0.0-20250518162316-472d38549895/go.mod h1:RbNG3Q1g6GUy1/WzWVx+S24m7VKyvl57vV+cr2hpt50=
+github.com/kovidgoyal/dbus v0.0.0-20250518163929-5e5bfb2bd2f2 h1:txptp4rHsZ8LPdmJSbak3fU08C+SmVqKy+FRBbQhl84=
+github.com/kovidgoyal/dbus v0.0.0-20250518163929-5e5bfb2bd2f2/go.mod h1:RbNG3Q1g6GUy1/WzWVx+S24m7VKyvl57vV+cr2hpt50=
 github.com/kovidgoyal/imaging v1.6.4 h1:K0idhRPXnRrJBKnBYcTfI1HTWSNDeAn7hYDvf9I0dCk=
 github.com/kovidgoyal/imaging v1.6.4/go.mod h1:bEIgsaZmXlvFfkv/CUxr9rJook6AQkJnpB5EPosRfRY=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a h1:N9zuLhTvBSRt0gWSiJswwQ2HqDmtX/ZCDJURnKUt1Ik=

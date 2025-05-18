@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/godbus/dbus/v5"
-	"github.com/godbus/dbus/v5/introspect"
-	"github.com/godbus/dbus/v5/prop"
+	"github.com/kovidgoyal/dbus"
+	"github.com/kovidgoyal/dbus/introspect"
+	"github.com/kovidgoyal/dbus/prop"
 )
 
 var _ = fmt.Print
@@ -50,8 +50,7 @@ func NewPortal(opts *Options) *Portal {
 }
 
 func (self *Portal) Start(ctx context.Context) (err error) {
-	dbus_opts := dbus.WithContext(ctx)
-	if self.bus, err = dbus.ConnectSessionBus(dbus_opts); err != nil {
+	if self.bus, err = dbus.SessionBus(); err != nil {
 		return fmt.Errorf("could not connect to session D-Bus: %s", err)
 	}
 
