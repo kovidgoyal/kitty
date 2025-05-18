@@ -625,7 +625,7 @@ py_run_atexit_cleanup_functions(PyObject *self UNUSED, PyObject *args UNUSED) {
 
 static PyObject*
 py_char_props_for(PyObject *self UNUSED, PyObject *ch) {
-    if (!PyUnicode_Check(ch) || PyUnicode_GET_LENGTH(ch) != 1) { PyErr_SetString(PyExc_TypeError, "must suply a single character"); return NULL; }
+    if (!PyUnicode_Check(ch) || PyUnicode_GET_LENGTH(ch) != 1) { PyErr_SetString(PyExc_TypeError, "must supply a single character"); return NULL; }
     char_type c = PyUnicode_READ_CHAR(ch, 0);
     CharProps cp = char_props_for(c);
 #define B(x) #x, cp.x ? Py_True : Py_False
