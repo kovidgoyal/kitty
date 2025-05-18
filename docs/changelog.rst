@@ -106,6 +106,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.42.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix :opt:`remember_window_position` not working because of a stupid typo (:iss:`8646`)
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
