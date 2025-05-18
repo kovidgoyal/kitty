@@ -2837,10 +2837,11 @@ _glfwPlatformSetWindowBlur(_GLFWwindow *window, int blur_radius) {
 
 bool
 _glfwPlatformGrabKeyboard(bool grab) {
-    if (!_glfw.wl.keyboard_shortcuts_inhibit_manager) return false;
-    for (_GLFWwindow* window = _glfw.windowListHead; window; window = window->next) {
-        inhibit_shortcuts_for(window, grab);
+    if (!_glfw.wl.keyboard_shortcuts_inhibit_manager) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "The Wayland compositor does not implement inhibit-keyboard-shortcuts, cannot grab keyboard");
+        return false;
     }
+    for (_GLFWwindow* window = _glfw.windowListHead; window; window = window->next) inhibit_shortcuts_for(window, grab);
     return true;
 }
 
