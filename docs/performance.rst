@@ -101,7 +101,7 @@ ASCII only text.
 
    foot, iterm2 and Terminal.app are left out as they do not run under X11.
    Alacritty+tmux is included just to show the effect of putting a terminal
-   multiplexer into the mix (halving throughput) and because alacritty isnt
+   multiplexer into the mix (halving throughput) and because alacritty isn't
    remotely comparable to any of the other terminals feature wise without tmux.
 
 .. note::

@@ -395,7 +395,7 @@ Key      Value
 ``c``    ``c=1`` if the terminal supports close events, otherwise the ``c``
          must be omitted.
 
-``o``    Comma separated list of occassions from the ``o`` key that the
+``o``    Comma separated list of occasions from the ``o`` key that the
          terminal implements. If no occasions are supported, the value
          ``o=always`` must be sent in the query response.
 
@@ -405,7 +405,7 @@ Key      Value
 
 ``s``    Comma separated list of sound names from the table of standard sound names above.
          Terminals will report the list of standard sound names they support.
-         Terminals *should* support atleast ``system`` and ``silent``.
+         Terminals *should* support at least ``system`` and ``silent``.
 
 ``u``    Comma separated list of urgency values that the terminal implements.
          If urgency is not supported, the ``u`` key must be absent from the
@@ -450,10 +450,10 @@ Key      Value                 Default    Description
          encoded UTF-8
          application name
 
-``g``    :ref:`identifier`     ``unset``  Identifier for icon data. Make these globally unqiue,
+``g``    :ref:`identifier`     ``unset``  Identifier for icon data. Make these globally unique,
                                           like an UUID.
 
-``i``    :ref:`identifier`     ``unset``  Identifier for the notification. Make these globally unqiue,
+``i``    :ref:`identifier`     ``unset``  Identifier for the notification. Make these globally unique,
                                           like an UUID, so that terminal multiplexers can
                                           direct responses to the correct window. Note that for backwards
                                           compatibility reasons i=0 is special and should not be used.

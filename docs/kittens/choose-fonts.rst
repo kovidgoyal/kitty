@@ -118,7 +118,7 @@ that is, they are used to set the variable value for some font characteristic.
     <https://harfbuzz.github.io/harfbuzz-hb-common.html#hb-feature-from-string>`__
 
 ``system``
-    This can be used to pass an arbitrary string, usuall a family or full name
+    This can be used to pass an arbitrary string, usually a family or full name
     to the OS font selection APIs. Should not be used in conjunction with any
     other keys. Is the same as specifying just the font name without any keys.
 
