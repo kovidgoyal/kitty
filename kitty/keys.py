@@ -17,6 +17,7 @@ from .fast_data_types import (
     SingleKey,
     get_boss,
     get_options,
+    grab_keyboard,
     is_modifier_key,
     ring_bell,
     set_ignore_os_keyboard_processing,
@@ -157,11 +158,14 @@ class Mappings:
         is_root_mode = not self.keyboard_mode_stack
         mode = self.keyboard_modes[''] if is_root_mode else self.keyboard_mode_stack[-1]
         key_action = get_shortcut(mode.keymap, ev)
+        if key_action is None and self.global_shortcuts_map and (global_key_action := get_shortcut(self.global_shortcuts_map, ev)) is not None:
+            if grab_keyboard(None):
+                key_action = global_key_action
+            else:
+                return True
         if key_action is None:
             if is_modifier_key(ev.key):
                 return False
-            if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
-                return True
             if not is_root_mode:
                 if mode.sequence_keys is not None:
                     self.pop_keyboard_mode()
