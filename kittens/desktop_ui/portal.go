@@ -52,18 +52,20 @@ func NewPortal(opts *Options) *Portal {
 	return &ans
 }
 
-type PropSpec map[string]map[string]*prop.Prop
+type PropSpec map[string]*prop.Prop
 
 func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path string, prop_spec PropSpec) (err error) {
 	op := dbus.ObjectPath(object_path)
 	if err = conn.Export(object, op, interface_name); err != nil {
 		return fmt.Errorf("failed to export interface: %s at object path: %s with error: %w", interface_name, object_path, err)
 	}
-	var props *prop.Properties
+	var properties []introspect.Property
+	p := prop.Map{interface_name: prop_spec}
 	if prop_spec != nil {
-		props, err = prop.Export(conn, op, prop_spec)
-		if err != nil {
+		if props, err := prop.Export(conn, op, p); err != nil {
 			return fmt.Errorf("failed to export properties with error: %w", err)
+		} else {
+			properties = props.Introspection(interface_name)
 		}
 	}
 	n := &introspect.Node{
@@ -74,7 +76,7 @@ func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path st
 			{
 				Name:       interface_name,
 				Methods:    introspect.Methods(object),
-				Properties: props.Introspection(interface_name),
+				Properties: properties,
 			},
 		},
 	}
@@ -96,9 +98,7 @@ func (self *Portal) Start() (err error) {
 		return fmt.Errorf("can't register D-Bus name: name already taken")
 	}
 	props_spec := PropSpec{
-		SETTINGS_INTERFACE: {
-			"version": {Value: uint32(1), Writable: false, Emit: prop.EmitFalse},
-		},
+		"version": {Value: uint32(1), Writable: false, Emit: prop.EmitFalse},
 	}
 	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, PORTAL_OBJ_PATH, props_spec); err != nil {
 		return
