@@ -215,7 +215,7 @@ of bias depends on the current layout.
 
 * Splits layout: The bias is interpreted as a percentage between 0 and 100.
 When splitting a window into two, the new window will take up the specified fraction
-of the space alloted to the original window and the original window will take up
+of the space allotted to the original window and the original window will take up
 the remainder of the space.
 
 * Vertical/horizontal layout: The bias is interpreted as adding/subtracting from the

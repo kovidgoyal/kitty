@@ -1031,7 +1031,7 @@ def underline_exclusion(x: str) -> tuple[float, Literal['', 'px', 'pt']]:
         try:
             val = float(x[:-2])
         except Exception:
-            raise ValueError(f'Invalid underline_exclusion with non numberic value: {x}')
+            raise ValueError(f'Invalid underline_exclusion with non numeric value: {x}')
         return val, unit
 
 

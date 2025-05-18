@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2025, Kovid Goyal <kovid at kovidgoyal.net>
 
-# This module must be runnable by a vanilla python interperter
+# This module must be runnable by a vanilla python interpreter
 # as it is used to generate C code when building kitty
 
 import re

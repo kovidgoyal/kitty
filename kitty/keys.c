@@ -305,7 +305,7 @@ on_key_input(const GLFWkeyevent *ev) {
         }
         GLFWkeyevent *k = w->buffered_keys.key_data;
         k[w->buffered_keys.count++] = *ev;
-        debug("bufferring key until child is ready\n");
+        debug("buffering key until child is ready\n");
     } else send_key_to_child(w->id, screen, ev);
 #undef dispatch_key_event
 }
