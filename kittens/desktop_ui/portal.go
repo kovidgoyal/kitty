@@ -64,7 +64,7 @@ func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path st
 	}
 	var properties []introspect.Property
 	p := prop.Map{interface_name: prop_spec}
-	if prop_spec != nil {
+	if len(prop_spec) > 0 {
 		if props, err := prop.Export(conn, op, p); err != nil {
 			return fmt.Errorf("failed to export properties with error: %w", err)
 		} else {
@@ -72,7 +72,7 @@ func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path st
 		}
 	}
 	var signals []introspect.Signal
-	if signal_spec != nil {
+	if len(signal_spec) > 0 {
 		for signal_name, args := range signal_spec {
 			sig_args := make([]introspect.Arg, len(args))
 			for i, a := range args {
@@ -88,19 +88,19 @@ func ExportInterface(conn *dbus.Conn, object any, interface_name, object_path st
 			})
 		}
 	}
-	n := &introspect.Node{
-		Name: object_path,
-		Interfaces: []introspect.Interface{
-			introspect.IntrospectData,
-			prop.IntrospectData,
-			{
-				Name:       interface_name,
-				Methods:    introspect.Methods(object),
-				Properties: properties,
-				Signals:    signals,
-			},
-		},
+	interface_data := introspect.Interface{
+		Name:       interface_name,
+		Methods:    introspect.Methods(object),
+		Properties: properties,
+		Signals:    signals,
 	}
+	interfaces := []introspect.Interface{
+		introspect.IntrospectData, interface_data,
+	}
+	if len(properties) > 0 {
+		interfaces = append(interfaces, prop.IntrospectData)
+	}
+	n := &introspect.Node{Name: object_path, Interfaces: interfaces}
 	if err = conn.Export(introspect.NewIntrospectable(n), op, "org.freedesktop.DBus.Introspectable"); err != nil {
 		return fmt.Errorf("failed to export introspected methods with error: %w", err)
 	}
