@@ -71,6 +71,37 @@ func EntryPoint(root *cli.Command) {
 			return utils.IfElse(err == nil, 0, 1), err
 		},
 	})
+	st := parent.AddSubCommand(&cli.Command{
+		Name:             "set-setting",
+		ShortDescription: "Change an arbitrary setting",
+		Usage:            " key [value]",
+		HelpText:         "Set an arbitrary setting. If you want to set the color-scheme use the dedicated command for it. Use this command with care as it does no validation for the type of value. The syntax for specifying values is described at: :link:`the glib docs <https://docs.gtk.org/glib/gvariant-text-format.html>`. Leaving out the value or specifying an empty value, will delete the setting.",
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			val := ""
+			if len(args) < 1 {
+				cmd.ShowHelp()
+				return 1, fmt.Errorf("must specify the key")
+			}
+			if len(args) > 1 {
+				val = args[1]
+			}
+			opts := SetOptions{}
+			if err = cmd.GetOptionValues(&opts); err == nil {
+				err = set_setting(args[0], val, &opts)
+			}
+			return utils.IfElse(err == nil, 0, 1), err
+		},
+	})
+	st.Add(cli.OptionSpec{
+		Name:    "--namespace -n",
+		Help:    "The namespace in which to change the setting.",
+		Default: PORTAL_APPEARANCE_NAMESPACE,
+	})
+	st.Add(cli.OptionSpec{
+		Name: "--data-type",
+		Help: "The DBUS data type signature of the value. The default is to guess from the textual representation, see :link:`the glib docs <https://docs.gtk.org/glib/gvariant-text-format.html>` for details.",
+	})
+
 	ss := parent.AddSubCommand(&cli.Command{
 		Name:             "show-settings",
 		ShortDescription: "Print the current values of the desktop settings",

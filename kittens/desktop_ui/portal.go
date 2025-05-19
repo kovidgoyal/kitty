@@ -171,6 +171,7 @@ func (self *Portal) Start() (err error) {
 	}
 	methods = MethodSpec{
 		"ChangeSetting": {{"namespace", "s", false}, {"key", "s", false}, {"value", "v", false}},
+		"RemoveSetting": {{"namespace", "s", false}, {"key", "s", false}},
 	}
 	props["version"].Value = uint32(1)
 	if err = ExportInterface(self.bus, self, CHANGE_SETTINGS_INTERFACE, CHANGE_SETTINGS_OBJECT_PATH, methods, props, nil); err != nil {
@@ -189,7 +190,10 @@ func ParseValueWithSignature(value, value_type_signature string) (v dbus.Variant
 	}
 	v, err = dbus.ParseVariant(value, s)
 	if err != nil {
-		return dbus.Variant{}, fmt.Errorf("%s is not a valid value for signature: %s with error: %w", value, value_type_signature, err)
+		if value_type_signature == "" {
+			return dbus.Variant{}, fmt.Errorf("could not guess the data type of: %s with error: %w", value, err)
+		}
+		return dbus.Variant{}, fmt.Errorf("%s is not a valid value for signature: %#v with error: %w", value, value_type_signature, err)
 	}
 	return v, nil
 }
@@ -414,6 +418,35 @@ Exec=kitten run-server
 
 // }}}
 
+type SetOptions struct {
+	Namespace, DataType string
+}
+
+func set_setting(key, value string, opts *SetOptions) (err error) {
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		return fmt.Errorf("failed to connect to system bus with error: %w", err)
+	}
+	defer conn.Close()
+	method := "ChangeSetting"
+	var vals = []any{opts.Namespace, key}
+	if value == "" {
+		method = "RemoveSetting"
+	} else {
+		v, err := ParseValueWithSignature(value, opts.DataType)
+		if err != nil {
+			return err
+		}
+		vals = append(vals, v)
+	}
+	obj := conn.Object(PORTAL_BUS_NAME, dbus.ObjectPath(CHANGE_SETTINGS_OBJECT_PATH))
+	call := obj.Call(CHANGE_SETTINGS_INTERFACE+"."+method, dbus.FlagNoAutoStart, vals...)
+	if err = call.Store(); err != nil {
+		return fmt.Errorf("failed to call %s with error: %w", method, err)
+	}
+	return
+}
+
 func set_color_scheme(which string) (err error) {
 	conn, err := dbus.SessionBus()
 	if err != nil {
@@ -476,6 +509,20 @@ func (self *Portal) ChangeSetting(namespace, key string, value dbus.Variant) *db
 	); e != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't emit signal: %s", e)
 	}
+	return nil
+}
+
+func (self *Portal) RemoveSetting(namespace, key string) *dbus.Error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	existed := false
+	if m := self.settings[namespace]; m != nil {
+		_, existed = m[key]
+	}
+	if !existed {
+		return nil
+	}
+	delete(self.settings[namespace], key)
 	return nil
 }
 
