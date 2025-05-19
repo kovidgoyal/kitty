@@ -3,6 +3,7 @@ package desktop_ui
 import (
 	"fmt"
 
+	"github.com/kovidgoyal/dbus"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -10,12 +11,15 @@ import (
 var _ = fmt.Print
 
 type Options struct {
-	Color_scheme string
+	Color_scheme, AccentColor, Contrast string
 }
 
 func run_server(opts *Options) (err error) {
-	portal := NewPortal(opts)
-	if err = portal.Start(); err != nil {
+	portal, err := NewPortal(opts)
+	if err == nil {
+		err = portal.Start()
+	}
+	if err != nil {
 		return
 	}
 	c := make(chan string)
@@ -50,6 +54,17 @@ func EntryPoint(root *cli.Command) {
 		Completer: cli.NamesCompleter("Choices for color-scheme", "no-preference", "light", "dark"),
 		Help:      "The color scheme for your system. This sets the initial value of the color scheme. It can be changed subsequently by using the color-scheme sub-command.",
 	})
+	rs.Add(cli.OptionSpec{
+		Name:    `--accent-color`,
+		Help:    "The RGB accent color for your system, can be specified as a color name or in hex a decimal format.",
+		Default: "cyan",
+	})
+	rs.Add(cli.OptionSpec{
+		Name: `--contrast`, Type: "choices", Choices: "normal, high",
+		Help:    "The preferred contrast level. Choices: normal, high",
+		Default: "normal",
+	})
+
 	parent.AddSubCommand(&cli.Command{
 		Name:             "enable-portal",
 		ShortDescription: "This will create or edit the various files needed so that the portal from this kitten is used by xdg-desktop-portal",
@@ -61,6 +76,7 @@ func EntryPoint(root *cli.Command) {
 	parent.AddSubCommand(&cli.Command{
 		Name:             "set-color-scheme",
 		ShortDescription: "Change the color scheme",
+		ArgCompleter:     cli.NamesCompleter("Choices for color-scheme", "no-preference", "light", "dark", "toggle"),
 		Usage:            " light|dark|no-preference|toggle",
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
 			if len(args) != 1 {
@@ -68,6 +84,45 @@ func EntryPoint(root *cli.Command) {
 				return 1, fmt.Errorf("must specify the new color scheme value")
 			}
 			err = set_color_scheme(args[0])
+			return utils.IfElse(err == nil, 0, 1), err
+		},
+	})
+	parent.AddSubCommand(&cli.Command{
+		Name:             "set-accent-color",
+		ShortDescription: "Change the accent color",
+		Usage:            " color_as_hex_or_name",
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			if len(args) != 1 {
+				cmd.ShowHelp()
+				return 1, fmt.Errorf("must specify the new accent color value")
+			}
+			var v dbus.Variant
+			if v, err = to_color(args[0]); err == nil {
+				err = set_variant_setting(PORTAL_APPEARANCE_NAMESPACE, PORTAL_ACCENT_COLOR_KEY, v, false)
+			}
+			return utils.IfElse(err == nil, 0, 1), err
+		},
+	})
+	parent.AddSubCommand(&cli.Command{
+		Name:             "set-contrast",
+		ShortDescription: "Change the contrast. Can be high or normal.",
+		Usage:            " high|normal",
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			if len(args) != 1 {
+				cmd.ShowHelp()
+				return 1, fmt.Errorf("must specify the new contrast value")
+			}
+
+			var v dbus.Variant
+			switch args[0] {
+			case "normal":
+				v = dbus.MakeVariant(uint32(0))
+			case "high":
+				v = dbus.MakeVariant(uint32(1))
+			default:
+				return 1, fmt.Errorf("%s is not a valid contrast value", args[0])
+			}
+			err = set_variant_setting(PORTAL_APPEARANCE_NAMESPACE, PORTAL_CONTRAST_KEY, v, false)
 			return utils.IfElse(err == nil, 0, 1), err
 		},
 	})

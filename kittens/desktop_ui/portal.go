@@ -13,6 +13,7 @@ import (
 	"github.com/kovidgoyal/dbus/introspect"
 	"github.com/kovidgoyal/dbus/prop"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"golang.org/x/sys/unix"
 )
 
@@ -20,6 +21,8 @@ var _ = fmt.Print
 
 const PORTAL_APPEARANCE_NAMESPACE = "org.freedesktop.appearance"
 const PORTAL_COLOR_SCHEME_KEY = "color-scheme"
+const PORTAL_ACCENT_COLOR_KEY = "accent-color"
+const PORTAL_CONTRAST_KEY = "contrast"
 const PORTAL_BUS_NAME = "org.freedesktop.impl.portal.desktop.kitty"
 const SETTINGS_OBJECT_PATH = "/org/freedesktop/portal/desktop"
 const SETTINGS_INTERFACE = "org.freedesktop.impl.portal.Settings"
@@ -47,7 +50,14 @@ type Portal struct {
 	lock     sync.Mutex
 }
 
-func NewPortal(opts *Options) *Portal {
+func to_color(spec string) (v dbus.Variant, err error) {
+	if col, err := style.ParseColor(spec); err == nil {
+		return dbus.MakeVariant([]float64{float64(col.Red) / 255., float64(col.Green) / 255., float64(col.Blue) / 255.}), nil
+	}
+	return
+}
+
+func NewPortal(opts *Options) (p *Portal, err error) {
 	ans := Portal{}
 	ans.settings = SettingsMap{
 		SETTINGS_CANARY_NAMESPACE: map[string]dbus.Variant{
@@ -63,7 +73,13 @@ func NewPortal(opts *Options) *Portal {
 	default:
 		ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(NO_PREFERENCE))
 	}
-	return &ans
+	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_ACCENT_COLOR_KEY], err = to_color(opts.AccentColor)
+	var contrast uint32
+	if opts.Contrast == "high" {
+		contrast = 1
+	}
+	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_CONTRAST_KEY] = dbus.MakeVariant(contrast)
+	return &ans, nil
 }
 
 type PropSpec map[string]*prop.Prop
@@ -422,21 +438,17 @@ type SetOptions struct {
 	Namespace, DataType string
 }
 
-func set_setting(key, value string, opts *SetOptions) (err error) {
+func set_variant_setting(namespace, key string, v dbus.Variant, remove_setting bool) (err error) {
 	conn, err := dbus.SessionBus()
 	if err != nil {
 		return fmt.Errorf("failed to connect to system bus with error: %w", err)
 	}
 	defer conn.Close()
 	method := "ChangeSetting"
-	var vals = []any{opts.Namespace, key}
-	if value == "" {
+	var vals = []any{namespace, key}
+	if remove_setting {
 		method = "RemoveSetting"
 	} else {
-		v, err := ParseValueWithSignature(value, opts.DataType)
-		if err != nil {
-			return err
-		}
 		vals = append(vals, v)
 	}
 	obj := conn.Object(PORTAL_BUS_NAME, dbus.ObjectPath(CHANGE_SETTINGS_OBJECT_PATH))
@@ -445,6 +457,19 @@ func set_setting(key, value string, opts *SetOptions) (err error) {
 		return fmt.Errorf("failed to call %s with error: %w", method, err)
 	}
 	return
+}
+
+func set_setting(key, value string, opts *SetOptions) (err error) {
+	remove_setting := false
+	var v dbus.Variant
+	if value == "" {
+		remove_setting = true
+	} else {
+		if v, err = ParseValueWithSignature(value, opts.DataType); err != nil {
+			return err
+		}
+	}
+	return set_variant_setting(opts.Namespace, key, v, remove_setting)
 }
 
 func set_color_scheme(which string) (err error) {
