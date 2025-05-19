@@ -12,7 +12,7 @@ require (
 	github.com/edwvee/exiffix v0.0.0-20240229113213-0dbb146775be
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/kovidgoyal/dbus v0.0.0-20250518163929-5e5bfb2bd2f2
+	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/imaging v1.6.4
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v3 v3.24.5

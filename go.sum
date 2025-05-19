@@ -32,6 +32,8 @@ github.com/kovidgoyal/dbus v0.0.0-20250518162316-472d38549895 h1:CQ+iKunklzE89I7
 github.com/kovidgoyal/dbus v0.0.0-20250518162316-472d38549895/go.mod h1:RbNG3Q1g6GUy1/WzWVx+S24m7VKyvl57vV+cr2hpt50=
 github.com/kovidgoyal/dbus v0.0.0-20250518163929-5e5bfb2bd2f2 h1:txptp4rHsZ8LPdmJSbak3fU08C+SmVqKy+FRBbQhl84=
 github.com/kovidgoyal/dbus v0.0.0-20250518163929-5e5bfb2bd2f2/go.mod h1:RbNG3Q1g6GUy1/WzWVx+S24m7VKyvl57vV+cr2hpt50=
+github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1 h1:rMY/hWfcVzBm6BLX6YLA+gLJEpuXBed/VP6YEkXt8R4=
+github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1/go.mod h1:RbNG3Q1g6GUy1/WzWVx+S24m7VKyvl57vV+cr2hpt50=
 github.com/kovidgoyal/imaging v1.6.4 h1:K0idhRPXnRrJBKnBYcTfI1HTWSNDeAn7hYDvf9I0dCk=
 github.com/kovidgoyal/imaging v1.6.4/go.mod h1:bEIgsaZmXlvFfkv/CUxr9rJook6AQkJnpB5EPosRfRY=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a h1:N9zuLhTvBSRt0gWSiJswwQ2HqDmtX/ZCDJURnKUt1Ik=
