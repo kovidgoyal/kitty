@@ -2,6 +2,7 @@ package desktop_ui
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -9,7 +10,6 @@ import (
 	"github.com/kovidgoyal/dbus"
 	"github.com/kovidgoyal/dbus/introspect"
 	"github.com/kovidgoyal/dbus/prop"
-	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -33,21 +33,33 @@ const (
 	LIGHT
 )
 
+type SettingsMap map[string]map[string]dbus.Variant
+
+type Settings struct {
+	items SettingsMap
+	lock  sync.Mutex
+}
+
 type Portal struct {
-	Color_scheme ColorScheme
-	lock         sync.Mutex
-	bus          *dbus.Conn
+	bus      *dbus.Conn
+	settings Settings
 }
 
 func NewPortal(opts *Options) *Portal {
 	ans := Portal{}
+	ans.settings.items = SettingsMap{
+		SETTINGS_CANARY_NAMESPACE: map[string]dbus.Variant{
+			SETTINGS_CANARY_KEY: dbus.MakeVariant("running"),
+		},
+	}
+	ans.settings.items[PORTAL_APPEARANCE_NAMESPACE] = map[string]dbus.Variant{}
 	switch opts.Color_scheme {
 	case "dark":
-		ans.Color_scheme = DARK
+		ans.settings.items[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(DARK))
 	case "light":
-		ans.Color_scheme = LIGHT
+		ans.settings.items[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(LIGHT))
 	default:
-		ans.Color_scheme = NO_PREFERENCE
+		ans.settings.items[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(NO_PREFERENCE))
 	}
 	return &ans
 }
@@ -124,43 +136,38 @@ func (self *Portal) Start() (err error) {
 	signals := SignalSpec{
 		"SettingChanged": {{"namespace", "s"}, {"key", "s"}, {"value", "v"}},
 	}
-	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, PORTAL_OBJ_PATH, props_spec, signals); err != nil {
+	if err = ExportInterface(self.bus, &self.settings, SETTINGS_INTERFACE, PORTAL_OBJ_PATH, props_spec, signals); err != nil {
 		return
 	}
 
 	return
 }
 
-func (self *Portal) ChangeColorScheme(x string) (err error) {
+func (self *Portal) ChangeSetting(namespace, key, value, value_type_signature string) (err error) {
 	if self.bus == nil {
 		return fmt.Errorf("cannot emit portal signal; no connection to dbus")
 	}
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	switch x {
-	case "toggle":
-		switch self.Color_scheme {
-		case LIGHT:
-			self.Color_scheme = DARK
-		case DARK:
-			self.Color_scheme = LIGHT
-		}
-	case "light":
-		self.Color_scheme = LIGHT
-	case "dark":
-		self.Color_scheme = DARK
-	case "no-preference":
-		self.Color_scheme = NO_PREFERENCE
-	default:
-		return fmt.Errorf("%s is not a valid value for color-scheme. Valid values are: light, dark, no-preference and toggle", x)
+	s, err := dbus.ParseSignature(value_type_signature)
+	if err != nil {
+		return fmt.Errorf("%s is not a valid type signature: %w", value_type_signature, err)
 	}
+	v, err := dbus.ParseVariant(value, s)
+	if err != nil {
+		return fmt.Errorf("%s is not a valid value for signature: %s with error: %w", value, value_type_signature, err)
+	}
+	self.settings.lock.Lock()
+	defer self.settings.lock.Unlock()
+	if self.settings.items[namespace] == nil {
+		self.settings.items[namespace] = map[string]dbus.Variant{}
+	}
+	self.settings.items[namespace][key] = v
 
 	if err = self.bus.Emit(
 		PORTAL_OBJ_PATH,
 		SETTINGS_INTERFACE+".SettingChanged",
 		PORTAL_APPEARANCE_NAMESPACE,
 		PORTAL_COLOR_SCHEME_KEY,
-		dbus.MakeVariant(self.Color_scheme),
+		v,
 	); err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't emit signal: %s", err)
 		err = nil
@@ -168,55 +175,46 @@ func (self *Portal) ChangeColorScheme(x string) (err error) {
 	return
 }
 
-func (self *Portal) Read(namespace string, key string) (dbus.Variant, *dbus.Error) {
+func (self *Settings) Read(namespace string, key string) (dbus.Variant, *dbus.Error) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
-	if namespace == PORTAL_APPEARANCE_NAMESPACE && key == PORTAL_COLOR_SCHEME_KEY {
-		return dbus.MakeVariant(self.Color_scheme), nil
-	}
-	if namespace == SETTINGS_CANARY_NAMESPACE && key == SETTINGS_CANARY_KEY {
-		return dbus.MakeVariant("running"), nil
+	if m, found := self.items[namespace]; found {
+		if v, found := m[key]; found {
+			return dbus.MakeVariant(v), nil
+		}
 	}
 	return dbus.Variant{}, dbus.NewError("org.freedesktop.portal.Error.NotFound", []any{fmt.Sprintf("the setting %s in the namespace %s is not supported", key, namespace)})
 }
 
-func (self *Portal) ReadAll(namespaces []string) (map[string]map[string]dbus.Variant, *dbus.Error) {
-	all_namespaces := utils.NewSetWithItems(PORTAL_APPEARANCE_NAMESPACE, SETTINGS_CANARY_NAMESPACE)
-	matched_namespaces := utils.NewSet[string](all_namespaces.Len())
+func (self *Settings) ReadAll(namespaces []string) (map[string]map[string]dbus.Variant, *dbus.Error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	var matched_namespaces = SettingsMap{}
 	if len(namespaces) == 0 {
-		matched_namespaces = all_namespaces
+		matched_namespaces = self.items
 	} else {
 		for _, namespace := range namespaces {
 			if namespace == "" {
-				matched_namespaces = all_namespaces
+				matched_namespaces = self.items
 				break
 			} else {
 				if strings.HasSuffix(namespace, ".*") {
 					namespace = namespace[:len(namespace)-1]
-					for candidate := range all_namespaces.Iterable() {
+					for candidate := range self.items {
 						if strings.HasPrefix(candidate, namespace) {
-							matched_namespaces.Add(candidate)
+							matched_namespaces[candidate] = map[string]dbus.Variant{}
 						}
 					}
-				} else if all_namespaces.Has(namespace) {
-					matched_namespaces.Add(namespace)
+				} else if _, found := self.items[namespace]; found {
+					matched_namespaces[namespace] = map[string]dbus.Variant{}
 				}
 			}
 		}
 	}
-	self.lock.Lock()
-	defer self.lock.Unlock()
 	values := map[string]map[string]dbus.Variant{}
-	for namespace := range matched_namespaces.Iterable() {
-		if namespace == PORTAL_APPEARANCE_NAMESPACE {
-			values[PORTAL_APPEARANCE_NAMESPACE] = map[string]dbus.Variant{
-				PORTAL_COLOR_SCHEME_KEY: dbus.MakeVariant(self.Color_scheme),
-			}
-		} else if namespace == SETTINGS_CANARY_NAMESPACE {
-			values[SETTINGS_CANARY_NAMESPACE] = map[string]dbus.Variant{
-				SETTINGS_CANARY_KEY: dbus.MakeVariant("running"),
-			}
-		}
+	for namespace := range matched_namespaces {
+		values[namespace] = make(map[string]dbus.Variant, len(self.items[namespace]))
+		maps.Copy(values[namespace], self.items[namespace])
 	}
 	return values, nil
 }
