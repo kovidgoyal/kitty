@@ -197,7 +197,9 @@ func ParseValue(value string) (dbus.Variant, error) {
 }
 
 type ShowSettingsOptions struct {
-	As_json bool
+	AsJson             bool
+	AllowOtherBackends bool
+	InNamespace        []string
 }
 
 func show_settings(opts *ShowSettingsOptions) (err error) {
@@ -209,13 +211,17 @@ func show_settings(opts *ShowSettingsOptions) (err error) {
 	path := "/" + strings.ToLower(strings.ReplaceAll(DESKTOP_PORTAL_NAME, ".", "/"))
 	obj := conn.Object(DESKTOP_PORTAL_NAME, dbus.ObjectPath(path))
 	interface_name := strings.ReplaceAll(DESKTOP_PORTAL_NAME, "Desktop", "Settings")
-	call := obj.Call(interface_name+".ReadAll", dbus.FlagNoAutoStart, []string{""})
+	namespaces := opts.InNamespace
+	if len(namespaces) == 0 {
+		namespaces = append(namespaces, "")
+	}
+	call := obj.Call(interface_name+".ReadAll", dbus.FlagNoAutoStart, namespaces)
 	var response ReadAllType
 	if err = call.Store(&response); err != nil {
 		return fmt.Errorf("Failed to read response from ReadAll with error: %w", err)
 	}
 
-	if opts.As_json {
+	if opts.AsJson {
 		unwrapped := make(map[string]map[string]any, len(response))
 		for ns, m := range response {
 			w := make(map[string]any, len(m))
@@ -237,12 +243,14 @@ func show_settings(opts *ShowSettingsOptions) (err error) {
 			}
 		}
 	}
-	is_running_self := false
-	if m, found := response[SETTINGS_CANARY_NAMESPACE]; found {
-		_, is_running_self = m[SETTINGS_CANARY_KEY]
-	}
-	if !is_running_self {
-		err = fmt.Errorf("the settings did not come from the desktop-ui kitten. Some other portal backend is providing the service.")
+	if !opts.AllowOtherBackends {
+		is_running_self := false
+		if m, found := response[SETTINGS_CANARY_NAMESPACE]; found {
+			_, is_running_self = m[SETTINGS_CANARY_KEY]
+		}
+		if !is_running_self {
+			err = fmt.Errorf("the settings did not come from the desktop-ui kitten. Some other portal backend is providing the service.")
+		}
 	}
 	return
 }

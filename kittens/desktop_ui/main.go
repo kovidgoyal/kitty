@@ -80,8 +80,17 @@ func EntryPoint(root *cli.Command) {
 	})
 	ss.Add(cli.OptionSpec{
 		Name: "--as-json",
-		Dest: "As_json",
 		Help: "Show the settings as JSON for machine consumption",
+		Type: "bool-set",
+	})
+	ss.Add(cli.OptionSpec{
+		Name: "--in-namespace",
+		Help: "Show only settings in the specified names. Can be specified multiple times. When unspecified all namespaces are returned.",
+		Type: "list",
+	})
+	ss.Add(cli.OptionSpec{
+		Name: "--allow-other-backends",
+		Help: "Normally, after printing the settings, if the settings did not come from the desktop-ui kitten the command prints an error and exits. This prevents that.",
 		Type: "bool-set",
 	})
 
