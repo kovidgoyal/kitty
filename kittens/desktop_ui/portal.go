@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/kovidgoyal/dbus/introspect"
 	"github.com/kovidgoyal/dbus/prop"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -252,6 +254,157 @@ func show_settings(opts *ShowSettingsOptions) (err error) {
 			err = fmt.Errorf("the settings did not come from the desktop-ui kitten. Some other portal backend is providing the service.")
 		}
 	}
+	return
+}
+
+var DataDirs = sync.OnceValue(func() (ans []string) {
+	d := os.Getenv("XDG_DATA_DIRS")
+	if d == "" {
+		d = "/usr/local/share/:/usr/share/"
+	}
+	all := []string{os.Getenv("XDG_DATA_HOME")}
+	all = append(all, strings.Split(d, ":")...)
+	seen := map[string]bool{}
+	for _, x := range all {
+		if !seen[x] {
+			seen[x] = true
+			ans = append(ans, x)
+		}
+	}
+	return
+})
+
+func IsDir(x string) bool {
+	s, err := os.Stat(x)
+	return err == nil && s.IsDir()
+}
+
+var WritableDataDirs = sync.OnceValue(func() (ans []string) {
+	for _, x := range DataDirs() {
+		if err := os.MkdirAll(x, 0o755); err == nil && unix.Access(x, unix.W_OK) == nil {
+			ans = append(ans, x)
+		}
+	}
+	return
+})
+
+var AllPortalInterfaces = sync.OnceValue(func() (ans []string) {
+	return []string{SETTINGS_INTERFACE}
+})
+
+func patch_portals_conf(text []byte) []byte {
+	lines := []string{}
+	in_preferred := false
+	for _, line := range utils.Splitlines(utils.UnsafeBytesToString(text)) {
+		sl := strings.TrimSpace(line)
+		if strings.HasPrefix(sl, "[") {
+			in_preferred = sl == "[preferred]"
+			lines = append(lines, line)
+			for _, iface := range AllPortalInterfaces() {
+				lines = append(lines, iface+"=kitty")
+			}
+		} else if in_preferred {
+			remove := false
+			for _, iface := range AllPortalInterfaces() {
+				if strings.HasPrefix(sl, iface) {
+					remove = true
+					break
+				}
+			}
+			if !remove {
+				lines = append(lines, line)
+			}
+		}
+	}
+	return utils.UnsafeStringToBytes(strings.Join(lines, "\n"))
+}
+
+func enable_portal() (err error) {
+	if len(WritableDataDirs()) == 0 {
+		return fmt.Errorf("Could not find any writable data directories. Make sure XDG_DATA_DIRS is set and contains at least one directory for which you have write permission")
+	}
+	portals_dir := ""
+	for _, x := range WritableDataDirs() {
+		q := filepath.Join(x, "xdg-desktop-portal", "portals")
+		if unix.Access(q, unix.W_OK) == nil && IsDir(q) {
+			portals_dir = q
+			break
+		}
+	}
+	if portals_dir == "" {
+		for _, x := range WritableDataDirs() {
+			q := filepath.Join(x, "xdg-desktop-portal", "portals")
+			if err := os.MkdirAll(q, 0o755); err == nil {
+				portals_dir = q
+				break
+			}
+		}
+	}
+	if portals_dir == "" {
+		return fmt.Errorf("Could not find any writable portals directories. Make sure XDG_DATA_HOME is set and point to a directory for which you have write permission.")
+	}
+	portals_defn := filepath.Join(portals_dir, "kitty.portal")
+	if err = os.WriteFile(portals_defn, utils.UnsafeStringToBytes(fmt.Sprintf(
+		`[portal]
+DBusName=%s
+Interfaces=%s;
+`, PORTAL_BUS_NAME, strings.Join(AllPortalInterfaces(), ";"))), 0o644); err != nil {
+		return err
+	}
+	fmt.Println("Wrote kitty portal definition to:", portals_defn)
+	dbus_service_dir := ""
+	for _, x := range WritableDataDirs() {
+		q := filepath.Join(x, "dbus-1", "services")
+		if err := os.MkdirAll(q, 0o755); err == nil {
+			dbus_service_dir = q
+			break
+		}
+	}
+	if dbus_service_dir == "" {
+		return fmt.Errorf("Could not find any writable portals directories. Make sure XDG_DATA_HOME is set and point to a directory for which you have write permission.")
+	}
+	dbus_service_defn := filepath.Join(dbus_service_dir, PORTAL_BUS_NAME+".desktop")
+	if err = os.WriteFile(dbus_service_defn, utils.UnsafeStringToBytes(fmt.Sprintf(
+		`[D-BUS Service]
+Name=%s
+Exec=kitten run-server
+`, PORTAL_BUS_NAME)), 0o644); err != nil {
+		return err
+	}
+	fmt.Println("Wrote kitty DBUS activation service file to:", dbus_service_defn)
+
+	d := os.Getenv("XDG_CURRENT_DESKTOP")
+	cf := os.Getenv("XDG_CONFIG_HOME")
+	if cf == "" {
+		cf = utils.Expanduser("~/.config")
+	}
+	cf = filepath.Join(cf, "xdg-desktop-portal")
+	if err = os.MkdirAll(cf, 0o755); err != nil {
+		return fmt.Errorf("failed to create %s to store the portals.conf file with error: %w", cf, err)
+	}
+	patched_file := ""
+	desktops := utils.Filter(strings.Split(d, ":"), func(x string) bool { return x != "" })
+	desktops = append(desktops, "")
+	for _, x := range strings.Split(d, ":") {
+		q := filepath.Join(cf, utils.IfElse(x == "", "portals.conf", fmt.Sprintf("%s-portals.conf", strings.ToLower(x))))
+		if text, err := os.ReadFile(q); err == nil {
+			text := patch_portals_conf(text)
+			if err = os.WriteFile(q, text, 0o644); err == nil {
+				patched_file = q
+				break
+			}
+		}
+	}
+	if patched_file == "" {
+		x := desktops[0]
+		q := filepath.Join(cf, utils.IfElse(x == "", "portals.conf", fmt.Sprintf("%s-portals.conf", strings.ToLower(x))))
+		text := patch_portals_conf([]byte{})
+		if err = os.WriteFile(q, text, 0o644); err != nil {
+			return err
+		}
+		patched_file = q
+	}
+	fmt.Printf("Patched %s to use the kitty portals\n", patched_file)
 	return
 }
 

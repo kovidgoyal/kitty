@@ -51,6 +51,14 @@ func EntryPoint(root *cli.Command) {
 		Help:      "The color scheme for your system. This sets the initial value of the color scheme. It can be changed subsequently by using the color-scheme sub-command.",
 	})
 	parent.AddSubCommand(&cli.Command{
+		Name:             "enable-portal",
+		ShortDescription: "This will create or edit the various files needed so that the portal from this kitten is used by xdg-desktop-portal",
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			err = enable_portal()
+			return utils.IfElse(err == nil, 0, 1), err
+		},
+	})
+	parent.AddSubCommand(&cli.Command{
 		Name:             "set-color-scheme",
 		ShortDescription: "Change the color scheme",
 		Usage:            " light|dark|no-preference|toggle",
