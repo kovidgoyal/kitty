@@ -1040,7 +1040,9 @@ opt('linux_bell_theme', '__custom', ctype='!bell_theme',
     long_text='''
 The XDG Sound Theme kitty will use to play the bell sound.
 On Wayland, when the compositor supports it, it is asked to play the system default
-bell sound, and this setting has no effect. Otherwise, defaults to the custom theme name specified in the
+bell sound, and this setting has no effect. Note that Hyprland claims to support this
+protocol, but :link:`does not actually play a sound <https://github.com/hyprwm/Hyprland/discussions/10428>`.
+This setting defaults to the custom theme name specified in the
 :link:`XDG Sound theme specification <https://specifications.freedesktop.org/sound-theme-spec/latest/sound_lookup.html>,
 falling back to the default freedesktop theme if it does not exist.
 To change your sound theme desktop wide, create :file:`~/.local/share/sounds/__custom/index.theme` with the contents:
