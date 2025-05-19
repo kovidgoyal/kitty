@@ -204,25 +204,28 @@ type ShowSettingsOptions struct {
 	InNamespace        []string
 }
 
+func fetch_settings(conn *dbus.Conn, namespaces ...string) (ans ReadAllType, err error) {
+	path := "/" + strings.ToLower(strings.ReplaceAll(DESKTOP_PORTAL_NAME, ".", "/"))
+	obj := conn.Object(DESKTOP_PORTAL_NAME, dbus.ObjectPath(path))
+	interface_name := strings.ReplaceAll(DESKTOP_PORTAL_NAME, "Desktop", "Settings")
+	if len(namespaces) == 0 {
+		namespaces = append(namespaces, "")
+	}
+	call := obj.Call(interface_name+".ReadAll", dbus.FlagNoAutoStart, namespaces)
+	if err = call.Store(&ans); err != nil {
+		return nil, fmt.Errorf("Failed to read response from ReadAll with error: %w", err)
+	}
+	return
+}
+
 func show_settings(opts *ShowSettingsOptions) (err error) {
 	conn, err := dbus.SessionBus()
 	if err != nil {
 		return fmt.Errorf("failed to connect to system bus with error: %w", err)
 	}
 	defer conn.Close()
-	path := "/" + strings.ToLower(strings.ReplaceAll(DESKTOP_PORTAL_NAME, ".", "/"))
-	obj := conn.Object(DESKTOP_PORTAL_NAME, dbus.ObjectPath(path))
-	interface_name := strings.ReplaceAll(DESKTOP_PORTAL_NAME, "Desktop", "Settings")
-	namespaces := opts.InNamespace
-	if len(namespaces) == 0 {
-		namespaces = append(namespaces, "")
-	}
-	call := obj.Call(interface_name+".ReadAll", dbus.FlagNoAutoStart, namespaces)
 	var response ReadAllType
-	if err = call.Store(&response); err != nil {
-		return fmt.Errorf("Failed to read response from ReadAll with error: %w", err)
-	}
-
+	response, err = fetch_settings(conn, opts.InNamespace...)
 	if opts.AsJson {
 		unwrapped := make(map[string]map[string]any, len(response))
 		for ns, m := range response {
@@ -292,6 +295,7 @@ var AllPortalInterfaces = sync.OnceValue(func() (ans []string) {
 	return []string{SETTINGS_INTERFACE}
 })
 
+// enable-portal {{{
 func patch_portals_conf(text []byte) []byte {
 	lines := []string{}
 	in_preferred := false
@@ -405,6 +409,53 @@ Exec=kitten run-server
 		patched_file = q
 	}
 	fmt.Printf("Patched %s to use the kitty portals\n", patched_file)
+	return
+}
+
+// }}}
+
+func set_color_scheme(which string) (err error) {
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		return fmt.Errorf("failed to connect to system bus with error: %w", err)
+	}
+	defer conn.Close()
+	val := NO_PREFERENCE
+	var res ReadAllType
+	if res, err = fetch_settings(conn, PORTAL_APPEARANCE_NAMESPACE); err != nil {
+		return fmt.Errorf("failed to read existing color scheme setting with error: %w", err)
+	}
+	if m, found := res[PORTAL_APPEARANCE_NAMESPACE]; found {
+		if v, found := m[PORTAL_COLOR_SCHEME_KEY]; found {
+			v.Store(&val)
+		}
+	}
+	nval := val
+	switch which {
+	case "toggle":
+		switch val {
+		case LIGHT:
+			nval = DARK
+		case DARK:
+			nval = LIGHT
+		}
+	case "no-preference":
+		nval = NO_PREFERENCE
+	case "light":
+		nval = LIGHT
+	case "dark":
+		nval = DARK
+	default:
+		return fmt.Errorf("%s is not a valid value of the color-scheme", which)
+	}
+	if val == nval {
+		return
+	}
+	obj := conn.Object(PORTAL_BUS_NAME, dbus.ObjectPath(CHANGE_SETTINGS_OBJECT_PATH))
+	call := obj.Call(CHANGE_SETTINGS_INTERFACE+".ChangeSetting", dbus.FlagNoAutoStart, PORTAL_APPEARANCE_NAMESPACE, PORTAL_COLOR_SCHEME_KEY, dbus.MakeVariant(nval))
+	if err = call.Store(); err != nil {
+		return fmt.Errorf("failed to call ChangeSetting with error: %w", err)
+	}
 	return
 }
 

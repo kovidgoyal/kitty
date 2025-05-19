@@ -67,7 +67,8 @@ func EntryPoint(root *cli.Command) {
 				cmd.ShowHelp()
 				return 1, fmt.Errorf("must specify the new color scheme value")
 			}
-			return
+			err = set_color_scheme(args[0])
+			return utils.IfElse(err == nil, 0, 1), err
 		},
 	})
 	ss := parent.AddSubCommand(&cli.Command{
