@@ -1,6 +1,7 @@
 package desktop_ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 	"os"
@@ -22,6 +23,7 @@ const SETTINGS_OBJECT_PATH = "/org/freedesktop/portal/desktop"
 const SETTINGS_INTERFACE = "org.freedesktop.impl.portal.Settings"
 const CHANGE_SETTINGS_OBJECT_PATH = "/net/kovidgoyal/kitty/portal"
 const CHANGE_SETTINGS_INTERFACE = "net.kovidgoyal.kitty.settings"
+const DESKTOP_PORTAL_NAME = "org.freedesktop.portal.Desktop"
 
 // Special portal setting used to check if we are being called by xdg-desktop-portal
 const SETTINGS_CANARY_NAMESPACE = "net.kovidgoyal.kitty"
@@ -175,16 +177,74 @@ func (self *Portal) Start() (err error) {
 	return
 }
 
-func ParseValue(value, value_type_signature string) (dbus.Variant, error) {
-	s, err := dbus.ParseSignature(value_type_signature)
-	if err != nil {
-		return dbus.Variant{}, fmt.Errorf("%s is not a valid type signature: %w", value_type_signature, err)
+func ParseValueWithSignature(value, value_type_signature string) (v dbus.Variant, err error) {
+	var s dbus.Signature
+	if value_type_signature != "" {
+		s, err = dbus.ParseSignature(value_type_signature)
+		if err != nil {
+			return dbus.Variant{}, fmt.Errorf("%s is not a valid type signature: %w", value_type_signature, err)
+		}
 	}
-	v, err := dbus.ParseVariant(value, s)
+	v, err = dbus.ParseVariant(value, s)
 	if err != nil {
 		return dbus.Variant{}, fmt.Errorf("%s is not a valid value for signature: %s with error: %w", value, value_type_signature, err)
 	}
 	return v, nil
+}
+
+func ParseValue(value string) (dbus.Variant, error) {
+	return ParseValueWithSignature(value, "")
+}
+
+type ShowSettingsOptions struct {
+	As_json bool
+}
+
+func show_settings(opts *ShowSettingsOptions) (err error) {
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		return fmt.Errorf("failed to connect to system bus with error: %w", err)
+	}
+	defer conn.Close()
+	path := "/" + strings.ToLower(strings.ReplaceAll(DESKTOP_PORTAL_NAME, ".", "/"))
+	obj := conn.Object(DESKTOP_PORTAL_NAME, dbus.ObjectPath(path))
+	interface_name := strings.ReplaceAll(DESKTOP_PORTAL_NAME, "Desktop", "Settings")
+	call := obj.Call(interface_name+".ReadAll", dbus.FlagNoAutoStart, []string{""})
+	var response ReadAllType
+	if err = call.Store(&response); err != nil {
+		return fmt.Errorf("Failed to read response from ReadAll with error: %w", err)
+	}
+
+	if opts.As_json {
+		unwrapped := make(map[string]map[string]any, len(response))
+		for ns, m := range response {
+			w := make(map[string]any, len(m))
+			for k, a := range m {
+				w[k] = a.Value()
+			}
+			unwrapped[ns] = w
+		}
+		j, err := json.MarshalIndent(unwrapped, "", "  ")
+		if err != nil {
+			return fmt.Errorf("Failed to format the response as JSON: %w", err)
+		}
+		fmt.Println(string(j))
+	} else {
+		for ns, m := range response {
+			fmt.Println(ns + ":")
+			for key, v := range m {
+				fmt.Printf("\t%s: %s\n", key, v)
+			}
+		}
+	}
+	is_running_self := false
+	if m, found := response[SETTINGS_CANARY_NAMESPACE]; found {
+		_, is_running_self = m[SETTINGS_CANARY_KEY]
+	}
+	if !is_running_self {
+		err = fmt.Errorf("the settings did not come from the desktop-ui kitten. Some other portal backend is providing the service.")
+	}
+	return
 }
 
 func (self *Portal) ChangeSetting(namespace, key string, value dbus.Variant) *dbus.Error {
@@ -218,7 +278,9 @@ func (self *Portal) Read(namespace, key string) (dbus.Variant, *dbus.Error) {
 	return dbus.Variant{}, dbus.NewError("org.freedesktop.portal.Error.NotFound", []any{fmt.Sprintf("the setting %s in the namespace %s is not supported", key, namespace)})
 }
 
-func (self *Portal) ReadAll(namespaces []string) (map[string]map[string]dbus.Variant, *dbus.Error) {
+type ReadAllType map[string]map[string]dbus.Variant
+
+func (self *Portal) ReadAll(namespaces []string) (ReadAllType, *dbus.Error) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	var matched_namespaces = SettingsMap{}

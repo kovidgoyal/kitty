@@ -50,5 +50,39 @@ func EntryPoint(root *cli.Command) {
 		Completer: cli.NamesCompleter("Choices for color-scheme", "no-preference", "light", "dark"),
 		Help:      "The color scheme for your system. This sets the initial value of the color scheme. It can be changed subsequently by using the color-scheme sub-command.",
 	})
+	parent.AddSubCommand(&cli.Command{
+		Name:             "set-color-scheme",
+		ShortDescription: "Change the color scheme",
+		Usage:            " light|dark|no-preference|toggle",
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			if len(args) != 1 {
+				cmd.ShowHelp()
+				return 1, fmt.Errorf("must specify the new color scheme value")
+			}
+			return
+		},
+	})
+	ss := parent.AddSubCommand(&cli.Command{
+		Name:             "show-settings",
+		ShortDescription: "Print the current values of the desktop settings",
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			if len(args) != 0 {
+				cmd.ShowHelp()
+				return 1, fmt.Errorf("no arguments allowed")
+			}
+			opts := ShowSettingsOptions{}
+			err = cmd.GetOptionValues(&opts)
+			if err == nil {
+				err = show_settings(&opts)
+			}
+			return utils.IfElse(err == nil, 0, 1), err
+		},
+	})
+	ss.Add(cli.OptionSpec{
+		Name: "--as-json",
+		Dest: "As_json",
+		Help: "Show the settings as JSON for machine consumption",
+		Type: "bool-set",
+	})
 
 }
