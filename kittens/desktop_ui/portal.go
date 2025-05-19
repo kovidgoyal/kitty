@@ -199,6 +199,9 @@ func (self *Portal) Start() (err error) {
 func ParseValueWithSignature(value, value_type_signature string) (v dbus.Variant, err error) {
 	var s dbus.Signature
 	if value_type_signature != "" {
+		if value_type_signature[0] == '@' {
+			value_type_signature = value_type_signature[1:]
+		}
 		s, err = dbus.ParseSignature(value_type_signature)
 		if err != nil {
 			return dbus.Variant{}, fmt.Errorf("%s is not a valid type signature: %w", value_type_signature, err)
