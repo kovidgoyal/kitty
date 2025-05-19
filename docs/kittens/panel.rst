@@ -162,8 +162,8 @@ Compatibility with various platforms
         🟠 **niri**
            Breaks when hiding (unmapping) layer shell windows. This means the quick
            access terminal is non-functional, but background and dock panels work.
-           More technically, keyboard focus gets stuck in the hidden window and when trying
-           to remap the hidden window niri never sends configure events for the remapped surface.
+           More technically, when trying to remap the hidden window niri never sends
+           configure events for the remapped surface.
 
         🟠 **labwc**
            Breaks when hiding (unmapping) layer shell windows. This means the quick
