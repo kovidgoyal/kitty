@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -32,13 +33,18 @@ func (h *Handler) draw_frame(width, height int) {
 	}
 }
 
-func (h *Handler) draw_search_text() {
+func (h *Handler) draw_search_text(available_width int) {
 	text := h.state.SearchText()
-	if text == "" {
-		h.lp.DrawSizedText(" ", loop.SizedText{Scale: 2})
-		h.lp.MoveCursorHorizontally(-2)
-		return
+	text = "abcdefghijklmnopqrstuvwxyz1234"
+	available_width /= 2
+	if wcswidth.Stringwidth(text) > available_width {
+		g := wcswidth.SplitIntoGraphemes(text)
+		available_width -= 2
+		g = g[len(g)-available_width:]
+		text = "…" + strings.Join(g, "")
 	}
+	h.lp.DrawSizedText(text+" ", loop.SizedText{Scale: 2})
+	h.lp.MoveCursorHorizontally(-2)
 }
 
 func (h *Handler) draw_search_bar(y int) (height int, err error) {
@@ -48,7 +54,7 @@ func (h *Handler) draw_search_bar(y int) (height int, err error) {
 	available_width := h.screen_size.width - left_margin - right_margin
 	h.draw_frame(available_width, height)
 	h.lp.MoveCursorTo(1+left_margin+1, 2+y)
-	h.draw_search_text()
+	h.draw_search_text(available_width - 2)
 
 	return
 }
