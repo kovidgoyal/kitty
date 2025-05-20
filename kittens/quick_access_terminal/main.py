@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2025, Kovid Goyal <kovid at kovidgoyal.net>
 
+import re
 import sys
 
 from kitty.conf.types import Definition
 from kitty.constants import appname
-from kitty.simple_cli_definitions import CONFIG_HELP, grab_keyboard_docs
+from kitty.simple_cli_definitions import CONFIG_HELP, get_option_maps, grab_keyboard_docs, panel_options_spec, parse_option_spec
 
 help_text = 'A quick access terminal window that you can bring up instantly with a keypress or a command.'
 
@@ -17,22 +18,27 @@ agr = definition.add_group
 egr = definition.end_group
 opt = definition.add_option
 
+panel_opts = get_option_maps(parse_option_spec(panel_options_spec())[0])[0]
+
+def migrate_help(x: str) -> str:
+    def sub(m: re.Match[str]) -> str:
+        return f':opt:`{m.group(1)}`'
+
+    ans = re.sub(r':option:`--(\S+?)`', sub, x)
+    return ans.replace('Use the special value :code:`list`', 'Run :code:`kitten panel --output-name list`')
+
+
+def help_of(x: str) -> str:
+    return migrate_help(panel_opts[x]['help'])
+
+
 agr('qat', 'Window appearance')
 
-opt('lines', '25',
-    long_text='''
-The number of lines shown in the window, when the window is along the top or bottom edges of the screen.
-If it has the suffix :code:`px` then it sets the height of the window in pixels instead of lines.
-''',)
+opt('lines', '25', long_text=panel_opts['lines']['help'])
 
-opt('columns', '80',
-    long_text='''
-The number of columns shown in the window, when the window is along the left or right edges of the screen.
-If it has the suffix :code:`px` then it sets the width of the window in pixels instead of columns.
-''',)
+opt('columns', '80', long_text=panel_opts['columns']['help'])
 
-opt('edge', 'top', choices=('top', 'bottom', 'left', 'right'),
-    long_text='Which edge of the screen to place the window along')
+opt('edge', 'top', choices=panel_opts['edge']['choices'], long_text=help_of('edge'))
 
 opt('background_opacity', '0.85', option_type='unit_float', long_text='''
 The background opacity of the window. This works the same as the kitty
@@ -47,17 +53,13 @@ will force :opt:`focus_policy` to :code:`on-demand`.
 
 opt('grab_keyboard', 'no', option_type='to_bool', long_text=grab_keyboard_docs)
 
-opt('margin_left', '0', option_type='int',
-    long_text='Set the left margin for the window, in pixels. Has no effect for windows on the right edge of the screen.')
+opt('margin_left', '0', option_type='int', long_text=help_of('margin_left'))
 
-opt('margin_right', '0', option_type='int',
-    long_text='Set the right margin for the window, in pixels. Has no effect for windows on the left edge of the screen.')
+opt('margin_right', '0', option_type='int', long_text=help_of('margin_right'))
 
-opt('margin_top', '0', option_type='int',
-    long_text='Set the top margin for the window, in pixels. Has no effect for windows on the bottom edge of the screen.')
+opt('margin_top', '0', option_type='int', long_text=help_of('margin_top'))
 
-opt('margin_bottom', '0', option_type='int',
-    long_text='Set the bottom margin for the window, in pixels. Has no effect for windows on the top edge of the screen.')
+opt('margin_bottom', '0', option_type='int', long_text=help_of('margin_bottom'))
 
 opt('+kitty_conf', '',
     long_text='Path to config file to use for kitty when drawing the window. Can be specified multiple times. By default, the'
@@ -73,23 +75,12 @@ opt('app_id', f'{appname}-quick-access',
     ' On X11 set the WM_CLASS assigned to the quick access window. (Linux only)')
 
 
-opt('output_name', '', long_text='''
-The panel can only be displayed on a single monitor (output) at a time. This allows
-you to specify which output is used, by name. If not specified the compositor will choose an
-output automatically, typically the last output the user interacted with or the primary monitor.
-You can get a list of available outputs by running: :code:`kitten panel --output-name list`.
-''')
+opt('output_name', '', long_text=help_of('output_name'))
 
 opt('start_as_hidden', 'no', option_type='to_bool',
     long_text='Whether to start the quick access terminal hidden. Useful if you are starting it as part of system startup.')
 
-opt('focus_policy', 'exclusive', choices=('exclusive', 'on-demand'), long_text='''
-How to manage window focus. A value of :code:`exclusive` means prevent other windows from getting focus.
-However, whether this works is entirely dependent on the compositor/desktop environment.
-It does not have any effect on macOS and KDE, for example. Note that on sway using :code:`on-demand` means
-the compositor will not focus the window when it appears until you click on it, which is why the default is set
-to :code:`exclusive`.
-''')
+opt('focus_policy', 'exclusive', choices=panel_opts['focus_policy']['choices'], long_text=help_of('focus_policy'))
 
 
 

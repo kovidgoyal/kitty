@@ -28,7 +28,7 @@ from kitty.fast_data_types import (
     set_layer_shell_config,
     toggle_os_window_visibility,
 )
-from kitty.simple_cli_definitions import build_panel_cli_spec
+from kitty.simple_cli_definitions import panel_options_spec
 from kitty.types import LayerShellConfig
 from kitty.typing_compat import BossType
 from kitty.utils import log_error
@@ -40,7 +40,7 @@ usage = '[cmdline-to-run ...]'
 
 def panel_kitten_options_spec() -> str:
     if not hasattr(panel_kitten_options_spec, 'ans'):
-           setattr(panel_kitten_options_spec, 'ans', build_panel_cli_spec({}))
+           setattr(panel_kitten_options_spec, 'ans', panel_options_spec())
     ans: str = getattr(panel_kitten_options_spec, 'ans')
     return ans
 

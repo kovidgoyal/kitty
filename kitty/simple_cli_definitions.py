@@ -762,4 +762,7 @@ For internal debugging use.
 '''.format(appname=appname, listen_on_defn=listen_on_defn, grab_keyboard_docs=grab_keyboard_docs, **d)
 
 
+def panel_options_spec() -> str:
+    return build_panel_cli_spec(panel_defaults)
+
 # }}}
