@@ -77,6 +77,21 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 	return
 }
 
+func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
+	switch {
+	case h.handle_edit_keys(ev):
+		h.draw_screen()
+	case ev.MatchesPressOrRepeat("esc"):
+		h.lp.Quit(1)
+	}
+	return
+}
+
+func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (err error) {
+	h.state.search_text += text
+	return h.draw_screen()
+}
+
 var default_cwd string
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
@@ -101,6 +116,8 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		handler.init_sizes(new_size)
 		return handler.draw_screen()
 	}
+	lp.OnKeyEvent = handler.OnKeyEvent
+	lp.OnText = handler.OnText
 	err = lp.Run()
 	if err != nil {
 		return 1, err

@@ -35,7 +35,6 @@ func (h *Handler) draw_frame(width, height int) {
 
 func (h *Handler) draw_search_text(available_width int) {
 	text := h.state.SearchText()
-	text = "abcdefghijklmnopqrstuvwxyz1234"
 	available_width /= 2
 	if wcswidth.Stringwidth(text) > available_width {
 		g := wcswidth.SplitIntoGraphemes(text)
@@ -57,4 +56,17 @@ func (h *Handler) draw_search_bar(y int) (height int, err error) {
 	h.draw_search_text(available_width - 2)
 
 	return
+}
+
+func (h *Handler) handle_edit_keys(ev *loop.KeyEvent) bool {
+	switch {
+	case ev.MatchesPressOrRepeat("backspace"):
+		if h.state.SearchText() == "" {
+			h.lp.Beep()
+		} else {
+			h.state.search_text = h.state.search_text[:len(h.state.search_text)-1]
+			return true
+		}
+	}
+	return false
 }
