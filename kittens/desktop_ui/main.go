@@ -68,6 +68,7 @@ func EntryPoint(root *cli.Command) {
 	parent.AddSubCommand(&cli.Command{
 		Name:             "enable-portal",
 		ShortDescription: "This will create or edit the various files needed so that the portal from this kitten is used by xdg-desktop-portal",
+		HelpText:         "Once you run this command, add :code:`kitten desktop-ui run-server --color-scheme=whatever` to your window manager startup sequence and reboot your computer (or logout and restart your session) and hopefully xdg-desktop-portal should now delegate to kitty for the portals implemented here. If it doesn't try running :code:`/usr/lib/xdg-desktop-portal -r -v` it will provide a lot of logging about why it is choosing different portal backends. That combined with a careful reading of :code:`man portals.conf` should be enough to learn how to convince xdg-desktop-portal to use kitty.\n\nYou can change the system color-scheme dynamically by running::\n\n:code:`kitten desktop-ui set-color-scheme dark`",
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
 			err = enable_portal()
 			return utils.IfElse(err == nil, 0, 1), err
