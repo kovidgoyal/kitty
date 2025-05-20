@@ -573,3 +573,52 @@ func (self *Loop) QueryCapabilities() {
 		self.EndAtomicUpdate()
 	}
 }
+
+type Alignment int
+
+const (
+	ALIGN_START Alignment = iota
+	ALIGN_CENTER
+	ALIGN_END
+)
+
+type SizedText struct {
+	Scale, Subscale_numerator, Subscale_denominator int
+	Horizontal_alignment, Vertical_alignment        Alignment
+	Width                                           int
+}
+
+func (self *Loop) DrawSizedText(text string, spec SizedText) {
+	b := strings.Builder{}
+	b.Grow(len(text) + 24)
+	b.WriteString("\x1b]66;")
+	sep := ""
+	if spec.Scale > 1 {
+		b.WriteString(fmt.Sprintf("%ss=%d", sep, min(spec.Scale, 7)))
+		sep = ":"
+	}
+	if spec.Width > 0 {
+		b.WriteString(fmt.Sprintf("%sw=%d", sep, min(spec.Width, 7)))
+		sep = ":"
+	}
+	if spec.Subscale_numerator > 0 {
+		b.WriteString(fmt.Sprintf("%sn=%d", sep, min(spec.Subscale_numerator, 15)))
+		sep = ":"
+	}
+	if spec.Subscale_denominator > spec.Subscale_numerator {
+		b.WriteString(fmt.Sprintf("%sd=%d", sep, min(spec.Subscale_denominator, 15)))
+		sep = ":"
+	}
+	if spec.Horizontal_alignment > ALIGN_START {
+		b.WriteString(fmt.Sprintf("%sh=%d", sep, spec.Horizontal_alignment))
+		sep = ":"
+	}
+	if spec.Vertical_alignment > ALIGN_START {
+		b.WriteString(fmt.Sprintf("%sv=%d", sep, spec.Vertical_alignment))
+		sep = ":"
+	}
+	b.WriteString(";")
+	b.WriteString(text)
+	b.WriteString("\a")
+	self.QueueWriteString(b.String())
+}
