@@ -39,10 +39,12 @@ type ScreenSize struct {
 type Handler struct {
 	state       State
 	screen_size ScreenSize
+	scan_cache  ScanCache
 	lp          *loop.Loop
 }
 
 func (h *Handler) draw_screen() (err error) {
+	h.get_results()
 	h.lp.StartAtomicUpdate()
 	defer h.lp.EndAtomicUpdate()
 	h.lp.ClearScreen()
@@ -52,7 +54,6 @@ func (h *Handler) draw_screen() (err error) {
 	} else {
 		y += dy
 	}
-
 	return
 }
 
@@ -81,7 +82,7 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 	switch {
 	case h.handle_edit_keys(ev):
 		h.draw_screen()
-	case ev.MatchesPressOrRepeat("esc"):
+	case ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("ctrl+c"):
 		h.lp.Quit(1)
 	}
 	return
@@ -118,6 +119,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	lp.OnKeyEvent = handler.OnKeyEvent
 	lp.OnText = handler.OnText
+	lp.OnWakeup = func() error { return handler.draw_screen() }
 	err = lp.Run()
 	if err != nil {
 		return 1, err
