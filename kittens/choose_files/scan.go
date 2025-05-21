@@ -52,15 +52,19 @@ func scan_dir(path, root_dir string) []ResultItem {
 	if ans, err := os.ReadDir(path); err == nil {
 		if rel, err := filepath.Rel(root_dir, path); err == nil {
 			return utils.Map(func(x os.DirEntry) ResultItem {
-				path := filepath.Join(root_dir, x.Name())
-				return ResultItem{dir_entry: x, abspath: path, text: filepath.Join(rel, x.Name())}
+				path := filepath.Join(path, x.Name())
+				r := filepath.Join(rel, x.Name())
+				if root_dir == "/" {
+					r = "/" + r
+				}
+				return ResultItem{dir_entry: x, abspath: path, text: r}
 			}, ans)
 		}
 	}
 	return []ResultItem{}
 }
 
-func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int) (ans []ResultItem) {
+func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, seen map[string]bool) (ans []ResultItem) {
 	var found bool
 	if ans, found = sc.get_cached_entries(current_dir); !found {
 		ans = scan_dir(current_dir, root_dir)
@@ -70,8 +74,9 @@ func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int) (ans [
 	// now recurse into directories
 	if max_depth > 0 {
 		for _, x := range ans {
-			if x.dir_entry.IsDir() {
-				ans = append(ans, sc.fs_scan(root_dir, x.abspath, max_depth-1)...)
+			if x.dir_entry.IsDir() && !seen[x.abspath] {
+				seen[x.abspath] = true
+				ans = append(ans, sc.fs_scan(root_dir, x.abspath, max_depth-1, seen)...)
 			}
 		}
 	}
@@ -79,10 +84,8 @@ func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int) (ans [
 }
 
 func (sc *ScanCache) scan(root_dir, search_text string, max_depth int) (ans []ResultItem) {
-	if strings.HasPrefix(search_text, "/") {
-		root_dir = "/"
-	}
-	ans = sc.fs_scan(root_dir, root_dir, max_depth)
+	seen := make(map[string]bool, 1024)
+	ans = sc.fs_scan(root_dir, root_dir, max_depth, seen)
 	if search_text == "" {
 		slices.SortFunc(ans, func(a, b ResultItem) int {
 			switch a.dir_entry.IsDir() {
