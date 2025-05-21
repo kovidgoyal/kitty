@@ -13,6 +13,6 @@ for attr in ('linguist-generated', 'linguist-vendored'):
             fname = line.split(':', 1)[0]
             all_files.discard(fname)
 
-all_files -= {'gen/nerd-fonts-glyphs.txt', 'gen/rowcolumn-diacritics.txt'}
+all_files -= {'gen/rowcolumn-diacritics.txt'}
 cp = subprocess.run(['cloc', '--list-file', '-'], input='\n'.join(all_files).encode())
 raise SystemExit(cp.returncode)

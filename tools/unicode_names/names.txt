@@ -1,4 +1,4 @@
-50187 22651
+50490 23220
 0 null
 1 start of heading
 2 start of text
@@ -15287,8 +15287,8 @@
 57353 internal interruption
 57354 external interruption
 57504 branch
-57505 line number
-57506 hostname readonly
+57505 current line
+57506 hostname
 57507 column number
 57520 left hard divider
 57521 left soft divider
@@ -15324,6 +15324,8 @@
 57553 lego block sideways
 57554 trapezoid top bottom
 57556 trapezoid top bottom mirrored
+57558 right hard divider inverse
+57559 left hard divider inverse
 57856 smaller
 57857 snowing
 57858 soda
@@ -15532,7 +15534,7 @@
 58147 night alt rain mix
 58148 night alt rain wind
 58149 night alt rain
-58150 night alt rain mix
+58150 night alt showers
 58151 night alt snow
 58152 night alt sprinkle
 58153 night alt storm showers
@@ -15723,7 +15725,7 @@
 58338 moon alt waning crescent 6
 58339 moon alt new
 58874 folder npm
-58875 folder git branch
+58875 folder git
 58876 folder config
 58877 folder github
 58878 folder open
@@ -15739,14 +15741,14 @@
 58888 php
 58889 markdown
 58890 license
-58891 json less
+58891 json
 58892 javascript
 58893 image
 58894 html
 58895 mustache
 58896 gulp
 58897 grunt
-58898 default text
+58898 default
 58899 folder
 58900 css
 58901 config
@@ -15755,13 +15757,13 @@
 58904 ejs
 58905 xml
 58906 bower
-58907 coffee cjsx
+58907 cjsx
 58908 twig
 58909 cpp
 58910 c
 58911 haskell
 58912 lua
-58913 line dotted guide
+58913 dotted guide
 58914 karma
 58915 favicon
 58916 julia
@@ -15793,7 +15795,7 @@
 58942 cake
 58943 checkbox
 58944 checkbox unchecked
-58945 clock time cop
+58945 clock
 58946 clojure
 58947 code climate
 58948 code search
@@ -15899,72 +15901,86 @@
 59048 yml
 59049 zig
 59050 zip
-59136 bing small
-59137 css tricks
+59051 asm
+59052 v lang
+59053 folder oct
+59054 neovim
+59055 fennel
+59056 common lisp
+59057 scheme
+59058 toml
+59059 astro
+59060 prettier
+59061 ada
+59062 chuck
+59063 vitruvian
+59064 css
+59136 aarch64
+59137 adonisjs
 59138 git
 59139 bitbucket
 59140 mysql
-59141 streamline
+59141 aftereffects
 59142 database
 59143 dropbox
-59144 github alt
-59145 github badge
-59146 github
+59144 akka
+59145 github
+59146 algolia
 59147 wordpress
 59148 visualstudio
-59149 jekyll small
+59149 jekyll
 59150 android
 59151 windows
 59152 stackoverflow
 59153 apple
 59154 linux
-59155 appstore
+59155 alpinejs
 59156 ghost small
-59157 yahoo
+59157 anaconda
 59158 codepen
 59159 github full
 59160 nodejs small
 59161 nodejs
-59162 hackernews
+59162 androidstudio
 59163 ember
-59164 dojo
+59164 angularjs
 59165 django
 59166 npm
 59167 ghost
-59168 modernizr
-59169 unity small
-59170 rasberry pi
-59171 blackberry
+59168 angularmaterial
+59169 unity
+59170 raspberry pi
+59171 ansible
 59172 go
 59173 git branch
 59174 git pull request
 59175 git merge
 59176 git compare
 59177 git commit
-59178 cssdeck
-59179 yahoo small
-59180 techcrunch
+59178 antdesign
+59179 apache
+59180 apacheairflow
 59181 smashing magazine
-59182 netmagazine
-59183 codrops
-59184 phonegap
-59185 google drive
-59186 html5 multimedia
-59187 html5 device access
-59188 html5 connectivity
-59189 html5 3d effects
+59182 apachekafka
+59183 apachespark
+59184 apl
+59185 appwrite
+59186 archlinux
+59187 arduino
+59188 argocd
+59189 astro
 59190 html5
 59191 scala
 59192 java
 59193 ruby
 59194 ubuntu
-59195 ruby on rails
+59195 rails
 59196 python
 59197 php
 59198 markdown
 59199 laravel
 59200 magento
-59201 joomla
+59201 awk
 59202 drupal
 59203 chrome
 59204 ie
@@ -15977,92 +15993,92 @@
 59211 sass
 59212 grunt
 59213 bower
-59214 javascript
-59215 javascript shield
+59214 javascript alt
+59215 axios
 59216 jquery
 59217 coffeescript
 59218 backbone
 59219 angular
-59220 jquery ui
+59220 azure
 59221 swift
-59222 symfony
-59223 symfony badge
+59222 azuredevops
+59223 symfony
 59224 less
 59225 stylus
 59226 trello
-59227 atlassian
+59227 azuresqldatabase
 59228 jira
-59229 envato
-59230 snap svg
-59231 raphael
-59232 chart
-59233 compass
-59234 onedrive
+59229 babel
+59230 ballerina
+59231 bamboo
+59232 bash
+59233 beats
+59234 behance
 59235 gulp
 59236 atom
-59237 cisco
-59238 nancy
+59237 blazor
+59238 blender
 59239 jenkins
 59240 clojure
 59241 perl
 59242 clojure alt
-59243 celluloid
-59244 w3c
+59243 browserstack
+59244 bulma
 59245 redis
 59246 postgresql
-59247 webplatform
+59247 bun
 59248 requirejs
-59249 opensource
+59249 c
 59250 typo3
-59251 uikit
+59251 cairo
 59252 doctrine
 59253 groovy
 59254 nginx
 59255 haskell
 59256 zend
 59257 gnu
-59258 yeoman
+59258 cakephp
 59259 heroku
-59260 msql server
+59260 canva
 59261 debian
 59262 travis
 59263 dotnet
 59264 codeigniter
-59265 javascript badge
+59265 javascript
 59266 yii
 59267 composer
-59268 krakenjs badge
-59269 krakenjs
+59268 krakenjs
+59269 capacitor
 59270 mozilla
 59271 firebase
-59272 sizzlejs
-59273 creativecommons
-59274 creativecommons badge
-59275 mitlicence
-59276 senchatouch
-59277 bugsense
-59278 extjs
+59272 carbon
+59273 cassandra
+59274 centos
+59275 ceylon
+59276 circleci
+59277 clarity
+59278 clion
 59279 mootools badge
-59280 mootools
+59280 clojurescript
 59281 ruby rough
-59282 komodo
-59283 coda
-59284 bintray
+59282 cloudflare
+59283 cloudflareworkers
+59284 cmake
 59285 terminal
-59286 code
-59287 responsive
+59286 codeac
+59287 codecov
 59288 dart
-59289 aptana
-59290 mailchimp
-59291 netbeans
+59289 confluence
+59290 consul
+59291 contao
 59292 dreamweaver
-59293 brackets
+59293 corejs
 59294 eclipse
-59295 cloud9
-59296 scrum
+59295 cosmosdb
+59296 couchbase
 59297 prolog
-59298 terminal badge
-59299 code badge
+59298 couchdb
+59299 cplusplus
 59300 mongodb
 59301 meteor
 59302 meteorfull
@@ -16071,25 +16087,330 @@
 59305 ionic
 59306 sublime
 59307 appcelerator
-59308 asterisk
-59309 aws
+59308 crystal
+59309 amazonwebservices
 59310 digital ocean
 59311 dlang
 59312 docker
 59313 erlang
-59314 google cloud platform
+59314 csharp
 59315 grails
 59316 illustrator
 59317 intellij
 59318 materializecss
-59319 openshift
+59319 cucumber
 59320 photoshop
-59321 rackspace
+59321 cypressio
 59322 react
 59323 redhat
-59324 scriptcs
-59332 sqllite
+59324 d3js
+59325 datagrip
+59326 dataspell
+59327 dbeaver
+59328 denojs
+59329 devicon
+59330 discordjs
+59331 djangorest
+59332 sqlite
 59333 vim
+59334 dotnetcore
+59335 dropwizard
+59336 dynamodb
+59337 ecto
+59338 elasticsearch
+59339 electron
+59340 eleventy
+59341 elixir
+59342 elm
+59343 emacs
+59344 embeddedc
+59345 envoy
+59346 eslint
+59347 express
+59348 facebook
+59349 fastapi
+59350 fastify
+59351 faunadb
+59352 feathersjs
+59353 fedora
+59354 figma
+59355 filezilla
+59356 flask
+59357 flutter
+59358 fortran
+59359 foundation
+59360 framermotion
+59361 framework7
+59362 gatling
+59363 gatsby
+59364 gazebo
+59365 gcc
+59366 gentoo
+59367 gimp
+59368 gitbook
+59369 githubactions
+59370 githubcodespaces
+59371 gitlab
+59372 gitpod
+59373 gitter
+59374 godot
+59375 goland
+59376 google
+59377 googlecloud
+59378 gradle
+59379 grafana
+59380 graphql
+59381 grpc
+59382 hadoop
+59383 handlebars
+59384 hardhat
+59385 harvester
+59386 haxe
+59387 helm
+59388 hibernate
+59389 homebrew
+59390 hugo
+59391 ifttt
+59392 influxdb
+59393 inkscape
+59394 insomnia
+59395 jaegertracing
+59396 jamstack
+59397 jasmine
+59398 jeet
+59399 jest
+59400 jetbrains
+59401 jetpackcompose
+59402 jiraalign
+59403 json
+59404 jule
+59405 julia
+59406 junit
+59407 jupyter
+59408 k3os
+59409 k3s
+59410 k6
+59411 kaggle
+59412 karatelabs
+59413 karma
+59414 kdeneon
+59415 keras
+59416 kibana
+59417 knexjs
+59418 knockout
+59419 kotlin
+59420 ktor
+59421 kubernetes
+59422 labview
+59423 latex
+59424 linkedin
+59425 liquibase
+59426 livewire
+59427 llvm
+59428 lodash
+59429 logstash
+59430 lua
+59431 lumen
+59432 mariadb
+59433 materialui
+59434 matlab
+59435 matplotlib
+59436 maven
+59437 maya
+59438 microsoftsqlserver
+59439 minitab
+59440 mithril
+59441 mobx
+59442 mocha
+59443 modx
+59444 moleculer
+59445 mongoose
+59446 moodle
+59447 msdos
+59448 nano
+59449 neo4j
+59450 neovim
+59451 nestjs
+59452 netlify
+59453 networkx
+59454 nextjs
+59455 ngrx
+59456 nhibernate
+59457 nim
+59458 nimble
+59459 nixos
+59460 nodemon
+59461 nodewebkit
+59462 nomad
+59463 norg
+59464 notion
+59465 nuget
+59466 numpy
+59467 nuxtjs
+59468 oauth
+59469 objectivec
+59470 ocaml
+59471 ohmyzsh
+59472 okta
+59473 openal
+59474 openapi
+59475 opencl
+59476 opencv
+59477 opengl
+59478 openstack
+59479 opensuse
+59480 opentelemetry
+59481 oracle
+59482 ory
+59483 p5js
+59484 packer
+59485 pandas
+59486 pfsense
+59487 phalcon
+59488 phoenix
+59489 photonengine
+59490 phpstorm
+59491 playwright
+59492 plotly
+59493 pnpm
+59494 podman
+59495 poetry
+59496 polygon
+59497 portainer
+59498 postcss
+59499 postman
+59500 powershell
+59501 premierepro
+59502 prisma
+59503 processing
+59504 prometheus
+59505 protractor
+59506 pulsar
+59507 pulumi
+59508 puppeteer
+59509 purescript
+59510 putty
+59511 pycharm
+59512 pypi
+59513 pyscript
+59514 pytest
+59515 pytorch
+59516 qodana
+59517 qt
+59518 quarkus
+59519 quasar
+59520 qwik
+59521 r
+59522 rabbitmq
+59523 railway
+59524 rancher
+59525 reach
+59526 reactbootstrap
+59527 reactnavigation
+59528 reactrouter
+59529 readthedocs
+59530 realm
+59531 rect
+59532 redux
+59533 renpy
+59534 replit
+59535 rider
+59536 rocksdb
+59537 rockylinux
+59538 rollup
+59539 ros
+59540 rspec
+59541 rstudio
+59542 rubymine
+59543 rxjs
+59544 salesforce
+59545 sanity
+59546 scalingo
+59547 scikitlearn
+59548 sdl
+59549 selenium
+59550 sema
+59551 sentry
+59552 sequelize
+59553 shopware
+59554 shotgrid
+59555 sketch
+59556 slack
+59557 socketio
+59558 solidity
+59559 solidjs
+59560 sonarqube
+59561 sourcetree
+59562 spack
+59563 splunk
+59564 spring
+59565 spss
+59566 spyder
+59567 sqlalchemy
+59568 sqldeveloper
+59569 ssh
+59570 stata
+59571 storybook
+59572 streamlit
+59573 subversion
+59574 supabase
+59575 svelte
+59576 swagger
+59577 swiper
+59578 tailwindcss
+59579 tauri
+59580 tensorflow
+59581 terraform
+59582 tex
+59583 thealgorithms
+59584 threedsmax
+59585 threejs
+59586 titaniumsdk
+59587 tomcat
+59588 tortoisegit
+59589 towergit
+59590 traefikmesh
+59591 traefikproxy
+59592 trpc
+59593 twitter
+59594 typescript
+59595 uml
+59596 unix
+59597 unrealengine
+59598 uwsgi
+59599 v8
+59600 vagrant
+59601 vala
+59602 vault
+59603 vercel
+59604 vertx
+59605 visualbasic
+59606 vite
+59607 vitejs
+59608 vitess
+59609 vitest
+59610 vscode
+59611 vsphere
+59612 vuejs
+59613 vuestorefront
+59614 vuetify
+59615 vyper
+59616 wasm
+59617 webflow
+59618 weblate
+59619 webpack
+59620 webstorm
+59621 windows11
+59622 woocommerce
+59623 xamarin
+59624 xcode
+59625 xd
+59626 xml
+59627 yaml
+59628 yarn
+59629 yugabytedb
+59630 yunohost
+59631 zig
 60000 add
 60001 lightbulb
 60002 repo
@@ -16477,44 +16798,817 @@
 60393 verified filled
 60394 newline
 60395 layout
+60396 layout activitybar left
+60397 layout activitybar right
+60398 layout panel left
+60399 layout panel center
+60400 layout panel justify
+60401 layout panel right
+60402 layout panel
+60403 layout sidebar left
+60404 layout sidebar right
+60405 layout statusbar
+60406 layout menubar
+60407 layout centered
+60408 target
+60409 indent
+60410 record small
+60411 error small
+60412 arrow circle down
+60413 arrow circle left
+60414 arrow circle right
+60415 arrow circle up
+60416 layout sidebar right off
+60417 layout panel off
+60418 layout sidebar left off
+60419 blank
+60420 heart filled
+60421 map
+60422 map filled
+60423 circle small
+60424 bell slash
+60425 bell slash dot
+60426 comment unresolved
+60427 git pull request go to changes
+60428 git pull request new changes
+60429 search fuzzy
+60430 comment draft
+60431 send
+60432 sparkle
+60433 insert
+60434 mic
+60435 thumbsdown filled
+60436 thumbsup filled
+60437 coffee
+60438 snake
+60439 game
+60440 vr
+60441 chip
+60442 piano
+60443 music
+60444 mic filled
+60445 git fetch
+60446 copilot
+60672 location dot
+60673 medapps
+60674 medrt
+60675 microphone lines
+60676 microsoft
+60677 mix
+60678 mizuni
+60679 mobile button
+60680 mobile
+60681 mobile screen
+60682 monero
+60683 money bill 1
+60684 napster
+60685 node js
+60686 npm
+60687 ns8
+60688 nutritionix
+60689 page4
+60690 palfed
+60691 patreon
+60692 periscope
+60693 phabricator
+60694 phoenix framework
+60695 phone slash
+60696 playstation
+60697 image portrait
+60698 pushed
+60699 python
+60700 red river
+60701 wpressr
+60702 replyd
+60703 resolving
+60704 rocketchat
+60705 rockrms
+60706 schlix
+60707 searchengin
+60708 servicestack
+60709 shield halved
+60710 sistrix
+60711 speakap
+60712 staylinked
+60713 steam symbol
+60714 sticker mule
+60715 studiovinari
+60716 supple
+60717 tablet button
+60718 tablet
+60719 gauge high
+60720 ticket simple
+60721 uber
+60722 uikit
+60723 uniregistry
+60724 untappd
+60725 user large
+60726 ussunnah
+60727 vaadin
+60728 viber
+60729 vimeo
+60730 vnv
+60731 square whatsapp
+60732 whmcs
+60733 wordpress simple
+60734 xbox
+60735 yandex
+60736 yandex international
+60737 apple pay
+60738 cc apple pay
+60739 fly
+60740 node
+60741 osi
+60742 react
+60743 autoprefixer
+60744 less
+60745 sass
+60746 vuejs
+60747 angular
+60748 aviato
+60749 down left and up right to center
+60750 ember
+60751 up right and down left from center
+60752 gitter
+60753 hooli
+60754 strava
+60755 stripe
+60756 stripe s
+60757 typo3
+60758 amazon pay
+60759 cc amazon pay
+60760 ethereum
+60761 korvue
+60762 elementor
+60763 baseball bat ball
+60764 baseball
+60765 basketball
+60766 bowling ball
+60767 chess
+60768 chess bishop
+60769 chess board
+60770 chess king
+60771 chess knight
+60772 chess pawn
+60773 chess queen
+60774 chess rook
+60775 dumbbell
+60776 flipboard
+60777 football
+60778 golf ball tee
+60779 hips
+60780 hockey puck
+60781 php
+60782 broom ball
+60783 quinscape
+60784 square full
+60785 table tennis paddle ball
+60786 volleyball
+60787 hand dots
+60788 bandage
+60789 box
+60790 boxes stacked
+60791 briefcase medical
+60792 fire flame simple
+60793 capsules
+60794 clipboard check
+60795 clipboard list
+60796 person dots from line
+60797 dna
+60798 dolly
+60799 cart flatbed
+60800 file medical
+60801 file waveform
+60802 kit medical
+60803 circle h
+60804 id card clip
+60805 notes medical
+60806 pallet
+60807 pills
+60808 prescription bottle
+60809 prescription bottle medical
+60810 bed pulse
+60811 truck fast
+60812 smoking
+60813 syringe
+60814 tablets
+60815 thermometer alt
+60816 vial
+60817 vials
+60818 warehouse
+60819 weight scale
+60820 x ray
+60821 box open
+60822 comment slash
+60823 couch
+60824 circle dollar to slot
+60825 dove
+60826 hand holding
+60827 hand holding heart
+60828 hand holding dollar
+60829 hand holding droplet
+60830 hands holding
+60831 handshake angle
+60832 handshake simple
+60833 parachute box
+60834 people carry box
+60835 piggy bank
+60836 readme
+60837 ribbon
+60838 route
+60839 seedling
+60840 sign hanging
+60841 face smile wink
+60842 tape
+60843 truck ramp box
+60844 truck moving
+60845 video slash
+60846 wine glass
+60847 java
+60848 pied piper hat
+60849 creative commons by
+60850 creative commons nc
+60851 creative commons nc eu
+60852 creative commons nc jp
+60853 creative commons nd
+60854 creative commons pd
+60855 creative commons pd alt
+60856 creative commons remix
+60857 creative commons sa
+60858 creative commons sampling
+60859 creative commons sampling plus
+60860 creative commons share
+60861 creative commons zero
+60862 ebay
+60863 keybase
+60864 mastodon
+60865 r project
+60866 researchgate
+60867 teamspeak
+60868 user large slash
+60869 user astronaut
+60870 user check
+60871 user clock
+60872 user gear
+60873 user pen
+60874 user group
+60875 user graduate
+60876 user lock
+60877 user minus
+60878 user ninja
+60879 user shield
+60880 user slash
+60881 user tag
+60882 user tie
+60883 users gear
+60884 first order alt
+60885 fulcrum
+60886 galactic republic
+60887 galactic senate
+60888 jedi order
+60889 mandalorian
+60890 old republic
+60891 phoenix squadron
+60892 sith
+60893 trade federation
+60894 wolf pack battalion
+60895 scale unbalanced
+60896 scale unbalanced flip
+60897 blender
+60898 book open
+60899 tower broadcast
+60900 broom
+60901 chalkboard
+60902 chalkboard user
+60903 church
+60904 coins
+60905 compact disc
+60906 crow
+60907 crown
+60908 dice
+60909 dice five
+60910 dice four
+60911 dice one
+60912 dice six
+60913 dice three
+60914 dice two
+60915 divide
+60916 door closed
+60917 door open
+60918 equals
+60919 feather
+60920 frog
+60921 gas pump
+60922 glasses
+60923 greater than
+60924 greater than equal
+60925 helicopter
+60926 infinity
+60927 kiwi bird
+60928 progress empty left
+60929 progress empty mid
+60930 progress empty right
+60931 progress full left
+60932 progress full mid
+60933 progress full right
+60934 progress spinner 1
+60935 progress spinner 2
+60936 progress spinner 3
+60937 progress spinner 4
+60938 progress spinner 5
+60939 progress spinner 6
+60940 receipt
+60941 robot
+60942 ruler
+60943 ruler combined
+60944 ruler horizontal
+60945 ruler vertical
+60946 school
+60947 screwdriver
+60948 shoe prints
+60949 skull
+60950 ban smoking
+60951 store
+60952 shop
+60953 bars staggered
+60954 stroopwafel
+60955 toolbox
+60956 shirt
+60957 person walking
+60958 wallet
+60959 face angry
+60960 archway
+60961 book atlas
+60962 award
+60963 delete left
+60964 bezier curve
+60965 bong
+60966 brush
+60967 bus simple
+60968 cannabis
+60969 check double
+60970 martini glass citrus
+60971 bell concierge
+60972 cookie
+60973 cookie bite
+60974 crop simple
+60975 tachograph digital
+60976 face dizzy
+60977 compass drafting
+60978 drum
+60979 drum steelpan
+60980 feather pointed
+60981 file contract
+60982 file arrow down
+60983 file export
+60984 file import
+60985 file invoice
+60986 file invoice dollar
+60987 file prescription
+60988 file signature
+60989 file arrow up
+60990 fill
+60991 fill drip
+60992 fingerprint
+60993 fish
+60994 face flushed
+60995 face frown open
+60996 martini glass
+60997 earth africa
+60998 earth americas
+60999 earth asia
+61000 face grimace
+61001 face grin
+61002 face grin wide
+61003 face grin beam
+61004 face grin beam sweat
+61005 face grin hearts
+61006 face grin squint
+61007 face grin squint tears
+61008 face grin stars
+61009 face grin tears
+61010 face grin tongue
+61011 face grin tongue squint
+61012 face grin tongue wink
+61013 face grin wink
+61014 grip
+61015 grip vertical
+61016 headphones simple
+61017 headset
+61018 highlighter
+61019 hornbill
+61020 hot tub person
+61021 hotel building
+61022 joint
+61023 face kiss
+61024 face kiss beam
+61025 face kiss wink heart
+61026 face laugh
+61027 face laugh beam
+61028 face laugh squint
+61029 face laugh wink
+61030 cart flatbed suitcase
+61031 mailchimp
+61032 map location
+61033 map location dot
+61034 marker
+61035 medal
+61036 megaport
+61037 face meh blank
+61038 face rolling eyes
+61039 monument
+61040 mortar pestle
+61041 nimblr
+61042 paint roller
+61043 passport
+61044 pen fancy
+61045 pen nib
+61046 pen ruler
+61047 plane arrival
+61048 plane departure
+61049 prescription
+61050 rev
+61051 face sad cry
+61052 face sad tear
+61053 shopware
+61054 van shuttle
+61055 signature
+61056 face smile beam
+61057 solar panel
+61058 spa
+61059 splotch
+61060 spray can
+61061 squarespace
+61062 stamp
+61063 star half stroke
+61064 suitcase rolling
+61065 face surprise
+61066 swatchbook
+61067 person swimming
+61068 water ladder
+61069 themeco
+61070 droplet slash
+61071 face tired
+61072 tooth
+61073 umbrella beach
+61074 vector square
+61075 weebly
+61076 weight hanging
+61077 wine glass empty
+61078 wix
+61079 spray can sparkles
+61080 apple whole
+61081 atom
+61082 bone
+61083 book open reader
+61084 brain
+61085 car rear
+61086 car battery
+61087 car burst
+61088 car side
+61089 charging station
+61090 diamond turn right
+61091 draw polygon
+61092 ello
+61093 hackerrank
+61094 kaggle
+61095 laptop code
+61096 layer group
+61097 location crosshairs
+61098 lungs
+61099 markdown
+61100 microscope
+61101 neos
+61102 oil can
+61103 poop
+61104 shapes
+61105 star of life
+61106 gauge
+61107 gauge simple
+61108 teeth
+61109 teeth open
+61110 masks theater
+61111 traffic light
+61112 truck monster
+61113 truck pickup
+61114 zhihu
+61115 rectangle ad
+61116 alipay
+61117 ankh
+61118 book bible
+61119 business time
+61120 city
+61121 comment dollar
+61122 comments dollar
+61123 cross
+61124 dharmachakra
+61125 envelope open text
+61126 folder minus
+61127 folder plus
+61128 filter circle dollar
+61129 gopuram
+61130 hamsa
+61131 bahai
+61132 jedi
+61133 book journal whills
+61134 kaaba
+61135 khanda
+61136 landmark
+61137 envelopes bulk
+61138 menorah
+61139 mosque
+61140 om
+61141 spaghetti monster flying
+61142 peace
+61143 place of worship
+61144 square poll vertical
+61145 square poll horizontal
+61146 person praying
+61147 hands praying
+61148 book quran
+61149 magnifying glass dollar
+61150 magnifying glass location
+61151 socks
+61152 square root variable
+61153 star and crescent
+61154 star of david
+61155 synagogue
+61156 the red yeti
+61157 scroll torah
+61158 torii gate
+61159 vihara
+61160 volume xmark
+61161 yin yang
+61162 blender phone
+61163 book skull
+61164 campground
+61165 cat
+61166 chair
+61167 cloud moon
+61168 cloud sun
+61169 cow
+61170 critical role
+61171 d and d beyond
+61172 dev
+61173 dice d20
+61174 dice d6
+61175 dog
+61176 dragon
+61177 drumstick bite
+61178 dungeon
+61179 fantasy flight games
+61180 file csv
+61181 hand fist
+61182 ghost
+61183 hammer
+61184 hanukiah
+61185 hat wizard
+61186 person hiking
+61187 hippo
+61188 horse
+61189 house chimney crack
+61190 hryvnia sign
+61191 mask
+61192 mountain
+61193 network wired
+61194 otter
+61195 ring
+61196 person running
+61197 scroll
+61198 skull crossbones
+61199 slash
+61200 spider
+61201 toilet paper
+61202 tractor
+61203 user injured
+61204 vr cardboard
+61205 wand sparkles
+61206 wind
+61207 wine bottle
+61208 wizards of the coast
+61209 think peaks
+61210 cloud meatball
+61211 cloud moon rain
+61212 cloud rain
+61213 cloud showers heavy
+61214 cloud sun rain
+61215 democrat
+61216 flag usa
+61217 hurricane
+61218 landmark dome
+61219 meteor
+61220 person booth
+61221 poo storm
+61222 rainbow
+61223 reacteurope
+61224 republican
+61225 smog
+61226 temperature high
+61227 temperature low
+61228 cloud bolt
+61229 tornado
+61230 volcano
+61231 check to slot
+61232 water
+61233 artstation
+61234 atlassian
+61235 baby
+61236 baby carriage
+61237 biohazard
+61238 blog
+61239 calendar day
+61240 calendar week
+61241 canadian maple leaf
+61242 candy cane
+61243 carrot
+61244 cash register
+61245 centos
+61246 minimize
+61247 confluence
+61248 dhl
+61249 diaspora
+61250 dumpster
+61251 dumpster fire
+61252 ethernet
+61253 fedex
+61254 fedora
+61255 figma
+61256 gifts
+61257 champagne glasses
+61258 whiskey glass
+61259 earth europe
+61260 grip lines
+61261 grip lines vertical
+61262 guitar
+61263 heart crack
+61264 holly berry
+61265 horse head
+61266 icicles
+61267 igloo
+61268 intercom
+61269 invision
+61270 jira
+61271 mendeley
+61272 mitten
+61273 mug hot
+61274 radiation
+61275 circle radiation
+61276 raspberry pi
+61277 redhat
+61278 restroom
+61279 satellite
+61280 satellite dish
+61281 sd card
+61282 sim card
+61283 person skating
+61284 sketch
+61285 person skiing
+61286 person skiing nordic
+61287 sleigh
+61288 comment sms
+61289 person snowboarding
+61290 snowman
+61291 snowplow
+61292 sourcetree
+61293 suse
+61294 tenge sign
+61295 toilet
+61296 screwdriver wrench
+61297 cable car
+61298 ubuntu
+61299 ups
+61300 usps
+61301 yarn
+61302 fire flame curved
+61303 bacon
+61304 book medical
+61305 bread slice
+61306 cheese
+61307 house chimney medical
+61308 clipboard user
+61309 comment medical
+61310 crutch
+61311 disease
+61312 egg
+61313 folder tree
+61314 burger
+61315 hand middle finger
+61316 helmet safety
+61317 house chimney
+61318 hospital user
+61319 hotdog
+61320 ice cream
+61321 laptop medical
+61322 pager
+61323 pepper hot
+61324 pizza slice
+61325 sack dollar
+61326 book tanakh
+61327 bars progress
+61328 trash arrow up
+61329 trash can arrow up
+61330 user nurse
+61331 airbnb
+61332 battle net
+61333 bootstrap
+61334 buffer
+61335 chromecast
+61336 evernote
+61337 itch io
+61338 salesforce
+61339 speaker deck
+61340 symfony
+61341 wave square
+61342 waze
+61343 yammer
+61344 git alt
+61345 stackpath
+61346 person biking
+61347 border all
+61348 border none
+61349 border top left
+61350 person digging
+61351 fan
+61352 icons
+61353 phone flip
+61354 square phone flip
+61355 photo film
+61356 text slash
+61357 arrow down z a
+61358 arrow up z a
+61359 arrow down short wide
+61360 arrow up short wide
+61361 arrow down 9 1
+61362 arrow up 9 1
+61363 spell check
+61364 voicemail
+61365 cotton bureau
+61366 buy n large
+61367 hat cowboy
+61368 hat cowboy side
+61369 mdb
+61370 computer mouse
+61371 orcid
+61372 radio
+61373 record vinyl
+61374 swift
+61375 umbraco
+61376 walkie talkie
+61377 caravan
+61378 avianex
+61379 less than
+61380 less than equal
+61381 memory
+61382 microphone lines slash
+61383 money bill wave
+61384 money bill 1 wave
+61385 money check
+61386 money check dollar
+61387 not equal
+61388 palette
+61389 square parking
+61390 diagram project
 61440 glass
 61441 music
-61442 search
+61442 magnifying glass
 61443 envelope o
 61444 heart
 61445 star
 61446 star o
 61447 user
 61448 film
-61449 th large
-61450 th
-61451 th list
+61449 table cells large
+61450 table cells
+61451 table list
 61452 check
-61453 close remove times
-61454 search plus
-61456 search minus
+61453 close
+61454 magnifying glass plus
+61455 images
+61456 magnifying glass minus
 61457 power off
 61458 signal
-61459 cog gear
-61460 trash o
+61459 cog
+61460 trash can
 61461 home
 61462 file o
-61463 clock o
+61463 clock
 61464 road
 61465 download
 61466 arrow circle o down
 61467 arrow circle o up
 61468 inbox
 61469 play circle o
-61470 repeat rotate right
-61473 refresh
+61470 arrow rotate right
+61471 pen
+61472 pen clip
+61473 arrows rotate
 61474 list alt
 61475 lock
 61476 flag
 61477 headphones
 61478 volume off
 61479 volume down
-61480 volume up
+61480 volume high
 61481 qrcode
 61482 barcode
 61483 tag
@@ -16533,57 +17627,61 @@
 61496 align right
 61497 align justify
 61498 list
-61499 dedent outdent
+61499 dedent
 61500 indent
-61501 video camera
-61502 picture o image photo
+61501 video
+61502 image
+61503 down long
 61504 pencil
-61505 map marker
+61505 location pin
 61506 adjust
-61507 tint
-61508 pencil square o edit
+61507 droplet
+61508 edit
 61509 share square o
 61510 check square o
 61511 arrows
-61512 step backward
-61513 fast backward
+61512 backward step
+61513 backward fast
 61514 backward
 61515 play
 61516 pause
 61517 stop
 61518 forward
+61519 left long
 61520 fast forward
-61521 step forward
+61521 forward step
 61522 eject
 61523 chevron left
 61524 chevron right
-61525 plus circle
-61526 minus circle
-61527 times circle
+61525 circle plus
+61526 circle minus
+61527 remove sign
 61528 check circle
-61529 question circle
-61530 info circle
+61529 circle question
+61530 circle info
 61531 crosshairs
-61532 times circle o
+61532 circle xmark
 61533 check circle o
 61534 ban
+61535 file pen
 61536 arrow left
 61537 arrow right
 61538 arrow up
 61539 arrow down
-61540 share mail forward
+61540 mail forward
 61541 expand
 61542 compress
 61543 plus
 61544 minus
 61545 asterisk
-61546 exclamation circle
+61546 circle exclamation
 61547 gift
 61548 leaf
 61549 fire
 61550 eye
+61551 maximize
 61552 eye slash
-61553 exclamation triangle warning
+61553 exclamation triangle
 61554 plane
 61555 calendar
 61556 random
@@ -16592,31 +17690,33 @@
 61559 chevron up
 61560 chevron down
 61561 retweet
-61562 shopping cart
+61562 cart shopping
 61563 folder
 61564 folder open
-61565 arrows v
+61565 arrows up down
 61566 arrows h
+61567 clipboard alt
 61568 bar chart
-61569 twitter square
+61569 square twitter
 61570 facebook square
 61571 camera retro
 61572 key
-61573 cogs gears
+61573 cogs
 61574 comments
 61575 thumbs o up
 61576 thumbs o down
 61577 star half
-61578 heart o
-61579 sign out
+61578 heard o
+61579 arrow right from bracket
 61580 linkedin square
 61581 thumb tack
-61582 external link
-61584 sign in
+61582 arrow up right from square
+61583 left right
+61584 arrow right to bracket
 61585 trophy
 61586 github square
 61587 upload
-61588 lemon o
+61588 lemon
 61589 phone
 61590 square o
 61591 bookmark o
@@ -16626,8 +17726,9 @@
 61595 github
 61596 unlock
 61597 credit card
-61598 rss feed
-61600 hdd o
+61598 feed
+61599 up down
+61600 hard drive
 61601 bullhorn
 61602 bell o
 61603 certificate
@@ -16641,25 +17742,40 @@
 61611 arrow circle down
 61612 globe
 61613 wrench
-61614 tasks
+61614 list check
+61615 square font awesome stroke
 61616 filter
 61617 briefcase
 61618 arrows alt
-61632 users group
-61633 link chain
+61619 up right from square
+61620 square up right
+61621 right left
+61622 repeat alt
+61623 accusoft
+61624 adversal
+61625 affiliatetheme
+61626 algolia
+61627 amilia
+61628 angrycreative
+61629 app store
+61630 app store ios
+61631 apper
+61632 group
+61633 chain
 61634 cloud
 61635 flask
-61636 scissors cut
-61637 files o copy
+61636 cut
+61637 copy
 61638 paperclip
-61639 floppy o save
+61639 floppy disk
 61640 square
-61641 bars navicon reorder
+61641 bars
 61642 list ul
 61643 list ol
 61644 strikethrough
 61645 underline
 61646 table
+61647 asymmetrik
 61648 magic
 61649 truck
 61650 pinterest
@@ -16672,25 +17788,27 @@
 61657 caret left
 61658 caret right
 61659 columns
-61660 sort unsorted
-61661 sort desc down
-61662 sort asc up
+61660 sort
+61661 sort desc
+61662 sort asc
+61663 audible
 61664 envelope
 61665 linkedin
-61666 undo rotate left
-61667 gavel legal
-61668 tachometer dashboard
+61666 arrow rotate left
+61667 gavel
+61668 dashboard
 61669 comment o
 61670 comments o
-61671 bolt flash
+61671 bolt
 61672 sitemap
 61673 umbrella
-61674 clipboard paste
-61675 lightbulb o
-61676 exchange
-61677 cloud download
-61678 cloud upload
-61680 user md
+61674 clipboard
+61675 lightbulb
+61676 arrow right arrow left
+61677 cloud arrow down
+61678 cloud arrow up
+61679 aws
+61680 user doctor
 61681 stethoscope
 61682 suitcase
 61683 bell
@@ -16698,13 +17816,14 @@
 61685 cutlery
 61686 file text o
 61687 building o
-61688 hospital o
+61688 hospital
 61689 ambulance
 61690 medkit
 61691 fighter jet
 61692 beer
 61693 h square
 61694 plus square
+61695 bimobject
 61696 angle double left
 61697 angle double right
 61698 angle double up
@@ -16715,32 +17834,36 @@
 61703 angle down
 61704 desktop
 61705 laptop
-61706 tablet
+61706 tablet screen button
 61707 mobile phone
 61708 circle o
 61709 quote left
 61710 quote right
+61711 bitcoin
 61712 spinner
 61713 circle
 61714 mail reply
 61715 github alt
 61716 folder o
 61717 folder open o
-61720 smile o
-61721 frown o
-61722 meh o
+61718 bity
+61719 blackberry
+61720 face smile
+61721 face frown
+61722 face meh
 61723 gamepad
-61724 keyboard o
+61724 keyboard
 61725 flag o
 61726 flag checkered
+61727 blogger
 61728 terminal
 61729 code
 61730 mail reply all
-61731 star half o
+61731 star half empty
 61732 location arrow
 61733 crop
-61734 code fork
-61735 chain broken unlink
+61734 code branch
+61735 chain broken
 61736 question
 61737 info
 61738 exclamation
@@ -16748,6 +17871,7 @@
 61740 subscript
 61741 eraser
 61742 puzzle piece
+61743 blogger b
 61744 microphone
 61745 microphone slash
 61746 shield
@@ -16763,73 +17887,78 @@
 61756 css3
 61757 anchor
 61758 unlock alt
+61759 buromobelexperte
 61760 bullseye
-61761 ellipsis h
+61761 ellipsis
 61762 ellipsis v
 61763 rss square
-61764 play circle
+61764 circle play
 61765 ticket
 61766 minus square
 61767 minus square o
-61768 level up
-61769 level down
+61768 arrow turn up
+61769 arrow turn down
 61770 check square
 61771 pencil square
 61772 external link square
-61773 share square
+61773 share from square
 61774 compass
+61775 centercode
 61776 caret square o down
 61777 caret square o up
 61778 caret square o right
-61779 eur euro
+61779 eur
 61780 gbp
-61781 usd dollar
-61782 inr rupee
-61783 cny rmb jpy yen
-61784 rub rouble
-61785 krw won
-61786 btc bitcoin
+61781 dollar
+61782 inr
+61783 cny
+61784 rouble
+61785 krw
+61786 btc
 61787 file
-61788 file text
-61789 sort alpha asc
-61790 sort alpha desc
-61792 sort amount asc
-61793 sort amount desc
-61794 sort numeric asc
-61795 sort numeric desc
+61788 file lines
+61789 arrow down a z
+61790 arrow up a z
+61791 cloudscale
+61792 arrow down wide short
+61793 arrow up wide short
+61794 arrow down 1 9
+61795 arrow up 1 9
 61796 thumbs up
 61797 thumbs down
-61798 youtube square
-61799 youtube
+61798 square youtube
+61799 cloudsmith
 61800 xing
-61801 xing square
-61802 youtube play
+61801 square xing
+61802 youtube
 61803 dropbox
 61804 stack overflow
 61805 instagram
 61806 flickr
+61807 cloudversify
 61808 adn
 61809 bitbucket
 61810 bitbucket square
 61811 tumblr
-61812 tumblr square
-61813 long arrow down
-61814 long arrow up
-61815 long arrow left
-61816 long arrow right
+61812 square tumblr
+61813 arrow down long
+61814 arrow up long
+61815 arrow left long
+61816 arrow right long
 61817 apple
 61818 windows
 61819 android
 61820 linux
 61821 dribbble
 61822 skype
+61823 code merge
 61824 foursquare
 61825 trello
 61826 female
 61827 male
-61828 gratipay
-61829 sun o
-61830 moon o
+61828 gittip
+61829 sun
+61830 moon
 61831 archive
 61832 bug
 61833 vk
@@ -16838,21 +17967,23 @@
 61836 pagelines
 61837 stack exchange
 61838 arrow circle o right
+61839 cpanel
 61840 arrow circle o left
 61841 caret square o left
-61842 dot circle o
+61842 circle dot
 61843 wheelchair
-61844 vimeo square
-61845 try turkish lira
+61844 square vimeo
+61845 lira sign
 61846 plus square o
-61847 space shuttle
+61847 shuttle space
 61848 slack
 61849 envelope square
 61850 wordpress
 61851 openid
-61852 university institution bank
-61853 graduation cap mortar board
+61852 bank
+61853 graduation cap
 61854 yahoo
+61855 css3 alt
 61856 google
 61857 reddit
 61858 reddit square
@@ -16868,6 +17999,7 @@
 61868 fax
 61869 building
 61870 child
+61871 cuttlefish
 61872 paw
 61873 spoon
 61874 cube
@@ -16875,59 +18007,63 @@
 61876 behance
 61877 behance square
 61878 steam
-61879 steam square
+61879 square steam
 61880 recycle
-61881 car automobile
-61882 taxi cab
+61881 automobile
+61882 cab
 61883 tree
 61884 spotify
 61885 deviantart
 61886 soundcloud
+61887 d and d
 61888 database
-61889 file pdf o
-61890 file word o
-61891 file excel o
-61892 file powerpoint o
-61893 file image o photo picture
-61894 file archive o zip
-61895 file audio o sound
-61896 file video o movie
-61897 file code o
+61889 file pdf
+61890 file word
+61891 file excel
+61892 file powerpoint
+61893 file image
+61894 file archive o
+61895 file audio
+61896 file movie o
+61897 file code
 61898 vine
 61899 codepen
 61900 jsfiddle
-61901 life ring support
-61902 circle o notch
-61904 rebel
+61901 life bouy
+61902 circle notch
+61903 deploydog
+61904 ra
 61905 empire
 61906 git square
 61907 git
-61908 hacker news y combinator
+61908 hacker news
 61909 tencent weibo
 61910 qq
-61911 weixin wechat
-61912 paper plane send
-61913 paper plane o send
-61914 history
+61911 wechat
+61912 paper plane
+61913 paper plane o
+61914 clock rotate left
 61915 circle thin
 61916 header
 61917 paragraph
 61918 sliders
+61919 deskpro
 61920 share alt
 61921 share alt square
 61922 bomb
-61923 futbol o soccer ball
+61923 futbol
 61924 tty
 61925 binoculars
 61926 plug
 61927 slideshare
 61928 twitch
 61929 yelp
-61930 newspaper o
+61930 newspaper
 61931 wifi
 61932 calculator
 61933 paypal
 61934 google wallet
+61935 digital ocean
 61936 cc visa
 61937 cc mastercard
 61938 cc discover
@@ -16939,12 +18075,13 @@
 61944 trash
 61945 copyright
 61946 at
-61947 eyedropper
+61947 eye dropper
 61948 paint brush
 61949 birthday cake
 61950 area chart
-61952 pie chart
-61953 line chart
+61951 discord
+61952 chart pie
+61953 chart line
 61954 lastfm
 61955 lastfm square
 61956 toggle off
@@ -16954,10 +18091,11 @@
 61960 ioxhost
 61961 angellist
 61962 cc
-61963 ils shekel sheqel
-61964 meanpath
+61963 ils
+61964 discourse
 61965 buysellads
 61966 connectdevelop
+61967 dochub
 61968 dashcube
 61969 forumbee
 61970 leanpub
@@ -16967,32 +18105,36 @@
 61974 skyatlas
 61975 cart plus
 61976 cart arrow down
-61977 diamond
+61977 gem	diamond
 61978 ship
 61979 user secret
 61980 motorcycle
 61981 street view
-61982 heartbeat
+61982 heart pulse
+61983 docker
+61984 draft2digital
 61985 venus
 61986 mars
 61987 mercury
-61988 intersex transgender
+61988 intersex
 61989 transgender alt
 61990 venus double
 61991 mars double
 61992 venus mars
 61993 mars stroke
-61994 mars stroke v
+61994 mars stroke up
 61995 mars stroke h
 61996 neuter
 61997 genderless
-62000 facebook official
+61998 square dribbble
+61999 dyalog
+62000 earlybirds
 62001 pinterest p
 62002 whatsapp
 62003 server
 62004 user plus
 62005 user times
-62006 bed hotel
+62006 bed
 62007 viacoin
 62008 train
 62009 subway
@@ -17001,39 +18143,42 @@
 62012 optin monster
 62013 opencart
 62014 expeditedssl
-62016 battery full
-62017 battery three quarters
-62018 battery half
-62019 battery quarter
-62020 battery empty
-62021 mouse pointer
+62015 erlang
+62016 battery
+62017 battery 3
+62018 battery 2
+62019 battery 1
+62020 battery 0
+62021 arrow pointer
 62022 i cursor
 62023 object group
 62024 object ungroup
-62025 sticky note
+62025 note sticky
 62026 sticky note o
 62027 cc jcb
 62028 cc diners club
 62029 clone
 62030 balance scale
+62031 facebook f
 62032 hourglass o
-62033 hourglass start
-62034 hourglass half
-62035 hourglass end
+62033 hourglass 1
+62034 hourglass 2
+62035 hourglass 3
 62036 hourglass
-62037 hand rock o
-62038 hand paper o
-62039 hand scissors o
-62040 hand lizard o
-62041 hand spock o
-62042 hand pointer o
-62043 hand peace o
+62037 hand back fist
+62038 hand
+62039 hand scissors
+62040 hand lizard
+62041 hand spock
+62042 hand pointer
+62043 hand peace
 62044 trademark
 62045 registered
 62046 creative commons
+62047 facebook messenger
 62048 gg
 62049 gg circle
-62050 tripadvisor
+62050 firstdraft
 62051 odnoklassniki
 62052 odnoklassniki square
 62053 get pocket
@@ -17043,24 +18188,26 @@
 62057 firefox
 62058 opera
 62059 internet explorer
-62060 television tv
+62060 television
 62061 contao
 62062 500px
+62063 fonticons fi
 62064 amazon
-62065 calendar plus o
-62066 calendar minus o
+62065 calendar plus
+62066 calendar minus
 62067 calendar times o
-62068 calendar check o
+62068 calendar check
 62069 industry
 62070 map pin
 62071 map signs
 62072 map o
 62073 map
 62074 commenting
-62075 commenting o
+62075 comment dots
 62076 houzz
-62077 vimeo
+62077 vimeo v
 62078 black tie
+62079 fort awesome alt
 62080 fonticons
 62081 reddit alien
 62082 edge
@@ -17072,12 +18219,13 @@
 62088 product hunt
 62089 mixcloud
 62090 scribd
-62091 pause circle
+62091 circle pause
 62092 pause circle o
-62093 stop circle
+62093 circle stop
 62094 stop circle o
-62096 shopping bag
-62097 shopping basket
+62095 freebsd
+62096 bag shopping
+62097 basket shopping
 62098 hashtag
 62099 bluetooth
 62100 bluetooth b
@@ -17087,60 +18235,64 @@
 62104 wpforms
 62105 envira
 62106 universal access
-62107 wheelchair alt
+62107 accessible icon
 62108 question circle o
 62109 blind
 62110 audio description
-62112 volume control phone
+62111 diamond
+62112 phone volume
 62113 braille
 62114 assistive listening systems
 62115 american sign language interpreting
 62116 deaf
 62117 glide
 62118 glide g
-62119 sign language
-62120 low vision
+62119 hands
+62120 eye low vision
 62121 viadeo
-62122 viadeo square
+62122 square viadeo
 62123 snapchat
-62124 snapchat ghost
+62124 gitkraken
 62125 snapchat square
 62126 pied piper
+62127 gofore
 62128 first order
 62129 yoast
 62130 themeisle
-62131 google plus
-62132 font awesome
-62133 handshake o
+62131 google plus circle
+62132 fa
+62133 handshake
 62134 envelope open
 62135 envelope open o
 62136 linode
 62137 address book
 62138 address book o
-62139 address card vcard
-62140 address card o vcard
-62141 user circle
+62139 address card
+62140 address card o
+62141 circle user
 62142 user circle o
+62143 goodreads
 62144 user o
 62145 id badge
-62146 id card
-62147 id card o
+62146 drivers license
+62147 drivers license o
 62148 quora
 62149 free code camp
 62150 telegram
-62151 thermometer full
-62152 thermometer three quarters
-62153 thermometer half
-62154 thermometer quarter
-62155 thermometer empty
+62151 temperature full
+62152 temperature three quarters
+62153 temperature half
+62154 temperature quarter
+62155 temperature empty
 62156 shower
 62157 bath
 62158 podcast
+62159 goodreads g
 62160 window maximize
 62161 window minimize
 62162 window restore
-62163 window close times rectangle
-62164 window close o times rectangle
+62163 square xmark
+62164 rectangle xmark
 62165 bandcamp
 62166 grav
 62167 etsy
@@ -17148,10 +18300,42 @@
 62169 ravelry
 62170 eercast
 62171 microchip
-62172 snowflake o
+62172 snowflake
 62173 superpowers
 62174 wpexplorer
+62175 google drive
 62176 meetup
+62177 google play
+62178 gripfire
+62179 grunt
+62180 gulp
+62181 square hacker news
+62182 hire a helper
+62183 hotjar
+62184 hubspot
+62185 itunes
+62186 rotate left
+62187 itunes note
+62188 jenkins
+62189 joget
+62190 js
+62191 square js
+62192 keycdn
+62193 rotate
+62194 stopwatch
+62195 kickstarter
+62196 kickstarter k
+62197 right from bracket
+62198 right to bracket
+62199 laravel
+62200 turn down
+62201 rotate right
+62202 turn up
+62203 line
+62204 lock open
+62205 lyft
+62206 poo
+62207 magento
 62208 alpine
 62209 aosc
 62210 apple
@@ -17200,29 +18384,111 @@
 62253 solus
 62254 void
 62255 zorin
+62256 codeberg
+62257 kde neon
+62258 kde plasma
+62259 kubuntu
+62260 kubuntu inverse
+62261 forgejo
+62262 freecad
+62263 garuda
+62264 gimp
+62265 gitea
+62266 hyperbola
+62267 inkscape
+62268 kdenlive
+62269 krita
+62270 lxle
+62271 mxlinux
+62272 parabola
+62273 puppy
+62274 qubesos
+62275 tails
+62276 trisquel
+62277 archcraft
+62278 arcolinux
+62279 biglinux
+62280 crystal
+62281 locos
+62282 xerolinux
+62283 arduino
+62284 kicad
+62285 octoprint
+62286 openscad
+62287 osh
+62288 oshwa
+62289 prusaslicer
+62290 reprap
+62291 riscv
+62292 awesome
+62293 bspwm
+62294 dwm
+62295 enlightenment
+62296 fluxbox
+62297 hyprland
+62298 i3
+62299 jwm
+62300 qtile
+62301 sway
+62302 xmonad
+62303 cinnamon
+62304 freedesktop
+62305 gnome
+62306 gtk
+62307 lxde
+62308 lxqt
+62309 mate
+62310 vanilla
+62311 wayland
+62312 xfce
+62313 xorg
+62314 fdroid
+62315 fosdem
+62316 osi
+62317 wikimedia
+62318 mpv
+62319 neovim
+62320 thunderbird
+62321 tor
+62322 vscodium
+62323 kde
+62324 postmarketos
+62325 qt
+62326 libreoffice
+62327 libreofficebase
+62328 libreofficecalc
+62329 libreofficedraw
+62330 libreofficeimpress
+62331 libreofficemath
+62332 libreofficewriter
+62333 tumbleweed
+62334 leap
+62335 typst
+62336 nobara
+62337 river
 62464 light bulb
 62465 repo
 62466 repo forked
 62467 repo push
 62468 repo pull
 62469 book
-62470 octoface
+62470 accessibility
 62471 git pull request
 62472 mark github
-62473 cloud download
-62474 cloud upload
-62475 keyboard
-62476 gist
+62473 download
+62474 upload
+62475 accessibility inset
+62476 alert fill
 62477 file code
-62478 file text
+62478 apps
 62479 file media
 62480 file zip
-62481 file pdf
+62481 archive
 62482 tag
 62483 file directory
 62484 file submodule
 62485 person
-62486 jersey
+62486 arrow both
 62487 git commit
 62488 git branch
 62489 git merge
@@ -17236,19 +18502,19 @@
 62497 alert
 62498 search
 62499 gear
-62500 radio tower
+62500 arrow down left
 62501 tools
 62502 sign out
 62503 rocket
 62504 rss
-62505 clippy
+62505 paste
 62506 sign in
 62507 organization
 62508 device mobile
 62509 unfold
 62510 check
 62511 mail
-62512 mail read
+62512 read
 62513 arrow up
 62514 arrow right
 62515 arrow down
@@ -17262,14 +18528,14 @@
 62523 ruby
 62524 broadcast
 62525 key
-62526 repo force push
+62526 arrow down right
 62527 repo clone
 62528 diff
 62529 eye
 62530 comment discussion
-62531 mail reply
-62532 primitive dot
-62533 primitive square
+62531 arrow switch
+62532 dot fill
+62533 square fill
 62534 device camera
 62535 device camera video
 62536 pencil
@@ -17292,14 +18558,14 @@
 62553 diff modified
 62554 diff renamed
 62555 horizontal rule
-62556 arrow small right
+62556 arrow up left
 62557 milestone
 62558 checklist
 62559 megaphone
 62560 chevron right
 62561 bookmark
-62562 settings
-62563 dashboard
+62562 sliders
+62563 meter
 62564 history
 62565 link external
 62566 mute
@@ -17308,7 +18574,7 @@
 62569 pulse
 62570 sync
 62571 telescope
-62572 gist secret
+62572 arrow up right
 62573 home
 62574 stop
 62575 bug
@@ -17318,11 +18584,11 @@
 62579 server
 62580 diff ignored
 62581 ellipsis
-62582 no newline
+62582 bell fill
 62583 hubot
-62584 arrow small up
-62585 arrow small down
-62586 arrow small left
+62584 bell slash
+62585 blocked
+62586 bookmark fill
 62587 chevron up
 62588 chevron down
 62589 chevron left
@@ -17342,12 +18608,12 @@
 62603 dash
 62604 fold
 62605 inbox
-62606 trashcan
-62607 paintcan
+62606 trash
+62607 paintbrush
 62608 flame
 62609 briefcase
 62610 plug
-62611 circuit board
+62611 bookmark slash fill
 62612 mortar board
 62613 law
 62614 thumbsup
@@ -17355,1044 +18621,159 @@
 62616 desktop download
 62617 beaker
 62618 bell
-62619 watch
+62619 cache
 62620 shield
 62621 bold
-62622 text size
+62622 check circle
 62623 italic
 62624 tasklist
 62625 verified
 62626 smiley
 62627 unverified
-62628 ellipses
+62628 check circle fill
 62629 file
 62630 grabber
-62631 plus small
+62631 checkbox
 62632 reply
 62633 device desktop
-62720 vector square
-62721 access point
-62722 access point network
-62723 account
-62724 account alert
-62725 account box
-62726 account box outline
-62727 account check
-62728 account circle
-62729 account convert
-62730 account key
-62731 account location
-62732 account minus
-62733 account multiple
-62734 account multiple outline
-62735 account multiple plus
-62736 account network
-62737 account off
-62738 account outline
-62739 account plus
-62740 account remove
-62741 account search
-62742 account star
-62743 orbit
-62744 account switch
-62745 adjust
-62746 air conditioner
-62747 airballoon
-62748 airplane
-62749 airplane off
-62750 airplay
-62751 alarm
-62752 alarm check
-62753 alarm multiple
-62754 alarm off
-62755 alarm plus
-62756 album
-62757 alert
-62758 alert box
-62759 alert circle
-62760 alert octagon
-62761 alert outline
-62762 alpha
-62763 alphabetical
-62764 amazon
-62765 amazon clouddrive
-62766 ambulance
-62767 amplifier
-62768 anchor
-62769 android
-62770 android debug bridge
-62771 android studio
-62772 apple
-62773 apple finder
-62774 apple ios
-62775 apple mobileme
-62776 apple safari
-62777 font awesome
-62778 apps
-62779 archive
-62780 arrange bring forward
-62781 arrange bring to front
-62782 arrange send backward
-62783 arrange send to back
-62784 arrow all
-62785 arrow bottom left
-62786 arrow bottom right
-62787 arrow collapse all
-62788 arrow down
-62789 arrow down thick
-62790 arrow down bold circle
-62791 arrow down bold circle outline
-62792 arrow down bold hexagon outline
-62793 arrow down drop circle
-62794 arrow down drop circle outline
-62795 arrow expand all
-62796 arrow left
-62797 arrow left thick
-62798 arrow left bold circle
-62799 arrow left bold circle outline
-62800 arrow left bold hexagon outline
-62801 arrow left drop circle
-62802 arrow left drop circle outline
-62803 arrow right
-62804 arrow right thick
-62805 arrow right bold circle
-62806 arrow right bold circle outline
-62807 arrow right bold hexagon outline
-62808 arrow right drop circle
-62809 arrow right drop circle outline
-62810 arrow top left
-62811 arrow top right
-62812 arrow up
-62813 arrow up thick
-62814 arrow up bold circle
-62815 arrow up bold circle outline
-62816 arrow up bold hexagon outline
-62817 arrow up drop circle
-62818 arrow up drop circle outline
-62819 assistant
-62820 at
-62821 attachment
-62822 audiobook
-62823 auto fix
-62824 auto upload
-62825 autorenew
-62826 av timer
-62827 baby
-62828 backburger
-62829 backspace
-62830 backup restore
-62831 bank
-62832 barcode
-62833 barcode scan
-62834 barley
-62835 barrel
-62836 basecamp
-62837 basket
-62838 basket fill
-62839 basket unfill
-62840 battery
-62841 battery 10
-62842 battery 20
-62843 battery 30
-62844 battery 40
-62845 battery 50
-62846 battery 60
-62847 battery 70
-62848 battery 80
-62849 battery 90
-62850 battery alert
-62851 battery charging
-62852 battery charging 100
-62853 battery charging 20
-62854 battery charging 30
-62855 battery charging 40
-62856 battery charging 60
-62857 battery charging 80
-62858 battery charging 90
-62859 battery minus
-62860 battery negative
-62861 battery outline
-62862 battery plus
-62863 battery positive
-62864 battery unknown
-62865 beach
-62866 flask
-62867 flask empty
-62868 flask empty outline
-62869 flask outline
-62870 beats
-62871 beer
-62872 behance
-62873 bell
-62874 bell off
-62875 bell outline
-62876 bell plus
-62877 bell ring
-62878 bell ring outline
-62879 bell sleep
-62880 beta
-62881 bible
-62882 bike
-62883 bing
-62884 binoculars
-62885 bio
-62886 biohazard
-62887 bitbucket
-62888 black mesa
-62889 blackberry
-62890 blender
-62891 blinds
-62892 block helper
-62893 blogger
-62894 bluetooth
-62895 bluetooth audio
-62896 bluetooth connect
-62897 bluetooth off
-62898 bluetooth settings
-62899 bluetooth transfer
-62900 blur
-62901 blur linear
-62902 blur off
-62903 blur radial
-62904 bone
-62905 book
-62906 book multiple
-62907 book multiple variant
-62908 book open
-62909 book open variant
-62910 book variant
-62911 bookmark
-62912 bookmark check
-62913 bookmark music
-62914 bookmark outline
-62915 bookmark plus outline
-62916 bookmark plus
-62917 bookmark remove
-62918 border all
-62919 border bottom
-62920 border color
-62921 border horizontal
-62922 border inside
-62923 border left
-62924 border none
-62925 border outside
-62926 border right
-62927 border style
-62928 border top
-62929 border vertical
-62930 bowling
-62931 box
-62932 box cutter
-62933 briefcase
-62934 briefcase check
-62935 briefcase download
-62936 briefcase upload
-62937 brightness 1
-62938 brightness 2
-62939 brightness 3
-62940 brightness 4
-62941 brightness 5
-62942 brightness 6
-62943 brightness 7
-62944 brightness auto
-62945 broom
-62946 brush
-62947 bug
-62948 bulletin board
-62949 bullhorn
-62950 bus
-62951 cached
-62952 cake
-62953 cake layered
-62954 cake variant
-62955 calculator
-62956 calendar
-62957 calendar blank
-62958 calendar check
-62959 calendar clock
-62960 calendar multiple
-62961 calendar multiple check
-62962 calendar plus
-62963 calendar remove
-62964 calendar text
-62965 calendar today
-62966 call made
-62967 call merge
-62968 call missed
-62969 call received
-62970 call split
-62971 camcorder
-62972 camcorder box
-62973 camcorder box off
-62974 camcorder off
-62975 camera
-62976 camera enhance
-62977 camera front
-62978 camera front variant
-62979 camera iris
-62980 camera party mode
-62981 camera rear
-62982 camera rear variant
-62983 camera switch
-62984 camera timer
-62985 candycane
-62986 car
-62987 car battery
-62988 car connected
-62989 car wash
-62990 carrot
-62991 cart
-62992 cart outline
-62993 cart plus
-62994 case sensitive alt
-62995 cash
-62996 cash 100
-62997 cash multiple
-62998 cash usd
-62999 cast
-63000 cast connected
-63001 castle
-63002 cat
-63003 cellphone
-63004 cellphone android
-63005 cellphone basic
-63006 cellphone dock
-63007 cellphone iphone
-63008 cellphone link
-63009 cellphone link off
-63010 cellphone settings
-63011 certificate
-63012 chair school
-63013 chart arc
-63014 chart areaspline
-63015 chart bar
-63016 chart histogram
-63017 chart line
-63018 chart pie
-63019 check
-63020 check all
-63021 checkbox blank
-63022 checkbox blank circle
-63023 checkbox blank circle outline
-63024 checkbox blank outline
-63025 checkbox marked
-63026 checkbox marked circle
-63027 checkbox marked circle outline
-63028 checkbox marked outline
-63029 checkbox multiple blank
-63030 checkbox multiple blank outline
-63031 checkbox multiple marked
-63032 checkbox multiple marked outline
-63033 checkerboard
-63034 chemical weapon
-63035 chevron double down
-63036 chevron double left
-63037 chevron double right
-63038 chevron double up
-63039 chevron down
-63040 chevron left
-63041 chevron right
-63042 chevron up
-63043 church
-63044 cisco webex
-63045 city
-63046 clipboard
-63047 clipboard account
-63048 clipboard alert
-63049 clipboard arrow down
-63050 clipboard arrow left
-63051 clipboard check
-63052 clipboard outline
-63053 clipboard text
-63054 clippy
-63055 clock
-63056 clock end
-63057 clock fast
-63058 clock in
-63059 clock out
-63060 clock start
-63061 close
-63062 close box
-63063 close box outline
-63064 close circle
-63065 close circle outline
-63066 close network
-63067 close octagon
-63068 close octagon outline
-63069 closed caption
-63070 cloud
-63071 cloud check
-63072 cloud circle
-63073 cloud download
-63074 cloud outline
-63075 cloud off outline
-63076 cloud print
-63077 cloud print outline
-63078 cloud upload
-63079 code array
-63080 code braces
-63081 code brackets
-63082 code equal
-63083 code greater than
-63084 code greater than or equal
-63085 code less than
-63086 code less than or equal
-63087 code not equal
-63088 code not equal variant
-63089 code parentheses
-63090 code string
-63091 code tags
-63092 codepen
-63093 coffee
-63094 coffee to go
-63095 coin
-63096 color helper
-63097 comment
-63098 comment account
-63099 comment account outline
-63100 comment alert
-63101 comment alert outline
-63102 comment check
-63103 comment check outline
-63104 comment multiple outline
-63105 comment outline
-63106 comment plus outline
-63107 comment processing
-63108 comment processing outline
-63109 comment question outline
-63110 comment remove outline
-63111 comment text
-63112 comment text outline
-63113 compare
-63114 compass
-63115 compass outline
-63116 console
-63117 contact mail
-63118 content copy
-63119 content cut
-63120 content duplicate
-63121 content paste
-63122 content save
-63123 content save all
-63124 contrast
-63125 contrast box
-63126 contrast circle
-63127 cookie
-63128 counter
-63129 cow
-63130 credit card
-63131 credit card multiple
-63132 credit card scan
-63133 crop
-63134 crop free
-63135 crop landscape
-63136 crop portrait
-63137 crop square
-63138 crosshairs
-63139 crosshairs gps
-63140 crown
-63141 cube
-63142 cube outline
-63143 cube send
-63144 cube unfolded
-63145 cup
-63146 cup water
-63147 currency btc
-63148 currency eur
-63149 currency gbp
-63150 currency inr
-63151 currency ngn
-63152 currency rub
-63153 currency try
-63154 currency usd
-63155 cursor default
-63156 cursor default outline
-63157 cursor move
-63158 cursor pointer
-63159 database
-63160 database minus
-63161 database plus
-63162 debug step into
-63163 debug step out
-63164 debug step over
-63165 decimal decrease
-63166 decimal increase
-63167 delete
-63168 delete variant
-63169 delta
-63170 deskphone
-63171 desktop mac
-63172 desktop tower
-63173 details
-63174 deviantart
-63175 diamond
-63176 creation
-63177 dice 1
-63178 dice 2
-63179 dice 3
-63180 dice 4
-63181 dice 5
-63182 dice 6
-63183 directions
-63184 disk alert
-63185 disqus
-63186 disqus outline
-63187 division
-63188 division box
-63189 dns
-63190 domain
-63191 dots horizontal
-63192 dots vertical
-63193 download
-63194 drag
-63195 drag horizontal
-63196 drag vertical
-63197 drawing
-63198 drawing box
-63199 dribbble
-63200 dribbble box
-63201 drone
-63202 dropbox
-63203 drupal
-63204 duck
-63205 dumbbell
-63206 earth
-63207 earth off
-63208 edge
-63209 eject
-63210 elevation decline
-63211 elevation rise
-63212 elevator
-63213 email
-63214 email open
-63215 email outline
-63216 email secure
-63217 emoticon
-63218 emoticon cool
-63219 emoticon devil
-63220 emoticon happy
-63221 emoticon neutral
-63222 emoticon poop
-63223 emoticon sad
-63224 emoticon tongue
-63225 engine
-63226 engine outline
-63227 equal
-63228 equal box
-63229 eraser
-63230 escalator
-63231 ethernet
-63232 ethernet cable
-63233 ethernet cable off
-63234 etsy
-63235 evernote
-63236 exclamation
-63237 exit to app
-63238 export
-63239 eye
-63240 eye off
-63241 eyedropper
-63242 eyedropper variant
-63243 facebook
-63244 facebook box
-63245 facebook messenger
-63246 factory
-63247 fan
-63248 fast forward
-63249 fax
-63250 ferry
-63251 file
-63252 file chart
-63253 file check
-63254 file cloud
-63255 file delimited
-63256 file document
-63257 file document box
-63258 file excel
-63259 file excel box
-63260 file export
-63261 file find
-63262 file image
-63263 file import
-63264 file lock
-63265 file multiple
-63266 file music
-63267 file outline
-63268 file pdf
-63269 file pdf box
-63270 file powerpoint
-63271 file powerpoint box
-63272 file presentation box
-63273 file send
-63274 file video
-63275 file word
-63276 file word box
-63277 file xml
-63278 film
-63279 filmstrip
-63280 filmstrip off
-63281 filter
-63282 filter outline
-63283 filter remove
-63284 filter remove outline
-63285 filter variant
-63286 fingerprint
-63287 fire
-63288 firefox
-63289 fish
-63290 flag
-63291 flag checkered
-63292 flag outline
-63293 flag variant outline
-63294 flag triangle
-63295 flag variant
-63296 flash
-63297 flash auto
-63298 flash off
-63299 flashlight
-63300 flashlight off
-63301 flattr
-63302 flip to back
-63303 flip to front
-63304 floppy
-63305 flower
-63306 folder
-63307 folder account
-63308 folder download
-63309 folder google drive
-63310 folder image
-63311 folder lock
-63312 folder lock open
-63313 folder move
-63314 folder multiple
-63315 folder multiple image
-63316 folder multiple outline
-63317 folder outline
-63318 folder plus
-63319 folder remove
-63320 folder upload
-63321 food
-63322 food apple
-63323 food variant
-63324 football
-63325 football australian
-63326 football helmet
-63327 format align center
-63328 format align justify
-63329 format align left
-63330 format align right
-63331 format bold
-63332 format clear
-63333 format color fill
-63334 format float center
-63335 format float left
-63336 format float none
-63337 format float right
-63338 format header 1
-63339 format header 2
-63340 format header 3
-63341 format header 4
-63342 format header 5
-63343 format header 6
-63344 format header decrease
-63345 format header equal
-63346 format header increase
-63347 format header pound
-63348 format indent decrease
-63349 format indent increase
-63350 format italic
-63351 format line spacing
-63352 format list bulleted
-63353 format list bulleted type
-63354 format list numbers
-63355 format paint
-63356 format paragraph
-63357 format quote close
-63358 format size
-63359 format strikethrough
-63360 format strikethrough variant
-63361 format subscript
-63362 format superscript
-63363 format text
-63364 format textdirection l to r
-63365 format textdirection r to l
-63366 format underline
-63367 format wrap inline
-63368 format wrap square
-63369 format wrap tight
-63370 format wrap top bottom
-63371 forum
-63372 forward
-63373 foursquare
-63374 fridge
-63375 fridge filled
-63376 fridge filled bottom
-63377 fridge filled top
-63378 fullscreen
-63379 fullscreen exit
-63380 function
-63381 gamepad
-63382 gamepad variant
-63383 gas station
-63384 gate
-63385 gauge
-63386 gavel
-63387 gender female
-63388 gender male
-63389 gender male female
-63390 gender transgender
-63391 ghost
-63392 gift
-63393 git
-63394 github box
-63395 github circle
-63396 glass flute
-63397 glass mug
-63398 glass stange
-63399 glass tulip
-63400 glassdoor
-63401 glasses
-63402 gmail
-63403 gnome
-63404 google
-63405 google cardboard
-63406 google chrome
-63407 google circles
-63408 google circles communities
-63409 google circles extended
-63410 google circles group
-63411 google controller
-63412 google controller off
-63413 google drive
-63414 google earth
-63415 google glass
-63416 google nearby
-63417 google pages
-63418 google physical web
-63419 google play
-63420 google plus
-63421 google plus box
-63422 google translate
-63423 google wallet
-63424 grid
-63425 grid off
-63426 group
-63427 guitar electric
-63428 guitar pick
-63429 guitar pick outline
-63430 hand pointing right
-63431 hanger
-63432 hangouts
-63433 harddisk
-63434 headphones
-63435 headphones box
-63436 headphones settings
-63437 headset
-63438 headset dock
-63439 headset off
-63440 heart
-63441 heart box
-63442 heart box outline
-63443 heart broken
-63444 heart outline
-63445 help
-63446 help circle
-63447 hexagon
-63448 hexagon outline
-63449 history
-63450 hololens
-63451 home
-63452 home modern
-63453 home variant
-63454 hops
-63455 hospital
-63456 hospital building
-63457 hospital marker
-63458 hotel
-63459 houzz
-63460 houzz box
-63461 human
-63462 human child
-63463 human male female
-63464 image
-63465 image album
-63466 image area
-63467 image area close
-63468 image broken
-63469 image broken variant
-63470 image filter
-63471 image filter black white
-63472 image filter center focus
-63473 image filter center focus weak
-63474 image filter drama
-63475 image filter frames
-63476 image filter hdr
-63477 image filter none
-63478 image filter tilt shift
-63479 image filter vintage
-63480 image multiple
-63481 import
-63482 inbox arrow down
-63483 information
-63484 information outline
-63485 instagram
-63486 instapaper
-63487 internet explorer
-63488 invert colors
-63489 jeepney
-63490 jira
-63491 jsfiddle
-63492 keg
-63493 key
-63494 key change
-63495 key minus
-63496 key plus
-63497 key remove
-63498 key variant
-63499 keyboard
-63500 keyboard backspace
-63501 keyboard caps
-63502 keyboard close
-63503 keyboard off
-63504 keyboard return
-63505 keyboard tab
-63506 keyboard variant
-63507 kodi
-63508 label
-63509 label outline
-63510 lan
-63511 lan connect
-63512 lan disconnect
-63513 lan pending
-63514 language csharp
-63515 language css3
-63516 language html5
-63517 language javascript
-63518 language php
-63519 language python
-63520 language python text
-63521 laptop
-63522 laptop chromebook
-63523 laptop mac
-63524 laptop windows
-63525 lastfm
-63526 launch
-63527 layers
-63528 layers off
-63529 leaf
-63530 led off
-63531 led on
-63532 led outline
-63533 led variant off
-63534 led variant on
-63535 led variant outline
-63536 library
-63537 library books
-63538 library music
-63539 library plus
-63540 lightbulb
-63541 lightbulb outline
-63542 link
-63543 link off
-63544 link variant
-63545 link variant off
-63546 linkedin
-63547 linkedin box
-63548 linux
-63549 lock
-63550 lock open
-63551 lock open outline
-63552 lock outline
-63553 login
-63554 logout
-63555 looks
-63556 loupe
-63557 lumx
-63558 magnet
-63559 magnet on
-63560 magnify
-63561 magnify minus
-63562 magnify plus
-63563 mail ru
-63564 map
-63565 map marker
-63566 map marker circle
-63567 map marker multiple
-63568 map marker off
-63569 map marker radius
-63570 margin
-63571 markdown
-63572 marker check
-63573 martini
-63574 material ui
-63575 math compass
-63576 maxcdn
-63577 medium
-63578 memory
-63579 menu
-63580 menu down
-63581 menu left
-63582 menu right
-63583 menu up
-63584 message
-63585 message alert
-63586 message draw
-63587 message image
-63588 message outline
-63589 message processing
-63590 message reply
-63591 message reply text
-63592 message text
-63593 message text outline
-63594 message video
-63595 microphone
-63596 microphone off
-63597 microphone outline
-63598 microphone settings
-63599 microphone variant
-63600 microphone variant off
-63601 microsoft
-63602 minecraft
-63603 minus
-63604 minus box
-63605 minus circle
-63606 minus circle outline
-63607 minus network
-63608 monitor
-63609 monitor multiple
-63610 more
-63611 motorbike
-63612 mouse
-63613 mouse off
-63614 mouse variant
-63615 mouse variant off
-63616 movie
-63617 multiplication
-63618 multiplication box
-63619 music box
-63620 music box outline
-63621 music circle
-63622 music note
-63623 music note eighth
-63624 music note half
-63625 music note off
-63626 music note quarter
-63627 music note sixteenth
-63628 music note whole
-63629 nature
-63630 nature people
-63631 navigation
-63632 needle
-63633 nest protect
-63634 nest thermostat
-63635 new box
-63636 newspaper
-63637 nfc
-63638 nfc tap
-63639 nfc variant
-63640 nodejs
-63641 note
-63642 note outline
-63643 note plus
-63644 note plus outline
-63645 note text
-63646 notification clear all
-63647 numeric
-63648 numeric 0 box
-63649 numeric 0 box multiple outline
-63650 numeric 0 box outline
-63651 numeric 1 box
-63652 numeric 1 box multiple outline
-63653 numeric 1 box outline
-63654 numeric 2 box
-63655 numeric 2 box multiple outline
-63656 numeric 2 box outline
-63657 numeric 3 box
-63658 numeric 3 box multiple outline
-63659 numeric 3 box outline
-63660 numeric 4 box
-63661 numeric 4 box multiple outline
-63662 numeric 4 box outline
-63663 numeric 5 box
-63664 numeric 5 box multiple outline
-63665 numeric 5 box outline
-63666 numeric 6 box
-63667 numeric 6 box multiple outline
-63668 numeric 6 box outline
-63669 numeric 7 box
-63670 numeric 7 box multiple outline
-63671 numeric 7 box outline
-63672 numeric 8 box
-63673 numeric 8 box multiple outline
-63674 numeric 8 box outline
-63675 numeric 9 box
-63676 numeric 9 box multiple outline
-63677 numeric 9 box outline
-63678 numeric 9 plus box
-63679 numeric 9 plus box multiple outline
-63680 numeric 9 plus box outline
-63681 nutrition
-63682 octagon
-63683 octagon outline
-63684 odnoklassniki
-63685 office
-63686 oil
-63687 oil temperature
-63688 omega
-63689 onedrive
-63690 open in app
-63691 open in new
-63692 openid
-63693 opera
-63694 ornament
-63695 ornament variant
-63696 inbox arrow up
-63697 owl
-63698 package
-63699 package down
-63700 package up
-63701 package variant
-63702 package variant closed
-63703 palette
-63704 palette advanced
-63705 panda
-63706 pandora
-63707 panorama
-63708 panorama fisheye
-63709 panorama horizontal
-63710 panorama vertical
-63711 panorama wide angle
-63712 paper cut vertical
-63713 paperclip
-63714 parking
-63715 pause
-63716 pause circle
-63717 pause circle outline
-63718 pause octagon
-63719 pause octagon outline
-63720 paw
-63721 pen
-63722 pencil
-63723 pencil box
-63724 pencil box outline
-63725 pencil lock
-63726 pencil off
-63727 percent
-63728 pharmacy
-63729 phone
-63730 phone bluetooth
-63731 phone forward
-63732 phone hangup
-63733 phone in talk
-63734 phone incoming
-63735 phone locked
-63736 phone log
-63737 phone missed
-63738 phone outgoing
-63739 phone paused
-63740 phone settings
-63741 phone voip
-63742 pi
+62634 circle
+62635 clock fill
+62636 cloud
+62637 cloud offline
+62638 code of conduct
+62639 code review
+62640 code square
+62641 codescan
+62642 codescan checkmark
+62643 codespaces
+62644 columns
+62645 command palette
+62646 commit
+62647 container
+62648 copilot
+62649 copilot error
+62650 copilot warning
+62651 copy
+62652 cpu
+62653 cross reference
+62654 dependabot
+62655 diamond
+62656 discussion closed
+62657 discussion duplicate
+62658 discussion outdated
+62659 dot
+62660 duplicate
+62661 eye closed
+62662 feed discussion
+62663 feed forked
+62664 feed heart
+62665 feed merged
+62666 feed person
+62667 feed repo
+62668 feed rocket
+62669 feed star
+62670 feed tag
+62671 feed trophy
+62672 file added
+62673 file badge
+62674 file diff
+62675 file directory fill
+62676 file directory open fill
+62677 file moved
+62678 file removed
+62679 filter
+62680 fiscal host
+62681 fold down
+62682 fold up
+62683 git merge queue
+62684 git pull request closed
+62685 git pull request draft
+62686 goal
+62687 hash
+62688 heading
+62689 heart fill
+62690 home fill
+62691 hourglass
+62692 id badge
+62693 image
+62694 infinity
+62695 issue draft
+62696 issue tracked by
+62697 issue tracks
+62698 iterations
+62699 kebab horizontal
+62700 key asterisk
+62701 log
+62702 moon
+62703 move to bottom
+62704 move to end
+62705 move to start
+62706 move to top
+62707 multi select
+62708 no entry
+62709 north star
+62710 note
+62711 number
+62712 package dependencies
+62713 package dependents
+62714 paper airplane
+62715 paperclip
+62716 passkey fill
+62717 people
+62718 person add
+62719 person fill
+62720 play
+62721 plus circle
+62722 project
+62723 project roadmap
+62724 project symlink
+62725 project template
+62726 rel file path
+62727 repo deleted
+62728 repo locked
+62729 repo template
+62730 report
+62731 rows
+62732 screen full
+62733 screen normal
+62734 share
+62735 share android
+62736 shield check
+62737 shield lock
+62738 shield slash
+62739 shield x
+62740 sidebar collapse
+62741 sidebar expand
+62742 single select
+62743 skip
+62744 skip fill
+62745 sort asc
+62746 sort desc
+62747 sparkle fill
+62748 sponsor tiers
+62749 square
+62750 stack
+62751 star fill
+62752 stopwatch
+62753 strikethrough
+62754 sun
+62755 tab
+62756 tab external
+62757 table
+62758 telescope fill
+62759 trophy
+62760 typography
+62761 unlink
+62762 unlock
+62763 unread
+62764 video
+62765 webhook
+62766 workflow
+62767 x circle
+62768 x circle fill
+62769 zoom in
+62770 zoom out
+62771 bookmark slash
 63743 <private use, last>
 63744 cjk compatibility ideograph-f900
 63745 cjk compatibility ideograph-f901
@@ -18760,8 +19141,6 @@
 64107 cjk compatibility ideograph-fa6b
 64108 cjk compatibility ideograph-fa6c
 64109 cjk compatibility ideograph-fa6d
-64110 view day
-64111 view grid
 64112 cjk compatibility ideograph-fa70
 64113 cjk compatibility ideograph-fa71
 64114 cjk compatibility ideograph-fa72
@@ -18868,44 +19247,6 @@
 64215 cjk compatibility ideograph-fad7
 64216 cjk compatibility ideograph-fad8
 64217 cjk compatibility ideograph-fad9
-64218 book plus
-64219 boombox
-64220 bullseye
-64221 comment remove
-64222 camera off
-64223 check circle
-64224 check circle outline
-64225 candle
-64226 chart bubble
-64227 credit card off
-64228 cup off
-64229 copyright
-64230 cursor text
-64231 delete forever
-64232 delete sweep
-64233 dice d20
-64234 dice d4
-64235 dice d6
-64236 dice d8
-64237 disk
-64238 email open outline
-64239 email variant
-64240 ev station
-64241 food fork drink
-64242 food off
-64243 format title
-64244 google maps
-64245 heart pulse
-64246 highway
-64247 home map marker
-64248 incognito
-64249 kettle
-64250 lock plus
-64251 login variant
-64252 logout variant
-64253 music note bluetooth
-64254 music note bluetooth off
-64255 page first
 64256 latin small ligature ff	fflig
 64257 latin small ligature fi	filig
 64258 latin small ligature fl	fllig
@@ -18913,28 +19254,11 @@
 64260 latin small ligature ffl	ffllig
 64261 latin small ligature long s t
 64262 latin small ligature st
-64263 rowing
-64264 saxophone
-64265 signal variant
-64266 stackexchange
-64267 subdirectory arrow left
-64268 subdirectory arrow right
-64269 textbox
-64270 violin
-64271 visualstudio
-64272 wechat
-64273 watermark
-64274 file hidden
 64275 armenian small ligature men now
 64276 armenian small ligature men ech
 64277 armenian small ligature men ini
 64278 armenian small ligature vew now
 64279 armenian small ligature men xeh
-64280 buffer
-64281 chip
-64282 content save settings
-64283 dialpad
-64284 dictionary
 64285 hebrew letter yod with hiriq
 64286 hebrew point judeo-spanish varika
 64287 hebrew ligature yiddish yod yod patah
@@ -18961,21 +19285,16 @@
 64308 hebrew letter he with mapiq
 64309 hebrew letter vav with dagesh
 64310 hebrew letter zayin with dagesh
-64311 cards
 64312 hebrew letter tet with dagesh
 64313 hebrew letter yod with dagesh
 64314 hebrew letter final kaf with dagesh
 64315 hebrew letter kaf with dagesh
 64316 hebrew letter lamed with dagesh
-64317 checkbox multiple marked circle outline
 64318 hebrew letter mem with dagesh
-64319 collage
 64320 hebrew letter nun with dagesh
 64321 hebrew letter samekh with dagesh
-64322 face
 64323 hebrew letter final pe with dagesh
 64324 hebrew letter pe with dagesh
-64325 format annotation plus
 64326 hebrew letter tsadi with dagesh
 64327 hebrew letter qof with dagesh
 64328 hebrew letter resh with dagesh
@@ -19101,22 +19420,6 @@
 64448 arabic symbol small tah above
 64449 arabic symbol small tah below
 64450 arabic symbol wasla above
-64451 bomb off
-64452 bootstrap
-64453 cards variant
-64454 clipboard flow
-64455 close outline
-64456 coffee outline
-64457 contacts
-64458 delete empty
-64459 earth box
-64460 earth box off
-64461 email alert
-64462 eye outline
-64463 eye off outline
-64464 fast forward outline
-64465 feather
-64466 find replace
 64467 arabic letter ng isolated form
 64468 arabic letter ng final form
 64469 arabic letter ng initial form
@@ -43605,6 +43908,8 @@
 983340 check
 983341 check all
 983342 checkbox blank
+983343 checkbox blank circle
+983344 checkbox blank circle outline
 983345 checkbox blank outline
 983346 checkbox marked
 983347 checkbox marked circle
@@ -43818,6 +44123,7 @@
 983555 calendar refresh outline
 983556 evernote
 983557 exclamation
+983558 exit to app
 983559 export
 983560 eye
 983561 eye off
@@ -44020,9 +44326,11 @@
 983758 headset
 983759 headset dock
 983760 headset off
+983761 heart
 983762 heart box
 983763 heart box outline
 983764 heart broken
+983765 heart outline
 983766 help
 983767 help circle
 983768 hexagon
@@ -44054,6 +44362,7 @@
 983794 image filter center focus weak
 983795 image filter drama
 983796 image filter frames
+983797 image filter hdr
 983798 image filter none
 983799 image filter tilt shift
 983800 image filter vintage
@@ -44199,7 +44508,7 @@
 983940 music box
 983941 music box outline
 983942 music circle
-983944 music note
+983943 music note
 983945 music note half
 983946 music note off
 983947 music note quarter
@@ -44583,7 +44892,6 @@
 984326 temperature kelvin
 984327 tennis ball
 984328 tent
-984329 image filter hdr
 984330 text to speech
 984331 text to speech off
 984332 texture
@@ -44779,6 +45087,7 @@
 984522 translate
 984523 account voice
 984524 opacity
+984525 near me
 984526 clock alert outline
 984527 human pregnant
 984528 sticker circle outline
@@ -44825,7 +45134,6 @@
 984569 incognito
 984570 kettle
 984571 lock plus
-984572 exit to app
 984573 logout variant
 984574 music note bluetooth
 984575 music note bluetooth off
@@ -45186,8 +45494,6 @@
 984930 taco
 984931 square outline
 984932 square
-984933 checkbox blank circle
-984934 checkbox blank circle outline
 984935 alert octagram
 984936 atom
 984937 ceiling light
@@ -45549,7 +45855,6 @@
 985293 car limousine
 985294 cards club
 985295 cards diamond
-985296 heart
 985297 cards spade
 985298 cellphone text
 985299 cellphone message
@@ -46099,17 +46404,22 @@
 985843 alpha f
 985844 alpha g
 985845 alpha h
+985846 alpha i
 985847 alpha j
 985848 alpha k
+985849 alpha l
 985850 alpha m
 985851 alpha n
+985852 alpha o
 985853 alpha p
 985854 alpha q
 985855 alpha r
 985856 alpha s
 985857 alpha t
 985858 alpha u
+985859 alpha v
 985860 alpha w
+985861 alpha x
 985862 alpha y
 985863 alpha z
 985864 alpha a box
@@ -46161,7 +46471,6 @@
 985910 format letter case upper
 985911 language java
 985912 circle multiple
-985913 alpha o
 985914 numeric 1
 985915 numeric 2
 985916 numeric 3
@@ -46382,6 +46691,8 @@
 986131 alpha n circle
 986132 alpha n circle outline
 986133 alpha o box outline
+986134 alpha o circle
+986135 alpha o circle outline
 986136 alpha p box outline
 986137 alpha p circle
 986138 alpha p circle outline
@@ -46516,8 +46827,6 @@
 986267 network off
 986268 network off outline
 986269 network outline
-986270 alpha o circle
-986271 alpha o circle outline
 986272 numeric 1 circle
 986273 numeric 1 circle outline
 986274 numeric 2 circle
@@ -47518,16 +47827,13 @@
 987269 math log
 987270 moped
 987271 router network
-987272 alpha i
 987273 roman numeral 2
 987274 roman numeral 3
 987275 roman numeral 4
-987276 alpha v
 987277 roman numeral 6
 987278 roman numeral 7
 987279 roman numeral 8
 987280 roman numeral 9
-987281 alpha x
 987282 soldering iron
 987283 stomach
 987284 table eye
@@ -48316,7 +48622,6 @@
 988067 size xs
 988068 size s
 988069 size m
-988070 alpha l
 988071 size xl
 988072 size xxl
 988073 size xxxl
@@ -49590,7 +49895,6 @@
 989341 calendar collapse horizontal
 989342 calendar expand horizontal
 989343 cards club outline
-989344 heart outline
 989345 cards playing
 989346 cards playing club
 989347 cards playing club multiple
@@ -49670,7 +49974,6 @@
 989421 filter check outline
 989422 flag off
 989423 flag off outline
-989424 near me
 989425 navigation variant outline
 989426 refresh auto
 989427 tilde off

@@ -43,8 +43,7 @@ if len(non_characters) != 66:
 emoji_skin_tone_modifiers = frozenset(range(0x1f3fb, 0x1F3FF + 1))
 
 
-def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
-    url = f'https://www.unicode.org/Public/{folder}/latest/{fname}'
+def fetch_url(url: str) -> str:
     bn = os.path.basename(url)
     local = os.path.join('/tmp', bn)
     if os.path.exists(local):
@@ -54,7 +53,12 @@ def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
         data = urlopen(url).read()
         with open(local, 'wb') as f:
             f.write(data)
-    for line in data.decode('utf-8').splitlines():
+    return data.decode()
+
+
+def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
+    url = f'https://www.unicode.org/Public/{folder}/latest/{fname}'
+    for line in fetch_url(url).splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
             yield line
@@ -151,13 +155,14 @@ def parse_ucd() -> None:
                 # the future.
                 marks.add(codepoint)
 
-    with open('gen/nerd-fonts-glyphs.txt') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            code, category, name = line.split(' ', 2)
-            codepoint = int(code, 16)
+    gndata = fetch_url('https://raw.githubusercontent.com/ryanoasis/nerd-fonts/refs/heads/master/glyphnames.json')
+    for name, val in json.loads(gndata).items():
+        if name != 'METADATA':
+            codepoint = int(val['code'], 16)
+            category, sep, name = name.rpartition('-')
+            name = name or category
+            name = name.replace('_', ' ')
+            print(11111111, name)
             if name and codepoint not in name_map:
                 name_map[codepoint] = name.upper()
                 for word in name.lower().split():
