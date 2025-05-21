@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/kovidgoyal/kitty/tools/icons"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
@@ -29,7 +30,7 @@ func (h *Handler) draw_results_title() {
 	if len(tt) < len(text) {
 		text = wcswidth.TruncateToVisualLength(text, available_width-1)
 	}
-	text = ` 📁 ` + text + ` `
+	text = fmt.Sprintf(" %c  %s ", icons.FOLDER, h.lp.SprintStyled("fg=intense-white bold", text))
 	extra := available_width - wcswidth.Stringwidth(text)
 	x := 3
 	if extra > 1 {
@@ -92,18 +93,19 @@ func (h *Handler) render_match_with_positions(text string, stop_at int, position
 	}
 }
 
-func icon_for(x os.DirEntry) string {
-	if x.IsDir() {
-		return `📁`
+func icon_for(path string, x os.DirEntry) string {
+	ans := icons.IconForFileWithMode(path, x.Type(), true)
+	if wcswidth.Stringwidth(ans) == 1 {
+		ans += " "
 	}
-	return "XX"
+	return ans
 }
 
 func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_width, num_extra_matches int) {
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
-		icon := icon_for(m.dir_entry)
+		icon := icon_for(m.abspath, m.dir_entry)
 		text := ""
 		tlen := 0
 		if num_extra_matches > 0 && i == len(matches)-1 {
