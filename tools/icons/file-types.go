@@ -1089,7 +1089,7 @@ func IconForPath(path string) string {
 		return string(ans)
 	}
 	if _, ext, found := strings.Cut(bn, "."); found {
-		if ans, found := FileNameMap()[strings.ToLower(ext)]; found {
+		if ans, found := ExtensionMap()[strings.ToLower(ext)]; found {
 			return string(ans)
 		}
 	}

@@ -30,7 +30,7 @@ func (h *Handler) draw_results_title() {
 	if len(tt) < len(text) {
 		text = wcswidth.TruncateToVisualLength(text, available_width-1)
 	}
-	text = fmt.Sprintf(" %c  %s ", icons.FOLDER, h.lp.SprintStyled("fg=intense-white bold", text))
+	text = fmt.Sprintf(" %s %s ", h.lp.SprintStyled("fg=blue", string(icons.FOLDER)+" "), h.lp.SprintStyled("fg=intense-white bold", text))
 	extra := available_width - wcswidth.Stringwidth(text)
 	x := 3
 	if extra > 1 {
