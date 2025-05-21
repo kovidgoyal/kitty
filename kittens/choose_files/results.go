@@ -99,23 +99,26 @@ func icon_for(x os.DirEntry) string {
 	return "XX"
 }
 
-func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_width int, has_extra_matches bool) {
+func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_width, num_extra_matches int) {
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
+		icon := icon_for(m.dir_entry)
 		text := ""
-		if has_extra_matches && i == len(matches)-1 {
-			text = "…"
+		tlen := 0
+		if num_extra_matches > 0 && i == len(matches)-1 {
+			icon = "… "
+			text = fmt.Sprintf("%d more matches", num_extra_matches)
 		} else {
 			text = m.text
-			tlen := len(text)
+			tlen = len(text)
 			if wcswidth.Stringwidth(text) > available_width-3 {
 				text = wcswidth.TruncateToVisualLength(text, available_width-4) + "…"
 				tlen = len(text) - 1
 			}
-			h.lp.QueueWriteString(icon_for(m.dir_entry) + " ")
-			h.render_match_with_positions(text, tlen, m.positions, 1)
 		}
+		h.lp.QueueWriteString(icon + " ")
+		h.render_match_with_positions(text, tlen, m.positions, 1)
 		h.lp.MoveCursorVertically(1)
 	}
 }
@@ -141,8 +144,7 @@ func (h *Handler) draw_list_of_results(matches []ResultItem, y, height int) {
 		chunk := matches[:min(len(matches), height)]
 		matches = matches[len(chunk):]
 		h.lp.MoveCursorTo(x, y)
-		has_extra_matches := is_last && len(matches) > 0
-		h.draw_column_of_matches(chunk, x, col_width-1, has_extra_matches)
+		h.draw_column_of_matches(chunk, x, col_width-1, utils.IfElse(is_last, len(matches), 0))
 		x += col_width
 	}
 }
@@ -161,11 +163,11 @@ func (h *Handler) draw_results(y, bottom_margin int, matches []ResultItem, in_pr
 	default:
 		switch h.state.SearchText() {
 		case "":
-			h.draw_list_of_results(matches, y, height-y)
+			h.draw_list_of_results(matches, y, height-2)
 		default:
 			h.draw_matching_result(matches[0])
 			y += 2
-			h.draw_list_of_results(matches[1:], y, height-y)
+			h.draw_list_of_results(matches[1:], y, height-4)
 		}
 	}
 	return
