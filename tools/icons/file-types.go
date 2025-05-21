@@ -16,9 +16,9 @@ const (
 	AUDIO           rune = 0xf001  // 
 	BINARY          rune = 0xeae8  // 
 	BOOK            rune = 0xe28b  // 
-	CALENDAR        rune = 0xeab0  // 
 	CACHE           rune = 0xf49b  // 
 	CAD             rune = 0xf0eeb // 󰻫
+	CALENDAR        rune = 0xeab0  // 
 	CLOCK           rune = 0xf43a  // 
 	COMPRESSED      rune = 0xf410  // 
 	CONFIG          rune = 0xe615  // 
@@ -29,8 +29,8 @@ const (
 	DOCKER          rune = 0xe650  // 
 	DOCUMENT        rune = 0xf1c2  // 
 	DOWNLOAD        rune = 0xf01da // 󰇚
-	EDA_SCH         rune = 0xf0b45 // 󰭅
 	EDA_PCB         rune = 0xeabe  // 
+	EDA_SCH         rune = 0xf0b45 // 󰭅
 	EMACS           rune = 0xe632  // 
 	ESLINT          rune = 0xe655  // 
 	FILE            rune = 0xf15b  // 
@@ -63,8 +63,8 @@ const (
 	INFO            rune = 0xf129  // 
 	INTELLIJ        rune = 0xe7b5  // 
 	JSON            rune = 0xe60b  // 
-	KEY             rune = 0xeb11  // 
 	KDENLIVE        rune = 0xf33c  // 
+	KEY             rune = 0xeb11  // 
 	KEYPASS         rune = 0xf23e  // 
 	KICAD           rune = 0xf34c  // 
 	KRITA           rune = 0xf33d  // 
@@ -136,16 +136,16 @@ const (
 	SIGNED_FILE     rune = 0xf19c3 // 󱧃
 	SLIDE           rune = 0xf1c4  // 
 	SOCKET          rune = 0xf0427 // 󰐧
-	SYMLINK         rune = 0xf481
 	SQLITE          rune = 0xe7c4  // 
 	SUBLIME         rune = 0xe7aa  // 
 	SUBTITLE        rune = 0xf0a16 // 󰨖
+	SYMLINK         rune = 0xf481
 	TERRAFORM       rune = 0xf1062 // 󱁢
 	TEXT            rune = 0xf15c  // 
-	TYPST           rune = 0xf37f  // 
 	TMUX            rune = 0xebc8  // 
 	TOML            rune = 0xe6b2  // 
 	TRANSLATION     rune = 0xf05ca // 󰗊
+	TYPST           rune = 0xf37f  // 
 	UNITY           rune = 0xe721  // 
 	VECTOR          rune = 0xf0559 // 󰕙
 	VIDEO           rune = 0xf03d  // 
@@ -166,6 +166,7 @@ var DirectoryNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		".opam":         FOLDER_OCAML,    // 
 		".ssh":          FOLDER_KEY,      // 󰢬
 		".Trash":        0xf1f8,          // 
+		"cabal":         LANG_HASKELL,    // 
 		"config":        FOLDER_CONFIG,   // 
 		"Contacts":      0xf024c,         // 󰉌
 		"cron.d":        FOLDER_CONFIG,   // 
@@ -193,20 +194,20 @@ var DirectoryNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		"Videos":        0xf03d,          // 
 		"xbps.d":        FOLDER_CONFIG,   // 
 		"xorg.conf.d":   FOLDER_CONFIG,   // 
-		"cabal":         LANG_HASKELL,    // 
 	}
 }) // }}}
 
 var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 	return map[string]rune{
 
+		"._DS_Store":                 OS_APPLE,        // 
 		".aliases":                   SHELL,           // 󱆃
 		".atom":                      0xe764,          // 
-		".bashrc":                    SHELL,           // 󱆃
 		".bash_aliases":              SHELL,           // 󱆃
 		".bash_history":              SHELL,           // 󱆃
 		".bash_logout":               SHELL,           // 󱆃
 		".bash_profile":              SHELL,           // 󱆃
+		".bashrc":                    SHELL,           // 󱆃
 		".CFUserTextEncoding":        OS_APPLE,        // 
 		".clang-format":              CONFIG,          // 
 		".clang-tidy":                CONFIG,          // 
@@ -223,10 +224,10 @@ var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		".eslintrc.json":             ESLINT,          // 
 		".eslintrc.yaml":             ESLINT,          // 
 		".eslintrc.yml":              ESLINT,          // 
-		".gcloudignore":              0xf11f6,         // 󱇶
 		".fennelrc":                  LANG_FENNEL,     // 
-		".gitattributes":             GIT,             // 
+		".gcloudignore":              0xf11f6,         // 󱇶
 		".git-blame-ignore-revs":     GIT,             // 
+		".gitattributes":             GIT,             // 
 		".gitconfig":                 GIT,             // 
 		".gitignore":                 GIT,             // 
 		".gitignore_global":          GIT,             // 
@@ -244,17 +245,17 @@ var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		".logout":                    SHELL,           // 󱆃
 		".luacheckrc":                CONFIG,          // 
 		".luaurc":                    CONFIG,          // 
-		".nanorc":                    0xe838,          // 
-		".nuxtrc":                    0xf1106,         // 󱄆
-		".ocamlinit":                 LANG_OCAML,      // 
 		".mailmap":                   GIT,             // 
+		".nanorc":                    0xe838,          // 
 		".node_repl_history":         NODEJS,          // 
 		".npmignore":                 NPM,             // 
 		".npmrc":                     NPM,             // 
+		".nuxtrc":                    0xf1106,         // 󱄆
+		".ocamlinit":                 LANG_OCAML,      // 
+		".parentlock":                LOCK,            // 
 		".pre-commit-config.yaml":    0xf06e2,         // 󰛢
 		".prettierignore":            0xe6b4,          // 
 		".prettierrc":                0xe6b4,          // 
-		".parentlock":                LOCK,            // 
 		".profile":                   SHELL,           // 󱆃
 		".pylintrc":                  CONFIG,          // 
 		".python_history":            LANG_PYTHON,     // 
@@ -273,11 +274,10 @@ var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		".zlogin":                    SHELL,           // 󱆃
 		".zlogout":                   SHELL,           // 󱆃
 		".zprofile":                  SHELL,           // 󱆃
-		".zshenv":                    SHELL,           // 󱆃
-		".zshrc":                     SHELL,           // 󱆃
 		".zsh_history":               SHELL,           // 󱆃
 		".zsh_sessions":              SHELL,           // 󱆃
-		"._DS_Store":                 OS_APPLE,        // 
+		".zshenv":                    SHELL,           // 󱆃
+		".zshrc":                     SHELL,           // 󱆃
 		"_gvimrc":                    VIM,             // 
 		"_vimrc":                     VIM,             // 
 		"a.out":                      SHELL_CMD,       // 
@@ -297,6 +297,9 @@ var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		"CMakeLists.txt":             0xe794,          // 
 		"CODE_OF_CONDUCT":            0xf4ae,          // 
 		"CODE_OF_CONDUCT.md":         0xf4ae,          // 
+		"COMMIT_EDITMSG":             GIT,             // 
+		"compose.yaml":               DOCKER,          // 
+		"compose.yml":                DOCKER,          // 
 		"composer.json":              LANG_PHP,        // 
 		"composer.lock":              LANG_PHP,        // 
 		"config":                     CONFIG,          // 
@@ -313,19 +316,16 @@ var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		"csh.cshrc":                  SHELL,           // 󱆃
 		"csh.login":                  SHELL,           // 󱆃
 		"csh.logout":                 SHELL,           // 󱆃
+		"docker-compose.yaml":        DOCKER,          // 
 		"docker-compose.yml":         DOCKER,          // 
 		"Dockerfile":                 DOCKER,          // 
-		"compose.yaml":               DOCKER,          // 
-		"compose.yml":                DOCKER,          // 
-		"docker-compose.yaml":        DOCKER,          // 
 		"dune":                       LANG_OCAML,      // 
 		"dune-project":               WRENCH,          // 
 		"Earthfile":                  0xf0ac,          // 
-		"COMMIT_EDITMSG":             GIT,             // 
 		"environment":                CONFIG,          // 
 		"favicon.ico":                0xe623,          // 
-		"flake.lock":                 0xf313,          // 
 		"fennelrc":                   LANG_FENNEL,     // 
+		"flake.lock":                 0xf313,          // 
 		"fonts.conf":                 FONT,            // 
 		"fp-info-cache":              KICAD,           // 
 		"fp-lib-table":               KICAD,           // 
@@ -415,8 +415,8 @@ var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		"profile":                    SHELL,           // 󱆃
 		"PrusaSlicer.ini":            0xf351,          // 
 		"PrusaSlicerGcodeViewer.ini": 0xf351,          // 
-		"pyvenv.cfg":                 LANG_PYTHON,     // 
 		"pyproject.toml":             LANG_PYTHON,     // 
+		"pyvenv.cfg":                 LANG_PYTHON,     // 
 		"qt5ct.conf":                 QT,              // 
 		"qt6ct.conf":                 QT,              // 
 		"QtProject.conf":             QT,              // 
@@ -481,8 +481,8 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"ape":              AUDIO,           // 
 		"apk":              OS_ANDROID,      // 
 		"app":              BINARY,          // 
-		"applescript":      OS_APPLE,        // 
 		"apple":            OS_APPLE,        // 
+		"applescript":      OS_APPLE,        // 
 		"ar":               COMPRESSED,      // 
 		"arj":              COMPRESSED,      // 
 		"arw":              IMAGE,           // 
@@ -568,12 +568,12 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"dll":              LIBRARY,         // 
 		"dmg":              DISK_IMAGE,      // 
 		"doc":              DOCUMENT,        // 
+		"dockerfile":       DOCKER,          // 
+		"dockerignore":     DOCKER,          // 
 		"docm":             DOCUMENT,        // 
 		"docx":             DOCUMENT,        // 
 		"dot":              GRAPH,           // 󱁉
 		"download":         DOWNLOAD,        // 󰇚
-		"dockerfile":       DOCKER,          // 
-		"dockerignore":     DOCKER,          // 
 		"drawio":           0xebba,          // 
 		"dump":             DATABASE,        // 
 		"dvi":              IMAGE,           // 
@@ -582,8 +582,8 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"dylib":            OS_APPLE,        // 
 		"ebook":            BOOK,            // 
 		"ebuild":           0xf30d,          // 
-		"edn":              0xe76a,          // 
 		"editorconfig":     0xe652,          // 
+		"edn":              0xe76a,          // 
 		"eex":              LANG_ELIXIR,     // 
 		"ejs":              0xe618,          // 
 		"el":               EMACS,           // 
@@ -606,7 +606,6 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"f3z":              CAD,             // 󰻫
 		"f90":              LANG_FORTRAN,    // 󱈚
 		"fbx":              FILE_3D,         // 󰆧
-		"fdmdownload":      DOWNLOAD,        // 󰇚
 		"fcbak":            FREECAD,         // 
 		"fcmacro":          FREECAD,         // 
 		"fcmat":            FREECAD,         // 
@@ -616,6 +615,7 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"fcstd1":           FREECAD,         // 
 		"fctb":             FREECAD,         // 
 		"fctl":             FREECAD,         // 
+		"fdmdownload":      DOWNLOAD,        // 󰇚
 		"fish":             SHELL_CMD,       // 
 		"flac":             AUDIO,           // 
 		"flc":              FONT,            // 
@@ -705,16 +705,15 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"info":             INFO,            // 
 		"ini":              CONFIG,          // 
 		"inl":              LANG_C,          // 
-		"ipynb":            NOTEBOOK,        // 
 		"ino":              LANG_ARDUINO,    // 
 		"ipt":              CAD,             // 󰻫
+		"ipynb":            NOTEBOOK,        // 
 		"iso":              DISK_IMAGE,      // 
 		"j2c":              IMAGE,           // 
 		"j2k":              IMAGE,           // 
 		"jad":              LANG_JAVA,       // 
 		"jar":              LANG_JAVA,       // 
 		"java":             LANG_JAVA,       // 
-		"jwmrc":            0xf35b,          // 
 		"jfi":              IMAGE,           // 
 		"jfif":             IMAGE,           // 
 		"jif":              IMAGE,           // 
@@ -731,6 +730,7 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"json5":            JSON,            // 
 		"jsonc":            JSON,            // 
 		"jsx":              REACT,           // 
+		"jwmrc":            0xf35b,          // 
 		"jxl":              IMAGE,           // 
 		"kbx":              SHIELD_KEY,      // 󰯄
 		"kdb":              KEYPASS,         // 
@@ -935,9 +935,9 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"sbt":              SUBTITLE,        // 󰨖
 		"scad":             0xf34e,          // 
 		"scala":            0xe737,          // 
-		"scm":              LANG_SCHEME,     // 
 		"sch":              EDA_SCH,         // 󰭅
 		"schdoc":           EDA_SCH,         // 󰭅
+		"scm":              LANG_SCHEME,     // 
 		"scss":             LANG_SASS,       // 
 		"service":          0xeba2,          // 
 		"sf2":              0xf0f70,         // 󰽰
@@ -952,9 +952,9 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"shtml":            HTML5,           // 
 		"sig":              SIGNED_FILE,     // 󱧃
 		"signature":        SIGNED_FILE,     // 󱧃
-		"sld":              LANG_SCHEME,     // 
 		"skp":              CAD,             // 󰻫
 		"sl3":              SQLITE,          // 
+		"sld":              LANG_SCHEME,     // 
 		"sldasm":           CAD,             // 󰻫
 		"sldprt":           CAD,             // 󰻫
 		"slim":             LANG_RUBYRAILS,  // 
@@ -968,9 +968,9 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"srt":              SUBTITLE,        // 󰨖
 		"ss":               LANG_SCHEME,     // 
 		"ssa":              SUBTITLE,        // 󰨖
-		"stl":              FILE_3D,         // 󰆧
 		"ste":              CAD,             // 󰻫
 		"step":             CAD,             // 󰻫
+		"stl":              FILE_3D,         // 󰆧
 		"stp":              CAD,             // 󰻫
 		"sty":              LANG_TEX,        // 
 		"styl":             LANG_STYLUS,     // 
@@ -986,8 +986,8 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"sublime-settings": SUBLIME,         // 
 		"sublime-snippet":  SUBLIME,         // 
 		"sublime-theme":    SUBLIME,         // 
-		"svelte":           0xe697,          // 
 		"sv":               LANG_HDL,        // 󰍛
+		"svelte":           0xe697,          // 
 		"svg":              VECTOR,          // 󰕙
 		"svh":              LANG_HDL,        // 󰍛
 		"swf":              AUDIO,           // 
@@ -1022,8 +1022,8 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"ttf":              FONT,            // 
 		"twig":             0xe61c,          // 
 		"txt":              TEXT,            // 
-		"typ":              TYPST,           // 
 		"txz":              COMPRESSED,      // 
+		"typ":              TYPST,           // 
 		"tz":               COMPRESSED,      // 
 		"tzo":              COMPRESSED,      // 
 		"ui":               0xf2d0,          // 
@@ -1033,9 +1033,9 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"vala":             0xe8d1,          // 
 		"vdi":              DISK_IMAGE,      // 
 		"vhd":              DISK_IMAGE,      // 
+		"vhdl":             LANG_HDL,        // 󰍛
 		"vhs":              0xF0A1B,         // 󰨛
 		"vi":               0xe81e,          // 
-		"vhdl":             LANG_HDL,        // 󰍛
 		"video":            VIDEO,           // 
 		"vim":              VIM,             // 
 		"vmdk":             DISK_IMAGE,      // 
@@ -1056,6 +1056,8 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"wrl":              FILE_3D,         // 󰆧
 		"wrz":              FILE_3D,         // 󰆧
 		"wv":               AUDIO,           // 
+		"x_b":              CAD,             // 󰻫
+		"x_t":              CAD,             // 󰻫
 		"xaml":             0xf0673,         // 󰙳
 		"xcf":              GIMP,            // 
 		"xci":              0xF07E1,         // 󰟡
@@ -1069,17 +1071,15 @@ var ExtensionMap = sync.OnceValue(func() map[string]rune { // {{{
 		"xpm":              IMAGE,           // 
 		"xul":              XML,             // 󰗀
 		"xz":               COMPRESSED,      // 
-		"x_b":              CAD,             // 󰻫
-		"x_t":              CAD,             // 󰻫
 		"yaml":             YAML,            // 
 		"yml":              YAML,            // 
 		"z":                COMPRESSED,      // 
+		"z64":              0xf1393,         // 󱎓
 		"zig":              0xe6a9,          // 
 		"zip":              COMPRESSED,      // 
 		"zsh":              SHELL_CMD,       // 
 		"zsh-theme":        SHELL,           // 󱆃
 		"zst":              COMPRESSED,      // 
-		"z64":              0xf1393,         // 󱎓
 	}
 }) // }}}
 

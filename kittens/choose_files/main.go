@@ -25,7 +25,7 @@ type State struct {
 func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
 func (s State) SelectDirs() bool   { return s.select_dirs }
 func (s State) Multiselect() bool  { return s.multiselect }
-func (s State) MaxDepth() int      { return utils.IfElse(s.max_depth < 1, 5, s.max_depth) }
+func (s State) MaxDepth() int      { return max(8, s.max_depth) }
 func (s State) String() string     { return utils.Repr(s) }
 func (s State) SearchText() string { return s.search_text }
 func (s State) CurrentDir() string {
