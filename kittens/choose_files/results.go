@@ -93,11 +93,20 @@ func (h *Handler) render_match_with_positions(text string, stop_at int, position
 	}
 }
 
+var icon_cache map[string]string
+
 func icon_for(path string, x os.DirEntry) string {
+	if icon_cache == nil {
+		icon_cache = make(map[string]string, 512)
+	}
+	if ans := icon_cache[path]; ans != "" {
+		return ans
+	}
 	ans := icons.IconForFileWithMode(path, x.Type(), true)
 	if wcswidth.Stringwidth(ans) == 1 {
 		ans += " "
 	}
+	icon_cache[path] = ans
 	return ans
 }
 

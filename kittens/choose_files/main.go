@@ -53,7 +53,7 @@ func (h *Handler) draw_screen() (err error) {
 		h.draw_search_bar(0)
 	}()
 	y := SEARCH_BAR_HEIGHT
-	y += h.draw_results(y, 4, matches, in_progress)
+	y += h.draw_results(y, 2, matches, in_progress)
 	return
 }
 
