@@ -28,4 +28,3 @@ terminfo/x/* linguist-generated=true
 *.py  text diff=python
 *.m  text diff=objc
 *.go text diff=go
-*.mod filter=goreplace

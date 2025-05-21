@@ -23,7 +23,8 @@ require (
 	howett.net/plist v1.0.1
 )
 
-//replace github.com/kovidgoyal/dbus => ../dbus
+// Uncomment the following to use a local checkout of dbus
+// replace github.com/kovidgoyal/dbus => ../dbus
 
 require (
 	github.com/disintegration/imaging v1.6.2 // indirect
