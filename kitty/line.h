@@ -48,8 +48,15 @@ static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 
 typedef union CPUCell {
     struct {
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
         char_type ch_or_idx: sizeof(char_type) * 8 - 1;
         char_type ch_is_idx: 1;
+    #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        char_type ch_is_idx: 1;
+        char_type ch_or_idx: sizeof(char_type) * 8 - 1;
+    #else
+    #error "Unsupported endianness"
+    #endif
         char_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
         char_type next_char_was_wrapped : 1;
         char_type is_multicell : 1;
