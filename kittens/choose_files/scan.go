@@ -66,10 +66,13 @@ func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int) (ans [
 		ans = scan_dir(current_dir, root_dir)
 		sc.set_cached_entries(current_dir, ans)
 	}
-	for _, x := range ans {
-		ans = append(ans, x)
-		if x.dir_entry.IsDir() && max_depth > 0 {
-			ans = append(ans, sc.fs_scan(root_dir, x.abspath, max_depth-1)...)
+	ans = slices.Clone(ans)
+	// now recurse into directories
+	if max_depth > 0 {
+		for _, x := range ans {
+			if x.dir_entry.IsDir() {
+				ans = append(ans, sc.fs_scan(root_dir, x.abspath, max_depth-1)...)
+			}
 		}
 	}
 	return
@@ -79,7 +82,7 @@ func (sc *ScanCache) scan(root_dir, search_text string, max_depth int) (ans []Re
 	if strings.HasPrefix(search_text, "/") {
 		root_dir = "/"
 	}
-	ans = slices.Clone(sc.fs_scan(root_dir, root_dir, max_depth))
+	ans = sc.fs_scan(root_dir, root_dir, max_depth)
 	if search_text == "" {
 		slices.SortFunc(ans, func(a, b ResultItem) int {
 			switch a.dir_entry.IsDir() {
@@ -105,7 +108,9 @@ func (sc *ScanCache) scan(root_dir, search_text string, max_depth int) (ans []Re
 		for _, x := range ans {
 			pm[x.text] = x
 		}
-		matches := subseq.ScoreItems(search_text, utils.Keys(pm), subseq.Options{})
+		matches := utils.Filter(subseq.ScoreItems(search_text, utils.Keys(pm), subseq.Options{}), func(x *subseq.Match) bool {
+			return x.Score > 0
+		})
 		slices.SortFunc(matches, func(a, b *subseq.Match) int { return cmp.Compare(b.Score, a.Score) })
 		ans = utils.Map(func(m *subseq.Match) ResultItem {
 			x := pm[m.Text]
@@ -116,7 +121,7 @@ func (sc *ScanCache) scan(root_dir, search_text string, max_depth int) (ans []Re
 	return ans
 }
 
-func (h *Handler) get_results() {
+func (h *Handler) get_results() (ans []ResultItem, in_progress bool) {
 	sc := &h.scan_cache
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
@@ -124,7 +129,7 @@ func (h *Handler) get_results() {
 		sc.dir_entries = make(dir_cache, 512)
 	}
 	if sc.root_dir == h.state.CurrentDir() && sc.search_text == h.state.SearchText() {
-		return
+		return sc.matches, sc.in_progress
 	}
 	sc.in_progress = true
 	sc.matches = nil
@@ -142,4 +147,5 @@ func (h *Handler) get_results() {
 			h.lp.WakeupMainThread()
 		}
 	}()
+	return sc.matches, sc.in_progress
 }

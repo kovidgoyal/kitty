@@ -44,16 +44,16 @@ type Handler struct {
 }
 
 func (h *Handler) draw_screen() (err error) {
-	h.get_results()
+	matches, in_progress := h.get_results()
 	h.lp.StartAtomicUpdate()
 	defer h.lp.EndAtomicUpdate()
 	h.lp.ClearScreen()
-	y := 0
-	if dy, err := h.draw_search_bar(y); err != nil {
-		return err
-	} else {
-		y += dy
-	}
+	defer func() { // so that the cursor ends up in the right place
+		h.lp.MoveCursorTo(1, 1)
+		h.draw_search_bar(0)
+	}()
+	y := SEARCH_BAR_HEIGHT
+	y += h.draw_results(y, 4, matches, in_progress)
 	return
 }
 

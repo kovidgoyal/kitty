@@ -46,15 +46,15 @@ func (h *Handler) draw_search_text(available_width int) {
 	h.lp.MoveCursorHorizontally(-2)
 }
 
-func (h *Handler) draw_search_bar(y int) (height int, err error) {
+const SEARCH_BAR_HEIGHT = 4
+
+func (h *Handler) draw_search_bar(y int) {
 	left_margin, right_margin := 5, 5
-	height = 4
 	h.lp.MoveCursorTo(1+left_margin, 1+y)
 	available_width := h.screen_size.width - left_margin - right_margin
-	h.draw_frame(available_width, height)
+	h.draw_frame(available_width, SEARCH_BAR_HEIGHT)
 	h.lp.MoveCursorTo(1+left_margin+1, 2+y)
 	h.draw_search_text(available_width - 2)
-
 	return
 }
 
