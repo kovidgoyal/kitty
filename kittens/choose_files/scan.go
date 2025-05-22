@@ -64,7 +64,16 @@ func scan_dir(path, root_dir string) []ResultItem {
 	return []ResultItem{}
 }
 
-func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, seen map[string]bool) (ans []ResultItem) {
+func is_excluded(path string, exclude_patterns *utils.Set[string]) bool {
+	for pattern := range exclude_patterns.Iterable() {
+		if matched, _ := filepath.Match(pattern, path); matched {
+			return true
+		}
+	}
+	return false
+}
+
+func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, exclude_patterns *utils.Set[string], seen map[string]bool) (ans []ResultItem) {
 	var found bool
 	if ans, found = sc.get_cached_entries(current_dir); !found {
 		ans = scan_dir(current_dir, root_dir)
@@ -74,20 +83,18 @@ func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, seen m
 	// now recurse into directories
 	if max_depth > 0 {
 		for _, x := range ans {
-			if x.dir_entry.IsDir() && !seen[x.abspath] {
+			if x.dir_entry.IsDir() && !seen[x.abspath] && !is_excluded(x.abspath, exclude_patterns) {
 				seen[x.abspath] = true
-				ans = append(ans, sc.fs_scan(root_dir, x.abspath, max_depth-1, seen)...)
+				ans = append(ans, sc.fs_scan(root_dir, x.abspath, max_depth-1, exclude_patterns, seen)...)
 			}
 		}
 	}
 	return
 }
 
-// TODO: Exclude /proc, /sys, /dev and also dont cross mountpoints
-
-func (sc *ScanCache) scan(root_dir, search_text string, max_depth int) (ans []ResultItem) {
+func (sc *ScanCache) scan(root_dir, search_text string, max_depth int, exclude_patterns *utils.Set[string]) (ans []ResultItem) {
 	seen := make(map[string]bool, 1024)
-	ans = sc.fs_scan(root_dir, root_dir, max_depth, seen)
+	ans = sc.fs_scan(root_dir, root_dir, max_depth, exclude_patterns, seen)
 	if search_text == "" {
 		slices.SortFunc(ans, func(a, b ResultItem) int {
 			switch a.dir_entry.IsDir() {
@@ -143,7 +150,7 @@ func (h *Handler) get_results() (ans []ResultItem, in_progress bool) {
 	sc.root_dir = root_dir
 	sc.search_text = search_text
 	go func() {
-		results := sc.scan(root_dir, search_text, h.state.MaxDepth())
+		results := sc.scan(root_dir, search_text, h.state.MaxDepth(), h.state.ExcludePatterns())
 		sc.mutex.Lock()
 		defer sc.mutex.Unlock()
 		if root_dir == sc.root_dir && search_text == sc.search_text {
