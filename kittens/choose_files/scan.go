@@ -83,6 +83,8 @@ func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, seen m
 	return
 }
 
+// TODO: Exclude /proc, /sys, /dev and also dont cross mountpoints
+
 func (sc *ScanCache) scan(root_dir, search_text string, max_depth int) (ans []ResultItem) {
 	seen := make(map[string]bool, 1024)
 	ans = sc.fs_scan(root_dir, root_dir, max_depth, seen)

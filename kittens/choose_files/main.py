@@ -43,7 +43,7 @@ OPTIONS = '''
 --override -o
 type=list
 Override individual configuration options, can be specified multiple times.
-Syntax: :italic:`name=value`. For example: :option:`kitten choose_files -o` max_depth=20
+Syntax: :italic:`name=value`.
 
 
 --config
