@@ -65,13 +65,15 @@ func (h *Handler) draw_matching_result(r ResultItem) {
 	h.lp.QueueWriteString(s)
 	text := r.text
 	available_width := (h.screen_size.width - 6) / 2
+	add_ellipsis := false
 	if wcswidth.Stringwidth(text) > available_width {
-		text = wcswidth.TruncateToVisualLength(text, available_width-2) + "…"
+		text = wcswidth.TruncateToVisualLength(text, available_width-2)
+		add_ellipsis = true
 	}
-	h.render_match_with_positions(text, len(r.text), r.positions, 2)
+	h.render_match_with_positions(text, add_ellipsis, r.positions, 2)
 }
 
-func (h *Handler) render_match_with_positions(text string, stop_at int, positions []int, scale int) {
+func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, positions []int, scale int) {
 	prefix, suffix, _ := strings.Cut(h.lp.SprintStyled(matching_position_style, " "), " ")
 	write_chunk := func(text string, emphasize bool) {
 		if text == "" {
@@ -90,7 +92,7 @@ func (h *Handler) render_match_with_positions(text string, stop_at int, position
 		}
 	}
 	at := 0
-	limit := min(stop_at, len(text))
+	limit := len(text)
 	for _, p := range positions {
 		if p > limit || at > limit {
 			break
@@ -104,6 +106,9 @@ func (h *Handler) render_match_with_positions(text string, stop_at int, position
 	}
 	if at < len(text) {
 		write_chunk(text[at:], false)
+	}
+	if add_ellipsis {
+		write_chunk("…", false)
 	}
 }
 
@@ -130,7 +135,7 @@ func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_widt
 		h.lp.MoveCursorHorizontally(x)
 		icon := icon_for(m.abspath, m.dir_entry)
 		text := ""
-		tlen := 0
+		add_ellipsis := false
 		positions := m.positions
 		if num_extra_matches > 0 && i == len(matches)-1 {
 			icon = "… "
@@ -138,14 +143,13 @@ func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_widt
 			positions = nil
 		} else {
 			text = m.text
-			tlen = len(text)
 			if wcswidth.Stringwidth(text) > available_width-3 {
-				text = wcswidth.TruncateToVisualLength(text, available_width-4) + "…"
-				tlen = len(text) - 1
+				text = wcswidth.TruncateToVisualLength(text, available_width-4)
+				add_ellipsis = true
 			}
 		}
 		h.lp.QueueWriteString(icon + " ")
-		h.render_match_with_positions(text, tlen, positions, 1)
+		h.render_match_with_positions(text, add_ellipsis, positions, 1)
 		h.lp.MoveCursorVertically(1)
 	}
 }
