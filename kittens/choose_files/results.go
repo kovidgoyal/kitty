@@ -54,11 +54,25 @@ func (h *Handler) draw_no_matches_message(in_progress bool) {
 
 }
 
+const matching_position_style = "fg=green"
+
 func (h *Handler) draw_matching_result(r ResultItem) {
+	icon := icon_for(r.abspath, r.dir_entry)
+	h.lp.MoveCursorHorizontally(1)
+	p, s, _ := strings.Cut(h.lp.SprintStyled(matching_position_style, " "), " ")
+	h.lp.QueueWriteString(p)
+	h.lp.DrawSizedText(icon, loop.SizedText{Scale: 2})
+	h.lp.QueueWriteString(s)
+	text := r.text
+	available_width := (h.screen_size.width - 6) / 2
+	if wcswidth.Stringwidth(text) > available_width {
+		text = wcswidth.TruncateToVisualLength(text, available_width-2) + "…"
+	}
+	h.render_match_with_positions(text, len(r.text), r.positions, 2)
 }
 
 func (h *Handler) render_match_with_positions(text string, stop_at int, positions []int, scale int) {
-	prefix, suffix, _ := strings.Cut(h.lp.SprintStyled("fg=green", " "), " ")
+	prefix, suffix, _ := strings.Cut(h.lp.SprintStyled(matching_position_style, " "), " ")
 	write_chunk := func(text string, emphasize bool) {
 		if text == "" {
 			return
