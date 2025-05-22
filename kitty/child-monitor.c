@@ -1953,7 +1953,6 @@ talk_loop(void *data) {
                         p->read.finished = true;
                         p->write.failed = true; p->write.used = 0;
                     }
-                    break;
                 }
             }
         } else if (ret < 0) { if (errno != EAGAIN && errno != EINTR) perror("poll() on talk fds failed"); }

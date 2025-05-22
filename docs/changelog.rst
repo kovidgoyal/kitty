@@ -113,6 +113,8 @@ Detailed list of changes
 
 - A new :option:`kitty --grab-keyboard` that can be used to grab the keyboard so that global shortcuts are sent to kitty instead
 
+- Remote control: Fix holding a remote control socket open causing the kitty I/O thread to go into a loop and not respond on other remote control sockets (:disc:`8670`)
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
