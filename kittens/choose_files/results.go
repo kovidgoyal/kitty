@@ -117,9 +117,11 @@ func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_widt
 		icon := icon_for(m.abspath, m.dir_entry)
 		text := ""
 		tlen := 0
+		positions := m.positions
 		if num_extra_matches > 0 && i == len(matches)-1 {
 			icon = "… "
-			text = fmt.Sprintf("%d more matches", num_extra_matches)
+			text = h.lp.SprintStyled("italic", fmt.Sprintf("%d more matches", num_extra_matches))
+			positions = nil
 		} else {
 			text = m.text
 			tlen = len(text)
@@ -129,7 +131,7 @@ func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_widt
 			}
 		}
 		h.lp.QueueWriteString(icon + " ")
-		h.render_match_with_positions(text, tlen, m.positions, 1)
+		h.render_match_with_positions(text, tlen, positions, 1)
 		h.lp.MoveCursorVertically(1)
 	}
 }
