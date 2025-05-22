@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -64,16 +65,16 @@ func scan_dir(path, root_dir string) []ResultItem {
 	return []ResultItem{}
 }
 
-func is_excluded(path string, exclude_patterns *utils.Set[string]) bool {
-	for pattern := range exclude_patterns.Iterable() {
-		if matched, _ := filepath.Match(pattern, path); matched {
+func is_excluded(path string, exclude_patterns []*regexp.Regexp) bool {
+	for _, pattern := range exclude_patterns {
+		if pattern.MatchString(path) {
 			return true
 		}
 	}
 	return false
 }
 
-func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, exclude_patterns *utils.Set[string], seen map[string]bool) (ans []ResultItem) {
+func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, exclude_patterns []*regexp.Regexp, seen map[string]bool) (ans []ResultItem) {
 	var found bool
 	if ans, found = sc.get_cached_entries(current_dir); !found {
 		ans = scan_dir(current_dir, root_dir)
@@ -92,7 +93,7 @@ func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, exclud
 	return
 }
 
-func (sc *ScanCache) scan(root_dir, search_text string, max_depth int, exclude_patterns *utils.Set[string]) (ans []ResultItem) {
+func (sc *ScanCache) scan(root_dir, search_text string, max_depth int, exclude_patterns []*regexp.Regexp) (ans []ResultItem) {
 	seen := make(map[string]bool, 1024)
 	ans = sc.fs_scan(root_dir, root_dir, max_depth, exclude_patterns, seen)
 	if search_text == "" {

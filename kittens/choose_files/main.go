@@ -3,6 +3,7 @@ package choose_files
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -21,19 +22,17 @@ type State struct {
 	select_dirs      bool
 	multiselect      bool
 	max_depth        int
-	exclude_patterns *utils.Set[string]
+	exclude_patterns []*regexp.Regexp
 	search_text      string
 }
 
-func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
-func (s State) SelectDirs() bool   { return s.select_dirs }
-func (s State) Multiselect() bool  { return s.multiselect }
-func (s State) MaxDepth() int      { return utils.IfElse(s.max_depth < 1, 4, s.max_depth) }
-func (s State) String() string     { return utils.Repr(s) }
-func (s State) SearchText() string { return s.search_text }
-func (s State) ExcludePatterns() *utils.Set[string] {
-	return utils.IfElse(s.exclude_patterns == nil, utils.NewSet[string](2), s.exclude_patterns)
-}
+func (s State) BaseDir() string                   { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
+func (s State) SelectDirs() bool                  { return s.select_dirs }
+func (s State) Multiselect() bool                 { return s.multiselect }
+func (s State) MaxDepth() int                     { return utils.IfElse(s.max_depth < 1, 4, s.max_depth) }
+func (s State) String() string                    { return utils.Repr(s) }
+func (s State) SearchText() string                { return s.search_text }
+func (s State) ExcludePatterns() []*regexp.Regexp { return s.exclude_patterns }
 func (s State) CurrentDir() string {
 	return utils.IfElse(s.current_dir == "", s.BaseDir(), s.current_dir)
 }
@@ -112,14 +111,20 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (
 
 func (h *Handler) set_state_from_config(conf *Config) (err error) {
 	h.state.max_depth = int(conf.Max_depth)
-	h.state.exclude_patterns = utils.NewSet[string](len(conf.Exclude_directory))
+	h.state.exclude_patterns = make([]*regexp.Regexp, 0, len(conf.Exclude_directory))
+	seen := map[string]*regexp.Regexp{}
 	for _, x := range conf.Exclude_directory {
 		if strings.HasPrefix(x, "!") {
-			h.state.exclude_patterns.Discard(x[1:])
-		} else {
-			h.state.exclude_patterns.Add(x)
+			delete(seen, x[1:])
+		} else if seen[x] == nil {
+			if pat, err := regexp.Compile(x); err == nil {
+				seen[x] = pat
+			} else {
+				return fmt.Errorf("The exclude directory pattern %#v is invalid: %w", x, err)
+			}
 		}
 	}
+	h.state.exclude_patterns = utils.Values(seen)
 	return
 }
 
