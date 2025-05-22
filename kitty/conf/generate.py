@@ -555,6 +555,11 @@ def gen_go_code(defn: Definition) -> str:
         if isinstance(option, MultiOption):
             go_types[name], go_parsers[name] = go_type_data(option.parser_func, option.ctype, True)
             multiopts.add(name)
+            defval = []
+            for x in option.items:
+                if x.add_to_default:
+                    defval.append(option.parser_func(x.defval_as_str))
+            defaults[name] = defval
         else:
             defaults[name] = option.parser_func(option.defval_as_string)
             if option.choices:
@@ -582,12 +587,8 @@ def gen_go_code(defn: Definition) -> str:
     a('func NewConfig() *Config {')
     a('return &Config{')
     from kitty.fast_data_types import Color
-    for name, pname in go_parsers.items():
-        if name in multiopts:
-            continue
-        d = defaults[name]
-        if not d:
-            continue
+
+    def basic_defval(d: Any) -> str:
         if isinstance(d, str):
             dval = f'{name}_{cval(d)}' if name in choices else f'`{d}`'
         elif isinstance(d, bool):
@@ -597,13 +598,23 @@ def gen_go_code(defn: Definition) -> str:
             for k, v in d.items():
                 dval += f'"{serialize_as_go_string(k)}": "{serialize_as_go_string(v)}",'
             dval += '}'
+        elif isinstance(d, list):
+            dval = '[]string{'
+            for k in d:
+                dval += f'"{serialize_as_go_string(k)}",'
+            dval += '}'
         elif isinstance(d, Color):
             dval = f'style.RGBA{{Red:{d.red}, Green: {d.green}, Blue: {d.blue}}}'
             if 'NullableColor' in go_types[name]:
                 dval = f'style.NullableColor{{IsSet: true, Color:{dval}}}'
         else:
             dval = repr(d)
-        a(f'{name}: {dval},')
+        return dval
+
+    for name, pname in go_parsers.items():
+        d = defaults[name]
+        if d:
+            a(f'{name}: {basic_defval(d)},')
     if keyboard_shortcuts:
         a('KeyboardShortcuts: []*config.KeyAction{')
         for sc in keyboard_shortcuts:
