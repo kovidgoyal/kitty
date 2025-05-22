@@ -3,8 +3,10 @@ package choose_files
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/config"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -14,12 +16,13 @@ var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
 
 type State struct {
-	base_dir    string
-	current_dir string
-	select_dirs bool
-	multiselect bool
-	max_depth   int
-	search_text string
+	base_dir         string
+	current_dir      string
+	select_dirs      bool
+	multiselect      bool
+	max_depth        int
+	exclude_patterns *utils.Set[string]
+	search_text      string
 }
 
 func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
@@ -28,6 +31,9 @@ func (s State) Multiselect() bool  { return s.multiselect }
 func (s State) MaxDepth() int      { return utils.IfElse(s.max_depth < 1, 4, s.max_depth) }
 func (s State) String() string     { return utils.Repr(s) }
 func (s State) SearchText() string { return s.search_text }
+func (s State) ExcludePatterns() *utils.Set[string] {
+	return utils.IfElse(s.exclude_patterns == nil, utils.NewSet[string](2), s.exclude_patterns)
+}
 func (s State) CurrentDir() string {
 	return utils.IfElse(s.current_dir == "", s.BaseDir(), s.current_dir)
 }
@@ -55,6 +61,17 @@ func (h *Handler) draw_screen() (err error) {
 	y := SEARCH_BAR_HEIGHT
 	y += h.draw_results(y, 2, matches, in_progress)
 	return
+}
+
+func load_config(opts *Options) (ans *Config, err error) {
+	ans = NewConfig()
+	p := config.ConfigParser{LineHandler: ans.Parse}
+	err = p.LoadConfig("choose-files.conf", opts.Config, opts.Override)
+	if err != nil {
+		return nil, err
+	}
+	// ans.KeyboardShortcuts = config.ResolveShortcuts(ans.KeyboardShortcuts)
+	return ans, nil
 }
 
 func (h *Handler) init_sizes(new_size loop.ScreenSize) {
@@ -93,14 +110,34 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (
 	return h.draw_screen()
 }
 
+func (h *Handler) set_state_from_config(conf *Config) (err error) {
+	h.state.max_depth = int(conf.Max_depth)
+	h.state.exclude_patterns = utils.NewSet[string](len(conf.Exclude_directory))
+	for _, x := range conf.Exclude_directory {
+		if strings.HasPrefix(x, "!") {
+			h.state.exclude_patterns.Discard(x[1:])
+		} else {
+			h.state.exclude_patterns.Add(x)
+		}
+	}
+	return
+}
+
 var default_cwd string
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
+	conf, err := load_config(opts)
+	if err != nil {
+		return 1, err
+	}
 	lp, err := loop.New()
 	if err != nil {
 		return 1, err
 	}
 	handler := Handler{lp: lp}
+	if err = handler.set_state_from_config(conf); err != nil {
+		return 1, err
+	}
 	switch len(args) {
 	case 0:
 		os.Getwd()
