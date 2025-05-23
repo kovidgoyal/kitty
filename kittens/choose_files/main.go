@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -16,6 +17,12 @@ import (
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
 
+type ScorePattern struct {
+	pat *regexp.Regexp
+	op  func(float64, float64) float64
+	val float64
+}
+
 type State struct {
 	base_dir         string
 	current_dir      string
@@ -23,6 +30,7 @@ type State struct {
 	multiselect      bool
 	max_depth        int
 	exclude_patterns []*regexp.Regexp
+	score_patterns   []ScorePattern
 	search_text      string
 }
 
@@ -33,6 +41,7 @@ func (s State) MaxDepth() int                     { return utils.IfElse(s.max_de
 func (s State) String() string                    { return utils.Repr(s) }
 func (s State) SearchText() string                { return s.search_text }
 func (s State) ExcludePatterns() []*regexp.Regexp { return s.exclude_patterns }
+func (s State) ScorePatterns() []ScorePattern     { return s.score_patterns }
 func (s State) CurrentDir() string {
 	return utils.IfElse(s.current_dir == "", s.BaseDir(), s.current_dir)
 }
@@ -114,8 +123,13 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (
 	return h.draw_screen()
 }
 
+func mult(a, b float64) float64 { return a * b }
+func sub(a, b float64) float64  { return a - b }
+func add(a, b float64) float64  { return a + b }
+func div(a, b float64) float64  { return a / b }
+
 func (h *Handler) set_state_from_config(conf *Config) (err error) {
-	h.state.max_depth = int(conf.Max_depth)
+	h.state = State{max_depth: int(conf.Max_depth)}
 	h.state.exclude_patterns = make([]*regexp.Regexp, 0, len(conf.Exclude_directory))
 	seen := map[string]*regexp.Regexp{}
 	for _, x := range conf.Exclude_directory {
@@ -130,6 +144,25 @@ func (h *Handler) set_state_from_config(conf *Config) (err error) {
 		}
 	}
 	h.state.exclude_patterns = utils.Values(seen)
+	fmap := map[string]func(float64, float64) float64{
+		"*=": mult, "+=": add, "-=": sub, "/=": div}
+	h.state.score_patterns = make([]ScorePattern, len(conf.Modify_score))
+	for i, x := range conf.Modify_score {
+		p, rest, _ := strings.Cut(x, " ")
+		if h.state.score_patterns[i].pat, err = regexp.Compile(p); err == nil {
+			op, val, _ := strings.Cut(rest, " ")
+			if h.state.score_patterns[i].val, err = strconv.ParseFloat(val, 64); err != nil {
+				return fmt.Errorf("The modify score value %#v is invalid: %w", val, err)
+			}
+			if h.state.score_patterns[i].op = fmap[op]; h.state.score_patterns[i].op == nil {
+				return fmt.Errorf("The modify score operator %#v is unknown", op)
+			}
+
+		} else {
+			return fmt.Errorf("The modify score pattern %#v is invalid: %w", x, err)
+		}
+
+	}
 	return
 }
 

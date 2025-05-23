@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 
@@ -33,7 +34,7 @@ type ScanCache struct {
 	mutex                 sync.Mutex
 	root_dir, search_text string
 	in_progress           bool
-	matches               []ResultItem
+	matches               []*ResultItem
 }
 
 func (sc *ScanCache) get_cached_entries(root_dir string) (ans []ResultItem, found bool) {
@@ -93,48 +94,72 @@ func (sc *ScanCache) fs_scan(root_dir, current_dir string, max_depth int, exclud
 	return
 }
 
-func (sc *ScanCache) scan(root_dir, search_text string, max_depth int, exclude_patterns []*regexp.Regexp) (ans []ResultItem) {
-	seen := make(map[string]bool, 1024)
-	ans = sc.fs_scan(root_dir, root_dir, max_depth, exclude_patterns, seen)
-	if search_text == "" {
-		slices.SortFunc(ans, func(a, b ResultItem) int {
-			switch a.dir_entry.IsDir() {
-			case true:
-				switch b.dir_entry.IsDir() {
-				case true:
-					return strings.Compare(strings.ToLower(a.text), strings.ToLower(b.text))
-				case false:
-					return -1
-				}
-			case false:
-				switch b.dir_entry.IsDir() {
-				case true:
-					return 1
-				case false:
-					return strings.Compare(strings.ToLower(a.text), strings.ToLower(b.text))
-				}
-			}
-			return 0
-		})
-	} else {
-		pm := make(map[string]ResultItem, len(ans))
-		for _, x := range ans {
-			pm[x.text] = x
-		}
-		matches := utils.Filter(subseq.ScoreItems(search_text, utils.Keys(pm), subseq.Options{}), func(x *subseq.Match) bool {
-			return x.Score > 0
-		})
-		slices.SortFunc(matches, func(a, b *subseq.Match) int { return cmp.Compare(b.Score, a.Score) })
-		ans = utils.Map(func(m *subseq.Match) ResultItem {
-			x := pm[m.Text]
-			x.positions = m.Positions
-			return x
-		}, matches)
+func sort_items_without_search_text(items []ResultItem) (ans []*ResultItem) {
+	type s struct {
+		ltext          string
+		num_of_slashes int
+		is_dir         bool
+		is_hidden      bool
+		r              *ResultItem
 	}
-	return ans
+	hidden_pat := regexp.MustCompile(`(^|/)\.[^/]+(/|$)`)
+	d := utils.Map(func(x ResultItem) s {
+		return s{strings.ToLower(x.text), strings.Count(x.text, "/"), x.dir_entry.IsDir(), hidden_pat.MatchString(x.abspath), &x}
+	}, items)
+	sort.Slice(d, func(i, j int) bool {
+		a, b := d[i], d[j]
+		if a.num_of_slashes == b.num_of_slashes {
+			if a.is_dir == b.is_dir {
+				if a.is_hidden == b.is_hidden {
+					return a.ltext < b.ltext
+				}
+				return b.is_hidden
+			}
+			return a.is_dir
+		}
+		return a.num_of_slashes < b.num_of_slashes
+	})
+	return utils.Map(func(s s) *ResultItem { return s.r }, d)
 }
 
-func (h *Handler) get_results() (ans []ResultItem, in_progress bool) {
+func get_modified_score(r *ResultItem, score float64, score_patterns []ScorePattern) float64 {
+	for _, sp := range score_patterns {
+		if sp.pat.MatchString(r.abspath) {
+			score = sp.op(score, sp.val)
+		}
+	}
+	return score
+}
+
+func (sc *ScanCache) scan(root_dir, search_text string, max_depth int, exclude_patterns []*regexp.Regexp, score_patterns []ScorePattern) (ans []*ResultItem) {
+	seen := make(map[string]bool, 1024)
+	matches := sc.fs_scan(root_dir, root_dir, max_depth, exclude_patterns, seen)
+	if search_text == "" {
+		ans = sort_items_without_search_text(matches)
+		return
+	}
+	pm := make(map[string]*ResultItem, len(ans))
+	for _, x := range matches {
+		nx := x
+		pm[x.text] = &nx
+	}
+	matches2 := utils.Filter(subseq.ScoreItems(search_text, utils.Keys(pm), subseq.Options{}), func(x *subseq.Match) bool {
+		return x.Score > 0
+	})
+	type s struct {
+		r     *ResultItem
+		score float64
+	}
+	ss := utils.Map(func(m *subseq.Match) s {
+		x := pm[m.Text]
+		x.positions = m.Positions
+		return s{x, get_modified_score(x, m.Score, score_patterns)}
+	}, matches2)
+	slices.SortFunc(ss, func(a, b s) int { return cmp.Compare(b.score, a.score) })
+	return utils.Map(func(s s) *ResultItem { return s.r }, ss)
+}
+
+func (h *Handler) get_results() (ans []*ResultItem, in_progress bool) {
 	sc := &h.scan_cache
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
@@ -150,8 +175,9 @@ func (h *Handler) get_results() (ans []ResultItem, in_progress bool) {
 	search_text := h.state.SearchText()
 	sc.root_dir = root_dir
 	sc.search_text = search_text
+	md, ep, sp := h.state.MaxDepth(), h.state.ExcludePatterns(), h.state.ScorePatterns()
 	go func() {
-		results := sc.scan(root_dir, search_text, h.state.MaxDepth(), h.state.ExcludePatterns())
+		results := sc.scan(root_dir, search_text, md, ep, sp)
 		sc.mutex.Lock()
 		defer sc.mutex.Unlock()
 		if root_dir == sc.root_dir && search_text == sc.search_text {

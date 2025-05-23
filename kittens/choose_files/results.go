@@ -56,7 +56,7 @@ func (h *Handler) draw_no_matches_message(in_progress bool) {
 
 const matching_position_style = "fg=green"
 
-func (h *Handler) draw_matching_result(r ResultItem) {
+func (h *Handler) draw_matching_result(r *ResultItem) {
 	icon := icon_for(r.abspath, r.dir_entry)
 	h.lp.MoveCursorHorizontally(1)
 	p, s, _ := strings.Cut(h.lp.SprintStyled(matching_position_style, " "), " ")
@@ -129,7 +129,7 @@ func icon_for(path string, x os.DirEntry) string {
 	return ans
 }
 
-func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_width, num_extra_matches int) {
+func (h *Handler) draw_column_of_matches(matches []*ResultItem, x, available_width, num_extra_matches int) {
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
@@ -154,7 +154,7 @@ func (h *Handler) draw_column_of_matches(matches []ResultItem, x, available_widt
 	}
 }
 
-func (h *Handler) draw_list_of_results(matches []ResultItem, y, height int) {
+func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) {
 	if len(matches) == 0 || height < 2 {
 		return
 	}
@@ -180,7 +180,7 @@ func (h *Handler) draw_list_of_results(matches []ResultItem, y, height int) {
 	}
 }
 
-func (h *Handler) draw_results(y, bottom_margin int, matches []ResultItem, in_progress bool) (height int) {
+func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_progress bool) (height int) {
 	height = h.screen_size.height - y - bottom_margin
 	h.lp.MoveCursorTo(1, 1+y)
 	h.draw_frame(h.screen_size.width, height)
