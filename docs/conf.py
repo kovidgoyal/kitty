@@ -643,7 +643,7 @@ def monkeypatch_man_writer() -> None:
     '''
     Monkeypatch the docutils man translator to be nicer
     '''
-    from docutils.nodes import Element
+    from docutils.nodes import Element, figure
     from docutils.writers.manpage import Table, Translator
     from sphinx.writers.manpage import ManualPageTranslator
 
@@ -692,7 +692,7 @@ def monkeypatch_man_writer() -> None:
     def depart_image(self: ManualPageTranslator, node: Element) -> None:
         pass
 
-    def depart_figure(self: ManualPageTranslator, node: Element) -> None:
+    def depart_figure(self: ManualPageTranslator, node: figure) -> None:
         self.body.append(' (images not supported)\n')
         Translator.depart_figure(self, node)
 
