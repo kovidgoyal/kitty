@@ -643,33 +643,10 @@ def monkeypatch_man_writer() -> None:
     '''
     Monkeypatch the docutils man translator to be nicer
     '''
-    from docutils.nodes import Element, figure
-    from docutils.writers.manpage import Table, Translator
+    from docutils.nodes import figure
+    from docutils.writers.manpage import Translator
     from sphinx.writers.manpage import ManualPageTranslator
 
-    # Generate nicer tables https://sourceforge.net/p/docutils/bugs/475/
-    class PatchedTable(Table):  # type: ignore
-        _options: list[str]
-        def __init__(self) -> None:
-            super().__init__()
-            self.needs_border_removal = self._options == ['center']
-            if self.needs_border_removal:
-                self._options = ['box', 'center']
-
-        def as_list(self) -> list[str]:
-            ans: list[str] = super().as_list()
-            if self.needs_border_removal:
-                # remove side and top borders as we use box in self._options
-                ans[2] = ans[2][1:]
-                a, b = ans[2].rpartition('|')[::2]
-                ans[2] = a + b
-                if ans[3] == '_\n':
-                    del ans[3]  # top border
-                del ans[-2] # bottom border
-            return ans
-    def visit_table(self: ManualPageTranslator, node: object) -> None:
-        setattr(self, '_active_table', PatchedTable())
-    setattr(ManualPageTranslator, 'visit_table', visit_table)
 
     # Improve header generation
     def header(self: ManualPageTranslator) -> str:
@@ -686,10 +663,10 @@ def monkeypatch_man_writer() -> None:
 
     setattr(ManualPageTranslator, 'header', header)
 
-    def visit_image(self: ManualPageTranslator, node: Element) -> None:
+    def visit_image(self: ManualPageTranslator, node: figure) -> None:
         pass
 
-    def depart_image(self: ManualPageTranslator, node: Element) -> None:
+    def depart_image(self: ManualPageTranslator, node: figure) -> None:
         pass
 
     def depart_figure(self: ManualPageTranslator, node: figure) -> None:
@@ -700,10 +677,10 @@ def monkeypatch_man_writer() -> None:
     setattr(ManualPageTranslator, 'depart_image', depart_image)
     setattr(ManualPageTranslator, 'depart_figure', depart_figure)
 
-    orig_astext = Translator.astext
+    orig_astext = Translator.astext  # type: ignore
     def astext(self: Translator) -> Any:
         b = []
-        for line in self.body:
+        for line in self.body:  # type: ignore
             if line.startswith('.SH'):
                 x, y = line.split(' ', 1)
                 parts = y.splitlines(keepends=True)
