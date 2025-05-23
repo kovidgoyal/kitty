@@ -677,7 +677,7 @@ def monkeypatch_man_writer() -> None:
     setattr(ManualPageTranslator, 'depart_image', depart_image)
     setattr(ManualPageTranslator, 'depart_figure', depart_figure)
 
-    orig_astext = ManualPageTranslator.astext
+    orig_astext = getattr(ManualPageTranslator, 'astext')
     def astext(self: ManualPageTranslator) -> Any:
         b = []
         for line in self.body:
@@ -687,7 +687,7 @@ def monkeypatch_man_writer() -> None:
                 parts[0] = parts[0].capitalize()
                 line = x + ' ' + '\n'.join(parts)
             b.append(line)
-        self.body = b
+        setattr(self, 'body', b)
         return orig_astext(self)
     setattr(ManualPageTranslator, 'astext', astext)
 
