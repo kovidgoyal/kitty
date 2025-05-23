@@ -677,10 +677,10 @@ def monkeypatch_man_writer() -> None:
     setattr(ManualPageTranslator, 'depart_image', depart_image)
     setattr(ManualPageTranslator, 'depart_figure', depart_figure)
 
-    orig_astext = Translator.astext  # type: ignore
-    def astext(self: Translator) -> Any:
+    orig_astext = ManualPageTranslator.astext
+    def astext(self: ManualPageTranslator) -> Any:
         b = []
-        for line in self.body:  # type: ignore
+        for line in self.body:
             if line.startswith('.SH'):
                 x, y = line.split(' ', 1)
                 parts = y.splitlines(keepends=True)
@@ -689,7 +689,7 @@ def monkeypatch_man_writer() -> None:
             b.append(line)
         self.body = b
         return orig_astext(self)
-    setattr(Translator, 'astext', astext)
+    setattr(ManualPageTranslator, 'astext', astext)
 
 
 def setup_man_pages() -> None:
