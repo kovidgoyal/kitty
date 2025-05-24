@@ -33,7 +33,7 @@ func convert_text(text string, cols int) string {
 			continue
 		}
 		if strings.TrimRight(full_line, "\r") == "" {
-			for i := 0; i < len(full_line); i++ {
+			for range len(full_line) {
 				lines = append(lines, empty_line)
 			}
 			continue
