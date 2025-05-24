@@ -117,7 +117,7 @@ controls where to display the selected error message, other options are ignored.
 default={default_regex}
 The regular expression to use when option :option:`--type` is set to
 :code:`regex`, in Perl 5 syntax. If you specify a numbered group in the regular
-expression, only the group will be matched. This allow you to match text
+expression, only the group will be matched. This allows you to match text
 ignoring a prefix/suffix, as needed. The default expression matches lines. To
 match text over multiple lines, things get a little tricky, as line endings
 are a sequence of zero or more null bytes followed by either a carriage return
