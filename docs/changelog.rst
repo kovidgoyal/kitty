@@ -115,6 +115,8 @@ Detailed list of changes
 
 - Remote control: Fix holding a remote control socket open causing the kitty I/O thread to go into a loop and not respond on other remote control sockets (:disc:`8670`)
 
+- hints kitten: Preserve line breaks when the hint is over a line break (:iss:`8674`)
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

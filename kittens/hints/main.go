@@ -203,6 +203,27 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		if len(mark_text) <= len(hint) {
 			mark_text = ""
 		} else {
+			replaced_text := mark_text[:len(hint)]
+			replaced_text = strings.ReplaceAll(replaced_text, "\r", "\n")
+			if strings.Contains(replaced_text, "\n") {
+				buf := strings.Builder{}
+				buf.Grow(2 * len(hint))
+				h := hint
+				parts := strings.Split(replaced_text, "\n")
+				for i, x := range parts {
+					if x != "" {
+						buf.WriteString(h[:len(x)])
+						h = h[len(x):]
+					}
+					if i != len(parts)-1 {
+						buf.WriteString("\n")
+					}
+				}
+				if h != "" {
+					buf.WriteString(h)
+				}
+				hint = buf.String()
+			}
 			mark_text = mark_text[len(hint):]
 		}
 		ans := hint_style(hint) + text_style(mark_text)
