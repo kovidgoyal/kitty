@@ -69,7 +69,7 @@ selection_foreground              The foreground color of selections            
 cursor                            The color of the text cursor                    Foreground color
 cursor_text                       The color of text under the cursor              Background color
 visual_bell                       The color of a visual bell                      Automatic color selection based on current screen colors
-transparent_background_color1..8  A background color that is rendered             Unset
+transparent_background_color1..7  A background color that is rendered             Unset
                                   with the specified opacity in cells that have
                                   the specified background color. An opacity
                                   value less than zero means, use the
