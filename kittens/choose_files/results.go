@@ -205,11 +205,12 @@ func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_p
 	h.draw_results_title()
 	y += 2
 	h.lp.MoveCursorTo(1, y)
+	h.state.num_of_slots_per_column_at_last_render = height - 2
 	switch len(matches) {
 	case 0:
 		h.draw_no_matches_message(in_progress)
 	default:
-		h.draw_list_of_results(matches, y, height-2)
+		h.draw_list_of_results(matches, y, h.state.num_of_slots_per_column_at_last_render)
 	}
 	h.state.num_of_matches_at_last_render = len(matches)
 	return
@@ -227,6 +228,23 @@ func (h *Handler) next_result(amt int) {
 	}
 }
 
+func (h *Handler) move_sideways(leftwards bool) {
+	if h.state.num_of_matches_at_last_render > 0 {
+		idx := h.state.CurrentIndex()
+		slots := h.state.num_of_slots_per_column_at_last_render
+		if leftwards {
+			if idx >= slots {
+				idx -= slots
+			}
+		} else {
+			idx = min(h.state.num_of_matches_at_last_render-1, idx+slots)
+		}
+		if idx != h.state.CurrentIndex() {
+			h.state.SetCurrentIndex(idx)
+		}
+	}
+}
+
 func (h *Handler) handle_result_list_keys(ev *loop.KeyEvent) bool {
 	switch {
 	case ev.MatchesPressOrRepeat("down"):
@@ -234,6 +252,12 @@ func (h *Handler) handle_result_list_keys(ev *loop.KeyEvent) bool {
 		return true
 	case ev.MatchesPressOrRepeat("up"):
 		h.next_result(-1)
+		return true
+	case ev.MatchesPressOrRepeat("left"):
+		h.move_sideways(true)
+		return true
+	case ev.MatchesPressOrRepeat("right"):
+		h.move_sideways(false)
 		return true
 	default:
 		return false

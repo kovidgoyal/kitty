@@ -33,8 +33,9 @@ type State struct {
 	score_patterns   []ScorePattern
 	search_text      string
 
-	current_idx                   int
-	num_of_matches_at_last_render int
+	current_idx                            int
+	num_of_matches_at_last_render          int
+	num_of_slots_per_column_at_last_render int
 }
 
 func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
