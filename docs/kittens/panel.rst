@@ -160,10 +160,8 @@ Compatibility with various platforms
                  used by the dock.
 
         🟠 **niri**
-           Breaks when hiding (unmapping) layer shell windows. This means the quick
-           access terminal is non-functional, but background and dock panels work.
-           More technically, when trying to remap the hidden window niri never sends
-           configure events for the remapped surface.
+           Hiding a dock panel (unmapping the window) does not release the space used
+           by the dock.
 
         🟠 **labwc**
            Breaks when hiding (unmapping) layer shell windows. This means the quick
