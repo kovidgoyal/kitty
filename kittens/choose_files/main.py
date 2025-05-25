@@ -42,9 +42,11 @@ approach is to use a small value and first change to the directory of interest t
 opt('+modify_score', r'(^|/)\.[^/]+(/|$) *= 0.5', add_to_default=True, long_text='''
 Modify the score of items matching the specified regular expression (matches against the absolute path).
 Can be used to make certain files and directories less or more prominent in the results.
-Can be specified multiple times. The default includes rules to reduce the score of hidden items.
+Can be specified multiple times. The default includes rules to reduce the score of hidden items and
+items in some well known cache folder names.
 The syntax is :code:`regular-expression operator value`. Supported operators are: :code:`*=, +=, -=, /=`.
 ''')
+opt('+modify_score', '(^|/)__pycache__(/|$) *= 0.5', add_to_default=True)
 egr()
 
 def main(args: list[str]) -> None:
