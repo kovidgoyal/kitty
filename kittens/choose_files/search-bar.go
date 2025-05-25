@@ -64,7 +64,8 @@ func (h *Handler) handle_edit_keys(ev *loop.KeyEvent) bool {
 		if h.state.SearchText() == "" {
 			h.lp.Beep()
 		} else {
-			h.state.search_text = h.state.search_text[:len(h.state.search_text)-1]
+			g := wcswidth.SplitIntoGraphemes(h.state.search_text)
+			h.state.SetSearchText(strings.Join(g[:len(g)-1], ""))
 			return true
 		}
 	}

@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty/tools/icons"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
@@ -55,26 +54,16 @@ func (h *Handler) draw_no_matches_message(in_progress bool) {
 }
 
 const matching_position_style = "fg=green"
+const current_style = "fg=intense-white bold"
 
-func (h *Handler) draw_matching_result(r *ResultItem) {
-	icon := icon_for(r.abspath, r.dir_entry)
-	h.lp.MoveCursorHorizontally(1)
-	p, s, _ := strings.Cut(h.lp.SprintStyled(matching_position_style, " "), " ")
-	h.lp.QueueWriteString(p)
-	h.lp.DrawSizedText(icon, loop.SizedText{Scale: 2})
-	h.lp.QueueWriteString(s)
-	text := r.text
-	available_width := (h.screen_size.width - 6) / 2
-	add_ellipsis := false
-	if wcswidth.Stringwidth(text) > available_width {
-		text = wcswidth.TruncateToVisualLength(text, available_width-2)
-		add_ellipsis = true
-	}
-	h.render_match_with_positions(text, add_ellipsis, r.positions, 2)
-}
-
-func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, positions []int, scale int) {
+func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, positions []int, is_current bool) {
 	prefix, suffix, _ := strings.Cut(h.lp.SprintStyled(matching_position_style, " "), " ")
+	if is_current {
+		p, s, _ := strings.Cut(h.lp.SprintStyled(current_style, " "), " ")
+		h.lp.QueueWriteString(p)
+		defer h.lp.QueueWriteString(s)
+		suffix += p
+	}
 	write_chunk := func(text string, emphasize bool) {
 		if text == "" {
 			return
@@ -85,11 +74,7 @@ func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, po
 				h.lp.QueueWriteString(suffix)
 			}()
 		}
-		if scale > 1 {
-			h.lp.DrawSizedText(text, loop.SizedText{Scale: scale})
-		} else {
-			h.lp.QueueWriteString(text)
-		}
+		h.lp.QueueWriteString(text)
 	}
 	at := 0
 	limit := len(text)
@@ -129,28 +114,39 @@ func icon_for(path string, x os.DirEntry) string {
 	return ans
 }
 
-func (h *Handler) draw_column_of_matches(matches []*ResultItem, x, available_width, num_extra_matches int) {
+func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int, x, available_width, num_before, num_after int) {
+	if num_before > 0 {
+		h.lp.QueueWriteString("\r")
+		h.lp.MoveCursorHorizontally(x)
+		h.lp.QueueWriteString("…  ")
+		text := h.lp.SprintStyled("italic", fmt.Sprintf("%d prev matches", num_before))
+		h.render_match_with_positions(text, false, nil, false)
+	}
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
 		icon := icon_for(m.abspath, m.dir_entry)
-		text := ""
+		text := m.text
 		add_ellipsis := false
-		positions := m.positions
-		if num_extra_matches > 0 && i == len(matches)-1 {
-			icon = "… "
-			text = h.lp.SprintStyled("italic", fmt.Sprintf("%d more matches", num_extra_matches))
-			positions = nil
-		} else {
-			text = m.text
-			if wcswidth.Stringwidth(text) > available_width-3 {
-				text = wcswidth.TruncateToVisualLength(text, available_width-4)
-				add_ellipsis = true
-			}
+		if wcswidth.Stringwidth(text) > available_width-3 {
+			text = wcswidth.TruncateToVisualLength(text, available_width-4)
+			add_ellipsis = true
 		}
-		h.lp.QueueWriteString(icon + " ")
-		h.render_match_with_positions(text, add_ellipsis, positions, 1)
+		is_current := i == current_idx
+		if is_current {
+			h.lp.QueueWriteString(h.lp.SprintStyled(matching_position_style, icon+" "))
+		} else {
+			h.lp.QueueWriteString(icon + " ")
+		}
+		h.render_match_with_positions(text, add_ellipsis, m.positions, is_current)
 		h.lp.MoveCursorVertically(1)
+	}
+	if num_after > 0 {
+		h.lp.QueueWriteString("\r")
+		h.lp.MoveCursorHorizontally(x)
+		h.lp.QueueWriteString("…  ")
+		text := h.lp.SprintStyled("italic", fmt.Sprintf("%d more matches", num_after))
+		h.render_match_with_positions(text, false, nil, false)
 	}
 }
 
@@ -169,14 +165,39 @@ func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) {
 		}
 		col_width = available_width / num_cols
 	}
+	num_that_can_be_displayed := num_cols * height
+	num_after, num_before := 0, 0
+	idx := min(h.state.CurrentIndex(), len(matches)-1)
+	if idx == 0 {
+		num_after = max(0, len(matches)-num_that_can_be_displayed)
+	} else {
+		num_after = max(0, len(matches)-num_that_can_be_displayed)
+		last_idx := len(matches) - 1 - num_after
+		if last_idx < idx {
+			num_before = last_idx - idx
+			num_after = max(0, num_after-num_before)
+		}
+	}
+	pos := num_before
 	x := 1
 	for i := range num_cols {
-		is_last := i == num_cols-1
-		chunk := matches[:min(len(matches), height)]
-		matches = matches[len(chunk):]
+		is_last, is_first := i == num_cols-1, i == 0
+		num := height
+		if is_first && num_before > 0 {
+			num--
+		}
+		if is_last && num_after > 0 {
+			num--
+		}
 		h.lp.MoveCursorTo(x, y)
-		h.draw_column_of_matches(chunk, x, col_width-1, utils.IfElse(is_last, len(matches), 0))
+		limit := min(len(matches), pos+num)
+		h.draw_column_of_matches(matches[pos:limit], idx-pos, x, col_width-1, num_before, utils.IfElse(is_last, len(matches)-limit, 0))
 		x += col_width
+		pos += num
+		num_before = 0
+		if pos >= len(matches) {
+			break
+		}
 	}
 }
 
@@ -192,14 +213,7 @@ func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_p
 	case 0:
 		h.draw_no_matches_message(in_progress)
 	default:
-		switch h.state.SearchText() {
-		case "":
-			h.draw_list_of_results(matches, y, height-2)
-		default:
-			h.draw_matching_result(matches[0])
-			y += 2
-			h.draw_list_of_results(matches[1:], y, height-4)
-		}
+		h.draw_list_of_results(matches, y, height-2)
 	}
 	return
 }

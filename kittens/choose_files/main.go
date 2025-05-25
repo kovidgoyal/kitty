@@ -32,16 +32,25 @@ type State struct {
 	exclude_patterns []*regexp.Regexp
 	score_patterns   []ScorePattern
 	search_text      string
+	current_idx      int
 }
 
-func (s State) BaseDir() string                   { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
-func (s State) SelectDirs() bool                  { return s.select_dirs }
-func (s State) Multiselect() bool                 { return s.multiselect }
-func (s State) MaxDepth() int                     { return utils.IfElse(s.max_depth < 1, 4, s.max_depth) }
-func (s State) String() string                    { return utils.Repr(s) }
-func (s State) SearchText() string                { return s.search_text }
+func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
+func (s State) SelectDirs() bool   { return s.select_dirs }
+func (s State) Multiselect() bool  { return s.multiselect }
+func (s State) MaxDepth() int      { return utils.IfElse(s.max_depth < 1, 4, s.max_depth) }
+func (s State) String() string     { return utils.Repr(s) }
+func (s State) SearchText() string { return s.search_text }
+func (s *State) SetSearchText(val string) {
+	if s.search_text != val {
+		s.search_text = val
+		s.current_idx = 0
+	}
+}
 func (s State) ExcludePatterns() []*regexp.Regexp { return s.exclude_patterns }
 func (s State) ScorePatterns() []ScorePattern     { return s.score_patterns }
+func (s State) CurrentIndex() int                 { return s.current_idx }
+func (s *State) SetCurrentIndex(val int)          { s.current_idx = max(0, val) }
 func (s State) CurrentDir() string {
 	return utils.IfElse(s.current_dir == "", s.BaseDir(), s.current_dir)
 }
