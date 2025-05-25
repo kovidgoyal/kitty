@@ -115,7 +115,7 @@ func icon_for(path string, x os.DirEntry) string {
 	return ans
 }
 
-func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int, x, available_width int, is_last bool, num_before, num_after int) {
+func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int, x, available_width int) {
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
@@ -135,25 +135,11 @@ func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int,
 		h.render_match_with_positions(text, add_ellipsis, m.positions, is_current)
 		h.lp.MoveCursorVertically(1)
 	}
-	if is_last && num_after+num_before > 0 {
-		h.lp.QueueWriteString("\r")
-		h.lp.MoveCursorHorizontally(x)
-		h.lp.QueueWriteString("…  ")
-		text := ""
-		if num_before > 0 {
-			text = fmt.Sprintf("%d before, %d after", num_before, num_after)
-		} else {
-			text = fmt.Sprintf("%d more matches", num_after)
-		}
-		text = h.lp.SprintStyled("italic", text)
-		h.render_match_with_positions(text, false, nil, false)
-		h.lp.MoveCursorVertically(1)
-	}
 }
 
-func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) {
+func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) int {
 	if len(matches) == 0 || height < 2 {
-		return
+		return 0
 	}
 	available_width := h.screen_size.width - 2
 	col_width := available_width
@@ -168,33 +154,23 @@ func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) {
 	}
 	num_of_slots := num_cols * height
 	idx := min(h.state.CurrentIndex(), len(matches)-1)
-	has_more := len(matches) > num_of_slots
-	if has_more {
-		num_of_slots-- // need one slot for X more matches msg
+	pos := 0
+	for pos+num_of_slots <= idx {
+		pos += height
 	}
-	pos := max(0, idx+1-num_of_slots)
-	num_before := pos
-	num_after := max(0, len(matches)-num_of_slots-num_before)
 	x, limit, total := 1, 0, 0
-	for i := range num_cols {
-		is_last := i == num_cols-1
-		num := height
-		if is_last && has_more {
-			num--
-		}
+	for range num_cols {
 		h.lp.MoveCursorTo(x, y)
-		limit = min(len(matches), pos+num)
+		limit = min(len(matches), pos+height)
 		total += limit - pos
-		h.draw_column_of_matches(matches[pos:limit], idx-pos, x, col_width-1, is_last, num_before, num_after)
+		h.draw_column_of_matches(matches[pos:limit], idx-pos, x, col_width-1)
 		x += col_width
-		pos += num
+		pos += height
 		if pos >= len(matches) {
 			break
 		}
 	}
-	if total+num_before+num_after != len(matches) {
-		panic(fmt.Sprintf("Did not account for all matches, internal error. total_drawn=%d num_before=%d num_after=%d total=%d", total, num_before, num_after, len(matches)))
-	}
+	return num_cols
 }
 
 func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_progress bool) (height int) {
@@ -206,13 +182,24 @@ func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_p
 	y += 2
 	h.lp.MoveCursorTo(1, y)
 	h.state.num_of_slots_per_column_at_last_render = height - 2
+	num_cols := 0
 	switch len(matches) {
 	case 0:
 		h.draw_no_matches_message(in_progress)
 	default:
-		h.draw_list_of_results(matches, y, h.state.num_of_slots_per_column_at_last_render)
+		num_cols = h.draw_list_of_results(matches, y, h.state.num_of_slots_per_column_at_last_render)
 	}
 	h.state.num_of_matches_at_last_render = len(matches)
+	m := ""
+	switch h.state.num_of_matches_at_last_render {
+	case 0:
+		m = " no matches "
+	default:
+		m = fmt.Sprintf(" %d of %d matches ", h.state.num_of_slots_per_column_at_last_render*num_cols, h.state.num_of_matches_at_last_render)
+	}
+	w := wcswidth.Stringwidth(m)
+	h.lp.MoveCursorTo(h.screen_size.width-w-2, y+height-2)
+	h.lp.PrintStyled("dim", m)
 	return
 }
 
@@ -253,10 +240,10 @@ func (h *Handler) handle_result_list_keys(ev *loop.KeyEvent) bool {
 	case ev.MatchesPressOrRepeat("up"):
 		h.next_result(-1)
 		return true
-	case ev.MatchesPressOrRepeat("left"):
+	case ev.MatchesPressOrRepeat("left") || ev.MatchesPressOrRepeat("pgup"):
 		h.move_sideways(true)
 		return true
-	case ev.MatchesPressOrRepeat("right"):
+	case ev.MatchesPressOrRepeat("right") || ev.MatchesPressOrRepeat("pgdn"):
 		h.move_sideways(false)
 		return true
 	default:
