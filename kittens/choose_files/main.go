@@ -32,7 +32,9 @@ type State struct {
 	exclude_patterns []*regexp.Regexp
 	score_patterns   []ScorePattern
 	search_text      string
-	current_idx      int
+
+	current_idx                   int
+	num_of_matches_at_last_render int
 }
 
 func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
@@ -119,7 +121,7 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 
 func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 	switch {
-	case h.handle_edit_keys(ev):
+	case h.handle_edit_keys(ev), h.handle_result_list_keys(ev):
 		h.draw_screen()
 	case ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("ctrl+c"):
 		h.lp.Quit(1)

@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty/tools/icons"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
@@ -215,5 +216,28 @@ func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_p
 	default:
 		h.draw_list_of_results(matches, y, height-2)
 	}
+	h.state.num_of_matches_at_last_render = len(matches)
 	return
+}
+
+func (h *Handler) next_result(amt int) {
+	if h.state.num_of_matches_at_last_render > 0 {
+		idx := h.state.CurrentIndex()
+		idx += amt + h.state.num_of_matches_at_last_render
+		idx %= h.state.num_of_matches_at_last_render
+		h.state.SetCurrentIndex(idx)
+	}
+}
+
+func (h *Handler) handle_result_list_keys(ev *loop.KeyEvent) bool {
+	switch {
+	case ev.MatchesPressOrRepeat("down"):
+		h.next_result(1)
+		return true
+	case ev.MatchesPressOrRepeat("up"):
+		h.next_result(-1)
+		return true
+	default:
+		return false
+	}
 }
