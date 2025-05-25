@@ -180,7 +180,7 @@ func (h *Handler) draw_num_of_matches(num_shown, y int) {
 	case 0:
 		m = " no matches "
 	default:
-		m = fmt.Sprintf(" %d of %d matches ", num_shown, h.state.num_of_matches_at_last_render)
+		m = fmt.Sprintf(" %d of %d matches ", min(num_shown, h.state.num_of_matches_at_last_render), h.state.num_of_matches_at_last_render)
 	}
 	w := int(math.Ceil(float64(wcswidth.Stringwidth(m)) / 2.0))
 	h.lp.MoveCursorTo(h.screen_size.width-w-2, y)
