@@ -115,14 +115,7 @@ func icon_for(path string, x os.DirEntry) string {
 	return ans
 }
 
-func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int, x, available_width, num_before, num_after int) {
-	if num_before > 0 {
-		h.lp.QueueWriteString("\r")
-		h.lp.MoveCursorHorizontally(x)
-		h.lp.QueueWriteString("…  ")
-		text := h.lp.SprintStyled("italic", fmt.Sprintf("%d prev matches", num_before))
-		h.render_match_with_positions(text, false, nil, false)
-	}
+func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int, x, available_width int, is_last bool, num_before, num_after int) {
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
@@ -142,12 +135,19 @@ func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int,
 		h.render_match_with_positions(text, add_ellipsis, m.positions, is_current)
 		h.lp.MoveCursorVertically(1)
 	}
-	if num_after > 0 {
+	if is_last && num_after+num_before > 0 {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
 		h.lp.QueueWriteString("…  ")
-		text := h.lp.SprintStyled("italic", fmt.Sprintf("%d more matches", num_after))
+		text := ""
+		if num_before > 0 {
+			text = fmt.Sprintf("%d before, %d after", num_before, num_after)
+		} else {
+			text = fmt.Sprintf("%d more matches", num_after)
+		}
+		text = h.lp.SprintStyled("italic", text)
 		h.render_match_with_positions(text, false, nil, false)
+		h.lp.MoveCursorVertically(1)
 	}
 }
 
@@ -166,39 +166,34 @@ func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) {
 		}
 		col_width = available_width / num_cols
 	}
-	num_that_can_be_displayed := num_cols * height
-	num_after, num_before := 0, 0
+	num_of_slots := num_cols * height
 	idx := min(h.state.CurrentIndex(), len(matches)-1)
-	if idx == 0 {
-		num_after = max(0, len(matches)-num_that_can_be_displayed)
-	} else {
-		num_after = max(0, len(matches)-num_that_can_be_displayed)
-		last_idx := len(matches) - 1 - num_after
-		if last_idx < idx {
-			num_before = last_idx - idx
-			num_after = max(0, num_after-num_before)
-		}
+	has_more := len(matches) > num_of_slots
+	if has_more {
+		num_of_slots-- // need one slot for X more matches msg
 	}
-	pos := num_before
-	x := 1
+	pos := max(0, idx+1-num_of_slots)
+	num_before := pos
+	num_after := max(0, len(matches)-num_of_slots-num_before)
+	x, limit, total := 1, 0, 0
 	for i := range num_cols {
-		is_last, is_first := i == num_cols-1, i == 0
+		is_last := i == num_cols-1
 		num := height
-		if is_first && num_before > 0 {
-			num--
-		}
-		if is_last && num_after > 0 {
+		if is_last && has_more {
 			num--
 		}
 		h.lp.MoveCursorTo(x, y)
-		limit := min(len(matches), pos+num)
-		h.draw_column_of_matches(matches[pos:limit], idx-pos, x, col_width-1, num_before, utils.IfElse(is_last, len(matches)-limit, 0))
+		limit = min(len(matches), pos+num)
+		total += limit - pos
+		h.draw_column_of_matches(matches[pos:limit], idx-pos, x, col_width-1, is_last, num_before, num_after)
 		x += col_width
 		pos += num
-		num_before = 0
 		if pos >= len(matches) {
 			break
 		}
+	}
+	if total+num_before+num_after != len(matches) {
+		panic(fmt.Sprintf("Did not account for all matches, internal error. total_drawn=%d num_before=%d num_after=%d total=%d", total, num_before, num_after, len(matches)))
 	}
 }
 
@@ -223,7 +218,10 @@ func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_p
 func (h *Handler) next_result(amt int) {
 	if h.state.num_of_matches_at_last_render > 0 {
 		idx := h.state.CurrentIndex()
-		idx += amt + h.state.num_of_matches_at_last_render
+		idx += amt
+		for idx < 0 {
+			idx += h.state.num_of_matches_at_last_render
+		}
 		idx %= h.state.num_of_matches_at_last_render
 		h.state.SetCurrentIndex(idx)
 	}
