@@ -2,6 +2,7 @@ package choose_files
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -173,6 +174,29 @@ func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) int
 	return num_cols
 }
 
+func (h *Handler) draw_num_of_matches(num_shown, y int) {
+	m := ""
+	switch h.state.num_of_matches_at_last_render {
+	case 0:
+		m = " no matches "
+	default:
+		m = fmt.Sprintf(" %d of %d matches ", num_shown, h.state.num_of_matches_at_last_render)
+	}
+	w := int(math.Ceil(float64(wcswidth.Stringwidth(m)) / 2.0))
+	h.lp.MoveCursorTo(h.screen_size.width-w-2, y)
+	st := loop.SizedText{Subscale_denominator: 2, Subscale_numerator: 1, Vertical_alignment: 2, Width: 1}
+	graphemes := wcswidth.SplitIntoGraphemes(m)
+	for len(graphemes) > 0 {
+		s := ""
+		for w := 0; w < 2 && len(graphemes) > 0; {
+			w += wcswidth.Stringwidth(graphemes[0])
+			s += graphemes[0]
+			graphemes = graphemes[1:]
+		}
+		h.lp.DrawSizedText(s, st)
+	}
+}
+
 func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_progress bool) (height int) {
 	height = h.screen_size.height - y - bottom_margin
 	h.lp.MoveCursorTo(1, 1+y)
@@ -190,16 +214,7 @@ func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_p
 		num_cols = h.draw_list_of_results(matches, y, h.state.num_of_slots_per_column_at_last_render)
 	}
 	h.state.num_of_matches_at_last_render = len(matches)
-	m := ""
-	switch h.state.num_of_matches_at_last_render {
-	case 0:
-		m = " no matches "
-	default:
-		m = fmt.Sprintf(" %d of %d matches ", h.state.num_of_slots_per_column_at_last_render*num_cols, h.state.num_of_matches_at_last_render)
-	}
-	w := wcswidth.Stringwidth(m)
-	h.lp.MoveCursorTo(h.screen_size.width-w-2, y+height-2)
-	h.lp.PrintStyled("dim", m)
+	h.draw_num_of_matches(h.state.num_of_slots_per_column_at_last_render*num_cols, y+height-2)
 	return
 }
 
