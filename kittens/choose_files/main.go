@@ -14,6 +14,9 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
+// TODO: Comboboxes, multifile selections, change dir, mountpoint crossing
+// options, save file name, file/dir modes
+
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
 
