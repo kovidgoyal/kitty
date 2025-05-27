@@ -396,6 +396,11 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             printf("session: %s\n", opts.session ? opts.session : "");
             exit(0);
         } else {
+            int fds[2] = {0};
+            if (pipe(fds) == -1) {
+                perror("failed to create a pipe"); exit(1);
+            }
+
 #define reopen_or_fail(path, mode, which) { errno = 0; if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
             if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0)))
                 reopen_or_fail("/dev/null", "rb", stdin);
@@ -403,8 +408,13 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             reopen_or_fail(detached_log, "ab", stdout);
             reopen_or_fail(detached_log, "ab", stderr);
 #undef reopen_or_fail
-            if (fork() != 0) exit(0);
+            if (fork() != 0) {
+                errno = 0; while(read(fds[0], NULL, 0) == -1 && errno == EINTR);
+                exit(0);
+            }
+            while (close(fds[0]) != 0);
             setsid();
+            while (close(fds[1]) != 0);
         }
     }
     unsetenv("KITTY_SI_DATA");
