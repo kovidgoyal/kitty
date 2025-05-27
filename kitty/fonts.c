@@ -1852,7 +1852,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         CPUCell *cpu_cell = line->cpu_cells + i;
         if (cpu_cell->is_multicell) {
             if (cpu_cell->x) {
-                i += mcd_x_limit(cpu_cell) - cpu_cell->x - 1;
+                if (cpu_cell->x + 1u < mcd_x_limit(cpu_cell)) i += mcd_x_limit(cpu_cell) - cpu_cell->x - 1u;
                 continue;
             }
             cell_font.scale = cpu_cell->scale; cell_font.subscale_n = cpu_cell->subscale_n; cell_font.subscale_d = cpu_cell->subscale_d;
