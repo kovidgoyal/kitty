@@ -3644,10 +3644,11 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     s.output_buf->active_hyperlink_id = 0; s.output_buf->len = 0;
     RAII_PyObject(ans, PyTuple_New(y_limit - min_y + 1));
     RAII_PyObject(nl, PyUnicode_FromString("\n"));
-    if (!ans || !nl) return NULL;
+    RAII_PyObject(empty_string, PyUnicode_FromString(""));
+    if (!ans || !nl || !empty_string) return NULL;
     bool has_escape_codes = false;
     bool need_newline = false;
-    for (int i = 0, y = min_y; y < y_limit; y++, i++) {
+    for (int i = 0, y = min_y; y < y_limit && i < PyTuple_GET_SIZE(ans) - 1; y++, i++) {
         const bool is_first_line = y == min_y;
         s.output_buf->len = 0;
         Line *line = range_line_(self, y);
@@ -3666,6 +3667,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         if (x_limit <= x_start && (is_only_whitespace_line || line_is_empty(line))) {
             // we want a newline on only whitespace lines even if they are continued
             if (insert_newlines) need_newline = true;
+            PyTuple_SET_ITEM(ans, i, Py_NewRef(need_newline ? nl : empty_string));
         } else {
             char_type prefix_char = need_newline ? '\n' : 0;
             while (x_start < x_limit) {

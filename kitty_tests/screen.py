@@ -677,6 +677,12 @@ class TestScreen(BaseTest):
         self.ae(s.text_for_selection(True), ('a\x1b[32mb\x1b[39mc  ', 'xy', '\x1b[m'))
         self.ae(s.text_for_selection(True, True), ('a\x1b[32mb\x1b[39mc', 'xy', '\x1b[m'))
         # ]]]]]]]]]]]]]]]]]]]]
+        s.reset()
+        s.draw('a'), s.carriage_return(), s.linefeed(), s.linefeed(), s.draw('b')
+        s.start_selection(0, 0)
+        s.update_selection(4, 4)
+        self.ae(''.join(s.text_for_selection()), 'a\n\nb')
+        self.ae(''.join(s.text_for_selection(True)), 'a\n\nb')
 
     def test_soft_hyphen(self):
         s = self.create_screen()

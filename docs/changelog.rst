@@ -117,6 +117,8 @@ Detailed list of changes
 
 - hints kitten: Preserve line breaks when the hint is over a line break (:iss:`8674`)
 
+- Fix a segfault when using the :ac:`copy_ansi_to_clipboard` action (:iss:`8682`)
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
