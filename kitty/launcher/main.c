@@ -414,9 +414,9 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
                 errno = 0; while(read(fds[0], NULL, 0) == -1 && errno == EINTR);
                 exit(0);
             }
-            while (close(fds[0]) != 0);
+            errno = 0; while (close(fds[0]) != 0 && errno == EINTR);
             setsid();
-            while (close(fds[1]) != 0);
+            errno = 0; while (close(fds[1]) != 0 && errno == EINTR);
         }
     }
     unsetenv("KITTY_SI_DATA");
