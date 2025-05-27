@@ -409,6 +409,8 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             reopen_or_fail(detached_log, "ab", stderr);
 #undef reopen_or_fail
             if (fork() != 0) {
+                // wait until child has done setsid() before exiting so that it doesnt get a SIGHUP,
+                // see: https://github.com/kovidgoyal/kitty/issues/8680
                 errno = 0; while(read(fds[0], NULL, 0) == -1 && errno == EINTR);
                 exit(0);
             }
