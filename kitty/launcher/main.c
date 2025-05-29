@@ -411,7 +411,8 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             if (fork() != 0) {
                 // wait until child has done setsid() before exiting so that it doesnt get a SIGHUP,
                 // see: https://github.com/kovidgoyal/kitty/issues/8680
-                errno = 0; while(read(fds[0], NULL, 0) == -1 && errno == EINTR);
+                char buf[4];
+                errno = 0; while(read(fds[0], buf, sizeof(buf)) == -1 && errno == EINTR);
                 exit(0);
             }
             errno = 0; while (close(fds[0]) != 0 && errno == EINTR);
