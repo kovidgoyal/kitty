@@ -408,15 +408,16 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             reopen_or_fail(detached_log, "ab", stdout);
             reopen_or_fail(detached_log, "ab", stderr);
 #undef reopen_or_fail
+            char buf[4] = {0};
             if (fork() != 0) {
                 // wait until child has done setsid() before exiting so that it doesnt get a SIGHUP,
                 // see: https://github.com/kovidgoyal/kitty/issues/8680
-                char buf[4];
                 errno = 0; while(read(fds[0], buf, sizeof(buf)) == -1 && errno == EINTR);
                 exit(0);
             }
             errno = 0; while (close(fds[0]) != 0 && errno == EINTR);
             setsid();
+            errno = 0; while (write(fds[1], buf, sizeof(buf)) != 0 && errno == EINTR);
             errno = 0; while (close(fds[1]) != 0 && errno == EINTR);
         }
     }
