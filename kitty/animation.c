@@ -184,7 +184,7 @@ apply_easing_curve(const Animation *a, double val, monotonic_t duration) {
     animation_function *f = a->functions + idx;
     double interval_size = 1. / a->count, interval_start = idx * interval_size;
     double scaled_val = (val - interval_start) / interval_size;
-    double ans = f->curve(&f->params, scaled_val, duration);
+    double ans = f->curve(f->params, scaled_val, duration);
     return f->y_at_start + unit_value(ans) * f->y_size;
 }
 

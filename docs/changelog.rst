@@ -119,6 +119,8 @@ Detailed list of changes
 
 - Fix a segfault when using the :ac:`copy_ansi_to_clipboard` action (:iss:`8682`)
 
+- Fix a crash when using linear easing curves for animations (:iss:`8692`)
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
