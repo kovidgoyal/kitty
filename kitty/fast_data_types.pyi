@@ -1418,7 +1418,7 @@ class ChildMonitor:
     def resize_pty(self, window_id: int, rows: int, cols: int, x_pixels: int, y_pixels: int) -> None:
         pass
 
-    def needs_write(self, child_id: int, data: bytes) -> bool:
+    def needs_write(self, child_id: int, data: bytes | memoryview) -> bool:
         pass
 
     def set_iutf8_winid(self, win_id: int, on: bool) -> bool:

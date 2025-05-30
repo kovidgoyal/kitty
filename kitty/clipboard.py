@@ -212,7 +212,7 @@ class ReadRequest(NamedTuple):
     id: str = ''
     protocol_type: ProtocolType = ProtocolType.osc_52
 
-    def encode_response(self, status: str = 'DATA', mime: str = '', payload: bytes = b'') -> bytes:
+    def encode_response(self, status: str = 'DATA', mime: str = '', payload: bytes | memoryview = b'') -> bytes:
         ans = f'{self.protocol_type.value};type=read:status={status}'
         if status == 'OK' and self.is_primary_selection:
             ans += ':loc=primary'
@@ -276,7 +276,7 @@ class WriteRequest:
             x = {mime: self.tempfile.create_chunker(pos.start, pos.size) for mime, pos in self.mime_map.items()}
             cp.set_mime(x)
 
-    def add_base64_data(self, data: str | bytes, mime: str = 'text/plain') -> None:
+    def add_base64_data(self, data: str | bytes | memoryview, mime: str = 'text/plain') -> None:
         if isinstance(data, str):
             data = data.encode('ascii')
         if self.currently_writing_mime and self.currently_writing_mime != mime:
@@ -295,7 +295,7 @@ class WriteRequest:
             self.mime_map[self.currently_writing_mime] = MimePos(start, self.tempfile.tell() - start)
             self.currently_writing_mime = ''
 
-    def write_base64_data(self, b: bytes) -> None:
+    def write_base64_data(self, b: bytes | memoryview) -> None:
         if not self.max_size_exceeded:
             try:
                 decoded = self.decoder.decode(b)

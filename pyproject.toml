@@ -17,6 +17,7 @@ disallow_untyped_decorators = true
 disallow_untyped_calls = true
 disallow_incomplete_defs = true
 strict = true
+strict_bytes = true
 no_implicit_reexport = true
 
 [tool.pylsp-mypy]

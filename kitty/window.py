@@ -1032,7 +1032,7 @@ class Window:
         text = ''.join(strings)
         get_boss().display_scrollback(self, text, title='Dump of lines', report_cursor=False)
 
-    def write_to_child(self, data: str | bytes) -> None:
+    def write_to_child(self, data: str | bytes | memoryview) -> None:
         if data:
             if isinstance(data, str):
                 data = data.encode('utf-8')

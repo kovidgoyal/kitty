@@ -30,7 +30,7 @@ class Query:
     def query_code(self) -> str:
         return f"\x1bP+q{self.encoded_query_name}\x1b\\"
 
-    def decode_response(self, res: bytes) -> str:
+    def decode_response(self, res: bytes | memoryview) -> str:
         return unhexlify(res).decode('utf-8')
 
     def more_needed(self, buffer: bytes) -> bool:

@@ -14,7 +14,7 @@ from typing import Any, ClassVar, DefaultDict, Deque, Generic, Optional, TypeVar
 
 from kitty.conf.utils import positive_float, positive_int
 from kitty.fast_data_types import create_canvas
-from kitty.typing_compat import GRT_C, CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
+from kitty.typing_compat import CompletedProcess, GRT_f, GRT_o, HandlerType
 from kitty.utils import ScreenSize, fit_image, which
 
 from .operations import cursor
@@ -344,10 +344,10 @@ class Alias(Generic[T]):
 
 
 class GraphicsCommand:
-    a = action = Alias(cast(GRT_a, 't'))
+    a = action = Alias('t')
     q = quiet = Alias(0)
     f = format = Alias(32)
-    t = transmission_type = Alias(cast(GRT_t, 'd'))
+    t = transmission_type = Alias('d')
     s = data_width = animation_state = Alias(0)
     v = data_height = loop_count = Alias(0)
     S = data_size = Alias(0)
@@ -356,7 +356,7 @@ class GraphicsCommand:
     I = image_number = Alias(0)  # noqa
     p = placement_id = Alias(0)
     o = compression = Alias(cast(Optional[GRT_o], None))
-    m = more = Alias(cast(GRT_m, 0))
+    m = more = Alias(0)
     x = left_edge = Alias(0)
     y = top_edge = Alias(0)
     w = width = Alias(0)
@@ -366,8 +366,8 @@ class GraphicsCommand:
     c = columns = other_frame_number = dest_frame = Alias(0)
     r = rows = frame_number = source_frame = Alias(0)
     z = z_index = gap = Alias(0)
-    C = cursor_movement = compose_mode = Alias(cast(GRT_C, 0))
-    d = delete_action = Alias(cast(GRT_d, 'a'))
+    C = cursor_movement = compose_mode = Alias(0)
+    d = delete_action = Alias('a')
 
     def __init__(self) -> None:
         self._actual_values: dict[str, Any] = {}
@@ -380,12 +380,12 @@ class GraphicsCommand:
         ans._actual_values = self._actual_values.copy()
         return ans
 
-    def serialize(self, payload: bytes | str = b'') -> bytes:
+    def serialize(self, payload: bytes | memoryview | str = b'') -> bytes:
         items = []
         for k, val in self._actual_values.items():
             items.append(f'{k}={val}')
 
-        ans: list[bytes] = []
+        ans: list[bytes|memoryview] = []
         w = ans.append
         w(b'\033_G')
         w(','.join(items).encode('ascii'))

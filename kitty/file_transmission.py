@@ -244,8 +244,8 @@ def name_to_serialized_map() -> dict[str, str]:
 
 
 @run_once
-def serialized_to_field_map() -> dict[bytes, 'Field[Any]']:
-    ans: dict[bytes, 'Field[Any]'] = {}
+def serialized_to_field_map() -> dict[bytes | memoryview, 'Field[Any]']:
+    ans: dict[bytes | memoryview, 'Field[Any]'] = {}
     for k in fields(FileTransmissionCommand):
         ans[k.metadata.get('sname', k.name).encode('ascii')] = k
     return ans
@@ -268,7 +268,7 @@ class FileTransmissionCommand:
     name: str = field(default='', metadata={'base64': True, 'sname': 'n'})
     status: str = field(default='', metadata={'base64': True, 'sname': 'st'})
     parent: str = field(default='', metadata={'sname': 'pr'})
-    data: bytes = field(default=b'', repr=False, metadata={'sname': 'd'})
+    data: bytes | memoryview = field(default=b'', repr=False, metadata={'sname': 'd'})
 
     def __repr__(self) -> str:
         ans = []
@@ -313,7 +313,7 @@ class FileTransmissionCommand:
             yield '='
             if inspect.isclass(k.type) and issubclass(k.type, Enum):
                 yield val.name
-            elif k.type is bytes:
+            elif k.type == bytes | memoryview:
                 yield base64_encode(val)
             elif k.type is str:
                 if k.metadata.get('base64'):
@@ -340,7 +340,7 @@ class FileTransmissionCommand:
                 return
             if inspect.isclass(field.type) and issubclass(field.type, Enum):
                 setattr(ans, field.name, field.type[str(val, "utf-8")])
-            elif field.type is bytes:
+            elif field.type == bytes | memoryview:
                 setattr(ans, field.name, base64_decode(val))
             elif field.type is int:
                 setattr(ans, field.name, int(val))
@@ -360,8 +360,8 @@ class FileTransmissionCommand:
 
 class IdentityDecompressor:
 
-    def __call__(self, data: bytes, is_last: bool = False) -> bytes:
-        return data
+    def __call__(self, data: bytes | memoryview, is_last: bool = False) -> bytes:
+        return bytes(data)
 
 
 class ZlibDecompressor:
@@ -370,7 +370,7 @@ class ZlibDecompressor:
         import zlib
         self.d = zlib.decompressobj(wbits=0)
 
-    def __call__(self, data: bytes, is_last: bool = False) -> bytes:
+    def __call__(self, data: bytes | memoryview, is_last: bool = False) -> bytes:
         ans = self.d.decompress(data)
         if is_last:
             ans += self.d.flush()
@@ -510,7 +510,7 @@ class DestFile:
             self.existing_stat = None
             self.needs_unlink = False
 
-    def write_data(self, all_files: dict[str, 'DestFile'], data: bytes, is_last: bool) -> None:
+    def write_data(self, all_files: dict[str, 'DestFile'], data: bytes | memoryview, is_last: bool) -> None:
         if self.ftype is FileType.directory:
             raise TransmissionError(code=ErrorCode.EISDIR, file_id=self.file_id, msg='Cannot write data to a directory entry')
         if self.closed:
@@ -687,6 +687,7 @@ class SourceFile:
         self.differ = None
 
     def next_chunk(self, sz: int = 1024 * 1024) -> tuple[bytes, int]:
+        data: bytes | memoryview = b''
         if self.target:
             self.transmitted = True
             data = self.target

@@ -40,8 +40,8 @@ def set_paths(cwd: str = '', home: str = '') -> Generator[None, None, None]:
 
 class IdentityCompressor:
 
-    def compress(self, data: bytes) -> bytes:
-        return data
+    def compress(self, data: bytes | memoryview) -> bytes:
+        return bytes(data)
 
     def flush(self) -> bytes:
         return b''
@@ -53,7 +53,7 @@ class ZlibCompressor:
         import zlib
         self.c = zlib.compressobj()
 
-    def compress(self, data: bytes) -> bytes:
+    def compress(self, data: bytes | memoryview) -> bytes:
         return self.c.compress(data)
 
     def flush(self) -> bytes:

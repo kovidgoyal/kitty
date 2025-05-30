@@ -115,7 +115,7 @@ def read_data_from_shared_memory(shm_name: str) -> Any:
         return json.loads(shm.read_data_with_size())
 
 
-def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes]:
+def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes|memoryview]:
     from base64 import standard_b64decode
     yield b'\nKITTY_DATA_START\n'  # to discard leading data
     try:

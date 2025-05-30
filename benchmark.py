@@ -50,7 +50,7 @@ def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollbac
 
     screen = Screen(None, rows, columns, scrollback, cell_width, cell_height, 0, ToChild())
 
-    def parse_bytes(data: bytes) -> None:
+    def parse_bytes(data: bytes|memoryview) -> None:
         data = memoryview(data)
         while data:
             dest = screen.test_create_write_buffer()
