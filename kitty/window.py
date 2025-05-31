@@ -91,6 +91,7 @@ from .fast_data_types import (
     wakeup_main_loop,
 )
 from .keys import keyboard_mode_name, mod_mask
+from .notifications import NotificationManager
 from .options.types import Options
 from .progress import Progress
 from .rgb import to_color
@@ -1611,15 +1612,22 @@ class Window:
             cmd.only_when = OnlyWhen(when)
             if not nm.is_notification_allowed(cmd, self.id):
                 return
-            if action == 'notify':
-                if self.last_cmd_end_notification is not None:
+
+            def notify(window: Window, opts: Options, nm: NotificationManager) -> None:
+                if window.last_cmd_end_notification is not None:
                     if 'next' in opts.notify_on_cmd_finish.clear_on:
-                        nm.close_notification(self.last_cmd_end_notification[0])
-                    self.last_cmd_end_notification = None
-                notification_id = nm.notify_with_command(cmd, self.id)
+                        nm.close_notification(window.last_cmd_end_notification[0])
+                    window.last_cmd_end_notification = None
+                notification_id = nm.notify_with_command(cmd, window.id)
                 if notification_id is not None:
-                    self.last_cmd_end_notification = notification_id, cmd.only_when
+                    window.last_cmd_end_notification = notification_id, cmd.only_when
+
+            if action == 'notify':
+                notify(self, opts, nm)
             elif action == 'bell':
+                self.screen.bell()
+            elif action == 'notify-bell':
+                notify(self, opts, nm)
                 self.screen.bell()
             elif action == 'command':
                 open_cmd([x.replace('%c', self.last_cmd_cmdline).replace('%s', exit_status) for x in notify_cmdline])
