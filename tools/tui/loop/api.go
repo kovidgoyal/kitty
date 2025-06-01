@@ -49,7 +49,7 @@ type Loop struct {
 	timers, timers_temp                    []*timer
 	timer_id_counter, write_msg_id_counter IdType
 	wakeup_channel                         chan byte
-	panic_channel                          chan any
+	panic_channel                          chan error
 	pending_writes                         []write_msg
 	tty_write_channel                      chan write_msg
 	pending_mouse_events                   *utils.RingBuffer[MouseEvent]
@@ -309,27 +309,32 @@ func (self *Loop) DebugPrintln(args ...any) {
 	}
 }
 
+func format_stacktrace_on_panic(r any) (text string, err error) {
+	pcs := make([]uintptr, 512)
+	n := runtime.Callers(3, pcs)
+	lines := []string{}
+	frames := runtime.CallersFrames(pcs[:n])
+	err = fmt.Errorf("Panicked: %s", r)
+	lines = append(lines, fmt.Sprintf("\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r))
+	found_first_frame := false
+	for frame, more := frames.Next(); more; frame, more = frames.Next() {
+		if !found_first_frame {
+			if strings.HasPrefix(frame.Function, "runtime.") {
+				continue
+			}
+			found_first_frame = true
+		}
+		lines = append(lines, fmt.Sprintf("%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line))
+	}
+	text = strings.Join(lines, "")
+	return strings.TrimSpace(text), err
+}
+
 func (self *Loop) Run() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			pcs := make([]uintptr, 512)
-			n := runtime.Callers(2, pcs)
-			lines := []string{}
-			frames := runtime.CallersFrames(pcs[:n])
-			err = fmt.Errorf("Panicked: %s", r)
-			lines = append(lines, fmt.Sprintf("\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r))
-			found_first_frame := false
-			for frame, more := frames.Next(); more; frame, more = frames.Next() {
-				if !found_first_frame {
-					if strings.HasPrefix(frame.Function, "runtime.") {
-						continue
-					}
-					found_first_frame = true
-				}
-				lines = append(lines, fmt.Sprintf("%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line))
-			}
-			text := strings.Join(lines, "")
-			tty.DebugPrintln(strings.TrimSpace(text))
+			var text string
+			text, err = format_stacktrace_on_panic(r)
 			is_terminal := tty.IsTerminal(os.Stderr.Fd())
 			if is_terminal {
 				os.Stderr.WriteString("\x1b]\x1b\\\x1bc\x1b[H\x1b[2J") // reset terminal
@@ -338,6 +343,7 @@ func (self *Loop) Run() (err error) {
 			if is_terminal {
 				if term, err := tty.OpenControllingTerm(tty.SetRaw); err == nil {
 					defer term.RestoreAndClose()
+					term.DebugPrintln(text)
 					fmt.Println("Press any key to exit.\r")
 					buf := make([]byte, 16)
 					_, _ = term.Read(buf)
@@ -594,7 +600,14 @@ type SizedText struct {
 
 func (self *Loop) RecoverFromPanicInGoRoutine() {
 	if r := recover(); r != nil {
-		self.panic_channel <- r
+		text, err := format_stacktrace_on_panic(r)
+		err = fmt.Errorf("Panicked in non-main go routine\n%s\n%w", text, err)
+		// print to kitty stdout as multiple go routines might panic but only
+		// one panic is reported by the main loop panic_channel
+		if f := tty.KittyStdout(); f != nil {
+			fmt.Fprintln(f, err)
+		}
+		self.panic_channel <- err
 	}
 }
 
