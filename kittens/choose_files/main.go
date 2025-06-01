@@ -249,6 +249,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	default:
 		return 1, fmt.Errorf("Can only specify one directory to search in")
 	}
+	default_cwd = utils.Expanduser(default_cwd)
 	lp.OnInitialize = handler.OnInitialize
 	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
 		handler.init_sizes(new_size)

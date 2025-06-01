@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/kovidgoyal/kitty/tools/tui/subseq"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -106,11 +107,14 @@ func sort_items_without_search_text(items []ResultItem) (ans []*ResultItem) {
 	d := utils.Map(func(x ResultItem) s {
 		return s{strings.ToLower(x.text), strings.Count(x.text, "/"), x.dir_entry.IsDir(), hidden_pat.MatchString(x.abspath), &x}
 	}, items)
-	sort.Slice(d, func(i, j int) bool {
+	sort.SliceStable(d, func(i, j int) bool {
 		a, b := d[i], d[j]
 		if a.num_of_slashes == b.num_of_slashes {
 			if a.is_dir == b.is_dir {
 				if a.is_hidden == b.is_hidden {
+					if a.ltext == b.ltext {
+						return count_uppercase(a.r.text) < count_uppercase(b.r.text)
+					}
 					return a.ltext < b.ltext
 				}
 				return b.is_hidden
@@ -129,6 +133,16 @@ func get_modified_score(r *ResultItem, score float64, score_patterns []ScorePatt
 		}
 	}
 	return score
+}
+
+func count_uppercase(s string) int {
+	count := 0
+	for _, r := range s {
+		if unicode.IsUpper(r) {
+			count++
+		}
+	}
+	return count
 }
 
 func (sc *ScanCache) scan(root_dir, search_text string, max_depth int, exclude_patterns []*regexp.Regexp, score_patterns []ScorePattern) (ans []*ResultItem) {
@@ -155,7 +169,16 @@ func (sc *ScanCache) scan(root_dir, search_text string, max_depth int, exclude_p
 		x.positions = m.Positions
 		return s{x, get_modified_score(x, m.Score, score_patterns)}
 	}, matches2)
-	slices.SortFunc(ss, func(a, b s) int { return cmp.Compare(b.score, a.score) })
+	slices.SortStableFunc(ss, func(a, b s) int {
+		ans := cmp.Compare(b.score, a.score)
+		if ans == 0 {
+			ans = cmp.Compare(len(a.r.text), len(b.r.text))
+			if ans == 0 {
+				ans = cmp.Compare(count_uppercase(a.r.text), count_uppercase(b.r.text))
+			}
+		}
+		return ans
+	})
 	return utils.Map(func(s s) *ResultItem { return s.r }, ss)
 }
 
@@ -175,7 +198,7 @@ func (h *Handler) get_results() (ans []*ResultItem, in_progress bool) {
 	search_text := h.state.SearchText()
 	sc.root_dir = root_dir
 	sc.search_text = search_text
-	md, ep, sp := h.state.MaxDepth(), h.state.ExcludePatterns(), h.state.ScorePatterns()
+	md, ep, sp := max(0, h.state.MaxDepth()-1), h.state.ExcludePatterns(), h.state.ScorePatterns()
 	go func() {
 		results := sc.scan(root_dir, search_text, md, ep, sp)
 		sc.mutex.Lock()

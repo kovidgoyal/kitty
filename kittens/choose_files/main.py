@@ -34,7 +34,7 @@ opt('+exclude_directory', '^/dev$', add_to_default=True)
 opt('+exclude_directory', '^/sys$', add_to_default=True)
 opt('+exclude_directory', '/__pycache__$', add_to_default=True)
 
-opt('max_depth', '4', option_type='positive_int', long_text='''
+opt('max_depth', '1', option_type='positive_int', long_text='''
 The maximum depth to which to scan the filesystem for matches. Using large values will slow things down considerably. The better
 approach is to use a small value and first change to the directory of interest then actually select the file of interest.
 ''')
