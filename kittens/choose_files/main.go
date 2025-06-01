@@ -216,7 +216,6 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	switch len(args) {
 	case 0:
-		os.Getwd()
 		if default_cwd, err = os.Getwd(); err != nil {
 			return
 		}
