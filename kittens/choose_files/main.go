@@ -55,10 +55,8 @@ func (s *State) SetSearchText(val string) {
 	}
 }
 func (s *State) SetCurrentDir(val string) {
-	if val == "." {
-		if q, err := os.Getwd(); err == nil {
-			val = q
-		}
+	if q, err := filepath.Abs(val); err == nil {
+		val = q
 	}
 	if s.CurrentDir() != val {
 		s.search_text = ""
@@ -250,6 +248,9 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, fmt.Errorf("Can only specify one directory to search in")
 	}
 	default_cwd = utils.Expanduser(default_cwd)
+	if default_cwd, err = filepath.Abs(default_cwd); err != nil {
+		return
+	}
 	lp.OnInitialize = handler.OnInitialize
 	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
 		handler.init_sizes(new_size)
