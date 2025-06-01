@@ -18,7 +18,7 @@ import (
 var _ = fmt.Print
 
 func (h *Handler) draw_results_title() {
-	text := filepath.Clean(h.state.BaseDir())
+	text := filepath.Clean(h.state.CurrentDir())
 	home := filepath.Clean(utils.Expanduser("~"))
 	if strings.HasPrefix(text, home) {
 		text = "~" + text[len(home):]

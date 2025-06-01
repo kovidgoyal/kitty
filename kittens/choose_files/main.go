@@ -3,6 +3,7 @@ package choose_files
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,6 +52,13 @@ func (s *State) SetSearchText(val string) {
 	if s.search_text != val {
 		s.search_text = val
 		s.current_idx = 0
+	}
+}
+func (s *State) SetCurrentDir(val string) {
+	if s.CurrentDir() != val {
+		s.search_text = ""
+		s.current_idx = 0
+		s.current_dir = val
 	}
 }
 func (s State) ExcludePatterns() []*regexp.Regexp { return s.exclude_patterns }
@@ -129,6 +137,21 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 		h.draw_screen()
 	case ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("ctrl+c"):
 		h.lp.Quit(1)
+	case ev.MatchesPressOrRepeat("tab"):
+		matches, in_progress := h.get_results()
+		if len(matches) > 0 && !in_progress {
+			if idx := h.state.CurrentIndex(); idx < len(matches) {
+				m := matches[idx].abspath
+				if st, err := os.Stat(m); err == nil {
+					if !st.IsDir() {
+						m = filepath.Dir(m)
+					}
+					h.state.SetCurrentDir(m)
+					return h.draw_screen()
+				}
+			}
+		}
+		h.lp.Beep()
 	}
 	return
 }
