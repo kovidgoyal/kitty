@@ -55,6 +55,11 @@ func (s *State) SetSearchText(val string) {
 	}
 }
 func (s *State) SetCurrentDir(val string) {
+	if val == "." {
+		if q, err := os.Getwd(); err == nil {
+			val = q
+		}
+	}
 	if s.CurrentDir() != val {
 		s.search_text = ""
 		s.current_idx = 0
@@ -150,6 +155,20 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 					return h.draw_screen()
 				}
 			}
+		}
+		h.lp.Beep()
+	case ev.MatchesPressOrRepeat("shift+tab"):
+		curr := h.state.CurrentDir()
+		switch curr {
+		case "/":
+		case ".":
+			if curr, err = os.Getwd(); err == nil && curr != "/" {
+				h.state.SetCurrentDir(filepath.Dir(curr))
+				return h.draw_screen()
+			}
+		default:
+			h.state.SetCurrentDir(filepath.Dir(curr))
+			return h.draw_screen()
 		}
 		h.lp.Beep()
 	}
