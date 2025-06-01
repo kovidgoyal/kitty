@@ -171,6 +171,7 @@ func (self *Handler) initialize() {
 	self.original_context_count = self.current_context_count
 	self.async_results = make(chan AsyncResult, 32)
 	go func() {
+		self.lp.RecoverFromPanicInGoRoutine()
 		r := AsyncResult{}
 		r.collection, r.err = create_collection(self.left, self.right)
 		self.async_results <- r
@@ -191,6 +192,7 @@ func (self *Handler) generate_diff() {
 		return nil
 	})
 	go func() {
+		self.lp.RecoverFromPanicInGoRoutine()
 		r := AsyncResult{rtype: DIFF}
 		r.diff_map, r.err = diff(jobs, self.current_context_count)
 		self.async_results <- r
@@ -230,6 +232,7 @@ func (self *Handler) highlight_all() {
 	}
 	text_files := utils.Filter(self.collection.paths_to_highlight.AsSlice(), is_path_text)
 	go func() {
+		self.lp.RecoverFromPanicInGoRoutine()
 		r := AsyncResult{rtype: HIGHLIGHT}
 		highlight_all(text_files, use_light_colors)
 		self.async_results <- r
@@ -252,6 +255,7 @@ func (self *Handler) load_all_images() {
 	if self.image_count > 0 {
 		image_collection.Initialize(self.lp)
 		go func() {
+			self.lp.RecoverFromPanicInGoRoutine()
 			r := AsyncResult{rtype: IMAGE_LOAD}
 			image_collection.LoadAll()
 			self.async_results <- r
@@ -273,6 +277,7 @@ func (self *Handler) resize_all_images_if_needed() {
 	}
 	if sz != self.images_resized_to && self.image_count > 0 {
 		go func() {
+			self.lp.RecoverFromPanicInGoRoutine()
 			image_collection.ResizeForPageSize(sz.Width, sz.Height)
 			r := AsyncResult{rtype: IMAGE_RESIZE, page_size: sz}
 			self.async_results <- r

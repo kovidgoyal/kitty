@@ -229,6 +229,7 @@ func (h *Handler) get_results() (ans []*ResultItem, in_progress bool) {
 	sc.search_text = st
 	sp := h.state.ScorePatterns()
 	go func() {
+		defer h.lp.RecoverFromPanicInGoRoutine()
 		results := sc.scan(cd, st, sp)
 		sc.mutex.Lock()
 		defer sc.mutex.Unlock()

@@ -49,6 +49,7 @@ type Loop struct {
 	timers, timers_temp                    []*timer
 	timer_id_counter, write_msg_id_counter IdType
 	wakeup_channel                         chan byte
+	panic_channel                          chan any
 	pending_writes                         []write_msg
 	tty_write_channel                      chan write_msg
 	pending_mouse_events                   *utils.RingBuffer[MouseEvent]
@@ -328,11 +329,14 @@ func (self *Loop) Run() (err error) {
 				lines = append(lines, fmt.Sprintf("%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line))
 			}
 			text := strings.Join(lines, "")
-			os.Stderr.WriteString(text)
 			tty.DebugPrintln(strings.TrimSpace(text))
-			if self.terminal_options.Alternate_screen {
-				term, err := tty.OpenControllingTerm(tty.SetRaw)
-				if err == nil {
+			is_terminal := tty.IsTerminal(os.Stderr.Fd())
+			if is_terminal {
+				os.Stderr.WriteString("\x1b]\x1b\\\x1bc\x1b[H\x1b[2J") // reset terminal
+			}
+			os.Stderr.WriteString(text)
+			if is_terminal {
+				if term, err := tty.OpenControllingTerm(tty.SetRaw); err == nil {
 					defer term.RestoreAndClose()
 					fmt.Println("Press any key to exit.\r")
 					buf := make([]byte, 16)
@@ -586,6 +590,12 @@ type SizedText struct {
 	Scale, Subscale_numerator, Subscale_denominator int
 	Horizontal_alignment, Vertical_alignment        Alignment
 	Width                                           int
+}
+
+func (self *Loop) RecoverFromPanicInGoRoutine() {
+	if r := recover(); r != nil {
+		self.panic_channel <- r
+	}
 }
 
 func (self *Loop) DrawSizedText(text string, spec SizedText) {

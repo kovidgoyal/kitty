@@ -394,6 +394,7 @@ func (self *Loop) run() (err error) {
 	self.write_msg_id_counter = 0
 	write_done_channel := make(chan IdType)
 	self.wakeup_channel = make(chan byte, 256)
+	self.panic_channel = make(chan any)
 	self.pending_writes = make([]write_msg, 0, 256)
 	err_channel := make(chan error, 8)
 	self.death_signal = SIGNULL
@@ -563,6 +564,8 @@ func (self *Loop) run() (err error) {
 		}
 		select {
 		case <-timeout_chan:
+		case p := <-self.panic_channel:
+			panic(p)
 		case <-self.wakeup_channel:
 			for len(self.wakeup_channel) > 0 {
 				<-self.wakeup_channel
