@@ -557,10 +557,7 @@ func (self *Loop) run() (err error) {
 			}
 			var timeout time.Duration
 			if len(self.timers) > 0 {
-				timeout = self.timers[0].deadline.Sub(now)
-				if timeout < 0 {
-					timeout = 0
-				}
+				timeout = max(0, self.timers[0].deadline.Sub(now))
 			}
 			timeout_chan = time.After(timeout)
 		}
