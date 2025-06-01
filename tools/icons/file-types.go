@@ -181,6 +181,7 @@ var DirectoryNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		"Favorites":     0xf069d,         // 󰚝
 		"hidden":        FOLDER_HIDDEN,   // 󱞞
 		"home":          0xf10b5,         // 󱂵
+		"~":             0xf10b5,         // 󱂵
 		"include":       FOLDER_CONFIG,   // 
 		"Mail":          0xf01f0,         // 󰇰
 		"Movies":        0xf0fce,         // 󰿎
