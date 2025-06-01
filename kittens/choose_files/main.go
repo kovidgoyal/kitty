@@ -15,8 +15,8 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
-// TODO: Comboboxes, multifile selections, change dir, mountpoint crossing
-// options, save file name, file/dir modes.
+// TODO: Comboboxes, multifile selections, save file name, file/dir modes. Make
+// window title conditional on mode
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
@@ -81,11 +81,7 @@ type Handler struct {
 
 func (h *Handler) draw_screen() (err error) {
 	matches, in_progress := h.get_results()
-	if len(matches) > 0 {
-		h.lp.SetWindowTitle(matches[0].text)
-	} else {
-		h.lp.SetWindowTitle("Select a file") // TODO: make this conditional on mode
-	}
+	h.lp.SetWindowTitle("Select a file") // TODO: make this conditional on mode
 	h.lp.StartAtomicUpdate()
 	defer h.lp.EndAtomicUpdate()
 	h.lp.ClearScreen()
