@@ -192,15 +192,15 @@ func (sc *ScanCache) scan(root_dir, search_text string, score_patterns []ScorePa
 			patterns = patterns[1:]
 		}
 	}
-	matches := sc.scan_dir(root_dir, patterns, nil, 0)
-	for _, ri := range matches {
+	ans = sc.scan_dir(root_dir, patterns, nil, 0)
+	for _, ri := range ans {
 		ri.score = get_modified_score(ri.abspath, ri.score, score_patterns)
 	}
-	if search_text == "" {
-		ans = sort_items_without_search_text(matches)
-		return
+	has_search_text := search_text != "" && search_text != "/"
+	if !has_search_text {
+		return sort_items_without_search_text(ans)
 	}
-	slices.SortStableFunc(matches, func(a, b *ResultItem) int {
+	slices.SortStableFunc(ans, func(a, b *ResultItem) int {
 		ans := cmp.Compare(b.score, a.score)
 		if ans == 0 {
 			ans = cmp.Compare(len(a.text), len(b.text))
@@ -210,7 +210,7 @@ func (sc *ScanCache) scan(root_dir, search_text string, score_patterns []ScorePa
 		}
 		return ans
 	})
-	return matches
+	return
 }
 
 func (h *Handler) get_results() (ans []*ResultItem, in_progress bool) {
