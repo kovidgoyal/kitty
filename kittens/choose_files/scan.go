@@ -142,6 +142,9 @@ func (sc *ScanCache) scan_dir(abspath string, patterns []string, positions []pos
 	if entries := sc.readdir(abspath); len(entries) > 0 {
 		npos := make([]pos_in_name, len(positions)+1)
 		copy(npos, positions)
+		if sc.only_dirs {
+			entries = utils.Filter(entries, func(e os.DirEntry) bool { return e.IsDir() })
+		}
 		names := make([]string, len(entries))
 		for i, e := range entries {
 			names[i] = e.Name()
@@ -160,9 +163,6 @@ func (sc *ScanCache) scan_dir(abspath string, patterns []string, positions []pos
 		is_last := pattern == "" || len(patterns) <= 1
 		for i, n := range names {
 			e := entries[i]
-			if sc.only_dirs && !e.IsDir() {
-				continue
-			}
 			child_abspath := filepath.Join(abspath, n)
 			if pattern == "" || scores[i].Score > 0 {
 				npos[len(positions)] = pos_in_name{name: n, positions: scores[i].Positions}
