@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -84,6 +85,7 @@ type State struct {
 	mode           Mode
 	window_title   string
 
+	selections                             []string
 	current_idx                            int
 	num_of_matches_at_last_render          int
 	num_of_slots_per_column_at_last_render int
@@ -121,6 +123,11 @@ func (s State) WindowTitle() string {
 		return s.mode.WindowTitle()
 	}
 	return s.window_title
+}
+func (s *State) AddSelection(abspath string) {
+	if !slices.Contains(s.selections, abspath) {
+		s.selections = append(s.selections, abspath)
+	}
 }
 
 type ScreenSize struct {
@@ -181,6 +188,25 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 	return
 }
 
+func (h *Handler) current_abspath() string {
+	matches, in_progress := h.get_results()
+	if len(matches) > 0 && !in_progress {
+		if idx := h.state.CurrentIndex(); idx < len(matches) {
+			return matches[idx].abspath
+		}
+	}
+	return ""
+
+}
+
+func (h *Handler) add_selection_if_possible() {
+	m := h.current_abspath()
+	if m != "" {
+		h.state.AddSelection(m)
+	}
+	return
+}
+
 func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 	switch {
 	case h.handle_edit_keys(ev), h.handle_result_list_keys(ev):
@@ -190,15 +216,13 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 	case ev.MatchesPressOrRepeat("tab"):
 		matches, in_progress := h.get_results()
 		if len(matches) > 0 && !in_progress {
-			if idx := h.state.CurrentIndex(); idx < len(matches) {
-				m := matches[idx].abspath
-				if st, err := os.Stat(m); err == nil {
-					if !st.IsDir() {
-						m = filepath.Dir(m)
-					}
-					h.state.SetCurrentDir(m)
-					return h.draw_screen()
+			m := h.current_abspath()
+			if st, err := os.Stat(m); err == nil {
+				if !st.IsDir() {
+					m = filepath.Dir(m)
 				}
+				h.state.SetCurrentDir(m)
+				return h.draw_screen()
 			}
 		}
 		h.lp.Beep()
@@ -216,6 +240,9 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 			return h.draw_screen()
 		}
 		h.lp.Beep()
+	case ev.MatchesPressOrRepeat("enter"):
+		h.add_selection_if_possible()
+		h.lp.Quit(0)
 	}
 	return
 }
@@ -318,6 +345,9 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		fmt.Println("Killed by signal: ", ds)
 		lp.KillIfSignalled()
 		return 1, nil
+	}
+	if rc = lp.ExitCode(); rc == 0 {
+		fmt.Print(strings.Join(handler.state.selections, "\n"))
 	}
 	return
 }
