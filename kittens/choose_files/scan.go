@@ -36,6 +36,7 @@ type ScanCache struct {
 	mutex                 sync.Mutex
 	root_dir, search_text string
 	in_progress           bool
+	only_dirs             bool
 	matches               []*ResultItem
 }
 
@@ -158,6 +159,10 @@ func (sc *ScanCache) scan_dir(abspath string, patterns []string, positions []pos
 		}
 		is_last := pattern == "" || len(patterns) <= 1
 		for i, n := range names {
+			e := entries[i]
+			if sc.only_dirs && !e.IsDir() {
+				continue
+			}
 			child_abspath := filepath.Join(abspath, n)
 			if pattern == "" || scores[i].Score > 0 {
 				npos[len(positions)] = pos_in_name{name: n, positions: scores[i].Positions}
@@ -165,7 +170,7 @@ func (sc *ScanCache) scan_dir(abspath string, patterns []string, positions []pos
 					r := &ResultItem{score: score + scores[i].Score, dir_entry: entries[i], abspath: child_abspath}
 					r.finalize(npos)
 					ans = append(ans, r)
-				} else if entries[i].IsDir() {
+				} else if e.IsDir() {
 					ans = append(ans, sc.scan_dir(child_abspath, patterns[1:], npos, scores[i].Score+score)...)
 				}
 			}
@@ -217,23 +222,25 @@ func (h *Handler) get_results() (ans []*ResultItem, in_progress bool) {
 	}
 	cd := h.state.CurrentDir()
 	st := h.state.SearchText()
+	only_dirs := h.state.mode.OnlyDirs()
 	if st != "" {
 		st = filepath.Clean(st)
 	}
-	if sc.root_dir == cd && sc.search_text == st {
+	if sc.root_dir == cd && sc.search_text == st && sc.only_dirs == only_dirs {
 		return sc.matches, sc.in_progress
 	}
 	sc.in_progress = true
 	sc.matches = nil
 	sc.root_dir = cd
 	sc.search_text = st
+	sc.only_dirs = only_dirs
 	sp := h.state.ScorePatterns()
 	go func() {
 		defer h.lp.RecoverFromPanicInGoRoutine()
 		results := sc.scan(cd, st, sp)
 		sc.mutex.Lock()
 		defer sc.mutex.Unlock()
-		if cd == sc.root_dir && st == sc.search_text {
+		if cd == sc.root_dir && st == sc.search_text && sc.only_dirs == only_dirs {
 			sc.matches = results
 			sc.in_progress = false
 			h.lp.WakeupMainThread()

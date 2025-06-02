@@ -15,8 +15,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
-// TODO: Comboboxes, multifile selections, save file name, file/dir modes. Make
-// window title conditional on mode
+// TODO: Comboboxes, multifile selections, save file name, file/dir modes
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
@@ -27,6 +26,54 @@ type ScorePattern struct {
 	val float64
 }
 
+type Mode int
+
+const (
+	SELECT_SINGLE_FILE Mode = iota
+	SELECT_MULTIPLE_FILES
+	SELECT_SAVE_FILE
+	SELECT_SAVE_DIR
+	SELECT_SINGLE_DIR
+	SELECT_MULTIPLE_DIRS
+	SELECT_SAVE_DIR_FOR_FILES // select a dir for saving one or more pre-sent filenames, must be an existing one
+)
+
+func (m Mode) AllowsMultipleSelection() bool {
+	switch m {
+	case SELECT_MULTIPLE_FILES, SELECT_MULTIPLE_DIRS:
+		return true
+	}
+	return false
+}
+
+func (m Mode) OnlyDirs() bool {
+	switch m {
+	case SELECT_SINGLE_DIR, SELECT_MULTIPLE_DIRS, SELECT_SAVE_DIR, SELECT_SAVE_DIR_FOR_FILES:
+		return true
+	}
+	return false
+}
+
+func (m Mode) WindowTitle() string {
+	switch m {
+	case SELECT_SINGLE_FILE:
+		return "Choose an existing file"
+	case SELECT_MULTIPLE_FILES:
+		return "Choose one or more existing files"
+	case SELECT_SAVE_FILE:
+		return "Choose a file to save"
+	case SELECT_SAVE_DIR:
+		return "Choose a directory to save"
+	case SELECT_SINGLE_DIR:
+		return "Choose an existing directory"
+	case SELECT_MULTIPLE_DIRS:
+		return "Choose one or more directories"
+	case SELECT_SAVE_DIR_FOR_FILES:
+		return "Choose a directory to save multiple files in"
+	}
+	return ""
+}
+
 type State struct {
 	base_dir       string
 	current_dir    string
@@ -34,6 +81,8 @@ type State struct {
 	multiselect    bool
 	score_patterns []ScorePattern
 	search_text    string
+	mode           Mode
+	window_title   string
 
 	current_idx                            int
 	num_of_matches_at_last_render          int
@@ -67,6 +116,12 @@ func (s *State) SetCurrentIndex(val int)      { s.current_idx = max(0, val) }
 func (s State) CurrentDir() string {
 	return utils.IfElse(s.current_dir == "", s.BaseDir(), s.current_dir)
 }
+func (s State) WindowTitle() string {
+	if s.window_title == "" {
+		return s.mode.WindowTitle()
+	}
+	return s.window_title
+}
 
 type ScreenSize struct {
 	width, height, cell_width, cell_height, width_px, height_px int
@@ -81,7 +136,7 @@ type Handler struct {
 
 func (h *Handler) draw_screen() (err error) {
 	matches, in_progress := h.get_results()
-	h.lp.SetWindowTitle("Select a file") // TODO: make this conditional on mode
+	h.lp.SetWindowTitle(h.state.WindowTitle())
 	h.lp.StartAtomicUpdate()
 	defer h.lp.EndAtomicUpdate()
 	h.lp.ClearScreen()
@@ -175,7 +230,7 @@ func sub(a, b float64) float64  { return a - b }
 func add(a, b float64) float64  { return a + b }
 func div(a, b float64) float64  { return a / b }
 
-func (h *Handler) set_state_from_config(conf *Config) (err error) {
+func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error) {
 	h.state = State{}
 	fmap := map[string]func(float64, float64) float64{
 		"*=": mult, "+=": add, "-=": sub, "/=": div}
@@ -196,6 +251,24 @@ func (h *Handler) set_state_from_config(conf *Config) (err error) {
 		}
 
 	}
+	switch opts.Mode {
+	case "file":
+		h.state.mode = SELECT_SINGLE_FILE
+	case "files":
+		h.state.mode = SELECT_MULTIPLE_FILES
+	case "save-file":
+		h.state.mode = SELECT_SAVE_FILE
+	case "dir":
+		h.state.mode = SELECT_SINGLE_DIR
+	case "dirs":
+		h.state.mode = SELECT_MULTIPLE_DIRS
+	case "save-dir":
+		h.state.mode = SELECT_SAVE_DIR
+	case "dir-for-files":
+		h.state.mode = SELECT_SAVE_DIR_FOR_FILES
+	default:
+		h.state.mode = SELECT_SINGLE_FILE
+	}
 	return
 }
 
@@ -211,7 +284,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	handler := Handler{lp: lp}
-	if err = handler.set_state_from_config(conf); err != nil {
+	if err = handler.set_state_from_config(conf, opts); err != nil {
 		return 1, err
 	}
 	switch len(args) {

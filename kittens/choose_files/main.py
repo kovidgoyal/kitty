@@ -48,6 +48,11 @@ completion=type:file ext:conf group:"Config files" kwds:none,NONE
 {config_help}
 
 
+--mode
+type=choices
+choices=file,files,save-file,dir,save-dir,dirs,dir-for-files
+default=file
+The type of object(s) to select
 '''.format(config_help=CONFIG_HELP.format(conf_name='diff', appname=appname)).format
 
 
