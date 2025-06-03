@@ -53,6 +53,14 @@ type=choices
 choices=file,files,save-file,dir,save-dir,dirs,dir-for-files
 default=file
 The type of object(s) to select
+
+
+--suggested-save-file-name
+A suggested name when picking a save file.
+
+
+--suggested-save-file-path
+Path to an existing file to use as the save file.
 '''.format(config_help=CONFIG_HELP.format(conf_name='diff', appname=appname)).format
 
 
