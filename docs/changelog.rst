@@ -121,6 +121,8 @@ Detailed list of changes
 
 - Fix a crash when using linear easing curves for animations (:iss:`8692`)
 
+- Graphics protocol: Add a note clarifying image update behavior on re-transmission (:iss:`8701`)
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
