@@ -154,7 +154,9 @@ You can also use the *CSI t* escape code to get the screen size. Send
 ``<ESC>[14t`` to ``STDOUT`` and kitty will reply on ``STDIN`` with
 ``<ESC>[4;<height>;<width>t`` where ``height`` and ``width`` are the window
 size in pixels. This escape code is supported in many terminals, not just
-kitty.
+kitty. A more precise version of this escape code, which is however supported
+in less terminals is ``<ESC>[16t`` which causes the terminal to reply with the
+pixel dimensions of a single cell.
 
 A minimal example
 ------------------
