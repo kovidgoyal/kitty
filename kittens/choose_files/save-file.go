@@ -51,7 +51,7 @@ func (h *Handler) initialize_save_file_name() {
 	if len(h.state.selections) > 0 {
 		if q, err := filepath.Abs(h.state.selections[0]); err == nil {
 			if s, err := os.Stat(q); err == nil {
-				if s.IsDir() && h.state.mode.OnlyDirs() {
+				if s.IsDir() == h.state.mode.OnlyDirs() {
 					cdir = filepath.Dir(q)
 					fname = filepath.Base(q)
 				}
