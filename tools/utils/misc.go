@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 
 	"golang.org/x/exp/constraints"
 )
@@ -62,6 +63,27 @@ func Filter[T any](s []T, f func(x T) bool) []T {
 		}
 	}
 	return ans
+}
+
+func Format_stacktrace_on_panic(r any) (text string, err error) {
+	pcs := make([]uintptr, 512)
+	n := runtime.Callers(3, pcs)
+	lines := []string{}
+	frames := runtime.CallersFrames(pcs[:n])
+	err = fmt.Errorf("Panicked: %s", r)
+	lines = append(lines, fmt.Sprintf("\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r))
+	found_first_frame := false
+	for frame, more := frames.Next(); more; frame, more = frames.Next() {
+		if !found_first_frame {
+			if strings.HasPrefix(frame.Function, "runtime.") {
+				continue
+			}
+			found_first_frame = true
+		}
+		lines = append(lines, fmt.Sprintf("%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line))
+	}
+	text = strings.Join(lines, "")
+	return strings.TrimSpace(text), err
 }
 
 func Map[T any, O any](f func(x T) O, s []T) []O {

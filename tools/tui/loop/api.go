@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 
@@ -309,32 +308,11 @@ func (self *Loop) DebugPrintln(args ...any) {
 	}
 }
 
-func format_stacktrace_on_panic(r any) (text string, err error) {
-	pcs := make([]uintptr, 512)
-	n := runtime.Callers(3, pcs)
-	lines := []string{}
-	frames := runtime.CallersFrames(pcs[:n])
-	err = fmt.Errorf("Panicked: %s", r)
-	lines = append(lines, fmt.Sprintf("\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r))
-	found_first_frame := false
-	for frame, more := frames.Next(); more; frame, more = frames.Next() {
-		if !found_first_frame {
-			if strings.HasPrefix(frame.Function, "runtime.") {
-				continue
-			}
-			found_first_frame = true
-		}
-		lines = append(lines, fmt.Sprintf("%s\r\n\t%s:%d\r\n", frame.Function, frame.File, frame.Line))
-	}
-	text = strings.Join(lines, "")
-	return strings.TrimSpace(text), err
-}
-
 func (self *Loop) Run() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			var text string
-			text, err = format_stacktrace_on_panic(r)
+			text, err = utils.Format_stacktrace_on_panic(r)
 			is_terminal := tty.IsTerminal(os.Stderr.Fd())
 			if is_terminal {
 				os.Stderr.WriteString("\x1b]\x1b\\\x1bc\x1b[H\x1b[2J") // reset terminal
@@ -600,7 +578,7 @@ type SizedText struct {
 
 func (self *Loop) RecoverFromPanicInGoRoutine() {
 	if r := recover(); r != nil {
-		text, err := format_stacktrace_on_panic(r)
+		text, err := utils.Format_stacktrace_on_panic(r)
 		err = fmt.Errorf("Panicked in non-main go routine\n%s\n%w", text, err)
 		// print to kitty stdout as multiple go routines might panic but only
 		// one panic is reported by the main loop panic_channel
