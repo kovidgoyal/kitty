@@ -20,25 +20,25 @@ type Chars struct {
 	runes []rune
 }
 
-const (
-	overflow64 uint64 = 0x8080808080808080
-	overflow32 uint32 = 0x80808080
-)
-
 func check_ascii(bytes []byte) (ascii_until int) {
+	slen := len(bytes)
+	// Process 8 bytes at a time
 	i := 0
-	for ; i <= len(bytes)-8; i += 8 {
-		if (overflow64 & *(*uint64)(unsafe.Pointer(&bytes[i]))) > 0 {
-			return i
+	for ; i+8 <= slen; i += 8 {
+		v := *(*uint64)(unsafe.Pointer(&bytes[i]))
+		// If any byte has its high bit set, v & 0x8080808080808080 != 0
+		if v&0x8080808080808080 != 0 {
+			// At least one non-ASCII byte in this chunk, find which
+			for j := range 8 {
+				if bytes[i+j]&utf8.RuneSelf != 0 {
+					return i + j
+				}
+			}
 		}
 	}
-	for ; i <= len(bytes)-4; i += 4 {
-		if (overflow32 & *(*uint32)(unsafe.Pointer(&bytes[i]))) > 0 {
-			return i
-		}
-	}
-	for ; i < len(bytes); i++ {
-		if bytes[i] >= utf8.RuneSelf {
+	// Handle remaining bytes
+	for ; i < slen; i++ {
+		if bytes[i] > 127 {
 			return i
 		}
 	}
