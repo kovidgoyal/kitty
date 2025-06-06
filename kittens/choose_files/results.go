@@ -134,7 +134,7 @@ func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int,
 		} else {
 			h.lp.QueueWriteString(icon + " ")
 		}
-		h.render_match_with_positions(text, add_ellipsis, m.positions, is_current)
+		h.render_match_with_positions(text, add_ellipsis, m.sorted_positions(), is_current)
 		h.lp.MoveCursorVertically(1)
 	}
 }

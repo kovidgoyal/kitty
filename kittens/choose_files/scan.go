@@ -19,14 +19,25 @@ import (
 var _ = fmt.Print
 
 type ResultItem struct {
-	text, abspath string
-	dir_entry     os.DirEntry
-	positions     []int // may be nil
-	score         float64
+	text, abspath    string
+	dir_entry        os.DirEntry
+	positions        []int // may be nil
+	score            float64
+	positions_sorted bool
 }
 
 func (r ResultItem) String() string {
 	return fmt.Sprintf("{text: %#v, abspath: %#v, is_dir: %v, positions: %#v}", r.text, r.abspath, r.dir_entry.IsDir(), r.positions)
+}
+
+func (r *ResultItem) sorted_positions() []int {
+	if !r.positions_sorted {
+		r.positions_sorted = true
+		if len(r.positions) > 1 {
+			sort.Ints(r.positions)
+		}
+	}
+	return r.positions
 }
 
 type dir_cache map[string][]os.DirEntry
