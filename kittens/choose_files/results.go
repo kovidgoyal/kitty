@@ -102,14 +102,14 @@ func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, po
 
 var icon_cache map[string]string
 
-func icon_for(path string, x os.DirEntry) string {
+func icon_for(path string, x os.FileMode) string {
 	if icon_cache == nil {
 		icon_cache = make(map[string]string, 512)
 	}
 	if ans := icon_cache[path]; ans != "" {
 		return ans
 	}
-	ans := icons.IconForFileWithMode(path, x.Type(), true)
+	ans := icons.IconForFileWithMode(path, x, true)
 	if wcswidth.Stringwidth(ans) == 1 {
 		ans += " "
 	}
@@ -121,7 +121,7 @@ func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int,
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
-		icon := icon_for(m.abspath, m.dir_entry)
+		icon := icon_for(m.abspath, m.ftype)
 		text := m.text
 		add_ellipsis := false
 		if wcswidth.Stringwidth(text) > available_width-3 {

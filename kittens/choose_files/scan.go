@@ -3,6 +3,7 @@ package choose_files
 import (
 	"cmp"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,14 +21,14 @@ var _ = fmt.Print
 
 type ResultItem struct {
 	text, abspath    string
-	dir_entry        os.DirEntry
+	ftype            fs.FileMode
 	positions        []int // may be nil
 	score            float64
 	positions_sorted bool
 }
 
 func (r ResultItem) String() string {
-	return fmt.Sprintf("{text: %#v, abspath: %#v, is_dir: %v, positions: %#v}", r.text, r.abspath, r.dir_entry.IsDir(), r.positions)
+	return fmt.Sprintf("{text: %#v, abspath: %#v, is_dir: %v, positions: %#v}", r.text, r.abspath, r.ftype.IsDir(), r.positions)
 }
 
 func (r *ResultItem) sorted_positions() []int {
@@ -83,7 +84,7 @@ func sort_items_without_search_text(items []*ResultItem) (ans []*ResultItem) {
 	}
 	hidden_pat := regexp.MustCompile(`(^|/)\.[^/]+(/|$)`)
 	d := utils.Map(func(x *ResultItem) s {
-		return s{strings.ToLower(x.text), strings.Count(x.text, "/"), x.dir_entry.IsDir(), hidden_pat.MatchString(x.abspath), x}
+		return s{strings.ToLower(x.text), strings.Count(x.text, "/"), x.ftype.IsDir(), hidden_pat.MatchString(x.abspath), x}
 	}, items)
 	sort.SliceStable(d, func(i, j int) bool {
 		a, b := d[i], d[j]
@@ -178,7 +179,7 @@ func (sc *ScanCache) scan_dir(abspath string, patterns []string, positions []pos
 			if pattern == "" || scores[i].Score > 0 {
 				npos[len(positions)] = pos_in_name{name: n, positions: scores[i].Positions}
 				if is_last {
-					r := &ResultItem{score: score + scores[i].Score, dir_entry: entries[i], abspath: child_abspath}
+					r := &ResultItem{score: score + scores[i].Score, ftype: entries[i].Type(), abspath: child_abspath}
 					r.finalize(npos)
 					ans = append(ans, r)
 				} else if e.IsDir() {
