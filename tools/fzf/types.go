@@ -38,7 +38,7 @@ func check_ascii(bytes []byte) (ascii_until int) {
 	}
 	// Handle remaining bytes
 	for ; i < slen; i++ {
-		if bytes[i] > 127 {
+		if bytes[i]&utf8.RuneSelf != 0 {
 			return i
 		}
 	}
