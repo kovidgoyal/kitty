@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/images"
 )
 
 var _ = fmt.Print
@@ -202,10 +201,7 @@ func score_item(item string, idx int, needle []rune, opts *resolved_options_type
 }
 
 func ScoreItems(query string, items []string, opts Options) []*Match {
-	ctx := images.Context{}
-	ctx.SetNumberOfThreads(opts.NumberOfThreads)
 	ans := make([]*Match, len(items))
-	results := make(chan *Match, len(items))
 	nr := []rune(strings.ToLower(query))
 	if opts.Level1 == "" {
 		opts.Level1 = LEVEL1
@@ -219,15 +215,12 @@ func ScoreItems(query string, items []string, opts Options) []*Match {
 	ropts := resolved_options_type{
 		level1: []rune(opts.Level1), level2: []rune(opts.Level2), level3: []rune(opts.Level3),
 	}
-	ctx.Parallel(0, len(items), func(nums <-chan int) {
+	utils.Run_in_parallel_over_range(opts.NumberOfThreads, func(start, limit int) error {
 		w := workspace_type{}
-		for i := range nums {
-			results <- score_item(items[i], i, nr, &ropts, &w)
+		for i := start; i < limit; i++ {
+			ans[i] = score_item(items[i], i, nr, &ropts, &w)
 		}
-	})
-	close(results)
-	for x := range results {
-		ans[x.idx] = x
-	}
+		return nil
+	}, 0, len(items))
 	return ans
 }
