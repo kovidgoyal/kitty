@@ -95,6 +95,15 @@ func Run_in_parallel_over_range(num_procs int, f func(int, int) error, start, li
 		num_procs = runtime.NumCPU()
 	}
 	num_procs = max(1, min(num_procs, num_items))
+	if num_procs < 2 {
+		defer func() {
+			if r := recover(); r != nil {
+				stacktrace, e := Format_stacktrace_on_panic(r)
+				err = fmt.Errorf("%s\n\n%w", stacktrace, e)
+			}
+		}()
+		return f(start, limit)
+	}
 	chunk_sz := max(1, num_items/num_procs)
 	var wg sync.WaitGroup
 	echan := make(chan error, num_procs)
@@ -133,7 +142,7 @@ func Map[T any, O any](f func(x T) O, s []T) []O {
 
 func Repeat[T any](x T, n int) []T {
 	ans := make([]T, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		ans[i] = x
 	}
 	return ans
