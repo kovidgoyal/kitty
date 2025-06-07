@@ -327,27 +327,27 @@ class NotificationCommand:
                     try:
                         self.icon_names += (base64_decode(v).decode('utf-8'),)
                     except Exception:
-                        self.log('Ignoring invalid icon name in notification: {v!r}')
+                        self.log(f'Ignoring invalid icon name in notification: {v!r}')
                 elif k == 'f':
                     try:
                         self.application_name = base64_decode(v).decode('utf-8')
                     except Exception:
-                        self.log('Ignoring invalid application_name in notification: {v!r}')
+                        self.log(f'Ignoring invalid application_name in notification: {v!r}')
                 elif k == 't':
                     try:
                         self.notification_types += (base64_decode(v).decode('utf-8'),)
                     except Exception:
-                        self.log('Ignoring invalid notification type in notification: {v!r}')
+                        self.log(f'Ignoring invalid notification type in notification: {v!r}')
                 elif k == 'w':
                     try:
                         self.timeout = max(-1, int(v))
                     except Exception:
-                        self.log('Ignoring invalid timeout in notification: {v!r}')
+                        self.log(f'Ignoring invalid timeout in notification: {v!r}')
                 elif k == 's':
                     try:
                         self.sound_name = base64_decode(v).decode('utf-8')
                     except Exception:
-                        self.log('Ignoring invalid sound name in notification: {v!r}')
+                        self.log(f'Ignoring invalid sound name in notification: {v!r}')
         if not prev.done and prev.identifier == self.identifier:
             self.merge_metadata(prev)
         return payload_type, payload_is_encoded
