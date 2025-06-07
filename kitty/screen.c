@@ -127,6 +127,7 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->modes = empty_modes;
         self->saved_modes = empty_modes;
         self->is_dirty = true;
+        self->has_blinking_text = true; // FIXME: make this a setting
         self->scroll_changed = false;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         self->history_line_added_count = 0;
@@ -185,6 +186,7 @@ screen_reset(Screen *self) {
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
     self->display_window_char = 0;
+    self->has_blinking_text = true; // FIXME: make this a setting
     self->prompt_settings.val = 0;
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
