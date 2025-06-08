@@ -151,12 +151,8 @@ Compatibility with various platforms
            Mostly working, except that clicks outside background panels cause kwin to :iss:`erroneously hide the panel <8715>`. KDE uses an `undocumented mapping <https://invent.kde.org/plasma/kwin/-/blob/3dc5cee6b34792486b343098e55e7f2b90dfcd00/src/layershellv1window.cpp#L24>`__ under Wayland to set the window type from the :code:`kitten panel --app-id` flag. You might want to use :code:`--app-id=dock` so that KDE treats the window as a dock panel, and disables window appearing/disappearing animations for it.
 
         🟠 **Sway**
-           Partially working. Issues include:
-               * Renders its configured background over the background window instead of
-                 under it. This is likely because it uses the wlr protocol for
-                 backgrounds itself.
-               * Hiding a dock panel (unmapping the window) does not release the space
-                 used by the dock.
+           Renders its configured background over the background window instead of
+           under it. This is because it uses the wlr protocol for backgrounds itself.
 
         🟠 **niri**
            Hiding a dock panel (unmapping the window) does not release the space used
