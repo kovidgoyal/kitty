@@ -809,7 +809,6 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
             window->wl.current.toplevel_states = new_states;
             window->wl.current.width = width;
             window->wl.current.height = height;
-            _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
             if (live_resize_done) report_live_resize(window, false);
         }
     }
