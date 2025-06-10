@@ -13,6 +13,7 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/kovidgoyal/kitty/tools/fzf"
 	"github.com/kovidgoyal/kitty/tools/tui/subseq"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -20,11 +21,11 @@ import (
 var _ = fmt.Print
 
 type ResultItem struct {
-	text, abspath    string
-	ftype            fs.FileMode
-	positions        []int // may be nil
-	score            float64
-	positions_sorted bool
+	text, ltext, abspath string
+	ftype                fs.FileMode
+	positions            []int // may be nil
+	score                float64
+	positions_sorted     bool
 }
 
 func (r ResultItem) String() string {
@@ -39,6 +40,244 @@ func (r *ResultItem) sorted_positions() []int {
 		}
 	}
 	return r.positions
+}
+
+type ScanRequest struct {
+	root_dir string
+}
+
+type ScanResult struct {
+	root_dir    string
+	items       []ResultItem
+	err         error
+	is_finished bool
+}
+
+type ScoreRequest struct {
+	root_dir, query              string
+	is_last_for_current_root_dir bool
+	items                        []ResultItem
+}
+
+type ScoreResult struct {
+	query, root_dir              string
+	is_last_for_current_root_dir bool
+	items                        []ResultItem
+}
+
+type ResultManager struct {
+	current_root_dir               string
+	current_root_dir_scan_complete bool
+	results_for_current_root_dir   []ResultItem
+	scan_requests                  chan ScanRequest
+	scan_results                   chan ScanResult
+
+	current_query                  string
+	current_query_scoring_complete bool
+	matches_for_current_query      []ResultItem
+	score_queries                  chan ScoreRequest
+	score_results                  chan ScoreResult
+	report_errors                  chan error
+
+	renderable_results []ResultItem
+
+	mutex  sync.Mutex
+	scorer *fzf.FuzzyMatcher
+	state  *State
+}
+
+func NewResultManager(err_chan chan error, state *State) *ResultManager {
+	ans := &ResultManager{
+		scan_requests: make(chan ScanRequest),
+		scan_results:  make(chan ScanResult),
+		score_queries: make(chan ScoreRequest),
+		score_results: make(chan ScoreResult),
+		report_errors: err_chan,
+		scorer:        fzf.NewFuzzyMatcher(fzf.PATH_SCHEME),
+		state:         state,
+	}
+	go ans.scan_worker()
+	go ans.scan_result_handler()
+	go ans.score_worker()
+	go ans.sort_worker()
+	return ans
+}
+
+func (m *ResultManager) scan(dir, root_dir string, level int) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			st, qerr := utils.Format_stacktrace_on_panic(r)
+			err = fmt.Errorf("%w\n%s", qerr, st)
+		}
+	}()
+	items, err := os.ReadDir(dir)
+	if err != nil {
+		if level == 0 {
+			return fmt.Errorf("failed to read directory: %s with error: %w", dir, err)
+		}
+		return nil
+	}
+	m.scan_results <- ScanResult{root_dir: root_dir, items: utils.Map(func(x os.DirEntry) ResultItem {
+		return ResultItem{abspath: filepath.Join(dir, x.Name())}
+	}, items)}
+	for _, x := range items {
+		if x.IsDir() {
+			if !m.is_root_dir_current(root_dir) {
+				return
+			}
+			if err = m.scan(filepath.Join(dir, x.Name()), root_dir, level+1); err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+func (m *ResultManager) scan_worker() {
+	for r := range m.scan_requests {
+		if err := m.scan(r.root_dir, r.root_dir, 0); err == nil {
+			m.scan_results <- ScanResult{root_dir: r.root_dir, is_finished: true}
+		}
+	}
+}
+
+func (m *ResultManager) scan_result_handler() {
+	one := func(r ScanResult) {
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		if !m.is_root_dir_current(r.root_dir) {
+			return
+		}
+		if len(r.items) > 0 {
+			m.results_for_current_root_dir = append(m.results_for_current_root_dir, r.items...)
+			m.score_queries <- ScoreRequest{root_dir: m.current_root_dir, query: m.current_query, items: utils.Map(
+				func(r ResultItem) ResultItem {
+					text, err := filepath.Rel(m.current_root_dir, r.abspath)
+					if err != nil {
+						text = r.abspath
+					}
+					return ResultItem{abspath: r.abspath, text: text, ltext: strings.ToLower(text), ftype: r.ftype}
+				}, r.items), is_last_for_current_root_dir: r.is_finished}
+		}
+		if r.is_finished {
+			m.current_root_dir_scan_complete = true
+		}
+	}
+	for r := range m.scan_results {
+		if r.err != nil {
+			m.report_errors <- r.err
+			continue
+		}
+		one(r)
+	}
+}
+
+func (m *ResultManager) score(r ScoreRequest) (err error) {
+	items := r.items
+	m.mutex.Lock()
+	only_dirs := m.state.mode.OnlyDirs()
+	m.mutex.Unlock()
+	if only_dirs {
+		items = utils.Filter(items, func(r ResultItem) bool { return r.ftype.IsDir() })
+	}
+	res := ScoreResult{query: r.query, items: items, root_dir: r.root_dir, is_last_for_current_root_dir: r.is_last_for_current_root_dir}
+	if r.query != "" {
+		var r []fzf.Result
+		if r, err = m.scorer.ScoreWithCache(utils.Map(func(r ResultItem) string { return r.text }, items), res.query); err != nil {
+			return
+		}
+		for i, x := range r {
+			items[i].positions = x.Positions
+			items[i].score = float64(x.Score)
+		}
+	}
+	m.score_results <- res
+	return
+}
+
+func (m *ResultManager) score_worker() {
+	for r := range m.score_queries {
+		if m.is_query_current(r.query, r.root_dir) {
+			if err := m.score(r); err != nil {
+				m.report_errors <- err
+			}
+		}
+	}
+}
+
+func (m *ResultManager) add_score_results(r ScoreResult) (err error) {
+	m.mutex.Lock()
+	defer func() {
+		m.mutex.Unlock()
+		if r := recover(); r != nil {
+			st, qerr := utils.Format_stacktrace_on_panic(r)
+			err = fmt.Errorf("%w\n%s", qerr, st)
+		}
+	}()
+	_ = make([]ResultItem, 0, len(m.renderable_results)+len(r.items))
+	if r.query == "" {
+	} else {
+	}
+	return
+}
+
+func (m *ResultManager) sort_worker() {
+	for r := range m.score_results {
+		if m.is_query_current(r.query, r.root_dir) {
+			if err := m.add_score_results(r); err != nil {
+				m.report_errors <- err
+			}
+		}
+	}
+}
+
+func (m *ResultManager) is_root_dir_current(root_dir string) bool {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return root_dir == m.current_root_dir
+}
+
+func (m *ResultManager) set_root_dir(root_dir string) {
+	var err error
+	if root_dir == "" || root_dir == "." {
+		if root_dir, err = os.Getwd(); err != nil {
+			return
+		}
+	}
+	root_dir = utils.Expanduser(root_dir)
+	if root_dir, err = filepath.Abs(root_dir); err != nil {
+		return
+	}
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	if m.current_root_dir == root_dir {
+		return
+	}
+	m.current_root_dir = root_dir
+	m.results_for_current_root_dir = nil
+	m.matches_for_current_query = nil
+	m.renderable_results = nil
+	m.current_query_scoring_complete = false
+	m.current_root_dir_scan_complete = false
+	m.scan_requests <- ScanRequest{root_dir: m.current_root_dir}
+}
+
+func (m *ResultManager) is_query_current(query, root_dir string) bool {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return root_dir == m.current_root_dir && query == m.current_query
+}
+
+func (m *ResultManager) set_query(query string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	if query == m.current_query {
+		return
+	}
+	m.current_query = query
+	m.matches_for_current_query = nil
+	m.renderable_results = nil
+	m.current_query_scoring_complete = false
 }
 
 type dir_cache map[string][]os.DirEntry
