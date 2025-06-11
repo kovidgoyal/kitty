@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+	"unsafe"
 
 	"github.com/kovidgoyal/kitty/tools/fzf"
 	"github.com/kovidgoyal/kitty/tools/tui/subseq"
@@ -176,6 +177,7 @@ func (m *ResultManager) score(r ScoreRequest) (err error) {
 	items := r.items
 	m.mutex.Lock()
 	only_dirs := m.state.mode.OnlyDirs()
+	sp := m.state.ScorePatterns()
 	m.mutex.Unlock()
 	if only_dirs {
 		items = utils.Filter(items, func(r ResultItem) bool { return r.ftype.IsDir() })
@@ -188,11 +190,50 @@ func (m *ResultManager) score(r ScoreRequest) (err error) {
 		}
 		for i, x := range r {
 			items[i].positions = x.Positions
-			items[i].score = float64(x.Score)
+			items[i].score = get_modified_score(items[i].abspath, float64(x.Score), sp)
 		}
+		items = utils.Filter(items, func(r ResultItem) bool { return r.score > 0 })
 	}
 	m.score_results <- res
 	return
+}
+
+func int_cmp(a, b int) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
+}
+
+func str_cmp(a, b string) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
+}
+
+func float_cmp(a, b float64) int { // deliberately doesnt handle NaN
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
+}
+
+func bool_as_int(b bool) int {
+	return *(*int)(unsafe.Pointer(&b))
+}
+
+func bool_cmp(a, b bool) int {
+	return bool_as_int(a) - bool_as_int(b)
 }
 
 func (m *ResultManager) score_worker() {
@@ -205,7 +246,48 @@ func (m *ResultManager) score_worker() {
 	}
 }
 
+func cmp_with_score(a, b ResultItem) (ans int) {
+	ans = float_cmp(b.score, a.score)
+	if ans == 0 {
+		ans = int_cmp(len(a.text), len(b.text))
+		if ans == 0 {
+			ans = int_cmp(count_uppercase(a.text), count_uppercase(b.text))
+		}
+	}
+	return
+}
+
+func cmp_without_score(a, b ResultItem) (ans int) {
+	ans = bool_cmp(a.ftype.IsDir(), b.ftype.IsDir())
+	if ans == 0 {
+		ans = str_cmp(a.ltext, b.ltext)
+		if ans == 0 {
+			ans = int_cmp(count_uppercase(a.text), count_uppercase(b.text))
+		}
+	}
+	return
+}
+
+func merge_sorted_slices(a, b []ResultItem, cmp func(a, b ResultItem) int) []ResultItem {
+	result := make([]ResultItem, 0, len(a)+len(b))
+	i, j := 0, 0
+	for i < len(a) && j < len(b) {
+		if cmp(a[i], b[j]) <= 0 {
+			result = append(result, a[i])
+			i++
+		} else {
+			result = append(result, b[j])
+			j++
+		}
+	}
+	result = append(result, a[i:]...)
+	result = append(result, b[j:]...)
+	return result
+}
+
 func (m *ResultManager) add_score_results(r ScoreResult) (err error) {
+	cmp := utils.IfElse(r.query == "", cmp_without_score, cmp_with_score)
+	slices.SortStableFunc(r.items, cmp)
 	m.mutex.Lock()
 	defer func() {
 		m.mutex.Unlock()
@@ -214,10 +296,7 @@ func (m *ResultManager) add_score_results(r ScoreResult) (err error) {
 			err = fmt.Errorf("%w\n%s", qerr, st)
 		}
 	}()
-	_ = make([]ResultItem, 0, len(m.renderable_results)+len(r.items))
-	if r.query == "" {
-	} else {
-	}
+	merge_sorted_slices(m.renderable_results, r.items, cmp)
 	return
 }
 
