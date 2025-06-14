@@ -694,6 +694,11 @@ class TestScreen(BaseTest):
 
     def test_variation_selectors(self):
         s = self.create_screen()
+        def tt(text_to_draw):
+            s.reset()
+            s.draw(text_to_draw)
+            self.ae(str(s.line(0)), text_to_draw)
+        tt('abc\U0001f44d\ufe0ed')
         def t(*a):
             s.reset()
             for i in range(0, len(a), 2):

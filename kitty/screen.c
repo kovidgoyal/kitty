@@ -861,7 +861,7 @@ halve_multicell_width(Screen *self, index_type x_, index_type y_) {
     unsigned new_width = cp[x_].width / 2;
     while (cp[x_].x && x_ > 0) x_--;
     index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
-    index_type half_x_limit = x_limit / 2;
+    index_type half_x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]) / 2);
     int y_max_limit = MIN(self->lines, y_ + cp[x_].scale);
     for (int y = y_min_limit + 1; y < y_max_limit; y++) {
         Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
