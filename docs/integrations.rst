@@ -332,6 +332,14 @@ A kitten-panel based desktop panel for your desktop
 Miscellaneous
 ------------------
 
+.. tool_doom:
+
+DOOM
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Play the classic shooter DOOM in `kitty <https://github.com/cryptocode/terminal-doom>`__ or even inside `neovim inside kitty
+<https://github.com/seandewar/actually-doom.nvim>`__.
+
 .. tool_gattino:
 
 `gattino <https://github.com/salvozappa/gattino>`__
