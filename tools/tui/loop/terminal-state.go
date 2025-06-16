@@ -102,6 +102,7 @@ type TerminalStateOptions struct {
 	mouse_tracking                   MouseTracking
 	kitty_keyboard_mode              KeyboardStateBits
 	in_band_resize_notification      bool
+	focus_tracking                   bool
 	color_scheme_change_notification bool
 }
 
@@ -131,7 +132,10 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	reset_modes(&sb,
 		IRM, DECKM, DECSCNM, BRACKETED_PASTE,
 		MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING, MOUSE_MOVE_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE)
-	set_modes(&sb, DECARM, DECAWM, DECTCEM, FOCUS_TRACKING)
+	set_modes(&sb, DECARM, DECAWM, DECTCEM)
+	if self.focus_tracking {
+		set_modes(&sb, FOCUS_TRACKING)
+	}
 	if self.in_band_resize_notification {
 		set_modes(&sb, INBAND_RESIZE_NOTIFICATION)
 	}

@@ -30,8 +30,8 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	// we cant do inbandresize notification as in the --no-response case the
 	// command can cause a resize and the loop can quit before the notification
 	// arrives, leading to the notification being sent to whatever is executed
-	// after us.
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoInBandResizeNotifications)
+	// after us. Similarly no focus tracking.
+	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoInBandResizeNotifications, loop.NoFocusTracking)
 	if io_data.on_key_event != nil {
 		lp.FullKeyboardProtocol()
 	} else {

@@ -209,6 +209,15 @@ func NoRestoreColors(self *Loop) {
 	self.terminal_options.restore_colors = false
 }
 
+func (self *Loop) NoFocusTracking() *Loop {
+	self.terminal_options.focus_tracking = false
+	return self
+}
+
+func NoFocusTracking(self *Loop) {
+	self.terminal_options.focus_tracking = false
+}
+
 func (self *Loop) ColorSchemeChangeNotifications() *Loop {
 	self.terminal_options.color_scheme_change_notification = true
 	return self
