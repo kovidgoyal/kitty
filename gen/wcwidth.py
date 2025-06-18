@@ -14,18 +14,7 @@ from functools import lru_cache, partial
 from html.entities import html5
 from io import StringIO
 from math import ceil, log
-from typing import (
-    Callable,
-    DefaultDict,
-    Iterator,
-    Literal,
-    NamedTuple,
-    Optional,
-    Protocol,
-    Sequence,
-    TypedDict,
-    Union,
-)
+from typing import Callable, DefaultDict, Iterator, Literal, NamedTuple, Optional, Protocol, Sequence, TypedDict, TypeVar, Union
 from urllib.request import urlopen
 
 if __name__ == '__main__' and not __package__:
@@ -467,7 +456,9 @@ def mask_for(bits: int) -> int:
     return ~((~0) << bits)
 
 
-def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[int], list[T], int]:
+HashableType = TypeVar('HashableType', bound=Hashable)
+
+def splitbins(t: tuple[HashableType, ...], property_size: int, use_fixed_shift: int = 0) -> tuple[list[int], list[int], list[HashableType], int]:
     if use_fixed_shift:
         candidates = range(use_fixed_shift, use_fixed_shift + 1)
     else:
@@ -478,8 +469,8 @@ def splitbins[T: Hashable](t: tuple[T, ...], property_size: int, use_fixed_shift
                 n >>= 1
                 maxshift += 1
         candidates = range(maxshift + 1)
-    t3: list[T] = []
-    tmap: dict[T, int] = {}
+    t3: list[HashableType] = []
+    tmap: dict[HashableType, int] = {}
     seen = set()
     for x in t:
         if x not in seen:
