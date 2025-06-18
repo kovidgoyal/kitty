@@ -1,21 +1,19 @@
 package choose_files
 
 import (
-	"cmp"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 	"unsafe"
 
 	"github.com/kovidgoyal/kitty/tools/fzf"
-	"github.com/kovidgoyal/kitty/tools/tui/subseq"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
@@ -43,6 +41,25 @@ func (r *ResultItem) sorted_positions() []int {
 	return r.positions
 }
 
+func get_modified_score(abspath string, score float64, score_patterns []ScorePattern) float64 {
+	for _, sp := range score_patterns {
+		if sp.pat.MatchString(abspath) {
+			score = sp.op(score, sp.val)
+		}
+	}
+	return score
+}
+
+func count_uppercase(s string) int {
+	count := 0
+	for _, r := range s {
+		if unicode.IsUpper(r) {
+			count++
+		}
+	}
+	return count
+}
+
 type ScanRequest struct {
 	root_dir string
 }
@@ -66,6 +83,13 @@ type ScoreResult struct {
 	items                        []ResultItem
 }
 
+type Settings interface {
+	OnlyDirs() bool
+	ScorePatterns() []ScorePattern
+	CurrentDir() string
+	SearchText() string
+}
+
 type ResultManager struct {
 	current_root_dir               string
 	current_root_dir_scan_complete bool
@@ -82,26 +106,37 @@ type ResultManager struct {
 
 	renderable_results []ResultItem
 
-	mutex  sync.Mutex
-	scorer *fzf.FuzzyMatcher
-	state  *State
+	mutex    sync.Mutex
+	scorer   *fzf.FuzzyMatcher
+	settings Settings
+
+	WakeupMainThread func() bool
 }
 
-func NewResultManager(err_chan chan error, state *State) *ResultManager {
+func NewResultManager(err_chan chan error, settings Settings, WakeupMainThread func() bool) *ResultManager {
 	ans := &ResultManager{
-		scan_requests: make(chan ScanRequest),
-		scan_results:  make(chan ScanResult),
-		score_queries: make(chan ScoreRequest),
-		score_results: make(chan ScoreResult),
-		report_errors: err_chan,
-		scorer:        fzf.NewFuzzyMatcher(fzf.PATH_SCHEME),
-		state:         state,
+		scan_requests:    make(chan ScanRequest, 256),
+		scan_results:     make(chan ScanResult, 256),
+		score_queries:    make(chan ScoreRequest, 256),
+		score_results:    make(chan ScoreResult, 256),
+		report_errors:    err_chan,
+		scorer:           fzf.NewFuzzyMatcher(fzf.PATH_SCHEME),
+		settings:         settings,
+		WakeupMainThread: WakeupMainThread,
 	}
 	go ans.scan_worker()
 	go ans.scan_result_handler()
 	go ans.score_worker()
 	go ans.sort_worker()
 	return ans
+}
+
+func (m *ResultManager) lock() {
+	m.mutex.Lock()
+}
+
+func (m *ResultManager) unlock() {
+	m.mutex.Unlock()
 }
 
 func (m *ResultManager) scan(dir, root_dir string, level int) (err error) {
@@ -119,7 +154,7 @@ func (m *ResultManager) scan(dir, root_dir string, level int) (err error) {
 		return nil
 	}
 	m.scan_results <- ScanResult{root_dir: root_dir, items: utils.Map(func(x os.DirEntry) ResultItem {
-		return ResultItem{abspath: filepath.Join(dir, x.Name())}
+		return ResultItem{abspath: filepath.Join(dir, x.Name()), ftype: x.Type()}
 	}, items)}
 	for _, x := range items {
 		if x.IsDir() {
@@ -136,33 +171,42 @@ func (m *ResultManager) scan(dir, root_dir string, level int) (err error) {
 
 func (m *ResultManager) scan_worker() {
 	for r := range m.scan_requests {
+		st := time.Now()
 		if err := m.scan(r.root_dir, r.root_dir, 0); err == nil {
 			m.scan_results <- ScanResult{root_dir: r.root_dir, is_finished: true}
 		}
+		debugprintln(111111111, time.Now().Sub(st), len(m.results_for_current_root_dir))
 	}
+}
+
+func (m *ResultManager) create_score_query(items []ResultItem, is_finished bool) ScoreRequest {
+	return ScoreRequest{root_dir: m.current_root_dir, query: m.current_query, items: utils.Map(
+		func(r ResultItem) ResultItem {
+			text, err := filepath.Rel(m.current_root_dir, r.abspath)
+			if err != nil {
+				text = r.abspath
+			}
+			return ResultItem{abspath: r.abspath, text: text, ltext: strings.ToLower(text), ftype: r.ftype}
+		}, items), is_last_for_current_root_dir: is_finished}
 }
 
 func (m *ResultManager) scan_result_handler() {
 	one := func(r ScanResult) {
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
 		if !m.is_root_dir_current(r.root_dir) {
 			return
 		}
-		if len(r.items) > 0 {
+		var sqr ScoreRequest
+		has_items := len(r.items) > 0
+		m.lock()
+		if has_items {
 			m.results_for_current_root_dir = append(m.results_for_current_root_dir, r.items...)
-			m.score_queries <- ScoreRequest{root_dir: m.current_root_dir, query: m.current_query, items: utils.Map(
-				func(r ResultItem) ResultItem {
-					text, err := filepath.Rel(m.current_root_dir, r.abspath)
-					if err != nil {
-						text = r.abspath
-					}
-					return ResultItem{abspath: r.abspath, text: text, ltext: strings.ToLower(text), ftype: r.ftype}
-				}, r.items), is_last_for_current_root_dir: r.is_finished}
 		}
+		sqr = m.create_score_query(r.items, r.is_finished)
 		if r.is_finished {
 			m.current_root_dir_scan_complete = true
 		}
+		m.unlock()
+		m.score_queries <- sqr
 	}
 	for r := range m.scan_results {
 		if r.err != nil {
@@ -175,10 +219,10 @@ func (m *ResultManager) scan_result_handler() {
 
 func (m *ResultManager) score(r ScoreRequest) (err error) {
 	items := r.items
-	m.mutex.Lock()
-	only_dirs := m.state.mode.OnlyDirs()
-	sp := m.state.ScorePatterns()
-	m.mutex.Unlock()
+	m.lock()
+	only_dirs := m.settings.OnlyDirs()
+	sp := m.settings.ScorePatterns()
+	m.unlock()
 	if only_dirs {
 		items = utils.Filter(items, func(r ResultItem) bool { return r.ftype.IsDir() })
 	}
@@ -281,38 +325,49 @@ func merge_sorted_slices(a, b []ResultItem, cmp func(a, b ResultItem) int) []Res
 		}
 	}
 	result = append(result, a[i:]...)
-	result = append(result, b[j:]...)
-	return result
+	return append(result, b[j:]...)
 }
 
 func (m *ResultManager) add_score_results(r ScoreResult) (err error) {
 	cmp := utils.IfElse(r.query == "", cmp_without_score, cmp_with_score)
 	slices.SortStableFunc(r.items, cmp)
-	m.mutex.Lock()
+	m.lock()
 	defer func() {
-		m.mutex.Unlock()
+		m.unlock()
 		if r := recover(); r != nil {
 			st, qerr := utils.Format_stacktrace_on_panic(r)
 			err = fmt.Errorf("%w\n%s", qerr, st)
 		}
 	}()
-	merge_sorted_slices(m.renderable_results, r.items, cmp)
+	m.renderable_results = merge_sorted_slices(m.renderable_results, r.items, cmp)
+	if r.is_last_for_current_root_dir {
+		m.current_query_scoring_complete = true
+	}
 	return
 }
 
 func (m *ResultManager) sort_worker() {
+	last_wakeup_at := time.Now()
 	for r := range m.score_results {
 		if m.is_query_current(r.query, r.root_dir) {
 			if err := m.add_score_results(r); err != nil {
 				m.report_errors <- err
+			} else {
+				m.lock()
+				is_complete := m.current_root_dir_scan_complete && m.current_query_scoring_complete
+				m.unlock()
+				if is_complete || time.Now().Sub(last_wakeup_at) > time.Millisecond*50 {
+					m.WakeupMainThread()
+					last_wakeup_at = time.Now()
+				}
 			}
 		}
 	}
 }
 
 func (m *ResultManager) is_root_dir_current(root_dir string) bool {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.lock()
+	defer m.unlock()
 	return root_dir == m.current_root_dir
 }
 
@@ -327,8 +382,8 @@ func (m *ResultManager) set_root_dir(root_dir string) {
 	if root_dir, err = filepath.Abs(root_dir); err != nil {
 		return
 	}
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.lock()
+	defer m.unlock()
 	if m.current_root_dir == root_dir {
 		return
 	}
@@ -342,14 +397,20 @@ func (m *ResultManager) set_root_dir(root_dir string) {
 }
 
 func (m *ResultManager) is_query_current(query, root_dir string) bool {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	m.lock()
+	defer m.unlock()
 	return root_dir == m.current_root_dir && query == m.current_query
 }
 
 func (m *ResultManager) set_query(query string) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	var sqr *ScoreRequest
+	m.lock()
+	defer func() {
+		m.unlock()
+		if sqr != nil {
+			m.score_queries <- *sqr
+		}
+	}()
 	if query == m.current_query {
 		return
 	}
@@ -357,224 +418,18 @@ func (m *ResultManager) set_query(query string) {
 	m.matches_for_current_query = nil
 	m.renderable_results = nil
 	m.current_query_scoring_complete = false
+	if m.results_for_current_root_dir != nil {
+		s := m.create_score_query(m.results_for_current_root_dir, m.current_root_dir_scan_complete)
+		sqr = &s
+	} else if m.current_root_dir_scan_complete {
+		m.current_query_scoring_complete = true
+	}
 }
 
-type dir_cache map[string][]os.DirEntry
-
-type ScanCache struct {
-	dir_entries           dir_cache
-	mutex                 sync.Mutex
-	root_dir, search_text string
-	in_progress           bool
-	only_dirs             bool
-	matches               []*ResultItem
-}
-
-func (sc *ScanCache) get_cached_entries(root_dir string) (ans []os.DirEntry, found bool) {
-	sc.mutex.Lock()
-	defer sc.mutex.Unlock()
-	ans, found = sc.dir_entries[root_dir]
+func (h *Handler) get_results() (ans []ResultItem, in_progress bool) {
+	h.result_manager.lock()
+	defer h.result_manager.unlock()
+	ans = h.result_manager.renderable_results
+	in_progress = !h.result_manager.current_query_scoring_complete || !h.result_manager.current_root_dir_scan_complete
 	return
-}
-
-func (sc *ScanCache) set_cached_entries(root_dir string, e []os.DirEntry) {
-	sc.mutex.Lock()
-	defer sc.mutex.Unlock()
-	sc.dir_entries[root_dir] = e
-}
-
-func (sc *ScanCache) readdir(current_dir string) (ans []os.DirEntry) {
-	var found bool
-	if ans, found = sc.get_cached_entries(current_dir); !found {
-		ans, _ = os.ReadDir(current_dir)
-		sc.set_cached_entries(current_dir, ans)
-	}
-	return
-}
-
-func sort_items_without_search_text(items []*ResultItem) (ans []*ResultItem) {
-	type s struct {
-		ltext          string
-		num_of_slashes int
-		is_dir         bool
-		is_hidden      bool
-		r              *ResultItem
-	}
-	hidden_pat := regexp.MustCompile(`(^|/)\.[^/]+(/|$)`)
-	d := utils.Map(func(x *ResultItem) s {
-		return s{strings.ToLower(x.text), strings.Count(x.text, "/"), x.ftype.IsDir(), hidden_pat.MatchString(x.abspath), x}
-	}, items)
-	sort.SliceStable(d, func(i, j int) bool {
-		a, b := d[i], d[j]
-		if a.num_of_slashes == b.num_of_slashes {
-			if a.is_dir == b.is_dir {
-				if a.is_hidden == b.is_hidden {
-					if a.ltext == b.ltext {
-						return count_uppercase(a.r.text) < count_uppercase(b.r.text)
-					}
-					return a.ltext < b.ltext
-				}
-				return b.is_hidden
-			}
-			return a.is_dir
-		}
-		return a.num_of_slashes < b.num_of_slashes
-	})
-	return utils.Map(func(s s) *ResultItem { return s.r }, d)
-}
-
-func get_modified_score(abspath string, score float64, score_patterns []ScorePattern) float64 {
-	for _, sp := range score_patterns {
-		if sp.pat.MatchString(abspath) {
-			score = sp.op(score, sp.val)
-		}
-	}
-	return score
-}
-
-func count_uppercase(s string) int {
-	count := 0
-	for _, r := range s {
-		if unicode.IsUpper(r) {
-			count++
-		}
-	}
-	return count
-}
-
-type pos_in_name struct {
-	name      string
-	positions []int
-}
-
-func (r *ResultItem) finalize(positions []pos_in_name) {
-	buf := strings.Builder{}
-	buf.Grow(256)
-	pos := 0
-	for i, x := range positions {
-		before := buf.Len()
-		buf.WriteString(x.name)
-		if i != len(positions)-1 {
-			buf.WriteRune(os.PathSeparator)
-		}
-		for _, p := range x.positions {
-			r.positions = append(r.positions, p+pos)
-		}
-		pos += buf.Len() - before
-	}
-	r.text = buf.String()
-	if r.text == "" {
-		r.text = string(os.PathSeparator)
-	}
-}
-
-func (sc *ScanCache) scan_dir(abspath string, patterns []string, positions []pos_in_name, score float64) (ans []*ResultItem) {
-	if entries := sc.readdir(abspath); len(entries) > 0 {
-		npos := make([]pos_in_name, len(positions)+1)
-		copy(npos, positions)
-		if sc.only_dirs {
-			entries = utils.Filter(entries, func(e os.DirEntry) bool { return e.IsDir() })
-		}
-		names := make([]string, len(entries))
-		for i, e := range entries {
-			names[i] = e.Name()
-		}
-		var scores []*subseq.Match
-		pattern := ""
-		if len(patterns) > 0 {
-			pattern = patterns[0]
-		}
-		if pattern != "" {
-			scores = subseq.ScoreItems(pattern, names, subseq.Options{})
-		} else {
-			null := subseq.Match{}
-			scores = slices.Repeat([]*subseq.Match{&null}, len(names))
-		}
-		is_last := pattern == "" || len(patterns) <= 1
-		for i, n := range names {
-			e := entries[i]
-			child_abspath := filepath.Join(abspath, n)
-			if pattern == "" || scores[i].Score > 0 {
-				npos[len(positions)] = pos_in_name{name: n, positions: scores[i].Positions}
-				if is_last {
-					r := &ResultItem{score: score + scores[i].Score, ftype: entries[i].Type(), abspath: child_abspath}
-					r.finalize(npos)
-					ans = append(ans, r)
-				} else if e.IsDir() {
-					ans = append(ans, sc.scan_dir(child_abspath, patterns[1:], npos, scores[i].Score+score)...)
-				}
-			}
-		}
-	}
-	return
-}
-
-func (sc *ScanCache) scan(root_dir, search_text string, score_patterns []ScorePattern) (ans []*ResultItem) {
-	var patterns []string
-	switch search_text {
-	case "", "/":
-	default:
-		patterns = strings.Split(filepath.Clean(search_text), string(os.PathSeparator))
-	}
-	if strings.HasPrefix(search_text, "/") {
-		root_dir = "/"
-		if len(patterns) > 0 {
-			patterns = patterns[1:]
-		}
-	}
-	ans = sc.scan_dir(root_dir, patterns, nil, 0)
-	for _, ri := range ans {
-		ri.score = get_modified_score(ri.abspath, ri.score, score_patterns)
-	}
-	has_search_text := search_text != "" && search_text != "/"
-	if !has_search_text {
-		return sort_items_without_search_text(ans)
-	}
-	slices.SortStableFunc(ans, func(a, b *ResultItem) int {
-		ans := cmp.Compare(b.score, a.score)
-		if ans == 0 {
-			ans = cmp.Compare(len(a.text), len(b.text))
-			if ans == 0 {
-				ans = cmp.Compare(count_uppercase(a.text), count_uppercase(b.text))
-			}
-		}
-		return ans
-	})
-	return
-}
-
-func (h *Handler) get_results() (ans []*ResultItem, in_progress bool) {
-	sc := &h.scan_cache
-	sc.mutex.Lock()
-	defer sc.mutex.Unlock()
-	if sc.dir_entries == nil {
-		sc.dir_entries = make(dir_cache, 512)
-	}
-	cd := h.state.CurrentDir()
-	st := h.state.SearchText()
-	only_dirs := h.state.mode.OnlyDirs()
-	if st != "" {
-		st = filepath.Clean(st)
-	}
-	if sc.root_dir == cd && sc.search_text == st && sc.only_dirs == only_dirs {
-		return sc.matches, sc.in_progress
-	}
-	sc.in_progress = true
-	sc.matches = nil
-	sc.root_dir = cd
-	sc.search_text = st
-	sc.only_dirs = only_dirs
-	sp := h.state.ScorePatterns()
-	go func() {
-		defer h.lp.RecoverFromPanicInGoRoutine()
-		results := sc.scan(cd, st, sp)
-		sc.mutex.Lock()
-		defer sc.mutex.Unlock()
-		if cd == sc.root_dir && st == sc.search_text && sc.only_dirs == only_dirs {
-			sc.matches = results
-			sc.in_progress = false
-			h.lp.WakeupMainThread()
-		}
-	}()
-	return sc.matches, sc.in_progress
 }

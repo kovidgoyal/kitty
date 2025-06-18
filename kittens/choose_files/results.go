@@ -117,7 +117,7 @@ func icon_for(path string, x os.FileMode) string {
 	return ans
 }
 
-func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int, x, available_width int) {
+func (h *Handler) draw_column_of_matches(matches []ResultItem, current_idx int, x, available_width int) {
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
@@ -139,7 +139,7 @@ func (h *Handler) draw_column_of_matches(matches []*ResultItem, current_idx int,
 	}
 }
 
-func (h *Handler) draw_list_of_results(matches []*ResultItem, y, height int) int {
+func (h *Handler) draw_list_of_results(matches []ResultItem, y, height int) int {
 	if len(matches) == 0 || height < 2 {
 		return 0
 	}
@@ -198,7 +198,7 @@ func (h *Handler) draw_num_of_matches(num_shown, y int) {
 	}
 }
 
-func (h *Handler) draw_results(y, bottom_margin int, matches []*ResultItem, in_progress bool) (height int) {
+func (h *Handler) draw_results(y, bottom_margin int, matches []ResultItem, in_progress bool) (height int) {
 	height = h.screen_size.height - y - bottom_margin
 	h.lp.MoveCursorTo(1, 1+y)
 	h.draw_frame(h.screen_size.width, height)

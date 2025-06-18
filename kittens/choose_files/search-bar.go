@@ -66,6 +66,7 @@ func (h *Handler) handle_edit_keys(ev *loop.KeyEvent) bool {
 		} else {
 			g := wcswidth.SplitIntoGraphemes(h.state.search_text)
 			h.state.SetSearchText(strings.Join(g[:len(g)-1], ""))
+			h.result_manager.set_query(h.state.SearchText())
 			return true
 		}
 	}

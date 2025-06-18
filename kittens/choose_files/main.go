@@ -123,6 +123,7 @@ func (s State) SelectDirs() bool   { return s.select_dirs }
 func (s State) Multiselect() bool  { return s.multiselect }
 func (s State) String() string     { return utils.Repr(s) }
 func (s State) SearchText() string { return s.search_text }
+func (s State) OnlyDirs() bool     { return s.mode.OnlyDirs() }
 func (s *State) SetSearchText(val string) {
 	if s.search_text != val {
 		s.search_text = val
@@ -172,11 +173,12 @@ type ScreenSize struct {
 }
 
 type Handler struct {
-	state       State
-	screen_size ScreenSize
-	scan_cache  ScanCache
-	lp          *loop.Loop
-	rl          *readline.Readline
+	state          State
+	screen_size    ScreenSize
+	result_manager *ResultManager
+	lp             *loop.Loop
+	rl             *readline.Readline
+	err_chan       chan error
 }
 
 func (h *Handler) draw_screen() (err error) {
@@ -229,6 +231,7 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 	h.lp.AllowLineWrapping(false)
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.StartBracketedPaste()
+	h.result_manager.set_root_dir(h.state.CurrentDir())
 	h.draw_screen()
 	return
 }
@@ -270,6 +273,7 @@ func (h *Handler) change_to_current_dir_if_possible() error {
 				m = filepath.Dir(m)
 			}
 			h.state.SetCurrentDir(m)
+			h.result_manager.set_root_dir(h.state.CurrentDir())
 			return h.draw_screen()
 		}
 	}
@@ -303,10 +307,12 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 			case ".":
 				if curr, err = os.Getwd(); err == nil && curr != "/" {
 					h.state.SetCurrentDir(filepath.Dir(curr))
+					h.result_manager.set_root_dir(h.state.CurrentDir())
 					return h.draw_screen()
 				}
 			default:
 				h.state.SetCurrentDir(filepath.Dir(curr))
+				h.result_manager.set_root_dir(h.state.CurrentDir())
 				return h.draw_screen()
 			}
 			h.lp.Beep()
@@ -430,12 +436,13 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	handler := Handler{lp: lp, rl: readline.New(lp, readline.RlInit{
+	handler := Handler{lp: lp, err_chan: make(chan error), rl: readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ",
 	})}
 	if err = handler.set_state_from_config(conf, opts); err != nil {
 		return 1, err
 	}
+	handler.result_manager = NewResultManager(handler.err_chan, &handler.state, lp.WakeupMainThread)
 	switch len(args) {
 	case 0:
 		if default_cwd, err = os.Getwd(); err != nil {
@@ -457,7 +464,14 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	lp.OnKeyEvent = handler.OnKeyEvent
 	lp.OnText = handler.OnText
-	lp.OnWakeup = func() error { return handler.draw_screen() }
+	lp.OnWakeup = func() (err error) {
+		select {
+		case err = <-handler.err_chan:
+		default:
+			err = handler.draw_screen()
+		}
+		return
+	}
 	err = lp.Run()
 	if err != nil {
 		return 1, err
