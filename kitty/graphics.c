@@ -709,7 +709,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (tt == 'd' && self->currently_loading.loading_for.image_id) init_img = false;
     if (init_img) {
         self->currently_loading.loading_for = (const ImageAndFrame){0};
-        if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION) ABRT("EINVAL", "Image too large");
+        if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION) ABRT("EINVAL", "Image too large, width or height greater than %u", MAX_IMAGE_DIMENSION);
         remove_images(self, add_trim_predicate, 0);
         img = find_or_create_image(self, iid, &existing);
         if (existing) {
@@ -1562,7 +1562,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         INIT_CHUNKED_LOAD;
     } else {
         self->currently_loading.loading_for = (const ImageAndFrame){0};
-        if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION) ABRT("EINVAL", "Image too large");
+        if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION) ABRT("EINVAL", "Image too large, width or height greater than %u", MAX_IMAGE_DIMENSION);
         if (!initialize_load_data(self, g, img, tt, fmt, frame_number - 1)) return NULL;
     }
     LoadData *load_data = &self->currently_loading;
