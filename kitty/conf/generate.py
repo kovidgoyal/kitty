@@ -650,30 +650,36 @@ def gen_go_code(defn: Definition) -> str:
         a(f'default: return ans, fmt.Errorf("%#v is not a valid value for %s. Valid values are: %s", val, "{c}", "{vals}")')
         a('}''}')
 
+    has_parsers = bool(go_parsers or keyboard_shortcuts)
     a('func (c *Config) Parse(key, val string) (err error) {')
-    a('switch key {')
-    a('default: return fmt.Errorf("Unknown configuration key: %#v", key)')
-    for oname, pname in go_parsers.items():
-        ol = oname.lower()
-        is_multiple = oname in multiopts
-        a(f'case "{ol}":')
-        if is_multiple:
-            a(f'var temp_val []{go_types[oname]}')
-        else:
-            a(f'var temp_val {go_types[oname]}')
-        a(f'temp_val, err = {pname}')
-        a(f'if err != nil {{ return fmt.Errorf("Failed to parse {ol} = %#v with error: %w", val, err) }}')
-        if is_multiple:
-            a(f'c.{oname} = append(c.{oname}, temp_val...)')
-        else:
-            a(f'c.{oname} = temp_val')
-    if keyboard_shortcuts:
-        a('case "map":')
-        a('tempsc, err := config.ParseMap(val)')
-        a('if err != nil { return fmt.Errorf("Failed to parse map = %#v with error: %w", val, err) }')
-        a('c.KeyboardShortcuts = append(c.KeyboardShortcuts, tempsc)')
-    a('}')
-    a('return}')
+    if has_parsers:
+        if go_parsers:
+            a('switch key {')
+            a('default: return fmt.Errorf("Unknown configuration key: %#v", key)')
+            for oname, pname in go_parsers.items():
+                ol = oname.lower()
+                is_multiple = oname in multiopts
+                a(f'case "{ol}":')
+                if is_multiple:
+                    a(f'var temp_val []{go_types[oname]}')
+                else:
+                    a(f'var temp_val {go_types[oname]}')
+                a(f'temp_val, err = {pname}')
+                a(f'if err != nil {{ return fmt.Errorf("Failed to parse {ol} = %#v with error: %w", val, err) }}')
+                if is_multiple:
+                    a(f'c.{oname} = append(c.{oname}, temp_val...)')
+                else:
+                    a(f'c.{oname} = temp_val')
+        if keyboard_shortcuts:
+            a('case "map":')
+            a('tempsc, err := config.ParseMap(val)')
+            a('if err != nil { return fmt.Errorf("Failed to parse map = %#v with error: %w", val, err) }')
+            a('c.KeyboardShortcuts = append(c.KeyboardShortcuts, tempsc)')
+        a('}')
+        a('return}')
+    else:
+        a('return fmt.Errorf("Unknown configuration key: %#v", key)')
+        a('}')
     return '\n'.join(lines)
 
 
