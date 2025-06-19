@@ -1,8 +1,10 @@
 package choose_files
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -10,8 +12,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
-	"unsafe"
 
 	"github.com/kovidgoyal/kitty/tools/fzf"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -20,11 +20,10 @@ import (
 var _ = fmt.Print
 
 type ResultItem struct {
-	text, ltext, abspath string
-	ftype                fs.FileMode
-	positions            []int // may be nil
-	score                float64
-	positions_sorted     bool
+	text, abspath string
+	ftype         fs.FileMode
+	positions     []int // may be nil
+	score         CombinedScore
 }
 
 func (r ResultItem) String() string {
@@ -32,32 +31,10 @@ func (r ResultItem) String() string {
 }
 
 func (r *ResultItem) sorted_positions() []int {
-	if !r.positions_sorted {
-		r.positions_sorted = true
-		if len(r.positions) > 1 {
-			sort.Ints(r.positions)
-		}
+	if len(r.positions) > 1 {
+		sort.Ints(r.positions)
 	}
 	return r.positions
-}
-
-func get_modified_score(abspath string, score float64, score_patterns []ScorePattern) float64 {
-	for _, sp := range score_patterns {
-		if sp.pat.MatchString(abspath) {
-			score = sp.op(score, sp.val)
-		}
-	}
-	return score
-}
-
-func count_uppercase(s string) int {
-	count := 0
-	for _, r := range s {
-		if unicode.IsUpper(r) {
-			count++
-		}
-	}
-	return count
 }
 
 type ScanRequest struct {
@@ -85,7 +62,6 @@ type ScoreResult struct {
 
 type Settings interface {
 	OnlyDirs() bool
-	ScorePatterns() []ScorePattern
 	CurrentDir() string
 	SearchText() string
 }
@@ -139,7 +115,7 @@ func (m *ResultManager) unlock() {
 	m.mutex.Unlock()
 }
 
-func (m *ResultManager) scan(dir, root_dir string, level int) (err error) {
+func (m *ResultManager) scan(dir, root_dir string, level int, idx *uint32) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			st, qerr := utils.Format_stacktrace_on_panic(r)
@@ -153,15 +129,20 @@ func (m *ResultManager) scan(dir, root_dir string, level int) (err error) {
 		}
 		return nil
 	}
-	m.scan_results <- ScanResult{root_dir: root_dir, items: utils.Map(func(x os.DirEntry) ResultItem {
-		return ResultItem{abspath: filepath.Join(dir, x.Name()), ftype: x.Type()}
-	}, items)}
-	for _, x := range items {
-		if x.IsDir() {
+	ritems := utils.Map(func(x os.DirEntry) ResultItem {
+		ans := ResultItem{abspath: filepath.Join(dir, x.Name()), text: strings.ToLower(x.Name()), ftype: x.Type()}
+		ans.score.Set_index(*idx)
+		*idx = *idx + 1
+		return ans
+	}, items)
+	slices.SortFunc(ritems, func(a, b ResultItem) int { return cmp.Compare(a.text, b.text) })
+	m.scan_results <- ScanResult{root_dir: root_dir, items: ritems}
+	for _, x := range ritems {
+		if x.ftype.IsDir() {
 			if !m.is_root_dir_current(root_dir) {
 				return
 			}
-			if err = m.scan(filepath.Join(dir, x.Name()), root_dir, level+1); err != nil {
+			if err = m.scan(x.abspath, root_dir, level+1, idx); err != nil {
 				return
 			}
 		}
@@ -172,7 +153,8 @@ func (m *ResultManager) scan(dir, root_dir string, level int) (err error) {
 func (m *ResultManager) scan_worker() {
 	for r := range m.scan_requests {
 		st := time.Now()
-		if err := m.scan(r.root_dir, r.root_dir, 0); err == nil {
+		var idx uint32
+		if err := m.scan(r.root_dir, r.root_dir, 0, &idx); err == nil {
 			m.scan_results <- ScanResult{root_dir: r.root_dir, is_finished: true}
 		}
 		debugprintln(111111111, time.Now().Sub(st), len(m.results_for_current_root_dir))
@@ -186,7 +168,7 @@ func (m *ResultManager) create_score_query(items []ResultItem, is_finished bool)
 			if err != nil {
 				text = r.abspath
 			}
-			return ResultItem{abspath: r.abspath, text: text, ltext: strings.ToLower(text), ftype: r.ftype}
+			return ResultItem{abspath: r.abspath, text: text, ftype: r.ftype}
 		}, items), is_last_for_current_root_dir: is_finished}
 }
 
@@ -217,67 +199,37 @@ func (m *ResultManager) scan_result_handler() {
 	}
 }
 
+func (r *ResultItem) SetScoreResult(x fzf.Result) {
+	r.positions = x.Positions
+	r.score.Set_score(uint32(math.MaxUint32 - x.Score))
+}
+
 func (m *ResultManager) score(r ScoreRequest) (err error) {
 	items := r.items
-	m.lock()
 	only_dirs := m.settings.OnlyDirs()
-	sp := m.settings.ScorePatterns()
-	m.unlock()
 	if only_dirs {
 		items = utils.Filter(items, func(r ResultItem) bool { return r.ftype.IsDir() })
 	}
-	res := ScoreResult{query: r.query, items: items, root_dir: r.root_dir, is_last_for_current_root_dir: r.is_last_for_current_root_dir}
+	res := ScoreResult{
+		query: r.query, items: items, root_dir: r.root_dir, is_last_for_current_root_dir: r.is_last_for_current_root_dir,
+	}
 	if r.query != "" {
-		var r []fzf.Result
-		if r, err = m.scorer.ScoreWithCache(utils.Map(func(r ResultItem) string { return r.text }, items), res.query); err != nil {
+		var scores []fzf.Result
+		if scores, err = m.scorer.ScoreWithCache(utils.Map(func(r ResultItem) string { return r.text }, items), res.query); err != nil {
 			return
 		}
-		for i, x := range r {
-			items[i].positions = x.Positions
-			items[i].score = get_modified_score(items[i].abspath, float64(x.Score), sp)
+		matched_items := make([]ResultItem, 0, len(items))
+		for i, x := range scores {
+			if x.Score > 0 {
+				matched_items = append(matched_items, items[i])
+				item := &matched_items[len(matched_items)-1]
+				item.SetScoreResult(x)
+			}
 		}
-		items = utils.Filter(items, func(r ResultItem) bool { return r.score > 0 })
+		items = matched_items
 	}
 	m.score_results <- res
 	return
-}
-
-func int_cmp(a, b int) int {
-	if a < b {
-		return -1
-	}
-	if a > b {
-		return 1
-	}
-	return 0
-}
-
-func str_cmp(a, b string) int {
-	if a < b {
-		return -1
-	}
-	if a > b {
-		return 1
-	}
-	return 0
-}
-
-func float_cmp(a, b float64) int { // deliberately doesnt handle NaN
-	if a < b {
-		return -1
-	}
-	if a > b {
-		return 1
-	}
-	return 0
-}
-
-func bool_as_int(b bool) int {
-	return *(*int)(unsafe.Pointer(&b))
-}
-
-func bool_cmp(a, b bool) int {
-	return bool_as_int(a) - bool_as_int(b)
 }
 
 func (m *ResultManager) score_worker() {
@@ -290,33 +242,11 @@ func (m *ResultManager) score_worker() {
 	}
 }
 
-func cmp_with_score(a, b ResultItem) (ans int) {
-	ans = float_cmp(b.score, a.score)
-	if ans == 0 {
-		ans = int_cmp(len(a.text), len(b.text))
-		if ans == 0 {
-			ans = int_cmp(count_uppercase(a.text), count_uppercase(b.text))
-		}
-	}
-	return
-}
-
-func cmp_without_score(a, b ResultItem) (ans int) {
-	ans = bool_cmp(a.ftype.IsDir(), b.ftype.IsDir())
-	if ans == 0 {
-		ans = str_cmp(a.ltext, b.ltext)
-		if ans == 0 {
-			ans = int_cmp(count_uppercase(a.text), count_uppercase(b.text))
-		}
-	}
-	return
-}
-
-func merge_sorted_slices(a, b []ResultItem, cmp func(a, b ResultItem) int) []ResultItem {
+func merge_sorted_slices(a, b []ResultItem) []ResultItem {
 	result := make([]ResultItem, 0, len(a)+len(b))
 	i, j := 0, 0
 	for i < len(a) && j < len(b) {
-		if cmp(a[i], b[j]) <= 0 {
+		if a[i].score <= b[j].score {
 			result = append(result, a[i])
 			i++
 		} else {
@@ -328,9 +258,30 @@ func merge_sorted_slices(a, b []ResultItem, cmp func(a, b ResultItem) int) []Res
 	return append(result, b[j:]...)
 }
 
+type ByRelevance []ResultItem
+
+func (a ByRelevance) Len() int {
+	return len(a)
+}
+
+func (a ByRelevance) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+func (a ByRelevance) Less(i, j int) bool {
+	return a[i].score < a[j].score
+}
+
 func (m *ResultManager) add_score_results(r ScoreResult) (err error) {
-	cmp := utils.IfElse(r.query == "", cmp_without_score, cmp_with_score)
-	slices.SortStableFunc(r.items, cmp)
+	min_score, max_score := CombinedScore(math.MaxUint64), CombinedScore(0)
+	if len(r.items) > 0 {
+		sort.Sort(ByRelevance(r.items))
+		min_score = r.items[0].score
+		max_score = r.items[len(r.items)-1].score
+	}
+	_, _ = min_score, max_score
+	// renderable_results := merge_sorted_slices(m.renderable_results, r.items)
+	renderable_results := append(m.renderable_results, r.items...)
 	m.lock()
 	defer func() {
 		m.unlock()
@@ -339,7 +290,7 @@ func (m *ResultManager) add_score_results(r ScoreResult) (err error) {
 			err = fmt.Errorf("%w\n%s", qerr, st)
 		}
 	}()
-	m.renderable_results = merge_sorted_slices(m.renderable_results, r.items, cmp)
+	m.renderable_results = renderable_results
 	if r.is_last_for_current_root_dir {
 		m.current_query_scoring_complete = true
 	}

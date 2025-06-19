@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -21,12 +19,6 @@ import (
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
-
-type ScorePattern struct {
-	pat *regexp.Regexp
-	op  func(float64, float64) float64
-	val float64
-}
 
 type Screen int
 
@@ -104,7 +96,6 @@ type State struct {
 	current_dir              string
 	select_dirs              bool
 	multiselect              bool
-	score_patterns           []ScorePattern
 	search_text              string
 	mode                     Mode
 	suggested_save_file_name string
@@ -140,9 +131,8 @@ func (s *State) SetCurrentDir(val string) {
 		s.current_dir = val
 	}
 }
-func (s State) ScorePatterns() []ScorePattern { return s.score_patterns }
-func (s State) CurrentIndex() int             { return s.current_idx }
-func (s *State) SetCurrentIndex(val int)      { s.current_idx = max(0, val) }
+func (s State) CurrentIndex() int        { return s.current_idx }
+func (s *State) SetCurrentIndex(val int) { s.current_idx = max(0, val) }
 func (s State) CurrentDir() string {
 	return utils.IfElse(s.current_dir == "", s.BaseDir(), s.current_dir)
 }
@@ -365,32 +355,8 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (
 	return
 }
 
-func mult(a, b float64) float64 { return a * b }
-func sub(a, b float64) float64  { return a - b }
-func add(a, b float64) float64  { return a + b }
-func div(a, b float64) float64  { return a / b }
-
 func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error) {
 	h.state = State{}
-	fmap := map[string]func(float64, float64) float64{
-		"*=": mult, "+=": add, "-=": sub, "/=": div}
-	h.state.score_patterns = make([]ScorePattern, len(conf.Modify_score))
-	for i, x := range conf.Modify_score {
-		p, rest, _ := strings.Cut(x, " ")
-		if h.state.score_patterns[i].pat, err = regexp.Compile(p); err == nil {
-			op, val, _ := strings.Cut(rest, " ")
-			if h.state.score_patterns[i].val, err = strconv.ParseFloat(val, 64); err != nil {
-				return fmt.Errorf("The modify score value %#v is invalid: %w", val, err)
-			}
-			if h.state.score_patterns[i].op = fmap[op]; h.state.score_patterns[i].op == nil {
-				return fmt.Errorf("The modify score operator %#v is unknown", op)
-			}
-
-		} else {
-			return fmt.Errorf("The modify score pattern %#v is invalid: %w", x, err)
-		}
-
-	}
 	switch opts.Mode {
 	case "file":
 		h.state.mode = SELECT_SINGLE_FILE
