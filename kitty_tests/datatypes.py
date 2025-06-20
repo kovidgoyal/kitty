@@ -535,8 +535,6 @@ class TestDataTypes(BaseTest):
                 if saved[k] is not None:
                     os.environ[k] = saved[k]
 
-
-
     def test_historybuf(self):
         lb = filled_line_buf()
         hb = HistoryBuf(5, 5)

@@ -111,10 +111,11 @@ multicell_is_continuation_of_previous(const CPUCell *prev, const CPUCell *curr) 
     return prev->width == curr->width && !curr->natural_width;
 }
 
-static void
+static index_type
 text_in_cell_ansi(ANSILineState *s, const CPUCell *c, TextCache *tc, bool skip_multiline_non_zero_lines) {
+    index_type num_cells_to_skip_for_tab = 0;
     if (c->is_multicell) {
-        if (c->x || (skip_multiline_non_zero_lines && c->y)) return;
+        if (c->x || (skip_multiline_non_zero_lines && c->y)) return num_cells_to_skip_for_tab;
         if (s->current_multicell_state) {
             if (!multicell_is_continuation_of_previous(s->current_multicell_state, c)) {
                 close_multicell(s);
@@ -134,18 +135,15 @@ text_in_cell_ansi(ANSILineState *s, const CPUCell *c, TextCache *tc, bool skip_m
         switch (s->output_buf->buf[pos]) {
             case 0: s->output_buf->buf[pos] = ' '; break;
             case '\t': {
-                unsigned num_cells_to_skip_for_tab = 0, n = s->output_buf->len - pos;
-                if (n - pos > 1) {
+                index_type n = s->output_buf->len - pos;
+                if (n > 1) {
                     num_cells_to_skip_for_tab = s->output_buf->buf[s->output_buf->len - n + 1];
                     s->output_buf->len -= n - 1;
-                }
-                const CPUCell *next = c + 1;
-                while (num_cells_to_skip_for_tab && pos + 1 < s->limit && cell_is_char(next, ' ')) {
-                    num_cells_to_skip_for_tab--; pos++; next++;
                 }
             } break;
         }
     }
+    return num_cells_to_skip_for_tab;
 }
 
 
@@ -596,8 +594,13 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
             if (*sgr) write_sgr_to_ansi_buf(s, sgr);
         }
 
-        text_in_cell_ansi(s, self->cpu_cells + s->pos, self->text_cache, skip_multiline_non_zero_lines);
+        index_type num_cells_to_skip_for_tab = text_in_cell_ansi(
+            s, self->cpu_cells + s->pos, self->text_cache, skip_multiline_non_zero_lines);
         s->prev_gpu_cell = cell;
+        const CPUCell *next = self->cpu_cells + s->pos + 1;
+        while (num_cells_to_skip_for_tab && s->pos + 1 < s->limit && cell_is_char(next, ' ')) {
+            num_cells_to_skip_for_tab--; s->pos++; next++;
+        }
     }
     close_multicell(s);
     return s->escape_code_written;
