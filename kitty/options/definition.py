@@ -1032,7 +1032,8 @@ opt('bell_path', 'none',
 Path to a sound file to play as the bell sound. If set to :code:`none`, the
 system default bell sound is used. Must be in a format supported by the
 operating systems sound API, such as WAV or OGA on Linux (libcanberra) or AIFF,
-MP3 or WAV on macOS (NSSound).
+MP3 or WAV on macOS (NSSound). Relative paths are resolved
+with respect to the kitty config directory.
 '''
     )
 
