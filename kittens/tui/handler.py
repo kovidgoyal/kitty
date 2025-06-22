@@ -70,6 +70,8 @@ class KittenUI:
             return
         if self.allow_remote_control:
             self.to = os.environ.get('KITTY_LISTEN_ON', '')
+            if not self.to:
+                raise ValueError('Remote control not enabled, this kitten should be run via a map in kitty.conf, not from the command line')
             self.rc_fd = int(self.to.partition(':')[-1])
             os.set_inheritable(self.rc_fd, False)
         if (self.remote_control_password or self.remote_control_password == '') and not self.password:
