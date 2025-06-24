@@ -55,7 +55,6 @@ func (h *Handler) draw_search_bar(y int) {
 	h.draw_frame(available_width, SEARCH_BAR_HEIGHT)
 	h.lp.MoveCursorTo(1+left_margin+1, 2+y)
 	h.draw_search_text(available_width - 2)
-	return
 }
 
 func (h *Handler) handle_edit_keys(ev *loop.KeyEvent) bool {

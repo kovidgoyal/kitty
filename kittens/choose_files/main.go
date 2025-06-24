@@ -177,14 +177,14 @@ func (h *Handler) draw_screen() (err error) {
 	h.lp.ClearScreen()
 	switch h.state.screen {
 	case NORMAL:
-		matches, in_progress := h.get_results()
+		matches, is_complete := h.get_results()
 		h.lp.SetWindowTitle(h.state.WindowTitle())
 		defer func() { // so that the cursor ends up in the right place
 			h.lp.MoveCursorTo(1, 1)
 			h.draw_search_bar(0)
 		}()
 		y := SEARCH_BAR_HEIGHT
-		y += h.draw_results(y, 2, matches, in_progress)
+		y += h.draw_results(y, 2, matches, !is_complete)
 	case SAVE_FILE:
 		err = h.draw_save_file_name_screen()
 	}
@@ -227,8 +227,8 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 }
 
 func (h *Handler) current_abspath() string {
-	matches, in_progress := h.get_results()
-	if len(matches) > 0 && !in_progress {
+	matches, _ := h.get_results()
+	if len(matches) > 0 {
 		if idx := h.state.CurrentIndex(); idx < len(matches) {
 			return matches[idx].abspath
 		}
@@ -255,8 +255,8 @@ func (h *Handler) toggle_selection() bool {
 }
 
 func (h *Handler) change_to_current_dir_if_possible() error {
-	matches, in_progress := h.get_results()
-	if len(matches) > 0 && !in_progress {
+	matches, _ := h.get_results()
+	if len(matches) > 0 {
 		m := h.current_abspath()
 		if st, err := os.Stat(m); err == nil {
 			if !st.IsDir() {
@@ -345,7 +345,8 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (err error) {
 	switch h.state.screen {
 	case NORMAL:
-		h.state.search_text += text
+		h.state.SetSearchText(h.state.SearchText() + text)
+		h.result_manager.set_query(h.state.SearchText())
 		return h.draw_screen()
 	case SAVE_FILE:
 		if err = h.rl.OnText(text, from_key_event, in_bracketed_paste); err == nil {

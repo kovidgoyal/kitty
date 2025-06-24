@@ -41,8 +41,12 @@ func (r *ResultItem) Set_relpath(root_dir string) {
 	}
 }
 
+func (r ResultItem) IsMatching() bool {
+	return r.score.Score() < uint32(math.MaxUint32)
+}
+
 func (r ResultItem) String() string {
-	return fmt.Sprintf("{text: %#v, abspath: %#v, is_dir: %v, positions: %#v}", r.text, r.abspath, r.ftype.IsDir(), r.positions)
+	return fmt.Sprintf("{text: %#v, abspath: %#v, score: %v, positions: %#v}", r.text, r.abspath, r.score.Score(), r.positions)
 }
 
 func (r *ResultItem) sorted_positions() []int {
@@ -210,12 +214,12 @@ type FileSystemScorer struct {
 	only_dirs               bool
 	mutex                   sync.Mutex
 	renderable_results      []*ResultItem
-	on_results              func(error)
+	on_results              func(error, bool)
 	current_worker_wait     *sync.WaitGroup
 	scorer                  *fzf.FuzzyMatcher
 }
 
-func NewFileSystemScorer(root_dir, query string, only_dirs bool, on_results func(error)) (ans *FileSystemScorer) {
+func NewFileSystemScorer(root_dir, query string, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
 	return &FileSystemScorer{
 		query: query, root_dir: root_dir, only_dirs: only_dirs, on_results: on_results,
 		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME)}
@@ -244,7 +248,10 @@ func (fss *FileSystemScorer) Change_query(query string) {
 	if fss.current_worker_wait != nil {
 		fss.current_worker_wait.Wait()
 	}
+	fss.mutex.Lock()
 	fss.query = query
+	fss.renderable_results = nil
+	fss.mutex.Unlock()
 	fss.Start()
 }
 
@@ -255,15 +262,14 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 		if r := recover(); r != nil {
 			if fss.keep_going.Load() {
 				st, qerr := utils.Format_stacktrace_on_panic(r)
-				fss.on_results(fmt.Errorf("%w\n%s", qerr, st))
+				fss.on_results(fmt.Errorf("%w\n%s", qerr, st), true)
 			}
 		} else {
 			if fss.keep_going.Load() {
-				fss.on_results(nil)
+				fss.on_results(nil, true)
 			}
 		}
 	}()
-	offset := 0
 	root_dir := fss.root_dir
 	global_min_score, global_max_score := CombinedScore(math.MaxUint64), CombinedScore(0)
 	var idx uint32
@@ -292,18 +298,19 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 			}
 		}
 		if fss.query != "" && len(rp) > 0 {
-			scores, err := fss.scorer.ScoreWithCache(utils.Map(func(r *ResultItem) string { return r.text }, rp), fss.query)
+			scores, err := fss.scorer.Score(utils.Map(func(r *ResultItem) string { return r.text }, rp), fss.query)
 			if err != nil {
 				return err
 			}
 			for i, r := range rp {
 				r.SetScoreResult(scores[i])
 			}
+			rp = utils.Filter(rp, func(r *ResultItem) bool { return r.IsMatching() })
 		}
 		min_score, max_score := CombinedScore(math.MaxUint64), CombinedScore(0)
 		if len(rp) > 0 {
 			slices.SortFunc(rp, func(a, b *ResultItem) int { return cmp.Compare(a.score, b.score) })
-			min_score, max_score = rp[0].score, rp[len(results)-1].score
+			min_score, max_score = rp[0].score, rp[len(rp)-1].score
 		}
 		var rr []*ResultItem
 		fss.mutex.Lock()
@@ -313,19 +320,21 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 		case min_score >= global_max_score:
 			rr = append(existing, rp...)
 		case max_score < global_min_score:
-			rr = make([]*ResultItem, len(existing)+len(rp))
+			rr = make([]*ResultItem, len(existing)+len(rp), max(16*1024, len(existing)+len(rp), 2*cap(existing)))
 			copy(rr, rp)
 			copy(rr[len(rp):], existing)
 		default:
 			rr = merge_sorted_slices(existing, rp)
 		}
-		fss.mutex.Lock()
-		fss.renderable_results = rr
 		global_min_score = min(global_min_score, min_score)
 		global_max_score = min(global_max_score, max_score)
+		fss.mutex.Lock()
+		fss.renderable_results = rr
 		fss.mutex.Unlock()
 		return
 	}
+
+	offset := 0
 	for range on_results {
 		if !fss.keep_going.Load() {
 			break
@@ -333,11 +342,11 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 		results := fss.scanner.Batch(offset)
 		if len(results) > 0 || fss.scanner.Error() != nil {
 			offset += len(results)
-			fss.on_results(handle_batch(results))
+			fss.on_results(handle_batch(results), false)
 		}
 	}
 	if fss.keep_going.Load() {
-		fss.on_results(handle_batch(fss.scanner.Batch(offset)))
+		fss.on_results(handle_batch(fss.scanner.Batch(offset)), false)
 	}
 }
 
@@ -377,7 +386,7 @@ func NewResultManager(err_chan chan error, settings Settings, WakeupMainThread f
 	return ans
 }
 
-func (m *ResultManager) on_results(err error) {
+func (m *ResultManager) on_results(err error, is_finished bool) {
 	if err != nil {
 		m.report_errors <- err
 		m.WakeupMainThread()
@@ -385,14 +394,14 @@ func (m *ResultManager) on_results(err error) {
 	}
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	if time.Since(m.last_wakeup_at) > time.Millisecond*50 {
+	if is_finished || time.Since(m.last_wakeup_at) > time.Millisecond*50 {
 		m.WakeupMainThread()
 		m.last_wakeup_at = time.Now()
 	}
 }
 
 func merge_sorted_slices(a, b []*ResultItem) []*ResultItem {
-	result := make([]*ResultItem, 0, len(a)+len(b))
+	result := make([]*ResultItem, 0, 2*(len(a)+len(b)))
 	i, j := 0, 0
 	for i < len(a) && j < len(b) {
 		if a[i].score <= b[j].score {
@@ -434,7 +443,7 @@ func (m *ResultManager) set_query(query string) {
 	}
 }
 
-func (h *Handler) get_results() (ans ResultsType, in_progress bool) {
+func (h *Handler) get_results() (ans ResultsType, is_complete bool) {
 	if h.result_manager.scorer == nil {
 		return
 	}
