@@ -20,6 +20,10 @@ import (
 
 var _ = fmt.Print
 
+func (c CombinedScore) String() string {
+	return fmt.Sprintf("{score: %d index: %d}", c.Score(), c.Index())
+}
+
 type ResultItem struct {
 	text, abspath string
 	ftype         fs.FileMode
@@ -46,7 +50,7 @@ func (r ResultItem) IsMatching() bool {
 }
 
 func (r ResultItem) String() string {
-	return fmt.Sprintf("{text: %#v, abspath: %#v, score: %v, positions: %#v}", r.text, r.abspath, r.score.Score(), r.positions)
+	return fmt.Sprintf("{text: %#v, abspath: %#v, %s, positions: %#v}", r.text, r.abspath, r.score, r.positions)
 }
 
 func (r *ResultItem) sorted_positions() []int {
