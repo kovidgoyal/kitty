@@ -161,6 +161,9 @@ RPS1="{rps1}"
             pty.write_to_child('\x04')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             self.assert_command(pty)
+            # Check escaping of inputs
+            pty.send_cmd_to_child("-f-this-command-must-not-exist")
+            self.assert_command(pty, exit_status=127)
         with self.run_shell(rc=f'''PS1="{ps1}"''') as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('printf "%s\x16\a%s" "a" "b"')
@@ -273,7 +276,7 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
 
     def assert_command(self, pty, cmd='', exit_status=0):
         cmd = cmd or pty.last_cmd
-        pty.wait_till(lambda: pty.callbacks.last_cmd_exit_status == 0, timeout_msg=lambda: f'{pty.callbacks.last_cmd_exit_status=} != {exit_status}')
+        pty.wait_till(lambda: pty.callbacks.last_cmd_exit_status == exit_status, timeout_msg=lambda: f'{pty.callbacks.last_cmd_exit_status=} != {exit_status}')
         pty.wait_till(lambda: pty.callbacks.last_cmd_cmdline == cmd, timeout_msg=lambda: f'{pty.callbacks.last_cmd_cmdline=!r} != {cmd!r}')
 
     @unittest.skipUnless(bash_ok(), 'bash not installed, too old, or debug build')
