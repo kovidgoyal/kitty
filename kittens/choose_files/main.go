@@ -402,7 +402,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	handler := Handler{lp: lp, err_chan: make(chan error), rl: readline.New(lp, readline.RlInit{
+	handler := Handler{lp: lp, err_chan: make(chan error, 8), rl: readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ",
 	})}
 	if err = handler.set_state_from_config(conf, opts); err != nil {
