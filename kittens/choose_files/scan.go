@@ -122,7 +122,8 @@ func (fss *FileSystemScanner) Batch(offset int) []ResultItem {
 	if offset >= len(fss.results) {
 		return nil
 	}
-	return fss.results[offset:]
+	limit := min(len(fss.results), offset+4096)
+	return fss.results[offset:limit]
 }
 
 func (fss *FileSystemScanner) Finished() bool {
@@ -297,15 +298,22 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 				rp[i] = &results[i]
 			}
 		}
-		if fss.query != "" && len(rp) > 0 {
-			scores, err := fss.scorer.Score(utils.Map(func(r *ResultItem) string { return r.text }, rp), fss.query)
-			if err != nil {
-				return err
+		if len(rp) > 0 {
+			if fss.query != "" {
+				scores, err := fss.scorer.Score(utils.Map(func(r *ResultItem) string { return r.text }, rp), fss.query)
+				if err != nil {
+					return err
+				}
+				for i, r := range rp {
+					r.SetScoreResult(scores[i])
+				}
+				rp = utils.Filter(rp, func(r *ResultItem) bool { return r.IsMatching() })
+			} else {
+				z := fzf.Result{}
+				for _, r := range rp {
+					r.SetScoreResult(z)
+				}
 			}
-			for i, r := range rp {
-				r.SetScoreResult(scores[i])
-			}
-			rp = utils.Filter(rp, func(r *ResultItem) bool { return r.IsMatching() })
 		}
 		min_score, max_score := CombinedScore(math.MaxUint64), CombinedScore(0)
 		if len(rp) > 0 {
@@ -345,8 +353,13 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 			fss.on_results(handle_batch(results), false)
 		}
 	}
-	if fss.keep_going.Load() {
-		fss.on_results(handle_batch(fss.scanner.Batch(offset)), false)
+	for fss.keep_going.Load() {
+		b := fss.scanner.Batch(offset)
+		if len(b) == 0 {
+			break
+		}
+		offset += len(b)
+		fss.on_results(handle_batch(b), false)
 	}
 }
 
