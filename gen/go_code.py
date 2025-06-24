@@ -201,7 +201,7 @@ def make_bitfields() -> None:
     )
     mb('tools/vt', 'CellColor', 'is_idx 1', 'red 8', 'green 8', 'blue 8')
     mb('tools/vt', 'LineAttrs', 'prompt_kind 2',)
-    mb('kittens/choose_files', 'CombinedScore', 'score 32', 'index 32')
+    mb('kittens/choose_files', 'CombinedScore', 'score 16', 'length 16', 'index 32')
 # }}}
 
 # Completions {{{

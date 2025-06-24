@@ -21,7 +21,7 @@ import (
 var _ = fmt.Print
 
 func (c CombinedScore) String() string {
-	return fmt.Sprintf("{score: %d index: %d}", c.Score(), c.Index())
+	return fmt.Sprintf("{score: %d length: %d index: %d}", c.Score(), c.Length(), c.Index())
 }
 
 type ResultItem struct {
@@ -34,7 +34,7 @@ type ResultsType []*ResultItem
 
 func (r *ResultItem) SetScoreResult(x fzf.Result) {
 	r.positions = x.Positions
-	r.score.Set_score(uint32(math.MaxUint32 - x.Score))
+	r.score.Set_score(uint16(math.MaxUint16 - uint16(x.Score)))
 }
 
 func (r *ResultItem) Set_relpath(root_dir string) {
@@ -46,7 +46,7 @@ func (r *ResultItem) Set_relpath(root_dir string) {
 }
 
 func (r ResultItem) IsMatching() bool {
-	return r.score.Score() < uint32(math.MaxUint32)
+	return r.score.Score() < uint16(math.MaxUint16)
 }
 
 func (r ResultItem) String() string {
@@ -310,12 +310,14 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 				}
 				for i, r := range rp {
 					r.SetScoreResult(scores[i])
+					r.score.Set_length(uint16(len(r.text)))
 				}
 				rp = utils.Filter(rp, func(r *ResultItem) bool { return r.IsMatching() })
 			} else {
-				z := fzf.Result{}
 				for _, r := range rp {
-					r.SetScoreResult(z)
+					r.score.Set_length(0)
+					r.score.Set_score(0)
+					r.positions = nil
 				}
 			}
 		}
@@ -339,7 +341,7 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 			rr = merge_sorted_slices(existing, rp)
 		}
 		global_min_score = min(global_min_score, min_score)
-		global_max_score = min(global_max_score, max_score)
+		global_max_score = max(global_max_score, max_score)
 		fss.mutex.Lock()
 		fss.renderable_results = rr
 		fss.mutex.Unlock()
