@@ -66,7 +66,7 @@ type FileSystemScanner struct {
 	root_dir                string
 	mutex                   sync.Mutex
 	results                 []ResultItem
-	dir_reader              func(path string, level int) ([]fs.DirEntry, error)
+	dir_reader              func(path string) ([]fs.DirEntry, error)
 	err                     error
 }
 
@@ -74,9 +74,7 @@ func NewFileSystemScanner(root_dir string, notify chan int) (fss *FileSystemScan
 	ans := &FileSystemScanner{root_dir: root_dir, listeners: []chan int{notify}, results: make([]ResultItem, 0, 1024)}
 	ans.in_progress.Store(true)
 	ans.keep_going.Store(true)
-	ans.dir_reader = func(path string, level int) ([]fs.DirEntry, error) {
-		return os.ReadDir(path)
-	}
+	ans.dir_reader = os.ReadDir
 	return ans
 }
 
@@ -147,69 +145,74 @@ func (fss *FileSystemScanner) worker() {
 			close(l)
 		}
 	}()
-	var scan_dir func(string, int)
 	seen_dirs := make(map[string]bool)
-	scan_dir = func(dir string, level int) {
-		if !fss.keep_going.Load() || seen_dirs[dir] {
-			return
+	dir := fss.root_dir
+	pos := 0
+	// do a breadth first traversal of the filesystem
+	for dir != "" {
+		if !fss.keep_going.Load() {
+			break
 		}
-		seen_dirs[dir] = true
-		entries, err := fss.dir_reader(dir, level)
-		if err != nil {
-			if level == 0 {
-				fss.keep_going.Store(false)
-				fss.mutex.Lock()
-				fss.err = err
-				fss.mutex.Unlock()
+		if !seen_dirs[dir] {
+			seen_dirs[dir] = true
+			entries, err := fss.dir_reader(dir)
+			if err != nil {
+				if dir == fss.root_dir {
+					fss.keep_going.Store(false)
+					fss.mutex.Lock()
+					fss.err = err
+					fss.mutex.Unlock()
+				}
+				break
 			}
-			return
-		}
-		ns := fss.results
-		new_sz := len(ns) + len(entries)
-		if cap(ns) < new_sz {
-			ns = make([]ResultItem, len(ns), max(16*1024, new_sz, cap(ns)*2))
-			copy(ns, fss.results)
-		}
-		new_items := ns[len(ns):new_sz]
-		for i, x := range entries {
-			ftype := x.Type()
-			if ftype&fs.ModeSymlink != 0 {
-				if st, err := x.Info(); err == nil && st.IsDir() {
-					ftype = fs.ModeDir
+			ns := fss.results
+			new_sz := len(ns) + len(entries)
+			if cap(ns) < new_sz {
+				ns = make([]ResultItem, len(ns), max(16*1024, new_sz, cap(ns)*2))
+				copy(ns, fss.results)
+			}
+			new_items := ns[len(ns):new_sz]
+			for i, x := range entries {
+				ftype := x.Type()
+				if ftype&fs.ModeSymlink != 0 {
+					if st, err := x.Info(); err == nil && st.IsDir() {
+						ftype = fs.ModeDir
+					}
+				}
+				new_items[i].ftype = ftype
+				new_items[i].abspath = filepath.Join(dir, x.Name())
+				new_items[i].text = strings.ToLower(x.Name())
+			}
+			slices.SortFunc(new_items, func(a, b ResultItem) int {
+				if a.ftype&fs.ModeDir == b.ftype&fs.ModeDir {
+					return cmp.Compare(a.text, b.text)
+				}
+				if a.ftype.IsDir() {
+					return -1
+				}
+				return 1
+			})
+			ns = ns[0:new_sz]
+			fss.mutex.Lock()
+			fss.results = ns
+			listeners := fss.listeners
+			num := len(fss.results)
+			fss.mutex.Unlock()
+			for _, l := range listeners {
+				select {
+				case l <- num:
+				default:
 				}
 			}
-			new_items[i].ftype = ftype
-			new_items[i].abspath = filepath.Join(dir, x.Name())
-			new_items[i].text = strings.ToLower(x.Name())
 		}
-		slices.SortFunc(new_items, func(a, b ResultItem) int {
-			if a.ftype&fs.ModeDir == b.ftype&fs.ModeDir {
-				return cmp.Compare(a.text, b.text)
+		dir = ""
+		for pos < len(fss.results) && dir == "" {
+			if fss.results[pos].ftype.IsDir() {
+				dir = fss.results[pos].abspath
 			}
-			if a.ftype.IsDir() {
-				return -1
-			}
-			return 1
-		})
-		ns = ns[0:new_sz]
-		fss.mutex.Lock()
-		fss.results = ns
-		listeners := fss.listeners
-		num := len(fss.results)
-		fss.mutex.Unlock()
-		for _, l := range listeners {
-			select {
-			case l <- num:
-			default:
-			}
-		}
-		for _, x := range new_items {
-			if x.ftype.IsDir() {
-				scan_dir(x.abspath, level+1)
-			}
+			pos++
 		}
 	}
-	scan_dir(fss.root_dir, 0)
 }
 
 type FileSystemScorer struct {
@@ -271,7 +274,7 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 			}
 		} else {
 			if fss.keep_going.Load() {
-				fss.on_results(nil, true)
+				fss.on_results(fss.scanner.Error(), true)
 			}
 		}
 	}()
