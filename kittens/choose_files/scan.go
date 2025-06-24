@@ -315,8 +315,7 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 				rp = utils.Filter(rp, func(r *ResultItem) bool { return r.IsMatching() })
 			} else {
 				for _, r := range rp {
-					r.score.Set_length(0)
-					r.score.Set_score(0)
+					r.score &= 0b11111111111111111111111111111111 // only preserve index
 					r.positions = nil
 				}
 			}
