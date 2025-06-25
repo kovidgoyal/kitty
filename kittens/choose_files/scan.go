@@ -37,14 +37,6 @@ func (r *ResultItem) SetScoreResult(x fzf.Result) {
 	r.score.Set_score(uint16(math.MaxUint16 - uint16(x.Score)))
 }
 
-func (r *ResultItem) Set_relpath(root_dir string) {
-	if ans, err := filepath.Rel(root_dir, r.abspath); err == nil {
-		r.text = ans
-	} else {
-		r.text = r.abspath
-	}
-}
-
 func (r ResultItem) IsMatching() bool {
 	return r.score.Score() < uint16(math.MaxUint16)
 }
@@ -132,6 +124,11 @@ func (fss *FileSystemScanner) Finished() bool {
 	return !fss.in_progress.Load()
 }
 
+type sortable_dir_entry struct {
+	name, lname string
+	ftype       fs.FileMode
+}
+
 func (fss *FileSystemScanner) worker() {
 	defer func() {
 		fss.mutex.Lock()
@@ -146,8 +143,11 @@ func (fss *FileSystemScanner) worker() {
 		}
 	}()
 	seen_dirs := make(map[string]bool)
-	dir := fss.root_dir
+	dir, _ := filepath.Abs(fss.root_dir)
+	base := ""
 	pos := 0
+	var sortable []sortable_dir_entry
+	var idx uint32
 	// do a breadth first traversal of the filesystem
 	for dir != "" {
 		if !fss.keep_going.Load() {
@@ -165,6 +165,26 @@ func (fss *FileSystemScanner) worker() {
 				}
 				break
 			}
+			if cap(sortable) < len(entries) {
+				sortable = make([]sortable_dir_entry, 0, max(1024, len(entries), 2*cap(sortable)))
+			}
+			sortable = sortable[:len(entries)]
+			for i, e := range entries {
+				sortable[i].name = e.Name()
+				ftype := e.Type()
+				if ftype&fs.ModeSymlink != 0 {
+					if st, err := e.Info(); err == nil && st.IsDir() {
+						ftype = fs.ModeDir
+					}
+				}
+				sortable[i].ftype = ftype
+				dk := "f"
+				if ftype&fs.ModeDir != 0 {
+					dk = "d"
+				}
+				sortable[i].lname = dk + strings.ToLower(sortable[i].name)
+			}
+			slices.SortFunc(sortable, func(a, b sortable_dir_entry) int { return cmp.Compare(a.lname, b.lname) })
 			ns := fss.results
 			new_sz := len(ns) + len(entries)
 			if cap(ns) < new_sz {
@@ -172,26 +192,14 @@ func (fss *FileSystemScanner) worker() {
 				copy(ns, fss.results)
 			}
 			new_items := ns[len(ns):new_sz]
-			for i, x := range entries {
-				ftype := x.Type()
-				if ftype&fs.ModeSymlink != 0 {
-					if st, err := x.Info(); err == nil && st.IsDir() {
-						ftype = fs.ModeDir
-					}
-				}
-				new_items[i].ftype = ftype
-				new_items[i].abspath = filepath.Join(dir, x.Name())
-				new_items[i].text = strings.ToLower(x.Name())
+			bdir := dir + string(os.PathSeparator)
+			for i, e := range sortable {
+				new_items[i].ftype = e.ftype
+				new_items[i].abspath = bdir + e.name
+				new_items[i].text = base + e.name
+				new_items[i].score.Set_index(idx)
+				idx++
 			}
-			slices.SortFunc(new_items, func(a, b ResultItem) int {
-				if a.ftype&fs.ModeDir == b.ftype&fs.ModeDir {
-					return cmp.Compare(a.text, b.text)
-				}
-				if a.ftype.IsDir() {
-					return -1
-				}
-				return 1
-			})
 			ns = ns[0:new_sz]
 			fss.mutex.Lock()
 			fss.results = ns
@@ -207,8 +215,9 @@ func (fss *FileSystemScanner) worker() {
 		}
 		dir = ""
 		for pos < len(fss.results) && dir == "" {
-			if fss.results[pos].ftype.IsDir() {
+			if fss.results[pos].ftype&fs.ModeDir != 0 {
 				dir = fss.results[pos].abspath
+				base = fss.results[pos].text + string(os.PathSeparator)
 			}
 			pos++
 		}
@@ -278,9 +287,7 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 			}
 		}
 	}()
-	root_dir := fss.root_dir
 	global_min_score, global_max_score := CombinedScore(math.MaxUint64), CombinedScore(0)
-	var idx uint32
 	handle_batch := func(results []ResultItem) (err error) {
 		if err = fss.scanner.Error(); err != nil {
 			return
@@ -290,18 +297,12 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 			rp = make([]*ResultItem, 0, len(results))
 			for i, r := range results {
 				if r.ftype.IsDir() {
-					results[i].Set_relpath(root_dir)
-					results[i].score.Set_index(idx)
-					idx++
 					rp = append(rp, &results[i])
 				}
 			}
 		} else {
 			rp = make([]*ResultItem, len(results))
 			for i := range len(rp) {
-				results[i].Set_relpath(root_dir)
-				results[i].score.Set_index(idx)
-				idx++
 				rp[i] = &results[i]
 			}
 		}
