@@ -133,6 +133,7 @@ type sortable_dir_entry struct {
 	buf      [unix.NAME_MAX + 1]byte
 }
 
+// lowercase a string into a pre-existing byte buffer with speedups for ASCII
 func as_lower(s string, output []byte) int {
 	limit := min(len(s), len(output))
 	found_non_ascii := false
