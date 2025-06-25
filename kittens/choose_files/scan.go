@@ -82,9 +82,12 @@ type Scanner interface {
 	Error() error
 }
 
+func (fss *FileSystemScanner) lock()   { fss.mutex.Lock() }
+func (fss *FileSystemScanner) unlock() { fss.mutex.Unlock() }
+
 func (fss *FileSystemScanner) Error() error {
-	fss.mutex.Lock()
-	defer fss.mutex.Unlock()
+	fss.lock()
+	defer fss.unlock()
 	return fss.err
 }
 
@@ -97,8 +100,8 @@ func (fss *FileSystemScanner) Cancel() {
 }
 
 func (fss *FileSystemScanner) AddListener(x chan int) {
-	fss.mutex.Lock()
-	defer fss.mutex.Unlock()
+	fss.lock()
+	defer fss.unlock()
 	if !fss.in_progress.Load() {
 		close(x)
 	} else {
@@ -107,14 +110,14 @@ func (fss *FileSystemScanner) AddListener(x chan int) {
 }
 
 func (fss *FileSystemScanner) Len() int {
-	fss.mutex.Lock()
-	defer fss.mutex.Unlock()
+	fss.lock()
+	defer fss.unlock()
 	return len(fss.results)
 }
 
 func (fss *FileSystemScanner) Batch(offset int) []ResultItem {
-	fss.mutex.Lock()
-	defer fss.mutex.Unlock()
+	fss.lock()
+	defer fss.unlock()
 	if offset >= len(fss.results) {
 		return nil
 	}
@@ -183,8 +186,8 @@ func as_lower(s string, output []byte) int {
 
 func (fss *FileSystemScanner) worker() {
 	defer func() {
-		fss.mutex.Lock()
-		defer fss.mutex.Unlock()
+		fss.lock()
+		defer fss.unlock()
 		fss.in_progress.Store(false)
 		if r := recover(); r != nil {
 			st, qerr := utils.Format_stacktrace_on_panic(r)
@@ -214,9 +217,9 @@ func (fss *FileSystemScanner) worker() {
 			if err != nil {
 				if len(seen_dirs) == 1 {
 					fss.keep_going.Store(false)
-					fss.mutex.Lock()
+					fss.lock()
 					fss.err = err
-					fss.mutex.Unlock()
+					fss.unlock()
 				}
 				entries = nil
 			}
@@ -261,11 +264,11 @@ func (fss *FileSystemScanner) worker() {
 				idx++
 			}
 			ns = ns[0:new_sz]
-			fss.mutex.Lock()
+			fss.lock()
 			fss.results = ns
 			listeners := fss.listeners
 			num := len(fss.results)
-			fss.mutex.Unlock()
+			fss.unlock()
 			for _, l := range listeners {
 				select {
 				case l <- num:
@@ -302,6 +305,9 @@ func NewFileSystemScorer(root_dir, query string, only_dirs bool, on_results func
 		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME)}
 }
 
+func (fss *FileSystemScorer) lock()   { fss.mutex.Lock() }
+func (fss *FileSystemScorer) unlock() { fss.mutex.Unlock() }
+
 func (fss *FileSystemScorer) Start() {
 	on_results := make(chan int)
 	fss.is_complete.Store(false)
@@ -325,10 +331,10 @@ func (fss *FileSystemScorer) Change_query(query string) {
 	if fss.current_worker_wait != nil {
 		fss.current_worker_wait.Wait()
 	}
-	fss.mutex.Lock()
+	fss.lock()
 	fss.query = query
 	fss.renderable_results = nil
-	fss.mutex.Unlock()
+	fss.unlock()
 	fss.Start()
 }
 
@@ -390,9 +396,9 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 			min_score, max_score = rp[0].score, rp[len(rp)-1].score
 		}
 		var rr []*ResultItem
-		fss.mutex.Lock()
+		fss.lock()
 		existing := fss.renderable_results
-		fss.mutex.Unlock()
+		fss.unlock()
 		switch {
 		case min_score >= global_max_score:
 			rr = append(existing, rp...)
@@ -405,9 +411,9 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 		}
 		global_min_score = min(global_min_score, min_score)
 		global_max_score = max(global_max_score, max_score)
-		fss.mutex.Lock()
+		fss.lock()
 		fss.renderable_results = rr
-		fss.mutex.Unlock()
+		fss.unlock()
 		return
 	}
 
@@ -433,8 +439,8 @@ func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitG
 }
 
 func (fss *FileSystemScorer) Results() (ans ResultsType, is_finished bool) {
-	fss.mutex.Lock()
-	defer fss.mutex.Unlock()
+	fss.lock()
+	defer fss.unlock()
 	return fss.renderable_results, fss.is_complete.Load()
 }
 
