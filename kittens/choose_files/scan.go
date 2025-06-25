@@ -195,6 +195,7 @@ func (fss *FileSystemScanner) worker() {
 		}
 	}()
 	seen_dirs := make(map[string]bool)
+	symlink_dir_map := make(map[string]string)
 	root_dir, _ := filepath.Abs(fss.root_dir)
 	dir := root_dir + string(os.PathSeparator)
 	base := ""
@@ -211,13 +212,13 @@ func (fss *FileSystemScanner) worker() {
 			seen_dirs[dir] = true
 			entries, err := fss.dir_reader(dir)
 			if err != nil {
-				if dir == root_dir {
+				if len(seen_dirs) == 1 {
 					fss.keep_going.Store(false)
 					fss.mutex.Lock()
 					fss.err = err
 					fss.mutex.Unlock()
 				}
-				break
+				entries = nil
 			}
 			if cap(arena) < len(entries) {
 				arena = make([]sortable_dir_entry, 0, max(1024, len(entries), 2*cap(arena)))
@@ -229,8 +230,9 @@ func (fss *FileSystemScanner) worker() {
 				arena[i].name = e.Name()
 				ftype := e.Type()
 				if ftype&fs.ModeSymlink != 0 {
-					if st, err := os.Stat(dir + arena[i].name); err == nil && st.IsDir() {
+					if st, serr := os.Stat(dir + arena[i].name); serr == nil && st.IsDir() {
 						ftype = fs.ModeDir | 1 // 1 indicates was originally a symlink
+						symlink_dir_map[dir+arena[i].name] = st.Name()
 					}
 				}
 				arena[i].ftype = ftype
