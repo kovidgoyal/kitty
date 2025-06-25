@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -55,7 +56,7 @@ func (r *ResultItem) sorted_positions() []int {
 }
 
 type FileSystemScanner struct {
-	listeners               []chan int
+	listeners               []chan bool
 	in_progress, keep_going atomic.Bool
 	root_dir                string
 	mutex                   sync.Mutex
@@ -64,8 +65,8 @@ type FileSystemScanner struct {
 	err                     error
 }
 
-func NewFileSystemScanner(root_dir string, notify chan int) (fss *FileSystemScanner) {
-	ans := &FileSystemScanner{root_dir: root_dir, listeners: []chan int{notify}, results: make([]ResultItem, 0, 1024)}
+func NewFileSystemScanner(root_dir string, notify chan bool) (fss *FileSystemScanner) {
+	ans := &FileSystemScanner{root_dir: root_dir, listeners: []chan bool{notify}, results: make([]ResultItem, 0, 1024)}
 	ans.in_progress.Store(true)
 	ans.keep_going.Store(true)
 	ans.dir_reader = os.ReadDir
@@ -75,7 +76,7 @@ func NewFileSystemScanner(root_dir string, notify chan int) (fss *FileSystemScan
 type Scanner interface {
 	Start()
 	Cancel()
-	AddListener(chan int)
+	AddListener(chan bool)
 	Len() int
 	Batch(offset int) []ResultItem
 	Finished() bool
@@ -99,7 +100,7 @@ func (fss *FileSystemScanner) Cancel() {
 	fss.keep_going.Store(false)
 }
 
-func (fss *FileSystemScanner) AddListener(x chan int) {
+func (fss *FileSystemScanner) AddListener(x chan bool) {
 	fss.lock()
 	defer fss.unlock()
 	if !fss.in_progress.Load() {
@@ -200,7 +201,10 @@ func (fss *FileSystemScanner) worker() {
 	seen_dirs := make(map[string]bool)
 	symlink_dir_map := make(map[string]string)
 	root_dir, _ := filepath.Abs(fss.root_dir)
-	dir := root_dir + string(os.PathSeparator)
+	dir := root_dir
+	if !strings.HasSuffix(dir, string(os.PathSeparator)) {
+		dir += string(os.PathSeparator)
+	}
 	base := ""
 	pos := 0
 	var arena []sortable_dir_entry
@@ -252,7 +256,7 @@ func (fss *FileSystemScanner) worker() {
 			ns := fss.results
 			new_sz := len(ns) + len(entries)
 			if cap(ns) < new_sz {
-				ns = make([]ResultItem, len(ns), max(16*1024, new_sz, cap(ns)*2))
+				ns = make([]ResultItem, len(ns), max(1024, new_sz, cap(ns)*2))
 				copy(ns, fss.results)
 			}
 			new_items := ns[len(ns):new_sz]
@@ -267,11 +271,10 @@ func (fss *FileSystemScanner) worker() {
 			fss.lock()
 			fss.results = ns
 			listeners := fss.listeners
-			num := len(fss.results)
 			fss.unlock()
 			for _, l := range listeners {
 				select {
-				case l <- num:
+				case l <- true:
 				default:
 				}
 			}
@@ -309,7 +312,7 @@ func (fss *FileSystemScorer) lock()   { fss.mutex.Lock() }
 func (fss *FileSystemScorer) unlock() { fss.mutex.Unlock() }
 
 func (fss *FileSystemScorer) Start() {
-	on_results := make(chan int)
+	on_results := make(chan bool)
 	fss.is_complete.Store(false)
 	fss.keep_going.Store(true)
 	if fss.scanner == nil {
@@ -338,7 +341,7 @@ func (fss *FileSystemScorer) Change_query(query string) {
 	fss.Start()
 }
 
-func (fss *FileSystemScorer) worker(on_results chan int, worker_wait *sync.WaitGroup) {
+func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.WaitGroup) {
 	defer func() {
 		fss.is_complete.Store(true)
 		defer worker_wait.Done()
