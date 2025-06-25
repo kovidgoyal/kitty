@@ -9,13 +9,15 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty/tools/fzf"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -125,8 +127,57 @@ func (fss *FileSystemScanner) Finished() bool {
 }
 
 type sortable_dir_entry struct {
-	name, lname string
-	ftype       fs.FileMode
+	name     string
+	ftype    fs.FileMode
+	sort_key string
+	buf      [unix.NAME_MAX + 1]byte
+}
+
+func as_lower(s string, output []byte) int {
+	limit := min(len(s), len(output))
+	found_non_ascii := false
+	pos := 0
+	for i := range limit {
+		c := s[i]
+		if 'A' <= c && c <= 'Z' {
+			c += 'a' - 'A'
+			if pos < i {
+				copy(output[pos:i], s[pos:i])
+			}
+			output[i] = c
+			pos = i + 1
+		} else if c >= utf8.RuneSelf {
+			if pos < i {
+				copy(output[pos:i], s[pos:i])
+			}
+			found_non_ascii = true
+			pos = i
+			break
+		}
+	}
+	if !found_non_ascii {
+		if pos < limit {
+			copy(output[pos:limit], s[pos:limit])
+		}
+		return limit
+	}
+	buf := [4]byte{}
+	var n int
+	for _, r := range s[pos:] {
+		o := output[pos:]
+		r = unicode.ToLower(r)
+		if len(o) > 3 {
+			n = utf8.EncodeRune(o, r)
+		} else {
+			n = utf8.EncodeRune(buf[:], r)
+			n = copy(o, buf[:n])
+		}
+		pos += n
+		if pos >= len(output) {
+			break
+		}
+	}
+	return pos
 }
 
 func (fss *FileSystemScanner) worker() {
@@ -146,7 +197,8 @@ func (fss *FileSystemScanner) worker() {
 	dir, _ := filepath.Abs(fss.root_dir)
 	base := ""
 	pos := 0
-	var sortable []sortable_dir_entry
+	var arena []sortable_dir_entry
+	var sortable []*sortable_dir_entry
 	var idx uint32
 	// do a breadth first traversal of the filesystem
 	for dir != "" {
@@ -165,26 +217,31 @@ func (fss *FileSystemScanner) worker() {
 				}
 				break
 			}
-			if cap(sortable) < len(entries) {
-				sortable = make([]sortable_dir_entry, 0, max(1024, len(entries), 2*cap(sortable)))
+			if cap(arena) < len(entries) {
+				arena = make([]sortable_dir_entry, 0, max(1024, len(entries), 2*cap(arena)))
+				sortable = make([]*sortable_dir_entry, 0, cap(arena))
 			}
+			arena = arena[:len(entries)]
 			sortable = sortable[:len(entries)]
 			for i, e := range entries {
-				sortable[i].name = e.Name()
+				arena[i].name = e.Name()
 				ftype := e.Type()
 				if ftype&fs.ModeSymlink != 0 {
 					if st, err := e.Info(); err == nil && st.IsDir() {
-						ftype = fs.ModeDir
+						ftype = fs.ModeDir | 1 // 1 indicates was originally a symlink
 					}
 				}
-				sortable[i].ftype = ftype
-				dk := "f"
+				arena[i].ftype = ftype
 				if ftype&fs.ModeDir != 0 {
-					dk = "d"
+					arena[i].buf[0] = '0'
+				} else {
+					arena[i].buf[0] = '1'
 				}
-				sortable[i].lname = dk + strings.ToLower(sortable[i].name)
+				n := as_lower(arena[i].name, arena[i].buf[1:])
+				arena[i].sort_key = utils.UnsafeBytesToString(arena[i].buf[:1+n])
+				sortable[i] = &arena[i]
 			}
-			slices.SortFunc(sortable, func(a, b sortable_dir_entry) int { return cmp.Compare(a.lname, b.lname) })
+			slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return cmp.Compare(a.sort_key, b.sort_key) })
 			ns := fss.results
 			new_sz := len(ns) + len(entries)
 			if cap(ns) < new_sz {
