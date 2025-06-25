@@ -195,8 +195,8 @@ func (fss *FileSystemScanner) worker() {
 		}
 	}()
 	seen_dirs := make(map[string]bool)
-	dir, _ := filepath.Abs(fss.root_dir)
-	root_dir := dir
+	root_dir, _ := filepath.Abs(fss.root_dir)
+	dir := root_dir + string(os.PathSeparator)
 	base := ""
 	pos := 0
 	var arena []sortable_dir_entry
@@ -225,12 +225,11 @@ func (fss *FileSystemScanner) worker() {
 			}
 			arena = arena[:len(entries)]
 			sortable = sortable[:len(entries)]
-			bdir := dir + string(os.PathSeparator)
 			for i, e := range entries {
 				arena[i].name = e.Name()
 				ftype := e.Type()
 				if ftype&fs.ModeSymlink != 0 {
-					if st, err := os.Stat(bdir + arena[i].name); err == nil && st.IsDir() {
+					if st, err := os.Stat(dir + arena[i].name); err == nil && st.IsDir() {
 						ftype = fs.ModeDir | 1 // 1 indicates was originally a symlink
 					}
 				}
@@ -254,7 +253,7 @@ func (fss *FileSystemScanner) worker() {
 			new_items := ns[len(ns):new_sz]
 			for i, e := range sortable {
 				new_items[i].ftype = e.ftype
-				new_items[i].abspath = bdir + e.name
+				new_items[i].abspath = dir + e.name
 				new_items[i].text = base + e.name
 				new_items[i].score.Set_index(idx)
 				idx++
@@ -275,7 +274,7 @@ func (fss *FileSystemScanner) worker() {
 		dir = ""
 		for pos < len(fss.results) && dir == "" {
 			if fss.results[pos].ftype&fs.ModeDir != 0 {
-				dir = fss.results[pos].abspath
+				dir = fss.results[pos].abspath + string(os.PathSeparator)
 				base = fss.results[pos].text + string(os.PathSeparator)
 			}
 			pos++
