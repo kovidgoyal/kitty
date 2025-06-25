@@ -196,6 +196,7 @@ func (fss *FileSystemScanner) worker() {
 	}()
 	seen_dirs := make(map[string]bool)
 	dir, _ := filepath.Abs(fss.root_dir)
+	root_dir := dir
 	base := ""
 	pos := 0
 	var arena []sortable_dir_entry
@@ -210,7 +211,7 @@ func (fss *FileSystemScanner) worker() {
 			seen_dirs[dir] = true
 			entries, err := fss.dir_reader(dir)
 			if err != nil {
-				if dir == fss.root_dir {
+				if dir == root_dir {
 					fss.keep_going.Store(false)
 					fss.mutex.Lock()
 					fss.err = err
@@ -224,11 +225,12 @@ func (fss *FileSystemScanner) worker() {
 			}
 			arena = arena[:len(entries)]
 			sortable = sortable[:len(entries)]
+			bdir := dir + string(os.PathSeparator)
 			for i, e := range entries {
 				arena[i].name = e.Name()
 				ftype := e.Type()
 				if ftype&fs.ModeSymlink != 0 {
-					if st, err := e.Info(); err == nil && st.IsDir() {
+					if st, err := os.Stat(bdir + arena[i].name); err == nil && st.IsDir() {
 						ftype = fs.ModeDir | 1 // 1 indicates was originally a symlink
 					}
 				}
@@ -250,7 +252,6 @@ func (fss *FileSystemScanner) worker() {
 				copy(ns, fss.results)
 			}
 			new_items := ns[len(ns):new_sz]
-			bdir := dir + string(os.PathSeparator)
 			for i, e := range sortable {
 				new_items[i].ftype = e.ftype
 				new_items[i].abspath = bdir + e.name

@@ -139,7 +139,8 @@ const (
 	SQLITE          rune = 0xe7c4  // 
 	SUBLIME         rune = 0xe7aa  // 
 	SUBTITLE        rune = 0xf0a16 // 󰨖
-	SYMLINK         rune = 0xf481
+	SYMLINK         rune = 0xf481  // 
+	SYMLINK_TO_DIR  rune = 0xf482  // 
 	TERRAFORM       rune = 0xf1062 // 󱁢
 	TEXT            rune = 0xf15c  // 
 	TMUX            rune = 0xebc8  // 
@@ -1109,6 +1110,9 @@ func IconForFileWithMode(path string, mode fs.FileMode, follow_symlinks bool) st
 		if follow_symlinks {
 			if dest, err := os.Readlink(path); err == nil {
 				if st, err := os.Stat(dest); err == nil {
+					if st.IsDir() {
+						return string(SYMLINK_TO_DIR)
+					}
 					return IconForFileWithMode(dest, st.Mode(), follow_symlinks)
 				}
 			}

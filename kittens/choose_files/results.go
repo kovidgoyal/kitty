@@ -109,7 +109,12 @@ func icon_for(path string, x os.FileMode) string {
 	if ans := icon_cache[path]; ans != "" {
 		return ans
 	}
-	ans := icons.IconForFileWithMode(path, x, true)
+	var ans string
+	if x == fs.ModeDir|1 {
+		ans = string(icons.SYMLINK_TO_DIR)
+	} else {
+		ans = icons.IconForFileWithMode(path, x, true)
+	}
 	if wcswidth.Stringwidth(ans) == 1 {
 		ans += " "
 	}
