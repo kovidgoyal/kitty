@@ -1,6 +1,7 @@
 package choose_files
 
 import (
+	"bytes"
 	"cmp"
 	"fmt"
 	"io/fs"
@@ -133,7 +134,7 @@ func (fss *FileSystemScanner) Finished() bool {
 type sortable_dir_entry struct {
 	name     string
 	ftype    fs.FileMode
-	sort_key string
+	sort_key []byte
 	buf      [unix.NAME_MAX + 1]byte
 }
 
@@ -249,10 +250,10 @@ func (fss *FileSystemScanner) worker() {
 					arena[i].buf[0] = '1'
 				}
 				n := as_lower(arena[i].name, arena[i].buf[1:])
-				arena[i].sort_key = utils.UnsafeBytesToString(arena[i].buf[:1+n])
+				arena[i].sort_key = arena[i].buf[:1+n]
 				sortable[i] = &arena[i]
 			}
-			slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return cmp.Compare(a.sort_key, b.sort_key) })
+			slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
 			ns := fss.results
 			new_sz := len(ns) + len(entries)
 			if cap(ns) < new_sz {
