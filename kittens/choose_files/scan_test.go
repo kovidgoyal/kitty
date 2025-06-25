@@ -56,22 +56,22 @@ func (n node) Info() (fs.FileInfo, error) {
 	return nil, fmt.Errorf("Info() not implemented")
 }
 
-func random_name() string {
-	length := 3 + rand.Intn(23)
+func random_name(r *rand.Rand) string {
+	length := 3 + r.Intn(23)
 	bytes := make([]byte, length)
 	for i := range length {
-		// Printable ASCII range: 32 (space) to 126 (~)
-		bytes[i] = byte(rand.Intn(26) + 'a')
+		bytes[i] = byte(r.Intn(26) + 'a')
 	}
 	return string(bytes)
 }
 
 func (n *node) generate_random_tree(depth, breadth int) {
+	r := rand.New(rand.NewSource(111))
 	n.children = make(map[string]*node)
 	for range breadth {
-		c := &node{name: random_name()}
+		c := &node{name: random_name(r)}
 		n.children[c.name] = c
-		if depth > 0 && rand.Intn(10) < 3 {
+		if depth > 0 && r.Intn(10) < 3 {
 			c.generate_random_tree(depth-1, breadth)
 		}
 	}
@@ -136,5 +136,5 @@ func BenchmarkFileNameScoringWithoutQuery(b *testing.B) {
 // To run this benchmark with profiling use:
 // go test -bench=FileNameScoringWithQuery -benchmem -cpuprofile=/tmp/cpu.prof -memprofile=/tmp/mem.prof github.com/kovidgoyal/kitty/kittens/choose_files -o /tmp/cfexe
 func BenchmarkFileNameScoringWithQuery(b *testing.B) {
-	run_scoring(b, 5, 30, "abc")
+	run_scoring(b, 5, 20, "abc")
 }
