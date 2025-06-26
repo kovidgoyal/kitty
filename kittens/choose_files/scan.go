@@ -138,6 +138,8 @@ type sortable_dir_entry struct {
 	buf      [unix.NAME_MAX + 1]byte
 }
 
+const SymlinkToDir = 1
+
 // lowercase a string into a pre-existing byte buffer with speedups for ASCII
 func as_lower(s string, output []byte) int {
 	limit := min(len(s), len(output))
@@ -199,8 +201,6 @@ func (fss *FileSystemScanner) worker() {
 			close(l)
 		}
 	}()
-	seen_dirs := utils.NewSet[string](16 * 1024)
-	symlink_dir_map := make(map[string]string)
 	root_dir, _ := filepath.Abs(fss.root_dir)
 	dir := root_dir
 	if !strings.HasSuffix(dir, string(os.PathSeparator)) {
@@ -212,72 +212,69 @@ func (fss *FileSystemScanner) worker() {
 	var sortable []*sortable_dir_entry
 	var idx uint32
 	// do a breadth first traversal of the filesystem
+	is_root := true
 	for dir != "" {
 		if !fss.keep_going.Load() {
 			break
 		}
-		if !seen_dirs.Has(dir) {
-			seen_dirs.Add(dir)
-			entries, err := fss.dir_reader(dir)
-			if err != nil {
-				if seen_dirs.Len() == 1 {
-					fss.keep_going.Store(false)
-					fss.lock()
-					fss.err = err
-					fss.unlock()
+		entries, err := fss.dir_reader(dir)
+		if err != nil {
+			if is_root {
+				fss.keep_going.Store(false)
+				fss.lock()
+				fss.err = err
+				fss.unlock()
+			}
+			entries = nil
+		}
+		if cap(arena) < len(entries) {
+			arena = make([]sortable_dir_entry, 0, max(1024, len(entries), 2*cap(arena)))
+			sortable = make([]*sortable_dir_entry, 0, cap(arena))
+		}
+		arena = arena[:len(entries)]
+		sortable = sortable[:len(entries)]
+		for i, e := range entries {
+			arena[i].name = e.Name()
+			ftype := e.Type()
+			if ftype&fs.ModeSymlink != 0 {
+				if st, serr := os.Stat(dir + arena[i].name); serr == nil && st.IsDir() {
+					ftype |= SymlinkToDir
 				}
-				entries = nil
 			}
-			if cap(arena) < len(entries) {
-				arena = make([]sortable_dir_entry, 0, max(1024, len(entries), 2*cap(arena)))
-				sortable = make([]*sortable_dir_entry, 0, cap(arena))
+			arena[i].ftype = ftype
+			if ftype&fs.ModeDir != 0 {
+				arena[i].buf[0] = '0'
+			} else {
+				arena[i].buf[0] = '1'
 			}
-			arena = arena[:len(entries)]
-			sortable = sortable[:len(entries)]
-			for i, e := range entries {
-				arena[i].name = e.Name()
-				ftype := e.Type()
-				if ftype&fs.ModeSymlink != 0 {
-					if st, serr := os.Stat(dir + arena[i].name); serr == nil && st.IsDir() {
-						ftype = fs.ModeDir | 1 // 1 indicates was originally a symlink
-						symlink_dir_map[dir+arena[i].name] = st.Name()
-					}
-				}
-				arena[i].ftype = ftype
-				if ftype&fs.ModeDir != 0 {
-					arena[i].buf[0] = '0'
-				} else {
-					arena[i].buf[0] = '1'
-				}
-				n := as_lower(arena[i].name, arena[i].buf[1:])
-				arena[i].sort_key = arena[i].buf[:1+n]
-				sortable[i] = &arena[i]
-			}
-			slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
-			ns := fss.results
-			new_sz := len(ns) + len(entries)
-			if cap(ns) < new_sz {
-				ns = make([]ResultItem, len(ns), max(1024, new_sz, cap(ns)*2))
-				copy(ns, fss.results)
-			}
-			new_items := ns[len(ns):new_sz]
-			for i, e := range sortable {
-				new_items[i].ftype = e.ftype
-				new_items[i].abspath = dir + e.name
-				new_items[i].text = base + e.name
-				new_items[i].score.Set_index(idx)
-				idx++
-			}
-			ns = ns[0:new_sz]
-			fss.lock()
-			fss.results = ns
-			listeners := fss.listeners
-			fss.unlock()
-			for _, l := range listeners {
-				select {
-				case l <- true:
-				default:
-				}
+			n := as_lower(arena[i].name, arena[i].buf[1:])
+			arena[i].sort_key = arena[i].buf[:1+n]
+			sortable[i] = &arena[i]
+		}
+		slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
+		ns := fss.results
+		new_sz := len(ns) + len(entries)
+		if cap(ns) < new_sz {
+			ns = make([]ResultItem, len(ns), max(1024, new_sz, cap(ns)*2))
+			copy(ns, fss.results)
+		}
+		new_items := ns[len(ns):new_sz]
+		for i, e := range sortable {
+			new_items[i].ftype = e.ftype
+			new_items[i].abspath = dir + e.name
+			new_items[i].text = base + e.name
+			new_items[i].score.Set_index(idx)
+			idx++
+		}
+		ns = ns[0:new_sz]
+		fss.lock()
+		fss.results = ns
+		listeners := fss.listeners
+		fss.unlock()
+		for _, l := range listeners {
+			select {
+			case l <- true:
+			default:
 			}
 		}
 		dir = ""
@@ -288,6 +285,7 @@ func (fss *FileSystemScanner) worker() {
 			}
 			pos++
 		}
+		is_root = false
 	}
 }
 
