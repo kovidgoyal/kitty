@@ -2029,18 +2029,25 @@ class Window:
     @ac('sc', '''
         Scroll to the previous/next shell command prompt
         Allows easy jumping from one command to the next. Requires working
-        :ref:`shell_integration`. Takes a single, optional, number as argument which is
-        the number of prompts to jump, negative values jump up and positive values jump down.
-        A value of zero will jump to the last prompt visited by this action.
+        :ref:`shell_integration`. Takes two optional numbers as arguments:
+
+        The first is the number of prompts to jump; negative values jump up and
+        positive values jump down. A value of zero will jump to the last prompt
+        visited by this action. Defaults to -1
+
+        The second is the number of lines to show above the prompt that was
+        jumped to. This is somewhat like `less`'s `--jump-target` option or
+        vim's `scrolloff` setting. Defaults to 0.
+
         For example::
 
-            map ctrl+p scroll_to_prompt -1  # jump to previous
-            map ctrl+n scroll_to_prompt 1   # jump to next
-            map ctrl+o scroll_to_prompt 0   # jump to last visited
+            map ctrl+p scroll_to_prompt -1 3  # jump to previous, showing 3 lines prior
+            map ctrl+n scroll_to_prompt 1     # jump to next
+            map ctrl+o scroll_to_prompt 0     # jump to last visited
         ''')
-    def scroll_to_prompt(self, num_of_prompts: int = -1) -> bool | None:
+    def scroll_to_prompt(self, num_of_prompts: int = -1, scroll_offset: int = 0) -> bool | None:
         if self.screen.is_main_linebuf():
-            self.screen.scroll_to_prompt(num_of_prompts)
+            self.screen.scroll_to_prompt(num_of_prompts, scroll_offset)
             return None
         return True
 

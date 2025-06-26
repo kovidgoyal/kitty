@@ -2891,7 +2891,7 @@ shell_prompt_marking(Screen *self, char *buf) {
 }
 
 static bool
-screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
+screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump, int scroll_offset) {
     if (self->linebuf != self->main_linebuf) return false;
     unsigned int old = self->scrolled_by;
     if (num_of_prompts_to_jump == 0) {
@@ -2903,6 +2903,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
         int y = -self->scrolled_by;
 #define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
         ensure_y_ok;
+        y += scroll_offset;
         while (num_of_prompts_to_jump) {
             y += delta;
             ensure_y_ok;
@@ -2910,6 +2911,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
                 num_of_prompts_to_jump--;
             }
         }
+        y -= scroll_offset;
 #undef ensure_y_ok
         self->scrolled_by = y >= 0 ? 0 : -y;
         screen_set_last_visited_prompt(self, 0);
@@ -4728,8 +4730,9 @@ scroll(Screen *self, PyObject *args) {
 static PyObject*
 scroll_to_prompt(Screen *self, PyObject *args) {
     int num_of_prompts = -1;
-    if (!PyArg_ParseTuple(args, "|i", &num_of_prompts)) return NULL;
-    if (screen_history_scroll_to_prompt(self, num_of_prompts)) { Py_RETURN_TRUE; }
+    int scroll_offset = 0;
+    if (!PyArg_ParseTuple(args, "|ii", &num_of_prompts, &scroll_offset)) return NULL;
+    if (screen_history_scroll_to_prompt(self, num_of_prompts, scroll_offset)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 

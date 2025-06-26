@@ -318,15 +318,38 @@ def remote_control_script(func: str, rest: str) -> FuncArgsType:
     return func, args
 
 
-@func_with_args('nth_os_window', 'nth_window', 'scroll_to_prompt', 'visual_window_select_action_trigger', 'next_layout')
+@func_with_args('nth_os_window', 'nth_window', 'visual_window_select_action_trigger', 'next_layout')
 def single_integer_arg(func: str, rest: str) -> FuncArgsType:
     try:
         num = int(rest)
     except Exception:
         if rest:
             log_error(f'Invalid number for {func}: {rest}')
-        num = -1 if func == 'scroll_to_prompt' else 1
+        num = 1
     return func, [num]
+
+
+@func_with_args('scroll_to_prompt')
+def scroll_to_prompt(func: str, rest: str) -> FuncArgsType:
+    vals = rest.strip().split()
+    if len(vals) > 2:
+        log_error('scroll_to_prompt needs one or two arguments, using defaults')
+        args = [-1, 0]
+    else:
+        try:
+            args = [int(vals[0])]
+        except Exception:
+            log_error(f'{vals[0]} is not a valid number of prompts to jump')
+            args = [-1]
+        if len(vals) == 2:
+            try:
+                args.append(int(vals[1]))
+            except Exception:
+                log_error(f'{vals[1]} is not a valid scroll offset')
+                args.append(0)
+        else:
+            args.append(0)
+    return func, args
 
 
 @func_with_args('sleep')
