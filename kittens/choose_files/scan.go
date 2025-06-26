@@ -199,7 +199,7 @@ func (fss *FileSystemScanner) worker() {
 			close(l)
 		}
 	}()
-	seen_dirs := make(map[string]bool)
+	seen_dirs := utils.NewSet[string](16 * 1024)
 	symlink_dir_map := make(map[string]string)
 	root_dir, _ := filepath.Abs(fss.root_dir)
 	dir := root_dir
@@ -216,11 +216,11 @@ func (fss *FileSystemScanner) worker() {
 		if !fss.keep_going.Load() {
 			break
 		}
-		if !seen_dirs[dir] {
-			seen_dirs[dir] = true
+		if !seen_dirs.Has(dir) {
+			seen_dirs.Add(dir)
 			entries, err := fss.dir_reader(dir)
 			if err != nil {
-				if len(seen_dirs) == 1 {
+				if seen_dirs.Len() == 1 {
 					fss.keep_going.Store(false)
 					fss.lock()
 					fss.err = err
