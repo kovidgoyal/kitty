@@ -103,6 +103,58 @@ func (n node) ReadDir(name string) ([]fs.DirEntry, error) {
 	return p.dir_entries(), nil
 }
 
+func TestChooseFilesScoring(t *testing.T) {
+	root := node{name: string(os.PathSeparator), children: map[string]*node{
+		"b": {name: "b"},
+		"a": {name: "a"},
+		"c": {name: "c"},
+		"x": {name: "x", children: map[string]*node{
+			"1": {"1", nil}, "2": {"2", nil}, "3": {"3", nil},
+			"s": {"s", map[string]*node{
+				"m": {"m", nil}, "n": {"n", nil},
+			}},
+		}},
+		"y": {name: "y", children: map[string]*node{
+			"3": {"3", nil}, "4": {"4", nil}, "5": {"5", nil},
+		}},
+	}}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	s := NewFileSystemScorer(string(os.PathSeparator), "", false, func(err error, is_complete bool) {
+		if is_complete {
+			wg.Done()
+		}
+	})
+	sc := NewFileSystemScanner(s.root_dir, make(chan bool))
+	s.scanner = sc
+	sc.dir_reader = root.ReadDir
+	s.scanner.Start()
+	s.Start()
+	wg.Wait()
+	results := func() (ans []string) {
+		rr, _ := s.Results()
+		for _, r := range rr {
+			ans = append(ans, r.text)
+		}
+		return
+	}
+	ae := func(query string, expected ...string) {
+		if query != "" {
+			wg.Add(1)
+			s.Change_query(query)
+			wg.Wait()
+		}
+		if diff := cmp.Diff(expected, results()); diff != "" {
+			t.Fatalf("Query less scoring failed\n%s", diff)
+		}
+	}
+	ae("", "x", "y", "a", "b", "c", "x/s", "x/1", "x/2", "x/3", "y/3", "y/4", "y/5", "x/s/m", "x/s/n")
+	ae("a", "a")
+	ae("3", "x/3", "y/3")
+	ae("s", "x/s", "x/s/m", "x/s/n")
+	ae("sn", "x/s/n")
+}
+
 func run_scoring(b *testing.B, depth, breadth int, query string) {
 	b.StopTimer()
 	root := node{name: string(os.PathSeparator)}
