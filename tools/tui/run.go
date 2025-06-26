@@ -142,10 +142,8 @@ func rc_modification_allowed(ksi string) (allowed bool, set_ksi_env_var bool) {
 		case "disabled":
 			allowed = false
 			set_ksi_env_var = false
-			break
 		case "no-rc":
 			allowed = false
-			break
 		}
 	}
 	return
@@ -232,17 +230,17 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 			defer term.Close()
 		}
 	}
-	func() {
-		if err = c.Start(); err != nil {
-			fmt.Fprintln(os.Stderr, cmd[0], "failed to start with error:", err)
-			return
-		}
-		// Ignore SIGINT as the kernel tends to send it to us as well as the
-		// subprocess on Ctrl+C
-		signal.Ignore(os.Interrupt)
-		defer signal.Reset(os.Interrupt)
-		err = c.Wait()
-	}()
+	// Ignore SIGINT as the kernel tends to send it to us as well as the
+	// subprocess on Ctrl+C. We cant use signal.Ignore as it doesnt reset
+	// sigprocmask so subsequent unix.Exec will inherit blocked SIGINT
+	ignore_sigint_channel := make(chan os.Signal, 512)
+	if err = c.Start(); err != nil {
+		fmt.Fprintln(os.Stderr, cmd[0], "failed to start with error:", err)
+		return
+	}
+	signal.Notify(ignore_sigint_channel, os.Interrupt)
+	err = c.Wait()
+	signal.Reset(os.Interrupt)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, cmd[0], "failed with error:", err)
 	}

@@ -130,6 +130,8 @@ Detailed list of changes
 
 - Fix a regression in 0.40.0 that broke serialization of tab characters as ANSI text (:iss:`8741`)
 
+- kitten run-shell: Fix SIGINT blocked when execing the shell (:iss:`8754`)
+
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
