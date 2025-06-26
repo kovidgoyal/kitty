@@ -123,10 +123,11 @@ func icon_for(path string, x os.FileMode) string {
 }
 
 func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x, available_width int) {
+	root_dir := h.state.CurrentDir()
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
-		icon := icon_for(m.abspath, m.ftype)
+		icon := icon_for(filepath.Join(root_dir, m.text), m.ftype)
 		text := m.text
 		add_ellipsis := false
 		if wcswidth.Stringwidth(text) > available_width-3 {

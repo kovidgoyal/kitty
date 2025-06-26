@@ -230,7 +230,7 @@ func (h *Handler) current_abspath() string {
 	matches, _ := h.get_results()
 	if len(matches) > 0 {
 		if idx := h.state.CurrentIndex(); idx < len(matches) {
-			return matches[idx].abspath
+			return filepath.Join(h.state.CurrentDir(), matches[idx].text)
 		}
 	}
 	return ""

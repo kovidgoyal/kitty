@@ -29,10 +29,10 @@ func (c CombinedScore) String() string {
 }
 
 type ResultItem struct {
-	text, abspath string
-	ftype         fs.FileMode
-	positions     []int // may be nil
-	score         CombinedScore
+	text      string
+	ftype     fs.FileMode
+	positions []int // may be nil
+	score     CombinedScore
 }
 type ResultsType []*ResultItem
 
@@ -46,7 +46,7 @@ func (r ResultItem) IsMatching() bool {
 }
 
 func (r ResultItem) String() string {
-	return fmt.Sprintf("{text: %#v, abspath: %#v, %s, positions: %#v}", r.text, r.abspath, r.score, r.positions)
+	return fmt.Sprintf("{text: %#v, %s, positions: %#v}", r.text, r.score, r.positions)
 }
 
 func (r *ResultItem) sorted_positions() []int {
@@ -261,7 +261,6 @@ func (fss *FileSystemScanner) worker() {
 		new_items := ns[len(ns):new_sz]
 		for i, e := range sortable {
 			new_items[i].ftype = e.ftype
-			new_items[i].abspath = dir + e.name
 			new_items[i].text = base + e.name
 			new_items[i].score.Set_index(idx)
 			idx++
@@ -280,8 +279,8 @@ func (fss *FileSystemScanner) worker() {
 		dir = ""
 		for pos < len(fss.results) && dir == "" {
 			if fss.results[pos].ftype&fs.ModeDir != 0 {
-				dir = fss.results[pos].abspath + string(os.PathSeparator)
 				base = fss.results[pos].text + string(os.PathSeparator)
+				dir = root_dir + string(os.PathSeparator) + base
 			}
 			pos++
 		}
