@@ -48,7 +48,7 @@ action per entry if you like, for example:
     action change_font_size current -2
 
 
-In the action specification you can expand environment variables, as shown in
+In the launch specification you can expand environment variables, as shown in
 the examples above. In addition to regular environment variables, there are
 some special variables, documented below:
 
