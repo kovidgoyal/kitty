@@ -332,23 +332,19 @@ def single_integer_arg(func: str, rest: str) -> FuncArgsType:
 @func_with_args('scroll_to_prompt')
 def scroll_to_prompt(func: str, rest: str) -> FuncArgsType:
     vals = rest.strip().split()
+    args = [-1, 0]
     if len(vals) > 2:
         log_error('scroll_to_prompt needs one or two arguments, using defaults')
-        args = [-1, 0]
     else:
         try:
-            args = [int(vals[0])]
+            args[0] = int(vals[0])
         except Exception:
-            log_error(f'{vals[0]} is not a valid number of prompts to jump')
-            args = [-1]
+            log_error(f'{vals[0]} is not a valid number of prompts to jump for scroll_to_prompt')
         if len(vals) == 2:
             try:
-                args.append(int(vals[1]))
+                args[1] = int(vals[1])
             except Exception:
-                log_error(f'{vals[1]} is not a valid scroll offset')
-                args.append(0)
-        else:
-            args.append(0)
+                log_error(f'{vals[1]} is not a valid scroll offset for scroll_to_prompt')
     return func, args
 
 
