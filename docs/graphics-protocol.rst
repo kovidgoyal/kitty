@@ -469,10 +469,11 @@ id. To do so add the ``p`` key with a number between ``1`` and ``4294967295``.
 When you specify a placement id, it will be added to the acknowledgement code
 above. Every placement is uniquely identified by the pair of the ``image id``
 and the ``placement id``. If you specify a placement id for an image that does
-not have an id (i.e. has id=0), it will be ignored. In particular this means
-there can exist multiple images with ``image id=0, placement id=0``. Not
-specifying a placement id or using ``p=0`` for multiple put commands (``a=p``)
-with the same non-zero image id results in multiple placements the image.
+not have an id (i.e. has id=0), it will be ignored, i.e. the placement will not
+get an id. In particular this means there can exist multiple images with
+``image id=0, placement id=0``. Not specifying a placement id or using ``p=0``
+for multiple put commands (``a=p``) with the same non-zero image id results in
+multiple placements the image.
 
 An example response::
 
@@ -896,12 +897,12 @@ on.
 Finally, while transferring frame data, the frame *gap* can also be specified
 using the ``z`` key. The gap is the number of milliseconds to wait before
 displaying the next frame when the animation is running. A value of ``z=0`` is
-ignored, ``z=positive number`` sets the gap to the specified number of
-milliseconds and ``z=negative number`` creates a *gapless* frame. Gapless
-frames are not displayed to the user since they are instantly skipped over,
-however they can be useful as the base data for subsequent frames. For example,
-for an animation where the background remains the same and a small object or two
-move.
+ignored (acts as though ``z`` was unspecified), ``z=positive number`` sets the
+gap to the specified number of milliseconds and ``z=negative number`` creates a
+*gapless* frame. Gapless frames are not displayed to the user since they are
+instantly skipped over, however they can be useful as the base data for
+subsequent frames. For example, for an animation where the background remains
+the same and a small object or two move.
 
 Controlling animations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -931,9 +932,9 @@ animation. ``s=2`` runs the animation, but in *loading* mode, in this mode when
 reaching the last frame, instead of looping, the terminal will wait for the
 arrival of more frames. ``s=3`` runs the animation normally, after the last
 frame, the terminal loops back to the first frame. The number of loops can be
-controlled by the ``v`` key. ``v=0`` is ignored, ``v=1`` is loop infinitely,
-and any other positive number is loop ``number - 1`` times. Note that stopping
-the animation resets the loop counter.
+controlled by the ``v`` key. ``v=0`` is ignored (acts as though ``v`` was not
+specified), ``v=1`` is loop infinitely, and any other positive number is loop
+``number - 1`` times. Note that stopping the animation resets the loop counter.
 
 Finally, the *gap* for frames can be set using the ``z`` key. This can be
 specified either when the frame is created as part of the transmit escape code
