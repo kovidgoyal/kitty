@@ -440,7 +440,7 @@ nuke_incomplete_single_line_multicell_chars_in_range(
         if (cpu_cells[x].is_multicell) {
             index_type mcd_x_limit = x + cpu_cells[x].width - cpu_cells[x].x;
             if (cpu_cells[x].x || mcd_x_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(mcd_x_limit, limit), replace_with_spaces ? ' ': 0);
-            x = mcd_x_limit;
+            x = mcd_x_limit - 1;
         }
     }
 }

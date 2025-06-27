@@ -308,6 +308,12 @@ def test_multicell(self: TestMulticell) -> None:
 
     # Test delete chars with multicell (aka left shift)
     s.reset()
+    s.draw(' 允许')
+    s.cursor.x = 0
+    s.delete_characters(1)
+    for x in range(4):
+        ac(x, 0, width=2)
+    s.reset()
     multicell(s, 'a', width=2)
     s.cursor.x = 0
     s.delete_characters(1)
