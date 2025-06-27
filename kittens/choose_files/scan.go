@@ -61,13 +61,13 @@ type FileSystemScanner struct {
 	in_progress, keep_going atomic.Bool
 	root_dir                string
 	mutex                   sync.Mutex
-	results                 []ResultItem
+	collection              *ResultCollection
 	dir_reader              func(path string) ([]fs.DirEntry, error)
 	err                     error
 }
 
 func NewFileSystemScanner(root_dir string, notify chan bool) (fss *FileSystemScanner) {
-	ans := &FileSystemScanner{root_dir: root_dir, listeners: []chan bool{notify}, results: make([]ResultItem, 0, 1024)}
+	ans := &FileSystemScanner{root_dir: root_dir, listeners: []chan bool{notify}, collection: NewResultCollection(4096)}
 	ans.in_progress.Store(true)
 	ans.keep_going.Store(true)
 	ans.dir_reader = os.ReadDir
@@ -79,7 +79,7 @@ type Scanner interface {
 	Cancel()
 	AddListener(chan bool)
 	Len() int
-	Batch(offset int) []ResultItem
+	Batch(offset *CollectionIndex) []ResultItem
 	Finished() bool
 	Error() error
 }
@@ -114,17 +114,13 @@ func (fss *FileSystemScanner) AddListener(x chan bool) {
 func (fss *FileSystemScanner) Len() int {
 	fss.lock()
 	defer fss.unlock()
-	return len(fss.results)
+	return fss.collection.Len()
 }
 
-func (fss *FileSystemScanner) Batch(offset int) []ResultItem {
+func (fss *FileSystemScanner) Batch(offset *CollectionIndex) []ResultItem {
 	fss.lock()
 	defer fss.unlock()
-	if offset >= len(fss.results) {
-		return nil
-	}
-	limit := min(len(fss.results), offset+4096)
-	return fss.results[offset:limit]
+	return fss.collection.Batch(offset)
 }
 
 func (fss *FileSystemScanner) Finished() bool {
@@ -202,12 +198,12 @@ func (fss *FileSystemScanner) worker() {
 		}
 	}()
 	root_dir, _ := filepath.Abs(fss.root_dir)
-	dir := root_dir
-	if !strings.HasSuffix(dir, string(os.PathSeparator)) {
-		dir += string(os.PathSeparator)
+	if !strings.HasSuffix(root_dir, string(os.PathSeparator)) {
+		root_dir += string(os.PathSeparator)
 	}
+	dir := root_dir
 	base := ""
-	pos := 0
+	pos := &CollectionIndex{}
 	var arena []sortable_dir_entry
 	var sortable []*sortable_dir_entry
 	var idx uint32
@@ -252,22 +248,14 @@ func (fss *FileSystemScanner) worker() {
 			sortable[i] = &arena[i]
 		}
 		slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
-		ns := fss.results
-		new_sz := len(ns) + len(entries)
-		if cap(ns) < new_sz {
-			ns = make([]ResultItem, len(ns), max(1024, new_sz, cap(ns)*2))
-			copy(ns, fss.results)
-		}
-		new_items := ns[len(ns):new_sz]
-		for i, e := range sortable {
-			new_items[i].ftype = e.ftype
-			new_items[i].text = base + e.name
-			new_items[i].score.Set_index(idx)
+		fss.lock()
+		for _, e := range sortable {
+			i := fss.collection.NextAppendPointer()
+			i.ftype = e.ftype
+			i.text = base + e.name
+			i.score.Set_index(idx)
 			idx++
 		}
-		ns = ns[0:new_sz]
-		fss.lock()
-		fss.results = ns
 		listeners := fss.listeners
 		fss.unlock()
 		for _, l := range listeners {
@@ -276,13 +264,11 @@ func (fss *FileSystemScanner) worker() {
 			default:
 			}
 		}
-		dir = ""
-		for pos < len(fss.results) && dir == "" {
-			if fss.results[pos].ftype&fs.ModeDir != 0 {
-				base = fss.results[pos].text + string(os.PathSeparator)
-				dir = root_dir + string(os.PathSeparator) + base
-			}
-			pos++
+		if relpath := fss.collection.NextDir(pos); relpath != "" {
+			base = relpath + string(os.PathSeparator)
+			dir = root_dir + base
+		} else {
+			dir = ""
 		}
 		is_root = false
 	}
@@ -418,14 +404,13 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 		return
 	}
 
-	offset := 0
+	offset := &CollectionIndex{}
 	for range on_results {
 		if !fss.keep_going.Load() {
 			break
 		}
 		results := fss.scanner.Batch(offset)
 		if len(results) > 0 || fss.scanner.Error() != nil {
-			offset += len(results)
 			fss.on_results(handle_batch(results), false)
 		}
 	}
@@ -434,7 +419,6 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 		if len(b) == 0 {
 			break
 		}
-		offset += len(b)
 		fss.on_results(handle_batch(b), false)
 	}
 }

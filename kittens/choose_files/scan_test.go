@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -177,6 +178,8 @@ func run_scoring(b *testing.B, depth, breadth int, query string) {
 		s.Start()
 		wg.Wait()
 	}
+	fmt.Println("\nnumber of iterations: ", b.N)
+	fmt.Println("time per iteration:", b.Elapsed()/time.Duration(b.N))
 }
 
 // To run this benchmark with profiling use:
