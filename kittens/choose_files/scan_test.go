@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -154,6 +155,39 @@ func TestChooseFilesScoring(t *testing.T) {
 	ae("3", "x/3", "y/3")
 	ae("s", "x/s", "x/s/m", "x/s/n")
 	ae("sn", "x/s/n")
+}
+
+func TestSortedResults(t *testing.T) {
+	r := NewSortedResults()
+	m := func(items ...int) []*ResultItem {
+		ans := make([]*ResultItem, len(items))
+		for i, x := range items {
+			ans[i] = &ResultItem{text: strconv.Itoa(x), score: CombinedScore(x)}
+		}
+		return ans
+	}
+	v := func(slice, pos, num int) []int {
+		if num == 0 {
+			num = r.Len()
+		}
+		return utils.Map(func(r *ResultItem) int { return int(r.score) }, r.RenderedMatches(CollectionIndex{slice, pos}, num))
+	}
+	tv := func(slice, pos, num int, expected ...int) {
+		if diff := cmp.Diff(expected, v(slice, pos, num)); diff != "" {
+			t.Fatalf("view failed for %v num:%d\n%s", CollectionIndex{slice, pos}, num, diff)
+		}
+	}
+	r.AddSortedSlice(m(10, 20, 30))
+	r.AddSortedSlice(m(40, 50, 60))
+	r.AddSortedSlice(m(70, 80, 90))
+	tv(0, 0, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90)
+	tv(0, 2, 3, 30, 40, 50)
+	tv(0, 3, 3, 40, 50, 60)
+	tv(1, 0, 4, 40, 50, 60, 70)
+
+	r.AddSortedSlice(m(100, 110, 120))
+	r.AddSortedSlice(m(41, 61, 71, 99))
+	tv(0, 0, 0, 10, 20, 30, 40, 41, 50, 60, 61, 70, 71, 80, 90, 99, 100, 110, 120)
 }
 
 func run_scoring(b *testing.B, depth, breadth int, query string) {
