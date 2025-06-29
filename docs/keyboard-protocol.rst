@@ -247,7 +247,11 @@ enhancement <progressive_enhancement>` mechanism described below. Some examples:
 If multiple code points are present, they must be separated by colons.  If no
 known key is associated with the text the key number ``0`` must be used. The
 associated text must not contain control codes (control codes are code points
-below U+0020 and codepoints in the C0 and C1 blocks).
+below U+0020 and codepoints in the C0 and C1 blocks). In the above example, the
+:kbd:`option` modifier is consumed by macOS itself to produce the text å
+and therefore not reported in the keyboard protocol. On some platforms
+composition keys might produce no key information at all, in which case the key
+number ``0`` must be used.
 
 
 Non-Unicode keys
