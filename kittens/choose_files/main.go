@@ -91,6 +91,10 @@ func (m Mode) WindowTitle() string {
 	return ""
 }
 
+type render_state struct {
+	num_matches, num_of_slots, num_before int
+}
+
 type State struct {
 	base_dir                 string
 	current_dir              string
@@ -102,11 +106,10 @@ type State struct {
 	window_title             string
 	screen                   Screen
 
-	save_file_cdir                         string
-	selections                             []string
-	current_idx                            int
-	num_of_matches_at_last_render          int
-	num_of_slots_per_column_at_last_render int
+	save_file_cdir string
+	selections     []string
+	current_idx    CollectionIndex
+	last_render    render_state
 }
 
 func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
@@ -118,7 +121,7 @@ func (s State) OnlyDirs() bool     { return s.mode.OnlyDirs() }
 func (s *State) SetSearchText(val string) {
 	if s.search_text != val {
 		s.search_text = val
-		s.current_idx = 0
+		s.current_idx = CollectionIndex{}
 	}
 }
 func (s *State) SetCurrentDir(val string) {
@@ -127,12 +130,12 @@ func (s *State) SetCurrentDir(val string) {
 	}
 	if s.CurrentDir() != val {
 		s.search_text = ""
-		s.current_idx = 0
+		s.current_idx = CollectionIndex{}
 		s.current_dir = val
 	}
 }
-func (s State) CurrentIndex() int        { return s.current_idx }
-func (s *State) SetCurrentIndex(val int) { s.current_idx = max(0, val) }
+func (s State) CurrentIndex() CollectionIndex        { return s.current_idx }
+func (s *State) SetCurrentIndex(val CollectionIndex) { s.current_idx = val }
 func (s State) CurrentDir() string {
 	return utils.IfElse(s.current_dir == "", s.BaseDir(), s.current_dir)
 }
@@ -228,10 +231,8 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 
 func (h *Handler) current_abspath() string {
 	matches, _ := h.get_results()
-	if len(matches) > 0 {
-		if idx := h.state.CurrentIndex(); idx < len(matches) {
-			return filepath.Join(h.state.CurrentDir(), matches[idx].text)
-		}
+	if r := matches.At(h.state.CurrentIndex()); r != nil {
+		return filepath.Join(h.state.CurrentDir(), r.text)
 	}
 	return ""
 
@@ -254,16 +255,31 @@ func (h *Handler) toggle_selection() bool {
 	return false
 }
 
+func (h *Handler) change_current_dir(dir string) {
+	if dir != h.state.CurrentDir() {
+		h.state.SetCurrentDir(dir)
+		h.result_manager.set_root_dir(h.state.CurrentDir())
+		h.state.last_render = render_state{}
+	}
+}
+
+func (h *Handler) set_query(q string) {
+	if q != h.state.SearchText() {
+		h.state.SetSearchText(q)
+		h.result_manager.set_query(h.state.SearchText())
+		h.state.last_render = render_state{}
+	}
+}
+
 func (h *Handler) change_to_current_dir_if_possible() error {
 	matches, _ := h.get_results()
-	if len(matches) > 0 {
+	if matches.Len() > 0 {
 		m := h.current_abspath()
 		if st, err := os.Stat(m); err == nil {
 			if !st.IsDir() {
 				m = filepath.Dir(m)
+				h.change_current_dir(m)
 			}
-			h.state.SetCurrentDir(m)
-			h.result_manager.set_root_dir(h.state.CurrentDir())
 			return h.draw_screen()
 		}
 	}
@@ -296,13 +312,11 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 			case "/":
 			case ".":
 				if curr, err = os.Getwd(); err == nil && curr != "/" {
-					h.state.SetCurrentDir(filepath.Dir(curr))
-					h.result_manager.set_root_dir(h.state.CurrentDir())
+					h.change_current_dir(filepath.Dir(curr))
 					return h.draw_screen()
 				}
 			default:
-				h.state.SetCurrentDir(filepath.Dir(curr))
-				h.result_manager.set_root_dir(h.state.CurrentDir())
+				h.change_current_dir(filepath.Dir(curr))
 				return h.draw_screen()
 			}
 			h.lp.Beep()
@@ -345,8 +359,7 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (err error) {
 	switch h.state.screen {
 	case NORMAL:
-		h.state.SetSearchText(h.state.SearchText() + text)
-		h.result_manager.set_query(h.state.SearchText())
+		h.set_query(h.state.SearchText() + text)
 		return h.draw_screen()
 	case SAVE_FILE:
 		if err = h.rl.OnText(text, from_key_event, in_bracketed_paste); err == nil {
@@ -356,7 +369,7 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (
 	return
 }
 
-func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error) {
+func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
 	h.state = State{}
 	switch opts.Mode {
 	case "file":

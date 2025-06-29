@@ -280,7 +280,7 @@ type FileSystemScorer struct {
 	root_dir, query         string
 	only_dirs               bool
 	mutex                   sync.Mutex
-	renderable_results      []*ResultItem
+	sorted_results          *SortedResults
 	on_results              func(error, bool)
 	current_worker_wait     *sync.WaitGroup
 	scorer                  *fzf.FuzzyMatcher
@@ -289,7 +289,7 @@ type FileSystemScorer struct {
 func NewFileSystemScorer(root_dir, query string, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
 	return &FileSystemScorer{
 		query: query, root_dir: root_dir, only_dirs: only_dirs, on_results: on_results,
-		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME)}
+		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME), sorted_results: NewSortedResults()}
 }
 
 func (fss *FileSystemScorer) lock()   { fss.mutex.Lock() }
@@ -320,7 +320,7 @@ func (fss *FileSystemScorer) Change_query(query string) {
 	}
 	fss.lock()
 	fss.query = query
-	fss.renderable_results = nil
+	fss.sorted_results.Clear()
 	fss.unlock()
 	fss.Start()
 }
@@ -340,7 +340,6 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 			}
 		}
 	}()
-	global_min_score, global_max_score := CombinedScore(math.MaxUint64), CombinedScore(0)
 	handle_batch := func(results []ResultItem) (err error) {
 		if err = fss.scanner.Error(); err != nil {
 			return
@@ -377,30 +376,10 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 				}
 			}
 		}
-		min_score, max_score := CombinedScore(math.MaxUint64), CombinedScore(0)
 		if len(rp) > 0 {
 			slices.SortFunc(rp, func(a, b *ResultItem) int { return cmp.Compare(a.score, b.score) })
-			min_score, max_score = rp[0].score, rp[len(rp)-1].score
 		}
-		var rr []*ResultItem
-		fss.lock()
-		existing := fss.renderable_results
-		fss.unlock()
-		switch {
-		case min_score >= global_max_score:
-			rr = append(existing, rp...)
-		case max_score < global_min_score:
-			rr = make([]*ResultItem, len(existing)+len(rp), max(16*1024, len(existing)+len(rp), 2*cap(existing)))
-			copy(rr, rp)
-			copy(rr[len(rp):], existing)
-		default:
-			rr = merge_sorted_slices(existing, rp)
-		}
-		global_min_score = min(global_min_score, min_score)
-		global_max_score = max(global_max_score, max_score)
-		fss.lock()
-		fss.renderable_results = rr
-		fss.unlock()
+		fss.sorted_results.AddSortedSlice(rp)
 		return
 	}
 
@@ -423,10 +402,10 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 	}
 }
 
-func (fss *FileSystemScorer) Results() (ans ResultsType, is_finished bool) {
+func (fss *FileSystemScorer) Results() (ans *SortedResults, is_finished bool) {
 	fss.lock()
 	defer fss.unlock()
-	return fss.renderable_results, fss.is_complete.Load()
+	return fss.sorted_results, fss.is_complete.Load()
 }
 
 func (fss *FileSystemScorer) Cancel() {
@@ -473,22 +452,6 @@ func (m *ResultManager) on_results(err error, is_finished bool) {
 	}
 }
 
-func merge_sorted_slices(a, b []*ResultItem) []*ResultItem {
-	result := make([]*ResultItem, 0, 2*(len(a)+len(b)))
-	i, j := 0, 0
-	for i < len(a) && j < len(b) {
-		if a[i].score <= b[j].score {
-			result = append(result, a[i])
-			i++
-		} else {
-			result = append(result, b[j])
-			j++
-		}
-	}
-	result = append(result, a[i:]...)
-	return append(result, b[j:]...)
-}
-
 func (m *ResultManager) set_root_dir(root_dir string) {
 	var err error
 	if root_dir == "" || root_dir == "." {
@@ -504,10 +467,16 @@ func (m *ResultManager) set_root_dir(root_dir string) {
 		m.scorer.Cancel()
 	}
 	m.scorer = NewFileSystemScorer(root_dir, "", m.settings.OnlyDirs(), m.on_results)
+	m.mutex.Lock()
+	m.last_wakeup_at = time.Time{}
+	m.mutex.Unlock()
 	m.scorer.Start()
 }
 
 func (m *ResultManager) set_query(query string) {
+	m.mutex.Lock()
+	m.last_wakeup_at = time.Time{}
+	m.mutex.Unlock()
 	if m.scorer == nil {
 		m.scorer = NewFileSystemScorer(".", "", m.settings.OnlyDirs(), m.on_results)
 		m.scorer.Start()
@@ -516,7 +485,7 @@ func (m *ResultManager) set_query(query string) {
 	}
 }
 
-func (h *Handler) get_results() (ans ResultsType, is_complete bool) {
+func (h *Handler) get_results() (ans *SortedResults, is_complete bool) {
 	if h.result_manager.scorer == nil {
 		return
 	}

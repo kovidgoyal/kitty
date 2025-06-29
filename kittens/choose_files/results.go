@@ -145,49 +145,43 @@ func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x
 	}
 }
 
-func (h *Handler) draw_list_of_results(matches ResultsType, y, height int) int {
-	if len(matches) == 0 || height < 2 {
-		return 0
-	}
+func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) int {
 	available_width := h.screen_size.width - 2
 	col_width := available_width
 	num_cols := 1
-	if len(matches) > height {
-		col_width = 40
-		num_cols = available_width / col_width
-		for num_cols > 0 && height*(num_cols-1) >= len(matches) {
-			num_cols--
+	calc_num_cols := func(num_matches int) int {
+		if num_matches == 0 || height < 2 {
+			return 0
 		}
-		col_width = available_width / num_cols
+		if num_matches > height {
+			col_width = 40
+			num_cols = available_width / col_width
+			for num_cols > 0 && height*(num_cols-1) >= num_matches {
+				num_cols--
+			}
+			col_width = available_width / num_cols
+		}
+		return num_cols
 	}
-	num_of_slots := num_cols * height
-	idx := min(h.state.CurrentIndex(), len(matches)-1)
-	pos := 0
-	for pos+num_of_slots <= idx {
-		pos += height
-	}
-	x, limit, total := 1, 0, 0
-	for range num_cols {
+	columns, num_before := matches.SplitIntoColumns(calc_num_cols, height, h.state.last_render.num_before, h.state.CurrentIndex())
+	h.state.last_render.num_before = num_before
+	x := 1
+	for _, col := range columns {
 		h.lp.MoveCursorTo(x, y)
-		limit = min(len(matches), pos+height)
-		total += limit - pos
-		h.draw_column_of_matches(matches[pos:limit], idx-pos, x, col_width-1)
+		h.draw_column_of_matches(col, num_before, x, col_width-1)
+		num_before -= height
 		x += col_width
-		pos += height
-		if pos >= len(matches) {
-			break
-		}
 	}
-	return num_cols
+	return len(columns)
 }
 
 func (h *Handler) draw_num_of_matches(num_shown, y int) {
 	m := ""
-	switch h.state.num_of_matches_at_last_render {
+	switch h.state.last_render.num_matches {
 	case 0:
 		m = " no matches "
 	default:
-		m = fmt.Sprintf(" %d of %d matches ", min(num_shown, h.state.num_of_matches_at_last_render), h.state.num_of_matches_at_last_render)
+		m = fmt.Sprintf(" %d of %d matches ", min(num_shown, h.state.last_render.num_matches), h.state.last_render.num_matches)
 	}
 	w := int(math.Ceil(float64(wcswidth.Stringwidth(m)) / 2.0))
 	h.lp.MoveCursorTo(h.screen_size.width-w-2, y)
@@ -204,7 +198,7 @@ func (h *Handler) draw_num_of_matches(num_shown, y int) {
 	}
 }
 
-func (h *Handler) draw_results(y, bottom_margin int, matches ResultsType, in_progress bool) (height int) {
+func (h *Handler) draw_results(y, bottom_margin int, matches *SortedResults, in_progress bool) (height int) {
 	height = h.screen_size.height - y - bottom_margin
 	h.lp.MoveCursorTo(1, 1+y)
 	h.draw_frame(h.screen_size.width, height)
@@ -212,44 +206,42 @@ func (h *Handler) draw_results(y, bottom_margin int, matches ResultsType, in_pro
 	h.draw_results_title()
 	y += 2
 	h.lp.MoveCursorTo(1, y)
-	h.state.num_of_slots_per_column_at_last_render = height - 2
+	h.state.last_render.num_of_slots = height - 2
 	num_cols := 0
-	switch len(matches) {
+	num := matches.Len()
+	switch num {
 	case 0:
 		h.draw_no_matches_message(in_progress)
 	default:
-		num_cols = h.draw_list_of_results(matches, y, h.state.num_of_slots_per_column_at_last_render)
+		num_cols = h.draw_list_of_results(matches, y, h.state.last_render.num_of_slots)
 	}
-	h.state.num_of_matches_at_last_render = len(matches)
-	h.draw_num_of_matches(h.state.num_of_slots_per_column_at_last_render*num_cols, y+height-2)
+	h.state.last_render.num_matches = num
+	h.draw_num_of_matches(h.state.last_render.num_of_slots*num_cols, y+height-2)
 	return
 }
 
 func (h *Handler) next_result(amt int) {
-	if h.state.num_of_matches_at_last_render > 0 {
+	if h.state.last_render.num_matches > 0 {
 		idx := h.state.CurrentIndex()
-		idx += amt
-		for idx < 0 {
-			idx += h.state.num_of_matches_at_last_render
-		}
-		idx %= h.state.num_of_matches_at_last_render
+		idx = h.result_manager.scorer.sorted_results.IncrementIndexWithWrapAround(idx, amt)
 		h.state.SetCurrentIndex(idx)
 	}
 }
 
 func (h *Handler) move_sideways(leftwards bool) {
-	if h.state.num_of_matches_at_last_render > 0 {
-		idx := h.state.CurrentIndex()
-		slots := h.state.num_of_slots_per_column_at_last_render
+	if h.state.last_render.num_matches > 0 {
+		cidx := h.state.CurrentIndex()
+		slots := h.state.last_render.num_of_slots
 		if leftwards {
-			if idx >= slots {
-				idx -= slots
+			idx := h.result_manager.scorer.sorted_results.IncrementIndexWithWrapAround(cidx, -slots)
+			if idx.Less(cidx) {
+				h.state.SetCurrentIndex(idx)
 			}
 		} else {
-			idx = min(h.state.num_of_matches_at_last_render-1, idx+slots)
-		}
-		if idx != h.state.CurrentIndex() {
-			h.state.SetCurrentIndex(idx)
+			idx := h.result_manager.scorer.sorted_results.IncrementIndexWithWrapAround(cidx, slots)
+			if cidx.Less(idx) {
+				h.state.SetCurrentIndex(idx)
+			}
 		}
 	}
 }

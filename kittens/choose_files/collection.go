@@ -20,6 +20,10 @@ func (c CollectionIndex) Compare(o CollectionIndex) int {
 	return c.Slice - o.Slice
 }
 
+func (c CollectionIndex) Less(o CollectionIndex) bool {
+	return c.Slice < o.Slice || (c.Slice == o.Slice && c.Pos < o.Pos)
+}
+
 func (c *CollectionIndex) NextSlice() {
 	c.Slice++
 	c.Pos = 0
@@ -99,6 +103,13 @@ func (s *SortedResults) Len() int {
 	return s.len
 }
 
+func (s *SortedResults) Clear() {
+	s.lock()
+	defer s.unlock()
+	s.slices = nil
+	s.len = 0
+}
+
 func (s *SortedResults) At(pos CollectionIndex) (ans *ResultItem) {
 	s.lock()
 	defer s.unlock()
@@ -116,6 +127,9 @@ func (s *SortedResults) RenderedMatches(pos CollectionIndex, max_num int) (ans [
 	defer s.unlock()
 	if pos.Slice >= len(s.slices) {
 		return
+	}
+	if max_num < 0 {
+		max_num = s.len
 	}
 	ans = make([]*ResultItem, 0, max_num)
 	for ; pos.Slice < len(s.slices) && max_num > 0; pos.NextSlice() {
@@ -194,4 +208,104 @@ func (s *SortedResults) AddSortedSlice(sl []*ResultItem) {
 		}
 	}
 	s.slices = append(s.slices, sl)
+}
+
+func (s *SortedResults) IncrementIndexWithWrapAround(idx CollectionIndex, amt int) CollectionIndex {
+	s.lock()
+	defer s.unlock()
+	ans, _ := s.increment_with_wrap_around(idx, amt)
+	return ans
+}
+
+func (s *SortedResults) increment_with_wrap_around(idx CollectionIndex, amt int) (CollectionIndex, bool) {
+	did_wrap := false
+	if amt > 0 {
+		for amt > 0 {
+			if delta := min(amt, len(s.slices[idx.Slice])-1-idx.Pos); delta > 0 {
+				idx.Pos += delta
+				amt -= delta
+			} else {
+				idx.NextSlice()
+				if idx.Slice >= len(s.slices) {
+					idx = CollectionIndex{} // wraparound
+					did_wrap = true
+				}
+				amt--
+			}
+		}
+	} else {
+		// we use separate code for negative increment instead of doing
+		// increment = len - increment as it is faster in the common case of
+		// increment much smaller than len
+		amt *= -1
+		for amt > 0 {
+			if idx.Pos > 0 {
+				delta := min(amt, idx.Pos)
+				amt -= delta
+				idx.Pos -= delta
+			} else {
+				if idx.Slice == 0 {
+					idx = CollectionIndex{Slice: len(s.slices) - 1, Pos: len(s.slices[len(s.slices)-1]) - 1}
+					did_wrap = true
+				} else {
+					idx.Slice--
+					idx.Pos = len(s.slices[idx.Slice]) - 1
+				}
+				amt--
+			}
+		}
+	}
+	return idx, did_wrap
+}
+
+// Return |a - b|
+func (s *SortedResults) distance(a, b CollectionIndex) (ans int) {
+	if b.Less(a) {
+		a, b = b, a
+	}
+	for ; a.Slice < b.Slice; a.NextSlice() {
+		ans += len(s.slices[a.Slice]) - a.Pos
+	}
+	return ans + (b.Pos - a.Pos)
+}
+
+func (s *SortedResults) SplitIntoColumns(calc_num_cols func(int) int, num_per_column, num_before_current int, current CollectionIndex) (ans [][]*ResultItem, num_before int) {
+	s.lock()
+	defer s.unlock()
+	num_cols := calc_num_cols(s.len)
+	total := num_cols * num_per_column
+	if total < 1 {
+		return nil, 0
+	}
+	num_before = min(total-1, num_before_current)
+	idx, did_wrap := s.increment_with_wrap_around(current, -num_before)
+	last_slice := s.slices[len(s.slices)-1]
+	last := CollectionIndex{Slice: len(s.slices) - 1, Pos: len(last_slice) - 1}
+	if did_wrap {
+		idx = CollectionIndex{}
+	} else if s.distance(idx, last) < total-1 {
+		if idx, did_wrap = s.increment_with_wrap_around(last, 1-total); did_wrap {
+			idx = CollectionIndex{}
+		}
+	}
+	num_before = s.distance(idx, current)
+	// fmt.Printf("111111 idx: %v current: %v num_before: %d\n", idx, current, num_before)
+	ans = make([][]*ResultItem, num_cols)
+	for colidx := range len(ans) {
+		col := make([]*ResultItem, 0, num_per_column)
+		for len(col) < num_per_column && idx.Slice < len(s.slices) {
+			ss := s.slices[idx.Slice]
+			limit := min(len(ss), idx.Pos+num_per_column-len(col))
+			col = append(col, ss[idx.Pos:limit]...)
+			idx.Pos = limit
+			if idx.Pos >= len(ss) {
+				idx.NextSlice()
+				if idx.Slice >= len(s.slices) {
+					break
+				}
+			}
+		}
+		ans[colidx] = col
+	}
+	return
 }
