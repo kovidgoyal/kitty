@@ -24,7 +24,7 @@ typedef struct Face {
     hb_font_t *hb;
     FT_UInt pixel_size;
     int hinting, hintstyle;
-    struct Face *fallbacks;
+    struct Face **fallbacks;
     size_t count, capacity;
 } Face;
 
@@ -60,7 +60,7 @@ static void
 free_face(Face *face) {
     if (face->freetype) FT_Done_Face(face->freetype);
     if (face->hb) hb_font_destroy(face->hb);
-    for (size_t i = 0; i < face->count; i++) free_face(face->fallbacks + i);
+    for (size_t i = 0; i < face->count; i++) { free_face(face->fallbacks[i]); free(face->fallbacks[i]); }
     free(face->fallbacks);
     memset(face, 0, sizeof(Face));
 }
@@ -262,7 +262,7 @@ static Face*
 find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
     if (glyph_id_for_codepoint(&main_face, codep) > 0) return &main_face;
     for (size_t i = 0; i < main_face.count; i++) {
-        if (glyph_id_for_codepoint(main_face.fallbacks + i, codep) > 0) return main_face.fallbacks + i;
+        if (glyph_id_for_codepoint(main_face.fallbacks[i], codep) > 0) return main_face.fallbacks[i];
     }
     FontConfigFace q;
     bool prefer_color = false;
@@ -270,11 +270,13 @@ find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
     if (wcswidth_string(string) >= 2 && char_props_for(codep).is_emoji_presentation_base) prefer_color = true;
     if (!fallback_font(codep, main_face_family.name, main_face_family.bold, main_face_family.italic, prefer_color, &q)) return NULL;
     ensure_space_for(&main_face, fallbacks, Face, main_face.count + 1, capacity, 8, true);
-    Face *ans = main_face.fallbacks + main_face.count;
+    Face *ans = calloc(1, sizeof(Face));
+    if (!ans) fatal("Out of memory");
     bool ok = load_font(&q, ans);
     if (PyErr_Occurred()) PyErr_Print();
     free(q.path);
-    if (!ok) return NULL;
+    if (!ok) { free(ans); return NULL; }
+    main_face.fallbacks[main_face.count] = ans;
     main_face.count++;
     return ans;
 }
