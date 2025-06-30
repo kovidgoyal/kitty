@@ -55,6 +55,7 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED,
+    GLFW_FKEY_ESCAPE,
     GLFW_MOD_ALT,
     GLFW_MOD_CONTROL,
     GLFW_MOD_SHIFT,
@@ -1523,6 +1524,7 @@ class Boss:
             return
         km = KeyboardMode('__visual_select__')
         km.on_action = 'end'
+        km.keymap[SingleKey(key=GLFW_FKEY_ESCAPE)].append(KeyDefinition(definition='visual_window_select_action_trigger 0'))
         fmap = get_name_to_functional_number_map()
         alphanumerics = get_options().visual_window_select_characters
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
