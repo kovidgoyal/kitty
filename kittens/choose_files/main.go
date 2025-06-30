@@ -92,7 +92,7 @@ func (m Mode) WindowTitle() string {
 }
 
 type render_state struct {
-	num_matches, num_of_slots, num_before int
+	num_matches, num_of_slots, num_before, num_per_column, num_columns int
 }
 
 type State struct {

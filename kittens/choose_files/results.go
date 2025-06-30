@@ -165,6 +165,8 @@ func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) in
 	}
 	columns, num_before := matches.SplitIntoColumns(calc_num_cols, height, h.state.last_render.num_before, h.state.CurrentIndex())
 	h.state.last_render.num_before = num_before
+	h.state.last_render.num_per_column = height
+	h.state.last_render.num_columns = num_cols
 	x := 1
 	for _, col := range columns {
 		h.lp.MoveCursorTo(x, y)
@@ -225,22 +227,30 @@ func (h *Handler) next_result(amt int) {
 		idx := h.state.CurrentIndex()
 		idx = h.result_manager.scorer.sorted_results.IncrementIndexWithWrapAround(idx, amt)
 		h.state.SetCurrentIndex(idx)
+		h.state.last_render.num_before = max(0, h.state.last_render.num_before+amt)
 	}
 }
 
 func (h *Handler) move_sideways(leftwards bool) {
-	if h.state.last_render.num_matches > 0 {
+	r := h.state.last_render
+	if r.num_matches > 0 && r.num_per_column > 0 {
 		cidx := h.state.CurrentIndex()
-		slots := h.state.last_render.num_of_slots
+		slots := r.num_of_slots
 		if leftwards {
 			idx := h.result_manager.scorer.sorted_results.IncrementIndexWithWrapAround(cidx, -slots)
 			if idx.Less(cidx) {
 				h.state.SetCurrentIndex(idx)
+				if r.num_columns > 1 && r.num_before >= r.num_per_column {
+					h.state.last_render.num_before = max(0, h.state.last_render.num_before-slots)
+				}
 			}
 		} else {
 			idx := h.result_manager.scorer.sorted_results.IncrementIndexWithWrapAround(cidx, slots)
 			if cidx.Less(idx) {
 				h.state.SetCurrentIndex(idx)
+				if r.num_columns > 1 && r.num_before < (r.num_columns-1)*r.num_per_column {
+					h.state.last_render.num_before = max(0, h.state.last_render.num_before+slots)
+				}
 			}
 		}
 	}
