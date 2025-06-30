@@ -241,7 +241,9 @@ def pkg_config(pkg: str, *args: str, extra_pc_dir: str = '', fatal: bool = True)
         )
     except FileNotFoundError:
         if is_windows:
-            raise SystemExit(f'The command {error(PKGCONFIG)} was not found. On Windows, you might need to install MSYS2 and its mingw-w64-x86_64-pkg-config package, or use WSL.')
+            raise SystemExit(
+                f'The command {error(PKGCONFIG)} was not found. You might need to install MSYS2 and its'
+                ' mingw-w64-x86_64-pkg-config package, or use WSL.')
         raise
     except subprocess.CalledProcessError:
         if fatal:
@@ -335,10 +337,10 @@ def cc_version() -> Tuple[List[str], Tuple[int, int]]:
                 q = 'cc'
     cc = shlex.split(q)
     if is_windows and cc[0].lower() == 'cl.exe':
-        # For MSVC, we can't easily get a simple version number like gcc/clang.
-        # We'll return a dummy version for now to allow the script to proceed.
-        # A more robust solution would involve parsing cl.exe /? or similar.
-        return cc, (19, 0) # Dummy version for MSVC (Visual Studio 2015+)
+        raw = subprocess.check_output(cc + ['/?']).decode()
+        if m := re.search(r'Compiler Version ([\d\.]+)', raw):
+            parts = tuple(map(int, m.group(1).split('.')))
+            return cc, (parts[0], parts[1])
     raw = subprocess.check_output(cc + ['-dumpversion']).decode('utf-8')
     ver_ = raw.strip().split('.')[:2]
     try:
@@ -700,11 +702,11 @@ def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
         # On Windows, it's generally safer to pass a single string to Popen with shell=True
         # for commands that might involve shell built-ins or complex paths.
         if isinstance(cmd, list):
-            cmd_to_execute = ' '.join(cmd)
+            wcmd_to_execute = shlex.join(cmd)
         else:
-            cmd_to_execute = cmd
-        print(desc or cmd_to_execute)
-        p = subprocess.Popen(cmd_to_execute, shell=True)
+            wcmd_to_execute = cmd
+        print(desc or wcmd_to_execute)
+        p = subprocess.Popen(wcmd_to_execute, shell=True)
     else:
         # On Unix-like systems, passing a list is generally preferred for security and clarity.
         if isinstance(cmd, str):
@@ -717,23 +719,19 @@ def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
     ret = p.wait()
     if ret != 0:
         if desc:
-            print(cmd_to_execute) # Print the actual command that was executed
+            print(wcmd_to_execute if is_windows else cmd_to_execute) # Print the actual command that was executed
         raise SystemExit(ret)
 
 
 @lru_cache
 def get_vcs_rev() -> str:
     ans = ''
-    git_exe = shutil.which('git')
-    if not git_exe:
-        print(error('Warning: git executable not found. Cannot determine VCS revision.'), file=sys.stderr)
-        return ans
-
+    git_exe = shutil.which('git') or 'git'
     if os.path.exists('.git'):
         try:
             rev = subprocess.check_output([git_exe, 'rev-parse', 'HEAD']).decode('utf-8')
             ans = rev.strip()
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError):
             # Fallback for older git versions or other issues
             try:
                 with open(os.path.join('.git', 'HEAD')) as f:
@@ -929,7 +927,16 @@ def add_builtin_fonts(args: Options) -> None:
                 if os.path.exists(q):
                     font_file = q
                     break
-        elif not is_windows:
+        elif is_windows:
+            for candidate in (
+                    os.path.expandvars(r'%userprofile%\AppData\Local\Microsoft\Windows\Fonts'),
+                    os.path.expandvars(r'%windir%\Fonts'),
+            ):
+                q = os.path.join(candidate, filename)
+                if os.path.exists(q):
+                    font_file = q
+                    break
+        else:
             lines = subprocess.check_output([
                 'fc-match', '--format', '%{file}\n%{postscriptname}', f'term:postscriptname={psname}', 'file', 'postscriptname']).decode().splitlines()
             if len(lines) != 2:
@@ -937,9 +944,6 @@ def add_builtin_fonts(args: Options) -> None:
             if lines[1] != psname:
                 raise SystemExit(f'The font {human_name!r} was not found on your system, please install it')
             font_file = lines[0]
-        else:
-            # TODO: Implement Windows-specific font detection if needed
-            raise SystemExit(f'The font {human_name!r} was not found on your system, please install it')
         if not font_file:
             raise SystemExit(f'The font {human_name!r} was not found on your system, please install it')
         print(f'Copying {human_name!r} from {font_file}')
@@ -1237,17 +1241,25 @@ def parse_go_version(x: str) -> Tuple[int, int, int]:
     return ans[0], ans[1], ans[2]
 
 
+@lru_cache(2)
+def go_cmd() -> list[str]:
+    go = shutil.which('go')
+    if go:
+        return [go]
+    return []
+
+
 def build_static_kittens(
     args: Options, launcher_dir: str, destination_dir: str = '', for_freeze: bool = False,
     for_platform: Optional[Tuple[str, str]] = None
 ) -> str:
     sys.stdout.flush()
     sys.stderr.flush()
-    go = shutil.which('go')
+    go = go_cmd()
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
-    required_go_version = subprocess.check_output([go] + 'list -f {{.GoVersion}} -m'.split(), env=dict(os.environ, GO111MODULE="on")).decode().strip()
-    go_version_raw = subprocess.check_output([go, 'version']).decode().strip().split()
+    required_go_version = subprocess.check_output(go + 'list -f {{.GoVersion}} -m'.split(), env=dict(os.environ, GO111MODULE="on")).decode().strip()
+    go_version_raw = subprocess.check_output(go + ['version']).decode().strip().split()
     if go_version_raw[2] != "devel":
         current_go_version = go_version_raw[2][2:]
     else:
@@ -1259,7 +1271,7 @@ def build_static_kittens(
     if args.skip_building_kitten:
         print('Skipping building of the kitten binary because of a command line option. Build is incomplete', file=sys.stderr)
         return ''
-    cmd = [go, 'build', '-v']
+    cmd = go + ['build', '-v']
     vcs_rev = args.vcs_rev or get_vcs_rev()
     ld_flags: List[str] = []
     binary_data_flags = [f"-X kitty.VCSRevision={vcs_rev}"]
@@ -1741,27 +1753,24 @@ def macos_info_plist(for_quake: str = '') -> bytes:
 
 
 def create_macos_app_icon(where: str = 'Resources') -> None:
-    if is_macos:
-        iconset_dir = os.path.abspath(os.path.join('logo', f'{appname}.iconset'))
-        icns_dir = os.path.join(where, f'{appname}.icns')
-        try:
-            subprocess.check_call([
-                'iconutil', '-c', 'icns', iconset_dir, '-o', icns_dir
-            ])
-        except FileNotFoundError:
-            print(f'{error("iconutil not found")}, using png2icns (without retina support) to convert the logo', file=sys.stderr)
-            subprocess.check_call([
-                'png2icns', icns_dir
-            ] + [os.path.join(iconset_dir, logo) for logo in [
-                # png2icns does not support retina icons, so only pass the non-retina icons
-                'icon_16x16.png',
-                'icon_32x32.png',
-                'icon_128x128.png',
-                'icon_256x256.png',
-                'icon_512x512.png',
-            ]])
-    else:
-        print(f'Skipping macOS app icon creation on non-macOS platform.', file=sys.stderr)
+    iconset_dir = os.path.abspath(os.path.join('logo', f'{appname}.iconset'))
+    icns_dir = os.path.join(where, f'{appname}.icns')
+    try:
+        subprocess.check_call([
+            'iconutil', '-c', 'icns', iconset_dir, '-o', icns_dir
+        ])
+    except FileNotFoundError:
+        print(f'{error("iconutil not found")}, using png2icns (without retina support) to convert the logo', file=sys.stderr)
+        subprocess.check_call([
+            'png2icns', icns_dir
+        ] + [os.path.join(iconset_dir, logo) for logo in [
+            # png2icns does not support retina icons, so only pass the non-retina icons
+            'icon_16x16.png',
+            'icon_32x32.png',
+            'icon_128x128.png',
+            'icon_256x256.png',
+            'icon_512x512.png',
+        ]])
 
 
 quake_name = f'{appname}-quick-access'
@@ -1969,15 +1978,15 @@ def clean(for_cross_compile: bool = False) -> None:
             dirs.remove(d)
         for f in files:
             ext = f.rpartition('.')[-1]
-            if ext in ('so', 'pyc', 'pyo') or (is_macos and ext == 'dylib') or (not for_cross_compile and is_generated(f)):
+            if ext in ('so', 'pyc', 'pyo', 'pyd', 'dylib') or (not for_cross_compile and is_generated(f)):
                 os.unlink(os.path.join(root, f))
     for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)
     for x in glob.glob('kittens/*'):
         if os.path.isdir(x) and not os.path.exists(os.path.join(x, '__init__.py')):
             shutil.rmtree(x)
-    if shutil.which('go'):
-        subprocess.check_call(['go', 'clean', '-cache', '-testcache', '-modcache', '-fuzzcache'])
+    if go := go_cmd():
+        subprocess.check_call(go + ['clean', '-cache', '-testcache', '-modcache', '-fuzzcache'])
 
 
 def option_parser() -> argparse.ArgumentParser:  # {{{
@@ -2213,15 +2222,12 @@ def build_dep() -> None:
 
 
 def lipo(target_map: Dict[str, List[str]]) -> None:
-    if is_macos:
-        print(f'Using lipo to generate {len(target_map)} universal binaries...')
-        for dest, inputs in target_map.items():
-            cmd = ['lipo', '-create', '-output', dest] + inputs
-            subprocess.check_call(cmd)
-            for x in inputs:
-                os.remove(x)
-    else:
-        print('Skipping lipo as it is a macOS-specific tool.', file=sys.stderr)
+    print(f'Using lipo to generate {len(target_map)} universal binaries...')
+    for dest, inputs in target_map.items():
+        cmd = ['lipo', '-create', '-output', dest] + inputs
+        subprocess.check_call(cmd)
+        for x in inputs:
+            os.remove(x)
 
 
 def macos_freeze(args: Options, launcher_dir: str, only_frozen_launcher: bool = False) -> None:
