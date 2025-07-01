@@ -24,9 +24,10 @@ const PORTAL_COLOR_SCHEME_KEY = "color-scheme"
 const PORTAL_ACCENT_COLOR_KEY = "accent-color"
 const PORTAL_CONTRAST_KEY = "contrast"
 const PORTAL_BUS_NAME = "org.freedesktop.impl.portal.desktop.kitty"
-const SETTINGS_OBJECT_PATH = "/org/freedesktop/portal/desktop"
+const DESKTOP_OBJECT_PATH = "/org/freedesktop/portal/desktop"
 const SETTINGS_INTERFACE = "org.freedesktop.impl.portal.Settings"
-const CHANGE_SETTINGS_OBJECT_PATH = "/net/kovidgoyal/kitty/portal"
+const FILE_CHOOSER_INTERFACE = "org.freedesktop.impl.portal.FileChooser"
+const KITTY_OBJECT_PATH = "/net/kovidgoyal/kitty/portal"
 const CHANGE_SETTINGS_INTERFACE = "net.kovidgoyal.kitty.settings"
 const DESKTOP_PORTAL_NAME = "org.freedesktop.portal.Desktop"
 
@@ -182,7 +183,7 @@ func (self *Portal) Start() (err error) {
 		"Read":    {{"namespace", "s", false}, {"key", "s", false}, {"value", "v", true}},
 		"ReadAll": {{"namespaces", "as", false}, {"value", "a{sa{sv}}", true}},
 	}
-	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, SETTINGS_OBJECT_PATH, methods, props, signals); err != nil {
+	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, DESKTOP_OBJECT_PATH, methods, props, signals); err != nil {
 		return
 	}
 	methods = MethodSpec{
@@ -190,7 +191,7 @@ func (self *Portal) Start() (err error) {
 		"RemoveSetting": {{"namespace", "s", false}, {"key", "s", false}},
 	}
 	props["version"].Value = uint32(1)
-	if err = ExportInterface(self.bus, self, CHANGE_SETTINGS_INTERFACE, CHANGE_SETTINGS_OBJECT_PATH, methods, props, nil); err != nil {
+	if err = ExportInterface(self.bus, self, CHANGE_SETTINGS_INTERFACE, KITTY_OBJECT_PATH, methods, props, nil); err != nil {
 		return
 	}
 	return
@@ -454,7 +455,7 @@ func set_variant_setting(namespace, key string, v dbus.Variant, remove_setting b
 	} else {
 		vals = append(vals, v)
 	}
-	obj := conn.Object(PORTAL_BUS_NAME, dbus.ObjectPath(CHANGE_SETTINGS_OBJECT_PATH))
+	obj := conn.Object(PORTAL_BUS_NAME, dbus.ObjectPath(KITTY_OBJECT_PATH))
 	call := obj.Call(CHANGE_SETTINGS_INTERFACE+"."+method, dbus.FlagNoAutoStart, vals...)
 	if err = call.Store(); err != nil {
 		return fmt.Errorf("failed to call %s with error: %w", method, err)
@@ -512,7 +513,7 @@ func set_color_scheme(which string) (err error) {
 	if val == nval {
 		return
 	}
-	obj := conn.Object(PORTAL_BUS_NAME, dbus.ObjectPath(CHANGE_SETTINGS_OBJECT_PATH))
+	obj := conn.Object(PORTAL_BUS_NAME, dbus.ObjectPath(KITTY_OBJECT_PATH))
 	call := obj.Call(CHANGE_SETTINGS_INTERFACE+".ChangeSetting", dbus.FlagNoAutoStart, PORTAL_APPEARANCE_NAMESPACE, PORTAL_COLOR_SCHEME_KEY, dbus.MakeVariant(nval))
 	if err = call.Store(); err != nil {
 		return fmt.Errorf("failed to call ChangeSetting with error: %w", err)
@@ -529,7 +530,7 @@ func (self *Portal) ChangeSetting(namespace, key string, value dbus.Variant) *db
 	self.settings[namespace][key] = value
 
 	if e := self.bus.Emit(
-		SETTINGS_OBJECT_PATH,
+		DESKTOP_OBJECT_PATH,
 		SETTINGS_INTERFACE+".SettingChanged",
 		namespace,
 		key,
