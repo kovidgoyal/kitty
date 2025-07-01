@@ -2,22 +2,38 @@ package desktop_ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/kovidgoyal/dbus"
+	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/config"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
 
-type Options struct {
-	Color_scheme, AccentColor, Contrast string
+type ServerOptions struct {
+	Config   []string
+	Override []string
 }
 
-func run_server(opts *Options) (err error) {
-	portal, err := NewPortal(opts)
+const server_conf_name = "desktop-ui-portal"
+
+func load_server_config(opts *ServerOptions) (ans *Config, err error) {
+	ans = NewConfig()
+	p := config.ConfigParser{LineHandler: ans.Parse}
+	err = p.LoadConfig(server_conf_name+".conf", opts.Config, opts.Override)
+	return
+}
+
+func run_server(opts *ServerOptions) (err error) {
+	config, err := load_server_config(opts)
 	if err == nil {
-		err = portal.Start()
+		portal, err := NewPortal(config)
+		if err == nil {
+			err = portal.Start()
+		}
 	}
 	if err != nil {
 		return
@@ -27,21 +43,19 @@ func run_server(opts *Options) (err error) {
 	return
 }
 
-func EntryPoint(root *cli.Command) {
-	parent := root.AddSubCommand(&cli.Command{
-		Name:             "desktop-ui",
-		ShortDescription: "Implement various desktop components for use with lightweight compositors/window managers on Linux",
-		Run: func(cmd *cli.Command, args []string) (int, error) {
-			cmd.ShowHelp()
-			return 1, nil
-		},
-	})
+func specialize_command(parent *cli.Command) {
+	parent.Run = func(cmd *cli.Command, args []string) (int, error) {
+		cmd.ShowHelp()
+		return 1, nil
+	}
+	parent.ShortDescription = "Implement various desktop components for use with lightweight compositors/window managers on Linux"
+
 	rs := parent.AddSubCommand(&cli.Command{
 		Name:             "run-server",
 		ShortDescription: "Start the various servers used to integrate with the Linux desktop",
 		HelpText:         "This should be run very early in the startup sequence of your window manager, before any other programs are run.",
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
-			opts := Options{}
+			opts := ServerOptions{}
 			err = cmd.GetOptionValues(&opts)
 			if err == nil {
 				err = run_server(&opts)
@@ -50,25 +64,18 @@ func EntryPoint(root *cli.Command) {
 		},
 	})
 	rs.Add(cli.OptionSpec{
-		Name: `--color-scheme`, Type: "choices", Dest: `Color_scheme`, Choices: "no-preference, light, dark",
-		Completer: cli.NamesCompleter("Choices for color-scheme", "no-preference", "light", "dark"),
-		Help:      "The color scheme for your system. This sets the initial value of the color scheme. It can be changed subsequently by using the color-scheme sub-command.",
+		Name: `--override -o`, Type: "list", Dest: `Override`,
+		Help: "Override individual configuration options, can be specified multiple times. Syntax: :italic:`name=value`. For example: :italic:`-o color_scheme=dark`",
 	})
 	rs.Add(cli.OptionSpec{
-		Name:    `--accent-color`,
-		Help:    "The RGB accent color for your system, can be specified as a color name or in hex a decimal format.",
-		Default: "cyan",
-	})
-	rs.Add(cli.OptionSpec{
-		Name: `--contrast`, Type: "choices", Choices: "normal, high",
-		Help:    "The preferred contrast level. Choices: normal, high",
-		Default: "normal",
+		Name: `--config -c`, Type: "list", Dest: `Config`,
+		Help: strings.ReplaceAll(strings.ReplaceAll(kitty.ConfigHelp, "{appname}", "kitty"), "{conf_name}", server_conf_name),
 	})
 
 	parent.AddSubCommand(&cli.Command{
 		Name:             "enable-portal",
 		ShortDescription: "This will create or edit the various files needed so that the portal from this kitten is used by xdg-desktop-portal",
-		HelpText:         "Once you run this command, add :code:`kitten desktop-ui run-server --color-scheme=whatever` to your window manager startup sequence and reboot your computer (or logout and restart your session) and hopefully xdg-desktop-portal should now delegate to kitty for the portals implemented here. If it doesn't try running :code:`/usr/lib/xdg-desktop-portal -r -v` it will provide a lot of logging about why it is choosing different portal backends. That combined with a careful reading of :code:`man portals.conf` should be enough to learn how to convince xdg-desktop-portal to use kitty.\n\nYou can change the system color-scheme dynamically by running::\n\n:code:`kitten desktop-ui set-color-scheme dark`",
+		HelpText:         "Once you run this command, add :code:`kitten desktop-ui run-server` to your window manager startup sequence and reboot your computer (or logout and restart your session) and hopefully xdg-desktop-portal should now delegate to kitty for the portals implemented here. If it doesn't try running :code:`/usr/lib/xdg-desktop-portal -r -v` it will provide a lot of logging about why it is choosing different portal backends. That combined with a careful reading of :code:`man portals.conf` should be enough to learn how to convince xdg-desktop-portal to use kitty.\n\nYou can change the system color-scheme dynamically by running::\n\n:code:`kitten desktop-ui set-color-scheme dark`",
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
 			err = enable_portal()
 			return utils.IfElse(err == nil, 0, 1), err
@@ -189,5 +196,8 @@ func EntryPoint(root *cli.Command) {
 		Help: "Normally, after printing the settings, if the settings did not come from the desktop-ui kitten the command prints an error and exits. This prevents that.",
 		Type: "bool-set",
 	})
+}
 
+func EntryPoint(root *cli.Command) {
+	create_cmd(root, nil)
 }

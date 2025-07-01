@@ -57,7 +57,7 @@ func to_color(spec string) (v dbus.Variant, err error) {
 	return
 }
 
-func NewPortal(opts *Options) (p *Portal, err error) {
+func NewPortal(opts *Config) (p *Portal, err error) {
 	ans := Portal{}
 	ans.settings = SettingsMap{
 		SETTINGS_CANARY_NAMESPACE: map[string]dbus.Variant{
@@ -66,16 +66,16 @@ func NewPortal(opts *Options) (p *Portal, err error) {
 	}
 	ans.settings[PORTAL_APPEARANCE_NAMESPACE] = map[string]dbus.Variant{}
 	switch opts.Color_scheme {
-	case "dark":
+	case Color_scheme_dark:
 		ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(DARK))
-	case "light":
+	case Color_scheme_light:
 		ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(LIGHT))
 	default:
 		ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(NO_PREFERENCE))
 	}
-	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_ACCENT_COLOR_KEY], err = to_color(opts.AccentColor)
+	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_ACCENT_COLOR_KEY], err = to_color(opts.Accent_color)
 	var contrast uint32
-	if opts.Contrast == "high" {
+	if opts.Contrast == Contrast_high {
 		contrast = 1
 	}
 	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_CONTRAST_KEY] = dbus.MakeVariant(contrast)

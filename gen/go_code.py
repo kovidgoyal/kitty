@@ -615,6 +615,7 @@ def generate_constants() -> str:
     from kitty.config import option_names_for_completion
     from kitty.fast_data_types import FILE_TRANSFER_CODE
     from kitty.options.utils import allowed_shell_integration_values, url_style_map
+    from kitty.simple_cli_definitions import CONFIG_HELP
     del sys.modules['kittens.hints.main']
     del sys.modules['kittens.query_terminal.main']
     ref_map = load_ref_map()
@@ -647,6 +648,7 @@ const HintsDefaultRegex = `{DEFAULT_REGEX}`
 const DefaultTermName = `{Options.term}`
 const DefaultUrlStyle = `{url_style}`
 const DefaultUrlColor = `{Options.url_color.as_sharp}`
+const ConfigHelp = "{serialize_as_go_string(CONFIG_HELP)}"
 var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.version.minor}, Patch: {kc.version.patch},}}
 var DefaultPager []string = []string{{ {dp} }}
 var FunctionalKeyNameAliases = map[string]string{serialize_go_dict(functional_key_name_aliases)}

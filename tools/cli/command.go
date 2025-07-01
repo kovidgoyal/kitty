@@ -462,6 +462,14 @@ func GetOptionValue[T any](self *Command, name string) (ans T, err error) {
 	return
 }
 
+func (self *Command) OptionsSeenOnCommandLine() map[string]bool {
+	ans := make(map[string]bool)
+	for name, opt := range self.option_map {
+		ans[name] = opt != nil && len(opt.values_from_cmdline) > 0
+	}
+	return ans
+}
+
 func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
 	val := reflect.ValueOf(pointer_to_options_struct).Elem()
 	if val.Kind() != reflect.Struct {
