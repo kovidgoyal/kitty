@@ -349,6 +349,15 @@ is set to either: :code:`yes`, :code:`socket` or :code:`socket-only`. This can
 also be specified in :file:`kitty.conf`.
 '''
 
+wait_for_single_instance_defn = f'''\
+--wait-for-single-instance-window-close
+type=bool-set
+Normally, when using :option:`{appname} --single-instance`, :italic:`{appname}`
+will open a new window in an existing instance and quit immediately. With this
+option, it will not quit till the newly opened window is closed. Note that if no
+previous instance is found, then :italic:`{appname}` will wait anyway,
+regardless of this option.
+'''
 
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are
@@ -464,13 +473,7 @@ Used in combination with the :option:`{appname} --single-instance` option. All
 :italic:`{appname}` instance within that group.
 
 
---wait-for-single-instance-window-close
-type=bool-set
-Normally, when using :option:`{appname} --single-instance`, :italic:`{appname}`
-will open a new window in an existing instance and quit immediately. With this
-option, it will not quit till the newly opened window is closed. Note that if no
-previous instance is found, then :italic:`{appname}` will wait anyway,
-regardless of this option.
+{wait_for_single_instance_defn}
 
 
 {listen_on_defn} To start in headless mode,
@@ -552,7 +555,7 @@ type=bool-set
 '''
         setattr(kitty_options_spec, 'ans', OPTIONS.format(
             appname=appname, conf_name=appname, listen_on_defn=listen_on_defn,
-            grab_keyboard_docs=grab_keyboard_docs,
+            grab_keyboard_docs=grab_keyboard_docs, wait_for_single_instance_defn=wait_for_single_instance_defn,
             config_help=CONFIG_HELP.format(appname=appname, conf_name=appname
         )))
     ans: str = getattr(kitty_options_spec, 'ans')
@@ -728,6 +731,9 @@ panel invocations with the same :option:`--instance-group` will result
 in new panels being created in the first panel instance within that group.
 
 
+{wait_for_single_instance_defn}
+
+
 {listen_on_defn}
 
 
@@ -759,7 +765,9 @@ Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 --debug-rendering
 type=bool-set
 For internal debugging use.
-'''.format(appname=appname, listen_on_defn=listen_on_defn, grab_keyboard_docs=grab_keyboard_docs, **d)
+'''.format(
+    appname=appname, listen_on_defn=listen_on_defn, grab_keyboard_docs=grab_keyboard_docs,
+    wait_for_single_instance_defn=wait_for_single_instance_defn, **d)
 
 
 def panel_options_spec() -> str:
