@@ -1,6 +1,7 @@
 package choose_files
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,15 +34,15 @@ const (
 	SELECT_SINGLE_FILE Mode = iota
 	SELECT_MULTIPLE_FILES
 	SELECT_SAVE_FILE
+	SELECT_SAVE_FILES
 	SELECT_SAVE_DIR
 	SELECT_SINGLE_DIR
 	SELECT_MULTIPLE_DIRS
-	SELECT_SAVE_DIR_FOR_FILES // select a dir for saving one or more pre-sent filenames, must be an existing one
 )
 
 func (m Mode) CanSelectNonExistent() bool {
 	switch m {
-	case SELECT_SAVE_FILE, SELECT_SAVE_DIR:
+	case SELECT_SAVE_FILE, SELECT_SAVE_DIR, SELECT_SAVE_FILES:
 		return true
 	}
 	return false
@@ -49,7 +50,7 @@ func (m Mode) CanSelectNonExistent() bool {
 
 func (m Mode) AllowsMultipleSelection() bool {
 	switch m {
-	case SELECT_MULTIPLE_FILES, SELECT_MULTIPLE_DIRS:
+	case SELECT_MULTIPLE_FILES, SELECT_MULTIPLE_DIRS, SELECT_SAVE_FILES:
 		return true
 	}
 	return false
@@ -57,7 +58,7 @@ func (m Mode) AllowsMultipleSelection() bool {
 
 func (m Mode) OnlyDirs() bool {
 	switch m {
-	case SELECT_SINGLE_DIR, SELECT_MULTIPLE_DIRS, SELECT_SAVE_DIR, SELECT_SAVE_DIR_FOR_FILES:
+	case SELECT_SINGLE_DIR, SELECT_MULTIPLE_DIRS, SELECT_SAVE_DIR:
 		return true
 	}
 	return false
@@ -65,7 +66,7 @@ func (m Mode) OnlyDirs() bool {
 
 func (m Mode) SelectFiles() bool {
 	switch m {
-	case SELECT_SINGLE_FILE, SELECT_MULTIPLE_FILES, SELECT_SAVE_FILE:
+	case SELECT_SINGLE_FILE, SELECT_MULTIPLE_FILES, SELECT_SAVE_FILE, SELECT_SAVE_FILES:
 		return true
 	}
 	return false
@@ -85,8 +86,8 @@ func (m Mode) WindowTitle() string {
 		return "Choose an existing directory"
 	case SELECT_MULTIPLE_DIRS:
 		return "Choose one or more directories"
-	case SELECT_SAVE_DIR_FOR_FILES:
-		return "Choose a directory to save multiple files in"
+	case SELECT_SAVE_FILES:
+		return "Choose files to save"
 	}
 	return ""
 }
@@ -384,15 +385,15 @@ func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
 		h.state.mode = SELECT_MULTIPLE_DIRS
 	case "save-dir":
 		h.state.mode = SELECT_SAVE_DIR
-	case "dir-for-files":
-		h.state.mode = SELECT_SAVE_DIR_FOR_FILES
+	case "save-files":
+		h.state.mode = SELECT_SAVE_FILES
 	default:
 		h.state.mode = SELECT_SINGLE_FILE
 	}
 	h.state.suggested_save_file_name = opts.SuggestedSaveFileName
 	if opts.SuggestedSaveFilePath != "" {
 		switch h.state.mode {
-		case SELECT_SAVE_FILE, SELECT_SAVE_DIR, SELECT_SAVE_DIR_FOR_FILES:
+		case SELECT_SAVE_FILE, SELECT_SAVE_DIR:
 			if s, err := os.Stat(opts.SuggestedSaveFilePath); err == nil {
 				if (s.IsDir() && h.state.mode != SELECT_SAVE_FILE) || (!s.IsDir() && h.state.mode == SELECT_SAVE_FILE) {
 					if h.state.AddSelection(opts.SuggestedSaveFileName) {
@@ -408,6 +409,42 @@ func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
 var default_cwd string
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
+	write_output := func(selections []string, interrupted bool) {
+		payload := make(map[string]any)
+		if err != nil {
+			if opts.WriteOutputTo != "" {
+				m := fmt.Sprint(err)
+				if opts.OutputFormat == "json" {
+					payload["error"] = m
+					b, _ := json.MarshalIndent(payload, "", "  ")
+					m = string(b)
+				}
+				os.WriteFile(opts.WriteOutputTo, []byte(m), 0600)
+			}
+			return
+		}
+		if interrupted {
+			if opts.WriteOutputTo != "" {
+				if opts.OutputFormat == "json" {
+					payload["interrupted"] = true
+					b, _ := json.MarshalIndent(payload, "", "  ")
+					os.WriteFile(opts.WriteOutputTo, b, 0600)
+				}
+			}
+			return
+		}
+		m := strings.Join(selections, "\n")
+		fmt.Print(m)
+		if opts.WriteOutputTo != "" {
+			if opts.OutputFormat == "json" {
+				payload["paths"] = selections
+				b, _ := json.MarshalIndent(payload, "", "  ")
+				m = string(b)
+			}
+			os.WriteFile(opts.WriteOutputTo, []byte(m), 0600)
+		}
+	}
+
 	conf, err := load_config(opts)
 	if err != nil {
 		return 1, err
@@ -454,16 +491,22 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	err = lp.Run()
 	if err != nil {
+		write_output(nil, false)
 		return 1, err
 	}
 	ds := lp.DeathSignalName()
 	if ds != "" {
 		fmt.Println("Killed by signal: ", ds)
 		lp.KillIfSignalled()
+		write_output(nil, true)
 		return 1, nil
 	}
-	if rc = lp.ExitCode(); rc == 0 {
-		fmt.Print(strings.Join(handler.state.selections, "\n"))
+	rc = lp.ExitCode()
+	switch rc {
+	case 0:
+		write_output(handler.state.selections, false)
+	default:
+		write_output(nil, true)
 	}
 	return
 }

@@ -23,6 +23,14 @@ by using :code:`kitten desktop-ui color-scheme`.
 ''')
 opt('accent_color', 'cyan', long_text='The RGB accent color for your system, can be specified as a color name or in hex a decimal format.')
 opt('contrast', 'normal', choices=('normal', 'high'), long_text='The preferred contrast level.')
+opt('+file_chooser_kitty_conf', '',
+    long_text='Path to config file to use for kitty when drawing the file chooser window. Can be specified multiple times. By default, the'
+    ' normal kitty.conf is used. Relative paths are resolved with respect to the kitty config directory.'
+)
+opt('+file_chooser_kitty_override', '', long_text='Override individual kitty configuration options, for the file chooser window.'
+    ' Can be specified multiple times. Syntax: :italic:`name=value`. For example: :code:`font_size=20`.'
+)
+
 egr()
 
 

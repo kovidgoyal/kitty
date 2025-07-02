@@ -4,10 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/kovidgoyal/dbus"
 	"github.com/kovidgoyal/dbus/introspect"
@@ -42,13 +48,20 @@ const (
 	DARK
 	LIGHT
 )
+const (
+	RESPONSE_SUCCESS uint32 = iota
+	RESPONSE_CANCELED
+	RESPONSE_ENDED
+)
 
 type SettingsMap map[string]map[string]dbus.Variant
 
 type Portal struct {
-	bus      *dbus.Conn
-	settings SettingsMap
-	lock     sync.Mutex
+	bus                         *dbus.Conn
+	settings                    SettingsMap
+	lock                        sync.Mutex
+	opts                        *Config
+	file_chooser_first_instance *exec.Cmd
 }
 
 func to_color(spec string) (v dbus.Variant, err error) {
@@ -59,7 +72,7 @@ func to_color(spec string) (v dbus.Variant, err error) {
 }
 
 func NewPortal(opts *Config) (p *Portal, err error) {
-	ans := Portal{}
+	ans := Portal{opts: opts}
 	ans.settings = SettingsMap{
 		SETTINGS_CANARY_NAMESPACE: map[string]dbus.Variant{
 			SETTINGS_CANARY_KEY: dbus.MakeVariant("running"),
@@ -184,6 +197,17 @@ func (self *Portal) Start() (err error) {
 		"ReadAll": {{"namespaces", "as", false}, {"value", "a{sa{sv}}", true}},
 	}
 	if err = ExportInterface(self.bus, self, SETTINGS_INTERFACE, DESKTOP_OBJECT_PATH, methods, props, signals); err != nil {
+		return
+	}
+	methods = MethodSpec{
+		"OpenFile": {{"handle", "o", false}, {"app_id", "s", false}, {"parent_window", "s", false}, {"title", "s", false}, {"options", "a{sv}", false},
+			{"response", "u", true}, {"results", "a{sv}", false},
+		},
+		"SaveFile": {{"handle", "o", false}, {"app_id", "s", false}, {"parent_window", "s", false}, {"title", "s", false}, {"options", "a{sv}", false},
+			{"response", "u", true}, {"results", "a{sv}", false},
+		},
+	}
+	if err = ExportInterface(self.bus, self, FILE_CHOOSER_INTERFACE, DESKTOP_OBJECT_PATH, methods, nil, nil); err != nil {
 		return
 	}
 	methods = MethodSpec{
@@ -599,4 +623,189 @@ func (self *Portal) ReadAll(namespaces []string) (ReadAllType, *dbus.Error) {
 		maps.Copy(values[namespace], self.settings[namespace])
 	}
 	return values, nil
+}
+
+type vmap map[string]dbus.Variant
+type ChooseFilesData struct {
+	Title                                        string
+	Mode                                         string
+	Cwd                                          string
+	SuggestedSaveFileName, SuggestedSaveFilePath string
+}
+
+func var_to_bool_or_false(v dbus.Variant) bool {
+	if ans, ok := v.Value().(bool); ok {
+		return ans
+	}
+	return false
+}
+
+func (self *Portal) Cleanup() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.file_chooser_first_instance != nil {
+		self.file_chooser_first_instance.Process.Signal(unix.SIGTERM)
+		ch := make(chan int)
+		go func() {
+			self.file_chooser_first_instance.Wait()
+			ch <- 0
+		}()
+		select {
+		case <-ch:
+		case <-time.After(time.Second):
+			self.file_chooser_first_instance.Process.Kill()
+			self.file_chooser_first_instance.Wait()
+		}
+		self.file_chooser_first_instance = nil
+	}
+}
+
+type ChooserResponse struct {
+	Paths       []string `json:"paths"`
+	Error       string   `json:"error"`
+	Interrupted bool     `json:"interrupted"`
+}
+
+func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, uris []string) {
+	response = RESPONSE_ENDED
+	tdir, err := os.MkdirTemp("", "kitty-cfd")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cannot run file chooser as failed to create a temporary directory with error: %s\n", err)
+		return
+	}
+	defer os.RemoveAll(tdir)
+	output_path := filepath.Join(tdir, "output.json")
+	cmd := func() *exec.Cmd {
+		self.lock.Lock()
+		defer self.lock.Unlock()
+		args := []string{
+			"+kitten", "panel", "--layer=overlay", "--edge=center", "--focus-policy=exclusive",
+			"-o", "background_opacity=0.85", "--wait-for-single-instance-window-close",
+			"--single-instance", "--instance-group", "cfp-" + strconv.Itoa(os.Getpid()),
+		}
+		for _, x := range self.opts.File_chooser_kitty_conf {
+			args = append(args, `-c`, x)
+		}
+		for _, x := range self.opts.File_chooser_kitty_override {
+			args = append(args, `-o`, x)
+		}
+		if self.file_chooser_first_instance == nil {
+			fifo_path := filepath.Join(tdir, "fifo")
+			if err := unix.Mkfifo(fifo_path, 0600); err != nil {
+				fmt.Fprintf(os.Stderr, "cannot run file chooser as failed to create a fifo directory with error: %s\n", err)
+				return nil
+			}
+			fa := slices.Clone(args)
+			fa = append(fa, "--start-as-hidden", "sh", "-c", "echo a > '"+fifo_path+"'; read")
+			cmd := exec.Command(utils.KittyExe(), fa...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Start()
+			ch := make(chan int)
+			go func() {
+				f, err := os.OpenFile(fifo_path, os.O_RDONLY, os.ModeNamedPipe)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "cannot run file chooser as failed to open fifo for read with error: %s\n", err)
+				}
+				b := []byte{'a', 'b', 'c', 'd'}
+				f.Read(b)
+				ch <- 0
+			}()
+			select {
+			case <-ch:
+				self.file_chooser_first_instance = cmd
+			case <-time.After(5 * time.Second):
+				fmt.Fprintf(os.Stderr, "cannot run file chooser as panel script timed out writing to fifo")
+				return nil
+			}
+		}
+		args = append(args, "kitten", `choose-files`, `--mode`, cfd.Mode, `--write-output-to`, output_path, `--output-format=json`)
+		if cfd.SuggestedSaveFileName != "" {
+			args = append(args, `--suggested-save-file-name`, cfd.SuggestedSaveFileName)
+		}
+		if cfd.SuggestedSaveFilePath != "" {
+			args = append(args, `--suggested-save-file-path`, cfd.SuggestedSaveFilePath)
+		}
+		cmd := exec.Command(utils.KittyExe(), args...)
+		cmd.Dir = cfd.Cwd
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd
+	}()
+	if cmd == nil {
+		return
+	}
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "running file chooser failed with error: %s\n", err)
+		return
+	}
+	raw, err := os.ReadFile(output_path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "running file chooser failed, could not read from output file with error: %s\n", err)
+		return
+	}
+	var result ChooserResponse
+	if err = json.Unmarshal(raw, &result); err != nil {
+		fmt.Fprintf(os.Stderr, "running file chooser failed, invalid JSON response with error: %s\n", err)
+		return
+	}
+	if result.Error != "" {
+		fmt.Fprintf(os.Stderr, "running file chooser failed, with error: %s\n", result.Error)
+		return
+	}
+	if result.Interrupted {
+		response = RESPONSE_CANCELED
+		fmt.Fprintf(os.Stderr, "running file chooser failed, interrupted by user.\n")
+		return
+	}
+	response = RESPONSE_SUCCESS
+	prefix := "file://" + utils.IfElse(runtime.GOOS == "windows", "/", "")
+	uris = utils.Map(func(path string) string {
+		path = filepath.ToSlash(path)
+		u := url.URL{Path: path}
+		return prefix + u.EscapedPath()
+	}, result.Paths)
+	return
+}
+
+func (options vmap) get_bytearray(name string) string {
+	if v, found := options[name]; found {
+		if b, ok := v.Value().([]byte); ok {
+			return string(b)
+		}
+	}
+	return ""
+}
+
+func (self *Portal) OpenFile(handle dbus.ObjectPath, app_id string, parent_window string, title string, options vmap) (uint32, vmap, *dbus.Error) {
+	cfd := ChooseFilesData{Title: title, Cwd: options.get_bytearray("current_folder")}
+	dir_only := false
+	if v, found := options["directory"]; found && var_to_bool_or_false(v) {
+		dir_only = true
+	}
+	multiple := false
+	if v, found := options["multiple"]; found && var_to_bool_or_false(v) {
+		multiple = true
+	}
+	if dir_only {
+		cfd.Mode = utils.IfElse(multiple, "dirs", "dir")
+	} else {
+		cfd.Mode = utils.IfElse(multiple, "files", "file")
+	}
+
+	return RESPONSE_CANCELED, nil, nil
+}
+
+func (self *Portal) SaveFile(handle dbus.ObjectPath, app_id string, parent_window string, title string, options vmap) (uint32, vmap, *dbus.Error) {
+	cfd := ChooseFilesData{
+		Title: title, Cwd: options.get_bytearray("current_folder"),
+		SuggestedSaveFileName: options.get_bytearray("current_name"),
+		SuggestedSaveFilePath: options.get_bytearray("current_file")}
+	multiple := false
+	if v, found := options["multiple"]; found && var_to_bool_or_false(v) {
+		multiple = true
+	}
+	cfd.Mode = utils.IfElse(multiple, "save-files", "save-file")
+
+	return RESPONSE_CANCELED, nil, nil
 }

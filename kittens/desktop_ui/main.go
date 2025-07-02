@@ -33,6 +33,9 @@ func run_server(opts *ServerOptions) (err error) {
 		portal, err := NewPortal(config)
 		if err == nil {
 			err = portal.Start()
+			if err == nil {
+				defer portal.Cleanup()
+			}
 		}
 	}
 	if err != nil {

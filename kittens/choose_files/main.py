@@ -39,7 +39,7 @@ completion=type:file ext:conf group:"Config files" kwds:none,NONE
 
 --mode
 type=choices
-choices=file,files,save-file,dir,save-dir,dirs,dir-for-files
+choices=file,files,save-file,dir,save-dir,dirs,save-files
 default=file
 The type of object(s) to select
 
@@ -50,7 +50,17 @@ A suggested name when picking a save file.
 
 --suggested-save-file-path
 Path to an existing file to use as the save file.
-'''.format(config_help=CONFIG_HELP.format(conf_name='diff', appname=appname)).format
+
+
+--write-output-to
+Path to a file to which the output is written in addition to STDOUT.
+
+
+--output-format
+choices=text,json
+default=text
+The format in which to write the output.
+'''.format(config_help=CONFIG_HELP.format(conf_name='choose-files', appname=appname)).format
 
 
 help_text = '''\
