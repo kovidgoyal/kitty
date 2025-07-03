@@ -292,7 +292,7 @@ func (h *Handler) change_to_current_dir_if_possible() error {
 
 func (h *Handler) finish_selection() error {
 	if h.state.mode.CanSelectNonExistent() {
-		h.initialize_save_file_name()
+		h.initialize_save_file_name(h.state.suggested_save_file_name)
 		return h.draw_screen()
 	}
 	h.lp.Quit(0)
@@ -333,15 +333,17 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 				return h.draw_screen()
 			}
 		case ev.MatchesPressOrRepeat("enter"):
+			m := h.current_abspath()
 			if h.state.mode.SelectFiles() {
-				m := h.current_abspath()
-				var s os.FileInfo
-				if s, err = os.Stat(m); err != nil {
-					h.lp.Beep()
-					return nil
-				}
-				if s.IsDir() {
-					return h.change_to_current_dir_if_possible()
+				if m != "" {
+					var s os.FileInfo
+					if s, err = os.Stat(m); err != nil {
+						h.lp.Beep()
+						return nil
+					}
+					if s.IsDir() {
+						return h.change_to_current_dir_if_possible()
+					}
 				}
 			}
 			if h.add_selection_if_possible() {
@@ -350,7 +352,13 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 				}
 				return h.draw_screen()
 			} else {
-				h.lp.Beep()
+				if h.state.mode.CanSelectNonExistent() {
+					t := h.state.SearchText()
+					h.initialize_save_file_name(utils.IfElse(t == "", h.state.suggested_save_file_name, t))
+					return h.draw_screen()
+				} else {
+					h.lp.Beep()
+				}
 			}
 		}
 	case SAVE_FILE:

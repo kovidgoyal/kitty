@@ -43,11 +43,11 @@ func (h *Handler) save_file_name_handle_key(ev *loop.KeyEvent) (err error) {
 	return
 }
 
-func (h *Handler) initialize_save_file_name() {
+func (h *Handler) initialize_save_file_name(use_fname_when_no_selections string) {
 	h.state.screen = SAVE_FILE
 	h.rl.ResetText()
 	cdir := h.state.CurrentDir()
-	fname := h.state.suggested_save_file_name
+	fname := use_fname_when_no_selections
 	if len(h.state.selections) > 0 {
 		if q, err := filepath.Abs(h.state.selections[0]); err == nil {
 			if s, err := os.Stat(q); err == nil {
