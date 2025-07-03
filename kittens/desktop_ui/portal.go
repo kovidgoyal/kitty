@@ -1,8 +1,10 @@
 package desktop_ui
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"maps"
 	"net/url"
 	"os"
@@ -562,7 +564,7 @@ func (self *Portal) ChangeSetting(namespace, key string, value dbus.Variant) *db
 		key,
 		value,
 	); e != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't emit signal: %s", e)
+		log.Println("Couldn't emit signal:", e)
 	}
 	return nil
 }
@@ -673,7 +675,7 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 	response = RESPONSE_ENDED
 	tdir, err := os.MkdirTemp("", "kitty-cfd")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "cannot run file chooser as failed to create a temporary directory with error: %s\n", err)
+		log.Println("cannot run file chooser as failed to create a temporary directory with error: ", err)
 		return
 	}
 	pid_path := filepath.Join(tdir, "pid")
@@ -714,7 +716,7 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		if self.file_chooser_first_instance == nil {
 			fifo_path := filepath.Join(tdir, "fifo")
 			if err := unix.Mkfifo(fifo_path, 0600); err != nil {
-				fmt.Fprintf(os.Stderr, "cannot run file chooser as failed to create a fifo directory with error: %s\n", err)
+				log.Println("cannot run file chooser as failed to create a fifo directory with error: ", err)
 				return nil
 			}
 			fa := slices.Clone(args)
@@ -727,7 +729,7 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 			go func() {
 				f, err := os.OpenFile(fifo_path, os.O_RDONLY, os.ModeNamedPipe)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "cannot run file chooser as failed to open fifo for read with error: %s\n", err)
+					log.Println("cannot run file chooser as failed to open fifo for read with error: ", err)
 				}
 				b := []byte{'a', 'b', 'c', 'd'}
 				f.Read(b)
@@ -737,7 +739,7 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 			case <-ch:
 				self.file_chooser_first_instance = cmd
 			case <-time.After(5 * time.Second):
-				fmt.Fprintf(os.Stderr, "cannot run file chooser as panel script timed out writing to fifo")
+				log.Println("cannot run file chooser as panel script timed out writing to fifo")
 				return nil
 			}
 		}
@@ -752,8 +754,8 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 			args = append(args, "--title", cfd.Title)
 		}
 		args = append(args, "--write-pid-to", pid_path)
+		args = append(args, utils.IfElse(cfd.Cwd == "", "~", cfd.Cwd))
 		cmd := exec.Command(utils.KittyExe(), args...)
-		cmd.Dir = cfd.Cwd
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		return cmd
@@ -761,8 +763,9 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 	if cmd == nil || close_requested.Load() {
 		return
 	}
+	log.Println("running file chooser with args:", cmd.Path, utils.Repr(cmd.Args))
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "running file chooser failed with error: %s\n", err)
+		log.Println("running file chooser failed with error: ", err)
 		return
 	}
 	if close_requested.Load() {
@@ -770,7 +773,7 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 	}
 	raw, err := os.ReadFile(output_path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "running file chooser failed, could not read from output file with error: %s\n", err)
+		log.Println("running file chooser failed, could not read from output file with error: ", err)
 		return
 	}
 	if close_requested.Load() {
@@ -778,16 +781,16 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 	}
 	var result ChooserResponse
 	if err = json.Unmarshal(raw, &result); err != nil {
-		fmt.Fprintf(os.Stderr, "running file chooser failed, invalid JSON response with error: %s\n", err)
+		log.Println("running file chooser failed, invalid JSON response with error: ", err)
 		return
 	}
 	if result.Error != "" {
-		fmt.Fprintf(os.Stderr, "running file chooser failed, with error: %s\n", result.Error)
+		log.Println("running file chooser failed, with error: ", result.Error)
 		return
 	}
 	if result.Interrupted {
 		response = RESPONSE_CANCELED
-		fmt.Fprintf(os.Stderr, "running file chooser failed, interrupted by user.\n")
+		log.Println("running file chooser failed, interrupted by user.")
 		return
 	}
 	response = RESPONSE_SUCCESS
@@ -804,7 +807,9 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 func (options vmap) get_bytearray(name string) string {
 	if v, found := options[name]; found {
 		if b, ok := v.Value().([]byte); ok {
-			return string(b)
+			// the FileChooser spec requires paths and filenames to be null
+			// terminated, so remove trailing nulls.
+			return string(bytes.TrimRight(b, "\x00"))
 		}
 	}
 	return ""
