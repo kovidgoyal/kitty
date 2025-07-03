@@ -482,6 +482,9 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 				return "", err
 			}
 		}
+		if opts.Title != "" {
+			lp.SetWindowTitle(opts.Title)
+		}
 		return handler.OnInitialize()
 	}
 	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {

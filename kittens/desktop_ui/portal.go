@@ -748,6 +748,9 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		if cfd.SuggestedSaveFilePath != "" {
 			args = append(args, `--suggested-save-file-path`, cfd.SuggestedSaveFilePath)
 		}
+		if cfd.Title != "" {
+			args = append(args, "--title", cfd.Title)
+		}
 		args = append(args, "--write-pid-to", pid_path)
 		cmd := exec.Command(utils.KittyExe(), args...)
 		cmd.Dir = cfd.Cwd

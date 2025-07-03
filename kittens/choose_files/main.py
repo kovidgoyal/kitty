@@ -25,18 +25,6 @@ usage = '[directory to start choosing files in]'
 
 
 OPTIONS = '''
---override -o
-type=list
-Override individual configuration options, can be specified multiple times.
-Syntax: :italic:`name=value`.
-
-
---config
-type=list
-completion=type:file ext:conf group:"Config files" kwds:none,NONE
-{config_help}
-
-
 --mode
 type=choices
 choices=file,files,save-file,dir,save-dir,dirs,save-files
@@ -50,6 +38,22 @@ A suggested name when picking a save file.
 
 --suggested-save-file-path
 Path to an existing file to use as the save file.
+
+
+--title
+Window title to use for this chooser
+
+
+--override -o
+type=list
+Override individual configuration options, can be specified multiple times.
+Syntax: :italic:`name=value`.
+
+
+--config
+type=list
+completion=type:file ext:conf group:"Config files" kwds:none,NONE
+{config_help}
 
 
 --write-output-to
