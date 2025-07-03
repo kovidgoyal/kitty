@@ -275,14 +275,12 @@ func (h *Handler) set_query(q string) {
 }
 
 func (h *Handler) change_to_current_dir_if_possible() error {
-	matches, _ := h.get_results()
-	if matches.Len() > 0 {
-		m := h.current_abspath()
+	if m := h.current_abspath(); m != "" {
 		if st, err := os.Stat(m); err == nil {
 			if !st.IsDir() {
 				m = filepath.Dir(m)
-				h.change_current_dir(m)
 			}
+			h.change_current_dir(m)
 			return h.draw_screen()
 		}
 	}
