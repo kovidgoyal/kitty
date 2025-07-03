@@ -342,7 +342,7 @@ var WritableDataDirs = sync.OnceValue(func() (ans []string) {
 })
 
 var AllPortalInterfaces = sync.OnceValue(func() (ans []string) {
-	return []string{SETTINGS_INTERFACE}
+	return []string{SETTINGS_INTERFACE, FILE_CHOOSER_INTERFACE}
 })
 
 // enable-portal {{{
