@@ -60,6 +60,10 @@ Path to a file to which the output is written in addition to STDOUT.
 choices=text,json
 default=text
 The format in which to write the output.
+
+
+--write-pid-to
+Path to a file to which to write the process ID (PID) of this process to.
 '''.format(config_help=CONFIG_HELP.format(conf_name='choose-files', appname=appname)).format
 
 

@@ -1,11 +1,13 @@
 package choose_files
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -474,7 +476,14 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if default_cwd, err = filepath.Abs(default_cwd); err != nil {
 		return
 	}
-	lp.OnInitialize = handler.OnInitialize
+	lp.OnInitialize = func() (string, error) {
+		if opts.WritePidTo != "" {
+			if err := utils.AtomicWriteFile(opts.WritePidTo, bytes.NewReader([]byte(strconv.Itoa(os.Getpid()))), 0600); err != nil {
+				return "", err
+			}
+		}
+		return handler.OnInitialize()
+	}
 	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
 		handler.init_sizes(new_size)
 		return handler.draw_screen()

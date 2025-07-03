@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kovidgoyal/dbus"
@@ -36,6 +37,7 @@ const FILE_CHOOSER_INTERFACE = "org.freedesktop.impl.portal.FileChooser"
 const KITTY_OBJECT_PATH = "/net/kovidgoyal/kitty/portal"
 const CHANGE_SETTINGS_INTERFACE = "net.kovidgoyal.kitty.settings"
 const DESKTOP_PORTAL_NAME = "org.freedesktop.portal.Desktop"
+const REQUEST_INTERFACE = "org.freedesktop.impl.portal.Request"
 
 // Special portal setting used to check if we are being called by xdg-desktop-portal
 const SETTINGS_CANARY_NAMESPACE = "net.kovidgoyal.kitty"
@@ -631,6 +633,7 @@ type ChooseFilesData struct {
 	Mode                                         string
 	Cwd                                          string
 	SuggestedSaveFileName, SuggestedSaveFilePath string
+	Handle                                       dbus.ObjectPath
 }
 
 func var_to_bool_or_false(v dbus.Variant) bool {
@@ -666,15 +669,34 @@ type ChooserResponse struct {
 	Interrupted bool     `json:"interrupted"`
 }
 
-func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, uris []string) {
+func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, result_dict vmap) {
 	response = RESPONSE_ENDED
 	tdir, err := os.MkdirTemp("", "kitty-cfd")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cannot run file chooser as failed to create a temporary directory with error: %s\n", err)
 		return
 	}
-	defer os.RemoveAll(tdir)
+	pid_path := filepath.Join(tdir, "pid")
+	var close_requested, child_killed atomic.Bool
+	Close := func() *dbus.Error {
+		close_requested.Store(true)
+		if !child_killed.Load() {
+			if raw, err := os.ReadFile(pid_path); err == nil {
+				if pid, err := strconv.Atoi(string(raw)); err == nil {
+					child_killed.Store(true)
+					unix.Kill(pid, unix.SIGTERM)
+				}
+			}
+		}
+		return nil
+	}
+	self.bus.ExportMethodTable(map[string]any{"Close": Close}, cfd.Handle, REQUEST_INTERFACE)
+	defer func() {
+		self.bus.ExportMethodTable(nil, cfd.Handle, REQUEST_INTERFACE)
+		_ = os.RemoveAll(tdir)
+	}()
 	output_path := filepath.Join(tdir, "output.json")
+
 	cmd := func() *exec.Cmd {
 		self.lock.Lock()
 		defer self.lock.Unlock()
@@ -726,22 +748,29 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, uris
 		if cfd.SuggestedSaveFilePath != "" {
 			args = append(args, `--suggested-save-file-path`, cfd.SuggestedSaveFilePath)
 		}
+		args = append(args, "--write-pid-to", pid_path)
 		cmd := exec.Command(utils.KittyExe(), args...)
 		cmd.Dir = cfd.Cwd
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		return cmd
 	}()
-	if cmd == nil {
+	if cmd == nil || close_requested.Load() {
 		return
 	}
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "running file chooser failed with error: %s\n", err)
 		return
 	}
+	if close_requested.Load() {
+		return
+	}
 	raw, err := os.ReadFile(output_path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "running file chooser failed, could not read from output file with error: %s\n", err)
+		return
+	}
+	if close_requested.Load() {
 		return
 	}
 	var result ChooserResponse
@@ -760,11 +789,12 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, uris
 	}
 	response = RESPONSE_SUCCESS
 	prefix := "file://" + utils.IfElse(runtime.GOOS == "windows", "/", "")
-	uris = utils.Map(func(path string) string {
+	uris := utils.Map(func(path string) string {
 		path = filepath.ToSlash(path)
 		u := url.URL{Path: path}
 		return prefix + u.EscapedPath()
 	}, result.Paths)
+	result_dict = vmap{"uris": dbus.MakeVariant(uris)}
 	return
 }
 
@@ -778,7 +808,7 @@ func (options vmap) get_bytearray(name string) string {
 }
 
 func (self *Portal) OpenFile(handle dbus.ObjectPath, app_id string, parent_window string, title string, options vmap) (uint32, vmap, *dbus.Error) {
-	cfd := ChooseFilesData{Title: title, Cwd: options.get_bytearray("current_folder")}
+	cfd := ChooseFilesData{Title: title, Cwd: options.get_bytearray("current_folder"), Handle: handle}
 	dir_only := false
 	if v, found := options["directory"]; found && var_to_bool_or_false(v) {
 		dir_only = true
@@ -792,13 +822,13 @@ func (self *Portal) OpenFile(handle dbus.ObjectPath, app_id string, parent_windo
 	} else {
 		cfd.Mode = utils.IfElse(multiple, "files", "file")
 	}
-
-	return RESPONSE_CANCELED, nil, nil
+	response, result := self.run_file_chooser(cfd)
+	return response, result, nil
 }
 
 func (self *Portal) SaveFile(handle dbus.ObjectPath, app_id string, parent_window string, title string, options vmap) (uint32, vmap, *dbus.Error) {
 	cfd := ChooseFilesData{
-		Title: title, Cwd: options.get_bytearray("current_folder"),
+		Title: title, Cwd: options.get_bytearray("current_folder"), Handle: handle,
 		SuggestedSaveFileName: options.get_bytearray("current_name"),
 		SuggestedSaveFilePath: options.get_bytearray("current_file")}
 	multiple := false
@@ -807,5 +837,6 @@ func (self *Portal) SaveFile(handle dbus.ObjectPath, app_id string, parent_windo
 	}
 	cfd.Mode = utils.IfElse(multiple, "save-files", "save-file")
 
-	return RESPONSE_CANCELED, nil, nil
+	response, result := self.run_file_chooser(cfd)
+	return response, result, nil
 }
