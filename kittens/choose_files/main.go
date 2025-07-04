@@ -313,6 +313,17 @@ func (h *Handler) finish_selection() error {
 	return nil
 }
 
+func (h *Handler) change_filter(delta int) bool {
+	if len(h.state.filter_names) < 2 {
+		return false
+	}
+	idx := slices.Index(h.state.filter_names, h.state.current_filter)
+	idx += delta + len(h.state.filter_names)
+	idx %= len(h.state.filter_names)
+	h.set_filter(h.state.filter_names[idx])
+	return true
+}
+
 func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 	switch h.state.screen {
 	case NORMAL:
@@ -323,6 +334,16 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 			h.lp.Quit(1)
 		case ev.MatchesPressOrRepeat("tab"):
 			return h.change_to_current_dir_if_possible()
+		case ev.MatchesPressOrRepeat("ctrl+f"):
+			if h.change_filter(1) {
+				return h.draw_screen()
+			}
+			h.lp.Beep()
+		case ev.MatchesPressOrRepeat("alt+f"):
+			if h.change_filter(-1) {
+				return h.draw_screen()
+			}
+			h.lp.Beep()
 		case ev.MatchesPressOrRepeat("shift+tab"):
 			curr := h.state.CurrentDir()
 			switch curr {
