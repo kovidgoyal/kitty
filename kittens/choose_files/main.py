@@ -32,6 +32,16 @@ default=file
 The type of object(s) to select
 
 
+--file-filter
+type=list
+A list of filters to restrict the displayed files. Can be either mimetypes, or glob style patterns. Can be specified multiple times.
+The syntax is :code:`type:expression:Descriptive Name`.
+For example: :code:`mime:image/png:Images` and :code:`mime:image/gif:Images` and :code:`glob:*.[tT][xX][Tt]:Text files`.
+Note that glob patterns are case-sensitive. The mimetype specification is treated as a glob expressions as well, so you can,
+for example, use :code:`mime:text/*` to match all text files. The first filter in the list will be applied by default. Use a filter
+such as :code:`glob:*:All` to match all files. Note that filtering only appies to files, not directories.
+
+
 --suggested-save-file-name
 A suggested name when picking a save file.
 

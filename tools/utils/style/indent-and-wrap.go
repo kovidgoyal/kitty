@@ -292,13 +292,6 @@ func (self *line_builder) has_space_for_width(w, max_width int) bool {
 	return w+self.cursor_pos <= max_width
 }
 
-func (self *line_builder) add_char(ch rune) {
-	self.seen_non_space_chars = true
-	self.buf = utf8.AppendRune(self.buf, ch)
-	self.cursor_pos += wcswidth.Runewidth(ch)
-	self.pos_of_trailing_whitespace = -1
-}
-
 func (self *line_builder) add_space(ch rune, trim_whitespace bool) {
 	if !trim_whitespace || self.seen_non_space_chars {
 		self.buf = utf8.AppendRune(self.buf, ch)

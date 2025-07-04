@@ -18,7 +18,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
-// TODO: Comboboxes, multifile selections, save file name, file/dir modes
+// TODO: multifile selections, save file name completion
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
@@ -108,6 +108,9 @@ type State struct {
 	suggested_save_file_name string
 	window_title             string
 	screen                   Screen
+	current_filter           string
+	filter_map               map[string]Filter
+	filter_names             []string
 
 	save_file_cdir string
 	selections     []string
@@ -116,6 +119,7 @@ type State struct {
 }
 
 func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
+func (s State) Filter() Filter     { return s.filter_map[s.current_filter] }
 func (s State) SelectDirs() bool   { return s.select_dirs }
 func (s State) Multiselect() bool  { return s.multiselect }
 func (s State) String() string     { return utils.Repr(s) }
@@ -190,7 +194,11 @@ func (h *Handler) draw_screen() (err error) {
 			h.draw_search_bar(0)
 		}()
 		y := SEARCH_BAR_HEIGHT
-		y += h.draw_results(y, 2, matches, !is_complete)
+		footer_height, err := h.draw_footer()
+		if err != nil {
+			return err
+		}
+		y += h.draw_results(y, footer_height, matches, !is_complete)
 	case SAVE_FILE:
 		err = h.draw_save_file_name_screen()
 	}
@@ -227,7 +235,7 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 	h.lp.AllowLineWrapping(false)
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.StartBracketedPaste()
-	h.result_manager.set_root_dir(h.state.CurrentDir())
+	h.result_manager.set_root_dir(h.state.CurrentDir(), h.state.Filter())
 	h.draw_screen()
 	return
 }
@@ -261,7 +269,7 @@ func (h *Handler) toggle_selection() bool {
 func (h *Handler) change_current_dir(dir string) {
 	if dir != h.state.CurrentDir() {
 		h.state.SetCurrentDir(dir)
-		h.result_manager.set_root_dir(h.state.CurrentDir())
+		h.result_manager.set_root_dir(h.state.CurrentDir(), h.state.Filter())
 		h.state.last_render = render_state{}
 	}
 }
@@ -269,7 +277,15 @@ func (h *Handler) change_current_dir(dir string) {
 func (h *Handler) set_query(q string) {
 	if q != h.state.SearchText() {
 		h.state.SetSearchText(q)
-		h.result_manager.set_query(h.state.SearchText())
+		h.result_manager.set_query(h.state.SearchText(), h.state.Filter())
+		h.state.last_render = render_state{}
+	}
+}
+
+func (h *Handler) set_filter(filter_name string) {
+	if filter_name != h.state.current_filter {
+		h.state.current_filter = filter_name
+		h.result_manager.set_filter(h.state.Filter())
 		h.state.last_render = render_state{}
 	}
 }
@@ -409,6 +425,41 @@ func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
 					}
 				}
 			}
+		}
+	}
+	h.state.filter_map = nil
+	h.state.current_filter = ""
+	if len(opts.FileFilter) > 0 {
+		has_all_files := false
+		fmap := make(map[string][]Filter)
+		seen := utils.NewSet[string](len(opts.FileFilter))
+		for _, x := range opts.FileFilter {
+			f, ferr := NewFilter(x)
+			if ferr != nil {
+				return ferr
+			}
+			if f.Match == nil {
+				has_all_files = true
+			}
+			if h.state.current_filter == "" {
+				h.state.current_filter = f.Name
+			}
+			fmap[f.Name] = append(fmap[f.Name], *f)
+			if !seen.Has(f.Name) {
+				seen.Add(f.Name)
+				h.state.filter_names = append(h.state.filter_names, f.Name)
+			}
+		}
+		if !has_all_files {
+			af, _ := NewFilter("glob:*:All files")
+			fmap[af.Name] = append(fmap[af.Name], *af)
+			if !seen.Has(af.Name) {
+				h.state.filter_names = append(h.state.filter_names, af.Name)
+			}
+		}
+		h.state.filter_map = make(map[string]Filter)
+		for name, filters := range fmap {
+			h.state.filter_map[name] = CombinedFilter(filters...)
 		}
 	}
 	return

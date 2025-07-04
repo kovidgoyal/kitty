@@ -278,6 +278,7 @@ type FileSystemScorer struct {
 	scanner                 Scanner
 	keep_going, is_complete atomic.Bool
 	root_dir, query         string
+	filter                  Filter
 	only_dirs               bool
 	mutex                   sync.Mutex
 	sorted_results          *SortedResults
@@ -286,10 +287,11 @@ type FileSystemScorer struct {
 	scorer                  *fzf.FuzzyMatcher
 }
 
-func NewFileSystemScorer(root_dir, query string, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
+func NewFileSystemScorer(root_dir, query string, filter Filter, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
 	return &FileSystemScorer{
-		query: query, root_dir: root_dir, only_dirs: only_dirs, on_results: on_results,
-		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME), sorted_results: NewSortedResults()}
+		query: query, root_dir: root_dir, only_dirs: only_dirs, filter: filter, on_results: on_results,
+		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME), sorted_results: NewSortedResults(),
+	}
 }
 
 func (fss *FileSystemScorer) lock()   { fss.mutex.Lock() }
@@ -325,6 +327,21 @@ func (fss *FileSystemScorer) Change_query(query string) {
 	fss.Start()
 }
 
+func (fss *FileSystemScorer) Change_filter(filter Filter) {
+	if fss.filter.Equal(filter) {
+		return
+	}
+	fss.keep_going.Store(false)
+	if fss.current_worker_wait != nil {
+		fss.current_worker_wait.Wait()
+	}
+	fss.lock()
+	fss.filter = filter
+	fss.sorted_results.Clear()
+	fss.unlock()
+	fss.Start()
+}
+
 func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.WaitGroup) {
 	defer func() {
 		fss.is_complete.Store(true)
@@ -353,9 +370,18 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 				}
 			}
 		} else {
-			rp = make([]*ResultItem, len(results))
-			for i := range len(rp) {
-				rp[i] = &results[i]
+			if fss.filter.Match == nil {
+				rp = make([]*ResultItem, len(results))
+				for i := range len(rp) {
+					rp[i] = &results[i]
+				}
+			} else {
+				rp = make([]*ResultItem, 0, len(results))
+				for i, r := range results {
+					if r.ftype.IsDir() || fss.filter.Match(filepath.Base(r.text)) {
+						rp = append(rp, &results[i])
+					}
+				}
 			}
 		}
 		if len(rp) > 0 {
@@ -452,7 +478,7 @@ func (m *ResultManager) on_results(err error, is_finished bool) {
 	}
 }
 
-func (m *ResultManager) set_root_dir(root_dir string) {
+func (m *ResultManager) set_root_dir(root_dir string, filter Filter) {
 	var err error
 	if root_dir == "" || root_dir == "." {
 		if root_dir, err = os.Getwd(); err != nil {
@@ -466,22 +492,35 @@ func (m *ResultManager) set_root_dir(root_dir string) {
 	if m.scorer != nil {
 		m.scorer.Cancel()
 	}
-	m.scorer = NewFileSystemScorer(root_dir, "", m.settings.OnlyDirs(), m.on_results)
+	_ = os.Chdir(root_dir) // this is so the terminal emulator can read the wd for launch --directory=current
+	m.scorer = NewFileSystemScorer(root_dir, "", filter, m.settings.OnlyDirs(), m.on_results)
 	m.mutex.Lock()
 	m.last_wakeup_at = time.Time{}
 	m.mutex.Unlock()
 	m.scorer.Start()
 }
 
-func (m *ResultManager) set_query(query string) {
+func (m *ResultManager) set_query(query string, filter Filter) {
 	m.mutex.Lock()
 	m.last_wakeup_at = time.Time{}
 	m.mutex.Unlock()
 	if m.scorer == nil {
-		m.scorer = NewFileSystemScorer(".", "", m.settings.OnlyDirs(), m.on_results)
+		m.scorer = NewFileSystemScorer(".", "", filter, m.settings.OnlyDirs(), m.on_results)
 		m.scorer.Start()
 	} else {
 		m.scorer.Change_query(query)
+	}
+}
+
+func (m *ResultManager) set_filter(f Filter) {
+	m.mutex.Lock()
+	m.last_wakeup_at = time.Time{}
+	m.mutex.Unlock()
+	if m.scorer == nil {
+		m.scorer = NewFileSystemScorer(".", "", f, m.settings.OnlyDirs(), m.on_results)
+		m.scorer.Start()
+	} else {
+		m.scorer.Change_filter(f)
 	}
 }
 
