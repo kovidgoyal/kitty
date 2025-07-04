@@ -33,7 +33,7 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 			buf.WriteString(text)
 			pos += sz
 		}
-		w("Filter:", nil)
+		w("󰈲 Filter:", nil)
 		for _, name := range h.state.filter_names {
 			w("  "+name, utils.IfElse(name == h.state.current_filter, current_style, non_current_style))
 		}

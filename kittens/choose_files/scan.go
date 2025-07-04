@@ -313,7 +313,9 @@ func (fss *FileSystemScorer) Start() {
 	fss.keep_going.Store(true)
 	if fss.scanner == nil {
 		sc := NewFileSystemScanner(fss.root_dir, on_results, fss.filter.Match)
-		sc.dir_reader = fss.dir_reader
+		if fss.dir_reader != nil {
+			sc.dir_reader = fss.dir_reader
+		}
 		fss.scanner = sc
 		fss.scanner.Start()
 	} else {
