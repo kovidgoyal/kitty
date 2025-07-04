@@ -63,14 +63,16 @@ type FileSystemScanner struct {
 	mutex                   sync.Mutex
 	collection              *ResultCollection
 	dir_reader              func(path string) ([]fs.DirEntry, error)
+	filter_func             func(filename string) bool
 	err                     error
 }
 
-func NewFileSystemScanner(root_dir string, notify chan bool) (fss *FileSystemScanner) {
+func NewFileSystemScanner(root_dir string, notify chan bool, filter_func func(string) bool) (fss *FileSystemScanner) {
 	ans := &FileSystemScanner{root_dir: root_dir, listeners: []chan bool{notify}, collection: NewResultCollection(4096)}
 	ans.in_progress.Store(true)
 	ans.keep_going.Store(true)
 	ans.dir_reader = os.ReadDir
+	ans.filter_func = utils.IfElse(filter_func == nil, accept_all, filter_func)
 	return ans
 }
 
@@ -184,6 +186,8 @@ func as_lower(s string, output []byte) int {
 	return pos
 }
 
+func accept_all(filename string) bool { return true }
+
 func (fss *FileSystemScanner) worker() {
 	defer func() {
 		fss.lock()
@@ -228,24 +232,29 @@ func (fss *FileSystemScanner) worker() {
 			sortable = make([]*sortable_dir_entry, 0, cap(arena))
 		}
 		arena = arena[:len(entries)]
-		sortable = sortable[:len(entries)]
+		sortable = sortable[:0]
 		for i, e := range entries {
-			arena[i].name = e.Name()
+			name := e.Name()
 			ftype := e.Type()
+			is_dir := ftype&fs.ModeDir != 0
+			if !is_dir && !fss.filter_func(name) {
+				continue
+			}
+			arena[i].name = name
 			if ftype&fs.ModeSymlink != 0 {
 				if st, serr := os.Stat(dir + arena[i].name); serr == nil && st.IsDir() {
 					ftype |= SymlinkToDir
 				}
 			}
 			arena[i].ftype = ftype
-			if ftype&fs.ModeDir != 0 {
+			if is_dir {
 				arena[i].buf[0] = '0'
 			} else {
 				arena[i].buf[0] = '1'
 			}
 			n := as_lower(arena[i].name, arena[i].buf[1:])
 			arena[i].sort_key = arena[i].buf[:1+n]
-			sortable[i] = &arena[i]
+			sortable = append(sortable, &arena[i])
 		}
 		slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
 		fss.lock()
@@ -285,6 +294,7 @@ type FileSystemScorer struct {
 	on_results              func(error, bool)
 	current_worker_wait     *sync.WaitGroup
 	scorer                  *fzf.FuzzyMatcher
+	dir_reader              func(path string) ([]fs.DirEntry, error)
 }
 
 func NewFileSystemScorer(root_dir, query string, filter Filter, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
@@ -302,7 +312,9 @@ func (fss *FileSystemScorer) Start() {
 	fss.is_complete.Store(false)
 	fss.keep_going.Store(true)
 	if fss.scanner == nil {
-		fss.scanner = NewFileSystemScanner(fss.root_dir, on_results)
+		sc := NewFileSystemScanner(fss.root_dir, on_results, fss.filter.Match)
+		sc.dir_reader = fss.dir_reader
+		fss.scanner = sc
 		fss.scanner.Start()
 	} else {
 		fss.scanner.AddListener(on_results)
@@ -318,6 +330,9 @@ func (fss *FileSystemScorer) Change_query(query string) {
 	}
 	fss.keep_going.Store(false)
 	if fss.current_worker_wait != nil {
+		if fss.scanner != nil {
+			fss.scanner.Cancel()
+		}
 		fss.current_worker_wait.Wait()
 	}
 	fss.lock()
@@ -333,11 +348,15 @@ func (fss *FileSystemScorer) Change_filter(filter Filter) {
 	}
 	fss.keep_going.Store(false)
 	if fss.current_worker_wait != nil {
+		if fss.scanner != nil {
+			fss.scanner.Cancel()
+		}
 		fss.current_worker_wait.Wait()
 	}
 	fss.lock()
 	fss.filter = filter
 	fss.sorted_results.Clear()
+	fss.scanner = nil
 	fss.unlock()
 	fss.Start()
 }

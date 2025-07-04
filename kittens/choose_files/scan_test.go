@@ -107,9 +107,9 @@ func (n node) ReadDir(name string) ([]fs.DirEntry, error) {
 
 func TestChooseFilesScoring(t *testing.T) {
 	root := node{name: string(os.PathSeparator), children: map[string]*node{
-		"b": {name: "b"},
-		"a": {name: "a"},
-		"c": {name: "c"},
+		"b":     {name: "b"},
+		"a":     {name: "a"},
+		"c.png": {name: "c.png"},
 		"x": {name: "x", children: map[string]*node{
 			"1": {"1", nil}, "2": {"2", nil}, "3": {"3", nil},
 			"s": {"s", map[string]*node{
@@ -122,15 +122,12 @@ func TestChooseFilesScoring(t *testing.T) {
 	}}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	s := NewFileSystemScorer(string(os.PathSeparator), "", false, func(err error, is_complete bool) {
+	s := NewFileSystemScorer(string(os.PathSeparator), "", Filter{}, false, func(err error, is_complete bool) {
 		if is_complete {
 			wg.Done()
 		}
 	})
-	sc := NewFileSystemScanner(s.root_dir, make(chan bool))
-	s.scanner = sc
-	sc.dir_reader = root.ReadDir
-	s.scanner.Start()
+	s.dir_reader = root.ReadDir
 	s.Start()
 	wg.Wait()
 	results := func() (ans []string) {
@@ -141,20 +138,33 @@ func TestChooseFilesScoring(t *testing.T) {
 		return
 	}
 	ae := func(query string, expected ...string) {
-		if query != "" {
-			wg.Add(1)
-			s.Change_query(query)
-			wg.Wait()
-		}
+		wg.Add(1)
+		s.Change_query(query)
+		wg.Wait()
 		if diff := cmp.Diff(expected, results()); diff != "" {
 			t.Fatalf("Query less scoring failed\n%s", diff)
 		}
 	}
-	ae("", "x", "y", "a", "b", "c", "x/s", "x/1", "x/2", "x/3", "y/3", "y/4", "y/5", "x/s/m", "x/s/n")
 	ae("a", "a")
 	ae("3", "x/3", "y/3")
 	ae("s", "x/s", "x/s/m", "x/s/n")
 	ae("sn", "x/s/n")
+	ae("", "x", "y", "a", "b", "c.png", "x/s", "x/1", "x/2", "x/3", "y/3", "y/4", "y/5", "x/s/m", "x/s/n")
+
+	af := func(filter string, expected ...string) {
+		f, _ := NewFilter(filter)
+		wg.Add(1)
+		s.Change_filter(*f)
+		wg.Wait()
+		if diff := cmp.Diff(expected, results()); diff != "" {
+			t.Fatalf("filter %s failed\n%s", filter, diff)
+		}
+	}
+	af("glob:a:A", "x", "y", "a", "x/s")
+	af("glob:[ab]:A", "x", "y", "a", "b", "x/s")
+	af("mime:image/png:A", "x", "y", "c.png", "x/s")
+	af("mime:image/*:A", "x", "y", "c.png", "x/s")
+	af("glob:*:All", "x", "y", "a", "b", "c.png", "x/s", "x/1", "x/2", "x/3", "y/3", "y/4", "y/5", "x/s/m", "x/s/n")
 }
 
 func TestSortedResults(t *testing.T) {
@@ -258,14 +268,12 @@ func run_scoring(b *testing.B, depth, breadth int, query string) {
 		b.StopTimer()
 		wg := sync.WaitGroup{}
 		wg.Add(1)
-		s := NewFileSystemScorer(string(os.PathSeparator), query, false, func(err error, is_complete bool) {
+		s := NewFileSystemScorer(string(os.PathSeparator), query, Filter{}, false, func(err error, is_complete bool) {
 			if is_complete {
 				wg.Done()
 			}
 		})
-		sc := NewFileSystemScanner(s.root_dir, make(chan bool))
-		s.scanner = sc
-		sc.dir_reader = root.ReadDir
+		s.dir_reader = root.ReadDir
 		b.StartTimer()
 		s.scanner.Start()
 		s.Start()
