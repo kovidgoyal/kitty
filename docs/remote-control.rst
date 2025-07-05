@@ -186,7 +186,7 @@ Now, using this password, you can, in scripts run the command::
 Any script with access to the password can now change colors in kitty using
 remote control, but only that and nothing else. You can even supply the
 password via the :envvar:`KITTY_RC_PASSWORD` environment variable, or the
-file :file:`~/.config/kitty/rc-password` to avoid having to type it repeatedly.
+file :file:`~/.config/kitty/rc-pass` to avoid having to type it repeatedly.
 See :option:`kitten @ --password-file` and :option:`kitten @ --password-env`.
 
 The :opt:`remote_control_password` can be specified multiple times to create
