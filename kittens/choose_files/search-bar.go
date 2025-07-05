@@ -53,6 +53,11 @@ func (h *Handler) draw_search_bar(y int) {
 	h.lp.MoveCursorTo(1+left_margin, 1+y)
 	available_width := h.screen_size.width - left_margin - right_margin
 	h.draw_frame(available_width, SEARCH_BAR_HEIGHT)
+	for y1 := y; y1 < y+4; y1++ {
+		cr := h.state.mouse_state.AddCellRegion("search-bar", left_margin, y1, left_margin+available_width, y1)
+		cr.PointerShape = loop.TEXT_POINTER
+		cr.HoverStyle = "none"
+	}
 	h.lp.MoveCursorTo(1+left_margin+1, 2+y)
 	h.draw_search_text(available_width - 2)
 }

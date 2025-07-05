@@ -187,7 +187,11 @@ type Handler struct {
 func (h *Handler) draw_screen() (err error) {
 	h.state.redraw_needed = false
 	h.lp.StartAtomicUpdate()
-	defer h.lp.EndAtomicUpdate()
+	defer func() {
+		h.state.mouse_state.UpdateHoveredIds()
+		h.state.mouse_state.ApplyHoverStyles(h.lp)
+		h.lp.EndAtomicUpdate()
+	}()
 	h.lp.ClearScreen()
 	h.state.mouse_state.ClearCellRegions()
 	switch h.state.screen {
@@ -207,8 +211,6 @@ func (h *Handler) draw_screen() (err error) {
 	case SAVE_FILE:
 		err = h.draw_save_file_name_screen()
 	}
-	h.state.mouse_state.UpdateHoveredIds()
-	h.state.mouse_state.ApplyHoverStyles(h.lp)
 	return
 }
 

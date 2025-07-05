@@ -41,8 +41,8 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 				text = sfunc(text)
 			}
 			buf.WriteString(text)
-			if click_name != "" {
-				crs = append(crs, single_line_region{x: pos, width: sz, y: len(lines), id: click_name, callback: func(filter string) error {
+			if click_name != "" && click_name != h.state.current_filter {
+				crs = append(crs, single_line_region{x: pos, width: sz - 1, y: len(lines), id: click_name, callback: func(filter string) error {
 					h.set_filter(filter)
 					h.state.redraw_needed = true
 					return nil
@@ -59,7 +59,7 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 		}
 		offset := h.screen_size.height - len(lines)
 		for _, cr := range crs {
-			h.state.mouse_state.AddCellRegion(cr.id, cr.x, cr.y+offset, cr.x+cr.width, cr.y+offset, cr.callback)
+			h.state.mouse_state.AddCellRegion(cr.id, cr.x, cr.y+offset, cr.x+cr.width, cr.y+offset, cr.callback).HoverStyle = "default fg=red"
 		}
 	}
 	if len(lines) > 0 {

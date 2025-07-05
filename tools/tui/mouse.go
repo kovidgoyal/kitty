@@ -4,6 +4,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kovidgoyal/kitty"
@@ -214,6 +215,7 @@ type CellRegion struct {
 	Id                   string
 	OnClick              []func(id string) error
 	PointerShape         loop.PointerShape
+	HoverStyle           string // set to "default" for the global hover style
 }
 
 func (c CellRegion) Contains(x, y int) bool { // 0-based
@@ -237,7 +239,7 @@ type MouseState struct {
 	}
 }
 
-func (m *MouseState) AddRegion(cr CellRegion) *CellRegion {
+func (m *MouseState) add_region(cr CellRegion) *CellRegion {
 	m.regions = append(m.regions, &cr)
 	if m.region_id_map == nil {
 		m.region_id_map = make(map[string][]*CellRegion)
@@ -251,9 +253,8 @@ func (m *MouseState) AddRegion(cr CellRegion) *CellRegion {
 }
 
 func (m *MouseState) AddCellRegion(id string, start_x, start_y, end_x, end_y int, on_click ...func(id string) error) *CellRegion {
-	cr := CellRegion{
-		TopLeft: Point{start_x, start_y}, BottomRight: Point{end_x, end_y}, Id: id, OnClick: on_click, PointerShape: loop.POINTER_POINTER}
-	return m.AddRegion(cr)
+	return m.add_region(CellRegion{
+		TopLeft: Point{start_x, start_y}, BottomRight: Point{end_x, end_y}, Id: id, OnClick: on_click, PointerShape: loop.POINTER_POINTER, HoverStyle: "default"})
 }
 
 func (m *MouseState) ClearCellRegions() {
@@ -307,7 +308,10 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 	ps := loop.DEFAULT_POINTER
 	for id := range m.hovered_ids.Iterable() {
 		for _, r := range m.region_id_map[id] {
-			lp.StyleRegion(hs, r.TopLeft.X, r.TopLeft.Y, r.BottomRight.X, r.BottomRight.Y)
+			if r.HoverStyle != "" {
+				s := strings.Replace(r.HoverStyle, "default", hs, 1)
+				lp.StyleRegion(s, r.TopLeft.X, r.TopLeft.Y, r.BottomRight.X, r.BottomRight.Y)
+			}
 			is_hovered = true
 			ps = r.PointerShape
 		}
