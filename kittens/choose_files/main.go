@@ -13,6 +13,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/config"
 	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -116,6 +117,8 @@ type State struct {
 	selections     []string
 	current_idx    CollectionIndex
 	last_render    render_state
+	mouse_state    tui.MouseState
+	redraw_needed  bool
 }
 
 func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
@@ -182,9 +185,11 @@ type Handler struct {
 }
 
 func (h *Handler) draw_screen() (err error) {
+	h.state.redraw_needed = false
 	h.lp.StartAtomicUpdate()
 	defer h.lp.EndAtomicUpdate()
 	h.lp.ClearScreen()
+	h.state.mouse_state.ClearCellRegions()
 	switch h.state.screen {
 	case NORMAL:
 		matches, is_complete := h.get_results()
@@ -202,6 +207,8 @@ func (h *Handler) draw_screen() (err error) {
 	case SAVE_FILE:
 		err = h.draw_save_file_name_screen()
 	}
+	h.state.mouse_state.UpdateHoveredIds()
+	h.state.mouse_state.ApplyHoverStyles(h.lp)
 	return
 }
 
@@ -402,6 +409,19 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 	return
 }
 
+func (h *Handler) OnMouseEvent(event *loop.MouseEvent) (err error) {
+	h.state.redraw_needed = h.state.mouse_state.UpdateState(event)
+	if event.Event_type == loop.MOUSE_CLICK && event.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
+		if err = h.state.mouse_state.ClickHoveredRegions(); err != nil {
+			return
+		}
+	}
+	if h.state.redraw_needed {
+		err = h.draw_screen()
+	}
+	return
+}
+
 func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (err error) {
 	switch h.state.screen {
 	case NORMAL:
@@ -533,6 +553,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 	handler := Handler{lp: lp, err_chan: make(chan error, 8), rl: readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ",
 	})}
@@ -571,6 +592,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	lp.OnKeyEvent = handler.OnKeyEvent
 	lp.OnText = handler.OnText
+	lp.OnMouseEvent = handler.OnMouseEvent
 	lp.OnWakeup = func() (err error) {
 		select {
 		case err = <-handler.err_chan:

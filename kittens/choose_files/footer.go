@@ -11,6 +11,12 @@ import (
 
 var _ = fmt.Print
 
+type single_line_region struct {
+	x, width, y int
+	id          string
+	callback    func(string) error
+}
+
 func (h *Handler) draw_footer() (num_lines int, err error) {
 	lines := []string{}
 	screen_width := h.screen_size.width
@@ -20,25 +26,40 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 		pos := 0
 		current_style := sctx.SprintFunc("italic fg=green intense")
 		non_current_style := sctx.SprintFunc("dim")
-		w := func(text string, sfunc func(...any) string) {
-			sz := wcswidth.Stringwidth(text)
+		var crs []single_line_region
+		w := func(presep, text string, sfunc func(...any) string, click_name string) {
+			sz := len(presep)
 			if sz+pos >= screen_width {
 				lines = append(lines, buf.String())
 				pos = 0
 				buf.Reset()
 			}
+			buf.WriteString(presep)
+			pos += sz
+			sz = wcswidth.Stringwidth(text)
 			if sfunc != nil {
 				text = sfunc(text)
 			}
 			buf.WriteString(text)
+			if click_name != "" {
+				crs = append(crs, single_line_region{x: pos, width: sz, y: len(lines), id: click_name, callback: func(filter string) error {
+					h.set_filter(filter)
+					h.state.redraw_needed = true
+					return nil
+				}})
+			}
 			pos += sz
 		}
-		w("󰈲 Filter:", nil)
+		w("", "󰈲 Filter:", nil, "")
 		for _, name := range h.state.filter_names {
-			w("  "+name, utils.IfElse(name == h.state.current_filter, current_style, non_current_style))
+			w("  ", name, utils.IfElse(name == h.state.current_filter, current_style, non_current_style), name)
 		}
 		if s := buf.String(); s != "" {
 			lines = append(lines, s)
+		}
+		offset := h.screen_size.height - len(lines)
+		for _, cr := range crs {
+			h.state.mouse_state.AddCellRegion(cr.id, cr.x, cr.y+offset, cr.x+cr.width, cr.y+offset, cr.callback)
 		}
 	}
 	if len(lines) > 0 {

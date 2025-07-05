@@ -205,10 +205,15 @@ func (ms *MouseSelection) DragScroll(ev *loop.MouseEvent, lp *loop.Loop, callbac
 	ms.drag_scroll.mouse_event = *ev
 }
 
+type Point struct {
+	X, Y int
+}
+
 type CellRegion struct {
-	TopLeft, BottomRight struct{ X, Y int }
+	TopLeft, BottomRight Point
 	Id                   string
 	OnClick              []func(id string) error
+	PointerShape         loop.PointerShape
 }
 
 func (c CellRegion) Contains(x, y int) bool { // 0-based
@@ -224,6 +229,7 @@ type MouseState struct {
 
 	regions           []*CellRegion
 	region_id_map     map[string][]*CellRegion
+	region_line_map   map[int][]*CellRegion
 	hovered_ids       *utils.Set[string]
 	default_url_style struct {
 		value  string
@@ -231,25 +237,35 @@ type MouseState struct {
 	}
 }
 
-func (m *MouseState) AddCellRegion(id string, start_x, start_y, end_x, end_y int, on_click ...func(id string) error) *CellRegion {
-	cr := CellRegion{TopLeft: struct{ X, Y int }{start_x, start_y}, BottomRight: struct{ X, Y int }{end_x, end_y}, Id: id, OnClick: on_click}
+func (m *MouseState) AddRegion(cr CellRegion) *CellRegion {
 	m.regions = append(m.regions, &cr)
 	if m.region_id_map == nil {
 		m.region_id_map = make(map[string][]*CellRegion)
+		m.region_line_map = make(map[int][]*CellRegion)
 	}
-	m.region_id_map[id] = append(m.region_id_map[id], &cr)
+	m.region_id_map[cr.Id] = append(m.region_id_map[cr.Id], &cr)
+	for y := cr.TopLeft.Y; y <= cr.BottomRight.Y; y++ {
+		m.region_line_map[y] = append(m.region_line_map[y], &cr)
+	}
 	return &cr
+}
+
+func (m *MouseState) AddCellRegion(id string, start_x, start_y, end_x, end_y int, on_click ...func(id string) error) *CellRegion {
+	cr := CellRegion{
+		TopLeft: Point{start_x, start_y}, BottomRight: Point{end_x, end_y}, Id: id, OnClick: on_click, PointerShape: loop.POINTER_POINTER}
+	return m.AddRegion(cr)
 }
 
 func (m *MouseState) ClearCellRegions() {
 	m.regions = nil
 	m.region_id_map = nil
 	m.hovered_ids = nil
+	m.region_line_map = nil
 }
 
 func (m *MouseState) UpdateHoveredIds() (changed bool) {
 	h := utils.NewSet[string]()
-	for _, r := range m.regions {
+	for _, r := range m.region_line_map[m.Cell.Y] {
 		if r.Contains(m.Cell.X, m.Cell.Y) {
 			h.Add(r.Id)
 		}
@@ -260,7 +276,8 @@ func (m *MouseState) UpdateHoveredIds() (changed bool) {
 }
 
 func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
-	if m.hovered_ids == nil {
+	if m.hovered_ids == nil || m.hovered_ids.Len() == 0 {
+		lp.ClearPointerShapes()
 		return
 	}
 	hs := ""
@@ -287,15 +304,17 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 		hs = style[0]
 	}
 	is_hovered := false
+	ps := loop.DEFAULT_POINTER
 	for id := range m.hovered_ids.Iterable() {
 		for _, r := range m.region_id_map[id] {
 			lp.StyleRegion(hs, r.TopLeft.X, r.TopLeft.Y, r.BottomRight.X, r.BottomRight.Y)
 			is_hovered = true
+			ps = r.PointerShape
 		}
 	}
 	if is_hovered {
-		if s, has := lp.CurrentPointerShape(); !has || s != loop.POINTER_POINTER {
-			lp.PushPointerShape(loop.POINTER_POINTER)
+		if s, has := lp.CurrentPointerShape(); !has || s != ps {
+			lp.PushPointerShape(ps)
 		}
 	} else {
 		lp.ClearPointerShapes()
