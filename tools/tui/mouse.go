@@ -210,10 +210,15 @@ type Point struct {
 	X, Y int
 }
 
+func (p Point) Sub(other Point) Point {
+	return Point{X: p.X - other.X, Y: p.Y - other.Y}
+}
+
 type CellRegion struct {
 	TopLeft, BottomRight Point
 	Id                   string
-	OnClick              []func(id string) error
+	OnClick              []func(id string) error                                       // simple left click ignoring modifiers
+	OnClickEvent         func(id string, ev *loop.MouseEvent, cell_offset Point) error // any click event
 	PointerShape         loop.PointerShape
 	HoverStyle           string // set to "default" for the global hover style
 }
@@ -226,7 +231,7 @@ func (c CellRegion) Contains(x, y int) bool { // 0-based
 }
 
 type MouseState struct {
-	Cell, Pixel struct{ X, Y int }
+	Cell, Pixel Point
 	Pressed     struct{ Left, Right, Middle, Fourth, Fifth, Sixth, Seventh bool }
 
 	regions           []*CellRegion
@@ -323,6 +328,35 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 	} else {
 		lp.ClearPointerShapes()
 	}
+}
+
+func (m *MouseState) DispatchEventToHoveredRegions(ev *loop.MouseEvent) error {
+	if ev.Event_type != loop.MOUSE_CLICK {
+		return nil
+	}
+	is_simple_click := ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0
+	seen := utils.NewSet[string]()
+	for id := range m.hovered_ids.Iterable() {
+		for _, r := range m.region_id_map[id] {
+			if seen.Has(r.Id) {
+				continue
+			}
+			seen.Add(r.Id)
+			if is_simple_click {
+				for _, f := range r.OnClick {
+					if err := f(r.Id); err != nil {
+						return err
+					}
+				}
+			}
+			if r.OnClickEvent != nil {
+				if err := r.OnClickEvent(r.Id, ev, m.Cell.Sub(r.TopLeft)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (m *MouseState) ClickHoveredRegions() error {

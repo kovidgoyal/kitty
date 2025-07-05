@@ -413,10 +413,8 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 
 func (h *Handler) OnMouseEvent(event *loop.MouseEvent) (err error) {
 	h.state.redraw_needed = h.state.mouse_state.UpdateState(event)
-	if event.Event_type == loop.MOUSE_CLICK && event.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
-		if err = h.state.mouse_state.ClickHoveredRegions(); err != nil {
-			return
-		}
+	if err = h.state.mouse_state.DispatchEventToHoveredRegions(event); err != nil {
+		return
 	}
 	if h.state.redraw_needed {
 		err = h.draw_screen()
