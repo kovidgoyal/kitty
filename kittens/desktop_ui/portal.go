@@ -677,13 +677,13 @@ func get_matching_filter(name string, all_filters []Filter) (dbus.Variant, bool)
 	return dbus.Variant{}, false
 }
 
-func (options vmap) get_bool(name string) (ans bool) {
+func (options vmap) get_bool(name string, defval bool) (ans bool) {
 	if v, found := options[name]; found {
 		if v.Store(&ans) == nil {
 			return
 		}
 	}
-	return false
+	return defval
 }
 
 func (self *Portal) Cleanup() {
@@ -871,8 +871,8 @@ func (options vmap) get_bytearray(name string) string {
 func (self *Portal) OpenFile(handle dbus.ObjectPath, app_id string, parent_window string, title string, options vmap) (uint32, vmap, *dbus.Error) {
 	cfd := ChooseFilesData{Title: title, Cwd: options.get_bytearray("current_folder"), Handle: handle}
 	cfd.set_filters(options)
-	dir_only := options.get_bool("directory")
-	multiple := options.get_bool("multiple")
+	dir_only := options.get_bool("directory", false)
+	multiple := options.get_bool("multiple", false)
 	if dir_only {
 		cfd.Mode = utils.IfElse(multiple, "dirs", "dir")
 	} else {
@@ -887,7 +887,7 @@ func (self *Portal) SaveFile(handle dbus.ObjectPath, app_id string, parent_windo
 		Title: title, Cwd: options.get_bytearray("current_folder"), Handle: handle,
 		SuggestedSaveFileName: options.get_bytearray("current_name"),
 		SuggestedSaveFilePath: options.get_bytearray("current_file")}
-	multiple := options.get_bool("multiple")
+	multiple := options.get_bool("multiple", false)
 	cfd.set_filters(options)
 	cfd.Mode = utils.IfElse(multiple, "save-files", "save-file")
 
