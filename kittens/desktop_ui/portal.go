@@ -856,7 +856,8 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 
 func (options vmap) get_bytearray(name string) string {
 	if v, found := options[name]; found {
-		if b, ok := v.Value().([]byte); ok {
+		var b []byte
+		if v.Store(&b) == nil {
 			// the FileChooser spec requires paths and filenames to be null
 			// terminated, so remove trailing nulls.
 			return string(bytes.TrimRight(b, "\x00"))
