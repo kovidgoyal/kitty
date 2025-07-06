@@ -419,12 +419,19 @@ Interfaces=%s;
 	if dbus_service_dir == "" {
 		return fmt.Errorf("Could not find any writable portals directories. Make sure XDG_DATA_HOME is set and point to a directory for which you have write permission.")
 	}
-	dbus_service_defn := filepath.Join(dbus_service_dir, PORTAL_BUS_NAME+".desktop")
+	dbus_service_defn := filepath.Join(dbus_service_dir, PORTAL_BUS_NAME+".service")
+	exe_path, eerr := os.Executable()
+	if eerr != nil {
+		exe_path = utils.Which("kitten")
+	}
+	if exe_path, err = filepath.Abs(exe_path); eerr != nil {
+		return fmt.Errorf("failed to get path to kitten executable with error: %w", err)
+	}
 	if err = os.WriteFile(dbus_service_defn, utils.UnsafeStringToBytes(fmt.Sprintf(
 		`[D-BUS Service]
 Name=%s
-Exec=kitten run-server
-`, PORTAL_BUS_NAME)), 0o644); err != nil {
+Exec=%s desktop-ui run-server
+`, PORTAL_BUS_NAME, exe_path)), 0o644); err != nil {
 		return err
 	}
 	fmt.Println("Wrote kitty DBUS activation service file to:", dbus_service_defn)
