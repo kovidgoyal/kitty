@@ -471,6 +471,7 @@ func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
 	h.state.filter_map = nil
 	h.state.current_filter = ""
 	if len(opts.FileFilter) > 0 {
+		opts.FileFilter = utils.Uniq(opts.FileFilter)
 		has_all_files := false
 		fmap := make(map[string][]Filter)
 		seen := utils.NewSet[string](len(opts.FileFilter))
@@ -509,7 +510,7 @@ func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
 var default_cwd string
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
-	write_output := func(selections []string, interrupted bool) {
+	write_output := func(selections []string, interrupted bool, current_filter string) {
 		payload := make(map[string]any)
 		if err != nil {
 			if opts.WriteOutputTo != "" {
@@ -538,6 +539,9 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		if opts.WriteOutputTo != "" {
 			if opts.OutputFormat == "json" {
 				payload["paths"] = selections
+				if current_filter != "" {
+					payload["current_filter"] = current_filter
+				}
 				b, _ := json.MarshalIndent(payload, "", "  ")
 				m = string(b)
 			}
@@ -603,22 +607,22 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	err = lp.Run()
 	if err != nil {
-		write_output(nil, false)
+		write_output(nil, false, "")
 		return 1, err
 	}
 	ds := lp.DeathSignalName()
 	if ds != "" {
 		fmt.Println("Killed by signal: ", ds)
 		lp.KillIfSignalled()
-		write_output(nil, true)
+		write_output(nil, true, "")
 		return 1, nil
 	}
 	rc = lp.ExitCode()
 	switch rc {
 	case 0:
-		write_output(handler.state.selections, false)
+		write_output(handler.state.selections, false, handler.state.current_filter)
 	default:
-		write_output(nil, true)
+		write_output(nil, true, "")
 	}
 	return
 }

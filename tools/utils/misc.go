@@ -158,6 +158,18 @@ func StableSort[T any](s []T, cmp func(a, b T) int) []T {
 	return s
 }
 
+func Uniq[T comparable](s []T) []T {
+	seen := NewSet[T](len(s))
+	ans := make([]T, 0, len(s))
+	for _, x := range s {
+		if !seen.Has(x) {
+			seen.Add(x)
+			ans = append(ans, x)
+		}
+	}
+	return ans
+}
+
 func sort_with_key[T any, C constraints.Ordered](stable bool, s []T, key func(a T) C) []T {
 	type t struct {
 		key C

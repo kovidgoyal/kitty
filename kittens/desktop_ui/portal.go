@@ -630,12 +630,51 @@ func (self *Portal) ReadAll(namespaces []string) (ReadAllType, *dbus.Error) {
 }
 
 type vmap map[string]dbus.Variant
+type Filter_expression struct {
+	Ftype uint32
+	Val   string
+}
+type Filter struct {
+	Name        string
+	Expressions []Filter_expression
+}
+
+func (f Filter) Equal(o Filter) bool {
+	return f.Name == o.Name && slices.Equal(f.Expressions, o.Expressions)
+}
+
 type ChooseFilesData struct {
 	Title                                        string
 	Mode                                         string
 	Cwd                                          string
 	SuggestedSaveFileName, SuggestedSaveFilePath string
 	Handle                                       dbus.ObjectPath
+	Filters                                      []Filter
+}
+
+func (c *ChooseFilesData) set_filters(options vmap) {
+	if v, found := options["filters"]; found {
+		v.Store(&c.Filters)
+	}
+	if v, found := options["current_filter"]; found {
+		var x Filter
+		if err := v.Store(&x); err == nil {
+			idx := slices.IndexFunc(c.Filters, func(q Filter) bool { return x.Equal(q) })
+			if idx > -1 {
+				c.Filters = slices.Delete(c.Filters, idx, idx+1)
+			}
+			c.Filters = slices.Insert(c.Filters, 0, x)
+		}
+	}
+}
+
+func get_matching_filter(name string, all_filters []Filter) (dbus.Variant, bool) {
+	for _, x := range all_filters {
+		if x.Name == name {
+			return dbus.MakeVariant(x), true
+		}
+	}
+	return dbus.Variant{}, false
 }
 
 func var_to_bool_or_false(v dbus.Variant) bool {
@@ -666,9 +705,10 @@ func (self *Portal) Cleanup() {
 }
 
 type ChooserResponse struct {
-	Paths       []string `json:"paths"`
-	Error       string   `json:"error"`
-	Interrupted bool     `json:"interrupted"`
+	Paths          []string `json:"paths"`
+	Error          string   `json:"error"`
+	Interrupted    bool     `json:"interrupted"`
+	Current_filter string   `json:"current_filter"`
 }
 
 func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, result_dict vmap) {
@@ -753,6 +793,11 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		if cfd.Title != "" {
 			args = append(args, "--title", cfd.Title)
 		}
+		for _, fs := range cfd.Filters {
+			for _, exp := range fs.Expressions {
+				args = append(args, "--file-filter", fmt.Sprintf("%s:%s:%s", utils.IfElse(exp.Ftype == 0, "glob", "mime"), exp.Val, fs.Name))
+			}
+		}
 		args = append(args, "--write-pid-to", pid_path)
 		args = append(args, utils.IfElse(cfd.Cwd == "", "~", cfd.Cwd))
 		cmd := exec.Command(utils.KittyExe(), args...)
@@ -801,6 +846,11 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		return prefix + u.EscapedPath()
 	}, result.Paths)
 	result_dict = vmap{"uris": dbus.MakeVariant(uris)}
+	if result.Current_filter != "" {
+		if v, found := get_matching_filter(result.Current_filter, cfd.Filters); found {
+			result_dict["current_filter"] = v
+		}
+	}
 	return
 }
 
@@ -817,6 +867,7 @@ func (options vmap) get_bytearray(name string) string {
 
 func (self *Portal) OpenFile(handle dbus.ObjectPath, app_id string, parent_window string, title string, options vmap) (uint32, vmap, *dbus.Error) {
 	cfd := ChooseFilesData{Title: title, Cwd: options.get_bytearray("current_folder"), Handle: handle}
+	cfd.set_filters(options)
 	dir_only := false
 	if v, found := options["directory"]; found && var_to_bool_or_false(v) {
 		dir_only = true
@@ -840,6 +891,7 @@ func (self *Portal) SaveFile(handle dbus.ObjectPath, app_id string, parent_windo
 		SuggestedSaveFileName: options.get_bytearray("current_name"),
 		SuggestedSaveFilePath: options.get_bytearray("current_file")}
 	multiple := false
+	cfd.set_filters(options)
 	if v, found := options["multiple"]; found && var_to_bool_or_false(v) {
 		multiple = true
 	}
