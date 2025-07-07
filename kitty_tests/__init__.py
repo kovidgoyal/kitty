@@ -24,7 +24,7 @@ from kitty.options.types import Options, defaults
 from kitty.rgb import to_color
 from kitty.types import MouseEvent
 from kitty.utils import read_screen_size
-from kitty.window import decode_cmdline, process_remote_print, process_title_from_child
+from kitty.window import da1, decode_cmdline, process_remote_print, process_title_from_child
 
 
 def parse_bytes(screen, data, dump_callback=None):
@@ -132,9 +132,13 @@ class Callbacks:
         self.last_cmd_cmdline = ''
         self.last_cmd_at = 0
         self.num_of_resize_events = 0
+        self.da1 = []
 
     def on_bell(self) -> None:
         self.bell_count += 1
+
+    def on_da1(self) -> None:
+        self.da1.append(da1(get_options()))
 
     def on_activity_since_last_focus(self) -> None:
         pass

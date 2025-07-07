@@ -407,6 +407,15 @@ class TestScreen(BaseTest):
         parse_bytes(s, b'\x1b[?2048h')  # ]
         self.ae(c.num_of_resize_events, 2)
 
+    def test_da1(self):
+        s = self.create_screen()
+        parse_bytes(s, b'\x1b[c\x1b[0c')  # ]]
+        self.ae(s.callbacks.da1, ['?62;52;c', '?62;52;c'])  # ]]
+        s.callbacks.clear()
+        self.create_screen(options={'clipboard_control': 'read-clipboard'})
+        parse_bytes(s, b'\x1b[c')  # ]]
+        self.ae(s.callbacks.da1, ['?62;c'])  # ]]
+
     def test_cursor_after_resize(self):
 
         def draw(text, end_line=True):

@@ -88,6 +88,7 @@ from .fast_data_types import (
     wakeup_main_loop,
 )
 from .keys import keyboard_mode_name, mod_mask
+from .options.types import Options
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
@@ -542,6 +543,14 @@ def color_control(cp: ColorProfile, code: int, value: str | bytes | memoryview =
         payload = ';'.join(f'{k}={v}' for k, v in responses.items())
         return f'{code};{payload}'
     return ''
+
+
+def da1(opts: Options) -> str:
+    ans = '?62;'
+    if 'write-clipboard' in opts.clipboard_control:
+        # see https://github.com/contour-terminal/vt-extensions/blob/master/clipboard-extension.md
+        ans += '52;'
+    return ans + 'c'
 
 
 class EdgeWidths:
@@ -1278,6 +1287,9 @@ class Window:
             get_boss().on_activity_since_last_focus(self)
             return True
         return False
+
+    def on_da1(self) -> None:
+        self.screen.send_escape_code_to_child(ESC_CSI, da1(get_options()))
 
     def on_bell(self) -> None:
         cb = get_options().command_on_bell

@@ -2647,7 +2647,7 @@ report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
     if (mode == 0) {
         switch(start_modifier) {
             case 0:
-                write_escape_code_to_child(self, ESC_CSI, "?62;c");
+                CALLBACK("on_da1", NULL);
                 break;
             case '>':
                 write_escape_code_to_child(self, ESC_CSI, ">1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c");  // VT-220 + primary version + secondary version
