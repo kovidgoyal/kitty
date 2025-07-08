@@ -98,4 +98,48 @@ func TestGitignore(t *testing.T) {
 			}
 		}
 	}
+	for text, tests := range map[string]map[string]bool{
+		``: {"foo": false},
+		`
+# exclude everything except directory foo/bar
+/*
+!/foo
+/foo/*
+!/foo/bar`: {
+			"a": true, "foo": false, "foo/x": true, "foo/bar": false, "foo/bar/": false,
+		},
+		`
+**/foo
+bar `: {
+			"foo": true, "baz/foo": true, "bar": true, "baz/bar": true, "a": false,
+		},
+		`/*.c`: {"a.c": true, "b/a.c": false},
+		`
+**/external/**/*.json
+**/external/**/.*ignore
+**/external/foobar/*.css`: {
+			"external/foobar/angular.foo.css": true, "external/barfoo/.gitignore": true, "external/barfoo/.bower.json": true,
+		},
+		"abc/def\r\nxyz": {"abc/def": true, "a/xyz": true},
+		`/**/foo`:        {"foo": true, "foo/": true, "a/b/foo": true, "fooo": false, "ofoo": false},
+		"/.js":           {".js": true, ".js/": true, ".js/a": true, ".jsa": false},
+		"*.js":           {".js": true, ".js/": true, ".js/a": true, "a.js/a": true, "a.js/a.js": true, ".jsa": false, "a.jsa": false},
+		"foo/**/":        {"foo/": false, "foo": false, "foo/abc/": true, "foo/a/b/c/": true, "foo/a": false},
+		"foo/**/*.bar":   {"foo/": false, "abc.bar": false, "foo/abc.bar": true, "foo/a.bar/": true, "foo/x/y/z.bar": true},
+		`\#abc`:          {"abc": false, "#abc": true},
+		"abc\n!abc/x":    {"abc": true, "abc/x": false, "abc/y": true},
+		`abc/*`:          {"abc": false, "abc/": false, "abc/x": true},
+	} {
+		p := NewGitignore()
+		if err := p.LoadString(text); err != nil {
+			t.Fatal(err)
+		}
+		for tpath, expected := range tests {
+			path := strings.TrimRight(tpath, "/")
+			ftype := utils.IfElse(len(path) < len(tpath), fs.ModeDir, 0)
+			if actual, _, _ := p.IsIgnored(path, ftype); actual != expected {
+				t.Fatalf("ignored: %v != %v for path: %#v and ignorefile:\n%s", expected, actual, tpath, text)
+			}
+		}
+	}
 }

@@ -2,28 +2,111 @@ package ignorefiles
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
 
 type GitPattern struct {
-	only_dirs bool
-	negated   bool
-	parts     []string
-	matcher   func(path string) bool
+	line_number int
+	only_dirs   bool
+	negated     bool
+	pattern     string
+	parts       []string
+	matcher     func(path string) bool
+}
+
+type Gitignore struct {
+	patterns                   []GitPattern
+	index_of_last_negated_rule int
+	line_number_offset         int
+}
+
+func (g Gitignore) IsIgnored(relpath string, ftype os.FileMode) (is_ignored bool, linenum_of_matching_rule int, pattern string) {
+	if os.PathSeparator != '/' {
+		relpath = strings.ReplaceAll(relpath, string(os.PathSeparator), "/")
+	}
+	linenum_of_matching_rule = -1
+	for i, pat := range g.patterns {
+		if is_ignored {
+			if i > g.index_of_last_negated_rule {
+				break
+			}
+			if pat.negated && pat.Match(relpath, ftype) {
+				is_ignored = false
+				linenum_of_matching_rule = -1
+				pattern = ""
+			}
+		} else {
+			if !pat.negated && pat.Match(relpath, ftype) {
+				is_ignored = true
+				linenum_of_matching_rule = pat.line_number
+				pattern = pat.pattern
+			}
+		}
+	}
+	return
+}
+
+func (g *Gitignore) load_line(line string, line_number int) {
+	if p, skipped_line := CompileGitIgnoreLine(line); !skipped_line {
+		p.line_number = g.line_number_offset + line_number
+		g.patterns = append(g.patterns, p)
+		if p.negated {
+			g.index_of_last_negated_rule = len(g.patterns) - 1
+		}
+	}
+}
+
+func (g *Gitignore) LoadLines(lines ...string) error {
+	for i, line := range lines {
+		g.load_line(line, i)
+	}
+	g.line_number_offset += len(lines)
+	return nil
+}
+
+func (g *Gitignore) LoadString(text string) error {
+	s := utils.NewLineScanner(text)
+	lnum := 0
+	for s.Scan() {
+		g.load_line(s.Text(), lnum)
+		lnum++
+	}
+	g.line_number_offset += lnum
+	return nil
+}
+
+func (g *Gitignore) LoadBytes(text []byte) error {
+	return g.LoadString(string(text))
+}
+
+func (g *Gitignore) LoadPath(path string) error {
+	if data, err := os.ReadFile(path); err == nil {
+		return g.LoadString(utils.UnsafeBytesToString(data))
+	} else {
+		return err
+	}
+}
+
+func (g *Gitignore) LoadFile(f io.Reader) error {
+	if data, err := io.ReadAll(f); err == nil {
+		return g.LoadString(utils.UnsafeBytesToString(data))
+	} else {
+		return err
+	}
 }
 
 func (p GitPattern) Match(path string, ftype fs.FileMode) bool {
 	if p.only_dirs && ftype&fs.ModeDir == 0 {
 		return false
-	}
-	if os.PathSeparator != '/' {
-		path = strings.ReplaceAll(path, string(os.PathSeparator), "/")
 	}
 	return p.matcher(path)
 }
@@ -122,6 +205,7 @@ func CompileGitIgnoreLine(line string) (ans GitPattern, skipped_line bool) {
 		skipped_line = true
 		return
 	}
+	ans.pattern = line
 
 	// Handle negated (accept) patterns
 	if line[0] == '!' {
