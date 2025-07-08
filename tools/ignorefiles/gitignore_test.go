@@ -65,6 +65,26 @@ func TestGitignore(t *testing.T) {
 		{"foo.*", []ptest{
 			{"foo.txt", true}, {"foo", false}, {"a/foo.x", true}, {"foo.", true},
 		}},
+
+		{"**", []ptest{
+			{"foo", true}, {"x/foo", true}, {"foo/x", true},
+		}},
+
+		{"**/foo", []ptest{
+			{"foo", true}, {"x/foo", true}, {"foo/x", false},
+		}},
+		{"**/foo/bar", []ptest{
+			{"foo", false}, {"x/foo", false}, {"foo/bar", true}, {"a/foo/bar", true}, {"foo/bar/a", false},
+		}},
+		{"foo/**", []ptest{
+			{"foo", false}, {"x/foo", false}, {"foo/bar", true}, {"foo/bar/a", true}, {"foo/bar/a/", true},
+		}},
+		{"a/**/b", []ptest{
+			{"a/b", true}, {"a/x/b", true}, {"a/x/y/b", true}, {"x/a/b", false}, {"a/b/x", false},
+		}},
+		{"a/**/b/**/c", []ptest{
+			{"a/b/c", true}, {"a/x/b/c", true}, {"a/x/y/b/m/n/c", true},
+		}},
 	} {
 		p, skipped := CompileGitIgnoreLine(x.line)
 		if skipped {

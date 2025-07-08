@@ -65,7 +65,7 @@ func anchored_full_match(path string, parts []string) bool {
 	for pos <= last && path != "" {
 		var name string
 		name, path, _ = strings.Cut(path, "/")
-		switch name {
+		switch parts[pos] {
 		case "**":
 			for pos+1 < len(parts) && parts[pos+1] == "**" {
 				pos++
@@ -73,6 +73,7 @@ func anchored_full_match(path string, parts []string) bool {
 			if pos == last {
 				return true
 			}
+			pos++
 			for {
 				matches, err := filepath.Match(parts[pos], name)
 				if err != nil {
