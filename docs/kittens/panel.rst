@@ -154,6 +154,10 @@ Compatibility with various platforms
            Renders its configured background over the background window instead of
            under it. This is because it uses the wlr protocol for backgrounds itself.
 
+        🟠 **river**
+           Not all functionality has been tested, but the quick access terminal
+           appears as it should and the keyboard focus is properly restored too.
+
         🟠 **niri**
            Hiding a dock panel (unmapping the window) does not release the space used
            by the dock.
