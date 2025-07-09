@@ -272,9 +272,9 @@ func (fss *FileSystemScanner) worker() {
 			ignore_files = append(ignore_files, ignore_file_with_prefix{impl: impl})
 		}
 		add_ignore_file := func(name string) {
-			if data, rerr := fss.file_reader(dir + string(os.PathSeparator) + name); rerr == nil {
+			if data, rerr := fss.file_reader(dir + name); rerr == nil {
 				impl := ignorefiles.NewGitignore()
-				if rerr = impl.LoadString(utils.UnsafeBytesToString(data)); rerr == nil {
+				if rerr = impl.LoadString(utils.UnsafeBytesToString(data)); rerr == nil && impl.Len() > 0 {
 					add_ignore_file_from_impl(impl)
 				}
 			}
@@ -295,7 +295,7 @@ func (fss *FileSystemScanner) worker() {
 			if !is_dir {
 				switch name {
 				case ".ignore":
-					has_git_ignore = false
+					has_dot_ignore = true
 				case ".gitignore":
 					has_git_ignore = true
 				}

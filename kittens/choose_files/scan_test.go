@@ -96,7 +96,7 @@ func (n node) ReadFile(name string) ([]byte, error) {
 	p := &n
 	for _, x := range strings.Split(strings.Trim(name, string(os.PathSeparator)), string(os.PathSeparator)) {
 		c, found := p.children[x]
-		if !found || c.IsDir() {
+		if !found {
 			return nil, fs.ErrNotExist
 		}
 		p = c
@@ -124,10 +124,11 @@ func (n node) ReadDir(name string) ([]fs.DirEntry, error) {
 
 func TestChooseFilesIgnore(t *testing.T) {
 	root := node{name: string(os.PathSeparator), children: map[string]*node{
-		"b":       {name: "b"},
-		"a":       {name: "a"},
-		"c.png":   {name: "c.png"},
-		".ignore": {name: ".ignore", data: "a\nx/s/n"},
+		"a":          {name: "a"},
+		"b":          {name: "b"},
+		"c.png":      {name: "c.png"},
+		".ignore":    {name: ".ignore", data: "a\nx/s/n"},
+		".gitignore": {name: ".gitignore", data: "b"},
 		"x": {name: "x", children: map[string]*node{
 			"1": {name: "1"}, "2": {name: "2"}, "3": {name: "3"},
 			"s": {name: "s", children: map[string]*node{
@@ -136,9 +137,36 @@ func TestChooseFilesIgnore(t *testing.T) {
 		}},
 		"y": {name: "y", children: map[string]*node{
 			"3": {name: "3"}, "4": {name: "4"}, "5": {name: "5"},
+			"s": {name: "s", children: map[string]*node{
+				"3": {name: "3"}, "4": {name: "4"}, "5": {name: "5"}, "6": {name: "6"},
+			}},
+			".gitignore": {name: ".gitignore", data: "/s/5"},
+			".git": {name: ".git", children: map[string]*node{
+				"info": {name: "info", children: map[string]*node{
+					"exclude": {name: "exclude", data: "s/4"},
+				}},
+			}},
 		}},
 	}}
-	_ = root
+	ch := make(chan bool)
+	s := new_filesystem_scanner("/", ch, nil)
+	s.dir_reader = root.ReadDir
+	s.file_reader = root.ReadFile
+	s.global_gitignore = ignorefiles.NewGitignore()
+	if err := s.global_gitignore.LoadLines("*.png", "s/3"); err != nil {
+		t.Fatal(err)
+	}
+	s.Start()
+	for range ch {
+	}
+	if s.err != nil {
+		t.Fatal(s.err)
+	}
+	ci := CollectionIndex{}
+	actual := utils.Map(func(x ResultItem) string { return x.text }, s.Batch(&ci))
+	if diff := cmp.Diff(strings.Split(`x y .gitignore .ignore b c.png x/s x/1 x/2 x/3 y/.git y/s y/.gitignore y/3 y/4 y/5 x/s/m y/.git/info y/s/6 y/.git/info/exclude`, ` `), actual); diff != "" {
+		t.Fatalf("Incorrect ignoring:\n%s", diff)
+	}
 }
 
 func TestChooseFilesScoring(t *testing.T) {
