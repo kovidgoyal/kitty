@@ -148,25 +148,30 @@ func TestChooseFilesIgnore(t *testing.T) {
 			}},
 		}},
 	}}
-	ch := make(chan bool)
-	s := new_filesystem_scanner("/", ch, nil)
-	s.dir_reader = root.ReadDir
-	s.file_reader = root.ReadFile
-	s.global_gitignore = ignorefiles.NewGitignore()
-	if err := s.global_gitignore.LoadLines("*.png", "s/3"); err != nil {
-		t.Fatal(err)
+	r := func(respect_ignores bool, expected string) {
+		ch := make(chan bool)
+		s := new_filesystem_scanner("/", ch, nil)
+		s.dir_reader = root.ReadDir
+		s.file_reader = root.ReadFile
+		s.global_gitignore = ignorefiles.NewGitignore()
+		s.respect_ignores = respect_ignores
+		if err := s.global_gitignore.LoadLines("*.png", "s/3"); err != nil {
+			t.Fatal(err)
+		}
+		s.Start()
+		for range ch {
+		}
+		if s.err != nil {
+			t.Fatal(s.err)
+		}
+		ci := CollectionIndex{}
+		actual := utils.Map(func(x ResultItem) string { return x.text }, s.Batch(&ci))
+		if diff := cmp.Diff(strings.Split(expected, ` `), actual); diff != "" {
+			t.Fatalf("Incorrect ignoring:\n%s", diff)
+		}
 	}
-	s.Start()
-	for range ch {
-	}
-	if s.err != nil {
-		t.Fatal(s.err)
-	}
-	ci := CollectionIndex{}
-	actual := utils.Map(func(x ResultItem) string { return x.text }, s.Batch(&ci))
-	if diff := cmp.Diff(strings.Split(`x y .gitignore .ignore b c.png x/s x/1 x/2 x/3 y/.git y/s y/.gitignore y/3 y/4 y/5 x/s/m y/.git/info y/s/6 y/.git/info/exclude`, ` `), actual); diff != "" {
-		t.Fatalf("Incorrect ignoring:\n%s", diff)
-	}
+	r(true, `x y b c.png x/s x/1 x/2 x/3 y/s y/3 y/4 y/5 x/s/m y/s/6`)
+	r(false, `x y a b c.png x/s x/1 x/2 x/3 y/s y/3 y/4 y/5 x/s/m x/s/n y/s/3 y/s/4 y/s/5 y/s/6`)
 }
 
 func TestChooseFilesScoring(t *testing.T) {

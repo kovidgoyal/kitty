@@ -70,16 +70,18 @@ func (r *ResultItem) sorted_positions() []int {
 }
 
 type FileSystemScanner struct {
-	listeners               []chan bool
-	in_progress, keep_going atomic.Bool
-	root_dir                string
-	mutex                   sync.Mutex
-	collection              *ResultCollection
-	dir_reader              func(path string) ([]fs.DirEntry, error)
-	file_reader             func(path string) ([]byte, error)
-	filter_func             func(filename string) bool
-	global_gitignore        ignorefiles.IgnoreFile
-	err                     error
+	listeners                    []chan bool
+	in_progress, keep_going      atomic.Bool
+	root_dir                     string
+	mutex                        sync.Mutex
+	collection                   *ResultCollection
+	dir_reader                   func(path string) ([]fs.DirEntry, error)
+	file_reader                  func(path string) ([]byte, error)
+	filter_func                  func(filename string) bool
+	global_gitignore             ignorefiles.IgnoreFile
+	respect_ignores, show_hidden bool
+
+	err error
 }
 
 func new_filesystem_scanner(root_dir string, notify chan bool, filter_func func(string) bool) (fss *FileSystemScanner) {
@@ -90,6 +92,8 @@ func new_filesystem_scanner(root_dir string, notify chan bool, filter_func func(
 	ans.file_reader = os.ReadFile
 	ans.filter_func = utils.IfElse(filter_func == nil, accept_all, filter_func)
 	ans.global_gitignore = ignorefiles.NewGitignore()
+	ans.respect_ignores = true
+	ans.show_hidden = false
 	return ans
 }
 
@@ -307,6 +311,9 @@ func (fss *FileSystemScanner) worker() {
 					has_dot_git = true
 				}
 			}
+			if !fss.show_hidden && name[0] == '.' {
+				continue
+			}
 			arena[i].name = name
 			if ftype&fs.ModeSymlink != 0 {
 				if st, serr := os.Stat(dir + arena[i].name); serr == nil && st.IsDir() {
@@ -323,17 +330,19 @@ func (fss *FileSystemScanner) worker() {
 			arena[i].sort_key = arena[i].buf[:1+n]
 			sortable = append(sortable, &arena[i])
 		}
-		if has_dot_git {
-			if fss.global_gitignore.Len() > 0 {
-				add_ignore_file_from_impl(fss.global_gitignore)
+		if fss.respect_ignores {
+			if has_dot_git {
+				if fss.global_gitignore.Len() > 0 {
+					add_ignore_file_from_impl(fss.global_gitignore)
+				}
+				add_ignore_file(filepath.Join(dot_git, "info", "exclude"))
+				if has_git_ignore {
+					add_ignore_file(".gitignore")
+				}
 			}
-			add_ignore_file(filepath.Join(dot_git, "info", "exclude"))
-			if has_git_ignore {
-				add_ignore_file(".gitignore")
+			if has_dot_ignore {
+				add_ignore_file(".ignore")
 			}
-		}
-		if has_dot_ignore {
-			add_ignore_file(".ignore")
 		}
 		final_entries := sortable
 		if len(ignore_files) > 0 {
@@ -381,25 +390,26 @@ func (fss *FileSystemScanner) worker() {
 }
 
 type FileSystemScorer struct {
-	scanner                 Scanner
-	keep_going, is_complete atomic.Bool
-	root_dir, query         string
-	filter                  Filter
-	only_dirs               bool
-	mutex                   sync.Mutex
-	sorted_results          *SortedResults
-	on_results              func(error, bool)
-	current_worker_wait     *sync.WaitGroup
-	scorer                  *fzf.FuzzyMatcher
-	dir_reader              func(path string) ([]fs.DirEntry, error)
-	file_reader             func(path string) ([]byte, error)
-	global_gitignore        ignorefiles.IgnoreFile
+	scanner                      Scanner
+	keep_going, is_complete      atomic.Bool
+	root_dir, query              string
+	filter                       Filter
+	only_dirs                    bool
+	mutex                        sync.Mutex
+	sorted_results               *SortedResults
+	on_results                   func(error, bool)
+	current_worker_wait          *sync.WaitGroup
+	scorer                       *fzf.FuzzyMatcher
+	dir_reader                   func(path string) ([]fs.DirEntry, error)
+	file_reader                  func(path string) ([]byte, error)
+	global_gitignore             ignorefiles.IgnoreFile
+	respect_ignores, show_hidden bool
 }
 
 func NewFileSystemScorer(root_dir, query string, filter Filter, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
 	return &FileSystemScorer{
 		query: query, root_dir: root_dir, only_dirs: only_dirs, filter: filter, on_results: on_results,
-		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME), sorted_results: NewSortedResults(),
+		scorer: fzf.NewFuzzyMatcher(fzf.PATH_SCHEME), sorted_results: NewSortedResults(), respect_ignores: true,
 	}
 }
 
@@ -423,6 +433,7 @@ func (fss *FileSystemScorer) Start() {
 		} else {
 			sc.global_gitignore = ignorefiles.GlobalGitignore()
 		}
+		sc.show_hidden, sc.respect_ignores = fss.show_hidden, fss.respect_ignores
 		fss.scanner = sc
 		fss.scanner.Start()
 	} else {
