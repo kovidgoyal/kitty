@@ -1278,6 +1278,7 @@ layer_shell_config_to_python(const GLFWLayerShellConfig *c) {
     A(requested_bottom_margin, fl);
     A(requested_right_margin, fl);
     A(requested_exclusive_zone, fl);
+    A(hide_on_focus_loss, b)
     A(override_exclusive_zone, b);
 #undef A
 #undef fl
