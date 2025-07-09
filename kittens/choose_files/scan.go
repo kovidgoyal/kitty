@@ -82,14 +82,14 @@ type FileSystemScanner struct {
 	err                     error
 }
 
-func NewFileSystemScanner(root_dir string, notify chan bool, filter_func func(string) bool) (fss *FileSystemScanner) {
+func new_filesystem_scanner(root_dir string, notify chan bool, filter_func func(string) bool) (fss *FileSystemScanner) {
 	ans := &FileSystemScanner{root_dir: root_dir, listeners: []chan bool{notify}, collection: NewResultCollection(4096)}
 	ans.in_progress.Store(true)
 	ans.keep_going.Store(true)
 	ans.dir_reader = os.ReadDir
 	ans.file_reader = os.ReadFile
 	ans.filter_func = utils.IfElse(filter_func == nil, accept_all, filter_func)
-	ans.global_gitignore = ignorefiles.GlobalGitignore()
+	ans.global_gitignore = ignorefiles.NewGitignore()
 	return ans
 }
 
@@ -324,7 +324,7 @@ func (fss *FileSystemScanner) worker() {
 			sortable = append(sortable, &arena[i])
 		}
 		if has_dot_git {
-			if fss.global_gitignore != nil {
+			if fss.global_gitignore.Len() > 0 {
 				add_ignore_file_from_impl(fss.global_gitignore)
 			}
 			add_ignore_file(filepath.Join(dot_git, "info", "exclude"))
@@ -392,6 +392,8 @@ type FileSystemScorer struct {
 	current_worker_wait     *sync.WaitGroup
 	scorer                  *fzf.FuzzyMatcher
 	dir_reader              func(path string) ([]fs.DirEntry, error)
+	file_reader             func(path string) ([]byte, error)
+	global_gitignore        ignorefiles.IgnoreFile
 }
 
 func NewFileSystemScorer(root_dir, query string, filter Filter, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
@@ -409,9 +411,17 @@ func (fss *FileSystemScorer) Start() {
 	fss.is_complete.Store(false)
 	fss.keep_going.Store(true)
 	if fss.scanner == nil {
-		sc := NewFileSystemScanner(fss.root_dir, on_results, fss.filter.Match)
+		sc := new_filesystem_scanner(fss.root_dir, on_results, fss.filter.Match)
 		if fss.dir_reader != nil {
 			sc.dir_reader = fss.dir_reader
+		}
+		if fss.file_reader != nil {
+			sc.file_reader = fss.file_reader
+		}
+		if fss.global_gitignore != nil {
+			sc.global_gitignore = fss.global_gitignore
+		} else {
+			sc.global_gitignore = ignorefiles.GlobalGitignore()
 		}
 		fss.scanner = sc
 		fss.scanner.Start()

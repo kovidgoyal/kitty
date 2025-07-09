@@ -29,6 +29,8 @@ type Gitignore struct {
 	line_number_offset         int
 }
 
+func (g Gitignore) Len() int { return len(g.patterns) }
+
 func (g Gitignore) IsIgnored(relpath string, ftype os.FileMode) (is_ignored bool, linenum_of_matching_rule int, pattern string) {
 	if os.PathSeparator != '/' {
 		relpath = strings.ReplaceAll(relpath, string(os.PathSeparator), "/")

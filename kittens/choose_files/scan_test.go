@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kovidgoyal/kitty/tools/ignorefiles"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
@@ -163,6 +164,7 @@ func TestChooseFilesScoring(t *testing.T) {
 		}
 	})
 	s.dir_reader = root.ReadDir
+	s.global_gitignore = ignorefiles.NewGitignore()
 	s.Start()
 	wg.Wait()
 	results := func() (ans []string) {
@@ -309,6 +311,7 @@ func run_scoring(b *testing.B, depth, breadth int, query string) {
 			}
 		})
 		s.dir_reader = root.ReadDir
+		s.global_gitignore = ignorefiles.NewGitignore()
 		b.StartTimer()
 		s.scanner.Start()
 		s.Start()

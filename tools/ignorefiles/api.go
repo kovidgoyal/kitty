@@ -10,6 +10,7 @@ import (
 var _ = fmt.Print
 
 type IgnoreFile interface {
+	Len() int // number of rules
 	LoadString(string) error
 	LoadBytes([]byte) error
 	LoadLines(...string) error
