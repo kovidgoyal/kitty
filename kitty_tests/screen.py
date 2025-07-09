@@ -947,6 +947,13 @@ class TestScreen(BaseTest):
         def set_link(url=None, id=None):
             parse_bytes(s, '\x1b]8;id={};{}\x1b\\'.format(id or '', url or '').encode('utf-8'))
 
+        set_link('wide-chars', 'XX')
+        self.ae(s.line(0).hyperlink_ids(), tuple(0 for x in range(s.columns)))
+        s.draw('状')
+        self.ae(s.line(0).hyperlink_ids(), (1, 1) + tuple(0 for x in range(s.columns - 2)))
+        set_link()
+
+        s = self.create_screen()
         set_link('url-a', 'a')
         self.ae(s.line(0).hyperlink_ids(), tuple(0 for x in range(s.columns)))
         s.draw('a')
