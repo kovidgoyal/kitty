@@ -3,6 +3,7 @@ package ignorefiles
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 
@@ -141,5 +142,20 @@ bar `: {
 				t.Fatalf("ignored: %v != %v for path: %#v and ignorefile:\n%s", expected, actual, tpath, text)
 			}
 		}
+	}
+	os.WriteFile(utils.Expanduser("~/.gitconfig"), []byte(`
+	[core]
+	something
+	[else]
+	...
+	[core]
+	...
+	[core]
+	excludesfile = one
+	[core]
+	excludesfile = ~/global-gitignore
+`), 0600)
+	if ef := get_global_gitconfig_excludesfile(); ef != utils.Expanduser("~/global-gitignore") {
+		t.Fatalf("global gitconfig excludes file incorrect: %s != %s", utils.Expanduser("~/global-gitignore"), ef)
 	}
 }

@@ -273,11 +273,17 @@ func get_global_gitconfig_excludesfile() (ans string) {
 				line := strings.TrimSpace(s.Text())
 				if in_core {
 					if strings.HasPrefix(line, "[") {
-						in_core = false
+						in_core = line == "[core]"
 						continue
 					}
 					if k, rest, found := strings.Cut(line, "="); found && strings.ToLower(strings.TrimSpace(k)) == `excludesfile` {
 						ans = strings.TrimSpace(rest)
+						ans = utils.Expanduser(ans)
+						if !filepath.IsAbs(ans) {
+							if a, err := filepath.Abs(ans); err != nil {
+								ans = a
+							}
+						}
 					}
 				} else if strings.ToLower(line) == "[core]" {
 					in_core = true
