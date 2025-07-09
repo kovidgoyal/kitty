@@ -12,7 +12,7 @@ import unittest
 from collections.abc import Callable, Generator, Iterator, Sequence
 from contextlib import contextmanager
 from functools import lru_cache
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, mkdtemp
 from threading import Thread
 from typing import (
     Any,
@@ -150,6 +150,16 @@ class GoProc(Thread):
         env['KITTY_PATH_TO_KITTY_EXE'] = kitty_exe()
         self.stdout = b''
         self.start_time = time.monotonic()
+        self.tdir = mkdtemp(prefix='kitty-go-tests-')
+        env['HOME'] = self.tdir
+        if not env.get('GOCACHE') and (gop := os.path.expanduser('~/.cache/go-build')) and os.path.isdir(gop):
+            env['GOCACHE'] = gop
+        if not env.get('GOMODCACHE') and (gop := os.path.expanduser('~/go/pkg/mod')) and os.path.isdir(gop):
+            env['GOMODCACHE'] = gop
+        env['XDG_CONFIG_HOME'] = self.tdir + '/conf'
+        os.mkdir(env['XDG_CONFIG_HOME'])
+        env['XDG_CACHE_HOME'] = self.tdir + '/cache'
+        os.mkdir(env['XDG_CACHE_HOME'])
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
         self.start()
 
@@ -162,8 +172,11 @@ class GoProc(Thread):
         return self.proc.returncode
 
     def run(self) -> None:
-        self.stdout, _ = self.proc.communicate()
-        self.proc.stdout.close()
+        try:
+            self.stdout, _ = self.proc.communicate()
+            self.proc.stdout.close()
+        finally:
+            shutil.rmtree(self.tdir)
 
     def wait(self, timeout=None) -> None:
         try:
