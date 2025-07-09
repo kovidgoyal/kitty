@@ -74,10 +74,11 @@ func (c *ResultCollection) Batch(offset *CollectionIndex) (ans []ResultItem) {
 	return
 }
 
-func (c *ResultCollection) NextDir(offset *CollectionIndex) (ans string) {
+func (c *ResultCollection) NextDir(offset *CollectionIndex) (ans string, ignore_files []ignore_file_with_prefix) {
 	for ans == "" && offset.Compare(c.append_idx) < 0 {
 		if c.slices[offset.Slice][offset.Pos].ftype&fs.ModeDir != 0 {
 			ans = c.slices[offset.Slice][offset.Pos].text
+			ignore_files = c.slices[offset.Slice][offset.Pos].ignore_files
 		}
 		offset.Pos++
 		if offset.Pos >= len(c.slices[offset.Slice]) {

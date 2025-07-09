@@ -33,6 +33,7 @@ func TestAsLower(t *testing.T) {
 type node struct {
 	name     string
 	children map[string]*node
+	data     string
 }
 
 func (n node) Name() string {
@@ -87,6 +88,21 @@ func (n node) dir_entries() []fs.DirEntry {
 	return entries
 }
 
+func (n node) ReadFile(name string) ([]byte, error) {
+	if name == string(os.PathSeparator) {
+		return nil, fs.ErrNotExist
+	}
+	p := &n
+	for _, x := range strings.Split(strings.Trim(name, string(os.PathSeparator)), string(os.PathSeparator)) {
+		c, found := p.children[x]
+		if !found || c.IsDir() {
+			return nil, fs.ErrNotExist
+		}
+		p = c
+	}
+	return []byte(p.data), nil
+}
+
 func (n node) ReadDir(name string) ([]fs.DirEntry, error) {
 	if name == string(os.PathSeparator) {
 		return n.dir_entries(), nil
@@ -105,19 +121,38 @@ func (n node) ReadDir(name string) ([]fs.DirEntry, error) {
 	return p.dir_entries(), nil
 }
 
+func TestChooseFilesIgnore(t *testing.T) {
+	root := node{name: string(os.PathSeparator), children: map[string]*node{
+		"b":       {name: "b"},
+		"a":       {name: "a"},
+		"c.png":   {name: "c.png"},
+		".ignore": {name: ".ignore", data: "a\nx/s/n"},
+		"x": {name: "x", children: map[string]*node{
+			"1": {name: "1"}, "2": {name: "2"}, "3": {name: "3"},
+			"s": {name: "s", children: map[string]*node{
+				"m": {name: "m"}, "n": {name: "n"},
+			}},
+		}},
+		"y": {name: "y", children: map[string]*node{
+			"3": {name: "3"}, "4": {name: "4"}, "5": {name: "5"},
+		}},
+	}}
+	_ = root
+}
+
 func TestChooseFilesScoring(t *testing.T) {
 	root := node{name: string(os.PathSeparator), children: map[string]*node{
 		"b":     {name: "b"},
 		"a":     {name: "a"},
 		"c.png": {name: "c.png"},
 		"x": {name: "x", children: map[string]*node{
-			"1": {"1", nil}, "2": {"2", nil}, "3": {"3", nil},
-			"s": {"s", map[string]*node{
-				"m": {"m", nil}, "n": {"n", nil},
+			"1": {name: "1"}, "2": {name: "2"}, "3": {name: "3"},
+			"s": {name: "s", children: map[string]*node{
+				"m": {name: "m"}, "n": {name: "n"},
 			}},
 		}},
 		"y": {name: "y", children: map[string]*node{
-			"3": {"3", nil}, "4": {"4", nil}, "5": {"5", nil},
+			"3": {name: "3"}, "4": {name: "4"}, "5": {name: "5"},
 		}},
 	}}
 	wg := sync.WaitGroup{}

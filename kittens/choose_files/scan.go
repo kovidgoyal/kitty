@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty/tools/fzf"
+	"github.com/kovidgoyal/kitty/tools/ignorefiles"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"golang.org/x/sys/unix"
 )
@@ -28,11 +29,23 @@ func (c CombinedScore) String() string {
 	return fmt.Sprintf("{score: %d length: %d index: %d}", c.Score(), c.Length(), c.Index())
 }
 
+type ignore_file_with_prefix struct {
+	impl   ignorefiles.IgnoreFile
+	prefix string
+}
+
+func (i *ignore_file_with_prefix) is_ignored(name string, ftype fs.FileMode) (ans bool, was_match bool) {
+	ans, linenum, _ := i.impl.IsIgnored(i.prefix+name, ftype)
+	was_match = linenum > -1
+	return
+}
+
 type ResultItem struct {
-	text      string
-	ftype     fs.FileMode
-	positions []int // may be nil
-	score     CombinedScore
+	text         string
+	ftype        fs.FileMode
+	positions    []int // may be nil
+	score        CombinedScore
+	ignore_files []ignore_file_with_prefix
 }
 type ResultsType []*ResultItem
 
@@ -63,7 +76,9 @@ type FileSystemScanner struct {
 	mutex                   sync.Mutex
 	collection              *ResultCollection
 	dir_reader              func(path string) ([]fs.DirEntry, error)
+	file_reader             func(path string) ([]byte, error)
 	filter_func             func(filename string) bool
+	global_gitignore        ignorefiles.IgnoreFile
 	err                     error
 }
 
@@ -72,7 +87,9 @@ func NewFileSystemScanner(root_dir string, notify chan bool, filter_func func(st
 	ans.in_progress.Store(true)
 	ans.keep_going.Store(true)
 	ans.dir_reader = os.ReadDir
+	ans.file_reader = os.ReadFile
 	ans.filter_func = utils.IfElse(filter_func == nil, accept_all, filter_func)
+	ans.global_gitignore = ignorefiles.GlobalGitignore()
 	return ans
 }
 
@@ -206,11 +223,17 @@ func (fss *FileSystemScanner) worker() {
 		root_dir += string(os.PathSeparator)
 	}
 	dir := root_dir
+	var ignore_files []ignore_file_with_prefix
 	base := ""
 	pos := &CollectionIndex{}
 	var arena []sortable_dir_entry
 	var sortable []*sortable_dir_entry
+	var ignoreable []*sortable_dir_entry
 	var idx uint32
+	dot_git := os.Getenv("GIT_DIR")
+	if dot_git == "" {
+		dot_git = ".git"
+	}
 	// do a breadth first traversal of the filesystem
 	is_root := true
 	for dir != "" {
@@ -230,15 +253,59 @@ func (fss *FileSystemScanner) worker() {
 		if cap(arena) < len(entries) {
 			arena = make([]sortable_dir_entry, 0, max(1024, len(entries), 2*cap(arena)))
 			sortable = make([]*sortable_dir_entry, 0, cap(arena))
+			ignoreable = make([]*sortable_dir_entry, 0, cap(arena))
 		}
 		arena = arena[:len(entries)]
 		sortable = sortable[:0]
+		ignoreable = ignoreable[:0]
+		ignore_files_copied := false
+		add_ignore_file_from_impl := func(impl ignorefiles.IgnoreFile) {
+			// we want ignore_files to be a copy as we dont want to
+			// change the underlying array of ignore_files as it is
+			// referenced by multiple ResultItems
+			if !ignore_files_copied {
+				ignore_files_copied = true
+				n := make([]ignore_file_with_prefix, len(ignore_files), len(ignore_files)+4)
+				copy(n, ignore_files)
+				ignore_files = n
+			}
+			ignore_files = append(ignore_files, ignore_file_with_prefix{impl: impl})
+		}
+		add_ignore_file := func(name string) {
+			if data, rerr := fss.file_reader(dir + string(os.PathSeparator) + name); rerr == nil {
+				impl := ignorefiles.NewGitignore()
+				if rerr = impl.LoadString(utils.UnsafeBytesToString(data)); rerr == nil {
+					add_ignore_file_from_impl(impl)
+				}
+			}
+		}
+		entry_is_ignored := func(name string, ftype fs.FileMode) (is_ignored bool) {
+			for _, ignore_file := range ignore_files {
+				if iig, was_match := ignore_file.is_ignored(name, ftype); was_match {
+					is_ignored = iig
+				}
+			}
+			return
+		}
+		has_git_ignore, has_dot_git, has_dot_ignore := false, false, false
 		for i, e := range entries {
 			name := e.Name()
 			ftype := e.Type()
 			is_dir := ftype&fs.ModeDir != 0
-			if !is_dir && !fss.filter_func(name) {
-				continue
+			if !is_dir {
+				switch name {
+				case ".ignore":
+					has_git_ignore = false
+				case ".gitignore":
+					has_git_ignore = true
+				}
+				if !fss.filter_func(name) {
+					continue
+				}
+			} else {
+				if name == dot_git {
+					has_dot_git = true
+				}
 			}
 			arena[i].name = name
 			if ftype&fs.ModeSymlink != 0 {
@@ -256,13 +323,36 @@ func (fss *FileSystemScanner) worker() {
 			arena[i].sort_key = arena[i].buf[:1+n]
 			sortable = append(sortable, &arena[i])
 		}
-		slices.SortFunc(sortable, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
+		if has_dot_git {
+			if fss.global_gitignore != nil {
+				add_ignore_file_from_impl(fss.global_gitignore)
+			}
+			add_ignore_file(filepath.Join(dot_git, "info", "exclude"))
+			if has_git_ignore {
+				add_ignore_file(".gitignore")
+			}
+		}
+		if has_dot_ignore {
+			add_ignore_file(".ignore")
+		}
+		final_entries := sortable
+		if len(ignore_files) > 0 {
+			for _, e := range sortable {
+				if !entry_is_ignored(e.name, e.ftype) {
+					ignoreable = append(ignoreable, e)
+				}
+
+			}
+			final_entries = ignoreable
+		}
+		slices.SortFunc(final_entries, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
 		fss.lock()
-		for _, e := range sortable {
+		for _, e := range final_entries {
 			i := fss.collection.NextAppendPointer()
 			i.ftype = e.ftype
 			i.text = base + e.name
 			i.score.Set_index(idx)
+			i.ignore_files = ignore_files
 			idx++
 		}
 		listeners := fss.listeners
@@ -273,9 +363,16 @@ func (fss *FileSystemScanner) worker() {
 			default:
 			}
 		}
-		if relpath := fss.collection.NextDir(pos); relpath != "" {
+		ignore_files = nil
+		if relpath, ignf := fss.collection.NextDir(pos); relpath != "" {
 			base = relpath + string(os.PathSeparator)
 			dir = root_dir + base
+			if len(ignf) != 0 {
+				name := filepath.Base(relpath) + string(os.PathSeparator)
+				ignore_files = utils.Map(func(ignore_file ignore_file_with_prefix) ignore_file_with_prefix {
+					return ignore_file_with_prefix{impl: ignore_file.impl, prefix: ignore_file.prefix + name}
+				}, ignf)
+			}
 		} else {
 			dir = ""
 		}

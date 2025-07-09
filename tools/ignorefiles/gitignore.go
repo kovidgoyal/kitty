@@ -41,8 +41,8 @@ func (g Gitignore) IsIgnored(relpath string, ftype os.FileMode) (is_ignored bool
 			}
 			if pat.negated && pat.Match(relpath, ftype) {
 				is_ignored = false
-				linenum_of_matching_rule = -1
-				pattern = ""
+				linenum_of_matching_rule = pat.line_number
+				pattern = pat.pattern
 			}
 		} else {
 			if !pat.negated && pat.Match(relpath, ftype) {
@@ -253,6 +253,48 @@ func CompileGitIgnoreLine(line string) (ans GitPattern, skipped_line bool) {
 			ans.matcher = func(path string) bool { return anchored_full_match(path, ans.parts) }
 		} else {
 			ans.matcher = func(path string) bool { return anchored_simple_match(path, ans.parts) }
+		}
+	}
+	return
+}
+
+func get_global_gitconfig_excludesfile() (ans string) {
+	cfhome := os.Getenv("XDG_CONFIG_HOME")
+	if cfhome == "" {
+		cfhome = utils.Expanduser("~/.config")
+	}
+	for _, candidate := range []string{"/etc/gitconfig", filepath.Join(cfhome, "git", "config"), utils.Expanduser("~/.gitconfig")} {
+		if data, err := os.ReadFile(candidate); err == nil {
+			s := utils.NewLineScanner(utils.UnsafeBytesToString(data))
+			in_core := false
+			for s.Scan() {
+				line := strings.TrimSpace(s.Text())
+				if in_core {
+					if strings.HasPrefix(line, "[") {
+						in_core = false
+						continue
+					}
+					if k, rest, found := strings.Cut(line, "="); found && strings.ToLower(strings.TrimSpace(k)) == `excludesfile` {
+						ans = strings.TrimSpace(rest)
+					}
+				} else if strings.ToLower(line) == "[core]" {
+					in_core = true
+				}
+			}
+		}
+	}
+	if ans == "" {
+		ans = filepath.Join(cfhome, "git", "ignore")
+	}
+	return
+}
+
+func get_global_gitignore() (ans IgnoreFile) {
+	excludesfile := get_global_gitconfig_excludesfile()
+	if data, err := os.ReadFile(excludesfile); err == nil {
+		q := NewGitignore()
+		if q.LoadString(utils.UnsafeBytesToString(data)) == nil {
+			ans = q
 		}
 	}
 	return
