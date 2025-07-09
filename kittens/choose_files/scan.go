@@ -462,10 +462,7 @@ func (fss *FileSystemScorer) Change_query(query string) {
 	fss.Start()
 }
 
-func (fss *FileSystemScorer) Change_filter(filter Filter) {
-	if fss.filter.Equal(filter) {
-		return
-	}
+func (fss *FileSystemScorer) change_scanner_setting(callback func()) {
 	fss.keep_going.Store(false)
 	if fss.current_worker_wait != nil {
 		if fss.scanner != nil {
@@ -474,11 +471,30 @@ func (fss *FileSystemScorer) Change_filter(filter Filter) {
 		fss.current_worker_wait.Wait()
 	}
 	fss.lock()
-	fss.filter = filter
+	callback()
 	fss.sorted_results.Clear()
 	fss.scanner = nil
 	fss.unlock()
 	fss.Start()
+
+}
+
+func (fss *FileSystemScorer) Change_filter(filter Filter) {
+	if !fss.filter.Equal(filter) {
+		fss.change_scanner_setting(func() { fss.filter = filter })
+	}
+}
+
+func (fss *FileSystemScorer) Change_show_hidden(val bool) {
+	if fss.show_hidden != val {
+		fss.change_scanner_setting(func() { fss.show_hidden = val })
+	}
+}
+
+func (fss *FileSystemScorer) Change_respect_ignores(val bool) {
+	if fss.respect_ignores != val {
+		fss.change_scanner_setting(func() { fss.respect_ignores = val })
+	}
 }
 
 func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.WaitGroup) {
