@@ -866,7 +866,7 @@ halve_multicell_width(Screen *self, index_type x_, index_type y_) {
     int y_max_limit = MIN(self->lines, y_ + cp[x_].scale);
     for (int y = y_min_limit + 1; y < y_max_limit; y++) {
         Line *line = range_line_(self, y); cp = line->cpu_cells; gp = line->gpu_cells;
-        for (index_type x = 0; x < half_x_limit; x++) cp[x].width = new_width;
+        for (index_type x = x_; x < half_x_limit; x++) cp[x].width = new_width;
         for (index_type x = half_x_limit; x < x_limit; x++) {
             cp[x] = (CPUCell){0}; clear_sprite_position(gp[x]);
         }
