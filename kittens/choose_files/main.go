@@ -118,6 +118,7 @@ type State struct {
 	respect_ignores          bool
 	sort_by_last_modified    bool
 	global_ignores           ignorefiles.IgnoreFile
+	keyboard_shortcuts       []*config.KeyAction
 
 	save_file_cdir string
 	selections     []string
@@ -186,12 +187,13 @@ type ScreenSize struct {
 }
 
 type Handler struct {
-	state          State
-	screen_size    ScreenSize
-	result_manager *ResultManager
-	lp             *loop.Loop
-	rl             *readline.Readline
-	err_chan       chan error
+	state            State
+	screen_size      ScreenSize
+	result_manager   *ResultManager
+	lp               *loop.Loop
+	rl               *readline.Readline
+	err_chan         chan error
+	shortcut_tracker config.ShortcutTracker
 }
 
 func (h *Handler) draw_screen() (err error) {
@@ -231,7 +233,7 @@ func load_config(opts *Options) (ans *Config, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// ans.KeyboardShortcuts = config.ResolveShortcuts(ans.KeyboardShortcuts)
+	ans.KeyboardShortcuts = config.ResolveShortcuts(ans.KeyboardShortcuts)
 	return ans, nil
 }
 
@@ -343,27 +345,72 @@ func (h *Handler) change_filter(delta int) bool {
 	return true
 }
 
-func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
-	switch h.state.screen {
-	case NORMAL:
-		switch {
-		case h.handle_edit_keys(ev), h.handle_result_list_keys(ev):
-			h.draw_screen()
-		case ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("ctrl+c"):
-			h.lp.Quit(1)
-		case ev.MatchesPressOrRepeat("tab"):
+func (h *Handler) dispatch_action(name, args string) (err error) {
+	switch name {
+	case "quit":
+		h.lp.Quit(1)
+	case "next":
+		if n, nerr := strconv.Atoi(args); nerr == nil {
+			h.next_result(n)
+		} else {
+			switch args {
+			case "":
+				h.next_result(1)
+			case "left":
+				h.move_sideways(true)
+			case "right":
+				h.move_sideways(false)
+			}
+		}
+		return h.draw_screen()
+	case "next_filter":
+		if n, nerr := strconv.Atoi(args); nerr == nil {
+			h.change_filter(n)
+			return h.draw_screen()
+		}
+		h.lp.Beep()
+	case "select":
+		if !h.toggle_selection() {
+			h.lp.Beep()
+		} else {
+			if len(h.state.selections) > 0 && !h.state.mode.AllowsMultipleSelection() {
+				return h.finish_selection()
+			}
+			return h.draw_screen()
+		}
+	case "accept":
+		m := h.current_abspath()
+		if h.state.mode.SelectFiles() {
+			if m != "" {
+				var s os.FileInfo
+				if s, err = os.Stat(m); err != nil {
+					h.lp.Beep()
+					return nil
+				}
+				if s.IsDir() {
+					return h.change_to_current_dir_if_possible()
+				}
+			}
+		}
+		if h.add_selection_if_possible() {
+			if len(h.state.selections) > 0 {
+				return h.finish_selection()
+			}
+			return h.draw_screen()
+		} else {
+			if h.state.mode.CanSelectNonExistent() {
+				t := h.state.SearchText()
+				h.initialize_save_file_name(utils.IfElse(t == "", h.state.suggested_save_file_name, t))
+				return h.draw_screen()
+			} else {
+				h.lp.Beep()
+			}
+		}
+	case "cd":
+		switch args {
+		case "current":
 			return h.change_to_current_dir_if_possible()
-		case ev.MatchesPressOrRepeat("ctrl+f"):
-			if h.change_filter(1) {
-				return h.draw_screen()
-			}
-			h.lp.Beep()
-		case ev.MatchesPressOrRepeat("alt+f"):
-			if h.change_filter(-1) {
-				return h.draw_screen()
-			}
-			h.lp.Beep()
-		case ev.MatchesPressOrRepeat("shift+tab"):
+		case "up":
 			curr := h.state.CurrentDir()
 			switch curr {
 			case "/":
@@ -377,43 +424,34 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
 				return h.draw_screen()
 			}
 			h.lp.Beep()
-		case ev.MatchesPressOrRepeat("shift+enter"):
-			if !h.toggle_selection() {
+		default:
+			args = utils.Expanduser(args)
+			if st, serr := os.Stat(args); serr != nil || !st.IsDir() {
 				h.lp.Beep()
-			} else {
-				if len(h.state.selections) > 0 && !h.state.mode.AllowsMultipleSelection() {
-					return h.finish_selection()
-				}
+				return
+			}
+			if absp, err := filepath.Abs(args); err == nil {
+				h.change_current_dir(absp)
 				return h.draw_screen()
 			}
-		case ev.MatchesPressOrRepeat("enter"):
-			m := h.current_abspath()
-			if h.state.mode.SelectFiles() {
-				if m != "" {
-					var s os.FileInfo
-					if s, err = os.Stat(m); err != nil {
-						h.lp.Beep()
-						return nil
-					}
-					if s.IsDir() {
-						return h.change_to_current_dir_if_possible()
-					}
-				}
-			}
-			if h.add_selection_if_possible() {
-				if len(h.state.selections) > 0 {
-					return h.finish_selection()
-				}
-				return h.draw_screen()
-			} else {
-				if h.state.mode.CanSelectNonExistent() {
-					t := h.state.SearchText()
-					h.initialize_save_file_name(utils.IfElse(t == "", h.state.suggested_save_file_name, t))
-					return h.draw_screen()
-				} else {
-					h.lp.Beep()
-				}
-			}
+
+		}
+
+	}
+	return
+}
+
+func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) (err error) {
+	switch h.state.screen {
+	case NORMAL:
+		if h.handle_edit_keys(ev) {
+			ev.Handled = true
+			h.draw_screen()
+		}
+		ac := h.shortcut_tracker.Match(ev, h.state.keyboard_shortcuts)
+		if ac != nil {
+			ev.Handled = true
+			return h.dispatch_action(ac.Name, ac.Args)
 		}
 	case SAVE_FILE:
 		err = h.save_file_name_handle_key(ev)
@@ -570,6 +608,7 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 	if err = h.state.global_ignores.LoadLines(conf.Ignore...); err != nil {
 		return err
 	}
+	h.state.keyboard_shortcuts = conf.KeyboardShortcuts
 	return
 }
 

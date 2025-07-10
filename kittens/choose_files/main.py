@@ -17,7 +17,7 @@ opt = definition.add_option
 map = definition.add_map
 mma = definition.add_mouse_map
 
-agr('Filesystem scanning')
+agr('scanning', 'Filesystem scanning')  # {{{
 
 opt('show_hidden', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
 Whether to show hidden files. The default value of :code:`last` means remember the last
@@ -40,8 +40,32 @@ Anchored patterns match with respect to whatever directory is currently being di
 Can be specified multiple times to use multiple patterns. Note that every pattern
 has to be checked against every file, so use sparingly.
 ''')
+egr()  # }}}
 
-egr()
+agr('shortcuts', 'Keyboard shortcuts')  # {{{
+map('Quit', 'quit esc quit')
+map('Quit', 'quit ctrl+c quit')
+
+map('Accept current result', 'accept enter accept')
+map('Select current result', 'select shift+enter select')
+
+map('Next result', 'next_result down next 1')
+map('Previous result', 'prev_result up next -1')
+map('Left result', 'left_result left next left')
+map('Right result', 'right_result right next right')
+
+map('Change to currently selected dir', 'cd_current tab cd current')
+map('Change to parent directory', 'cd_parent shift+tab cd up')
+map('Change to root directory', 'cd_root ctrl+/ cd /')
+map('Change to home directory', 'cd_home ctrl+~ cd ~')
+map('Change to home directory', 'cd_home ctrl+` cd ~')
+map('Change to home directory', 'cd_home ctrl+shift+` cd ~')
+map('Change to temp directory', 'cd_tmp ctrl+t cd /tmp')
+
+map('Next filter', 'next_filter ctrl+f 1')
+map('Previous filter', 'prev_filter alt+f -1')
+
+egr()  # }}}
 
 def main(args: list[str]) -> None:
     raise SystemExit('This must be run as kitten choose-files')
