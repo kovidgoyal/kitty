@@ -206,13 +206,11 @@ read_features_from_font_table(const uint8_t *table, size_t table_len, PyObject *
 
 bool
 read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output) {
+    uint16_t elided_fallback_name_id = 0;
     RAII_PyObject(design_axes, PyTuple_New(0));
     RAII_PyObject(multi_axis_styles, PyTuple_New(0));
     if (!design_axes || !multi_axis_styles) return false;
-    if (table_len < 20) {
-        if (PyDict_SetItemString(output, "elided_fallback_name", PyUnicode_FromString("")) != 0) return false;
-        goto ok;
-    }
+    if (table_len < 20) goto ok;
     const uint16_t *p = (uint16_t*)table;
     uint16_t major_version = next, minor_version = next, size_of_design_axis_entry = next, count_of_design_axis_entries = next;
     const uint32_t *p32 = (uint32_t*)p;
@@ -222,9 +220,8 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     p32 = (uint32_t*)p;
     uint32_t offset_to_start_of_axis_value_entries = byteswap32(p32++);
     p = (uint16_t*)p32;
-    uint16_t elided_fallback_name_id = next;
+    elided_fallback_name_id = next;
     if (major_version == 1 && minor_version < 1) elided_fallback_name_id = 0;
-    if (PyDict_SetItemString(output, "elided_fallback_name", elided_fallback_name_id ? get_best_name(name_lookup_table, elided_fallback_name_id) : PyUnicode_FromString("")) != 0) return false;
     const uint8_t *table_limit = table + table_len;
     size_t count = 0;
     if (_PyTuple_Resize(&design_axes, count_of_design_axis_entries) == -1) return false;
@@ -296,6 +293,7 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
 ok:
     if (PyDict_SetItemString(output, "design_axes", design_axes) != 0) return false;
     if (PyDict_SetItemString(output, "multi_axis_styles", multi_axis_styles) != 0) return false;
+    if (PyDict_SetItemString(output, "elided_fallback_name", elided_fallback_name_id ? get_best_name(name_lookup_table, elided_fallback_name_id) : PyUnicode_FromString("")) != 0) return false;
     return true;
 }
 
