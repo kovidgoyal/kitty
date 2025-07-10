@@ -49,10 +49,7 @@ func GenerateCompletions(args []string) error {
 		output_type = args[0]
 		args = args[1:]
 	}
-	n := len(args)
-	if n < 1 {
-		n = 1
-	}
+	n := max(1, len(args))
 	if output_type == "setup" {
 		if len(args) == 0 {
 			return fmt.Errorf("The shell must be specified")
