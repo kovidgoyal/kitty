@@ -58,20 +58,20 @@ func (h *Handler) draw_controls(y int) (max_width int) {
 	}
 	lines := make([]entry, 0, SEARCH_BAR_HEIGHT)
 	add_control := func(icon, text string, callback func()) {
-		line := icon + "  " + text
+		line := icon + " " + text
 		width := wcswidth.Stringwidth(line)
 		max_width = max(max_width, width)
 		lines = append(lines, entry{line, callback, width})
 	}
-	add_control(utils.IfElse(h.state.ShowHidden(), "", ""), utils.IfElse(h.state.ShowHidden(), "hide dotfiles", "show dotfiles"), func() {
+	add_control(utils.IfElse(h.state.ShowHidden(), " ", " "), utils.IfElse(h.state.ShowHidden(), "hide dotfiles", "show dotfiles"), func() {
 		h.state.show_hidden = !h.state.show_hidden
 		h.result_manager.set_show_hidden()
 	})
-	add_control("󰑑", utils.IfElse(h.state.RespectIgnores(), "show ignored", "hide ignored"), func() {
+	add_control("󰑑 ", utils.IfElse(h.state.RespectIgnores(), "show ignored", "hide ignored"), func() {
 		h.state.respect_ignores = !h.state.respect_ignores
 		h.result_manager.set_respect_ignores()
 	})
-	add_control(utils.IfElse(h.state.SortByLastModified(), "", ""), utils.IfElse(h.state.SortByLastModified(), "sort names", "sort dates"), func() {
+	add_control(utils.IfElse(h.state.SortByLastModified(), " ", " "), utils.IfElse(h.state.SortByLastModified(), "sort names", "sort dates"), func() {
 		h.state.sort_by_last_modified = !h.state.sort_by_last_modified
 		h.result_manager.set_sort_by_last_modified()
 	})

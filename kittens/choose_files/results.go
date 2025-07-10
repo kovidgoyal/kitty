@@ -57,6 +57,7 @@ func (h *Handler) draw_no_matches_message(in_progress bool) {
 }
 
 const matching_position_style = "fg=green"
+const selected_style = "fg=magenta"
 const current_style = "fg=intense-white bold"
 
 func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, positions []int, is_current bool) {
@@ -127,7 +128,13 @@ func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
 		h.lp.MoveCursorHorizontally(x)
-		icon := icon_for(filepath.Join(root_dir, m.text), m.ftype)
+		is_selected := h.state.IsSelected(m)
+		var icon string
+		if is_selected {
+			icon = "󰗠 "
+		} else {
+			icon = icon_for(filepath.Join(root_dir, m.text), m.ftype)
+		}
 		text := m.text
 		add_ellipsis := false
 		if wcswidth.Stringwidth(text) > available_width-3 {
@@ -138,7 +145,11 @@ func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x
 		if is_current {
 			h.lp.QueueWriteString(h.lp.SprintStyled(matching_position_style, icon+" "))
 		} else {
-			h.lp.QueueWriteString(icon + " ")
+			if is_selected {
+				h.lp.QueueWriteString(h.lp.SprintStyled(selected_style, icon+" "))
+			} else {
+				h.lp.QueueWriteString(icon + " ")
+			}
 		}
 		h.render_match_with_positions(text, add_ellipsis, m.sorted_positions(), is_current)
 		h.lp.MoveCursorVertically(1)
@@ -253,24 +264,5 @@ func (h *Handler) move_sideways(leftwards bool) {
 				}
 			}
 		}
-	}
-}
-
-func (h *Handler) handle_result_list_keys(ev *loop.KeyEvent) bool {
-	switch {
-	case ev.MatchesPressOrRepeat("down"):
-		h.next_result(1)
-		return true
-	case ev.MatchesPressOrRepeat("up"):
-		h.next_result(-1)
-		return true
-	case ev.MatchesPressOrRepeat("left") || ev.MatchesPressOrRepeat("pgup"):
-		h.move_sideways(true)
-		return true
-	case ev.MatchesPressOrRepeat("right") || ev.MatchesPressOrRepeat("pgdn"):
-		h.move_sideways(false)
-		return true
-	default:
-		return false
 	}
 }

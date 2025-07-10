@@ -166,6 +166,7 @@ func (s State) WindowTitle() string {
 	}
 	return s.window_title
 }
+
 func (s *State) AddSelection(abspath string) bool {
 	if !slices.Contains(s.selections, abspath) {
 		s.selections = append(s.selections, abspath)
@@ -180,6 +181,14 @@ func (s *State) ToggleSelection(abspath string) {
 	if len(s.selections) == before {
 		s.selections = append(s.selections, abspath)
 	}
+}
+
+func (s *State) IsSelected(x *ResultItem) bool {
+	if len(s.selections) == 0 {
+		return false
+	}
+	q := filepath.Join(s.CurrentDir(), x.text)
+	return slices.Contains(s.selections, q)
 }
 
 type ScreenSize struct {
@@ -268,14 +277,6 @@ func (h *Handler) current_abspath() string {
 	}
 	return ""
 
-}
-
-func (h *Handler) add_selection_if_possible() bool {
-	m := h.current_abspath()
-	if m != "" {
-		return h.state.AddSelection(m)
-	}
-	return false
 }
 
 func (h *Handler) toggle_selection() bool {
@@ -380,32 +381,25 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 		}
 	case "accept":
 		m := h.current_abspath()
+		if m == "" {
+			h.lp.Beep()
+			return
+		}
 		if h.state.mode.SelectFiles() {
-			if m != "" {
-				var s os.FileInfo
-				if s, err = os.Stat(m); err != nil {
-					h.lp.Beep()
-					return nil
-				}
-				if s.IsDir() {
-					return h.change_to_current_dir_if_possible()
-				}
-			}
-		}
-		if h.add_selection_if_possible() {
-			if len(h.state.selections) > 0 {
-				return h.finish_selection()
-			}
-			return h.draw_screen()
-		} else {
-			if h.state.mode.CanSelectNonExistent() {
-				t := h.state.SearchText()
-				h.initialize_save_file_name(utils.IfElse(t == "", h.state.suggested_save_file_name, t))
-				return h.draw_screen()
-			} else {
+			var s os.FileInfo
+			if s, err = os.Stat(m); err != nil {
 				h.lp.Beep()
+				return nil
+			}
+			if s.IsDir() {
+				return h.change_to_current_dir_if_possible()
 			}
 		}
+		h.state.AddSelection(m)
+		if len(h.state.selections) > 0 {
+			return h.finish_selection()
+		}
+		return h.draw_screen()
 	case "cd":
 		switch args {
 		case "current":
