@@ -209,8 +209,10 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     RAII_PyObject(design_axes, PyTuple_New(0));
     RAII_PyObject(multi_axis_styles, PyTuple_New(0));
     if (!design_axes || !multi_axis_styles) return false;
-    if (table_len < 20) goto ok;
-
+    if (table_len < 20) {
+        if (PyDict_SetItemString(output, "elided_fallback_name", PyUnicode_FromString("")) != 0) return false;
+        goto ok;
+    }
     const uint16_t *p = (uint16_t*)table;
     uint16_t major_version = next, minor_version = next, size_of_design_axis_entry = next, count_of_design_axis_entries = next;
     const uint32_t *p32 = (uint32_t*)p;
