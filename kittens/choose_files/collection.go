@@ -264,7 +264,8 @@ func (s *SortedResults) distance(a, b CollectionIndex) (ans int) {
 	if b.Less(a) {
 		a, b = b, a
 	}
-	for ; a.Slice < b.Slice; a.NextSlice() {
+	limit := min(b.Slice, len(s.slices))
+	for ; a.Slice < limit; a.NextSlice() {
 		ans += len(s.slices[a.Slice]) - a.Pos
 	}
 	return ans + (b.Pos - a.Pos)

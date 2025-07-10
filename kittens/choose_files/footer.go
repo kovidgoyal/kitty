@@ -2,6 +2,7 @@ package choose_files
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -21,13 +22,13 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 	lines := []string{}
 	screen_width := h.screen_size.width
 	sctx := style.Context{AllowEscapeCodes: true}
-	if len(h.state.filter_map) > 0 {
+	if len(h.state.filter_map)+len(h.state.selections) > 0 {
 		buf := strings.Builder{}
 		pos := 0
 		current_style := sctx.SprintFunc("italic fg=green intense")
 		non_current_style := sctx.SprintFunc("dim")
 		var crs []single_line_region
-		w := func(presep, text string, sfunc func(...any) string, click_name string) {
+		w := func(presep, text string, sfunc func(...any) string, id string, cb func(string)) {
 			sz := len(presep)
 			if sz+pos >= screen_width {
 				lines = append(lines, buf.String())
@@ -41,21 +42,43 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 				text = sfunc(text)
 			}
 			buf.WriteString(text)
-			if click_name != "" && click_name != h.state.current_filter {
-				crs = append(crs, single_line_region{x: pos, width: sz - 1, y: len(lines), id: click_name, callback: func(filter string) error {
-					h.set_filter(filter)
+			if cb != nil {
+				crs = append(crs, single_line_region{x: pos, width: sz - 1, y: len(lines), id: id, callback: func(filter string) error {
+					cb(filter)
 					h.state.redraw_needed = true
 					return nil
 				}})
 			}
 			pos += sz
 		}
-		w("", "󰈲 Filter:", nil, "")
-		for _, name := range h.state.filter_names {
-			w("  ", name, utils.IfElse(name == h.state.current_filter, current_style, non_current_style), name)
+		flush := func() {
+			if s := buf.String(); s != "" {
+				lines = append(lines, s)
+			}
+			pos = 0
+			buf.Reset()
 		}
-		if s := buf.String(); s != "" {
-			lines = append(lines, s)
+		if len(h.state.filter_map) > 0 {
+			w("", "󰈲  Filter:", nil, "", nil)
+			for _, name := range h.state.filter_names {
+				var cb func(string)
+				if name != h.state.current_filter {
+					cb = func(filter string) { h.set_filter(filter) }
+				}
+				w("  ", name, utils.IfElse(name == h.state.current_filter, current_style, non_current_style), name, cb)
+			}
+			flush()
+		}
+		if len(h.state.selections) > 0 {
+			w("", "  Selected:", nil, "", nil)
+			for _, s := range h.state.selections {
+				text := s
+				if rel, rerr := filepath.Rel(h.state.CurrentDir(), s); rerr == nil {
+					text = rel
+				}
+				w("  ", text, nil, s, func(abspath string) { h.state.ToggleSelection(abspath) })
+			}
+			flush()
 		}
 		offset := h.screen_size.height - len(lines)
 		for _, cr := range crs {
