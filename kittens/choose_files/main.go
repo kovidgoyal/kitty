@@ -21,7 +21,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
-// TODO: multifile selections, save file name completion
+// TODO: save file name completion
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
