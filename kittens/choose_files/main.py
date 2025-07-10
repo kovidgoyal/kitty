@@ -17,6 +17,32 @@ opt = definition.add_option
 map = definition.add_map
 mma = definition.add_mouse_map
 
+agr('Filesystem scanning')
+
+opt('show_hidden', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+Whether to show hidden files. The default value of :code:`last` means remember the last
+used value. This setting can be toggled withing the program.''')
+
+opt('sort_by_last_modified', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+Whether to sort the list of entries by last modified, instead of name. Note that sorting only applies
+before any query is entered. Once a query is entered entries are sorted by their matching score.
+The default value of :code:`last` means remember the last
+used value. This setting can be toggled withing the program.''')
+
+opt('respect_ignores', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+Whether to respect .gitignore and .ignore files and the :opt:`ignore` setting.
+The default value of :code:`last` means remember the last used value.
+This setting can be toggled withing the program.''')
+
+opt('+ignore', '', add_to_default=False, long_text='''
+An ignore pattern to ignore matched files. Uses the same sytax as :code:`.gitignore` files (see :code:`man gitignore`).
+Anchored patterns match with respect to whatever directory is currently being displayed.
+Can be specified multiple times to use multiple patterns. Note that every pattern
+has to be checked against every file, so use sparingly.
+''')
+
+egr()
+
 def main(args: list[str]) -> None:
     raise SystemExit('This must be run as kitten choose-files')
 

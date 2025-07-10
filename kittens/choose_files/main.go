@@ -9,9 +9,11 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/config"
+	"github.com/kovidgoyal/kitty/tools/ignorefiles"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
@@ -112,6 +114,10 @@ type State struct {
 	current_filter           string
 	filter_map               map[string]Filter
 	filter_names             []string
+	show_hidden              bool
+	respect_ignores          bool
+	sort_by_last_modified    bool
+	global_ignores           ignorefiles.IgnoreFile
 
 	save_file_cdir string
 	selections     []string
@@ -121,13 +127,17 @@ type State struct {
 	redraw_needed  bool
 }
 
-func (s State) BaseDir() string    { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
-func (s State) Filter() Filter     { return s.filter_map[s.current_filter] }
-func (s State) SelectDirs() bool   { return s.select_dirs }
-func (s State) Multiselect() bool  { return s.multiselect }
-func (s State) String() string     { return utils.Repr(s) }
-func (s State) SearchText() string { return s.search_text }
-func (s State) OnlyDirs() bool     { return s.mode.OnlyDirs() }
+func (s State) ShowHidden() bool                      { return s.show_hidden }
+func (s State) RespectIgnores() bool                  { return s.respect_ignores }
+func (s State) SortByLastModified() bool              { return s.sort_by_last_modified }
+func (s State) GlobalIgnores() ignorefiles.IgnoreFile { return s.global_ignores }
+func (s State) BaseDir() string                       { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
+func (s State) Filter() Filter                        { return s.filter_map[s.current_filter] }
+func (s State) SelectDirs() bool                      { return s.select_dirs }
+func (s State) Multiselect() bool                     { return s.multiselect }
+func (s State) String() string                        { return utils.Repr(s) }
+func (s State) SearchText() string                    { return s.search_text }
+func (s State) OnlyDirs() bool                        { return s.mode.OnlyDirs() }
 func (s *State) SetSearchText(val string) {
 	if s.search_text != val {
 		s.search_text = val
@@ -244,7 +254,7 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 	h.lp.AllowLineWrapping(false)
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.StartBracketedPaste()
-	h.result_manager.set_root_dir(h.state.CurrentDir(), h.state.Filter())
+	h.result_manager.set_root_dir()
 	h.draw_screen()
 	return
 }
@@ -278,7 +288,7 @@ func (h *Handler) toggle_selection() bool {
 func (h *Handler) change_current_dir(dir string) {
 	if dir != h.state.CurrentDir() {
 		h.state.SetCurrentDir(dir)
-		h.result_manager.set_root_dir(h.state.CurrentDir(), h.state.Filter())
+		h.result_manager.set_root_dir()
 		h.state.last_render = render_state{}
 	}
 }
@@ -286,7 +296,7 @@ func (h *Handler) change_current_dir(dir string) {
 func (h *Handler) set_query(q string) {
 	if q != h.state.SearchText() {
 		h.state.SetSearchText(q)
-		h.result_manager.set_query(h.state.SearchText(), h.state.Filter())
+		h.result_manager.set_query()
 		h.state.last_render = render_state{}
 	}
 }
@@ -294,7 +304,7 @@ func (h *Handler) set_query(q string) {
 func (h *Handler) set_filter(filter_name string) {
 	if filter_name != h.state.current_filter {
 		h.state.current_filter = filter_name
-		h.result_manager.set_filter(h.state.Filter())
+		h.result_manager.set_filter()
 		h.state.last_render = render_state{}
 	}
 }
@@ -435,7 +445,32 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (
 	return
 }
 
-func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
+type CachedValues struct {
+	Show_hidden           bool `json:"show_hidden"`
+	Respect_ignores       bool `json:"respect_ignores"`
+	Sort_by_last_modified bool `json:"sort_by_last_modified"`
+}
+
+const cache_filename = "choose-files.json"
+
+var cached_values = sync.OnceValue(func() *CachedValues {
+	ans := CachedValues{Respect_ignores: true}
+	fname := filepath.Join(utils.CacheDir(), cache_filename)
+	if data, err := os.ReadFile(fname); err == nil {
+		_ = json.Unmarshal(data, &ans)
+	}
+	return &ans
+})
+
+func (s State) save_cached_values() {
+	c := CachedValues{Show_hidden: s.show_hidden, Respect_ignores: s.respect_ignores, Sort_by_last_modified: s.sort_by_last_modified}
+	fname := filepath.Join(utils.CacheDir(), cache_filename)
+	if data, err := json.Marshal(c); err == nil {
+		_ = os.WriteFile(fname, data, 0600)
+	}
+}
+
+func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error) {
 	h.state = State{}
 	switch opts.Mode {
 	case "file":
@@ -503,6 +538,37 @@ func (h *Handler) set_state_from_config(_ *Config, opts *Options) (err error) {
 		for name, filters := range fmap {
 			h.state.filter_map[name] = CombinedFilter(filters...)
 		}
+	}
+	h.state.sort_by_last_modified = false
+	h.state.respect_ignores = true
+	h.state.show_hidden = false
+	switch conf.Show_hidden {
+	case Show_hidden_true, Show_hidden_y, Show_hidden_yes:
+		h.state.show_hidden = true
+	case Show_hidden_false, Show_hidden_n, Show_hidden_no:
+		h.state.show_hidden = false
+	case Show_hidden_last:
+		h.state.show_hidden = cached_values().Show_hidden
+	}
+	switch conf.Respect_ignores {
+	case Respect_ignores_true, Respect_ignores_y, Respect_ignores_yes:
+		h.state.respect_ignores = true
+	case Respect_ignores_false, Respect_ignores_n, Respect_ignores_no:
+		h.state.respect_ignores = false
+	case Respect_ignores_last:
+		h.state.respect_ignores = cached_values().Respect_ignores
+	}
+	switch conf.Sort_by_last_modified {
+	case Sort_by_last_modified_true, Sort_by_last_modified_y, Sort_by_last_modified_yes:
+		h.state.sort_by_last_modified = true
+	case Sort_by_last_modified_false, Sort_by_last_modified_n, Sort_by_last_modified_no:
+		h.state.sort_by_last_modified = false
+	case Sort_by_last_modified_last:
+		h.state.sort_by_last_modified = cached_values().Sort_by_last_modified
+	}
+	h.state.global_ignores = ignorefiles.NewGitignore()
+	if err = h.state.global_ignores.LoadLines(conf.Ignore...); err != nil {
+		return err
 	}
 	return
 }
@@ -606,6 +672,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return
 	}
 	err = lp.Run()
+	handler.state.save_cached_values()
 	if err != nil {
 		write_output(nil, false, "")
 		return 1, err

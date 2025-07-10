@@ -3,6 +3,7 @@ package choose_files
 import (
 	"bytes"
 	"cmp"
+	"encoding/binary"
 	"fmt"
 	"io/fs"
 	"math"
@@ -79,7 +80,9 @@ type FileSystemScanner struct {
 	file_reader                  func(path string) ([]byte, error)
 	filter_func                  func(filename string) bool
 	global_gitignore             ignorefiles.IgnoreFile
+	global_ignore                ignorefiles.IgnoreFile
 	respect_ignores, show_hidden bool
+	sort_by_last_modified        bool
 
 	err error
 }
@@ -92,6 +95,7 @@ func new_filesystem_scanner(root_dir string, notify chan bool, filter_func func(
 	ans.file_reader = os.ReadFile
 	ans.filter_func = utils.IfElse(filter_func == nil, accept_all, filter_func)
 	ans.global_gitignore = ignorefiles.NewGitignore()
+	ans.global_ignore = ignorefiles.NewGitignore()
 	ans.respect_ignores = true
 	ans.show_hidden = false
 	return ans
@@ -326,11 +330,23 @@ func (fss *FileSystemScanner) worker() {
 			} else {
 				arena[i].buf[0] = '1'
 			}
-			n := as_lower(arena[i].name, arena[i].buf[1:])
-			arena[i].sort_key = arena[i].buf[:1+n]
+			if fss.sort_by_last_modified {
+				var ts time.Time
+				if info, err := e.Info(); err == nil {
+					ts = info.ModTime()
+				}
+				binary.BigEndian.PutUint64(arena[i].buf[1:], uint64(ts.UnixNano()))
+				arena[i].sort_key = arena[i].buf[:1+8]
+			} else {
+				n := as_lower(arena[i].name, arena[i].buf[1:])
+				arena[i].sort_key = arena[i].buf[:1+n]
+			}
 			sortable = append(sortable, &arena[i])
 		}
 		if fss.respect_ignores {
+			if is_root && fss.global_ignore.Len() > 0 {
+				add_ignore_file_from_impl(fss.global_ignore)
+			}
 			if has_dot_git {
 				if fss.global_gitignore.Len() > 0 {
 					add_ignore_file_from_impl(fss.global_gitignore)
@@ -390,20 +406,21 @@ func (fss *FileSystemScanner) worker() {
 }
 
 type FileSystemScorer struct {
-	scanner                      Scanner
-	keep_going, is_complete      atomic.Bool
-	root_dir, query              string
-	filter                       Filter
-	only_dirs                    bool
-	mutex                        sync.Mutex
-	sorted_results               *SortedResults
-	on_results                   func(error, bool)
-	current_worker_wait          *sync.WaitGroup
-	scorer                       *fzf.FuzzyMatcher
-	dir_reader                   func(path string) ([]fs.DirEntry, error)
-	file_reader                  func(path string) ([]byte, error)
-	global_gitignore             ignorefiles.IgnoreFile
-	respect_ignores, show_hidden bool
+	scanner                         Scanner
+	keep_going, is_complete         atomic.Bool
+	root_dir, query                 string
+	filter                          Filter
+	only_dirs                       bool
+	mutex                           sync.Mutex
+	sorted_results                  *SortedResults
+	on_results                      func(error, bool)
+	current_worker_wait             *sync.WaitGroup
+	scorer                          *fzf.FuzzyMatcher
+	dir_reader                      func(path string) ([]fs.DirEntry, error)
+	file_reader                     func(path string) ([]byte, error)
+	global_gitignore, global_ignore ignorefiles.IgnoreFile
+	respect_ignores, show_hidden    bool
+	sort_by_last_modified           bool
 }
 
 func NewFileSystemScorer(root_dir, query string, filter Filter, only_dirs bool, on_results func(error, bool)) (ans *FileSystemScorer) {
@@ -433,7 +450,11 @@ func (fss *FileSystemScorer) Start() {
 		} else {
 			sc.global_gitignore = ignorefiles.GlobalGitignore()
 		}
+		if fss.global_ignore != nil {
+			sc.global_ignore = fss.global_ignore
+		}
 		sc.show_hidden, sc.respect_ignores = fss.show_hidden, fss.respect_ignores
+		sc.sort_by_last_modified = fss.sort_by_last_modified
 		fss.scanner = sc
 		fss.scanner.Start()
 	} else {
@@ -494,6 +515,12 @@ func (fss *FileSystemScorer) Change_show_hidden(val bool) {
 func (fss *FileSystemScorer) Change_respect_ignores(val bool) {
 	if fss.respect_ignores != val {
 		fss.change_scanner_setting(func() { fss.respect_ignores = val })
+	}
+}
+
+func (fss *FileSystemScorer) Change_sort_by_last_modified(val bool) {
+	if fss.sort_by_last_modified != val {
+		fss.change_scanner_setting(func() { fss.sort_by_last_modified = val })
 	}
 }
 
@@ -598,6 +625,11 @@ type Settings interface {
 	OnlyDirs() bool
 	CurrentDir() string
 	SearchText() string
+	ShowHidden() bool
+	RespectIgnores() bool
+	SortByLastModified() bool
+	Filter() Filter
+	GlobalIgnores() ignorefiles.IgnoreFile
 }
 
 type ResultManager struct {
@@ -619,6 +651,15 @@ func NewResultManager(err_chan chan error, settings Settings, WakeupMainThread f
 	return ans
 }
 
+func (m *ResultManager) new_scorer() {
+	root_dir := m.current_root_dir()
+	query := m.settings.SearchText()
+	m.scorer = NewFileSystemScorer(root_dir, query, m.settings.Filter(), m.settings.OnlyDirs(), m.on_results)
+	m.scorer.respect_ignores = m.settings.RespectIgnores()
+	m.scorer.show_hidden = m.settings.ShowHidden()
+	m.scorer.global_ignore = m.settings.GlobalIgnores()
+}
+
 func (m *ResultManager) on_results(err error, is_finished bool) {
 	if err != nil {
 		m.report_errors <- err
@@ -633,50 +674,64 @@ func (m *ResultManager) on_results(err error, is_finished bool) {
 	}
 }
 
-func (m *ResultManager) set_root_dir(root_dir string, filter Filter) {
+func (m *ResultManager) current_root_dir() string {
 	var err error
+	root_dir := m.settings.CurrentDir()
 	if root_dir == "" || root_dir == "." {
 		if root_dir, err = os.Getwd(); err != nil {
-			return
+			return "/"
 		}
 	}
 	root_dir = utils.Expanduser(root_dir)
 	if root_dir, err = filepath.Abs(root_dir); err != nil {
-		return
+		return "/"
 	}
+	return root_dir
+}
+
+func (m *ResultManager) set_root_dir() {
 	if m.scorer != nil {
 		m.scorer.Cancel()
 	}
-	_ = os.Chdir(root_dir) // this is so the terminal emulator can read the wd for launch --directory=current
-	m.scorer = NewFileSystemScorer(root_dir, "", filter, m.settings.OnlyDirs(), m.on_results)
+	_ = os.Chdir(m.current_root_dir()) // this is so the terminal emulator can read the wd for launch --directory=current
+	m.new_scorer()
 	m.mutex.Lock()
 	m.last_wakeup_at = time.Time{}
 	m.mutex.Unlock()
 	m.scorer.Start()
 }
 
-func (m *ResultManager) set_query(query string, filter Filter) {
+func (m *ResultManager) set_something(callback func()) {
 	m.mutex.Lock()
 	m.last_wakeup_at = time.Time{}
 	m.mutex.Unlock()
 	if m.scorer == nil {
-		m.scorer = NewFileSystemScorer(".", "", filter, m.settings.OnlyDirs(), m.on_results)
+		m.new_scorer()
 		m.scorer.Start()
 	} else {
-		m.scorer.Change_query(query)
+		callback()
 	}
+
 }
 
-func (m *ResultManager) set_filter(f Filter) {
-	m.mutex.Lock()
-	m.last_wakeup_at = time.Time{}
-	m.mutex.Unlock()
-	if m.scorer == nil {
-		m.scorer = NewFileSystemScorer(".", "", f, m.settings.OnlyDirs(), m.on_results)
-		m.scorer.Start()
-	} else {
-		m.scorer.Change_filter(f)
-	}
+func (m *ResultManager) set_query() {
+	m.set_something(func() { m.scorer.Change_query(m.settings.SearchText()) })
+}
+
+func (m *ResultManager) set_filter() {
+	m.set_something(func() { m.scorer.Change_filter(m.settings.Filter()) })
+}
+
+func (m *ResultManager) set_show_hidden() {
+	m.set_something(func() { m.scorer.Change_show_hidden(m.settings.ShowHidden()) })
+}
+
+func (m *ResultManager) set_respect_ignores() {
+	m.set_something(func() { m.scorer.Change_respect_ignores(m.settings.RespectIgnores()) })
+}
+
+func (m *ResultManager) set_sort_by_last_modified() {
+	m.set_something(func() { m.scorer.Change_sort_by_last_modified(m.settings.SortByLastModified()) })
 }
 
 func (h *Handler) get_results() (ans *SortedResults, is_complete bool) {
