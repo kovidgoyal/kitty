@@ -21,8 +21,6 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
-// TODO: save file name completion
-
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
 
@@ -378,7 +376,15 @@ func (h *Handler) accept_idx(idx CollectionIndex) (accepted bool, err error) {
 				return false, nil
 			}
 			if s.IsDir() {
-				return true, h.change_to_current_dir_if_possible()
+				if h.state.mode.CanSelectNonExistent() {
+					name := h.state.suggested_save_file_name
+					if h.state.SearchText() != "" {
+						name = h.state.SearchText()
+					}
+					h.initialize_save_file_name(name)
+					return true, h.draw_screen()
+				}
+				return false, nil
 			}
 		}
 
@@ -721,9 +727,10 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
-	handler := Handler{lp: lp, err_chan: make(chan error, 8), rl: readline.New(lp, readline.RlInit{
-		Prompt: "> ", ContinuationPrompt: ". ",
-	})}
+	handler := Handler{lp: lp, err_chan: make(chan error, 8)}
+	handler.rl = readline.New(lp, readline.RlInit{
+		Prompt: "> ", ContinuationPrompt: ". ", Completer: handler.complete_save_prompt,
+	})
 	if err = handler.set_state_from_config(conf, opts); err != nil {
 		return 1, err
 	}

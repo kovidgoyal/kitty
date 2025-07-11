@@ -4,12 +4,55 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
+
+func (h *Handler) complete_save_prompt(before_cursor, after_cursor string) *cli.Completions {
+	path := before_cursor
+	prefix := ""
+	if idx := strings.Index(path, string(os.PathSeparator)); idx > -1 {
+		prefix = filepath.Dir(path) + string(os.PathSeparator)
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(h.state.CurrentDir(), path)
+	}
+	dir := filepath.Dir(path)
+	if strings.HasSuffix(before_cursor, string(os.PathSeparator)) {
+		dir = path
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	ans := cli.NewCompletions()
+	dirs := ans.AddMatchGroup("Directories")
+	dirs.IsFiles = true
+	dirs.NoTrailingSpace = true
+	files := ans.AddMatchGroup("Files")
+	files.IsFiles = true
+	files.NoTrailingSpace = true
+	leading, _ := filepath.Rel(dir, path)
+	if leading == "." {
+		leading = ""
+	}
+	for _, e := range entries {
+		word := e.Name()
+		if leading == "" || strings.HasPrefix(word, leading) {
+			collection := utils.IfElse(e.Type().IsDir(), dirs, files)
+			if prefix != "" {
+				word = prefix + word
+			}
+			collection.Matches = append(collection.Matches, &cli.Match{Word: word})
+		}
+	}
+	return ans
+}
 
 func (h *Handler) current_save_file_path() string {
 	ans := h.rl.AllText()
