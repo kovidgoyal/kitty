@@ -400,6 +400,23 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 			return h.finish_selection()
 		}
 		return h.draw_screen()
+	case "toggle":
+		switch args {
+		case "dotfiles":
+			h.state.show_hidden = !h.state.show_hidden
+			h.result_manager.set_show_hidden()
+			return h.draw_screen()
+		case "ignorefiles":
+			h.state.respect_ignores = !h.state.respect_ignores
+			h.result_manager.set_respect_ignores()
+			return h.draw_screen()
+		case "sort_by_dates":
+			h.state.sort_by_last_modified = !h.state.sort_by_last_modified
+			h.result_manager.set_sort_by_last_modified()
+			return h.draw_screen()
+		default:
+			h.lp.Beep()
+		}
 	case "cd":
 		switch args {
 		case "current":

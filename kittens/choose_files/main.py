@@ -65,6 +65,10 @@ map('Change to temp directory', 'cd_tmp ctrl+t cd /tmp')
 map('Next filter', 'next_filter ctrl+f 1')
 map('Previous filter', 'prev_filter alt+f -1')
 
+map('Toggle showing dotfiles', 'toggle_dotfiles alt+h toggle dotfiles')
+map('Toggle showing ignored files', 'toggle_ignorefiles alt+d toggle ignorefiles')
+map('Toggle sorting by dates', 'toggle_sort_by_dates alt+d toggle sort_by_dates')
+
 egr()  # }}}
 
 def main(args: list[str]) -> None:
