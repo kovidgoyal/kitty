@@ -126,11 +126,12 @@ lines. The various available criteria are:
 
 .. _launch_actions:
 
-Scripting the opening of files with kitty on macOS
+Scripting the opening of files with kitty
 -------------------------------------------------------
 
 On macOS you can use :guilabel:`Open With` in Finder or drag and drop files and
-URLs onto the kitty dock icon to open them with kitty. The default actions are:
+URLs onto the kitty dock icon to open them with kitty. Similarly on Linux, you
+can associate certain files types to open in kitty. The default actions are:
 
 * Open text files in your editor and images using the icat kitten.
 * Run shell scripts in a shell
