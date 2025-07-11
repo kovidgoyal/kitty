@@ -99,6 +99,7 @@ func (m Mode) WindowTitle() string {
 
 type render_state struct {
 	num_matches, num_of_slots, num_before, num_per_column, num_columns int
+	first_idx                                                          CollectionIndex
 }
 
 type State struct {
@@ -175,12 +176,14 @@ func (s *State) AddSelection(abspath string) bool {
 	return false
 }
 
-func (s *State) ToggleSelection(abspath string) {
+func (s *State) ToggleSelection(abspath string) (added bool) {
 	before := len(s.selections)
 	s.selections = slices.DeleteFunc(s.selections, func(x string) bool { return x == abspath })
 	if len(s.selections) == before {
 		s.selections = append(s.selections, abspath)
+		added = true
 	}
+	return
 }
 
 func (s *State) IsSelected(x *ResultItem) bool {
@@ -279,13 +282,31 @@ func (h *Handler) current_abspath() string {
 
 }
 
-func (h *Handler) toggle_selection() bool {
-	m := h.current_abspath()
-	if m != "" {
-		h.state.ToggleSelection(m)
+func (s *State) CanSelect(r *ResultItem) bool {
+	return utils.IfElse(s.OnlyDirs(), r.ftype.IsDir(), !r.ftype.IsDir())
+}
+
+func (h *Handler) toggle_selection_at(idx CollectionIndex) bool {
+	matches, _ := h.get_results()
+	if r := matches.At(idx); r != nil && h.state.CanSelect(r) {
+		m := filepath.Join(h.state.CurrentDir(), r.text)
+		if added := h.state.ToggleSelection(m); added {
+			h.result_manager.last_click_anchor = &idx
+		} else {
+			h.result_manager.last_click_anchor = nil
+			if len(h.state.selections) > 0 {
+				x := utils.NewSetWithItems(h.state.selections...)
+				cdir := h.state.CurrentDir()
+				h.result_manager.last_click_anchor = matches.Closest(idx, func(q *ResultItem) bool { return x.Has(filepath.Join(cdir, q.text)) })
+			}
+		}
 		return true
 	}
 	return false
+}
+
+func (h *Handler) toggle_selection() bool {
+	return h.toggle_selection_at(h.state.CurrentIndex())
 }
 
 func (h *Handler) change_current_dir(dir string) {
@@ -346,6 +367,31 @@ func (h *Handler) change_filter(delta int) bool {
 	return true
 }
 
+func (h *Handler) accept_idx(idx CollectionIndex) (accepted bool, err error) {
+	matches, _ := h.get_results()
+	if r := matches.At(idx); r != nil {
+		m := filepath.Join(h.state.CurrentDir(), r.text)
+
+		if h.state.mode.SelectFiles() {
+			var s os.FileInfo
+			if s, err = os.Stat(m); err != nil {
+				return false, nil
+			}
+			if s.IsDir() {
+				return true, h.change_to_current_dir_if_possible()
+			}
+		}
+
+		h.state.AddSelection(m)
+		h.result_manager.last_click_anchor = &idx
+		if len(h.state.selections) > 0 {
+			return true, h.finish_selection()
+		}
+		return true, h.draw_screen()
+	}
+	return
+}
+
 func (h *Handler) dispatch_action(name, args string) (err error) {
 	switch name {
 	case "quit":
@@ -380,26 +426,13 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 			return h.draw_screen()
 		}
 	case "accept":
-		m := h.current_abspath()
-		if m == "" {
+		accepted, aerr := h.accept_idx(h.state.CurrentIndex())
+		if aerr != nil {
+			return aerr
+		}
+		if !accepted {
 			h.lp.Beep()
-			return
 		}
-		if h.state.mode.SelectFiles() {
-			var s os.FileInfo
-			if s, err = os.Stat(m); err != nil {
-				h.lp.Beep()
-				return nil
-			}
-			if s.IsDir() {
-				return h.change_to_current_dir_if_possible()
-			}
-		}
-		h.state.AddSelection(m)
-		if len(h.state.selections) > 0 {
-			return h.finish_selection()
-		}
-		return h.draw_screen()
 	case "toggle":
 		switch args {
 		case "dotfiles":

@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"slices"
 	"sync"
+
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -211,6 +213,71 @@ func (s *SortedResults) AddSortedSlice(sl []*ResultItem) {
 	s.slices = append(s.slices, sl)
 }
 
+func (s *SortedResults) Apply(first, last CollectionIndex, action func(*ResultItem) (keep_going bool)) {
+	s.lock()
+	defer s.unlock()
+	if first.Slice >= len(s.slices) || first.Pos >= len(s.slices[first.Slice]) {
+		return
+	}
+	amt := utils.IfElse(first.Less(last), 1, -1)
+	var did_wrap bool
+	for {
+		if !action(s.slices[first.Slice][first.Pos]) {
+			break
+		}
+		if first.Compare(last) == 0 {
+			break
+		}
+		first, did_wrap = s.increment_with_wrap_around(first, amt)
+		if did_wrap {
+			break
+		}
+	}
+}
+
+func (s *SortedResults) Closest(idx CollectionIndex, matches func(*ResultItem) bool) *CollectionIndex {
+	s.lock()
+	defer s.unlock()
+	if idx.Slice >= len(s.slices) || idx.Pos >= len(s.slices[idx.Slice]) {
+		return nil
+	}
+
+	type result struct {
+		idx   CollectionIndex
+		count int
+	}
+	var a, b result
+	iterate := func(idx CollectionIndex, amt int, result *result) {
+		var did_wrap bool
+		var count int
+		result.count = -1
+		for {
+			idx, did_wrap = s.increment_with_wrap_around(idx, amt)
+			if did_wrap {
+				break
+			}
+			count++
+			if matches(s.slices[idx.Slice][idx.Pos]) {
+				result.idx = idx
+				result.count = count
+				break
+			}
+		}
+	}
+	go func() { iterate(idx, 1, &a) }()
+	go func() { iterate(idx, -1, &a) }()
+	if a.count < 0 && b.count < 0 {
+		return nil
+	}
+	return utils.IfElse(a.count < b.count, &b.idx, &a.idx)
+}
+
+func (s *SortedResults) IncrementIndexWithWrapAroundAndCheck(idx CollectionIndex, amt int) (ans CollectionIndex, did_wrap bool) {
+	s.lock()
+	defer s.unlock()
+	return s.increment_with_wrap_around(idx, amt)
+}
+
 func (s *SortedResults) IncrementIndexWithWrapAround(idx CollectionIndex, amt int) CollectionIndex {
 	s.lock()
 	defer s.unlock()
@@ -259,6 +326,27 @@ func (s *SortedResults) increment_with_wrap_around(idx CollectionIndex, amt int)
 	return idx, did_wrap
 }
 
+// Return a - b
+func (s *SortedResults) SignedDistance(a, b CollectionIndex) (ans int) {
+	s.lock()
+	defer s.unlock()
+	return s.signed_distance(a, b)
+}
+
+// Return a - b
+func (s *SortedResults) signed_distance(a, b CollectionIndex) (ans int) {
+	mult := -1
+	if b.Less(a) {
+		a, b = b, a
+		mult = 1
+	}
+	limit := min(b.Slice, len(s.slices))
+	for ; a.Slice < limit; a.NextSlice() {
+		ans += len(s.slices[a.Slice]) - a.Pos
+	}
+	return mult * (ans + (b.Pos - a.Pos))
+}
+
 // Return |a - b|
 func (s *SortedResults) distance(a, b CollectionIndex) (ans int) {
 	if b.Less(a) {
@@ -271,13 +359,13 @@ func (s *SortedResults) distance(a, b CollectionIndex) (ans int) {
 	return ans + (b.Pos - a.Pos)
 }
 
-func (s *SortedResults) SplitIntoColumns(calc_num_cols func(int) int, num_per_column, num_before_current int, current CollectionIndex) (ans [][]*ResultItem, num_before int) {
+func (s *SortedResults) SplitIntoColumns(calc_num_cols func(int) int, num_per_column, num_before_current int, current CollectionIndex) (ans [][]*ResultItem, num_before int, first_idx CollectionIndex) {
 	s.lock()
 	defer s.unlock()
 	num_cols := calc_num_cols(s.len)
 	total := num_cols * num_per_column
 	if total < 1 {
-		return nil, 0
+		return nil, 0, CollectionIndex{}
 	}
 	num_before = min(total-1, num_before_current)
 	idx, did_wrap := s.increment_with_wrap_around(current, -num_before)
@@ -290,6 +378,7 @@ func (s *SortedResults) SplitIntoColumns(calc_num_cols func(int) int, num_per_co
 			idx = CollectionIndex{}
 		}
 	}
+	first_idx = idx
 	num_before = s.distance(idx, current)
 	// fmt.Printf("111111 idx: %v current: %v num_before: %d\n", idx, current, num_before)
 	ans = make([][]*ResultItem, num_cols)

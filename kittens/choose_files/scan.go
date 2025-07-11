@@ -640,6 +640,8 @@ type ResultManager struct {
 	scorer         *FileSystemScorer
 	mutex          sync.Mutex
 	last_wakeup_at time.Time
+
+	last_click_anchor *CollectionIndex
 }
 
 func NewResultManager(err_chan chan error, settings Settings, WakeupMainThread func() bool) *ResultManager {
@@ -658,6 +660,7 @@ func (m *ResultManager) new_scorer() {
 	m.scorer.respect_ignores = m.settings.RespectIgnores()
 	m.scorer.show_hidden = m.settings.ShowHidden()
 	m.scorer.global_ignore = m.settings.GlobalIgnores()
+	m.last_click_anchor = nil
 }
 
 func (m *ResultManager) on_results(err error, is_finished bool) {
@@ -709,6 +712,7 @@ func (m *ResultManager) set_something(callback func()) {
 		m.new_scorer()
 		m.scorer.Start()
 	} else {
+		m.last_click_anchor = nil
 		callback()
 	}
 

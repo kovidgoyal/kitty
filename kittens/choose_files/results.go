@@ -6,10 +6,12 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty/tools/icons"
+	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
@@ -123,7 +125,7 @@ func icon_for(path string, x os.FileMode) string {
 	return ans
 }
 
-func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x, available_width int) {
+func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x, y, available_width, colnum int) {
 	root_dir := h.state.CurrentDir()
 	for i, m := range matches {
 		h.lp.QueueWriteString("\r")
@@ -137,9 +139,11 @@ func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x
 		}
 		text := m.text
 		add_ellipsis := false
-		if wcswidth.Stringwidth(text) > available_width-3 {
+		width := wcswidth.Stringwidth(text)
+		if width > available_width-3 {
 			text = wcswidth.TruncateToVisualLength(text, available_width-4)
 			add_ellipsis = true
+			width = available_width - 3
 		}
 		is_current := i == current_idx
 		if is_current {
@@ -153,6 +157,54 @@ func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x
 		}
 		h.render_match_with_positions(text, add_ellipsis, m.sorted_positions(), is_current)
 		h.lp.MoveCursorVertically(1)
+		cr := h.state.mouse_state.AddCellRegion(fmt.Sprintf("result-%d-%d", colnum, i), x, y-1+i, x+width+2, y-1+i)
+		cr.HoverStyle = HOVER_STYLE
+		var data struct {
+			colnum, i int
+		}
+		data.colnum, data.i = colnum, i
+		cr.OnClickEvent = func(id string, ev *loop.MouseEvent, cell_offset tui.Point) error {
+			if ev.Buttons&loop.LEFT_MOUSE_BUTTON == 0 {
+				return nil
+			}
+			ctrl_mod := utils.IfElse(runtime.GOOS == "darwin", loop.SUPER, loop.CTRL)
+			mods := ev.Mods & (ctrl_mod | loop.ALT) // shift alone and ctrl+shift are used for kitty bindings
+			matches, _ := h.get_results()
+			num_before := h.state.last_render.num_of_slots*data.colnum + data.i
+			idx, did_wrap := matches.IncrementIndexWithWrapAroundAndCheck(h.state.last_render.first_idx, num_before)
+			if did_wrap {
+				h.lp.Beep()
+				return nil
+			}
+			d := matches.SignedDistance(idx, h.state.current_idx)
+			h.state.SetCurrentIndex(idx)
+			h.state.last_render.num_before = max(0, h.state.last_render.num_before+d)
+			switch mods {
+			case 0:
+				h.dispatch_action("accept", "")
+			case ctrl_mod, ctrl_mod | loop.ALT:
+				h.dispatch_action("select", "")
+			case loop.ALT:
+				r := matches.At(idx)
+				if (r != nil && h.state.IsSelected(r)) || h.result_manager.last_click_anchor == nil {
+					h.dispatch_action("select", "")
+					return nil
+				}
+				already_selected := utils.NewSetWithItems(h.state.selections...)
+				cdir := h.state.CurrentDir()
+				matches.Apply(idx, *h.result_manager.last_click_anchor, func(r *ResultItem) bool {
+					m := filepath.Join(cdir, r.text)
+					if !already_selected.Has(m) && h.state.CanSelect(r) {
+						already_selected.Add(m)
+						h.state.selections = append(h.state.selections, m)
+					}
+					return true
+				})
+				return h.draw_screen()
+
+			}
+			return nil
+		}
 	}
 }
 
@@ -174,14 +226,15 @@ func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) in
 		}
 		return num_cols
 	}
-	columns, num_before := matches.SplitIntoColumns(calc_num_cols, height, h.state.last_render.num_before, h.state.CurrentIndex())
+	columns, num_before, first_idx := matches.SplitIntoColumns(calc_num_cols, height, h.state.last_render.num_before, h.state.CurrentIndex())
 	h.state.last_render.num_before = num_before
 	h.state.last_render.num_per_column = height
 	h.state.last_render.num_columns = num_cols
+	h.state.last_render.first_idx = first_idx
 	x := 1
-	for _, col := range columns {
+	for i, col := range columns {
 		h.lp.MoveCursorTo(x, y)
-		h.draw_column_of_matches(col, num_before, x, col_width-1)
+		h.draw_column_of_matches(col, num_before, x, y, col_width-1, i)
 		num_before -= height
 		x += col_width
 	}

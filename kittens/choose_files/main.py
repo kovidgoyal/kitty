@@ -47,7 +47,11 @@ map('Quit', 'quit esc quit')
 map('Quit', 'quit ctrl+c quit')
 
 map('Accept current result', 'accept enter accept')
-map('Select current result', 'select shift+enter select')
+map('Select current result', 'select shift+enter select', long_text='''
+When selecting multiple files, this will add the current file to the list of selected files.
+You can also toggle the selected status of a file by holding down the :kbd:`Ctrl` key and clicking on
+it. Similarly, the :kbd:`Alt` key can be held to click and extend the range of selected files.
+''')
 
 map('Next result', 'next_result down next 1')
 map('Previous result', 'prev_result up next -1')
