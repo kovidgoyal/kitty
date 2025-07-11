@@ -280,7 +280,7 @@ func TestSortedResults(t *testing.T) {
 		}
 	}
 	tc := func(num_before, expected_new_before int, ci CollectionIndex, expected ...[]int) {
-		ac, new_num_before := r.SplitIntoColumns(func(int) int { return 2 }, 2, num_before, ci)
+		ac, new_num_before, _ := r.SplitIntoColumns(func(int) int { return 2 }, 2, num_before, ci)
 		actual := make([][]int, len(ac))
 		for i, x := range ac {
 			actual[i] = utils.Map(func(r *ResultItem) int { return int(r.score) }, x)

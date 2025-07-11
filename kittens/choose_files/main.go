@@ -98,8 +98,8 @@ func (m Mode) WindowTitle() string {
 }
 
 type render_state struct {
-	num_matches, num_of_slots, num_before, num_per_column, num_columns int
-	first_idx                                                          CollectionIndex
+	num_matches, num_of_slots, num_before, num_per_column, num_columns, num_shown int
+	first_idx                                                                     CollectionIndex
 }
 
 type State struct {
@@ -407,6 +407,20 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 				h.move_sideways(true)
 			case "right":
 				h.move_sideways(false)
+			case "first":
+				h.state.SetCurrentIndex(CollectionIndex{})
+				h.state.last_render.num_before = 0
+			case "last":
+				matches, _ := h.get_results()
+				h.state.SetCurrentIndex(matches.IncrementIndexWithWrapAround(CollectionIndex{}, -1))
+				h.state.last_render.num_before = 0
+			case "first_on_screen":
+				h.state.SetCurrentIndex(h.state.last_render.first_idx)
+				h.state.last_render.num_before = 0
+			case "last_on_screen":
+				matches, _ := h.get_results()
+				h.state.SetCurrentIndex(matches.IncrementIndexWithWrapAround(h.state.last_render.first_idx, h.state.last_render.num_shown-1))
+				h.state.last_render.num_before = h.state.last_render.num_shown - 1
 			}
 		}
 		return h.draw_screen()

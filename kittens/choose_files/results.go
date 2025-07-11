@@ -208,10 +208,10 @@ func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x
 	}
 }
 
-func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) int {
+func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) (num_cols, num_shown int) {
 	available_width := h.screen_size.width - 2
 	col_width := available_width
-	num_cols := 1
+	num_cols = 1
 	calc_num_cols := func(num_matches int) int {
 		if num_matches == 0 || height < 2 {
 			return 0
@@ -236,9 +236,10 @@ func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) in
 		h.lp.MoveCursorTo(x, y)
 		h.draw_column_of_matches(col, num_before, x, y, col_width-1, i)
 		num_before -= height
+		num_shown += len(col)
 		x += col_width
 	}
-	return len(columns)
+	return len(columns), num_shown
 }
 
 func (h *Handler) draw_num_of_matches(num_shown, y int) {
@@ -275,13 +276,15 @@ func (h *Handler) draw_results(y, bottom_margin int, matches *SortedResults, in_
 	h.state.last_render.num_of_slots = height - 2
 	num_cols := 0
 	num := matches.Len()
+	num_shown := 0
 	switch num {
 	case 0:
 		h.draw_no_matches_message(in_progress)
 	default:
-		num_cols = h.draw_list_of_results(matches, y, h.state.last_render.num_of_slots)
+		num_cols, num_shown = h.draw_list_of_results(matches, y, h.state.last_render.num_of_slots)
 	}
 	h.state.last_render.num_matches = num
+	h.state.last_render.num_shown = num_shown
 	h.draw_num_of_matches(h.state.last_render.num_of_slots*num_cols, y+height-2)
 	return
 }
