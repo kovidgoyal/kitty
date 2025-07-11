@@ -12,8 +12,14 @@ import (
 
 var _ = fmt.Print
 
-func (h *Handler) draw_frame(width, height int) {
+func (h *Handler) draw_frame(width, height int, in_progress bool) {
 	lp := h.lp
+	prefix, suffix := "", ""
+	if in_progress {
+		x := h.lp.SprintStyled("fg=cyan", " ")
+		prefix, suffix, _ = strings.Cut(x, " ")
+		lp.QueueWriteString(prefix)
+	}
 	for i := range height {
 		lp.SaveCursorPosition()
 		switch i {
@@ -32,6 +38,9 @@ func (h *Handler) draw_frame(width, height int) {
 		}
 		lp.RestoreCursorPosition()
 		lp.MoveCursorVertically(1)
+	}
+	if suffix != "" {
+		lp.QueueWriteString(suffix)
 	}
 }
 
@@ -93,7 +102,7 @@ func (h *Handler) draw_search_bar(y int) {
 	left_margin, right_margin := 0, h.draw_controls(y)
 	h.lp.MoveCursorTo(1+left_margin, 1+y)
 	available_width := h.screen_size.width - left_margin - right_margin
-	h.draw_frame(available_width, SEARCH_BAR_HEIGHT)
+	h.draw_frame(available_width, SEARCH_BAR_HEIGHT, false)
 	for y1 := y; y1 < y+4; y1++ {
 		cr := h.state.mouse_state.AddCellRegion("search-bar", left_margin, y1, left_margin+available_width, y1)
 		cr.PointerShape = loop.TEXT_POINTER

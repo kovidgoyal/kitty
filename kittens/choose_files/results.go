@@ -268,7 +268,7 @@ func (h *Handler) draw_num_of_matches(num_shown, y int) {
 func (h *Handler) draw_results(y, bottom_margin int, matches *SortedResults, in_progress bool) (height int) {
 	height = h.screen_size.height - y - bottom_margin
 	h.lp.MoveCursorTo(1, 1+y)
-	h.draw_frame(h.screen_size.width, height)
+	h.draw_frame(h.screen_size.width, height, in_progress)
 	h.lp.MoveCursorTo(1, 1+y)
 	h.draw_results_title()
 	y += 2
