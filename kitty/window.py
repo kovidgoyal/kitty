@@ -155,7 +155,7 @@ class CwdRequest:
             return window.get_cwd_of_root_child() or ''
         return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''
 
-    def modify_argv_for_launch_with_cwd(self, argv: list[str], env: dict[str, str] | None=None) -> str:
+    def modify_argv_for_launch_with_cwd(self, argv: list[str], env: dict[str, str] | None=None, hold_after_ssh: bool = False) -> str:
         window = self.window
         if not window:
             return ''
@@ -166,9 +166,13 @@ class CwdRequest:
                 run_shell = argv[0] == resolved_shell(get_options())[0]
                 server_args = [] if run_shell else list(argv)
                 from kittens.ssh.utils import set_cwd_in_cmdline, set_env_in_cmdline, set_server_args_in_cmdline
-                argv[:] = ssh_kitten_cmdline
-                if argv and argv[0] == 'kitten':
-                    argv[0] = kitten_exe()
+                if ssh_kitten_cmdline and ssh_kitten_cmdline[0] == 'kitten':
+                    if hold_after_ssh:
+                        argv[:] = [kitten_exe(), "run-shell", kitten_exe()] +ssh_kitten_cmdline[1:]
+                    else:
+                        argv[:] = [kitten_exe()]+ssh_kitten_cmdline[1:]
+                else:
+                    argv[:] = ssh_kitten_cmdline
                 set_cwd_in_cmdline(reported_cwd, argv)
                 set_server_args_in_cmdline(server_args, argv, allocate_tty=not run_shell)
                 if env is not None:

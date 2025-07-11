@@ -140,6 +140,8 @@ by the shell (needs :ref:`shell_integration` to work). The special value
 oldest foreground process associated with the currently active window rather
 than the newest foreground process. Finally, the special value :code:`root`
 refers to the process that was originally started when the window was created.
+When running :code:`kitten ssh`, using :option:`--hold-after-ssh` will cause a shell
+in the working directory that started the :code:`kitten ssh` to be opened after disconnecting.
 
 
 --env
@@ -393,6 +395,11 @@ and :option:`--config <kitty +kitten panel --config>`. Can be specified multiple
 For example, to create a desktop panel at the bottom of the screen two lines high::
 
     launch --type os-panel --os-panel lines=2 --os-panel edge=bottom sh -c "echo; echo; echo hello; sleep 5s"
+
+
+--hold-after-ssh
+type=bool-set
+When using :option:`--cwd=current` from a kitten ssh session, after disconnecting from the session on the new window, a shell will spawn.
 """
 
 
@@ -536,6 +543,7 @@ class LaunchKwds(TypedDict):
     stdin: bytes | None
     hold: bool
     bias: float | None
+    hold_after_ssh: bool
 
 
 def apply_colors(window: Window, spec: Sequence[str]) -> None:
@@ -636,6 +644,7 @@ def _launch(
         'stdin': None,
         'hold': False,
         'bias': None,
+        'hold_after_ssh': False
     }
     spacing = {}
     if opts.spacing:
@@ -658,6 +667,11 @@ def _launch(
                 kw['cwd_from'] = CwdRequest(source_window, CwdRequestType.root)
         else:
             kw['cwd'] = opts.cwd
+    if opts.hold_after_ssh:
+        if opts.cwd != 'current':
+            raise ValueError("--hold_after_ssh can only be supplied if --cwd=current is also supplied")
+        kw['hold_after_ssh'] = True
+
     if opts.location != 'default':
         kw['location'] = opts.location
     if opts.copy_colors and source_window:
@@ -804,7 +818,7 @@ def clone_safe_opts() -> frozenset[str]:
     return frozenset((
         'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'var', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
-        'logo', 'logo_position', 'logo_alpha', 'color', 'spacing', 'next_to',
+        'logo', 'logo_position', 'logo_alpha', 'color', 'spacing', 'next_to', 'hold_after_ssh'
     ))
 
 
