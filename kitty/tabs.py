@@ -480,6 +480,7 @@ class Tab:  # {{{
         hold: bool = False,
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
+        hold_after_ssh: bool = False
     ) -> Child:
         check_for_suitability = True
         if cmd is None:
@@ -529,7 +530,7 @@ class Tab:  # {{{
             fenv['WINDOWID'] = str(pwid)
         ans = Child(
                 cmd, cwd or self.cwd, stdin, fenv, cwd_from, is_clone_launch=is_clone_launch,
-                add_listen_on_env_var=add_listen_on_env_var, hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd)
+                add_listen_on_env_var=add_listen_on_env_var, hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd, hold_after_ssh=hold_after_ssh)
         ans.fork()
         return ans
 
@@ -568,11 +569,12 @@ class Tab:  # {{{
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
         next_to: Window | None = None,
+        hold_after_ssh: bool = False
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
             is_clone_launch=is_clone_launch, add_listen_on_env_var=False if allow_remote_control and remote_control_passwords else True,
-            hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd,
+            hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd, hold_after_ssh=hold_after_ssh
         )
         window = Window(
             self, child, self.args, override_title=override_title,

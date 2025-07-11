@@ -57,6 +57,7 @@ class Launch(RemoteCommand):
     watcher/list.str: list of paths to watcher files
     bias/float: The bias with which to create the new window in the current layout
     wait_for_child_to_exit/bool: Boolean indicating whether to wait and return child exit code
+    hold_after_ssh/bool: Boolean indicating whether to spawn a shell after exiting a kitten ssh opened by this launch, requires --cwd=current to also be supplied
     '''
 
     short_desc = 'Run an arbitrary process in a new window/tab'
