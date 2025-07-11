@@ -24,6 +24,12 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 	lines := []string{}
 	screen_width := h.screen_size.width
 	sctx := style.Context{AllowEscapeCodes: true}
+	if h.state.screen == SAVE_FILE {
+		m := h.state.filter_map
+		h.state.filter_map = nil
+		defer func() { h.state.filter_map = m }()
+	}
+
 	if len(h.state.filter_map)+len(h.state.selections) > 0 {
 		buf := strings.Builder{}
 		pos := 0
@@ -36,10 +42,16 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 				lines = append(lines, buf.String())
 				pos = 0
 				buf.Reset()
+			} else {
+				buf.WriteString(presep)
+				pos += sz
 			}
-			buf.WriteString(presep)
-			pos += sz
 			sz = wcswidth.Stringwidth(text)
+			if sz+pos >= screen_width {
+				lines = append(lines, buf.String())
+				pos = 0
+				buf.Reset()
+			}
 			if sfunc != nil {
 				text = sfunc(text)
 			}
@@ -94,6 +106,9 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 	}
 	if len(lines) > 0 {
 		h.lp.MoveCursorTo(1, h.screen_size.height-len(lines)+1)
+		if h.state.screen == SAVE_FILE {
+			h.lp.ClearToEndOfScreen()
+		}
 		h.lp.QueueWriteString(strings.Join(lines, "\r\n"))
 	}
 	return len(lines), err

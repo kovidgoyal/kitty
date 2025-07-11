@@ -120,12 +120,11 @@ type State struct {
 	global_ignores           ignorefiles.IgnoreFile
 	keyboard_shortcuts       []*config.KeyAction
 
-	save_file_cdir string
-	selections     []string
-	current_idx    CollectionIndex
-	last_render    render_state
-	mouse_state    tui.MouseState
-	redraw_needed  bool
+	selections    []string
+	current_idx   CollectionIndex
+	last_render   render_state
+	mouse_state   tui.MouseState
+	redraw_needed bool
 }
 
 func (s State) ShowHidden() bool                      { return s.show_hidden }
