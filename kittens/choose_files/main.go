@@ -108,6 +108,7 @@ type State struct {
 	search_text              string
 	mode                     Mode
 	suggested_save_file_name string
+	suggested_save_file_path string
 	window_title             string
 	screen                   Screen
 	current_filter           string
@@ -266,6 +267,17 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 	h.lp.AllowLineWrapping(false)
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.StartBracketedPaste()
+	if h.state.suggested_save_file_path != "" {
+		switch h.state.mode {
+		case SELECT_SAVE_FILE, SELECT_SAVE_DIR:
+			if s, err := os.Stat(h.state.suggested_save_file_path); err == nil {
+				if (s.IsDir() && h.state.mode != SELECT_SAVE_FILE) || (!s.IsDir() && h.state.mode == SELECT_SAVE_FILE) {
+					h.state.SetCurrentDir(filepath.Dir(h.state.suggested_save_file_path))
+					h.state.SetSearchText(filepath.Base(h.state.suggested_save_file_name))
+				}
+			}
+		}
+	}
 	h.result_manager.set_root_dir()
 	h.draw_screen()
 	return
@@ -346,9 +358,8 @@ func (h *Handler) change_to_current_dir_if_possible() error {
 }
 
 func (h *Handler) finish_selection() error {
-	if h.state.mode.CanSelectNonExistent() {
-		h.initialize_save_file_name(h.state.suggested_save_file_name)
-		return h.draw_screen()
+	if h.state.mode.CanSelectNonExistent() && len(h.state.selections) == 0 {
+		return h.switch_to_save_file_name_mode()
 	}
 	h.lp.Quit(0)
 	return nil
@@ -365,6 +376,15 @@ func (h *Handler) change_filter(delta int) bool {
 	return true
 }
 
+func (h *Handler) switch_to_save_file_name_mode() error {
+	name := h.state.suggested_save_file_name
+	if h.state.SearchText() != "" {
+		name = h.state.SearchText()
+	}
+	h.initialize_save_file_name(name)
+	return h.draw_screen()
+}
+
 func (h *Handler) accept_idx(idx CollectionIndex) (accepted bool, err error) {
 	matches, _ := h.get_results()
 	if r := matches.At(idx); r != nil {
@@ -377,12 +397,7 @@ func (h *Handler) accept_idx(idx CollectionIndex) (accepted bool, err error) {
 			}
 			if s.IsDir() {
 				if h.state.mode.CanSelectNonExistent() {
-					name := h.state.suggested_save_file_name
-					if h.state.SearchText() != "" {
-						name = h.state.SearchText()
-					}
-					h.initialize_save_file_name(name)
-					return true, h.draw_screen()
+					return true, h.switch_to_save_file_name_mode()
 				}
 				return false, nil
 			}
@@ -440,9 +455,6 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 		if !h.toggle_selection() {
 			h.lp.Beep()
 		} else {
-			if len(h.state.selections) > 0 && !h.state.mode.AllowsMultipleSelection() {
-				return h.finish_selection()
-			}
 			return h.draw_screen()
 		}
 	case "accept":
@@ -452,6 +464,12 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 		}
 		if !accepted {
 			h.lp.Beep()
+		}
+	case "typename":
+		if !h.state.mode.CanSelectNonExistent() {
+			h.lp.Beep()
+		} else {
+			return h.switch_to_save_file_name_mode()
 		}
 	case "toggle":
 		switch args {
@@ -593,18 +611,7 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 		h.state.mode = SELECT_SINGLE_FILE
 	}
 	h.state.suggested_save_file_name = opts.SuggestedSaveFileName
-	if opts.SuggestedSaveFilePath != "" {
-		switch h.state.mode {
-		case SELECT_SAVE_FILE, SELECT_SAVE_DIR:
-			if s, err := os.Stat(opts.SuggestedSaveFilePath); err == nil {
-				if (s.IsDir() && h.state.mode != SELECT_SAVE_FILE) || (!s.IsDir() && h.state.mode == SELECT_SAVE_FILE) {
-					if h.state.AddSelection(opts.SuggestedSaveFileName) {
-						return h.finish_selection()
-					}
-				}
-			}
-		}
-	}
+	h.state.suggested_save_file_path = opts.SuggestedSaveFilePath
 	h.state.filter_map = nil
 	h.state.current_filter = ""
 	if len(opts.FileFilter) > 0 {
@@ -673,6 +680,7 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 		return err
 	}
 	h.state.keyboard_shortcuts = conf.KeyboardShortcuts
+
 	return
 }
 
@@ -749,6 +757,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if default_cwd, err = filepath.Abs(default_cwd); err != nil {
 		return
 	}
+
 	lp.OnInitialize = func() (string, error) {
 		if opts.WritePidTo != "" {
 			if err := utils.AtomicWriteFile(opts.WritePidTo, bytes.NewReader([]byte(strconv.Itoa(os.Getpid()))), 0600); err != nil {

@@ -52,6 +52,11 @@ When selecting multiple files, this will add the current file to the list of sel
 You can also toggle the selected status of a file by holding down the :kbd:`Ctrl` key and clicking on
 it. Similarly, the :kbd:`Alt` key can be held to click and extend the range of selected files.
 ''')
+map('Type file name', 'typename ctrl+enter typename', long_text='''
+Type a file name/path rather than filtering the list of existing files.
+Useful when specifying a file name for saving that does not yet exist.
+Does not work when selecting files to open rather than to save.
+''')
 
 map('Next result', 'next_result down next 1')
 map('Previous result', 'prev_result up next -1')
