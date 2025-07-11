@@ -84,7 +84,7 @@ func (h *Handler) draw_controls(y int) (max_width int) {
 			cb()
 			h.state.redraw_needed = true
 			return nil
-		}).HoverStyle = "default fg=red"
+		}).HoverStyle = HOVER_STYLE
 	}
 	return max_width + 1
 }

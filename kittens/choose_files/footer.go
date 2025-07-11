@@ -12,6 +12,8 @@ import (
 
 var _ = fmt.Print
 
+const HOVER_STYLE = "default fg=red"
+
 type single_line_region struct {
 	x, width, y int
 	id          string
@@ -82,7 +84,7 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 		}
 		offset := h.screen_size.height - len(lines)
 		for _, cr := range crs {
-			h.state.mouse_state.AddCellRegion(cr.id, cr.x, cr.y+offset, cr.x+cr.width, cr.y+offset, cr.callback).HoverStyle = "default fg=red"
+			h.state.mouse_state.AddCellRegion(cr.id, cr.x, cr.y+offset, cr.x+cr.width, cr.y+offset, cr.callback).HoverStyle = HOVER_STYLE
 		}
 	}
 	if len(lines) > 0 {
