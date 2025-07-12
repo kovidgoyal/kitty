@@ -153,6 +153,8 @@ def actual_main(sys_args: list[str]) -> None:
     sys.argv = ['kitty']
     if args.debug_rendering:
         sys.argv.append('--debug-rendering')
+    if args.debug_input:
+        sys.argv.append('--debug-input')
     for config in args.config:
         sys.argv.extend(('--config', config))
     if not is_macos:

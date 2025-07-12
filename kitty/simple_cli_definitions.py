@@ -765,6 +765,11 @@ Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 --debug-rendering
 type=bool-set
 For internal debugging use.
+
+
+--debug-input
+type=bool-set
+For internal debugging use.
 '''.format(
     appname=appname, listen_on_defn=listen_on_defn, grab_keyboard_docs=grab_keyboard_docs,
     wait_for_single_instance_defn=wait_for_single_instance_defn, **d)

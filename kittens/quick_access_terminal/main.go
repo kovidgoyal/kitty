@@ -83,6 +83,9 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if opts.DebugRendering {
 		argv = append(argv, `--debug-rendering`)
 	}
+	if opts.DebugInput {
+		argv = append(argv, `--debug-input`)
+	}
 	if opts.Detach {
 		argv = append(argv, `--detach`)
 	}
