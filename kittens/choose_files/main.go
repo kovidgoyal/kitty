@@ -19,6 +19,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"golang.org/x/text/message"
 )
 
 var _ = fmt.Print
@@ -204,6 +205,7 @@ type Handler struct {
 	rl               *readline.Readline
 	err_chan         chan error
 	shortcut_tracker config.ShortcutTracker
+	msg_printer      *message.Printer
 }
 
 func (h *Handler) draw_screen() (err error) {
@@ -734,7 +736,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
-	handler := Handler{lp: lp, err_chan: make(chan error, 8)}
+	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag())}
 	handler.rl = readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ", Completer: handler.complete_save_prompt,
 	})

@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"golang.org/x/exp/constraints"
+	"golang.org/x/text/language"
 )
 
 var _ = fmt.Print
@@ -397,3 +398,28 @@ func Abs[T constraints.Integer](x T) T {
 	}
 	return x
 }
+
+var LanguageTag = sync.OnceValue(func() language.Tag {
+	// Check environment variables in order of precedence
+	var locale string
+	for _, v := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+		locale = os.Getenv(v)
+		if locale != "" {
+			break
+		}
+	}
+	if locale == "" {
+		return language.English // Default/fallback
+	}
+	// Remove encoding, e.g., ".UTF-8"
+	locale = strings.Split(locale, ".")[0]
+	// Replace underscore with hyphen to match BCP47 format (en_US -> en-US)
+	locale = strings.ReplaceAll(locale, "_", "-")
+	// Validate/normalize with golang.org/x/text/language
+	tag, err := language.Parse(locale)
+	if err != nil {
+		return language.English
+	}
+	return tag
+
+})
