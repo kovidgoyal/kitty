@@ -101,6 +101,14 @@ no-sudo
     user, setting of environment variables at the command line is also allowed.
     Only if commands are restricted is this needed.
 
+prompt-click-events
+    Direct the injected shell integration scripts to emit the `click_events=1`
+    flag (described below). This is intended to be set by user scripts/rc files
+    modifying :envvar:`KITTY_SHELL_INTEGRATION` rather than directly in the
+    :opt:`shell_integration` option. Those scripts should first check for the
+    :envvar:`KITTY_SUPPORTS_PROMPT_CLICK_EVENTS` environment variable, which is
+    only set in kitty versions supporting the `click_events` flag.
+    Note that for the fish shell, this does nothing.
 
 More ways to browse command output
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
