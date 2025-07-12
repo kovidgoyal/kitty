@@ -530,18 +530,21 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
 static void
 cursor_enter_callback(GLFWwindow *w, int entered) {
     if (!set_callback_window(w)) return;
+    double x, y;
+    glfwGetCursorPos(w, &x, &y);
+    monotonic_t now = monotonic();
+    global_state.callback_os_window->last_mouse_activity_at = now;
+    global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
+    global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
     if (entered) {
-        double x, y;
-        glfwGetCursorPos(w, &x, &y);
         debug_input("Mouse cursor entered window: %llu at %fx%f\n", global_state.callback_os_window->id, x, y);
-        monotonic_t now = monotonic();
         cursor_active_callback(w, now);
-        global_state.callback_os_window->last_mouse_activity_at = now;
-        global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
-        global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
         if (is_window_ready_for_callbacks()) enter_event(mods_at_last_key_or_button_event);
-        request_tick_callback();
-    } else debug_input("Mouse cursor left window: %llu\n", global_state.callback_os_window->id);
+    } else {
+        debug_input("Mouse cursor left window: %llu\n", global_state.callback_os_window->id);
+        if (is_window_ready_for_callbacks()) leave_event(mods_at_last_key_or_button_event);
+    }
+    request_tick_callback();
     global_state.callback_os_window = NULL;
 }
 

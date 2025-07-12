@@ -318,6 +318,7 @@ void colorprofile_report_stack(ColorProfile*, unsigned int*, unsigned int*);
 
 void set_mouse_cursor(MouseShape);
 void enter_event(int modifiers);
+void leave_event(int modifiers);
 void mouse_event(const int, int, int);
 void focus_in_event(void);
 void scroll_event(double, double, int, int);

@@ -18,6 +18,7 @@ const (
 	MOUSE_RELEASE
 	MOUSE_MOVE
 	MOUSE_CLICK
+	MOUSE_LEAVE
 )
 
 func (e MouseEventType) String() string {
@@ -141,10 +142,13 @@ func (e PointerShape) String() string {
 }
 
 const (
-	SHIFT_INDICATOR  int = 1 << 2
-	ALT_INDICATOR        = 1 << 3
-	CTRL_INDICATOR       = 1 << 4
-	MOTION_INDICATOR     = 1 << 5
+	SHIFT_INDICATOR         int = 1 << 2
+	ALT_INDICATOR               = 1 << 3
+	CTRL_INDICATOR              = 1 << 4
+	MOTION_INDICATOR            = 1 << 5
+	SCROLL_BUTTON_INDICATOR     = 1 << 6
+	EXTRA_BUTTON_INDICATOR      = 1 << 7
+	LEAVE_INDICATOR             = 1 << 8
 )
 
 const (
@@ -245,11 +249,14 @@ func decode_sgr_mouse(text string, screen_size ScreenSize, last_letter byte) *Mo
 		ans.Event_type = MOUSE_MOVE
 	}
 	cb3 := cb & 3
-	if cb >= 128 {
+	switch {
+	case cb&LEAVE_INDICATOR != 0:
+		ans.Event_type = MOUSE_LEAVE
+	case cb&EXTRA_BUTTON_INDICATOR != 0:
 		ans.Buttons |= ebmap[cb3]
-	} else if cb >= 64 {
+	case cb&SCROLL_BUTTON_INDICATOR != 0:
 		ans.Buttons |= wbmap[cb3]
-	} else if cb3 < 3 {
+	case cb3 < 3:
 		ans.Buttons |= bmap[cb3]
 	}
 	if cb&SHIFT_INDICATOR != 0 {

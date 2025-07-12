@@ -109,6 +109,8 @@ Detailed list of changes
 0.42.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new :ref:`protocol extension <mouse_leave_window>` to notify terminal programs that have turned on SGR Pixel mouse reporting when the mouse leaves the window (:disc:`8808`)
+
 - Fix :opt:`remember_window_position` not working because of a stupid typo (:iss:`8646`)
 
 - A new :option:`kitty --grab-keyboard` that can be used to grab the keyboard so that global shortcuts are sent to kitty instead

@@ -15,7 +15,7 @@
 extern PyTypeObject Screen_Type;
 
 static MouseShape mouse_cursor_shape = TEXT_POINTER;
-typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
+typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE, LEAVE } MouseAction;
 #define debug debug_input
 
 // Encoding of mouse events {{{
@@ -25,6 +25,7 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define MOTION_INDICATOR  (1 << 5)
 #define SCROLL_BUTTON_INDICATOR (1 << 6)
 #define EXTRA_BUTTON_INDICATOR (1 << 7)
+#define LEAVE_INDICATOR (1 << 8)
 
 
 static unsigned int
@@ -65,11 +66,18 @@ static char mouse_event_buf[64];
 static int
 encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
     unsigned int cb = encode_button(button);
-    if (action == MOVE) {
-        if (cb == UINT_MAX) cb = 3;
-        cb += 32;
-    } else {
-        if (cb == UINT_MAX) return 0;
+    switch (action) {
+        case MOVE:
+            if (cb == UINT_MAX) cb = 3;
+            cb += 32;
+            break;
+        case LEAVE:
+            if (mouse_tracking_protocol != SGR_PIXEL_PROTOCOL) return 0;
+            cb = LEAVE_INDICATOR;
+            break;
+        default:
+            if (cb == UINT_MAX) return 0;
+            break;
     }
     if (action == DRAG || action == MOVE) cb |= MOTION_INDICATOR;
     else if (action == RELEASE && mouse_tracking_protocol < SGR_PROTOCOL) cb = 3;
@@ -150,6 +158,21 @@ window_for_id(id_type window_id) {
     return window_for_window_id(window_id);
 }
 
+static void
+send_mouse_leave_event_if_needed(id_type currently_over_window, int modifiers) {
+    if (global_state.mouse_hover_in_window != currently_over_window && global_state.mouse_hover_in_window) {
+        Window *left_window = window_for_id(global_state.mouse_hover_in_window);
+        global_state.mouse_hover_in_window = currently_over_window;
+        if (left_window) {
+            int sz = encode_mouse_event(left_window, 0, LEAVE, modifiers);
+            if (sz > 0) {
+                mouse_event_buf[sz] = 0;
+                write_escape_code_to_child(left_window->render_data.screen, ESC_CSI, mouse_event_buf);
+                debug("Sent mouse leave event to window: %llu\n", left_window->id);
+            }
+        }
+    }
+}
 
 static bool
 dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
@@ -601,6 +624,8 @@ currently_pressed_button(void) {
 HANDLER(handle_event) {
     modifiers &= ~GLFW_LOCK_MASK;
     set_mouse_cursor_for_screen(w->render_data.screen);
+    send_mouse_leave_event_if_needed(w->id, modifiers);
+    global_state.mouse_hover_in_window = w->id;
     if (button == -1) {
         button = currently_pressed_button();
         handle_move_event(w, button, modifiers, window_idx);
@@ -611,6 +636,7 @@ HANDLER(handle_event) {
 
 static void
 handle_tab_bar_mouse(int button, int modifiers, int action) {
+    send_mouse_leave_event_if_needed(0, modifiers);
     if (button > -1) {  // dont report motion events, as they are expensive and useless
         call_boss(handle_click_on_tab, "Kdiii", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x, button, modifiers, action);
     }
@@ -695,6 +721,12 @@ update_mouse_pointer_shape(void) {
 }
 
 void
+leave_event(int modifiers) {
+    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window || !global_state.mouse_hover_in_window) return;
+    send_mouse_leave_event_if_needed(0, modifiers);
+}
+
+void
 enter_event(int modifiers) {
 #ifdef __APPLE__
     // On cocoa there is no way to configure the window manager to
@@ -713,9 +745,10 @@ enter_event(int modifiers) {
     if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
     unsigned window_idx; bool in_tab_bar;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
+    send_mouse_leave_event_if_needed(w ? w->id : 0, modifiers);
     if (!w || in_tab_bar) return;
-    bool mouse_cell_changed = false;
-    bool cell_half_changed = false;
+    global_state.mouse_hover_in_window = w->id;
+    bool mouse_cell_changed = false, cell_half_changed = false;
     if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
     Screen *screen = w->render_data.screen;
     int button = currently_pressed_button();
