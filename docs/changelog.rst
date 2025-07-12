@@ -111,6 +111,10 @@ Detailed list of changes
 
 - A new :ref:`protocol extension <mouse_leave_window>` to notify terminal programs that have turned on SGR Pixel mouse reporting when the mouse leaves the window (:disc:`8808`)
 
+- A new :option:`launch --hold-after-ssh` to not close a launched window
+  that connects directly to a remote host because of
+  :option:`launch --cwd`:code:`=current` when the connection ends (:pull:`8807`)
+
 - Fix :opt:`remember_window_position` not working because of a stupid typo (:iss:`8646`)
 
 - A new :option:`kitty --grab-keyboard` that can be used to grab the keyboard so that global shortcuts are sent to kitty instead

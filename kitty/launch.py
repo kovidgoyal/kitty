@@ -140,8 +140,10 @@ by the shell (needs :ref:`shell_integration` to work). The special value
 oldest foreground process associated with the currently active window rather
 than the newest foreground process. Finally, the special value :code:`root`
 refers to the process that was originally started when the window was created.
-When running :code:`kitten ssh`, using :option:`--hold-after-ssh` will cause a shell
-in the working directory that started the :code:`kitten ssh` to be opened after disconnecting.
+
+When opening in the same working directory as the current window causes the new
+window to connect to a remote host, you can use the :option:`--hold-after-ssh`
+flag to prevent the new window from closing when the connection is terminated.
 
 
 --env
@@ -399,7 +401,9 @@ For example, to create a desktop panel at the bottom of the screen two lines hig
 
 --hold-after-ssh
 type=bool-set
-When using :option:`--cwd=current` from a kitten ssh session, after disconnecting from the session on the new window, a shell will spawn.
+When using :option:`--cwd`:code:`=current` or similar from a window that is running the ssh kitten,
+the new window will run a local shell after disconnecting from the remote host, when this option
+is specified.
 """
 
 
@@ -668,8 +672,8 @@ def _launch(
         else:
             kw['cwd'] = opts.cwd
     if opts.hold_after_ssh:
-        if opts.cwd != 'current':
-            raise ValueError("--hold_after_ssh can only be supplied if --cwd=current is also supplied")
+        if opts.cwd not in ('current', 'last_reported', 'oldest'):
+            raise ValueError("--hold-after-ssh can only be supplied if --cwd=current or similar is also supplied")
         kw['hold_after_ssh'] = True
 
     if opts.location != 'default':
