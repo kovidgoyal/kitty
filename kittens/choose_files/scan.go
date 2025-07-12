@@ -447,8 +447,8 @@ func (fss *FileSystemScorer) Start() {
 		}
 		if fss.global_gitignore != nil {
 			sc.global_gitignore = fss.global_gitignore
-		} else {
-			sc.global_gitignore = ignorefiles.GlobalGitignore()
+		} else if ignore := ignorefiles.GlobalGitignore(); ignore != nil {
+			sc.global_gitignore = ignore
 		}
 		if fss.global_ignore != nil {
 			sc.global_ignore = fss.global_ignore
