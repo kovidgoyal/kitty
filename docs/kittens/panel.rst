@@ -147,6 +147,9 @@ Compatibility with various platforms
         🟢 **Hyprland**
            Fully working, no known issues
 
+        🟢 **labwc**
+           Fully working, no known issues
+
         🟠 **KDE** (kwin)
            Mostly working, except that clicks outside background panels cause kwin to :iss:`erroneously hide the panel <8715>`. KDE uses an `undocumented mapping <https://invent.kde.org/plasma/kwin/-/blob/3dc5cee6b34792486b343098e55e7f2b90dfcd00/src/layershellv1window.cpp#L24>`__ under Wayland to set the window type from the :code:`kitten panel --app-id` flag. You might want to use :code:`--app-id=dock` so that KDE treats the window as a dock panel, and disables window appearing/disappearing animations for it.
 
@@ -161,13 +164,6 @@ Compatibility with various platforms
         🟠 **niri**
            Hiding a dock panel (unmapping the window) does not release the space used
            by the dock.
-
-        🟠 **labwc**
-           Breaks when hiding (unmapping) layer shell windows. This means the quick
-           access terminal is non-functional, but background and dock panels work.
-           More technically, when unmapping the surface (attaching a NULL buffer to
-           it) labwc continues to send configure events to the unmapped surface,
-           leading to Wayland protocol errors and a crash of labwc.
 
         🔴 **GNOME** (mutter)
            Does not implement the wlr protocol at all, nothing works.
