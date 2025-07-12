@@ -73,7 +73,7 @@ encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, 
             break;
         case LEAVE:
             if (mouse_tracking_protocol != SGR_PIXEL_PROTOCOL) return 0;
-            cb = LEAVE_INDICATOR;
+            cb = LEAVE_INDICATOR | MOTION_INDICATOR;
             break;
         default:
             if (cb == UINT_MAX) return 0;

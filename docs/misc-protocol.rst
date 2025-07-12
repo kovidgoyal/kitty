@@ -37,7 +37,8 @@ Reporting when the mouse leaves the window
 kitty extends the SGR Pixel mouse reporting protocol created by xterm to
 also report when the mouse leaves the window. This is event is delivered
 encoded as a normal SGR pixel event except that the eight bit is set on the
-first number. bits 1-7 are used to encode button and modifier information.
+first number. Additionally, bit 5 is set to indicate this is a motion related event.
+The remaining bits 1-7 (except 5) are used to encode button and modifier information.
 When bit 8 is set it means the event is a mouse has left the window event,
 and all other bits should be ignored. The pixel position values must also
 be ignored as they may not be accurate.
