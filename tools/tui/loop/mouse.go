@@ -218,8 +218,7 @@ func pixel_to_cell(px, length, cell_length int) int {
 	return 0
 }
 
-func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
-	last_letter := text[len(text)-1]
+func decode_sgr_mouse(text string, screen_size ScreenSize, last_letter byte) *MouseEvent {
 	text = text[:len(text)-1]
 	parts := strings.Split(text, ";")
 	if len(parts) != 3 {
@@ -276,8 +275,10 @@ func MouseEventFromCSI(csi string, screen_size ScreenSize) *MouseEvent {
 	if last_char != 'm' && last_char != 'M' {
 		return nil
 	}
-	if !strings.HasPrefix(csi, "<") {
+	switch csi[0] {
+	case '<':
+		return decode_sgr_mouse(csi[1:], screen_size, last_char)
+	default:
 		return nil
 	}
-	return decode_sgr_mouse(csi[1:], screen_size)
 }

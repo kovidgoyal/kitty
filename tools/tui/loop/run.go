@@ -119,7 +119,6 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 			return self.OnFocusChange(csi == "I")
 		}
 		return nil
-
 	}
 	ke := KeyEventFromCSI(csi)
 	if ke != nil {
