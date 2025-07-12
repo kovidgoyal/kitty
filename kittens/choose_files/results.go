@@ -242,7 +242,7 @@ func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) (n
 	return len(columns), num_shown
 }
 
-func (h *Handler) draw_num_of_matches(num_shown, y int) {
+func (h *Handler) draw_num_of_matches(num_shown, y int, in_progress bool) {
 	m := ""
 	switch h.state.last_render.num_matches {
 	case 0:
@@ -251,7 +251,13 @@ func (h *Handler) draw_num_of_matches(num_shown, y int) {
 		m = fmt.Sprintf(" %d of %s matches ", min(num_shown, h.state.last_render.num_matches), h.msg_printer.Sprint(h.state.last_render.num_matches))
 	}
 	w := int(math.Ceil(float64(wcswidth.Stringwidth(m)) / 2.0))
-	h.lp.MoveCursorTo(h.screen_size.width-w-2, y)
+	spinner := ""
+	spinner_width := 0
+	if in_progress {
+		spinner = h.spinner.Tick()
+		spinner_width = 1 + wcswidth.Stringwidth(spinner)
+	}
+	h.lp.MoveCursorTo(h.screen_size.width-w-spinner_width-2, y)
 	st := loop.SizedText{Subscale_denominator: 2, Subscale_numerator: 1, Vertical_alignment: 2, Width: 1}
 	graphemes := wcswidth.SplitIntoGraphemes(m)
 	for len(graphemes) > 0 {
@@ -262,6 +268,9 @@ func (h *Handler) draw_num_of_matches(num_shown, y int) {
 			graphemes = graphemes[1:]
 		}
 		h.lp.DrawSizedText(s, st)
+	}
+	if spinner != "" {
+		h.lp.QueueWriteString(spinner)
 	}
 }
 
@@ -285,7 +294,7 @@ func (h *Handler) draw_results(y, bottom_margin int, matches *SortedResults, in_
 	}
 	h.state.last_render.num_matches = num
 	h.state.last_render.num_shown = num_shown
-	h.draw_num_of_matches(h.state.last_render.num_of_slots*num_cols, y+height-2)
+	h.draw_num_of_matches(h.state.last_render.num_of_slots*num_cols, y+height-2, in_progress)
 	return
 }
 

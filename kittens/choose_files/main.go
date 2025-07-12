@@ -206,6 +206,7 @@ type Handler struct {
 	err_chan         chan error
 	shortcut_tracker config.ShortcutTracker
 	msg_printer      *message.Printer
+	spinner          *tui.Spinner
 }
 
 func (h *Handler) draw_screen() (err error) {
@@ -736,7 +737,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
-	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag())}
+	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
 	handler.rl = readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ", Completer: handler.complete_save_prompt,
 	})
