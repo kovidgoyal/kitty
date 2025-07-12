@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import locale
 import os
 import shutil
@@ -222,13 +223,24 @@ def is_panel_kitten() -> bool:
     return _is_panel_kitten
 
 
-def list_monitors() -> None:
+def list_monitors(json_output: bool = False) -> None:
     monitor_names = glfw_get_monitor_names()
     has_descriptions = False
     for (name, desc) in monitor_names:
         if desc:
             has_descriptions = True
             break
+
+    if json_output:
+        if has_descriptions:
+            monitors_list_of_dict = [{'name': name, 'desc': desc} for name, desc in monitor_names]
+        else:
+            monitors_list_of_dict = [{'name': name} for name, _ in monitor_names]
+
+        json.dump(monitors_list_of_dict, sys.stdout)
+        print()
+        return
+
     isatty = sys.stdout.isatty()
     for (name, desc) in monitor_names:
         if isatty:
@@ -243,8 +255,9 @@ def list_monitors() -> None:
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
-    if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name == 'list':
-        list_monitors()
+    if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name in ['list', 'listjson']:
+        is_json_output = run_app.layer_shell_config.output_name == 'listjson'
+        list_monitors(is_json_output)
         return
     if is_macos:
         global_shortcuts = set_cocoa_global_shortcuts(opts)
