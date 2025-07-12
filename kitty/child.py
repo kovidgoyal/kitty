@@ -221,6 +221,7 @@ class Child:
         hold: bool = False,
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
+        hold_after_ssh: bool = False
     ):
         self.is_clone_launch = is_clone_launch
         self.id = next(child_counter)
@@ -230,7 +231,7 @@ class Child:
         self.remote_control_fd = remote_control_fd
         if cwd_from:
             try:
-                cwd = cwd_from.modify_argv_for_launch_with_cwd(self.argv, env) or cwd
+                cwd = cwd_from.modify_argv_for_launch_with_cwd(self.argv, env, hold_after_ssh=hold_after_ssh) or cwd
             except Exception as err:
                 log_error(f'Failed to read cwd of {cwd_from} with error: {err}')
         else:
