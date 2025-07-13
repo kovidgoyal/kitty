@@ -233,11 +233,10 @@ def list_monitors(json_output: bool = False) -> None:
 
     if json_output:
         if has_descriptions:
-            monitors_list_of_dict = [{'name': name, 'desc': desc} for name, desc in monitor_names]
+            monitors_list_of_dict = [{'name': name, 'description': desc} for name, desc in monitor_names]
         else:
             monitors_list_of_dict = [{'name': name} for name, _ in monitor_names]
-
-        json.dump(monitors_list_of_dict, sys.stdout)
+        json.dump(monitors_list_of_dict, sys.stdout, indent=2, sort_keys=True)
         print()
         return
 
@@ -255,9 +254,8 @@ def list_monitors(json_output: bool = False) -> None:
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
-    if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name in ['list', 'listjson']:
-        is_json_output = run_app.layer_shell_config.output_name == 'listjson'
-        list_monitors(is_json_output)
+    if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name in ('list', 'listjson'):
+        list_monitors(run_app.layer_shell_config.output_name == 'listjson')
         return
     if is_macos:
         global_shortcuts = set_cocoa_global_shortcuts(opts)
