@@ -139,6 +139,10 @@ images.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A video player that can play videos in the terminal.
 
+.. code-block:: sh
+
+    mpv --profile=sw-fast --vo=kitty --vo-kitty-use-shm=yes --really-quiet video.mkv
+
 .. _tool_timg:
 
 `timg <https://github.com/hzeller/timg>`_
