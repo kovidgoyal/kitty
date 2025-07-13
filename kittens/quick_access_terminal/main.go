@@ -9,6 +9,7 @@ import (
 	"github.com/kovidgoyal/kitty/kittens/panel"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/config"
+	"github.com/kovidgoyal/kitty/tools/utils"
 
 	"golang.org/x/sys/unix"
 )
@@ -53,7 +54,11 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 		argv = append(argv, fmt.Sprintf("--margin-right=%d", conf.Margin_right))
 	}
 	if len(conf.Kitty_conf) > 0 {
+		cdir := utils.ConfigDir()
 		for _, c := range conf.Kitty_conf {
+			if !filepath.IsAbs(c) {
+				c = filepath.Join(cdir, c)
+			}
 			argv = append(argv, fmt.Sprintf("--config=%s", c))
 		}
 	}
