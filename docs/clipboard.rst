@@ -138,6 +138,29 @@ the data, but create multiple references to it in the system clipboard. Alias
 packets can be sent anytime after the initial write packet and before the end
 of data packet.
 
+.. _clipboard_repeated_permission:
+
+Avoiding repeated permission prompts
+--------------------------------------
+
+.. versionadded:: using a password to avoid repeated confirmations was added in version 0.43.0
+
+If a program like an editor wants to make use of the system clipboard, by
+default, the user is prompted on every read request. This can become quite
+fatiguing. To avoid this situation, this protocol allows sending a password
+and human friendly name with ``type=write`` and ``type=read`` requests. The
+terminal can then ask the user to allow all future requests using that
+password. If the user agrees, future requests on the same tty will be
+automatically allowed by the terminal. The editor or other program using
+this facility should ideally use a password randomnly generated at startup,
+such as a UUID4. However, terminals may implement permanent/stored passwords.
+Users can then configure terminal programs they trust to use these password.
+
+The password and the human name are encoded using the ``pw`` and ``name`` keys
+in the metadata. The values are UTF-8 strings that are base64 encoded.
+Specifying a password without a human friendly name is equivalent to not
+specifying a password and the terminal must treat the request as though
+it had no password.
 
 Support for terminal multiplexers
 ------------------------------------

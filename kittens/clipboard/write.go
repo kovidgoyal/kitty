@@ -3,6 +3,7 @@
 package clipboard
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -79,6 +80,14 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 		}
 		if mime != "" {
 			ans["mime"] = mime
+		}
+		if ptype == "write" {
+			if opts.Password != "" {
+				ans["pw"] = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(opts.Password))
+			}
+			if opts.HumanName != "" {
+				ans["name"] = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(opts.HumanName))
+			}
 		}
 		return ans
 	}

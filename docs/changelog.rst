@@ -111,6 +111,10 @@ Detailed list of changes
 
 - A new :ref:`protocol extension <mouse_leave_window>` to notify terminal programs that have turned on SGR Pixel mouse reporting when the mouse leaves the window (:disc:`8808`)
 
+- clipboard kitten: Can now optionally take a password to avoid repeated
+  permission prompts when accessing the clipboard. Based on a
+  :ref:`protocol extension <clipboard_repeated_permission>`. (:iss:`8789`)
+
 - A new :option:`launch --hold-after-ssh` to not close a launched window
   that connects directly to a remote host because of
   :option:`launch --cwd`:code:`=current` when the connection ends (:pull:`8807`)

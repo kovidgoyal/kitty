@@ -44,6 +44,18 @@ other :code:`text/*` MIME is present.
 type=bool-set
 Wait till the copy to clipboard is complete before exiting. Useful if running
 the kitten in a dedicated, ephemeral window. Only needed in filter mode.
+
+
+--password
+A password to use when accessing the clipboard. If the user chooses to accept the password
+future invocations of the kitten will not have a permission prompt in this tty session. Does not
+work in filter mode. Must be of the form: text:actual-password or fd:integer (a file descriptor
+number to read the password from) or file:path-to-file (a file from which to read the password).
+Note that you must also specify a human friendly name using the :option:`--human-name` flag.
+
+
+--human-name
+A human friendly name to show the user when asking for permission to access the clipboard.
 '''.format
 help_text = '''\
 Read or write to the system clipboard.

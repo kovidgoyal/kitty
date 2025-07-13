@@ -329,9 +329,14 @@ func run_get_loop(opts *Options, args []string) (err error) {
 	if opts.UsePrimary {
 		basic_metadata["loc"] = "primary"
 	}
-
 	lp.OnInitialize = func() (string, error) {
 		lp.QueueWriteString(encode(basic_metadata, "."))
+		if opts.Password != "" {
+			basic_metadata["pw"] = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(opts.Password))
+		}
+		if opts.HumanName != "" {
+			basic_metadata["name"] = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(opts.HumanName))
+		}
 		return "", nil
 	}
 
