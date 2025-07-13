@@ -100,7 +100,7 @@ code to demonstrate its use
         buf = array.array('H', [0, 0, 0, 0])
         fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
         print((
-            'number of rows: {} number of columns: {}'
+            'number of rows: {} number of columns: {} '
             'screen width: {} screen height: {}').format(*buf))
 
 .. tab:: Go
