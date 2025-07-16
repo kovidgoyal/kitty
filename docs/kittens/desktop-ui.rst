@@ -92,7 +92,7 @@ the kitten is not already running, try the following command::
 If DBUS is able to start the kitten or if it is already running it will print
 out the version property, otherwise it will fail with an error. If it fails,
 check the file
-:file:`.local/share/dbus-1/services/org.freedesktop.impl.portal.desktop.kitty.service`
+:file:`~/.local/share/dbus-1/services/org.freedesktop.impl.portal.desktop.kitty.service`
 that should have been created by the ``enable-portal`` command. It's ``Exec``
 key must point to the full path to the kitten executable.
 
