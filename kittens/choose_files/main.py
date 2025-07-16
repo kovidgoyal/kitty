@@ -121,6 +121,12 @@ Path to an existing file to use as the save file.
 Window title to use for this chooser
 
 
+--display-title
+type=bool-set
+Show the window title at the top, useful when this kitten is used in an
+OS window without a title bar.
+
+
 --override -o
 type=list
 Override individual configuration options, can be specified multiple times.

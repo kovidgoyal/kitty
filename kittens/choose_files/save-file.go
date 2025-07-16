@@ -123,6 +123,9 @@ func (h *Handler) initialize_save_file_name(fname string) {
 func (h *Handler) draw_save_file_name_screen() (err error) {
 	h.lp.AllowLineWrapping(true)
 	desc := utils.IfElse(h.state.mode == SELECT_SAVE_FILE, "file", "directory")
+	if h.state.DisplayTitle() {
+		h.lp.Println(h.state.WindowTitle())
+	}
 	h.lp.Println("Enter the name of the", desc, "below, relative to:")
 	h.lp.Println(h.lp.SprintStyled("fg=green", h.state.CurrentDir()))
 	if h.state.mode.AllowsMultipleSelection() {

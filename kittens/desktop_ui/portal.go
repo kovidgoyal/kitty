@@ -792,7 +792,7 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 				return nil
 			}
 		}
-		args = append(args, "kitten", `choose-files`, `--mode`, cfd.Mode, `--write-output-to`, output_path, `--output-format=json`)
+		args = append(args, "kitten", `choose-files`, `--mode`, cfd.Mode, `--write-output-to`, output_path, `--output-format=json`, `--display-title`)
 		if cfd.SuggestedSaveFileName != "" {
 			args = append(args, `--suggested-save-file-name`, cfd.SuggestedSaveFileName)
 		}

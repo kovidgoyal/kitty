@@ -120,6 +120,7 @@ type State struct {
 	sort_by_last_modified    bool
 	global_ignores           ignorefiles.IgnoreFile
 	keyboard_shortcuts       []*config.KeyAction
+	display_title            bool
 
 	selections    []string
 	current_idx   CollectionIndex
@@ -128,6 +129,7 @@ type State struct {
 	redraw_needed bool
 }
 
+func (s State) DisplayTitle() bool                    { return s.display_title }
 func (s State) ShowHidden() bool                      { return s.show_hidden }
 func (s State) RespectIgnores() bool                  { return s.respect_ignores }
 func (s State) SortByLastModified() bool              { return s.sort_by_last_modified }
@@ -225,9 +227,14 @@ func (h *Handler) draw_screen() (err error) {
 		h.lp.SetWindowTitle(h.state.WindowTitle())
 		defer func() { // so that the cursor ends up in the right place
 			h.lp.MoveCursorTo(1, 1)
-			h.draw_search_bar(0)
+			if h.state.DisplayTitle() {
+				h.lp.Println(h.state.WindowTitle())
+				h.draw_search_bar(1)
+			} else {
+				h.draw_search_bar(0)
+			}
 		}()
-		y := SEARCH_BAR_HEIGHT
+		y := SEARCH_BAR_HEIGHT + utils.IfElse(h.state.DisplayTitle(), 1, 0)
 		footer_height, err := h.draw_footer()
 		if err != nil {
 			return err
@@ -683,7 +690,7 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 		return err
 	}
 	h.state.keyboard_shortcuts = conf.KeyboardShortcuts
-
+	h.state.display_title = opts.DisplayTitle
 	return
 }
 
