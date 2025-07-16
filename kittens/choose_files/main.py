@@ -149,6 +149,10 @@ Path to a file to which to write the process ID (PID) of this process to.
 
 
 help_text = '''\
+Select one or more files, quickly, using fuzzy finding, by typing just a few characters from
+the file name. Browse matching files, using the arrow keys to navigate matches and press :kbd:`Enter`
+to select. The :kbd:`Tab` key can be used to change to a sub-folder. See the :doc:`online docs </kittens/choose-files>`
+for full details.
 '''
 
 
