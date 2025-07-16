@@ -492,9 +492,9 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 		}
 	case "cd":
 		switch args {
-		case "current":
+		case ".":
 			return h.change_to_current_dir_if_possible()
-		case "up":
+		case "..":
 			curr := h.state.CurrentDir()
 			switch curr {
 			case "/":
@@ -517,10 +517,11 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 			if absp, err := filepath.Abs(args); err == nil {
 				h.change_current_dir(absp)
 				return h.draw_screen()
+			} else {
+				h.lp.Beep()
+				return nil
 			}
-
 		}
-
 	}
 	return
 }

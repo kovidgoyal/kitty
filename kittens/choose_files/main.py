@@ -67,8 +67,8 @@ map('Last result on screen', 'last_result_on_screen end next last_on_screen')
 map('First result', 'first_result_on_screen ctrl+home next first')
 map('Last result', 'last_result_on_screen ctrl+end next last')
 
-map('Change to currently selected dir', 'cd_current tab cd current')
-map('Change to parent directory', 'cd_parent shift+tab cd up')
+map('Change to currently selected dir', 'cd_current tab cd .')
+map('Change to parent directory', 'cd_parent shift+tab cd ..')
 map('Change to root directory', 'cd_root ctrl+/ cd /')
 map('Change to home directory', 'cd_home ctrl+~ cd ~')
 map('Change to home directory', 'cd_home ctrl+` cd ~')
@@ -79,7 +79,7 @@ map('Next filter', 'next_filter ctrl+f 1')
 map('Previous filter', 'prev_filter alt+f -1')
 
 map('Toggle showing dotfiles', 'toggle_dotfiles alt+h toggle dotfiles')
-map('Toggle showing ignored files', 'toggle_ignorefiles alt+d toggle ignorefiles')
+map('Toggle showing ignored files', 'toggle_ignorefiles alt+i toggle ignorefiles')
 map('Toggle sorting by dates', 'toggle_sort_by_dates alt+d toggle sort_by_dates')
 
 egr()  # }}}
