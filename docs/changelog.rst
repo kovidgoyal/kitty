@@ -106,7 +106,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.42.2 [future]
+0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :ref:`protocol extension <mouse_leave_window>` to notify terminal programs that have turned on SGR Pixel mouse reporting when the mouse leaves the window (:disc:`8808`)
