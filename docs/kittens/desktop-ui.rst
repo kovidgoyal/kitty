@@ -113,3 +113,14 @@ Read the ``portals.conf`` man page and run::
 this will output a lot of debug information, which should tell you which
 backend is chosen for which service. Read the debug output carefully to
 determine why the kitten is not being selected.
+
+If some GUI applications are not using the choose-files kitten for their file
+select dialogs, then make sure the environment variables mentioned above are
+set, you can also try running the the GUI application with them set explicitly,
+as::
+
+    QT_QPA_PLATFORMTHEME=xdgdesktopportal GTK_USE_PORTAL=1 my-gui-app
+
+Note that not all applications use portals, so if some particular application
+is failing to use the portal but others work, report the issue to that
+applications' developers.
