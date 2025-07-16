@@ -18,5 +18,4 @@ features are:
     fast and keyboard centric :doc:`choose-files </kittens/choose-files>` kitten
     running in a semi-transparent kitty overlay.
 
-  * Allow simple command line based management of the desktop color scheme
-    light/dark modes.
+  * Allow simple command line based management of the desktop light/dark modes.
