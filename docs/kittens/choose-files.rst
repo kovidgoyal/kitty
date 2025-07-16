@@ -55,6 +55,33 @@ files is displayed at the bottom of the kitten and you can click on them
 to deselect a file. Similarly, pressing :kbd:`Shift+Enter` will un-select a
 previously selected file.
 
+
+Hidden and ignored files
+--------------------------
+
+By default, the kitten does not process hidden files and directories (whose
+names start with a period). This can be :opt:`changed in the configuration <kitten-choose_files.show_hidden>`
+and also at runtime via the clickable link to the right of the search input.
+
+Similarly, the kitten respects both :file:`.gitignore` and :file:`.ignore`
+files, by default. This can also be changed both :opt:`in configuration
+<kitten-choose_files.respect_ignores>` or at runtime. Note that
+:file:`.gitignore` files are only respected if there is also a :file:`.git`
+directory present. The kitten also supports the global :file:`.gitignore` file,
+though it applies only inside git working trees. You can specify :opt:`global ignore
+patterns <kitten-choose_files.ignore>`, that apply everywhere in :file:`choose-files.conf`.
+
+
+Selecting non-existent files (save file names)
+-------------------------------------------------
+
+This kitten can also be used to select non-existent files, that is a new file
+for a :guilabel:`Save file` type of dialog using :option:`--mode <kitty +kitten
+choose_files --mode>`:code:`=save-file`. Once you have changed to the directory
+you want the file to be in (using the :kbd:`Tab` key),
+press :kbd:`Ctrl+Enter` and you will be able to type in the file name.
+
+
 Configuration
 ------------------------
 
