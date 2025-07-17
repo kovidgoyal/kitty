@@ -424,7 +424,7 @@ apply_scale_changes(_GLFWwindow *window, bool resize_framebuffer, bool update_cs
     double scale = _glfwWaylandWindowScale(window);
     if (resize_framebuffer) resizeFramebuffer(window);
     _glfwInputWindowContentScale(window, (float)scale, (float)scale);
-    if (update_csd) csd_set_visible(window, true);  // resize the csd iff the window currently has CSD
+    if (update_csd) csd_set_visible(window, csd_should_window_be_decorated(window));  // resize the csd iff the window currently has CSD
     int buffer_scale = window->wl.fractional_scale ? 1 : (int)scale;
     wl_surface_set_buffer_scale(window->wl.surface, buffer_scale);
 }
@@ -824,7 +824,7 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
         int width = window->wl.pending.width, height = window->wl.pending.height;
         csd_set_window_geometry(window, &width, &height);
         bool resized = dispatchChangesAfterConfigure(window, width, height);
-        csd_set_visible(window, !(window->wl.decorations.serverSide || window->monitor || window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN));
+        csd_set_visible(window, csd_should_window_be_decorated(window));
         debug("Final window %llu content size: %dx%d resized: %d\n", window->id, width, height, resized);
     }
 
@@ -967,7 +967,7 @@ setXdgDecorations(_GLFWwindow* window)
         zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, window->decorated ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE: ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
     } else {
         window->wl.decorations.serverSide = false;
-        csd_set_visible(window, window->decorated);
+        csd_set_visible(window, csd_should_window_be_decorated(window));
     }
 }
 
@@ -1632,7 +1632,7 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
         csd_set_window_geometry(window, &w, &h);
         window->wl.width = w; window->wl.height = h;
         resizeFramebuffer(window);
-        csd_set_visible(window, true);  // resizes the csd iff the window currently has csd
+        csd_set_visible(window, csd_should_window_be_decorated(window));  // resizes the csd iff the window currently has csd
         commit_window_surface_if_safe(window);
         inform_compositor_of_window_geometry(window, "SetWindowSize");
     }

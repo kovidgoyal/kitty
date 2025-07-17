@@ -112,6 +112,9 @@ Detailed list of changes
 - A new :opt:`cursor_trail_color` setting to independently control the color of
   cursor trails (:pull:`8830`)
 
+- Wayland: Fix incorrect window size calculation when transitioning from
+  fullscreen to non-fullscreen with client side decorations (:iss:`8826`)
+
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -570,6 +570,11 @@ window_is_csd_capable(_GLFWwindow *window) {
     return window->decorated && !decs.serverSide && window->wl.xdg.toplevel;
 }
 
+bool
+csd_should_window_be_decorated(_GLFWwindow *window) {
+    return window_is_csd_capable(window) && window->monitor == NULL && (window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN) == 0;
+}
+
 static bool
 ensure_csd_resources(_GLFWwindow *window) {
     if (!window_is_csd_capable(window)) return false;
@@ -653,18 +658,18 @@ csd_change_title(_GLFWwindow *window) {
 
 void
 csd_set_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
-    bool has_csd = window_is_csd_capable(window) && decs.titlebar.surface && !(window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN);
+    const bool include_space_for_csd = csd_should_window_be_decorated(window);
     bool size_specified_by_compositor = *width > 0 && *height > 0;
     if (!size_specified_by_compositor) {
         *width = window->wl.user_requested_content_size.width;
         *height = window->wl.user_requested_content_size.height;
         if (window->wl.xdg.top_level_bounds.width > 0) *width = MIN(*width, window->wl.xdg.top_level_bounds.width);
         if (window->wl.xdg.top_level_bounds.height > 0) *height = MIN(*height, window->wl.xdg.top_level_bounds.height);
-        if (has_csd) *height += decs.metrics.visible_titlebar_height;
+        if (include_space_for_csd) *height += decs.metrics.visible_titlebar_height;
     }
     decs.geometry.x = 0; decs.geometry.y = 0;
     decs.geometry.width = *width; decs.geometry.height = *height;
-    if (has_csd) {
+    if (include_space_for_csd) {
         decs.geometry.y = -decs.metrics.visible_titlebar_height;
         *height -= decs.metrics.visible_titlebar_height;
     }
