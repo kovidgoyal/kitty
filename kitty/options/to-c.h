@@ -215,6 +215,11 @@ cursor_trail_decay(PyObject *src, Options *opts) {
     opts->cursor_trail_decay_slow = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));
 }
 
+static inline void
+cursor_trail_color(PyObject *src, Options *opts) {
+    opts->cursor_trail_color = color_or_none_as_int(src);
+}
+
 static void
 parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {
     PyObject *mv = PyObject_GetAttrString(val, "mod_value");
