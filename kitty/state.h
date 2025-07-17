@@ -54,6 +54,7 @@ typedef struct {
     monotonic_t cursor_trail;
     float cursor_trail_decay_fast;
     float cursor_trail_decay_slow;
+    color_type cursor_trail_color;
     float cursor_trail_start_threshold;
     unsigned int url_style;
     unsigned int scrollback_pager_history_size;

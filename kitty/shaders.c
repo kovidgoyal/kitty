@@ -1252,7 +1252,12 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_x, 1, trail->cursor_edge_x);
     glUniform2fv(trail_program_layout.uniforms.cursor_edge_y, 1, trail->cursor_edge_y);
 
-    color_vec3(trail_program_layout.uniforms.trail_color, active_window ? active_window->render_data.screen->last_rendered.cursor_bg : OPT(foreground));
+    color_type trail_color = OPT(cursor_trail_color);
+    if (trail_color == 0) {  // 0 means "none" was specified
+        trail_color = active_window ? active_window->render_data.screen->last_rendered.cursor_bg : OPT(foreground);
+    }
+    color_vec3(trail_program_layout.uniforms.trail_color, trail_color);
+
     glUniform1fv(trail_program_layout.uniforms.trail_opacity, 1, &trail->opacity);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);

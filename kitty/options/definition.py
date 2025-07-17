@@ -416,6 +416,18 @@ animation.
 '''
     )
 
+opt('cursor_trail_color', 'none',
+    option_type='to_color_or_none',
+    ctype='!cursor_trail_color',
+    long_text='''
+Set the color of the cursor trail when :opt:`cursor_trail` is enabled.
+If set to 'none' (the default), the cursor trail will use the cursor's
+background color. Otherwise, specify a color value (e.g., #ff0000 for red,
+or a named color like 'red'). This allows you to customize the appearance
+of the cursor trail independently of the cursor color.
+'''
+)
+
 egr()  # }}}
 
 # scrollback {{{

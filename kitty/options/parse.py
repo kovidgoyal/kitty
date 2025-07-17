@@ -941,6 +941,9 @@ class Parser:
     def cursor_trail_decay(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_decay'] = cursor_trail_decay(val)
 
+    def cursor_trail_color(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_color'] = to_color_or_none(val)
+
     def cursor_trail_start_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_start_threshold'] = positive_int(val)
 
