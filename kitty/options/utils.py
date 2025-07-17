@@ -576,7 +576,6 @@ def cursor_trail_decay(x: str) -> tuple[float, float]:
     slow = max(slow, fast)
     return fast, slow
 
-
 def scrollback_lines(x: str) -> int:
     ans = int(x)
     if ans < 0:

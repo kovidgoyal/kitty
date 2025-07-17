@@ -337,6 +337,7 @@ option_names = (
     'cursor_text_color',
     'cursor_trail',
     'cursor_trail_decay',
+    'cursor_trail_color',
     'cursor_trail_start_threshold',
     'cursor_underline_thickness',
     'default_pointer_shape',
@@ -520,6 +521,7 @@ class Options:
     cursor_text_color: kitty.fast_data_types.Color | None = Color(17, 17, 17)
     cursor_trail: int = 0
     cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
+    cursor_trail_color: kitty.fast_data_types.Color | None = None
     cursor_trail_start_threshold: int = 2
     cursor_underline_thickness: float = 2.0
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
@@ -1061,3 +1063,4 @@ nullable_colors = frozenset({
 
 
 secret_options = ('remote_control_password', 'file_transfer_confirmation_bypass')
+
