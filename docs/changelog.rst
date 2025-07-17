@@ -106,6 +106,12 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.43.0 [2025-07-16]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- A new :opt:`cursor_trail_color` setting to independently control the color of
+  cursor trails (:pull:`8830`)
+
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
