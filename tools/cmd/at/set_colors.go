@@ -18,6 +18,7 @@ var nullable_colors = map[string]bool{
 	"active_border_color":  true,
 	"cursor":               true,
 	"cursor_text_color":    true,
+	"cursor_trail_color":   true,
 	"selection_background": true,
 	"selection_foreground": true,
 	"tab_bar_background":   true,

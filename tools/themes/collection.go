@@ -298,6 +298,7 @@ var AllColorSettingNames = map[string]bool{ // {{{
 	"color99":                 true,
 	"cursor":                  true,
 	"cursor_text_color":       true,
+	"cursor_trail_color":      true,
 	"foreground":              true,
 	"inactive_border_color":   true,
 	"inactive_tab_background": true,
