@@ -9,8 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
+	"github.com/kovidgoyal/kitty/tools/highlight"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
@@ -117,25 +119,16 @@ func hash_for_path(path string) (string, error) {
 
 }
 
-// Remove all control codes except newlines
-func sanitize_control_codes(x string) string {
-	pat := utils.MustCompile("[\x00-\x09\x0b-\x1f\x7f\u0080-\u009f]")
-	return pat.ReplaceAllLiteralString(x, "░")
-}
-
-func sanitize_tabs_and_carriage_returns(x string) string {
-	return strings.NewReplacer("\t", conf.Replace_tab_by, "\r", "⏎").Replace(x)
-}
-
-func sanitize(x string) string {
-	return sanitize_control_codes(sanitize_tabs_and_carriage_returns(x))
-}
-
 func text_to_lines(text string) []string {
 	lines := make([]string, 0, 512)
 	splitlines_like_git(text, false, func(line string) { lines = append(lines, line) })
 	return lines
 }
+
+var sanitize = sync.OnceValue(func() func(string) string {
+	s := highlight.NewSanitizeControlCodes(conf.Replace_tab_by)
+	return s.Sanitize
+})
 
 func lines_for_path(path string) ([]string, error) {
 	return lines_cache.GetOrCreate(path, func(path string) ([]string, error) {
@@ -143,7 +136,7 @@ func lines_for_path(path string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		return text_to_lines(sanitize(ans)), nil
+		return text_to_lines(sanitize()(ans)), nil
 	})
 }
 
