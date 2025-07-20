@@ -184,11 +184,12 @@ type TextFilePreview struct {
 	plain_text, highlighted_text string
 	highlighted_chan             chan highlighed_data
 	light                        bool
+	path                         string
 }
 
 func (p TextFilePreview) IsValidForColorScheme(light bool) bool { return p.light == light }
 
-func (p TextFilePreview) Render(h *Handler, x, y, width, height int) {
+func (p *TextFilePreview) Render(h *Handler, x, y, width, height int) {
 	if p.highlighted_chan != nil {
 		select {
 		case hd := <-p.highlighted_chan:
@@ -228,7 +229,7 @@ func NewTextFilePreview(abspath string, metadata fs.FileInfo, highlighted_chan c
 	if !utf8.ValidString(text) {
 		text = "Error: not valid utf-8 text"
 	}
-	return &TextFilePreview{plain_text: sanitize(text), highlighted_chan: highlighted_chan, light: use_light_colors}
+	return &TextFilePreview{path: abspath, plain_text: sanitize(text), highlighted_chan: highlighted_chan, light: use_light_colors}
 }
 
 type style_resolver struct {
