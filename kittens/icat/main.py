@@ -42,7 +42,9 @@ Mirror the image about a horizontal or vertical axis or both.
 
 --clear
 type=bool-set
-Remove all images currently displayed on the screen.
+Remove all images currently displayed on the screen. Note that
+this cannot work with terminal multiplexers such as tmux since
+only the multiplexer can know the position of the screen.
 
 
 --transfer-mode
