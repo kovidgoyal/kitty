@@ -296,6 +296,7 @@ func (fss *FileSystemScanner) worker() {
 			return
 		}
 		has_git_ignore, has_dot_git, has_dot_ignore := false, false, false
+		sort_order := 1
 		for i, e := range entries {
 			name := e.Name()
 			ftype := e.Type()
@@ -337,6 +338,7 @@ func (fss *FileSystemScanner) worker() {
 				}
 				binary.BigEndian.PutUint64(arena[i].buf[1:], uint64(ts.UnixNano()))
 				arena[i].sort_key = arena[i].buf[:1+8]
+				sort_order = -1
 			} else {
 				n := as_lower(arena[i].name, arena[i].buf[1:])
 				arena[i].sort_key = arena[i].buf[:1+n]
@@ -370,7 +372,7 @@ func (fss *FileSystemScanner) worker() {
 			}
 			final_entries = ignoreable
 		}
-		slices.SortFunc(final_entries, func(a, b *sortable_dir_entry) int { return bytes.Compare(a.sort_key, b.sort_key) })
+		slices.SortFunc(final_entries, func(a, b *sortable_dir_entry) int { return sort_order * bytes.Compare(a.sort_key, b.sort_key) })
 		fss.lock()
 		for _, e := range final_entries {
 			i := fss.collection.NextAppendPointer()
@@ -662,6 +664,7 @@ func (m *ResultManager) new_scorer() {
 	m.scorer.respect_ignores = m.settings.RespectIgnores()
 	m.scorer.show_hidden = m.settings.ShowHidden()
 	m.scorer.global_ignore = m.settings.GlobalIgnores()
+	m.scorer.sort_by_last_modified = m.settings.SortByLastModified()
 	m.last_click_anchor = nil
 }
 
