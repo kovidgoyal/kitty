@@ -40,10 +40,34 @@ Anchored patterns match with respect to whatever directory is currently being di
 Can be specified multiple times to use multiple patterns. Note that every pattern
 has to be checked against every file, so use sparingly.
 ''')
+egr()  # }}}
+
+agr('appearance', 'Appearance')  # {{{
 
 opt('show_preview', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
 Whether to show a preview of the current file/directory. The default value of :code:`last` means remember the last
 used value. This setting can be toggled withing the program.''')
+
+opt('pygments_style', 'default', long_text='''
+The pygments color scheme to use for syntax highlighting of file previews. See :link:`pygments
+builtin styles <https://pygments.org/styles/>` for a list of schemes.
+This sets the colors used for light color schemes, use :opt:`dark_pygments_style` to change the
+colors for dark color schemes.
+''')
+
+opt('dark_pygments_style', 'github-dark', long_text='''
+The pygments color scheme to use for syntax highlighting with dark colors. See :link:`pygments
+builtin styles <https://pygments.org/styles/>` for a list of schemes.
+This sets the colors used for dark color schemes, use :opt:`pygments_style` to change the
+colors for light color schemes.''')
+
+opt('syntax_aliases', 'pyj:py pyi:py recipe:py', ctype='strdict_ _:', option_type='syntax_aliases',
+    long_text='''
+File extension aliases for syntax highlight. For example, to syntax highlight
+:file:`file.xyz` as :file:`file.abc` use a setting of :code:`xyz:abc`.
+Multiple aliases must be separated by spaces.
+''')
+
 egr()  # }}}
 
 agr('shortcuts', 'Keyboard shortcuts')  # {{{

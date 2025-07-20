@@ -9,8 +9,11 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
+	"github.com/kovidgoyal/kitty/tools/highlight"
 	"github.com/kovidgoyal/kitty/tools/icons"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/humanize"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
@@ -30,12 +33,14 @@ type PreviewManager struct {
 	WakeupMainThread func() bool
 	cache            map[string]Preview
 	lock             sync.Mutex
+	highlighter      highlight.Highlighter
 }
 
-func NewPreviewManager(err_chan chan error, settings Settings, WakeupMainThread func() bool) *PreviewManager {
+func NewPreviewManager(err_chan chan error, settings Settings, WakeupMainThread func() bool) (ans *PreviewManager) {
+	defer func() { sanitize = ans.highlighter.Sanitize }()
 	return &PreviewManager{
 		report_errors: err_chan, settings: settings, WakeupMainThread: WakeupMainThread,
-		cache: make(map[string]Preview),
+		cache: make(map[string]Preview), highlighter: highlight.NewHighlighter(nil),
 	}
 }
 
@@ -104,6 +109,8 @@ func NewErrorPreview(err error) Preview {
 	return &MessagePreview{msg: text}
 }
 
+var sanitize func(string) string
+
 func write_file_metadata(abspath string, metadata fs.FileInfo, entries []fs.DirEntry) (header string, trailers []string) {
 	buf := strings.Builder{}
 	buf.Grow(4096)
@@ -115,7 +122,7 @@ func write_file_metadata(abspath string, metadata fs.FileInfo, entries []fs.DirE
 		add("Size", humanize.Bytes(uint64(metadata.Size())))
 	case fs.ModeSymlink:
 		if tgt, err := os.Readlink(abspath); err == nil {
-			add("Target", tgt)
+			add("Target", sanitize(tgt))
 		} else {
 			add("Target", err.Error())
 		}
@@ -145,7 +152,7 @@ func write_file_metadata(abspath string, metadata fs.FileInfo, entries []fs.DirE
 		slices.SortFunc(names, func(a, b string) int { return strings.Compare(type_map[a].lname, type_map[b].lname) })
 		fmt.Fprintln(&buf, "Contents:")
 		for _, n := range names {
-			trailers = append(trailers, icons.IconForFileWithMode(n, type_map[n].ftype, false)+"  "+n)
+			trailers = append(trailers, icons.IconForFileWithMode(n, type_map[n].ftype, false)+"  "+sanitize(n))
 		}
 	}
 	return buf.String(), trailers
@@ -165,6 +172,96 @@ func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) Preview {
 	title := icons.IconForFileWithMode(filepath.Base(abspath), metadata.Mode().Type(), false) + "  File"
 	h, t := write_file_metadata(abspath, metadata, nil)
 	return &MessagePreview{title: title, msg: h, trailers: t}
+}
+
+type highlighed_data struct {
+	text  string
+	light bool
+	err   error
+}
+
+type TextFilePreview struct {
+	plain_text, highlighted_text string
+	highlighted_chan             chan highlighed_data
+	light                        bool
+}
+
+func (p TextFilePreview) IsValidForColorScheme(light bool) bool { return p.light == light }
+
+func (p TextFilePreview) Render(h *Handler, x, y, width, height int) {
+	if p.highlighted_chan != nil {
+		select {
+		case hd := <-p.highlighted_chan:
+			p.highlighted_chan = nil
+			if hd.err == nil {
+				p.highlighted_text = hd.text
+			}
+		default:
+		}
+	}
+	text := p.highlighted_text
+	if text == "" {
+		text = p.plain_text
+	}
+	s := utils.NewLineScanner(text)
+	buf := strings.Builder{}
+	buf.Grow(1024 * height)
+	for num := 0; s.Scan() && num < height; num++ {
+		line := s.Text()
+		truncated := wcswidth.TruncateToVisualLength(line, width)
+		buf.WriteString(fmt.Sprintf(loop.MoveCursorToTemplate, y+num, x))
+		buf.WriteString(truncated)
+		if len(truncated) < len(line) {
+			wcswidth.KeepOnlyCSI(line[len(truncated):], &buf)
+		}
+	}
+	buf.WriteString("\x1b[m") // reset any highlight styles
+	h.lp.QueueWriteString(buf.String())
+}
+
+func NewTextFilePreview(abspath string, metadata fs.FileInfo, highlighted_chan chan highlighed_data, sanitize func(string) string) Preview {
+	data, err := os.ReadFile(abspath)
+	if err != nil {
+		return NewFileMetadataPreview(abspath, metadata)
+	}
+	text := utils.UnsafeBytesToString(data)
+	if !utf8.ValidString(text) {
+		text = "Error: not valid utf-8 text"
+	}
+	return &TextFilePreview{plain_text: sanitize(text), highlighted_chan: highlighted_chan, light: use_light_colors}
+}
+
+type style_resolver struct {
+	light                   bool
+	light_style, dark_style string
+	syntax_aliases          map[string]string
+}
+
+func (s style_resolver) StyleName() string {
+	return utils.IfElse(s.light, s.light_style, s.dark_style)
+}
+func (s style_resolver) UseLightColors() bool             { return s.light }
+func (s style_resolver) SyntaxAliases() map[string]string { return s.syntax_aliases }
+func (s style_resolver) TextForPath(path string) (string, error) {
+	ans, err := os.ReadFile(path)
+	if err == nil {
+		return utils.UnsafeBytesToString(ans), nil
+	}
+	return "", err
+}
+
+func (pm *PreviewManager) highlight_file_async(path string, output chan highlighed_data) {
+	s := style_resolver{light: use_light_colors, syntax_aliases: pm.settings.SyntaxAliases()}
+	s.light_style, s.dark_style = pm.settings.HighlightStyles()
+	go func() {
+		highlighted, err := pm.highlighter.HighlightFile(path, &s)
+		if err != nil {
+			debugprintln(fmt.Sprintf("Failed to highlight: %s with error: %s", path, err))
+		}
+		output <- highlighed_data{text: highlighted, err: err, light: s.light}
+		close(output)
+		pm.WakeupMainThread()
+	}()
 }
 
 func (pm *PreviewManager) invalidate_color_scheme_based_cached_items() {
@@ -191,6 +288,13 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 			return NewErrorPreview(err)
 		}
 		return NewDirectoryPreview(abspath, s)
+	}
+	mt := utils.GuessMimeType(filepath.Base(abspath))
+	const MAX_TEXT_FILE_SIZE = 16 * 1024 * 1024
+	if s.Size() <= MAX_TEXT_FILE_SIZE && (utils.KnownTextualMimes[mt] || strings.HasPrefix(mt, "text/")) {
+		ch := make(chan highlighed_data, 2)
+		pm.highlight_file_async(abspath, ch)
+		return NewTextFilePreview(abspath, s, ch, pm.highlighter.Sanitize)
 	}
 	return NewFileMetadataPreview(abspath, s)
 }

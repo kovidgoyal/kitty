@@ -26,6 +26,7 @@ func (h *Handler) draw_results_title() {
 	if strings.HasPrefix(text, home) {
 		text = "~" + text[len(home):]
 	}
+	text = sanitize(text)
 	available_width := h.screen_size.width - 9
 	if available_width < 2 {
 		return
@@ -137,7 +138,7 @@ func (h *Handler) draw_column_of_matches(matches ResultsType, current_idx int, x
 		} else {
 			icon = icon_for(filepath.Join(root_dir, m.text), m.ftype)
 		}
-		text := m.text
+		text := sanitize(m.text)
 		add_ellipsis := false
 		width := wcswidth.Stringwidth(text)
 		if width > available_width-3 {

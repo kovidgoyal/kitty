@@ -5,6 +5,7 @@ package wcswidth
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -48,6 +49,17 @@ func (self *truncate_iterator) handle_csi(csi []byte) error {
 func (self *truncate_iterator) handle_st_terminated_escape_code(body []byte) error {
 	self.pos += len(body) + 4
 	return nil
+}
+
+func KeepOnlyCSI(text string, output io.Writer) {
+	var w WCWidthIterator
+	w.parser.HandleCSI = func(data []byte) (err error) {
+		_, err = output.Write([]byte{'\x1b', '['})
+		if err == nil {
+			_, err = output.Write(data)
+		}
+		return
+	}
 }
 
 func create_truncate_iterator() *truncate_iterator {

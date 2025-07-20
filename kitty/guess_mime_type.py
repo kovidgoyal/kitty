@@ -18,6 +18,7 @@ known_extensions = {
     'yaml': 'text/yaml',
     'js': 'text/javascript',
     'json': 'text/json',
+    'nix': 'text/nix',
 }
 
 

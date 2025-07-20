@@ -630,6 +630,8 @@ type Settings interface {
 	SortByLastModified() bool
 	Filter() Filter
 	GlobalIgnores() ignorefiles.IgnoreFile
+	HighlightStyles() (string, string)
+	SyntaxAliases() map[string]string
 }
 
 type ResultManager struct {

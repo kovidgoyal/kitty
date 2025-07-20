@@ -102,26 +102,28 @@ type render_state struct {
 }
 
 type State struct {
-	base_dir                 string
-	current_dir              string
-	select_dirs              bool
-	multiselect              bool
-	search_text              string
-	mode                     Mode
-	suggested_save_file_name string
-	suggested_save_file_path string
-	window_title             string
-	screen                   Screen
-	current_filter           string
-	filter_map               map[string]Filter
-	filter_names             []string
-	show_hidden              bool
-	show_preview             bool
-	respect_ignores          bool
-	sort_by_last_modified    bool
-	global_ignores           ignorefiles.IgnoreFile
-	keyboard_shortcuts       []*config.KeyAction
-	display_title            bool
+	base_dir                            string
+	current_dir                         string
+	select_dirs                         bool
+	multiselect                         bool
+	search_text                         string
+	mode                                Mode
+	suggested_save_file_name            string
+	suggested_save_file_path            string
+	window_title                        string
+	screen                              Screen
+	current_filter                      string
+	filter_map                          map[string]Filter
+	filter_names                        []string
+	show_hidden                         bool
+	show_preview                        bool
+	respect_ignores                     bool
+	sort_by_last_modified               bool
+	global_ignores                      ignorefiles.IgnoreFile
+	keyboard_shortcuts                  []*config.KeyAction
+	display_title                       bool
+	pygments_style, dark_pygments_style string
+	syntax_aliases                      map[string]string
 
 	selections    []string
 	current_idx   CollectionIndex
@@ -130,6 +132,8 @@ type State struct {
 	redraw_needed bool
 }
 
+func (s State) HighlightStyles() (string, string)     { return s.pygments_style, s.dark_pygments_style }
+func (s State) SyntaxAliases() map[string]string      { return s.syntax_aliases }
 func (s State) DisplayTitle() bool                    { return s.display_title }
 func (s State) ShowHidden() bool                      { return s.show_hidden }
 func (s State) ShowPreview() bool                     { return s.show_preview }
@@ -709,6 +713,9 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 	}
 	h.state.keyboard_shortcuts = conf.KeyboardShortcuts
 	h.state.display_title = opts.DisplayTitle
+	h.state.pygments_style = conf.Pygments_style
+	h.state.dark_pygments_style = conf.Dark_pygments_style
+	h.state.syntax_aliases = conf.Syntax_aliases
 	return
 }
 

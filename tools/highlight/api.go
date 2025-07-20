@@ -44,6 +44,7 @@ func NewSanitizeControlCodes(replace_tab_by string) *SanitizeControlCodes {
 
 type Highlighter interface {
 	HighlightFile(path string, srd StyleResolveData) (highlighted_string string, err error)
+	Sanitize(string) string
 }
 
 func NewHighlighter(sanitize func(string) string) Highlighter {

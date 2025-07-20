@@ -180,6 +180,8 @@ type highlighter struct {
 	sanitize   func(string) string
 }
 
+func (h *highlighter) Sanitize(x string) string { return h.sanitize(x) }
+
 func (h *highlighter) HighlightFile(path string, srd StyleResolveData) (highlighted_string string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
