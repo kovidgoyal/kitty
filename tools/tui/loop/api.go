@@ -218,6 +218,10 @@ func NoFocusTracking(self *Loop) {
 	self.terminal_options.focus_tracking = false
 }
 
+func (self *Loop) RequestCurrentColorScheme() {
+	self.QueueWriteString("\x1b[?996n")
+}
+
 func (self *Loop) ColorSchemeChangeNotifications() *Loop {
 	self.terminal_options.color_scheme_change_notification = true
 	return self

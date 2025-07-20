@@ -3,6 +3,7 @@ package choose_files
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,6 +21,7 @@ var _ = fmt.Print
 
 type Preview interface {
 	Render(h *Handler, x, y, width, height int)
+	IsValidForColorScheme(light bool) bool
 }
 
 type PreviewManager struct {
@@ -70,6 +72,8 @@ type MessagePreview struct {
 	msg      string
 	trailers []string
 }
+
+func (p MessagePreview) IsValidForColorScheme(bool) bool { return true }
 
 func (p MessagePreview) Render(h *Handler, x, y, width, height int) {
 	offset := 0
@@ -161,6 +165,12 @@ func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) Preview {
 	title := icons.IconForFileWithMode(filepath.Base(abspath), metadata.Mode().Type(), false) + "  File"
 	h, t := write_file_metadata(abspath, metadata, nil)
 	return &MessagePreview{title: title, msg: h, trailers: t}
+}
+
+func (pm *PreviewManager) invalidate_color_scheme_based_cached_items() {
+	pm.lock.Lock()
+	defer pm.lock.Unlock()
+	maps.DeleteFunc(pm.cache, func(key string, p Preview) bool { return !p.IsValidForColorScheme(use_light_colors) })
 }
 
 func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Preview) {

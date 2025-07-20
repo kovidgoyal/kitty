@@ -713,6 +713,7 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 }
 
 var default_cwd string
+var use_light_colors bool
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	write_output := func(selections []string, interrupted bool, current_filter string) {
@@ -763,6 +764,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
+	lp.ColorSchemeChangeNotifications()
 	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
 	handler.rl = readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ", Completer: handler.complete_save_prompt,
@@ -796,11 +798,21 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		if opts.Title != "" {
 			lp.SetWindowTitle(opts.Title)
 		}
+		lp.RequestCurrentColorScheme()
 		return handler.OnInitialize()
 	}
 	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
 		handler.init_sizes(new_size)
 		return handler.draw_screen()
+	}
+	lp.OnColorSchemeChange = func(p loop.ColorPreference) (err error) {
+		new_val := p == loop.LIGHT_COLOR_PREFERENCE
+		if new_val != use_light_colors {
+			use_light_colors = new_val
+			handler.preview_manager.invalidate_color_scheme_based_cached_items()
+			return handler.draw_screen()
+		}
+		return
 	}
 	lp.OnKeyEvent = handler.OnKeyEvent
 	lp.OnText = handler.OnText
