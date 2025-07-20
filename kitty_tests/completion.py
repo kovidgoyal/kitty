@@ -85,6 +85,7 @@ def completion(self: TestCompletion, tdir: str):
         env['PATH'] = os.path.join(tdir, 'bin')
         env['HOME'] = os.path.join(tdir, 'sub')
         env['KITTY_CONFIG_DIRECTORY'] = os.path.join(tdir, 'sub')
+        print(1111111, all_argv)
         cp = subprocess.run(
             [kitten(), '__complete__', 'json'],
             check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env

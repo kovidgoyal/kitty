@@ -97,8 +97,8 @@ func (m Mode) WindowTitle() string {
 }
 
 type render_state struct {
-	num_matches, num_of_slots, num_before, num_per_column, num_columns, num_shown int
-	first_idx                                                                     CollectionIndex
+	num_matches, num_of_slots, num_before, num_per_column, num_columns, num_shown, preview_width int
+	first_idx                                                                                    CollectionIndex
 }
 
 type State struct {
@@ -116,6 +116,7 @@ type State struct {
 	filter_map               map[string]Filter
 	filter_names             []string
 	show_hidden              bool
+	show_preview             bool
 	respect_ignores          bool
 	sort_by_last_modified    bool
 	global_ignores           ignorefiles.IgnoreFile
@@ -131,6 +132,7 @@ type State struct {
 
 func (s State) DisplayTitle() bool                    { return s.display_title }
 func (s State) ShowHidden() bool                      { return s.show_hidden }
+func (s State) ShowPreview() bool                     { return s.show_preview }
 func (s State) RespectIgnores() bool                  { return s.respect_ignores }
 func (s State) SortByLastModified() bool              { return s.sort_by_last_modified }
 func (s State) GlobalIgnores() ignorefiles.IgnoreFile { return s.global_ignores }
@@ -209,6 +211,7 @@ type Handler struct {
 	shortcut_tracker config.ShortcutTracker
 	msg_printer      *message.Printer
 	spinner          *tui.Spinner
+	preview_manager  *PreviewManager
 }
 
 func (h *Handler) draw_screen() (err error) {
@@ -482,6 +485,9 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 		}
 	case "toggle":
 		switch args {
+		case "preview":
+			h.state.show_preview = !h.state.show_preview
+			return h.draw_screen()
 		case "dotfiles":
 			h.state.show_hidden = !h.state.show_hidden
 			h.result_manager.set_show_hidden()
@@ -577,6 +583,7 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) (
 
 type CachedValues struct {
 	Show_hidden           bool `json:"show_hidden"`
+	Hide_preview          bool `json:"hide_preview"`
 	Respect_ignores       bool `json:"respect_ignores"`
 	Sort_by_last_modified bool `json:"sort_by_last_modified"`
 }
@@ -593,7 +600,7 @@ var cached_values = sync.OnceValue(func() *CachedValues {
 })
 
 func (s State) save_cached_values() {
-	c := CachedValues{Show_hidden: s.show_hidden, Respect_ignores: s.respect_ignores, Sort_by_last_modified: s.sort_by_last_modified}
+	c := CachedValues{Show_hidden: s.show_hidden, Respect_ignores: s.respect_ignores, Sort_by_last_modified: s.sort_by_last_modified, Hide_preview: !s.show_preview}
 	fname := filepath.Join(utils.CacheDir(), cache_filename)
 	if data, err := json.Marshal(c); err == nil {
 		_ = os.WriteFile(fname, data, 0600)
@@ -661,6 +668,8 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 	h.state.sort_by_last_modified = false
 	h.state.respect_ignores = true
 	h.state.show_hidden = false
+	h.state.show_preview = true
+
 	switch conf.Show_hidden {
 	case Show_hidden_true, Show_hidden_y, Show_hidden_yes:
 		h.state.show_hidden = true
@@ -685,6 +694,15 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 	case Sort_by_last_modified_last:
 		h.state.sort_by_last_modified = cached_values().Sort_by_last_modified
 	}
+	switch conf.Show_preview {
+	case Show_preview_true, Show_preview_y, Show_preview_yes:
+		h.state.show_preview = true
+	case Show_preview_false, Show_preview_n, Show_preview_no:
+		h.state.show_preview = false
+	case Show_preview_last:
+		h.state.show_preview = !cached_values().Hide_preview
+	}
+
 	h.state.global_ignores = ignorefiles.NewGitignore()
 	if err = h.state.global_ignores.LoadLines(conf.Ignore...); err != nil {
 		return err
@@ -753,6 +771,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	handler.result_manager = NewResultManager(handler.err_chan, &handler.state, lp.WakeupMainThread)
+	handler.preview_manager = NewPreviewManager(handler.err_chan, &handler.state, lp.WakeupMainThread)
 	switch len(args) {
 	case 0:
 		if default_cwd, err = os.Getwd(); err != nil {

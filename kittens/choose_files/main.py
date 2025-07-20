@@ -40,6 +40,10 @@ Anchored patterns match with respect to whatever directory is currently being di
 Can be specified multiple times to use multiple patterns. Note that every pattern
 has to be checked against every file, so use sparingly.
 ''')
+
+opt('show_preview', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+Whether to show a preview of the current file/directory. The default value of :code:`last` means remember the last
+used value. This setting can be toggled withing the program.''')
 egr()  # }}}
 
 agr('shortcuts', 'Keyboard shortcuts')  # {{{
@@ -81,6 +85,7 @@ map('Previous filter', 'prev_filter alt+f -1')
 map('Toggle showing dotfiles', 'toggle_dotfiles alt+h toggle dotfiles')
 map('Toggle showing ignored files', 'toggle_ignorefiles alt+i toggle ignorefiles')
 map('Toggle sorting by dates', 'toggle_sort_by_dates alt+d toggle sort_by_dates')
+map('Toggle showing preview', 'toggle_preview alt+p toggle preview')
 
 egr()  # }}}
 

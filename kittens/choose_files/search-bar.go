@@ -80,6 +80,9 @@ func (h *Handler) draw_controls(y int) (max_width int) {
 		h.state.respect_ignores = !h.state.respect_ignores
 		h.result_manager.set_respect_ignores()
 	})
+	add_control(" ", utils.IfElse(h.state.ShowPreview(), "hide preview", "show preview"), func() {
+		h.state.show_preview = !h.state.show_preview
+	})
 	add_control(utils.IfElse(h.state.SortByLastModified(), " ", " "), utils.IfElse(h.state.SortByLastModified(), "sort names", "sort dates"), func() {
 		h.state.sort_by_last_modified = !h.state.sort_by_last_modified
 		h.result_manager.set_sort_by_last_modified()
