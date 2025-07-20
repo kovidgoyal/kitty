@@ -151,7 +151,6 @@ def parse_ucd() -> None:
             category, sep, name = name.rpartition('-')
             name = name or category
             name = name.replace('_', ' ')
-            print(11111111, name)
             if name and codepoint not in name_map:
                 name_map[codepoint] = name.upper()
                 for word in name.lower().split():
