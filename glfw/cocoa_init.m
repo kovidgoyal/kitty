@@ -301,6 +301,14 @@ static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
 
 @implementation GLFWApplicationDelegate
 
+- (void)applicationDidActivate:(NSNotification *)notification {
+    NSRunningApplication *app = notification.userInfo[NSWorkspaceApplicationKey];
+    if (app && app.processIdentifier != getpid()) {
+        _glfw.ns.previous_front_most_application = app.processIdentifier;
+        debug_rendering("Front most application changed to: %s pid: %d\n", app.bundleIdentifier.UTF8String, app.processIdentifier)
+    }
+}
+
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
 {
     (void)sender;
@@ -452,6 +460,7 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
     CGDirectDisplayID displayID = [(NSNumber*)displayIDAsID unsignedIntValue];
     _glfwDispatchRenderFrame(displayID);
 }
+
 @end
 
 
@@ -816,6 +825,11 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
     }
 
     [NSApp setDelegate:_glfw.ns.delegate];
+    [[[NSWorkspace sharedWorkspace] notificationCenter]
+        addObserver:_glfw.ns.delegate
+        selector:@selector(applicationDidActivate:)
+        name:NSWorkspaceDidActivateApplicationNotification
+        object:nil];
     static struct {
         unsigned short virtual_key_code;
         NSEventModifierFlags input_source_switch_modifiers;

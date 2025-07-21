@@ -125,7 +125,6 @@ typedef struct _GLFWwindowNS
     id              delegate;
     id              view;
     id              layer;
-    pid_t           previous_front_most_application;
 
     bool            maximized;
     bool            retina;
@@ -189,6 +188,7 @@ typedef struct _GLFWlibraryNS
     double              restoreCursorPosX, restoreCursorPosY;
     // The window whose disabled cursor mode is active
     _GLFWwindow*        disabledCursorWindow;
+    pid_t           previous_front_most_application;
 
     struct {
         CFBundleRef     bundle;

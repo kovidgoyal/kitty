@@ -115,6 +115,9 @@ Detailed list of changes
 - Wayland: Fix incorrect window size calculation when transitioning from
   fullscreen to non-fullscreen with client side decorations (:iss:`8826`)
 
+- macOS: Fix hiding quick access terminal window not restoring focus to
+  previously active application (:disc:`8840`)
+
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
