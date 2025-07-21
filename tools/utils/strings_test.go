@@ -34,3 +34,17 @@ func TestStringScanner(t *testing.T) {
 		}
 	}
 }
+
+func TestReplaceControlCodes(t *testing.T) {
+	for text, expected := range map[string]string{
+		"none":                    "none",
+		"a\r\x01b\x03\x7f c\n\td": "a\u240d\u2401b\u2403\u2421 cX  d",
+		"\x01":                    "\u2401",
+		"\x00\x0b":                "\u2400\u240b",
+	} {
+		actual := ReplaceControlCodes(text, "  ", "X")
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Fatalf("Failed for text: %#v\n%s", text, diff)
+		}
+	}
+}

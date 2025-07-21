@@ -9,10 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"unicode/utf8"
 
-	"github.com/kovidgoyal/kitty/tools/highlight"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
@@ -125,10 +123,7 @@ func text_to_lines(text string) []string {
 	return lines
 }
 
-var sanitize = sync.OnceValue(func() func(string) string {
-	s := highlight.NewSanitizeControlCodes(conf.Replace_tab_by)
-	return s.Sanitize
-})
+func sanitize(text string) string { return utils.ReplaceControlCodes(text, conf.Replace_tab_by, "\n") }
 
 func lines_for_path(path string) ([]string, error) {
 	return lines_cache.GetOrCreate(path, func(path string) ([]string, error) {
@@ -136,7 +131,7 @@ func lines_for_path(path string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		return text_to_lines(sanitize()(ans)), nil
+		return text_to_lines(sanitize(ans)), nil
 	})
 }
 

@@ -48,6 +48,7 @@
 #define zero_at_ptr(p) memset((p), 0, sizeof((p)[0]))
 #define literal_strlen(x) (sizeof(x)-1)
 #define zero_at_ptr_count(p, count) memset((p), 0, (count) * sizeof((p)[0]))
+#define C0_EXCEPT_NL_SPACE_TAB_DEL 0x0 ... 0x8: case 0xb ... 0x1f
 #define C0_EXCEPT_NL_SPACE_TAB 0x0 ... 0x8: case 0xb ... 0x1f: case 0x7f
 void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 #define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }

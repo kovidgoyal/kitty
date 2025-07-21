@@ -284,10 +284,10 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 	}
 	sl := ScreenLine{}
 	if right_name != "" && right_name != left_name {
-		sl.left.marked_up_text = format_as_sgr.title + fit_in(sanitize()(left_name), available_cols)
-		sl.right.marked_up_text = format_as_sgr.title + fit_in(sanitize()(right_name), available_cols)
+		sl.left.marked_up_text = format_as_sgr.title + fit_in(sanitize(left_name), available_cols)
+		sl.right.marked_up_text = format_as_sgr.title + fit_in(sanitize(right_name), available_cols)
 	} else {
-		sl.left.marked_up_text = format_as_sgr.title + fit_in(sanitize()(left_name), columns-margin_size)
+		sl.left.marked_up_text = format_as_sgr.title + fit_in(sanitize(left_name), columns-margin_size)
 		ll.is_full_width = true
 	}
 	l2 := ll
@@ -755,7 +755,7 @@ func rename_lines(path, other_path string, columns, margin_size int, ans []*Logi
 	ll := LogicalLine{
 		left_reference: Reference{path: path}, right_reference: Reference{path: other_path},
 		line_type: CHANGE_LINE, is_change_start: true, is_full_width: true}
-	for _, line := range splitlines(fmt.Sprintf(`The file %s was renamed to %s`, sanitize()(path_name_map[path]), sanitize()(path_name_map[other_path])), columns-margin_size) {
+	for _, line := range splitlines(fmt.Sprintf(`The file %s was renamed to %s`, sanitize(path_name_map[path]), sanitize(path_name_map[other_path])), columns-margin_size) {
 		sl := ScreenLine{}
 		sl.right.marked_up_text = line
 		ll.screen_lines = append(ll.screen_lines, &sl)

@@ -5,7 +5,6 @@ package simdstring
 import (
 	"bytes"
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/utils"
 	"runtime"
 	"strings"
 	"testing"
@@ -120,13 +119,19 @@ func addressof_data(b []byte) uintptr {
 	return uintptr(unsafe.Pointer(&b[0]))
 }
 
+func memset(ans []byte, val byte) {
+	for i := range ans {
+		ans[i] = val
+	}
+}
+
 func aligned_slice(sz, alignment int) ([]byte, []byte) {
 	ans := make([]byte, sz+alignment+512)
 	a := addressof_data(ans)
 	a &= uintptr(alignment - 1)
 	extra := uintptr(alignment) - a
-	utils.Memset(ans, '<')
-	utils.Memset(ans[extra+uintptr(sz):], '>')
+	memset(ans, '<')
+	memset(ans[extra+uintptr(sz):], '>')
 	return ans[extra : extra+uintptr(sz)], ans
 }
 

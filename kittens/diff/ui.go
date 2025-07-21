@@ -446,7 +446,7 @@ func (self *Handler) draw_status_line() {
 	if self.inputting_command {
 		self.rl.RedrawNonAtomic()
 	} else if self.statusline_message != "" {
-		self.lp.QueueWriteString(message_format(wcswidth.TruncateToVisualLength(sanitize()(self.statusline_message), self.screen_size.columns)))
+		self.lp.QueueWriteString(message_format(wcswidth.TruncateToVisualLength(sanitize(self.statusline_message), self.screen_size.columns)))
 	} else {
 		num := self.logical_lines.NumScreenLinesTo(self.scroll_pos)
 		den := self.logical_lines.NumScreenLinesTo(self.max_scroll_pos)

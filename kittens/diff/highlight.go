@@ -26,7 +26,7 @@ func (s prefer_light_colors) SyntaxAliases() map[string]string        { return c
 func (s prefer_light_colors) TextForPath(path string) (string, error) { return data_for_path(path) }
 
 var highlighter = sync.OnceValue(func() highlight.Highlighter {
-	return highlight.NewHighlighter(sanitize())
+	return highlight.NewHighlighter(sanitize)
 })
 
 func highlight_all(paths []string, light bool) {

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kovidgoyal/kitty/tools/simdstring"
 	"golang.org/x/exp/constraints"
 	"golang.org/x/text/language"
 )
@@ -423,3 +424,35 @@ var LanguageTag = sync.OnceValue(func() language.Tag {
 	return tag
 
 })
+
+// Replace control codes by unicode codepoints that describe the codes
+// making the text safe to send to a terminal
+func ReplaceControlCodes(text, replace_tab_by, replace_newline_by string) string {
+	buf := strings.Builder{}
+	for len(text) > 0 {
+		idx := simdstring.IndexC0String(text)
+		if idx < 0 {
+			if buf.Cap() == 0 {
+				return text
+			}
+			buf.WriteString(text)
+			break
+		}
+		if buf.Cap() == 0 {
+			buf.Grow(2 * len(text))
+		}
+		buf.WriteString(text[:idx])
+		switch text[idx] {
+		case '\n':
+			buf.WriteString(replace_newline_by)
+		case '\t':
+			buf.WriteString(replace_tab_by)
+		case 0x7f:
+			buf.WriteRune(0x2421)
+		default:
+			buf.WriteRune(0x2400 + rune(text[idx]))
+		}
+		text = text[idx+1:]
+	}
+	return buf.String()
+}
