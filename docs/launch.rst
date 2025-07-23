@@ -175,6 +175,17 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
         # code received from the program running in the window
         ...
 
+    def on_tab_bar_dirty(boss: Boss, window: Window, data: dict[str, Any]) -> None:
+        # called when any changes happen to the tab bar, such a new tabs being
+        # created, tab titles changing, tabs moving, etc. Useful to display the
+        # tab bar externally to kitty. This is called even if the tab bar is
+        # hidden. Note that this is called only in *global watchers*, that is
+        # watchers defined in kitty.conf or using the --watcher command line
+        # flag. data contains tab_manager which is the object responsible for
+        # managing all tabs in a single OS Window.
+        ...
+
+
 Every callback is passed a reference to the global ``Boss`` object as well as
 the ``Window`` object the action is occurring on. The ``data`` object is a dict
 that contains event dependent data. You have full access to kitty internals in
