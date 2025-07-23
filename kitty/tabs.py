@@ -1010,9 +1010,8 @@ class TabManager:  # {{{
         boss = get_boss()
         w = self.active_window
         data = {'tab_manager': self}
-        for g in global_watchers():
-            for watcher in g.on_tab_bar_dirty:
-                watcher(boss, w, data)
+        for watcher in global_watchers().on_tab_bar_dirty:
+            watcher(boss, w, data)
 
     def update_tab_bar_data(self) -> None:
         self.tab_bar.update(self.tab_bar_data)
