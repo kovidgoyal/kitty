@@ -766,7 +766,7 @@ class TestGraphics(BaseTest):
         s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
         # These two characters will be two separate refs (not contiguous).
         s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030E")
-        s.cursor_back(4)
+        s.cursor_move(4)
         s.update_only_line_graphics_data()
         refs = layers(s)
         self.ae(len(refs), 3)
@@ -786,7 +786,7 @@ class TestGraphics(BaseTest):
         # The second image, 2x1
         s.apply_sgr("38;2;42;43;44")
         s.draw("\U0010EEEE\u0305\u030D\U0010EEEE\u0305\u030E")
-        s.cursor_back(2)
+        s.cursor_move(2)
         s.update_only_line_graphics_data()
         refs = layers(s)
         self.ae(len(refs), 2)
@@ -804,7 +804,7 @@ class TestGraphics(BaseTest):
         s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\U0010EEEE\U0010EEEE\u0305")
         # full row 1 of the first image
         s.draw("\U0010EEEE\u030D\U0010EEEE\U0010EEEE\U0010EEEE\u030D\u0310")
-        s.cursor_back(8)
+        s.cursor_move(8)
         s.update_only_line_graphics_data()
         refs = layers(s)
         self.ae(len(refs), 2)
@@ -826,7 +826,7 @@ class TestGraphics(BaseTest):
         # This one will have id=43, which does not exist.
         s.apply_sgr("38;2;0;0;43")
         s.draw("\U0010EEEE\u0305\U0010EEEE\U0010EEEE\U0010EEEE")
-        s.cursor_back(4)
+        s.cursor_move(4)
         s.update_only_line_graphics_data()
         refs = layers(s)
         self.ae(len(refs), 0)
@@ -842,7 +842,7 @@ class TestGraphics(BaseTest):
         s.draw("\U0010EEEE\u0305\u0305\u059C\U0010EEEE\u0305\u030D\u059C")
         # Check that we can continue by using implicit row/column specification.
         s.draw("\U0010EEEE\u0305\U0010EEEE")
-        s.cursor_back(6)
+        s.cursor_move(6)
         s.update_only_line_graphics_data()
         refs = layers(s)
         self.ae(len(refs), 2)
@@ -856,7 +856,7 @@ class TestGraphics(BaseTest):
         s.draw("\U0010EEEE\u0305\u0305\u0305\U0010EEEE")
         s.apply_sgr("38;5;43")
         s.draw("\U0010EEEE\u0305\u0305\u059C\U0010EEEE\U0010EEEE\u0305\U0010EEEE")
-        s.cursor_back(6)
+        s.cursor_move(6)
         s.update_only_line_graphics_data()
         refs = layers(s)
         self.ae(len(refs), 2)

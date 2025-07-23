@@ -34,6 +34,11 @@ termcap_aliases = {
 bool_capabilities = {
     # auto_right_margin (terminal has automatic margins)
     'am',
+    # auto_left_margin (cursor wraps on CUB1 from 0 to last column on prev line). This prevents ncurses
+    # from using BS (backspace) to position the cursor. See https://github.com/kovidgoyal/kitty/issues/8841
+    # It also allows using backspace with multi-line edits in cooked mode. Foot
+    # is the only other modern terminal I know of that implements this.
+    'bw',
     # can_change (terminal can redefine existing colors)
     'ccc',
     # has_meta key (i.e. sets the eight bit)
@@ -69,6 +74,7 @@ bool_capabilities = {
 
 termcap_aliases.update({
     'am': 'am',
+    'bw': 'bw',
     'cc': 'ccc',
     'km': 'km',
     '5i': 'mc5i',

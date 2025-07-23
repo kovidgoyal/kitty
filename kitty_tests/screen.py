@@ -44,7 +44,7 @@ class TestScreen(BaseTest):
         s.reset(), s.reset_dirty()
         s.set_mode(IRM)
         s.draw('12345' * 5)
-        s.cursor_back(5)
+        s.cursor_move(5)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 4)
         s.reset_dirty()
         s.draw('ab')
@@ -98,7 +98,7 @@ class TestScreen(BaseTest):
         s.set_mode(IRM)
         s.draw(text * 5)
         self.ae(str(s.line(0)), text)
-        s.cursor_back(5)
+        s.cursor_move(5)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 4)
         s.reset_dirty()
         s.draw('a\u0306b')
@@ -162,7 +162,7 @@ class TestScreen(BaseTest):
             s.reset(), s.reset_dirty()
             s.draw('abcde')
             s.cursor.bold = True
-            s.cursor_back(4)
+            s.cursor_move(4)
             s.reset_dirty()
             self.ae(s.cursor.x, 1)
 
@@ -170,11 +170,11 @@ class TestScreen(BaseTest):
         s.insert_characters(2)
         self.ae(str(s.line(0)), 'a  bc')
         self.assertTrue(s.line(0).cursor_from(1).bold)
-        s.cursor_back(1)
+        s.cursor_move(1)
         s.insert_characters(20)
         self.ae(str(s.line(0)), '')
         s.draw('xココ')
-        s.cursor_back(5)
+        s.cursor_move(5)
         s.reset_dirty()
         s.insert_characters(1)
         self.ae(str(s.line(0)), ' xコ')
@@ -270,7 +270,7 @@ class TestScreen(BaseTest):
         self.ae((s.cursor.x, s.cursor.y), (0, 1))
         s.cursor_forward(3)
         self.ae((s.cursor.x, s.cursor.y), (3, 1))
-        s.cursor_back()
+        s.cursor_move()
         self.ae((s.cursor.x, s.cursor.y), (2, 1))
         s.cursor_down()
         self.ae((s.cursor.x, s.cursor.y), (2, 2))
@@ -533,6 +533,28 @@ class TestScreen(BaseTest):
         s = self.create_screen(cols=4, lines=2)
         s.draw('aaaX\tbbbb')
         self.ae(str(s.line(0)) + str(s.line(1)), 'aaaXbbbb')
+
+    def test_backspace(self):
+        s = self.create_screen()
+        q = 'a'*s.columns
+        def backspace(use_bs=True):
+            if use_bs:  # this is how the kernel implements backspace
+                s.draw('\x08 \x08')
+            else:
+                s.cursor_move(1)
+                s.draw(' ')
+                s.cursor_move(1)
+        for use_bs in (True, False):
+            s.reset()
+            s.draw(q)
+            s.draw('b')
+            backspace(use_bs)
+            self.ae(str(s.line(0)), q)
+            self.ae(str(s.line(1)), ' ')
+            self.ae(s.cursor.x, 0)
+            backspace(use_bs)
+            self.ae(str(s.line(0)), q[:-1] + ' ')
+            self.ae(str(s.line(1)), ' ')
 
     def test_margins(self):
         # Taken from vttest/main.c

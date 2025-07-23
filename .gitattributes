@@ -1,3 +1,7 @@
+kitty/terminfo.h linguist-generated=true
+terminfo/kitty.termcap linguist-generated=true
+terminfo/kitty.terminfo linguist-generated=true
+terminfo/x/xterm-kitty linguist-generated=true
 kitty/char-props-data.h linguist-generated=true
 kitty_tests/GraphemeBreakTest.json linguist-generated=true
 kitty/charsets.c linguist-generated=true

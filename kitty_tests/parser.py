@@ -353,7 +353,7 @@ class TestParser(BaseTest):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
         pb('abcde', 'abcde')
-        s.cursor_back(5)
+        s.cursor_move(5)
         pb('x\033[2@y', 'x', ('screen_insert_characters', 2), 'y')
         self.ae(str(s.line(0)), 'xy bc')
         pb('x\033[2;7@y', 'x', ('CSI code @ has 2 > 1 parameters',), 'y')

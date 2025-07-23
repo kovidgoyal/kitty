@@ -1066,10 +1066,12 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
     switch (ch) {
         case BEL:
             screen_bell(self); break;
-        case BS:
+        case BS: {
+            index_type before = self->cursor->y;
             screen_backspace(self);
-            init_segmentation_state(self, s);
-            break;
+            if (before == self->cursor->y) init_segmentation_state(self, s);
+            else init_text_loop_line(self, s);
+            } break;
         case HT:
             if (UNLIKELY(self->cursor->x >= self->columns)) {
                 if (self->modes.mDECAWM) {
@@ -1889,7 +1891,7 @@ screen_is_cursor_visible(const Screen *self) {
 
 void
 screen_backspace(Screen *self) {
-    screen_cursor_back(self, 1, -1);
+    screen_cursor_move(self, 1, -1);
 }
 
 void
@@ -1960,16 +1962,37 @@ screen_set_tab_stop(Screen *self) {
 }
 
 void
-screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
+screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
     if (count == 0) count = 1;
-    if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
-    else self->cursor->x += move_direction * count;
-    screen_ensure_bounds(self, false, cursor_within_margins(self));
+    bool in_margins = cursor_within_margins(self);
+    if (move_direction > 0) {
+        self->cursor->x += count;
+        screen_ensure_bounds(self, false, in_margins);
+    } else {
+        index_type top = in_margins && self->modes.mDECOM ? self->margin_top : 0;
+        while (count > 0) {
+            if (count <= self->cursor->x) {
+                self->cursor->x -= count;
+                count = 0;
+            } else {
+                if (self->cursor->x > 0) {
+                    count -= self->cursor->x;
+                    self->cursor->x = 0;
+                } else {
+                    if (self->cursor->y == top) count = 0;
+                    else {
+                        count--; self->cursor->y--;
+                        self->cursor->x = self->columns-1;
+                    }
+                }
+            }
+        }
+    }
 }
 
 void
 screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
-    screen_cursor_back(self, count, 1);
+    screen_cursor_move(self, count, 1);
 }
 
 void
@@ -4437,7 +4460,7 @@ is_using_alternate_linebuf(Screen *self, PyObject *a UNUSED) {
     Py_RETURN_FALSE;
 }
 
-WRAP1E(cursor_back, 1, -1)
+WRAP1E(cursor_move, 1, -1)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
 static PyObject* scroll_until_cursor_prompt(Screen *self, PyObject *args) { int b=false; if(!PyArg_ParseTuple(args, "|p", &b)) return NULL; screen_scroll_until_cursor_prompt(self, b); Py_RETURN_NONE; }
@@ -5538,7 +5561,7 @@ static PyMethodDef methods[] = {
     MND(reset_dirty, METH_NOARGS)
     MND(is_using_alternate_linebuf, METH_NOARGS)
     MND(is_main_linebuf, METH_NOARGS)
-    MND(cursor_back, METH_VARARGS)
+    MND(cursor_move, METH_VARARGS)
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
     MND(clear_scrollback, METH_NOARGS)
