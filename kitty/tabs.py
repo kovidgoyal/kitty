@@ -1007,11 +1007,12 @@ class TabManager:  # {{{
     def mark_tab_bar_dirty(self) -> None:
         if self.tab_bar_should_be_visible and not self.tab_bar_hidden:
             mark_tab_bar_dirty(self.os_window_id)
-        boss = get_boss()
         w = self.active_window
-        data = {'tab_manager': self}
-        for watcher in global_watchers().on_tab_bar_dirty:
-            watcher(boss, w, data)
+        if w is not None:
+            data = {'tab_manager': self}
+            boss = get_boss()
+            for watcher in global_watchers().on_tab_bar_dirty:
+                watcher(boss, w, data)
 
     def update_tab_bar_data(self) -> None:
         self.tab_bar.update(self.tab_bar_data)
