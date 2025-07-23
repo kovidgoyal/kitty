@@ -359,7 +359,7 @@ The algorithm for splitting text into cells
 .. warning::
    This algorithm is under public discussion in :iss:`8533`. If serious issues
    are brought to light in that discussion, there may be small changes to the
-   protocol to address them. Additionally, in the future if the Unicode standard
+   algorithm to address them. Additionally, in the future if the Unicode standard
    changes in ways that affect this algorithm, it will be updated. Currently the
    algorithm is based on Unicode version 16.
 
