@@ -1004,10 +1004,17 @@ class TabManager:  # {{{
             self.tab_bar.layout()
             self.resize(only_tabs=True)
 
+    @property
+    def any_window(self) -> Window | None:
+        for t in self:
+            for w in t:
+                return w
+        return None
+
     def mark_tab_bar_dirty(self) -> None:
         if self.tab_bar_should_be_visible and not self.tab_bar_hidden:
             mark_tab_bar_dirty(self.os_window_id)
-        w = self.active_window
+        w = self.active_window or self.any_window
         if w is not None:
             data = {'tab_manager': self}
             boss = get_boss()
