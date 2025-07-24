@@ -82,7 +82,9 @@ it. Similarly, the :kbd:`Alt` key can be held to click and extend the range of s
 ''')
 map('Type file name', 'typename ctrl+enter typename', long_text='''
 Type a file name/path rather than filtering the list of existing files.
-Useful when specifying a file name for saving that does not yet exist.
+Useful when specifying a file or directory name for saving that does not yet exist.
+When choosing existing directories, will accept the directory whoose
+contents are being currently displayed as the choice.
 Does not work when selecting files to open rather than to save.
 ''')
 

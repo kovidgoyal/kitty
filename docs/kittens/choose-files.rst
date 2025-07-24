@@ -82,6 +82,17 @@ you want the file to be in (using the :kbd:`Tab` key),
 press :kbd:`Ctrl+Enter` and you will be able to type in the file name.
 
 
+Selecting directories
+---------------------------
+
+This kitten can also be used to select directories,
+for an :guilabel:`Open directory` type of dialog using :option:`--mode <kitty +kitten
+choose_files --mode>`:code:`=dir`. Once you have changed to the directory
+you want, press :kbd:`Ctrl+Enter` to accept it. Or if you are in a parent
+directory you can select a descendant directory by pressing :kbd:`Enter`, the
+same as you would for selecting a file to open.
+
+
 Configuration
 ------------------------
 

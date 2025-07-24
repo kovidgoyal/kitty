@@ -104,7 +104,6 @@ type render_state struct {
 type State struct {
 	base_dir                            string
 	current_dir                         string
-	select_dirs                         bool
 	multiselect                         bool
 	search_text                         string
 	mode                                Mode
@@ -142,7 +141,6 @@ func (s State) SortByLastModified() bool              { return s.sort_by_last_mo
 func (s State) GlobalIgnores() ignorefiles.IgnoreFile { return s.global_ignores }
 func (s State) BaseDir() string                       { return utils.IfElse(s.base_dir == "", default_cwd, s.base_dir) }
 func (s State) Filter() Filter                        { return s.filter_map[s.current_filter] }
-func (s State) SelectDirs() bool                      { return s.select_dirs }
 func (s State) Multiselect() bool                     { return s.multiselect }
 func (s State) String() string                        { return utils.Repr(s) }
 func (s State) SearchText() string                    { return s.search_text }
@@ -483,6 +481,10 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 		}
 	case "typename":
 		if !h.state.mode.CanSelectNonExistent() {
+			if h.state.mode.OnlyDirs() {
+				h.state.AddSelection(h.state.CurrentDir())
+				return h.finish_selection()
+			}
 			h.lp.Beep()
 		} else {
 			return h.switch_to_save_file_name_mode()
