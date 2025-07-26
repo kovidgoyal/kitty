@@ -122,7 +122,7 @@ Detailed list of changes
 
 - Watchers: A new event for global watchers corresponding to the tab bar being changed (:disc:`8842`)
 
-- Fix a regression in 0.40.0 that broke handing of the VS16 variation selector when it caused a character to reflow to the next line (:iss:`8848`)
+- Fix a regression in 0.40.0 that broke handling of the VS16 variation selector when it caused a character to reflow to the next line (:iss:`8848`)
 
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
