@@ -1111,7 +1111,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
     int char_width;
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = map_char(self, chars[i]);
-        if (ch < DEL && s->seg.grapheme_break == GBP_None) {  // fast path for printable ASCII
+        if (ch < DEL && s->seg.grapheme_break <= GBP_None) {  // fast path for printable ASCII
             if (ch < ' ') {
                 draw_control_char(self, s, ch);
                 continue;
