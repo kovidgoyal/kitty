@@ -255,6 +255,7 @@ class Child:
         env.update(self.env)
         env['TERM'] = opts.term
         env['COLORTERM'] = 'truecolor'
+        env['KITTY_SUPPORTS_PROMPT_CLICK_EVENTS'] = 1
         env['KITTY_PID'] = getpid()
         env['KITTY_PUBLIC_KEY'] = boss.encryption_public_key
         if self.remote_control_fd > -1:
