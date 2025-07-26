@@ -944,7 +944,8 @@ move_cursor_past_multicell(Screen *self, index_type required_width) {
 }
 
 static void
-move_widened_char_past_multiline_chars(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
+move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
+    index_type before = self->cursor->y;
     self->cursor->x = xpos; self->cursor->y = ypos;
     if (move_cursor_past_multicell(self, 2)) {
         CPUCell *cp; GPUCell *gp;
@@ -957,6 +958,8 @@ move_widened_char_past_multiline_chars(Screen *self, CPUCell* cpu_cell, GPUCell 
         self->cursor->x++;
     }
     *cpu_cell = (CPUCell){0}; *gpu_cell = (GPUCell){0};
+    if (self->cursor->y == before) init_segmentation_state(self, s);
+    else init_text_loop_line(self, s);
 }
 
 static bool
@@ -984,8 +987,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
                 CPUCell *second = cp + xpos + 1;
                 if (second->is_multicell) {
                     if (second->y) {
-                        move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, s->prev.y);
-                        init_segmentation_state(self, s);
+                        move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
                         return;
                     }
                     nuke_multicell_char_at(self, xpos + 1, s->prev.y, false);
@@ -994,8 +996,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
                 self->cursor->x++;
                 *second = *cpu_cell; second->x = 1;
             } else {
-                move_widened_char_past_multiline_chars(self, cpu_cell, gpu_cell, xpos, s->prev.y);
-                init_segmentation_state(self, s);
+                move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
             }
         }
     } else if (ch == VS15) {

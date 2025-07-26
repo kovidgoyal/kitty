@@ -732,6 +732,10 @@ class TestScreen(BaseTest):
         self.ae(s.text_for_selection(), ('a\u00adb',))
 
     def test_variation_selectors(self):
+        s = self.create_screen(cols=3)
+        q = '*\ufe0f'
+        s.draw(q*(s.columns+1))
+        self.ae(str(s.line(0)), q*(s.columns//2))
         s = self.create_screen(cols=8)
         def widths(text, *widths):
             s.reset()
