@@ -364,16 +364,14 @@ different easing functions for the two halves, for example: :code:`-1 linear eas
 supports all the :link:`CSS easing functions <https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function>`.
 Note that turning on animations uses extra power as it means the screen is redrawn multiple times
 per blink interval. See also, :opt:`cursor_stop_blinking_after`.
-'''
-    )
+''')
 
 opt('cursor_stop_blinking_after', '15.0',
     option_type='positive_float', ctype='time',
     long_text='''
 Stop blinking cursor after the specified number of seconds of keyboard
 inactivity. Set to zero to never stop blinking.
-'''
-    )
+''')
 
 opt('cursor_trail', '0',
     option_type='positive_int', ctype='time-ms',
@@ -388,8 +386,7 @@ than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
 See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_trail_start_threshold`
 to control when a cursor trail is started.
-'''
-    )
+''')
 
 opt('cursor_trail_decay', '0.1 0.4',
     option_type='cursor_trail_decay',
@@ -402,8 +399,7 @@ fastest decay time (minimum), and the second value corresponds to the slowest
 decay time (maximum). The second value must be equal to or greater than the
 first value. Smaller values result in a faster decay of the cursor trail.
 Adjust these values to control how quickly the cursor trail fades away.
-''',
-    )
+''')
 
 opt('cursor_trail_start_threshold', '2',
     option_type='positive_int', ctype='int',
@@ -413,8 +409,7 @@ positive integer value that represents the minimum number of cells the
 cursor must move before the trail is started. When the cursor moves less than
 this threshold, the trail is skipped, reducing unnecessary cursor trail
 animation.
-'''
-    )
+''')
 
 opt('cursor_trail_color', 'none',
     option_type='to_color_or_none',
@@ -425,8 +420,7 @@ If set to 'none' (the default), the cursor trail will use the cursor's
 background color. Otherwise, specify a color value (e.g., #ff0000 for red,
 or a named color like 'red'). This allows you to customize the appearance
 of the cursor trail independently of the cursor color.
-'''
-)
+''')
 
 egr()  # }}}
 
