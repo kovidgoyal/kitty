@@ -467,7 +467,7 @@ def send_response_to_client(data: Any = None, error: str = '', peer_id: int = 0,
     if peer_id > 0:
         send_data_to_peer(peer_id, encode_response_for_peer(response))
     elif window_id > 0:
-        w = get_boss().window_id_map[window_id]
+        w = get_boss().window_id_map.get(window_id)
         if w is not None:
             w.send_cmd_response(response)
 
