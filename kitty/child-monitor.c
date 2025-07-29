@@ -1947,8 +1947,13 @@ talk_loop(void *data) {
             for (size_t k = 0; k < talk_data.num_peers; k++) {
                 Peer *p = talk_data.peers + k;
                 if (p->fd_array_idx) {
-                    if (fds[p->fd_array_idx].revents & (POLLIN | POLLHUP)) read_from_peer(self, p);
+                    if (fds[p->fd_array_idx].revents & POLLIN) read_from_peer(self, p);
                     if (fds[p->fd_array_idx].revents & POLLOUT) write_to_peer(p);
+                    if (fds[p->fd_array_idx].revents & POLLHUP) {
+                        // try to read and write nonetheless these functions will set the failed flags.
+                        if (!p->read.finished) read_from_peer(self, p);
+                        if (p->write.used) write_to_peer(p);
+                    }
                     if (fds[p->fd_array_idx].revents & POLLNVAL) {
                         p->read.finished = true;
                         p->write.failed = true; p->write.used = 0;
