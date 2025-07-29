@@ -113,16 +113,16 @@ Detailed list of changes
   cursor trails (:pull:`8830`)
 
 - Wayland: Fix incorrect window size calculation when transitioning from
-  fullscreen to non-fullscreen with client side decorations (:iss:`8826`)
+  full screen to non-full screen with client side decorations (:iss:`8826`)
 
 - macOS: Fix hiding quick access terminal window not restoring focus to
   previously active application (:disc:`8840`)
 
-- Allow using backspace to move the cursor onto the previous line in cooked mode. This is indicated by the `bw` propert in  kitty's terminfo (:iss:`8841`)
+- Allow using backspace to move the cursor onto the previous line in cooked mode. This is indicated by the `bw` property in  kitty's terminfo (:iss:`8841`)
 
 - Watchers: A new event for global watchers corresponding to the tab bar being changed (:disc:`8842`)
 
-- Fix a regression in 0.40.0 that broke handling of the VS16 variation selector when it caused a character to reflow to the next line (:iss:`8848`)
+- Fix a regression in 0.40.0 that broke handling of the VS16 variation selector when it caused a character to flow to the next line (:iss:`8848`)
 
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
