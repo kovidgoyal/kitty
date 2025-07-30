@@ -754,7 +754,7 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		args := []string{
 			"+kitten", "panel", "--layer=overlay", "--edge=center", "--focus-policy=exclusive",
 			"-o", "background_opacity=0.85", "--wait-for-single-instance-window-close",
-			"--single-instance", "--instance-group", "cfp-" + strconv.Itoa(os.Getpid()),
+			"--grab-keyboard", "--single-instance", "--instance-group", "cfp-" + strconv.Itoa(os.Getpid()),
 		}
 		for _, x := range self.opts.File_chooser_kitty_conf {
 			args = append(args, `-c`, x)
