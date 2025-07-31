@@ -589,6 +589,7 @@ create_surface(_GLFWwindow* window, const _GLFWwndconfig* wndconfig) {
         ensure_color_manager_ready();
         if (_glfw.wl.color_manager.image_description) {
             window->wl.color_management = wp_color_manager_v1_get_surface(_glfw.wl.wp_color_manager_v1, window->wl.surface);
+            wp_color_management_surface_v1_set_image_description(window->wl.color_management, _glfw.wl.color_manager.image_description, WP_COLOR_MANAGER_V1_RENDER_INTENT_PERCEPTUAL);
         }
     }
 
