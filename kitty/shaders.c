@@ -1132,16 +1132,15 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
                 scale_rendered_graphic(grd.images + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
         }
     }
-    bool use_premult = false;
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
     if (os_window->is_semi_transparent) {
-        if (has_underlying_image) { draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, grd, wl); use_premult = true; }
+        if (has_underlying_image) { draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, grd, wl); }
         else draw_cells_simple(vao_idx, screen, &crd, grd, os_window->is_semi_transparent);
     } else {
         if (has_underlying_image) draw_cells_interleaved(vao_idx, screen, os_window, &crd, grd, wl);
         else draw_cells_simple(vao_idx, screen, &crd, grd, os_window->is_semi_transparent);
     }
-    draw_scroll_indicator(use_premult, screen, &crd);
+    draw_scroll_indicator(os_window->is_semi_transparent, screen, &crd);
 
     if (screen->start_visual_bell_at) {
         GLfloat intensity = get_visual_bell_intensity(screen);
