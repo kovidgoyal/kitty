@@ -483,6 +483,8 @@ on_supported_color_feature(void *data UNUSED, struct wp_color_manager_v1 *wp_col
 static void
 on_supported_color_transfer_function(void *data UNUSED, struct wp_color_manager_v1 *wp_color_manager_v1 UNUSED, uint32_t x) {
     switch(x) {
+        case WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_SRGB:
+            _glfw.wl.color_manager.supported_transfer_functions.srgb = true; break;
         case WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_GAMMA22:
             _glfw.wl.color_manager.supported_transfer_functions.gamma22 = true; break;
         case WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_EXT_LINEAR:
@@ -861,13 +863,13 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
     if (_glfw.wl.wp_color_manager_v1) {
         while (!_glfw.wl.color_manager.capabilities_reported) wl_display_roundtrip(_glfw.wl.display);
         _glfw.wl.color_manager.has_needed_capabilities = \
-                _glfw.wl.color_manager.supported_transfer_functions.gamma22 &&
+                _glfw.wl.color_manager.supported_transfer_functions.srgb &&
                 _glfw.wl.color_manager.supported_features.parametric &&
                 _glfw.wl.color_manager.supported_features.set_primaries;
         if (_glfw.wl.color_manager.has_needed_capabilities) {
             struct wp_image_description_creator_params_v1 *c = wp_color_manager_v1_create_parametric_creator(
                     _glfw.wl.wp_color_manager_v1);
-            wp_image_description_creator_params_v1_set_tf_named(c, WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_GAMMA22);
+            wp_image_description_creator_params_v1_set_tf_named(c, WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_SRGB);
             wp_image_description_creator_params_v1_set_primaries_named(c, WP_COLOR_MANAGER_V1_PRIMARIES_SRGB);
             wp_image_description_v1_add_listener(wp_image_description_creator_params_v1_create(c),
                     &image_description_listener, NULL);
