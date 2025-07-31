@@ -763,9 +763,11 @@ get_compositor_missing_capabilities(void) {
 #define P(x) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", x);
     if (_glfw.wl.xdg_wm_base_version < 6) P("window-state-suspended");
     if (_glfw.wl.xdg_wm_base_version < 5) P("window-capabilities");
-    if (!_glfw.wl.color_manager.supported_transfer_functions.gamma22) P("gamma22");
-    if (!_glfw.wl.color_manager.supported_transfer_functions.ext_linear) P("ext_linear");
-    if (!_glfw.wl.color_manager.supported_primaries.srgb) P("srgb");
+    if (_glfw.wl.wp_color_manager_v1 != NULL) {
+        if (!_glfw.wl.color_manager.supported_transfer_functions.gamma22) P("gamma22");
+        if (!_glfw.wl.color_manager.supported_transfer_functions.ext_linear) P("ext_linear");
+        if (!_glfw.wl.color_manager.supported_primaries.srgb) P("srgb");
+    }
 #undef P
 #undef C
     while (p > buf && (p - 1)[0] == ' ') { p--; *p = 0; }
