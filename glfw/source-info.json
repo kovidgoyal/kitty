@@ -88,6 +88,7 @@
       "staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml",
       "staging/xdg-system-bell/xdg-system-bell-v1.xml",
       "staging/xdg-toplevel-tag/xdg-toplevel-tag-v1.xml",
+      "staging/color-management/color-management-v1.xml",
 
       "kwin-blur-v1.xml",
       "wlr-layer-shell-unstable-v1.xml"
