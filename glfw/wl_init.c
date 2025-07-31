@@ -681,7 +681,6 @@ static const struct wl_registry_listener registryListener = {
     registryHandleGlobalRemove
 };
 
-
 GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
     return glfw_current_system_color_theme(query_if_unintialized);
 }
@@ -776,6 +775,25 @@ get_compositor_missing_capabilities(void) {
 
 GLFWAPI const char* glfwWaylandMissingCapabilities(void) { return get_compositor_missing_capabilities(); }
 
+static void
+image_description_failed(void *data UNUSED, struct wp_image_description_v1 *d, uint32_t cause, const char *msg) {
+    wp_image_description_v1_destroy(d);
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create color mamagement profile description with cause: %d and error: %s", cause, msg);
+    _glfw.wl.color_manager.image_description_done = true;
+}
+
+static void
+image_description_ready(void *data UNUSED, struct wp_image_description_v1 *d, uint32_t identity UNUSED) {
+    _glfw.wl.color_manager.image_description_done = true;
+    _glfw.wl.color_manager.image_description = d;
+}
+
+static const struct wp_image_description_v1_listener image_description_listener = {
+    .failed = image_description_failed,
+    .ready = image_description_ready,
+};
+
+
 int _glfwPlatformInit(bool *supports_window_occlusion)
 {
     int i;
@@ -835,7 +853,18 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
     wl_display_roundtrip(_glfw.wl.display);
 
     // Sync so we get all color manager capabilities
-    while(_glfw.wl.wp_color_manager_v1 != NULL && !_glfw.wl.color_manager.capabilities_reported) wl_display_roundtrip(_glfw.wl.display);
+    if (_glfw.wl.wp_color_manager_v1) {
+        while (!_glfw.wl.color_manager.capabilities_reported) wl_display_roundtrip(_glfw.wl.display);
+        _glfw.wl.color_manager.has_needed_capabilities = _glfw.wl.color_manager.supported_transfer_functions.gamma22 && _glfw.wl.color_manager.supported_primaries.srgb;
+        if (_glfw.wl.color_manager.has_needed_capabilities) {
+            struct wp_image_description_creator_params_v1 *c = wp_color_manager_v1_create_parametric_creator(
+                    _glfw.wl.wp_color_manager_v1);
+            wp_image_description_creator_params_v1_set_tf_named(c, WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_GAMMA22);
+            wp_image_description_creator_params_v1_set_primaries_named(c, WP_COLOR_MANAGER_V1_PRIMARIES_SRGB);
+            wp_image_description_v1_add_listener(wp_image_description_creator_params_v1_create(c),
+                    &image_description_listener, NULL);
+        }
+    }
 
     for (i = 0; i < _glfw.monitorCount; ++i)
     {
@@ -950,8 +979,11 @@ void _glfwPlatformTerminate(void)
         xdg_system_bell_v1_destroy(_glfw.wl.xdg_system_bell_v1);
     if (_glfw.wl.xdg_toplevel_tag_manager_v1)
         xdg_toplevel_tag_manager_v1_destroy(_glfw.wl.xdg_toplevel_tag_manager_v1);
-    if (_glfw.wl.wp_color_manager_v1)
+    if (_glfw.wl.wp_color_manager_v1) {
+        if (_glfw.wl.color_manager.image_description)
+            wp_image_description_v1_destroy(_glfw.wl.color_manager.image_description);
         wp_color_manager_v1_destroy(_glfw.wl.wp_color_manager_v1);
+    }
     if (_glfw.wl.wp_single_pixel_buffer_manager_v1)
         wp_single_pixel_buffer_manager_v1_destroy(_glfw.wl.wp_single_pixel_buffer_manager_v1);
     if (_glfw.wl.wp_cursor_shape_manager_v1)

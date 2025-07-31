@@ -571,6 +571,13 @@ static const struct wp_fractional_scale_v1_listener fractional_scale_listener = 
     .preferred_scale = &fractional_scale_preferred_scale,
 };
 
+static void
+ensure_color_manager_ready(void) {
+    if (_glfw.wl.wp_color_manager_v1 && !_glfw.wl.color_manager.image_description_done) {
+        while (!_glfw.wl.color_manager.image_description_done) wl_display_roundtrip(_glfw.wl.display);
+    }
+}
+
 static bool createSurface(_GLFWwindow* window,
                               const _GLFWwndconfig* wndconfig)
 {
@@ -583,8 +590,11 @@ static bool createSurface(_GLFWwindow* window,
                             window);
 
     wl_surface_set_user_data(window->wl.surface, window);
-    if (_glfw.wl.wp_color_manager_v1 != NULL) {
-        window->wl.color_management = wp_color_manager_v1_get_surface(_glfw.wl.wp_color_manager_v1, window->wl.surface);
+    if (_glfw.wl.color_manager.has_needed_capabilities) {
+        ensure_color_manager_ready();
+        if (_glfw.wl.color_manager.image_description) {
+            window->wl.color_management = wp_color_manager_v1_get_surface(_glfw.wl.wp_color_manager_v1, window->wl.surface);
+        }
     }
 
     // If we already have been notified of the primary monitor scale, assume
