@@ -399,6 +399,7 @@ typedef struct _GLFWlibraryWayland
     struct {
         struct { bool gamma22, ext_linear; } supported_transfer_functions;
         struct { bool srgb; } supported_primaries;
+        struct { bool parametric, set_primaries; } supported_features;
         bool capabilities_reported, image_description_done, has_needed_capabilities;
         struct wp_image_description_v1 *image_description;
     } color_manager;
