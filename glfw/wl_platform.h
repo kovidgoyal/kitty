@@ -396,7 +396,9 @@ typedef struct _GLFWlibraryWayland
     } egl;
 
     struct {
-        bool supports_gamma22_transfer_function;
+        struct {
+            bool gamma22, ext_linear;
+        } supported_transfer_functions;
         bool capabilities_reported;
     } color_manager;
 

@@ -466,8 +466,9 @@ static void
 on_supported_color_transfer_function(void *data UNUSED, struct wp_color_manager_v1 *wp_color_manager_v1 UNUSED, uint32_t x) {
     switch(x) {
         case WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_GAMMA22:
-            _glfw.wl.color_manager.supports_gamma22_transfer_function = true;
-            break;
+            _glfw.wl.color_manager.supported_transfer_functions.gamma22 = true; break;
+        case WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_EXT_LINEAR:
+            _glfw.wl.color_manager.supported_transfer_functions.ext_linear = true; break;
     }
 }
 
@@ -753,7 +754,8 @@ get_compositor_missing_capabilities(void) {
     C(color-manager, wp_color_manager_v1);
     if (_glfw.wl.xdg_wm_base_version < 6) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-state-suspended");
     if (_glfw.wl.xdg_wm_base_version < 5) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-capabilities");
-    if (!_glfw.wl.color_manager.supports_gamma22_transfer_function) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "gamma22");
+    if (!_glfw.wl.color_manager.supported_transfer_functions.gamma22) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "gamma22");
+    if (!_glfw.wl.color_manager.supported_transfer_functions.ext_linear) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "ext_linear");
 #undef C
     while (p > buf && (p - 1)[0] == ' ') { p--; *p = 0; }
     return buf;
