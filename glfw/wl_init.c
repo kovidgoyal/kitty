@@ -454,6 +454,31 @@ static const struct wl_seat_listener seatListener = {
     seatHandleName,
 };
 
+static void
+ignored_color_manager_event(void *data UNUSED, struct wp_color_manager_v1 *wp_color_manager_v1 UNUSED, uint32_t x UNUSED) {}
+
+static void
+on_color_manger_features_done(void *data UNUSED, struct wp_color_manager_v1 *wp_color_manager_v1 UNUSED) {
+    _glfw.wl.color_manager.capabilities_reported = true;
+}
+
+static void
+on_supported_color_transfer_function(void *data UNUSED, struct wp_color_manager_v1 *wp_color_manager_v1 UNUSED, uint32_t x) {
+    switch(x) {
+        case WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_GAMMA22:
+            _glfw.wl.color_manager.supports_gamma22_transfer_function = true;
+            break;
+    }
+}
+
+static const struct wp_color_manager_v1_listener color_manager_listener = {
+    .supported_intent = ignored_color_manager_event,
+    .supported_feature = ignored_color_manager_event,
+    .supported_primaries_named = ignored_color_manager_event,
+    .supported_tf_named = on_supported_color_transfer_function,
+    .done = on_color_manger_features_done,
+};
+
 static void wmBaseHandlePing(void* data UNUSED,
                              struct xdg_wm_base* wmBase,
                              uint32_t serial)
@@ -612,6 +637,7 @@ static void registryHandleGlobal(void* data UNUSED,
         _glfw.wl.xdg_toplevel_tag_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_tag_manager_v1_interface, 1);
     } else if (is(wp_color_manager_v1)) {
         _glfw.wl.wp_color_manager_v1 = wl_registry_bind(registry, name, &wp_color_manager_v1_interface, 1);
+        wp_color_manager_v1_add_listener(_glfw.wl.wp_color_manager_v1, &color_manager_listener, NULL);
     }
 #undef is
 }
@@ -727,6 +753,7 @@ get_compositor_missing_capabilities(void) {
     C(color-manager, wp_color_manager_v1);
     if (_glfw.wl.xdg_wm_base_version < 6) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-state-suspended");
     if (_glfw.wl.xdg_wm_base_version < 5) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "window-capabilities");
+    if (!_glfw.wl.color_manager.supports_gamma22_transfer_function) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "gamma22");
 #undef C
     while (p > buf && (p - 1)[0] == ' ') { p--; *p = 0; }
     return buf;
@@ -791,6 +818,9 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
 
     // Sync so we got all initial output events
     wl_display_roundtrip(_glfw.wl.display);
+
+    // Sync so we get all color manager capabilities
+    while(_glfw.wl.wp_color_manager_v1 != NULL && !_glfw.wl.color_manager.capabilities_reported) wl_display_roundtrip(_glfw.wl.display);
 
     for (i = 0; i < _glfw.monitorCount; ++i)
     {

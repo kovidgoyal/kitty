@@ -396,6 +396,11 @@ typedef struct _GLFWlibraryWayland
     } egl;
 
     struct {
+        bool supports_gamma22_transfer_function;
+        bool capabilities_reported;
+    } color_manager;
+
+    struct {
         glfw_wl_xdg_activation_request *array;
         size_t capacity, sz;
     } activation_requests;
