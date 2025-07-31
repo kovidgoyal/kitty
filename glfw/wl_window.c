@@ -578,18 +578,13 @@ ensure_color_manager_ready(void) {
     }
 }
 
-static bool createSurface(_GLFWwindow* window,
-                              const _GLFWwndconfig* wndconfig)
-{
+static bool
+create_surface(_GLFWwindow* window, const _GLFWwndconfig* wndconfig) {
     window->wl.surface = wl_compositor_create_surface(_glfw.wl.compositor);
-    if (!window->wl.surface)
-        return false;
-
-    wl_surface_add_listener(window->wl.surface,
-                            &surfaceListener,
-                            window);
-
+    if (!window->wl.surface) return false;
+    wl_surface_add_listener(window->wl.surface, &surfaceListener, window);
     wl_surface_set_user_data(window->wl.surface, window);
+
     if (_glfw.wl.color_manager.has_needed_capabilities) {
         ensure_color_manager_ready();
         if (_glfw.wl.color_manager.image_description) {
@@ -1450,7 +1445,7 @@ int _glfwPlatformCreateWindow(
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
     window->swaps_disallowed = true;
 
-    if (!createSurface(window, wndconfig)) return false;
+    if (!create_surface(window, wndconfig)) return false;
     if (wndconfig->title) window->wl.title = _glfw_strdup(wndconfig->title);
     if (wndconfig->maximized) window->wl.maximize_on_first_show = true;
     if (wndconfig->visible) {
