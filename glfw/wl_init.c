@@ -463,6 +463,14 @@ on_color_manger_features_done(void *data UNUSED, struct wp_color_manager_v1 *wp_
 }
 
 static void
+on_supported_color_primaries(void *data UNUSED, struct wp_color_manager_v1 *wp_color_manager_v1 UNUSED, uint32_t x) {
+    switch(x) {
+        case WP_COLOR_MANAGER_V1_PRIMARIES_SRGB:
+            _glfw.wl.color_manager.supported_primaries.srgb = true; break;
+    }
+}
+
+static void
 on_supported_color_transfer_function(void *data UNUSED, struct wp_color_manager_v1 *wp_color_manager_v1 UNUSED, uint32_t x) {
     switch(x) {
         case WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_GAMMA22:
@@ -475,7 +483,7 @@ on_supported_color_transfer_function(void *data UNUSED, struct wp_color_manager_
 static const struct wp_color_manager_v1_listener color_manager_listener = {
     .supported_intent = ignored_color_manager_event,
     .supported_feature = ignored_color_manager_event,
-    .supported_primaries_named = ignored_color_manager_event,
+    .supported_primaries_named = on_supported_color_primaries,
     .supported_tf_named = on_supported_color_transfer_function,
     .done = on_color_manger_features_done,
 };
@@ -757,6 +765,7 @@ get_compositor_missing_capabilities(void) {
     if (_glfw.wl.xdg_wm_base_version < 5) P("window-capabilities");
     if (!_glfw.wl.color_manager.supported_transfer_functions.gamma22) P("gamma22");
     if (!_glfw.wl.color_manager.supported_transfer_functions.ext_linear) P("ext_linear");
+    if (!_glfw.wl.color_manager.supported_primaries.srgb) P("srgb");
 #undef P
 #undef C
     while (p > buf && (p - 1)[0] == ' ') { p--; *p = 0; }
