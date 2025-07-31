@@ -583,6 +583,9 @@ static bool createSurface(_GLFWwindow* window,
                             window);
 
     wl_surface_set_user_data(window->wl.surface, window);
+    if (_glfw.wl.wp_color_manager_v1 != NULL) {
+        window->wl.color_management = wp_color_manager_v1_get_surface(_glfw.wl.wp_color_manager_v1, window->wl.surface);
+    }
 
     // If we already have been notified of the primary monitor scale, assume
     // the window will be created on it and so avoid a rescale roundtrip in the common
@@ -1512,6 +1515,9 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
     if (window->wl.layer_shell.zwlr_layer_surface_v1)
         zwlr_layer_surface_v1_destroy(window->wl.layer_shell.zwlr_layer_surface_v1);
+
+    if (window->wl.color_management)
+        wp_color_management_surface_v1_destroy(window->wl.color_management);
 
     if (window->wl.surface)
         wl_surface_destroy(window->wl.surface);

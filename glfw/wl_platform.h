@@ -172,6 +172,7 @@ typedef struct _GLFWwindowWayland
     bool                        hovered;
     bool                        transparent;
     struct wl_surface*          surface;
+    struct wp_color_management_surface_v1 *color_management;
     bool                        waiting_for_swap_to_commit;
     struct wl_egl_window*       native;
     struct wl_callback*         callback;
