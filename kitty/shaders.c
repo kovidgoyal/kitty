@@ -14,11 +14,25 @@
 #include "srgb_gamma.h"
 #include "uniforms_generated.h"
 
+/*
+ * TODO: for shader refactoring
+ * Get rid of TRANSPARENT define and always use premul colors
+ * Change rendering of cursor -- should now be rendered with full blending as a layer between bg and fg layers
+ * Check that rendering of special cells aka selections still works
+ * Port graphics rendering to start use a dummy 1 pixel empty texture then possibly replace with defines so that the most
+ * common use case of no graphics has zero performance overhead.
+ * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
+ * the new graphics shader.
+ * background image with tint and various layout options
+ * window logo image that is in the under foreground layer I think? need to check
+ * test that window numbering and URL hover rendering both still work
+ * test cursor trail and scroll indicator rendering
+ */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, TRAIL_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, TRAIL_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
 
 // Sprites {{{
@@ -684,19 +698,6 @@ has_bgimage(OSWindow *w) {
     return w->bgimage && w->bgimage->texture_id > 0;
 }
 
-static void
-draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
-    if (premult) { BLEND_PREMULT } else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT }
-    bind_program(TINT_PROGRAM);
-    color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
-#define C(shift) srgb_color((window_bg >> shift) & 0xFF) * premult_factor
-    GLfloat premult_factor = premult ? OPT(background_tint) : 1.0f;
-    glUniform4f(tint_program_layout.uniforms.tint_color, C(16), C(8), C(0), OPT(background_tint));
-#undef C
-    glUniform4f(tint_program_layout.uniforms.edges, crd->gl.xstart, crd->gl.ystart - crd->gl.height, crd->gl.xstart + crd->gl.width, crd->gl.ystart);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-}
-
 static bool
 draw_scroll_indicator(bool premult, Screen *screen, const CellRenderData *crd) {
     if (OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by) return false;
@@ -734,17 +735,13 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_PREMULT_PROGRAM; i++) {
             bind_program(i); glUniform1i(graphics_program_layouts[i].uniforms.image, GRAPHICS_UNIT);
         }
-        for (int i = CELL_PROGRAM; i <= CELL_FG_PROGRAM; i++) {
+        for (int i = CELL_PROGRAM; i <= CELL_PROGRAM; i++) {
             bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
-            switch(i) {
-                case CELL_PROGRAM: case CELL_FG_PROGRAM:
-                    glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
-                    glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
-                    glUniform1f(cu->dim_opacity, OPT(dim_opacity));
-                    glUniform1f(cu->text_contrast, text_contrast);
-                    glUniform1f(cu->text_gamma_adjustment, text_gamma_adjustment);
-                    break;
-            }
+            glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
+            glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
+            glUniform1f(cu->dim_opacity, OPT(dim_opacity));
+            glUniform1f(cu->text_contrast, text_contrast);
+            glUniform1f(cu->text_gamma_adjustment, text_gamma_adjustment);
         }
         constants_set = true;
     }
@@ -754,7 +751,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
             bind_program(i); glUniform1f(graphics_program_layouts[i].uniforms.inactive_text_alpha, current_inactive_text_alpha);
         }
 #define S(prog, loc) bind_program(prog); glUniform1f(cell_program_layouts[prog].uniforms.inactive_text_alpha, current_inactive_text_alpha);
-        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc);
+        S(CELL_PROGRAM, cploc);
 #undef S
     }
 }
@@ -831,60 +828,6 @@ draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData 
 }
 
 static void
-draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, const CellRenderData *crd) {
-    if (os_window->live_resize.in_progress) return;
-    BLEND_PREMULT;
-    GLfloat logo_width_gl = gl_size(wl->instance->width, os_window->viewport_width);
-    GLfloat logo_height_gl = gl_size(wl->instance->height, os_window->viewport_height);
-
-    if (OPT(window_logo_scale.width) > 0 || OPT(window_logo_scale.height) > 0) {
-        unsigned int scaled_wl_width = os_window->viewport_width;
-        unsigned int scaled_wl_height = os_window->viewport_height;
-
-        // [sx] Scales logo to sx % of the viewports shortest dimension, preserving aspect ratio
-        if (OPT(window_logo_scale.height) < 0) {
-            if (os_window->viewport_height < os_window->viewport_width) {
-                scaled_wl_height = (int)(os_window->viewport_height * OPT(window_logo_scale.width) / 100);
-                scaled_wl_width = wl->instance->width * scaled_wl_height / wl->instance->height;
-            } else {
-                scaled_wl_width = (int)(os_window->viewport_width * OPT(window_logo_scale.width) / 100);
-                scaled_wl_height = wl->instance->height * scaled_wl_width / wl->instance->width;
-            }
-        }
-        // [0 sy] Scales logo's y dimension to sy % of viewporty keeping original x dimension
-        else if (OPT(window_logo_scale.width) == 0.0) {
-            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
-            scaled_wl_width = wl->instance->width;
-        }
-        // [sx 0] Scales logo's x dimension to sx % of viewportx keeping original y dimension
-        else if (OPT(window_logo_scale.height) == 0.0) {
-            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
-            scaled_wl_height = wl->instance->height;
-        }
-        // [sx sy] Scales logo's x and y dimension to sx and sy % of viewportx and viewporty respectively
-        else {
-            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
-            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
-        }
-
-        logo_height_gl = gl_size(scaled_wl_height, os_window->viewport_height);
-        logo_width_gl = gl_size(scaled_wl_width, os_window->viewport_width);
-    }
-
-    GLfloat logo_left_gl = clamp_position_to_nearest_pixel(
-            crd->gl.xstart + crd->gl.width * wl->position.canvas_x - logo_width_gl * wl->position.image_x, os_window->viewport_width);
-    GLfloat logo_top_gl = clamp_position_to_nearest_pixel(
-            crd->gl.ystart - crd->gl.height * wl->position.canvas_y + logo_height_gl * wl->position.image_y, os_window->viewport_height);
-    static ImageRenderData ird = {.group_count=1};
-    ird.texture_id = wl->instance->texture_id;
-    gpu_data_for_image(&ird, logo_left_gl, logo_top_gl, logo_left_gl + logo_width_gl, logo_top_gl - logo_height_gl);
-    bind_program(GRAPHICS_PREMULT_PROGRAM);
-    glUniform1f(graphics_program_layouts[GRAPHICS_PREMULT_PROGRAM].uniforms.inactive_text_alpha, prev_inactive_text_alpha * wl->alpha);
-    draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, &ird, 0, 1, viewport_for_cells(crd));
-    glUniform1f(graphics_program_layouts[GRAPHICS_PREMULT_PROGRAM].uniforms.inactive_text_alpha, prev_inactive_text_alpha);
-}
-
-static void
 draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Window *window) {
     GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
     GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
@@ -954,97 +897,6 @@ draw_visual_bell_flash(GLfloat intensity, const CellRenderData *crd, Screen *scr
 #undef C
     glUniform4f(tint_program_layout.uniforms.edges, crd->gl.xstart, crd->gl.ystart - crd->gl.height, crd->gl.xstart + crd->gl.width, crd->gl.ystart);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    glDisable(GL_BLEND);
-}
-
-static void
-draw_cells_interleaved(ssize_t vao_idx, Screen *screen, OSWindow *w, const CellRenderData *crd, GraphicsRenderData grd, const WindowLogoRenderData *wl) {
-    glEnable(GL_BLEND);
-    BLEND_ONTO_OPAQUE;
-
-    // draw background for all cells
-    if (!has_bgimage(w)) {
-        bind_program(CELL_BG_PROGRAM);
-        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].uniforms.draw_bg_bitfield, 3);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    } else if (OPT(background_tint) > 0) {
-        draw_tint(false, screen, crd);
-        BLEND_ONTO_OPAQUE;
-    }
-
-    if (grd.num_of_below_refs || has_bgimage(w) || wl) {
-        if (wl) {
-            draw_window_logo(vao_idx, w, wl, crd);
-            BLEND_ONTO_OPAQUE;
-        }
-        if (grd.num_of_below_refs) draw_graphics(
-                GRAPHICS_PROGRAM, vao_idx, grd.images, 0, grd.num_of_below_refs, viewport_for_cells(crd));
-        bind_program(CELL_BG_PROGRAM);
-        // draw background for non-default bg cells
-        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].uniforms.draw_bg_bitfield, 2);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    }
-
-    if (grd.num_of_negative_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, grd.images, grd.num_of_below_refs, grd.num_of_negative_refs, viewport_for_cells(crd));
-
-    bind_program(CELL_SPECIAL_PROGRAM);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-
-    bind_program(CELL_FG_PROGRAM);
-    BLEND_PREMULT;
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    BLEND_ONTO_OPAQUE;
-
-    if (grd.num_of_positive_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, grd.images, grd.num_of_negative_refs + grd.num_of_below_refs, grd.num_of_positive_refs, viewport_for_cells(crd));
-
-    glDisable(GL_BLEND);
-}
-
-static void
-draw_cells_interleaved_premult(ssize_t vao_idx, Screen *screen, OSWindow *os_window, const CellRenderData *crd, GraphicsRenderData grd, const WindowLogoRenderData *wl) {
-    if (OPT(background_tint) > 0.f) {
-        glEnable(GL_BLEND);
-        draw_tint(true, screen, crd);
-        glDisable(GL_BLEND);
-    }
-    bind_program(CELL_BG_PROGRAM);
-    if (!has_bgimage(os_window)) {
-        // draw background for all cells
-        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].uniforms.draw_bg_bitfield, 3);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    }
-    glEnable(GL_BLEND);
-    BLEND_PREMULT;
-
-    if (grd.num_of_below_refs || has_bgimage(os_window) || wl) {
-        if (wl) {
-            draw_window_logo(vao_idx, os_window, wl, crd);
-            BLEND_PREMULT;
-        }
-        if (grd.num_of_below_refs) draw_graphics(
-            GRAPHICS_PREMULT_PROGRAM, vao_idx, grd.images, 0, grd.num_of_below_refs, viewport_for_cells(crd));
-        bind_program(CELL_BG_PROGRAM);
-        // Draw background for non-default bg cells
-        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].uniforms.draw_bg_bitfield, 2);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    } else {
-        // Apply background_opacity
-        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].uniforms.draw_bg_bitfield, 0);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    }
-
-    if (grd.num_of_negative_refs) {
-        draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, grd.images, grd.num_of_below_refs, grd.num_of_negative_refs, viewport_for_cells(crd));
-    }
-
-    bind_program(CELL_SPECIAL_PROGRAM);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-
-    bind_program(CELL_FG_PROGRAM);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-
-    if (grd.num_of_positive_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, grd.images, grd.num_of_negative_refs + grd.num_of_below_refs, grd.num_of_positive_refs, viewport_for_cells(crd));
-
     glDisable(GL_BLEND);
 }
 
@@ -1133,13 +985,8 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
         }
     }
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
-    if (os_window->is_semi_transparent) {
-        if (has_underlying_image) { draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, grd, wl); }
-        else draw_cells_simple(vao_idx, screen, &crd, grd, os_window->is_semi_transparent);
-    } else {
-        if (has_underlying_image) draw_cells_interleaved(vao_idx, screen, os_window, &crd, grd, wl);
-        else draw_cells_simple(vao_idx, screen, &crd, grd, os_window->is_semi_transparent);
-    }
+    (void)has_underlying_image;
+    draw_cells_simple(vao_idx, screen, &crd, grd, os_window->is_semi_transparent);
     draw_scroll_indicator(os_window->is_semi_transparent, screen, &crd);
 
     if (screen->start_visual_bell_at) {
@@ -1377,7 +1224,7 @@ finalize(void) {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
+    C(CELL_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

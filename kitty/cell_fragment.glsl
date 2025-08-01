@@ -2,14 +2,12 @@
 #pragma kitty_include_shader <linear2srgb.glsl>
 #pragma kitty_include_shader <cell_defines.glsl>
 
-in vec3 background;
-in float draw_bg;
-in float bg_alpha;
-
-#ifdef NEEDS_FOREGROUND
 uniform sampler2DArray sprites;
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
+
+in vec3 background;
+in float bg_alpha;
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
@@ -20,7 +18,6 @@ in vec3 foreground;
 in vec4 cursor_color_premult;
 in vec3 decoration_fg;
 in float colored_sprite;
-#endif
 
 out vec4 output_color;
 
@@ -35,38 +32,6 @@ vec4 vec4_premul(vec4 rgba) {
 // }}}
 
 
-/*
- * Explanation of rendering:
- * There are two types of rendering, single pass and multi-pass. Multi-pass rendering is used when there
- * are images that are below the foreground. Single pass rendering has PHASE=PHASE_BOTH. Otherwise, there
- * are three passes, PHASE=PHASE_BACKGROUND, PHASE=PHASE_SPECIAL, PHASE=PHASE_FOREGROUND.
- * 1) Single pass -- this path is used when there are either no images, or all images are
- *    drawn on top of text. In this case, there is a single pass,
- *    of this shader with cell foreground and background colors blended directly.
- *    Expected output is either opaque colors or pre-multiplied colors.
- *
- * 2) Interleaved -- this path is used if background is not opaque and there are images or
- *    if the background is opaque but there are images under text. Rendering happens in
- *    multiple passes drawing the background and foreground separately and blending.
- *
- *    2a) Opaque bg with images under text
- *        There are multiple passes, each pass is blended onto the previous using the opaque blend func (alpha, 1- alpha). TRANSPARENT is not
- *        defined in the shaders.
- *        1) Draw background for all cells
- *        2) Draw the images that are supposed to be below both the background and text, if any. This happens in the graphics shader
- *        3) Draw the background of cells that don't have the default background if any images were drawn in 2 above
- *        4) Draw the images that are supposed to be below text but not background, again in graphics shader.
- *        5) Draw the special cells (selection/cursor). Output is same as from step 1, with bg_alpha 1 for special cells and 0 otherwise
- *        6) Draw the foreground -- expected output is color with alpha premultiplied which is blended using the premult blend func
- *        7) Draw the images that are supposed to be above text again in the graphics shader
- *
- *    2b) Transparent bg with images
- *        Same as (2a) except blending is done with PREMULT_BLEND and TRANSPARENT is defined in the shaders. background_opacity
- *        is applied to default colored background cells in step (1).
- */
-
-// foreground functions {{{
-#ifdef NEEDS_FOREGROUND
 // Scaling factor for the extra text-alpha adjustment for luminance-difference.
 const float text_gamma_scaling = 0.5;
 
@@ -129,8 +94,6 @@ vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
     return foreground_contrast(text_fg, bg);
 }
 
-#endif
-// end foreground functions }}}
 
 float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, float final_alpha) {
     // Adjust the transparent alpha-channel to account for incorrect
@@ -146,7 +109,6 @@ float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, flo
 
 void main() {
     vec4 final_color;
-#if (PHASE == PHASE_BOTH)
     vec4 text_fg = load_text_foreground_color();
     text_fg = adjust_foreground_contrast_with_background(text_fg, background);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
@@ -155,33 +117,6 @@ void main() {
     final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
 #else
     final_color = alpha_blend_premul(text_fg_premul, background);
-#endif
-#endif
-
-#if (PHASE == PHASE_SPECIAL)
-#ifdef TRANSPARENT
-    final_color = vec4_premul(background, bg_alpha);
-#else
-    final_color = vec4(background, bg_alpha);
-#endif
-#endif
-
-#if (PHASE == PHASE_BACKGROUND)
-#ifdef TRANSPARENT
-    final_color = vec4_premul(background, bg_alpha);
-#else
-    final_color = vec4(background, draw_bg * bg_alpha);
-#endif
-#endif
-
-#if (PHASE == PHASE_FOREGROUND)
-    vec4 text_fg = load_text_foreground_color();
-    text_fg = adjust_foreground_contrast_with_background(text_fg, background);
-    vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
-    final_color = text_fg_premul;
-#ifdef TRANSPARENT
-    final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
-#endif
 #endif
     output_color = final_color;
 }

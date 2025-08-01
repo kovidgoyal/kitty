@@ -10,10 +10,7 @@ from typing import Any, Literal, NamedTuple, Optional
 from .constants import read_kitty_resource
 from .fast_data_types import (
     BGIMAGE_PROGRAM,
-    CELL_BG_PROGRAM,
-    CELL_FG_PROGRAM,
     CELL_PROGRAM,
-    CELL_SPECIAL_PROGRAM,
     DECORATION,
     DECORATION_MASK,
     DIM,
@@ -180,28 +177,16 @@ class LoadShaderPrograms:
                 DECORATION_MASK=DECORATION_MASK,
             )
 
-        def resolve_cell_defines(which: str, src: str) -> str:
+        def resolve_cell_defines(src: str) -> str:
             r = self.cell_program_replacer.replacements
-            r['WHICH_PHASE'] = f'PHASE_{which}'
             r['TRANSPARENT'] = '1' if semi_transparent else '0'
             r['DO_FG_OVERRIDE'] = '1' if self.text_fg_override_threshold.scaled_value else '0'
             r['FG_OVERRIDE_ALGO'] = '1' if self.text_fg_override_threshold.unit == '%' else '2'
             r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold.scaled_value)
             r['TEXT_NEW_GAMMA'] = '0' if self.text_old_gamma else '1'
             return self.cell_program_replacer(src)
-
-        for which, p in {
-            'BOTH': CELL_PROGRAM,
-            'BACKGROUND': CELL_BG_PROGRAM,
-            'SPECIAL': CELL_SPECIAL_PROGRAM,
-            'FOREGROUND': CELL_FG_PROGRAM,
-        }.items():
-            cell.apply_to_sources(
-                vertex=partial(resolve_cell_defines, which),
-                frag=partial(resolve_cell_defines, which),
-            )
-            cell.compile(p, allow_recompile)
-
+        cell.apply_to_sources(vertex=resolve_cell_defines, frag=resolve_cell_defines)
+        cell.compile(CELL_PROGRAM, allow_recompile)
         graphics = program_for('graphics')
 
         def resolve_graphics_fragment_defines(which: str, f: str) -> str:
