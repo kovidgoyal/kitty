@@ -86,9 +86,9 @@ def set_custom_ibeam_cursor() -> None:
         log_error(f'Failed to set custom beam cursor with error: {e}')
 
 
-def load_all_shaders(semi_transparent: bool = False) -> None:
+def load_all_shaders() -> None:
     try:
-        load_shader_programs(semi_transparent)
+        load_shader_programs()
         load_borders_program()
     except CompileError as err:
         raise SystemExit(err)

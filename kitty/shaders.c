@@ -16,9 +16,9 @@
 
 /*
  * TODO: for shader refactoring
- * Get rid of TRANSPARENT define and always use premul colors
  * Change rendering of cursor -- should now be rendered with full blending as a layer between bg and fg layers
  * Check that rendering of special cells aka selections still works
+ * Check color fringing issues and background lightness isssues are properly fixed
  * Port graphics rendering to start use a dummy 1 pixel empty texture then possibly replace with defines so that the most
  * common use case of no graphics has zero performance overhead.
  * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in

@@ -136,7 +136,6 @@ class TextFgOverrideThreshold(NamedTuple):
 class LoadShaderPrograms:
     text_fg_override_threshold: TextFgOverrideThreshold = TextFgOverrideThreshold()
     text_old_gamma: bool = False
-    semi_transparent: bool = False
     cell_program_replacer: MultiReplacer = null_replacer
 
     @property
@@ -149,10 +148,9 @@ class LoadShaderPrograms:
 
     def recompile_if_needed(self) -> None:
         if self.needs_recompile:
-            self(self.semi_transparent, allow_recompile=True)
+            self(allow_recompile=True)
 
-    def __call__(self, semi_transparent: bool = False, allow_recompile: bool = False) -> None:
-        self.semi_transparent = semi_transparent
+    def __call__(self, allow_recompile: bool = False) -> None:
         opts = get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
 
@@ -179,7 +177,6 @@ class LoadShaderPrograms:
 
         def resolve_cell_defines(src: str) -> str:
             r = self.cell_program_replacer.replacements
-            r['TRANSPARENT'] = '1' if semi_transparent else '0'
             r['DO_FG_OVERRIDE'] = '1' if self.text_fg_override_threshold.scaled_value else '0'
             r['FG_OVERRIDE_ALGO'] = '1' if self.text_fg_override_threshold.unit == '%' else '2'
             r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold.scaled_value)
