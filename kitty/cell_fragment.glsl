@@ -94,19 +94,6 @@ vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
     return foreground_contrast(text_fg, bg);
 }
 
-
-float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, float final_alpha) {
-    // Adjust the transparent alpha-channel to account for incorrect
-    // gamma-blending performed by the compositor (true for at least wlroots, picom)
-    // We have a linear alpha channel apply the sRGB curve to it once again to compensate
-    // for the incorrect blending in the compositor.
-    // We apply the correction only if there was actual text at this pixel, so as to not make
-    // background_opacity non-linear
-    // See https://github.com/kovidgoyal/kitty/issues/6209 for discussion.
-    // ans = text_fg_alpha * linear2srgb(final_alpha) + (1 - text_fg_alpha) * final_alpha
-    return mix(final_alpha, linear2srgb(final_alpha), text_fg_alpha);
-}
-
 void main() {
     vec4 final_color;
     vec4 text_fg = load_text_foreground_color();
@@ -118,7 +105,6 @@ void main() {
     final_color.a = 1.;
 #else
     final_color.rgb = linear2srgb(final_color.rgb / final_color.a) * final_color.a;
-    final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
 #endif
     output_color = final_color;
 }
