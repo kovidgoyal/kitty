@@ -16,14 +16,13 @@
 
 /*
  * TODO: for shader refactoring
- * Change rendering of cursor -- should now be rendered with full blending as a layer between bg and fg layers
- * Check that rendering of special cells aka selections still works
- * Check color fringing issues and background lightness isssues are properly fixed
+ * Check color fringing issues and background lightness issues are properly fixed
  * Port graphics rendering to start use a dummy 1 pixel empty texture then possibly replace with defines so that the most
  * common use case of no graphics has zero performance overhead.
  * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
  * the new graphics shader.
  * background image with tint and various layout options
+ * test graphics in all 3 layers
  * window logo image that is in the under foreground layer I think? need to check
  * test that window numbering and URL hover rendering both still work
  * test cursor trail and scroll indicator rendering
@@ -32,7 +31,7 @@
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
-enum { CELL_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, TRAIL_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_TRANSPARENT_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, TRAIL_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
 
 // Sprites {{{
@@ -375,7 +374,7 @@ pick_cursor_color(Line *line, const ColorProfile *color_profile, color_type cell
     }
 }
 
-static void
+static float
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CellRenderData *crd, CursorRenderInfo *cursor, OSWindow *os_window) {
     struct GPUCellRenderData {
         GLfloat xstart, ystart, dx, dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
@@ -400,7 +399,10 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
     rd->bg_colors0 = COLOR(default_bg);
     rd->bg_opacities0 = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
-#define SETBG(which) colorprofile_to_transparent_color(cp, which - 1, &rd->bg_colors##which, &rd->bg_opacities##which)
+    float min_bg_opacity = rd->bg_opacities0;
+#define SETBG(which) { \
+    colorprofile_to_transparent_color(cp, which - 1, &rd->bg_colors##which, &rd->bg_opacities##which); \
+    if (rd->bg_opacities##which < min_bg_opacity) min_bg_opacity = rd->bg_opacities##which;}
     SETBG(1); SETBG(2); SETBG(3); SETBG(4); SETBG(5); SETBG(6); SETBG(7);
 #undef SETBG
     // selection
@@ -494,6 +496,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
 
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
+    return min_bg_opacity;
 }
 
 static bool
@@ -681,16 +684,17 @@ viewport_for_cells(const CellRenderData *crd) {
 }
 
 static void
-draw_cells_simple(ssize_t vao_idx, Screen *screen, const CellRenderData *crd, GraphicsRenderData grd, bool is_semi_transparent) {
-    bind_program(CELL_PROGRAM);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    if (grd.count) {
-        glEnable(GL_BLEND);
-        int program = GRAPHICS_PROGRAM;
-        if (is_semi_transparent) { BLEND_PREMULT; program = GRAPHICS_PREMULT_PROGRAM; } else { BLEND_ONTO_OPAQUE; }
-        draw_graphics(program, vao_idx, grd.images, 0, grd.count, viewport_for_cells(crd));
-        glDisable(GL_BLEND);
+draw_cells_simple(Screen *screen, bool is_semi_transparent) {
+    if (is_semi_transparent) {
+        bind_program(CELL_TRANSPARENT_PROGRAM);
+        glDisable(GL_FRAMEBUFFER_SRGB);
+    } else {
+        bind_program(CELL_PROGRAM);
+        glEnable(GL_FRAMEBUFFER_SRGB);
     }
+    glDisable(GL_BLEND);
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
+    glEnable(GL_FRAMEBUFFER_SRGB);
 }
 
 static bool
@@ -735,7 +739,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_PREMULT_PROGRAM; i++) {
             bind_program(i); glUniform1i(graphics_program_layouts[i].uniforms.image, GRAPHICS_UNIT);
         }
-        for (int i = CELL_PROGRAM; i <= CELL_PROGRAM; i++) {
+        for (int i = CELL_PROGRAM; i < BORDERS_PROGRAM; i++) {
             bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
             glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
             glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
@@ -750,8 +754,8 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_PREMULT_PROGRAM; i++) {
             bind_program(i); glUniform1f(graphics_program_layouts[i].uniforms.inactive_text_alpha, current_inactive_text_alpha);
         }
-#define S(prog, loc) bind_program(prog); glUniform1f(cell_program_layouts[prog].uniforms.inactive_text_alpha, current_inactive_text_alpha);
-        S(CELL_PROGRAM, cploc);
+#define S(prog) bind_program(prog); glUniform1f(cell_program_layouts[prog].uniforms.inactive_text_alpha, current_inactive_text_alpha);
+        S(CELL_PROGRAM); S(CELL_TRANSPARENT_PROGRAM);
 #undef S
     }
 }
@@ -954,7 +958,8 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
         .x_ratio=x_ratio, .y_ratio=y_ratio
     };
     crd.gl.width = crd.gl.dx * screen->columns; crd.gl.height = crd.gl.dy * screen->lines;
-    cell_update_uniform_block(vao_idx, screen, uniform_buffer, &crd, &screen->cursor_render_info, os_window);
+    float min_bg_opacity = cell_update_uniform_block(
+            vao_idx, screen, uniform_buffer, &crd, &screen->cursor_render_info, os_window);
 
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);
@@ -986,8 +991,9 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
     }
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
     (void)has_underlying_image;
-    draw_cells_simple(vao_idx, screen, &crd, grd, os_window->is_semi_transparent);
-    draw_scroll_indicator(os_window->is_semi_transparent, screen, &crd);
+    bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
+    draw_cells_simple(screen, is_semi_transparent);
+    draw_scroll_indicator(is_semi_transparent, screen, &crd);
 
     if (screen->start_visual_bell_at) {
         GLfloat intensity = get_visual_bell_intensity(screen);
@@ -1224,7 +1230,7 @@ finalize(void) {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_TRANSPARENT_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

@@ -113,6 +113,12 @@ void main() {
     text_fg = adjust_foreground_contrast_with_background(text_fg, background);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
     final_color = alpha_blend_premul(text_fg_premul, vec4_premul(background, bg_alpha));
+#ifdef IS_OPAQUE
+    final_color.rgb /= final_color.a;
+    final_color.a = 1.;
+#else
+    final_color.rgb = linear2srgb(final_color.rgb / final_color.a) * final_color.a;
     final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
+#endif
     output_color = final_color;
 }
