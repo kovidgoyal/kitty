@@ -604,7 +604,7 @@ def create_os_window(
     wm_class_name: str,
     wm_class_class: str,
     window_state: Optional[int] = WINDOW_NORMAL,
-    load_programs: Optional[Callable[[bool], None]] = None,
+    load_programs: Optional[Callable[[], None]] = None,
     x: Optional[int] = None,
     y: Optional[int] = None,
     disallow_override_title: bool = False,

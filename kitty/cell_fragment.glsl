@@ -112,11 +112,7 @@ void main() {
     vec4 text_fg = load_text_foreground_color();
     text_fg = adjust_foreground_contrast_with_background(text_fg, background);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
-#ifdef TRANSPARENT
     final_color = alpha_blend_premul(text_fg_premul, vec4_premul(background, bg_alpha));
     final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
-#else
-    final_color = alpha_blend_premul(text_fg_premul, background);
-#endif
     output_color = final_color;
 }

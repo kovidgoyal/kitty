@@ -1487,7 +1487,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         }
     }
     if (is_first_window) {
-        PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
+        PyObject *ret = PyObject_CallNoArgs(load_programs);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
         get_platform_dependent_config_values(glfw_window);
@@ -1495,7 +1495,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT, GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, &encoding);
         if (encoding != GL_SRGB) log_error("The output buffer does not support sRGB color encoding, colors will be incorrect.");
         is_first_window = false;
-
     }
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
