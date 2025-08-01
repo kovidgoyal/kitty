@@ -11,6 +11,7 @@ from .constants import read_kitty_resource
 from .fast_data_types import (
     BGIMAGE_PROGRAM,
     CELL_PROGRAM,
+    CELL_TRANSPARENT_PROGRAM,
     DECORATION,
     DECORATION_MASK,
     DIM,
@@ -175,15 +176,18 @@ class LoadShaderPrograms:
                 DECORATION_MASK=DECORATION_MASK,
             )
 
-        def resolve_cell_defines(src: str) -> str:
+        def resolve_cell_defines(is_opaque: bool, src: str) -> str:
             r = self.cell_program_replacer.replacements
+            r['IS_OPAQUE'] = '1' if is_opaque else '0'
             r['DO_FG_OVERRIDE'] = '1' if self.text_fg_override_threshold.scaled_value else '0'
             r['FG_OVERRIDE_ALGO'] = '1' if self.text_fg_override_threshold.unit == '%' else '2'
             r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold.scaled_value)
             r['TEXT_NEW_GAMMA'] = '0' if self.text_old_gamma else '1'
             return self.cell_program_replacer(src)
-        cell.apply_to_sources(vertex=resolve_cell_defines, frag=resolve_cell_defines)
-        cell.compile(CELL_PROGRAM, allow_recompile)
+        for prog, is_opaque in {CELL_PROGRAM: True, CELL_TRANSPARENT_PROGRAM: False}.items():
+            fn = partial(resolve_cell_defines, is_opaque)
+            cell.apply_to_sources(vertex=fn, frag=fn)
+            cell.compile(prog, allow_recompile)
         graphics = program_for('graphics')
 
         def resolve_graphics_fragment_defines(which: str, f: str) -> str:

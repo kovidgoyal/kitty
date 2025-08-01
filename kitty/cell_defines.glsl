@@ -12,5 +12,9 @@
 #define USE_SELECTION_FG
 #define NUM_COLORS 256
 
+#if {IS_OPAQUE} == 1
+#define IS_OPAQUE
+#endif
+
 // sRGB luminance values
 const vec3 Y = vec3(0.2126, 0.7152, 0.0722);

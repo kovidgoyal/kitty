@@ -13,3 +13,7 @@ float linear2srgb(float x) {
 
     return mix(lower, upper, step(0.0031308f, x));
 }
+
+vec3 linear2srgb(vec3 c) {
+    return vec3(linear2srgb(c.r), linear2srgb(c.g), linear2srgb(c.b));
+}
