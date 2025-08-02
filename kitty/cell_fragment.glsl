@@ -2,9 +2,12 @@
 #pragma kitty_include_shader <linear2srgb.glsl>
 #pragma kitty_include_shader <cell_defines.glsl>
 
-uniform sampler2DArray sprites;
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
+uniform sampler2DArray sprites;
+uniform sampler2D under_bg_layer;
+uniform sampler2D under_fg_layer;
+uniform sampler2D over_fg_layer;
 
 in vec3 background;
 in float bg_alpha;

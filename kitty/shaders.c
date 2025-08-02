@@ -31,7 +31,7 @@
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
 enum {
-    CELL_PROGRAM, CELL_TRANSPARENT_PROGRAM, CELL_PROGRAM_SENTINEL,
+    CELL_PROGRAM, CELL_TRANSPARENT_PROGRAM, CELL_LAYERS_PROGRAM, CELL_LAYERS_TRANSPARENT_PROGRAM, CELL_PROGRAM_SENTINEL,
     BORDERS_PROGRAM,
     GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM,
     BGIMAGE_PROGRAM,
@@ -39,7 +39,7 @@ enum {
     TRAIL_PROGRAM,
     NUM_PROGRAMS
 };
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT, UNDER_BG_LAYER_UNIT, UNDER_FG_LAYER_UNIT, OVER_FG_LAYER_UNIT };
 
 // Sprites {{{
 typedef struct {
@@ -636,23 +636,34 @@ viewport_for_cells(const CellRenderData *crd) {
     return (ImageRect){crd->gl.xstart, crd->gl.ystart, crd->gl.xstart + crd->gl.width, crd->gl.ystart - crd->gl.height};
 }
 
+static bool
+has_bgimage(OSWindow *w) {
+    return w->bgimage && w->bgimage->texture_id > 0;
+}
+
 static void
-draw_cells_with_layers(Screen *screen, bool is_semi_transparent) {
+draw_cells_with_layers(OSWindow *os_window, Screen *screen, bool is_semi_transparent, GraphicsRenderData grd, WindowLogoRenderData *wl) {
+    bool has_layers = false;
+    bool has_background_image = has_bgimage(os_window);
+    if (grd.num_of_below_refs || has_background_image) {
+        has_layers = true;
+    }
+    if (grd.num_of_below_refs || wl) {
+        has_layers = true;
+    }
+    if (grd.num_of_positive_refs) {
+        has_layers = true;
+    }
     if (is_semi_transparent) {
-        bind_program(CELL_TRANSPARENT_PROGRAM);
+        bind_program(has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM);
         glDisable(GL_FRAMEBUFFER_SRGB);
     } else {
-        bind_program(CELL_PROGRAM);
+        bind_program(has_layers ? CELL_LAYERS_PROGRAM : CELL_PROGRAM);
         glEnable(GL_FRAMEBUFFER_SRGB);
     }
     glDisable(GL_BLEND);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     glEnable(GL_FRAMEBUFFER_SRGB);
-}
-
-static bool
-has_bgimage(OSWindow *w) {
-    return w->bgimage && w->bgimage->texture_id > 0;
 }
 
 static bool
@@ -695,6 +706,9 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
             bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
             glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
+            glUniform1i(cu->under_bg_layer, UNDER_BG_LAYER_UNIT);
+            glUniform1i(cu->under_fg_layer, UNDER_FG_LAYER_UNIT);
+            glUniform1i(cu->over_fg_layer, OVER_FG_LAYER_UNIT);
             glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
             glUniform1f(cu->dim_opacity, OPT(dim_opacity));
             glUniform1f(cu->text_contrast, text_contrast);
@@ -708,7 +722,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
             bind_program(i); glUniform1f(graphics_program_layouts[i].uniforms.inactive_text_alpha, current_inactive_text_alpha);
         }
 #define S(prog) bind_program(prog); glUniform1f(cell_program_layouts[prog].uniforms.inactive_text_alpha, current_inactive_text_alpha);
-        S(CELL_PROGRAM); S(CELL_TRANSPARENT_PROGRAM);
+        S(CELL_PROGRAM); S(CELL_TRANSPARENT_PROGRAM); S(CELL_LAYERS_PROGRAM); S(CELL_LAYERS_TRANSPARENT_PROGRAM);
 #undef S
     }
 }
@@ -945,7 +959,7 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
     (void)has_underlying_image;
     bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
-    draw_cells_with_layers(screen, is_semi_transparent);
+    draw_cells_with_layers(os_window, screen, is_semi_transparent, grd, wl);
     draw_scroll_indicator(is_semi_transparent, screen, &crd);
 
     if (screen->start_visual_bell_at) {
@@ -1168,7 +1182,8 @@ finalize(void) {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_TRANSPARENT_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_TRANSPARENT_PROGRAM); C(CELL_LAYERS_PROGRAM); C(CELL_LAYERS_TRANSPARENT_PROGRAM);
+    C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
@@ -1182,7 +1197,6 @@ init_shaders(PyObject *module) {
     C(GL_FALSE);
     C(GL_COMPILE_STATUS);
     C(GL_LINK_STATUS);
-    C(GL_TEXTURE0); C(GL_TEXTURE1); C(GL_TEXTURE2); C(GL_TEXTURE3); C(GL_TEXTURE4); C(GL_TEXTURE5); C(GL_TEXTURE6); C(GL_TEXTURE7); C(GL_TEXTURE8);
     C(GL_MAX_ARRAY_TEXTURE_LAYERS); C(GL_TEXTURE_BINDING_BUFFER); C(GL_MAX_TEXTURE_BUFFER_SIZE);
     C(GL_MAX_TEXTURE_SIZE);
     C(GL_TEXTURE_2D_ARRAY);

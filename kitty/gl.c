@@ -180,7 +180,7 @@ attrib_location(int program, const char *name) {
 GLuint
 block_index(int program, const char *name) {
     GLuint ans = glGetUniformBlockIndex(programs[program].id, name);
-    if (ans == GL_INVALID_INDEX) { fatal("Could not find block index"); }
+    if (ans == GL_INVALID_INDEX) { fatal("Could not find block index for %s", name); }
     return ans;
 }
 

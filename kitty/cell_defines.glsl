@@ -16,5 +16,9 @@
 #define IS_OPAQUE
 #endif
 
+#if {HAS_LAYERS} == 1
+#define HAS_LAYERS
+#endif
+
 // sRGB luminance values
 const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
