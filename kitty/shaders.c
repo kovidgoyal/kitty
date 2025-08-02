@@ -21,7 +21,7 @@
  * common use case of no graphics has zero performance overhead.
  * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
  * the new graphics shader.
- * background image with tint and various layout options
+ * background image with tint and various layout options in both cell and borders shaders
  * test graphics in all 3 layers
  * window logo image that is in the under foreground layer I think? need to check
  * test that window numbering and URL hover rendering both still work
@@ -570,60 +570,6 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 }
 
 static void
-draw_background_image(OSWindow *w) {
-    blank_canvas(w->is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
-    bind_program(BGIMAGE_PROGRAM);
-
-    glUniform1i(bgimage_program_layout.uniforms.image, BGIMAGE_UNIT);
-    glUniform1f(bgimage_program_layout.uniforms.opacity, OPT(background_opacity));
-#ifdef __APPLE__
-    int window_width = w->window_width, window_height = w->window_height;
-#else
-    int window_width = w->viewport_width, window_height = w->viewport_height;
-#endif
-    GLfloat iwidth = (GLfloat)w->bgimage->width;
-    GLfloat iheight = (GLfloat)w->bgimage->height;
-    GLfloat vwidth = (GLfloat)window_width;
-    GLfloat vheight = (GLfloat)window_height;
-    if (CENTER_SCALED == OPT(background_image_layout)) {
-        GLfloat ifrac = iwidth / iheight;
-        if (ifrac > (vwidth / vheight)) {
-            iheight = vheight;
-            iwidth = iheight * ifrac;
-        } else {
-            iwidth = vwidth;
-            iheight = iwidth / ifrac;
-        }
-    }
-    glUniform4f(bgimage_program_layout.uniforms.sizes,
-        vwidth, vheight, iwidth, iheight);
-    glUniform1f(bgimage_program_layout.uniforms.premult, w->is_semi_transparent ? 1.f : 0.f);
-    GLfloat tiled = 0.f;;
-    GLfloat left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
-    switch (OPT(background_image_layout)) {
-        case TILING: case MIRRORED: case CLAMPED:
-            tiled = 1.f; break;
-        case SCALED:
-            break;
-        case CENTER_CLAMPED:
-        case CENTER_SCALED: {
-            GLfloat wfrac = (vwidth - iwidth) / vwidth;
-            GLfloat hfrac = (vheight - iheight) / vheight;
-            left += wfrac;
-            right -= wfrac;
-            top -= hfrac;
-            bottom += hfrac;
-        } break;
-    }
-    glUniform1f(bgimage_program_layout.uniforms.tiled, tiled);
-    glUniform4f(bgimage_program_layout.uniforms.positions, left, top, right, bottom);
-    glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
-    glBindTexture(GL_TEXTURE_2D, w->bgimage->texture_id);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    unbind_program();
-}
-
-static void
 draw_graphics(int program, ssize_t vao_idx, ImageRenderData *data, GLuint start, GLuint count, ImageRect viewport) {
     bind_program(program);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
@@ -1044,19 +990,7 @@ create_border_vao(void) {
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
     float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
-    float tint_opacity = background_opacity;
-    float tint_premult = background_opacity;
     bind_vertex_array(vao_idx);
-    if (has_bgimage(w)) {
-        glEnable(GL_BLEND);
-        BLEND_ONTO_OPAQUE;
-        draw_background_image(w);
-        BLEND_ONTO_OPAQUE;
-        background_opacity = 1.0f;
-        tint_opacity = OPT(background_tint) * OPT(background_tint_gaps);
-        tint_premult = w->is_semi_transparent ? OPT(background_tint) : 1.0f;
-    }
-
     if (num_border_rects) {
         bind_program(BORDERS_PROGRAM);
         if (rect_data_is_dirty) {
@@ -1073,14 +1007,11 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         };
         glUniform1uiv(border_program_layout.uniforms.colors, arraysz(colors), colors);
         glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
-        glUniform1f(border_program_layout.uniforms.tint_opacity, tint_opacity);
-        glUniform1f(border_program_layout.uniforms.tint_premult, tint_premult);
         glUniform2ui(border_program_layout.uniforms.viewport, viewport_width, viewport_height);
-        if (has_bgimage(w)) {
-            if (w->is_semi_transparent) { BLEND_PREMULT; }
-            else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }
-        }
+        glDisable(GL_BLEND);
+        glDisable(GL_FRAMEBUFFER_SRGB);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
+        glEnable(GL_FRAMEBUFFER_SRGB);
         unbind_program();
     }
     unbind_vertex_array();

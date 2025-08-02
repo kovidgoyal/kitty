@@ -1,7 +1,7 @@
+#pragma kitty_include_shader <linear2srgb.glsl>
 uniform uvec2 viewport;
 uniform uint colors[9];
 uniform float background_opacity;
-uniform float tint_opacity, tint_premult;
 uniform float gamma_lut[256];
 in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
@@ -44,9 +44,7 @@ void main() {
     color3 = is_window_bg * window_bg + (1. - is_window_bg) * color3;
     // Border must be always drawn opaque
     float is_border_bg = 1. - step(0.5, abs((float(rc) - 2.) * (float(rc) - 1.) * (float(rc) - 4.))); // 1 if rc in (1, 2, 4) else 0
-    float final_opacity = is_default_bg * tint_opacity + (1. - is_default_bg) * background_opacity;
+    float final_opacity = background_opacity;
     final_opacity = is_border_bg + (1. - is_border_bg) * final_opacity;
-    float final_premult_opacity = is_default_bg * tint_premult + (1. - is_default_bg) * background_opacity;
-    final_premult_opacity = is_border_bg + (1. - is_border_bg) * final_premult_opacity;
-    color = vec4(color3 * final_premult_opacity, final_opacity);
+    color = vec4(linear2srgb(color3) * final_opacity, final_opacity);
 }
