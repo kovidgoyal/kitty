@@ -13,7 +13,7 @@ ScreenSize = KittensKeyActionType = MouseEvent = MouseButton = AbstractEventLoop
 TermManagerType = LoopType = Debug = GraphicsCommandType = object
 ReadableBuffer = WriteableBuffer = bytearray
 
-CompletedProcess = tuple
+CompletedProcess = object
 TypedDict = dict
 EdgeLiteral = str
 UnderlineLiteral = str
@@ -21,5 +21,6 @@ PowerlineStyle = str
 MatchType = str
 Protocol = object
 OptionsProtocol = object
-NotRequired = tuple
+NotRequired = object
 CoreTextFont = FontConfigPattern = dict
+WindowMapper = object

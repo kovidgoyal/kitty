@@ -10,7 +10,7 @@ from kitty.borders import BorderColor
 from kitty.fast_data_types import Region, set_active_window, viewport_for_window
 from kitty.options.types import Options
 from kitty.types import Edges, WindowGeometry
-from kitty.typing_compat import TypedDict, WindowType
+from kitty.typing_compat import TypedDict, WindowMapper, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 
@@ -436,3 +436,17 @@ class Layout:
 
     def layout_state(self) -> dict[str, Any]:
         return {}
+
+    def set_layout_state(self, layout_state: dict[str, Any], map_window_id: WindowMapper) -> bool:
+        return True
+
+    def serialize(self) -> dict[str, Any]:
+        ans = self.layout_state()
+        ans['opts'] = self.layout_opts.serialized()
+        ans['class'] = self.__class__.__name__
+        return ans
+
+    def unserialize(self, s: dict[str, Any], map_window_id: WindowMapper) -> bool:
+        if s.get('class') != self.__class__.__name__:
+            return False
+        return self.set_layout_state(s, map_window_id)

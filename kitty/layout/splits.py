@@ -2,11 +2,11 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Collection, Generator, Sequence
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
 from kitty.types import Edges, WindowGeometry
-from kitty.typing_compat import EdgeLiteral, WindowType
+from kitty.typing_compat import EdgeLiteral, WindowMapper, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import BorderLine, Layout, LayoutOpts, NeighborsMap, blank_rects_for_window, lgd, window_geometry_from_layouts
@@ -15,6 +15,13 @@ from .base import BorderLine, Layout, LayoutOpts, NeighborsMap, blank_rects_for_
 class Extent(NamedTuple):
     start: int = 0
     end: int = 0
+
+
+class SerializedPair(TypedDict, total=False):
+    horizontal: bool  # default to True if absent
+    bias: float  # default to 0.5 if absent
+    one: Union[int, 'SerializedPair']  # default to None if absent
+    two: Union[int, 'SerializedPair']  # default to None if absent
 
 
 class Pair:
@@ -27,6 +34,34 @@ class Pair:
         self.top = self.left = self.width = self.height = 0
         self.between_borders: list[Edges] = []
         self.first_extent = self.second_extent = Extent()
+
+    def serialize(self) -> SerializedPair:
+        ans: SerializedPair = {}
+        if not self.horizontal:
+            ans['horizontal'] = False
+        if self.bias != 0.5:
+            ans['bias'] = self.bias
+        if self.one is not None:
+            ans['one'] = self.one.serialize() if isinstance(self.one, Pair) else self.one
+        if self.two is not None:
+            ans['two'] = self.two.serialize() if isinstance(self.two, Pair) else self.two
+        return ans
+
+    def unserialize(self, s: SerializedPair, map_window_id: WindowMapper) -> None:
+        self.bias = s.get('bias', 0.5)
+        self.horizontal = s.get('horizontal', True)
+
+        def unserialize(x: int | SerializedPair | None) -> int | Pair | None:
+            if x is None:
+                return None
+            if isinstance(x, int):
+                w = map_window_id(x)
+                return None if w is None else w.id
+            ans = Pair()
+            ans.unserialize(x, map_window_id)
+            return ans if ans.one or ans.two else None
+        self.one = unserialize(s.get('one'))
+        self.two = unserialize(s.get('two'))
 
     def __repr__(self) -> str:
         return 'Pair(horizontal={}, bias={:.2f}, one={}, two={}, between_borders={})'.format(
@@ -673,19 +708,13 @@ class Splits(Layout):
         return None
 
     def layout_state(self) -> dict[str, Any]:
+        return {'pairs': self.pairs_root.serialize(), 'opts': self.layout_opts.serialized()}
 
-        def add_pair(p: Pair) -> dict[str, Any]:
-            ans: dict[str, Any] = {}
-            ans['horizontal'] = p.horizontal
-            ans['bias'] = p.bias
-            if isinstance(p.one, Pair):
-                ans['one'] = add_pair(p.one)
-            elif p.one is not None:
-                ans['one'] = p.one
-            if isinstance(p.two, Pair):
-                ans['two'] = add_pair(p.two)
-            elif p.two is not None:
-                ans['two'] = p.two
-            return ans
-
-        return {'pairs': add_pair(self.pairs_root)}
+    def set_layout_state(self, layout_state: dict[str, Any], map_window_id: WindowMapper) -> bool:
+        new_root = Pair()
+        new_root.unserialize(layout_state['pairs'], map_window_id)
+        if new_root.one or new_root.two:
+            self.pairs_root = new_root
+            self.layout_opts = SplitsLayoutOpts(layout_state['opts'])
+            return True
+        return False

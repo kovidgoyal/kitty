@@ -272,8 +272,7 @@ class Tab:  # {{{
             'window_list': self.windows.serialize_state(),
             'current_layout': self._current_layout_name,
             'last_used_layout': self._last_used_layout,
-            'layout_opts': self.current_layout.layout_opts,
-            'layout_state': self.current_layout.layout_state,
+            'layout_state': self.current_layout.serialize(),
             'enabled_layouts': self.enabled_layouts,
             'name': self.name,
         }

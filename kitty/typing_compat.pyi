@@ -5,7 +5,7 @@ from socket import AddressFamily as AddressFamily
 from socket import socket as Socket
 from subprocess import CompletedProcess as CompletedProcess
 from subprocess import Popen as PopenType
-from typing import Literal
+from typing import Callable, Literal
 from typing import NotRequired as NotRequired
 from typing import Protocol as Protocol
 from typing import TypedDict as TypedDict
@@ -54,6 +54,7 @@ GRT_C = Literal[0, 1]
 GRT_d = Literal['a', 'A', 'c', 'C', 'i', 'I', 'p', 'P', 'q', 'Q', 'x', 'X', 'y', 'Y', 'z', 'Z', 'f', 'F']
 ReadableBuffer = bytes | bytearray | memoryview | array.array[int] | mmap.mmap
 WriteableBuffer = bytearray | memoryview | array.array[int] | mmap.mmap
+WindowMapper = Callable[[int], WindowType | None]
 
 
 
@@ -71,5 +72,5 @@ __all__ = (
     'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'AliasMap', 'CoreTextFont', 'WindowSystemMouseEvent',
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType', 'PowerlineStyle',
     'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType',
-    'ReadableBuffer', 'WriteableBuffer',
+    'ReadableBuffer', 'WriteableBuffer', 'WindowMapper',
 )
