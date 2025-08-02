@@ -18,9 +18,9 @@ layout(std140) uniform CellRenderData {
     uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
 uniform float gamma_lut[256];
-uniform usampler2D sprite_decorations_map;
 uniform float inactive_text_alpha;
 uniform float dim_opacity;
+uniform usampler2D sprite_decorations_map;
 
 // Have to use fixed locations here as all variants of the cell program share the same VAOs
 layout(location=0) in uvec3 colors;
