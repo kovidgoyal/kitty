@@ -713,7 +713,8 @@ class Splits(Layout):
     def set_layout_state(self, layout_state: dict[str, Any], map_window_id: WindowMapper) -> bool:
         new_root = Pair()
         new_root.unserialize(layout_state['pairs'], map_window_id)
-        if new_root.one or new_root.two:
+        before = frozenset(self.pairs_root.all_window_ids())
+        if before == frozenset(new_root.all_window_ids()):
             self.pairs_root = new_root
             self.layout_opts = SplitsLayoutOpts(layout_state['opts'])
             return True
