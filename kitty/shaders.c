@@ -31,7 +31,15 @@
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
-enum { CELL_PROGRAM, CELL_TRANSPARENT_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, TRAIL_PROGRAM, NUM_PROGRAMS };
+enum {
+    CELL_PROGRAM, CELL_TRANSPARENT_PROGRAM, CELL_PROGRAM_SENTINEL,
+    BORDERS_PROGRAM,
+    GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM,
+    BGIMAGE_PROGRAM,
+    TINT_PROGRAM,
+    TRAIL_PROGRAM,
+    NUM_PROGRAMS
+};
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
 
 // Sprites {{{
@@ -300,7 +308,7 @@ static TintProgramLayout tint_program_layout;
 
 static void
 init_cell_program(void) {
-    for (int i = CELL_PROGRAM; i < BORDERS_PROGRAM; i++) {
+    for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
         cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
         cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
         cell_program_layouts[i].color_table.size = get_uniform_information(i, "color_table[0]", GL_UNIFORM_SIZE);
@@ -313,7 +321,7 @@ init_cell_program(void) {
 
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
-    for (int p = CELL_PROGRAM; p < BORDERS_PROGRAM; p++) {
+    for (int p = CELL_PROGRAM; p < CELL_PROGRAM_SENTINEL; p++) {
         C(p, colors, 0); C(p, sprite_idx, 1); C(p, is_selected, 2); C(p, decorations_sprite_map, 3);
     }
 #undef C
@@ -739,7 +747,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_PREMULT_PROGRAM; i++) {
             bind_program(i); glUniform1i(graphics_program_layouts[i].uniforms.image, GRAPHICS_UNIT);
         }
-        for (int i = CELL_PROGRAM; i < BORDERS_PROGRAM; i++) {
+        for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
             bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
             glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
             glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
