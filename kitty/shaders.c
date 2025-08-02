@@ -16,7 +16,6 @@
 
 /*
  * TODO: for shader refactoring
- * Check color fringing issues and background lightness issues are properly fixed
  * Port graphics rendering to start use a dummy 1 pixel empty texture then possibly replace with defines so that the most
  * common use case of no graphics has zero performance overhead.
  * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
@@ -638,7 +637,7 @@ viewport_for_cells(const CellRenderData *crd) {
 }
 
 static void
-draw_cells_simple(Screen *screen, bool is_semi_transparent) {
+draw_cells_with_layers(Screen *screen, bool is_semi_transparent) {
     if (is_semi_transparent) {
         bind_program(CELL_TRANSPARENT_PROGRAM);
         glDisable(GL_FRAMEBUFFER_SRGB);
@@ -946,7 +945,7 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
     (void)has_underlying_image;
     bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
-    draw_cells_simple(screen, is_semi_transparent);
+    draw_cells_with_layers(screen, is_semi_transparent);
     draw_scroll_indicator(is_semi_transparent, screen, &crd);
 
     if (screen->start_visual_bell_at) {

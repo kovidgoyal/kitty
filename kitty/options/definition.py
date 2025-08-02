@@ -1592,11 +1592,7 @@ launch your editor. See also :opt:`transparent_background_colors`.
 Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit. When using a low value for this setting, it is
 desirable that you set the :opt:`background` color to a color the matches the
-general color of the desktop background, for best text rendering. Note that
-to workaround window managers not doing gamma-corrected blending kitty
-makes background_opacity non-linear which means, especially for light backgrounds
-you might need to make the value much lower than you expect to get good results,
-see :iss:`6218` for details.
+general color of the desktop background, for best text rendering.
 
 If you want to dynamically change transparency of windows, set
 :opt:`dynamic_background_opacity` to :code:`yes` (this is off by default as it
