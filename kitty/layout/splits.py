@@ -708,7 +708,7 @@ class Splits(Layout):
         return None
 
     def layout_state(self) -> dict[str, Any]:
-        return {'pairs': self.pairs_root.serialize(), 'opts': self.layout_opts.serialized()}
+        return {'pairs': self.pairs_root.serialize()}
 
     def set_layout_state(self, layout_state: dict[str, Any], map_window_id: WindowMapper) -> bool:
         new_root = Pair()
