@@ -674,6 +674,9 @@ dealloc(Screen* self) {
     free(self->as_ansi_buf.buf);
     free(self->last_rendered_window_char.canvas);
     if (self->lc) { cleanup_list_of_chars(self->lc); free(self->lc); self->lc = NULL; }
+    if (self->textures.under_bg) free_texture(&self->textures.under_bg);
+    if (self->textures.under_fg) free_texture(&self->textures.under_fg);
+    if (self->textures.over_fg) free_texture(&self->textures.over_fg);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 

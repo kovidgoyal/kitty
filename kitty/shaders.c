@@ -641,19 +641,49 @@ has_bgimage(OSWindow *w) {
     return w->bgimage && w->bgimage->texture_id > 0;
 }
 
+static GLuint
+ensure_blank_texture(void) {
+    static GLuint texture_id = 0;  // we leak this texture it will be cleaned up on exit and is one pixel size anyway
+    if (!texture_id) {
+        glGenTextures(1, &texture_id);
+        // upload dummy 1 pixel blank texture to GPU
+        glBindTexture(GL_TEXTURE_2D, texture_id);
+        unsigned char data[4] = {0, 0, 0, 0};
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    return texture_id;
+}
+
 static void
 draw_cells_with_layers(OSWindow *os_window, Screen *screen, bool is_semi_transparent, GraphicsRenderData grd, WindowLogoRenderData *wl) {
     bool has_layers = false;
     bool has_background_image = has_bgimage(os_window);
+    GLuint blank_texture = ensure_blank_texture();
+
+#define USE_BLANK(which) { if (screen->textures.which) { free_texture(&screen->textures.which); } glBindTexture(GL_TEXTURE_2D, blank_texture); }
+#define ENSURE_TEXTURE(which) has_layers = true; if (!screen->textures.which) glGenTextures(1, &screen->textures.which)
+    glActiveTexture(GL_TEXTURE0 + UNDER_BG_LAYER_UNIT);
     if (grd.num_of_below_refs || has_background_image) {
-        has_layers = true;
-    }
+        ENSURE_TEXTURE(under_bg);
+    } else USE_BLANK(under_bg);
+
+    glActiveTexture(GL_TEXTURE0 + UNDER_FG_LAYER_UNIT);
     if (grd.num_of_below_refs || wl) {
-        has_layers = true;
-    }
+        ENSURE_TEXTURE(under_fg);
+    } else USE_BLANK(under_fg);
+
+    glActiveTexture(GL_TEXTURE0 + OVER_FG_LAYER_UNIT);
     if (grd.num_of_positive_refs) {
-        has_layers = true;
-    }
+        ENSURE_TEXTURE(over_fg);
+    } else USE_BLANK(over_fg);
+#undef ENSURE_TEXTURE
+#undef USE_BLANK
+
     if (is_semi_transparent) {
         bind_program(has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM);
         glDisable(GL_FRAMEBUFFER_SRGB);
