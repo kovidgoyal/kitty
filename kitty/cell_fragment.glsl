@@ -4,6 +4,7 @@
 
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
+uniform float for_final_output;
 uniform sampler2DArray sprites;
 uniform sampler2D under_bg_layer;
 uniform sampler2D under_fg_layer;
@@ -107,7 +108,8 @@ void main() {
     final_color.rgb /= final_color.a;
     final_color.a = 1.;
 #else
-    final_color.rgb = linear2srgb(final_color.rgb / final_color.a) * final_color.a;
+    // Convert linear to srgb if for_final_output
+    final_color.rgb = mix(final_color.rgb, linear2srgb(final_color.rgb / final_color.a) * final_color.a, for_final_output);
 #endif
     output_color = final_color;
 }

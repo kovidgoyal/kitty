@@ -660,7 +660,9 @@ ensure_blank_texture(void) {
 }
 
 static void
-draw_cells_with_layers(OSWindow *os_window, Screen *screen, bool is_semi_transparent, GraphicsRenderData grd, WindowLogoRenderData *wl) {
+draw_cells_with_layers(
+    bool for_final_output, OSWindow *os_window, Screen *screen, bool is_semi_transparent, GraphicsRenderData grd, WindowLogoRenderData *wl
+) {
     bool has_layers = false;
     bool has_background_image = has_bgimage(os_window);
     GLuint blank_texture = ensure_blank_texture();
@@ -686,12 +688,19 @@ draw_cells_with_layers(OSWindow *os_window, Screen *screen, bool is_semi_transpa
 
     if (is_semi_transparent) {
         bind_program(has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM);
+        glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.for_final_output, for_final_output ? 1. : 0.);
         glDisable(GL_FRAMEBUFFER_SRGB);
+        if (for_final_output) {
+            glDisable(GL_BLEND);
+        } else {
+            glEnable(GL_BLEND);
+            BLEND_PREMULT;
+        }
     } else {
         bind_program(has_layers ? CELL_LAYERS_PROGRAM : CELL_PROGRAM);
-        glEnable(GL_FRAMEBUFFER_SRGB);
+        glDisable(GL_BLEND);
+        if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB); else glDisable(GL_FRAMEBUFFER_SRGB);
     }
-    glDisable(GL_BLEND);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     glEnable(GL_FRAMEBUFFER_SRGB);
 }
@@ -942,7 +951,7 @@ get_visual_bell_intensity(Screen *screen) {
 }
 
 void
-draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
+draw_cells(bool for_final_output, ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
     float x_ratio = 1., y_ratio = 1.;
     if (os_window->live_resize.in_progress) {
         x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
@@ -989,7 +998,7 @@ draw_cells(ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bo
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
     (void)has_underlying_image;
     bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
-    draw_cells_with_layers(os_window, screen, is_semi_transparent, grd, wl);
+    draw_cells_with_layers(for_final_output, os_window, screen, is_semi_transparent, grd, wl);
     draw_scroll_indicator(is_semi_transparent, screen, &crd);
 
     if (screen->start_visual_bell_at) {
