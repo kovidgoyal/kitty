@@ -789,24 +789,22 @@ PYWRAP1(set_ignore_os_keyboard_processing) {
 }
 
 static void
-init_window_render_data(OSWindow *osw, const WindowGeometry *g, WindowRenderData *d) {
+init_window_render_data(WindowRenderData *d, OSWindow *osw, const WindowGeometry g, Screen *screen) {
     d->dx = gl_size(osw->fonts_data->fcm.cell_width, osw->viewport_width);
     d->dy = gl_size(osw->fonts_data->fcm.cell_height, osw->viewport_height);
-    d->xstart = gl_pos_x(g->left, osw->viewport_width);
-    d->ystart = gl_pos_y(g->top, osw->viewport_height);
+    d->xstart = gl_pos_x(g.left, osw->viewport_width);
+    d->ystart = gl_pos_y(g.top, osw->viewport_height);
+    d->geometry = g;
+    Py_CLEAR(d->screen); d->screen = (Screen*)Py_NewRef(screen);
 }
 
 PYWRAP1(set_tab_bar_render_data) {
-    WindowRenderData d = {0};
-    WindowGeometry g = {0};
+    WindowGeometry g;
     id_type os_window_id;
-    PA("KOIIII", &os_window_id, &d.screen, &g.left, &g.top, &g.right, &g.bottom);
+    Screen *screen;
+    PA("KOIIII", &os_window_id, &screen, &g.left, &g.top, &g.right, &g.bottom);
     WITH_OS_WINDOW(os_window_id)
-        Py_CLEAR(os_window->tab_bar_render_data.screen);
-        d.vao_idx = os_window->tab_bar_render_data.vao_idx;
-        init_window_render_data(os_window, &g, &d);
-        os_window->tab_bar_render_data = d;
-        Py_INCREF(os_window->tab_bar_render_data.screen);
+        init_window_render_data(&os_window->tab_bar_render_data, os_window, g, screen);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }
@@ -979,23 +977,16 @@ PYWRAP1(set_window_padding) {
 }
 
 PYWRAP1(set_window_render_data) {
-#define A(name) &(d.name)
 #define B(name) &(g.name)
     id_type os_window_id, tab_id, window_id;
-    WindowRenderData d = {0};
     WindowGeometry g = {0};
-    PA("KKKOIIII", &os_window_id, &tab_id, &window_id, A(screen), B(left), B(top), B(right), B(bottom));
+    Screen *screen;
+    PA("KKKOIIII", &os_window_id, &tab_id, &window_id, &screen, B(left), B(top), B(right), B(bottom));
 
     WITH_WINDOW(os_window_id, tab_id, window_id);
-        Py_CLEAR(window->render_data.screen);
-        d.vao_idx = window->render_data.vao_idx;
-        init_window_render_data(osw, &g, &d);
-        window->render_data = d;
-        window->geometry = g;
-        Py_INCREF(window->render_data.screen);
+        init_window_render_data(&window->render_data, osw, g, screen);
     END_WITH_WINDOW;
     Py_RETURN_NONE;
-#undef A
 #undef B
 }
 

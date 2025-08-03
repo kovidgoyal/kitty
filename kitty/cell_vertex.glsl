@@ -5,11 +5,11 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
+    float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
     uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-    uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
+    uint columns, lines, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
     float cursor_opacity;
 
@@ -159,13 +159,14 @@ struct CellData {
 
 CellData set_vertex_position() {
     uint instance_id = uint(gl_InstanceID);
+    float dx = 2.0 / float(columns);
+    float dy = 2.0 / float(lines);
     /* The current cell being rendered */
-    uint r = instance_id / xnum;
-    uint c = instance_id - r * xnum;
-
+    uint row = instance_id / columns;
+    uint column = instance_id - row * columns;
     /* The position of this vertex, at a corner of the cell  */
-    float left = xstart + c * dx;
-    float top = ystart - r * dy;
+    float left = -1.0 + column * dx;
+    float top = 1.0 - row * dy;
     vec2 xpos = vec2(left, left + dx);
     vec2 ypos = vec2(top, top - dy);
     uvec2 pos = cell_pos_map[gl_VertexID];
@@ -174,7 +175,7 @@ CellData set_vertex_position() {
     sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
     colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
     float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
-    float has_cursor = is_cursor(c, r);
+    float has_cursor = is_cursor(column, row);
     return CellData(has_cursor, has_cursor * is_block_cursor, pos);
 }
 
@@ -294,6 +295,7 @@ void main() {
     float is_special_cell = cell_data.has_block_cursor + float(is_selected & ONE);
     is_special_cell += float(is_reversed);  // reverse video cells should be opaque as well
     is_special_cell = zero_or_one(is_special_cell);
+
     // special cells must always be fully opaque, otherwise leave bg_alpha untouched
     bg_alpha = if_one_then(is_special_cell, 1.f, bg_alpha);
     // Selection and cursor

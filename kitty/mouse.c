@@ -214,22 +214,22 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
 
 static unsigned int
 window_left(Window *w) {
-    return w->geometry.left - w->padding.left;
+    return w->render_data.geometry.left - w->padding.left;
 }
 
 static unsigned int
 window_right(Window *w) {
-    return w->geometry.right + w->padding.right;
+    return w->render_data.geometry.right + w->padding.right;
 }
 
 static unsigned int
 window_top(Window *w) {
-    return w->geometry.top - w->padding.top;
+    return w->render_data.geometry.top - w->padding.top;
 }
 
 static unsigned int
 window_bottom(Window *w) {
-    return w->geometry.bottom + w->padding.bottom;
+    return w->render_data.geometry.bottom + w->padding.bottom;
 }
 
 static bool
@@ -250,7 +250,7 @@ static bool clamp_to_window = false;
 
 static bool
 cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_cell, OSWindow *os_window) {
-    WindowGeometry *g = &w->geometry;
+    WindowGeometry *g = &w->render_data.geometry;
     Screen *screen = w->render_data.screen;
     if (!screen) return false;
     unsigned int qx = 0, qy = 0;
@@ -323,8 +323,8 @@ bool
 drag_scroll(Window *w, OSWindow *frame) {
     unsigned int margin = frame->fonts_data->fcm.cell_height / 2;
     double y = frame->mouse_y;
-    bool upwards = y <= (w->geometry.top + margin);
-    if (upwards || y >= w->geometry.bottom - margin) {
+    bool upwards = y <= (w->render_data.geometry.top + margin);
+    if (upwards || y >= w->render_data.geometry.bottom - margin) {
         if (do_drag_scroll(w, upwards)) {
             frame->last_mouse_activity_at = monotonic();
             return true;

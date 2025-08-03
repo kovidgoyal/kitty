@@ -97,6 +97,25 @@ free_framebuffer(GLuint *fb_id) {
     *fb_id = 0;
 }
 
+static GLsizei saved_viewport[4] = {0};
+
+void
+save_viewport_using_top_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height) {
+    // Converts the viewport defined by the specified arguments which are
+    // assumed to be in the usual co-ord system with origin at top left to the
+    // OpenGL viewport co-ord system with origin at bottom left. Assumes that
+    // the current viewport is the full window. Use restore_viewport() to
+    // restore the viewport to what it was before.
+    glGetIntegerv(GL_VIEWPORT, saved_viewport);
+    newy = saved_viewport[3] - (newy + height);
+    glViewport(newx, newy, width, height);
+}
+
+void
+restore_viewport(void) {
+    glViewport(saved_viewport[0], saved_viewport[1], saved_viewport[2], saved_viewport[3]);
+    memset(saved_viewport, 0, sizeof(saved_viewport));
+}
 // }}}
 
 // Programs {{{

@@ -25,6 +25,7 @@
  * window logo image that is in the under foreground layer I think? need to check
  * test that window numbering and URL hover rendering both still work
  * test cursor trail and scroll indicator rendering
+ * remove startx, starty, dx, dy from WindowRenderData
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -382,13 +383,13 @@ pick_cursor_color(Line *line, const ColorProfile *color_profile, color_type cell
 }
 
 static float
-cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CellRenderData *crd, CursorRenderInfo *cursor, OSWindow *os_window) {
+cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, CursorRenderInfo *cursor, OSWindow *os_window) {
     struct GPUCellRenderData {
-        GLfloat xstart, ystart, dx, dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
+        GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
         GLuint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-        GLuint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
+        GLuint columns, lines, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_width, cell_height;
         GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
         GLfloat cursor_opacity;
 
@@ -490,13 +491,13 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         rd->cursor_y1 = screen->lines + 1; rd->cursor_y2 = screen->lines;
     }
 
-    rd->xnum = screen->columns; rd->ynum = screen->lines;
+    rd->columns = screen->columns; rd->lines = screen->lines;
 
-    rd->xstart = crd->gl.xstart; rd->ystart = crd->gl.ystart; rd->dx = crd->gl.dx; rd->dy = crd->gl.dy;
     unsigned int x, y, z;
     sprite_tracker_current_layout(os_window->fonts_data, &x, &y, &z);
     rd->sprites_xnum = x; rd->sprites_ynum = y;
     rd->inverted = screen_invert_colors(screen) ? 1 : 0;
+    rd->cell_width = os_window->fonts_data->fcm.cell_width;
     rd->cell_height = os_window->fonts_data->fcm.cell_height;
 
 #undef COLOR
@@ -954,7 +955,7 @@ get_visual_bell_intensity(Screen *screen) {
 }
 
 void
-draw_cells(bool for_final_output, ssize_t vao_idx, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
+draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
     float x_ratio = 1., y_ratio = 1.;
     if (os_window->live_resize.in_progress) {
         x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
@@ -968,10 +969,10 @@ draw_cells(bool for_final_output, ssize_t vao_idx, const WindowRenderData *srd, 
     };
     crd.gl.width = crd.gl.dx * screen->columns; crd.gl.height = crd.gl.dy * screen->lines;
     float min_bg_opacity = cell_update_uniform_block(
-            vao_idx, screen, uniform_buffer, &crd, &screen->cursor_render_info, os_window);
+            srd->vao_idx, screen, uniform_buffer, &screen->cursor_render_info, os_window);
 
-    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
-    bind_vertex_array(vao_idx);
+    bind_vao_uniform_buffer(srd->vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
+    bind_vertex_array(srd->vao_idx);
 
     // We draw with inactive text alpha if:
     // - We're not drawing the tab bar
@@ -1001,6 +1002,10 @@ draw_cells(bool for_final_output, ssize_t vao_idx, const WindowRenderData *srd, 
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
     (void)has_underlying_image;
     bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
+    save_viewport_using_top_left_origin(
+        srd->geometry.left, srd->geometry.top, srd->geometry.right - srd->geometry.left,
+        srd->geometry.bottom - srd->geometry.top
+    );
     draw_cells_with_layers(for_final_output, os_window, screen, is_semi_transparent, grd, wl);
     draw_scroll_indicator(is_semi_transparent, screen, &crd);
 
@@ -1012,6 +1017,7 @@ draw_cells(bool for_final_output, ssize_t vao_idx, const WindowRenderData *srd, 
     if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
     if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id && !is_mouse_hidden(os_window)) draw_hyperlink_target(os_window, screen, &crd, window);
     free(scaled_render_data);
+    restore_viewport();
 }
 // }}}
 
