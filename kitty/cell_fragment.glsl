@@ -1,17 +1,18 @@
 #pragma kitty_include_shader <alpha_blend.glsl>
 #pragma kitty_include_shader <linear2srgb.glsl>
 #pragma kitty_include_shader <cell_defines.glsl>
+#pragma kitty_include_shader <utils.glsl>
 
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
 uniform float for_final_output;
+uniform float has_under_bg;
 uniform sampler2DArray sprites;
 uniform sampler2D under_bg_layer;
 uniform sampler2D under_fg_layer;
 uniform sampler2D over_fg_layer;
 
-in vec3 background;
-in float bg_alpha;
+in vec4 background;
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
@@ -22,19 +23,9 @@ in vec3 foreground;
 in vec4 cursor_color_premult;
 in vec3 decoration_fg;
 in float colored_sprite;
+in float cell_has_default_bg;
 
 out vec4 output_color;
-
-// Util functions {{{
-vec4 vec4_premul(vec3 rgb, float a) {
-    return vec4(rgb * a, a);
-}
-
-vec4 vec4_premul(vec4 rgba) {
-    return vec4(rgba.rgb * rgba.a, rgba.a);
-}
-// }}}
-
 
 // Scaling factor for the extra text-alpha adjustment for luminance-difference.
 const float text_gamma_scaling = 0.5;
@@ -98,18 +89,35 @@ vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
     return foreground_contrast(text_fg, bg);
 }
 
+vec4 layer_color(sampler2D s) {
+#ifdef HAS_LAYERS
+    vec2 pos = gl_FragCoord.xy / vec2(textureSize(s, 0));
+    return texture(s, pos);
+#else
+    return vec4(0, 0, 0, 0);
+#endif
+}
+
 void main() {
-    vec4 final_color;
+    vec4 ans_premul = vec4_premul(background);
+    // if its a default background cell and there is an under_bg layer, use the
+    // under_bg layer as the background
+    ans_premul = if_one_then(has_under_bg * cell_has_default_bg, layer_color(under_bg_layer), ans_premul);
+    // blend in the under_fg layer
+    ans_premul = alpha_blend_premul(layer_color(under_fg_layer), ans_premul);
+    // blend in the foreground color
     vec4 text_fg = load_text_foreground_color();
-    text_fg = adjust_foreground_contrast_with_background(text_fg, background);
+    text_fg = adjust_foreground_contrast_with_background(text_fg, background.rgb);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
-    final_color = alpha_blend_premul(text_fg_premul, vec4_premul(background, bg_alpha));
+    ans_premul = alpha_blend_premul(text_fg_premul, ans_premul);
+    // blend in the over_fg layer
+    ans_premul = alpha_blend_premul(layer_color(over_fg_layer), ans_premul);
 #ifdef IS_OPAQUE
-    final_color.rgb /= final_color.a;
-    final_color.a = 1.;
+    ans_premul.rgb /= ans_premul.a;
+    ans_premul.a = 1.;
 #else
     // Convert linear to srgb if for_final_output
-    final_color.rgb = mix(final_color.rgb, linear2srgb(final_color.rgb / final_color.a) * final_color.a, for_final_output);
+    ans_premul.rgb = mix(ans_premul.rgb, linear2srgb(ans_premul.rgb / ans_premul.a) * ans_premul.a, for_final_output);
 #endif
-    output_color = final_color;
+    output_color = ans_premul;
 }

@@ -665,6 +665,7 @@ draw_cells_with_layers(
 ) {
     bool has_layers = false;
     bool has_background_image = has_bgimage(os_window);
+    GLfloat has_under_bg = 0;
     GLuint blank_texture = ensure_blank_texture();
 
 #define USE_BLANK(which) { if (screen->textures.which) { free_texture(&screen->textures.which); } glBindTexture(GL_TEXTURE_2D, blank_texture); }
@@ -672,7 +673,9 @@ draw_cells_with_layers(
     glActiveTexture(GL_TEXTURE0 + UNDER_BG_LAYER_UNIT);
     if (grd.num_of_below_refs || has_background_image) {
         ENSURE_TEXTURE(under_bg);
+        has_under_bg = 1.;
     } else USE_BLANK(under_bg);
+    glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.has_under_bg, has_under_bg);
 
     glActiveTexture(GL_TEXTURE0 + UNDER_FG_LAYER_UNIT);
     if (grd.num_of_below_refs || wl) {

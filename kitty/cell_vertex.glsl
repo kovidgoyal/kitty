@@ -1,5 +1,6 @@
 #extension GL_ARB_explicit_attrib_location : require
 #pragma kitty_include_shader <cell_defines.glsl>
+#pragma kitty_include_shader <utils.glsl>
 
 
 // Inputs {{{
@@ -37,9 +38,7 @@ const uvec2 cell_pos_map[] = uvec2[4](
 // }}}
 
 
-out vec3 background;
-out float bg_alpha;
-
+out vec4 background;
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 cursor_pos;
@@ -50,6 +49,7 @@ out vec3 foreground;
 out vec3 decoration_fg;
 out float colored_sprite;
 out float effective_text_alpha;
+out float cell_has_default_bg;
 
 
 // Utility functions {{{
@@ -257,10 +257,10 @@ void main() {
     bg_as_uint = has_mark * color_table[NUM_COLORS + mark - 1] + (ONE - has_mark) * bg_as_uint;
     vec3 bg = color_to_vec(bg_as_uint);
     uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
+    cell_has_default_bg = 1.f - step(1.f, abs(float(bg_as_uint - bg_colors0))); // 1 if has default bg else 0
     // }}}
 
     // Foreground {{{
-    // Foreground
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (ONE - has_mark) * fg_as_uint;
     foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
@@ -287,20 +287,19 @@ void main() {
     // }}}
 
     // Background {{{
-    float orig_bg_alpha = 1;
-    bg_alpha = calc_background_opacity(bg_as_uint);
-    orig_bg_alpha = bg_alpha;
-
+    float bg_alpha = calc_background_opacity(bg_as_uint);
+    // we use max so that opacity of the block cursor cell background goes from bg_alpha to 1
+    float effective_cursor_opacity = max(cursor_opacity, bg_alpha);
+    // is_special_cell is either 0 or 1
     float is_special_cell = cell_data.has_block_cursor + float(is_selected & ONE);
-    is_special_cell += float(is_reversed);  // bg_alpha should be 1 for reverse video cells as well
-    is_special_cell = step(0.5, is_special_cell);  // is_special_cell = 1 if is_special_cell else 0
-    bg_alpha = bg_alpha * (1. - float(is_special_cell)) + is_special_cell;  // bg_alpha = 1 if is_special_cell else bg_alpha
+    is_special_cell += float(is_reversed);  // reverse video cells should be opaque as well
+    is_special_cell = zero_or_one(is_special_cell);
+    // special cells must always be fully opaque, otherwise leave bg_alpha untouched
+    bg_alpha = if_one_then(is_special_cell, 1.f, bg_alpha);
     // Selection and cursor
-    bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
-    background = choose_color(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg);
-    // we use max so that opacity of the block cursor cell background goes from orig_bg_alpha to 1
-    float effective_cursor_opacity = max(cursor_opacity, orig_bg_alpha);
     bg_alpha = choose_alpha(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
+    bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
+    background = vec4(choose_color(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg), bg_alpha);
     // }}}
 
 #ifdef OVERRIDE_FG_COLORS
