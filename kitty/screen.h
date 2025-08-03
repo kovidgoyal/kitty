@@ -175,7 +175,9 @@ typedef struct {
     ListOfChars *lc;
     monotonic_t parsing_at;
     struct {
-        uint32_t under_bg, under_fg, over_fg;
+        struct {
+            uint32_t id, width, height;
+        } under_bg, under_fg, over_fg;
     } textures;
 } Screen;
 

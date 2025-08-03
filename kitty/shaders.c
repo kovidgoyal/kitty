@@ -668,8 +668,8 @@ draw_cells_with_layers(
     GLfloat has_under_bg = 0;
     GLuint blank_texture = ensure_blank_texture();
 
-#define USE_BLANK(which) { if (screen->textures.which) { free_texture(&screen->textures.which); } glBindTexture(GL_TEXTURE_2D, blank_texture); }
-#define ENSURE_TEXTURE(which) has_layers = true; if (!screen->textures.which) glGenTextures(1, &screen->textures.which)
+#define USE_BLANK(which) { if (screen->textures.which.id) { free_texture(&screen->textures.which.id); } glBindTexture(GL_TEXTURE_2D, blank_texture); }
+#define ENSURE_TEXTURE(which) has_layers = true; if (!screen->textures.which.id) glGenTextures(1, &screen->textures.which.id)
     glActiveTexture(GL_TEXTURE0 + UNDER_BG_LAYER_UNIT);
     if (grd.num_of_below_refs || has_background_image) {
         ENSURE_TEXTURE(under_bg);
