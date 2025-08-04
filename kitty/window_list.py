@@ -6,7 +6,7 @@ from collections import deque
 from collections.abc import Iterator
 from contextlib import suppress
 from itertools import count
-from typing import Any, Deque, Union
+from typing import Any, Deque, Sequence, Union
 
 from .fast_data_types import Color, get_options
 from .types import OverlayType, WindowGeometry
@@ -45,6 +45,12 @@ class WindowGroup:
     def __contains__(self, window: WindowType) -> bool:
         for w in self.windows:
             if w is window:
+                return True
+        return False
+
+    def has_window_id(self, wid: int) -> bool:
+        for w in self.windows:
+            if w.id == wid:
                 return True
         return False
 
@@ -92,6 +98,12 @@ class WindowGroup:
             'id': self.id,
             'windows': [w.serialize_state() for w in self.windows]
         }
+
+    def unserialize_layout_state(self, window_ids: Sequence[int]) -> None:
+        order_map = {wid: i for i, wid in enumerate(window_ids)}
+        def sort_key(w: WindowType) -> int:
+            return order_map.get(w.id, -1)
+        self.windows.sort(key=sort_key)
 
     def as_simple_dict(self) -> dict[str, Any]:
         return {
@@ -172,6 +184,55 @@ class WindowList:
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_state() for g in self.groups]
         }
+
+    def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int]) -> dict[int, int] | None:
+        if set(window_id_map.values()) != set(self.id_map):
+            # some window in this collection does not correspond to a
+            # serialized window
+            return None
+        ans = {}
+        gmap = {g.id: g for g in self.groups}
+        present_wids_map = {g.id: {w.id for w in g} for g in self.groups}
+
+        def unmapped_group_having_subset_of_windows(wids: Sequence[int]) -> Iterator[WindowGroup]:
+            mapped_wids = set()
+            for wid in wids:
+                new_wid = window_id_map.get(wid)
+                if new_wid is not None:
+                    mapped_wids.add(new_wid)
+            for gid in tuple(gmap):
+                present_wids = present_wids_map[gid]
+                if present_wids.issubset(mapped_wids):
+                    yield gmap.pop(gid)
+                    break
+
+        for wg in state['window_groups']:
+            old_group_id = wg['id']
+            for group in unmapped_group_having_subset_of_windows(wg['window_ids']):
+                ans[old_group_id] = group.id
+        # check that all the groups present were also in the serialized state.
+        # there could have been extra windows/groups in the serialized state,
+        # we ignore them.
+        if len(ans) != len(self.groups):
+            return None
+        gmap = {g.id: g for g in self.groups}
+        groups = []
+        for wg in state['window_groups']:
+            old_group_id = wg['id']
+            if new_group_id := ans.get(old_group_id):
+                groups.append((g := gmap[new_group_id]))
+                new_window_ids = []
+                for old_window_id in wg['window_ids']:
+                    if new_window_id := window_id_map.get(old_window_id):
+                        new_window_ids.append(new_window_id)
+                g.unserialize_layout_state(new_window_ids)
+        self.groups = groups
+        history = []
+        for old_wid in state['active_group_history']:
+            if new_wid := window_id_map.get(old_wid):
+                history.append(new_wid)
+        self.active_group_history = deque(history, 64)
+        return ans
 
     @property
     def active_group_idx(self) -> int:

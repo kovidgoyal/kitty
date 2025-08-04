@@ -5,8 +5,8 @@ from collections.abc import Collection, Generator, Sequence
 from typing import Any, NamedTuple, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
-from kitty.types import Edges, WindowGeometry
-from kitty.typing_compat import EdgeLiteral, WindowMapper, WindowType
+from kitty.types import Edges, WindowGeometry, WindowMapper
+from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import BorderLine, Layout, LayoutOpts, NeighborsMap, blank_rects_for_window, lgd, window_geometry_from_layouts
@@ -55,8 +55,7 @@ class Pair:
             if x is None:
                 return None
             if isinstance(x, int):
-                w = map_window_id(x)
-                return None if w is None else w.id
+                return map_window_id(x)
             ans = Pair()
             ans.unserialize(x, map_window_id)
             return ans if ans.one or ans.two else None
@@ -710,9 +709,9 @@ class Splits(Layout):
     def layout_state(self) -> dict[str, Any]:
         return {'pairs': self.pairs_root.serialize()}
 
-    def set_layout_state(self, layout_state: dict[str, Any], map_window_id: WindowMapper) -> bool:
+    def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
         new_root = Pair()
-        new_root.unserialize(layout_state['pairs'], map_window_id)
+        new_root.unserialize(layout_state['pairs'], map_group_id)
         before = frozenset(self.pairs_root.all_window_ids())
         if before == frozenset(new_root.all_window_ids()):
             self.pairs_root = new_root

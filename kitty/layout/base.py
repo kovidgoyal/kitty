@@ -7,10 +7,11 @@ from itertools import repeat
 from typing import Any, NamedTuple
 
 from kitty.borders import BorderColor
+from kitty.constants import serialize_user_var_name
 from kitty.fast_data_types import Region, set_active_window, viewport_for_window
 from kitty.options.types import Options
-from kitty.types import Edges, WindowGeometry
-from kitty.typing_compat import TypedDict, WindowMapper, WindowType
+from kitty.types import Edges, WindowGeometry, WindowMapper
+from kitty.typing_compat import TypedDict, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 
@@ -437,16 +438,33 @@ class Layout:
     def layout_state(self) -> dict[str, Any]:
         return {}
 
-    def set_layout_state(self, layout_state: dict[str, Any], map_window_id: WindowMapper) -> bool:
+    def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
         return True
 
-    def serialize(self) -> dict[str, Any]:
+    def serialize(self, all_windows: WindowList) -> dict[str, Any]:
         ans = self.layout_state()
         ans['opts'] = self.layout_opts.serialized()
         ans['class'] = self.__class__.__name__
+        ans['all_windows'] = aw = all_windows.serialize_state()
+        for wg in aw['window_groups']:
+            wg['window_ids'] = tuple(w['id'] for w in aw.pop('windows'))
         return ans
 
-    def unserialize(self, s: dict[str, Any], map_window_id: WindowMapper) -> bool:
+    def unserialize(
+        self, s: dict[str, Any], all_windows: WindowList,
+        serialize_user_var_name: str = serialize_user_var_name
+    ) -> bool:
         if s.get('class') != self.__class__.__name__:
             return False
-        return self.set_layout_state(s, map_window_id)
+        window_id_map = {}
+        for w in all_windows:
+            k = w.user_vars.pop(serialize_user_var_name, None)
+            if k is not None:
+                try:
+                    window_id_map[int(k)] = w.id
+                except Exception:
+                    pass
+        m = all_windows.unserialize_layout_state(s['all_windows'], window_id_map)
+        if m is None:
+            return False
+        return self.set_layout_state(s, m.get)

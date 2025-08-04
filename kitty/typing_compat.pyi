@@ -54,7 +54,6 @@ GRT_C = Literal[0, 1]
 GRT_d = Literal['a', 'A', 'c', 'C', 'i', 'I', 'p', 'P', 'q', 'Q', 'x', 'X', 'y', 'Y', 'z', 'Z', 'f', 'F']
 ReadableBuffer = bytes | bytearray | memoryview | array.array[int] | mmap.mmap
 WriteableBuffer = bytearray | memoryview | array.array[int] | mmap.mmap
-WindowMapper = Callable[[int], WindowType | None]
 
 
 
@@ -72,5 +71,5 @@ __all__ = (
     'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'AliasMap', 'CoreTextFont', 'WindowSystemMouseEvent',
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType', 'PowerlineStyle',
     'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType',
-    'ReadableBuffer', 'WriteableBuffer', 'WindowMapper',
+    'ReadableBuffer', 'WriteableBuffer',
 )

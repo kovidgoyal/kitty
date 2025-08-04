@@ -23,4 +23,3 @@ Protocol = object
 OptionsProtocol = object
 NotRequired = object
 CoreTextFont = FontConfigPattern = dict
-WindowMapper = object

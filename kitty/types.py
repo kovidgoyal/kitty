@@ -230,4 +230,5 @@ def ac(group: ActionGroup, doc: str) -> Callable[[_T], _T]:
     return w
 
 
+WindowMapper = Callable[[int], int | None]
 DecoratedFunc = TypeVar('DecoratedFunc', bound=Callable[..., Any])
