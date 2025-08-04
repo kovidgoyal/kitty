@@ -961,7 +961,7 @@ draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData 
         Py_CLEAR(bd->last_drawn_title_object_id);
         const char *url = get_hyperlink_for_id(screen->hyperlink_pool, bd->hyperlink_id_for_title_object, true);
         if (url == NULL) url = "";
-        bd->last_drawn_title_object_id = PyObject_CallMethod(global_state.boss, "sanitize_url_for_dispay_to_user", "s", url);
+        bd->last_drawn_title_object_id = PyObject_CallMethod(global_state.boss, "sanitize_url_for_display_to_user", "s", url);
         if (bd->last_drawn_title_object_id == NULL) { PyErr_Print(); return; }
         bd->needs_render = true;
     }

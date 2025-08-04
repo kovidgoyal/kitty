@@ -30,7 +30,7 @@ from kitty.fast_data_types import (
 )
 from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
-from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user, shlex_split, shlex_split_with_positions
+from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_display_to_user, shlex_split, shlex_split_with_positions
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -466,7 +466,7 @@ class TestDataTypes(BaseTest):
         if os.path.isdir('/dev/shm'):
             with tempfile.NamedTemporaryFile(dir='/dev/shm') as tf:
                 self.assertTrue(is_ok_to_read_image_file(tf.name, tf.fileno()), fifo)
-        self.ae(sanitize_url_for_dispay_to_user(
+        self.ae(sanitize_url_for_display_to_user(
             'h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
         for x in ('~', '~/', '', '~root', '~root/~', '/~', '/a/b/', '~xx/a', '~~'):
            self.assertEqual(os.path.expanduser(x), expanduser(x), x)

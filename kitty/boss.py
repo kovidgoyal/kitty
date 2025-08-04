@@ -144,7 +144,7 @@ from .utils import (
     parse_uri_list,
     platform_window_id,
     safe_print,
-    sanitize_url_for_dispay_to_user,
+    sanitize_url_for_display_to_user,
     shlex_split,
     startup_notification_handler,
     timed_debug_print,
@@ -3160,8 +3160,8 @@ class Boss:
         pass
     mouse_discard_event = discard_event
 
-    def sanitize_url_for_dispay_to_user(self, url: str) -> str:
-        return sanitize_url_for_dispay_to_user(url)
+    def sanitize_url_for_display_to_user(self, url: str) -> str:
+        return sanitize_url_for_display_to_user(url)
 
     def on_system_color_scheme_change(self, appearance: ColorSchemes, is_initial_value: bool) -> None:
         theme_colors.on_system_color_scheme_change(appearance, is_initial_value)

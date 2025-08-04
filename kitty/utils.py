@@ -1021,7 +1021,7 @@ def sanitize_for_bracketed_paste(text: bytes) -> bytes:
 
 
 @lru_cache(maxsize=64)
-def sanitize_url_for_dispay_to_user(url: str) -> str:
+def sanitize_url_for_display_to_user(url: str) -> str:
     from urllib.parse import unquote, urlparse, urlunparse
     try:
         purl = urlparse(url)
