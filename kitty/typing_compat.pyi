@@ -5,7 +5,7 @@ from socket import AddressFamily as AddressFamily
 from socket import socket as Socket
 from subprocess import CompletedProcess as CompletedProcess
 from subprocess import Popen as PopenType
-from typing import Callable, Literal
+from typing import Literal
 from typing import NotRequired as NotRequired
 from typing import Protocol as Protocol
 from typing import TypedDict as TypedDict

@@ -8,7 +8,7 @@ from math import ceil, floor
 from typing import Any
 
 from kitty.borders import BorderColor
-from kitty.types import Edges
+from kitty.types import Edges, WindowMapper
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -314,3 +314,8 @@ class Grid(Layout):
             'biased_cols': self.biased_cols,
             'biased_rows': self.biased_rows
         }
+
+    def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
+        self.biased_rows = layout_state['biased_rows']
+        self.biased_cols = layout_state['biased_cols']
+        return True

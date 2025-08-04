@@ -7,7 +7,7 @@ from typing import Any
 
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
-from kitty.types import Edges
+from kitty.types import Edges, WindowMapper
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -347,10 +347,14 @@ class Tall(Layout):
 
     def layout_state(self) -> dict[str, Any]:
         return {
-            'num_full_size_windows': self.num_full_size_windows,
             'main_bias': self.main_bias,
             'biased_map': self.biased_map
         }
+
+    def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
+        self.main_bias = layout_state['main_bias']
+        self.biased_map = layout_state['biased_map']
+        return True
 
 
 class Fat(Tall):

@@ -5,7 +5,7 @@ from collections.abc import Generator, Iterable
 from typing import Any
 
 from kitty.borders import BorderColor
-from kitty.types import Edges
+from kitty.types import Edges, WindowMapper
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -140,6 +140,9 @@ class Vertical(Layout):
     def layout_state(self) -> dict[str, Any]:
         return {'biased_map': self.biased_map}
 
+    def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
+        self.biased_map = layout_state['biased_map']
+        return True
 
 class Horizontal(Vertical):
 
