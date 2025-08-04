@@ -363,6 +363,7 @@ var AllPortalInterfaces = sync.OnceValue(func() (ans []string) {
 func patch_portals_conf(text []byte) []byte {
 	lines := []string{}
 	in_preferred := false
+	patched := false
 	for _, line := range utils.Splitlines(utils.UnsafeBytesToString(text)) {
 		sl := strings.TrimSpace(line)
 		if strings.HasPrefix(sl, "[") {
@@ -371,6 +372,7 @@ func patch_portals_conf(text []byte) []byte {
 			for _, iface := range AllPortalInterfaces() {
 				lines = append(lines, iface+"=kitty")
 			}
+			patched = true
 		} else if in_preferred {
 			remove := false
 			for _, iface := range AllPortalInterfaces() {
@@ -384,6 +386,15 @@ func patch_portals_conf(text []byte) []byte {
 			}
 		}
 	}
+
+	if !patched {
+		// the file was empty or did not contain a section
+		lines = append(lines, "[preferred]")
+		for _, iface := range AllPortalInterfaces() {
+			lines = append(lines, iface+"=kitty")
+		}
+	}
+
 	return utils.UnsafeStringToBytes(strings.Join(lines, "\n"))
 }
 
@@ -458,6 +469,7 @@ Exec=%s desktop-ui run-server
 			text := patch_portals_conf(text)
 			if err = os.WriteFile(q, text, 0o644); err == nil {
 				patched_file = q
+				fmt.Printf("Patched %s to use the kitty portals\n", patched_file)
 				break
 			}
 		}
@@ -470,8 +482,8 @@ Exec=%s desktop-ui run-server
 			return err
 		}
 		patched_file = q
+		fmt.Printf("Created %s to use the kitty portals\n", patched_file)
 	}
-	fmt.Printf("Patched %s to use the kitty portals\n", patched_file)
 	return
 }
 
