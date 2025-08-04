@@ -333,6 +333,19 @@ A system panel for Kitty terminal that displays real-time system metrics using t
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A kitten-panel based desktop panel for your desktop
 
+Password managers
+---------------------
+
+`1password <https://github.com/mm-zacharydavison/kitty-kitten-1password>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Allow injecting passwords from 1Password into kitty.
+
+`BitWarden <https://github.com/dnanhkhoa/kitty-password-manager>`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Inject passwords from ButWarden into kitty
+
 Miscellaneous
 ------------------
 
