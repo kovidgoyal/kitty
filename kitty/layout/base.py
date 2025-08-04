@@ -4,7 +4,7 @@
 from collections.abc import Generator, Iterable, Iterator, Sequence
 from functools import partial
 from itertools import repeat
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 from kitty.borders import BorderColor
 from kitty.constants import serialize_user_var_name
@@ -214,6 +214,18 @@ def distribute_indexed_bias(base_bias: Sequence[float], index_bias_map: dict[int
         other_increment = -increment / (limit - 1)
         ans = [safe_increment_bias(b, increment if i == row else other_increment) for i, b in enumerate(ans)]
     return normalize_biases(ans)
+
+
+def create_window_id_map_for_unserialize(all_windows: WindowList, serialize_user_var_name: str = serialize_user_var_name) -> dict[int, int]:
+    window_id_map = {}
+    for w in all_windows:
+        k = w.user_vars.pop(serialize_user_var_name, None)
+        if k is not None:
+            try:
+                window_id_map[int(k)] = w.id
+            except Exception:
+                pass
+    return window_id_map
 
 
 class Layout:
@@ -450,18 +462,11 @@ class Layout:
 
     def unserialize(
         self, s: dict[str, Any], all_windows: WindowList,
-        serialize_user_var_name: str = serialize_user_var_name
+        window_id_mapper: Callable[[WindowList], dict[int, int]] = create_window_id_map_for_unserialize,
     ) -> bool:
         if s.get('class') != self.__class__.__name__:
             return False
-        window_id_map = {}
-        for w in all_windows:
-            k = w.user_vars.pop(serialize_user_var_name, None)
-            if k is not None:
-                try:
-                    window_id_map[int(k)] = w.id
-                except Exception:
-                    pass
+        window_id_map = create_window_id_map_for_unserialize(all_windows)
         m = all_windows.unserialize_layout_state(s['all_windows'], window_id_map)
         if m is None:
             return False
