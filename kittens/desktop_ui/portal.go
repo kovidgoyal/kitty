@@ -321,24 +321,13 @@ var DataDirs = sync.OnceValue(func() (ans []string) {
 
 	data_dirs := os.Getenv("XDG_DATA_DIRS")
 	if data_dirs == "" {
-		data_dirs = "/usr/local/share/:/usr/share/"
+		data_dirs = "/usr/local/share:/usr/share"
 	}
-
 	data_home := os.Getenv("XDG_DATA_HOME")
 	if data_home == "" {
-		data_home = os.Getenv("HOME") + "/.local/share"
+		data_home = utils.Expanduser("~/.local/share")
 	}
-
-	all := []string{data_home}
-	all = append(all, strings.Split(data_dirs, ":")...)
-	seen := map[string]bool{}
-	for _, x := range all {
-		if !seen[x] {
-			seen[x] = true
-			ans = append(ans, x)
-		}
-	}
-	return
+	return utils.Uniq(append([]string{data_home}, strings.Split(data_dirs, ":")...))
 })
 
 func IsDir(x string) bool {
