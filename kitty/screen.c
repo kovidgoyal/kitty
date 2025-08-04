@@ -674,9 +674,9 @@ dealloc(Screen* self) {
     free(self->as_ansi_buf.buf);
     free(self->last_rendered_window_char.canvas);
     if (self->lc) { cleanup_list_of_chars(self->lc); free(self->lc); self->lc = NULL; }
-    if (self->textures.under_bg.id) free_texture(&self->textures.under_bg.id);
-    if (self->textures.under_fg.id) free_texture(&self->textures.under_fg.id);
-    if (self->textures.over_fg.id) free_texture(&self->textures.over_fg.id);
+#define w(which) if (self->textures.which.id) { free_texture(&self->textures.which.id); } if (self->textures.which.framebuffer_id) free_framebuffer(&self->textures.which.framebuffer_id)
+    w(under_bg); w(under_fg); w(over_fg); w(ui);
+#undef w
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 

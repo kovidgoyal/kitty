@@ -26,6 +26,7 @@
  * test that window numbering and URL hover rendering both still work
  * test cursor trail and scroll indicator rendering
  * remove startx, starty, dx, dy from WindowRenderData
+ * fix rendering during live resize
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -40,7 +41,7 @@ enum {
     TRAIL_PROGRAM,
     NUM_PROGRAMS
 };
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT, UNDER_BG_LAYER_UNIT, UNDER_FG_LAYER_UNIT, OVER_FG_LAYER_UNIT };
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT, UNDER_BG_LAYER_UNIT, UNDER_FG_LAYER_UNIT, OVER_FG_LAYER_UNIT, UI_LAYER_UNIT };
 
 // Sprites {{{
 typedef struct {
@@ -660,9 +661,92 @@ ensure_blank_texture(void) {
     return texture_id;
 }
 
+static Animation *default_visual_bell_animation = NULL;
+
+static float
+get_visual_bell_intensity(Screen *screen) {
+    if (screen->start_visual_bell_at > 0) {
+        if (!default_visual_bell_animation) {
+            default_visual_bell_animation = alloc_animation();
+            if (!default_visual_bell_animation) fatal("Out of memory");
+            add_cubic_bezier_animation(default_visual_bell_animation, 0, 1, EASE_IN_OUT);
+            add_cubic_bezier_animation(default_visual_bell_animation, 1, 0, EASE_IN_OUT);
+        }
+        const monotonic_t progress = monotonic() - screen->start_visual_bell_at;
+        const monotonic_t duration = OPT(visual_bell_duration) / 2;
+        if (progress <= duration) {
+            Animation *a = animation_is_valid(OPT(animation.visual_bell)) ? OPT(animation.visual_bell) : default_visual_bell_animation;
+            return (float)apply_easing_curve(a, progress / (double)duration, duration);
+        }
+        screen->start_visual_bell_at = 0;
+    }
+    return 0.0f;
+}
+
+typedef struct UIRenderData {
+    unsigned screen_width, screen_height, cell_width, cell_height;
+
+} UIRenderData;
+
+static void
+draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
+    glEnable(GL_BLEND);
+    BLEND_PREMULT;
+    bind_program(TINT_PROGRAM);
+    GLfloat attenuation = 0.4f;
+#define C(shift) srgb_color((flash >> shift) & 0xFF)
+    const GLfloat r = C(16), g = C(8), b = C(0);
+    const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
+#undef C
+#define C(x) (x * intensity * attenuation)
+    if (max_channel > 0.45) attenuation = 0.6f;  // light color
+    glUniform4f(tint_program_layout.uniforms.tint_color, C(r), C(g), C(b), C(1));
+#undef C
+    glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
+    glDisable(GL_FRAMEBUFFER_SRGB);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDisable(GL_BLEND);
+}
+
+
+static bool
+update_ui_layer(Screen *screen, UIRenderData ui, bool visual_bell_drawn, bool scrollback_indicator_drawn) {
+#define last_ui screen->last_rendered.ui_layer
+    GLfloat intensity = 0; color_type flash = 0;
+    if (visual_bell_drawn) {
+        intensity = get_visual_bell_intensity(screen);
+#define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
+    flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
+#undef COLOR
+    }
+    bool visual_bell_needs_redraw = intensity != last_ui.visual_bell.intensity || flash != last_ui.visual_bell.color;
+    last_ui.visual_bell.intensity = intensity;
+    last_ui.visual_bell.color = flash;
+    color_type bar_color = 0;
+    GLfloat bar_alpha = OPT(scrollback_indicator_opacity);
+    float bar_frac = 0;
+    if (scrollback_indicator_drawn) {
+        bar_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg).rgb;
+        bar_frac = (float)screen->scrolled_by / (float)screen->historybuf->count;
+    }
+    bool scrollbar_needs_redraw = (last_ui.scroll_bar.frac != bar_frac || last_ui.scroll_bar.color != bar_color ||
+            last_ui.scroll_bar.cell_height != ui.cell_height || last_ui.scroll_bar.alpha != bar_alpha);
+    last_ui.scroll_bar.alpha = bar_alpha;
+    last_ui.scroll_bar.cell_height = ui.cell_height;
+    last_ui.scroll_bar.color = bar_color;
+    last_ui.scroll_bar.frac = bar_frac;
+    if (!scrollbar_needs_redraw && !visual_bell_needs_redraw) return false;
+    blank_canvas(0, 0);  // clear the framebuffer
+    save_viewport_using_bottom_left_origin(0, 0, ui.screen_width, ui.screen_height);
+    if (visual_bell_drawn && intensity > 0) draw_visual_bell_flash(last_ui.visual_bell.intensity, last_ui.visual_bell.color);
+    restore_viewport();
+    return true;
+#undef last_ui
+}
+
 static void
 draw_cells_with_layers(
-    bool for_final_output, OSWindow *os_window, Screen *screen, bool is_semi_transparent, GraphicsRenderData grd, WindowLogoRenderData *wl
+    bool for_final_output, OSWindow *os_window, Screen *screen, UIRenderData ui, bool is_semi_transparent, GraphicsRenderData grd, WindowLogoRenderData *wl
 ) {
     bool has_layers = false;
     bool has_background_image = has_bgimage(os_window);
@@ -670,13 +754,34 @@ draw_cells_with_layers(
     GLuint blank_texture = ensure_blank_texture();
 
 #define USE_BLANK(which) { if (screen->textures.which.id) { free_texture(&screen->textures.which.id); } glBindTexture(GL_TEXTURE_2D, blank_texture); }
-#define ENSURE_TEXTURE(which) has_layers = true; if (!screen->textures.which.id) glGenTextures(1, &screen->textures.which.id)
+#define ENSURE_TEXTURE(which) \
+    has_layers = true; \
+    if (screen->textures.which.width != ui.screen_width || screen->textures.which.height != ui.screen_height) { \
+        if (screen->textures.which.id) free_texture(&screen->textures.which.id); \
+        if (screen->textures.which.framebuffer_id) free_framebuffer(&screen->textures.which.framebuffer_id); \
+    } \
+    if (!screen->textures.which.id) { \
+        glGenTextures(1, &screen->textures.which.id); \
+        glGenFramebuffers(1, &screen->textures.which.framebuffer_id); \
+        screen->textures.which.width = ui.screen_width; screen->textures.which.height = ui.screen_height; \
+        glBindTexture(GL_TEXTURE_2D, screen->textures.which.id); \
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); \
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); \
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); \
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); \
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, screen->textures.which.width, screen->textures.which.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL); \
+        glBindFramebuffer(GL_FRAMEBUFFER, screen->textures.which.framebuffer_id); \
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screen->textures.which.id, 0); \
+        check_framebuffer_status_or_die(); \
+    } \
+    glBindTexture(GL_TEXTURE_2D, screen->textures.which.id); \
+    glBindFramebuffer(GL_FRAMEBUFFER, screen->textures.which.framebuffer_id); \
+
     glActiveTexture(GL_TEXTURE0 + UNDER_BG_LAYER_UNIT);
     if (grd.num_of_below_refs || has_background_image) {
         ENSURE_TEXTURE(under_bg);
         has_under_bg = 1.;
     } else USE_BLANK(under_bg);
-    glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.has_under_bg, has_under_bg);
 
     glActiveTexture(GL_TEXTURE0 + UNDER_FG_LAYER_UNIT);
     if (grd.num_of_below_refs || wl) {
@@ -687,8 +792,17 @@ draw_cells_with_layers(
     if (grd.num_of_positive_refs) {
         ENSURE_TEXTURE(over_fg);
     } else USE_BLANK(over_fg);
+
+    glActiveTexture(GL_TEXTURE0 + UI_LAYER_UNIT);
+    bool visual_bell_drawn = screen->start_visual_bell_at > 0;
+    bool scrollback_indicator_drawn = !(OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by);
+    if (visual_bell_drawn || scrollback_indicator_drawn) {
+        ENSURE_TEXTURE(ui);
+        update_ui_layer(screen, ui, visual_bell_drawn, scrollback_indicator_drawn);
+    } else USE_BLANK(ui);
 #undef ENSURE_TEXTURE
 #undef USE_BLANK
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     if (is_semi_transparent) {
         bind_program(has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM);
@@ -705,13 +819,12 @@ draw_cells_with_layers(
         glDisable(GL_BLEND);
         if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB); else glDisable(GL_FRAMEBUFFER_SRGB);
     }
+    glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.has_under_bg, has_under_bg);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    glEnable(GL_FRAMEBUFFER_SRGB);
 }
 
 static bool
 draw_scroll_indicator(bool premult, Screen *screen, const CellRenderData *crd) {
-    if (OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by) return false;
     glEnable(GL_BLEND);
     if (premult) { BLEND_PREMULT } else { BLEND_ONTO_OPAQUE }
     bind_program(TINT_PROGRAM);
@@ -752,6 +865,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
             glUniform1i(cu->under_bg_layer, UNDER_BG_LAYER_UNIT);
             glUniform1i(cu->under_fg_layer, UNDER_FG_LAYER_UNIT);
             glUniform1i(cu->over_fg_layer, OVER_FG_LAYER_UNIT);
+            glUniform1i(cu->ui_layer, UI_LAYER_UNIT);
             glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
             glUniform1f(cu->dim_opacity, OPT(dim_opacity));
             glUniform1f(cu->text_contrast, text_contrast);
@@ -891,29 +1005,6 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     glDisable(GL_BLEND);
 }
 
-static void
-draw_visual_bell_flash(GLfloat intensity, const CellRenderData *crd, Screen *screen) {
-    glEnable(GL_BLEND);
-    // BLEND_PREMULT
-    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
-    bind_program(TINT_PROGRAM);
-    GLfloat attenuation = 0.4f;
-#define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
-    const color_type flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
-#undef COLOR
-#define C(shift) srgb_color((flash >> shift) & 0xFF)
-    const GLfloat r = C(16), g = C(8), b = C(0);
-    const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
-#undef C
-#define C(x) (x * intensity * attenuation)
-    if (max_channel > 0.45) attenuation = 0.6f;  // light color
-    glUniform4f(tint_program_layout.uniforms.tint_color, C(r), C(g), C(b), C(1));
-#undef C
-    glUniform4f(tint_program_layout.uniforms.edges, crd->gl.xstart, crd->gl.ystart - crd->gl.height, crd->gl.xstart + crd->gl.width, crd->gl.ystart);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    glDisable(GL_BLEND);
-}
-
 void
 blank_canvas(float background_opacity, color_type color) {
     // See https://github.com/glfw/glfw/issues/1538 for why we use pre-multiplied alpha
@@ -930,28 +1021,6 @@ send_cell_data_to_gpu(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat d
         if (cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, os_window->fonts_data)) changed = true;
     }
     return changed;
-}
-
-static Animation *default_visual_bell_animation = NULL;
-
-static float
-get_visual_bell_intensity(Screen *screen) {
-    if (screen->start_visual_bell_at > 0) {
-        if (!default_visual_bell_animation) {
-            default_visual_bell_animation = alloc_animation();
-            if (!default_visual_bell_animation) fatal("Out of memory");
-            add_cubic_bezier_animation(default_visual_bell_animation, 0, 1, EASE_IN_OUT);
-            add_cubic_bezier_animation(default_visual_bell_animation, 1, 0, EASE_IN_OUT);
-        }
-        const monotonic_t progress = monotonic() - screen->start_visual_bell_at;
-        const monotonic_t duration = OPT(visual_bell_duration) / 2;
-        if (progress <= duration) {
-            Animation *a = animation_is_valid(OPT(animation.visual_bell)) ? OPT(animation.visual_bell) : default_visual_bell_animation;
-            return (float)apply_easing_curve(a, progress / (double)duration, duration);
-        }
-        screen->start_visual_bell_at = 0;
-    }
-    return 0.0f;
 }
 
 void
@@ -1002,18 +1071,10 @@ draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_wind
     has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
     (void)has_underlying_image;
     bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
-    save_viewport_using_top_left_origin(
-        srd->geometry.left, srd->geometry.top, srd->geometry.right - srd->geometry.left,
-        srd->geometry.bottom - srd->geometry.top
-    );
-    draw_cells_with_layers(for_final_output, os_window, screen, is_semi_transparent, grd, wl);
+    UIRenderData ui = {srd->geometry.right - srd->geometry.left, srd->geometry.bottom - srd->geometry.top, os_window->fonts_data->fcm.cell_width, os_window->fonts_data->fcm.cell_height};
+    save_viewport_using_top_left_origin(srd->geometry.left, srd->geometry.top, ui.screen_width, ui.screen_height);
+    draw_cells_with_layers(for_final_output, os_window, screen, ui, is_semi_transparent, grd, wl);
     draw_scroll_indicator(is_semi_transparent, screen, &crd);
-
-    if (screen->start_visual_bell_at) {
-        GLfloat intensity = get_visual_bell_intensity(screen);
-        if (intensity > 0.0f) draw_visual_bell_flash(intensity, &crd, screen);
-    }
-
     if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
     if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id && !is_mouse_hidden(os_window)) draw_hyperlink_target(os_window, screen, &crd, window);
     free(scaled_render_data);
@@ -1072,7 +1133,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glDisable(GL_BLEND);
         glDisable(GL_FRAMEBUFFER_SRGB);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
-        glEnable(GL_FRAMEBUFFER_SRGB);
         unbind_program();
     }
     unbind_vertex_array();

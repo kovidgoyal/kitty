@@ -11,6 +11,7 @@ uniform sampler2DArray sprites;
 uniform sampler2D under_bg_layer;
 uniform sampler2D under_fg_layer;
 uniform sampler2D over_fg_layer;
+uniform sampler2D ui_layer;
 
 in vec4 background;
 in float effective_text_alpha;
@@ -90,28 +91,33 @@ vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
 }
 
 vec4 layer_color(sampler2D s) {
-#ifdef HAS_LAYERS
-    vec2 pos = gl_FragCoord.xy / vec2(textureSize(s, 0));
-    return texture(s, pos);
-#else
-    return vec4(0, 0, 0, 0);
-#endif
+    // we need to clamp the co-ordinates as the blank texture has size 1x1
+    ivec2 pos = clamp(ivec2(gl_FragCoord.xy), ivec2(0), textureSize(s, 0)-1);
+    return texelFetch(s, pos, 0);
 }
+
+#ifdef HAS_LAYERS
+#define blend_layer(code) code
+#else
+#define blend_layer(code)
+#endif
 
 void main() {
     vec4 ans_premul = vec4_premul(background);
     // if its a default background cell and there is an under_bg layer, use the
     // under_bg layer as the background
-    ans_premul = if_one_then(has_under_bg * cell_has_default_bg, layer_color(under_bg_layer), ans_premul);
+    blend_layer(ans_premul = if_one_then(has_under_bg * cell_has_default_bg, layer_color(under_bg_layer), ans_premul));
     // blend in the under_fg layer
-    ans_premul = alpha_blend_premul(layer_color(under_fg_layer), ans_premul);
+    blend_layer(ans_premul = alpha_blend_premul(layer_color(under_fg_layer), ans_premul));
     // blend in the foreground color
     vec4 text_fg = load_text_foreground_color();
     text_fg = adjust_foreground_contrast_with_background(text_fg, background.rgb);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
     ans_premul = alpha_blend_premul(text_fg_premul, ans_premul);
     // blend in the over_fg layer
-    ans_premul = alpha_blend_premul(layer_color(over_fg_layer), ans_premul);
+    blend_layer(ans_premul = alpha_blend_premul(layer_color(over_fg_layer), ans_premul));
+    // blend in the UI layer
+    blend_layer(ans_premul = alpha_blend_premul(layer_color(ui_layer), ans_premul));
 #ifdef IS_OPAQUE
     ans_premul.rgb /= ans_premul.a;
     ans_premul.a = 1.;

@@ -85,6 +85,28 @@ update_surface_size(int w, int h, GLuint offscreen_texture_id) {
     }
 }
 
+static const char*
+check_framebuffer_status(void) {
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    switch (status) {
+        case GL_FRAMEBUFFER_COMPLETE: return NULL;
+        case GL_FRAMEBUFFER_UNDEFINED: return("GL_FRAMEBUFFER_UNDEFINED");
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");
+        case GL_FRAMEBUFFER_UNSUPPORTED: return("GL_FRAMEBUFFER_UNSUPPORTED");
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
+        default: return("Unknown error");
+    }
+}
+
+void
+check_framebuffer_status_or_die(void) {
+    const char *err = check_framebuffer_status();
+    if (err != NULL) fatal("Framebuffer not complete with error: %s", err);
+}
+
 void
 free_texture(GLuint *tex_id) {
     glDeleteTextures(1, tex_id);
@@ -97,7 +119,18 @@ free_framebuffer(GLuint *fb_id) {
     *fb_id = 0;
 }
 
-static GLsizei saved_viewport[4] = {0};
+static struct {
+    GLsizei items[16][4];
+    size_t used;
+} saved_viewports;
+
+void
+save_viewport_using_bottom_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height) {
+    if (saved_viewports.used >= arraysz(saved_viewports.items)) fatal("Too many nested saved viewports");
+    GLsizei *saved_viewport = saved_viewports.items[saved_viewports.used++];
+    glGetIntegerv(GL_VIEWPORT, saved_viewport);
+    glViewport(newx, newy, width, height);
+}
 
 void
 save_viewport_using_top_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height) {
@@ -106,6 +139,8 @@ save_viewport_using_top_left_origin(GLsizei newx, GLsizei newy, GLsizei width, G
     // OpenGL viewport co-ord system with origin at bottom left. Assumes that
     // the current viewport is the full window. Use restore_viewport() to
     // restore the viewport to what it was before.
+    if (saved_viewports.used >= arraysz(saved_viewports.items)) fatal("Too many nested saved viewports");
+    GLsizei *saved_viewport = saved_viewports.items[saved_viewports.used++];
     glGetIntegerv(GL_VIEWPORT, saved_viewport);
     newy = saved_viewport[3] - (newy + height);
     glViewport(newx, newy, width, height);
@@ -113,8 +148,9 @@ save_viewport_using_top_left_origin(GLsizei newx, GLsizei newy, GLsizei width, G
 
 void
 restore_viewport(void) {
+    if (!saved_viewports.used) fatal("Trying to restore a viewport when none is saved");
+    GLsizei *saved_viewport = saved_viewports.items[--saved_viewports.used];
     glViewport(saved_viewport[0], saved_viewport[1], saved_viewport[2], saved_viewport[3]);
-    memset(saved_viewport, 0, sizeof(saved_viewport));
 }
 // }}}
 

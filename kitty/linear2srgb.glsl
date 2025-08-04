@@ -17,3 +17,7 @@ float linear2srgb(float x) {
 vec3 linear2srgb(vec3 c) {
     return vec3(linear2srgb(c.r), linear2srgb(c.g), linear2srgb(c.b));
 }
+
+vec3 srgb2linear(vec3 c) {
+    return vec3(srgb2linear(c.r), srgb2linear(c.g), srgb2linear(c.b));
+}

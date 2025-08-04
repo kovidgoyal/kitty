@@ -100,6 +100,10 @@ typedef struct {
         unsigned int cursor_x, cursor_y, scrolled_by;
         index_type lines, columns;
         color_type cursor_bg;
+        struct {
+            struct { float intensity; color_type color; } visual_bell;
+            struct { float frac, alpha; color_type color; unsigned cell_height; } scroll_bar;
+        } ui_layer;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
@@ -176,8 +180,8 @@ typedef struct {
     monotonic_t parsing_at;
     struct {
         struct {
-            uint32_t id, width, height;
-        } under_bg, under_fg, over_fg;
+            uint32_t id, width, height, framebuffer_id;
+        } under_bg, under_fg, over_fg, ui;
     } textures;
 } Screen;
 
