@@ -96,7 +96,13 @@ class WindowGroup:
     def serialize_state(self) -> dict[str, Any]:
         return {
             'id': self.id,
-            'windows': [w.serialize_state() for w in self.windows]
+            'windows': tuple(w.serialize_state() for w in self.windows),
+        }
+
+    def serialize_layout_state(self) -> dict[str, Any]:
+        return {
+            'id': self.id,
+            'window_ids': tuple(w.id for w in self.windows),
         }
 
     def unserialize_layout_state(self, window_ids: Sequence[int]) -> None:
@@ -183,6 +189,13 @@ class WindowList:
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_state() for g in self.groups]
+        }
+
+    def serialize_layout_state(self) -> dict[str, Any]:
+        return {
+            'active_group_idx': self.active_group_idx,
+            'active_group_history': list(self.active_group_history),
+            'window_groups': [g.serialize_layout_state() for g in self.groups]
         }
 
     def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int]) -> dict[int, int] | None:

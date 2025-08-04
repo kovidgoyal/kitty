@@ -445,9 +445,7 @@ class Layout:
         ans = self.layout_state()
         ans['opts'] = self.layout_opts.serialized()
         ans['class'] = self.__class__.__name__
-        ans['all_windows'] = aw = all_windows.serialize_state()
-        for wg in aw['window_groups']:
-            wg['window_ids'] = tuple(w['id'] for w in aw.pop('windows'))
+        ans['all_windows'] = all_windows.serialize_layout_state()
         return ans
 
     def unserialize(
