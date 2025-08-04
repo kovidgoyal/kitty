@@ -25,6 +25,7 @@ in vec4 cursor_color_premult;
 in vec3 decoration_fg;
 in float colored_sprite;
 in float cell_has_default_bg;
+in vec2 layer_pos;
 
 out vec4 output_color;
 
@@ -91,9 +92,7 @@ vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
 }
 
 vec4 layer_color(sampler2D s) {
-    // we need to clamp the co-ordinates as the blank texture has size 1x1
-    ivec2 pos = clamp(ivec2(gl_FragCoord.xy), ivec2(0), textureSize(s, 0)-1);
-    return texelFetch(s, pos, 0);
+    return texture(s, layer_pos);
 }
 
 #ifdef HAS_LAYERS

@@ -50,6 +50,7 @@ out vec3 decoration_fg;
 out float colored_sprite;
 out float effective_text_alpha;
 out float cell_has_default_bg;
+out vec2 layer_pos;  // position to sample layer texture at
 
 
 // Utility functions {{{
@@ -167,10 +168,12 @@ CellData set_vertex_position() {
     /* The position of this vertex, at a corner of the cell  */
     float left = -1.0 + column * dx;
     float top = 1.0 - row * dy;
-    vec2 xpos = vec2(left, left + dx);
-    vec2 ypos = vec2(top, top - dy);
     uvec2 pos = cell_pos_map[gl_VertexID];
-    gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
+    gl_Position = vec4(vec2(left, left + dx)[pos.x], vec2(top, top - dy)[pos.y], 0, 1);
+    // The position used to sample the layer textures
+    dx /= 2.0; dy /= 2.0;
+    left = 0 + column * dx; top = 1.0 - row * dy;
+    layer_pos = vec2(vec2(left, left + dx)[pos.x], vec2(top, top - dy)[pos.y]);
     // The character sprite being rendered
     sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
     colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);

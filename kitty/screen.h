@@ -102,8 +102,17 @@ typedef struct {
         color_type cursor_bg;
         struct {
             struct { float intensity; color_type color; } visual_bell;
-            struct { float frac, alpha; color_type color; unsigned cell_height; } scroll_bar;
+            struct { float frac, alpha; color_type color; unsigned cell_height, cell_width; } scroll_bar;
         } ui_layer;
+        struct {
+            int x;
+        } over_fg_layer;
+        struct {
+            int x;
+        } under_fg_layer;
+        struct {
+            int x;
+        } under_bg_layer;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
