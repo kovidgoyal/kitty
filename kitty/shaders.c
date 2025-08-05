@@ -673,12 +673,12 @@ ensure_layer_ready_to_render(const UIRenderData *ui, ScreenLayer *which) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, which->width, which->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glBindFramebuffer(GL_FRAMEBUFFER, which->framebuffer_id);
+        bind_framebuffer_for_output(which->framebuffer_id);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, which->id, 0);
-        check_framebuffer_status_or_die();
+        if (global_state.debug_rendering) check_framebuffer_status_or_die();
         needs_redraw = true;
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, which->framebuffer_id);
+    bind_framebuffer_for_output(which->framebuffer_id);
     return needs_redraw;
 }
 
@@ -979,7 +979,7 @@ update_screen_layers(UIRenderData *ui) {
     ui->has_under_fg = update_under_fg_layer(ui);
     ui->has_over_fg = update_over_fg_layer(ui);
     ui->has_ui = update_ui_layer(ui);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    bind_framebuffer_for_output(0);
     restore_viewport();
 }
 

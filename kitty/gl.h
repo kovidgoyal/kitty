@@ -61,3 +61,5 @@ void save_viewport_using_top_left_origin(GLsizei x, GLsizei y, GLsizei width, GL
 void save_viewport_using_bottom_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height);
 void check_framebuffer_status_or_die(void);
 void restore_viewport(void);
+void bind_framebuffer_for_output(unsigned fbid);
+void set_framebuffer_to_use_for_output(unsigned fbid);

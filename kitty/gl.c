@@ -119,6 +119,18 @@ free_framebuffer(GLuint *fb_id) {
     *fb_id = 0;
 }
 
+static GLuint output_framebuffer = 0;
+
+void
+bind_framebuffer_for_output(unsigned fbid) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fbid || output_framebuffer);
+}
+
+void
+set_framebuffer_to_use_for_output(unsigned fbid) {
+    output_framebuffer = fbid;
+}
+
 static struct {
     GLsizei items[16][4];
     size_t used;
