@@ -17,15 +17,12 @@
 
 /*
  * TODO: for shader refactoring
- * Port graphics rendering to start use a dummy 1 pixel empty texture then possibly replace with defines so that the most
- * common use case of no graphics has zero performance overhead.
+ * Port graphics rendering
  * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
  * the new graphics shader.
  * background image with tint and various layout options in both cell and borders shaders
  * test graphics in all 3 layers
  * window logo image that is in the under foreground layer I think? need to check
- * test that window numbering and URL hover rendering both still work
- * test cursor trail rendering
  * remove startx, starty, dx, dy from WindowRenderData
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
