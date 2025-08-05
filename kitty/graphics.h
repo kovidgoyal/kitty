@@ -170,15 +170,6 @@ gl_size(const unsigned int sz, const unsigned int viewport_size) {
 }
 
 static inline float
-clamp_position_to_nearest_pixel(float pos, const unsigned int viewport_size) {
-    // clamp the specified opengl position to the nearest pixel
-    const float px = 2.f / viewport_size;
-    const float distance =  pos + 1.f;
-    const float num_of_pixels = roundf(distance / px);
-    return -1.f + num_of_pixels * px;
-}
-
-static inline float
 gl_pos_x(const unsigned int px_from_left_margin, const unsigned int viewport_size) {
     const float px = 2.f / viewport_size;
     return -1.f + px_from_left_margin * px;
