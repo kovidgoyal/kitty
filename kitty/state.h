@@ -148,7 +148,6 @@ typedef struct {
 
 typedef struct {
     ssize_t vao_idx;
-    float xstart, ystart, dx, dy;
     WindowGeometry geometry;
     Screen *screen;
 } WindowRenderData;
@@ -389,7 +388,7 @@ void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *re
 ssize_t create_cell_vao(void);
 ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);
-bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
+bool send_cell_data_to_gpu(ssize_t, Screen *, OSWindow *);
 void draw_cells(bool, const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
 void draw_cursor_trail(CursorTrail *trail, Window *active_window);

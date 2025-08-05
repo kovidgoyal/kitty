@@ -715,7 +715,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             call_boss(update_tab_bar_data, "K", os_window->id);
             os_window->tab_bar_data_updated = true;
         }
-        if (send_cell_data_to_gpu(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
+        if (send_cell_data_to_gpu(TD.vao_idx, TD.screen, os_window)) needs_render = true;
     }
     if (OPT(mouse_hide.hide_wait) > 0 && !is_mouse_hidden(os_window)) {
         if (now - os_window->last_mouse_activity_at >= OPT(mouse_hide.hide_wait)) hide_mouse(os_window);
@@ -781,7 +781,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                     set_maximum_wait(min_gap);
                 }
             }
-            if (send_cell_data_to_gpu(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
+            if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
         }
     }

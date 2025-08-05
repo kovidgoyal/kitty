@@ -789,11 +789,7 @@ PYWRAP1(set_ignore_os_keyboard_processing) {
 }
 
 static void
-init_window_render_data(WindowRenderData *d, OSWindow *osw, const WindowGeometry g, Screen *screen) {
-    d->dx = gl_size(osw->fonts_data->fcm.cell_width, osw->viewport_width);
-    d->dy = gl_size(osw->fonts_data->fcm.cell_height, osw->viewport_height);
-    d->xstart = gl_pos_x(g.left, osw->viewport_width);
-    d->ystart = gl_pos_y(g.top, osw->viewport_height);
+init_window_render_data(WindowRenderData *d, const WindowGeometry g, Screen *screen) {
     d->geometry = g;
     Py_CLEAR(d->screen); d->screen = (Screen*)Py_NewRef(screen);
 }
@@ -804,7 +800,7 @@ PYWRAP1(set_tab_bar_render_data) {
     Screen *screen;
     PA("KOIIII", &os_window_id, &screen, &g.left, &g.top, &g.right, &g.bottom);
     WITH_OS_WINDOW(os_window_id)
-        init_window_render_data(&os_window->tab_bar_render_data, os_window, g, screen);
+        init_window_render_data(&os_window->tab_bar_render_data, g, screen);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }
@@ -984,7 +980,7 @@ PYWRAP1(set_window_render_data) {
     PA("KKKOIIII", &os_window_id, &tab_id, &window_id, &screen, B(left), B(top), B(right), B(bottom));
 
     WITH_WINDOW(os_window_id, tab_id, window_id);
-        init_window_render_data(&window->render_data, osw, g, screen);
+        init_window_render_data(&window->render_data, g, screen);
     END_WITH_WINDOW;
     Py_RETURN_NONE;
 #undef B

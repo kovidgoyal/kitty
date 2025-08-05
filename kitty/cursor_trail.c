@@ -1,6 +1,9 @@
 #include <float.h>
 #include "state.h"
 
+#define WD w->render_data
+#define EDGE(axis, index) ct->cursor_edge_##axis[index]
+
 inline static float
 norm(float x, float y) {
     return sqrtf(x * x + y * y);
@@ -8,32 +11,32 @@ norm(float x, float y) {
 
 static void
 update_cursor_trail_target(CursorTrail *ct, Window *w) {
-#define EDGE(axis, index) ct->cursor_edge_##axis[index]
-#define WD w->render_data
+    float dy = 2.f/WD.screen->lines, dx = 2.f/WD.screen->columns;
     float left = FLT_MAX, right = FLT_MAX, top = FLT_MAX, bottom = FLT_MAX;
+    static const float xstart = -1.f, ystart = 1.f;
     switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
         case CURSOR_BEAM:
         case CURSOR_UNDERLINE:
-            left = WD.xstart + WD.screen->cursor_render_info.x * WD.dx;
-            bottom = WD.ystart - (WD.screen->cursor_render_info.y + 1) * WD.dy;
+            left = xstart + WD.screen->cursor_render_info.x * dx;
+            bottom = ystart - (WD.screen->cursor_render_info.y + 1) * dy;
         default:
             break;
     }
     switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
-            right = left + WD.dx;
-            top = bottom + WD.dy;
+            right = left + dx;
+            top = bottom + dy;
             break;
         case CURSOR_BEAM:
-            right = left + WD.dx / WD.screen->cell_size.width * OPT(cursor_beam_thickness);
-            top = bottom + WD.dy;
+            right = left + dx / WD.screen->cell_size.width * OPT(cursor_beam_thickness);
+            top = bottom + dy;
             break;
         case CURSOR_UNDERLINE:
-            right = left + WD.dx;
-            top = bottom + WD.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
+            right = left + dx;
+            top = bottom + dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
             break;
         default:
             break;
@@ -53,8 +56,9 @@ should_skip_cursor_trail_update(CursorTrail *ct, Window *w, OSWindow *os_window)
     }
 
     if (OPT(cursor_trail_start_threshold) > 0 && !ct->needs_render) {
-        int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / WD.dx);
-        int dy = (int)round((ct->corner_y[0] - EDGE(y, 0)) / WD.dy);
+        float fdy = 2.f/WD.screen->lines, fdx = 2.f/WD.screen->columns;
+        int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / fdx);
+        int dy = (int)round((ct->corner_y[0] - EDGE(y, 0)) / fdy);
         if (abs(dx) + abs(dy) <= OPT(cursor_trail_start_threshold)) {
             return true;
         }
@@ -140,10 +144,11 @@ static void
 update_cursor_trail_needs_render(CursorTrail *ct, Window *w) {
     static const int corner_index[2][4] = {{1, 1, 0, 0}, {0, 1, 1, 0}};
     ct->needs_render = false;
+    float dy = 2.f/WD.screen->lines, dx = 2.f/WD.screen->columns;
 
     // check if any corner is still far from the cursor corner, so it should be rendered
-    const float dx_threshold = WD.dx / WD.screen->cell_size.width * 0.5f;
-    const float dy_threshold = WD.dy / WD.screen->cell_size.height * 0.5f;
+    const float dx_threshold = dx / WD.screen->cell_size.width * 0.5f;
+    const float dy_threshold = dy / WD.screen->cell_size.height * 0.5f;
     for (int i = 0; i < 4; ++i) {
         float dx = fabsf(EDGE(x, corner_index[0][i]) - ct->corner_x[i]);
         float dy = fabsf(EDGE(y, corner_index[1][i]) - ct->corner_y[i]);

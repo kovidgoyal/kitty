@@ -17,13 +17,11 @@
 
 /*
  * TODO: for shader refactoring
- * Port graphics rendering
+ * Port graphics rendering and test graphics in all 3 layers
  * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
  * the new graphics shader.
  * background image with tint and various layout options in both cell and borders shaders
- * test graphics in all 3 layers
  * window logo image that is in the under foreground layer I think? need to check
- * remove startx, starty, dx, dy from WindowRenderData
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -508,7 +506,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
 }
 
 static bool
-cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, FONTS_DATA_HANDLE fonts_data) {
+cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_data) {
     size_t sz;
     CELL_BUFFERS;
     void *address;
@@ -548,7 +546,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 }
 
 #define update_graphics_data(grman) \
-    grman_update_layers(grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines, screen->cell_size)
+    grman_update_layers(grman, screen->scrolled_by, -1.f, 1.f, 2.f/screen->columns, 2.f/screen->lines, screen->columns, screen->lines, screen->cell_size)
 
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) {
@@ -1031,10 +1029,10 @@ blank_canvas(float background_opacity, color_type color) {
 }
 
 bool
-send_cell_data_to_gpu(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
+send_cell_data_to_gpu(ssize_t vao_idx, Screen *screen, OSWindow *os_window) {
     bool changed = false;
     if (os_window->fonts_data) {
-        if (cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, os_window->fonts_data)) changed = true;
+        if (cell_prepare_to_render(vao_idx, screen, os_window->fonts_data)) changed = true;
     }
     return changed;
 }
