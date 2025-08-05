@@ -87,6 +87,8 @@ typedef struct {
     } last_ime_pos;
 } OverlayLine;
 
+typedef struct ScreenLayer { uint32_t id, width, height, framebuffer_id; } ScreenLayer;
+
 typedef struct {
     PyObject_HEAD
 
@@ -101,8 +103,9 @@ typedef struct {
         index_type lines, columns;
         color_type cursor_bg;
         struct {
-            struct { float intensity; color_type color; } visual_bell;
-            struct { float frac, alpha; color_type color; unsigned cell_height, cell_width; } scroll_bar;
+            struct { bool was_drawn; float intensity; color_type color; } visual_bell;
+            struct { bool was_drawn; float frac, alpha; color_type color; unsigned cell_height, cell_width; } scroll_bar;
+            struct { hyperlink_id_type link; bool along_bottom, was_drawn; } hyperlink_target;
         } ui_layer;
         struct {
             int x;
@@ -188,9 +191,7 @@ typedef struct {
     ListOfChars *lc;
     monotonic_t parsing_at;
     struct {
-        struct {
-            uint32_t id, width, height, framebuffer_id;
-        } under_bg, under_fg, over_fg, ui;
+        ScreenLayer under_bg, under_fg, over_fg, ui;
     } textures;
 } Screen;
 

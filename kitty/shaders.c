@@ -25,9 +25,9 @@
  * test graphics in all 3 layers
  * window logo image that is in the under foreground layer I think? need to check
  * test that window numbering and URL hover rendering both still work
- * test cursor trail and scroll indicator rendering
+ * test cursor trail rendering
  * remove startx, starty, dx, dy from WindowRenderData
- * fix rendering during live resize
+ * fix rendering during live resize check the window size label and stretching of window content
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -36,13 +36,22 @@
 enum {
     CELL_PROGRAM, CELL_TRANSPARENT_PROGRAM, CELL_LAYERS_PROGRAM, CELL_LAYERS_TRANSPARENT_PROGRAM, CELL_PROGRAM_SENTINEL,
     BORDERS_PROGRAM,
-    GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM,
+    GRAPHICS_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM,
     BGIMAGE_PROGRAM,
     TINT_PROGRAM,
     TRAIL_PROGRAM,
     NUM_PROGRAMS
 };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT, SPRITE_DECORATIONS_MAP_UNIT, UNDER_BG_LAYER_UNIT, UNDER_FG_LAYER_UNIT, OVER_FG_LAYER_UNIT, UI_LAYER_UNIT };
+
+typedef struct UIRenderData {
+    unsigned screen_width, screen_height, cell_width, cell_height, screen_left, screen_top, full_framebuffer_width, full_framebuffer_height;
+    Window *window; Screen *screen; OSWindow *os_window;
+    GraphicsRenderData grd;
+    WindowLogoRenderData *window_logo;
+    float inactive_text_alpha;
+    bool has_under_bg, has_under_fg, has_over_fg, has_ui;
+} UIRenderData;
 
 // Sprites {{{
 typedef struct {
@@ -278,13 +287,6 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
 // }}}
 
 // Cell {{{
-
-typedef struct CellRenderData {
-    struct {
-        GLfloat xstart, ystart, dx, dy, width, height;
-    } gl;
-    float x_ratio, y_ratio;
-} CellRenderData;
 
 typedef struct {
     UniformBlock render_data;
@@ -572,12 +574,11 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 }
 
 static void
-draw_graphics(int program, ssize_t vao_idx, ImageRenderData *data, GLuint start, GLuint count, ImageRect viewport) {
+draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, float inactive_text_alpha) {
     bind_program(program);
+    glUniform1f(graphics_program_layouts[program].uniforms.inactive_text_alpha, inactive_text_alpha);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     GraphicsUniforms *u = &graphics_program_layouts[program].uniforms;
-    glUniform4f(u->viewport, viewport.left, viewport.top, viewport.right, viewport.bottom);
-    glEnable(GL_CLIP_DISTANCE0); glEnable(GL_CLIP_DISTANCE1); glEnable(GL_CLIP_DISTANCE2); glEnable(GL_CLIP_DISTANCE3);
     for (GLuint i=0; i < count;) {
         ImageRenderData *group = data + start + i;
         glBindTexture(GL_TEXTURE_2D, group->texture_id);
@@ -589,8 +590,6 @@ draw_graphics(int program, ssize_t vao_idx, ImageRenderData *data, GLuint start,
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         }
     }
-    glDisable(GL_CLIP_DISTANCE0); glDisable(GL_CLIP_DISTANCE1); glDisable(GL_CLIP_DISTANCE2); glDisable(GL_CLIP_DISTANCE3);
-    bind_vertex_array(vao_idx);
 }
 
 static ImageRenderData*
@@ -630,13 +629,8 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     } else {
         BLEND_ONTO_OPAQUE;
     }
-    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, data, 0, 1, (ImageRect){-1, 1, 1, -1});
+    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, data, 0, 1, 1.0);
     glDisable(GL_BLEND);
-}
-
-static ImageRect
-viewport_for_cells(const CellRenderData *crd) {
-    return (ImageRect){crd->gl.xstart, crd->gl.ystart, crd->gl.xstart + crd->gl.width, crd->gl.ystart - crd->gl.height};
 }
 
 static bool
@@ -662,6 +656,75 @@ ensure_blank_texture(void) {
     return texture_id;
 }
 
+static bool
+ensure_layer_ready_to_render(const UIRenderData *ui, ScreenLayer *which) {
+    bool needs_redraw = false;
+    if (which->width != ui->screen_width || which->height != ui->screen_height) {
+        if (which->id) free_texture(&which->id);
+        if (which->framebuffer_id) free_framebuffer(&which->framebuffer_id);
+    }
+    if (!which->id) {
+        glGenTextures(1, &which->id);
+        glGenFramebuffers(1, &which->framebuffer_id);
+        which->width = ui->screen_width; which->height = ui->screen_height;
+        glBindTexture(GL_TEXTURE_2D, which->id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, which->width, which->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindFramebuffer(GL_FRAMEBUFFER, which->framebuffer_id);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, which->id, 0);
+        check_framebuffer_status_or_die();
+        needs_redraw = true;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, which->framebuffer_id);
+    return needs_redraw;
+}
+
+static void
+save_texture_as_png(GLuint texture_id, unsigned width, unsigned height, const char *filename) {
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    size_t sz = width * height * sizeof(uint32_t);
+    uint32_t* data = malloc(sz);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    const char *png = png_from_32bit_rgba(data, width, height, &sz, true);
+    if (!sz) fatal("Failed to save PNG to %s with error: %s", filename, png);
+    free(data);
+    FILE* file = fopen(filename, "wb");
+    fwrite(png, 1, sz, file);
+    fclose(file);
+}
+
+static void
+set_cell_uniforms(bool force) {
+    static bool constants_set = false;
+    if (!constants_set || force) {
+        float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
+        float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
+        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_ALPHA_MASK_PROGRAM; i++) {
+            bind_program(i); glUniform1i(graphics_program_layouts[i].uniforms.image, GRAPHICS_UNIT);
+        }
+        for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
+            bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
+            glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
+            glUniform1i(cu->under_bg_layer, UNDER_BG_LAYER_UNIT);
+            glUniform1i(cu->under_fg_layer, UNDER_FG_LAYER_UNIT);
+            glUniform1i(cu->over_fg_layer, OVER_FG_LAYER_UNIT);
+            glUniform1i(cu->ui_layer, UI_LAYER_UNIT);
+            glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
+            glUniform1f(cu->dim_opacity, OPT(dim_opacity));
+            glUniform1f(cu->text_contrast, text_contrast);
+            glUniform1f(cu->text_gamma_adjustment, text_gamma_adjustment);
+        }
+        constants_set = true;
+    }
+}
+
+
+
+
+// UI Layer {{{
 static Animation *default_visual_bell_animation = NULL;
 
 static float
@@ -684,10 +747,6 @@ get_visual_bell_intensity(Screen *screen) {
     return 0.0f;
 }
 
-typedef struct UIRenderData {
-    unsigned screen_width, screen_height, cell_width, cell_height, screen_left, screen_top;
-} UIRenderData;
-
 static void
 draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
     glEnable(GL_BLEND);
@@ -703,21 +762,20 @@ draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
     glUniform4f(tint_program_layout.uniforms.tint_color, C(r), C(g), C(b), C(1));
 #undef C
     glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
-    glDisable(GL_FRAMEBUFFER_SRGB);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glDisable(GL_BLEND);
 }
 
 static bool
-draw_scroll_indicator(color_type bar_color, GLfloat alpha, float frac, UIRenderData ui) {
+draw_scroll_indicator(color_type bar_color, GLfloat alpha, float frac, const UIRenderData *ui) {
     glEnable(GL_BLEND);
     BLEND_PREMULT;
     bind_program(TINT_PROGRAM);
 #define C(shift) srgb_color((bar_color >> shift) & 0xFF) * alpha
     glUniform4f(tint_program_layout.uniforms.tint_color, C(16), C(8), C(0), alpha);
 #undef C
-    float bar_width = 0.5f * gl_size(ui.cell_width, ui.screen_width);
-    float bar_height = gl_size(ui.cell_height, ui.screen_height);
+    float bar_width = 0.5f * gl_size(ui->cell_width, ui->screen_width);
+    float bar_height = gl_size(ui->cell_height, ui->screen_height);
     float bottom = -1.f + MAX(0, 2.f - bar_height) * frac;
     glUniform4f(tint_program_layout.uniforms.edges, 1.f - bar_width, bottom + bar_height, 1.f, bottom);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -725,190 +783,10 @@ draw_scroll_indicator(color_type bar_color, GLfloat alpha, float frac, UIRenderD
     return true;
 }
 
-static void
-save_texture_as_png(GLuint texture_id, unsigned width, unsigned height, const char *filename) {
-    glBindTexture(GL_TEXTURE_2D, texture_id);
-    size_t sz = width * height * sizeof(uint32_t);
-    uint32_t* data = malloc(sz);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    const char *png = png_from_32bit_rgba(data, width, height, &sz, true);
-    if (!sz) fatal("Failed to save PNG to %s with error: %s", filename, png);
-    free(data);
-    FILE* file = fopen(filename, "wb");
-    fwrite(png, 1, sz, file);
-    fclose(file);
-}
-
-
-static bool
-update_ui_layer(Screen *screen, UIRenderData ui, bool visual_bell_drawn, bool scrollback_indicator_drawn) {
-#define last_ui screen->last_rendered.ui_layer
-    GLfloat intensity = 0; color_type flash = 0;
-    if (visual_bell_drawn) {
-        intensity = get_visual_bell_intensity(screen);
-#define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
-    flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
-#undef COLOR
-    }
-#define lvb last_ui.visual_bell
-    bool visual_bell_needs_redraw = intensity != lvb.intensity || flash != lvb.color;
-    lvb.intensity = intensity;
-    lvb.color = flash;
-    color_type bar_color = 0;
-    GLfloat bar_alpha = OPT(scrollback_indicator_opacity);
-    float bar_frac = 0;
-    if (scrollback_indicator_drawn) {
-        bar_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg).rgb;
-        bar_frac = (float)screen->scrolled_by / (float)screen->historybuf->count;
-    }
-
-#define lsb last_ui.scroll_bar
-    bool scrollbar_needs_redraw = (lsb.frac != bar_frac || lsb.color != bar_color ||
-            lsb.cell_height != ui.cell_height || lsb.alpha != bar_alpha || lsb.cell_width != ui.cell_width);
-    lsb.alpha = bar_alpha; lsb.cell_height = ui.cell_height; lsb.cell_width = ui.cell_width; lsb.color = bar_color;
-    lsb.frac = bar_frac;
-
-    if (!scrollbar_needs_redraw && !visual_bell_needs_redraw) return false;
-    blank_canvas(0, 0);  // clear the framebuffer
-    save_viewport_using_bottom_left_origin(0, 0, ui.screen_width, ui.screen_height);
-    if (visual_bell_drawn && intensity > 0) draw_visual_bell_flash(lvb.intensity, lvb.color);
-    if (scrollback_indicator_drawn) draw_scroll_indicator(bar_color, bar_alpha, bar_frac, ui);
-    restore_viewport();
-    if (0) save_texture_as_png(screen->textures.ui.id, ui.screen_width, ui.screen_height, "/tmp/ui.png");
-    return true;
-#undef lsb
-#undef lvb
-#undef last_ui
-}
-
-static void
-draw_cells_with_layers(
-    bool for_final_output, OSWindow *os_window, Screen *screen, UIRenderData ui, bool is_semi_transparent, GraphicsRenderData grd, WindowLogoRenderData *wl
-) {
-    bool has_layers = false;
-    bool has_background_image = has_bgimage(os_window);
-    GLfloat has_under_bg = 0;
-    GLuint blank_texture = ensure_blank_texture();
-
-#define USE_BLANK(which) { if (screen->textures.which.id) { free_texture(&screen->textures.which.id); } glBindTexture(GL_TEXTURE_2D, blank_texture); }
-#define ENSURE_TEXTURE(which) \
-    has_layers = true; bool texture_reset = false; \
-    if (screen->textures.which.width != ui.screen_width || screen->textures.which.height != ui.screen_height) { \
-        if (screen->textures.which.id) free_texture(&screen->textures.which.id); \
-        if (screen->textures.which.framebuffer_id) free_framebuffer(&screen->textures.which.framebuffer_id); \
-    } \
-    if (!screen->textures.which.id) { \
-        glGenTextures(1, &screen->textures.which.id); \
-        glGenFramebuffers(1, &screen->textures.which.framebuffer_id); \
-        screen->textures.which.width = ui.screen_width; screen->textures.which.height = ui.screen_height; \
-        glBindTexture(GL_TEXTURE_2D, screen->textures.which.id); \
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); \
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); \
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); \
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); \
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, screen->textures.which.width, screen->textures.which.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL); \
-        glBindFramebuffer(GL_FRAMEBUFFER, screen->textures.which.framebuffer_id); \
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screen->textures.which.id, 0); \
-        check_framebuffer_status_or_die(); \
-        texture_reset = true; \
-    } \
-    glBindTexture(GL_TEXTURE_2D, screen->textures.which.id); \
-    glBindFramebuffer(GL_FRAMEBUFFER, screen->textures.which.framebuffer_id); \
-
-    glActiveTexture(GL_TEXTURE0 + UNDER_BG_LAYER_UNIT);
-    if (grd.num_of_below_refs || has_background_image) {
-        ENSURE_TEXTURE(under_bg);
-        if (texture_reset) zero_at_ptr(&screen->last_rendered.under_bg_layer);
-        has_under_bg = 1.;
-    } else USE_BLANK(under_bg);
-
-    glActiveTexture(GL_TEXTURE0 + UNDER_FG_LAYER_UNIT);
-    if (grd.num_of_below_refs || wl) {
-        ENSURE_TEXTURE(under_fg);
-        if (texture_reset) zero_at_ptr(&screen->last_rendered.under_fg_layer);
-    } else USE_BLANK(under_fg);
-
-    glActiveTexture(GL_TEXTURE0 + OVER_FG_LAYER_UNIT);
-    if (grd.num_of_positive_refs) {
-        ENSURE_TEXTURE(over_fg);
-        if (texture_reset) zero_at_ptr(&screen->last_rendered.over_fg_layer);
-    } else USE_BLANK(over_fg);
-
-    glActiveTexture(GL_TEXTURE0 + UI_LAYER_UNIT);
-    bool visual_bell_drawn = screen->start_visual_bell_at > 0;
-    bool scrollback_indicator_drawn = !(OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by);
-    if (visual_bell_drawn || scrollback_indicator_drawn) {
-        ENSURE_TEXTURE(ui);
-        if (texture_reset) zero_at_ptr(&screen->last_rendered.ui_layer);
-        update_ui_layer(screen, ui, visual_bell_drawn, scrollback_indicator_drawn);
-    } else USE_BLANK(ui);
-#undef ENSURE_TEXTURE
-#undef USE_BLANK
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    if (is_semi_transparent) {
-        bind_program(has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM);
-        glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.for_final_output, for_final_output ? 1. : 0.);
-        glDisable(GL_FRAMEBUFFER_SRGB);
-        if (for_final_output) {
-            glDisable(GL_BLEND);
-        } else {
-            glEnable(GL_BLEND);
-            BLEND_PREMULT;
-        }
-    } else {
-        bind_program(has_layers ? CELL_LAYERS_PROGRAM : CELL_PROGRAM);
-        glDisable(GL_BLEND);
-        if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB); else glDisable(GL_FRAMEBUFFER_SRGB);
-    }
-    glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.has_under_bg, has_under_bg);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-}
-
-static float prev_inactive_text_alpha = -1;
-
-static void
-set_cell_uniforms(float current_inactive_text_alpha, bool force) {
-    static bool constants_set = false;
-    if (!constants_set || force) {
-        float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
-        float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
-
-        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_PREMULT_PROGRAM; i++) {
-            bind_program(i); glUniform1i(graphics_program_layouts[i].uniforms.image, GRAPHICS_UNIT);
-        }
-        for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
-            bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
-            glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
-            glUniform1i(cu->under_bg_layer, UNDER_BG_LAYER_UNIT);
-            glUniform1i(cu->under_fg_layer, UNDER_FG_LAYER_UNIT);
-            glUniform1i(cu->over_fg_layer, OVER_FG_LAYER_UNIT);
-            glUniform1i(cu->ui_layer, UI_LAYER_UNIT);
-            glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
-            glUniform1f(cu->dim_opacity, OPT(dim_opacity));
-            glUniform1f(cu->text_contrast, text_contrast);
-            glUniform1f(cu->text_gamma_adjustment, text_gamma_adjustment);
-        }
-        constants_set = true;
-    }
-    if (current_inactive_text_alpha != prev_inactive_text_alpha || force) {
-        prev_inactive_text_alpha = current_inactive_text_alpha;
-        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_PREMULT_PROGRAM; i++) {
-            bind_program(i); glUniform1f(graphics_program_layouts[i].uniforms.inactive_text_alpha, current_inactive_text_alpha);
-        }
-#define S(prog) bind_program(prog); glUniform1f(cell_program_layouts[prog].uniforms.inactive_text_alpha, current_inactive_text_alpha);
-        S(CELL_PROGRAM); S(CELL_TRANSPARENT_PROGRAM); S(CELL_LAYERS_PROGRAM); S(CELL_LAYERS_TRANSPARENT_PROGRAM);
-#undef S
-    }
-}
-
-static GLfloat
-render_a_bar(OSWindow *os_window, Screen *screen, const CellRenderData *crd, WindowBarData *bar, PyObject *title, bool along_bottom) {
-    GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
-    GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
-    unsigned bar_height = os_window->fonts_data->fcm.cell_height + 2;
-    if (!bar_height || right <= left) return 0;
-    unsigned bar_width = (unsigned)ceilf(right - left);
+static unsigned
+render_a_bar(const UIRenderData *ui, Screen *screen, WindowBarData *bar, PyObject *title, bool along_bottom) {
+    unsigned bar_height = ui->cell_height + 2;
+    unsigned bar_width = ui->screen_width;
     if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
         free(bar->buf);
         bar->buf = malloc((size_t)4 * bar_width * bar_height);
@@ -923,20 +801,14 @@ render_a_bar(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Win
         if (!title) return 0;
         snprintf(titlebuf, arraysz(titlebuf), " %s", PyUnicode_AsUTF8(title));
 #define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback))
-        if (!draw_window_title(os_window, titlebuf, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), bar->buf, bar_width, bar_height)) return 0;
+        if (!draw_window_title(ui->os_window->fonts_data->font_sz_in_pts, ui->os_window->fonts_data->logical_dpi_y, titlebuf, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), bar->buf, bar_width, bar_height)) return 0;
 #undef RGBCOL
         Py_CLEAR(bar->last_drawn_title_object_id);
-        bar->last_drawn_title_object_id = title;
-        Py_INCREF(bar->last_drawn_title_object_id);
+        bar->last_drawn_title_object_id = Py_NewRef(title);
     }
     static ImageRenderData data = {.group_count=1};
-    GLfloat xstart, ystart;
-    xstart = clamp_position_to_nearest_pixel(crd->gl.xstart, os_window->viewport_width);
-    GLfloat height_gl = gl_size(bar_height, os_window->viewport_height);
-    if (along_bottom) ystart = crd->gl.ystart - crd->gl.height + height_gl;
-    else ystart = clamp_position_to_nearest_pixel(crd->gl.ystart, os_window->viewport_height);
-    gpu_data_for_image(&data, xstart, ystart, xstart + crd->gl.width, ystart - height_gl);
-    if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
+    gpu_data_for_image(&data, -1, 1, 1, -1);
+    glGenTextures(1, &data.texture_id);
     glBindTexture(GL_TEXTURE_2D, data.texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -944,17 +816,22 @@ render_a_bar(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Win
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
-    set_cell_uniforms(1.f, false);
     bind_program(GRAPHICS_PROGRAM);
     glEnable(GL_BLEND);
-    if (os_window->is_semi_transparent) { BLEND_PREMULT; } else { BLEND_ONTO_OPAQUE; }
-    draw_graphics(GRAPHICS_PROGRAM, 0, &data, 0, 1, viewport_for_cells(crd));
+    BLEND_PREMULT;
+    // current viewport is (0, 0, ui->screen_width, ui->screen_height) coz we are rendering to FBO texture
+    if (along_bottom) save_viewport_using_bottom_left_origin(0, 0, ui->screen_width, bar_height);
+    else save_viewport_using_top_left_origin(0, 0, ui->screen_width, bar_height, ui->screen_height);
+    draw_graphics(GRAPHICS_PROGRAM, &data, 0, 1, 1.f);
+    restore_viewport();
+    free_texture(&data.texture_id);
     glDisable(GL_BLEND);
-    return height_gl;
+    return bar_height;
 }
 
 static void
-draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Window *window) {
+draw_hyperlink_target(Screen *screen, const UIRenderData *ui, const bool along_bottom) {
+    Window *window = ui->window;
     WindowBarData *bd = &window->url_target_bar_data;
     if (bd->hyperlink_id_for_title_object != screen->current_hyperlink_under_mouse.id) {
         bd->hyperlink_id_for_title_object = screen->current_hyperlink_under_mouse.id;
@@ -966,61 +843,193 @@ draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData 
         bd->needs_render = true;
     }
     if (bd->last_drawn_title_object_id == NULL) return;
-    const bool along_bottom = screen->current_hyperlink_under_mouse.y < 3;
-    PyObject *ref = bd->last_drawn_title_object_id;
-    Py_INCREF(ref);
-    render_a_bar(os_window, screen, crd, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
+    PyObject *ref = Py_NewRef(bd->last_drawn_title_object_id);  // render_a_bar clears bd->last_drawn_title_object_id
+    render_a_bar(ui, screen, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
     Py_DECREF(ref);
 }
 
+// static void
+// draw_window_number(OSWindow *os_window, Screen *screen, const UIRenderData *ui, Window *window) {
+//     GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
+//     GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
+//     unsigned title_bar_height = 0;
+//     size_t requested_height = (size_t)(os_window->viewport_height * crd->gl.height / 2.f);
+//     if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->fcm.cell_height + 1) * 2)) {
+//         title_bar_height = render_a_bar(ui, screen, &window->title_bar_data, window->title, false);
+//     }
+//     GLfloat ystart = crd->gl.ystart, height = crd->gl.height, xstart = crd->gl.xstart, width = crd->gl.width;
+//     if (title_bar_height > 0) {
+//         ystart -= title_bar_height;
+//         height -= title_bar_height;
+//     }
+//     ystart -= crd->gl.dy / 2.f; height -= crd->gl.dy;  // top and bottom margins
+//     xstart += crd->gl.dx / 2.f; width -= crd->gl.dx;  // left and right margins
+//     GLfloat height_gl = MIN(MIN(12 * crd->gl.dy, height), width);
+//     requested_height = (size_t)(os_window->viewport_height * height_gl / 2.f);
+//     if (requested_height < 4) return;
+// #define lr screen->last_rendered_window_char
+//     if (!lr.canvas || lr.ch != screen->display_window_char || lr.requested_height != requested_height) {
+//         free(lr.canvas); lr.canvas = NULL;
+//         lr.requested_height = requested_height; lr.height_px = requested_height; lr.ch = 0;
+//         lr.canvas = draw_single_ascii_char(screen->display_window_char, &lr.width_px, &lr.height_px);
+//         if (lr.height_px < 4 || lr.width_px < 4 || !lr.canvas) return;
+//         lr.ch = screen->display_window_char;
+//     }
+//
+//     GLfloat width_gl = gl_size(lr.width_px, os_window->viewport_width);
+//     height_gl = gl_size(lr.height_px, os_window->viewport_height);
+//     left = xstart + (width - width_gl) / 2.f;
+//     left = clamp_position_to_nearest_pixel(left, os_window->viewport_width);
+//     right = left + width_gl;
+//     GLfloat top = ystart - (height - height_gl) / 2.f;
+//     top = clamp_position_to_nearest_pixel(top, os_window->viewport_height);
+//     GLfloat bottom = top - height_gl;
+//     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+//     ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
+// #undef lr
+//     gpu_data_for_image(ird, left, top, right, bottom);
+//     glEnable(GL_BLEND);
+//     BLEND_PREMULT;
+//     glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
+//     color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
+//     color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, digit_color);
+//     glUniform4f(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, 0.f, 0.f, 0.f, 0.f);
+//     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, ird, 0, 1, 1.f);
+//     glDisable(GL_BLEND);
+// }
+//
+static bool
+update_ui_layer(const UIRenderData *ui) {
+    Screen *screen = ui->screen;
+    bool visual_bell_drawn = screen->start_visual_bell_at > 0;
+    bool scrollback_indicator_drawn = !(OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by);
+    bool hyperlink_target_drawn = OPT(show_hyperlink_targets) && screen->current_hyperlink_under_mouse.id && ui->window && !is_mouse_hidden(ui->os_window);
+    bool ui_layer_present = visual_bell_drawn || scrollback_indicator_drawn || hyperlink_target_drawn;
+    if (!ui_layer_present) return false;
+    bool needs_redraw = ensure_layer_ready_to_render(ui, &screen->textures.ui);
+
+#define last_ui screen->last_rendered.ui_layer
+#define lvb last_ui.visual_bell
+    GLfloat intensity = 0; color_type flash = 0;
+    if (visual_bell_drawn) {
+        intensity = get_visual_bell_intensity(screen);
+#define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
+    flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
+#undef COLOR
+    }
+    bool visual_bell_needs_redraw = visual_bell_drawn != lvb.was_drawn || intensity != lvb.intensity || flash != lvb.color;
+    lvb.intensity = intensity; lvb.color = flash; lvb.was_drawn = visual_bell_drawn;
+
+#define lsb last_ui.scroll_bar
+    color_type bar_color = 0;
+    GLfloat bar_alpha = OPT(scrollback_indicator_opacity);
+    float bar_frac = 0;
+    if (scrollback_indicator_drawn) {
+        bar_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg).rgb;
+        bar_frac = (float)screen->scrolled_by / (float)screen->historybuf->count;
+    }
+    bool scrollbar_needs_redraw = (
+        lsb.was_drawn != scrollback_indicator_drawn || lsb.frac != bar_frac || lsb.color != bar_color ||
+        lsb.cell_height != ui->cell_height || lsb.alpha != bar_alpha || lsb.cell_width != ui->cell_width);
+    lsb.alpha = bar_alpha; lsb.cell_height = ui->cell_height; lsb.cell_width = ui->cell_width; lsb.color = bar_color;
+    lsb.frac = bar_frac; lsb.was_drawn = scrollback_indicator_drawn;
+
+#define ht last_ui.hyperlink_target
+    bool along_bottom = screen->current_hyperlink_under_mouse.y < 3;
+    bool hyperlink_target_needs_redraw = (
+        ht.was_drawn != hyperlink_target_drawn || ht.link != screen->current_hyperlink_under_mouse.id ||
+        ht.along_bottom != along_bottom);
+    ht.link = screen->current_hyperlink_under_mouse.id; ht.along_bottom = along_bottom;
+    ht.was_drawn = hyperlink_target_drawn;
+
+    needs_redraw |= scrollbar_needs_redraw || visual_bell_needs_redraw || hyperlink_target_needs_redraw;
+    if (needs_redraw) {
+        blank_canvas(0, 0);  // clear the framebuffer
+        if (visual_bell_drawn && intensity > 0) draw_visual_bell_flash(lvb.intensity, lvb.color);
+        if (scrollback_indicator_drawn) draw_scroll_indicator(bar_color, bar_alpha, bar_frac, ui);
+        if (hyperlink_target_drawn) draw_hyperlink_target(screen, ui, ht.along_bottom);
+        if (0) save_texture_as_png(screen->textures.ui.id, ui->screen_width, ui->screen_height, "/tmp/ui.png");
+    }
+    return true;
+#undef ht
+#undef lsb
+#undef lvb
+#undef last_ui
+}
+// }}}
+
+static bool
+update_under_bg_layer(const UIRenderData *ui) {
+    bool has_background_image = has_bgimage(ui->os_window);
+    if (!has_background_image && !ui->grd.num_of_below_refs) return false;
+    return true;
+}
+
+static bool
+update_under_fg_layer(const UIRenderData *ui) {
+    if (!ui->window_logo && !ui->grd.num_of_below_refs) return false;
+    return true;
+}
+
+static bool
+update_over_fg_layer(const UIRenderData *ui) {
+    if (!ui->grd.num_of_positive_refs) return false;
+    return true;
+}
+
 static void
-draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Window *window) {
-    GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
-    GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
-    GLfloat title_bar_height = 0;
-    size_t requested_height = (size_t)(os_window->viewport_height * crd->gl.height / 2.f);
-    if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->fcm.cell_height + 1) * 2)) {
-        title_bar_height = render_a_bar(os_window, screen, crd, &window->title_bar_data, window->title, false);
-    }
-    GLfloat ystart = crd->gl.ystart, height = crd->gl.height, xstart = crd->gl.xstart, width = crd->gl.width;
-    if (title_bar_height > 0) {
-        ystart -= title_bar_height;
-        height -= title_bar_height;
-    }
-    ystart -= crd->gl.dy / 2.f; height -= crd->gl.dy;  // top and bottom margins
-    xstart += crd->gl.dx / 2.f; width -= crd->gl.dx;  // left and right margins
-    GLfloat height_gl = MIN(MIN(12 * crd->gl.dy, height), width);
-    requested_height = (size_t)(os_window->viewport_height * height_gl / 2.f);
-    if (requested_height < 4) return;
-#define lr screen->last_rendered_window_char
-    if (!lr.canvas || lr.ch != screen->display_window_char || lr.requested_height != requested_height) {
-        free(lr.canvas); lr.canvas = NULL;
-        lr.requested_height = requested_height; lr.height_px = requested_height; lr.ch = 0;
-        lr.canvas = draw_single_ascii_char(screen->display_window_char, &lr.width_px, &lr.height_px);
-        if (lr.height_px < 4 || lr.width_px < 4 || !lr.canvas) return;
-        lr.ch = screen->display_window_char;
+update_screen_layers(UIRenderData *ui) {
+    save_viewport_using_bottom_left_origin(0, 0, ui->screen_width, ui->screen_height);
+    ui->has_under_bg = update_under_bg_layer(ui);
+    ui->has_under_fg = update_under_fg_layer(ui);
+    ui->has_over_fg = update_over_fg_layer(ui);
+    ui->has_ui = update_ui_layer(ui);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    restore_viewport();
+}
+
+static void
+draw_cells_with_layers(bool for_final_output, const UIRenderData *ui, ssize_t vao_idx, bool is_semi_transparent) {
+    GLuint blank_texture = ensure_blank_texture();
+    bool has_layers = false;
+
+#define B(which, unit) \
+    glActiveTexture(GL_TEXTURE0 + unit); \
+    if (ui->has_##which) { has_layers = true; glBindTexture(GL_TEXTURE_2D, ui->screen->textures.which.id); } \
+    else { \
+        if (ui->screen->textures.which.id) free_texture(&ui->screen->textures.which.id); \
+        if (ui->screen->textures.which.framebuffer_id) free_framebuffer(&ui->screen->textures.which.framebuffer_id); \
+        glBindTexture(GL_TEXTURE_2D, blank_texture); \
     }
 
-    GLfloat width_gl = gl_size(lr.width_px, os_window->viewport_width);
-    height_gl = gl_size(lr.height_px, os_window->viewport_height);
-    left = xstart + (width - width_gl) / 2.f;
-    left = clamp_position_to_nearest_pixel(left, os_window->viewport_width);
-    right = left + width_gl;
-    GLfloat top = ystart - (height - height_gl) / 2.f;
-    top = clamp_position_to_nearest_pixel(top, os_window->viewport_height);
-    GLfloat bottom = top - height_gl;
-    bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-    ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
-#undef lr
-    gpu_data_for_image(ird, left, top, right, bottom);
-    glEnable(GL_BLEND);
-    BLEND_PREMULT;
-    glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
-    color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
-    color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, digit_color);
-    glUniform4f(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, 0.f, 0.f, 0.f, 0.f);
-    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, ird, 0, 1, viewport_for_cells(crd));
-    glDisable(GL_BLEND);
+    B(under_bg, UNDER_BG_LAYER_UNIT); B(under_fg, UNDER_FG_LAYER_UNIT); B(over_fg, OVER_FG_LAYER_UNIT);
+    B(ui, UI_LAYER_UNIT);
+#undef B
+
+    int program;
+    if (is_semi_transparent) {
+        bind_program((program = has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM));
+        glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.for_final_output, for_final_output ? 1. : 0.);
+        if (for_final_output) {
+            glDisable(GL_BLEND);
+        } else {
+            glEnable(GL_BLEND);
+            BLEND_PREMULT;
+        }
+    } else {
+        bind_program((program = has_layers ? CELL_LAYERS_PROGRAM : CELL_PROGRAM));
+        glDisable(GL_BLEND);
+        if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
+    }
+    glUniform1f(cell_program_layouts[program].uniforms.has_under_bg, ui->has_under_bg);
+    glUniform1f(cell_program_layouts[program].uniforms.inactive_text_alpha, ui->inactive_text_alpha);
+    CELL_BUFFERS;
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[program].render_data.index);
+    save_viewport_using_top_left_origin(
+        ui->screen_left, ui->screen_top, ui->screen_width, ui->screen_height, ui->full_framebuffer_height);
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, ui->screen->lines * ui->screen->columns);
+    restore_viewport();
+    glDisable(GL_FRAMEBUFFER_SRGB);
 }
 
 void
@@ -1043,63 +1052,55 @@ send_cell_data_to_gpu(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat d
 
 void
 draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
-    float x_ratio = 1., y_ratio = 1.;
-    if (os_window->live_resize.in_progress) {
-        x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
-        y_ratio = (float) os_window->viewport_height / (float) os_window->live_resize.height;
-    }
+    // float x_ratio = 1., y_ratio = 1.;
+    // if (os_window->live_resize.in_progress) {
+    //     x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
+    //     y_ratio = (float) os_window->viewport_height / (float) os_window->live_resize.height;
+    // }
     Screen *screen = srd->screen;
     CELL_BUFFERS;
-    CellRenderData crd = {
-        .gl={.xstart = srd->xstart, .ystart = srd->ystart, .dx = srd->dx * x_ratio, .dy = srd->dy * y_ratio},
-        .x_ratio=x_ratio, .y_ratio=y_ratio
-    };
-    crd.gl.width = crd.gl.dx * screen->columns; crd.gl.height = crd.gl.dy * screen->lines;
+    bind_vertex_array(srd->vao_idx);
     float min_bg_opacity = cell_update_uniform_block(
             srd->vao_idx, screen, uniform_buffer, &screen->cursor_render_info, os_window);
-
-    bind_vao_uniform_buffer(srd->vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
-    bind_vertex_array(srd->vao_idx);
-
     // We draw with inactive text alpha if:
     // - We're not drawing the tab bar
     // - There's only a single window and the os window is not focused
     // - There are multiple windows and the current window is not active
     float current_inactive_text_alpha = is_tab_bar || (!is_single_window && is_active_window) || (is_single_window && screen->cursor_render_info.is_focused) ? 1.0f : (float)OPT(inactive_text_alpha);
-    set_cell_uniforms(current_inactive_text_alpha, screen->reload_all_gpu_data);
-    screen->reload_all_gpu_data = false;
-    bool has_underlying_image = has_bgimage(os_window);
+    bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
     WindowLogoRenderData *wl;
     if (window && (wl = &window->window_logo) && wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance && wl->instance->load_from_disk_ok) {
-        has_underlying_image = true;
         set_on_gpu_state(window->window_logo.instance, true);
     } else wl = NULL;
-    ImageRenderData *scaled_render_data = NULL;
     GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
     GraphicsRenderData grd = grman_render_data(grman);
-    if (os_window->live_resize.in_progress && grd.count && (crd.x_ratio != 1 || crd.y_ratio != 1)) {
-        scaled_render_data = malloc(sizeof(scaled_render_data[0]) * grd.count);
-        if (scaled_render_data) {
-            memcpy(scaled_render_data, grd.images, sizeof(scaled_render_data[0]) * grd.count);
-            grd.images = scaled_render_data;
-            for (size_t i = 0; i < grd.count; i++)
-                scale_rendered_graphic(grd.images + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
-        }
-    }
-    has_underlying_image |= grd.num_of_below_refs > 0 || grd.num_of_negative_refs > 0;
-    (void)has_underlying_image;
-    bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
+    // if (os_window->live_resize.in_progress && grd.count && (crd.x_ratio != 1 || crd.y_ratio != 1)) {
+    //     scaled_render_data = malloc(sizeof(scaled_render_data[0]) * grd.count);
+    //     if (scaled_render_data) {
+    //         memcpy(scaled_render_data, grd.images, sizeof(scaled_render_data[0]) * grd.count);
+    //         grd.images = scaled_render_data;
+    //         for (size_t i = 0; i < grd.count; i++)
+    //             scale_rendered_graphic(grd.images + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
+    //     }
+    // }
     UIRenderData ui = {
-        srd->geometry.right - srd->geometry.left, srd->geometry.bottom - srd->geometry.top,
-        os_window->fonts_data->fcm.cell_width, os_window->fonts_data->fcm.cell_height,
-        srd->geometry.left, srd->geometry.top,
+        .screen_width = srd->geometry.right - srd->geometry.left,
+        .screen_height = srd->geometry.bottom - srd->geometry.top,
+        .cell_width = os_window->fonts_data->fcm.cell_width,
+        .cell_height = os_window->fonts_data->fcm.cell_height,
+        .screen_left = srd->geometry.left, .screen_top = srd->geometry.top,
+        .full_framebuffer_width = os_window->viewport_width, .full_framebuffer_height = os_window->viewport_height,
+        .window = window, .screen = screen, .os_window = os_window, .grd = grd, .window_logo = wl,
+        .inactive_text_alpha = current_inactive_text_alpha,
     };
-    save_viewport_using_top_left_origin(ui.screen_left, ui.screen_top, ui.screen_width, ui.screen_height);
-    draw_cells_with_layers(for_final_output, os_window, screen, ui, is_semi_transparent, grd, wl);
-    if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
-    if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id && !is_mouse_hidden(os_window)) draw_hyperlink_target(os_window, screen, &crd, window);
+    update_screen_layers(&ui);
+
+    set_cell_uniforms(screen->reload_all_gpu_data);
+    screen->reload_all_gpu_data = false;
+    ImageRenderData *scaled_render_data = NULL;
+    draw_cells_with_layers(for_final_output, &ui, srd->vao_idx, is_semi_transparent);
+    // if (window && screen->display_window_char) draw_window_number(os_window, screen, &ui, &crd, window);
     free(scaled_render_data);
-    restore_viewport();
 }
 // }}}
 
@@ -1152,7 +1153,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
         glUniform2ui(border_program_layout.uniforms.viewport, viewport_width, viewport_height);
         glDisable(GL_BLEND);
-        glDisable(GL_FRAMEBUFFER_SRGB);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
         unbind_program();
     }
@@ -1312,7 +1312,7 @@ bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
     C(CELL_PROGRAM); C(CELL_TRANSPARENT_PROGRAM); C(CELL_LAYERS_PROGRAM); C(CELL_LAYERS_TRANSPARENT_PROGRAM);
-    C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
+    C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

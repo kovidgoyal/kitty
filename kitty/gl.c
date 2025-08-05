@@ -133,16 +133,15 @@ save_viewport_using_bottom_left_origin(GLsizei newx, GLsizei newy, GLsizei width
 }
 
 void
-save_viewport_using_top_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height) {
+save_viewport_using_top_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height, GLsizei full_framebuffer_height) {
     // Converts the viewport defined by the specified arguments which are
     // assumed to be in the usual co-ord system with origin at top left to the
-    // OpenGL viewport co-ord system with origin at bottom left. Assumes that
-    // the current viewport is the full window. Use restore_viewport() to
-    // restore the viewport to what it was before.
+    // OpenGL viewport co-ord system with origin at bottom left.
+    // Use restore_viewport() to restore the viewport to what it was before.
     if (saved_viewports.used >= arraysz(saved_viewports.items)) fatal("Too many nested saved viewports");
     GLsizei *saved_viewport = saved_viewports.items[saved_viewports.used++];
     glGetIntegerv(GL_VIEWPORT, saved_viewport);
-    newy = saved_viewport[3] - (newy + height);
+    newy = full_framebuffer_height - (newy + height);
     glViewport(newx, newy, width, height);
 }
 

@@ -57,7 +57,7 @@ void bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index)
 void unbind_vertex_array(void);
 void unbind_program(void);
 GLuint compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * string);
-void save_viewport_using_top_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height);
+void save_viewport_using_top_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height, GLsizei full_framebuffer_height);
 void save_viewport_using_bottom_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height);
 void check_framebuffer_status_or_die(void);
 void restore_viewport(void);

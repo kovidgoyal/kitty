@@ -19,7 +19,6 @@ from .fast_data_types import (
     DIM,
     GLSL_VERSION,
     GRAPHICS_ALPHA_MASK_PROGRAM,
-    GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_PROGRAM,
     MARK,
     MARK_MASK,
@@ -201,7 +200,6 @@ class LoadShaderPrograms:
 
         for which, p in {
             'SIMPLE': GRAPHICS_PROGRAM,
-            'PREMULT': GRAPHICS_PREMULT_PROGRAM,
             'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
         }.items():
             graphics.apply_to_sources(frag=partial(resolve_graphics_fragment_defines, which))

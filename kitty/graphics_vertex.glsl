@@ -1,5 +1,5 @@
 out vec2 texcoord;
-uniform vec4 src_rect, dest_rect, viewport;
+uniform vec4 src_rect, dest_rect;
 
 #define left 0
 #define top 1
@@ -17,8 +17,4 @@ void main() {
     ivec2 pos = vertex_pos_map[gl_VertexID];
     texcoord = vec2(src_rect[pos.x], src_rect[pos.y]);
     gl_Position = vec4(dest_rect[pos.x], dest_rect[pos.y], 0, 1);
-    gl_ClipDistance[left] = gl_Position.x - viewport[left];
-    gl_ClipDistance[right] = viewport[right] - gl_Position.x;
-    gl_ClipDistance[top] = viewport[top] - gl_Position.y;
-    gl_ClipDistance[bottom] = gl_Position.y - viewport[bottom];
 }
