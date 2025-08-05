@@ -808,7 +808,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
-    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
+    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     br->is_dirty = false;
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(true, &TD, os_window, true, true, false, NULL);
     unsigned int num_of_visible_windows = 0;
@@ -870,7 +870,7 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress;
     if (w->viewport_size_dirty) {
         w->clear_count = 0;
-        update_surface_size(w->viewport_width, w->viewport_height, 0);
+        set_gpu_viewport(w->viewport_width, w->viewport_height);
         w->viewport_size_dirty = false;
         needs_render = true;
     }

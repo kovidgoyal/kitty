@@ -1,5 +1,4 @@
 #pragma kitty_include_shader <linear2srgb.glsl>
-uniform uvec2 viewport;
 uniform uint colors[9];
 uniform float background_opacity;
 uniform float gamma_lut[256];

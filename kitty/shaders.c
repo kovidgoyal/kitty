@@ -27,7 +27,6 @@
  * test that window numbering and URL hover rendering both still work
  * test cursor trail rendering
  * remove startx, starty, dx, dy from WindowRenderData
- * fix rendering during live resize check the window size label and stretching of window content
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -722,8 +721,6 @@ set_cell_uniforms(bool force) {
 }
 
 
-
-
 // UI Layer {{{
 static Animation *default_visual_bell_animation = NULL;
 
@@ -951,7 +948,6 @@ update_ui_layer(const UIRenderData *ui) {
 #undef lvb
 #undef last_ui
 }
-// }}}
 
 static bool
 update_under_bg_layer(const UIRenderData *ui) {
@@ -982,6 +978,7 @@ update_screen_layers(UIRenderData *ui) {
     bind_framebuffer_for_output(0);
     restore_viewport();
 }
+// }}}
 
 static void
 draw_cells_with_layers(bool for_final_output, const UIRenderData *ui, ssize_t vao_idx, bool is_semi_transparent) {
@@ -1047,11 +1044,6 @@ send_cell_data_to_gpu(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat d
 
 void
 draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
-    // float x_ratio = 1., y_ratio = 1.;
-    // if (os_window->live_resize.in_progress) {
-    //     x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
-    //     y_ratio = (float) os_window->viewport_height / (float) os_window->live_resize.height;
-    // }
     Screen *screen = srd->screen;
     CELL_BUFFERS;
     bind_vertex_array(srd->vao_idx);
@@ -1068,16 +1060,6 @@ draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_wind
         set_on_gpu_state(window->window_logo.instance, true);
     } else wl = NULL;
     GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
-    GraphicsRenderData grd = grman_render_data(grman);
-    // if (os_window->live_resize.in_progress && grd.count && (crd.x_ratio != 1 || crd.y_ratio != 1)) {
-    //     scaled_render_data = malloc(sizeof(scaled_render_data[0]) * grd.count);
-    //     if (scaled_render_data) {
-    //         memcpy(scaled_render_data, grd.images, sizeof(scaled_render_data[0]) * grd.count);
-    //         grd.images = scaled_render_data;
-    //         for (size_t i = 0; i < grd.count; i++)
-    //             scale_rendered_graphic(grd.images + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
-    //     }
-    // }
     UIRenderData ui = {
         .screen_width = srd->geometry.right - srd->geometry.left,
         .screen_height = srd->geometry.bottom - srd->geometry.top,
@@ -1085,7 +1067,7 @@ draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_wind
         .cell_height = os_window->fonts_data->fcm.cell_height,
         .screen_left = srd->geometry.left, .screen_top = srd->geometry.top,
         .full_framebuffer_width = os_window->viewport_width, .full_framebuffer_height = os_window->viewport_height,
-        .window = window, .screen = screen, .os_window = os_window, .grd = grd, .window_logo = wl,
+        .window = window, .screen = screen, .os_window = os_window, .grd = grman_render_data(grman), .window_logo = wl,
         .inactive_text_alpha = current_inactive_text_alpha,
     };
     update_screen_layers(&ui);
@@ -1126,32 +1108,32 @@ create_border_vao(void) {
 }
 
 void
-draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
+draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
+    if (w->live_resize.in_progress) blank_canvas(OPT(background_opacity), OPT(background));
+    if (!num_border_rects) return;
     float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
     bind_vertex_array(vao_idx);
-    if (num_border_rects) {
-        bind_program(BORDERS_PROGRAM);
-        if (rect_data_is_dirty) {
-            const size_t sz = sizeof(BorderRect) * num_border_rects;
-            void *borders_buf_address = alloc_and_map_vao_buffer(vao_idx, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
-            if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
-            unmap_vao_buffer(vao_idx, 0);
-        }
-        color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
-        GLuint colors[9] = {
-            default_bg, OPT(active_border_color), OPT(inactive_border_color), 0,
-            OPT(bell_border_color), OPT(tab_bar_background), OPT(tab_bar_margin_color),
-            w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
-        };
-        glUniform1uiv(border_program_layout.uniforms.colors, arraysz(colors), colors);
-        glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
-        glUniform2ui(border_program_layout.uniforms.viewport, viewport_width, viewport_height);
-        glDisable(GL_BLEND);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
-        unbind_program();
+    bind_program(BORDERS_PROGRAM);
+    if (rect_data_is_dirty) {
+        const size_t sz = sizeof(BorderRect) * num_border_rects;
+        void *borders_buf_address = alloc_and_map_vao_buffer(vao_idx, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
+        if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
+        unmap_vao_buffer(vao_idx, 0);
     }
+    color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
+    GLuint colors[9] = {
+        default_bg, OPT(active_border_color), OPT(inactive_border_color), 0,
+        OPT(bell_border_color), OPT(tab_bar_background), OPT(tab_bar_margin_color),
+        w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
+    };
+    glUniform1uiv(border_program_layout.uniforms.colors, arraysz(colors), colors);
+    glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
+    glDisable(GL_BLEND);
+    if (w->live_resize.in_progress) save_viewport_using_bottom_left_origin(0, 0, w->viewport_width, w->viewport_height);
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
+    if (w->live_resize.in_progress) restore_viewport();
+    unbind_program();
     unbind_vertex_array();
-    if (has_bgimage(w)) glDisable(GL_BLEND);
 }
 
 // }}}

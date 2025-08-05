@@ -425,7 +425,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         window->live_resize.width = MAX(0, width); window->live_resize.height = MAX(0, height);
         window->live_resize.num_of_resize_events++;
         make_os_window_context_current(window);
-        update_surface_size(width, height, 0);
+        set_gpu_viewport(width, height);
         request_tick_callback();
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;

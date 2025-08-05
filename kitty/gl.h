@@ -32,7 +32,7 @@ typedef struct {
 
 void gl_init(void);
 const char* gl_version_string(void);
-void update_surface_size(int w, int h, GLuint offscreen_texture_id);
+void set_gpu_viewport(unsigned w, unsigned h);
 void free_texture(GLuint *tex_id);
 void free_framebuffer(GLuint *fb_id);
 void remove_vao(ssize_t vao_idx);

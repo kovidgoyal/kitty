@@ -76,15 +76,6 @@ gl_init(void) {
     }
 }
 
-void
-update_surface_size(int w, int h, GLuint offscreen_texture_id) {
-    glViewport(0, 0, w, h);
-    if (offscreen_texture_id) {
-        glBindTexture(GL_TEXTURE_2D, offscreen_texture_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-    }
-}
-
 static const char*
 check_framebuffer_status(void) {
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -135,6 +126,9 @@ static struct {
     GLsizei items[16][4];
     size_t used;
 } saved_viewports;
+
+void
+set_gpu_viewport(unsigned w, unsigned h) { glViewport(0, 0, w, h); }
 
 void
 save_viewport_using_bottom_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height) {
