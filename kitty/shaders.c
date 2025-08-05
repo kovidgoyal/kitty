@@ -784,7 +784,7 @@ draw_scroll_indicator(color_type bar_color, GLfloat alpha, float frac, const UIR
 }
 
 static unsigned
-render_a_bar(const UIRenderData *ui, Screen *screen, WindowBarData *bar, PyObject *title, bool along_bottom) {
+render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool along_bottom) {
     unsigned bar_height = ui->cell_height + 2;
     unsigned bar_width = ui->screen_width;
     if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
@@ -800,7 +800,7 @@ render_a_bar(const UIRenderData *ui, Screen *screen, WindowBarData *bar, PyObjec
         static char titlebuf[2048] = {0};
         if (!title) return 0;
         snprintf(titlebuf, arraysz(titlebuf), " %s", PyUnicode_AsUTF8(title));
-#define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback))
+#define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(ui->screen->color_profile, ui->screen->color_profile->overridden.which, ui->screen->color_profile->configured.which, ui->screen->color_profile->overridden.fallback, ui->screen->color_profile->configured.fallback))
         if (!draw_window_title(ui->os_window->fonts_data->font_sz_in_pts, ui->os_window->fonts_data->logical_dpi_y, titlebuf, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), bar->buf, bar_width, bar_height)) return 0;
 #undef RGBCOL
         Py_CLEAR(bar->last_drawn_title_object_id);
@@ -844,67 +844,55 @@ draw_hyperlink_target(Screen *screen, const UIRenderData *ui, const bool along_b
     }
     if (bd->last_drawn_title_object_id == NULL) return;
     PyObject *ref = Py_NewRef(bd->last_drawn_title_object_id);  // render_a_bar clears bd->last_drawn_title_object_id
-    render_a_bar(ui, screen, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
+    render_a_bar(ui, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
     Py_DECREF(ref);
 }
 
-// static void
-// draw_window_number(OSWindow *os_window, Screen *screen, const UIRenderData *ui, Window *window) {
-//     GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
-//     GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
-//     unsigned title_bar_height = 0;
-//     size_t requested_height = (size_t)(os_window->viewport_height * crd->gl.height / 2.f);
-//     if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->fcm.cell_height + 1) * 2)) {
-//         title_bar_height = render_a_bar(ui, screen, &window->title_bar_data, window->title, false);
-//     }
-//     GLfloat ystart = crd->gl.ystart, height = crd->gl.height, xstart = crd->gl.xstart, width = crd->gl.width;
-//     if (title_bar_height > 0) {
-//         ystart -= title_bar_height;
-//         height -= title_bar_height;
-//     }
-//     ystart -= crd->gl.dy / 2.f; height -= crd->gl.dy;  // top and bottom margins
-//     xstart += crd->gl.dx / 2.f; width -= crd->gl.dx;  // left and right margins
-//     GLfloat height_gl = MIN(MIN(12 * crd->gl.dy, height), width);
-//     requested_height = (size_t)(os_window->viewport_height * height_gl / 2.f);
-//     if (requested_height < 4) return;
-// #define lr screen->last_rendered_window_char
-//     if (!lr.canvas || lr.ch != screen->display_window_char || lr.requested_height != requested_height) {
-//         free(lr.canvas); lr.canvas = NULL;
-//         lr.requested_height = requested_height; lr.height_px = requested_height; lr.ch = 0;
-//         lr.canvas = draw_single_ascii_char(screen->display_window_char, &lr.width_px, &lr.height_px);
-//         if (lr.height_px < 4 || lr.width_px < 4 || !lr.canvas) return;
-//         lr.ch = screen->display_window_char;
-//     }
-//
-//     GLfloat width_gl = gl_size(lr.width_px, os_window->viewport_width);
-//     height_gl = gl_size(lr.height_px, os_window->viewport_height);
-//     left = xstart + (width - width_gl) / 2.f;
-//     left = clamp_position_to_nearest_pixel(left, os_window->viewport_width);
-//     right = left + width_gl;
-//     GLfloat top = ystart - (height - height_gl) / 2.f;
-//     top = clamp_position_to_nearest_pixel(top, os_window->viewport_height);
-//     GLfloat bottom = top - height_gl;
-//     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-//     ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
-// #undef lr
-//     gpu_data_for_image(ird, left, top, right, bottom);
-//     glEnable(GL_BLEND);
-//     BLEND_PREMULT;
-//     glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
-//     color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
-//     color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, digit_color);
-//     glUniform4f(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, 0.f, 0.f, 0.f, 0.f);
-//     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, ird, 0, 1, 1.f);
-//     glDisable(GL_BLEND);
-// }
-//
+static void
+draw_window_number(const UIRenderData *ui) {
+    unsigned title_bar_height = 0, requested_height = ui->screen_height;
+    if (ui->window->title && PyUnicode_Check(ui->window->title) && (requested_height > (ui->cell_height + 1) * 2)) {
+        title_bar_height = render_a_bar(ui, &ui->window->title_bar_data, ui->window->title, false);
+    }
+    unsigned height_for_letter = ui->screen_height - title_bar_height - ui->cell_height;
+    unsigned width_for_letter = ui->screen_width - ui->cell_width;
+    requested_height = MIN(12 * ui->cell_height, MIN(height_for_letter, width_for_letter));
+    if (requested_height < 4) return;
+#define lr ui->screen->last_rendered_window_char
+    if (!lr.canvas || lr.ch != ui->screen->display_window_char || lr.requested_height != requested_height) {
+        free(lr.canvas); lr.canvas = NULL;
+        lr.requested_height = requested_height; lr.height_px = requested_height; lr.ch = 0;
+        lr.canvas = draw_single_ascii_char(ui->screen->display_window_char, &lr.width_px, &lr.height_px);
+        if (lr.height_px < 4 || lr.width_px < 4 || !lr.canvas) return;
+        lr.ch = ui->screen->display_window_char;
+    }
+    unsigned letter_x = 0, letter_y = title_bar_height;
+    if (lr.width_px < ui->screen_width) letter_x = (ui->screen_width - lr.width_px) / 2;
+    if (lr.height_px + title_bar_height < ui->screen_height) letter_y += (ui->screen_height - lr.height_px - title_bar_height) / 2;
+    bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+    ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
+    gpu_data_for_image(ird, -1, 1, 1, -1);
+    glEnable(GL_BLEND);
+    BLEND_PREMULT;
+    glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
+    color_type digit_color = colorprofile_to_color_with_fallback(ui->screen->color_profile, ui->screen->color_profile->overridden.highlight_bg, ui->screen->color_profile->configured.highlight_bg, ui->screen->color_profile->overridden.default_fg, ui->screen->color_profile->configured.default_fg);
+    color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, digit_color);
+    glUniform4f(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, 0.f, 0.f, 0.f, 0.f);
+    save_viewport_using_top_left_origin(letter_x, letter_y, lr.width_px, lr.height_px, ui->screen_height);
+    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, ird, 0, 1, 1.f);
+    restore_viewport();
+    glDisable(GL_BLEND);
+#undef lr
+}
+
 static bool
 update_ui_layer(const UIRenderData *ui) {
     Screen *screen = ui->screen;
     bool visual_bell_drawn = screen->start_visual_bell_at > 0;
     bool scrollback_indicator_drawn = !(OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by);
     bool hyperlink_target_drawn = OPT(show_hyperlink_targets) && screen->current_hyperlink_under_mouse.id && ui->window && !is_mouse_hidden(ui->os_window);
-    bool ui_layer_present = visual_bell_drawn || scrollback_indicator_drawn || hyperlink_target_drawn;
+    bool window_number_drawn = ui->window && screen->display_window_char;
+    bool ui_layer_present = visual_bell_drawn || scrollback_indicator_drawn || hyperlink_target_drawn || window_number_drawn;
     if (!ui_layer_present) return false;
     bool needs_redraw = ensure_layer_ready_to_render(ui, &screen->textures.ui);
 
@@ -942,15 +930,22 @@ update_ui_layer(const UIRenderData *ui) {
     ht.link = screen->current_hyperlink_under_mouse.id; ht.along_bottom = along_bottom;
     ht.was_drawn = hyperlink_target_drawn;
 
-    needs_redraw |= scrollbar_needs_redraw || visual_bell_needs_redraw || hyperlink_target_needs_redraw;
+#define wn last_ui.window_number
+    bool window_number_needs_redraw = (
+        wn.was_drawn != window_number_drawn || wn.ch != screen->display_window_char);
+    wn.was_drawn = window_number_drawn; wn.ch = screen->display_window_char;
+
+    needs_redraw |= scrollbar_needs_redraw || visual_bell_needs_redraw || hyperlink_target_needs_redraw || window_number_needs_redraw;
     if (needs_redraw) {
         blank_canvas(0, 0);  // clear the framebuffer
         if (visual_bell_drawn && intensity > 0) draw_visual_bell_flash(lvb.intensity, lvb.color);
         if (scrollback_indicator_drawn) draw_scroll_indicator(bar_color, bar_alpha, bar_frac, ui);
         if (hyperlink_target_drawn) draw_hyperlink_target(screen, ui, ht.along_bottom);
+        if (window_number_drawn) draw_window_number(ui);
         if (0) save_texture_as_png(screen->textures.ui.id, ui->screen_width, ui->screen_height, "/tmp/ui.png");
     }
     return true;
+#undef wn
 #undef ht
 #undef lsb
 #undef lvb
@@ -1099,7 +1094,6 @@ draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_wind
     screen->reload_all_gpu_data = false;
     ImageRenderData *scaled_render_data = NULL;
     draw_cells_with_layers(for_final_output, &ui, srd->vao_idx, is_semi_transparent);
-    // if (window && screen->display_window_char) draw_window_number(os_window, screen, &ui, &crd, window);
     free(scaled_render_data);
 }
 // }}}

@@ -738,7 +738,7 @@ apple_url_open_callback(const char* url) {
 
 
 bool
-draw_window_title(double font_sz_pts UNUSED, double ydpi, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+draw_window_title(double font_sz_pts UNUSED, double ydpi UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
     return cocoa_render_line_of_text(buf, fg, bg, output_buf, width, height);

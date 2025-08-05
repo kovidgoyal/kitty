@@ -106,6 +106,7 @@ typedef struct {
             struct { bool was_drawn; float intensity; color_type color; } visual_bell;
             struct { bool was_drawn; float frac, alpha; color_type color; unsigned cell_height, cell_width; } scroll_bar;
             struct { hyperlink_id_type link; bool along_bottom, was_drawn; } hyperlink_target;
+            struct { char ch; bool was_drawn; } window_number;
         } ui_layer;
         struct {
             int x;
