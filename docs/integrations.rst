@@ -341,7 +341,7 @@ Password managers
 
 Allow injecting passwords from 1Password into kitty.
 
-`BitWarden <https://github.com/dnanhkhoa/kitty-password-manager>`
+`BitWarden <https://github.com/dnanhkhoa/kitty-password-manager>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Inject passwords from ButWarden into kitty
