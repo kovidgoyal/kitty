@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import os
 import shlex
 import sys
 from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import suppress
 from functools import partial
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from .cli_stub import CLIOptions
 from .layout.interface import all_layouts
@@ -58,6 +59,7 @@ class Tab:
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
+        self.layout_state: dict[str, Any] | None = None
         self.cwd: str | None = None
         self.next_title: str | None = None
 
@@ -100,6 +102,9 @@ class Session:
         if val.partition(':')[0] not in all_layouts:
             raise ValueError(f'{val} is not a valid layout')
         self.tabs[-1].layout = val
+
+    def set_layout_state(self, val: str) -> None:
+        self.tabs[-1].layout_state = json.loads(val)
 
     def add_window(self, cmd: None | str | list[str], expand: Callable[[str], str] = lambda x: x) -> None:
         from .launch import parse_launch_args
@@ -185,7 +190,7 @@ def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = N
             else:
                 cmd, rest = parts
             cmd, rest = cmd.strip(), rest.strip()
-            if cmd != 'launch':
+            if cmd not in ('launch', 'set_layout_state'):
                 rest = expand(rest)
             if cmd == 'new_tab':
                 ans.add_tab(opts, rest)
@@ -220,6 +225,8 @@ def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = N
                 ans.resize_window(rest.split())
             elif cmd == 'focus_matching_window':
                 ans.focus_matching_window(rest)
+            elif cmd == 'set_layout_state':
+                ans.set_layout_state(rest)
             else:
                 raise ValueError(f'Unknown command in session file: {cmd}')
     yield finalize_session(ans)

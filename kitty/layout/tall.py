@@ -354,6 +354,7 @@ class Tall(Layout):
     def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
         self.main_bias = layout_state['main_bias']
         self.biased_map = layout_state['biased_map']
+        self.layout_opts = TallLayoutOpts(layout_state['opts'])
         return True
 
 
