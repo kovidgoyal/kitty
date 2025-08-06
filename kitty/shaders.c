@@ -17,10 +17,7 @@
 
 /*
  * TODO: for shader refactoring
- * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
- * the new graphics shader.
  * background image with tint and various layout options in both cell and borders shaders
- * window logo image that is in the under foreground layer I think? need to check
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -940,6 +937,50 @@ update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
 #undef last_ui
 }
 
+static bool
+get_window_logo_settings(const UIRenderData *ui, Screen *s) {
+    WindowLogoRenderData *wl = ui->window_logo;
+    unsigned width = wl->instance->width, height = wl->instance->height;
+
+    if (OPT(window_logo_scale.width) > 0 || OPT(window_logo_scale.height) > 0) {
+        unsigned scaled_wl_width = ui->screen_width, scaled_wl_height = ui->screen_height;
+
+        // [sx] Scales logo to sx % of the viewports shortest dimension, preserving aspect ratio
+        if (OPT(window_logo_scale.height) < 0) {
+            if (ui->screen_height < ui->screen_width) {
+                scaled_wl_height = (int)(ui->screen_height * OPT(window_logo_scale.width) / 100);
+                scaled_wl_width = wl->instance->width * scaled_wl_height / wl->instance->height;
+            } else {
+                scaled_wl_width = (int)(ui->screen_width * OPT(window_logo_scale.width) / 100);
+                scaled_wl_height = wl->instance->height * scaled_wl_width / wl->instance->width;
+            }
+        }
+        // [0 sy] Scales logo's y dimension to sy % of viewporty keeping original x dimension
+        else if (OPT(window_logo_scale.width) == 0.0) {
+            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
+            scaled_wl_width = wl->instance->width;
+        }
+        // [sx 0] Scales logo's x dimension to sx % of viewportx keeping original y dimension
+        else if (OPT(window_logo_scale.height) == 0.0) {
+            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
+            scaled_wl_height = wl->instance->height;
+        }
+        // [sx sy] Scales logo's x and y dimension to sx and sy % of viewportx and viewporty respectively
+        else {
+            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
+            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
+        }
+        width = scaled_wl_width; height = scaled_wl_height;
+    }
+    int left = (int)(ui->screen_width * wl->position.canvas_x - width * wl->position.image_x);
+    int top = (int)(ui->screen_height * wl->position.canvas_y - height * wl->position.image_y);
+#define lr s->last_rendered.under_bg_layer.logo
+    bool needs_redraw = lr.id != wl->id || lr.alpha != OPT(window_logo_alpha) || lr.left != left || lr.top != top || lr.width != width || lr.height != height;
+    lr.height = height; lr.width = width; lr.left = left; lr.top = top; lr.id = wl->id; lr.alpha = OPT(window_logo_alpha);
+#undef lr
+    return needs_redraw;
+}
+
 static void
 update_under_bg_layer(const UIRenderData *ui) {
     const bool has_graphics = ui->grd.num_of_below_refs > 0;
@@ -957,9 +998,16 @@ update_under_bg_layer(const UIRenderData *ui) {
 
     needs_redraw |= lr.logo.was_drawn != has_logo;
     lr.logo.was_drawn = has_logo;
+    if (has_logo) needs_redraw |= get_window_logo_settings(ui, ui->screen);
 
     if (needs_redraw) {
         blank_canvas(0, 0);  // clear the framebuffer
+        if (has_logo) {
+            float left = gl_pos_x(lr.logo.left, ui->screen_width), top = gl_pos_y(lr.logo.top, ui->screen_height);
+            ImageRenderData d = {0}; d.texture_id = ui->window_logo->instance->texture_id;
+            gpu_data_for_image(&d, left, top, left + gl_size(lr.logo.width, ui->screen_width), top - gl_size(lr.logo.height, ui->screen_height));
+            draw_graphics(GRAPHICS_PROGRAM, &d, 0, 1, ui->inactive_text_alpha * lr.logo.alpha);
+        }
         if (has_graphics) draw_graphics(
             GRAPHICS_PROGRAM, ui->grd.images, 0, ui->grd.num_of_below_refs, ui->inactive_text_alpha);
     }
@@ -1099,8 +1147,11 @@ draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_wind
     float current_inactive_text_alpha = is_tab_bar || (!is_single_window && is_active_window) || (is_single_window && screen->cursor_render_info.is_focused) ? 1.0f : (float)OPT(inactive_text_alpha);
     bool is_semi_transparent = os_window->is_semi_transparent && min_bg_opacity < 1.;
     WindowLogoRenderData *wl;
-    if (window && (wl = &window->window_logo) && wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance && wl->instance->load_from_disk_ok) {
-        set_on_gpu_state(window->window_logo.instance, true);
+    set_cell_uniforms(screen->reload_all_gpu_data);
+    if (window && (wl = &window->window_logo) && wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance->load_from_disk_ok) {
+        if (!window->window_logo.instance->texture_id) {
+            set_on_gpu_state(window->window_logo.instance, true);
+        }
     } else wl = NULL;
     GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
     UIRenderData ui = {
@@ -1114,8 +1165,6 @@ draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_wind
         .inactive_text_alpha = current_inactive_text_alpha,
     };
     update_screen_layers(&ui);
-
-    set_cell_uniforms(screen->reload_all_gpu_data);
     screen->reload_all_gpu_data = false;
     ImageRenderData *scaled_render_data = NULL;
     draw_cells_with_layers(for_final_output, &ui, srd->vao_idx, is_semi_transparent);

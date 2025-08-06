@@ -11,6 +11,7 @@
 #include "monotonic.h"
 #include "line-buf.h"
 #include "history.h"
+#include "window_logo.h"
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
@@ -115,7 +116,7 @@ typedef struct {
         struct {
             struct { bool was_drawn; uint32_t change_count; } graphics;
             struct { bool was_drawn; } bgimage;
-            struct { bool was_drawn; } logo;
+            struct { bool was_drawn; unsigned width, height; int left, top; window_logo_id_t id; float alpha; } logo;
         } under_bg_layer;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data;
