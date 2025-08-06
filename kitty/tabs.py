@@ -416,7 +416,9 @@ class Tab:  # {{{
 
         Switches to the named layout if another layout is current, otherwise
         switches to the last used layout. Useful to "zoom" a window temporarily
-        by switching to the stack layout. For example::
+        by switching to the stack layout. See also :opt:`scrollback_fill_enlarged_window`
+        if you would like content from the scrollback buffer to scroll down into the
+        zoomed window. For example::
 
             map f1 toggle_layout stack
         ''')
