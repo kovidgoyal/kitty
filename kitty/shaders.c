@@ -17,7 +17,6 @@
 
 /*
  * TODO: for shader refactoring
- * Port graphics rendering and test graphics in all 3 layers
  * Convert all images loaded to GPU to linear space for correct blending or alternately do conversion to linear space in
  * the new graphics shader.
  * background image with tint and various layout options in both cell and borders shaders

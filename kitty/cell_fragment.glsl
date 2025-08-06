@@ -104,8 +104,9 @@ vec4 layer_color(sampler2D s) {
 void main() {
     vec4 ans_premul = vec4_premul(background);
     // if its a default background cell and there is an under_bg layer, use the
-    // under_bg layer as the background
-    blend_layer(ans_premul = if_one_then(has_under_bg * cell_has_default_bg, layer_color(under_bg_layer), ans_premul));
+    // under_bg layer blended onto the background, as the background
+    blend_layer(ans_premul = if_one_then(has_under_bg * cell_has_default_bg,
+                alpha_blend_premul(layer_color(under_bg_layer), ans_premul), ans_premul));
     // blend in the under_fg layer
     blend_layer(ans_premul = alpha_blend_premul(layer_color(under_fg_layer), ans_premul));
     // blend in the foreground color
