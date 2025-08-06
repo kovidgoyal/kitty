@@ -943,18 +943,48 @@ update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
 
 static void
 update_under_bg_layer(const UIRenderData *ui) {
-    bool has_background_image = has_bgimage(ui->os_window);
-    ui->screen->textures.under_bg.present = has_background_image || ui->grd.num_of_below_refs;
+    const bool has_graphics = ui->grd.num_of_below_refs > 0;
+    const bool has_bg = has_bgimage(ui->os_window);
+    const bool has_logo = ui->window_logo != NULL;
+    ui->screen->textures.under_bg.present = has_bg || has_graphics || has_logo;
+    if (!ui->screen->textures.under_bg.present) return;
+    bool needs_redraw = ensure_layer_ready_to_render(&ui->screen->textures.under_bg, ui->screen_width, ui->screen_height);
+#define lr ui->screen->last_rendered.under_bg_layer
+    needs_redraw |= lr.graphics.change_count != ui->grd.change_count || lr.graphics.was_drawn != has_graphics;
+    lr.graphics.change_count = ui->grd.change_count; lr.graphics.was_drawn = has_graphics;
+
+    needs_redraw |= lr.bgimage.was_drawn != has_bg;
+    lr.bgimage.was_drawn = has_bg;
+
+    needs_redraw |= lr.logo.was_drawn != has_logo;
+    lr.logo.was_drawn = has_logo;
+
+    if (needs_redraw) {
+        blank_canvas(0, 0);  // clear the framebuffer
+        if (has_graphics) draw_graphics(
+            GRAPHICS_PROGRAM, ui->grd.images, 0, ui->grd.num_of_below_refs, ui->inactive_text_alpha);
+    }
+#undef lr
 }
 
 static void
 update_under_fg_layer(const UIRenderData *ui) {
-    ui->screen->textures.under_fg.present = ui->window_logo || ui->grd.num_of_negative_refs;
+    ui->screen->textures.under_fg.present = ui->grd.num_of_negative_refs > 0;
+    if (!ui->screen->textures.under_fg.present) return;
+    bool needs_redraw = ensure_layer_ready_to_render(&ui->screen->textures.under_fg, ui->screen_width, ui->screen_height);
+    needs_redraw |= ui->screen->last_rendered.under_fg_layer.graphics_change_count != ui->grd.change_count;
+    ui->screen->last_rendered.under_fg_layer.graphics_change_count = ui->grd.change_count;
+    if (needs_redraw) {
+        blank_canvas(0, 0);  // clear the framebuffer
+        if (ui->grd.num_of_negative_refs) draw_graphics(
+            GRAPHICS_PROGRAM, ui->grd.images, ui->grd.num_of_below_refs,
+            ui->grd.num_of_negative_refs, ui->inactive_text_alpha);
+    }
 }
 
 static void
 update_over_fg_layer(const UIRenderData *ui) {
-    ui->screen->textures.over_fg.present = ui->grd.num_of_positive_refs;
+    ui->screen->textures.over_fg.present = ui->grd.num_of_positive_refs > 0;
     if (!ui->screen->textures.over_fg.present) return;
     bool needs_redraw = ensure_layer_ready_to_render(&ui->screen->textures.over_fg, ui->screen_width, ui->screen_height);
     needs_redraw |= ui->screen->last_rendered.over_fg_layer.graphics_change_count != ui->grd.change_count;

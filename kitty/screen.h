@@ -112,7 +112,11 @@ typedef struct {
         } ui_layer;
         struct { uint32_t graphics_change_count; } over_fg_layer;
         struct { uint32_t graphics_change_count; } under_fg_layer;
-        struct { uint32_t graphics_change_count; } under_bg_layer;
+        struct {
+            struct { bool was_drawn; uint32_t change_count; } graphics;
+            struct { bool was_drawn; } bgimage;
+            struct { bool was_drawn; } logo;
+        } under_bg_layer;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
