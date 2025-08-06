@@ -212,10 +212,16 @@ ref_by_client_id(const Image *img, uint32_t id) {
     return NULL;
 }
 
+static void
+set_layers_dirty(GraphicsManager *self) {
+    self->layers_dirty = true;
+    self->layout_or_image_data_change_count++;
+}
+
 static image_map_itr
 remove_image_itr(GraphicsManager *self, image_map_itr i) {
     free_image(self, i.data->val);
-    self->layers_dirty = true;
+    set_layers_dirty(self);
     return vt_erase_itr(&self->images_by_internal_id, i);
 }
 
@@ -243,6 +249,7 @@ grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
     dest->window_id = self->window_id;
     dest->layers_dirty = true;
     dest->last_scrolled_by = 0;
+    dest->layout_or_image_data_change_count = 0;
 
     iter_images(self) {
         Image *clone = calloc(1, sizeof(Image)), *img = i.data->val;
@@ -697,7 +704,10 @@ upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const boo
         if (!make_window_context_current(self->window_id)) return;
         self->context_made_current_for_this_command = true;
     }
-    if (img->texture) send_image_to_gpu(&img->texture->id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP);
+    if (img->texture) {
+        send_image_to_gpu(&img->texture->id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP);
+        self->layout_or_image_data_change_count++;
+    }
 }
 
 static Image*
@@ -720,7 +730,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->current_frame_shown_at = 0;
             img->extra_framecnt = 0;
             *is_dirty = true;
-            self->layers_dirty = true;
+            set_layers_dirty(self);
         } else {
             img->client_id = iid;
             img->client_number = g->image_number;
@@ -1010,7 +1020,7 @@ void grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     ImageRef *real_ref = create_ref(img, &ref);
 
     img->atime = monotonic();
-    self->layers_dirty = true;
+    set_layers_dirty(self);
 
     update_src_rect(real_ref, img);
     update_dest_rect(real_ref, ref.num_cols, ref.num_rows, cell);
@@ -1103,7 +1113,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     if (ref == NULL) ref = create_ref(img, NULL);
 
     *is_dirty = true;
-    self->layers_dirty = true;
+    set_layers_dirty(self);
     img->atime = monotonic();
     ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
     ref->src_width = MIN(ref->src_width, img->width - ((float)img->width > ref->src_x ? ref->src_x : (float)img->width));
@@ -1192,7 +1202,7 @@ resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t 
 
 bool
 grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize cell) {
-    if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
+    if (self->last_scrolled_by != scrolled_by) set_layers_dirty(self);
     self->last_scrolled_by = scrolled_by;
     if (!self->layers_dirty) return false;
     self->layers_dirty = false;
@@ -1889,7 +1899,7 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
         for (ref_map_itr ri = vt_first(&img->refs_by_internal_id); !vt_is_end(ri); ) { ImageRef *ref = ri.data->val;
             if (filter_func(ref, img, data, cell)) {
                 ri = remove_ref_itr(img, ri);
-                self->layers_dirty = true;
+                set_layers_dirty(self);
                 matched = true;
             } else ri = vt_next(ri);
         }
@@ -1969,7 +1979,7 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data, CellPixe
 void
 grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize cell) {
     if (vt_size(&self->images_by_internal_id)) {
-        self->layers_dirty = true;
+        set_layers_dirty(self);
         modify_refs(self, data, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
     }
 }
@@ -2120,7 +2130,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
                 for (ref_map_itr ri = vt_first(&img->refs_by_internal_id); !vt_is_end(ri); ) { ImageRef *ref = ri.data->val;
                     if (!g->placement_id || g->placement_id == ref->client_id) {
                         ri = remove_ref_itr(img, ri);
-                        self->layers_dirty = true;
+                        set_layers_dirty(self);
                     } else ri = vt_next(ri);
                 }
                 if (!vt_size(&img->refs_by_internal_id) && (g->delete_action == 'N' || img->client_id == 0)) remove_image(self, img);
@@ -2151,7 +2161,7 @@ end:
 void
 grman_resize(GraphicsManager *self, index_type old_lines UNUSED, index_type lines UNUSED, index_type old_columns, index_type columns, index_type num_content_lines_before, index_type num_content_lines_after) {
     ImageRef *ref; Image *img;
-    self->layers_dirty = true;
+    set_layers_dirty(self);
     if (columns == old_columns && num_content_lines_before > num_content_lines_after) {
         const unsigned int vertical_shrink_size = num_content_lines_before - num_content_lines_after;
         iter_images(self) { img = i.data->val;
@@ -2166,7 +2176,7 @@ grman_resize(GraphicsManager *self, index_type old_lines UNUSED, index_type line
 void
 grman_rescale(GraphicsManager *self, CellPixelSize cell) {
     ImageRef *ref; Image *img;
-    self->layers_dirty = true;
+    set_layers_dirty(self);
     iter_images(self) { img = i.data->val;
         iter_refs(img) { ref = i.data->val;
             if (ref->is_virtual_ref || is_cell_image(ref)) continue;
@@ -2453,13 +2463,13 @@ init_graphics(PyObject *module) {
     return true;
 }
 
-void grman_mark_layers_dirty(GraphicsManager *self) { self->layers_dirty = true; }
+void grman_mark_layers_dirty(GraphicsManager *self) { set_layers_dirty(self); }
 void grman_set_window_id(GraphicsManager *self, id_type id) { self->window_id = id; }
 GraphicsRenderData grman_render_data(GraphicsManager *self) {
     GraphicsRenderData ans = {
         .count=self->render_data.count, .capacity=self->render_data.capacity, .images=self->render_data.item,
         .num_of_below_refs=self->num_of_below_refs, .num_of_negative_refs=self->num_of_negative_refs,
-        .num_of_positive_refs=self->num_of_positive_refs
+        .num_of_positive_refs=self->num_of_positive_refs, .change_count=self->layout_or_image_data_change_count,
     };
     return ans;
 }

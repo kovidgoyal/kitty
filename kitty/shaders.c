@@ -44,7 +44,6 @@ typedef struct UIRenderData {
     GraphicsRenderData grd;
     WindowLogoRenderData *window_logo;
     float inactive_text_alpha;
-    bool has_under_bg, has_under_fg, has_over_fg, has_ui;
 } UIRenderData;
 
 // Sprites {{{
@@ -186,7 +185,7 @@ realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
     glTexImage2D(texture_type, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
     if (dm.texture_id) {  // copy data from old texture
         copy_32bit_texture(dm.texture_id, tex, texture_type);
-        glDeleteTextures(1, &dm.texture_id);
+        free_texture(&dm.texture_id);
     }
     glBindTexture(texture_type, 0);
     dm.texture_id = tex; dm.width = width; dm.height = height;
@@ -205,7 +204,7 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     glTexStorage3D(texture_type, 1, GL_SRGB8_ALPHA8, width, height, znum);
     if (sprite_map->texture_id) { // copy old texture data into new texture
         copy_32bit_texture(sprite_map->texture_id, tex, texture_type);
-        glDeleteTextures(1, &sprite_map->texture_id);
+        free_texture(&sprite_map->texture_id);
     }
     glBindTexture(texture_type, 0);
     sprite_map->last_num_of_layers = znum;
@@ -651,16 +650,16 @@ ensure_blank_texture(void) {
 }
 
 static bool
-ensure_layer_ready_to_render(const UIRenderData *ui, ScreenLayer *which) {
+ensure_layer_ready_to_render(ScreenLayer *which, unsigned screen_width, unsigned screen_height) {
     bool needs_redraw = false;
-    if (which->width != ui->screen_width || which->height != ui->screen_height) {
+    if (which->width != screen_width || which->height != screen_height) {
         if (which->id) free_texture(&which->id);
         if (which->framebuffer_id) free_framebuffer(&which->framebuffer_id);
     }
     if (!which->id) {
-        glGenTextures(1, &which->id);
-        glGenFramebuffers(1, &which->framebuffer_id);
-        which->width = ui->screen_width; which->height = ui->screen_height;
+        which->width = screen_width; which->height = screen_height;
+        needs_redraw = true;
+        glGenTextures(1, &which->id); glGenFramebuffers(1, &which->framebuffer_id);
         glBindTexture(GL_TEXTURE_2D, which->id);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -669,10 +668,10 @@ ensure_layer_ready_to_render(const UIRenderData *ui, ScreenLayer *which) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, which->width, which->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         bind_framebuffer_for_output(which->framebuffer_id);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, which->id, 0);
-        if (global_state.debug_rendering) check_framebuffer_status_or_die();
-        needs_redraw = true;
+    } else {
+        bind_framebuffer_for_output(which->framebuffer_id);
     }
-    bind_framebuffer_for_output(which->framebuffer_id);
+    if (global_state.debug_rendering) check_framebuffer_status_or_die();
     return needs_redraw;
 }
 
@@ -877,16 +876,16 @@ draw_window_number(const UIRenderData *ui) {
 #undef lr
 }
 
-static bool
-update_ui_layer(const UIRenderData *ui) {
+static void
+update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
     Screen *screen = ui->screen;
     bool visual_bell_drawn = screen->start_visual_bell_at > 0;
     bool scrollback_indicator_drawn = !(OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by);
     bool hyperlink_target_drawn = OPT(show_hyperlink_targets) && screen->current_hyperlink_under_mouse.id && ui->window && !is_mouse_hidden(ui->os_window);
     bool window_number_drawn = ui->window && screen->display_window_char;
-    bool ui_layer_present = visual_bell_drawn || scrollback_indicator_drawn || hyperlink_target_drawn || window_number_drawn;
-    if (!ui_layer_present) return false;
-    bool needs_redraw = ensure_layer_ready_to_render(ui, &screen->textures.ui);
+    ui->screen->textures.ui.present = visual_bell_drawn || scrollback_indicator_drawn || hyperlink_target_drawn || window_number_drawn;
+    if (!ui->screen->textures.ui.present) return;
+    bool needs_redraw = ensure_layer_ready_to_render(&screen->textures.ui, ui->screen_width, ui->screen_height);
 
 #define last_ui screen->last_rendered.ui_layer
 #define lvb last_ui.visual_bell
@@ -910,9 +909,8 @@ update_ui_layer(const UIRenderData *ui) {
     }
     bool scrollbar_needs_redraw = (
         lsb.was_drawn != scrollback_indicator_drawn || lsb.frac != bar_frac || lsb.color != bar_color ||
-        lsb.cell_height != ui->cell_height || lsb.alpha != bar_alpha || lsb.cell_width != ui->cell_width);
-    lsb.alpha = bar_alpha; lsb.cell_height = ui->cell_height; lsb.cell_width = ui->cell_width; lsb.color = bar_color;
-    lsb.frac = bar_frac; lsb.was_drawn = scrollback_indicator_drawn;
+        cell_size_changed || lsb.alpha != bar_alpha);
+    lsb.color = bar_color; lsb.frac = bar_frac; lsb.was_drawn = scrollback_indicator_drawn;
 
 #define ht last_ui.hyperlink_target
     bool along_bottom = screen->current_hyperlink_under_mouse.y < 3;
@@ -936,7 +934,6 @@ update_ui_layer(const UIRenderData *ui) {
         if (window_number_drawn) draw_window_number(ui);
         if (0) save_texture_as_png(screen->textures.ui.id, ui->screen_width, ui->screen_height, "/tmp/ui.png");
     }
-    return true;
 #undef wn
 #undef ht
 #undef lsb
@@ -944,54 +941,76 @@ update_ui_layer(const UIRenderData *ui) {
 #undef last_ui
 }
 
-static bool
+static void
 update_under_bg_layer(const UIRenderData *ui) {
     bool has_background_image = has_bgimage(ui->os_window);
-    if (!has_background_image && !ui->grd.num_of_below_refs) return false;
-    return true;
-}
-
-static bool
-update_under_fg_layer(const UIRenderData *ui) {
-    if (!ui->window_logo && !ui->grd.num_of_below_refs) return false;
-    return true;
-}
-
-static bool
-update_over_fg_layer(const UIRenderData *ui) {
-    if (!ui->grd.num_of_positive_refs) return false;
-    return true;
+    ui->screen->textures.under_bg.present = has_background_image || ui->grd.num_of_below_refs;
 }
 
 static void
-update_screen_layers(UIRenderData *ui) {
+update_under_fg_layer(const UIRenderData *ui) {
+    ui->screen->textures.under_fg.present = ui->window_logo || ui->grd.num_of_negative_refs;
+}
+
+static void
+update_over_fg_layer(const UIRenderData *ui) {
+    ui->screen->textures.over_fg.present = ui->grd.num_of_positive_refs;
+    if (!ui->screen->textures.over_fg.present) return;
+    bool needs_redraw = ensure_layer_ready_to_render(&ui->screen->textures.over_fg, ui->screen_width, ui->screen_height);
+    needs_redraw |= ui->screen->last_rendered.over_fg_layer.graphics_change_count != ui->grd.change_count;
+    ui->screen->last_rendered.over_fg_layer.graphics_change_count = ui->grd.change_count;
+    if (needs_redraw) {
+        blank_canvas(0, 0);  // clear the framebuffer
+        if (ui->grd.num_of_positive_refs) draw_graphics(
+            GRAPHICS_PROGRAM, ui->grd.images, ui->grd.num_of_negative_refs + ui->grd.num_of_below_refs,
+            ui->grd.num_of_positive_refs, ui->inactive_text_alpha);
+    }
+}
+
+static void
+update_screen_layers(const UIRenderData *ui) {
+    bool cell_size_changed = ui->cell_width != ui->screen->last_rendered.cell_width || ui->cell_height != ui->screen->last_rendered.cell_height;
     save_viewport_using_bottom_left_origin(0, 0, ui->screen_width, ui->screen_height);
-    ui->has_under_bg = update_under_bg_layer(ui);
-    ui->has_under_fg = update_under_fg_layer(ui);
-    ui->has_over_fg = update_over_fg_layer(ui);
-    ui->has_ui = update_ui_layer(ui);
+    update_under_bg_layer(ui);
+    update_under_fg_layer(ui);
+    update_over_fg_layer(ui);
+    update_ui_layer(ui, cell_size_changed);
     bind_framebuffer_for_output(0);
     restore_viewport();
+    ui->screen->last_rendered.cell_height = ui->cell_height;
+    ui->screen->last_rendered.cell_width = ui->cell_width;
 }
 // }}}
+
+void
+free_screen_layer(ScreenLayer *layer) {
+    const bool needs_free = layer->framebuffer_id | layer->id;
+    if (needs_free) {
+        if (layer->framebuffer_id) free_framebuffer(&layer->framebuffer_id);
+        if (layer->id) free_texture(&layer->id);
+        zero_at_ptr(layer);
+    }
+}
+
+static bool
+bind_layer(int unit, GLuint blank_texture_id, ScreenLayer *layer) {
+    glActiveTexture(GL_TEXTURE0 + unit);
+    if (layer->present) {
+        glBindTexture(GL_TEXTURE_2D, layer->id);
+        return true;
+    }
+    free_screen_layer(layer);
+    glBindTexture(GL_TEXTURE_2D, blank_texture_id);
+    return false;
+}
 
 static void
 draw_cells_with_layers(bool for_final_output, const UIRenderData *ui, ssize_t vao_idx, bool is_semi_transparent) {
     GLuint blank_texture = ensure_blank_texture();
-    bool has_layers = false;
-
-#define B(which, unit) \
-    glActiveTexture(GL_TEXTURE0 + unit); \
-    if (ui->has_##which) { has_layers = true; glBindTexture(GL_TEXTURE_2D, ui->screen->textures.which.id); } \
-    else { \
-        if (ui->screen->textures.which.id) free_texture(&ui->screen->textures.which.id); \
-        if (ui->screen->textures.which.framebuffer_id) free_framebuffer(&ui->screen->textures.which.framebuffer_id); \
-        glBindTexture(GL_TEXTURE_2D, blank_texture); \
-    }
-
-    B(under_bg, UNDER_BG_LAYER_UNIT); B(under_fg, UNDER_FG_LAYER_UNIT); B(over_fg, OVER_FG_LAYER_UNIT);
-    B(ui, UI_LAYER_UNIT);
-#undef B
+    bool has_layers = bind_layer(UNDER_BG_LAYER_UNIT, blank_texture, &ui->screen->textures.under_bg);
+    has_layers |=     bind_layer(UNDER_FG_LAYER_UNIT, blank_texture, &ui->screen->textures.under_fg);
+    has_layers |=     bind_layer(OVER_FG_LAYER_UNIT, blank_texture, &ui->screen->textures.over_fg);
+    has_layers |=     bind_layer(UI_LAYER_UNIT, blank_texture, &ui->screen->textures.ui);
 
     int program;
     if (is_semi_transparent) {
@@ -1008,7 +1027,7 @@ draw_cells_with_layers(bool for_final_output, const UIRenderData *ui, ssize_t va
         glDisable(GL_BLEND);
         if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
     }
-    glUniform1f(cell_program_layouts[program].uniforms.has_under_bg, ui->has_under_bg);
+    glUniform1f(cell_program_layouts[program].uniforms.has_under_bg, ui->screen->textures.under_bg.present);
     glUniform1f(cell_program_layouts[program].uniforms.inactive_text_alpha, ui->inactive_text_alpha);
     CELL_BUFFERS;
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[program].render_data.index);

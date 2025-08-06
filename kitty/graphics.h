@@ -150,6 +150,7 @@ typedef struct {
     bool has_images_needing_animation, context_made_current_for_this_command;
     id_type window_id;
     image_map images_by_internal_id;
+    uint32_t layout_or_image_data_change_count;
 } GraphicsManager;
 #else
 typedef struct {int x;} *GraphicsManager;
@@ -184,6 +185,7 @@ gl_pos_y(const unsigned int px_from_top_margin, const unsigned int viewport_size
 typedef struct GraphicsRenderData {
     size_t count, capacity, num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
     ImageRenderData *images;
+    uint32_t change_count;
 } GraphicsRenderData;
 
 GraphicsManager* grman_alloc(bool for_paused_rendering);

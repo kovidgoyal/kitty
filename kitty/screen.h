@@ -87,7 +87,8 @@ typedef struct {
     } last_ime_pos;
 } OverlayLine;
 
-typedef struct ScreenLayer { uint32_t id, width, height, framebuffer_id; } ScreenLayer;
+typedef struct ScreenLayer { uint32_t id, width, height, framebuffer_id; bool present; } ScreenLayer;
+void free_screen_layer(ScreenLayer *layer);
 
 typedef struct {
     PyObject_HEAD
@@ -102,21 +103,16 @@ typedef struct {
         unsigned int cursor_x, cursor_y, scrolled_by;
         index_type lines, columns;
         color_type cursor_bg;
+        unsigned cell_width, cell_height;
         struct {
             struct { bool was_drawn; float intensity; color_type color; } visual_bell;
-            struct { bool was_drawn; float frac, alpha; color_type color; unsigned cell_height, cell_width; } scroll_bar;
+            struct { bool was_drawn; float frac, alpha; color_type color; } scroll_bar;
             struct { hyperlink_id_type link; bool along_bottom, was_drawn; } hyperlink_target;
             struct { char ch; bool was_drawn; } window_number;
         } ui_layer;
-        struct {
-            int x;
-        } over_fg_layer;
-        struct {
-            int x;
-        } under_fg_layer;
-        struct {
-            int x;
-        } under_bg_layer;
+        struct { uint32_t graphics_change_count; } over_fg_layer;
+        struct { uint32_t graphics_change_count; } under_fg_layer;
+        struct { uint32_t graphics_change_count; } under_bg_layer;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;

@@ -114,7 +114,7 @@ static GLuint output_framebuffer = 0;
 
 void
 bind_framebuffer_for_output(unsigned fbid) {
-    glBindFramebuffer(GL_FRAMEBUFFER, fbid || output_framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbid ? fbid : output_framebuffer);
 }
 
 void
