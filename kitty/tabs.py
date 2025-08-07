@@ -1120,7 +1120,8 @@ class TabManager:  # {{{
     def list_tabs(
         self, self_window: Window | None = None,
         tab_filter: Callable[[Tab], bool] | None = None,
-        window_filter: Callable[[Window], bool] | None = None
+        window_filter: Callable[[Window], bool] | None = None,
+        output_session: bool | None = None,
     ) -> Generator[TabDict, None, None]:
         active_tab = self.active_tab
         for tab in self:
@@ -1133,7 +1134,7 @@ class TabManager:  # {{{
                         'is_active': tab is active_tab,
                         'title': tab.name or tab.title,
                         'layout': str(tab.current_layout.name),
-                        'layout_state': tab.current_layout.layout_state(),
+                        'layout_state': tab.current_layout.serialize(tab.windows) if output_session else tab.current_layout.layout_state(),
                         'layout_opts': tab.current_layout.layout_opts.serialized(),
                         'enabled_layouts': tab.enabled_layouts,
                         'windows': windows,

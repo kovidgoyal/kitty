@@ -19,6 +19,7 @@ class LS(RemoteCommand):
     match/str: Window to change colors in
     match_tab/str: Tab to change colors in
     self/bool: Boolean indicating whether to list only the window the command is run in
+    output_session/bool: Output session
     '''
 
     short_desc = 'List tabs/windows'
@@ -41,6 +42,11 @@ Show all environment variables in output, not just differing ones.
 --self
 type=bool-set
 Only list the window this command is run in.
+
+
+--output-session
+type=bool-set
+Output session
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t', 1)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -49,6 +55,7 @@ Only list the window this command is run in.
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         tab_filter: Callable[[Tab], bool] | None = None
         window_filter: Callable[[Window], bool] | None = None
+        output_session: bool | None = None
 
         if payload_get('self'):
             def wf(w: Window) -> bool:
@@ -59,7 +66,9 @@ Only list the window this command is run in.
             def wf(w: Window) -> bool:
                 return w.id in window_ids
             window_filter = wf
-        data = list(boss.list_os_windows(window, tab_filter, window_filter))
+        elif payload_get('output_session'):
+            output_session = True
+        data = list(boss.list_os_windows(window, tab_filter, window_filter, output_session))
         if not payload_get('all_env_vars'):
             all_env_blocks: list[dict[str, str]] = []
             common_env_vars: set[tuple[str, str]] = set()
