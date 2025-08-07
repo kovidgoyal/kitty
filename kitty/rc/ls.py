@@ -112,6 +112,8 @@ Output in json or session format
                 session.append('\n')
 
                 for w in tab['windows']:
+                    if w['is_actions_on_close'] or w['is_actions_on_focus_change'] or w['is_actions_on_removal']:
+                        continue
                     session.append(f'cd {w["cwd"]}\n')
                     session.append(f'launch --var=kitty_serialize_window_id={w["id"]} {self.env_to_str(w["env"])}\n')
                     if w['is_focused']:
