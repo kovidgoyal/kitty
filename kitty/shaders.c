@@ -922,7 +922,7 @@ update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
     wn.was_drawn = window_number_drawn; wn.ch = screen->display_window_char;
 
     needs_redraw |= scrollbar_needs_redraw || visual_bell_needs_redraw || hyperlink_target_needs_redraw || window_number_needs_redraw;
-    if (needs_redraw) {
+    if (needs_redraw | ui->screen->reload_all_gpu_data) {
         blank_canvas(0, 0);  // clear the framebuffer
         if (visual_bell_drawn && intensity > 0) draw_visual_bell_flash(lvb.intensity, lvb.color);
         if (scrollback_indicator_drawn) draw_scroll_indicator(bar_color, bar_alpha, bar_frac, ui);
@@ -1000,7 +1000,7 @@ update_under_bg_layer(const UIRenderData *ui) {
     lr.logo.was_drawn = has_logo;
     if (has_logo) needs_redraw |= get_window_logo_settings(ui, ui->screen);
 
-    if (needs_redraw) {
+    if (needs_redraw | ui->screen->reload_all_gpu_data) {
         blank_canvas(0, 0);  // clear the framebuffer
         if (has_logo) {
             float left = gl_pos_x(lr.logo.left, ui->screen_width), top = gl_pos_y(lr.logo.top, ui->screen_height);
@@ -1021,7 +1021,7 @@ update_under_fg_layer(const UIRenderData *ui) {
     bool needs_redraw = ensure_layer_ready_to_render(&ui->screen->textures.under_fg, ui->screen_width, ui->screen_height);
     needs_redraw |= ui->screen->last_rendered.under_fg_layer.graphics_change_count != ui->grd.change_count;
     ui->screen->last_rendered.under_fg_layer.graphics_change_count = ui->grd.change_count;
-    if (needs_redraw) {
+    if (needs_redraw | ui->screen->reload_all_gpu_data) {
         blank_canvas(0, 0);  // clear the framebuffer
         if (ui->grd.num_of_negative_refs) draw_graphics(
             GRAPHICS_PROGRAM, ui->grd.images, ui->grd.num_of_below_refs,
@@ -1036,7 +1036,7 @@ update_over_fg_layer(const UIRenderData *ui) {
     bool needs_redraw = ensure_layer_ready_to_render(&ui->screen->textures.over_fg, ui->screen_width, ui->screen_height);
     needs_redraw |= ui->screen->last_rendered.over_fg_layer.graphics_change_count != ui->grd.change_count;
     ui->screen->last_rendered.over_fg_layer.graphics_change_count = ui->grd.change_count;
-    if (needs_redraw) {
+    if (needs_redraw | ui->screen->reload_all_gpu_data) {
         blank_canvas(0, 0);  // clear the framebuffer
         if (ui->grd.num_of_positive_refs) draw_graphics(
             GRAPHICS_PROGRAM, ui->grd.images, ui->grd.num_of_negative_refs + ui->grd.num_of_below_refs,
