@@ -979,6 +979,7 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=114), definition='clear_terminal reset active'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=107), definition='clear_terminal to_cursor active'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=107), definition='clear_terminal scrollback active'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=108), definition='clear_terminal last_command active'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=108), definition='clear_terminal to_cursor_scroll active'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=44), definition='load_config_file'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=44), definition='debug_config'))

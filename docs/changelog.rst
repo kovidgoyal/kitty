@@ -112,6 +112,9 @@ Detailed list of changes
 - A new :opt:`cursor_trail_color` setting to independently control the color of
   cursor trails (:pull:`8830`)
 
+- macOS: Add the default :kbd:`Cmd+L` mapping from Terminal.app to erase the
+  last command and its output (:disc:`6040`)
+
 - Wayland: Fix incorrect window size calculation when transitioning from
   full screen to non-full screen with client side decorations (:iss:`8826`)
 

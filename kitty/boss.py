@@ -1306,6 +1306,8 @@ class Boss:
             map f1 clear_terminal to_cursor active
             # Same as above except cleared lines are moved into scrollback
             map f1 clear_terminal to_cursor_scroll active
+            # Erase the last command and its output (needs shell integration to work)
+            map f1 clear_terminal last_command active
         ''')
     def clear_terminal(self, action: str, only_active: bool) -> None:
         if only_active:
@@ -1333,6 +1335,9 @@ class Boss:
         elif action == 'to_cursor_scroll':
             for w in windows:
                 w.scroll_prompt_to_top(clear_scrollback=False)
+        elif action == 'last_command':
+            for w in windows:
+                w.screen.erase_last_command()
         else:
             self.show_error(_('Unknown clear type'), _('The clear type: {} is unknown').format(action))
 

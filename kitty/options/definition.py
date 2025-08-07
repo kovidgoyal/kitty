@@ -4361,6 +4361,8 @@ You can create shortcuts to clear/reset the terminal. For example::
     map f1 clear_terminal to_cursor active
     # Same as above except cleared lines are moved into scrollback
     map f1 clear_terminal to_cursor_scroll active
+    # Erase the last command and its output (needs shell integration to work)
+    map f1 clear_terminal last_command active
 
 If you want to operate on all kitty windows instead of just the current one, use
 :italic:`all` instead of :italic:`active`.
@@ -4413,6 +4415,11 @@ map('Clear to start',
 
 map('Clear scrollback',
     'clear_scrollback option+cmd+k clear_terminal scrollback active',
+    only='macos',
+    )
+
+map('Clear the last command',
+    'clear_last_command cmd+l clear_terminal last_command active',
     only='macos',
     )
 

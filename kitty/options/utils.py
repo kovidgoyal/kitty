@@ -213,7 +213,7 @@ def clear_terminal(func: str, rest: str) -> FuncArgsType:
         args = ['reset', True]
     else:
         action = vals[0].lower()
-        if action not in ('reset', 'scroll', 'scrollback', 'clear', 'to_cursor', 'to_cursor_scroll'):
+        if action not in ('reset', 'scroll', 'scrollback', 'clear', 'to_cursor', 'to_cursor_scroll', 'last_command'):
             log_error(f'{action} is unknown for clear_terminal, using reset')
             action = 'reset'
         args = [action, vals[1].lower() == 'active']
