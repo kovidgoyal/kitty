@@ -17,6 +17,7 @@
 
 /*
  * TODO: for shader refactoring
+ * re-implement background_tint
  * background image with tint and various layout options in both cell and borders shaders
  */
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
@@ -624,7 +625,7 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
 
 static bool
 has_bgimage(OSWindow *w) {
-    return w->bgimage && w->bgimage->texture_id > 0;
+    return w->bgimage.instance && w->bgimage.instance->texture_id > 0;
 }
 
 static GLuint
@@ -645,6 +646,19 @@ ensure_blank_texture(void) {
     return texture_id;
 }
 
+static void
+setup_texture_as_render_target(unsigned width, unsigned height, GLuint *texture_id, GLuint *framebuffer_id) {
+    glGenTextures(1, texture_id); glGenFramebuffers(1, framebuffer_id);
+    glBindTexture(GL_TEXTURE_2D, *texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    bind_framebuffer_for_output(*framebuffer_id);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture_id, 0);
+}
+
 static bool
 ensure_layer_ready_to_render(ScreenLayer *which, unsigned screen_width, unsigned screen_height) {
     bool needs_redraw = false;
@@ -655,15 +669,7 @@ ensure_layer_ready_to_render(ScreenLayer *which, unsigned screen_width, unsigned
     if (!which->id) {
         which->width = screen_width; which->height = screen_height;
         needs_redraw = true;
-        glGenTextures(1, &which->id); glGenFramebuffers(1, &which->framebuffer_id);
-        glBindTexture(GL_TEXTURE_2D, which->id);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, which->width, which->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        bind_framebuffer_for_output(which->framebuffer_id);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, which->id, 0);
+        setup_texture_as_render_target(which->width, which->height, &which->id, &which->framebuffer_id);
     } else {
         bind_framebuffer_for_output(which->framebuffer_id);
     }
@@ -1199,9 +1205,80 @@ create_border_vao(void) {
     return vao_idx;
 }
 
+static void
+draw_bgimage(GLuint texture_id, BackgroundImageRenderSettings s, unsigned image_width, unsigned image_height) {
+    bind_program(BGIMAGE_PROGRAM);
+    GLfloat iwidth = image_width, iheight = image_height;
+    GLfloat vwidth = s.os_window.width, vheight = s.os_window.height;
+    if (CENTER_SCALED == OPT(background_image_layout)) {
+        GLfloat ifrac = iwidth / iheight;
+        if (ifrac > (vwidth / vheight)) {
+            iheight = vheight;
+            iwidth = iheight * ifrac;
+        } else {
+            iwidth = vwidth;
+            iheight = iwidth / ifrac;
+        }
+    }
+    GLfloat tiled = 0.f;;
+    GLfloat left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
+    switch (OPT(background_image_layout)) {
+        case TILING: case MIRRORED: case CLAMPED:
+            tiled = 1.f; break;
+        case SCALED:
+            break;
+        case CENTER_CLAMPED:
+        case CENTER_SCALED: {
+            GLfloat wfrac = (vwidth - iwidth) / vwidth;
+            GLfloat hfrac = (vheight - iheight) / vheight;
+            left += wfrac;
+            right -= wfrac;
+            top -= hfrac;
+            bottom += hfrac;
+        } break;
+    }
+    glUniform4f(bgimage_program_layout.uniforms.sizes, vwidth, vheight, iwidth, iheight);
+    glUniform1f(bgimage_program_layout.uniforms.tiled, tiled);
+    glUniform4f(bgimage_program_layout.uniforms.positions, left, top, right, bottom);
+    glUniform1i(bgimage_program_layout.uniforms.image, BGIMAGE_UNIT);
+    glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    save_viewport_using_bottom_left_origin(0, 0, s.os_window.width, s.os_window.height);
+    blank_canvas(0, 0);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    restore_viewport();
+    unbind_program();
+}
+
+static bool
+ensure_bgimage_texture(OSWindow *os_window) {
+    if (!has_bgimage(os_window)) return false;
+    bool needs_redraw = os_window->bgimage.rendered_texture_id == 0;
+    BackgroundImageRenderSettings s = {
+        .os_window.width = os_window->viewport_width, .os_window.height = os_window->viewport_height,
+        .instance_id = os_window->bgimage.instance->id, .layout=OPT(background_image_layout),
+        .linear=OPT(background_image_linear),
+    };
+    needs_redraw |= memcmp(&s, &os_window->bgimage.last_rendered, sizeof(s)) != 0;
+    if (needs_redraw) {
+        if (os_window->bgimage.rendered_texture_id) free_texture(&os_window->bgimage.rendered_texture_id);
+        GLuint framebuffer_id;
+        setup_texture_as_render_target(s.os_window.width, s.os_window.height, &os_window->bgimage.rendered_texture_id, &framebuffer_id);
+        draw_bgimage(os_window->bgimage.instance->texture_id, s, os_window->bgimage.instance->width, os_window->bgimage.instance->height);
+        bind_framebuffer_for_output(0);
+        free_framebuffer(&framebuffer_id);
+        if (0) save_texture_as_png(os_window->bgimage.instance->texture_id, os_window->bgimage.instance->width, os_window->bgimage.instance->height, "/tmp/bg-image.png");
+        if (0) save_texture_as_png(os_window->bgimage.rendered_texture_id, s.os_window.width, s.os_window.height, "/tmp/bg-layer.png");
+        os_window->bgimage.render_counter++;
+    }
+    os_window->bgimage.last_rendered = s;
+    return true;
+}
+
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
     if (w->live_resize.in_progress) blank_canvas(OPT(background_opacity), OPT(background));
+    ensure_bgimage_texture(w);
     if (!num_border_rects) return;
     float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
     bind_vertex_array(vao_idx);

@@ -880,7 +880,7 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     if (!w->fonts_data) { log_error("No fonts data found for window id: %llu", w->id); return false; }
     if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows, &all_windows_have_same_bg, scan_for_animated_images)) needs_render = true;
     if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
-    if (w->render_calls < 3 && w->bgimage && w->bgimage->texture_id) needs_render = true;
+    if (w->render_calls < 3 && w->bgimage.instance && w->bgimage.instance->texture_id) needs_render = true;
     if (needs_render) render_prepared_os_window(w, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
     if (w->is_focused) change_menubar_title(w->window_title);
     return needs_render;

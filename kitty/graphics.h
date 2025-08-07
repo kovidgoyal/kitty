@@ -40,7 +40,7 @@ typedef struct {
     uint32_t texture_id;
     unsigned int height, width;
     uint8_t* bitmap;
-    uint32_t refcnt;
+    uint32_t refcnt, id;
     size_t mmap_size;
 } BackgroundImage;
 

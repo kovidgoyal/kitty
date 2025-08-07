@@ -271,6 +271,13 @@ typedef struct WindowChromeState {
     float background_opacity;
 } WindowChromeState;
 
+typedef struct BackgroundImageRenderSettings {
+    struct { unsigned width, height; } os_window;
+    unsigned instance_id;
+    BackgroundImageLayout layout;
+    bool linear;
+} BackgroundImageRenderSettings;
+
 typedef struct {
     void *handle;
     id_type id;
@@ -282,7 +289,11 @@ typedef struct {
     int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
-    BackgroundImage *bgimage;
+    struct {
+        BackgroundImage *instance;
+        uint32_t rendered_texture_id, render_counter;
+        BackgroundImageRenderSettings last_rendered;
+    } bgimage;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render;
     unsigned keep_rendering_till_swap;

@@ -230,8 +230,8 @@ add_os_window(void) {
             }
         }
         if (global_state.bgimage->texture_id) {
-            ans->bgimage = global_state.bgimage;
-            ans->bgimage->refcnt++;
+            ans->bgimage.instance = global_state.bgimage;
+            ans->bgimage.instance->refcnt++;
         }
     }
 
@@ -488,8 +488,9 @@ destroy_os_window_item(OSWindow *w) {
     Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
     remove_vao(w->tab_bar_render_data.vao_idx);
     free(w->tabs); w->tabs = NULL;
-    free_bgimage(&w->bgimage, true);
-    w->bgimage = NULL;
+    free_bgimage(&w->bgimage.instance, true);
+    if (w->bgimage.rendered_texture_id) free_texture(&w->bgimage.rendered_texture_id);
+    zero_at_ptr(&w->bgimage);
 }
 
 bool
@@ -858,7 +859,7 @@ PYWRAP1(os_window_has_background_image) {
     id_type os_window_id;
     PA("K", &os_window_id);
     WITH_OS_WINDOW(os_window_id)
-        if (os_window->bgimage && os_window->bgimage->texture_id > 0) { Py_RETURN_TRUE; }
+        if (os_window->bgimage.instance && os_window->bgimage.instance->texture_id > 0) { Py_RETURN_TRUE; }
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;
 }
@@ -1227,6 +1228,8 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             free(bgimage);
             return NULL;
         }
+        static uint32_t bgimage_id_counter = 0;
+        bgimage->id = ++bgimage_id_counter;
         send_bgimage_to_gpu(layout, bgimage);
         bgimage->refcnt++;
     }
@@ -1243,8 +1246,8 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
         id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(os_window_ids, i));
         WITH_OS_WINDOW(os_window_id)
             make_os_window_context_current(os_window);
-            free_bgimage(&os_window->bgimage, true);
-            os_window->bgimage = bgimage;
+            free_bgimage(&os_window->bgimage.instance, true);
+            os_window->bgimage.instance = bgimage;
             os_window->render_calls = 0;
             if (bgimage) bgimage->refcnt++;
         END_WITH_OS_WINDOW

@@ -6,10 +6,6 @@
 #define tex_top 0
 #define tex_right 1
 #define tex_bottom 1
-#define x_axis 0
-#define y_axis 1
-#define window i
-#define image i + 2
 
 uniform float tiled;
 uniform vec4 sizes;  // [ window_width, window_height, image_width, image_height ]
@@ -29,6 +25,8 @@ float scale_factor(float window_size, float image_size) {
 }
 
 float tiling_factor(int i) {
+#define window i
+#define image i + 2
     return tiled * scale_factor(sizes[window], sizes[image]) + (1 - tiled);
 }
 
@@ -40,6 +38,8 @@ void main() {
         vec2(positions[right], positions[top])
     );
     vec2 tex_coords = tex_map[gl_VertexID];
+#define x_axis 0
+#define y_axis 1
     texcoord = vec2(
         tex_coords[x_axis] * tiling_factor(x_axis),
         tex_coords[y_axis] * tiling_factor(y_axis)
