@@ -477,15 +477,14 @@ class Boss:
     def list_os_windows(
         self, self_window: Window | None = None,
         tab_filter: Callable[[Tab], bool] | None = None,
-        window_filter: Callable[[Window], bool] | None = None,
-        output_session: bool | None = None,
+        window_filter: Callable[[Window], bool] | None = None
     ) -> Iterator[OSWindowDict]:
         with cached_process_data():
             active_tab_manager = self.active_tab_manager
             focused_wid = current_focused_os_window_id()
             last_focused = last_focused_os_window_id()
             for os_window_id, tm in self.os_window_map.items():
-                tabs = list(tm.list_tabs(self_window, tab_filter, window_filter, output_session))
+                tabs = list(tm.list_tabs(self_window, tab_filter, window_filter))
                 if tabs:
                     bo = background_opacity_of(os_window_id)
                     if bo is None:
