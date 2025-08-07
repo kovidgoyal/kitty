@@ -2550,20 +2550,25 @@ screen_scroll_until_cursor_prompt(Screen *self, bool add_to_scrollback) {
     screen_ensure_bounds(self, false, in_margins);
 }
 
+static void
+screen_delete_lines_impl(Screen *self, index_type start, index_type count, index_type top, index_type bottom) {
+    index_type y = start;
+    nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
+    y += count;
+    y = MIN(bottom, y);
+    nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
+    screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
+    linebuf_delete_lines(self->linebuf, count, start, bottom);
+    self->is_dirty = true;
+    clear_all_selections(self);
+}
+
 void
 screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
-        index_type y = self->cursor->y;
-        nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
-        y += count;
-        y = MIN(bottom, y);
-        nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
-        screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
-        linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
-        self->is_dirty = true;
-        clear_all_selections(self);
+        screen_delete_lines_impl(self, self->cursor->y, count, self->margin_bottom, self->margin_bottom);
         screen_carriage_return(self);
     }
 }
@@ -4224,6 +4229,32 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
 }
 
 static PyObject*
+erase_last_command(Screen *self, PyObject *args) {
+    int include_prompt = 1;
+    if (!PyArg_ParseTuple(args, "|p", &include_prompt)) return NULL;
+    OutputOffset oo = {.screen=self};
+    if (self->linebuf != self->main_linebuf || !find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -1, false)) Py_RETURN_FALSE;
+    if (include_prompt) {
+        int y = oo.start - 1; Line *line;
+        while ((line = checked_range_line(self, y))) {
+            oo.start--; oo.num_lines++; y--;
+            if (line->attrs.prompt_kind == PROMPT_START) break;
+        }
+    }
+    index_type num_lines_to_erase_in_screen = oo.start >= 0 ? oo.num_lines : oo.num_lines + oo.start;
+    num_lines_to_erase_in_screen = MIN(self->cursor->y, num_lines_to_erase_in_screen);
+    if (num_lines_to_erase_in_screen) {
+        screen_delete_lines_impl(self, self->cursor->y - num_lines_to_erase_in_screen, num_lines_to_erase_in_screen, 0, self->lines - 1);
+        self->cursor->y -= num_lines_to_erase_in_screen;
+    }
+    if (oo.num_lines > num_lines_to_erase_in_screen) {
+        index_type num_of_lines_to_erase_from_history = oo.num_lines - num_lines_to_erase_in_screen;
+        historybuf_delete_newest_lines(self->historybuf, num_of_lines_to_erase_from_history);
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject*
 cmd_output(Screen *self, PyObject *args) {
     unsigned int which = 0;
     RAII_PyObject(which_args, PyTuple_GetSlice(args, 0, 1));
@@ -5555,6 +5586,7 @@ static PyMethodDef methods[] = {
     MND(draw, METH_O)
     MND(apply_sgr, METH_O)
     MND(cursor_position, METH_VARARGS)
+    MND(erase_last_command, METH_VARARGS)
     MND(set_window_char, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
     MND(reset_mode, METH_VARARGS)

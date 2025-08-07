@@ -327,6 +327,30 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
     return true;
 }
 
+void
+historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
+    if (!count) return;
+    count = MIN(self->count, count);
+    self->count -= count - 1;
+    // now nuke multi cell chars that overlap onto the last line
+    index_type idx = (self->start_of_data + self->count - 1) % self->ynum;
+    init_line(self, idx, self->line);
+    CPUCell *cells = self->line->cpu_cells;
+    self->count--;
+    for (index_type x = 0; x < self->line->xnum; x++) {
+        CPUCell *c = cells + x;
+        if (c->is_multicell && c->y) {
+            for (index_type i = 0, pos = self->count; i < c->y && pos; i++, pos--) {
+                index_type idx = (self->start_of_data + pos - 1) % self->ynum;
+                init_line(self, idx, self->line);
+                CPUCell *m = self->line->cpu_cells + x;
+                cell_set_char(m, 0); m->is_multicell = false;
+                clear_sprite_position(self->line->gpu_cells[x]);
+            }
+        }
+    }
+}
+
 static PyObject*
 line(HistoryBuf *self, PyObject *val) {
 #define line_doc "Return the line with line number val. This buffer grows upwards, i.e. 0 is the most recently added line"
