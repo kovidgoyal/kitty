@@ -233,6 +233,9 @@ class WindowDict(TypedDict):
     id: int
     is_focused: bool
     is_active: bool
+    is_actions_on_close: bool
+    is_actions_on_focus_change: bool
+    is_actions_on_removal: bool
     title: str
     pid: int | None
     cwd: str
@@ -821,6 +824,9 @@ class Window:
             'id': self.id,
             'is_focused': is_focused,
             'is_active': is_active,
+            'is_actions_on_close': self in self.actions_on_close,
+            'is_actions_on_focus_change': self in self.actions_on_focus_change,
+            'is_actions_on_removal': self in self.actions_on_removal,
             'title': self.title,
             'pid': self.child.pid,
             'cwd': self.child.current_cwd or self.child.cwd,
@@ -1978,6 +1984,8 @@ class Window:
                 ans.append('--hold-after-ssh')
         for k, v in self.user_vars.items():
             ans.append(f'--var={k}={v}')
+        if 'kitty_serialize_window_id' not in self.user_vars:
+            ans.append(f'--var=kitty_serialize_window_id={self.id}')
         ans.extend(self.padding.as_launch_args())
         ans.extend(self.margin.as_launch_args('margin'))
         if self.override_title:

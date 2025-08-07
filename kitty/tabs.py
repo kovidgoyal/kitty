@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import os
 import re
 import stat
@@ -304,6 +305,7 @@ class Tab:  # {{{
                 if lc:
                     gw.append(shlex.join(lc))
             launch_cmds.extend(gw)
+        launch_cmds.append(f'set_layout_state {json.dumps(self.serialize_state()["layout_state"])}\n')
         return (ans + launch_cmds) if launch_cmds else []
 
     def active_window_changed(self) -> None:
@@ -1170,7 +1172,7 @@ class TabManager:  # {{{
                         'is_active': tab is active_tab,
                         'title': tab.name or tab.title,
                         'layout': str(tab.current_layout.name),
-                        'layout_state': tab.current_layout.layout_state(),
+                        'layout_state': tab.current_layout.serialize(tab.windows),
                         'layout_opts': tab.current_layout.layout_opts.serialized(),
                         'enabled_layouts': tab.enabled_layouts,
                         'windows': windows,
