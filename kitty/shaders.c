@@ -1023,6 +1023,7 @@ update_under_bg_layer(const UIRenderData *ui) {
         }
         if (has_graphics) draw_graphics(
             GRAPHICS_PROGRAM, ui->grd.images, 0, ui->grd.num_of_below_refs, ui->inactive_text_alpha);
+        if (0) save_texture_as_png(ui->screen->textures.under_bg.id, ui->screen_width, ui->screen_height, "/tmp/under-bg.png");
     }
 #undef lr
 }
@@ -1105,7 +1106,7 @@ draw_cells_with_layers(bool for_final_output, const UIRenderData *ui, ssize_t va
     int program;
     if (is_semi_transparent) {
         bind_program((program = has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM));
-        glUniform1f(cell_program_layouts[CELL_PROGRAM].uniforms.for_final_output, for_final_output ? 1. : 0.);
+        glUniform1f(cell_program_layouts[program].uniforms.for_final_output, for_final_output ? 1. : 0.);
         if (for_final_output) {
             glDisable(GL_BLEND);
         } else {

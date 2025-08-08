@@ -304,11 +304,12 @@ void main() {
     // Selection and cursor
     bg_alpha = choose_alpha(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
     bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
-    background = vec4(choose_color(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg), bg_alpha);
+    vec3 background_rgb = choose_color(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg);
     // }}}
 
 #ifdef OVERRIDE_FG_COLORS
-    decoration_fg = override_foreground_color(decoration_fg, background);
-    foreground = override_foreground_color(foreground, background);
+    decoration_fg = override_foreground_color(decoration_fg, background_rgb);
+    foreground = override_foreground_color(foreground, background_rgb);
 #endif
+    background = vec4(background_rgb, bg_alpha);
 }
