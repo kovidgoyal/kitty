@@ -7,7 +7,7 @@ uniform sampler2D image;
 uniform vec3 amask_fg;
 uniform vec4 amask_bg_premult;
 #else
-uniform float inactive_text_alpha;
+uniform float extra_alpha;
 #endif
 
 in vec2 texcoord;
@@ -20,7 +20,7 @@ void main() {
     color = vec4_premul(color);
     color = alpha_blend_premul(color, amask_bg_premult);
 #else
-    color.a *= inactive_text_alpha;
+    color.a *= extra_alpha;
     color = vec4_premul(color);
 #endif
     output_color = color;

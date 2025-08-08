@@ -564,9 +564,9 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 }
 
 static void
-draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, float inactive_text_alpha) {
+draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, float extra_alpha) {
     bind_program(program);
-    glUniform1f(graphics_program_layouts[program].uniforms.inactive_text_alpha, inactive_text_alpha);
+    if (program == GRAPHICS_PROGRAM) glUniform1f(graphics_program_layouts[program].uniforms.extra_alpha, extra_alpha);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     GraphicsUniforms *u = &graphics_program_layouts[program].uniforms;
     for (GLuint i=0; i < count;) {
