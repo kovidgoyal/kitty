@@ -11,6 +11,7 @@ from kitty.constants import appname
 from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Tab, Window
 from ..boss import OSWindowDict
 from ..child import ProcessDesc
+from ..launch import is_excluded_env_var
 
 if TYPE_CHECKING:
     from kitty.cli_stub import LSRCOptions as CLIOptions
@@ -107,7 +108,7 @@ Output in json or session format
                 session.append('\n\nnew_os_window\n')
 
             for tab in osw['tabs']:
-                session.append(f'new_tab {tab["title"]}\n')
+                session.append('new_tab\n')
                 session.append(f'layout {tab["layout"]}\n')
                 session.append('\n')
 
@@ -128,6 +129,8 @@ Output in json or session format
         '''Convert an env list to a series of '--env key=value' parameters and return as a string.'''
         s = ''
         for key in env:
+            if is_excluded_env_var(key):
+                continue
             s += f'--env \'{key}={env[key]}\' '
 
         return s.strip()
