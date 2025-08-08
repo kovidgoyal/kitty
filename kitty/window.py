@@ -231,6 +231,9 @@ class WindowDict(TypedDict):
     id: int
     is_focused: bool
     is_active: bool
+    is_actions_on_close: bool
+    is_actions_on_focus_change: bool
+    is_actions_on_removal: bool
     title: str
     pid: int | None
     cwd: str
@@ -784,6 +787,9 @@ class Window:
             'id': self.id,
             'is_focused': is_focused,
             'is_active': is_active,
+            'is_actions_on_close': self in self.actions_on_close,
+            'is_actions_on_focus_change': self in self.actions_on_focus_change,
+            'is_actions_on_removal': self in self.actions_on_removal,
             'title': self.title,
             'pid': self.child.pid,
             'cwd': self.child.current_cwd or self.child.cwd,

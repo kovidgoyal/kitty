@@ -2,12 +2,16 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from kitty.constants import appname
 
 from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Tab, Window
+from ..boss import OSWindowDict
+from ..child import ProcessDesc
+from ..launch import is_excluded_env_var
 
 if TYPE_CHECKING:
     from kitty.cli_stub import LSRCOptions as CLIOptions
@@ -19,6 +23,7 @@ class LS(RemoteCommand):
     match/str: Window to change colors in
     match_tab/str: Tab to change colors in
     self/bool: Boolean indicating whether to list only the window the command is run in
+    output_format/str: Output in json or session format
     '''
 
     short_desc = 'List tabs/windows'
@@ -41,6 +46,13 @@ Show all environment variables in output, not just differing ones.
 --self
 type=bool-set
 Only list the window this command is run in.
+
+
+--output-format
+type=choices
+choices=json,session
+default=json
+Output in json or session format
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t', 1)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -49,6 +61,7 @@ Only list the window this command is run in.
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         tab_filter: Callable[[Tab], bool] | None = None
         window_filter: Callable[[Window], bool] | None = None
+        output_session: bool = False
 
         if payload_get('self'):
             def wf(w: Window) -> bool:
@@ -59,6 +72,8 @@ Only list the window this command is run in.
             def wf(w: Window) -> bool:
                 return w.id in window_ids
             window_filter = wf
+        elif payload_get('output_format') == 'session':
+            output_session = True
         data = list(boss.list_os_windows(window, tab_filter, window_filter))
         if not payload_get('all_env_vars'):
             all_env_blocks: list[dict[str, str]] = []
@@ -78,7 +93,56 @@ Only list the window this command is run in.
                 for env in all_env_blocks:
                     for r in remove_env_vars:
                         env.pop(r, None)
-        return json.dumps(data, indent=2, sort_keys=True)
+        if not output_session:
+            return json.dumps(data, indent=2, sort_keys=True)
+        return self.convert_to_session(data)
+
+    def convert_to_session(self, data: list[OSWindowDict]) -> str:
+        '''Convert a kitty session dict, into a kitty session file and output it.'''
+        session = []
+        first = True
+        for osw in data:
+            if first:
+                first = False
+            else:
+                session.append('\n\nnew_os_window\n')
+
+            for tab in osw['tabs']:
+                session.append('new_tab\n')
+                session.append(f'layout {tab["layout"]}\n')
+                session.append('\n')
+
+                for w in tab['windows']:
+                    if w['is_actions_on_close'] or w['is_actions_on_focus_change'] or w['is_actions_on_removal']:
+                        continue
+                    session.append(f'cd {w["cwd"]}\n')
+                    session.append(f'launch --var=kitty_serialize_window_id={w["id"]} {self.env_to_str(w["env"])}\n')
+                    if w['is_focused']:
+                        session.append('focus\n')
+                    session.append('\n')
+                layout_state = json.dumps(tab['layout_state'])
+                session.append(f'set_layout_state {layout_state}\n')
+                session.append('\n')
+        return ''.join(session)
+
+    def env_to_str(self, env: dict[str, str]):
+        '''Convert an env list to a series of '--env key=value' parameters and return as a string.'''
+        s = ''
+        for key in env:
+            if is_excluded_env_var(key):
+                continue
+            s += f'--env \'{key}={env[key]}\' '
+
+        return s.strip()
+
+    def cmdline_to_str(self, cmdline: Sequence[str] | None):
+        '''Convert a cmdline list to a space separated string.'''
+        s = ''
+        if cmdline:
+            for e in cmdline:
+                s += f'{e} '
+
+        return s.strip()
 
 
 ls = LS()

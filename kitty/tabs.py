@@ -1133,7 +1133,7 @@ class TabManager:  # {{{
                         'is_active': tab is active_tab,
                         'title': tab.name or tab.title,
                         'layout': str(tab.current_layout.name),
-                        'layout_state': tab.current_layout.layout_state(),
+                        'layout_state': tab.current_layout.serialize(tab.windows),
                         'layout_opts': tab.current_layout.layout_opts.serialized(),
                         'enabled_layouts': tab.enabled_layouts,
                         'windows': windows,
