@@ -1,10 +1,22 @@
-#pragma kitty_include_shader <linear2srgb.glsl>
+#pragma kitty_include_shader <utils.glsl>
+
+#define DEFAULT_BG 0
+#define ACTIVE_BORDER_COLOR 1
+#define INACTIVE_BORDER_COLOR 2
+#define WINDOW_BACKGROUND_PLACEHOLDER 3
+#define BELL_BORDER_COLOR 4
+#define TAB_BAR_BG_COLOR 5
+#define TAB_BAR_MARGIN_COLOR 6
+#define TAB_BAR_EDGE_LEFT_COLOR 7
+#define TAB_BAR_EDGE_RIGHT_COLOR 8
 uniform uint colors[9];
 uniform float background_opacity;
 uniform float gamma_lut[256];
 in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
 out vec4 color;
+out vec2 texcoord;
+out float use_background_image;
 
 // indices into the rect vector
 const int LEFT = 0;
@@ -24,8 +36,8 @@ float to_color(uint c) {
     return gamma_lut[c & FF];
 }
 
-float is_integer_value(uint c, float x) {
-    return 1. - step(0.5, abs(float(c) - x));
+float is_integer_value(uint c, int x) {
+    return 1. - step(0.5, abs(float(c) - float(x)));
 }
 
 vec3 as_color_vector(uint c, int shift) {
@@ -35,15 +47,17 @@ vec3 as_color_vector(uint c, int shift) {
 void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(rect[pos.x], rect[pos.y], 0, 1);
+    texcoord = gl_Position.xy * 0.5 + 0.5;
     vec3 window_bg = as_color_vector(rect_color, 24);
     uint rc = rect_color & FF;
     vec3 color3 = as_color_vector(colors[rc], 16);
-    float is_window_bg = is_integer_value(rc, 3.);
-    float is_default_bg = is_integer_value(rc, 0.);
+    float is_window_bg = is_integer_value(rc, WINDOW_BACKGROUND_PLACEHOLDER); // used by window padding areas
+    float is_default_bg = is_integer_value(rc, DEFAULT_BG);
     color3 = is_window_bg * window_bg + (1. - is_window_bg) * color3;
-    // Border must be always drawn opaque
-    float is_border_bg = 1. - step(0.5, abs((float(rc) - 2.) * (float(rc) - 1.) * (float(rc) - 4.))); // 1 if rc in (1, 2, 4) else 0
+    // Border must be always drawn opaque without background image
+    float is_not_a_border = step(0.5, abs((float(rc) - ACTIVE_BORDER_COLOR) * (float(rc) - INACTIVE_BORDER_COLOR) * (float(rc) - BELL_BORDER_COLOR)));
     float final_opacity = background_opacity;
-    final_opacity = is_border_bg + (1. - is_border_bg) * final_opacity;
-    color = vec4(linear2srgb(color3) * final_opacity, final_opacity);
+    final_opacity = (1. - is_not_a_border) + is_not_a_border * final_opacity;
+    color = vec4_premul(color3, final_opacity);
+    use_background_image = is_not_a_border;
 }

@@ -5,7 +5,7 @@ from collections.abc import Iterable, Sequence
 from enum import IntFlag
 from typing import NamedTuple
 
-from .fast_data_types import BORDERS_PROGRAM, add_borders_rect, get_options, init_borders_program, os_window_has_background_image
+from .fast_data_types import BORDERS_PROGRAM, add_borders_rect, get_options, init_borders_program
 from .shaders import program_for
 from .typing_compat import LayoutType
 from .utils import color_as_int
@@ -84,12 +84,10 @@ class Borders:
         draw_active_borders = opts.active_border_color is not None
         draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
         add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, BorderColor.default_bg)
-        has_background_image = os_window_has_background_image(self.os_window_id)
-        if not has_background_image or opts.background_tint > 0.0:
-            for br in current_layout.blank_rects:
-                add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
-            for tbr in tab_bar_rects:
-                add_borders_rect(self.os_window_id, self.tab_id, *tbr)
+        for br in current_layout.blank_rects:
+            add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
+        for tbr in tab_bar_rects:
+            add_borders_rect(self.os_window_id, self.tab_id, *tbr)
         bw = 0
         groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
         if groups:
@@ -107,10 +105,9 @@ class Borders:
                 else:
                     color = BorderColor.bell if wg.needs_attention else BorderColor.inactive
                 draw_edges(self.os_window_id, self.tab_id, (color, color, color, color), wg, borders=True)
-            if not has_background_image:
-                # Draw the background rectangles over the padding region
-                colors = window_bg, window_bg, window_bg, window_bg
-                draw_edges(self.os_window_id, self.tab_id, colors, wg)
+            # Draw the background rectangles over the padding region
+            colors = window_bg, window_bg, window_bg, window_bg
+            draw_edges(self.os_window_id, self.tab_id, colors, wg)
 
         if draw_minimal_borders:
             for border_line in current_layout.get_minimal_borders(all_windows):

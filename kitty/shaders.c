@@ -1197,6 +1197,7 @@ init_borders_program(void) {
     get_uniform_locations_border(BORDERS_PROGRAM, &border_program_layout.uniforms);
     bind_program(BORDERS_PROGRAM);
     glUniform1fv(border_program_layout.uniforms.gamma_lut, 256, srgb_lut);
+    glUniform1i(border_program_layout.uniforms.bgimage, BGIMAGE_UNIT);
 }
 
 ssize_t
@@ -1285,7 +1286,7 @@ ensure_bgimage_texture(OSWindow *os_window) {
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
     if (w->live_resize.in_progress) blank_canvas(OPT(background_opacity), OPT(background));
-    ensure_bgimage_texture(w);
+    bool has_background_image = ensure_bgimage_texture(w);
     if (!num_border_rects) return;
     float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
     bind_vertex_array(vao_idx);
@@ -1302,6 +1303,8 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         OPT(bell_border_color), OPT(tab_bar_background), OPT(tab_bar_margin_color),
         w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
     };
+    glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
+    glBindTexture(GL_TEXTURE_2D, has_background_image ? w->bgimage.rendered_texture_id : ensure_blank_texture());
     glUniform1uiv(border_program_layout.uniforms.colors, arraysz(colors), colors);
     glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
     glDisable(GL_BLEND);
