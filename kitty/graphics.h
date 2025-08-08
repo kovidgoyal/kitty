@@ -171,13 +171,13 @@ gl_size(const unsigned int sz, const unsigned int viewport_size) {
 }
 
 static inline float
-gl_pos_x(const unsigned int px_from_left_margin, const unsigned int viewport_size) {
+gl_pos_x(const int px_from_left_margin, const unsigned int viewport_size) {
     const float px = 2.f / viewport_size;
     return -1.f + px_from_left_margin * px;
 }
 
 static inline float
-gl_pos_y(const unsigned int px_from_top_margin, const unsigned int viewport_size) {
+gl_pos_y(const int px_from_top_margin, const unsigned int viewport_size) {
     const float px = 2.f / viewport_size;
     return 1.f - px_from_top_margin * px;
 }
