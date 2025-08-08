@@ -945,9 +945,10 @@ update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
 
 static bool
 get_window_logo_settings(const UIRenderData *ui, Screen *s, bool has_logo) {
-    WindowLogoRenderData *wl = ui->window_logo;
-    WindowLogoRenderSettings w = {.width=wl->instance->width, .height=wl->instance->height, .id=wl->id, .alpha=OPT(window_logo_alpha), .was_drawn=has_logo};
+    WindowLogoRenderSettings w = {.alpha=OPT(window_logo_alpha), .was_drawn=has_logo};
     if (has_logo) {
+        WindowLogoRenderData *wl = ui->window_logo;
+        w.height = wl->instance->height; w.width = wl->instance->width; w.id = wl->id;
         if (OPT(window_logo_scale.width) > 0 || OPT(window_logo_scale.height) > 0) {
             unsigned scaled_wl_width = ui->screen_width, scaled_wl_height = ui->screen_height;
 
