@@ -944,46 +944,45 @@ update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
 }
 
 static bool
-get_window_logo_settings(const UIRenderData *ui, Screen *s) {
+get_window_logo_settings(const UIRenderData *ui, Screen *s, bool has_logo) {
     WindowLogoRenderData *wl = ui->window_logo;
-    unsigned width = wl->instance->width, height = wl->instance->height;
+    WindowLogoRenderSettings w = {.width=wl->instance->width, .height=wl->instance->height, .id=wl->id, .alpha=OPT(window_logo_alpha), .was_drawn=has_logo};
+    if (has_logo) {
+        if (OPT(window_logo_scale.width) > 0 || OPT(window_logo_scale.height) > 0) {
+            unsigned scaled_wl_width = ui->screen_width, scaled_wl_height = ui->screen_height;
 
-    if (OPT(window_logo_scale.width) > 0 || OPT(window_logo_scale.height) > 0) {
-        unsigned scaled_wl_width = ui->screen_width, scaled_wl_height = ui->screen_height;
-
-        // [sx] Scales logo to sx % of the viewports shortest dimension, preserving aspect ratio
-        if (OPT(window_logo_scale.height) < 0) {
-            if (ui->screen_height < ui->screen_width) {
-                scaled_wl_height = (int)(ui->screen_height * OPT(window_logo_scale.width) / 100);
-                scaled_wl_width = wl->instance->width * scaled_wl_height / wl->instance->height;
-            } else {
-                scaled_wl_width = (int)(ui->screen_width * OPT(window_logo_scale.width) / 100);
-                scaled_wl_height = wl->instance->height * scaled_wl_width / wl->instance->width;
+            // [sx] Scales logo to sx % of the viewports shortest dimension, preserving aspect ratio
+            if (OPT(window_logo_scale.height) < 0) {
+                if (ui->screen_height < ui->screen_width) {
+                    scaled_wl_height = (int)(ui->screen_height * OPT(window_logo_scale.width) / 100);
+                    scaled_wl_width = wl->instance->width * scaled_wl_height / wl->instance->height;
+                } else {
+                    scaled_wl_width = (int)(ui->screen_width * OPT(window_logo_scale.width) / 100);
+                    scaled_wl_height = wl->instance->height * scaled_wl_width / wl->instance->width;
+                }
             }
+            // [0 sy] Scales logo's y dimension to sy % of viewporty keeping original x dimension
+            else if (OPT(window_logo_scale.width) == 0.0) {
+                scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
+                scaled_wl_width = wl->instance->width;
+            }
+            // [sx 0] Scales logo's x dimension to sx % of viewportx keeping original y dimension
+            else if (OPT(window_logo_scale.height) == 0.0) {
+                scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
+                scaled_wl_height = wl->instance->height;
+            }
+            // [sx sy] Scales logo's x and y dimension to sx and sy % of viewportx and viewporty respectively
+            else {
+                scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
+                scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
+            }
+            w.width = scaled_wl_width; w.height = scaled_wl_height;
         }
-        // [0 sy] Scales logo's y dimension to sy % of viewporty keeping original x dimension
-        else if (OPT(window_logo_scale.width) == 0.0) {
-            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
-            scaled_wl_width = wl->instance->width;
-        }
-        // [sx 0] Scales logo's x dimension to sx % of viewportx keeping original y dimension
-        else if (OPT(window_logo_scale.height) == 0.0) {
-            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
-            scaled_wl_height = wl->instance->height;
-        }
-        // [sx sy] Scales logo's x and y dimension to sx and sy % of viewportx and viewporty respectively
-        else {
-            scaled_wl_height = (int)(scaled_wl_height * OPT(window_logo_scale.height) / 100);
-            scaled_wl_width = (int)(scaled_wl_width * OPT(window_logo_scale.width) / 100);
-        }
-        width = scaled_wl_width; height = scaled_wl_height;
+        w.left = (int)(ui->screen_width * wl->position.canvas_x - w.width * wl->position.image_x);
+        w.top = (int)(ui->screen_height * wl->position.canvas_y - w.height * wl->position.image_y);
     }
-    int left = (int)(ui->screen_width * wl->position.canvas_x - width * wl->position.image_x);
-    int top = (int)(ui->screen_height * wl->position.canvas_y - height * wl->position.image_y);
-#define lr s->last_rendered.under_bg_layer.logo
-    bool needs_redraw = lr.id != wl->id || lr.alpha != OPT(window_logo_alpha) || lr.left != left || lr.top != top || lr.width != width || lr.height != height;
-    lr.height = height; lr.width = width; lr.left = left; lr.top = top; lr.id = wl->id; lr.alpha = OPT(window_logo_alpha);
-#undef lr
+    bool needs_redraw = memcmp(&w, &s->last_rendered.under_bg_layer.logo, sizeof(WindowLogoRenderSettings)) != 0;
+    memcpy(&s->last_rendered.under_bg_layer.logo, &w, sizeof(WindowLogoRenderSettings));
     return needs_redraw;
 }
 
@@ -1002,9 +1001,7 @@ update_under_bg_layer(const UIRenderData *ui) {
     needs_redraw |= lr.bgimage.was_drawn != has_bg;
     lr.bgimage.was_drawn = has_bg;
 
-    needs_redraw |= lr.logo.was_drawn != has_logo;
-    lr.logo.was_drawn = has_logo;
-    if (has_logo) needs_redraw |= get_window_logo_settings(ui, ui->screen);
+    needs_redraw |= get_window_logo_settings(ui, ui->screen, has_logo);
 
     if (needs_redraw | ui->screen->reload_all_gpu_data) {
         blank_canvas(0, 0);  // clear the framebuffer

@@ -91,6 +91,10 @@ typedef struct {
 typedef struct ScreenLayer { uint32_t id, width, height, framebuffer_id; bool present; } ScreenLayer;
 void free_screen_layer(ScreenLayer *layer);
 
+typedef struct WindowLogoRenderSettings {
+    bool was_drawn; unsigned width, height; int left, top; window_logo_id_t id; float alpha;
+} WindowLogoRenderSettings;
+
 typedef struct {
     PyObject_HEAD
 
