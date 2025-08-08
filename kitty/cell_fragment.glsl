@@ -7,6 +7,7 @@ uniform float text_contrast;
 uniform float text_gamma_adjustment;
 uniform float for_final_output;
 uniform float has_under_bg;
+uniform float has_background_image;
 uniform sampler2DArray sprites;
 uniform sampler2D under_bg_layer;
 uniform sampler2D under_fg_layer;
@@ -103,10 +104,15 @@ vec4 layer_color(sampler2D s) {
 
 void main() {
     vec4 ans_premul = vec4_premul(background);
+#ifdef HAS_LAYERS
     // if its a default background cell and there is an under_bg layer, use the
-    // under_bg layer blended onto the background, as the background
-    blend_layer(ans_premul = if_one_then(has_under_bg * cell_has_default_bg,
-                alpha_blend_premul(layer_color(under_bg_layer), ans_premul), ans_premul));
+    // under_bg layer blended onto the background, as the background. If there
+    // is a background image then dont blend onto the background as the
+    // background image is our background.
+    vec4 under_bg_color = layer_color(under_bg_layer);
+    under_bg_color = if_one_then(has_background_image, under_bg_color, alpha_blend_premul(under_bg_color, ans_premul));
+    blend_layer(ans_premul = if_one_then(has_under_bg * cell_has_default_bg, under_bg_color, ans_premul));
+#endif
     // blend in the under_fg layer
     blend_layer(ans_premul = alpha_blend_premul(layer_color(under_fg_layer), ans_premul));
     // blend in the foreground color
