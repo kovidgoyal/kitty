@@ -972,6 +972,42 @@ class EditCmd:
         window.write_to_child('KITTY_DATA_END\n')
 
 
+@run_once
+def excluded_env_vars() -> frozenset[str]:
+    return frozenset({
+        'HOME', 'LOGNAME', 'USER', 'PWD',
+        # some people export these. We want the shell rc files to recreate them
+        'PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND', 'SHLVL',
+        # conda state env vars
+        'CONDA_SHLVL', 'CONDA_PREFIX', 'CONDA_PROMPT_MODIFIER', 'CONDA_EXE', 'CONDA_PYTHON_EXE', '_CE_CONDA', '_CE_M',
+        # skip SSH environment variables
+        'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
+        'SSH_TUNNEL', 'SSH_USER_AUTH', 'SSH_AUTH_SOCK',
+        # Dont clone KITTY_WINDOW_ID
+        'KITTY_WINDOW_ID',
+        # Bash variables from "bind -x" and "complete -C" (needed not to confuse bash-preexec)
+        'READLINE_ARGUMENT', 'READLINE_LINE', 'READLINE_MARK', 'READLINE_POINT',
+        'COMP_LINE', 'COMP_POINT', 'COMP_TYPE',
+        # GPG gpg-agent
+        'GPG_TTY',
+        # Session variables of XDG
+        'XDG_SESSION_CLASS', 'XDG_SESSION_ID', 'XDG_SESSION_TYPE',
+        # Session variables of GNU Screen
+        'STY', 'WINDOW',
+        # Session variables of interactive shell plugins
+        'ATUIN_SESSION', 'ATUIN_HISTORY_ID',
+        'BLE_SESSION_ID', '_ble_util_fdlist_cloexec', '_ble_util_fdvars_export',
+        '_GITSTATUS_CLIENT_PID', '_GITSTATUS_REQ_FD', '_GITSTATUS_RESP_FD', 'GITSTATUS_DAEMON_PID',
+        'MCFLY_SESSION_ID',
+        'STARSHIP_SESSION_KEY',
+    })
+
+
+def is_excluded_env_var(x: str) -> bool:
+    # conda state env vars for multi-level virtual environments CONDA_PREFIX_*
+    return x in excluded_env_vars() or x.startswith('CONDA_PREFIX_')
+
+
 class CloneCmd:
 
     def __init__(self, msg: str) -> None:
@@ -1002,36 +1038,7 @@ class CloneCmd:
                     env = parse_bash_env(v, self.bash_version)
                 else:
                     env = parse_null_env(v)
-                self.env = {k: v for k, v in env.items() if k not in {
-                    'HOME', 'LOGNAME', 'USER', 'PWD',
-                    # some people export these. We want the shell rc files to recreate them
-                    'PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND', 'SHLVL',
-                    # conda state env vars
-                    'CONDA_SHLVL', 'CONDA_PREFIX', 'CONDA_PROMPT_MODIFIER', 'CONDA_EXE', 'CONDA_PYTHON_EXE', '_CE_CONDA', '_CE_M',
-                    # skip SSH environment variables
-                    'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
-                    'SSH_TUNNEL', 'SSH_USER_AUTH', 'SSH_AUTH_SOCK',
-                    # Dont clone KITTY_WINDOW_ID
-                    'KITTY_WINDOW_ID',
-                    # Bash variables from "bind -x" and "complete -C" (needed not to confuse bash-preexec)
-                    'READLINE_ARGUMENT', 'READLINE_LINE', 'READLINE_MARK', 'READLINE_POINT',
-                    'COMP_LINE', 'COMP_POINT', 'COMP_TYPE',
-                    # GPG gpg-agent
-                    'GPG_TTY',
-                    # Session variables of XDG
-                    'XDG_SESSION_CLASS', 'XDG_SESSION_ID', 'XDG_SESSION_TYPE',
-                    # Session variables of GNU Screen
-                    'STY', 'WINDOW',
-                    # Session variables of interactive shell plugins
-                    'ATUIN_SESSION', 'ATUIN_HISTORY_ID',
-                    'BLE_SESSION_ID', '_ble_util_fdlist_cloexec', '_ble_util_fdvars_export',
-                    '_GITSTATUS_CLIENT_PID', '_GITSTATUS_REQ_FD', '_GITSTATUS_RESP_FD', 'GITSTATUS_DAEMON_PID',
-                    'MCFLY_SESSION_ID',
-                    'STARSHIP_SESSION_KEY',
-                } and not k.startswith((
-                    # conda state env vars for multi-level virtual environments
-                    'CONDA_PREFIX_',
-                ))}
+                self.env = {k: v for k, v in env.items() if not is_excluded_env_var(k)}
             elif k == 'cwd':
                 self.cwd = v
             elif k == 'history':
