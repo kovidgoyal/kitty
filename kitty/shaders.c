@@ -882,9 +882,9 @@ static void
 update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
     Screen *screen = ui->screen;
     bool visual_bell_drawn = screen->start_visual_bell_at > 0;
-    bool scrollback_indicator_drawn = !(OPT(scrollback_indicator_opacity) <= 0 || screen->linebuf != screen->main_linebuf || !screen->scrolled_by);
+    bool scrollback_indicator_drawn = OPT(scrollback_indicator_opacity) > 0 && screen->linebuf == screen->main_linebuf && screen->scrolled_by;
     bool hyperlink_target_drawn = OPT(show_hyperlink_targets) && screen->current_hyperlink_under_mouse.id && ui->window && !is_mouse_hidden(ui->os_window);
-    bool window_number_drawn = ui->window && screen->display_window_char;
+    bool window_number_drawn = ui->window != NULL && screen->display_window_char != 0;
     ui->screen->textures.ui.present = visual_bell_drawn || scrollback_indicator_drawn || hyperlink_target_drawn || window_number_drawn;
     if (!ui->screen->textures.ui.present) return;
     bool needs_redraw = ensure_layer_ready_to_render(&screen->textures.ui, ui->screen_width, ui->screen_height);
@@ -928,7 +928,7 @@ update_ui_layer(const UIRenderData *ui, bool cell_size_changed) {
     wn.was_drawn = window_number_drawn; wn.ch = screen->display_window_char;
 
     needs_redraw |= scrollbar_needs_redraw || visual_bell_needs_redraw || hyperlink_target_needs_redraw || window_number_needs_redraw;
-    if (needs_redraw | ui->screen->reload_all_gpu_data) {
+    if (needs_redraw || ui->screen->reload_all_gpu_data) {
         blank_canvas(0, 0);  // clear the framebuffer
         if (visual_bell_drawn && intensity > 0) draw_visual_bell_flash(lvb.intensity, lvb.color);
         if (scrollback_indicator_drawn) draw_scroll_indicator(bar_color, bar_alpha, bar_frac, ui);
@@ -999,16 +999,25 @@ update_under_bg_layer(const UIRenderData *ui) {
     needs_redraw |= lr.graphics.change_count != ui->grd.change_count || lr.graphics.was_drawn != has_graphics;
     lr.graphics.change_count = ui->grd.change_count; lr.graphics.was_drawn = has_graphics;
 
-    needs_redraw |= lr.bgimage.was_drawn != has_bg;
-    lr.bgimage.was_drawn = has_bg;
+    needs_redraw |= lr.bgimage.was_drawn != has_bg || lr.bgimage.render_counter != ui->os_window->bgimage.render_counter;
+    lr.bgimage.was_drawn = has_bg; lr.bgimage.render_counter = ui->os_window->bgimage.render_counter;
 
     needs_redraw |= get_window_logo_settings(ui, ui->screen, has_logo);
 
     if (needs_redraw | ui->screen->reload_all_gpu_data) {
         blank_canvas(0, 0);  // clear the framebuffer
+        if (has_bg) {
+            ImageRenderData d = {.texture_id = ui->os_window->bgimage.rendered_texture_id};
+            gpu_data_for_image(&d, -1, 1, 1, -1);
+            d.src_rect.left = tex_pos_x(ui->screen_left, ui->full_framebuffer_width);
+            d.src_rect.top  = tex_pos_y(ui->screen_top, ui->full_framebuffer_height);
+            d.src_rect.right  = tex_pos_x(ui->screen_left + ui->screen_width, ui->full_framebuffer_width);
+            d.src_rect.bottom  = tex_pos_y(ui->screen_top + ui->screen_height, ui->full_framebuffer_height);
+            draw_graphics(GRAPHICS_PROGRAM, &d, 0, 1, 1.f);
+        }
         if (has_logo) {
             float left = gl_pos_x(lr.logo.left, ui->screen_width), top = gl_pos_y(lr.logo.top, ui->screen_height);
-            ImageRenderData d = {0}; d.texture_id = ui->window_logo->instance->texture_id;
+            ImageRenderData d = {.texture_id = ui->window_logo->instance->texture_id};
             gpu_data_for_image(&d, left, top, left + gl_size(lr.logo.width, ui->screen_width), top - gl_size(lr.logo.height, ui->screen_height));
             draw_graphics(GRAPHICS_PROGRAM, &d, 0, 1, ui->inactive_text_alpha * lr.logo.alpha);
         }

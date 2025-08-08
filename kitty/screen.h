@@ -119,7 +119,7 @@ typedef struct {
         struct { uint32_t graphics_change_count; } under_fg_layer;
         struct {
             struct { bool was_drawn; uint32_t change_count; } graphics;
-            struct { bool was_drawn; } bgimage;
+            struct { bool was_drawn; uint32_t render_counter; } bgimage;
             struct { bool was_drawn; unsigned width, height; int left, top; window_logo_id_t id; float alpha; } logo;
         } under_bg_layer;
     } last_rendered;

@@ -177,10 +177,22 @@ gl_pos_x(const int px_from_left_margin, const unsigned int viewport_size) {
 }
 
 static inline float
+tex_pos_x(const int px_from_left_margin, const unsigned texture_width) {
+    return px_from_left_margin / (float)texture_width;
+}
+
+static inline float
 gl_pos_y(const int px_from_top_margin, const unsigned int viewport_size) {
     const float px = 2.f / viewport_size;
     return 1.f - px_from_top_margin * px;
 }
+
+static inline float
+tex_pos_y(const int px_from_top_margin, const unsigned texture_height) {
+    const int px_from_bottom_margin = texture_height - px_from_top_margin;
+    return px_from_bottom_margin / (float)texture_height;
+}
+
 
 typedef struct GraphicsRenderData {
     size_t count, capacity, num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
