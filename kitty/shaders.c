@@ -584,8 +584,7 @@ draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, fl
             ImageRenderData *rd = data + start + i;
             glUniform4f(u->src_rect, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
             glUniform4f(u->dest_rect, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
-            set_blending(true);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+            draw_quad(true, 0);
         }
     }
 }
@@ -740,8 +739,7 @@ draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
     glUniform4f(tint_program_layout.uniforms.tint_color, C(r), C(g), C(b), C(1));
 #undef C
     glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
-    set_blending(true);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    draw_quad(true, 0);
 }
 
 static bool
@@ -754,8 +752,7 @@ draw_scroll_indicator(color_type bar_color, GLfloat alpha, float frac, const UIR
     float bar_height = gl_size(ui->cell_height, ui->screen_height);
     float bottom = -1.f + MAX(0, 2.f - bar_height) * frac;
     glUniform4f(tint_program_layout.uniforms.edges, 1.f - bar_width, bottom + bar_height, 1.f, bottom);
-    set_blending(true);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    draw_quad(true, 0);
     return true;
 }
 
@@ -1081,13 +1078,13 @@ draw_cells_with_layers(bool for_final_output, const UIRenderData *ui, ssize_t va
     has_layers |=     bind_layer(UI_LAYER_UNIT, blank_texture, &ui->screen->textures.ui);
 
     int program;
+    bool blend = !for_final_output;
     if (is_semi_transparent) {
         bind_program((program = has_layers ? CELL_LAYERS_TRANSPARENT_PROGRAM : CELL_TRANSPARENT_PROGRAM));
         glUniform1f(cell_program_layouts[program].uniforms.for_final_output, for_final_output ? 1. : 0.);
-        set_blending(!for_final_output);
     } else {
         bind_program((program = has_layers ? CELL_LAYERS_PROGRAM : CELL_PROGRAM));
-        set_blending(false);
+        blend = false;
         if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
     }
     glUniform1f(cell_program_layouts[program].uniforms.has_under_bg, ui->screen->textures.under_bg.present);
@@ -1097,7 +1094,7 @@ draw_cells_with_layers(bool for_final_output, const UIRenderData *ui, ssize_t va
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[program].render_data.index);
     save_viewport_using_top_left_origin(
         ui->screen_left, ui->screen_top, ui->screen_width, ui->screen_height, ui->full_framebuffer_height);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, ui->screen->lines * ui->screen->columns);
+    draw_quad(blend, ui->screen->lines * ui->screen->columns);
     restore_viewport();
     glDisable(GL_FRAMEBUFFER_SRGB);
 }
@@ -1122,7 +1119,6 @@ send_cell_data_to_gpu(ssize_t vao_idx, Screen *screen, OSWindow *os_window) {
 
 void
 draw_cells(bool for_final_output, const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
-    set_blending(true);
     Screen *screen = srd->screen;
     CELL_BUFFERS;
     bind_vertex_array(srd->vao_idx);
@@ -1229,8 +1225,7 @@ draw_bgimage(GLuint texture_id, BackgroundImageRenderSettings s, unsigned image_
     color_vec4(bgimage_program_layout.uniforms.background, s.bgcolor, s.opacity);
     glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
     glBindTexture(GL_TEXTURE_2D, texture_id);
-    set_blending(false);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    draw_quad(false, 0);
     unbind_program();
 }
 
@@ -1286,8 +1281,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
     glUniform1f(border_program_layout.uniforms.has_background_image, has_background_image ? 1.f : 0.f);
     if (w->live_resize.in_progress) save_viewport_using_bottom_left_origin(0, 0, w->viewport_width, w->viewport_height);
-    set_blending(false);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
+    draw_quad(false, num_border_rects);
     if (w->live_resize.in_progress) restore_viewport();
     unbind_program();
     unbind_vertex_array();
@@ -1324,8 +1318,7 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
 
     glUniform1fv(trail_program_layout.uniforms.trail_opacity, 1, &trail->opacity);
 
-    set_blending(true);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    draw_quad(true, 0);
     unbind_program();
 }
 

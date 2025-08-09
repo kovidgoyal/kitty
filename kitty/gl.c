@@ -123,10 +123,17 @@ set_framebuffer_to_use_for_output(unsigned fbid) {
     output_framebuffer = fbid;
 }
 
-void
+static void
 set_blending(bool allowed) {
     if (allowed) { glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); }  // blending of pre-multiplied colors
     else { glDisable(GL_BLEND); glBlendFunc(GL_ONE, GL_ZERO); }  // no blending
+}
+
+void
+draw_quad(bool blend, unsigned instance_count) {
+    set_blending(blend);
+    if (instance_count) glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, instance_count);
+    else glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 static struct {
