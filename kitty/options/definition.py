@@ -1671,8 +1671,7 @@ opt('background_tint', '0.0',
     long_text='''
 How much to tint the background image by the background color. This option
 makes it easier to read the text. Tinting is done using the current background
-color for each window. This option applies only if :opt:`background_opacity` is
-set and transparent windows are supported or :opt:`background_image` is set.
+color for each window. This option applies only if :opt:`background_image` is set.
 Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.
 '''
     )
