@@ -19,6 +19,7 @@ from .fast_data_types import (
     DIM,
     GLSL_VERSION,
     GRAPHICS_ALPHA_MASK_PROGRAM,
+    GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_PROGRAM,
     MARK,
     MARK_MASK,
@@ -195,14 +196,16 @@ class LoadShaderPrograms:
             cell.compile(prog, allow_recompile)
         graphics = program_for('graphics')
 
-        def resolve_graphics_fragment_defines(which: str, f: str) -> str:
-            return f.replace('#define ALPHA_TYPE', f'#define {which}', 1)
+        def resolve_graphics_fragment_defines(which: str, is_premult: bool, f: str) -> str:
+            ans = f.replace('#define ALPHA_TYPE', f'#define {which}', 1)
+            return ans.replace('TEXTURE_IS_NOT_PREMULTIPLIED', '0' if is_premult else '1')
 
-        for which, p in {
-            'SIMPLE': GRAPHICS_PROGRAM,
-            'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
+        for p, (which, is_premult) in {
+            GRAPHICS_PROGRAM: ('IMAGE', False),
+            GRAPHICS_ALPHA_MASK_PROGRAM: ('ALPHA_MASK', False),
+            GRAPHICS_PREMULT_PROGRAM: ('IMAGE', True),
         }.items():
-            graphics.apply_to_sources(frag=partial(resolve_graphics_fragment_defines, which))
+            graphics.apply_to_sources(frag=partial(resolve_graphics_fragment_defines, which, is_premult))
             graphics.compile(p, allow_recompile)
 
         program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)

@@ -33,6 +33,8 @@ typedef struct {
 void gl_init(void);
 const char* gl_version_string(void);
 void set_gpu_viewport(unsigned w, unsigned h);
+void set_blending(bool allowed);
+void save_texture_as_png(uint32_t texture_id, const char *filename);
 void free_texture(GLuint *tex_id);
 void free_framebuffer(GLuint *fb_id);
 void remove_vao(ssize_t vao_idx);

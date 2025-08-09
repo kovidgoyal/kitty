@@ -21,7 +21,9 @@ void main() {
     color = alpha_blend_premul(color, amask_bg_premult);
 #else
     color.a *= extra_alpha;
+#if TEXTURE_IS_NOT_PREMULTIPLIED
     color = vec4_premul(color);
+#endif
 #endif
     output_color = color;
 }

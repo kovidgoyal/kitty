@@ -796,7 +796,7 @@ draw_resizing_text(OSWindow *w) {
         snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->fcm.cell_width, height / w->fonts_data->fcm.cell_height);
         StringCanvas rendered = render_simple_text(w->fonts_data, text);
         if (rendered.canvas) {
-            draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas, OPT(background_opacity));
+            draw_centered_alpha_mask(width, height, rendered.width, rendered.height, rendered.canvas, OPT(background_opacity));
             free(rendered.canvas);
         }
     }

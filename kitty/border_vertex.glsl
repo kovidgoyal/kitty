@@ -14,7 +14,7 @@ uniform float background_opacity;
 uniform float gamma_lut[256];
 in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
-out vec4 color;
+out vec4 color_premul;
 out vec2 texcoord;
 out float use_background_image;
 
@@ -58,6 +58,6 @@ void main() {
     float is_not_a_border = step(0.5, abs((float(rc) - ACTIVE_BORDER_COLOR) * (float(rc) - INACTIVE_BORDER_COLOR) * (float(rc) - BELL_BORDER_COLOR)));
     float final_opacity = background_opacity;
     final_opacity = (1. - is_not_a_border) + is_not_a_border * final_opacity;
-    color = vec4_premul(color3, final_opacity);
+    color_premul = vec4_premul(color3, final_opacity);
     use_background_image = is_not_a_border;
 }

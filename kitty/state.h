@@ -275,7 +275,7 @@ typedef struct BackgroundImageRenderSettings {
     struct { unsigned width, height; } os_window;
     unsigned instance_id;
     BackgroundImageLayout layout;
-    bool linear;
+    bool linear; uint32_t bgcolor; float opacity;
 } BackgroundImageRenderSettings;
 
 typedef struct {
@@ -401,7 +401,7 @@ ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);
 bool send_cell_data_to_gpu(ssize_t, Screen *, OSWindow *);
 void draw_cells(bool, const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
-void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
+void draw_centered_alpha_mask(size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
 void draw_cursor_trail(CursorTrail *trail, Window *active_window);
 bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);
 void set_gpu_viewport(unsigned w, unsigned h);

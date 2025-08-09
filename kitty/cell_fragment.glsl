@@ -108,7 +108,7 @@ void main() {
     // if its a default background cell and there is an under_bg layer, use the
     // under_bg layer blended onto the background, as the background. If there
     // is a background image then dont blend onto the background as the
-    // background image is our background.
+    // background image is already blended onto the background.
     vec4 under_bg_color = layer_color(under_bg_layer);
     under_bg_color = if_one_then(has_background_image, under_bg_color, alpha_blend_premul(under_bg_color, ans_premul));
     blend_layer(ans_premul = if_one_then(has_under_bg * cell_has_default_bg, under_bg_color, ans_premul));
