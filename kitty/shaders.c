@@ -1173,46 +1173,52 @@ draw_resizing_text(OSWindow *w) {
     }
 }
 
+static void
+start_os_window_rendering(OSWindow *os_window) {
+    if (os_window->live_resize.in_progress) {
+        blank_os_window(os_window);
+        save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
+    }
+    if (os_window->needs_layers) {
+        if (os_window->indirect_output.width != os_window->viewport_width || os_window->indirect_output.height != os_window->viewport_height) {
+            if (os_window->indirect_output.texture_id) free_texture(&os_window->indirect_output.texture_id);
+            if (os_window->indirect_output.framebuffer_id) free_framebuffer(&os_window->indirect_output.framebuffer_id);
+        }
+        if (os_window->indirect_output.texture_id == 0) {
+            os_window->indirect_output.width = os_window->viewport_width;
+            os_window->indirect_output.height = os_window->viewport_height;
+            setup_texture_as_render_target((unsigned) os_window->viewport_width, (unsigned)os_window->viewport_height, &os_window->indirect_output.texture_id, &os_window->indirect_output.framebuffer_id);
+        }
+        set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
+        bind_framebuffer_for_output(0);
+        clear_current_framebuffer();
+        draw_bg_image(os_window);
+    }
+}
+
+static void
+stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
+    if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
+    if (os_window->needs_layers) {
+        set_framebuffer_to_use_for_output(0);
+        bind_framebuffer_for_output(0);
+        bind_program(BLIT_PROGRAM);
+        glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
+        glBindTexture(GL_TEXTURE_2D, os_window->indirect_output.texture_id);
+        glUniform4f(blit_program_layout.uniforms.src_rect, 0, 1, 1, 0);
+        glUniform4f(blit_program_layout.uniforms.dest_rect, -1, 1, 1, -1);
+        draw_quad(false, 0);
+    }
+    if (os_window->live_resize.in_progress) {
+        restore_viewport();
+        draw_resizing_text(os_window);
+    }
+}
 
 void
 setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_window, bool start) {
-    if (start) {
-        if (os_window->live_resize.in_progress) {
-            blank_os_window(os_window);
-            save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
-        }
-        if (os_window->needs_layers) {
-            if (os_window->indirect_output.width != os_window->viewport_width || os_window->indirect_output.height != os_window->viewport_height) {
-                if (os_window->indirect_output.texture_id) free_texture(&os_window->indirect_output.texture_id);
-                if (os_window->indirect_output.framebuffer_id) free_framebuffer(&os_window->indirect_output.framebuffer_id);
-            }
-            if (os_window->indirect_output.texture_id == 0) {
-                os_window->indirect_output.width = os_window->viewport_width;
-                os_window->indirect_output.height = os_window->viewport_height;
-                setup_texture_as_render_target((unsigned) os_window->viewport_width, (unsigned)os_window->viewport_height, &os_window->indirect_output.texture_id, &os_window->indirect_output.framebuffer_id);
-            }
-            set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
-            bind_framebuffer_for_output(0);
-            clear_current_framebuffer();
-            draw_bg_image(os_window);
-        }
-    } else {
-        if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
-        if (os_window->needs_layers) {
-            set_framebuffer_to_use_for_output(0);
-            bind_framebuffer_for_output(0);
-            bind_program(BLIT_PROGRAM);
-            glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-            glBindTexture(GL_TEXTURE_2D, os_window->indirect_output.texture_id);
-            glUniform4f(blit_program_layout.uniforms.src_rect, 0, 1, 1, 0);
-            glUniform4f(blit_program_layout.uniforms.dest_rect, -1, 1, 1, -1);
-            draw_quad(false, 0);
-        }
-        if (os_window->live_resize.in_progress) {
-            restore_viewport();
-            draw_resizing_text(os_window);
-        }
-    }
+    if (start) start_os_window_rendering(os_window);
+    else stop_os_window_rendering(os_window, tab, active_window);
 }
 // }}}
 
