@@ -10,10 +10,10 @@ from typing import Any, Literal, NamedTuple, Optional
 from .constants import read_kitty_resource
 from .fast_data_types import (
     BGIMAGE_PROGRAM,
+    BLIT_PROGRAM,
     CELL_BG_PROGRAM,
     CELL_FG_PROGRAM,
     CELL_PROGRAM,
-    CELL_SPECIAL_PROGRAM,
     DECORATION,
     DECORATION_MASK,
     DIM,
@@ -30,7 +30,6 @@ from .fast_data_types import (
     compile_program,
     get_options,
     init_cell_program,
-    init_trail_program,
 )
 
 
@@ -139,7 +138,6 @@ class TextFgOverrideThreshold(NamedTuple):
 class LoadShaderPrograms:
     text_fg_override_threshold: TextFgOverrideThreshold = TextFgOverrideThreshold()
     text_old_gamma: bool = False
-    semi_transparent: bool = False
     cell_program_replacer: MultiReplacer = null_replacer
 
     @property
@@ -152,10 +150,9 @@ class LoadShaderPrograms:
 
     def recompile_if_needed(self) -> None:
         if self.needs_recompile:
-            self(self.semi_transparent, allow_recompile=True)
+            self(allow_recompile=True)
 
-    def __call__(self, semi_transparent: bool = False, allow_recompile: bool = False) -> None:
-        self.semi_transparent = semi_transparent
+    def __call__(self, allow_recompile: bool = False) -> None:
         opts = get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
 
@@ -180,47 +177,40 @@ class LoadShaderPrograms:
                 DECORATION_MASK=DECORATION_MASK,
             )
 
-        def resolve_cell_defines(which: str, src: str) -> str:
+        def resolve_cell_defines(only_fg: int, only_bg: int, src: str) -> str:
             r = self.cell_program_replacer.replacements
-            r['WHICH_PHASE'] = f'PHASE_{which}'
-            r['TRANSPARENT'] = '1' if semi_transparent else '0'
+            r['ONLY_FOREGROUND'] = str(only_fg)
+            r['ONLY_BACKGROUND'] = str(only_bg)
             r['DO_FG_OVERRIDE'] = '1' if self.text_fg_override_threshold.scaled_value else '0'
             r['FG_OVERRIDE_ALGO'] = '1' if self.text_fg_override_threshold.unit == '%' else '2'
             r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold.scaled_value)
             r['TEXT_NEW_GAMMA'] = '0' if self.text_old_gamma else '1'
             return self.cell_program_replacer(src)
-
-        for which, p in {
-            'BOTH': CELL_PROGRAM,
-            'BACKGROUND': CELL_BG_PROGRAM,
-            'SPECIAL': CELL_SPECIAL_PROGRAM,
-            'FOREGROUND': CELL_FG_PROGRAM,
+        for prog, (only_fg, only_bg) in {
+                CELL_PROGRAM: (0, 0), CELL_FG_PROGRAM: (1, 0), CELL_BG_PROGRAM: (0, 1),
         }.items():
-            cell.apply_to_sources(
-                vertex=partial(resolve_cell_defines, which),
-                frag=partial(resolve_cell_defines, which),
-            )
-            cell.compile(p, allow_recompile)
-
+            fn = partial(resolve_cell_defines, only_fg, only_bg)
+            cell.apply_to_sources(vertex=fn, frag=fn)
+            cell.compile(prog, allow_recompile)
         graphics = program_for('graphics')
 
-        def resolve_graphics_fragment_defines(which: str, f: str) -> str:
-            return f.replace('#define ALPHA_TYPE', f'#define {which}', 1)
+        def resolve_graphics_fragment_defines(which: str, is_premult: bool, f: str) -> str:
+            ans = f.replace('#define ALPHA_TYPE', f'#define {which}', 1)
+            return ans.replace('TEXTURE_IS_NOT_PREMULTIPLIED', '0' if is_premult else '1')
 
-        for which, p in {
-            'SIMPLE': GRAPHICS_PROGRAM,
-            'PREMULT': GRAPHICS_PREMULT_PROGRAM,
-            'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
+        for p, (which, is_premult) in {
+            GRAPHICS_PROGRAM: ('IMAGE', False),
+            GRAPHICS_ALPHA_MASK_PROGRAM: ('ALPHA_MASK', False),
+            GRAPHICS_PREMULT_PROGRAM: ('IMAGE', True),
         }.items():
-            graphics.apply_to_sources(frag=partial(resolve_graphics_fragment_defines, which))
+            graphics.apply_to_sources(frag=partial(resolve_graphics_fragment_defines, which, is_premult))
             graphics.compile(p, allow_recompile)
 
         program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)
         program_for('tint').compile(TINT_PROGRAM, allow_recompile)
-        init_cell_program()
-
         program_for('trail').compile(TRAIL_PROGRAM, allow_recompile)
-        init_trail_program()
+        program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
+        init_cell_program()
 
 
 load_shader_programs = LoadShaderPrograms()

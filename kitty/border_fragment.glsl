@@ -1,6 +1,6 @@
-in vec4 color;
-out vec4 final_color;
+in vec4 color_premul;
+out vec4 output_premul;
 
 void main() {
-    final_color = color;
+    output_premul = color_premul;
 }

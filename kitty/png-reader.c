@@ -131,6 +131,72 @@ err:
     return;
 }
 
+// Structure to hold memory write state
+typedef struct {
+    unsigned char* buffer;
+    size_t size, capacity;
+} png_memory_write_state;
+
+// Custom write function for writing PNG data to memory
+static void
+png_write_to_memory(png_structp png_ptr, png_bytep data, png_size_t length) {
+    png_memory_write_state* state = (png_memory_write_state*)png_get_io_ptr(png_ptr);
+    if (state->size + length > state->capacity) {
+        // Double the capacity or add enough space for the new data, whichever is larger
+        size_t new_capacity = state->capacity * 2;
+        if (new_capacity < state->size + length) new_capacity = state->size + length;
+        unsigned char* new_buffer = realloc(state->buffer, new_capacity);
+        if (!new_buffer) {
+            png_error(png_ptr, "Failed to allocate memory for PNG buffer");
+            return;
+        }
+        state->buffer = new_buffer;
+        state->capacity = new_capacity;
+    }
+    // Copy the data to the buffer
+    memcpy(state->buffer + state->size, data, length);
+    state->size += length;
+}
+static void png_flush_memory(png_structp png_ptr) { (void)png_ptr; }
+
+const char*
+png_from_32bit_rgba(uint32_t *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
+    *out_size = 0;
+    png_memory_write_state state = {.capacity=width*height * sizeof(uint32_t)};
+    state.buffer = malloc(state.capacity);
+    if (!state.buffer) return "Out of memory";
+    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png_ptr) { free(state.buffer); return "Failed to create PNG write struct"; }
+    png_infop info_ptr = png_create_info_struct(png_ptr);
+    if (!info_ptr) {
+        free(state.buffer); png_destroy_write_struct(&png_ptr, NULL);
+        return "Failed to create PNG info struct";
+    }
+    if (setjmp(png_jmpbuf(png_ptr))) {
+        png_destroy_write_struct(&png_ptr, &info_ptr); free(state.buffer);
+        return("Error during PNG creation\n");
+    }
+    png_set_write_fn(png_ptr, &state, png_write_to_memory, png_flush_memory);
+    png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA,
+                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    // Allocate memory for row pointers
+    png_bytep *row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
+    if (!row_pointers) {
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        free(state.buffer);
+        return ("Failed to allocate memory for row pointers");
+    }
+    if (flip_vertically) for (size_t y = 0; y < height; y++) row_pointers[height - 1 - y] = (png_byte*)&data[y * width];
+    else for (size_t y = 0; y < height; y++) row_pointers[y] = (png_byte*)&data[y * width];
+    png_write_info(png_ptr, info_ptr);
+    png_write_image(png_ptr, row_pointers);
+    png_write_end(png_ptr, NULL);
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+    free(row_pointers);
+    *out_size = state.size;
+    return (char*)state.buffer;
+}
+
 static void
 png_error_handler(png_read_data *d UNUSED, const char *code, const char *msg) {
     if (!PyErr_Occurred()) PyErr_Format(PyExc_ValueError, "[%s] %s", code, msg);

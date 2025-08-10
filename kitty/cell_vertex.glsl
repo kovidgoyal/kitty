@@ -1,16 +1,17 @@
 #extension GL_ARB_explicit_attrib_location : require
 #pragma kitty_include_shader <cell_defines.glsl>
+#pragma kitty_include_shader <utils.glsl>
 
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
+    float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
     uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-    uint xnum, ynum, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_height;
+    uint columns, lines, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
-    float cursor_opacity;
+    float cursor_opacity, inactive_text_alpha, dim_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
     uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
@@ -18,12 +19,8 @@ layout(std140) uniform CellRenderData {
     uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
 uniform float gamma_lut[256];
-#ifdef NEEDS_FOREGROUND
-uniform usampler2D sprite_decorations_map;
-#endif
-#if (PHASE == PHASE_BACKGROUND)
 uniform uint draw_bg_bitfield;
-#endif
+uniform usampler2D sprite_decorations_map;
 
 // Have to use fixed locations here as all variants of the cell program share the same VAOs
 layout(location=0) in uvec3 colors;
@@ -41,12 +38,8 @@ const uvec2 cell_pos_map[] = uvec2[4](
 
 
 out vec3 background;
-out float draw_bg;
-out float bg_alpha;
-
-#ifdef NEEDS_FOREGROUND
-uniform float inactive_text_alpha;
-uniform float dim_opacity;
+out vec4 effective_background_premul;
+#ifndef ONLY_BACKGROUND
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 cursor_pos;
@@ -100,7 +93,6 @@ vec3 to_color(uint c, uint defval) {
     return color_to_vec(resolve_color(c, defval));
 }
 
-#ifdef NEEDS_FOREGROUND
 
 uvec3 to_sprite_coords(uint idx) {
     uint sprites_per_page = sprites_xnum * sprites_ynum;
@@ -144,16 +136,6 @@ uvec2 get_decorations_indices(uint in_url /* [0, 1] */, uint text_attrs) {
     uint has_underline = uint(step(0.5f, float(underline_style)));  // [0, 1]
     return uvec2(strike_idx, has_underline * (decorations_idx + underline_style));
 }
-#endif
-
-vec3 choose_color(float q, vec3 a, vec3 b) {
-    return mix(b, a, q);
-}
-
-float choose_alpha(float q, float a, float b) {
-    return mix(b, a, q);
-}
-
 
 float is_cursor(uint x, uint y) {
     uint clamped_x = clamp(x, cursor_x1, cursor_x2);
@@ -169,24 +151,23 @@ struct CellData {
 
 CellData set_vertex_position() {
     uint instance_id = uint(gl_InstanceID);
+    float dx = 2.0 / float(columns);
+    float dy = 2.0 / float(lines);
     /* The current cell being rendered */
-    uint r = instance_id / xnum;
-    uint c = instance_id - r * xnum;
-
+    uint row = instance_id / columns;
+    uint column = instance_id - row * columns;
     /* The position of this vertex, at a corner of the cell  */
-    float left = xstart + c * dx;
-    float top = ystart - r * dy;
-    vec2 xpos = vec2(left, left + dx);
-    vec2 ypos = vec2(top, top - dy);
+    float left = -1.0 + column * dx;
+    float top = 1.0 - row * dy;
     uvec2 pos = cell_pos_map[gl_VertexID];
-    gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
-#ifdef NEEDS_FOREGROUND
+    gl_Position = vec4(vec2(left, left + dx)[pos.x], vec2(top, top - dy)[pos.y], 0, 1);
     // The character sprite being rendered
+#ifndef ONLY_BACKGROUND
     sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
     colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 #endif
     float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
-    float has_cursor = is_cursor(c, r);
+    float has_cursor = is_cursor(column, row);
     return CellData(has_cursor, has_cursor * is_block_cursor, pos);
 }
 
@@ -209,7 +190,7 @@ float calc_background_opacity(uint bg) {
 }
 
 // Overriding of foreground colors for contrast requirements {{{
-#if defined(NEEDS_FOREGROUND) && DO_FG_OVERRIDE == 1
+#if DO_FG_OVERRIDE == 1
 #define OVERRIDE_FG_COLORS
 #pragma kitty_include_shader <hsluv.glsl>
 #if (FG_OVERRIDE_ALGO == 1)
@@ -269,22 +250,22 @@ void main() {
     bg_as_uint = has_mark * color_table[NUM_COLORS + mark - 1] + (ONE - has_mark) * bg_as_uint;
     vec3 bg = color_to_vec(bg_as_uint);
     uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
+    float cell_has_default_bg = 1.f - step(1.f, abs(float(bg_as_uint - bg_colors0))); // 1 if has default bg else 0
     // }}}
 
     // Foreground {{{
-#ifdef NEEDS_FOREGROUND
-    // Foreground
+#ifndef ONLY_BACKGROUND // background does not depend on foreground
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (ONE - has_mark) * fg_as_uint;
     foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
     effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
     float in_url = float((is_selected & TWO) >> 1);
-    decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
+    decoration_fg = if_one_then(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
     // Selection
-    vec3 selection_color = choose_color(use_cell_bg_for_selection_fg, bg, color_to_vec(highlight_fg));
-    selection_color = choose_color(use_cell_fg_for_selection_fg, foreground, selection_color);
-    foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
-    decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
+    vec3 selection_color = if_one_then(use_cell_bg_for_selection_fg, bg, color_to_vec(highlight_fg));
+    selection_color = if_one_then(use_cell_fg_for_selection_fg, foreground, selection_color);
+    foreground = if_one_then(float(is_selected & ONE), selection_color, foreground);
+    decoration_fg = if_one_then(float(is_selected & ONE), selection_color, decoration_fg);
     // Underline and strike through (rendered via sprites)
     uvec2 decs = get_decorations_indices(uint(in_url), text_attrs);
     strike_pos = to_sprite_pos(cell_data.pos, decs[0]);
@@ -294,51 +275,43 @@ void main() {
     // Cursor
     cursor_color_premult = vec4(color_to_vec(cursor_bg) * cursor_opacity, cursor_opacity);
     vec3 final_cursor_text_color = mix(foreground, color_to_vec(cursor_fg), cursor_opacity);
-    foreground = choose_color(cell_data.has_block_cursor, final_cursor_text_color, foreground);
-    decoration_fg = choose_color(cell_data.has_block_cursor, final_cursor_text_color, decoration_fg);
+    foreground = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, foreground);
+    decoration_fg = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, decoration_fg);
     cursor_pos = to_sprite_pos(cell_data.pos, cursor_fg_sprite_idx * uint(cell_data.has_cursor));
 #endif
     // }}}
 
     // Background {{{
-    float orig_bg_alpha = 1;
-#if PHASE == PHASE_BOTH && !defined(TRANSPARENT)  // fast case single pass opaque background
-    bg_alpha = 1;
-    draw_bg = 1;
-#else
-    bg_alpha = calc_background_opacity(bg_as_uint);
-    orig_bg_alpha = bg_alpha;
-#if (PHASE == PHASE_BACKGROUND)
-    // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
-    float cell_has_non_default_bg = step(1.f, abs(float(bg_as_uint - bg_colors0))); // 0 if has default bg else 1
-    uint draw_bg_mask = uint(2.f * cell_has_non_default_bg + (1.f - cell_has_non_default_bg)); // 1 if has default bg else 2
-    draw_bg = step(0.5, float(draw_bg_bitfield & draw_bg_mask));
-#else
-    draw_bg = 1;
-#endif
-
+    float bg_alpha = calc_background_opacity(bg_as_uint);
+    // we use max so that opacity of the block cursor cell background goes from bg_alpha to 1
+    float effective_cursor_opacity = max(cursor_opacity, bg_alpha);
+    // is_special_cell is either 0 or 1
     float is_special_cell = cell_data.has_block_cursor + float(is_selected & ONE);
-#if PHASE == PHASE_SPECIAL
-    // Only special cells must be drawn and they must have bg_alpha 1
-    bg_alpha = step(0.5, is_special_cell); // bg_alpha = 1 if is_special_cell else 0
-#else
-    is_special_cell += float(is_reversed);  // bg_alpha should be 1 for reverse video cells as well
-    is_special_cell = step(0.5, is_special_cell);  // is_special_cell = 1 if is_special_cell else 0
-    bg_alpha = bg_alpha * (1. - float(is_special_cell)) + is_special_cell;  // bg_alpha = 1 if is_special_cell else bg_alpha
-#endif
-    bg_alpha *= draw_bg;
-#endif  // ends fast case #if else
+    is_special_cell += float(is_reversed);  // reverse video cells should be opaque as well
+    is_special_cell = zero_or_one(is_special_cell);
+    cell_has_default_bg = if_one_then(is_special_cell, 0., cell_has_default_bg);
 
+    // special cells must always be fully opaque, otherwise leave bg_alpha untouched
+    bg_alpha = if_one_then(is_special_cell, 1.f, bg_alpha);
     // Selection and cursor
-    bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
-    background = choose_color(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg);
-    // we use max so that opacity of the block cursor cell background goes from orig_bg_alpha to 1
-    float effective_cursor_opacity = max(cursor_opacity, orig_bg_alpha) * draw_bg;
-    bg_alpha = choose_alpha(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
+    bg_alpha = if_one_then(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
+    bg = if_one_then(float(is_selected & ONE), if_one_then(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
+    vec3 background_rgb = if_one_then(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg);
+    background = background_rgb;
     // }}}
 
-#ifdef OVERRIDE_FG_COLORS
-    decoration_fg = override_foreground_color(decoration_fg, background);
-    foreground = override_foreground_color(foreground, background);
+#if !defined(ONLY_BACKGROUND) && defined(OVERRIDE_FG_COLORS)
+    decoration_fg = override_foreground_color(decoration_fg, background_rgb);
+    foreground = override_foreground_color(foreground, background_rgb);
+#endif
+
+#if !defined(ONLY_FOREGROUND)
+    vec4 bgpremul = vec4_premul(background_rgb, bg_alpha);
+    // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
+    float cell_has_non_default_bg = 1.f - cell_has_default_bg;
+    uint draw_bg_mask = uint(2.f * cell_has_non_default_bg + cell_has_default_bg); // 1 if has default bg else 2
+    float draw_bg = step(0.5, float(draw_bg_bitfield & draw_bg_mask));
+    bgpremul *= draw_bg;
+    effective_background_premul = bgpremul;
 #endif
 }

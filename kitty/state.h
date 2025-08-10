@@ -143,14 +143,14 @@ typedef struct WindowLogoRenderData {
 } WindowLogoRenderData;
 
 typedef struct {
-    ssize_t vao_idx;
-    float xstart, ystart, dx, dy;
-    Screen *screen;
-} WindowRenderData;
-
-typedef struct {
     unsigned int left, top, right, bottom;
 } WindowGeometry;
+
+typedef struct {
+    ssize_t vao_idx;
+    WindowGeometry geometry;
+    Screen *screen;
+} WindowRenderData;
 
 typedef struct {
     monotonic_t at;
@@ -202,7 +202,6 @@ typedef struct {
     struct {
         unsigned int left, top, right, bottom;
     } padding;
-    WindowGeometry geometry;
     ClickQueue click_queues[8];
     monotonic_t last_drag_scroll_at;
     uint32_t last_special_key_pressed;
@@ -272,6 +271,13 @@ typedef struct WindowChromeState {
     float background_opacity;
 } WindowChromeState;
 
+typedef struct BackgroundImageRenderSettings {
+    struct { unsigned width, height; } os_window;
+    unsigned instance_id;
+    BackgroundImageLayout layout;
+    bool linear; uint32_t bgcolor; float opacity;
+} BackgroundImageRenderSettings;
+
 typedef struct {
     void *handle;
     id_type id;
@@ -284,8 +290,12 @@ typedef struct {
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
     BackgroundImage *bgimage;
+    struct {
+        uint32_t texture_id, framebuffer_id;
+        int width, height;
+    } indirect_output;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
-    bool focused_at_last_render, needs_render;
+    bool focused_at_last_render, needs_render, needs_layers;
     unsigned keep_rendering_till_swap;
     WindowRenderData tab_bar_render_data;
     struct {
@@ -304,7 +314,7 @@ typedef struct {
     monotonic_t viewport_resized_at;
     LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, ignore_resize_events;
-    unsigned int clear_count, redraw_count;
+    unsigned int redraw_count;
     WindowChromeState last_window_chrome;
     float background_opacity;
     FONTS_DATA_HANDLE fonts_data;
@@ -371,7 +381,6 @@ void mark_os_window_for_close(OSWindow* w, CloseRequest cr);
 void update_os_window_viewport(OSWindow *window, bool notify_boss);
 bool should_os_window_be_rendered(OSWindow* w);
 void wakeup_main_loop(void);
-void swap_window_buffers(OSWindow *w);
 bool make_window_context_current(id_type);
 void hide_mouse(OSWindow *w);
 bool is_mouse_hidden(OSWindow *w);
@@ -385,16 +394,15 @@ OSWindow* add_os_window(void);
 OSWindow* current_os_window(void);
 void os_window_regions(OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
-void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type, unsigned int, bool, OSWindow *w);
+void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type, unsigned int, bool, OSWindow *w);
 ssize_t create_cell_vao(void);
 ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);
-bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
-void draw_cells(ssize_t, const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
-void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float);
+bool send_cell_data_to_gpu(ssize_t, Screen *, OSWindow *);
+void draw_cells(const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
 void draw_cursor_trail(CursorTrail *trail, Window *active_window);
 bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);
-void update_surface_size(int, int, uint32_t);
+void set_gpu_viewport(unsigned w, unsigned h);
 void free_texture(uint32_t*);
 void free_framebuffer(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool, bool, RepeatStrategy);
@@ -430,7 +438,7 @@ const char* format_mods(unsigned mods);
 void dispatch_pending_clicks(id_type, void*);
 void send_pending_click_to_window(Window*, int);
 void get_platform_dependent_config_values(void *glfw_window);
-bool draw_window_title(OSWindow *window, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height);
+bool draw_window_title(double, double, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height);
 uint8_t* draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height);
 bool is_os_window_fullscreen(OSWindow *);
 void update_ime_focus(OSWindow* osw, bool focused);
@@ -443,3 +451,6 @@ bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_image
 void update_mouse_pointer_shape(void);
 void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height);
 void dispatch_buffered_keys(Window *w);
+bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
+void setup_os_window_for_rendering(OSWindow*, bool);
+void swap_window_buffers(OSWindow *w);

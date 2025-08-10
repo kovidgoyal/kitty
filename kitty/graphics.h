@@ -40,7 +40,7 @@ typedef struct {
     uint32_t texture_id;
     unsigned int height, width;
     uint8_t* bitmap;
-    uint32_t refcnt;
+    uint32_t refcnt, id;
     size_t mmap_size;
 } BackgroundImage;
 
@@ -170,25 +170,28 @@ gl_size(const unsigned int sz, const unsigned int viewport_size) {
 }
 
 static inline float
-clamp_position_to_nearest_pixel(float pos, const unsigned int viewport_size) {
-    // clamp the specified opengl position to the nearest pixel
-    const float px = 2.f / viewport_size;
-    const float distance =  pos + 1.f;
-    const float num_of_pixels = roundf(distance / px);
-    return -1.f + num_of_pixels * px;
-}
-
-static inline float
-gl_pos_x(const unsigned int px_from_left_margin, const unsigned int viewport_size) {
+gl_pos_x(const int px_from_left_margin, const unsigned int viewport_size) {
     const float px = 2.f / viewport_size;
     return -1.f + px_from_left_margin * px;
 }
 
 static inline float
-gl_pos_y(const unsigned int px_from_top_margin, const unsigned int viewport_size) {
+tex_pos_x(const int px_from_left_margin, const unsigned texture_width) {
+    return px_from_left_margin / (float)texture_width;
+}
+
+static inline float
+gl_pos_y(const int px_from_top_margin, const unsigned int viewport_size) {
     const float px = 2.f / viewport_size;
     return 1.f - px_from_top_margin * px;
 }
+
+static inline float
+tex_pos_y(const int px_from_top_margin, const unsigned texture_height) {
+    const int px_from_bottom_margin = texture_height - px_from_top_margin;
+    return px_from_bottom_margin / (float)texture_height;
+}
+
 
 typedef struct GraphicsRenderData {
     size_t count, capacity, num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
@@ -211,8 +214,8 @@ bool png_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, u
 bool png_from_data(void *png_data, size_t png_data_sz, const char *path_for_error_messages, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool image_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);
-void scale_rendered_graphic(ImageRenderData*, float xstart, float ystart, float x_scale, float y_scale);
 void grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest);
 void grman_mark_layers_dirty(GraphicsManager *self);
 void grman_set_window_id(GraphicsManager *self, id_type id);
+bool grman_has_images(GraphicsManager *self);
 GraphicsRenderData grman_render_data(GraphicsManager *self);

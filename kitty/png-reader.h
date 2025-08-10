@@ -28,3 +28,4 @@ typedef struct png_read_data {
 } png_read_data;
 
 void inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz);
+const char* png_from_32bit_rgba(uint32_t *data, size_t width, size_t height, size_t *out_size, bool flip_vertically);

@@ -1,15 +1,15 @@
 #pragma kitty_include_shader <alpha_blend.glsl>
 #pragma kitty_include_shader <linear2srgb.glsl>
 #pragma kitty_include_shader <cell_defines.glsl>
+#pragma kitty_include_shader <utils.glsl>
 
-in vec3 background;
-in float draw_bg;
-in float bg_alpha;
-
-#ifdef NEEDS_FOREGROUND
-uniform sampler2DArray sprites;
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
+uniform sampler2DArray sprites;
+
+in vec3 background;
+in vec4 effective_background_premul;
+#ifndef ONLY_BACKGROUND
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
@@ -24,49 +24,6 @@ in float colored_sprite;
 
 out vec4 output_color;
 
-// Util functions {{{
-vec4 vec4_premul(vec3 rgb, float a) {
-    return vec4(rgb * a, a);
-}
-
-vec4 vec4_premul(vec4 rgba) {
-    return vec4(rgba.rgb * rgba.a, rgba.a);
-}
-// }}}
-
-
-/*
- * Explanation of rendering:
- * There are two types of rendering, single pass and multi-pass. Multi-pass rendering is used when there
- * are images that are below the foreground. Single pass rendering has PHASE=PHASE_BOTH. Otherwise, there
- * are three passes, PHASE=PHASE_BACKGROUND, PHASE=PHASE_SPECIAL, PHASE=PHASE_FOREGROUND.
- * 1) Single pass -- this path is used when there are either no images, or all images are
- *    drawn on top of text. In this case, there is a single pass,
- *    of this shader with cell foreground and background colors blended directly.
- *    Expected output is either opaque colors or pre-multiplied colors.
- *
- * 2) Interleaved -- this path is used if background is not opaque and there are images or
- *    if the background is opaque but there are images under text. Rendering happens in
- *    multiple passes drawing the background and foreground separately and blending.
- *
- *    2a) Opaque bg with images under text
- *        There are multiple passes, each pass is blended onto the previous using the opaque blend func (alpha, 1- alpha). TRANSPARENT is not
- *        defined in the shaders.
- *        1) Draw background for all cells
- *        2) Draw the images that are supposed to be below both the background and text, if any. This happens in the graphics shader
- *        3) Draw the background of cells that don't have the default background if any images were drawn in 2 above
- *        4) Draw the images that are supposed to be below text but not background, again in graphics shader.
- *        5) Draw the special cells (selection/cursor). Output is same as from step 1, with bg_alpha 1 for special cells and 0 otherwise
- *        6) Draw the foreground -- expected output is color with alpha premultiplied which is blended using the premult blend func
- *        7) Draw the images that are supposed to be above text again in the graphics shader
- *
- *    2b) Transparent bg with images
- *        Same as (2a) except blending is done with PREMULT_BLEND and TRANSPARENT is defined in the shaders. background_opacity
- *        is applied to default colored background cells in step (1).
- */
-
-// foreground functions {{{
-#ifdef NEEDS_FOREGROUND
 // Scaling factor for the extra text-alpha adjustment for luminance-difference.
 const float text_gamma_scaling = 0.5;
 
@@ -75,6 +32,7 @@ float clamp_to_unit_float(float x) {
     return clamp(x, 0.0f, 1.0f);
 }
 
+#ifndef ONLY_BACKGROUND
 #if TEXT_NEW_GAMMA == 1
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float under_luminance = dot(under, Y);
@@ -128,60 +86,26 @@ vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
     // to improve legibility based on the source and destination colors
     return foreground_contrast(text_fg, bg);
 }
+#endif  // ifndef ONLY_BACKGROUND
 
-#endif
-// end foreground functions }}}
-
-float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, float final_alpha) {
-    // Adjust the transparent alpha-channel to account for incorrect
-    // gamma-blending performed by the compositor (true for at least wlroots, picom)
-    // We have a linear alpha channel apply the sRGB curve to it once again to compensate
-    // for the incorrect blending in the compositor.
-    // We apply the correction only if there was actual text at this pixel, so as to not make
-    // background_opacity non-linear
-    // See https://github.com/kovidgoyal/kitty/issues/6209 for discussion.
-    // ans = text_fg_alpha * linear2srgb(final_alpha) + (1 - text_fg_alpha) * final_alpha
-    return mix(final_alpha, linear2srgb(final_alpha), text_fg_alpha);
-}
 
 void main() {
-    vec4 final_color;
-#if (PHASE == PHASE_BOTH)
+#ifdef ONLY_FOREGROUND
+    vec4 ans_premul;
+#else
+    vec4 ans_premul = effective_background_premul;
+#endif
+
+#ifndef ONLY_BACKGROUND
+    // blend in the foreground color
     vec4 text_fg = load_text_foreground_color();
     text_fg = adjust_foreground_contrast_with_background(text_fg, background);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
-#ifdef TRANSPARENT
-    final_color = alpha_blend_premul(text_fg_premul, vec4_premul(background, bg_alpha));
-    final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
+#ifdef ONLY_FOREGROUND
+    ans_premul = text_fg_premul;
 #else
-    final_color = alpha_blend_premul(text_fg_premul, background);
+    ans_premul = alpha_blend_premul(text_fg_premul, ans_premul);
 #endif
-#endif
-
-#if (PHASE == PHASE_SPECIAL)
-#ifdef TRANSPARENT
-    final_color = vec4_premul(background, bg_alpha);
-#else
-    final_color = vec4(background, bg_alpha);
-#endif
-#endif
-
-#if (PHASE == PHASE_BACKGROUND)
-#ifdef TRANSPARENT
-    final_color = vec4_premul(background, bg_alpha);
-#else
-    final_color = vec4(background, draw_bg * bg_alpha);
-#endif
-#endif
-
-#if (PHASE == PHASE_FOREGROUND)
-    vec4 text_fg = load_text_foreground_color();
-    text_fg = adjust_foreground_contrast_with_background(text_fg, background);
-    vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
-    final_color = text_fg_premul;
-#ifdef TRANSPARENT
-    final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
-#endif
-#endif
-    output_color = final_color;
+#endif  // ifndef ONLY_BACKGROUND
+    output_color = ans_premul;
 }

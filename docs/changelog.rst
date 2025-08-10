@@ -115,6 +115,9 @@ Detailed list of changes
 - macOS: Add the default :kbd:`Cmd+L` mapping from Terminal.app to erase the
   last command and its output (:disc:`6040`)
 
+- Fix :opt:`background_opacity` being non-linear with light color themes
+  (:iss:`8869`)
+
 - Wayland: Fix incorrect window size calculation when transitioning from
   full screen to non-full screen with client side decorations (:iss:`8826`)
 

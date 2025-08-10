@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include "glfw-wrapper.h"
 #include "state.h"
+#include "png-reader.h"
 
 // GL setup and error handling {{{
 static void
@@ -76,13 +77,26 @@ gl_init(void) {
     }
 }
 
-void
-update_surface_size(int w, int h, GLuint offscreen_texture_id) {
-    glViewport(0, 0, w, h);
-    if (offscreen_texture_id) {
-        glBindTexture(GL_TEXTURE_2D, offscreen_texture_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+static const char*
+check_framebuffer_status(void) {
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    switch (status) {
+        case GL_FRAMEBUFFER_COMPLETE: return NULL;
+        case GL_FRAMEBUFFER_UNDEFINED: return("GL_FRAMEBUFFER_UNDEFINED");
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");
+        case GL_FRAMEBUFFER_UNSUPPORTED: return("GL_FRAMEBUFFER_UNSUPPORTED");
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
+        default: return("Unknown error");
     }
+}
+
+void
+check_framebuffer_status_or_die(void) {
+    const char *err = check_framebuffer_status();
+    if (err != NULL) fatal("Framebuffer not complete with error: %s", err);
 }
 
 void
@@ -96,6 +110,102 @@ free_framebuffer(GLuint *fb_id) {
     glDeleteFramebuffers(1, fb_id);
     *fb_id = 0;
 }
+
+static GLuint output_framebuffer = 0;
+
+void
+bind_framebuffer_for_output(unsigned fbid) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fbid ? fbid : output_framebuffer);
+}
+
+void
+set_framebuffer_to_use_for_output(unsigned fbid) {
+    output_framebuffer = fbid;
+}
+
+static void
+set_blending(bool allowed) {
+    if (allowed) { glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); }  // blending of pre-multiplied colors
+    else { glDisable(GL_BLEND); glBlendFunc(GL_ONE, GL_ZERO); }  // no blending
+}
+
+void
+draw_quad(bool blend, unsigned instance_count) {
+    set_blending(blend);
+    if (instance_count) glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, instance_count);
+    else glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+}
+
+static struct {
+    GLsizei items[16][4];
+    size_t used;
+} saved_viewports;
+
+void
+set_gpu_viewport(unsigned w, unsigned h) { glViewport(0, 0, w, h); }
+
+void
+save_viewport_using_bottom_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height) {
+    if (saved_viewports.used >= arraysz(saved_viewports.items)) fatal("Too many nested saved viewports");
+    GLsizei *saved_viewport = saved_viewports.items[saved_viewports.used++];
+    glGetIntegerv(GL_VIEWPORT, saved_viewport);
+    glViewport(newx, newy, width, height);
+}
+
+void
+save_viewport_using_top_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height, GLsizei full_framebuffer_height) {
+    // Converts the viewport defined by the specified arguments which are
+    // assumed to be in the usual co-ord system with origin at top left to the
+    // OpenGL viewport co-ord system with origin at bottom left.
+    // Use restore_viewport() to restore the viewport to what it was before.
+    if (saved_viewports.used >= arraysz(saved_viewports.items)) fatal("Too many nested saved viewports");
+    GLsizei *saved_viewport = saved_viewports.items[saved_viewports.used++];
+    glGetIntegerv(GL_VIEWPORT, saved_viewport);
+    newy = full_framebuffer_height - (newy + height);
+    glViewport(newx, newy, width, height);
+}
+
+void
+restore_viewport(void) {
+    if (!saved_viewports.used) fatal("Trying to restore a viewport when none is saved");
+    GLsizei *saved_viewport = saved_viewports.items[--saved_viewports.used];
+    glViewport(saved_viewport[0], saved_viewport[1], saved_viewport[2], saved_viewport[3]);
+}
+
+static float
+linear_to_srgb(float c) { return (c <= 0.0031308f) ? 12.92f * c : 1.055f * powf(c, 1.0f / 2.4f) - 0.055f; }
+
+void
+save_texture_as_png(uint32_t texture_id, const char *filename) {
+    GLint prev_tex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    int width = 0, height = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+    size_t sz = width * height * sizeof(uint32_t);
+    uint32_t* data = malloc(sz);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    // assume data is linear and pre0multiplied
+    for (int i = 0; i < width * height; i++) {
+        uint32_t px = data[i];
+        uint8_t r = (px >>  0) & 0xFF; uint8_t g = (px >>  8) & 0xFF; uint8_t b = (px >> 16) & 0xFF;
+        uint8_t a = (px >> 24) & 0xFF; float alpha = a / 255.0f;
+        float rf = 0, gf = 0, bf = 0;
+        if (alpha > 0.0f) { rf = (r / 255.0f) / alpha; gf = (g / 255.0f) / alpha; bf = (b / 255.0f) / alpha; }
+        rf = linear_to_srgb(rf); gf = linear_to_srgb(gf); bf = linear_to_srgb(bf);
+        r = (uint8_t)(rf*255); g = (uint8_t)(gf * 255); b = (uint8_t)(bf * 255);
+        data[i] = (r <<  0) | (g << 8) | (b << 16) | (a << 24);
+    }
+
+    const char *png = png_from_32bit_rgba(data, width, height, &sz, true);
+    if (!sz) fatal("Failed to save PNG to %s with error: %s", filename, png);
+    free(data);
+    FILE* file = fopen(filename, "wb");
+    fwrite(png, 1, sz, file);
+    fclose(file);
+    glBindTexture(GL_TEXTURE_2D, prev_tex);
+}
+
 
 // }}}
 
@@ -180,7 +290,7 @@ attrib_location(int program, const char *name) {
 GLuint
 block_index(int program, const char *name) {
     GLuint ans = glGetUniformBlockIndex(programs[program].id, name);
-    if (ans == GL_INVALID_INDEX) { fatal("Could not find block index"); }
+    if (ans == GL_INVALID_INDEX) { fatal("Could not find block index for %s", name); }
     return ans;
 }
 

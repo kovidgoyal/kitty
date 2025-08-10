@@ -10,7 +10,6 @@
 #include "state.h"
 #include "threading.h"
 #include "screen.h"
-#include "fonts.h"
 #include "monotonic.h"
 #include <termios.h>
 #include <unistd.h>
@@ -710,12 +709,15 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
+    os_window->needs_layers = os_window->is_semi_transparent || os_window->live_resize.in_progress || (
+            os_window->bgimage && os_window->bgimage->texture_id > 0);
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
         if (!os_window->tab_bar_data_updated) {
             call_boss(update_tab_bar_data, "K", os_window->id);
             os_window->tab_bar_data_updated = true;
         }
-        if (send_cell_data_to_gpu(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
+        if (send_cell_data_to_gpu(TD.vao_idx, TD.screen, os_window)) needs_render = true;
+        os_window->needs_layers = os_window->needs_layers || screen_needs_rendering_in_layers(os_window, NULL, TD.screen);
     }
     if (OPT(mouse_hide.hide_wait) > 0 && !is_mouse_hidden(os_window)) {
         if (now - os_window->last_mouse_activity_at >= OPT(mouse_hide.hide_wait)) hide_mouse(os_window);
@@ -730,6 +732,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
         Window *w = tab->windows + i;
 #define WD w->render_data
         if (w->visible && WD.screen) {
+            os_window->needs_layers = os_window->needs_layers || screen_needs_rendering_in_layers(os_window, w, WD.screen);
             screen_check_pause_rendering(WD.screen, now);
             *num_visible_windows += 1;
             color_type window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg).rgb;
@@ -781,7 +784,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                     set_maximum_wait(min_gap);
                 }
             }
-            if (send_cell_data_to_gpu(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
+            if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
         }
     }
@@ -789,28 +792,13 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 }
 
 static void
-draw_resizing_text(OSWindow *w) {
-    if (monotonic() - w->created_at > ms_to_monotonic_t(1000) && w->live_resize.num_of_resize_events > 1) {
-        char text[32] = {0};
-        unsigned int width = w->live_resize.width, height = w->live_resize.height;
-        snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->fcm.cell_width, height / w->fonts_data->fcm.cell_height);
-        StringCanvas rendered = render_simple_text(w->fonts_data, text);
-        if (rendered.canvas) {
-            draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas, OPT(background_opacity));
-            free(rendered.canvas);
-        }
-    }
-}
-
-static void
 render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
-    // ensure all pixels are cleared to background color at least once in every buffer
-    if (os_window->clear_count++ < 3) blank_os_window(os_window);
+    setup_os_window_for_rendering(os_window, true);
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
-    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
+    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     br->is_dirty = false;
-    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, &TD, os_window, true, true, false, NULL);
+    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(&TD, os_window, true, true, false, NULL);
     unsigned int num_of_visible_windows = 0;
     Window *active_window = NULL;
     for (unsigned int i = 0; i < tab->num_windows; i++) { if (tab->windows[i].visible) num_of_visible_windows++; }
@@ -819,13 +807,13 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
         if (w->visible && WD.screen) {
             bool is_active_window = i == tab->active_window;
             if (is_active_window) active_window = w;
-            draw_cells(WD.vao_idx, &WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
+            draw_cells(&WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
             if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
             w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
     if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
-    if (os_window->live_resize.in_progress) draw_resizing_text(os_window);
+    setup_os_window_for_rendering(os_window, false);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
@@ -866,11 +854,9 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     }
     w->render_calls++;
     make_os_window_context_current(w);
-    if (w->live_resize.in_progress) blank_os_window(w);
     bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress;
     if (w->viewport_size_dirty) {
-        w->clear_count = 0;
-        update_surface_size(w->viewport_width, w->viewport_height, 0);
+        set_gpu_viewport(w->viewport_width, w->viewport_height);
         w->viewport_size_dirty = false;
         needs_render = true;
     }

@@ -1,14 +1,11 @@
+#pragma kitty_include_shader <alpha_blend.glsl>
 
 uniform sampler2D image;
-uniform float opacity;
-uniform float premult;
+uniform vec4 background;
 in vec2 texcoord;
-out vec4 color;
+out vec4 premult_color;
 
 void main() {
-    color = texture(image, texcoord);
-    float alpha = color.a * opacity;
-    vec4 premult_color = vec4(color.rgb * alpha, alpha);
-    color = vec4(color.rgb, alpha);
-    color = premult * premult_color + (1 - premult) * color;
+    vec4 color = texture(image, texcoord);
+    premult_color = alpha_blend(color, background);
 }

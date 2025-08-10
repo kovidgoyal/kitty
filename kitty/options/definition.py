@@ -1592,11 +1592,7 @@ launch your editor. See also :opt:`transparent_background_colors`.
 Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit. When using a low value for this setting, it is
 desirable that you set the :opt:`background` color to a color the matches the
-general color of the desktop background, for best text rendering. Note that
-to workaround window managers not doing gamma-corrected blending kitty
-makes background_opacity non-linear which means, especially for light backgrounds
-you might need to make the value much lower than you expect to get good results,
-see :iss:`6218` for details.
+general color of the desktop background, for best text rendering.
 
 If you want to dynamically change transparency of windows, set
 :opt:`dynamic_background_opacity` to :code:`yes` (this is off by default as it
@@ -1632,6 +1628,7 @@ part is optional. When unspecified, the value of :opt:`background_opacity` is us
 
     transparent_background_colors red@0.5 #00ff00@0.3
 
+Note that you must also set :opt:`background_opacity` to something less than 1 for this setting to work properly.
 '''
 )
 
@@ -1675,8 +1672,7 @@ opt('background_tint', '0.0',
     long_text='''
 How much to tint the background image by the background color. This option
 makes it easier to read the text. Tinting is done using the current background
-color for each window. This option applies only if :opt:`background_opacity` is
-set and transparent windows are supported or :opt:`background_image` is set.
+color for each window. This option applies only if :opt:`background_image` is set.
 Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.
 '''
     )

@@ -144,7 +144,7 @@ from .utils import (
     parse_uri_list,
     platform_window_id,
     safe_print,
-    sanitize_url_for_dispay_to_user,
+    sanitize_url_for_display_to_user,
     shlex_split,
     startup_notification_handler,
     timed_debug_print,
@@ -916,7 +916,7 @@ class Boss:
             window.send_cmd_response(response)
 
     def mark_os_window_for_close(self, os_window_id: int, request_type: int = IMPERATIVE_CLOSE_REQUESTED) -> None:
-        if self.current_visual_select is not None and self.current_visual_select.os_window_id == os_window_id and request_type == IMPERATIVE_CLOSE_REQUESTED:
+        if self.current_visual_select is not None and self.current_visual_select.os_window_id == os_window_id:
             self.cancel_current_visual_select()
         mark_os_window_for_close(os_window_id, request_type)
 
@@ -1504,6 +1504,7 @@ class Boss:
         if self.current_visual_select:
             self.current_visual_select.cancel()
             self.current_visual_select = None
+            self.mappings.pop_keyboard_mode_if_is('__visual_select__')
 
     def visual_window_select_action(
         self, tab: Tab,
@@ -1827,6 +1828,8 @@ class Boss:
         if tm is None:
             self.mark_os_window_for_close(os_window_id)
             return
+        if self.current_visual_select is not None and self.current_visual_select.os_window_id == os_window_id:
+            self.cancel_current_visual_select()
         active_window = tm.active_window
         windows = []
         for tab in tm:
@@ -3160,8 +3163,8 @@ class Boss:
         pass
     mouse_discard_event = discard_event
 
-    def sanitize_url_for_dispay_to_user(self, url: str) -> str:
-        return sanitize_url_for_dispay_to_user(url)
+    def sanitize_url_for_display_to_user(self, url: str) -> str:
+        return sanitize_url_for_display_to_user(url)
 
     def on_system_color_scheme_change(self, appearance: ColorSchemes, is_initial_value: bool) -> None:
         theme_colors.on_system_color_scheme_change(appearance, is_initial_value)

@@ -380,7 +380,7 @@ class Layout:
         ),)
         geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y)
         wg.set_geometry(geom)
-        if add_blank_rects and wg:
+        if add_blank_rects:
             self.blank_rects.extend(blank_rects_for_window(geom))
 
     def xlayout(

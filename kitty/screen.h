@@ -11,6 +11,7 @@
 #include "monotonic.h"
 #include "line-buf.h"
 #include "history.h"
+#include "window_logo.h"
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 

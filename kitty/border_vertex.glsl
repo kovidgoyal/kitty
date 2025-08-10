@@ -1,11 +1,21 @@
-uniform uvec2 viewport;
+#pragma kitty_include_shader <utils.glsl>
+
+#define DEFAULT_BG 0
+#define ACTIVE_BORDER_COLOR 1
+#define INACTIVE_BORDER_COLOR 2
+#define WINDOW_BACKGROUND_PLACEHOLDER 3
+#define BELL_BORDER_COLOR 4
+#define TAB_BAR_BG_COLOR 5
+#define TAB_BAR_MARGIN_COLOR 6
+#define TAB_BAR_EDGE_LEFT_COLOR 7
+#define TAB_BAR_EDGE_RIGHT_COLOR 8
 uniform uint colors[9];
 uniform float background_opacity;
-uniform float tint_opacity, tint_premult;
 uniform float gamma_lut[256];
+
 in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
-out vec4 color;
+out vec4 color_premul;
 
 // indices into the rect vector
 const int LEFT = 0;
@@ -25,8 +35,8 @@ float to_color(uint c) {
     return gamma_lut[c & FF];
 }
 
-float is_integer_value(uint c, float x) {
-    return 1. - step(0.5, abs(float(c) - x));
+float is_integer_value(uint c, int x) {
+    return 1. - step(0.5, abs(float(c) - float(x)));
 }
 
 vec3 as_color_vector(uint c, int shift) {
@@ -39,14 +49,13 @@ void main() {
     vec3 window_bg = as_color_vector(rect_color, 24);
     uint rc = rect_color & FF;
     vec3 color3 = as_color_vector(colors[rc], 16);
-    float is_window_bg = is_integer_value(rc, 3.);
-    float is_default_bg = is_integer_value(rc, 0.);
-    color3 = is_window_bg * window_bg + (1. - is_window_bg) * color3;
-    // Border must be always drawn opaque
-    float is_border_bg = 1. - step(0.5, abs((float(rc) - 2.) * (float(rc) - 1.) * (float(rc) - 4.))); // 1 if rc in (1, 2, 4) else 0
-    float final_opacity = is_default_bg * tint_opacity + (1. - is_default_bg) * background_opacity;
-    final_opacity = is_border_bg + (1. - is_border_bg) * final_opacity;
-    float final_premult_opacity = is_default_bg * tint_premult + (1. - is_default_bg) * background_opacity;
-    final_premult_opacity = is_border_bg + (1. - is_border_bg) * final_premult_opacity;
-    color = vec4(color3 * final_premult_opacity, final_opacity);
+    float is_window_bg = is_integer_value(rc, WINDOW_BACKGROUND_PLACEHOLDER); // used by window padding areas
+    float is_default_bg = is_integer_value(rc, DEFAULT_BG);
+    color3 = if_one_then(is_window_bg, window_bg, color3);
+    // Actual border quads must be always drawn opaque
+    float is_not_a_border = zero_or_one(abs(
+        (float(rc) - ACTIVE_BORDER_COLOR) * (float(rc) - INACTIVE_BORDER_COLOR) * (float(rc) - BELL_BORDER_COLOR)
+    ));
+    float final_opacity = if_one_then(is_not_a_border, background_opacity, 1.);
+    color_premul = vec4_premul(color3, final_opacity);
 }

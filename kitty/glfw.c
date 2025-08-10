@@ -425,7 +425,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         window->live_resize.width = MAX(0, width); window->live_resize.height = MAX(0, height);
         window->live_resize.num_of_resize_events++;
         make_os_window_context_current(window);
-        update_surface_size(width, height, 0);
+        set_gpu_viewport(width, height);
         request_tick_callback();
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;
@@ -738,7 +738,7 @@ apple_url_open_callback(const char* url) {
 
 
 bool
-draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+draw_window_title(double font_sz_pts UNUSED, double ydpi UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
     return cocoa_render_line_of_text(buf, fg, bg, output_buf, width, height);
@@ -786,11 +786,11 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
 }
 
 bool
-draw_window_title(OSWindow *window, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+draw_window_title(double font_sz_pts, double ydpi, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
     if (!ensure_csd_title_render_ctx()) return false;
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
-    unsigned px_sz = (unsigned)(window->fonts_data->font_sz_in_pts * window->fonts_data->logical_dpi_y / 72.);
+    unsigned px_sz = (unsigned)(font_sz_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
 #define RGB2BGR(x) (x & 0xFF000000) | ((x & 0xFF0000) >> 16) | (x & 0x00FF00) | ((x & 0x0000FF) << 16)
     bool ok = render_single_line(csd_title_render_ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0, false);
@@ -1460,7 +1460,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) gl_init();
     // Will make the GPU automatically apply SRGB gamma curve on the resulting framebuffer
-    glEnable(GL_FRAMEBUFFER_SRGB);
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
@@ -1487,7 +1486,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         }
     }
     if (is_first_window) {
-        PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
+        PyObject *ret = PyObject_CallNoArgs(load_programs);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
         get_platform_dependent_config_values(glfw_window);
@@ -1495,7 +1494,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT, GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, &encoding);
         if (encoding != GL_SRGB) log_error("The output buffer does not support sRGB color encoding, colors will be incorrect.");
         is_first_window = false;
-
     }
     OSWindow *w = add_os_window();
     w->handle = glfw_window;

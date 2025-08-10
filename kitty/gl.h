@@ -32,7 +32,9 @@ typedef struct {
 
 void gl_init(void);
 const char* gl_version_string(void);
-void update_surface_size(int w, int h, GLuint offscreen_texture_id);
+void set_gpu_viewport(unsigned w, unsigned h);
+void draw_quad(bool blend, unsigned instance_count);
+void save_texture_as_png(uint32_t texture_id, const char *filename);
 void free_texture(GLuint *tex_id);
 void free_framebuffer(GLuint *fb_id);
 void remove_vao(ssize_t vao_idx);
@@ -57,3 +59,9 @@ void bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index)
 void unbind_vertex_array(void);
 void unbind_program(void);
 GLuint compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * string);
+void save_viewport_using_top_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height, GLsizei full_framebuffer_height);
+void save_viewport_using_bottom_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height);
+void check_framebuffer_status_or_die(void);
+void restore_viewport(void);
+void bind_framebuffer_for_output(unsigned fbid);
+void set_framebuffer_to_use_for_output(unsigned fbid);

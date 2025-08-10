@@ -1,6 +1,7 @@
 import termios
 from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Tuple, TypedDict, Union, overload
 
+from kitty.borders import Border
 from kitty.boss import Boss
 from kitty.fonts import VariableData
 from kitty.fonts.render import FontObject
@@ -270,15 +271,15 @@ NO_CURSOR_SHAPE: int
 CURSOR_UNDERLINE: int
 DECAWM: int
 BGIMAGE_PROGRAM: int
-CELL_BG_PROGRAM: int
-CELL_FG_PROGRAM: int
 CELL_PROGRAM: int
-CELL_SPECIAL_PROGRAM: int
+CELL_FG_PROGRAM: int
+CELL_BG_PROGRAM: int
+BLIT_PROGRAM: int
 DECORATION: int
 DIM: int
 GRAPHICS_ALPHA_MASK_PROGRAM: int
-GRAPHICS_PREMULT_PROGRAM: int
 GRAPHICS_PROGRAM: int
+GRAPHICS_PREMULT_PROGRAM: int
 MARK: int
 MARK_MASK: int
 DECORATION_MASK: int
@@ -545,17 +546,10 @@ def set_os_window_chrome(os_window_id: int) -> bool:
     pass
 
 
-def add_borders_rect(
-    os_window_id: int, tab_id: int, left: int, top: int, right: int,
-    bottom: int, color: int
-) -> None:
-    pass
+def set_borders_rects(os_window_id: int, tab_id: int, rects: list[Border]) -> None: ...
 
 
 def init_borders_program() -> None:
-    pass
-
-def init_trail_program() -> None:
     pass
 
 def os_window_has_background_image(os_window_id: int) -> bool:
@@ -607,7 +601,7 @@ def create_os_window(
     wm_class_name: str,
     wm_class_class: str,
     window_state: Optional[int] = WINDOW_NORMAL,
-    load_programs: Optional[Callable[[bool], None]] = None,
+    load_programs: Optional[Callable[[], None]] = None,
     x: Optional[int] = None,
     y: Optional[int] = None,
     disallow_override_title: bool = False,

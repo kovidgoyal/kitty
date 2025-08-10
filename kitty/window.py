@@ -108,7 +108,7 @@ from .utils import (
     sanitize_control_codes,
     sanitize_for_bracketed_paste,
     sanitize_title,
-    sanitize_url_for_dispay_to_user,
+    sanitize_url_for_display_to_user,
     shlex_split,
 )
 
@@ -1196,7 +1196,7 @@ class Window:
             if opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
                 boss.choose(
-                    'What would you like to do with this URL:\n' + styled(sanitize_url_for_dispay_to_user(url), fg='yellow'),
+                    'What would you like to do with this URL:\n' + styled(sanitize_url_for_display_to_user(url), fg='yellow'),
                     partial(self.hyperlink_open_confirmed, url, cwd),
                     'o:Open', 'c:Copy to clipboard', 'n;red:Nothing', default='o',
                     window=self, title=_('Hyperlink activated'),
