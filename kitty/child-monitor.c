@@ -793,8 +793,8 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 
 static void
 render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
-    setup_os_window_for_rendering(os_window, true);
     Tab *tab = os_window->tabs + os_window->active_tab;
+    setup_os_window_for_rendering(os_window, tab, NULL, true);
     BorderRects *br = &tab->border_rects;
     draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     br->is_dirty = false;
@@ -812,8 +812,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
-    if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
-    setup_os_window_for_rendering(os_window, false);
+    setup_os_window_for_rendering(os_window, tab, active_window, false);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;

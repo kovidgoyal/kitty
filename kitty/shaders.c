@@ -1175,7 +1175,7 @@ draw_resizing_text(OSWindow *w) {
 
 
 void
-setup_os_window_for_rendering(OSWindow *os_window, bool start) {
+setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_window, bool start) {
     if (start) {
         if (os_window->live_resize.in_progress) {
             blank_os_window(os_window);
@@ -1197,6 +1197,7 @@ setup_os_window_for_rendering(OSWindow *os_window, bool start) {
             draw_bg_image(os_window);
         }
     } else {
+        if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
         if (os_window->needs_layers) {
             set_framebuffer_to_use_for_output(0);
             bind_framebuffer_for_output(0);
