@@ -598,7 +598,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0;  central->right = os_window->viewport_width - 1;
-                central->top = os_window->fonts_data->fcm.cell_height + margin_inner + margin_outer;
+                central->top = os_window->fonts_data->fcm.cell_height + margin_inner + margin_outer - 1;
                 central->bottom = os_window->viewport_height - 1;
                 central->top = MIN(central->top, central->bottom);
                 tab_bar->top = margin_outer;
