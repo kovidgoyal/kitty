@@ -1972,6 +1972,10 @@ class Window:
                 ans.append(f'--color={cs}')
             for wr in self.creation_spec.watchers:
                 ans.append(f'--watcher={wr}')
+            if self.creation_spec.hold:
+                ans.append('--hold')
+            if self.creation_spec.hold_after_ssh:
+                ans.append('--hold-after-ssh')
         for k, v in self.user_vars.items():
             ans.append(f'--var={k}={v}')
         ans.extend(self.padding.as_launch_args())
