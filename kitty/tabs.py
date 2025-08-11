@@ -128,6 +128,7 @@ class Tab:  # {{{
     total_progress: int = 0
     has_indeterminate_progress: bool = False
     last_focused_window_with_progress_id: int = 0
+    allow_relayouts: bool = True
 
     def __init__(
         self,
@@ -238,6 +239,14 @@ class Tab:  # {{{
         self.mark_tab_bar_dirty()
 
     def startup(self, session_tab: SessionTab) -> None:
+        self.allow_relayouts = False
+        try:
+            self._startup(session_tab)
+        finally:
+            self.allow_relayouts = True
+        self.relayout()
+
+    def _startup(self, session_tab: SessionTab) -> None:
         target_tab = self
         boss = get_boss()
         for window in session_tab.windows:
@@ -265,8 +274,7 @@ class Tab:  # {{{
         with suppress(IndexError):
             self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
         if session_tab.layout_state:
-            if self.current_layout.unserialize(session_tab.layout_state, self.windows):
-                self.relayout()
+            self.current_layout.unserialize(session_tab.layout_state, self.windows)
 
     def serialize_state(self) -> dict[str, Any]:
         return {
@@ -331,9 +339,10 @@ class Tab:  # {{{
         self.mark_tab_bar_dirty()
 
     def relayout(self) -> None:
-        if self.windows:
-            self.current_layout(self.windows)
-        self.relayout_borders()
+        if self.allow_relayouts:
+            if self.windows:
+                self.current_layout(self.windows)
+            self.relayout_borders()
 
     def relayout_borders(self) -> None:
         tm = self.tab_manager_ref()
