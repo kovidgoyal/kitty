@@ -1955,6 +1955,12 @@ class Window:
             cwd = path_from_osc7_url(self.screen.last_reported_cwd) or cwd
         if cwd:
             ans.append(f'--cwd={cwd}')
+        if self.allow_remote_control:
+            ans.append('--allow-remote-control')
+        if self.remote_control_passwords:
+            import shlex
+            for pw, rcp_items in self.remote_control_passwords.items():
+                ans.append(f'--remote-control-password={shlex.join((pw,) + tuple(rcp_items))}')
         if self.creation_spec:
             if self.creation_spec.env:
                 env = dict(self.creation_spec.env)
