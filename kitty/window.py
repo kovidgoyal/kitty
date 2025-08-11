@@ -358,6 +358,30 @@ def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data:
     add_timer(callback, 0, False)
 
 
+class WindowCreationSpec(NamedTuple):
+    use_shell: bool = True
+    cmd: list[str] | None = None
+    has_stdin: bool = False
+    override_title: str | None = None
+    cwd_from: CwdRequest | None = None
+    cwd: str | None = None
+    overlay_for: int | None = None
+    env: tuple[tuple[str, str], ...] | None = None
+    location: str | None = None
+    copy_colors_from: int | None = None
+    allow_remote_control: bool = False
+    marker: str | None = None
+    watchers: tuple[str, ...] = ()
+    overlay_behind: bool = False
+    is_clone_launch: str = ''
+    remote_control_passwords: dict[str, Sequence[str]] | None = None
+    hold: bool = False
+    bias: float | None = None
+    pass_fds: tuple[int, ...] = ()
+    remote_control_fd: int = -1
+    hold_after_ssh: bool = False
+
+
 def pagerhist(screen: Screen, as_ansi: bool = False, add_wrap_markers: bool = True, upto_output_start: bool = False) -> str:
     pht = screen.historybuf.pagerhist_as_text(upto_output_start)
     if pht and (not as_ansi or not add_wrap_markers):
@@ -614,6 +638,7 @@ class Window:
     overlay_type = OverlayType.transient
     initial_ignore_focus_changes: bool = False
     initial_ignore_focus_changes_context_manager_in_operation: bool = False
+    creation_spec: WindowCreationSpec | None = None
 
     @classmethod
     @contextmanager
