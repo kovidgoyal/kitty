@@ -196,6 +196,7 @@ typedef struct ImageAnchorPosition {
 typedef enum UTF8State { UTF8_ACCEPT = 0, UTF8_REJECT = 1} UTF8State;
 
 typedef struct {
+    // right = left + width, bottom = top + height
     uint32_t left, top, right, bottom;
 } Region;
 

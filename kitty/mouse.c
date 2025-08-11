@@ -235,7 +235,7 @@ window_bottom(Window *w) {
 static bool
 contains_mouse(Window *w) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
-    return (w->visible && window_left(w) <= x && x <= window_right(w) && window_top(w) <= y && y <= window_bottom(w));
+    return (w->visible && window_left(w) <= x && x < window_right(w) && window_top(w) <= y && y < window_bottom(w));
 }
 
 static double
@@ -645,8 +645,8 @@ handle_tab_bar_mouse(int button, int modifiers, int action) {
 static bool
 mouse_in_region(Region *r) {
     if (r->left == r->right) return false;
-    if (global_state.callback_os_window->mouse_y < r->top || global_state.callback_os_window->mouse_y > r->bottom) return false;
-    if (global_state.callback_os_window->mouse_x < r->left || global_state.callback_os_window->mouse_x > r->right) return false;
+    if (global_state.callback_os_window->mouse_y < r->top || global_state.callback_os_window->mouse_y >= r->bottom) return false;
+    if (global_state.callback_os_window->mouse_x < r->left || global_state.callback_os_window->mouse_x >= r->right) return false;
     return true;
 }
 
@@ -659,7 +659,7 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     const OSWindow* w = global_state.callback_os_window;
     if (!in_central) {
         if (
-                (tab_bar.top < central.top && w->mouse_y <= central.top) ||
+                (tab_bar.top < central.top && w->mouse_y < central.top) ||
                 (tab_bar.bottom > central.bottom && w->mouse_y >= central.bottom)
            ) *in_tab_bar = true;
     }
