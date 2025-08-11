@@ -189,7 +189,7 @@ save_texture_as_png(uint32_t texture_id, const char *filename) {
     int width = 0, height = 0;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-    size_t sz = width * height * sizeof(uint32_t);
+    size_t sz = sizeof(uint32_t) * width * height;
     uint32_t* data = malloc(sz);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     // assume data is linear and pre0multiplied
