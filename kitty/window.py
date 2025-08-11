@@ -1980,6 +1980,8 @@ class Window:
             ans.append(f'--var={k}={v}')
         ans.extend(self.padding.as_launch_args())
         ans.extend(self.margin.as_launch_args('margin'))
+        if self.override_title:
+            ans.append(f'--title={self.override_title}')
         wl = get_window_logo_settings_if_not_default(self.os_window_id, self.tab_id, self.id)
         if wl is not None:
             logo_path, logo_alpha, logo_pos = wl
