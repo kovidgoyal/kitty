@@ -1964,6 +1964,8 @@ class Window:
                         ans.append(f'--env={k}={v}')
             for cs in self.creation_spec.colors:
                 ans.append(f'--color={cs}')
+            for wr in self.creation_spec.watchers:
+                ans.append(f'--watcher={wr}')
         for k, v in self.user_vars.items():
             ans.append(f'--var={k}={v}')
         ans.extend(self.padding.as_launch_args())
