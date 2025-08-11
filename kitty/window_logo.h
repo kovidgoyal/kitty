@@ -28,6 +28,9 @@ find_or_create_window_logo(WindowLogoTable *table, const char *path, void *png_d
 WindowLogo*
 find_window_logo(WindowLogoTable *table, window_logo_id_t id);
 
+const char*
+window_logo_path_for_id(WindowLogoTable *head, window_logo_id_t id);
+
 void
 decref_window_logo(WindowLogoTable *table, window_logo_id_t id);
 

@@ -19,6 +19,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Deque,
+    Iterator,
     Literal,
     NamedTuple,
     Optional,
@@ -67,6 +68,7 @@ from .fast_data_types import (
     get_click_interval,
     get_mouse_data_for_window,
     get_options,
+    get_window_logo_settings_if_not_default,
     is_css_pointer_name_valid,
     is_modifier_key,
     last_focused_os_window_id,
@@ -369,6 +371,7 @@ class WindowCreationSpec(NamedTuple):
     env: tuple[tuple[str, str], ...] | None = None
     location: str | None = None
     copy_colors_from: int | None = None
+    colors: tuple[str, ...] = ()
     allow_remote_control: bool = False
     marker: str | None = None
     watchers: tuple[str, ...] = ()
@@ -377,9 +380,8 @@ class WindowCreationSpec(NamedTuple):
     remote_control_passwords: dict[str, Sequence[str]] | None = None
     hold: bool = False
     bias: float | None = None
-    pass_fds: tuple[int, ...] = ()
-    remote_control_fd: int = -1
     hold_after_ssh: bool = False
+    spacing: tuple[str, ...] = ()
 
 
 def pagerhist(screen: Screen, as_ansi: bool = False, add_wrap_markers: bool = True, upto_output_start: bool = False) -> str:
@@ -604,6 +606,16 @@ class EdgeWidths:
 
     def copy(self) -> 'EdgeWidths':
         return EdgeWidths(self.serialize())
+
+    def as_launch_args(self, prefix: str = 'padding') -> Iterator[str]:
+        if self.left is not None:
+            yield f'--spacing={prefix}-left={self.left}'
+        if self.right is not None:
+            yield f'--spacing={prefix}-left={self.right}'
+        if self.top is not None:
+            yield f'--spacing={prefix}-left={self.top}'
+        if self.bottom is not None:
+            yield f'--spacing={prefix}-left={self.bottom}'
 
 
 class GlobalWatchers:
@@ -1930,6 +1942,54 @@ class Window:
     def current_mouse_position(self) -> Optional['MousePosition']:
         ' Return the last position at which a mouse event was received by this window '
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
+
+    def as_launch_command(self) -> list[str]:
+        ' Return a launch command that can be used to serialize this window. Empty list indicates not serializable. '
+        if self.actions_on_close or self.actions_on_focus_change or self.actions_on_removal:
+            # such windows are typically UI kittens. The actions are not
+            # serializable anyway, so skip.
+            return []
+        ans = ['launch']
+        cwd = self.get_cwd_of_child(oldest=False) or self.get_cwd_of_child(oldest=True)
+        if self.screen.last_reported_cwd and self.at_prompt and not self.child_is_remote:
+            cwd = path_from_osc7_url(self.screen.last_reported_cwd) or cwd
+        if cwd:
+            ans.append(f'--cwd={cwd}')
+        if self.creation_spec:
+            if self.creation_spec.env:
+                env = dict(self.creation_spec.env)
+                env.pop('KITTY_PIPE_DATA', None)
+                for k, v in env.items():
+                    if k not in ('KITTY_PIPE_DATA',):
+                        ans.append(f'--env={k}={v}')
+            for cs in self.creation_spec.colors:
+                ans.append(f'--color={cs}')
+        for k, v in self.user_vars.items():
+            ans.append(f'--var={k}={v}')
+        ans.extend(self.padding.as_launch_args())
+        ans.extend(self.margin.as_launch_args('margin'))
+        wl = get_window_logo_settings_if_not_default(self.os_window_id, self.tab_id, self.id)
+        if wl is not None:
+            logo_path, logo_alpha, logo_pos = wl
+            ans.extend((f'--logo={logo_path}', f'--logo-alpha={logo_alpha}'))
+            xpos = ypos = ''
+            if logo_pos[0] == logo_pos[2] != 0.5:
+                xpos = 'right' if logo_pos[0] else 'left'
+            if logo_pos[1] == logo_pos[3] != 0.5:
+                ypos = 'bottom' if logo_pos[1] else 'top'
+            lpos = 'center'
+            if xpos or ypos:
+                lpos = (f'{ypos}-{xpos}' if ypos else xpos) if xpos else ypos
+            ans.append(f'--logo-position={lpos}')
+
+        if self.overlay_parent is not None:
+            t = 'overlay-main' if self.overlay_type is OverlayType.main else 'overlay'
+            ans.append(f'--type={t}')
+
+        if self.creation_spec and self.creation_spec.cmd:
+            ans.extend(self.creation_spec.cmd)
+        return ans
+
 
     # actions {{{
 

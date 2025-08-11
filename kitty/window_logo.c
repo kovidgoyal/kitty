@@ -68,6 +68,14 @@ set_on_gpu_state(WindowLogo *s, bool on_gpu) {
     }
 }
 
+const char*
+window_logo_path_for_id(WindowLogoTable *head, window_logo_id_t id) {
+    vt_create_for_loop(hash_by_path_itr, itr, &head->by_path) {
+        if (itr.data->val->id == id) return itr.data->key;
+    }
+    return NULL;
+}
+
 window_logo_id_t
 find_or_create_window_logo(WindowLogoTable *head, const char *path, void *png_data, size_t png_data_size) {
     hash_by_path_itr n = vt_get(&head->by_path, path);

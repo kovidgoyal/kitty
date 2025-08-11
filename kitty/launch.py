@@ -779,8 +779,13 @@ def _launch(
                 env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
             if child_death_callback is not None:
                 boss.monitor_pid(new_window.child.pid or 0, child_death_callback)
-            if new_window.creation_spec and opts.watcher:
-                new_window.creation_spec = new_window.creation_spec._replace(watchers=tuple(opts.watcher))
+            if new_window.creation_spec:
+                if opts.watcher:
+                    new_window.creation_spec = new_window.creation_spec._replace(watchers=tuple(opts.watcher))
+                if opts.spacing:
+                    new_window.creation_spec = new_window.creation_spec._replace(spacing=tuple(opts.spacing))
+                if opts.color:
+                    new_window.creation_spec = new_window.creation_spec._replace(colors=tuple(opts.color))
         if spacing:
             patch_window_edges(new_window, spacing)
             tab.relayout()

@@ -1527,6 +1527,9 @@ def set_window_logo(os_window_id: int, tab_id: int, window_id: int, path: str, p
     pass
 
 
+def get_window_logo_settings_if_not_default(os_window_id: int, tab_id: int, window_id: int) -> None | tuple[
+        str, float, tuple[float, float, float, float]]: ...
+
 def apply_options_update() -> None:
     pass
 
