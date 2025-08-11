@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/ALTree/bigfloat v0.2.0
-	github.com/alecthomas/chroma/v2 v2.19.0
+	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/edwvee/exiffix v0.0.0-20240229113213-0dbb146775be
@@ -18,9 +18,9 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
-	golang.org/x/image v0.29.0
-	golang.org/x/sys v0.34.0
-	golang.org/x/text v0.27.0
+	golang.org/x/image v0.30.0
+	golang.org/x/sys v0.35.0
+	golang.org/x/text v0.28.0
 	howett.net/plist v1.0.1
 )
 
