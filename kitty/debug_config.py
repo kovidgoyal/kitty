@@ -213,11 +213,15 @@ class IssueData:
                     else:
                         yield ch
                 case 'escape':
-                    if ch == 'S':
-                        state = 'sub_start'
-                    else:
-                        yield self.translate_issue_char(ch)
-                        state = 'normal'
+                    match ch:
+                        case 'S':
+                            state = 'sub_start'
+                        case '\\':
+                            yield '\\'
+                            state = 'normal'
+                        case _:
+                            yield self.translate_issue_char(ch)
+                            state = 'normal'
                 case 'sub_start':
                     if ch == '{':  # }
                         state = 'sub'
