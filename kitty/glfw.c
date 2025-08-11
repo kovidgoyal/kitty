@@ -1381,6 +1381,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         // Also apparently mesa has introduced a bug with sRGB surfaces and Wayland.
         // Sigh. Wayland is such a pile of steaming crap.
         // See https://github.com/kovidgoyal/kitty/issues/7174#issuecomment-2000033873
+        // GL_FRAMEBUFFER_SRGB works anyway without this on Wayland.
         if (!global_state.is_wayland) glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks) || lsc != NULL);
@@ -1459,7 +1460,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #undef glfw_failure
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) gl_init();
-    // Will make the GPU automatically apply SRGB gamma curve on the resulting framebuffer
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
@@ -1490,9 +1490,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
         get_platform_dependent_config_values(glfw_window);
-        GLint encoding;
-        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT, GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, &encoding);
-        if (encoding != GL_SRGB) log_error("The output buffer does not support sRGB color encoding, colors will be incorrect.");
+        if (!global_state.supports_framebuffer_srgb) {
+            log_error("The OpenGL drivers dont support GL_FRAMEBUFFER_SRGB this will cause a small rendering performance penalty");
+        }
         is_first_window = false;
     }
     OSWindow *w = add_os_window();

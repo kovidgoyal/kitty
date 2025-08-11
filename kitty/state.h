@@ -349,6 +349,7 @@ typedef struct {
     bool redirect_mouse_handling;
     WindowLogoTable *all_window_logos;
     int gl_version;
+    bool supports_framebuffer_srgb;
     PyObject *options_object;
 } GlobalState;
 

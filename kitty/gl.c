@@ -67,6 +67,13 @@ gl_init(void) {
         }
         ARB_TEST(texture_storage);
 #undef ARB_TEST
+#ifdef __APPLE__
+        // See nsgl_context.m srgb is always supported on macOS but its OpenGL
+        // drivers dont report the extensions, so hardcode to true.
+        global_state.supports_framebuffer_srgb = true;
+#else
+        global_state.supports_framebuffer_srgb = (GLAD_GL_ARB_framebuffer_sRGB + GLAD_GL_EXT_framebuffer_sRGB) != 0;
+#endif
         glad_loaded = true;
         int gl_major = GLAD_VERSION_MAJOR(global_state.gl_version);
         int gl_minor = GLAD_VERSION_MINOR(global_state.gl_version);

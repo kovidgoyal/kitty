@@ -709,8 +709,10 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
-    os_window->needs_layers = os_window->is_semi_transparent || os_window->live_resize.in_progress || (
-            os_window->bgimage && os_window->bgimage->texture_id > 0);
+    os_window->needs_layers = (
+        !global_state.supports_framebuffer_srgb || os_window->is_semi_transparent ||
+        os_window->live_resize.in_progress || (os_window->bgimage && os_window->bgimage->texture_id > 0)
+    );
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
         if (!os_window->tab_bar_data_updated) {
             call_boss(update_tab_bar_data, "K", os_window->id);
