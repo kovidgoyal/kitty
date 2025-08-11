@@ -25,6 +25,7 @@ from .options.types import defaults, secret_options
 from .options.utils import KeyboardMode, KeyDefinition
 from .rgb import color_as_sharp, color_from_int
 from .types import MouseEvent, Shortcut, mod_to_names
+from .utils import shlex_split
 
 AnyEvent = TypeVar('AnyEvent', MouseEvent, Shortcut)
 Print = Callable[..., None]
@@ -184,6 +185,16 @@ class IssueData:
             self.num_users = -1
         self.u = str(self.num_users)
         self.U = self.u + ' user' + ('' if self.num_users == 1 else 's')
+        self.vars = {}
+        with suppress(Exception), open('/etc/os-release') as osf:
+            for line in osf:
+                k, _, v = line.strip().partition('=')
+                self.vars[k] = ' '.join(shlex_split(v))
+        if not self.vars:
+            with suppress(Exception), open('/usr/lib/os-release') as osf:
+                for line in osf:
+                    k, _, v = line.strip().partition('=')
+                    self.vars[k] = ' '.join(shlex_split(v))
 
     def translate_issue_char(self, char: str) -> str:
         try:
@@ -192,21 +203,35 @@ class IssueData:
             return char
 
     def parse_issue_file(self, issue_file: IO[str]) -> Iterator[str]:
-        last_char: str | None = None
-        while True:
-            this_char = issue_file.read(1)
-            if not this_char:
-                break
-            if last_char == '\\':
-                yield self.translate_issue_char(this_char)
-            elif last_char is not None:
-                yield last_char
-            # `\\\a` should not match the last two slashes,
-            # so make it look like it was `\?\a` where `?`
-            # is some character other than `\`.
-            last_char = None if last_char == '\\' else this_char
-        if last_char is not None:
-            yield last_char
+        state = 'normal'
+        varname = ''
+        for ch in issue_file.read():
+            match state:
+                case 'normal':
+                    if ch == '\\':
+                        state = 'escape'
+                    else:
+                        yield ch
+                case 'escape':
+                    if ch == 'S':
+                        state = 'sub_start'
+                    else:
+                        yield self.translate_issue_char(ch)
+                        state = 'normal'
+                case 'sub_start':
+                    if ch == '{':  # }
+                        state = 'sub'
+                        varname = ''
+                    else:
+                        yield ch
+                        state = 'normal'
+                case 'sub':
+                    if ch == '}':
+                        if val := self.vars.get(varname):
+                            yield val
+                        state = 'normal'
+                    else:
+                        varname += ch
 
 
 def format_tty_name(raw: str) -> str:
@@ -238,7 +263,18 @@ def compositor_name() -> str:
     return ans
 
 
-def debug_config(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None = None) -> str:
+def issue_data() -> str:
+    with suppress(Exception):
+        idata = IssueData()
+        with open('/etc/issue', encoding='utf-8', errors='replace') as f:
+            return ''.join(idata.parse_issue_file(f)).strip()
+    return ''
+
+
+def debug_config(opts: KittyOpts | None = None, global_shortcuts: dict[str, SingleKey] | None = None) -> str:
+    if opts is None:
+        from kitty.cli import create_default_opts
+        opts = create_default_opts()
     from io import StringIO
     out = StringIO()
     p = partial(print, file=out)
@@ -246,23 +282,12 @@ def debug_config(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None 
     p(' '.join(os.uname()))
     if is_macos:
         import subprocess
-        p(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
-    if os.path.exists('/etc/issue'):
-        try:
-            idata = IssueData()
-        except Exception:
-            pass
-        else:
-            with open('/etc/issue', encoding='utf-8', errors='replace') as f:
-                try:
-                    datums = idata.parse_issue_file(f)
-                except Exception:
-                    pass
-                else:
-                    p(end=''.join(datums))
-    if os.path.exists('/etc/lsb-release'):
-        with open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
-            p(f.read().strip())
+        with suppress(Exception):
+            p(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
+    if (idata := issue_data()):
+        p(idata)
+    with suppress(Exception), open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
+        p(f.read().strip())
     if not is_macos:
         p('Running under:', green(compositor_name()))
     p(green('OpenGL:'), gpu_driver_version_string())
