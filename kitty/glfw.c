@@ -11,7 +11,6 @@
 #include "control-codes.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
-#include "gl.h"
 #ifdef __APPLE__
 #include "cocoa_window.h"
 #else
@@ -1704,11 +1703,6 @@ dbus_user_notification_activated(uint32_t notification_id, int type, const char*
 #endif
 
 static PyObject*
-opengl_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
-    return PyUnicode_FromString(global_state.gl_version ? gl_version_string() : "");
-}
-
-static PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
     int debug_keyboard = 0, debug_rendering = 0, wayland_enable_ime = 0;
@@ -2660,7 +2654,6 @@ static PyMethodDef module_methods[] = {
     METHODB(cocoa_hide_other_apps, METH_NOARGS),
     METHODB(cocoa_minimize_os_window, METH_VARARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
-    METHODB(opengl_version_string, METH_NOARGS),
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},

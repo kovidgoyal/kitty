@@ -1224,6 +1224,11 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 
 // Python API {{{
 
+static PyObject*
+pygpu_driver_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyUnicode_FromString(global_state.gl_version ? gl_version_string() : "");
+}
+
 static bool
 attach_shaders(PyObject *sources, GLuint program_id, GLenum shader_type) {
     RAII_ALLOC(const GLchar*, c_sources, calloc(PyTuple_GET_SIZE(sources), sizeof(GLchar*)));
@@ -1309,6 +1314,7 @@ static PyMethodDef module_methods[] = {
     M(compile_program, METH_VARARGS),
     M(sprite_map_set_limits, METH_VARARGS),
     MW(create_vao, METH_NOARGS),
+    MW(gpu_driver_version_string, METH_NOARGS),
     MW(bind_vertex_array, METH_O),
     MW(unbind_vertex_array, METH_NOARGS),
     MW(unmap_vao_buffer, METH_VARARGS),
