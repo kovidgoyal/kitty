@@ -305,6 +305,7 @@ class Tab:  # {{{
                     launch_cmds.append('focus')
         if launch_cmds:
             return [
+                '',
                 f'new_tab {self.name}'.rstrip(),
                 f'layout {self._current_layout_name}',
                 f'enabled_layouts {",".join(self.enabled_layouts)}',
@@ -1203,7 +1204,7 @@ class TabManager:  # {{{
         for tab in sorted(self, key=skey):
             ans.extend(tab.serialize_state_as_session())
         if ans:
-            prefix = [] if is_first else ['new_os_window']
+            prefix = [] if is_first else ['', '', 'new_os_window']
             if self.wm_class:
                 prefix.append(f'os_window_class {self.wm_class}')
             if self.wm_name:
