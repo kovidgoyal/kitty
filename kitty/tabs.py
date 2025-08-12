@@ -1186,6 +1186,22 @@ class TabManager:  # {{{
             'active_tab_idx': self.active_tab_idx,
         }
 
+    def serialize_state_as_session(self) -> list[str]:
+        tmap = {tab.id: tab for tab in self}
+        ans = []
+        for tab_id in self.active_tab_history:
+            tab = tmap.get(tab_id)
+            if tab is not None:
+                ans.extend(tab.serialize_state_as_session())
+        if ans:
+            prefix = ['new_os_window']
+            if self.wm_class:
+                prefix.append(f'os_window_class {self.wm_class}')
+            if self.wm_name:
+                prefix.append(f'os_window_name {self.wm_name}')
+            ans = prefix + ans
+        return ans
+
     @property
     def active_tab(self) -> Tab | None:
         try:

@@ -501,6 +501,16 @@ class Boss:
                         'background_opacity': bo,
                     }
 
+    def serialize_state_as_session(self) -> Iterator[str]:
+        s = {current_focused_os_window_id(): 2, last_focused_os_window_id(): 1}
+
+        def skey(os_window_id: int) -> int:
+            return s.get(os_window_id, 0)
+
+        for os_window_id in sorted(self.os_window_map, key=skey):
+            tm = self.os_window_map[os_window_id]
+            yield from tm.serialize_state_as_session()
+
     @property
     def all_tab_managers(self) -> Iterator[TabManager]:
         yield from self.os_window_map.values()
