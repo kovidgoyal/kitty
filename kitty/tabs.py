@@ -292,13 +292,17 @@ class Tab:  # {{{
     def serialize_state_as_session(self) -> list[str]:
         import shlex
         launch_cmds = []
-        for g in self.windows.iter_groups_in_activation_order():
+        active_idx = self.windows.active_group_idx
+        for i, g in enumerate(self.windows.iter_all_layoutable_groups()):
             gw: list[str] = []
             for window in g:
                 lc = window.as_launch_command(is_overlay=bool(gw))
                 if lc:
                     gw.append(shlex.join(lc))
-            launch_cmds.extend(gw)
+            if gw:
+                launch_cmds.extend(gw)
+                if i == active_idx:
+                    launch_cmds.append('focus')
         if launch_cmds:
             return [
                 f'new_tab {self.name}'.rstrip(),
