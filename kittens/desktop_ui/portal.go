@@ -757,9 +757,20 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		self.lock.Lock()
 		defer self.lock.Unlock()
 		args := []string{
-			"+kitten", "panel", "--layer=overlay", "--edge=center", "--focus-policy=exclusive",
+			"+kitten", "panel", "--layer=overlay", "--focus-policy=exclusive",
 			"-o", "background_opacity=0.85", "--wait-for-single-instance-window-close",
 			"--grab-keyboard", "--single-instance", "--instance-group", "cfp-" + strconv.Itoa(os.Getpid()),
+		}
+		if self.opts.Panel_columns != "" || self.opts.Panel_lines != "" {
+			if self.opts.Panel_columns != "" {
+				args = append(args, "--columns", self.opts.Panel_columns)
+			}
+			if self.opts.Panel_lines != "" {
+				args = append(args, "--lines", self.opts.Panel_lines)
+			}
+			args = append(args, "--edge=center-sized")
+		} else {
+			args = append(args, "--edge=center")
 		}
 		for _, x := range self.opts.File_chooser_kitty_conf {
 			args = append(args, `-c`, x)

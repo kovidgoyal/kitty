@@ -23,6 +23,12 @@ by using :code:`kitten desktop-ui color-scheme`.
 ''')
 opt('accent_color', 'cyan', long_text='The RGB accent color for your system, can be specified as a color name or in hex a decimal format.')
 opt('contrast', 'normal', choices=('normal', 'high'), long_text='The preferred contrast level.')
+opt('panel_lines', '', long_text='The number of lines shown in the panel, if set; otherwise full-screen (:code:`--edge=center`). '
+    'For example: :code:`panel_lines 24`'
+)
+opt('panel_columns', '', long_text='The number of columns shown in the panel, if set; otherwise full-screen (:code:`--edge=center`). '
+    'For example: :code:`panel_columns 80`'
+)
 opt('+file_chooser_kitty_conf', '',
     long_text='Path to config file to use for kitty when drawing the file chooser window. Can be specified multiple times. By default, the'
     ' normal kitty.conf is used. Relative paths are resolved with respect to the kitty config directory.'
