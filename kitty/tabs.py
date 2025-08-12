@@ -1190,9 +1190,9 @@ class TabManager:  # {{{
         ans = []
         hmap = {tab_id: i for i, tab_id in enumerate(self.active_tab_history)}
         at = self.active_tab
+        if at is not None:
+            hmap[at.id] = len(self.active_tab_history) + 1
         def skey(tab: Tab) -> int:
-            if tab is at:
-                return len(self.active_tab_history) + 1
             return hmap.get(tab.id, -1)
         for tab in sorted(self, key=skey):
             ans.extend(tab.serialize_state_as_session())
