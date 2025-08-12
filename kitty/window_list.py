@@ -333,6 +333,12 @@ class WindowList:
                     return
         self.set_active_group_idx(len(self.groups) - 1, notify=notify)
 
+    def iter_groups_in_activation_order(self) -> Iterator[WindowGroup]:
+        imap = {gid: i for i, gid in enumerate(self.active_group_history)}
+        def skey(g: WindowGroup) -> int:
+            return imap.get(g.id, -1)
+        yield from sorted(self.groups, key=skey)
+
     @property
     def num_groups(self) -> int:
         return len(self.groups)
