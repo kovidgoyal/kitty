@@ -756,10 +756,30 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 	cmd := func() *exec.Cmd {
 		self.lock.Lock()
 		defer self.lock.Unlock()
+		edge, lines, columns := `center`, ``, ``
+		if self.opts.File_chooser_size != "" {
+			l, c, _ := strings.Cut(self.opts.File_chooser_size, " ")
+			if li, err := strconv.Atoi(strings.TrimSpace(l)); err == nil {
+				if ci, err := strconv.Atoi(strings.TrimSpace(c)); err == nil {
+					if li < 10 || ci < 40 {
+						log.Printf("file chooser size %s too small, ignoring", self.opts.File_chooser_size)
+					} else {
+						edge, lines, columns = `center-sized`, l, c
+					}
+				} else {
+					log.Printf("file chooser size %s invalid with error: %s\n", self.opts.File_chooser_size, err)
+				}
+			} else {
+				log.Printf("file chooser size %s invalid with error: %s\n", self.opts.File_chooser_size, err)
+			}
+		}
 		args := []string{
-			"+kitten", "panel", "--layer=overlay", "--edge=center", "--focus-policy=exclusive",
+			"+kitten", "panel", "--layer=overlay", "--edge=" + edge, "--focus-policy=exclusive",
 			"-o", "background_opacity=0.85", "--wait-for-single-instance-window-close",
 			"--grab-keyboard", "--single-instance", "--instance-group", "cfp-" + strconv.Itoa(os.Getpid()),
+		}
+		if edge == "center-sized" {
+			args = append(args, "--lines="+lines, "--columns="+columns)
 		}
 		for _, x := range self.opts.File_chooser_kitty_conf {
 			args = append(args, `-c`, x)
