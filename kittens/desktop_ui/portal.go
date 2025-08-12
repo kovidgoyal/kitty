@@ -758,9 +758,10 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		defer self.lock.Unlock()
 		edge, lines, columns := `center`, ``, ``
 		if self.opts.File_chooser_size != "" {
-			l, c, _ := strings.Cut(self.opts.File_chooser_size, " ")
-			if li, err := strconv.Atoi(strings.TrimSpace(l)); err == nil {
-				if ci, err := strconv.Atoi(strings.TrimSpace(c)); err == nil {
+			l, c, _ := strings.Cut(strings.TrimSpace(self.opts.File_chooser_size), " ")
+			l, c = strings.TrimSpace(l), strings.TrimSpace(c)
+			if li, err := strconv.Atoi(l); err == nil {
+				if ci, err := strconv.Atoi(c); err == nil {
 					if li < 10 || ci < 40 {
 						log.Printf("file chooser size %s too small, ignoring", self.opts.File_chooser_size)
 					} else {
