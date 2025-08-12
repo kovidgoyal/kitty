@@ -2,12 +2,16 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from kitty.constants import appname
 
 from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Tab, Window
+from ..boss import OSWindowDict
+from ..child import ProcessDesc
+from ..launch import is_excluded_env_var
 
 if TYPE_CHECKING:
     from kitty.cli_stub import LSRCOptions as CLIOptions
@@ -19,6 +23,7 @@ class LS(RemoteCommand):
     match/str: Window to change colors in
     match_tab/str: Tab to change colors in
     self/bool: Boolean indicating whether to list only the window the command is run in
+    output_format/str: Output in json or session format
     '''
 
     short_desc = 'List tabs/windows'
@@ -41,6 +46,13 @@ Show all environment variables in output, not just differing ones.
 --self
 type=bool-set
 Only list the window this command is run in.
+
+
+--output-format
+type=choices
+choices=json,session
+default=json
+Output in json or session format
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t', 1)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -49,6 +61,7 @@ Only list the window this command is run in.
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         tab_filter: Callable[[Tab], bool] | None = None
         window_filter: Callable[[Window], bool] | None = None
+        output_session: bool = False
 
         if payload_get('self'):
             def wf(w: Window) -> bool:
@@ -59,26 +72,32 @@ Only list the window this command is run in.
             def wf(w: Window) -> bool:
                 return w.id in window_ids
             window_filter = wf
-        data = list(boss.list_os_windows(window, tab_filter, window_filter))
-        if not payload_get('all_env_vars'):
-            all_env_blocks: list[dict[str, str]] = []
-            common_env_vars: set[tuple[str, str]] = set()
-            for osw in data:
-                for tab in osw.get('tabs', ()):
-                    for w in tab.get('windows', ()):
-                        env: dict[str, str] = w.get('env', {})
-                        frozen_env = set(env.items())
-                        if all_env_blocks:
-                            common_env_vars &= frozen_env
-                        else:
-                            common_env_vars = frozen_env
-                        all_env_blocks.append(env)
-            if common_env_vars and len(all_env_blocks) > 1:
-                remove_env_vars = {k for k, v in common_env_vars}
-                for env in all_env_blocks:
-                    for r in remove_env_vars:
-                        env.pop(r, None)
-        return json.dumps(data, indent=2, sort_keys=True)
+        elif payload_get('output_format') == 'session':
+            output_session = True
+
+        if not output_session:
+            data = list(boss.list_os_windows(window, tab_filter, window_filter))
+            if not payload_get('all_env_vars'):
+                all_env_blocks: list[dict[str, str]] = []
+                common_env_vars: set[tuple[str, str]] = set()
+                for osw in data:
+                    for tab in osw.get('tabs', ()):
+                        for w in tab.get('windows', ()):
+                            env: dict[str, str] = w.get('env', {})
+                            frozen_env = set(env.items())
+                            if all_env_blocks:
+                                common_env_vars &= frozen_env
+                            else:
+                                common_env_vars = frozen_env
+                            all_env_blocks.append(env)
+                if common_env_vars and len(all_env_blocks) > 1:
+                    remove_env_vars = {k for k, v in common_env_vars}
+                    for env in all_env_blocks:
+                        for r in remove_env_vars:
+                            env.pop(r, None)
+            return json.dumps(data, indent=2, sort_keys=True)
+        else:
+            return "\n".join(boss.serialize_state_as_session())
 
 
 ls = LS()
