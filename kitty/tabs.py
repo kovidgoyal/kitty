@@ -291,12 +291,6 @@ class Tab:  # {{{
 
     def serialize_state_as_session(self) -> list[str]:
         import shlex
-        self._current_layout_name
-        ans = [
-            f'new_tab {self.name}'.rstrip(),
-            f'layout {self._current_layout_name}',
-            f'enabled_layouts {",".join(self.enabled_layouts)}'
-        ]
         launch_cmds = []
         for g in self.windows.iter_groups_in_activation_order():
             gw: list[str] = []
@@ -305,8 +299,14 @@ class Tab:  # {{{
                 if lc:
                     gw.append(shlex.join(lc))
             launch_cmds.extend(gw)
-        launch_cmds.append(f'set_layout_state {json.dumps(self.serialize_state()["layout_state"])}\n')
-        return (ans + launch_cmds) if launch_cmds else []
+        if launch_cmds:
+            return [
+                f'new_tab {self.name}'.rstrip(),
+                f'layout {self._current_layout_name}',
+                f'enabled_layouts {",".join(self.enabled_layouts)}'
+                f'set_layout_state {json.dumps(self.current_layout.serialize(self.windows))}\n'
+            ] + launch_cmds
+        return []
 
     def active_window_changed(self) -> None:
         w = self.active_window
