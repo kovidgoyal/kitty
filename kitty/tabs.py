@@ -1189,8 +1189,7 @@ class TabManager:  # {{{
     def serialize_state_as_session(self, is_first: bool = False) -> list[str]:
         ans = []
         hmap = {tab_id: i for i, tab_id in enumerate(self.active_tab_history)}
-        at = self.active_tab
-        if at is not None:
+        if (at := self.active_tab) is not None:
             hmap[at.id] = len(self.active_tab_history) + 1
         def skey(tab: Tab) -> int:
             return hmap.get(tab.id, -1)
