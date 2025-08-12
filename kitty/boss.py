@@ -503,11 +503,7 @@ class Boss:
 
     def serialize_state_as_session(self) -> Iterator[str]:
         s = {current_focused_os_window_id(): 2, last_focused_os_window_id(): 1}
-
-        def skey(os_window_id: int) -> int:
-            return s.get(os_window_id, 0)
-
-        for i, os_window_id in enumerate(sorted(self.os_window_map, key=skey)):
+        for i, os_window_id in enumerate(sorted(self.os_window_map, key=lambda wid: s.get(wid, 0))):
             tm = self.os_window_map[os_window_id]
             yield from tm.serialize_state_as_session(is_first=i==0)
 
