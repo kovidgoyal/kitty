@@ -307,8 +307,9 @@ class Tab:  # {{{
             return [
                 f'new_tab {self.name}'.rstrip(),
                 f'layout {self._current_layout_name}',
-                f'enabled_layouts {",".join(self.enabled_layouts)}'
-                f'set_layout_state {json.dumps(self.current_layout.serialize(self.windows))}\n'
+                f'enabled_layouts {",".join(self.enabled_layouts)}',
+                f'set_layout_state {json.dumps(self.current_layout.serialize(self.windows))}',
+                ''
             ] + launch_cmds
         return []
 
