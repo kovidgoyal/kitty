@@ -1189,7 +1189,7 @@ class TabManager:  # {{{
     def serialize_state_as_session(self) -> list[str]:
         tmap = {tab.id: tab for tab in self}
         ans = []
-        for tab_id in self.active_tab_history:
+        for tab_id in self.active_tab_history or tmap:
             tab = tmap.get(tab_id)
             if tab is not None:
                 ans.extend(tab.serialize_state_as_session())
