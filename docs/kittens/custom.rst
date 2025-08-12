@@ -418,6 +418,8 @@ Kittens created by kitty users
 `smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
     Makes the kitty scroll bindings work in full screen applications
 
+`kitty-tab-switcher <https://github.com/OsiPog/kitty-tab-switcher>`__
+    Fuzzy finder for kitty tabs with previews
 
 `gattino <https://github.com/salvozappa/gattino>`__
     Integrate kitty with an LLM to convert plain language prompts into shell commands.
