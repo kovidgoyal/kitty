@@ -1186,7 +1186,7 @@ class TabManager:  # {{{
             'active_tab_idx': self.active_tab_idx,
         }
 
-    def serialize_state_as_session(self) -> list[str]:
+    def serialize_state_as_session(self, is_first: bool = False) -> list[str]:
         ans = []
         hmap = {tab_id: i for i, tab_id in enumerate(self.active_tab_history)}
         at = self.active_tab
@@ -1197,7 +1197,7 @@ class TabManager:  # {{{
         for tab in sorted(self, key=skey):
             ans.extend(tab.serialize_state_as_session())
         if ans:
-            prefix = ['new_os_window']
+            prefix = [] if is_first else ['new_os_window']
             if self.wm_class:
                 prefix.append(f'os_window_class {self.wm_class}')
             if self.wm_name:

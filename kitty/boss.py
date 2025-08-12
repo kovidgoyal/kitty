@@ -507,9 +507,9 @@ class Boss:
         def skey(os_window_id: int) -> int:
             return s.get(os_window_id, 0)
 
-        for os_window_id in sorted(self.os_window_map, key=skey):
+        for i, os_window_id in enumerate(sorted(self.os_window_map, key=skey)):
             tm = self.os_window_map[os_window_id]
-            yield from tm.serialize_state_as_session()
+            yield from tm.serialize_state_as_session(is_first=i==0)
 
     @property
     def all_tab_managers(self) -> Iterator[TabManager]:
