@@ -1187,12 +1187,15 @@ class TabManager:  # {{{
         }
 
     def serialize_state_as_session(self) -> list[str]:
-        tmap = {tab.id: tab for tab in self}
         ans = []
-        for tab_id in self.active_tab_history or tmap:
-            tab = tmap.get(tab_id)
-            if tab is not None:
-                ans.extend(tab.serialize_state_as_session())
+        hmap = {tab_id: i for i, tab_id in enumerate(self.active_tab_history)}
+        at = self.active_tab
+        def skey(tab: Tab) -> int:
+            if tab is at:
+                return len(self.active_tab_history) + 1
+            return hmap.get(tab.id, -1)
+        for tab in sorted(self, key=skey):
+            ans.extend(tab.serialize_state_as_session())
         if ans:
             prefix = ['new_os_window']
             if self.wm_class:
