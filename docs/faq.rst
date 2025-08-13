@@ -414,7 +414,7 @@ also set it with the following command:
     # Set the icon for app bundle specified by the path
     kitty +runpy 'from kitty.fast_data_types import cocoa_set_app_icon; import sys; cocoa_set_app_icon(*sys.argv[1:]); print("OK")' /path/to/icon.png /Applications/kitty.app
 
-You can also change the icon manually by following the steps:
+You can also change the icon manually on macOS by following the steps:
 
 #. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
 #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
@@ -424,6 +424,9 @@ You can also change the icon manually by following the steps:
 
     rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
 
+or manually in GNOME by copying the kitty.desktop file from /usr/share/applications/ 
+to ~/.local/share/applications and then updating the "Icon=" line with the path 
+to your desired icon.
 
 How do I map key presses in kitty to different keys in the terminal program?
 --------------------------------------------------------------------------------------
