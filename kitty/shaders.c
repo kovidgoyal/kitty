@@ -295,12 +295,17 @@ thickness_as_float(const OSWindow *os_window, unsigned level) {
 
 
 static void
-draw_rounded_rect(const OSWindow *os_window, Viewport rect, unsigned framebuffer_width, unsigned framebuffer_height, unsigned thickness_level, color_type srgb_color) {
+draw_rounded_rect(
+    const OSWindow *os_window, Viewport rect, unsigned framebuffer_width, unsigned framebuffer_height,
+    unsigned thickness_level, unsigned corner_radius_px,
+    color_type srgb_color, color_type srgb_background, float bg_alpha
+) {
     float thickness = (float)ceil(thickness_as_float(os_window, thickness_level));
     thickness = (gl_size((unsigned)thickness, framebuffer_width) + gl_size((unsigned)thickness, framebuffer_height)) / 2.f;
-    float corner_radius = 0.1f;
+    float corner_radius = (2.f * corner_radius_px) / (rect.width + rect.height);
     bind_program(ROUNDED_RECT_PROGRAM);
     color_vec4(rounded_rect_program_layout.uniforms.color, srgb_color, 1.f);
+    color_vec4(rounded_rect_program_layout.uniforms.background_color, srgb_background, bg_alpha);
     glUniform4f(rounded_rect_program_layout.uniforms.resolution_and_params, rect.width, rect.height, thickness, corner_radius);
     glUniform2f(rounded_rect_program_layout.uniforms.origin, gl_size(rect.left, rect.width), -gl_size(rect.top, rect.height));
     save_viewport_using_top_left_origin(rect.left, rect.top, rect.width, rect.height, framebuffer_height);
@@ -1231,7 +1236,8 @@ start_os_window_rendering(OSWindow *os_window) {
 static void
 stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
     if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
-    draw_rounded_rect(os_window, (Viewport){.left=40, .top=40, .height=os_window->viewport_height - 80, .width=200}, os_window->viewport_width, os_window->viewport_height, 1, 0xffffff);
+    draw_rounded_rect(os_window, (Viewport){.left=40, .top=40, .height=os_window->viewport_height - 80, .width=200},
+            os_window->viewport_width, os_window->viewport_height, 1, 30, 0xffffff, 0, 0);
     if (os_window->needs_layers) {
         set_framebuffer_to_use_for_output(0);
         bind_framebuffer_for_output(0);

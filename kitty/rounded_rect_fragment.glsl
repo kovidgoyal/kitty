@@ -1,8 +1,12 @@
+#pragma kitty_include_shader <alpha_blend.glsl>
+#pragma kitty_include_shader <utils.glsl>
+
 in vec2 dimensions;
 out vec4 output_color;
 
 uniform vec4 resolution_and_params;
 uniform vec4 color;
+uniform vec4 background_color;
 uniform vec2 origin;
 
 float rounded_rectangle_sdf(vec2 position, vec2 size, float radius) {
@@ -42,8 +46,9 @@ void main() {
     // Smooth borders (anti-alias)
     const float step_size = 0.005;
     float alpha = smoothstep(-step_size, step_size, outer_edge) - smoothstep(-step_size, step_size, inner_edge);
+    vec4 ans = color;
+    ans.a *= alpha;
 
     // pre-multiplied output
-    if (alpha <= 0) output_color = vec4(0.1, 0.1, 0.1, 0.1); else
-    output_color = color * alpha;
+    output_color = alpha_blend(ans, background_color);
 }
