@@ -29,10 +29,12 @@ typedef struct {
     GLint num_of_uniforms;
 } Program;
 
+typedef struct Viewport { unsigned left, top, width, height; } Viewport;
 
 void gl_init(void);
 const char* gl_version_string(void);
 void set_gpu_viewport(unsigned w, unsigned h);
+Viewport get_gpu_viewport(void);
 void draw_quad(bool blend, unsigned instance_count);
 void save_texture_as_png(uint32_t texture_id, const char *filename);
 void free_texture(GLuint *tex_id);

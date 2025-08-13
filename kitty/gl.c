@@ -151,6 +151,13 @@ static struct {
 void
 set_gpu_viewport(unsigned w, unsigned h) { glViewport(0, 0, w, h); }
 
+Viewport
+get_gpu_viewport(void) {
+    GLsizei v[4];
+    glGetIntegerv(GL_VIEWPORT, v);
+    return (Viewport){.left=v[0], .top=v[1], .width=v[2], .height=v[3]};
+}
+
 void
 save_viewport_using_bottom_left_origin(GLsizei newx, GLsizei newy, GLsizei width, GLsizei height) {
     if (saved_viewports.used >= arraysz(saved_viewports.items)) fatal("Too many nested saved viewports");

@@ -22,6 +22,7 @@ enum {
     TINT_PROGRAM,
     TRAIL_PROGRAM,
     BLIT_PROGRAM,
+    ROUNDED_RECT_PROGRAM,
     NUM_PROGRAMS
 };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
@@ -278,6 +279,36 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
 
 // }}}
 
+// Rounded rect {{{
+typedef struct {
+    Rounded_rectUniforms uniforms;
+} RoundedRectProgramLayout;
+static RoundedRectProgramLayout rounded_rect_program_layout;
+
+static double
+thickness_as_float(const OSWindow *os_window, unsigned level) {
+    level = MIN(level, arraysz(OPT(box_drawing_scale)));
+    double pts = OPT(box_drawing_scale)[level];
+    double dpi = (os_window->fonts_data->logical_dpi_x + os_window->fonts_data->logical_dpi_y) / 2.0;
+    return pts * dpi / 72.0;
+}
+
+
+static void
+draw_rounded_rect(const OSWindow *os_window, Viewport rect, unsigned framebuffer_width, unsigned framebuffer_height, unsigned thickness_level, color_type srgb_color) {
+    float thickness = (float)ceil(thickness_as_float(os_window, thickness_level));
+    thickness = (gl_size((unsigned)thickness, framebuffer_width) + gl_size((unsigned)thickness, framebuffer_height)) / 2.f;
+    float corner_radius = 0.1f;
+    bind_program(ROUNDED_RECT_PROGRAM);
+    color_vec4(rounded_rect_program_layout.uniforms.color, srgb_color, 1.f);
+    glUniform4f(rounded_rect_program_layout.uniforms.resolution_and_params, rect.width, rect.height, thickness, corner_radius);
+    glUniform2f(rounded_rect_program_layout.uniforms.origin, gl_size(rect.left, rect.width), -gl_size(rect.top, rect.height));
+    save_viewport_using_top_left_origin(rect.left, rect.top, rect.width, rect.height, framebuffer_height);
+    draw_quad(true, 0);
+    restore_viewport();
+}
+// }}}
+
 // Cell {{{
 
 typedef struct {
@@ -339,6 +370,7 @@ init_cell_program(void) {
     get_uniform_locations_tint(TINT_PROGRAM, &tint_program_layout.uniforms);
     get_uniform_locations_trail(TRAIL_PROGRAM, &trail_program_layout.uniforms);
     get_uniform_locations_blit(BLIT_PROGRAM, &blit_program_layout.uniforms);
+    get_uniform_locations_rounded_rect(ROUNDED_RECT_PROGRAM, &rounded_rect_program_layout.uniforms);
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -1199,6 +1231,7 @@ start_os_window_rendering(OSWindow *os_window) {
 static void
 stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
     if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
+    draw_rounded_rect(os_window, (Viewport){.left=40, .top=40, .height=os_window->viewport_height - 80, .width=200}, os_window->viewport_width, os_window->viewport_height, 1, 0xffffff);
     if (os_window->needs_layers) {
         set_framebuffer_to_use_for_output(0);
         bind_framebuffer_for_output(0);
@@ -1336,7 +1369,7 @@ init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
     C(CELL_PROGRAM); C(CELL_FG_PROGRAM); C(CELL_BG_PROGRAM); C(BORDERS_PROGRAM);
     C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM);
-    C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM); C(BLIT_PROGRAM);
+    C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM); C(BLIT_PROGRAM); C(ROUNDED_RECT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
