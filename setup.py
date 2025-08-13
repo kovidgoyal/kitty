@@ -1138,7 +1138,7 @@ def build_uniforms_header(skip_generation: bool = False) -> str:
     dest = 'kitty/uniforms_generated.h'
     if skip_generation:
         return dest
-    lines = ['#include "gl.h"', '']
+    lines = []
     a = lines.append
     uniform_names: Dict[str, Tuple[str, ...]] = {}
     class_names = {}
@@ -1163,7 +1163,7 @@ def build_uniforms_header(skip_generation: bool = False) -> str:
         class_name, function_name, uniforms = class_names[name], function_names[name], uniform_names[name]
         a(f'typedef struct {class_name} ''{')
         for n in uniforms:
-            a(f'    GLint {n};')
+            a(f'    int {n};')
         a('}'f' {class_name};')
         a('')
         a(f'static inline void\n{function_name}(int program, {class_name} *ans) ''{')
