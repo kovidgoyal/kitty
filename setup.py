@@ -1151,7 +1151,7 @@ def build_uniforms_header(skip_generation: bool = False) -> str:
 
     for x in sorted(glob.glob('kitty/*.glsl')):
         name = os.path.basename(x).partition('.')[0]
-        name, sep, shader_type = name.partition('_')
+        name, sep, shader_type = name.rpartition('_')
         if not sep or shader_type not in ('fragment', 'vertex'):
             continue
         class_names[name] = f'{name.capitalize()}Uniforms'
