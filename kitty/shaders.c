@@ -22,6 +22,7 @@ enum {
     TINT_PROGRAM,
     TRAIL_PROGRAM,
     BLIT_PROGRAM,
+    ROUNDED_RECT_PROGRAM,
     NUM_PROGRAMS
 };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
@@ -278,6 +279,41 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
 
 // }}}
 
+// Rounded rect {{{
+typedef struct {
+    Rounded_rectUniforms uniforms;
+} RoundedRectProgramLayout;
+static RoundedRectProgramLayout rounded_rect_program_layout;
+
+static double
+thickness_as_float(const OSWindow *os_window, unsigned level) {
+    level = MIN(level, arraysz(OPT(box_drawing_scale)));
+    double pts = OPT(box_drawing_scale)[level];
+    double dpi = (os_window->fonts_data->logical_dpi_x + os_window->fonts_data->logical_dpi_y) / 2.0;
+    return pts * dpi / 72.0;
+}
+
+
+static void
+draw_rounded_rect(
+    const OSWindow *os_window, Viewport rect, unsigned framebuffer_height,
+    unsigned thickness_level, unsigned corner_radius_px,
+    color_type srgb_color, color_type srgb_background, float bg_alpha
+) {
+    float thickness = (float)thickness_as_float(os_window, thickness_level);
+    bind_program(ROUNDED_RECT_PROGRAM);
+    color_vec4(rounded_rect_program_layout.uniforms.color, srgb_color, 1.f);
+    color_vec4(rounded_rect_program_layout.uniforms.background_color, srgb_background, bg_alpha);
+    // y co-ord has to be changed to co-ord system with origin at bottom left
+    float y = (float)framebuffer_height - (float)(rect.top + rect.height);
+    glUniform4f(rounded_rect_program_layout.uniforms.rect, rect.left, y, rect.width, rect.height);
+    glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, corner_radius_px);
+    save_viewport_using_top_left_origin(rect.left, rect.top, rect.width, rect.height, framebuffer_height);
+    draw_quad(true, 0);
+    restore_viewport();
+}
+// }}}
+
 // Cell {{{
 
 typedef struct {
@@ -339,6 +375,7 @@ init_cell_program(void) {
     get_uniform_locations_tint(TINT_PROGRAM, &tint_program_layout.uniforms);
     get_uniform_locations_trail(TRAIL_PROGRAM, &trail_program_layout.uniforms);
     get_uniform_locations_blit(BLIT_PROGRAM, &blit_program_layout.uniforms);
+    get_uniform_locations_rounded_rect(ROUNDED_RECT_PROGRAM, &rounded_rect_program_layout.uniforms);
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -729,8 +766,9 @@ draw_scroll_indicator(color_type bar_color, GLfloat alpha, float frac, const UIR
 
 static unsigned
 render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool along_bottom) {
+    unsigned border_width = (unsigned)ceil(thickness_as_float(ui->os_window, 1));
     unsigned bar_height = ui->cell_height + 2;
-    unsigned bar_width = ui->screen_width;
+    unsigned bar_width = ui->screen_width - 2 * border_width;
     if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
         free(bar->buf);
         bar->buf = malloc((size_t)4 * bar_width * bar_height);
@@ -739,14 +777,14 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
         bar->width = bar_width;
         bar->needs_render = true;
     }
-
+#define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(ui->screen->color_profile, ui->screen->color_profile->overridden.which, ui->screen->color_profile->configured.which, ui->screen->color_profile->overridden.fallback, ui->screen->color_profile->configured.fallback))
+    color_type fg = RGBCOL(default_fg, default_fg), bg = RGBCOL(default_bg, default_bg);
+#undef RGBCOL
     if (bar->last_drawn_title_object_id != title || bar->needs_render) {
         static char titlebuf[2048] = {0};
         if (!title) return 0;
         snprintf(titlebuf, arraysz(titlebuf), " %s", PyUnicode_AsUTF8(title));
-#define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(ui->screen->color_profile, ui->screen->color_profile->overridden.which, ui->screen->color_profile->configured.which, ui->screen->color_profile->overridden.fallback, ui->screen->color_profile->configured.fallback))
-        if (!draw_window_title(ui->os_window->fonts_data->font_sz_in_pts, ui->os_window->fonts_data->logical_dpi_y, titlebuf, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), bar->buf, bar_width, bar_height)) return 0;
-#undef RGBCOL
+        if (!draw_window_title(ui->os_window->fonts_data->font_sz_in_pts, ui->os_window->fonts_data->logical_dpi_y, titlebuf, fg, bg, bar->buf, bar_width, bar_height)) return 0;
         Py_CLEAR(bar->last_drawn_title_object_id);
         bar->last_drawn_title_object_id = Py_NewRef(title);
     }
@@ -761,13 +799,17 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
     bind_program(GRAPHICS_PROGRAM);
-    // current viewport is (0, 0, ui->screen_width, ui->screen_height) coz we are rendering to FBO texture
-    if (along_bottom) save_viewport_using_bottom_left_origin(0, 0, ui->screen_width, bar_height);
-    else save_viewport_using_top_left_origin(0, 0, ui->screen_width, bar_height, ui->screen_height);
+    Viewport border_rect = {
+        .height=bar_height + 2 * border_width, .left=ui->screen_left, .width=ui->screen_width, .top=ui->screen_top};
+    if (along_bottom) border_rect.top += ui->screen_height - border_rect.height;
+    const unsigned sh = ui->full_framebuffer_height;
+    save_viewport_using_top_left_origin(
+        border_rect.left + border_width, border_rect.top + border_width, bar_width, bar_height, sh);
     draw_graphics(GRAPHICS_PROGRAM, &data, 0, 1, 1.f);
     restore_viewport();
     free_texture(&data.texture_id);
-    return bar_height;
+    draw_rounded_rect(ui->os_window, border_rect, sh, 1, ui->cell_width, fg, bg, 0.f);
+    return border_rect.height;
 }
 
 static bool
@@ -1336,7 +1378,7 @@ init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
     C(CELL_PROGRAM); C(CELL_FG_PROGRAM); C(CELL_BG_PROGRAM); C(BORDERS_PROGRAM);
     C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM);
-    C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM); C(BLIT_PROGRAM);
+    C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM); C(BLIT_PROGRAM); C(ROUNDED_RECT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
