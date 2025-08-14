@@ -902,6 +902,14 @@ mouse_event(const int button, int modifiers, int action) {
         }
     }
     w = window_for_event(&window_idx, &in_tab_bar);
+    if (global_state.mouse_hover_in_window) {
+        Window *old_window = window_for_id(global_state.mouse_hover_in_window);
+        if (old_window && old_window != w) {
+            global_state.mouse_hover_in_window = 0;
+            screen_mark_url(old_window->render_data.screen, 0, 0, 0, 0);
+        }
+    }
+
     if (in_tab_bar) {
         mouse_cursor_shape = POINTER_POINTER;
         handle_tab_bar_mouse(button, modifiers, action);

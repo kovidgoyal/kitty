@@ -814,7 +814,7 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
 
 static bool
 has_hyperlink_target(OSWindow *os_window, Window *w, Screen *screen) {
-    return OPT(show_hyperlink_targets) && screen->current_hyperlink_under_mouse.id && w && !is_mouse_hidden(os_window);
+    return OPT(show_hyperlink_targets) && screen->current_hyperlink_under_mouse.id && w && !is_mouse_hidden(os_window) && global_state.mouse_hover_in_window == w->id;
 }
 
 static void
