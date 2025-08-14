@@ -2003,7 +2003,8 @@ class Window:
             ans.append(f'--type={t}')
 
         if self.creation_spec and self.creation_spec.cmd:
-            ans.extend(self.creation_spec.cmd)
+            if self.creation_spec.cmd != resolved_shell(get_options()):
+                ans.extend(self.creation_spec.cmd)
         return ans
 
 
