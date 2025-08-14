@@ -340,7 +340,7 @@ def create_session(boss: BossType, path: str) -> None:
             if tm is None:
                 boss.add_os_window(s)
             else:
-                boss.add_os_window(s, os_window_id=tm.os_window_id)
+                tm.add_tabs_from_session(s)
         else:
             boss.add_os_window(s)
 

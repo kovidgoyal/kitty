@@ -989,11 +989,16 @@ class TabManager:  # {{{
         self._active_tab_idx = 0
 
         if startup_session is not None:
-            for t in startup_session.tabs:
-                tab = Tab(self, session_tab=t)
-                tab.created_in_session_name = startup_session.session_name
-                self._add_tab(tab)
-            self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
+            self.add_tabs_from_session(startup_session)
+
+    def add_tabs_from_session(self, session: SessionType) -> None:
+        before = len(self.tabs)
+        for t in session.tabs:
+            tab = Tab(self, session_tab=t)
+            tab.created_in_session_name = session.session_name
+            self._add_tab(tab)
+        num_added = len(self.tabs) - before
+        self._set_active_tab(max(0, min(num_added + session.active_tab_idx, len(self.tabs) - 1)))
 
     @property
     def active_tab_idx(self) -> int:

@@ -2993,7 +2993,7 @@ class Boss:
         return q if isinstance(q, Window) else None
 
     @ac('misc', 'Switch to the specified session, creating it if not already present.')
-    def goto_session(self, cmdline: list[str]) -> None:
+    def goto_session(self, *cmdline: str) -> None:
         goto_session(self, cmdline)
 
     @ac('tab', 'Interactively select a tab to switch to')
