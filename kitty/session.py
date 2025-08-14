@@ -331,9 +331,11 @@ def window_for_session_name(boss: BossType, session_name: str) -> WindowType | N
     return None
 
 
-def create_session(boss: BossType, path: str) -> None:
+def create_session(boss: BossType, path: str) -> str:
+    session_name = ''
     for i, s in enumerate(create_sessions(get_options(), default_session=path)):
         if i == 0:
+            session_name = s.session_name
             if s.num_of_windows_in_definition == 0:  # leading new_os_window
                 continue
             tm = boss.active_tab_manager
@@ -343,6 +345,25 @@ def create_session(boss: BossType, path: str) -> None:
                 tm.add_tabs_from_session(s)
         else:
             boss.add_os_window(s)
+    return session_name
+
+
+goto_session_history: list[str] = []
+
+
+def append_to_session_history(name: str) -> None:
+    with suppress(ValueError):
+        goto_session_history.remove(name)
+    goto_session_history.append(name)
+
+
+def switch_to_session(boss: BossType, session_name: str) -> bool:
+    w = window_for_session_name(boss, session_name)
+    if w is not None:
+        append_to_session_history(session_name)
+        boss.set_active_window(w, switch_os_window_if_needed=True)
+        return True
+    return False
 
 
 def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
@@ -356,7 +377,8 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         except Exception:
             idx = 0
         if idx < 0:
-            boss.show_error('TODO: implement goto_session prev', 'implement me')
+            nidx = max(0, len(goto_session_history) - 1 - idx)
+            switch_to_session(boss, goto_session_history[nidx])
             return
     else:
         for x in cmdline:
@@ -367,13 +389,13 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
     if not session_name:
         boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
         return
-    w = window_for_session_name(boss, session_name)
-    if w is not None:
-        boss.set_active_window(w, switch_os_window_if_needed=True)
+    if switch_to_session(boss, session_name):
         return
     try:
-        create_session(boss, path)
+        session_name = create_session(boss, path)
     except Exception:
         import traceback
         tb = traceback.format_exc()
         boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error: {1}').format(path, tb))
+    else:
+        append_to_session_history(session_name)
