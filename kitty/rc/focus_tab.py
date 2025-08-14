@@ -33,7 +33,11 @@ using this option means that you will not be notified of failures.
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
-                boss.set_active_tab(tab)
+                window = tab.active_window
+                if window:
+                    boss.set_active_window(window, switch_os_window_if_needed=True)
+                else:
+                    boss.set_active_tab(tab)
                 break
         return None
 

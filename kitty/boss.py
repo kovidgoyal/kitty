@@ -122,7 +122,7 @@ from .notifications import NotificationManager
 from .options.types import Options, nullable_colors
 from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition
 from .os_window_size import initial_window_size_func
-from .session import Session, create_sessions, get_os_window_sizing_data
+from .session import Session, create_sessions, get_os_window_sizing_data, goto_session
 from .shaders import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
@@ -601,8 +601,14 @@ class Boss:
                         if tab is not self.active_tab:
                             tm.set_active_tab(tab, for_keep_focus=window.tabref() if for_keep_focus else None)
                         tab.set_active_window(w, for_keep_focus=window if for_keep_focus else None)
-                        if activation_token or (switch_os_window_if_needed and current_focused_os_window_id() != os_window_id):
-                            focus_os_window(os_window_id, True, activation_token)
+                        if switch_os_window_if_needed and current_focused_os_window_id() != os_window_id:
+                            if activation_token or not is_wayland():
+                                focus_os_window(os_window_id, True, activation_token)
+                            else:
+                                def doit(token: str = '') -> None:
+                                    focus_os_window(os_window_id, True, token)
+                                if not run_with_activation_token(doit):
+                                    doit()
                         return os_window_id
         return None
 
@@ -877,7 +883,7 @@ class Boss:
                     args.session = 'none'
                 else:
                     from .session import PreReadSession
-                    args.session = PreReadSession(data['session_data'], data['environ'])
+                    args.session = PreReadSession(data['session_data'], data['environ'], data['session_arg'])
             else:
                 args.session = ''
             if not os.path.isabs(args.directory):
@@ -2985,6 +2991,10 @@ class Boss:
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
         return q if isinstance(q, Window) else None
+
+    @ac('misc', 'Switch to the specified session, creating it if not already present.')
+    def goto_session(self, cmdline: list[str]) -> None:
+        goto_session(self, cmdline)
 
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:

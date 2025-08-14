@@ -652,6 +652,7 @@ class Window:
     initial_ignore_focus_changes: bool = False
     initial_ignore_focus_changes_context_manager_in_operation: bool = False
     creation_spec: WindowCreationSpec | None = None
+    created_in_session_name: str = ''
 
     @classmethod
     @contextmanager

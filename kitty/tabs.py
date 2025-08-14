@@ -130,6 +130,7 @@ class Tab:  # {{{
     has_indeterminate_progress: bool = False
     last_focused_window_with_progress_id: int = 0
     allow_relayouts: bool = True
+    created_in_session_name: str = ''
 
     def __init__(
         self,
@@ -257,6 +258,8 @@ class Tab:  # {{{
             else:
                 from .launch import launch
                 launched_window = launch(boss, spec.opts, spec.args, target_tab=target_tab, force_target_tab=True)
+                if launched_window is not None:
+                    launched_window.created_in_session_name = self.created_in_session_name
             if window.resize_spec is not None:
                 self.resize_window(*window.resize_spec)
             if window.focus_matching_window_spec:
@@ -975,6 +978,7 @@ class TabManager:  # {{{
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
         self.wm_class = wm_class
+        self.created_in_session_name = startup_session.session_name if startup_session else ''
         self.recent_mouse_events: Deque[TabMouseEvent] = deque()
         self.wm_name = wm_name
         self.args = args
@@ -986,7 +990,9 @@ class TabManager:  # {{{
 
         if startup_session is not None:
             for t in startup_session.tabs:
-                self._add_tab(Tab(self, session_tab=t))
+                tab = Tab(self, session_tab=t)
+                tab.created_in_session_name = startup_session.session_name
+                self._add_tab(tab)
             self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
 
     @property

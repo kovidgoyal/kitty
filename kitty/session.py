@@ -8,14 +8,16 @@ import sys
 from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import suppress
 from functools import partial
-from typing import TYPE_CHECKING, Any, Optional, Union
+from gettext import gettext as _
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 from .cli_stub import CLIOptions
+from .fast_data_types import get_options
 from .layout.interface import all_layouts
 from .options.types import Options
 from .options.utils import resize_window, to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
-from .typing_compat import SpecialWindowInstance
+from .typing_compat import BossType, SpecialWindowInstance, WindowType
 from .utils import expandvars, log_error, resolve_custom_file, resolved_shell, shlex_split
 
 if TYPE_CHECKING:
@@ -72,6 +74,9 @@ class Tab:
 
 
 class Session:
+
+    session_name: str = ''
+    num_of_windows_in_definition: int = 0
 
     def __init__(self, default_title: str | None = None):
         self.tabs: list[Tab] = []
@@ -167,9 +172,21 @@ class Session:
         self.tabs[-1].cwd = val
 
 
-def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = None) -> Generator[Session, None, None]:
+def session_arg_to_name(session_arg: str) -> str:
+    if session_arg in ('-', '/dev/stdin', 'none'):
+        session_arg = ''
+    session_name = os.path.basename(session_arg)
+    if session_name.rpartition('.')[2] in ('session', 'kitty-session'):
+        session_name = session_name.rpartition('.')[0]
+    return session_name
 
+
+
+def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = None, session_arg: str = '') -> Generator[Session, None, None]:
+    session_name = session_arg_to_name(session_arg)
     def finalize_session(ans: Session) -> Session:
+        ans.session_name = session_name
+        ans.num_of_windows_in_definition = sum(len(t.windows) for t in ans.tabs)
         from .tabs import SpecialWindow
         for t in ans.tabs:
             if not t.windows:
@@ -234,10 +251,13 @@ def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = N
 
 class PreReadSession(str):
 
-    def __new__(cls, val: str, associated_environ: Mapping[str, str]) -> 'PreReadSession':
+    associated_environ: Mapping[str, str]
+    session_arg: str
+
+    def __new__(cls, val: str, associated_environ: Mapping[str, str], session_arg: str) -> 'PreReadSession':
         ans: PreReadSession = str.__new__(cls, val)
-        ans.pre_read = True  # type: ignore
-        ans.associated_environ = associated_environ  # type: ignore
+        ans.associated_environ = associated_environ
+        ans.session_arg = session_arg
         return ans
 
 
@@ -254,10 +274,12 @@ def create_sessions(
         if args.session == "none":
             default_session = "none"
         else:
+            session_arg = args.session
             environ: Mapping[str, str] | None = None
             if isinstance(args.session, PreReadSession):
                 session_data = '' + str(args.session)
-                environ = args.session.associated_environ  # type: ignore
+                environ = args.session.associated_environ
+                session_arg = args.session.session_arg
             else:
                 if args.session == '-':
                     f = sys.stdin
@@ -265,16 +287,17 @@ def create_sessions(
                     f = open(resolve_custom_file(args.session))
                 with f:
                     session_data = f.read()
-            yield from parse_session(session_data, opts, environ=environ)
+            yield from parse_session(session_data, opts, environ=environ, session_arg=session_arg)
             return
     if default_session and default_session != 'none' and not getattr(args, 'args', None):
+        session_arg = session_arg_to_name(default_session)
         try:
             with open(default_session) as f:
                 session_data = f.read()
         except OSError:
             log_error(f'Failed to read from session file, ignoring: {default_session}')
         else:
-            yield from parse_session(session_data, opts)
+            yield from parse_session(session_data, opts, session_arg=session_arg)
             return
     ans = Session()
     current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
@@ -290,3 +313,67 @@ def create_sessions(
         special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, env=env_when_no_session, hold=bool(args and args.hold))
     ans.add_special_window(special_window)
     yield ans
+
+
+def window_for_session_name(boss: BossType, session_name: str) -> WindowType | None:
+    windows = [w for w in boss.all_windows if w.created_in_session_name == session_name]
+    if not windows:
+        tabs = (t for t in boss.all_tabs if t.created_in_session_name == session_name)
+        windows = [t.active_window for t in tabs if t.active_window]
+        if not windows:
+            os_windows = (tm for tm in boss.all_tab_managers if tm.created_in_session_name == session_name)
+            windows = [tm.active_window for tm in os_windows if tm.active_window]
+    if windows:
+        def skey(w: WindowType) -> float:
+            return w.last_focused_at
+        windows.sort(key=skey, reverse=True)
+        return windows[0]
+    return None
+
+
+def create_session(boss: BossType, path: str) -> None:
+    for i, s in enumerate(create_sessions(get_options(), default_session=path)):
+        if i == 0:
+            if s.num_of_windows_in_definition == 0:  # leading new_os_window
+                continue
+            tm = boss.active_tab_manager
+            if tm is None:
+                boss.add_os_window(s)
+            else:
+                boss.add_os_window(s, os_window_id=tm.os_window_id)
+        else:
+            boss.add_os_window(s)
+
+
+def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
+    if not cmdline:
+        boss.show_error('TODO: implement interactive goto_session', 'implement me')
+        return
+    path = cmdline[0]
+    if len(cmdline) == 1:
+        try:
+            idx = int(path)
+        except Exception:
+            idx = 0
+        if idx < 0:
+            boss.show_error('TODO: implement goto_session prev', 'implement me')
+            return
+    else:
+        for x in cmdline:
+            if not x.startswith('-'):
+                path = x
+                break
+    session_name = session_arg_to_name(path)
+    if not session_name:
+        boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
+        return
+    w = window_for_session_name(boss, session_name)
+    if w is not None:
+        boss.set_active_window(w, switch_os_window_if_needed=True)
+        return
+    try:
+        create_session(boss, path)
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error: {1}').format(path, tb))

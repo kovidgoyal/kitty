@@ -257,6 +257,9 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     w("{\"cmd\":\"new_instance\",\"session_data\":");
     if (session_data.used) write_json_string(&output, session_data.data, session_data.used);
     else write_json_string(&output, "", 0);
+    w(",\"session_arg\":");
+    if (opts->session && opts->session[0]) write_json_string(&output, opts->session, strlen(opts->session));
+    else write_json_string(&output, "", 0);
     w(",\"args\":"); write_json_string_array(&output, argc, argv);
     char cwd[4096];
     if (!getcwd(cwd, sizeof(cwd))) fail_on_errno("Failed to get cwd");

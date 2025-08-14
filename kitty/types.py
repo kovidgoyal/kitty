@@ -18,6 +18,7 @@ class SingleInstanceData(TypedDict):
     cmdline_args_for_open: Sequence[str]
     cwd: str
     session_data: str
+    session_arg: str
     environ: Mapping[str, str]
     notify_on_os_window_death: str | None
 
