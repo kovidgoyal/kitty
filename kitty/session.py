@@ -12,6 +12,7 @@ from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 from .cli_stub import CLIOptions
+from .constants import config_dir
 from .fast_data_types import get_options
 from .layout.interface import all_layouts
 from .options.types import Options
@@ -385,6 +386,10 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
             if not x.startswith('-'):
                 path = x
                 break
+    path = os.path.expanduser(path)
+    if not os.path.isabs(path):
+        path = os.path.join(config_dir, path)
+    path = os.path.abspath(path)
     session_name = session_arg_to_name(path)
     if not session_name:
         boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
