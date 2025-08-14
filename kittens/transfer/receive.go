@@ -20,6 +20,7 @@ import (
 	"github.com/kovidgoyal/kitty/kittens/unicode_input"
 	"github.com/kovidgoyal/kitty/tools/cli/markup"
 	"github.com/kovidgoyal/kitty/tools/rsync"
+	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -1067,6 +1068,8 @@ func (self *handler) on_key_event(ev *loop.KeyEvent) error {
 	}
 	return nil
 }
+
+var debugprintln = tty.DebugPrintln
 
 func receive_loop(opts *Options, spec []string, dest string) (err error, rc int) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
