@@ -555,6 +555,12 @@ class TestScreen(BaseTest):
             backspace(use_bs)
             self.ae(str(s.line(0)), q[:-1] + ' ')
             self.ae(str(s.line(1)), ' ')
+        # Test that CUB does not move cursor onto previous line
+        s.reset()
+        s.draw('a'*s.columns + 'b')
+        self.ae((s.cursor.x, s.cursor.y), (1, 1))
+        parse_bytes(s, b'\x1b[100D')
+        self.ae((s.cursor.x, s.cursor.y), (0, 1))
 
     def test_margins(self):
         # Taken from vttest/main.c

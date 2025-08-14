@@ -1892,7 +1892,7 @@ screen_is_cursor_visible(const Screen *self) {
 
 void
 screen_backspace(Screen *self) {
-    screen_cursor_move(self, 1, -1);
+    screen_cursor_move(self, 1, -1, true);
 }
 
 void
@@ -1963,7 +1963,7 @@ screen_set_tab_stop(Screen *self) {
 }
 
 void
-screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
+screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/, bool allow_move_to_previous_line) {
     if (count == 0) count = 1;
     bool in_margins = cursor_within_margins(self);
     if (move_direction > 0) {
@@ -1980,7 +1980,7 @@ screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=
                     count -= self->cursor->x;
                     self->cursor->x = 0;
                 } else {
-                    if (self->cursor->y == top) count = 0;
+                    if (self->cursor->y == top || !allow_move_to_previous_line) count = 0;
                     else {
                         count--; self->cursor->y--;
                         self->cursor->x = self->columns-1;
@@ -1993,7 +1993,7 @@ screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=
 
 void
 screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
-    screen_cursor_move(self, count, 1);
+    screen_cursor_move(self, count, 1, false);
 }
 
 void
@@ -4492,7 +4492,7 @@ is_using_alternate_linebuf(Screen *self, PyObject *a UNUSED) {
     Py_RETURN_FALSE;
 }
 
-WRAP1E(cursor_move, 1, -1)
+WRAP1E(cursor_move, 1, -1, true)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
 static PyObject* scroll_until_cursor_prompt(Screen *self, PyObject *args) { int b=false; if(!PyArg_ParseTuple(args, "|p", &b)) return NULL; screen_scroll_until_cursor_prompt(self, b); Py_RETURN_NONE; }

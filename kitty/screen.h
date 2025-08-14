@@ -187,7 +187,7 @@ void screen_save_modes(Screen *);
 void screen_save_mode(Screen *, unsigned int);
 bool write_escape_code_to_child(Screen *self, unsigned char which, const char *data);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);
-void screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
+void screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/, bool allow_move_to_previous_line);
 void screen_erase_in_line(Screen *, unsigned int, bool);
 void screen_erase_in_display(Screen *, unsigned int, bool);
 void screen_draw_text(Screen *self, const uint32_t *chars, size_t num_chars);

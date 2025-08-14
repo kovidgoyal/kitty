@@ -1009,7 +1009,7 @@ parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *repo
 static void
 screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, false, -1); }
 static void
-screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_move(s, count, -1); }
+screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_move(s, count, -1, false); }
 static void
 screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1u, count); i++) screen_tab(s); }
 
