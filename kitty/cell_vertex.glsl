@@ -190,7 +190,7 @@ float calc_background_opacity(uint bg) {
 }
 
 // Overriding of foreground colors for contrast requirements {{{
-#if DO_FG_OVERRIDE == 1
+#if DO_FG_OVERRIDE == 1 && !defined(ONLY_BACKGROUND)
 #define OVERRIDE_FG_COLORS
 #pragma kitty_include_shader <hsluv.glsl>
 #if (FG_OVERRIDE_ALGO == 1)
